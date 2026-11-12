@@ -264,7 +264,7 @@ def doc_phong_cach(tep):
                 if k in d:
                     pc[k] = d[k]
             co_dinh = str(d.get("nen_co_dinh") or "").strip()
-            for k in ("soNenToiDa", "lopNeonTrenNen", "kieuPhuDe", "mauPhuDe", "lopQuet", "butChi", "thanhBuoc", "tieuDeInHoa", "khungSanKhau"):
+            for k in ("soNenToiDa", "lopNeonTrenNen", "kieuPhuDe", "mauPhuDe", "lopQuet", "butChi", "thanhBuoc", "tieuDeInHoa", "khungSanKhau", "loiMoiGiuaVideo"):
                 if k in d:
                     pc[k] = d[k]
             if isinstance(d.get("thuongHieu"), dict):
@@ -371,6 +371,7 @@ def tim_thuong_hieu(public, th):
     hien.pop("outroGiay", None)
     hien.pop("outroTuTao", None)
     hien.pop("dungOutroRieng", None)
+    hien.pop("coManKet", None)
     hien["logo"] = "thuong_hieu/" + os.path.basename(logo) if logo else None
     outro = None
     if out:
@@ -528,7 +529,9 @@ def main():
     ds_nen = chon_nen(args.public, id_an_toan, nen_co_dinh, pc.get("soNenToiDa", 3))
     thuong_hieu, outro = tim_thuong_hieu(args.public, th)
     bai_hoc = [str(x).strip()[:90] for x in (kb.get("bai_hoc_rut_ra") or []) if str(x).strip()][:3]
-    outro = chon_man_ket(outro, dict(th, logo=thuong_hieu.get("logo")), bai_hoc)
+    # Mặc định KHÔNG chèn màn kết/outro vào cuối video (video dừng ngay sau cảnh bài học).
+    # Muốn bật lại: phong_cach.json -> "thuongHieu": {"coManKet": true} (màn kết tự tạo; thêm "dungOutroRieng": true để dùng tệp outro).
+    outro = chon_man_ket(outro, dict(th, logo=thuong_hieu.get("logo")), bai_hoc) if th.get("coManKet") else None
     if outro:
         outro["batDau"] = bat_dau
         bat_dau += outro["soFrame"]

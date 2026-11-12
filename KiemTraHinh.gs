@@ -321,7 +321,7 @@ function kiemTraCachDay_(kb) {
 // Thay cho hopLeKichBan_ cũ trong Code.gs (xóa hàm cũ). Giữ các kiểm tra cũ, thêm kiểm tra hình minh họa.
 function hopLeKichBan_(kb, dapAn) {
   if (!kb || !Array.isArray(kb.canh) || kb.canh.length < 6 || kb.canh.length > 12) return 'SO_CANH_NGOAI_6_DEN_12';
-  // bài giảng phải kỹ: có phần bài học rút ra (hiện ở màn kết) và cảnh tính toán
+  // bài giảng phải kỹ: có phần bài học rút ra (cảnh bai_hoc cuối video) và cảnh tính toán
   if (!Array.isArray(kb.bai_hoc_rut_ra) || kb.bai_hoc_rut_ra.filter(function (x) { return String(x).trim().length >= 8; }).length < 2) return 'THIEU_BAI_HOC_RUT_RA: cần "bai_hoc_rut_ra" là mảng 3 câu ngắn (mỗi câu ≤ 12 từ) nêu quy tắc làm bài rút ra từ bài này.';
   if (!kb.canh.some(function (c) { return /tinh|giai/i.test(String(c.loai || '')); })) return 'THIEU_CANH_TINH_TOAN: bài giảng cần ít nhất một cảnh "tinh_toan" trình bày từng bước tính có giải thích.';
   if (!/bai_hoc|ket_luan|chot/i.test(String(kb.canh[kb.canh.length - 1].loai || ''))) return 'THIEU_CANH_BAI_HOC: cảnh cuối phải là "bai_hoc" (điều rút ra, dấu hiệu nhận dạng, câu hỏi biến thể).';

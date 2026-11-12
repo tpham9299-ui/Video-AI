@@ -5,7 +5,7 @@
  "dapAn": "2/3",
  "lop": "12",
  "fps": 30,
- "tongFrame": 2728,
+ "tongFrame": 2548,
  "hookChu": "Đổi cửa, cơ hội thắng GẤP ĐÔI?",
  "hookKieu": "bat_ngo",
  "nhanManh": [
@@ -30,12 +30,7 @@
   "loiMoi": "Theo dõi để học mẹo xác suất",
   "logo": null
  },
- "outro": {
-  "tep": "",
-  "loai": "tu_tao",
-  "soFrame": 180,
-  "batDau": 2548
- },
+ "outro": null,
  "phongCach": {
   "kieuPhuDe": "hop",
   "mauPhuDe": "#FF6B2C",

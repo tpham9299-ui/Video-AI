@@ -37,6 +37,7 @@ export type PhongCach = {
   kieuToan: string; // 'latex' = công thức phông LaTeX có chân như Manim (mặc định); 'dong_nhat' = công thức cùng phông không chân với chữ
   kieuHinh: string; // 'manim' = hình nét phẳng như video mẫu (mặc định); 'that' = vật 3D (xúc xắc, xu, bài)
   thanhTienDo: boolean;
+  loiMoiGiuaVideo?: boolean; // thẻ "Theo dõi" trượt vào giữa video (mặc định tắt vì đè lên chữ mô tả của TikTok)
   khungSanKhau?: boolean; // khung kính mờ + góc neon quanh sân khấu
   butChi?: boolean; // bút chì chạy theo khi viết công thức (kiểu xep)
   thanhBuoc?: boolean; // thanh các bước bài giải ở đầu cảnh (thay nhãn cam)
