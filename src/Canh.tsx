@@ -13,8 +13,10 @@ import {KIEU_CHUYEN, NhoeHuong, trangThaiChuyen} from './sankhau/chuyendong';
 import {DuLieuSanKhau, hopLeSanKhau, noiTiepSanKhau} from './sankhau/dulieu';
 import {SanKhau, SK_H, SK_W} from './sankhau/SanKhau';
 import {nhanCanh, TieuDeCanh} from './TieuDeCanh';
+import {phaCua, ThanhBuoc} from './ThanhBuoc';
 import {FONT, MAU} from './theme';
 import {Toan} from './Toan';
+import {VietTay} from './VietTay';
 import {CanhProps, PhongCach} from './types';
 
 export type HookThongTin = {chu: string; kieu: string; nhanManh: string[]};
@@ -27,6 +29,23 @@ export function sanKhauCuaCanh(ds: CanhProps[], i: number): DuLieuSanKhau | null
   if (!d) return null;
   return c.giuSanKhau && i > 0 ? noiTiepSanKhau(sanKhauCuaCanh(ds, i - 1), d) : d;
 }
+
+// Khung kính mờ quanh sân khấu (như khung viền trong video mẫu): nền tối trong suốt, viền mảnh,
+// bốn góc có nét ngoặc neon vẽ dần khi cảnh vào.
+const KhungSan: React.FC<{w: number; h: number; p: number}> = ({w, h, p}) => {
+  const L = 46;
+  const e = 1 - Math.pow(1 - p, 3);
+  const goc = (x: number, y: number, sx: number, sy: number) => `M${x + sx * L} ${y} L${x} ${y} L${x} ${y + sy * L}`;
+  return (
+    <div style={{position: 'absolute', left: '50%', top: '50%', width: w, height: h, transform: 'translate(-50%, -50%)', borderRadius: 30, background: 'rgba(6,16,20,0.38)', border: '2px solid rgba(255,255,255,0.07)', boxShadow: 'inset 0 0 60px rgba(0,0,0,0.25)', opacity: e}}>
+      <svg width={w} height={h} style={{position: 'absolute', left: 0, top: 0, overflow: 'visible'}}>
+        {[goc(6, 6, 1, 1), goc(w - 6, 6, -1, 1), goc(6, h - 6, 1, -1), goc(w - 6, h - 6, -1, -1)].map((d, i) => (
+          <path key={i} d={d} stroke={i % 2 ? '#FF8A3D' : '#3BF29A'} strokeWidth={5} fill="none" strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - e} style={{filter: `drop-shadow(0 0 6px ${i % 2 ? '#FF8A3D' : '#3BF29A'})`}} />
+        ))}
+      </svg>
+    </div>
+  );
+};
 
 // Bố cục dọc 1080x1920 theo video mẫu:
 //   [nhãn cam + tiêu đề cảnh]  ->  [SÂN KHẤU: vật thật chuyển động]  ->  [công thức]  ->  [phụ đề TikTok]
@@ -44,7 +63,9 @@ export const Canh: React.FC<{
   sanKhau: DuLieuSanKhau | null;
   giuTruoc: boolean; // sân khấu nối tiếp cảnh trước: không chạy hiệu ứng vào
   giuSau: boolean; // cảnh sau nối tiếp sân khấu: không làm mờ sân khấu khi kết thúc
-}> = ({canh, tieuDe, tongCanh, hook, pc, sanKhau, giuTruoc, giuSau}) => {
+  cacBuoc?: string[]; // các pha của bài (thanh các bước)
+  phaTruoc?: string; // pha của cảnh trước
+}> = ({canh, tieuDe, tongCanh, hook, pc, sanKhau, giuTruoc, giuSau, cacBuoc = [], phaTruoc = ''}) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
   const t = frame / fps;
@@ -108,13 +129,15 @@ export const Canh: React.FC<{
             <HookChu chu={hook.chu} nhanManh={hook.nhanManh} kieu={hook.kieu} lead={canh.leadFrame} />
           </>
         ) : (
-          <TieuDeCanh nhan={nhan} chu={tieuDeCanh || (laMoDau ? tieuDe : '')} tuKhoa={canh.tuKhoa} />
+          <TieuDeCanh nhan={nhan} chu={tieuDeCanh || (laMoDau ? tieuDe : '')} tuKhoa={canh.tuKhoa} inHoa={pc.tieuDeInHoa !== false}
+            dau={pc.thanhBuoc !== false && cacBuoc.length >= 3 && phaCua(canh.loai) ? <ThanhBuoc cacBuoc={cacBuoc} hienTai={phaCua(canh.loai)} moi={phaCua(canh.loai) !== phaTruoc} /> : undefined} />
         )}
       </div>
 
       {/* Sân khấu */}
       {coHinh ? (
         <NhoeHuong nx={ccSan.nx} ny={ccSan.ny} style={{position: 'absolute', left: 0, right: 0, top: yNoiDung, height: caoSan, display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: ccSan.mo, transform: `translate(${ccSan.x}px, ${ccSan.y}px) scale(${ccSan.s})`}}>
+          {pc.khungSanKhau !== false ? <KhungSan w={Math.min(1040, SK_W * tiLe + 40)} h={Math.min(caoSan - 6, SK_H * tiLe + 24)} p={giuTruoc ? 1 : kep((frame - 3) / 14)} /> : null}
           <div style={{width: SK_W, height: SK_H, transform: `scale(${tiLe})`, flexShrink: 0}}>
             {sanKhau ? (
               <SanKhau du={sanKhau} giayAm={giayAm} />
@@ -141,10 +164,14 @@ export const Canh: React.FC<{
             ) : (
               canh.noiDung.map((d, i) => {
                 const bd = thoiDiemDong[i];
-                const p = t < bd ? 0 : Math.min(1, spring({frame: frame - Math.round(bd * fps), fps, config: {damping: 14}}));
+                // viết tay: thời gian viết theo độ dài dòng (0,5-1,3 giây), bút chì chạy theo mép chữ
+                const dai = Math.min(1.3, Math.max(0.5, d.replace(/\\[a-zA-Z]+/g, 'x').length * 0.045));
+                const p = t < bd ? 0 : kep((t - bd) / dai);
                 return (
-                  <div key={i} style={{opacity: p, transform: `translateY(${(1 - p) * 30}px) scale(${0.9 + 0.1 * p})`, filter: p < 1 ? `blur(${(1 - p) * 6}px)` : undefined, maxWidth: 960, textAlign: 'center', padding: '2px 16px'}}>
-                    <Toan tex={d} size={Math.min(coCT * 1.08, coChuCongThuc(d, lonHon))} maxWidth={900} color={laChuThuong(d) ? '#ffffff' : MAU.vang} />
+                  <div key={i} style={{opacity: p > 0 ? 1 : 0, maxWidth: 960, textAlign: 'center', padding: '2px 16px'}}>
+                    <VietTay p={p} but={pc.butChi !== false}>
+                      <Toan tex={d} size={Math.min(coCT * 1.08, coChuCongThuc(d, lonHon))} maxWidth={900} color={laChuThuong(d) ? '#ffffff' : MAU.vang} />
+                    </VietTay>
                   </div>
                 );
               })

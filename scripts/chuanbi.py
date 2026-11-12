@@ -264,7 +264,7 @@ def doc_phong_cach(tep):
                 if k in d:
                     pc[k] = d[k]
             co_dinh = str(d.get("nen_co_dinh") or "").strip()
-            for k in ("soNenToiDa", "lopNeonTrenNen", "kieuPhuDe", "mauPhuDe", "lopQuet"):
+            for k in ("soNenToiDa", "lopNeonTrenNen", "kieuPhuDe", "mauPhuDe", "lopQuet", "butChi", "thanhBuoc", "tieuDeInHoa", "khungSanKhau"):
                 if k in d:
                     pc[k] = d[k]
             if isinstance(d.get("thuongHieu"), dict):

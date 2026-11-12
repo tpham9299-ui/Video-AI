@@ -37,6 +37,10 @@ export type PhongCach = {
   kieuToan: string; // 'latex' = công thức phông LaTeX có chân như Manim (mặc định); 'dong_nhat' = công thức cùng phông không chân với chữ
   kieuHinh: string; // 'manim' = hình nét phẳng như video mẫu (mặc định); 'that' = vật 3D (xúc xắc, xu, bài)
   thanhTienDo: boolean;
+  khungSanKhau?: boolean; // khung kính mờ + góc neon quanh sân khấu
+  butChi?: boolean; // bút chì chạy theo khi viết công thức (kiểu xep)
+  thanhBuoc?: boolean; // thanh các bước bài giải ở đầu cảnh (thay nhãn cam)
+  tieuDeInHoa?: boolean; // tiêu đề cảnh viết IN HOA như video mẫu
   lopQuet?: boolean; // chuyển cảnh motion graphic (dải màu chéo / vòng sáng)
   kieuPhuDe?: string; // 'hop' (ô màu sau từ đang đọc, mặc định) | 'mau'
   mauPhuDe?: string; // màu ô phụ đề

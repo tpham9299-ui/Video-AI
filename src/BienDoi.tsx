@@ -190,7 +190,10 @@ export const BienDoi: React.FC<{
       const pad = 20;
       khung = (
         <svg width={maxWidth} height={cao} style={{position: 'absolute', left: 0, top: 0, overflow: 'visible'}}>
-          <rect x={x0 - pad} y={y0 - pad} width={x1 - x0 + 2 * pad} height={y1 - y0 + 2 * pad} rx={16} fill="none" stroke={mauKhung} strokeWidth={4} strokeLinecap="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - smooth(u)} />
+          {/* như video mẫu: khung neon xanh phát sáng, hơi nghiêng, nền xanh mờ đổ dần vào sau khi viền vẽ xong */}
+          <g transform={`rotate(${-2.5 * smooth(u)} ${(x0 + x1) / 2} ${(y0 + y1) / 2})`}>
+            <rect x={x0 - pad} y={y0 - pad} width={x1 - x0 + 2 * pad} height={y1 - y0 + 2 * pad} rx={18} fill={`rgba(59,242,154,${0.14 * kep01((u - 0.5) * 2)})`} stroke="#3BF29A" strokeWidth={6} strokeLinecap="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - smooth(u)} style={{filter: 'drop-shadow(0 0 10px #3BF29A) drop-shadow(0 0 22px rgba(59,242,154,0.6))'}} />
+          </g>
         </svg>
       );
     }

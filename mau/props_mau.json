@@ -440,7 +440,9 @@
   {
    "so": 6,
    "loai": "thu_nho",
-   "noiDung": [],
+   "noiDung": [
+    "\\frac{20}{30}\\approx\\frac{2}{3}"
+   ],
    "minhHoa": {
     "loai": "san_khau",
     "moTa": "Lưới 30 ô lấp đầy lần lượt (mỗi ô là một lượt chơi); 20 ô thắng sáng cam; huy hiệu vàng đếm lăn số từ 0 lên 20 lần thắng.",

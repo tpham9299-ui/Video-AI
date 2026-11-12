@@ -40,9 +40,9 @@ export const VienThuoc: React.FC<{chu: string; f: number}> = ({chu, f}) => {
   );
 };
 
-export const TieuDeCanh: React.FC<{nhan: string; chu: string; tuKhoa: string; tre?: number}> = ({nhan, chu, tuKhoa, tre = 0}) => {
+export const TieuDeCanh: React.FC<{nhan: string; chu: string; tuKhoa: string; tre?: number; inHoa?: boolean; dau?: React.ReactNode}> = ({nhan, chu, tuKhoa, tre = 0, inHoa = false, dau}) => {
   const f = useCurrentFrame() - tre;
-  const co = chu.length > 40 ? 58 : chu.length > 26 ? 66 : 76;
+  const co = (chu.length > 40 ? 58 : chu.length > 26 ? 66 : 76) * (inHoa ? 0.86 : 1);
   // vị trí cụm từ khóa trong câu để tô cam đúng các từ đó
   const iKhoa = tuKhoa ? chu.toLowerCase().indexOf(tuKhoa.toLowerCase()) : -1;
   const tu = chu.split(/(\s+)/);
@@ -56,9 +56,9 @@ export const TieuDeCanh: React.FC<{nhan: string; chu: string; tuKhoa: string; tr
   const gach = kep((f - 14 - dsTu.filter((x) => x.w.trim()).length * 2) / 14);
   return (
     <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20}}>
-      {nhan ? <VienThuoc chu={nhan} f={f} /> : null}
+      {dau ? dau : nhan ? <VienThuoc chu={nhan} f={f} /> : null}
       {chu ? (
-        <div style={{maxWidth: 980, textAlign: 'center', fontFamily: FONT_DAM, fontWeight: 900, fontSize: co, lineHeight: 1.12, color: '#fff', letterSpacing: -0.5}}>
+        <div style={{maxWidth: 980, textAlign: 'center', fontFamily: FONT_DAM, fontWeight: 900, fontSize: co, lineHeight: 1.12, color: '#fff', letterSpacing: inHoa ? 0 : -0.5, textTransform: inHoa ? 'uppercase' : 'none'}}>
           {dsTu.map((x, i) => {
             if (!x.w.trim()) return <span key={i}> </span>;
             const k = thuTu++;

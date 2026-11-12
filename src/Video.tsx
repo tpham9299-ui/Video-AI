@@ -2,6 +2,7 @@ import React from 'react';
 import {AbsoluteFill, Audio, Img, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame} from 'remotion';
 import {Canh, sanKhauCuaCanh} from './Canh';
 import {LopQuet} from './LopQuet';
+import {cacPha, phaCua} from './ThanhBuoc';
 import {Nen} from './Nen';
 import {FONT, FONT_DAM, BONG_CHU, vienChu, GIAO_DIEN, MAU} from './theme';
 import {smooth} from './manim';
@@ -77,6 +78,7 @@ export const Video: React.FC<Props> = (props) => {
   GIAO_DIEN.kieuHinh = phongCach.kieuHinh || 'manim';
   const amNhac = taoAmLuongNhac(props);
   const ketThuc = outro ? outro.batDau : tongFrame;
+  const dsPha = cacPha(canh.map((c) => c.loai));
   const coThuongHieu = !!thuongHieu && !!(thuongHieu.ten || thuongHieu.logo || thuongHieu.handle);
   return (
     <AbsoluteFill style={{fontFamily: FONT}}>
@@ -87,7 +89,7 @@ export const Video: React.FC<Props> = (props) => {
       {canh.map((c, i) => (
         <Sequence key={c.so} from={c.batDau} durationInFrames={c.soFrame}>
           <Canh canh={c} tieuDe={tieuDe} tongCanh={canh.length} hook={{chu: hookChu, kieu: hookKieu, nhanManh}} pc={phongCach}
-            sanKhau={sanKhauCuaCanh(canh, i)} giuTruoc={i > 0 && c.giuSanKhau && !!sanKhauCuaCanh(canh, i - 1)} giuSau={!!canh[i + 1] && canh[i + 1].giuSanKhau && !!sanKhauCuaCanh(canh, i)} />
+            sanKhau={sanKhauCuaCanh(canh, i)} cacBuoc={dsPha} phaTruoc={i > 0 ? phaCua(canh[i - 1].loai) : ''} giuTruoc={i > 0 && c.giuSanKhau && !!sanKhauCuaCanh(canh, i - 1)} giuSau={!!canh[i + 1] && canh[i + 1].giuSanKhau && !!sanKhauCuaCanh(canh, i)} />
         </Sequence>
       ))}
       {/* chuyển cảnh motion graphic ở chỗ nối các cảnh (trừ cảnh nối tiếp sân khấu) */}
