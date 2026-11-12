@@ -8,7 +8,8 @@ import {coTheBienDoi, coTheCongDon, nhomHang} from './manim';
 import {MinhHoa} from './MinhHoa';
 import {PhuDe} from './PhuDe';
 import {PhuDeTikTok} from './PhuDeTikTok';
-import {easeOut, kep} from './sankhau/donghieu';
+import {kep} from './sankhau/donghieu';
+import {KIEU_CHUYEN, NhoeHuong, trangThaiChuyen} from './sankhau/chuyendong';
 import {DuLieuSanKhau, hopLeSanKhau, noiTiepSanKhau} from './sankhau/dulieu';
 import {SanKhau, SK_H, SK_W} from './sankhau/SanKhau';
 import {nhanCanh, TieuDeCanh} from './TieuDeCanh';
@@ -90,8 +91,10 @@ export const Canh: React.FC<{
     Math.floor((Math.max(120, caoCT) - 60) / Math.max(1, nHang) / 1.9)
   );
 
-  const vaoSan = giuTruoc ? 1 : easeOut(kep((frame - 2) / 10));
-  const raSan = giuSau ? 1 : ra;
+  // chuyển cảnh: mỗi cảnh một kiểu (lướt lên, phóng xuyên, lướt ngang...) hoặc theo "chuyen_canh" của kịch bản
+  const kieuCC = canh.chuyenCanh && (KIEU_CHUYEN as readonly string[]).includes(canh.chuyenCanh) ? canh.chuyenCanh : KIEU_CHUYEN[(canh.so - 1) % 3];
+  const ccSan = trangThaiChuyen(kieuCC, frame, canh.soFrame, giuTruoc, giuSau);
+  const ccCT = trangThaiChuyen(kieuCC, frame - 4, canh.soFrame - 4);
   const tieuDeCanh = canh.tieuDeCanh;
   const nhan = coHook ? (NHAN_HOOK[hook.kieu] || '').replace(/^[^A-Za-zÀ-ỹ]+/, '') : nhanCanh(canh.loai, canh.nhan);
 
@@ -111,7 +114,7 @@ export const Canh: React.FC<{
 
       {/* Sân khấu */}
       {coHinh ? (
-        <div style={{position: 'absolute', left: 0, right: 0, top: yNoiDung, height: caoSan, display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: raSan * (giuTruoc ? 1 : kep(vaoSan * 1.5)), transform: `scale(${giuTruoc ? 1 : 0.94 + 0.06 * vaoSan})`}}>
+        <NhoeHuong nx={ccSan.nx} ny={ccSan.ny} style={{position: 'absolute', left: 0, right: 0, top: yNoiDung, height: caoSan, display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: ccSan.mo, transform: `translate(${ccSan.x}px, ${ccSan.y}px) scale(${ccSan.s})`}}>
           <div style={{width: SK_W, height: SK_H, transform: `scale(${tiLe})`, flexShrink: 0}}>
             {sanKhau ? (
               <SanKhau du={sanKhau} giayAm={giayAm} />
@@ -121,11 +124,11 @@ export const Canh: React.FC<{
               </div>
             ) : null}
           </div>
-        </div>
+        </NhoeHuong>
       ) : null}
 
       {/* Chú thích + công thức */}
-      <div style={{position: 'absolute', left: 50, right: 50, top: coHinh ? yNoiDung + caoSan + 16 : Y_SAN, bottom: 1920 - dayVung, display: 'flex', flexDirection: 'column', justifyContent: coHinh ? 'flex-start' : 'center', alignItems: 'center', gap: 16, opacity: ra}}>
+      <NhoeHuong nx={ccCT.nx} ny={ccCT.ny} style={{position: 'absolute', left: 50, right: 50, top: coHinh ? yNoiDung + caoSan + 16 : Y_SAN, bottom: 1920 - dayVung, display: 'flex', flexDirection: 'column', justifyContent: coHinh ? 'flex-start' : 'center', alignItems: 'center', gap: 16, opacity: frame < 4 ? 0 : ccCT.mo, transform: `translate(${ccCT.x}px, ${ccCT.y}px) scale(${ccCT.s})`}}>
         {coNote ? <ChuThich dong={canh.chuThich} bd={Math.max(0.6, giayAm * 0.45)} /> : null}
         {hienCongThuc ? (
           <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: coHinh ? '14px 26px' : 0, borderRadius: 24, background: coHinh ? 'rgba(4,14,13,0.55)' : 'transparent', border: coHinh ? '2px solid rgba(59,242,154,0.25)' : 'none', opacity: kep((t - treCT + 0.3) * 3)}}>
@@ -148,12 +151,12 @@ export const Canh: React.FC<{
             )}
           </div>
         ) : null}
-      </div>
+      </NhoeHuong>
 
       {/* Phụ đề */}
       {pc.phuDe ? (
         <div style={{position: 'absolute', left: 60, right: 60, top: Y_PHU_DE, height: 150, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-          {pc.kieuNen === 'neon' || !pc.kieuNen ? <PhuDeTikTok cau={canh.cau} t={t} /> : <PhuDe cau={canh.cau} t={t} co={42} />}
+          {pc.kieuNen === 'neon' || !pc.kieuNen ? <PhuDeTikTok cau={canh.cau} t={t} kieu={pc.kieuPhuDe} mauHop={pc.mauPhuDe} /> : <PhuDe cau={canh.cau} t={t} co={42} />}
         </div>
       ) : null}
 

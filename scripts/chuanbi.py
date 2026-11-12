@@ -115,7 +115,81 @@ def _gtts(text, tep, toc):
     os.remove(tho)
 
 
-THONG_KE_GIONG = {"edge": 0, "gtts": 0}
+THONG_KE_GIONG = {"edge": 0, "gtts": 0, "gemini": 0}
+
+PHONG_CACH_GIONG_MAC_DINH = ("Đọc đoạn sau bằng tiếng Việt chuẩn, giọng miền Bắc, như một thầy giáo trẻ đang làm video TikTok dạy toán: "
+                             "hào hứng, gần gũi, rõ ràng, tốc độ hơi nhanh, nhấn vào các con số và từ khóa, ngắt nghỉ tự nhiên theo dấu câu. "
+                             "Chỉ đọc đúng nội dung, không thêm bớt chữ nào:")
+
+
+def gemini_tts(text, tep_wav, giong, model, phong_cach):
+    """Giọng Gemini TTS (Google): một lần gọi cho cả lời thoại của cảnh. Trả về tệp WAV 24 kHz.
+    Cần biến môi trường GEMINI_API_KEY (GitHub Secret). Tự chờ và thử lại khi bị giới hạn tốc độ (429) hoặc quá tải (503)."""
+    import base64
+    import urllib.error
+    import urllib.request
+    import time
+    key = os.environ.get("GEMINI_API_KEY", "").split(",")[0].strip()
+    if not key:
+        raise RuntimeError("chưa có GEMINI_API_KEY")
+    than = {
+        "contents": [{"parts": [{"text": phong_cach + "\n" + text}]}],
+        "generationConfig": {"responseModalities": ["AUDIO"],
+                             "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": giong}}}},
+    }
+    url = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent" % model
+    loi = None
+    for lan in range(6):
+        req = urllib.request.Request(url, data=json.dumps(than).encode("utf8"), method="POST",
+                                     headers={"Content-Type": "application/json", "x-goog-api-key": key})
+        try:
+            with urllib.request.urlopen(req, timeout=120) as r:
+                d = json.loads(r.read().decode("utf8"))
+            phan = d["candidates"][0]["content"]["parts"]
+            b64 = next(p["inlineData"]["data"] for p in phan if "inlineData" in p)
+            pcm = tep_wav + ".pcm"
+            with open(pcm, "wb") as f:
+                f.write(base64.b64decode(b64))
+            chay(["ffmpeg", "-y", "-loglevel", "error", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", pcm, tep_wav])
+            os.remove(pcm)
+            return
+        except urllib.error.HTTPError as e:
+            noi = e.read().decode("utf8", "ignore")[:300]
+            loi = "HTTP %d %s" % (e.code, noi)
+            if e.code in (429, 500, 503):
+                m = re.search(r'"retryDelay":\s*"(\d+)', noi)
+                cho = min(60, int(m.group(1)) + 2) if m else 10 * (lan + 1)
+                print("Gemini TTS bận (%d), chờ %d giây rồi thử lại" % (e.code, cho))
+                time.sleep(cho)
+                continue
+            break
+        except Exception as e:
+            loi = str(e)
+            time.sleep(5)
+    raise RuntimeError("Gemini TTS lỗi: %s" % loi)
+
+
+def tao_giong_gemini(canh, thu_muc, args):
+    """Tạo trước giọng Gemini cho TẤT CẢ cảnh. Lỗi ở bất kỳ cảnh nào -> trả None để cả video dùng edge-tts
+    (không trộn hai giọng khác nhau trong một video)."""
+    kq = {}
+    for i, c in enumerate(canh):
+        van = chuan_hoa_doc(str(c.get("loi_thoai") or "").strip())
+        if not van:
+            continue
+        wav = os.path.join(thu_muc, "gem_%d.wav" % i)
+        try:
+            gemini_tts(van, wav, args.giong_gemini, args.tts_model, args.phong_cach_giong)
+        except Exception as e:
+            print("Cảnh báo: %s -> cả video chuyển sang edge-tts" % str(e)[:200])
+            return None
+        nhanh = os.path.join(thu_muc, "gem_%d.mp3" % i)
+        tempo = float(args.toc_do_gemini or 1.0)
+        loc = ("atempo=%.3f," % tempo if abs(tempo - 1) > 0.01 else "") + "aresample=44100"
+        chay(["ffmpeg", "-y", "-loglevel", "error", "-i", wav, "-af", loc, "-c:a", "libmp3lame", "-b:a", "128k", nhanh])
+        kq[i] = nhanh
+        THONG_KE_GIONG["gemini"] += 1
+    return kq
 
 
 async def tao_cac_doan(cac_doan, thu_muc, args):
@@ -172,7 +246,7 @@ def ghep(cac_tep, dich):
     chay(lenh)
 
 
-PHONG_CACH_MAC_DINH = {"soNenToiDa": 3, "lopNeonTrenNen": True, "doMoNen": 0.35, "kyHieuTroi": False, "quangSang": True, "kieuNen": "neon", "kieuToan": "latex",
+PHONG_CACH_MAC_DINH = {"kieuPhuDe": "hop", "mauPhuDe": "#FF6B2C", "soNenToiDa": 3, "lopNeonTrenNen": True, "doMoNen": 0.35, "kyHieuTroi": False, "quangSang": True, "kieuNen": "neon", "kieuToan": "latex",
                        "kieuHinh": "manim", "thanhTienDo": False, "phuDe": True, "mau": {}}
 THUONG_HIEU_MAC_DINH = {"ten": "", "khauHieu": "", "handle": "", "markNuoc": True, "outroGiay": 5, "outroTuTao": True, "loiMoi": "Theo dõi để học mẹo xác suất"}
 DUOI_ANH = (".jpg", ".jpeg", ".png", ".webp")
@@ -190,7 +264,7 @@ def doc_phong_cach(tep):
                 if k in d:
                     pc[k] = d[k]
             co_dinh = str(d.get("nen_co_dinh") or "").strip()
-            for k in ("soNenToiDa", "lopNeonTrenNen"):
+            for k in ("soNenToiDa", "lopNeonTrenNen", "kieuPhuDe", "mauPhuDe"):
                 if k in d:
                     pc[k] = d[k]
             if isinstance(d.get("thuongHieu"), dict):
@@ -321,6 +395,12 @@ def main():
     ap.add_argument("--cao-do", default=os.environ.get("CAO_DO", "+0Hz"))
     ap.add_argument("--phong-cach", default="phong_cach.json")
     ap.add_argument("--gia-lap", action="store_true", help="dùng tiếng bíp thay giọng thật (để thử máy)")
+    ap.add_argument("--may-giong", default=os.environ.get("MAY_GIONG") or ("gemini" if os.environ.get("GEMINI_API_KEY") else "edge"),
+                    help="gemini (giọng AI tự nhiên, cần GEMINI_API_KEY) | edge")
+    ap.add_argument("--giong-gemini", default=os.environ.get("GIONG_GEMINI") or "Puck")
+    ap.add_argument("--tts-model", default=os.environ.get("TTS_MODEL") or "gemini-2.5-flash-preview-tts")
+    ap.add_argument("--toc-do-gemini", default=os.environ.get("TOC_DO_GEMINI") or "1.08")
+    ap.add_argument("--phong-cach-giong", default=os.environ.get("PHONG_CACH_GIONG") or PHONG_CACH_GIONG_MAC_DINH)
     args = ap.parse_args()
 
     kb = json.load(open(args.kich_ban, encoding="utf8"))
@@ -338,6 +418,10 @@ def main():
 
     canh_props = []
     bat_dau = 0
+    tam_gem = tempfile.mkdtemp()
+    giong_gem = None
+    if not args.gia_lap and args.may_giong == "gemini":
+        giong_gem = tao_giong_gemini(canh, tam_gem, args)
     for i, c in enumerate(canh):
         so = int(c.get("so") or i + 1)
         loi_thoai = str(c.get("loi_thoai") or "").strip()
@@ -345,16 +429,27 @@ def main():
         if not loi_thoai:
             sys.exit("Cảnh %d không có lời thoại." % so)
         cac_doan = tach_cau(loi_thoai)
+        gap = GAP
         with tempfile.TemporaryDirectory() as tam:
-            cac_tep_tho = asyncio.run(tao_cac_doan(cac_doan, tam, args))
-            cac_tep = []
-            for k, tho in enumerate(cac_tep_tho):
-                gon = os.path.join(tam, "g%03d.mp3" % k)
-                cat_lang(tho, gon)
-                cac_tep.append(gon)
-            do_dai = [do_thoi_luong(t) for t in cac_tep]
             ten = "%s_c%d.mp3" % (id_an_toan, so)
-            ghep(cac_tep, os.path.join(thu_muc_giong, "tam_" + ten))
+            if giong_gem and i in giong_gem:
+                # Gemini đọc cả cảnh một lần (ngữ điệu liền mạch); mốc từng câu chia theo số ký tự
+                gon = os.path.join(tam, "g.mp3")
+                cat_lang(giong_gem[i], gon)
+                tong = do_thoi_luong(gon)
+                ky_tu = [max(1, len(d)) for d in cac_doan]
+                do_dai = [tong * k / sum(ky_tu) for k in ky_tu]
+                shutil.copyfile(gon, os.path.join(thu_muc_giong, "tam_" + ten))
+                gap = 0
+            else:
+                cac_tep_tho = asyncio.run(tao_cac_doan(cac_doan, tam, args))
+                cac_tep = []
+                for k, tho in enumerate(cac_tep_tho):
+                    gon = os.path.join(tam, "g%03d.mp3" % k)
+                    cat_lang(tho, gon)
+                    cac_tep.append(gon)
+                do_dai = [do_thoi_luong(t) for t in cac_tep]
+                ghep(cac_tep, os.path.join(thu_muc_giong, "tam_" + ten))
             # chuẩn hóa độ lớn giọng (kiểu podcast/TikTok, -15 LUFS) để lời giảng luôn rõ hơn nhạc nền
             chay(["ffmpeg", "-y", "-loglevel", "error", "-i", os.path.join(thu_muc_giong, "tam_" + ten), "-af",
                   "highpass=f=70,acompressor=threshold=-20dB:ratio=3:attack=5:release=80,loudnorm=I=-15:TP=-1.5:LRA=7",
@@ -371,7 +466,7 @@ def main():
                 dai_x = dd * len(x) / tong_ky_tu
                 cau.append({"text": x, "bat": round(t_doan, 3), "ket": round(t_doan + dai_x, 3)})
                 t_doan += dai_x
-            t += dd + GAP
+            t += dd + gap
 
         so_frame = max(int(round((LEAD + tong_am + TAIL) * FPS)), 2 * FPS)
         loai_hinh = str((c.get("minh_hoa") or {}).get("loai") or "").lower()
@@ -383,7 +478,7 @@ def main():
         tb = trinh_bay(c, noi_dung_tam)
         if tb in ("bien_doi", "cong_don") and len(noi_dung_tam) >= 1:
             # đủ thời gian cho mọi phép biến hình (mỗi dòng cách nhau 1,1 giây + 0,9 giây biến hình + khung đáp án)
-            can = 0.3 + (len(noi_dung_tam) - 1) * 1.1 + 0.9 + (1.5 if re.search(r"dap_an|ket_qua", str(c.get("loai") or "").lower()) else 0.6)
+            can = 1.25 + (len(noi_dung_tam) - 1) * 1.45 + 0.9 + (1.6 if re.search(r"dap_an|ket_qua", str(c.get("loai") or "").lower()) else 0.6)
             so_frame = max(so_frame, int(round(can * FPS)))
         mh = c.get("minh_hoa") or {}
         noi_dung = [str(x) for x in (c.get("noi_dung_man_hinh") or []) if str(x).strip()]
@@ -407,6 +502,7 @@ def main():
             "tuKhoa": str(c.get("tu_khoa") or "").strip()[:30],
             "nhan": str(c.get("nhan") or "").strip()[:16],
             "giuSanKhau": bool(c.get("giu_san_khau")) and i > 0,
+            "chuyenCanh": str(c.get("chuyen_canh") or ""),
         })
         bat_dau += so_frame
         so_tu = len(loi_thoai.split())
@@ -442,7 +538,8 @@ def main():
         "canh": canh_props,
     }
     if not args.gia_lap:
-        print("Giọng đọc: %d đoạn bằng edge-tts (%s), %d đoạn bằng Google TTS dự phòng" % (THONG_KE_GIONG["edge"], args.giong, THONG_KE_GIONG["gtts"]))
+        print("Giọng đọc: %d cảnh bằng Gemini TTS (%s), %d đoạn bằng edge-tts (%s), %d đoạn bằng Google TTS dự phòng" % (
+            THONG_KE_GIONG["gemini"], args.giong_gemini, THONG_KE_GIONG["edge"], args.giong, THONG_KE_GIONG["gtts"]))
     dich = args.props_ra or os.path.join(args.public, "props.json")
     with open(dich, "w", encoding="utf8") as f:
         json.dump(props, f, ensure_ascii=False, indent=1)

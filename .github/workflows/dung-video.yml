@@ -24,6 +24,12 @@ jobs:
       DRIVE_FONT: ${{ vars.DRIVE_FONT }}
       DRIVE_THUONG_HIEU: ${{ vars.DRIVE_THUONG_HIEU }}
       DRIVE_NHAC: ${{ vars.DRIVE_NHAC }}
+      # Giọng Gemini TTS (tự nhiên hơn edge-tts): thêm Secret GEMINI_API_KEY là bật; MAY_GIONG=edge để tắt
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      MAY_GIONG: ${{ vars.MAY_GIONG }}
+      GIONG_GEMINI: ${{ vars.GIONG_GEMINI }}
+      TTS_MODEL: ${{ vars.TTS_MODEL }}
+      TOC_DO_GEMINI: ${{ vars.TOC_DO_GEMINI }}
       AM_LUONG_NHAC: ${{ vars.AM_LUONG_NHAC }}
       GIONG: ${{ vars.GIONG }}
       TOC_DO: ${{ vars.TOC_DO }}

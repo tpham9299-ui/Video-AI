@@ -1,9 +1,18 @@
 // Phông chữ ĐÓNG GÓI SẴN trong public/fonts (không tải từ Google Fonts nên không thể lỗi mạng/lỗi tên phông).
 // Thứ tự ưu tiên: phông riêng của bạn (tuy_chon-*.ttf, nếu có) > Liberation Sans (chữ, số, biến) > DejaVu Sans (ký hiệu toán) > phông hệ thống.
-export const FONT = '"VietTuyChon", "VietSans", "VietSym", "Liberation Sans", "DejaVu Sans", sans-serif';
+// Be Vietnam Pro (OFL): phông thiết kế riêng cho tiếng Việt, nét đậm mạnh, hợp tiêu đề và phụ đề TikTok.
+export const FONT = '"VietTuyChon", "VietNoi", "VietSans", "VietSym", "Liberation Sans", "DejaVu Sans", sans-serif';
 
 export type KhaiBaoPhong = [family: string, tep: string, weight: string, style: string];
 export const KHAI_BAO_PHONG: KhaiBaoPhong[] = [
+  ['VietNoi', 'BeVietnamPro-Medium.ttf', '400', 'normal'],
+  ['VietNoi', 'BeVietnamPro-Medium.ttf', '500', 'normal'],
+  ['VietNoi', 'BeVietnamPro-Bold.ttf', '600', 'normal'],
+  ['VietNoi', 'BeVietnamPro-Bold.ttf', '700', 'normal'],
+  ['VietNoi', 'BeVietnamPro-ExtraBold.ttf', '800', 'normal'],
+  ['VietNoi', 'BeVietnamPro-Black.ttf', '900', 'normal'],
+  ['VietNoi', 'BeVietnamPro-BoldItalic.ttf', '700', 'italic'],
+  ['VietNoi', 'BeVietnamPro-BlackItalic.ttf', '900', 'italic'],
   ['VietSans', 'LiberationSans-Regular.ttf', '400', 'normal'],
   ['VietSans', 'LiberationSans-Bold.ttf', '700', 'normal'],
   ['VietSans', 'LiberationSans-Italic.ttf', '400', 'italic'],

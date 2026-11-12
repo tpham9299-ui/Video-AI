@@ -10,7 +10,9 @@ Apps Script (BoPhan2.gs)  ──repository_dispatch + kịch bản JSON──►
         └──── doPost(): CO_VIDEO + link Drive + báo Zalo ◄────────── 3. rclone             : tải MP4 lên Drive
 ```
 
-> **Mới (lần 8):** sửa lỗi Bộ phận 1 "vượt quá thời gian chạy", video kiểu **sân khấu neon** với 21 vật thật chuyển động, phụ đề kiểu TikTok, nhạc nền tự tạo không bản quyền và 19 hiệu ứng âm thanh. Xem **`SUA_CODE_LAN_8.md`** để biết các bước cập nhật Apps Script (Code.gs ← `BoPhan1.gs`, thêm `PromptKichBan.gs`, thay `KiemTraHinh.gs`).
+> **Mới (lần 9):** phông Be Vietnam Pro, phụ đề ô màu, chuyển cảnh lướt có nhòe chuyển động, lưới ô / thẻ danh sách / số lăn, giọng Gemini TTS, kịch bản mẫu Monty Hall. Xem **`SUA_CODE_LAN_9.md`**.
+>
+> **Lần 8:** sửa lỗi Bộ phận 1 "vượt quá thời gian chạy", video kiểu **sân khấu neon** với 21 vật thật chuyển động, phụ đề kiểu TikTok, nhạc nền tự tạo không bản quyền và 19 hiệu ứng âm thanh. Xem **`SUA_CODE_LAN_8.md`** để biết các bước cập nhật Apps Script (Code.gs ← `BoPhan1.gs`, thêm `PromptKichBan.gs`, thay `KiemTraHinh.gs`).
 
 ## Cài đặt (làm một lần, khoảng 30–45 phút)
 

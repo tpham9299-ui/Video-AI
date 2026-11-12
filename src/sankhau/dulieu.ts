@@ -14,6 +14,7 @@ const so = (v: unknown, mac: number, thap: number, cao: number): number => {
 export const LOAI_VAT = [
   'nguoi', 'the', 'the_bai', 'xuc_xac', 'dong_xu', 'hop_bi', 'tui', 'hop_qua', 'dong_ho', 'dien_thoai', 'bong_bay',
   'dong_ho_do', 'bieu_do_cot', 'thanh', 'vong_quay', 'cua', 'banh', 'nhan', 'chu', 'so_dem', 'mui_ten', 'bieu_tuong',
+  'luoi_o', 'danh_sach',
 ] as const;
 export type LoaiVat = (typeof LOAI_VAT)[number];
 
@@ -49,6 +50,8 @@ export type Vat = {
   emoji: string;
   xoay: number; // độ nghiêng (nhãn)
   tuHuong: string; // hướng bay vào: trai | phai | tren | duoi | '' (bật tại chỗ)
+  soCot: number; // luoi_o: số cột
+  kieu: string; // biến thể hiển thị (so_dem: 'vien' = viên thuốc vàng như huy hiệu)
 };
 
 export type HanhDong = {
@@ -71,7 +74,7 @@ export type DuLieuSanKhau = {vat: Vat[]; hanhDong: HanhDong[]; soBuoc: number};
 const MAU_HOP_LE = ['do', 'xanh_duong', 'xanh_la', 'vang', 'tim', 'cam', 'hong', 'trang', 'xam', 'nau', 'ngoc', 'den'];
 const tenMau = (v: unknown): string => (typeof v === 'string' && MAU_HOP_LE.includes(v) ? v : '');
 const toiDaSoLuong: Partial<Record<LoaiVat, number>> = {
-  nguoi: 12, the: 8, the_bai: 6, xuc_xac: 3, dong_xu: 4, cua: 4, banh: 12, bieu_tuong: 10,
+  nguoi: 12, the: 8, the_bai: 6, xuc_xac: 3, dong_xu: 4, cua: 4, banh: 12, bieu_tuong: 10, luoi_o: 64,
 };
 
 function vat(raw: Record<string, unknown>, i: number): Vat | null {
@@ -104,7 +107,7 @@ function vat(raw: Record<string, unknown>, i: number): Vat | null {
     nhan: chu(raw.nhan, 36),
     noiDung: chu(raw.noi_dung, loai === 'chu' ? 60 : 48),
     tuKhoa: chu(raw.tu_khoa, 30),
-    soLuong: Math.round(so(raw.so_luong, loai === 'cua' ? 3 : loai === 'banh' ? 8 : ds.length || 1, 1, mac)),
+    soLuong: Math.round(so(raw.so_luong, loai === 'cua' ? 3 : loai === 'banh' ? 8 : loai === 'luoi_o' ? 36 : ds.length || 1, 1, mac)),
     giaTri: so(raw.gia_tri, loai === 'so_dem' ? 10 : 0.5, 0, loai === 'so_dem' ? 1e6 : 1),
     giaTriChu: chu(raw.gia_tri_chu, 20),
     ketQua,
@@ -114,11 +117,14 @@ function vat(raw: Record<string, unknown>, i: number): Vat | null {
     emoji: chu(raw.emoji, 8),
     xoay: so(raw.xoay, 0, -20, 20),
     tuHuong: typeof raw.tu_huong === 'string' && ['trai', 'phai', 'tren', 'duoi'].includes(raw.tu_huong) ? raw.tu_huong : '',
+    soCot: Math.round(so(raw.so_cot, 0, 0, 12)),
+    kieu: chu(raw.kieu, 12),
   };
   if ((loai === 'nhan' || loai === 'chu') && !v.noiDung) return null;
   if (loai === 'bieu_tuong' && !v.emoji) return null;
   if (loai === 'vong_quay' && v.ds.length < 2) v.ds = ['1', '2', '3', '4', '5', '6'];
   if (loai === 'bieu_do_cot' && !v.dsSo.length) return null;
+  if (loai === 'danh_sach' && !v.ds.length) return null;
   if ((loai === 'hop_bi' || loai === 'tui') && !v.nhom.length) v.nhom = [{mau: 'do', so: 3}, {mau: 'xanh_duong', so: 2}];
   return v;
 }

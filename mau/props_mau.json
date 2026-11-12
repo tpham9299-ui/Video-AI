@@ -1,29 +1,35 @@
 {
- "id": "VT-mau-neon",
- "tieuDe": "Chọn 2 MC cùng giới: đừng quên một trường hợp!",
- "hook": "Chọn hai bạn trong tám bạn, rất nhiều bạn tính thiếu đúng một trường hợp.",
- "dapAn": "13/28",
- "lop": "11",
+ "id": "VT-mau-monty",
+ "tieuDe": "Đổi cửa thì thắng gấp đôi? Toán nói CÓ",
+ "hook": "Ba cánh cửa, một xe máy. Đổi cửa thắng gấp đôi, bạn tin không?",
+ "dapAn": "2/3",
+ "lop": "12",
  "fps": 30,
- "tongFrame": 1106,
- "hookChu": "Chọn 2 trong 8 bạn, rất nhiều bạn tính THIẾU",
- "hookKieu": "sai_lam",
+ "tongFrame": 1456,
+ "hookChu": "Đổi cửa, cơ hội thắng GẤP ĐÔI?",
+ "hookKieu": "bat_ngo",
  "nhanManh": [
-  "THIẾU"
+  "GẤP ĐÔI"
  ],
  "nhac": "nhac/nen.wav",
  "amLuongNhac": 0.16,
- "chuDe": "Chọn MC: cùng giới?",
+ "chuDe": "Giữ hay đổi cửa?",
  "nen": null,
+ "dsNen": [],
  "thuongHieu": {
   "ten": "",
   "khauHieu": "",
   "handle": "",
   "markNuoc": true,
+  "loiMoi": "Theo dõi để học mẹo xác suất",
   "logo": null
  },
  "outro": null,
  "phongCach": {
+  "kieuPhuDe": "hop",
+  "mauPhuDe": "#FF6B2C",
+  "soNenToiDa": 3,
+  "lopNeonTrenNen": true,
   "doMoNen": 0.35,
   "kyHieuTroi": false,
   "quangSang": true,
@@ -41,63 +47,57 @@
    "noiDung": [],
    "minhHoa": {
     "loai": "san_khau",
-    "moTa": "Năm bạn nam viền xanh dương hiện lần lượt ở hàng trên, ba bạn nữ viền hồng ở hàng dưới; nhãn neon 'THIẾU 1 TRƯỜNG HỢP' bật lên và rung.",
+    "moTa": "Ba cánh cửa cam bật lên lần lượt, nhãn neon '50/50?' bật ra rồi rung mạnh như bị nghi ngờ.",
     "duLieu": {
      "vat": [
       {
-       "id": "nam",
-       "loai": "nguoi",
+       "id": "cua",
+       "loai": "cua",
        "x": 50,
-       "y": 26,
-       "so_luong": 5,
-       "mau": "xanh_duong",
-       "nhan": "5 bạn nam",
+       "y": 40,
+       "so_luong": 3,
+       "ds": [
+        "🐐",
+        "🏍️",
+        "🐐"
+       ],
        "buoc": 1
       },
       {
-       "id": "nu",
-       "loai": "nguoi",
-       "x": 50,
-       "y": 70,
-       "so_luong": 3,
-       "mau": "hong",
-       "nhan": "3 bạn nữ",
-       "buoc": 2
-      },
-      {
-       "id": "n1",
+       "id": "n5050",
        "loai": "nhan",
        "x": 50,
-       "y": 50,
-       "noi_dung": "Thiếu 1 trường hợp?",
-       "tu_khoa": "1 trường hợp",
+       "y": 86,
+       "noi_dung": "50/50?",
+       "tu_khoa": "?",
        "mau": "xanh_la",
-       "buoc": 3
+       "xoay": -5,
+       "buoc": 2
       }
      ],
      "hanh_dong": [
       {
        "buoc": 3,
-       "vat": "n1",
+       "vat": "n5050",
        "kieu": "rung"
       }
      ]
     }
    },
-   "audio": "giong/VT-mau-neon_c1.mp3",
+   "audio": "giong/VT-mau-monty_c1.mp3",
    "batDau": 0,
    "soFrame": 135,
    "leadFrame": 7,
    "cau": [
     {
-     "text": "Chọn hai bạn trong tám bạn,",
+     "text": "Ba cánh cửa, một xe máy.",
      "bat": 0.22,
-     "ket": 1.435
+     "ket": 1.552
     },
     {
-     "text": "rất nhiều bạn tính thiếu đúng một trường hợp.",
-     "bat": 1.435,
-     "ket": 3.459
+     "text": "Đổi cửa thắng gấp đôi, bạn tin không?",
+     "bat": 1.642,
+     "ket": 3.392
     }
    ],
    "trinhBay": "xep",
@@ -105,7 +105,8 @@
    "tieuDeCanh": "",
    "tuKhoa": "",
    "nhan": "",
-   "giuSanKhau": false
+   "giuSanKhau": false,
+   "chuyenCanh": ""
   },
   {
    "so": 2,
@@ -113,16 +114,16 @@
    "noiDung": [],
    "minhHoa": {
     "loai": "san_khau",
-    "moTa": "Giữ nguyên hai nhóm bạn; nhãn cũ biến mất, hai bạn nam thứ hai và thứ tư sáng xanh lá kèm dấu tích, các bạn khác tối đi; nhãn 'CÙNG GIỚI?' hiện giữa.",
+    "moTa": "Nhãn 50/50 ẩn đi; cửa 1 sáng viền xanh lá kèm dấu tích; cửa 3 mở ra lộ con dê; nhãn 'GIỮ HAY ĐỔI?' bật lên bên dưới.",
     "duLieu": {
      "vat": [
       {
-       "id": "n2",
+       "id": "hoi",
        "loai": "nhan",
        "x": 50,
-       "y": 49,
-       "noi_dung": "Cùng giới?",
-       "tu_khoa": "giới",
+       "y": 86,
+       "noi_dung": "Giữ hay đổi?",
+       "tu_khoa": "đổi",
        "mau": "cam",
        "buoc": 3
       }
@@ -130,54 +131,57 @@
      "hanh_dong": [
       {
        "buoc": 1,
-       "vat": "n1",
+       "vat": "n5050",
        "kieu": "an"
       },
       {
-       "buoc": 2,
-       "vat": "nam",
+       "buoc": 1,
+       "vat": "cua",
        "kieu": "chon",
        "chi_so": [
-        2,
-        4
+        1
        ],
        "mau": "xanh_la"
       },
       {
-       "buoc": 3,
-       "vat": "n2",
-       "kieu": "sang"
+       "buoc": 2,
+       "vat": "cua",
+       "kieu": "mo",
+       "chi_so": [
+        3
+       ]
       }
      ]
     }
    },
-   "audio": "giong/VT-mau-neon_c2.mp3",
+   "audio": "giong/VT-mau-monty_c2.mp3",
    "batDau": 135,
-   "soFrame": 199,
+   "soFrame": 161,
    "leadFrame": 7,
    "cau": [
     {
-     "text": "Đội văn nghệ có năm nam, ba nữ.",
+     "text": "Bạn chọn cửa số một.",
      "bat": 0.22,
-     "ket": 1.97
+     "ket": 1.317
     },
     {
-     "text": "Cô chọn ngẫu nhiên hai bạn dẫn chương trình.",
-     "bat": 2.06,
-     "ket": 4.019
+     "text": "Người dẫn biết xe ở đâu, mở một cửa có dê.",
+     "bat": 1.407,
+     "ket": 3.784
     },
     {
-     "text": "Hỏi xác suất hai bạn cùng giới là bao nhiêu?",
-     "bat": 4.109,
-     "ket": 6.278
+     "text": "Giờ bạn giữ hay đổi?",
+     "bat": 3.874,
+     "ket": 4.971
     }
    ],
    "trinhBay": "xep",
    "chuThich": [],
-   "tieuDeCanh": "Cô chọn ngẫu nhiên 2 MC",
-   "tuKhoa": "2 MC",
+   "tieuDeCanh": "Bạn chọn cửa số 1",
+   "tuKhoa": "cửa số 1",
    "nhan": "",
-   "giuSanKhau": true
+   "giuSanKhau": true,
+   "chuyenCanh": "luot_ngang"
   },
   {
    "so": 3,
@@ -185,113 +189,38 @@
    "noiDung": [],
    "minhHoa": {
     "loai": "san_khau",
-    "moTa": "Hai thẻ lớn 'HAI NAM' viền xanh dương bên trái và 'HAI NỮ' viền hồng bên phải bay vào; nhãn 'HOẶC' giữa hai thẻ; mũi tên cam chỉ từ nhóm tới từng thẻ.",
+    "moTa": "Hai thanh xác suất 'Giữ' và 'Đổi' cùng đầy tới một nửa; rồi nhãn 'Thật không?' bật ra và rung.",
     "duLieu": {
      "vat": [
       {
-       "id": "nam2",
-       "loai": "nguoi",
-       "x": 25,
+       "id": "giu",
+       "loai": "thanh",
+       "x": 50,
        "y": 22,
-       "so_luong": 2,
+       "gia_tri": 0.5,
+       "gia_tri_chu": "50%?",
+       "nhan": "Giữ cửa 1",
        "mau": "xanh_duong",
-       "co": 0.9,
        "buoc": 1
       },
       {
-       "id": "nu2",
-       "loai": "nguoi",
-       "x": 75,
-       "y": 22,
-       "so_luong": 2,
-       "mau": "hong",
-       "co": 0.9,
+       "id": "doi",
+       "loai": "thanh",
+       "x": 50,
+       "y": 50,
+       "gia_tri": 0.5,
+       "gia_tri_chu": "50%?",
+       "nhan": "Đổi cửa",
+       "mau": "cam",
        "buoc": 2
       },
       {
-       "id": "t1",
-       "loai": "the",
-       "x": 25,
-       "y": 66,
-       "noi_dung": "2 NAM",
-       "mau": "xanh_duong",
-       "tu_huong": "trai",
-       "buoc": 1
-      },
-      {
-       "id": "t2",
-       "loai": "the",
-       "x": 75,
-       "y": 66,
-       "noi_dung": "2 NỮ",
-       "mau": "hong",
-       "tu_huong": "phai",
-       "buoc": 2
-      },
-      {
-       "id": "hoac",
+       "id": "nghi",
        "loai": "nhan",
        "x": 50,
-       "y": 66,
-       "noi_dung": "hoặc",
-       "tu_khoa": "hoặc",
-       "mau": "cam",
-       "buoc": 3
-      }
-     ],
-     "hanh_dong": [
-      {
-       "buoc": 3,
-       "vat": "t1",
-       "kieu": "sang"
-      },
-      {
-       "buoc": 3,
-       "vat": "t2",
-       "kieu": "sang"
-      }
-     ]
-    }
-   },
-   "audio": "giong/VT-mau-neon_c3.mp3",
-   "batDau": 334,
-   "soFrame": 151,
-   "leadFrame": 7,
-   "cau": [
-    {
-     "text": "Thử nghĩ xem, cùng giới nghĩa là gì?",
-     "bat": 0.22,
-     "ket": 1.97
-    },
-    {
-     "text": "Hoặc hai bạn đều là nam, hoặc hai bạn đều là nữ.",
-     "bat": 2.06,
-     "ket": 4.646
-    }
-   ],
-   "trinhBay": "xep",
-   "chuThich": [],
-   "tieuDeCanh": "Cùng giới nghĩa là gì?",
-   "tuKhoa": "Cùng giới",
-   "nhan": "",
-   "giuSanKhau": false
-  },
-  {
-   "so": 4,
-   "loai": "bay",
-   "noiDung": [],
-   "minhHoa": {
-    "loai": "san_khau",
-    "moTa": "Thẻ '2 NAM' được chọn sáng xanh lá; thẻ '2 NỮ' rung mạnh rồi bị gạch chéo đỏ; nhãn 'QUÊN 2 NỮ' bật lên phía trên.",
-    "duLieu": {
-     "vat": [
-      {
-       "id": "quen",
-       "loai": "nhan",
-       "x": 72,
-       "y": 42,
-       "noi_dung": "Quên 2 nữ!",
-       "tu_khoa": "Quên",
+       "y": 82,
+       "noi_dung": "Thật không?",
+       "tu_khoa": "không",
        "mau": "do",
        "xoay": 4,
        "buoc": 3
@@ -299,140 +228,319 @@
      ],
      "hanh_dong": [
       {
-       "buoc": 1,
-       "vat": "t1",
-       "kieu": "chon",
-       "mau": "xanh_la"
-      },
-      {
-       "buoc": 2,
-       "vat": "t2",
+       "buoc": 4,
+       "vat": "nghi",
        "kieu": "rung"
-      },
-      {
-       "buoc": 2,
-       "vat": "t2",
-       "kieu": "loai_bo"
-      },
-      {
-       "buoc": 1,
-       "vat": "hoac",
-       "kieu": "an"
       }
      ]
     }
    },
-   "audio": "giong/VT-mau-neon_c4.mp3",
-   "batDau": 485,
-   "soFrame": 136,
+   "audio": "giong/VT-mau-monty_c3.mp3",
+   "batDau": 296,
+   "soFrame": 190,
    "leadFrame": 7,
    "cau": [
     {
-     "text": "Cái bẫy ở đây: nhiều bạn chỉ đếm cặp hai",
+     "text": "Trực giác bảo: còn hai cửa, mỗi cửa một nửa, giữ hay đổi như nhau.",
      "bat": 0.22,
-     "ket": 2.31
+     "ket": 3.459
     },
     {
-     "text": "nam rồi dừng, quên mất cặp hai nữ.",
-     "bat": 2.31,
-     "ket": 4.086
+     "text": "Nhưng thử nghĩ xem, người dẫn có mở ngẫu nhiên không?",
+     "bat": 3.549,
+     "ket": 5.926
     }
    ],
    "trinhBay": "xep",
    "chuThich": [],
-   "tieuDeCanh": "Bẫy: chỉ đếm hai nam",
-   "tuKhoa": "hai nam",
+   "tieuDeCanh": "Còn 2 cửa: 50/50 thật không?",
+   "tuKhoa": "50/50",
    "nhan": "",
-   "giuSanKhau": true
+   "giuSanKhau": false,
+   "chuyenCanh": ""
+  },
+  {
+   "so": 4,
+   "loai": "bay",
+   "noiDung": [],
+   "minhHoa": {
+    "loai": "san_khau",
+    "moTa": "Thẻ danh sách trắng nổi lên với ba luật của người dẫn trượt vào lần lượt; dòng 'Biết xe ở đâu' và 'Luôn mở cửa có dê' được tô vàng quét ngang.",
+    "duLieu": {
+     "vat": [
+      {
+       "id": "luat",
+       "loai": "danh_sach",
+       "x": 50,
+       "y": 50,
+       "noi_dung": "Người dẫn luôn:",
+       "ds": [
+        "Biết xe ở đâu",
+        "Không mở cửa bạn chọn",
+        "Mở cửa có dê"
+       ],
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "luat",
+       "kieu": "chon",
+       "chi_so": [
+        1
+       ],
+       "mau": "vang"
+      },
+      {
+       "buoc": 3,
+       "vat": "luat",
+       "kieu": "chon",
+       "chi_so": [
+        3
+       ],
+       "mau": "vang"
+      }
+     ]
+    }
+   },
+   "audio": "giong/VT-mau-monty_c4.mp3",
+   "batDau": 486,
+   "soFrame": 171,
+   "leadFrame": 7,
+   "cau": [
+    {
+     "text": "Đây là cái bẫy.",
+     "bat": 0.22,
+     "ket": 1.108
+    },
+    {
+     "text": "Người dẫn biết xe ở đâu, không bao giờ",
+     "bat": 1.198,
+     "ket": 3.263
+    },
+    {
+     "text": "mở cửa bạn chọn và luôn mở cửa có dê.",
+     "bat": 3.263,
+     "ket": 5.273
+    }
+   ],
+   "trinhBay": "xep",
+   "chuThich": [],
+   "tieuDeCanh": "Bẫy: người dẫn BIẾT đáp án",
+   "tuKhoa": "BIẾT",
+   "nhan": "",
+   "giuSanKhau": false,
+   "chuyenCanh": "phong"
   },
   {
    "so": 5,
-   "loai": "tinh_toan",
-   "noiDung": [
-    "n(\\Omega)=\\binom{8}{2}=28",
-    "\\binom{5}{2}+\\binom{3}{2}",
-    "\\binom{5}{2}+\\binom{3}{2}=10+3=13"
-   ],
+   "loai": "diem_chot",
+   "noiDung": [],
    "minhHoa": {
     "loai": "san_khau",
-    "moTa": "Bộ đếm lớn chạy từ 0 lên 28 cách; bên dưới biểu đồ hai cột xanh dương 10 và hồng 3 mọc lên, cả hai cột sáng khi cộng.",
+    "moTa": "Chiếc bánh chia 3 phần: 1 phần xanh dương là cửa của bạn, 2 phần cam là hai cửa còn lại; mũi tên cong chỉ từ phần cam sang thẻ 'CỬA 2: 2/3'.",
+    "duLieu": {
+     "vat": [
+      {
+       "id": "banh",
+       "loai": "banh",
+       "x": 30,
+       "y": 46,
+       "so_luong": 3,
+       "ds": [
+        "Bạn",
+        "",
+        ""
+       ],
+       "co": 0.85,
+       "buoc": 1
+      },
+      {
+       "id": "the2",
+       "loai": "the",
+       "x": 77,
+       "y": 46,
+       "noi_dung": "Cửa 2",
+       "gia_tri_chu": "2/3",
+       "mau": "cam",
+       "co": 0.8,
+       "tu_huong": "phai",
+       "buoc": 3
+      },
+      {
+       "id": "mt",
+       "loai": "mui_ten",
+       "tu": "banh",
+       "den": "the2",
+       "mau": "cam",
+       "buoc": 3
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 1,
+       "vat": "banh",
+       "kieu": "chon",
+       "chi_so": [
+        1
+       ],
+       "mau": "xanh_duong"
+      },
+      {
+       "buoc": 2,
+       "vat": "banh",
+       "kieu": "chon",
+       "chi_so": [
+        2,
+        3
+       ],
+       "mau": "cam"
+      },
+      {
+       "buoc": 4,
+       "vat": "the2",
+       "kieu": "sang"
+      }
+     ]
+    }
+   },
+   "audio": "giong/VT-mau-monty_c5.mp3",
+   "batDau": 657,
+   "soFrame": 231,
+   "leadFrame": 7,
+   "cau": [
+    {
+     "text": "Lúc chọn, cửa của bạn chỉ có một phần ba.",
+     "bat": 0.22,
+     "ket": 2.388
+    },
+    {
+     "text": "Hai cửa còn lại giữ hai phần ba.",
+     "bat": 2.478,
+     "ket": 4.228
+    },
+    {
+     "text": "Người dẫn mở cửa dê, hai phần ba đó dồn hết vào cửa kia.",
+     "bat": 4.318,
+     "ket": 7.349
+    }
+   ],
+   "trinhBay": "xep",
+   "chuThich": [
+    "Cửa bạn chọn: 1/3",
+    "Hai cửa còn lại: 2/3"
+   ],
+   "tieuDeCanh": "Cửa của bạn chỉ có 1/3",
+   "tuKhoa": "1/3",
+   "nhan": "",
+   "giuSanKhau": false,
+   "chuyenCanh": ""
+  },
+  {
+   "so": 6,
+   "loai": "thu_nho",
+   "noiDung": [],
+   "minhHoa": {
+    "loai": "san_khau",
+    "moTa": "Lưới 30 ô lấp đầy lần lượt (mỗi ô là một lượt chơi); 20 ô thắng sáng cam; huy hiệu vàng đếm lăn số từ 0 lên 20 lần thắng.",
     "duLieu": {
      "vat": [
       {
        "id": "dem",
        "loai": "so_dem",
+       "kieu": "vien",
        "x": 50,
-       "y": 22,
-       "noi_dung": "Mọi cách chọn 2 bạn",
-       "gia_tri": 28,
-       "nhan": "cách",
-       "mau": "xanh_la",
-       "buoc": 1
+       "y": 12,
+       "gia_tri": 20,
+       "nhan": "lần thắng",
+       "co": 0.85,
+       "buoc": 2
       },
       {
-       "id": "cot",
-       "loai": "bieu_do_cot",
+       "id": "luoi",
+       "loai": "luoi_o",
        "x": 50,
-       "y": 72,
-       "ds": [
-        "2 nam",
-        "2 nữ"
-       ],
-       "ds_so": [
-        10,
-        3
-       ],
+       "y": 60,
+       "so_luong": 30,
+       "so_cot": 6,
        "mau": "xanh_duong",
-       "co": 0.8,
-       "buoc": 2
+       "nhan": "30 lượt chơi, luôn đổi",
+       "buoc": 1
       }
      ],
      "hanh_dong": [
       {
-       "buoc": 3,
-       "vat": "cot",
+       "buoc": 2,
+       "vat": "luoi",
        "kieu": "chon",
        "chi_so": [
         1,
-        2
+        2,
+        4,
+        5,
+        7,
+        8,
+        9,
+        11,
+        13,
+        14,
+        16,
+        17,
+        19,
+        20,
+        22,
+        24,
+        25,
+        27,
+        28,
+        30
        ],
        "mau": "cam"
       }
      ]
     }
    },
-   "audio": "giong/VT-mau-neon_c5.mp3",
-   "batDau": 621,
-   "soFrame": 177,
+   "audio": "giong/VT-mau-monty_c6.mp3",
+   "batDau": 888,
+   "soFrame": 171,
    "leadFrame": 7,
    "cau": [
     {
-     "text": "Chọn hai bạn bất kỳ có hai mươi tám cách.",
+     "text": "Không tin?",
      "bat": 0.22,
-     "ket": 2.388
+     "ket": 1.056
     },
     {
-     "text": "Hai nam có mười cách, hai nữ có ba cách, cộng lại mười ba.",
-     "bat": 2.478,
-     "ket": 5.508
+     "text": "Chơi thử ba mươi lần và luôn đổi cửa.",
+     "bat": 1.146,
+     "ket": 3.105
+    },
+    {
+     "text": "Khoảng hai mươi lần bạn mang xe máy về nhà.",
+     "bat": 3.195,
+     "ket": 5.363
     }
    ],
-   "trinhBay": "cong_don",
+   "trinhBay": "xep",
    "chuThich": [],
-   "tieuDeCanh": "Đếm từng nhóm rồi cộng",
-   "tuKhoa": "cộng",
+   "tieuDeCanh": "Thử chơi 30 lần",
+   "tuKhoa": "30 lần",
    "nhan": "",
-   "giuSanKhau": false
+   "giuSanKhau": false,
+   "chuyenCanh": "truot_len"
   },
   {
-   "so": 6,
+   "so": 7,
    "loai": "dap_an",
    "noiDung": [
-    "P=\\frac{13}{28}"
+    "P(\\text{giữ})=\\frac{1}{3}",
+    "P(\\text{đổi})=1-\\frac{1}{3}",
+    "P(\\text{đổi})=1-\\frac{1}{3}=\\frac{2}{3}"
    ],
    "minhHoa": {
     "loai": "san_khau",
-    "moTa": "Đồng hồ đo xác suất từ 0 tới 1, kim quét lên dừng ở 13/28, cung màu chuyển đỏ sang vàng, số 13/28 phát sáng bên dưới.",
+    "moTa": "Đồng hồ đo xác suất kim quét lên dừng ở 2/3, cung chuyển sang xanh lá, số 2/3 phát sáng.",
     "duLieu": {
      "vat": [
       {
@@ -440,10 +548,10 @@
        "loai": "dong_ho_do",
        "x": 50,
        "y": 50,
-       "gia_tri": 0.4643,
-       "gia_tri_chu": "13/28",
-       "nhan": "P(cùng giới)",
-       "co": 1.15,
+       "gia_tri": 0.6667,
+       "gia_tri_chu": "2/3",
+       "nhan": "Thắng khi đổi",
+       "co": 1.0,
        "buoc": 1
       }
      ],
@@ -456,36 +564,37 @@
      ]
     }
    },
-   "audio": "giong/VT-mau-neon_c6.mp3",
-   "batDau": 798,
-   "soFrame": 130,
+   "audio": "giong/VT-mau-monty_c7.mp3",
+   "batDau": 1059,
+   "soFrame": 200,
    "leadFrame": 7,
    "cau": [
     {
-     "text": "Vậy xác suất hai bạn cùng giới là mười",
+     "text": "Vậy giữ cửa thắng một phần ba, đổi cửa thắng hai phần ba.",
      "bat": 0.22,
-     "ket": 2.15
+     "ket": 3.041
     },
     {
-     "text": "ba phần hai mươi tám, gần một nửa.",
-     "bat": 2.15,
-     "ket": 3.877
+     "text": "Đổi cửa, cơ hội gấp đôi!",
+     "bat": 3.131,
+     "ket": 4.463
     }
    ],
    "trinhBay": "cong_don",
    "chuThich": [],
-   "tieuDeCanh": "Xác suất gần một nửa",
-   "tuKhoa": "một nửa",
+   "tieuDeCanh": "Đổi cửa: thắng 2/3",
+   "tuKhoa": "2/3",
    "nhan": "",
-   "giuSanKhau": false
+   "giuSanKhau": false,
+   "chuyenCanh": ""
   },
   {
-   "so": 7,
+   "so": 8,
    "loai": "bai_hoc",
    "noiDung": [],
    "minhHoa": {
     "loai": "san_khau",
-    "moTa": "Điện thoại hiện khung bình luận với hai lựa chọn hiện lần lượt, lựa chọn 'Có, quên 2 nữ' sáng xanh lá kèm dấu tích.",
+    "moTa": "Điện thoại hiện bình chọn 'Bạn chọn gì?', hai lựa chọn trượt vào; lựa chọn 'Đổi cửa' sáng xanh lá kèm dấu tích.",
     "duLieu": {
      "vat": [
       {
@@ -493,10 +602,10 @@
        "loai": "dien_thoai",
        "x": 50,
        "y": 50,
-       "noi_dung": "Bạn từng quên chưa?",
+       "noi_dung": "Bạn chọn gì?",
        "ds": [
-        "Có, quên 2 nữ 😅",
-        "Chưa bao giờ 😎"
+        "Giữ cửa 1 🚪",
+        "Đổi cửa 🔄"
        ],
        "gia_tri_chu": "Bình luận ngay",
        "co": 0.95,
@@ -509,42 +618,46 @@
        "vat": "dt",
        "kieu": "chon",
        "chi_so": [
-        1
+        2
        ],
        "mau": "xanh_la"
       }
      ]
     }
    },
-   "audio": "giong/VT-mau-neon_c7.mp3",
-   "batDau": 928,
-   "soFrame": 178,
+   "audio": "giong/VT-mau-monty_c8.mp3",
+   "batDau": 1259,
+   "soFrame": 197,
    "leadFrame": 7,
    "cau": [
     {
-     "text": "Ghi nhớ: gặp chữ cùng, hãy tách từng loại rồi cộng lại.",
+     "text": "Ghi nhớ: khi ai đó biết trước và cho bạn",
      "bat": 0.22,
-     "ket": 2.806
+     "ket": 2.228
     },
     {
-     "text": "Bạn đã từng quên trường hợp nào chưa?",
-     "bat": 2.896,
-     "ket": 4.646
+     "text": "thêm thông tin, xác suất đã thay đổi.",
+     "bat": 2.228,
+     "ket": 4.086
+    },
+    {
+     "text": "Bạn sẽ giữ hay đổi?",
+     "bat": 4.176,
+     "ket": 5.273
     },
     {
      "text": "Bình luận nhé!",
-     "bat": 4.736,
-     "ket": 5.572
+     "bat": 5.363,
+     "ket": 6.199
     }
    ],
    "trinhBay": "xep",
-   "chuThich": [
-    "Cùng loại = loại 1 + loại 2 + ..."
-   ],
-   "tieuDeCanh": "Gặp chữ CÙNG: tách từng loại",
-   "tuKhoa": "tách từng loại",
+   "chuThich": [],
+   "tieuDeCanh": "Thông tin mới đổi xác suất",
+   "tuKhoa": "Thông tin mới",
    "nhan": "",
-   "giuSanKhau": false
+   "giuSanKhau": false,
+   "chuyenCanh": ""
   }
  ]
 }

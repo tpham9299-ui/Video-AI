@@ -7,6 +7,7 @@ import {easeOut, kep, neon, popOut} from './donghieu';
 import {DuLieuSanKhau, Vat} from './dulieu';
 import {GIAY_QUAY, tinhCamera, tinhTrangThai} from './trangthai';
 import {MuiTen, VE_VAT} from './vat';
+import {expoOut, NhoeHuong} from './chuyendong';
 
 export const SK_W = 960;
 export const SK_H = 760;
@@ -43,7 +44,7 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
     const ve = VE_VAT[v.loai];
     if (!ve) continue;
     const a = st.vao;
-    const lech = v.tuHuong ? (1 - easeOut(a)) * 520 : 0;
+    const lech = v.tuHuong ? (1 - expoOut(a)) * 560 : 0;
     const ox = v.tuHuong === 'trai' ? -lech : v.tuHuong === 'phai' ? lech : 0;
     const oy = v.tuHuong === 'tren' ? -lech : v.tuHuong === 'duoi' ? lech : 0;
     const nhom = v.soLuong > 1 && ['nguoi', 'the', 'cua', 'banh', 'the_bai', 'xuc_xac', 'dong_xu', 'bieu_tuong'].includes(v.loai);
@@ -52,20 +53,24 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
     const mo = (nhom ? kep(a * 3) : kep(a * 2.2)) * (1 - st.an);
     const nhoe = (1 - kep(a * 1.6)) * 14 + st.an * 12;
     const sangNhip = st.sang > 0 ? 1 + 0.06 * st.sang : 1;
+    const ngang = v.tuHuong === 'trai' || v.tuHuong === 'phai';
+    const nhoeHuong = v.tuHuong ? (1 - expoOut(a)) * 34 : 0;
     lop.push(
-      <div
+      <NhoeHuong
         key={v.id}
+        nx={ngang ? nhoeHuong : 0}
+        ny={v.tuHuong && !ngang ? nhoeHuong : 0}
         style={{
           position: 'absolute',
           left: x,
           top: y,
           transform: `translate(-50%, -50%) translate(${ox + st.rung}px, ${oy}px) scale(${sc * sangNhip * (1 - 0.3 * st.an)})`,
           opacity: mo,
-          filter: nhoe > 0.3 ? `blur(${nhoe}px)` : undefined,
+          filter: !v.tuHuong && nhoe > 0.3 ? `blur(${nhoe}px)` : undefined,
         }}
       >
         {ve(v, st, frame, fps)}
-      </div>
+      </NhoeHuong>
     );
   }
 

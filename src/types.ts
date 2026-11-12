@@ -19,7 +19,8 @@ export type CanhProps = {
   tieuDeCanh: string; // câu tiêu đề lớn của cảnh (chữ trắng đậm)
   tuKhoa: string; // cụm từ trong tiêu đề được tô cam
   nhan: string; // nhãn viên thuốc màu cam (để trống = tự đặt theo loại cảnh)
-  giuSanKhau: boolean; // giữ nguyên sân khấu của cảnh trước rồi diễn tiếp (liền mạch như video mẫu)
+  giuSanKhau: boolean;
+  chuyenCanh?: string; // truot_len | phong | luot_ngang | truot_xuong (để trống = tự xoay vòng) // giữ nguyên sân khấu của cảnh trước rồi diễn tiếp (liền mạch như video mẫu)
 };
 
 export type ThuongHieuProps = {ten: string; khauHieu: string; handle: string; markNuoc: boolean; logo: string | null; loiMoi?: string};
@@ -36,6 +37,8 @@ export type PhongCach = {
   kieuToan: string; // 'latex' = công thức phông LaTeX có chân như Manim (mặc định); 'dong_nhat' = công thức cùng phông không chân với chữ
   kieuHinh: string; // 'manim' = hình nét phẳng như video mẫu (mặc định); 'that' = vật 3D (xúc xắc, xu, bài)
   thanhTienDo: boolean;
+  kieuPhuDe?: string; // 'hop' (ô màu sau từ đang đọc, mặc định) | 'mau'
+  mauPhuDe?: string; // màu ô phụ đề
   soNenToiDa?: number; // số nền tối đa dùng trong một video (đổi theo nhóm cảnh)
   lopNeonTrenNen?: boolean; // phủ lưới mờ + đốm sáng neon lên nền của bạn cho đồng bộ phong cách
   phuDe: boolean;

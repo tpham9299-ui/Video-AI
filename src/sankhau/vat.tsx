@@ -599,9 +599,11 @@ const Cua: Ve = (v, st) => {
               <div style={{position: 'absolute', inset: 0, borderRadius: 12, background: '#081312', border: `4px solid ${s.mau}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontWeight: 900, fontSize: w * 0.3, color: '#FFD54A', textShadow: '0 0 14px #FFB300'}}>
                 {mo > 0.3 ? v.ds[k] || '' : ''}
               </div>
-              <div style={{position: 'absolute', inset: 0, borderRadius: 12, background: `linear-gradient(160deg, ${NEN_VAT_2}, ${NEN_VAT})`, border: `5px solid ${s.mau}`, boxShadow: `0 0 ${10 + 16 * s.pc}px ${s.mau}`, transformOrigin: '0% 50%', transform: `rotateY(${-mo * 100}deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontWeight: 900, fontSize: w * 0.42, color: s.mau}}>
-                {k + 1}
-                <div style={{position: 'absolute', right: w * 0.12, top: h * 0.5, width: 14, height: 14, borderRadius: 7, background: s.mau}} />
+              <div style={{position: 'absolute', inset: 0, borderRadius: 12, background: `linear-gradient(160deg, ${NEN_VAT_2}, ${NEN_VAT})`, border: `5px solid ${s.mau}`, boxShadow: `0 0 ${10 + 16 * s.pc}px ${s.mau}`, transformOrigin: '0% 50%', transform: `rotateY(${-mo * 78}deg)`, opacity: 1 - 0.75 * mo, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontWeight: 900, fontSize: w * 0.42, color: s.mau}}>
+                <div style={{position: 'absolute', left: w * 0.12, right: w * 0.12, top: h * 0.08, height: h * 0.36, border: `3px solid ${s.mau}66`, borderRadius: 8}} />
+                <div style={{position: 'absolute', left: w * 0.12, right: w * 0.12, bottom: h * 0.08, height: h * 0.36, border: `3px solid ${s.mau}66`, borderRadius: 8}} />
+                <span style={{position: 'relative', textShadow: `0 0 18px ${s.mau}`}}>{k + 1}</span>
+                <div style={{position: 'absolute', right: w * 0.1, top: h * 0.5, width: 16, height: 16, borderRadius: 8, background: s.mau, boxShadow: `0 0 10px ${s.mau}`}} />
               </div>
               <DauTich p={s.pc} mau={s.mau} style={{right: -14, top: -14}} />
             </div>
@@ -657,14 +659,102 @@ const Chu: Ve = (v, st) => (
   </div>
 );
 
+// một cột chữ số lăn dọc (kiểu đồng hồ công-tơ-mét): g là giá trị đang chạy, k là hàng (0 = hàng đơn vị)
+const CotSo: React.FC<{g: number; k: number; h: number}> = ({g, k, h}) => {
+  const p10 = Math.pow(10, k);
+  const nguyen = Math.floor(g / p10);
+  let vt = nguyen % 10;
+  const du = g - nguyen * p10; // phần lẻ của các hàng thấp hơn
+  if (k === 0) vt = (g % 10);
+  else if (du > p10 - 1) vt = (nguyen % 10) + (du - (p10 - 1));
+  return (
+    <span style={{display: 'inline-block', height: h, overflow: 'hidden', verticalAlign: 'top'}}>
+      <span style={{display: 'flex', flexDirection: 'column', transform: `translateY(${-vt * h}px)`}}>
+        {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((d, i) => (
+          <span key={i} style={{height: h, lineHeight: `${h}px`}}>{d}</span>
+        ))}
+      </span>
+    </span>
+  );
+};
+const SoLan: React.FC<{g: number; co: number}> = ({g, co}) => {
+  const n = Math.max(1, String(Math.round(Math.max(g, 0))).length);
+  const h = co * 1.12;
+  const cot = [];
+  for (let k = n - 1; k >= 0; k--) cot.push(<CotSo key={k} g={Math.max(0, g)} k={k} h={h} />);
+  return <span style={{display: 'inline-flex', fontVariantNumeric: 'tabular-nums'}}>{cot}</span>;
+};
+
 const SoDem: Ve = (v, st) => {
   const mau = neon(v.mau, neon('xanh_la'));
-  const n = Math.round(st.giaTri);
+  const g = st.giaTri;
+  if (v.kieu === 'vien') {
+    // huy hiệu viên thuốc vàng như video mẫu ("75 Skill"): số lăn + chữ nhỏ bên cạnh
+    return (
+      <div style={{display: 'flex', alignItems: 'baseline', gap: 10, padding: `${10 * v.co}px ${28 * v.co}px`, borderRadius: 60, background: 'linear-gradient(180deg, #FFE27A, #F7C531)', border: '4px solid #FFF3C4', boxShadow: '0 8px 28px rgba(247,197,49,0.45)', fontFamily: FONT, color: '#2a1d00'}}>
+        <span style={{fontWeight: 900, fontSize: 84 * v.co, lineHeight: 1}}><SoLan g={g} co={84 * v.co} /></span>
+        <span style={{fontWeight: 800, fontSize: 40 * v.co}}>{v.nhan || st.noiDung}</span>
+      </div>
+    );
+  }
   return (
     <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: FONT, color: '#fff'}}>
       {st.noiDung ? <div style={{fontWeight: 800, fontSize: 42 * v.co, opacity: 0.9}}>{st.noiDung}</div> : null}
-      <div style={{fontWeight: 900, fontSize: 150 * v.co, lineHeight: 1.05, color: mau, textShadow: `0 0 22px ${mau}`}}>{n.toLocaleString('vi-VN')}</div>
+      <div style={{fontWeight: 900, fontSize: 150 * v.co, lineHeight: 1.05, color: mau, textShadow: `0 0 22px ${mau}`}}><SoLan g={g} co={150 * v.co} /></div>
       <Nhan chu={v.nhan} />
+    </div>
+  );
+};
+
+/* ---------------- LƯỚI Ô (không gian mẫu): các ô lấp đầy lần lượt, ô thuận lợi sáng màu ---------------- */
+const LuoiO: Ve = (v, st) => {
+  const n = v.soLuong;
+  const cot = v.soCot || Math.min(12, Math.ceil(Math.sqrt(n * 1.6)));
+  const hang = Math.ceil(n / cot);
+  const o = Math.min(860 / cot, 560 / hang) * v.co - 8;
+  const goc = neon(v.mau, neon('xanh_duong'));
+  const tong = Math.min(1.4, 0.03 * n + 0.3);
+  return (
+    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+      <div style={{display: 'grid', gridTemplateColumns: `repeat(${cot}, ${o}px)`, gap: 8}}>
+        {Array.from({length: n}, (_, k) => {
+          const a = kep((st.t - st.ta - (k / n) * tong) / 0.25);
+          const s = phanTu(st, k + 1, goc);
+          const sang = s.pc > 0.01;
+          return (
+            <div key={k} style={{width: o, height: o, borderRadius: o * 0.2, opacity: kep(a * 2) * Math.max(0.35, s.mo), transform: `scale(${popOut(a, 2.2) * (1 + 0.1 * s.pc)})`,
+              background: sang ? s.mau : `${goc}2a`, border: `3px solid ${sang ? '#fff' : goc + 'aa'}`, boxShadow: sang ? `0 0 ${14 * s.pc}px ${s.mau}` : 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontWeight: 900, fontSize: o * 0.34, color: sang ? '#0b1a14' : '#fff'}}>
+              {v.ds[k] || ''}
+            </div>
+          );
+        })}
+      </div>
+      <Nhan chu={st.giaTriChu ? `${v.nhan} ${st.giaTriChu}`.trim() : v.nhan} />
+    </div>
+  );
+};
+
+/* ---------------- THẺ DANH SÁCH: thẻ sáng nổi, các dòng đánh số trượt vào, dòng được chọn tô vàng quét ngang ---------------- */
+const DanhSach: Ve = (v, st) => {
+  const W = 820 * v.co;
+  return (
+    <div style={{width: W, borderRadius: 26, background: 'rgba(250,251,252,0.97)', boxShadow: '0 18px 50px rgba(0,0,0,0.45), 0 0 0 4px rgba(124,92,255,0.35)', padding: `${22 * v.co}px ${26 * v.co}px`, fontFamily: FONT, color: '#16181d'}}>
+      {st.noiDung ? <div style={{fontWeight: 900, fontSize: 38 * v.co, marginBottom: 14 * v.co}}>{st.noiDung}</div> : null}
+      {v.ds.map((d, k) => {
+        const a = kep((st.t - st.ta - 0.15 - k * 0.18) / 0.35);
+        const c = st.chon.get(k + 1);
+        const l = st.loai.get(k + 1) || 0;
+        const quet = c ? c.p : 0;
+        return (
+          <div key={k} style={{position: 'relative', display: 'flex', alignItems: 'center', gap: 16, padding: `${10 * v.co}px ${12 * v.co}px`, borderRadius: 14, marginBottom: 6, overflow: 'hidden', opacity: kep(a * 2) * (1 - 0.55 * l), transform: `translateX(${(1 - a) * -60}px)`}}>
+            <div style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: `${quet * 100}%`, background: c ? (c.mau === 'xanh_la' ? '#B9F6CA' : '#FFE27A') : 'transparent', borderRadius: 14}} />
+            <div style={{position: 'relative', flexShrink: 0, width: 46 * v.co, height: 46 * v.co, borderRadius: '50%', background: '#F7C531', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 26 * v.co, color: '#2a1d00'}}>{k + 1}</div>
+            <div style={{position: 'relative', fontWeight: 800, fontSize: 34 * v.co, textDecoration: l > 0.5 ? 'line-through' : 'none', textDecorationColor: '#FF5C61', textDecorationThickness: 4}}>{d}</div>
+            {c ? <DauTich p={c.p} mau="#16C784" co={40} style={{right: 10, top: '50%', marginTop: -20}} /> : null}
+          </div>
+        );
+      })}
     </div>
   );
 };
@@ -689,7 +779,7 @@ const BieuTuong: Ve = (v, st, frame) => (
 export const VE_VAT: Partial<Record<Vat['loai'], Ve>> = {
   nguoi: Nguoi, the: The, the_bai: LaBai, xuc_xac: XucXac, dong_xu: DongXu, hop_bi: HopBi, tui: HopBi, hop_qua: HopQua,
   dong_ho: DongHo, dien_thoai: DienThoai, bong_bay: BongBay, dong_ho_do: DongHoDo, bieu_do_cot: BieuDoCot, thanh: Thanh,
-  vong_quay: VongQuay, cua: Cua, banh: Banh, nhan: NhanVat, chu: Chu, so_dem: SoDem, bieu_tuong: BieuTuong,
+  vong_quay: VongQuay, cua: Cua, banh: Banh, nhan: NhanVat, chu: Chu, so_dem: SoDem, bieu_tuong: BieuTuong, luoi_o: LuoiO, danh_sach: DanhSach,
 };
 
 // mũi tên cong nối hai điểm (pixel trên sân khấu), vẽ dần
