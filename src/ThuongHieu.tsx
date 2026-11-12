@@ -89,7 +89,7 @@ export function moHuyHieu(t: number, ketThucGiay: number) {
   return {mo1, mo2};
 }
 
-export const ThuongHieu: React.FC<{th: ThuongHieuProps; canh: CanhProps[]; ketThuc: number}> = ({th, canh, ketThuc}) => {
+export const ThuongHieu: React.FC<{th: ThuongHieuProps; canh: CanhProps[]; ketThuc: number; boLoiMoi?: boolean}> = ({th, canh, ketThuc, boLoiMoi = false}) => {
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
   if (!th || (!th.ten && !th.logo && !th.handle)) return null;
@@ -115,7 +115,7 @@ export const ThuongHieu: React.FC<{th: ThuongHieuProps; canh: CanhProps[]; ketTh
         {song > 0 ? <div style={{position: 'absolute', left: 33 - 33 * (1 + song), top: 33 - 33 * (1 + song), width: 66 * (1 + song), height: 66 * (1 + song), borderRadius: '50%', border: `3px solid ${XANH}`, opacity: 1 - song}} /> : null}
         <HuyHieu th={th} vao={vao} mo={mo} dong2={dong2} sang={Math.max(mo, song)} goc={t * 70 + r() * 360} />
       </div>
-      {th.handle || th.ten ? (
+      {(th.handle || th.ten) && !boLoiMoi ? (
         <Sequence from={tuMoi} durationInFrames={Math.round(3.4 * fps)} layout="none">
           <LoiMoi th={th} />
           <Sequence from={Math.round(1.5 * fps)} durationInFrames={30} layout="none">

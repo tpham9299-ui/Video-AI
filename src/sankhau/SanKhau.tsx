@@ -46,6 +46,7 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
   const viTri = new Map<string, {x: number; y: number}>();
 
   const lop: React.ReactNode[] = [];
+  const lopPhang: React.ReactNode[] = [];
   const muiTen: React.ReactNode[] = [];
   const thuTu = (v: Vat) => (v.loai === 'nhan' || v.loai === 'mui_ten' ? 2 : v.loai === 'chu' || v.loai === 'so_dem' ? 1 : 0);
   const dsVat = [...vatXep].sort((a, b) => thuTu(a) - thuTu(b));
@@ -72,13 +73,15 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
     const ngang = v.tuHuong === 'trai' || v.tuHuong === 'phai';
     const nhoeHuong = v.tuHuong ? (1 - expoOut(a)) * 34 : 0;
     const kt = kichThuocVat(v);
-    const dung = co3d ? `rotateZ(${-g3.xoay}deg) rotateX(${-g3.nghieng}deg) translateY(${-kt.h * 0.62 * sinN}px) ` : '';
-    if (co3d && kt.w > 0) {
+    // nhãn, chữ, bộ đếm là chú thích màn hình: khi nhìn 3D vẫn nằm phẳng phía trên (không bị phối cảnh phóng to/nghiêng)
+    const phang = co3d && ['nhan', 'chu', 'so_dem'].includes(v.loai);
+    const dung = co3d && !phang ? `rotateZ(${-g3.xoay}deg) rotateX(${-g3.nghieng}deg) translateY(${-kt.h * 0.62 * sinN}px) ` : '';
+    if (co3d && !phang && kt.w > 0) {
       bong.push(
         <div key={`b${v.id}`} style={{position: 'absolute', left: x - kt.w * 0.4, top: y - kt.w * 0.12, width: kt.w * 0.8, height: kt.w * 0.24, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0) 70%)', opacity: sinN * mo, transform: 'translateZ(1px)'}} />
       );
     }
-    lop.push(
+    (phang ? lopPhang : lop).push(
       <NhoeHuong
         key={v.id}
         nx={ngang ? nhoeHuong : 0}
@@ -180,6 +183,7 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
             {lop}
           </div>
         </div>
+        {lopPhang}
       </div>
       {amGon.map((x, i) => (
         <Sequence key={i} from={x.f} durationInFrames={Math.round((GIAY_QUAY.vong_quay + 0.5) * fps)} layout="none">

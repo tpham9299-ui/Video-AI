@@ -29,3 +29,9 @@
 
 ## Việc cần làm trên Apps Script
 Thay `PromptKichBan.gs` và `KiemTraHinh.gs`. Hai tệp này nhận thêm `goc_3d`, `goc_nhin` và kiểu chuyển cảnh `lat_3d`.
+
+## Sửa hoàn thiện (13b)
+- Khi nhìn 3D, nhãn, chữ và bộ đếm nằm ở lớp phẳng phía trên cảnh như chú thích màn hình: không bị phối cảnh phóng to hay nghiêng, không chìa ra ngoài khung.
+- Đồng xu 3D nghiêng rõ hơn, viền dày hơn (9 lớp) nên thấy rõ là đĩa kim loại.
+- Chân vật được nâng cao hơn khỏi sàn khi camera nghiêng, không còn bị sàn che.
+- Bỏ thẻ "Theo dõi" giữa video khi dùng màn kết tự tạo (màn kết đã có nút Theo dõi lớn), nên không còn đè lên vùng chữ mô tả của TikTok. Thẻ này chỉ hiện khi bạn dùng tệp outro riêng.

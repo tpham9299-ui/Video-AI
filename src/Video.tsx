@@ -118,7 +118,7 @@ export const Video: React.FC<Props> = (props) => {
         </Sequence>
       ) : null}
       {canh.length > 1 ? <DauTrang chu={props.chuDe || tieuDe} lop={lop} tu={canh[1].batDau} lui={coThuongHieu ? 96 : 0} den={ketThuc} /> : null}
-      <ThuongHieu th={thuongHieu} canh={canh} ketThuc={ketThuc} />
+      <ThuongHieu th={thuongHieu} canh={canh} ketThuc={ketThuc} boLoiMoi={!!outro && outro.loai === 'tu_tao'} />
       {phongCach.thanhTienDo ? <ThanhTienDo tongFrame={tongFrame} lop={lop} /> : null}
       {outro ? (
         <Sequence from={outro.batDau} durationInFrames={outro.soFrame}>
