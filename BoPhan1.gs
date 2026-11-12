@@ -44,6 +44,8 @@ var MAC_DINH = {
   MODEL_CHINH: 'gemini-3.8-flash',
   MODEL_DU_PHONG: 'gemini-3.6-flash',
   MODEL_DU_PHONG_2: 'gemini-flash-latest', // model dự phòng thứ 3 (tùy chọn, có thể để trống)
+  MODEL_DU_PHONG_3: 'gemini-flash-lite-latest', // model dự phòng thứ 4: bản "lite" thường ít bị quá tải (503) hơn
+  PHUT_NGHI_QUA_TAI: '20',     // mọi model đều báo quá tải (503) thì tạm nghỉ ngần này phút rồi tự chạy lại
   SO_DE_MOI_MOI_LAN: '2',
   SO_DE_TOI_DA_MOI_LAN: '2',   // mỗi lần chạy chỉ giải/viết kịch bản tối đa ngần này đề (để chạy nhanh)
   NGUONG_HANG_DOI: '4',        // dưới ngưỡng này mới sinh thêm đề
@@ -126,6 +128,12 @@ function chayBoPhan1() {
       datNghi_(60);
       nhatKy_('HET_HAN_MUC', 'Gemini báo hết hạn mức/giới hạn tốc độ; tạm nghỉ 60 phút');
       guiZalo_('⏸ Bộ phận 1: hết hạn mức Gemini miễn phí, tạm nghỉ 60 phút rồi tự chạy lại.');
+    } else if (String(e.message) === 'QUA_TAI') {
+      var phut = Number(cauHinh_('PHUT_NGHI_QUA_TAI')) || 20;
+      datNghi_(phut);
+      nhatKy_('QUA_TAI', 'Mọi model Gemini đều báo quá tải (503, lỗi phía Google, không phải lỗi của bạn); tạm nghỉ ' + phut + ' phút');
+      var c = CacheService.getScriptCache();
+      if (!c.get('ZALO_QUA_TAI')) { c.put('ZALO_QUA_TAI', '1', 10800); guiZalo_('⏳ Bộ phận 1: Gemini đang quá tải (503), hệ thống tự thử lại sau ' + phut + ' phút.'); }
     } else if (String(e.message) === 'HET_GIO') {
       nhatKy_('DUNG_SOM', 'Không đủ thời gian cho lần gọi Gemini tiếp theo, phần còn lại để lần chạy sau');
     } else {
@@ -176,7 +184,7 @@ function sinhDeNeuCan_(sh, bc) {
   if (che === 'UU_TIEN_INTERNET' || che === 'CHI_INTERNET') {
     var them = 0;
     try { them = timDeInternet_(sh, hang, lop, n, bc); }
-    catch (e) { if (String(e.message) === 'HET_HAN_MUC') throw e; nhatKy_('TIM_INTERNET_LOI', String(e.message)); }
+    catch (e) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(e.message))) throw e; nhatKy_('TIM_INTERNET_LOI', String(e.message)); }
     if (them > 0) { nhatKy_('TIM_INTERNET', 'Đã lấy ' + them + ' đề có thật từ internet (lớp ' + lop + ')'); return; }
     if (che === 'CHI_INTERNET') { nhatKy_('TIM_INTERNET', 'Không tìm được đề phù hợp trên internet (chế độ chỉ internet nên không nhờ AI sáng tác)'); return; }
     nhatKy_('TIM_INTERNET', 'Không tìm được đề phù hợp trên internet, chuyển sang AI sáng tác (lớp ' + lop + ')');
@@ -272,8 +280,7 @@ function timDeInternet_(sh, hang, lop, n, bc) {
 // Tìm đề trên internet (Gemini + Google Search). Lỗi/hết hạn mức ở đây KHÔNG làm dừng hệ thống: trả null để chuyển sang AI sáng tác.
 function goiGeminiTimKiem_(prompt) {
   if (!khoDanhSachKey_().length) throw new Error('THIEU_GEMINI_API_KEY');
-  var models = [cauHinh_('MODEL_CHINH'), cauHinh_('MODEL_DU_PHONG'), cauHinh_('MODEL_DU_PHONG_2')]
-    .filter(function (x) { return x && String(x).trim(); });
+  var models = danhSachModel_();
   for (var m = 0; m < models.length; m++) {
     if (!conDuGoiGemini_()) { nhatKy_('TIM_INTERNET', 'Không đủ thời gian để tìm đề trên internet, để lần sau'); return null; }
     var kq = khoGoiCoSuyNghi_(models[m], {
@@ -538,35 +545,55 @@ function xuLyKichBan_(sh, bc, bat) {
 
 /* ===================== GỌI GEMINI (có dự phòng, thử lại) ===================== */
 
+// Danh sách model theo thứ tự ưu tiên; model vừa báo quá tải (503) trong 10 phút gần đây bị đẩy xuống cuối.
+function danhSachModel_() {
+  var ds = [], cache = CacheService.getScriptCache();
+  ['MODEL_CHINH', 'MODEL_DU_PHONG', 'MODEL_DU_PHONG_2', 'MODEL_DU_PHONG_3'].forEach(function (k) {
+    var m = String(cauHinh_(k) || '').trim();
+    if (m && ds.indexOf(m) < 0) ds.push(m);
+  });
+  var tot = ds.filter(function (m) { return !cache.get('QUA_TAI_' + m); });
+  var tai = ds.filter(function (m) { return cache.get('QUA_TAI_' + m); });
+  return tot.concat(tai);
+}
+function laQuaTai_(kq) {
+  return kq.code === 503 || kq.code === 529 || /UNAVAILABLE|overloaded|high demand|try again later/i.test(String(kq.raw || ''));
+}
+
 // opts.suyNghi: mức suy nghĩ ('low' | 'high' | 'mac_dinh' | 'tat'). Gọi có hạn chót: không đủ thời gian thì ném 'HET_GIO'.
+// Mọi model đều quá tải (503) -> ném 'QUA_TAI' (không tính lỗi cho đề, hệ thống nghỉ PHUT_NGHI_QUA_TAI phút rồi tự chạy lại).
 function goiGemini_(prompt, nhiet, opts) {
   opts = opts || {};
   if (!khoDanhSachKey_().length) throw new Error('THIEU_GEMINI_API_KEY');
-  var models = [cauHinh_('MODEL_CHINH'), cauHinh_('MODEL_DU_PHONG'), cauHinh_('MODEL_DU_PHONG_2')]
-    .filter(function (x) { return x && String(x).trim(); });
-  var hetHanMuc = false, lyDo = '', daGoi = 0;
-  for (var lan = 0; lan < 2; lan++) {
+  var models = danhSachModel_();
+  var cache = CacheService.getScriptCache();
+  var hetHanMuc = false, lyDo = '', soLoi = 0, soQuaTai = 0;
+  for (var lan = 0; lan < 3; lan++) {
     var coTheThuLai = false;
     for (var m = 0; m < models.length; m++) {
-      if (!conDuGoiGemini_()) throw new Error('HET_GIO');
-      daGoi++;
+      if (!conDuGoiGemini_()) throw new Error(soQuaTai && soQuaTai === soLoi ? 'QUA_TAI' : 'HET_GIO');
       var kq = khoGoiCoSuyNghi_(models[m], {
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { temperature: nhiet, responseMimeType: 'application/json' }
-      }, opts.suyNghi, { hanChoMs: 30000 });
+      }, opts.suyNghi, { hanChoMs: 20000 });
       if (kq.ok) {
         try { return docKetQua_(kq.raw); }
-        catch (e) { lyDo = models[m] + ' ' + e.message; coTheThuLai = true; nhatKy_('GEMINI_LOI', lyDo); continue; }
+        catch (e) { lyDo = models[m] + ' ' + e.message; soLoi++; coTheThuLai = true; nhatKy_('GEMINI_LOI', lyDo); continue; }
       }
+      soLoi++;
       lyDo = models[m] + ' HTTP ' + kq.code + ': ' + String(kq.raw).replace(/\s+/g, ' ').slice(0, 160);
       nhatKy_('GEMINI_LOI', lyDo);
+      if (laQuaTai_(kq)) { soQuaTai++; cache.put('QUA_TAI_' + models[m], '1', 600); coTheThuLai = true; continue; }
       if (kq.het) { hetHanMuc = true; continue; }                              // mọi key đều hết hạn mức ngày cho model này -> thử model kế
       if (kq.code === 429 || kq.code >= 500 || kq.code === 0) { coTheThuLai = true; continue; }
     }
     if (!coTheThuLai) break;
-    if (!duThoiGian_(_bat_dau_chay_, uocGoiMs_() + 5000)) break;
-    Utilities.sleep(3000);
+    // quá tải thường chỉ kéo dài vài chục giây: chờ tăng dần (8s, 20s) rồi thử lại cả vòng nếu còn thời gian
+    var cho = lan === 0 ? 8000 : 20000;
+    if (!duThoiGian_(_bat_dau_chay_, uocGoiMs_() + cho)) break;
+    Utilities.sleep(cho);
   }
+  if (soQuaTai && soQuaTai === soLoi) throw new Error('QUA_TAI');
   throw new Error(hetHanMuc ? 'HET_HAN_MUC' : 'GEMINI_LOI: ' + lyDo);
 }
 
@@ -667,9 +694,9 @@ function xoaNghi() {
 
 function xuLyLoiHang_(sh, r, e, bc) {
   var msg = String(e.message);
-  if (msg === 'HET_HAN_MUC' || msg === 'HET_GIO') {
+  if (msg === 'HET_HAN_MUC' || msg === 'HET_GIO' || msg === 'QUA_TAI') {
     // không phải lỗi của đề: trả lại lượt đã tính ở batDauViec_
-    ghi_(sh, r._row, { so_lan_loi: Math.max(0, (Number(r.so_lan_loi) || 1) - 1), ghi_chu: msg === 'HET_GIO' ? 'Chờ lần chạy sau (hết thời gian)' : 'Chờ hạn mức Gemini' });
+    ghi_(sh, r._row, { so_lan_loi: Math.max(0, (Number(r.so_lan_loi) || 1) - 1), ghi_chu: msg === 'HET_GIO' ? 'Chờ lần chạy sau (hết thời gian)' : msg === 'QUA_TAI' ? 'Chờ Gemini hết quá tải' : 'Chờ hạn mức Gemini' });
     throw e;
   }
   nhatKy_('LOI_DONG', r.id + ': ' + e.message);
@@ -1359,10 +1386,13 @@ function cuuDongBiNgat() {
   Logger.log('Đã đưa ' + n + ' dòng về hàng chờ.');
 }
 
-// Chẩn đoán: đo thời gian MỘT lần gọi Gemini với lời nhắc ngắn (chạy tay để xem model/key còn dùng được không).
+// Chẩn đoán: gọi thử TỪNG model với lời nhắc ngắn, in thời gian và kết quả (chạy tay để xem model/key nào đang dùng được).
 function thuGoiGemini() {
   _bat_dau_chay_ = Date.now();
-  var t = Date.now();
-  var kq = goiGemini_('Trả JSON {"ok":true,"so":7}', 0, { suyNghi: 'low' });
-  Logger.log('Gemini trả lời sau ' + Math.round((Date.now() - t) / 1000) + ' giây: ' + JSON.stringify(kq));
+  danhSachModel_().forEach(function (m) {
+    var t = Date.now();
+    var kq = khoGoiCoSuyNghi_(m, { contents: [{ parts: [{ text: 'Trả JSON {"ok":true}' }] }], generationConfig: { temperature: 0, responseMimeType: 'application/json' } }, 'low', { hanChoMs: 10000 });
+    var s = Math.round((Date.now() - t) / 1000);
+    Logger.log(m + ': ' + (kq.ok ? 'OK' : laQuaTai_(kq) ? 'QUÁ TẢI 503' : 'LỖI HTTP ' + kq.code + ' ' + String(kq.raw).replace(/\s+/g, ' ').slice(0, 120)) + ' sau ' + s + ' giây');
+  });
 }

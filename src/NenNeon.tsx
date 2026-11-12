@@ -18,13 +18,13 @@ const DOM = (() => {
   }));
 })();
 
-export const NenNeon: React.FC = () => {
+export const NenNeon: React.FC<{chiLop?: boolean}> = ({chiLop = false}) => {
   const frame = useCurrentFrame();
   const {width: W, height: H} = useVideoConfig();
   const o = 90;
   const troi = (frame * 0.25) % o;
   return (
-    <AbsoluteFill style={{background: 'linear-gradient(180deg, #0f2a27 0%, #0b1d1c 45%, #0a1414 100%)', overflow: 'hidden'}}>
+    <AbsoluteFill style={{background: chiLop ? 'transparent' : 'linear-gradient(180deg, #0f2a27 0%, #0b1d1c 45%, #0a1414 100%)', overflow: 'hidden', opacity: chiLop ? 0.75 : 1}}>
       <svg width={W} height={H} style={{position: 'absolute', inset: 0}}>
         {Array.from({length: Math.ceil(W / o) + 1}, (_, i) => (
           <line key={`c${i}`} x1={i * o} x2={i * o} y1={0} y2={H} stroke="#7fffd4" strokeOpacity={0.05} strokeWidth={1.5} />

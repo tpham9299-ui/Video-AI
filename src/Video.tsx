@@ -4,7 +4,7 @@ import {Canh, sanKhauCuaCanh} from './Canh';
 import {Nen} from './Nen';
 import {FONT, GIAO_DIEN, MAU} from './theme';
 import {smooth} from './manim';
-import {ThuongHieu} from './ThuongHieu';
+import {ManKetTuTao, moHuyHieu, ThuongHieu} from './ThuongHieu';
 import {ThanhTienDo} from './ThanhTienDo';
 import {KieuToan, NapPhongToan} from './Toan';
 import {Props} from './types';
@@ -30,16 +30,17 @@ const ManKet: React.FC<{tep: string; loai: 'video' | 'anh'}> = ({tep, loai}) => 
 };
 
 // Dòng chủ đề nhỏ cố định ở góc trên (như "20 ĐÔ MUA AI NÀO?" của video mẫu): phần sau dấu ":" hoặc "?" tô cam.
-const DauTrang: React.FC<{chu: string; lop: string; tu: number}> = ({chu, lop, tu}) => {
+const DauTrang: React.FC<{chu: string; lop: string; tu: number; lui: number; den: number}> = ({chu, lop, tu, lui, den}) => {
   const f = useCurrentFrame();
   const e = smooth((f - tu) / 12);
-  if (!chu || e <= 0) return null;
+  if (!chu || e <= 0 || f >= den) return null;
+  const an = lui ? moHuyHieu(f / 30, den / 30).mo2 : 0;
   const s = chu.toUpperCase();
   const cat = s.search(/[:?!]/);
   const dau = cat > 0 ? s.slice(0, cat + 1) : s;
   const sau = cat > 0 ? s.slice(cat + 1) : '';
   return (
-    <div style={{position: 'absolute', left: 54, right: 150, top: 132, fontFamily: FONT, fontWeight: 900, fontSize: 30, color: '#fff', opacity: 0.92 * e, transform: `translateX(${(1 - e) * -30}px)`, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textShadow: '0 2px 8px rgba(0,0,0,0.6)'}}>
+    <div style={{position: 'absolute', left: 54 + lui, right: 150, top: 130, fontFamily: FONT, fontWeight: 900, fontSize: 30, color: '#fff', opacity: 0.92 * e * (1 - an), transform: `translateX(${(1 - e) * -30 + an * 40}px)`, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textShadow: '0 2px 8px rgba(0,0,0,0.6)'}}>
       {lop ? <span style={{background: '#3BF29A', color: '#062019', borderRadius: 8, padding: '1px 10px', marginRight: 12, fontSize: 24}}>LỚP {lop}</span> : null}
       {dau}
       <span style={{color: '#FF8A3D'}}>{sau}</span>
@@ -74,11 +75,13 @@ export const Video: React.FC<Props> = (props) => {
   GIAO_DIEN.kieuToan = phongCach.kieuToan || 'latex';
   GIAO_DIEN.kieuHinh = phongCach.kieuHinh || 'manim';
   const amNhac = taoAmLuongNhac(props);
+  const ketThuc = outro ? outro.batDau : tongFrame;
+  const coThuongHieu = !!thuongHieu && !!(thuongHieu.ten || thuongHieu.logo || thuongHieu.handle);
   return (
     <AbsoluteFill style={{fontFamily: FONT}}>
       <KieuToan kieu={phongCach.kieuToan || 'latex'} />
       <NapPhongToan />
-      <Nen nen={nen} pc={phongCach} tongFrame={tongFrame} />
+      <Nen nen={nen} dsNen={props.dsNen} canh={canh} pc={phongCach} tongFrame={tongFrame} />
       {nhac ? <Audio src={staticFile(nhac)} loop volume={amNhac} /> : null}
       {canh.map((c, i) => (
         <Sequence key={c.so} from={c.batDau} durationInFrames={c.soFrame}>
@@ -100,12 +103,12 @@ export const Video: React.FC<Props> = (props) => {
           <Audio src={staticFile('sfx/sting.wav')} volume={0.55} />
         </Sequence>
       ) : null}
-      <ThuongHieu th={thuongHieu} />
-      {canh.length > 1 ? <DauTrang chu={props.chuDe || tieuDe} lop={lop} tu={canh[1].batDau} /> : null}
+      {canh.length > 1 ? <DauTrang chu={props.chuDe || tieuDe} lop={lop} tu={canh[1].batDau} lui={coThuongHieu ? 96 : 0} den={ketThuc} /> : null}
+      <ThuongHieu th={thuongHieu} canh={canh} ketThuc={ketThuc} />
       {phongCach.thanhTienDo ? <ThanhTienDo tongFrame={tongFrame} lop={lop} /> : null}
       {outro ? (
         <Sequence from={outro.batDau} durationInFrames={outro.soFrame}>
-          <ManKet tep={outro.tep} loai={outro.loai} />
+          {outro.loai === 'tu_tao' ? <ManKetTuTao th={thuongHieu} /> : <ManKet tep={outro.tep} loai={outro.loai} />}
         </Sequence>
       ) : null}
     </AbsoluteFill>

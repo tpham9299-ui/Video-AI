@@ -1,9 +1,11 @@
 {
-  "_ghi_chu": "Chỉnh giao diện tại đây. doMoNen: độ tối phủ lên nền của bạn (0-1). nen_co_dinh: tên tệp trong thư mục nền Drive nếu muốn luôn dùng một nền; để trống = tự xoay vòng. mau: ghi đè bảng màu, ví dụ {\"vang\":\"#ffd54a\"}. kieuNen: \"neon\" (nền xanh đen có lưới mờ và đốm sáng trôi như video mẫu, mặc định), \"luoi\" (lưới phối cảnh), \"luoi_phang\" hoặc \"gradient\". Chỉ áp dụng khi không có ảnh/video nền của bạn. thuongHieu: ten/khauHieu hiện ở góc trên bên trái cạnh logo (tệp logo.png đặt trong thư mục Drive VIDEO_XACSUAT/thuong_hieu), markNuoc = logo mờ lớn sau nội dung, handle = tên kênh nhỏ ở góc dưới, outroGiay = thời lượng màn kết (tệp outro.png hoặc outro.mp4 cùng thư mục). kieuToan: \"latex\" (công thức phông LaTeX có chân như Manim, mặc định) hoặc \"dong_nhat\" (cùng phông không chân với chữ). kieuHinh: \"manim\" (nét phẳng, mặc định) hoặc \"that\" (vật 3D). thanhTienDo/phuDe: bật tắt thanh tiến độ và phụ đề.",
+  "_ghi_chu": "Chỉnh giao diện tại đây. doMoNen: độ tối phủ lên nền của bạn (0-1). nen_co_dinh: tên tệp trong thư mục nền Drive nếu muốn luôn dùng một nền; để trống = tự xoay vòng. mau: ghi đè bảng màu, ví dụ {\"vang\":\"#ffd54a\"}. kieuNen: \"neon\" (nền xanh đen có lưới mờ và đốm sáng trôi như video mẫu, mặc định), \"luoi\" (lưới phối cảnh), \"luoi_phang\" hoặc \"gradient\". Chỉ áp dụng khi không có ảnh/video nền của bạn. thuongHieu: ten/khauHieu hiện ở góc trên bên trái cạnh logo (tệp logo.png đặt trong thư mục Drive VIDEO_XACSUAT/thuong_hieu), markNuoc = logo mờ lớn sau nội dung, handle = tên kênh nhỏ ở góc dưới, outroGiay = thời lượng màn kết (tệp outro.png hoặc outro.mp4 cùng thư mục). kieuToan: \"latex\" (công thức phông LaTeX có chân như Manim, mặc định) hoặc \"dong_nhat\" (cùng phông không chân với chữ). kieuHinh: \"manim\" (nét phẳng, mặc định) hoặc \"that\" (vật 3D). thanhTienDo/phuDe: bật tắt thanh tiến độ và phụ đề. soNenToiDa: số nền của bạn dùng trong một video (đổi nền theo nhóm cảnh, mặc định 3). lopNeonTrenNen: phủ lưới mờ + đốm sáng neon lên nền của bạn. thuongHieu.outroTuTao: tự tạo màn kết động khi không có tệp outro. thuongHieu.loiMoi: câu mời theo dõi giữa video.",
   "doMoNen": 0.35,
   "kyHieuTroi": false,
   "quangSang": true,
   "nen_co_dinh": "",
+  "soNenToiDa": 3,
+  "lopNeonTrenNen": true,
   "mau": {},
   "kieuNen": "neon",
   "kieuToan": "latex",
@@ -15,6 +17,8 @@
     "khauHieu": "",
     "handle": "",
     "markNuoc": true,
-    "outroGiay": 5
+    "outroGiay": 5,
+    "outroTuTao": true,
+    "loiMoi": "Theo dõi để học mẹo xác suất"
   }
 }

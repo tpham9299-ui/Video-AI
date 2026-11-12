@@ -54,3 +54,38 @@ Xem thử: `mau/kich_ban_mau.json` (bài chọn 2 MC, đầy đủ 7 cảnh) và
 - **Tự giảm nhạc khi có giọng đọc** (còn khoảng 40%), tăng lại ở quãng nghỉ.
 - **19 hiệu ứng**: whoosh chuyển cảnh, pop khi vật xuất hiện, ding khi chọn đúng, tiếng "sai" khi rung/loại bỏ, xúc xắc lắc, đồng xu leng keng, vòng quay tách tách chậm dần, tiếng đồng hồ, mở quà lấp lánh, tiếng "vút lên" dồn nén trước cảnh đáp án, tiếng "bùm" khi hiện đáp án.
 - **Muốn dùng nhạc khác**: bỏ tệp mp3 vào thư mục Drive `VIDEO_XACSUAT/nhac`, mỗi video tự chọn một bài (xoay vòng). Nguồn an toàn cho cả hai nền tảng: **YouTube Audio Library** (studio.youtube.com, mục Thư viện âm thanh, lọc "Không cần ghi công") và **Pixabay Music** (pixabay.com/music, giấy phép Pixabay Content License). Cách an toàn nhất trên TikTok vẫn là đăng video rồi chọn nhạc trong **Commercial Music Library** ngay trong ứng dụng; khi đó đặt biến GitHub `AM_LUONG_NHAC` = `0` để video không có nhạc nền.
+
+---
+
+# Bổ sung (lần 8b): Gemini quá tải 503, lồng tiếng, nền và thương hiệu kênh
+
+## E. Lỗi "This model is currently experiencing high demand" (HTTP 503)
+Đây là lỗi **phía máy chủ Google**: các model Gemini miễn phí đang quá tải, không phải lỗi mã hay key của bạn. Bản mới xử lý như sau:
+- Thêm model dự phòng thứ 4 `MODEL_DU_PHONG_3` = `gemini-flash-lite-latest` (bản lite thường ít quá tải hơn).
+- Model vừa báo 503 bị đẩy xuống cuối danh sách trong 10 phút.
+- Thử lại tối đa 3 vòng, chờ tăng dần 8 giây rồi 20 giây.
+- Nếu **mọi** model đều 503: dừng gọn, không tính lỗi cho đề, tạm nghỉ `PHUT_NGHI_QUA_TAI` phút (mặc định 20) rồi tự chạy lại, và chỉ báo Zalo tối đa 3 giờ một lần.
+- `thuGoiGemini()` giờ thử **từng model** và in kết quả, để bạn biết model nào đang dùng được.
+
+Việc bạn cần làm: dán lại `BoPhan1.gs` vào Code.gs. Nếu muốn, thêm 2 dòng vào sheet CAU_HINH: `MODEL_DU_PHONG_3` = `gemini-flash-lite-latest` và `PHUT_NGHI_QUA_TAI` = `20`. Không thêm thì hệ thống dùng đúng các giá trị này.
+
+## F. Lồng tiếng
+- Các lần dựng thật trên GitHub vẫn có giọng đọc (edge-tts, giọng `vi-VN-NamMinhNeural` theo biến `GIONG` của bạn). Video thử tôi gửi trước đó không có giọng thật vì máy của tôi bị chặn mạng tới dịch vụ giọng đọc.
+- Thêm **giọng dự phòng Google TTS**: nếu edge-tts lỗi ở đoạn nào, đoạn đó tự đọc bằng giọng Google (được tăng tốc cho khớp nhịp). Nếu cả hai đều lỗi, lần dựng báo lỗi chứ không ra video câm.
+- **Chuẩn hóa độ lớn giọng** (lọc tiếng ù, nén động, -15 LUFS như podcast/TikTok) để lời giảng luôn rõ hơn nhạc nền.
+- Nhật ký bước "Tạo giọng đọc" in số đoạn dùng mỗi loại giọng.
+- Đổi giọng: biến `GIONG` (`vi-VN-HoaiMyNeural` giọng nữ, `vi-VN-NamMinhNeural` giọng nam). Đổi tốc độ: biến `TOC_DO`, ví dụ `+15%`.
+
+## G. Nền của bạn và thương hiệu kênh (vẫn giữ cơ chế cũ, nâng cấp thêm)
+**Nền** (thư mục Drive `VIDEO_XACSUAT/nen`, như cũ):
+- Mỗi video dùng tới `soNenToiDa` nền (mặc định 3), chọn và xáo theo mã video. Các video khác nhau dùng bộ nền và thứ tự khác nhau.
+- **Đổi nền theo nhóm cảnh**; các cảnh nối tiếp nhau (`giu_san_khau`) giữ cùng một nền. Chuyển nền bằng hiệu ứng mờ dần kèm phóng nhẹ.
+- Mỗi nền một kiểu chuyển động máy quay: phóng to, thu nhỏ, lia trái, lia phải, lia dọc. Video nền vẫn tự lặp và tắt tiếng.
+- Lớp tối và lớp lưới + đốm sáng neon phủ lên nền để chữ và hình luôn rõ. Tắt lớp neon bằng `"lopNeonTrenNen": false`. Muốn luôn dùng một nền: `nen_co_dinh` (như cũ).
+
+**Thương hiệu** (logo `VIDEO_XACSUAT/thuong_hieu/logo.png`; tên, khẩu hiệu, handle trong `phong_cach.json`, như cũ):
+- **Huy hiệu động** góc trên trái: logo bật lên trong vòng sáng xoay hai màu, tên kênh và khẩu hiệu hiện ra kèm vệt sáng quét. Khoảng 3,5 giây sau thu gọn thành logo tròn; vòng sáng xoay chậm và cứ 9 giây phát một nhịp sóng. Không có ảnh logo thì tự vẽ chữ viết tắt của tên kênh.
+- **Giữa video** huy hiệu mở lại khoảng 2 giây, hiện `@handle`.
+- **Lời mời theo dõi** ở cảnh chốt bài: thẻ trượt vào kèm logo và câu `loiMoi`, chuông rung, nút "+" được bấm rồi thành dấu ✓, có tiếng "ding".
+- **Logo chìm** lớn phía sau trôi và xoay nhẹ (`markNuoc`).
+- **Màn kết**: có tệp `outro.png`/`outro.mp4` thì dùng như cũ. Không có thì tự tạo màn kết 2,5 giây: logo lớn trong vòng sáng, tia sáng bung ra, tên kênh chạy chữ, nút "Theo dõi" được bấm. Tắt bằng `"outroTuTao": false`.

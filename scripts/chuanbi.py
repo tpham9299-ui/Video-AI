@@ -106,6 +106,18 @@ def _gia_lap(text, tep):
           "-ac", "1", "-ar", "24000", "-c:a", "libmp3lame", "-b:a", "48k", tep])
 
 
+def _gtts(text, tep, toc):
+    """Giọng dự phòng: Google Translate TTS (miễn phí). Đọc chậm hơn nên tăng tốc bằng ffmpeg cho khớp nhịp."""
+    from gtts import gTTS
+    tho = tep + ".g.mp3"
+    gTTS(text, lang="vi").save(tho)
+    chay(["ffmpeg", "-y", "-loglevel", "error", "-i", tho, "-af", "atempo=%.2f" % toc, "-c:a", "libmp3lame", "-b:a", "96k", tep])
+    os.remove(tho)
+
+
+THONG_KE_GIONG = {"edge": 0, "gtts": 0}
+
+
 async def tao_cac_doan(cac_doan, thu_muc, args):
     cac_tep = []
     sem = asyncio.Semaphore(3)
@@ -114,10 +126,25 @@ async def tao_cac_doan(cac_doan, thu_muc, args):
         tep = os.path.join(thu_muc, "d%03d.mp3" % i)
         if args.gia_lap:
             _gia_lap(d, tep)
-        else:
-            async with sem:
-                await _tts(chuan_hoa_doc(d), tep, args.giong, args.toc_do, args.cao_do)
-        return tep
+            return tep
+        van = chuan_hoa_doc(d)
+        async with sem:
+            try:
+                await _tts(van, tep, args.giong, args.toc_do, args.cao_do)
+                THONG_KE_GIONG["edge"] += 1
+                return tep
+            except Exception as e:
+                print("Cảnh báo: edge-tts lỗi (%s), chuyển sang giọng dự phòng Google" % str(e)[:120])
+        loi = None
+        for lan in range(3):
+            try:
+                await asyncio.to_thread(_gtts, van, tep, 1.18)
+                THONG_KE_GIONG["gtts"] += 1
+                return tep
+            except Exception as e:
+                loi = e
+                await asyncio.sleep(2 * (lan + 1))
+        raise RuntimeError("Không tạo được giọng đọc bằng cả edge-tts lẫn Google TTS: %s | đoạn: %s" % (loi, d[:60]))
 
     cac_tep = await asyncio.gather(*[mot(i, d) for i, d in enumerate(cac_doan)])
     return list(cac_tep)
@@ -145,9 +172,9 @@ def ghep(cac_tep, dich):
     chay(lenh)
 
 
-PHONG_CACH_MAC_DINH = {"doMoNen": 0.35, "kyHieuTroi": False, "quangSang": True, "kieuNen": "neon", "kieuToan": "latex",
+PHONG_CACH_MAC_DINH = {"soNenToiDa": 3, "lopNeonTrenNen": True, "doMoNen": 0.35, "kyHieuTroi": False, "quangSang": True, "kieuNen": "neon", "kieuToan": "latex",
                        "kieuHinh": "manim", "thanhTienDo": False, "phuDe": True, "mau": {}}
-THUONG_HIEU_MAC_DINH = {"ten": "", "khauHieu": "", "handle": "", "markNuoc": True, "outroGiay": 5}
+THUONG_HIEU_MAC_DINH = {"ten": "", "khauHieu": "", "handle": "", "markNuoc": True, "outroGiay": 5, "outroTuTao": True, "loiMoi": "Theo dõi để học mẹo xác suất"}
 DUOI_ANH = (".jpg", ".jpeg", ".png", ".webp")
 DUOI_VIDEO = (".mp4", ".mov", ".webm", ".m4v")
 
@@ -163,6 +190,9 @@ def doc_phong_cach(tep):
                 if k in d:
                     pc[k] = d[k]
             co_dinh = str(d.get("nen_co_dinh") or "").strip()
+            for k in ("soNenToiDa", "lopNeonTrenNen"):
+                if k in d:
+                    pc[k] = d[k]
             if isinstance(d.get("thuongHieu"), dict):
                 th.update(d["thuongHieu"])
         except Exception as e:
@@ -170,37 +200,40 @@ def doc_phong_cach(tep):
     return pc, co_dinh, th
 
 
-def chon_nen(public, id_, co_dinh):
-    """Chọn một ảnh/video nền trong public/nen/ (do workflow chép từ Drive). Cùng mã video thì luôn ra cùng nền."""
+def chon_nen(public, id_, co_dinh, so_toi_da=3):
+    """Chọn tối đa so_toi_da ảnh/video nền trong public/nen/ (workflow chép từ Drive VIDEO_XACSUAT/nen) để đổi nền theo nhóm cảnh.
+    Thứ tự xáo theo mã video: cùng video luôn ra cùng bộ nền, các video khác nhau dùng bộ nền và thứ tự khác nhau.
+    nen_co_dinh (phong_cach.json) = luôn dùng đúng một nền đó."""
     for f in os.listdir(public):
-        if f.startswith("nen_chon."):
+        if f.startswith("nen_chon"):
             os.remove(os.path.join(public, f))
     thu_muc = os.path.join(public, "nen")
     if not os.path.isdir(thu_muc):
-        return None
+        return []
     ds = sorted(f for f in os.listdir(thu_muc) if f.lower().endswith(DUOI_ANH + DUOI_VIDEO))
     if not ds:
-        return None
+        return []
     if co_dinh and co_dinh in ds:
-        ten = co_dinh
+        chon = [co_dinh]
     else:
-        ten = ds[int(hashlib.md5(id_.encode("utf8")).hexdigest(), 16) % len(ds)]
-    duoi = os.path.splitext(ten)[1].lower()
-    dich = "nen_chon" + duoi
-    shutil.copyfile(os.path.join(thu_muc, ten), os.path.join(public, dich))
-    if duoi in DUOI_VIDEO:
-        try:
-            so_frame = max(30, int(round(do_thoi_luong(os.path.join(public, dich)) * FPS)))
-        except Exception:
-            so_frame = 30 * FPS
-        print("Nền: %s (video, %d khung hình)" % (ten, so_frame))
-        return {"tep": dich, "loai": "video", "soFrame": so_frame}
-    print("Nền: %s (ảnh)" % ten)
-    return {"tep": dich, "loai": "anh", "soFrame": 0}
-
-
-
-
+        hat = int(hashlib.md5(id_.encode("utf8")).hexdigest(), 16)
+        xao = sorted(ds, key=lambda f: hashlib.md5((str(hat) + f).encode("utf8")).hexdigest())
+        chon = xao[: max(1, int(so_toi_da))]
+    kq = []
+    for k, ten in enumerate(chon):
+        duoi = os.path.splitext(ten)[1].lower()
+        dich = "nen_chon_%d%s" % (k, duoi)
+        shutil.copyfile(os.path.join(thu_muc, ten), os.path.join(public, dich))
+        if duoi in DUOI_VIDEO:
+            try:
+                so_frame = max(30, int(round(do_thoi_luong(os.path.join(public, dich)) * FPS)))
+            except Exception:
+                so_frame = 30 * FPS
+            kq.append({"tep": dich, "loai": "video", "soFrame": so_frame})
+        else:
+            kq.append({"tep": dich, "loai": "anh", "soFrame": 0})
+        print("Nền %d: %s" % (k + 1, ten))
+    return kq
 
 
 def trinh_bay(c, noi_dung):
@@ -259,6 +292,7 @@ def tim_thuong_hieu(public, th):
     out = tim_tep(thu_muc, "outro", (".mp4", ".mov", ".webm", ".png", ".jpg", ".jpeg", ".webp"))
     hien = dict(th)
     hien.pop("outroGiay", None)
+    hien.pop("outroTuTao", None)
     hien["logo"] = "thuong_hieu/" + os.path.basename(logo) if logo else None
     outro = None
     if out:
@@ -271,6 +305,9 @@ def tim_thuong_hieu(public, th):
             except Exception:
                 pass
         outro = {"tep": "thuong_hieu/" + ten, "loai": "video" if video else "anh", "soFrame": int(round(giay * FPS))}
+    elif th.get("outroTuTao", True) and (logo or th.get("ten") or th.get("handle")):
+        # không có tệp outro: tự tạo màn kết động 2,5 giây (logo + tên kênh + nút Theo dõi)
+        outro = {"tep": "", "loai": "tu_tao", "soFrame": int(round(2.5 * FPS))}
     return hien, outro
 
 
@@ -317,7 +354,12 @@ def main():
                 cac_tep.append(gon)
             do_dai = [do_thoi_luong(t) for t in cac_tep]
             ten = "%s_c%d.mp3" % (id_an_toan, so)
-            ghep(cac_tep, os.path.join(thu_muc_giong, ten))
+            ghep(cac_tep, os.path.join(thu_muc_giong, "tam_" + ten))
+            # chuẩn hóa độ lớn giọng (kiểu podcast/TikTok, -15 LUFS) để lời giảng luôn rõ hơn nhạc nền
+            chay(["ffmpeg", "-y", "-loglevel", "error", "-i", os.path.join(thu_muc_giong, "tam_" + ten), "-af",
+                  "highpass=f=70,acompressor=threshold=-20dB:ratio=3:attack=5:release=80,loudnorm=I=-15:TP=-1.5:LRA=7",
+                  "-ar", "44100", "-c:a", "libmp3lame", "-b:a", "128k", os.path.join(thu_muc_giong, ten)])
+            os.remove(os.path.join(thu_muc_giong, "tam_" + ten))
         tong_am = do_thoi_luong(os.path.join(thu_muc_giong, ten))
 
         cau, t = [], LEAD
@@ -373,7 +415,7 @@ def main():
     nhac = chon_nhac(args.public, id_an_toan)
     hook_chu = str(kb.get("hook_chu") or kb.get("hook") or "").strip()
     pc, nen_co_dinh, th = doc_phong_cach(args.phong_cach)
-    nen = chon_nen(args.public, id_an_toan, nen_co_dinh)
+    ds_nen = chon_nen(args.public, id_an_toan, nen_co_dinh, pc.get("soNenToiDa", 3))
     thuong_hieu, outro = tim_thuong_hieu(args.public, th)
     if outro:
         outro["batDau"] = bat_dau
@@ -392,12 +434,15 @@ def main():
         "nhac": nhac,
         "amLuongNhac": float(os.environ.get("AM_LUONG_NHAC") or (0.16 if nhac and nhac.endswith("nen.wav") else 0.12)),
         "chuDe": str(kb.get("chu_de_ngan") or kb.get("chu_de") or "")[:40],
-        "nen": nen,
+        "nen": ds_nen[0] if ds_nen else None,
+        "dsNen": ds_nen,
         "thuongHieu": thuong_hieu,
         "outro": outro,
         "phongCach": pc,
         "canh": canh_props,
     }
+    if not args.gia_lap:
+        print("Giọng đọc: %d đoạn bằng edge-tts (%s), %d đoạn bằng Google TTS dự phòng" % (THONG_KE_GIONG["edge"], args.giong, THONG_KE_GIONG["gtts"]))
     dich = args.props_ra or os.path.join(args.public, "props.json")
     with open(dich, "w", encoding="utf8") as f:
         json.dump(props, f, ensure_ascii=False, indent=1)

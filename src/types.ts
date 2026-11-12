@@ -22,8 +22,8 @@ export type CanhProps = {
   giuSanKhau: boolean; // giữ nguyên sân khấu của cảnh trước rồi diễn tiếp (liền mạch như video mẫu)
 };
 
-export type ThuongHieuProps = {ten: string; khauHieu: string; handle: string; markNuoc: boolean; logo: string | null};
-export type OutroProps = {tep: string; loai: 'video' | 'anh'; soFrame: number; batDau: number};
+export type ThuongHieuProps = {ten: string; khauHieu: string; handle: string; markNuoc: boolean; logo: string | null; loiMoi?: string};
+export type OutroProps = {tep: string; loai: 'video' | 'anh' | 'tu_tao'; soFrame: number; batDau: number};
 
 export type NenProps = {tep: string; loai: 'video' | 'anh'; soFrame: number};
 
@@ -36,6 +36,8 @@ export type PhongCach = {
   kieuToan: string; // 'latex' = công thức phông LaTeX có chân như Manim (mặc định); 'dong_nhat' = công thức cùng phông không chân với chữ
   kieuHinh: string; // 'manim' = hình nét phẳng như video mẫu (mặc định); 'that' = vật 3D (xúc xắc, xu, bài)
   thanhTienDo: boolean;
+  soNenToiDa?: number; // số nền tối đa dùng trong một video (đổi theo nhóm cảnh)
+  lopNeonTrenNen?: boolean; // phủ lưới mờ + đốm sáng neon lên nền của bạn cho đồng bộ phong cách
   phuDe: boolean;
   mau: Record<string, string>; // ghi đè bảng màu (vang, lam, hong, xanh, nen1, nen2)
 };
@@ -55,6 +57,7 @@ export type Props = {
   amLuongNhac: number; // âm lượng nhạc nền khi không có giọng đọc (khi có giọng tự giảm còn ~40%)
   chuDe: string; // chủ đề ngắn hiện ở góc trên (ví dụ "Hai bi cùng màu")
   nen: NenProps | null;
+  dsNen?: NenProps[]; // nhiều nền của bạn: đổi nền theo nhóm cảnh
   thuongHieu: ThuongHieuProps;
   outro: OutroProps | null;
   phongCach: PhongCach;
