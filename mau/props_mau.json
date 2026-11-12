@@ -58,7 +58,7 @@
    "noiDung": [],
    "minhHoa": {
     "loai": "san_khau",
-    "moTa": "Ba cánh cửa cam bật lên lần lượt, nhãn neon '50/50?' bật ra rồi rung mạnh như bị nghi ngờ.",
+    "moTa": "Ba cánh cửa cam đứng trên sàn 3D nhìn chéo, camera xoay từ trái sang phải; nhãn neon '50/50?' bật ra rồi rung.",
     "duLieu": {
      "vat": [
       {
@@ -91,8 +91,18 @@
        "buoc": 3,
        "vat": "n5050",
        "kieu": "rung"
+      },
+      {
+       "buoc": 2,
+       "kieu": "goc_3d",
+       "nghieng": 38,
+       "xoay": 18
       }
-     ]
+     ],
+     "goc_nhin": {
+      "nghieng": 42,
+      "xoay": -22
+     }
     }
    },
    "audio": "giong/VT-mau-monty_c1.mp3",
@@ -161,6 +171,12 @@
        "chi_so": [
         3
        ]
+      },
+      {
+       "buoc": 3,
+       "kieu": "goc_3d",
+       "nghieng": 0,
+       "xoay": 0
       }
      ]
     }

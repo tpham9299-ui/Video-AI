@@ -160,7 +160,7 @@ const LaBai: Ve = (v, st) => {
           const mauChu = CHAT_DO.test(nd) ? '#E0374A' : '#151515';
           return (
             <div key={k} style={{position: 'relative', width: w, height: h, opacity: kep(a * 2) * s.mo, transform: `translateY(${(1 - easeOut(a)) * -120}px) rotate(${(k - (n - 1) / 2) * 5 * (1 - easeOut(a)) * 3}deg) scale(${1 + 0.08 * s.pc})`}}>
-              <div style={{position: 'absolute', inset: 0, borderRadius: 16, transform: `scaleX(${Math.abs(Math.cos((goc * Math.PI) / 180))})`,
+              <div style={{position: 'absolute', inset: 0, borderRadius: 16, transform: `perspective(900px) rotateY(${mat ? goc - 180 : goc}deg)`,
                 background: mat ? '#FAFAF5' : `repeating-linear-gradient(45deg, #13302b 0 10px, #0d211e 10px 20px)`, border: `4px solid ${s.pc > 0.01 ? s.mau : mat ? '#ddd' : neon('xanh_la')}`,
                 boxShadow: `0 0 ${8 + 18 * s.pc}px ${s.pc > 0.01 ? s.mau : 'rgba(59,242,154,0.5)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT_DAM, fontWeight: 900, color: mauChu}}>
                 {mat ? (
@@ -194,12 +194,28 @@ export const MatXuc: React.FC<{mat: number; co: number; vien: string}> = ({mat, 
     ))}
   </svg>
 );
-const XucXac: Ve = (v, st, frame) => {
+// Khối lập phương 3D: mặt 1 trước, 6 sau, 3 phải, 4 trái, 2 trên, 5 dưới (hai mặt đối nhau cộng bằng 7 như xúc xắc thật).
+const GOC_MAT: Record<number, [number, number]> = {1: [0, 0], 6: [0, 180], 3: [0, -90], 4: [0, 90], 2: [-90, 0], 5: [90, 0]};
+const MAT_KHOI: [number, string][] = [
+  [1, 'rotateY(0deg)'], [6, 'rotateY(180deg)'], [3, 'rotateY(90deg)'], [4, 'rotateY(-90deg)'], [2, 'rotateX(90deg)'], [5, 'rotateX(-90deg)'],
+];
+export const Xuc3D: React.FC<{co: number; rx: number; ry: number; vien: string}> = ({co, rx, ry, vien}) => (
+  <div style={{width: co, height: co, perspective: co * 5}}>
+    <div style={{position: 'relative', width: co, height: co, transformStyle: 'preserve-3d', transform: `rotateX(${rx}deg) rotateY(${ry}deg)`}}>
+      {MAT_KHOI.map(([m, xoay]) => (
+        <div key={m} style={{position: 'absolute', inset: 0, transform: `${xoay} translateZ(${co / 2}px)`, backfaceVisibility: 'hidden', borderRadius: co * 0.16, overflow: 'hidden', boxShadow: `inset 0 0 ${co * 0.12}px rgba(0,0,0,0.25), 0 0 ${co * 0.08}px ${vien}`}}>
+          <MatXuc mat={m} co={co} vien={vien} />
+        </div>
+      ))}
+    </div>
+  </div>
+);
+const XucXac: Ve = (v, st) => {
   const n = v.soLuong;
-  const co = 170 * v.co;
+  const co = 160 * v.co;
   return (
     <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
-      <div style={{display: 'flex', gap: 46}}>
+      <div style={{display: 'flex', gap: 60}}>
         {Array.from({length: n}, (_, k) => {
           const kq = v.ketQua[k] || ((k * 3 + 2) % 6) + 1;
           const a = vaoLanLuot(st, k, n);
@@ -207,12 +223,17 @@ const XucXac: Ve = (v, st, frame) => {
           const q = st.quay;
           const dangLan = q >= 0 && q < 1;
           const truocQuay = st.coQuay && q < 0;
-          const mat = dangLan ? (Math.floor((frame + k * 5) / 3) % 6) + 1 : truocQuay ? ((kq + 2) % 6) + 1 : kq;
-          const xoay = dangLan ? (1 - easeOut(q)) * (720 + k * 90) : 0;
-          const nhay = dangLan ? -nay(q, 3) * 160 : 0;
+          const mat = truocQuay ? ((kq + 2) % 6) + 1 : kq;
+          const [gx, gy] = GOC_MAT[mat];
+          // dừng hơi nghiêng để thấy rõ khối 3D; khi lăn: lộn nhiều vòng trên 2 trục, chậm dần (easeOut), nảy trên sàn
+          const e = dangLan ? easeOut(q) : 1;
+          const rx = gx - 16 + (1 - e) * (720 + k * 180);
+          const ry = gy + 22 + (1 - e) * (540 + k * 90);
+          const nhay = dangLan ? -nay(q, 3) * 170 : 0;
           return (
-            <div key={k} style={{position: 'relative', opacity: kep(a * 2) * s.mo, transform: `translateY(${nhay + (1 - easeOut(a)) * -200}px) rotate(${xoay}deg) scale(${popOut(a) * (1 + 0.1 * s.pc)})`, filter: phatSang(s.mau, 6 + 12 * s.pc)}}>
-              <MatXuc mat={mat} co={co} vien={s.mau} />
+            <div key={k} style={{position: 'relative', opacity: kep(a * 2) * s.mo, transform: `translateY(${nhay + (1 - easeOut(a)) * -200}px) scale(${popOut(a) * (1 + 0.1 * s.pc)})`}}>
+              <Xuc3D co={co} rx={rx} ry={ry} vien={s.mau} />
+              <div style={{position: 'absolute', left: '10%', right: '10%', bottom: -26 + nhay * -0.0, height: 20, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(0,0,0,0.6), transparent 70%)', transform: `translateY(${-nhay}px) scale(${1 + nhay / 400})`}} />
               <DauTich p={s.pc} mau={s.mau} style={{right: -16, top: -16}} />
             </div>
           );
@@ -224,42 +245,53 @@ const XucXac: Ve = (v, st, frame) => {
 };
 
 /* ---------------- ĐỒNG XU ---------------- */
+const MatXu: React.FC<{chu: string; co: number; id: string}> = ({chu, co, id}) => (
+  <svg width={co} height={co} viewBox="0 0 100 100">
+    <defs>
+      <radialGradient id={id} cx="35%" cy="30%" r="75%">
+        <stop offset="0%" stopColor="#FFF3B0" />
+        <stop offset="55%" stopColor="#F5B82E" />
+        <stop offset="100%" stopColor="#B7791F" />
+      </radialGradient>
+    </defs>
+    <circle cx={50} cy={50} r={48} fill={`url(#${id})`} stroke="#8a5a12" strokeWidth={3} />
+    <circle cx={50} cy={50} r={37} fill="none" stroke="#a86e16" strokeWidth={3} strokeDasharray="4 4" />
+    <text x={50} y={64} textAnchor="middle" fontFamily="Montserrat, Liberation Sans, sans-serif" fontWeight={900} fontSize={42} fill="#6b420b">{chu}</text>
+  </svg>
+);
+// Đồng xu 3D: đĩa có 2 mặt (S trước, N sau) và viền dày; tung = lật quanh trục ngang nhiều vòng rồi dừng đúng mặt.
 const DongXu: Ve = (v, st) => {
   const n = v.soLuong;
   const co = 180 * v.co;
   return (
     <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
-      <div style={{display: 'flex', gap: 40}}>
+      <div style={{display: 'flex', gap: 44}}>
         {Array.from({length: n}, (_, k) => {
           const kq = (v.ds[k] || 'S').toUpperCase().startsWith('N') ? 'N' : 'S';
           const a = vaoLanLuot(st, k, n);
           const s = phanTu(st, k + 1, '#FFD54A');
           const q = st.quay;
           const dangLat = q >= 0 && q < 1;
-          const goc = dangLat ? easeOut(q) * Math.PI * 9 : 0;
-          const sy = dangLat ? Math.cos(goc) : 1;
-          const matHien = dangLat ? (Math.floor(goc / Math.PI) % 2 === 0 ? kq : kq === 'S' ? 'N' : 'S') : st.coQuay && q < 0 ? 'S' : kq;
-          const len = dangLat ? -Math.sin(q * Math.PI) * 170 * v.co : 0;
+          const dich = kq === 'S' ? 0 : 180;
+          const goc = (st.coQuay && q < 0 ? 0 : dich) + (dangLat ? (1 - easeOut(q)) * 1440 : 0);
+          const len = dangLat ? -Math.sin(q * Math.PI) * 220 * v.co : 0;
           return (
             <div key={k} style={{position: 'relative', opacity: kep(a * 2) * s.mo, transform: `translateY(${len}px) scale(${popOut(a) * (1 + 0.1 * s.pc)})`}}>
-              <svg width={co} height={co} viewBox="0 0 100 100" style={{transform: `scaleY(${Math.max(0.06, Math.abs(sy))})`, filter: phatSang(s.pc > 0.01 ? s.mau : '#FFB300', 8)}}>
-                <defs>
-                  <radialGradient id={`xu${v.id}${k}`} cx="35%" cy="30%" r="75%">
-                    <stop offset="0%" stopColor="#FFF3B0" />
-                    <stop offset="55%" stopColor="#F5B82E" />
-                    <stop offset="100%" stopColor="#B7791F" />
-                  </radialGradient>
-                </defs>
-                <circle cx={50} cy={50} r={46} fill={`url(#xu${v.id}${k})`} stroke="#8a5a12" strokeWidth={3} />
-                <circle cx={50} cy={50} r={36} fill="none" stroke="#a86e16" strokeWidth={3} strokeDasharray="4 4" />
-                <text x={50} y={64} textAnchor="middle" fontFamily="Liberation Sans, sans-serif" fontWeight={900} fontSize={42} fill="#6b420b">{matHien}</text>
-              </svg>
+              <div style={{width: co, height: co, perspective: co * 4}}>
+                <div style={{position: 'relative', width: co, height: co, transformStyle: 'preserve-3d', transform: `rotateY(-26deg) rotateX(${goc + 30}deg)`}}>
+                  {[-6, -4.5, -3, -1.5, 0, 1.5, 3, 4.5, 6].map((z) => (
+                    <div key={z} style={{position: 'absolute', inset: 0, borderRadius: '50%', background: '#a86e16', transform: `translateZ(${z * v.co}px)`}} />
+                  ))}
+                  <div style={{position: 'absolute', inset: 0, transform: `translateZ(${6 * v.co}px)`, backfaceVisibility: 'hidden'}}><MatXu chu="S" co={co} id={`xs${v.id}${k}`} /></div>
+                  <div style={{position: 'absolute', inset: 0, transform: `rotateX(180deg) translateZ(${6 * v.co}px)`, backfaceVisibility: 'hidden'}}><MatXu chu="N" co={co} id={`xn${v.id}${k}`} /></div>
+                </div>
+              </div>
               <DauTich p={s.pc} mau={s.mau} style={{right: -10, top: -10}} />
             </div>
           );
         })}
       </div>
-      <Nhan chu={v.nhan || (n > 0 ? 'S = sấp · N = ngửa' : '')} co={24} />
+      <Nhan chu={v.nhan || 'S = sấp · N = ngửa'} co={24} />
     </div>
   );
 };
@@ -657,7 +689,7 @@ export const NhanNeon: React.FC<{chu: string; tuKhoa: string; mau: string; mauNh
   </div>
 );
 const NhanVat: Ve = (v, st) => (
-  <NhanNeon chu={st.noiDung} tuKhoa={v.tuKhoa} mau={neon(v.mau, neon('xanh_la'))} mauNhan={neon('cam')} co={52 * v.co} xoay={v.xoay || -3} />
+  <NhanNeon chu={st.noiDung} tuKhoa={v.tuKhoa} mau={neon(v.mau, neon('xanh_la'))} mauNhan={neon('cam')} co={Math.min(52 * v.co, 860 / (Math.max(4, st.noiDung.length) * 0.66))} xoay={v.xoay || -3} />
 );
 
 const Chu: Ve = (v, st) => (

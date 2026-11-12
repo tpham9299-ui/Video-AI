@@ -154,3 +154,110 @@ export function tinhCamera(ds: HanhDong[], vat: Vat[], t: number, tb: (b: number
   }
   return {z, cx, cy};
 }
+
+// Góc nhìn 3D của sân khấu tại thời điểm t: bắt đầu từ gocDau (hoặc nhìn thẳng), mỗi hành động goc_3d chuyển mượt
+// sang góc mới trong 1,2 giây (nghiêng sàn + xoay quanh trục đứng).
+export function tinhGoc3D(gocDau: {nghieng: number; xoay: number} | null, ds: HanhDong[], t: number, tb: (b: number) => number) {
+  let nghieng = gocDau ? gocDau.nghieng : 0;
+  let xoay = gocDau ? gocDau.xoay : 0;
+  for (const h of ds) {
+    if (h.kieu !== 'goc_3d') continue;
+    const bd = tb(h.buoc);
+    if (t < bd && h.buoc > 0) continue;
+    const q = easeInOut(h.buoc <= 0 ? 1 : tienDo(t, bd, 1.2));
+    nghieng = lerp(nghieng, h.nghieng, q);
+    xoay = lerp(xoay, h.xoay, q);
+  }
+  return {nghieng, xoay};
+}
+
+// Ước lượng kích thước (px trên khung 960x760, chưa nhân co) của từng loại vật: dùng để tự xếp chống chồng lấn và nâng vật lên khỏi sàn 3D.
+export function kichThuocVat(v: Vat): {w: number; h: number} {
+  const n = v.soLuong;
+  const cot = n <= 6 ? n : Math.ceil(n / 2);
+  let w = 300;
+  let h = 300;
+  switch (v.loai) {
+    case 'nguoi': { const o = Math.min(190, 900 / cot); w = o * cot; h = Math.ceil(n / cot) * o * 1.15 + (v.nhan ? 50 : 0); break; }
+    case 'the': w = n === 1 ? 280 : Math.min(280 + 24, 920 / n) * n; h = 190 + (v.nhan ? 60 : 0); break;
+    case 'the_bai': w = Math.max(n, v.ds.length || 1) * 192; h = 260; break;
+    case 'xuc_xac': w = n * 216; h = 220; break;
+    case 'dong_xu': w = n * 220; h = 250; break;
+    case 'hop_bi': case 'tui': w = 400 + (v.loai === 'hop_bi' ? 140 : 80); h = 370; break;
+    case 'hop_qua': w = 280; h = 320; break;
+    case 'dong_ho': w = 320; h = 370; break;
+    case 'dien_thoai': w = 360; h = 640; break;
+    case 'bong_bay': w = 360; h = 420; break;
+    case 'dong_ho_do': w = 480; h = 400; break;
+    case 'bieu_do_cot': w = Math.min(900, 220 * Math.max(1, v.dsSo.length)); h = 500; break;
+    case 'thanh': w = 760; h = 110; break;
+    case 'vong_quay': w = 510; h = 560; break;
+    case 'cua': w = n * (Math.min(230, 880 / n - 26) + 26); h = Math.min(230, 880 / n - 26) * 1.5 + 20; break;
+    case 'banh': w = 460; h = 480; break;
+    case 'nhan': w = Math.min(900, Math.max(4, v.noiDung.length) * 32 + 60); h = 90; break;
+    case 'chu': w = Math.min(900, Math.max(3, v.noiDung.length) * 30); h = 80; break;
+    case 'so_dem': w = v.kieu === 'vien' ? 380 : 320; h = v.kieu === 'vien' ? 120 : 260; break;
+    case 'bieu_tuong': w = n * 154; h = 200; break;
+    case 'luoi_o': { const c = v.soCot || Math.min(12, Math.ceil(Math.sqrt(n * 1.6))); const r = Math.ceil(n / c); const o = Math.min(860 / c, 560 / r); w = o * c; h = o * r + (v.nhan ? 50 : 0); break; }
+    case 'danh_sach': w = 820; h = 100 + v.ds.length * 72; break;
+    case 'mui_ten': w = 0; h = 0; break;
+    default: break;
+  }
+  return {w: w * v.co, h: h * v.co};
+}
+
+// TỰ XẾP: đẩy các vật đang chồng lên nhau ra xa (theo trục chồng ít hơn), giữ trong khung; nếu tổng thể vẫn quá khung
+// thì thu nhỏ đều. Giữ nguyên ý đồ bố cục của kịch bản khi không có chồng lấn.
+export function tuXepSanKhau(dsVat: Vat[], W: number, H: number): Vat[] {
+  const xs = dsVat.filter((v) => v.loai !== 'mui_ten');
+  const hop = xs.map((v) => ({v, x: (v.x / 100) * W, y: (v.y / 100) * H, ...kichThuocVat(v)}));
+  const PAD = 18;
+  const kep2 = (b: (typeof hop)[number]) => {
+    b.x = Math.min(W - Math.min(b.w, W) / 2, Math.max(Math.min(b.w, W) / 2, b.x));
+    b.y = Math.min(H - Math.min(b.h, H) / 2, Math.max(Math.min(b.h, H) / 2, b.y));
+  };
+  for (let lan = 0; lan < 40; lan++) {
+    let dich = false;
+    for (let i = 0; i < hop.length; i++) {
+      for (let j = i + 1; j < hop.length; j++) {
+        const a = hop[i];
+        const b = hop[j];
+        const ox = (a.w + b.w) / 2 + PAD - Math.abs(a.x - b.x);
+        const oy = (a.h + b.h) / 2 + PAD - Math.abs(a.y - b.y);
+        if (ox <= 0 || oy <= 0) continue;
+        dich = true;
+        // nhãn/chữ nhỏ thì chỉ dời nhãn, vật lớn đứng yên
+        const nhoA = a.v.loai === 'nhan' || a.v.loai === 'chu';
+        const nhoB = b.v.loai === 'nhan' || b.v.loai === 'chu';
+        const ka = nhoA && !nhoB ? 1 : nhoB && !nhoA ? 0 : 0.5;
+        if (oy < ox) {
+          const s = a.y <= b.y ? -1 : 1;
+          a.y += s * oy * ka;
+          b.y -= s * oy * (1 - ka);
+        } else {
+          const s = a.x <= b.x ? -1 : 1;
+          a.x += s * ox * ka;
+          b.x -= s * ox * (1 - ka);
+        }
+        kep2(a);
+        kep2(b);
+      }
+    }
+    if (!dich) break;
+  }
+  // vẫn tràn khung (quá nhiều vật lớn): thu nhỏ đều quanh tâm
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  hop.forEach((b) => { x0 = Math.min(x0, b.x - b.w / 2); x1 = Math.max(x1, b.x + b.w / 2); y0 = Math.min(y0, b.y - b.h / 2); y1 = Math.max(y1, b.y + b.h / 2); });
+  const s = Math.min(1, W / Math.max(1, x1 - x0), H / Math.max(1, y1 - y0));
+  const cx = (x0 + x1) / 2;
+  const cy = (y0 + y1) / 2;
+  const thuNho = s < 0.999;
+  const moi = new Map(hop.map((b) => [b.v.id, {x: ((thuNho ? W / 2 + (b.x - cx) * s : b.x) / W) * 100, y: ((thuNho ? H / 2 + (b.y - cy) * s : b.y) / H) * 100, co: b.v.co * s}]));
+  return dsVat.map((v) => {
+    const m = moi.get(v.id);
+    if (!m) return v;
+    // chỉ ghi đè khi có dời đáng kể hoặc phải thu nhỏ
+    if (!thuNho && Math.abs(m.x - v.x) < 0.5 && Math.abs(m.y - v.y) < 0.5) return v;
+    return {...v, x: m.x, y: m.y, co: m.co};
+  });
+}

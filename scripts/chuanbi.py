@@ -326,7 +326,10 @@ def so_buoc_san_khau(du):
     if not isinstance(du, dict):
         return 0, False
     buoc = [1]
-    for x in (du.get("vat") or []) + (du.get("hanh_dong") or []):
+    ds_vat = du.get("vat") if isinstance(du.get("vat"), list) else []
+    ds_hd = du.get("hanh_dong") if isinstance(du.get("hanh_dong"), list) else []
+    du = {"vat": ds_vat, "hanh_dong": ds_hd}
+    for x in ds_vat + ds_hd:
         if isinstance(x, dict):
             try:
                 buoc.append(int(float(x.get("buoc") or 1)))

@@ -19,7 +19,7 @@ export const LOAI_VAT = [
 export type LoaiVat = (typeof LOAI_VAT)[number];
 
 export const KIEU_HANH_DONG = [
-  'chon', 'loai_bo', 'sang', 'rung', 'quay', 'mo', 'lay_ra', 'dat_gia_tri', 'bung_ra', 'di_chuyen', 'phong_to', 'thu_nho', 'an', 'doi_chu',
+  'chon', 'loai_bo', 'sang', 'rung', 'quay', 'mo', 'lay_ra', 'dat_gia_tri', 'bung_ra', 'di_chuyen', 'phong_to', 'thu_nho', 'an', 'doi_chu', 'goc_3d',
 ] as const;
 export type KieuHanhDong = (typeof KIEU_HANH_DONG)[number];
 
@@ -67,9 +67,12 @@ export type HanhDong = {
   muc: number; // mức phóng to
   so: number; // số lượng lấy ra
   noiDung: string;
+  nghieng: number; // goc_3d: độ nghiêng sàn (0 = nhìn thẳng, 60 = nhìn chéo xuống như bàn cờ)
+  xoay: number; // goc_3d: xoay quanh sân khấu (độ, -60..60)
 };
 
-export type DuLieuSanKhau = {vat: Vat[]; hanhDong: HanhDong[]; soBuoc: number};
+export type GocNhin = {nghieng: number; xoay: number};
+export type DuLieuSanKhau = {vat: Vat[]; hanhDong: HanhDong[]; soBuoc: number; gocDau: GocNhin | null};
 
 const MAU_HOP_LE = ['do', 'xanh_duong', 'xanh_la', 'vang', 'tim', 'cam', 'hong', 'trang', 'xam', 'nau', 'ngoc', 'den'];
 const tenMau = (v: unknown): string => (typeof v === 'string' && MAU_HOP_LE.includes(v) ? v : '');
@@ -148,6 +151,8 @@ function hanhDong(raw: Record<string, unknown>): HanhDong | null {
     muc: so(raw.muc, 1.6, 1, 3),
     so: Math.round(so(raw.so, 1, 1, 6)),
     noiDung: chu(raw.noi_dung, 48),
+    nghieng: so(raw.nghieng, 50, 0, 68),
+    xoay: so(raw.xoay, 0, -70, 70),
   };
 }
 
@@ -171,7 +176,12 @@ export function hopLeSanKhau(d: unknown): DuLieuSanKhau | null {
         .filter((h): h is HanhDong => h !== null) // có thể nhắm vào vật của cảnh trước (giu_san_khau)
     : [];
   const soBuoc = Math.max(1, ...ds.map((v) => v.buoc), ...hd.map((h) => h.buoc));
-  return {vat: ds, hanhDong: hd, soBuoc};
+  // góc nhìn 3D ban đầu của cảnh: "goc_nhin": {"nghieng": 50, "xoay": -20} hoặc chuỗi "ban" (nhìn chéo như bàn cờ) | "phang"
+  let gocDau: GocNhin | null = null;
+  const g = d.goc_nhin;
+  if (g === 'ban') gocDau = {nghieng: 52, xoay: -18};
+  else if (laDT(g)) gocDau = {nghieng: so(g.nghieng, 50, 0, 68), xoay: so(g.xoay, 0, -70, 70)};
+  return {vat: ds, hanhDong: hd, soBuoc, gocDau};
 }
 
 // Nối tiếp sân khấu của cảnh trước (giu_san_khau): vật và hành động cũ coi như đã xong từ đầu cảnh (bước 0),
@@ -186,7 +196,10 @@ export function noiTiepSanKhau(truoc: DuLieuSanKhau | null, nay: DuLieuSanKhau):
   // camera: chỉ giữ lần phóng to cuối của cảnh trước
   const cam = hdCu.filter((h) => h.kieu === 'phong_to' || h.kieu === 'thu_nho').slice(-1);
   const khac = hdCu.filter((h) => h.kieu !== 'phong_to' && h.kieu !== 'thu_nho');
-  return {vat: [...vatCu, ...vatMoi], hanhDong: [...khac, ...cam, ...nay.hanhDong], soBuoc: nay.soBuoc};
+  // góc 3D: giữ góc cuối của cảnh trước làm góc đầu (camera không giật), trừ khi cảnh mới đặt góc riêng
+  const goc3dCu = hdCu.filter((h) => h.kieu === 'goc_3d').slice(-1);
+  const gocDau = nay.gocDau || (goc3dCu.length ? {nghieng: goc3dCu[0].nghieng, xoay: goc3dCu[0].xoay} : truoc.gocDau);
+  return {vat: [...vatCu, ...vatMoi], hanhDong: [...khac.filter((h) => h.kieu !== 'goc_3d'), ...cam, ...nay.hanhDong], soBuoc: nay.soBuoc, gocDau};
 }
 
 // Thời lượng tối thiểu (giây) để mọi bước kịp diễn ra.

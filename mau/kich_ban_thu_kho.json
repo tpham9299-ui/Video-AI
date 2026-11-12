@@ -1,0 +1,80 @@
+{
+ "id": "VT-thu-kho",
+ "lop": "11",
+ "chu_de": "Kiểm thử đề đa dạng",
+ "chu_de_ngan": "Thử nhiều dạng bài",
+ "tieu_de": "Kiểm thử: đề đa dạng + 3D",
+ "dap_an_cuoi": "1/6",
+ "bai_hoc_rut_ra": ["Liệt kê không gian mẫu bằng bảng", "Đếm ô thuận lợi rồi chia", "Kiểm tra bằng cách thứ hai"],
+ "video_tiep_theo": "Tổng 7 hay tổng 8 dễ ra hơn?",
+ "canh": [
+  {"so": 1, "loai": "de_bai", "tieu_de_canh": "Tung hai xúc xắc trên bàn", "tu_khoa": "hai xúc xắc",
+   "loi_thoai": "Tung hai con xúc xắc lên bàn. Chúng lăn, nảy rồi dừng lại ở mặt ba và mặt bốn.",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {"loai": "san_khau", "mo_ta": "Góc nhìn chéo xuống mặt bàn 3D; hai xúc xắc khối lập phương lăn, nảy, dừng ở 3 và 4; nhãn dài bị đặt đè lên xúc xắc để thử tự xếp.", "du_lieu": {
+     "goc_nhin": "ban",
+     "vat": [
+      {"id": "xx", "loai": "xuc_xac", "x": 50, "y": 45, "so_luong": 2, "ket_qua": [3, 4], "buoc": 1},
+      {"id": "n1", "loai": "nhan", "x": 50, "y": 48, "noi_dung": "Tổng bằng 7 có hiếm không nhỉ?", "tu_khoa": "7", "buoc": 3}
+     ],
+     "hanh_dong": [{"buoc": 2, "vat": "xx", "kieu": "quay"}, {"buoc": 3, "kieu": "goc_3d", "nghieng": 35, "xoay": 25}]}}},
+  {"so": 2, "loai": "nhac_lai", "tieu_de_canh": "Không gian mẫu có 36 kết quả", "tu_khoa": "36 kết quả", "trinh_bay": "xep",
+   "loi_thoai": "Mỗi xúc xắc có sáu mặt, nên hai xúc xắc có ba mươi sáu kết quả như nhau.",
+   "noi_dung_man_hinh": ["n(\\Omega)=6\\times 6=36"],
+   "minh_hoa": {"loai": "san_khau", "mo_ta": "Lưới 36 ô lấp đầy, huy hiệu vàng đếm lên 36, hai vật đặt chồng nhau để thử tự xếp.", "du_lieu": {
+     "vat": [
+      {"id": "luoi", "loai": "luoi_o", "x": 50, "y": 50, "so_luong": 36, "so_cot": 6, "buoc": 1},
+      {"id": "dem", "loai": "so_dem", "kieu": "vien", "x": 50, "y": 55, "gia_tri": 36, "nhan": "kết quả", "buoc": 2}
+     ],
+     "hanh_dong": [{"buoc": 3, "vat": "luoi", "kieu": "chon", "chi_so": [6, 11, 16, 21, 26, 31], "mau": "cam"}]}}},
+  {"so": 3, "loai": "y_do", "tieu_de_canh": "Đồng xu: camera xoay quanh", "tu_khoa": "xoay quanh",
+   "loi_thoai": "Thử thêm đồng xu. Camera đi vòng quanh để bạn thấy đồng xu lật thật trong không gian.",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {"loai": "san_khau", "mo_ta": "Ba đồng xu 3D lật, camera nghiêng rồi xoay vòng sang trái sang phải.", "du_lieu": {
+     "vat": [{"id": "xu", "loai": "dong_xu", "x": 50, "y": 50, "so_luong": 3, "ds": ["S", "N", "S"], "buoc": 1}],
+     "hanh_dong": [{"buoc": 1, "kieu": "goc_3d", "nghieng": 50, "xoay": -30}, {"buoc": 2, "vat": "xu", "kieu": "quay"}, {"buoc": 3, "kieu": "goc_3d", "nghieng": 45, "xoay": 30}, {"buoc": 4, "kieu": "goc_3d", "nghieng": 0, "xoay": 0}]}}},
+  {"so": 4, "loai": "bay", "tieu_de_canh": "Bẫy: xét nghiệm dương tính chắc chắn bị bệnh?", "tu_khoa": "dương tính",
+   "loi_thoai": "Câu Bayes kinh điển: xét nghiệm đúng chín mươi lăm phần trăm, nhưng người dương tính chưa chắc đã bị bệnh.",
+   "noi_dung_man_hinh": [],
+   "chuyen_canh": "lat_3d",
+   "minh_hoa": {"loai": "san_khau", "mo_ta": "Hàng 12 người, 1 người bệnh sáng đỏ; danh sách dài các ý; thử chữ dài.", "du_lieu": {
+     "vat": [
+      {"id": "ng", "loai": "nguoi", "x": 50, "y": 30, "so_luong": 12, "mau": "xanh_duong", "buoc": 1},
+      {"id": "ds", "loai": "danh_sach", "x": 50, "y": 40, "noi_dung": "Đề cho rất nhiều dữ kiện", "ds": ["Tỉ lệ mắc bệnh trong cộng đồng chỉ 1%", "Xét nghiệm đúng 95% với người bệnh", "Báo nhầm 5% với người khỏe mạnh"], "buoc": 2}
+     ],
+     "hanh_dong": [{"buoc": 2, "vat": "ng", "kieu": "chon", "chi_so": [4], "mau": "do"}, {"buoc": 3, "vat": "ds", "kieu": "chon", "chi_so": [1], "mau": "vang"}]}}},
+  {"so": 5, "loai": "tinh_toan", "tieu_de_canh": "Mô hình diện tích (mẫu cũ)", "tu_khoa": "diện tích", "trinh_bay": "cong_don",
+   "loi_thoai": "Dùng mô hình diện tích: phần bệnh rất nhỏ, phần báo nhầm lại lớn hơn nhiều.",
+   "noi_dung_man_hinh": ["P=\\frac{0{,}0095}{0{,}0095+0{,}0495}"],
+   "minh_hoa": {"loai": "dien_tich", "mo_ta": "Hình vuông đơn vị chia cột bệnh 1%, khỏe 99%; ô dương tính sáng vàng.", "du_lieu": {
+     "ten_cot": "Thực tế", "ten_hang": "Xét nghiệm", "tong": "0{,}0095+0{,}0495",
+     "cot": [
+      {"nhan": "Bệnh", "xs": "0{,}01", "gia_tri": 0.2, "mau": "do", "hang": [{"nhan": "+", "xs": "0{,}95", "gia_tri": 0.95, "kq": "0{,}0095", "to": true}, {"nhan": "−", "xs": "0{,}05", "gia_tri": 0.05}]},
+      {"nhan": "Khỏe", "xs": "0{,}99", "gia_tri": 0.8, "mau": "xanh_duong", "hang": [{"nhan": "+", "xs": "0{,}05", "gia_tri": 0.05, "kq": "0{,}0495", "to": true}, {"nhan": "−", "xs": "0{,}95", "gia_tri": 0.95}]}
+     ]}}},
+  {"so": 6, "loai": "thu_nho", "tieu_de_canh": "Hình hỏng: phải tự dự phòng", "tu_khoa": "dự phòng",
+   "loi_thoai": "Cảnh này cố ý viết hình sai dạng để kiểm tra máy có tự thay bằng nhãn dự phòng không.",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {"loai": "san_khau", "mo_ta": "Dữ liệu hỏng", "du_lieu": {"vat": "hong"}}},
+  {"so": 7, "loai": "diem_chot", "tieu_de_canh": "Chọn ban cán sự từ 12 bạn", "tu_khoa": "12 bạn",
+   "loi_thoai": "Chọn ba bạn trong mười hai bạn có tên. Thẻ các trường hợp bung ra rất nhiều.",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {"loai": "san_khau", "mo_ta": "Mười hai bạn có tên, ba bạn được chọn; sáu thẻ bung ra; lá bài lật 3D.", "du_lieu": {
+     "goc_nhin": {"nghieng": 40, "xoay": 15},
+     "vat": [
+      {"id": "lop", "loai": "nguoi", "x": 50, "y": 25, "so_luong": 12, "ds": ["An", "Bình", "Chi", "Dũng", "Em", "Giang", "Hà", "Khoa", "Linh", "Minh", "Nga", "Phúc"], "buoc": 1},
+      {"id": "bai", "loai": "the_bai", "x": 50, "y": 72, "ds": ["A♥", "K♠", "7♦"], "buoc": 2}
+     ],
+     "hanh_dong": [{"buoc": 2, "vat": "lop", "kieu": "chon", "chi_so": [2, 5, 9], "mau": "xanh_la"}, {"buoc": 3, "kieu": "goc_3d", "nghieng": 0, "xoay": 0}]}}},
+  {"so": 8, "loai": "dap_an", "tieu_de_canh": "Đáp án: 1/6", "tu_khoa": "1/6", "trinh_bay": "cong_don",
+   "loi_thoai": "Có sáu ô tổng bằng bảy trong ba mươi sáu ô, vậy xác suất là một phần sáu.",
+   "noi_dung_man_hinh": ["P=\\frac{6}{36}", "P=\\frac{6}{36}=\\frac{1}{6}"],
+   "minh_hoa": {"loai": "san_khau", "mo_ta": "Đồng hồ đo kim dừng ở 1/6.", "du_lieu": {
+     "vat": [{"id": "do", "loai": "dong_ho_do", "x": 50, "y": 50, "gia_tri": 0.1667, "gia_tri_chu": "1/6", "nhan": "P(tổng = 7)", "buoc": 1}],
+     "hanh_dong": [{"buoc": 2, "vat": "do", "kieu": "sang"}]}}},
+  {"so": 9, "loai": "bai_hoc", "tieu_de_canh": "Không hình, không công thức", "tu_khoa": "Không hình",
+   "loi_thoai": "Cảnh cuối cố ý không có hình và không có công thức, máy phải tự hiện nhãn cho khỏi trống.",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {"loai": "khong", "mo_ta": "", "du_lieu": null}}
+ ]
+}

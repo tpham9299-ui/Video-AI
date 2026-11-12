@@ -32,7 +32,7 @@
    "noi_dung_man_hinh": [],
    "minh_hoa": {
     "loai": "san_khau",
-    "mo_ta": "Ba cánh cửa cam bật lên lần lượt, nhãn neon '50/50?' bật ra rồi rung mạnh như bị nghi ngờ.",
+    "mo_ta": "Ba cánh cửa cam đứng trên sàn 3D nhìn chéo, camera xoay từ trái sang phải; nhãn neon '50/50?' bật ra rồi rung.",
     "du_lieu": {
      "vat": [
       {
@@ -65,8 +65,18 @@
        "buoc": 3,
        "vat": "n5050",
        "kieu": "rung"
+      },
+      {
+       "buoc": 2,
+       "kieu": "goc_3d",
+       "nghieng": 38,
+       "xoay": 18
       }
-     ]
+     ],
+     "goc_nhin": {
+      "nghieng": 42,
+      "xoay": -22
+     }
     }
    }
   },
@@ -117,6 +127,12 @@
        "chi_so": [
         3
        ]
+      },
+      {
+       "buoc": 3,
+       "kieu": "goc_3d",
+       "nghieng": 0,
+       "xoay": 0
       }
      ]
     }

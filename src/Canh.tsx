@@ -22,10 +22,22 @@ import {CanhProps, PhongCach} from './types';
 export type HookThongTin = {chu: string; kieu: string; nhanManh: string[]};
 
 // Dữ liệu sân khấu của một cảnh, đã nối tiếp các cảnh trước nếu cảnh đó "giu_san_khau".
+// Sân khấu dự phòng: hình của cảnh hỏng/thiếu (đề lạ, AI viết sai dạng) -> nhãn neon lớn ghi tiêu đề cảnh, không để trống.
+function sanKhauDuPhong(c: CanhProps): DuLieuSanKhau | null {
+  const chu = (c.tieuDeCanh || c.chuThich[0] || '').trim();
+  if (!chu) return null;
+  return hopLeSanKhau({vat: [{id: 'du_phong', loai: 'nhan', x: 50, y: 50, noi_dung: chu.slice(0, 40), tu_khoa: c.tuKhoa, mau: 'xanh_la', buoc: 1}], hanh_dong: [{buoc: 2, vat: 'du_phong', kieu: 'sang'}]});
+}
+
 export function sanKhauCuaCanh(ds: CanhProps[], i: number): DuLieuSanKhau | null {
   const c = ds[i];
-  if (!c || c.minhHoa.loai !== 'san_khau') return null;
-  const d = hopLeSanKhau(c.minhHoa.duLieu);
+  if (!c) return null;
+  if (c.minhHoa.loai !== 'san_khau') {
+    // cảnh không có hình lẫn công thức: dùng sân khấu dự phòng cho khỏi trống
+    const hinhCu = phanLoaiHinh(c.minhHoa.loai, c.minhHoa.moTa, c.minhHoa.duLieu);
+    return !hinhCu && !c.noiDung.length && c.so > 1 ? sanKhauDuPhong(c) : null;
+  }
+  const d = hopLeSanKhau(c.minhHoa.duLieu) || sanKhauDuPhong(c);
   if (!d) return null;
   return c.giuSanKhau && i > 0 ? noiTiepSanKhau(sanKhauCuaCanh(ds, i - 1), d) : d;
 }
@@ -113,7 +125,7 @@ export const Canh: React.FC<{
   );
 
   // chuyển cảnh: mỗi cảnh một kiểu (lướt lên, phóng xuyên, lướt ngang...) hoặc theo "chuyen_canh" của kịch bản
-  const kieuCC = canh.chuyenCanh && (KIEU_CHUYEN as readonly string[]).includes(canh.chuyenCanh) ? canh.chuyenCanh : KIEU_CHUYEN[(canh.so - 1) % 3];
+  const kieuCC = canh.chuyenCanh && (KIEU_CHUYEN as readonly string[]).includes(canh.chuyenCanh) ? canh.chuyenCanh : (['truot_len', 'phong', 'luot_ngang', 'lat_3d'] as const)[(canh.so - 1) % 4];
   const ccSan = trangThaiChuyen(kieuCC, frame, canh.soFrame, giuTruoc, giuSau);
   const ccCT = trangThaiChuyen(kieuCC, frame - 4, canh.soFrame - 4);
   const tieuDeCanh = canh.tieuDeCanh;
@@ -136,7 +148,7 @@ export const Canh: React.FC<{
 
       {/* Sân khấu */}
       {coHinh ? (
-        <NhoeHuong nx={ccSan.nx} ny={ccSan.ny} style={{position: 'absolute', left: 0, right: 0, top: yNoiDung, height: caoSan, display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: ccSan.mo, transform: `translate(${ccSan.x}px, ${ccSan.y}px) scale(${ccSan.s})`}}>
+        <NhoeHuong nx={ccSan.nx} ny={ccSan.ny} style={{position: 'absolute', left: 0, right: 0, top: yNoiDung, height: caoSan, display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: ccSan.mo, transform: `perspective(1600px) translate(${ccSan.x}px, ${ccSan.y}px) rotateY(${ccSan.ry}deg) scale(${ccSan.s})`}}>
           {pc.khungSanKhau !== false ? <KhungSan w={Math.min(1040, SK_W * tiLe + 40)} h={Math.min(caoSan - 6, SK_H * tiLe + 24)} p={giuTruoc ? 1 : kep((frame - 3) / 14)} /> : null}
           <div style={{width: SK_W, height: SK_H, transform: `scale(${tiLe})`, flexShrink: 0}}>
             {sanKhau ? (
@@ -151,7 +163,7 @@ export const Canh: React.FC<{
       ) : null}
 
       {/* Chú thích + công thức */}
-      <NhoeHuong nx={ccCT.nx} ny={ccCT.ny} style={{position: 'absolute', left: 50, right: 50, top: coHinh ? yNoiDung + caoSan + 16 : Y_SAN, bottom: 1920 - dayVung, display: 'flex', flexDirection: 'column', justifyContent: coHinh ? 'flex-start' : 'center', alignItems: 'center', gap: 16, opacity: frame < 4 ? 0 : ccCT.mo, transform: `translate(${ccCT.x}px, ${ccCT.y}px) scale(${ccCT.s})`}}>
+      <NhoeHuong nx={ccCT.nx} ny={ccCT.ny} style={{position: 'absolute', left: 50, right: 50, top: coHinh ? yNoiDung + caoSan + 16 : Y_SAN, bottom: 1920 - dayVung, display: 'flex', flexDirection: 'column', justifyContent: coHinh ? 'flex-start' : 'center', alignItems: 'center', gap: 16, opacity: frame < 4 ? 0 : ccCT.mo, transform: `perspective(1600px) translate(${ccCT.x}px, ${ccCT.y}px) rotateY(${ccCT.ry}deg) scale(${ccCT.s})`}}>
         {coNote ? <ChuThich dong={canh.chuThich} bd={Math.max(0.6, giayAm * 0.45)} /> : null}
         {hienCongThuc ? (
           <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: coHinh ? '14px 26px' : 0, borderRadius: 24, background: coHinh ? 'rgba(4,14,13,0.55)' : 'transparent', border: coHinh ? '2px solid rgba(59,242,154,0.25)' : 'none', opacity: kep((t - treCT + 0.3) * 3)}}>
