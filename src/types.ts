@@ -1,0 +1,56 @@
+// Kiểu dữ liệu chung. File props.json do scripts/chuanbi.py sinh ra có đúng dạng "Props" này.
+
+export type Cau = {text: string; bat: number; ket: number}; // bat/ket: giây tính từ đầu cảnh
+
+export type MinhHoa = {loai: string; moTa?: string; duLieu?: unknown};
+
+export type CanhProps = {
+  so: number;
+  loai: string;
+  noiDung: string[]; // các dòng LaTeX hiện trên màn hình
+  minhHoa: MinhHoa;
+  audio: string | null; // đường dẫn trong thư mục public/, ví dụ "giong/VT2610-xx_c1.mp3"
+  batDau: number; // khung hình bắt đầu của cảnh trong cả video
+  soFrame: number; // số khung hình của cảnh
+  leadFrame: number; // số khung hình im lặng trước khi bắt đầu đọc
+  cau: Cau[]; // các câu/đoạn lời thoại kèm mốc thời gian
+  chuThich: string[]; // khung chú thích viền vàng (ý tưởng then chốt)
+  trinhBay: string; // 'bien_doi' = các dòng công thức biến hình nối tiếp kiểu Manim; 'xep' = xếp chồng
+};
+
+export type ThuongHieuProps = {ten: string; khauHieu: string; handle: string; markNuoc: boolean; logo: string | null};
+export type OutroProps = {tep: string; loai: 'video' | 'anh'; soFrame: number; batDau: number};
+
+export type NenProps = {tep: string; loai: 'video' | 'anh'; soFrame: number};
+
+// Tham số phong cách (đọc từ phong_cach.json): đổi giao diện mà không cần sửa mã.
+export type PhongCach = {
+  doMoNen: number; // 0-1: độ tối phủ lên nền của bạn để chữ dễ đọc
+  kyHieuTroi: boolean; // ký hiệu xác suất trôi lên trên nền
+  quangSang: boolean; // quầng sáng màu khi dùng nền gradient mặc định
+  kieuNen: string; // 'luoi' = lưới phối cảnh như video mẫu (mặc định); 'luoi_phang' = lưới phẳng; 'gradient' = nền chuyển màu
+  kieuToan: string; // 'latex' = công thức phông LaTeX có chân như Manim (mặc định); 'dong_nhat' = công thức cùng phông không chân với chữ
+  kieuHinh: string; // 'manim' = hình nét phẳng như video mẫu (mặc định); 'that' = vật 3D (xúc xắc, xu, bài)
+  thanhTienDo: boolean;
+  phuDe: boolean;
+  mau: Record<string, string>; // ghi đè bảng màu (vang, lam, hong, xanh, nen1, nen2)
+};
+
+export type Props = {
+  id: string;
+  tieuDe: string;
+  hook: string;
+  dapAn: string;
+  lop: string;
+  fps: number;
+  tongFrame: number;
+  hookChu: string; // dòng chữ hook lớn ở 5 giây đầu
+  hookKieu: string;
+  nhanManh: string[]; // từ khóa trong hook được nhấn mạnh
+  nhac: string | null;
+  nen: NenProps | null;
+  thuongHieu: ThuongHieuProps;
+  outro: OutroProps | null;
+  phongCach: PhongCach;
+  canh: CanhProps[];
+};

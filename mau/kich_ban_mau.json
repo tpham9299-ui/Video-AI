@@ -1,0 +1,262 @@
+{
+ "id": "VT-manim",
+ "lop": "11",
+ "chu_de": "Hai bi cùng màu",
+ "de_bai": "Một hộp có 5 bi đỏ và 3 bi xanh. Lấy ngẫu nhiên đồng thời 2 bi. Tính xác suất để hai bi cùng màu.",
+ "dap_an": "13/28",
+ "tieu_de": "Hai bi cùng màu: đừng quên một trường hợp!",
+ "hook": "Rất nhiều bạn tính thiếu một trường hợp ở câu bốc bi này. Bạn có thấy không?",
+ "hook_chu": "Câu bốc bi này, rất nhiều bạn tính thiếu 1 trường hợp!",
+ "hook_kieu": "sai_lam",
+ "nhan_manh": [
+  "thiếu",
+  "1 trường hợp"
+ ],
+ "hook_ung_vien": [
+  "a",
+  "b",
+  "c"
+ ],
+ "y_tuong_chinh": "Hai bi cùng màu chỉ có hai khả năng rời nhau là cùng đỏ hoặc cùng xanh, nên đếm từng nhóm rồi cộng lại.",
+ "dap_an_cuoi": "13/28",
+ "hashtag": [
+  "#toanhoc"
+ ],
+ "canh": [
+  {
+   "so": 1,
+   "loai": "mo_dau",
+   "loi_thoai": "Rất nhiều bạn tính thiếu một trường hợp ở câu bốc bi này. Bạn có thấy không?",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {
+    "loai": "bi_hop",
+    "mo_ta": "Chiếc hộp trắng vẽ dần, năm bi đỏ rồi ba bi xanh lần lượt rơi vào, số lượng ghi bên trái từng hàng.",
+    "du_lieu": {
+     "nhom": [
+      {
+       "ten": "đỏ",
+       "so": 5
+      },
+      {
+       "ten": "xanh",
+       "so": 3
+      }
+     ]
+    }
+   }
+  },
+  {
+   "so": 2,
+   "loai": "de_bai",
+   "loi_thoai": "Lấy đồng thời hai bi. Mỗi cách chọn hai bi đỏ là một khả năng, và có tổng cộng mười cách như vậy.",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {
+    "loai": "bi_hop",
+    "mo_ta": "Hai viên bi đỏ bay ra khay vạch đứt màu vàng bên dưới, sáng lên, kèm ghi chú số cách chọn hai bi đỏ.",
+    "du_lieu": {
+     "nhom": [
+      {
+       "ten": "đỏ",
+       "so": 5
+      },
+      {
+       "ten": "xanh",
+       "so": 3
+      }
+     ],
+     "chon": [
+      {
+       "ten": "đỏ",
+       "so": 2
+      }
+     ],
+     "ghi_chu": "\\binom{5}{2}=10"
+    }
+   }
+  },
+  {
+   "so": 3,
+   "loai": "y_do",
+   "loi_thoai": "Có hai mươi tám cách lấy hai bi. Mười cách cùng đỏ, ba cách cùng xanh, còn mười lăm cách khác màu.",
+   "noi_dung_man_hinh": [
+    "n(\\Omega)=\\binom{8}{2}=28"
+   ],
+   "trinh_bay": "cong_don",
+   "minh_hoa": {
+    "loai": "venn",
+    "mo_ta": "Mỗi chấm là một cách lấy hai bi, rơi lần lượt vào vùng cùng đỏ, vùng cùng xanh và vùng khác màu ngoài hai vòng tròn.",
+    "du_lieu": {
+     "A": "Cùng đỏ",
+     "B": "Cùng xanh",
+     "mau_A": "do",
+     "mau_B": "xanh_duong",
+     "dem": {
+      "chiA": 10,
+      "giao": 0,
+      "chiB": 3,
+      "ngoai": 15
+     },
+     "to": [
+      "chiA",
+      "chiB"
+     ]
+    }
+   }
+  },
+  {
+   "so": 4,
+   "loai": "diem_chot",
+   "loi_thoai": "Cùng màu chỉ có hai khả năng rời nhau: hoặc cùng đỏ, hoặc cùng xanh. Nên ta tính từng nhánh rồi cộng lại.",
+   "noi_dung_man_hinh": [
+    "P=P(\\textcolor{#FC6255}{ĐĐ})+P(\\textcolor{#58C4DD}{XX})",
+    "P=P(\\textcolor{#FC6255}{ĐĐ})+P(\\textcolor{#58C4DD}{XX})=\\frac{5}{14}+\\frac{3}{28}"
+   ],
+   "trinh_bay": "cong_don",
+   "chu_thich": [
+    "Hai trường hợp rời nhau",
+    "nên ta cộng xác suất"
+   ],
+   "minh_hoa": {
+    "loai": "so_do_cay",
+    "mo_ta": "Cây hai tầng: gốc lấy bi, tầng một đỏ hoặc xanh, tầng hai đỏ hoặc xanh; hai đường đi cùng màu sáng vàng và hiện tích xác suất ở lá.",
+    "du_lieu": {
+     "goc": "Lấy 2 bi",
+     "nhanh": [
+      {
+       "nhan": "Đỏ",
+       "xs": "\\frac{5}{8}",
+       "mau": "do",
+       "con": [
+        {
+         "nhan": "Đỏ",
+         "xs": "\\frac{4}{7}",
+         "kq": "\\frac{5}{14}",
+         "to": true
+        },
+        {
+         "nhan": "Xanh",
+         "xs": "\\frac{3}{7}",
+         "kq": "\\frac{15}{56}"
+        }
+       ]
+      },
+      {
+       "nhan": "Xanh",
+       "xs": "\\frac{3}{8}",
+       "mau": "xanh_duong",
+       "con": [
+        {
+         "nhan": "Đỏ",
+         "xs": "\\frac{5}{7}",
+         "kq": "\\frac{15}{56}"
+        },
+        {
+         "nhan": "Xanh",
+         "xs": "\\frac{2}{7}",
+         "kq": "\\frac{3}{28}",
+         "to": true
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "so": 5,
+   "loai": "tinh_toan",
+   "loi_thoai": "Nhìn bằng diện tích: hình vuông đơn vị chia theo bi lần một, rồi chia theo bi lần hai. Diện tích mỗi ô chính là xác suất.",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {
+    "loai": "dien_tich",
+    "mo_ta": "Hình vuông đơn vị chia hai cột theo lần một rồi chia từng cột theo lần hai; hai ô cùng màu sáng vàng và cộng lại thành đáp án bên phải.",
+    "du_lieu": {
+     "ten_cot": "Lần 1",
+     "ten_hang": "Lần 2",
+     "tong": "\\frac{5}{14}+\\frac{3}{28}",
+     "cot": [
+      {
+       "nhan": "Đỏ",
+       "xs": "\\frac{5}{8}",
+       "gia_tri": 0.625,
+       "mau": "do",
+       "hang": [
+        {
+         "nhan": "Đỏ",
+         "xs": "\\frac{4}{7}",
+         "gia_tri": 0.5714,
+         "mau": "do",
+         "kq": "\\frac{5}{14}",
+         "to": true
+        },
+        {
+         "nhan": "Xanh",
+         "xs": "\\frac{3}{7}",
+         "gia_tri": 0.4286,
+         "mau": "xanh_duong",
+         "kq": "\\frac{15}{56}"
+        }
+       ]
+      },
+      {
+       "nhan": "Xanh",
+       "xs": "\\frac{3}{8}",
+       "gia_tri": 0.375,
+       "mau": "xanh_duong",
+       "hang": [
+        {
+         "nhan": "Đỏ",
+         "xs": "\\frac{5}{7}",
+         "gia_tri": 0.7143,
+         "mau": "do",
+         "kq": "\\frac{15}{56}"
+        },
+        {
+         "nhan": "Xanh",
+         "xs": "\\frac{2}{7}",
+         "gia_tri": 0.2857,
+         "mau": "xanh_duong",
+         "kq": "\\frac{3}{28}",
+         "to": true
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "so": 6,
+   "loai": "dap_an",
+   "loi_thoai": "Cộng lại, xác suất cần tìm là mười ba phần hai mươi tám.",
+   "noi_dung_man_hinh": [
+    "P=\\frac{5}{14}+\\frac{3}{28}",
+    "P=\\frac{5}{14}+\\frac{3}{28}=\\frac{13}{28}"
+   ],
+   "trinh_bay": "cong_don",
+   "minh_hoa": {
+    "loai": "khong",
+    "mo_ta": "",
+    "du_lieu": null
+   }
+  },
+  {
+   "so": 7,
+   "loai": "bai_hoc",
+   "loi_thoai": "Làm thử nhiều lần, tần suất sẽ tiến dần về mười ba phần hai mươi tám. Bạn thấy còn cách nào nhanh hơn không?",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {
+    "loai": "thuc_nghiem",
+    "mo_ta": "Đồ thị tần suất sau mỗi lần thử tiến dần về đường nét đứt màu vàng là xác suất lý thuyết.",
+    "du_lieu": {
+     "p": 0.4643,
+     "p_xs": "\\frac{13}{28}",
+     "n": 300,
+     "ten": "Bốc hai bi, đếm lần cùng màu",
+     "mau": "xanh_duong",
+     "seed": 5
+    }
+   }
+  }
+ ]
+}

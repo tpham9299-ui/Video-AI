@@ -1,0 +1,24 @@
+{
+  "name": "video-xacsuat",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bộ phận 2: dựng video giải toán xác suất từ kịch bản JSON (giọng đọc edge-tts + Remotion)",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "kiemtra": "tsc --noEmit",
+    "chuanbi:mau": "python3 scripts/chuanbi.py mau/kich_ban_mau.json --gia-lap",
+    "dung:mau": "python3 scripts/chuanbi.py mau/kich_ban_mau.json --gia-lap && remotion render src/index.ts Video out/mau.mp4 --props=public/props.json"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.0",
+    "katex": "^0.16.11",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/katex": "^0.16.7",
+    "@types/react": "^18.3.3",
+    "typescript": "^5.5.4"
+  }
+}

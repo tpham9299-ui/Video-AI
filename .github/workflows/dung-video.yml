@@ -1,0 +1,143 @@
+name: Dựng video
+
+# Kích hoạt: Apps Script gửi sự kiện "dung-video" (kèm kịch bản JSON) tới GitHub.
+# Chạy thử tay: Actions > Dựng video > Run workflow (sẽ dựng kịch bản mẫu, không báo kết quả về Apps Script).
+on:
+  repository_dispatch:
+    types: [dung-video]
+  workflow_dispatch:
+
+concurrency:
+  group: dung-video
+  cancel-in-progress: false
+
+jobs:
+  dung:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+      APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
+      DUNG_VIDEO_SECRET: ${{ secrets.DUNG_VIDEO_SECRET }}
+      DRIVE_THU_MUC: ${{ vars.DRIVE_THU_MUC }}
+      DRIVE_NEN: ${{ vars.DRIVE_NEN }}
+      DRIVE_FONT: ${{ vars.DRIVE_FONT }}
+      DRIVE_THUONG_HIEU: ${{ vars.DRIVE_THUONG_HIEU }}
+      GIONG: ${{ vars.GIONG }}
+      TOC_DO: ${{ vars.TOC_DO }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cài công cụ hệ thống
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-noto-color-emoji \
+            libnss3 libdbus-1-3 libatk1.0-0 libasound2t64 libxrandr2 libxkbcommon-dev libxfixes3 \
+            libxcomposite1 libxdamage1 libgbm-dev libcups2 libatk-bridge2.0-0 libpango-1.0-0 libcairo2
+          pip install edge-tts
+          curl -fsSL https://rclone.org/install.sh | sudo bash
+
+      - name: Cài thư viện Node
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+      - name: Lấy ảnh/video nền từ Google Drive
+        if: ${{ env.RCLONE_CONF != '' }}
+        run: |
+          mkdir -p ~/.config/rclone public/nen
+          printf '%s' "$RCLONE_CONF" > ~/.config/rclone/rclone.conf
+          NEN="${DRIVE_NEN:-VIDEO_XACSUAT/nen}"
+          rclone copy "gdrive:$NEN" public/nen --max-size 150M --include "*.{jpg,jpeg,png,webp,mp4,mov,webm,m4v,JPG,JPEG,PNG,MP4,MOV}" || echo "Không có thư mục nền $NEN, dùng nền mặc định"
+          ls -la public/nen || true
+          mkdir -p public/fonts public/thuong_hieu
+          rclone copy "gdrive:${DRIVE_THUONG_HIEU:-VIDEO_XACSUAT/thuong_hieu}" public/thuong_hieu --include "{logo,outro}.*" || echo "Chưa có thư mục thương hiệu"
+          rclone copy "gdrive:${DRIVE_FONT:-VIDEO_XACSUAT/font}" public/fonts --include "tuy_chon-*" || echo "Không có phông riêng, dùng phông đóng gói sẵn"
+
+      - name: Ghi kịch bản
+        env:
+          KICH_BAN: ${{ toJson(github.event.client_payload.kich_ban) }}
+        run: |
+          if [ -z "$KICH_BAN" ] || [ "$KICH_BAN" = "null" ]; then
+            echo "Không có kịch bản gửi kèm -> dùng kịch bản mẫu"
+            cp mau/kich_ban_mau.json kich_ban.json
+          else
+            printf '%s' "$KICH_BAN" > kich_ban.json
+          fi
+
+      - name: Tạo giọng đọc và mốc thời gian
+        run: python3 scripts/chuanbi.py kich_ban.json
+
+      - name: Dựng video
+        id: dung
+        run: |
+          ID=$(python3 -c "import json;print(json.load(open('public/props.json',encoding='utf8'))['id'])")
+          GIAY=$(python3 -c "import json;p=json.load(open('public/props.json',encoding='utf8'));print(round(p['tongFrame']/p['fps']))")
+          mkdir -p out
+          npx remotion render src/index.ts Video "out/$ID.mp4" --props=public/props.json --concurrency=2
+          ls -la out
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
+          echo "giay=$GIAY" >> "$GITHUB_OUTPUT"
+
+      - name: Lưu bản sao 3 ngày trên GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: video-${{ steps.dung.outputs.id }}
+          path: out/*.mp4
+          retention-days: 3
+
+      - name: Tải video lên Google Drive
+        id: drive
+        if: ${{ env.RCLONE_CONF != '' }}
+        run: |
+          mkdir -p ~/.config/rclone
+          printf '%s' "$RCLONE_CONF" > ~/.config/rclone/rclone.conf
+          THU_MUC="${DRIVE_THU_MUC:-VIDEO_XACSUAT/video}"
+          ID="${{ steps.dung.outputs.id }}"
+          rclone copy "out/$ID.mp4" "gdrive:$THU_MUC"
+          FILE_ID=$(rclone lsjson "gdrive:$THU_MUC" --files-only --include "$ID.mp4" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d[0]['ID'] if d else '')")
+          if [ -z "$FILE_ID" ]; then echo "Không lấy được ID tệp trên Drive"; exit 1; fi
+          echo "file_id=$FILE_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Báo kết quả về Apps Script
+        if: ${{ always() && github.event_name == 'repository_dispatch' && env.APPS_SCRIPT_URL != '' }}
+        env:
+          ID_VIDEO: ${{ github.event.client_payload.id }}
+          FILE_ID: ${{ steps.drive.outputs.file_id }}
+          GIAY: ${{ steps.dung.outputs.giay }}
+          TRANG_THAI: ${{ job.status }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          ok = os.environ.get("TRANG_THAI") == "success" and bool(os.environ.get("FILE_ID"))
+          d = {
+              "token": os.environ["DUNG_VIDEO_SECRET"],
+              "id": os.environ["ID_VIDEO"],
+              "ok": ok,
+              "file_id": os.environ.get("FILE_ID", ""),
+              "giay": os.environ.get("GIAY", ""),
+              "loi": "" if ok else "Xem nhật ký: https://github.com/%s/actions/runs/%s" % (os.environ["GITHUB_REPOSITORY"], os.environ["GITHUB_RUN_ID"]),
+          }
+          json.dump(d, open("bao_ket_qua.json", "w"))
+          PY
+          # Apps Script có thể đang bận chạy Bộ phận 1 (tối đa ~6 phút): chỉ khi nó trả lời "BAN" mới thử lại.
+          # Quan trọng: KHÔNG dùng "-X POST" cùng "-L". Apps Script xử lý yêu cầu rồi chuyển hướng (302);
+          # "-X POST" làm curl gửi POST lần nữa tới địa chỉ chuyển hướng, nhận lỗi 405 và bị hiểu nhầm là thất bại.
+          for lan in 1 2 3 4 5 6 7; do
+            KQ=$(curl -sS -L -H 'Content-Type: application/json' --data @bao_ket_qua.json "$APPS_SCRIPT_URL" || true)
+            echo "Lần $lan: $KQ"
+            if echo "$KQ" | grep -Eq '"ok" *: *true'; then exit 0; fi
+            if echo "$KQ" | grep -q 'KHONG_TIM_THAY'; then echo "Dòng đã được dọn khỏi hàng đợi, bỏ qua"; exit 0; fi
+            if echo "$KQ" | grep -q 'SAI_TOKEN'; then exit 1; fi
+            if echo "$KQ" | grep -q '"BAN"\|BAN'; then sleep 60; continue; fi
+            if [ "$lan" -ge 2 ]; then break; fi   # phản hồi lạ (không phải JSON): thử thêm 1 lần rồi dừng, tránh gọi lặp
+            sleep 20
+          done
+          echo "Không báo được kết quả về Apps Script"; exit 1
