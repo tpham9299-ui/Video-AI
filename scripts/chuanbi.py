@@ -246,7 +246,7 @@ def ghep(cac_tep, dich):
     chay(lenh)
 
 
-PHONG_CACH_MAC_DINH = {"kieuPhuDe": "hop", "mauPhuDe": "#FF6B2C", "soNenToiDa": 3, "lopNeonTrenNen": True, "doMoNen": 0.35, "kyHieuTroi": False, "quangSang": True, "kieuNen": "neon", "kieuToan": "latex",
+PHONG_CACH_MAC_DINH = {"kieuPhuDe": "hop", "mauPhuDe": "#FF6B2C", "soNenToiDa": 3, "lopNeonTrenNen": True, "doMoNen": 0.35, "kyHieuTroi": False, "quangSang": True, "kieuNen": "cuc_quang", "kieuToan": "dam",
                        "kieuHinh": "manim", "thanhTienDo": False, "phuDe": True, "mau": {}}
 THUONG_HIEU_MAC_DINH = {"ten": "", "khauHieu": "", "handle": "", "markNuoc": True, "outroGiay": 5, "outroTuTao": True, "loiMoi": "Theo dõi để học mẹo xác suất"}
 DUOI_ANH = (".jpg", ".jpeg", ".png", ".webp")
@@ -264,7 +264,7 @@ def doc_phong_cach(tep):
                 if k in d:
                     pc[k] = d[k]
             co_dinh = str(d.get("nen_co_dinh") or "").strip()
-            for k in ("soNenToiDa", "lopNeonTrenNen", "kieuPhuDe", "mauPhuDe"):
+            for k in ("soNenToiDa", "lopNeonTrenNen", "kieuPhuDe", "mauPhuDe", "lopQuet"):
                 if k in d:
                     pc[k] = d[k]
             if isinstance(d.get("thuongHieu"), dict):

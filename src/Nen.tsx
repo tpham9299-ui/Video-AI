@@ -4,6 +4,7 @@ import {NenDong} from './NenDong';
 import {NenLuoi} from './NenLuoi';
 import {NenManim} from './NenManim';
 import {NenNeon} from './NenNeon';
+import {NenCucQuang} from './NenCucQuang';
 import {CanhProps, NenProps, PhongCach} from './types';
 
 // Nền video.
@@ -39,9 +40,28 @@ const MotNen: React.FC<{nen: NenProps; dai: number; kieu: number; vao: boolean}>
   );
 };
 
+// nhóm cảnh hiện tại (đổi màu nền cực quang theo nhóm) và tiến độ chuyển màu
+function nhomHienTai(canh: CanhProps[] | undefined, f: number) {
+  if (!canh || !canh.length) return {nhom: 0, chuyen: 1};
+  let nhom = -1;
+  let bd = 0;
+  canh.forEach((c, i) => {
+    if (i === 0 || !c.giuSanKhau) {
+      if (f >= c.batDau) { nhom++; bd = c.batDau; }
+    }
+  });
+  return {nhom: Math.max(0, nhom), chuyen: Math.min(1, (f - bd) / 24)};
+}
+
+const CucQuang: React.FC<{canh?: CanhProps[]; chiLop?: boolean}> = ({canh, chiLop}) => {
+  const f = useCurrentFrame();
+  const {nhom, chuyen} = nhomHienTai(canh, f);
+  return <NenCucQuang nhom={nhom} chuyen={chuyen} chiLop={chiLop} />;
+};
+
 export const Nen: React.FC<{nen: NenProps | null; dsNen?: NenProps[]; canh?: CanhProps[]; pc: PhongCach; tongFrame: number}> = ({nen, dsNen, canh, pc, tongFrame}) => {
   const ds = dsNen && dsNen.length ? dsNen : nen ? [nen] : [];
-  if (!ds.length) return !pc.kieuNen || pc.kieuNen === 'neon' ? <NenNeon /> : pc.kieuNen === 'gradient' ? <NenDong kyHieu={pc.kyHieuTroi} quangSang={pc.quangSang} /> : pc.kieuNen === 'luoi_phang' ? <NenManim /> : <NenLuoi />;
+  if (!ds.length) return !pc.kieuNen || pc.kieuNen === 'cuc_quang' ? <CucQuang canh={canh} /> : pc.kieuNen === 'neon' ? <NenNeon /> : pc.kieuNen === 'gradient' ? <NenDong kyHieu={pc.kyHieuTroi} quangSang={pc.quangSang} /> : pc.kieuNen === 'luoi_phang' ? <NenManim /> : <NenLuoi />;
 
   // chia nhóm cảnh: cảnh giữ sân khấu thì giữ nền; mỗi nhóm mới chuyển sang nền kế tiếp
   const doan: {tu: number; den: number}[] = [];
@@ -65,7 +85,7 @@ export const Nen: React.FC<{nen: NenProps | null; dsNen?: NenProps[]; canh?: Can
       <AbsoluteFill style={{background: `linear-gradient(180deg, rgba(6,16,16,${Math.min(1, phu + 0.15)}) 0%, rgba(6,16,16,${phu}) 40%, rgba(6,16,16,${Math.min(1, phu + 0.25)}) 100%)`}} />
       {/* làm tối thêm vùng giữa (sân khấu, công thức) để nền nhiều chi tiết không lấn át hình */}
       <AbsoluteFill style={{background: 'radial-gradient(ellipse 75% 45% at 50% 50%, rgba(4,12,12,0.45) 0%, rgba(4,12,12,0) 100%)'}} />
-      {pc.lopNeonTrenNen !== false ? <NenNeon chiLop /> : null}
+      {pc.lopNeonTrenNen !== false ? <CucQuang canh={canh} chiLop /> : null}
     </AbsoluteFill>
   );
 };

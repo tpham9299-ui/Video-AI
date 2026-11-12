@@ -1,11 +1,12 @@
 import React from 'react';
 import {useCurrentFrame} from 'remotion';
 import {easeOut, kep, popOut} from './sankhau/donghieu';
-import {ChuNhanMau} from './sankhau/vat';
-import {FONT} from './theme';
+import {expoOut} from './sankhau/chuyendong';
+import {BONG_CHU, FONT_DAM, vienChu} from './theme';
 
-// Đầu mỗi cảnh (như video mẫu): nhãn cam dạng viên thuốc ("ĐỀ BÀI", "CÁI BẪY", "MẤU CHỐT"...) và một câu tiêu đề lớn
-// chữ trắng đậm, cụm từ khóa tô cam. Vào bằng hiệu ứng bật + mờ nhòe chuyển động.
+// Đầu mỗi cảnh: nhãn cam dạng viên thuốc ("ĐỀ BÀI", "CÁI BẪY"...) + tiêu đề rất đậm (Montserrat Black, kiểu sticker:
+// viền tối + bóng khối). Từng từ lướt lên kèm nhòe chuyển động (motion graphic), sau đó một nét bút kiểu Manim
+// (Create/Underline) vẽ gạch chân lượn sóng dưới cụm từ khóa và một vệt sáng quét qua.
 export const NHAN_CANH: [RegExp, string][] = [
   [/mo_dau|hook|cau_hoi/, 'CÂU HỎI'],
   [/de_bai/, 'ĐỀ BÀI'],
@@ -25,21 +26,55 @@ export const nhanCanh = (loai: string, nhan: string) => {
   return '';
 };
 
+const CAM = '#FF8A3D';
+
+// nhãn viên thuốc: bật lên + vệt sáng quét ngang
+export const VienThuoc: React.FC<{chu: string; f: number}> = ({chu, f}) => {
+  const a = kep(f / 9);
+  const quet = kep((f - 8) / 14);
+  return (
+    <div style={{position: 'relative', overflow: 'hidden', transform: `scale(${popOut(a, 2.2)}) rotate(${(1 - a) * -6}deg)`, opacity: kep(a * 2), background: 'linear-gradient(180deg, #FF9A4D, #F0601A)', color: '#fff', fontFamily: FONT_DAM, fontWeight: 900, fontSize: 32, letterSpacing: 1.5, padding: '6px 24px', borderRadius: 30, boxShadow: '0 4px 0 #9a3a0c, 0 0 22px rgba(255,122,47,0.55)'}}>
+      {chu}
+      <span style={{position: 'absolute', top: 0, bottom: 0, width: 40, left: `${-20 + quet * 130}%`, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent)', transform: 'skewX(-20deg)', opacity: quet < 1 ? 1 : 0}} />
+    </div>
+  );
+};
+
 export const TieuDeCanh: React.FC<{nhan: string; chu: string; tuKhoa: string; tre?: number}> = ({nhan, chu, tuKhoa, tre = 0}) => {
   const f = useCurrentFrame() - tre;
-  const a = kep(f / 9);
-  const b = kep((f - 4) / 11);
-  const co = chu.length > 40 ? 54 : chu.length > 26 ? 62 : 70;
+  const co = chu.length > 40 ? 58 : chu.length > 26 ? 66 : 76;
+  // vị trí cụm từ khóa trong câu để tô cam đúng các từ đó
+  const iKhoa = tuKhoa ? chu.toLowerCase().indexOf(tuKhoa.toLowerCase()) : -1;
+  const tu = chu.split(/(\s+)/);
+  let viTri = 0;
+  const dsTu = tu.map((w) => {
+    const bd = viTri;
+    viTri += w.length;
+    return {w, khoa: iKhoa >= 0 && bd < iKhoa + tuKhoa.length && bd + w.length > iKhoa && w.trim() !== ''};
+  });
+  let thuTu = 0;
+  const gach = kep((f - 14 - dsTu.filter((x) => x.w.trim()).length * 2) / 14);
   return (
-    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18}}>
-      {nhan ? (
-        <div style={{transform: `scale(${popOut(a, 2.2)})`, opacity: kep(a * 2), background: 'linear-gradient(180deg, #FF8A3D, #F0641E)', color: '#fff', fontFamily: FONT, fontWeight: 900, fontSize: 30, letterSpacing: 1, padding: '6px 22px', borderRadius: 30, boxShadow: '0 0 18px rgba(255,122,47,0.55)'}}>
-          {nhan}
-        </div>
-      ) : null}
+    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20}}>
+      {nhan ? <VienThuoc chu={nhan} f={f} /> : null}
       {chu ? (
-        <div style={{maxWidth: 960, textAlign: 'center', fontFamily: FONT, fontWeight: 900, fontSize: co, lineHeight: 1.15, color: '#fff', textShadow: '0 4px 18px rgba(0,0,0,0.7)', opacity: kep(b * 2), transform: `translateY(${(1 - easeOut(b)) * 26}px) scale(${0.92 + 0.08 * easeOut(b)})`, filter: b < 1 ? `blur(${(1 - b) * 10}px)` : undefined}}>
-          <ChuNhanMau chu={chu} tuKhoa={tuKhoa} mau="#FF8A3D" />
+        <div style={{maxWidth: 980, textAlign: 'center', fontFamily: FONT_DAM, fontWeight: 900, fontSize: co, lineHeight: 1.12, color: '#fff', letterSpacing: -0.5}}>
+          {dsTu.map((x, i) => {
+            if (!x.w.trim()) return <span key={i}> </span>;
+            const k = thuTu++;
+            const p = expoOut(kep((f - 3 - k * 2) / 12));
+            return (
+              <span key={i} style={{position: 'relative', display: 'inline-block', color: x.khoa ? CAM : '#fff', WebkitTextStroke: vienChu(co), paintOrder: 'stroke fill', textShadow: BONG_CHU,
+                opacity: kep(p * 2), transform: `translateY(${(1 - p) * 70}px) scale(${0.85 + 0.15 * p})`, filter: p < 0.98 ? `blur(${(1 - p) * 8}px)` : undefined}}>
+                {x.w}
+                {x.khoa ? (
+                  <svg style={{position: 'absolute', left: -6, right: -6, bottom: -co * 0.2, width: 'calc(100% + 12px)', height: co * 0.32, overflow: 'visible'}} viewBox="0 0 100 20" preserveAspectRatio="none">
+                    <path d="M2 12 C 20 4, 35 18, 52 10 S 85 4, 98 11" stroke={CAM} strokeWidth={5} fill="none" strokeLinecap="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - easeOut(gach)} vectorEffect="non-scaling-stroke" style={{filter: `drop-shadow(0 0 6px ${CAM})`}} />
+                  </svg>
+                ) : null}
+              </span>
+            );
+          })}
         </div>
       ) : null}
     </div>

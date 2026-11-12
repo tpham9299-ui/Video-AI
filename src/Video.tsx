@@ -1,8 +1,9 @@
 import React from 'react';
 import {AbsoluteFill, Audio, Img, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame} from 'remotion';
 import {Canh, sanKhauCuaCanh} from './Canh';
+import {LopQuet} from './LopQuet';
 import {Nen} from './Nen';
-import {FONT, GIAO_DIEN, MAU} from './theme';
+import {FONT, FONT_DAM, BONG_CHU, vienChu, GIAO_DIEN, MAU} from './theme';
 import {smooth} from './manim';
 import {ManKetTuTao, moHuyHieu, ThuongHieu} from './ThuongHieu';
 import {ThanhTienDo} from './ThanhTienDo';
@@ -40,7 +41,7 @@ const DauTrang: React.FC<{chu: string; lop: string; tu: number; lui: number; den
   const dau = cat > 0 ? s.slice(0, cat + 1) : s;
   const sau = cat > 0 ? s.slice(cat + 1) : '';
   return (
-    <div style={{position: 'absolute', left: 54 + lui, right: 150, top: 130, fontFamily: FONT, fontWeight: 900, fontSize: 30, color: '#fff', opacity: 0.92 * e * (1 - an), transform: `translateX(${(1 - e) * -30 + an * 40}px)`, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textShadow: '0 2px 8px rgba(0,0,0,0.6)'}}>
+    <div style={{position: 'absolute', left: 54 + lui, right: 150, top: 130, fontFamily: FONT_DAM, fontWeight: 900, fontSize: 30, color: '#fff', opacity: 0.92 * e * (1 - an), transform: `translateX(${(1 - e) * -30 + an * 40}px)`, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textShadow: '0 2px 8px rgba(0,0,0,0.6)'}}>
       {lop ? <span style={{background: '#3BF29A', color: '#062019', borderRadius: 8, padding: '1px 10px', marginRight: 12, fontSize: 24}}>LỚP {lop}</span> : null}
       {dau}
       <span style={{color: '#FF8A3D'}}>{sau}</span>
@@ -72,14 +73,14 @@ function taoAmLuongNhac(props: Props) {
 export const Video: React.FC<Props> = (props) => {
   const {canh, tongFrame, nhac, lop, tieuDe, nen, phongCach, hookChu, hookKieu, nhanManh, thuongHieu, outro} = props;
   Object.assign(MAU, phongCach.mau || {}); // ghi đè bảng màu theo phong_cach.json
-  GIAO_DIEN.kieuToan = phongCach.kieuToan || 'latex';
+  GIAO_DIEN.kieuToan = phongCach.kieuToan || 'dam';
   GIAO_DIEN.kieuHinh = phongCach.kieuHinh || 'manim';
   const amNhac = taoAmLuongNhac(props);
   const ketThuc = outro ? outro.batDau : tongFrame;
   const coThuongHieu = !!thuongHieu && !!(thuongHieu.ten || thuongHieu.logo || thuongHieu.handle);
   return (
     <AbsoluteFill style={{fontFamily: FONT}}>
-      <KieuToan kieu={phongCach.kieuToan || 'latex'} />
+      <KieuToan kieu={phongCach.kieuToan || 'dam'} />
       <NapPhongToan />
       <Nen nen={nen} dsNen={props.dsNen} canh={canh} pc={phongCach} tongFrame={tongFrame} />
       {nhac ? <Audio src={staticFile(nhac)} loop volume={amNhac} /> : null}
@@ -89,6 +90,16 @@ export const Video: React.FC<Props> = (props) => {
             sanKhau={sanKhauCuaCanh(canh, i)} giuTruoc={i > 0 && c.giuSanKhau && !!sanKhauCuaCanh(canh, i - 1)} giuSau={!!canh[i + 1] && canh[i + 1].giuSanKhau && !!sanKhauCuaCanh(canh, i)} />
         </Sequence>
       ))}
+      {/* chuyển cảnh motion graphic ở chỗ nối các cảnh (trừ cảnh nối tiếp sân khấu) */}
+      {phongCach.lopQuet !== false
+        ? canh.map((c, i) =>
+            i > 0 && !c.giuSanKhau ? (
+              <Sequence key={`quet${c.so}`} from={c.batDau - 7} durationInFrames={16} layout="none">
+                <LopQuet kieu={/dap_an|ket_qua|bay/i.test(c.loai) ? 'vong' : 'cheo'} />
+              </Sequence>
+            ) : null
+          )
+        : null}
       {/* tiếng "vút lên" dồn nén ngay trước cảnh đáp án */}
       {canh.map((c) =>
         /dap_an|ket_qua/i.test(c.loai) && c.batDau > 40 ? (

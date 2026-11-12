@@ -74,6 +74,31 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
     );
   }
 
+  // Manim "Flash": tia sáng ngắn bắn ra từ tâm vật lúc vật vừa xuất hiện (chỉ vật thật, không áp cho chữ/nhãn)
+  const tia: React.ReactNode[] = [];
+  for (const v of du.vat) {
+    if (v.buoc <= 0 || ['mui_ten', 'chu', 'nhan', 'bieu_tuong'].includes(v.loai)) continue;
+    const ta = tb(v.buoc);
+    const p = (t - ta - 0.12) / 0.55;
+    if (p <= 0 || p >= 1) continue;
+    const vt = viTri.get(v.id);
+    if (!vt) continue;
+    const mau = neon(v.mau, neon('xanh_la'));
+    const R = 150 * v.co + 40;
+    const e = easeOut(p);
+    tia.push(
+      <svg key={`tia${v.id}`} style={{position: 'absolute', left: vt.x, top: vt.y, overflow: 'visible', pointerEvents: 'none'}} width={1} height={1}>
+        {Array.from({length: 12}, (_, i) => {
+          const g = (i / 12) * Math.PI * 2;
+          const r1 = R * (0.55 + 0.6 * e);
+          const r2 = r1 + 34 * (1 - e) + 6;
+          return <line key={i} x1={Math.cos(g) * r1} y1={Math.sin(g) * r1} x2={Math.cos(g) * r2} y2={Math.sin(g) * r2} stroke={mau} strokeWidth={6 * (1 - e) + 1} strokeLinecap="round" opacity={1 - e} style={{filter: `drop-shadow(0 0 6px ${mau})`}} />;
+        })}
+        <circle r={R * (0.4 + 0.9 * e)} fill="none" stroke={mau} strokeWidth={4 * (1 - e)} opacity={0.6 * (1 - e)} />
+      </svg>
+    );
+  }
+
   for (const v of du.vat) {
     if (v.loai !== 'mui_ten') continue;
     const ta = tb(v.buoc);
@@ -124,6 +149,7 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
     <div style={{position: 'relative', width: SK_W, height: SK_H, overflow: z > 1.01 ? 'hidden' : 'visible'}}>
       <div style={{position: 'absolute', left: 0, top: 0, width: SK_W, height: SK_H, transformOrigin: '0 0', transform: `translate(${SK_W / 2}px, ${SK_H / 2}px) scale(${z}) translate(${-cam.cx}px, ${-cam.cy}px)`}}>
         {lop}
+        {tia}
         {muiTen}
       </div>
       {amGon.map((x, i) => (

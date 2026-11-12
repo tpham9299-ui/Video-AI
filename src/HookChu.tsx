@@ -1,7 +1,7 @@
 import React from 'react';
 import {spring, useCurrentFrame, useVideoConfig} from 'remotion';
 import {chuanTu, tuNhanManh} from './bocuc';
-import {FONT, MAU} from './theme';
+import {FONT, FONT_DAM, BONG_CHU, vienChu, MAU} from './theme';
 
 // Câu hook 5 giây đầu: chữ rất lớn bật lên từng từ (kiểu "kinetic typography"), từ khóa vàng to hơn và rung nhẹ khi xuất hiện.
 export const HookChu: React.FC<{chu: string; nhanManh: string[]; kieu: string; lead: number}> = ({chu, nhanManh, kieu, lead}) => {
@@ -13,7 +13,7 @@ export const HookChu: React.FC<{chu: string; nhanManh: string[]; kieu: string; l
   const buoc = Math.max(3, Math.min(7, Math.round((fps * 2.0) / Math.max(1, tu.length))));
   return (
     <div style={{height: 300, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18}}>
-      <div style={{display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: `${co * 0.08}px ${co * 0.28}px`, fontFamily: FONT, fontWeight: 800, lineHeight: 1.1, textAlign: 'center'}}>
+      <div style={{display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: `${co * 0.08}px ${co * 0.28}px`, fontFamily: FONT_DAM, fontWeight: 900, lineHeight: 1.08, textAlign: 'center', letterSpacing: -1}}>
         {tu.map((w, i) => {
           const bd = lead + 3 + i * buoc;
           const e = frame < bd ? 0 : spring({frame: frame - bd, fps, config: {damping: 9, stiffness: 190}});
@@ -28,7 +28,9 @@ export const HookChu: React.FC<{chu: string; nhanManh: string[]; kieu: string; l
                 color: manh ? MAU.tieuDe : MAU.chu,
                 transform: `translate(${rung}px, ${(1 - Math.min(1, e)) * 50}px) scale(${0.4 + 0.6 * e}) rotate(${manh ? -3 * Math.min(1, e) : 0}deg)`,
                 opacity: Math.min(1, e * 2),
-                textShadow: '0 4px 14px rgba(0,0,0,0.6)',
+                WebkitTextStroke: vienChu(co),
+                paintOrder: 'stroke fill',
+                textShadow: BONG_CHU,
               }}
             >
               {w}

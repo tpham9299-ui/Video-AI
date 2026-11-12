@@ -2,9 +2,17 @@
 // Thứ tự ưu tiên: phông riêng của bạn (tuy_chon-*.ttf, nếu có) > Liberation Sans (chữ, số, biến) > DejaVu Sans (ký hiệu toán) > phông hệ thống.
 // Be Vietnam Pro (OFL): phông thiết kế riêng cho tiếng Việt, nét đậm mạnh, hợp tiêu đề và phụ đề TikTok.
 export const FONT = '"VietTuyChon", "VietNoi", "VietSans", "VietSym", "Liberation Sans", "DejaVu Sans", sans-serif';
+// Montserrat Black (OFL, có đủ dấu tiếng Việt): nét rất đậm, bè ngang cho TIÊU ĐỀ, phụ đề, nhãn, con số lớn.
+export const FONT_DAM = '"VietTuyChonDam", "VietDam", "VietNoi", "VietSans", "DejaVu Sans", sans-serif';
+// Chữ kiểu "sticker" TikTok: viền tối dày + bóng đổ khối 3D để chữ nổi trên nền nhiều hình ảnh.
+export const BONG_CHU = '0 3px 0 rgba(4,12,12,0.95), 0 6px 0 rgba(4,12,12,0.6), 0 10px 22px rgba(0,0,0,0.55)';
+export const vienChu = (co: number) => `${Math.max(2, co * 0.07).toFixed(1)}px rgba(4,12,12,0.95)`;
 
 export type KhaiBaoPhong = [family: string, tep: string, weight: string, style: string];
 export const KHAI_BAO_PHONG: KhaiBaoPhong[] = [
+  ['VietDam', 'Montserrat-VF.ttf', '100 900', 'normal'],
+  ['VietDam', 'Montserrat-Italic-VF.ttf', '100 900', 'italic'],
+  ['VietTuyChonDam', 'tuy_chon-dam.ttf', '900', 'normal'],
   ['VietNoi', 'BeVietnamPro-Medium.ttf', '400', 'normal'],
   ['VietNoi', 'BeVietnamPro-Medium.ttf', '500', 'normal'],
   ['VietNoi', 'BeVietnamPro-Bold.ttf', '600', 'normal'],

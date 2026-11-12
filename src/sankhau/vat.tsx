@@ -1,7 +1,7 @@
 // Thư viện VẬT THẬT cho sân khấu, phong cách neon như video mẫu: viền phát sáng trên nền tối, bật lên có độ nảy,
 // mỗi vật có chuyển động riêng (xúc xắc lăn, đồng xu lật, vòng quay quay, hộp quà mở, kim đồng hồ đo xác suất chạy...).
 import React from 'react';
-import {FONT} from '../theme';
+import {FONT, FONT_DAM, BONG_CHU, vienChu} from '../theme';
 import {Toan} from '../Toan';
 import {bamChuoi, easeInOut, easeOut, kep, lerp, nay, NEN_VAT, NEN_VAT_2, neon, ngauNhien, popOut, tienDo, VONG_MAU} from './donghieu';
 import {Vat} from './dulieu';
@@ -25,7 +25,7 @@ export const ChuNhanMau: React.FC<{chu: string; tuKhoa: string; mau: string}> = 
 
 const Nhan: React.FC<{chu: string; co?: number; mau?: string; mo?: number}> = ({chu, co = 36, mau = '#fff', mo = 1}) =>
   chu ? (
-    <div style={{marginTop: 10, fontFamily: FONT, fontWeight: 800, fontSize: co, color: mau, opacity: mo, background: 'rgba(0,0,0,0.5)', borderRadius: 12, padding: '3px 14px', whiteSpace: 'nowrap', textAlign: 'center'}}>
+    <div style={{marginTop: 10, fontFamily: FONT_DAM, fontWeight: 800, fontSize: co, color: mau, opacity: mo, background: 'rgba(0,0,0,0.5)', borderRadius: 12, padding: '3px 14px', whiteSpace: 'nowrap', textAlign: 'center'}}>
       {chu}
     </div>
   ) : null;
@@ -82,7 +82,7 @@ const Nguoi: Ve = (v, st) => {
               </svg>
               <DauTich p={s.pc} mau={s.mau} co={o * 0.34} style={{right: o * 0.06, top: -4}} />
               <DauX p={s.l} co={o * 0.8} style={{top: o * 0.08}} />
-              {v.ds[k] ? <div style={{fontFamily: FONT, fontWeight: 800, fontSize: Math.max(20, o * 0.2), color: '#fff', marginTop: 4}}>{v.ds[k]}</div> : null}
+              {v.ds[k] ? <div style={{fontFamily: FONT_DAM, fontWeight: 800, fontSize: Math.max(20, o * 0.2), color: '#fff', marginTop: 4}}>{v.ds[k]}</div> : null}
             </div>
           );
         })}
@@ -114,14 +114,21 @@ const The: Ve = (v, st) => {
         const x = lerp(goc0, bx, st.bung);
         const y = lerp(0, by, st.bung);
         const tieuDe = v.ds[k] || (n === 1 ? st.noiDung : '');
+        // Manim DrawBorderThenFill: viền vẽ dần quanh thẻ trước, nền và chữ hiện sau
+        const ve = kep((st.t - st.ta - k * Math.min(0.12, 0.9 / Math.max(1, n))) / 0.5);
         return (
           <div key={k} style={{position: 'absolute', left: '50%', top: 0, width: w, height: h, marginLeft: -w / 2, opacity: kep(a * 2) * s.mo,
             transform: `translate(${x}px, ${y + (1 - easeOut(a)) * 60}px) rotate(${lerp((k - (n - 1) / 2) * (n > 3 ? 4 : 0), xoayBung, st.bung)}deg) scale(${popOut(a) * (1 + 0.07 * s.pc)})`,
-            border: `5px solid ${s.mau}`, borderRadius: 22, background: `linear-gradient(160deg, ${NEN_VAT_2}, ${NEN_VAT})`, boxShadow: `0 0 ${10 + 18 * s.pc}px ${s.mau}`,
+            border: `5px solid ${ve > 0.85 ? s.mau : 'transparent'}`, borderRadius: 22, background: `linear-gradient(160deg, ${NEN_VAT_2}, ${NEN_VAT})`, backgroundClip: 'padding-box', boxShadow: ve > 0.85 ? `0 0 ${10 + 18 * s.pc}px ${s.mau}` : 'none',
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, fontFamily: FONT, color: '#fff', filter: s.xam ? 'grayscale(1)' : 'none'}}>
-            {tieuDe ? <div style={{fontWeight: 900, fontSize: Math.min(54 * v.co, (w * 1.6) / Math.max(4, tieuDe.length)) , textAlign: 'center', padding: '0 10px', lineHeight: 1.1}}>{tieuDe}</div> : null}
+            {tieuDe ? <div style={{opacity: kep((ve - 0.35) / 0.4), fontWeight: 900, fontSize: Math.min(54 * v.co, (w * 1.6) / Math.max(4, tieuDe.length)) , textAlign: 'center', padding: '0 10px', lineHeight: 1.1}}>{tieuDe}</div> : null}
             {n === 1 && st.giaTriChu ? <div style={{fontWeight: 900, fontSize: 54 * v.co, color: s.mau}}>{st.giaTriChu}</div> : null}
             {n > 1 && !tieuDe ? <svg width={w * 0.5} height={h * 0.3} viewBox="0 0 100 40"><circle cx={20} cy={20} r={14} fill="none" stroke={s.mau} strokeWidth={5} /><rect x={42} y={10} width={52} height={7} rx={3} fill={s.mau} opacity={0.7} /><rect x={42} y={24} width={36} height={7} rx={3} fill="#ffffff" opacity={0.35} /></svg> : null}
+            {ve < 1 ? (
+              <svg width={w} height={h} style={{position: 'absolute', left: -5, top: -5, overflow: 'visible'}}>
+                <rect x={2.5} y={2.5} width={w - 5} height={h - 5} rx={20} fill="none" stroke={s.mau} strokeWidth={5} pathLength={1} strokeDasharray={1} strokeDashoffset={1 - easeOut(ve / 0.85)} style={{filter: `drop-shadow(0 0 8px ${s.mau})`}} />
+              </svg>
+            ) : null}
             <DauTich p={s.pc} mau={s.mau} co={46} style={{right: -16, top: -16}} />
             <DauX p={s.l} co={h * 0.8} />
           </div>
@@ -155,7 +162,7 @@ const LaBai: Ve = (v, st) => {
             <div key={k} style={{position: 'relative', width: w, height: h, opacity: kep(a * 2) * s.mo, transform: `translateY(${(1 - easeOut(a)) * -120}px) rotate(${(k - (n - 1) / 2) * 5 * (1 - easeOut(a)) * 3}deg) scale(${1 + 0.08 * s.pc})`}}>
               <div style={{position: 'absolute', inset: 0, borderRadius: 16, transform: `scaleX(${Math.abs(Math.cos((goc * Math.PI) / 180))})`,
                 background: mat ? '#FAFAF5' : `repeating-linear-gradient(45deg, #13302b 0 10px, #0d211e 10px 20px)`, border: `4px solid ${s.pc > 0.01 ? s.mau : mat ? '#ddd' : neon('xanh_la')}`,
-                boxShadow: `0 0 ${8 + 18 * s.pc}px ${s.pc > 0.01 ? s.mau : 'rgba(59,242,154,0.5)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontWeight: 900, color: mauChu}}>
+                boxShadow: `0 0 ${8 + 18 * s.pc}px ${s.pc > 0.01 ? s.mau : 'rgba(59,242,154,0.5)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT_DAM, fontWeight: 900, color: mauChu}}>
                 {mat ? (
                   <>
                     <div style={{position: 'absolute', left: 10, top: 6, fontSize: 30 * v.co, lineHeight: 1}}>{nd}</div>
@@ -323,7 +330,7 @@ const HopBi: Ve = (v, st) => {
           : (
             <div style={{position: 'absolute', left: 0, right: 0, top: H * 0.45, display: 'flex', justifyContent: 'center', gap: 16, opacity: kep((st.vao - 0.4) * 2)}}>
               {v.nhom.map((g, i) => (
-                <div key={i} style={{display: 'flex', alignItems: 'center', gap: 6, fontFamily: FONT, fontWeight: 900, fontSize: 40 * v.co, color: '#fff'}}>
+                <div key={i} style={{display: 'flex', alignItems: 'center', gap: 6, fontFamily: FONT_DAM, fontWeight: 900, fontSize: 40 * v.co, color: '#fff'}}>
                   <Bi mau={neon(g.mau)} r={r} />×{g.so}
                 </div>
               ))}
@@ -369,7 +376,7 @@ const HopQua: Ve = (v, st) => {
         {/* phần quà hiện lên */}
         {q > 0 ? (
           <div style={{position: 'absolute', left: 0, right: 0, top: 70 - q * 150, display: 'flex', justifyContent: 'center', opacity: q, transform: `scale(${popOut(q)})`}}>
-            <div style={{fontFamily: FONT, fontWeight: 900, fontSize: 58 * v.co, color: '#FFD54A', textShadow: `0 0 18px ${mau}`, whiteSpace: 'nowrap'}}>{v.emoji ? v.emoji + ' ' : ''}{st.giaTriChu || st.noiDung}</div>
+            <div style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: 58 * v.co, color: '#FFD54A', textShadow: `0 0 18px ${mau}`, whiteSpace: 'nowrap'}}>{v.emoji ? v.emoji + ' ' : ''}{st.giaTriChu || st.noiDung}</div>
           </div>
         ) : null}
         <svg width={W} height={H} viewBox="0 0 230 200" style={{position: 'absolute', top: 60, overflow: 'visible', filter: phatSang(mau, 8 + 8 * st.sang)}}>
@@ -469,7 +476,7 @@ const DongHoDo: Ve = (v, st) => {
   const cung = (a0: number, a1: number, r: number) => `M${Math.cos(Math.PI * (1 - a0)) * r} ${-Math.sin(Math.PI * (1 - a0)) * r} A${r} ${r} 0 0 1 ${Math.cos(Math.PI * (1 - a1)) * r} ${-Math.sin(Math.PI * (1 - a1)) * r}`;
   return (
     <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
-      {v.nhan ? <div style={{fontFamily: FONT, fontWeight: 900, fontSize: 44, color: '#fff', marginBottom: 6}}>{v.nhan}</div> : null}
+      {v.nhan ? <div style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: 44, color: '#fff', marginBottom: 6}}>{v.nhan}</div> : null}
       <svg width={R * 2 + 60} height={R + 70} viewBox={`${-R - 30} ${-R - 20} ${2 * R + 60} ${R + 70}`} style={{overflow: 'visible'}}>
         <defs>
           <linearGradient id={`dh${v.id}`} x1="0" x2="1">
@@ -485,7 +492,7 @@ const DongHoDo: Ve = (v, st) => {
         <text x={-R} y={40} textAnchor="middle" fill="#9fb3b0" fontFamily="Liberation Sans, sans-serif" fontWeight={800} fontSize={30}>0</text>
         <text x={R} y={40} textAnchor="middle" fill="#9fb3b0" fontFamily="Liberation Sans, sans-serif" fontWeight={800} fontSize={30}>1</text>
       </svg>
-      <div style={{fontFamily: FONT, fontWeight: 900, fontSize: 64 * v.co, color: mau, textShadow: `0 0 16px ${mau}`, marginTop: -14}}>{st.giaTriChu || `${Math.round(val * 100)}%`}</div>
+      <div style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: 64 * v.co, color: mau, textShadow: `0 0 16px ${mau}`, marginTop: -14}}>{st.giaTriChu || `${Math.round(val * 100)}%`}</div>
     </div>
   );
 };
@@ -508,14 +515,14 @@ const BieuDoCot: Ve = (v, st) => {
           const h = (x / max) * (H - 60) * a;
           return (
             <div key={k} style={{position: 'absolute', left: (k + 0.5) * (W / n) - bw / 2, bottom: 0, width: bw, height: h, background: `linear-gradient(180deg, ${s.mau}, ${s.mau}55)`, border: `3px solid ${s.mau}`, borderBottom: 'none', borderRadius: '10px 10px 0 0', boxShadow: `0 0 ${10 + 16 * s.pc}px ${s.mau}`, opacity: s.mo}}>
-              <div style={{position: 'absolute', top: -46, left: -30, right: -30, textAlign: 'center', fontFamily: FONT, fontWeight: 900, fontSize: 32, color: '#fff', opacity: a}}>{Number.isInteger(x) ? x : x.toFixed(2)}</div>
+              <div style={{position: 'absolute', top: -46, left: -30, right: -30, textAlign: 'center', fontFamily: FONT_DAM, fontWeight: 900, fontSize: 32, color: '#fff', opacity: a}}>{Number.isInteger(x) ? x : x.toFixed(2)}</div>
             </div>
           );
         })}
       </div>
       <div style={{display: 'flex', width: W}}>
         {v.dsSo.map((_, k) => (
-          <div key={k} style={{flex: 1, textAlign: 'center', fontFamily: FONT, fontWeight: 800, fontSize: 26, color: '#cfe', marginTop: 8}}>{v.ds[k] || ''}</div>
+          <div key={k} style={{flex: 1, textAlign: 'center', fontFamily: FONT_DAM, fontWeight: 800, fontSize: 26, color: '#cfe', marginTop: 8}}>{v.ds[k] || ''}</div>
         ))}
       </div>
       <Nhan chu={v.nhan} />
@@ -596,10 +603,10 @@ const Cua: Ve = (v, st) => {
           const mo = st.mo.get(k + 1) || 0;
           return (
             <div key={k} style={{position: 'relative', width: w, height: h, opacity: kep(a * 2) * Math.max(0.4, s.mo), transform: `scale(${popOut(a) * (1 + 0.06 * s.pc)})`, perspective: 800}}>
-              <div style={{position: 'absolute', inset: 0, borderRadius: 12, background: '#081312', border: `4px solid ${s.mau}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontWeight: 900, fontSize: w * 0.3, color: '#FFD54A', textShadow: '0 0 14px #FFB300'}}>
+              <div style={{position: 'absolute', inset: 0, borderRadius: 12, background: '#081312', border: `4px solid ${s.mau}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT_DAM, fontWeight: 900, fontSize: w * 0.3, color: '#FFD54A', textShadow: '0 0 14px #FFB300'}}>
                 {mo > 0.3 ? v.ds[k] || '' : ''}
               </div>
-              <div style={{position: 'absolute', inset: 0, borderRadius: 12, background: `linear-gradient(160deg, ${NEN_VAT_2}, ${NEN_VAT})`, border: `5px solid ${s.mau}`, boxShadow: `0 0 ${10 + 16 * s.pc}px ${s.mau}`, transformOrigin: '0% 50%', transform: `rotateY(${-mo * 78}deg)`, opacity: 1 - 0.75 * mo, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontWeight: 900, fontSize: w * 0.42, color: s.mau}}>
+              <div style={{position: 'absolute', inset: 0, borderRadius: 12, background: `linear-gradient(160deg, ${NEN_VAT_2}, ${NEN_VAT})`, border: `5px solid ${s.mau}`, boxShadow: `0 0 ${10 + 16 * s.pc}px ${s.mau}`, transformOrigin: '0% 50%', transform: `rotateY(${-mo * 78}deg)`, opacity: 1 - 0.75 * mo, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT_DAM, fontWeight: 900, fontSize: w * 0.42, color: s.mau}}>
                 <div style={{position: 'absolute', left: w * 0.12, right: w * 0.12, top: h * 0.08, height: h * 0.36, border: `3px solid ${s.mau}66`, borderRadius: 8}} />
                 <div style={{position: 'absolute', left: w * 0.12, right: w * 0.12, bottom: h * 0.08, height: h * 0.36, border: `3px solid ${s.mau}66`, borderRadius: 8}} />
                 <span style={{position: 'relative', textShadow: `0 0 18px ${s.mau}`}}>{k + 1}</span>
@@ -645,7 +652,7 @@ const Banh: Ve = (v, st) => {
 
 /* ---------------- NHÃN NEON (chữ hai màu, nghiêng nhẹ) ---------------- */
 export const NhanNeon: React.FC<{chu: string; tuKhoa: string; mau: string; mauNhan: string; co?: number; xoay?: number}> = ({chu, tuKhoa, mau, mauNhan, co = 44, xoay = -3}) => (
-  <div style={{transform: `rotate(${xoay}deg)`, border: `4px solid ${mau}`, borderRadius: 14, background: 'rgba(6,18,16,0.92)', boxShadow: `0 0 16px ${mau}, inset 0 0 12px ${mau}44`, padding: `${co * 0.18}px ${co * 0.45}px`, fontFamily: FONT, fontWeight: 900, fontSize: co, color: '#fff', textTransform: 'uppercase', whiteSpace: 'nowrap', letterSpacing: 0.5}}>
+  <div style={{transform: `rotate(${xoay}deg)`, border: `4px solid ${mau}`, borderRadius: 14, background: 'rgba(6,18,16,0.92)', boxShadow: `0 0 16px ${mau}, inset 0 0 12px ${mau}44`, padding: `${co * 0.18}px ${co * 0.45}px`, fontFamily: FONT_DAM, fontWeight: 900, fontSize: co, color: '#fff', textTransform: 'uppercase', whiteSpace: 'nowrap', letterSpacing: 0.5}}>
     <ChuNhanMau chu={chu} tuKhoa={tuKhoa} mau={mauNhan} />
   </div>
 );
@@ -724,7 +731,7 @@ const LuoiO: Ve = (v, st) => {
           return (
             <div key={k} style={{width: o, height: o, borderRadius: o * 0.2, opacity: kep(a * 2) * Math.max(0.35, s.mo), transform: `scale(${popOut(a, 2.2) * (1 + 0.1 * s.pc)})`,
               background: sang ? s.mau : `${goc}2a`, border: `3px solid ${sang ? '#fff' : goc + 'aa'}`, boxShadow: sang ? `0 0 ${14 * s.pc}px ${s.mau}` : 'none',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontWeight: 900, fontSize: o * 0.34, color: sang ? '#0b1a14' : '#fff'}}>
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT_DAM, fontWeight: 900, fontSize: o * 0.34, color: sang ? '#0b1a14' : '#fff'}}>
               {v.ds[k] || ''}
             </div>
           );

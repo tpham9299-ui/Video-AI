@@ -1,7 +1,7 @@
 import React from 'react';
 import {AbsoluteFill, Audio, Img, Sequence, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
 import {easeInOut, easeOut, kep, ngauNhien, popOut} from './sankhau/donghieu';
-import {FONT} from './theme';
+import {FONT, FONT_DAM, BONG_CHU, vienChu} from './theme';
 import {CanhProps, ThuongHieuProps} from './types';
 
 // THƯƠNG HIỆU KÊNH ĐỘNG (thay cho logo + chữ đứng yên):
@@ -27,7 +27,7 @@ export const LogoTron: React.FC<{th: ThuongHieuProps; co: number; goc?: number; 
       {th.logo ? (
         <Img src={staticFile(th.logo)} style={{width: '86%', height: '86%', objectFit: 'contain'}} />
       ) : (
-        <span style={{fontFamily: FONT, fontWeight: 900, fontSize: co * 0.38, color: '#fff'}}>{chuCai(th)}</span>
+        <span style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: co * 0.38, color: '#fff'}}>{chuCai(th)}</span>
       )}
     </div>
   </div>
@@ -42,11 +42,11 @@ const HuyHieu: React.FC<{th: ThuongHieuProps; vao: number; mo: number; dong2: st
       <LogoTron th={th} co={66} goc={goc} sang={sang} />
       {ten ? (
         <div style={{maxWidth: 560 * mo, overflow: 'hidden', whiteSpace: 'nowrap', opacity: kep(mo * 2), background: 'rgba(6,18,16,0.7)', borderRadius: 14, padding: mo > 0.05 ? '4px 14px' : 0}}>
-          <div style={{position: 'relative', fontFamily: FONT, fontWeight: 900, fontSize: 34, color: '#fff', lineHeight: 1.1, textShadow: '0 2px 8px rgba(0,0,0,0.7)'}}>
+          <div style={{position: 'relative', fontFamily: FONT_DAM, fontWeight: 900, fontSize: 34, color: '#fff', lineHeight: 1.1, textShadow: '0 2px 8px rgba(0,0,0,0.7)'}}>
             {ten}
             <span style={{position: 'absolute', inset: 0, background: `linear-gradient(100deg, transparent ${vetSang * 140 - 30}%, rgba(255,255,255,0.75) ${vetSang * 140 - 15}%, transparent ${vetSang * 140}%)`, mixBlendMode: 'overlay'}} />
           </div>
-          {dong2 ? <div style={{fontFamily: FONT, fontWeight: 800, fontSize: 22, color: XANH, marginTop: 2}}>{dong2}</div> : null}
+          {dong2 ? <div style={{fontFamily: FONT_DAM, fontWeight: 800, fontSize: 22, color: XANH, marginTop: 2}}>{dong2}</div> : null}
         </div>
       ) : null}
     </div>
@@ -74,7 +74,7 @@ const LoiMoi: React.FC<{th: ThuongHieuProps}> = ({th}) => {
         <div style={{fontWeight: 700, fontSize: 22, color: '#cfe'}}>{th.loiMoi || 'Theo dõi để học mẹo xác suất'}</div>
       </div>
       <Chuong f={f} />
-      <div style={{width: 58, height: 58, borderRadius: 29, background: bam > 0.5 ? XANH : CAM, display: 'flex', alignItems: 'center', justifyContent: 'center', transform: `scale(${1 + 0.25 * Math.sin(bam * Math.PI)})`, fontFamily: FONT, fontWeight: 900, fontSize: 40, color: '#062019'}}>
+      <div style={{width: 58, height: 58, borderRadius: 29, background: bam > 0.5 ? XANH : CAM, display: 'flex', alignItems: 'center', justifyContent: 'center', transform: `scale(${1 + 0.25 * Math.sin(bam * Math.PI)})`, fontFamily: FONT_DAM, fontWeight: 900, fontSize: 40, color: '#062019'}}>
         {bam > 0.5 ? '✓' : '+'}
       </div>
     </div>
@@ -147,9 +147,9 @@ export const ManKetTuTao: React.FC<{th: ThuongHieuProps}> = ({th}) => {
       <div style={{position: 'absolute', top: 640, transform: `scale(${popOut(a, 2)})`}}>
         <LogoTron th={th} co={240} goc={f * 5} sang={1} />
       </div>
-      <div style={{position: 'absolute', top: 930, left: 0, right: 0, textAlign: 'center', fontFamily: FONT, fontWeight: 900, fontSize: 64, color: '#fff', textShadow: `0 0 20px ${XANH}`}}>{ten.slice(0, soChu)}</div>
+      <div style={{position: 'absolute', top: 930, left: 0, right: 0, textAlign: 'center', fontFamily: FONT_DAM, fontWeight: 900, fontSize: 64, color: '#fff', textShadow: `0 0 20px ${XANH}`}}>{ten.slice(0, soChu)}</div>
       {th.khauHieu ? <div style={{position: 'absolute', top: 1020, left: 60, right: 60, textAlign: 'center', fontFamily: FONT, fontWeight: 700, fontSize: 34, color: '#cfe', opacity: kep((f - 20) / 10)}}>{th.khauHieu}</div> : null}
-      <div style={{position: 'absolute', top: 1110, padding: '16px 46px', borderRadius: 40, background: bam > 0.5 ? XANH : CAM, fontFamily: FONT, fontWeight: 900, fontSize: 40, color: '#062019', transform: `scale(${popOut(kep((f - 16) / 10)) * (1 - 0.12 * Math.sin(bam * Math.PI))})`, boxShadow: `0 0 26px ${bam > 0.5 ? XANH : CAM}`}}>
+      <div style={{position: 'absolute', top: 1110, padding: '16px 46px', borderRadius: 40, background: bam > 0.5 ? XANH : CAM, fontFamily: FONT_DAM, fontWeight: 900, fontSize: 40, color: '#062019', transform: `scale(${popOut(kep((f - 16) / 10)) * (1 - 0.12 * Math.sin(bam * Math.PI))})`, boxShadow: `0 0 26px ${bam > 0.5 ? XANH : CAM}`}}>
         {bam > 0.5 ? '✓ Đã theo dõi' : '+ Theo dõi'}
       </div>
       <Audio src={staticFile('sfx/boom.wav')} volume={0.3} />
