@@ -183,7 +183,7 @@ export const Canh: React.FC<{
       {/* Phụ đề */}
       {pc.phuDe ? (
         <div style={{position: 'absolute', left: 60, right: 60, top: Y_PHU_DE, height: 150, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-          {pc.kieuNen === 'neon' || pc.kieuNen === 'cuc_quang' || !pc.kieuNen ? <PhuDeTikTok cau={canh.cau} t={t} kieu={pc.kieuPhuDe} mauHop={pc.mauPhuDe} /> : <PhuDe cau={canh.cau} t={t} co={42} />}
+          {pc.kieuNen !== 'luoi' && pc.kieuNen !== 'luoi_phang' && pc.kieuNen !== 'gradient' ? <PhuDeTikTok cau={canh.cau} t={t} kieu={pc.kieuPhuDe} mauHop={pc.mauPhuDe} /> : <PhuDe cau={canh.cau} t={t} co={42} />}
         </div>
       ) : null}
 

@@ -28,7 +28,19 @@ function taoPromptKichBan_(r, c1, c2) {
     '(c) "diem_chot": ý tưởng then chốt (đối xứng, đếm bù, đổi góc nhìn...) và VÌ SAO nó đúng; (d) chỉ khi suy luận đã dẫn tới mới dùng công thức và nói lý do. Không mở cảnh bằng "áp dụng công thức". ',
     'Ghi ý tưởng then chốt vào "y_tuong_chinh" (một câu, ít nhất 30 ký tự).\n\n',
 
-    '3) CẤU TRÚC 6-8 CẢNH, tổng ' + cauHinh_('GIAY_MUC_TIEU') + ' giây: (1) mo_dau: MÓC CÂU; (2) de_bai: tình huống đời thực, 1-2 câu; (3) y_do; (4) bay: cái bẫy hay gặp; (5) thu_nho hoặc diem_chot; (6) tinh_toan gọn (tối đa 2 cảnh); (7) dap_an; (8) bai_hoc: một bài học về cách nghĩ + chỗ dùng ngoài đời + một câu hỏi mời bình luận cụ thể.\n',
+    '3) ĐÂY LÀ MỘT BÀI GIẢNG, PHẢI KỸ: người xem chưa biết gì cũng phải hiểu mình đang học gì, vì sao làm từng bước, và tự làm lại được bài tương tự. ',
+    'CẤU TRÚC 8-11 CẢNH, tổng ' + cauHinh_('GIAY_MUC_TIEU') + ' giây:\n',
+    '(1) mo_dau: MÓC CÂU.\n',
+    '(2) de_bai: tình huống đời thực, rồi nói rõ ĐỀ CHO GÌ và ĐỀ HỎI GÌ (nên dùng danh_sach hai dòng "Đề cho: ...", "Cần tìm: ...").\n',
+    '(3) nhac_lai: nhắc lại kiến thức cần dùng (định nghĩa hoặc công thức), giải thích ý nghĩa bằng lời thường, kèm ví dụ rất nhỏ; ghi công thức vào noi_dung_man_hinh.\n',
+    '(4) y_do: bài thật sự hỏi gì, khó ở đâu.\n',
+    '(5) bay: cái bẫy hay gặp, VÌ SAO sai.\n',
+    '(6) thu_nho hoặc diem_chot: ý tưởng then chốt.\n',
+    '(7)-(8) tinh_toan: TỪNG BƯỚC, mỗi cảnh 1-2 bước, mỗi bước nói rõ đang tính gì và vì sao (ví dụ "bước một, đếm tất cả khả năng"), mọi con số hiện trên màn hình.\n',
+    '(9) kiem_tra: soát lại đáp án bằng trực giác, trường hợp đặc biệt, cách thứ hai hoặc mô phỏng (luoi_o, thuc_nghiem).\n',
+    '(10) dap_an.\n',
+    '(11) bai_hoc: CHI TIẾT, gồm (a) 2-3 điều rút ra (dùng danh_sach), (b) dấu hiệu nhận ra dạng bài này, (c) một chỗ dùng ngoài đời, (d) một câu hỏi biến thể để người xem tự luyện và trả lời ở bình luận.\n',
+    'Ngoài "canh", trả thêm: "bai_hoc_rut_ra" (mảng 3 câu, mỗi câu ≤ 12 từ, là quy tắc làm bài dùng được ngay, ví dụ "Gặp chữ CÙNG: tách từng loại rồi cộng"; được hiện ở màn kết) và "video_tiep_theo" (≤ 10 từ, hẹn bài kế tiếp cùng chủ đề).\n',
     'GIỮ CHÂN NGƯỜI XEM (rất quan trọng trên TikTok): (a) cứ 2-3 giây phải có một thay đổi trên màn hình (vật mới, hành động, đổi cảnh); (b) mở một "vòng lặp tò mò" ở cảnh 1-2 và chỉ đóng ở cảnh đáp án ("đến cuối bạn sẽ thấy vì sao..."); ',
     '(c) có một khoảnh khắc mời người xem đoán trước ("dừng video, đoán thử đi"); (d) ưu tiên đề có kết quả TRÁI TRỰC GIÁC hoặc tình huống đời thực gây tranh cãi (gameshow, bốc thăm, xổ số, sinh nhật trùng nhau, mật khẩu, trận đấu...); (e) câu ngắn, động từ mạnh, không giảng dài.\n',
     'HOOK (quyết định người xem có lướt đi không): cảnh 1 tối đa 5 giây, "loi_thoai" cảnh 1 tối đa 16 từ. Nghĩ 3 phương án hook, ghi vào "hook_ung_vien", chọn phương án mạnh nhất. Hook mạnh: tạo tò mò hoặc mâu thuẫn, có con số/tình huống cụ thể, nói thẳng với "bạn", KHÔNG chào hỏi, KHÔNG "hôm nay", "các bạn ơi", "mọi người". ',
@@ -38,7 +50,7 @@ function taoPromptKichBan_(r, c1, c2) {
     '4) MỖI CẢNH CÓ: "loai"; "tieu_de_canh" (BẮT BUỘC từ cảnh 2: câu tiêu đề in chữ trắng thật lớn ở đầu cảnh, 3-8 từ, nói đúng ý chính của cảnh, ví dụ "Cùng giới nghĩa là gì?", "Bẫy: quên hai bạn nữ"); ',
     '"tu_khoa" (1-3 từ nằm NGUYÊN VĂN trong tieu_de_canh, được tô cam); "nhan" (tùy chọn, nhãn cam ngắn tối đa 2 từ, ví dụ "BƯỚC 1"; để trống thì máy tự đặt theo loại cảnh); ',
     '"loi_thoai"; "noi_dung_man_hinh"; "trinh_bay"; "chu_thich" (tùy chọn); "chuyen_canh" (tùy chọn: truot_len | phong | luot_ngang | truot_xuong; để trống thì máy tự xoay vòng, dùng "phong" cho cảnh bẫy/đáp án để tạo kịch tính); "giu_san_khau" (true nếu cảnh này DIỄN TIẾP trên sân khấu của cảnh trước: vật cũ còn nguyên, chỉ thêm vật hoặc hành động mới, giống video mẫu giữ nguyên hàng thẻ suốt nhiều cảnh. Nên dùng cho 2-3 cảnh liên tiếp cùng tình huống); "minh_hoa".\n',
-    'LỜI THOẠI: câu ngắn (≤ 16 từ mỗi câu), mỗi cảnh ≤ 38 từ, giọng tự nhiên như đang nói chuyện ("để ý nhé", "thử nghĩ xem", "vì sao?"). Số và công thức viết thành LỜI ("ba phần năm", "C tám hai"), KHÔNG có ký hiệu LaTeX, dấu / hay %. Đừng đọc lại thứ đã hiện trên màn hình từng chữ một.\n',
+    'LỜI THOẠI: câu ngắn (≤ 16 từ mỗi câu), mỗi cảnh ≤ 45 từ, giọng tự nhiên như đang nói chuyện ("để ý nhé", "thử nghĩ xem", "vì sao?"). Số và công thức viết thành LỜI ("ba phần năm", "C tám hai"), KHÔNG có ký hiệu LaTeX, dấu / hay %. Đừng đọc lại thứ đã hiện trên màn hình từng chữ một.\n',
     'CÔNG THỨC "noi_dung_man_hinh": mảng LaTeX (không kèm $), chỉ ở cảnh cần (tinh_toan, dap_an, có thể diem_chot); các cảnh khác để [] vì hình đã nói thay chữ. Tối đa 3 dòng (cong_don tối đa 4), mỗi dòng ngắn; chữ tiếng Việt đặt trong \\text{}; chỉ dùng \\frac, \\times, \\cdot, \\binom, \\text, ^, _, \\cup, \\cap, \\Rightarrow, \\overline. ',
     'Dòng công thức ngắn ở cảnh thu_nho/diem_chot nên dùng "xep": máy hiện từng dòng như đang VIẾT TAY bằng bút chì. Tô màu biến theo vật trên sân khấu (ví dụ x cam, y xanh) bằng \\\\textcolor để người xem nối hình với công thức. ',
     '"trinh_bay": "cong_don" (ưu tiên cho tính toán/đáp án: dòng sau GIỮ NGUYÊN dòng trước và nối thêm "=...", ví dụ ["P=\\\\frac{10}{28}+\\\\frac{3}{28}","P=\\\\frac{10}{28}+\\\\frac{3}{28}=\\\\frac{13}{28}"]) | "bien_doi" | "xep". Dòng CUỐI của cảnh đáp án phải là đáp án đúng. ',
@@ -74,7 +86,7 @@ function taoPromptKichBan_(r, c1, c2) {
     '"minh_hoa":{"loai":"san_khau","mo_ta":"Thẻ 2 NAM sáng xanh lá kèm dấu tích; thẻ 2 NỮ rung mạnh rồi bị gạch chéo đỏ; nhãn QUÊN 2 NỮ bật lên.","du_lieu":{"vat":[{"id":"quen","loai":"nhan","x":72,"y":42,"noi_dung":"Quên 2 nữ!","tu_khoa":"Quên","mau":"do","buoc":3}],',
     '"hanh_dong":[{"buoc":1,"vat":"t1","kieu":"chon","mau":"xanh_la"},{"buoc":2,"vat":"t2","kieu":"rung"},{"buoc":2,"vat":"t2","kieu":"loai_bo"}]}}}\n\n',
 
-    'Trả về MỘT đối tượng JSON: {"tieu_de":"tiêu đề đăng video < 60 ký tự, gây tò mò","chu_de_ngan":"chủ đề 2-5 từ (hiện góc trên)","hook_ung_vien":["","",""],"hook":"(đúng lời thoại cảnh 1)","hook_chu":"","hook_kieu":"","nhan_manh":[""],"y_tuong_chinh":"","hashtag":["#toanhoc","#xacsuat"],"dap_an_cuoi":"' + r.dap_an + '",',
-    '"canh":[{"so":1,"loai":"mo_dau|de_bai|y_do|bay|thu_nho|diem_chot|tinh_toan|dap_an|bai_hoc","tieu_de_canh":"","tu_khoa":"","nhan":"","giu_san_khau":false,"loi_thoai":"","noi_dung_man_hinh":[],"trinh_bay":"cong_don|bien_doi|xep","chu_thich":[],"minh_hoa":{"loai":"san_khau","mo_ta":"","du_lieu":{"vat":[],"hanh_dong":[]}}}]}'
+    'Trả về MỘT đối tượng JSON: {"tieu_de":"tiêu đề đăng video < 60 ký tự, gây tò mò","chu_de_ngan":"chủ đề 2-5 từ (hiện góc trên)","bai_hoc_rut_ra":["","",""],"video_tiep_theo":"","hook_ung_vien":["","",""],"hook":"(đúng lời thoại cảnh 1)","hook_chu":"","hook_kieu":"","nhan_manh":[""],"y_tuong_chinh":"","hashtag":["#toanhoc","#xacsuat"],"dap_an_cuoi":"' + r.dap_an + '",',
+    '"canh":[{"so":1,"loai":"mo_dau|de_bai|nhac_lai|y_do|bay|thu_nho|diem_chot|tinh_toan|kiem_tra|dap_an|bai_hoc","tieu_de_canh":"","tu_khoa":"","nhan":"","giu_san_khau":false,"loi_thoai":"","noi_dung_man_hinh":[],"trinh_bay":"cong_don|bien_doi|xep","chu_thich":[],"minh_hoa":{"loai":"san_khau","mo_ta":"","du_lieu":{"vat":[],"hanh_dong":[]}}}]}'
   ].join('');
 }

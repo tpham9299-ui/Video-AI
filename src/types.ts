@@ -63,6 +63,8 @@ export type Props = {
   nhanManh: string[]; // từ khóa trong hook được nhấn mạnh
   nhac: string | null;
   amLuongNhac: number; // âm lượng nhạc nền khi không có giọng đọc (khi có giọng tự giảm còn ~40%)
+  baiHoc?: string[]; // 2-3 bài học rút ra (hiện ở màn kết)
+  tiepTheo?: string; // câu hẹn video sau (màn kết)
   chuDe: string; // chủ đề ngắn hiện ở góc trên (ví dụ "Hai bi cùng màu")
   nen: NenProps | null;
   dsNen?: NenProps[]; // nhiều nền của bạn: đổi nền theo nhóm cảnh

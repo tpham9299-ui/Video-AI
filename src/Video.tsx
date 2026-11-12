@@ -2,6 +2,7 @@ import React from 'react';
 import {AbsoluteFill, Audio, Img, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame} from 'remotion';
 import {Canh, sanKhauCuaCanh} from './Canh';
 import {LopQuet} from './LopQuet';
+import {ManKetChuyenNghiep} from './ManKet';
 import {cacPha, phaCua} from './ThanhBuoc';
 import {Nen} from './Nen';
 import {FONT, FONT_DAM, BONG_CHU, vienChu, GIAO_DIEN, MAU} from './theme';
@@ -121,7 +122,7 @@ export const Video: React.FC<Props> = (props) => {
       {phongCach.thanhTienDo ? <ThanhTienDo tongFrame={tongFrame} lop={lop} /> : null}
       {outro ? (
         <Sequence from={outro.batDau} durationInFrames={outro.soFrame}>
-          {outro.loai === 'tu_tao' ? <ManKetTuTao th={thuongHieu} /> : <ManKet tep={outro.tep} loai={outro.loai} />}
+          {outro.loai === 'tu_tao' ? <ManKetChuyenNghiep th={thuongHieu} baiHoc={props.baiHoc || []} dapAn={props.dapAn} tiepTheo={props.tiepTheo || ''} /> : <ManKet tep={outro.tep} loai={outro.loai} />}
         </Sequence>
       ) : null}
     </AbsoluteFill>

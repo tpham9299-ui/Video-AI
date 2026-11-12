@@ -80,7 +80,7 @@ const toiDaSoLuong: Partial<Record<LoaiVat, number>> = {
 function vat(raw: Record<string, unknown>, i: number): Vat | null {
   const loai = LOAI_VAT.find((l) => l === raw.loai);
   if (!loai) return null;
-  const ds = laMang(raw.ds) ? raw.ds.slice(0, 12).map((x) => chu(x, 24)) : [];
+  const ds = laMang(raw.ds) ? raw.ds.slice(0, 12).map((x) => chu(x, raw.loai === 'danh_sach' || raw.loai === 'dien_thoai' ? 52 : 24)) : [];
   const dsSo = laMang(raw.ds_so) ? raw.ds_so.slice(0, 8).map((x) => so(x, 0, 0, 1e6)) : [];
   const ketQua = (laMang(raw.ket_qua) ? raw.ket_qua : raw.ket_qua !== undefined ? [raw.ket_qua] : [])
     .slice(0, 6)

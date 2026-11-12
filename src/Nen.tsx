@@ -5,6 +5,7 @@ import {NenLuoi} from './NenLuoi';
 import {NenManim} from './NenManim';
 import {NenNeon} from './NenNeon';
 import {NenCucQuang} from './NenCucQuang';
+import {NenToi} from './NenToi';
 import {CanhProps, NenProps, PhongCach} from './types';
 
 // Nền video.
@@ -61,7 +62,7 @@ const CucQuang: React.FC<{canh?: CanhProps[]; chiLop?: boolean}> = ({canh, chiLo
 
 export const Nen: React.FC<{nen: NenProps | null; dsNen?: NenProps[]; canh?: CanhProps[]; pc: PhongCach; tongFrame: number}> = ({nen, dsNen, canh, pc, tongFrame}) => {
   const ds = dsNen && dsNen.length ? dsNen : nen ? [nen] : [];
-  if (!ds.length) return !pc.kieuNen || pc.kieuNen === 'cuc_quang' ? <CucQuang canh={canh} /> : pc.kieuNen === 'neon' ? <NenNeon /> : pc.kieuNen === 'gradient' ? <NenDong kyHieu={pc.kyHieuTroi} quangSang={pc.quangSang} /> : pc.kieuNen === 'luoi_phang' ? <NenManim /> : <NenLuoi />;
+  if (!ds.length) return !pc.kieuNen || pc.kieuNen === 'toi' ? <NenToi /> : pc.kieuNen === 'cuc_quang' ? <CucQuang canh={canh} /> : pc.kieuNen === 'neon' ? <NenNeon /> : pc.kieuNen === 'gradient' ? <NenDong kyHieu={pc.kyHieuTroi} quangSang={pc.quangSang} /> : pc.kieuNen === 'luoi_phang' ? <NenManim /> : <NenLuoi />;
 
   // chia nhóm cảnh: cảnh giữ sân khấu thì giữ nền; mỗi nhóm mới chuyển sang nền kế tiếp
   const doan: {tu: number; den: number}[] = [];
@@ -85,7 +86,7 @@ export const Nen: React.FC<{nen: NenProps | null; dsNen?: NenProps[]; canh?: Can
       <AbsoluteFill style={{background: `linear-gradient(180deg, rgba(6,16,16,${Math.min(1, phu + 0.15)}) 0%, rgba(6,16,16,${phu}) 40%, rgba(6,16,16,${Math.min(1, phu + 0.25)}) 100%)`}} />
       {/* làm tối thêm vùng giữa (sân khấu, công thức) để nền nhiều chi tiết không lấn át hình */}
       <AbsoluteFill style={{background: 'radial-gradient(ellipse 75% 45% at 50% 50%, rgba(4,12,12,0.45) 0%, rgba(4,12,12,0) 100%)'}} />
-      {pc.lopNeonTrenNen !== false ? <CucQuang canh={canh} chiLop /> : null}
+      {pc.lopNeonTrenNen === true ? <CucQuang canh={canh} chiLop /> : <NenToi chiLop />}
     </AbsoluteFill>
   );
 };

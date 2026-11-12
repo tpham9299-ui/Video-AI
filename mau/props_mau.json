@@ -5,7 +5,7 @@
  "dapAn": "2/3",
  "lop": "12",
  "fps": 30,
- "tongFrame": 1456,
+ "tongFrame": 2728,
  "hookChu": "Đổi cửa, cơ hội thắng GẤP ĐÔI?",
  "hookKieu": "bat_ngo",
  "nhanManh": [
@@ -14,6 +14,12 @@
  "nhac": "nhac/nen.wav",
  "amLuongNhac": 0.16,
  "chuDe": "Giữ hay đổi cửa?",
+ "baiHoc": [
+  "Xét hết các trường hợp trước khi đoán 50/50",
+  "Người biết đáp án cho thêm tin: xác suất đổi",
+  "Không chắc? Kiểm tra bằng cách thử nhiều lần"
+ ],
+ "tiepTheo": "100 cánh cửa: đổi thì thắng bao nhiêu?",
  "nen": null,
  "dsNen": [],
  "thuongHieu": {
@@ -24,16 +30,21 @@
   "loiMoi": "Theo dõi để học mẹo xác suất",
   "logo": null
  },
- "outro": null,
+ "outro": {
+  "tep": "",
+  "loai": "tu_tao",
+  "soFrame": 180,
+  "batDau": 2548
+ },
  "phongCach": {
   "kieuPhuDe": "hop",
   "mauPhuDe": "#FF6B2C",
   "soNenToiDa": 3,
-  "lopNeonTrenNen": true,
+  "lopNeonTrenNen": false,
   "doMoNen": 0.35,
   "kyHieuTroi": false,
   "quangSang": true,
-  "kieuNen": "cuc_quang",
+  "kieuNen": "toi",
   "kieuToan": "dam",
   "kieuHinh": "manim",
   "thanhTienDo": false,
@@ -185,6 +196,148 @@
   },
   {
    "so": 3,
+   "loai": "de_bai",
+   "noiDung": [],
+   "minhHoa": {
+    "loai": "san_khau",
+    "moTa": "Thẻ danh sách trắng nổi lên: ba dòng 'Đề cho' trượt vào lần lượt, dòng cuối 'Cần tìm: P(thắng khi đổi)' được tô vàng quét ngang.",
+    "duLieu": {
+     "vat": [
+      {
+       "id": "de",
+       "loai": "danh_sach",
+       "x": 50,
+       "y": 50,
+       "noi_dung": "Tóm tắt đề",
+       "ds": [
+        "Đề cho: 3 cửa, 1 xe máy",
+        "Bạn chọn cửa 1",
+        "Người dẫn mở 1 cửa có dê",
+        "Cần tìm: P(thắng nếu đổi)"
+       ],
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 3,
+       "vat": "de",
+       "kieu": "chon",
+       "chi_so": [
+        4
+       ],
+       "mau": "vang"
+      }
+     ]
+    }
+   },
+   "audio": "giong/VT-mau-monty_c3.mp3",
+   "batDau": 296,
+   "soFrame": 209,
+   "leadFrame": 7,
+   "cau": [
+    {
+     "text": "Tóm lại đề cho: ba cửa, một xe,",
+     "bat": 0.22,
+     "ket": 1.862
+    },
+    {
+     "text": "bạn chọn cửa một, người dẫn mở một cửa dê.",
+     "bat": 1.862,
+     "ket": 4.086
+    },
+    {
+     "text": "Câu hỏi: nếu đổi cửa, xác suất thắng là bao nhiêu?",
+     "bat": 4.176,
+     "ket": 6.553
+    }
+   ],
+   "trinhBay": "xep",
+   "chuThich": [],
+   "tieuDeCanh": "Đề cho gì? Hỏi gì?",
+   "tuKhoa": "Hỏi gì",
+   "nhan": "",
+   "giuSanKhau": false,
+   "chuyenCanh": ""
+  },
+  {
+   "so": 4,
+   "loai": "nhac_lai",
+   "noiDung": [
+    "P=\\frac{\\text{thuận lợi}}{\\text{tất cả}}",
+    "P(\\text{mỗi cửa})=\\frac{1}{3}"
+   ],
+   "minhHoa": {
+    "loai": "san_khau",
+    "moTa": "Chiếc bánh chia 3 phần bằng nhau, mỗi phần ghi 1/3 và sáng lần lượt; công thức xác suất được viết tay bằng bút chì bên dưới.",
+    "duLieu": {
+     "vat": [
+      {
+       "id": "b3",
+       "loai": "banh",
+       "x": 50,
+       "y": 50,
+       "so_luong": 3,
+       "ds": [
+        "1/3",
+        "1/3",
+        "1/3"
+       ],
+       "co": 0.9,
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "b3",
+       "kieu": "chon",
+       "chi_so": [
+        1,
+        2,
+        3
+       ],
+       "mau": "xanh_duong"
+      }
+     ]
+    }
+   },
+   "audio": "giong/VT-mau-monty_c4.mp3",
+   "batDau": 505,
+   "soFrame": 260,
+   "leadFrame": 7,
+   "cau": [
+    {
+     "text": "Nhắc lại nhé: xác suất bằng số khả năng thuận",
+     "bat": 0.22,
+     "ket": 2.403
+    },
+    {
+     "text": "lợi chia cho tổng số khả năng như nhau.",
+     "bat": 2.403,
+     "ket": 4.295
+    },
+    {
+     "text": "Lúc đầu xe nằm sau mỗi cửa với khả năng",
+     "bat": 4.385,
+     "ket": 6.451
+    },
+    {
+     "text": "như nhau, nên mỗi cửa một phần ba.",
+     "bat": 6.451,
+     "ket": 8.251
+    }
+   ],
+   "trinhBay": "xep",
+   "chuThich": [],
+   "tieuDeCanh": "Nhắc lại: xác suất là gì?",
+   "tuKhoa": "xác suất",
+   "nhan": "",
+   "giuSanKhau": false,
+   "chuyenCanh": ""
+  },
+  {
+   "so": 5,
    "loai": "y_do",
    "noiDung": [],
    "minhHoa": {
@@ -235,8 +388,8 @@
      ]
     }
    },
-   "audio": "giong/VT-mau-monty_c3.mp3",
-   "batDau": 296,
+   "audio": "giong/VT-mau-monty_c5.mp3",
+   "batDau": 765,
    "soFrame": 190,
    "leadFrame": 7,
    "cau": [
@@ -260,7 +413,7 @@
    "chuyenCanh": ""
   },
   {
-   "so": 4,
+   "so": 6,
    "loai": "bay",
    "noiDung": [],
    "minhHoa": {
@@ -304,8 +457,8 @@
      ]
     }
    },
-   "audio": "giong/VT-mau-monty_c4.mp3",
-   "batDau": 486,
+   "audio": "giong/VT-mau-monty_c6.mp3",
+   "batDau": 955,
    "soFrame": 171,
    "leadFrame": 7,
    "cau": [
@@ -334,7 +487,7 @@
    "chuyenCanh": "phong"
   },
   {
-   "so": 5,
+   "so": 7,
    "loai": "diem_chot",
    "noiDung": [],
    "minhHoa": {
@@ -405,8 +558,8 @@
      ]
     }
    },
-   "audio": "giong/VT-mau-monty_c5.mp3",
-   "batDau": 657,
+   "audio": "giong/VT-mau-monty_c7.mp3",
+   "batDau": 1126,
    "soFrame": 231,
    "leadFrame": 7,
    "cau": [
@@ -438,8 +591,168 @@
    "chuyenCanh": ""
   },
   {
-   "so": 6,
-   "loai": "thu_nho",
+   "so": 8,
+   "loai": "tinh_toan",
+   "noiDung": [],
+   "minhHoa": {
+    "loai": "san_khau",
+    "moTa": "Thẻ danh sách ba trường hợp: 'Xe ở cửa 1 → đổi THUA' bị gạch đỏ; hai dòng 'Xe ở cửa 2', 'Xe ở cửa 3 → đổi THẮNG' được tô xanh quét ngang lần lượt.",
+    "duLieu": {
+     "vat": [
+      {
+       "id": "th",
+       "loai": "danh_sach",
+       "x": 50,
+       "y": 50,
+       "noi_dung": "Nếu bạn luôn ĐỔI cửa",
+       "ds": [
+        "Xe ở cửa 1 → đổi THUA",
+        "Xe ở cửa 2 → đổi THẮNG",
+        "Xe ở cửa 3 → đổi THẮNG"
+       ],
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "th",
+       "kieu": "loai_bo",
+       "chi_so": [
+        1
+       ]
+      },
+      {
+       "buoc": 3,
+       "vat": "th",
+       "kieu": "chon",
+       "chi_so": [
+        2
+       ],
+       "mau": "xanh_la"
+      },
+      {
+       "buoc": 4,
+       "vat": "th",
+       "kieu": "chon",
+       "chi_so": [
+        3
+       ],
+       "mau": "xanh_la"
+      }
+     ]
+    }
+   },
+   "audio": "giong/VT-mau-monty_c8.mp3",
+   "batDau": 1357,
+   "soFrame": 262,
+   "leadFrame": 7,
+   "cau": [
+    {
+     "text": "Bước một, xét hết các trường hợp vị trí của xe.",
+     "bat": 0.22,
+     "ket": 2.597
+    },
+    {
+     "text": "Xe ở cửa một thì đổi là thua.",
+     "bat": 2.687,
+     "ket": 4.437
+    },
+    {
+     "text": "Xe ở cửa hai hoặc ba, người dẫn buộc phải",
+     "bat": 4.527,
+     "ket": 6.699
+    },
+    {
+     "text": "mở cửa dê còn lại, đổi là thắng.",
+     "bat": 6.699,
+     "ket": 8.393
+    }
+   ],
+   "trinhBay": "xep",
+   "chuThich": [],
+   "tieuDeCanh": "Bước 1: xe nằm ở đâu?",
+   "tuKhoa": "Bước 1",
+   "nhan": "",
+   "giuSanKhau": false,
+   "chuyenCanh": "truot_len"
+  },
+  {
+   "so": 9,
+   "loai": "tinh_toan",
+   "noiDung": [
+    "P(\\text{đổi})=\\frac{1}{3}+\\frac{1}{3}",
+    "P(\\text{đổi})=\\frac{1}{3}+\\frac{1}{3}=\\frac{2}{3}"
+   ],
+   "minhHoa": {
+    "loai": "san_khau",
+    "moTa": "Biểu đồ hai cột: 'Giữ' cao 1 phần, 'Đổi' cao 2 phần mọc lên; cột 'Đổi' sáng cam.",
+    "duLieu": {
+     "vat": [
+      {
+       "id": "cot",
+       "loai": "bieu_do_cot",
+       "x": 50,
+       "y": 50,
+       "ds": [
+        "Giữ cửa",
+        "Đổi cửa"
+       ],
+       "ds_so": [
+        1,
+        2
+       ],
+       "nhan": "số trường hợp thắng",
+       "mau": "xanh_duong",
+       "co": 0.85,
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "cot",
+       "kieu": "chon",
+       "chi_so": [
+        2
+       ],
+       "mau": "cam"
+      }
+     ]
+    }
+   },
+   "audio": "giong/VT-mau-monty_c9.mp3",
+   "batDau": 1619,
+   "soFrame": 231,
+   "leadFrame": 7,
+   "cau": [
+    {
+     "text": "Bước hai, mỗi trường hợp có xác suất một phần ba.",
+     "bat": 0.22,
+     "ket": 2.597
+    },
+    {
+     "text": "Đổi cửa thắng ở hai trường hợp, nên cộng lại được hai phần ba.",
+     "bat": 2.687,
+     "ket": 5.717
+    },
+    {
+     "text": "Giữ cửa chỉ thắng một trường hợp.",
+     "bat": 5.807,
+     "ket": 7.349
+    }
+   ],
+   "trinhBay": "cong_don",
+   "chuThich": [],
+   "tieuDeCanh": "Bước 2: cộng các khả năng thắng",
+   "tuKhoa": "cộng",
+   "nhan": "",
+   "giuSanKhau": false,
+   "chuyenCanh": ""
+  },
+  {
+   "so": 10,
+   "loai": "kiem_tra",
    "noiDung": [
     "\\frac{20}{30}\\approx\\frac{2}{3}"
    ],
@@ -503,37 +816,32 @@
      ]
     }
    },
-   "audio": "giong/VT-mau-monty_c6.mp3",
-   "batDau": 888,
-   "soFrame": 171,
+   "audio": "giong/VT-mau-monty_c10.mp3",
+   "batDau": 1850,
+   "soFrame": 183,
    "leadFrame": 7,
    "cau": [
     {
-     "text": "Không tin?",
+     "text": "Kiểm tra lại cho chắc: chơi thử ba mươi lần và luôn đổi cửa.",
      "bat": 0.22,
-     "ket": 1.056
+     "ket": 3.25
     },
     {
-     "text": "Chơi thử ba mươi lần và luôn đổi cửa.",
-     "bat": 1.146,
-     "ket": 3.105
-    },
-    {
-     "text": "Khoảng hai mươi lần bạn mang xe máy về nhà.",
-     "bat": 3.195,
-     "ket": 5.363
+     "text": "Khoảng hai mươi lần bạn thắng, đúng gần hai phần ba.",
+     "bat": 3.34,
+     "ket": 5.717
     }
    ],
    "trinhBay": "xep",
    "chuThich": [],
-   "tieuDeCanh": "Thử chơi 30 lần",
+   "tieuDeCanh": "Kiểm tra: chơi thử 30 lần",
    "tuKhoa": "30 lần",
    "nhan": "",
    "giuSanKhau": false,
    "chuyenCanh": "truot_len"
   },
   {
-   "so": 7,
+   "so": 11,
    "loai": "dap_an",
    "noiDung": [
     "P(\\text{giữ})=\\frac{1}{3}",
@@ -566,8 +874,8 @@
      ]
     }
    },
-   "audio": "giong/VT-mau-monty_c7.mp3",
-   "batDau": 1059,
+   "audio": "giong/VT-mau-monty_c11.mp3",
+   "batDau": 2033,
    "soFrame": 200,
    "leadFrame": 7,
    "cau": [
@@ -591,72 +899,104 @@
    "chuyenCanh": ""
   },
   {
-   "so": 8,
+   "so": 12,
    "loai": "bai_hoc",
    "noiDung": [],
    "minhHoa": {
     "loai": "san_khau",
-    "moTa": "Điện thoại hiện bình chọn 'Bạn chọn gì?', hai lựa chọn trượt vào; lựa chọn 'Đổi cửa' sáng xanh lá kèm dấu tích.",
+    "moTa": "Thẻ danh sách 'Dạng bài có người biết trước' với 3 điều cần nhớ trượt vào và được tô vàng lần lượt; nhãn neon '100 cửa?' bật lên cuối cảnh.",
     "duLieu": {
      "vat": [
       {
-       "id": "dt",
-       "loai": "dien_thoai",
+       "id": "gn",
+       "loai": "danh_sach",
        "x": 50,
-       "y": 50,
-       "noi_dung": "Bạn chọn gì?",
+       "y": 42,
+       "noi_dung": "Dạng có người biết trước",
        "ds": [
-        "Giữ cửa 1 🚪",
-        "Đổi cửa 🔄"
+        "Xét hết các trường hợp",
+        "Thông tin mới đổi xác suất",
+        "Kiểm tra bằng thử nhiều lần"
        ],
-       "gia_tri_chu": "Bình luận ngay",
-       "co": 0.95,
        "buoc": 1
+      },
+      {
+       "id": "hoi",
+       "loai": "nhan",
+       "x": 50,
+       "y": 88,
+       "noi_dung": "100 cửa thì sao?",
+       "tu_khoa": "100 cửa",
+       "mau": "cam",
+       "buoc": 4
       }
      ],
      "hanh_dong": [
       {
        "buoc": 2,
-       "vat": "dt",
+       "vat": "gn",
+       "kieu": "chon",
+       "chi_so": [
+        1
+       ],
+       "mau": "vang"
+      },
+      {
+       "buoc": 3,
+       "vat": "gn",
        "kieu": "chon",
        "chi_so": [
         2
        ],
-       "mau": "xanh_la"
+       "mau": "vang"
+      },
+      {
+       "buoc": 3,
+       "vat": "gn",
+       "kieu": "chon",
+       "chi_so": [
+        3
+       ],
+       "mau": "vang"
+      },
+      {
+       "buoc": 5,
+       "vat": "hoi",
+       "kieu": "rung"
       }
      ]
     }
    },
-   "audio": "giong/VT-mau-monty_c8.mp3",
-   "batDau": 1259,
-   "soFrame": 197,
+   "audio": "giong/VT-mau-monty_c12.mp3",
+   "batDau": 2233,
+   "soFrame": 315,
    "leadFrame": 7,
    "cau": [
     {
-     "text": "Ghi nhớ: khi ai đó biết trước và cho bạn",
+     "text": "Ghi nhớ: xét hết trường hợp trước khi đoán năm mươi năm mươi.",
      "bat": 0.22,
-     "ket": 2.228
+     "ket": 3.041
     },
     {
-     "text": "thêm thông tin, xác suất đã thay đổi.",
-     "bat": 2.228,
-     "ket": 4.086
+     "text": "Ai biết trước mà cho thêm thông tin thì xác suất thay đổi.",
+     "bat": 3.131,
+     "ket": 5.952
     },
     {
-     "text": "Bạn sẽ giữ hay đổi?",
-     "bat": 4.176,
-     "ket": 5.273
+     "text": "Thử nghĩ: một trăm cửa, mở chín mươi tám cửa dê, đổi thắng bao nhiêu?",
+     "bat": 6.042,
+     "ket": 9.282
     },
     {
      "text": "Bình luận nhé!",
-     "bat": 5.363,
-     "ket": 6.199
+     "bat": 9.372,
+     "ket": 10.208
     }
    ],
    "trinhBay": "xep",
    "chuThich": [],
-   "tieuDeCanh": "Thông tin mới đổi xác suất",
-   "tuKhoa": "Thông tin mới",
+   "tieuDeCanh": "Ghi nhớ 3 điều",
+   "tuKhoa": "3 điều",
    "nhan": "",
    "giuSanKhau": false,
    "chuyenCanh": ""

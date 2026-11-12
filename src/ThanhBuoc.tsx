@@ -7,11 +7,12 @@ import {FONT_DAM} from './theme';
 // bước hiện tại màu cam bật lên và phát sáng, bước sau còn mờ. Giúp người xem luôn biết bài đang ở đâu.
 export const PHA: [RegExp, string][] = [
   [/mo_dau|hook|cau_hoi|de_bai/, 'ĐỀ BÀI'],
+  [/nhac_lai|kien_thuc|ly_thuyet/, 'KIẾN THỨC'],
   [/y_do|thu_nho|phan_tich/, 'PHÂN TÍCH'],
   [/bay/, 'CÁI BẪY'],
   [/diem_chot|y_tuong/, 'MẤU CHỐT'],
   [/tinh|giai/, 'TÍNH'],
-  [/dap_an|ket_qua/, 'ĐÁP ÁN'],
+  [/kiem_tra|dap_an|ket_qua/, 'ĐÁP ÁN'],
   [/bai_hoc|ket_luan|chot/, 'GHI NHỚ'],
 ];
 export const phaCua = (loai: string) => {
@@ -33,27 +34,29 @@ export const ThanhBuoc: React.FC<{cacBuoc: string[]; hienTai: string; moi: boole
   const f = useCurrentFrame();
   const iNay = cacBuoc.indexOf(hienTai);
   const a = moi ? kep(f / 10) : 1; // bước mới bắt đầu thì bật lên
-  const nhieu = cacBuoc.length > 5;
+  const gon = cacBuoc.length > 5; // nhiều bước: bước khác chỉ là vòng tròn ✓/số, bước hiện tại hiện đủ chữ
   return (
-    <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', gap: nhieu ? 4 : 10, flexWrap: 'nowrap'}}>
+    <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, flexWrap: 'nowrap'}}>
       {cacBuoc.map((b, i) => {
         const xong = i < iNay;
         const nay = i === iNay;
         const tich = xong && moi && i === iNay - 1 ? kep((f - 4) / 8) : 1;
+        const tron = gon && !nay;
         return (
           <React.Fragment key={b}>
-            {i > 0 ? <div style={{width: nhieu ? 6 : 18, height: 3, borderRadius: 2, background: i <= iNay ? '#3BF29A' : 'rgba(255,255,255,0.18)'}} /> : null}
+            {i > 0 ? <div style={{width: gon ? 14 : 18, height: 3, borderRadius: 2, background: i <= iNay ? '#3BF29A' : 'rgba(255,255,255,0.18)'}} /> : null}
             <div style={{
-              fontFamily: FONT_DAM, fontWeight: 900, fontSize: nhieu ? 21 : 25, letterSpacing: 0.5, whiteSpace: 'nowrap',
-              padding: nhieu ? '6px 9px' : '7px 15px', borderRadius: 30,
+              fontFamily: FONT_DAM, fontWeight: 900, fontSize: tron ? 22 : 25, letterSpacing: 0.5, whiteSpace: 'nowrap',
+              width: tron ? 42 : undefined, height: tron ? 42 : undefined, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: tron ? 0 : '7px 16px', borderRadius: 30,
               background: nay ? 'linear-gradient(180deg, #FF9A4D, #F0601A)' : xong ? '#3BF29A' : 'rgba(255,255,255,0.08)',
-              color: nay ? '#fff' : xong ? '#062019' : 'rgba(255,255,255,0.45)',
-              border: nay || xong ? 'none' : '2px solid rgba(255,255,255,0.14)',
+              color: nay ? '#fff' : xong ? '#062019' : 'rgba(255,255,255,0.5)',
+              border: nay || xong ? 'none' : '2px solid rgba(255,255,255,0.16)',
               boxShadow: nay ? '0 4px 0 #9a3a0c, 0 0 22px rgba(255,122,47,0.6)' : xong ? '0 3px 0 #0f7a52' : 'none',
-              transform: nay ? `scale(${1.08 * popOut(a, 2.2)})` : 'none',
+              transform: nay ? `scale(${1.06 * popOut(a, 2.2)})` : 'none',
             }}>
-              {xong ? <span style={{display: 'inline-block', transform: `scale(${popOut(tich, 2.5)})`, marginRight: 5}}>✓</span> : null}
-              {b}
+              {xong ? <span style={{display: 'inline-block', transform: `scale(${popOut(tich, 2.5)})`, marginRight: tron ? 0 : 5}}>✓</span> : null}
+              {tron ? (xong ? '' : i + 1) : (gon ? `${i + 1} · ${b}` : b)}
             </div>
           </React.Fragment>
         );

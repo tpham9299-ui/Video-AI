@@ -246,7 +246,7 @@ def ghep(cac_tep, dich):
     chay(lenh)
 
 
-PHONG_CACH_MAC_DINH = {"kieuPhuDe": "hop", "mauPhuDe": "#FF6B2C", "soNenToiDa": 3, "lopNeonTrenNen": True, "doMoNen": 0.35, "kyHieuTroi": False, "quangSang": True, "kieuNen": "cuc_quang", "kieuToan": "dam",
+PHONG_CACH_MAC_DINH = {"kieuPhuDe": "hop", "mauPhuDe": "#FF6B2C", "soNenToiDa": 3, "lopNeonTrenNen": False, "doMoNen": 0.35, "kyHieuTroi": False, "quangSang": True, "kieuNen": "toi", "kieuToan": "dam",
                        "kieuHinh": "manim", "thanhTienDo": False, "phuDe": True, "mau": {}}
 THUONG_HIEU_MAC_DINH = {"ten": "", "khauHieu": "", "handle": "", "markNuoc": True, "outroGiay": 5, "outroTuTao": True, "loiMoi": "Theo dõi để học mẹo xác suất"}
 DUOI_ANH = (".jpg", ".jpeg", ".png", ".webp")
@@ -367,6 +367,7 @@ def tim_thuong_hieu(public, th):
     hien = dict(th)
     hien.pop("outroGiay", None)
     hien.pop("outroTuTao", None)
+    hien.pop("dungOutroRieng", None)
     hien["logo"] = "thuong_hieu/" + os.path.basename(logo) if logo else None
     outro = None
     if out:
@@ -379,10 +380,20 @@ def tim_thuong_hieu(public, th):
             except Exception:
                 pass
         outro = {"tep": "thuong_hieu/" + ten, "loai": "video" if video else "anh", "soFrame": int(round(giay * FPS))}
-    elif th.get("outroTuTao", True) and (logo or th.get("ten") or th.get("handle")):
-        # không có tệp outro: tự tạo màn kết động 2,5 giây (logo + tên kênh + nút Theo dõi)
-        outro = {"tep": "", "loai": "tu_tao", "soFrame": int(round(2.5 * FPS))}
     return hien, outro
+
+
+def chon_man_ket(outro_tep, th, bai_hoc):
+    """Màn kết: mặc định dùng màn kết tự tạo chuyên nghiệp (tóm tắt bài học + kênh + nút Theo dõi).
+    Chỉ dùng tệp outro của bạn khi phong_cach.json đặt "thuongHieu": {"dungOutroRieng": true}."""
+    if outro_tep and th.get("dungOutroRieng"):
+        return outro_tep
+    if not th.get("outroTuTao", True):
+        return outro_tep
+    if bai_hoc or th.get("ten") or th.get("handle") or th.get("logo"):
+        giay = 6.0 if bai_hoc else 3.5
+        return {"tep": "", "loai": "tu_tao", "soFrame": int(round(giay * FPS))}
+    return outro_tep
 
 
 def main():
@@ -513,6 +524,8 @@ def main():
     pc, nen_co_dinh, th = doc_phong_cach(args.phong_cach)
     ds_nen = chon_nen(args.public, id_an_toan, nen_co_dinh, pc.get("soNenToiDa", 3))
     thuong_hieu, outro = tim_thuong_hieu(args.public, th)
+    bai_hoc = [str(x).strip()[:90] for x in (kb.get("bai_hoc_rut_ra") or []) if str(x).strip()][:3]
+    outro = chon_man_ket(outro, dict(th, logo=thuong_hieu.get("logo")), bai_hoc)
     if outro:
         outro["batDau"] = bat_dau
         bat_dau += outro["soFrame"]
@@ -530,6 +543,8 @@ def main():
         "nhac": nhac,
         "amLuongNhac": float(os.environ.get("AM_LUONG_NHAC") or (0.16 if nhac and nhac.endswith("nen.wav") else 0.12)),
         "chuDe": str(kb.get("chu_de_ngan") or kb.get("chu_de") or "")[:40],
+        "baiHoc": bai_hoc,
+        "tiepTheo": str(kb.get("video_tiep_theo") or "")[:70],
         "nen": ds_nen[0] if ds_nen else None,
         "dsNen": ds_nen,
         "thuongHieu": thuong_hieu,

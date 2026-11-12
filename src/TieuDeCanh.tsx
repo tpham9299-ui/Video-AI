@@ -10,6 +10,8 @@ import {BONG_CHU, FONT_DAM, vienChu} from './theme';
 export const NHAN_CANH: [RegExp, string][] = [
   [/mo_dau|hook|cau_hoi/, 'CÂU HỎI'],
   [/de_bai/, 'ĐỀ BÀI'],
+  [/nhac_lai|kien_thuc/, 'KIẾN THỨC'],
+  [/kiem_tra/, 'KIỂM TRA'],
   [/y_do/, 'Ý ĐỒ'],
   [/thu_nho/, 'THỬ NHỎ'],
   [/diem_chot|y_tuong/, 'MẤU CHỐT'],

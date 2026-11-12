@@ -124,6 +124,94 @@
   },
   {
    "so": 3,
+   "loai": "de_bai",
+   "tieu_de_canh": "Đề cho gì? Hỏi gì?",
+   "tu_khoa": "Hỏi gì",
+   "loi_thoai": "Tóm lại đề cho: ba cửa, một xe, bạn chọn cửa một, người dẫn mở một cửa dê. Câu hỏi: nếu đổi cửa, xác suất thắng là bao nhiêu?",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Thẻ danh sách trắng nổi lên: ba dòng 'Đề cho' trượt vào lần lượt, dòng cuối 'Cần tìm: P(thắng khi đổi)' được tô vàng quét ngang.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "de",
+       "loai": "danh_sach",
+       "x": 50,
+       "y": 50,
+       "noi_dung": "Tóm tắt đề",
+       "ds": [
+        "Đề cho: 3 cửa, 1 xe máy",
+        "Bạn chọn cửa 1",
+        "Người dẫn mở 1 cửa có dê",
+        "Cần tìm: P(thắng nếu đổi)"
+       ],
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 3,
+       "vat": "de",
+       "kieu": "chon",
+       "chi_so": [
+        4
+       ],
+       "mau": "vang"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "so": 4,
+   "loai": "nhac_lai",
+   "tieu_de_canh": "Nhắc lại: xác suất là gì?",
+   "tu_khoa": "xác suất",
+   "loi_thoai": "Nhắc lại nhé: xác suất bằng số khả năng thuận lợi chia cho tổng số khả năng như nhau. Lúc đầu xe nằm sau mỗi cửa với khả năng như nhau, nên mỗi cửa một phần ba.",
+   "noi_dung_man_hinh": [
+    "P=\\frac{\\text{thuận lợi}}{\\text{tất cả}}",
+    "P(\\text{mỗi cửa})=\\frac{1}{3}"
+   ],
+   "trinh_bay": "xep",
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Chiếc bánh chia 3 phần bằng nhau, mỗi phần ghi 1/3 và sáng lần lượt; công thức xác suất được viết tay bằng bút chì bên dưới.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "b3",
+       "loai": "banh",
+       "x": 50,
+       "y": 50,
+       "so_luong": 3,
+       "ds": [
+        "1/3",
+        "1/3",
+        "1/3"
+       ],
+       "co": 0.9,
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "b3",
+       "kieu": "chon",
+       "chi_so": [
+        1,
+        2,
+        3
+       ],
+       "mau": "xanh_duong"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "so": 5,
    "loai": "y_do",
    "tieu_de_canh": "Còn 2 cửa: 50/50 thật không?",
    "tu_khoa": "50/50",
@@ -179,7 +267,7 @@
    }
   },
   {
-   "so": 4,
+   "so": 6,
    "loai": "bay",
    "tieu_de_canh": "Bẫy: người dẫn BIẾT đáp án",
    "tu_khoa": "BIẾT",
@@ -229,7 +317,7 @@
    }
   },
   {
-   "so": 5,
+   "so": 7,
    "loai": "diem_chot",
    "tieu_de_canh": "Cửa của bạn chỉ có 1/3",
    "tu_khoa": "1/3",
@@ -309,12 +397,119 @@
    }
   },
   {
-   "so": 6,
-   "loai": "thu_nho",
-   "tieu_de_canh": "Thử chơi 30 lần",
+   "so": 8,
+   "loai": "tinh_toan",
+   "tieu_de_canh": "Bước 1: xe nằm ở đâu?",
+   "tu_khoa": "Bước 1",
+   "chuyen_canh": "truot_len",
+   "loi_thoai": "Bước một, xét hết các trường hợp vị trí của xe. Xe ở cửa một thì đổi là thua. Xe ở cửa hai hoặc ba, người dẫn buộc phải mở cửa dê còn lại, đổi là thắng.",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Thẻ danh sách ba trường hợp: 'Xe ở cửa 1 → đổi THUA' bị gạch đỏ; hai dòng 'Xe ở cửa 2', 'Xe ở cửa 3 → đổi THẮNG' được tô xanh quét ngang lần lượt.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "th",
+       "loai": "danh_sach",
+       "x": 50,
+       "y": 50,
+       "noi_dung": "Nếu bạn luôn ĐỔI cửa",
+       "ds": [
+        "Xe ở cửa 1 → đổi THUA",
+        "Xe ở cửa 2 → đổi THẮNG",
+        "Xe ở cửa 3 → đổi THẮNG"
+       ],
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "th",
+       "kieu": "loai_bo",
+       "chi_so": [
+        1
+       ]
+      },
+      {
+       "buoc": 3,
+       "vat": "th",
+       "kieu": "chon",
+       "chi_so": [
+        2
+       ],
+       "mau": "xanh_la"
+      },
+      {
+       "buoc": 4,
+       "vat": "th",
+       "kieu": "chon",
+       "chi_so": [
+        3
+       ],
+       "mau": "xanh_la"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "so": 9,
+   "loai": "tinh_toan",
+   "tieu_de_canh": "Bước 2: cộng các khả năng thắng",
+   "tu_khoa": "cộng",
+   "trinh_bay": "cong_don",
+   "loi_thoai": "Bước hai, mỗi trường hợp có xác suất một phần ba. Đổi cửa thắng ở hai trường hợp, nên cộng lại được hai phần ba. Giữ cửa chỉ thắng một trường hợp.",
+   "noi_dung_man_hinh": [
+    "P(\\text{đổi})=\\frac{1}{3}+\\frac{1}{3}",
+    "P(\\text{đổi})=\\frac{1}{3}+\\frac{1}{3}=\\frac{2}{3}"
+   ],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Biểu đồ hai cột: 'Giữ' cao 1 phần, 'Đổi' cao 2 phần mọc lên; cột 'Đổi' sáng cam.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "cot",
+       "loai": "bieu_do_cot",
+       "x": 50,
+       "y": 50,
+       "ds": [
+        "Giữ cửa",
+        "Đổi cửa"
+       ],
+       "ds_so": [
+        1,
+        2
+       ],
+       "nhan": "số trường hợp thắng",
+       "mau": "xanh_duong",
+       "co": 0.85,
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "cot",
+       "kieu": "chon",
+       "chi_so": [
+        2
+       ],
+       "mau": "cam"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "so": 10,
+   "loai": "kiem_tra",
+   "tieu_de_canh": "Kiểm tra: chơi thử 30 lần",
    "tu_khoa": "30 lần",
    "chuyen_canh": "truot_len",
-   "loi_thoai": "Không tin? Chơi thử ba mươi lần và luôn đổi cửa. Khoảng hai mươi lần bạn mang xe máy về nhà.",
+   "loi_thoai": "Kiểm tra lại cho chắc: chơi thử ba mươi lần và luôn đổi cửa. Khoảng hai mươi lần bạn thắng, đúng gần hai phần ba.",
    "noi_dung_man_hinh": [
     "\\frac{20}{30}\\approx\\frac{2}{3}"
    ],
@@ -381,7 +576,7 @@
    "trinh_bay": "xep"
   },
   {
-   "so": 7,
+   "so": 11,
    "loai": "dap_an",
    "tieu_de_canh": "Đổi cửa: thắng 2/3",
    "tu_khoa": "2/3",
@@ -420,45 +615,83 @@
    }
   },
   {
-   "so": 8,
+   "so": 12,
    "loai": "bai_hoc",
-   "tieu_de_canh": "Thông tin mới đổi xác suất",
-   "tu_khoa": "Thông tin mới",
-   "loi_thoai": "Ghi nhớ: khi ai đó biết trước và cho bạn thêm thông tin, xác suất đã thay đổi. Bạn sẽ giữ hay đổi? Bình luận nhé!",
+   "tieu_de_canh": "Ghi nhớ 3 điều",
+   "tu_khoa": "3 điều",
+   "loi_thoai": "Ghi nhớ: xét hết trường hợp trước khi đoán năm mươi năm mươi. Ai biết trước mà cho thêm thông tin thì xác suất thay đổi. Thử nghĩ: một trăm cửa, mở chín mươi tám cửa dê, đổi thắng bao nhiêu? Bình luận nhé!",
    "noi_dung_man_hinh": [],
    "minh_hoa": {
     "loai": "san_khau",
-    "mo_ta": "Điện thoại hiện bình chọn 'Bạn chọn gì?', hai lựa chọn trượt vào; lựa chọn 'Đổi cửa' sáng xanh lá kèm dấu tích.",
+    "mo_ta": "Thẻ danh sách 'Dạng bài có người biết trước' với 3 điều cần nhớ trượt vào và được tô vàng lần lượt; nhãn neon '100 cửa?' bật lên cuối cảnh.",
     "du_lieu": {
      "vat": [
       {
-       "id": "dt",
-       "loai": "dien_thoai",
+       "id": "gn",
+       "loai": "danh_sach",
        "x": 50,
-       "y": 50,
-       "noi_dung": "Bạn chọn gì?",
+       "y": 42,
+       "noi_dung": "Dạng có người biết trước",
        "ds": [
-        "Giữ cửa 1 🚪",
-        "Đổi cửa 🔄"
+        "Xét hết các trường hợp",
+        "Thông tin mới đổi xác suất",
+        "Kiểm tra bằng thử nhiều lần"
        ],
-       "gia_tri_chu": "Bình luận ngay",
-       "co": 0.95,
        "buoc": 1
+      },
+      {
+       "id": "hoi",
+       "loai": "nhan",
+       "x": 50,
+       "y": 88,
+       "noi_dung": "100 cửa thì sao?",
+       "tu_khoa": "100 cửa",
+       "mau": "cam",
+       "buoc": 4
       }
      ],
      "hanh_dong": [
       {
        "buoc": 2,
-       "vat": "dt",
+       "vat": "gn",
+       "kieu": "chon",
+       "chi_so": [
+        1
+       ],
+       "mau": "vang"
+      },
+      {
+       "buoc": 3,
+       "vat": "gn",
        "kieu": "chon",
        "chi_so": [
         2
        ],
-       "mau": "xanh_la"
+       "mau": "vang"
+      },
+      {
+       "buoc": 3,
+       "vat": "gn",
+       "kieu": "chon",
+       "chi_so": [
+        3
+       ],
+       "mau": "vang"
+      },
+      {
+       "buoc": 5,
+       "vat": "hoi",
+       "kieu": "rung"
       }
      ]
     }
    }
   }
- ]
+ ],
+ "bai_hoc_rut_ra": [
+  "Xét hết các trường hợp trước khi đoán 50/50",
+  "Người biết đáp án cho thêm tin: xác suất đổi",
+  "Không chắc? Kiểm tra bằng cách thử nhiều lần"
+ ],
+ "video_tiep_theo": "100 cánh cửa: đổi thì thắng bao nhiêu?"
 }
