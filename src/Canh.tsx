@@ -1,154 +1,180 @@
 import React from 'react';
 import {Audio, interpolate, Sequence, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
-import {coChuCongThuc, laChuThuong, phanLoaiHinh} from './bocuc';
+import {coChuCongThuc, laChuThuong, NHAN_HOOK, phanLoaiHinh} from './bocuc';
 import {BienDoi} from './BienDoi';
 import {ChuThich} from './ChuThich';
 import {HookChu} from './HookChu';
-import {coTheBienDoi, coTheCongDon, nhomHang, smooth} from './manim';
+import {coTheBienDoi, coTheCongDon, nhomHang} from './manim';
 import {MinhHoa} from './MinhHoa';
 import {PhuDe} from './PhuDe';
+import {PhuDeTikTok} from './PhuDeTikTok';
+import {easeOut, kep} from './sankhau/donghieu';
+import {DuLieuSanKhau, hopLeSanKhau, noiTiepSanKhau} from './sankhau/dulieu';
+import {SanKhau, SK_H, SK_W} from './sankhau/SanKhau';
+import {nhanCanh, TieuDeCanh} from './TieuDeCanh';
 import {FONT, MAU} from './theme';
 import {Toan} from './Toan';
 import {CanhProps, PhongCach} from './types';
 
 export type HookThongTin = {chu: string; kieu: string; nhanManh: string[]};
 
-// Bố cục dọc 1080x1920 như video mẫu (Manim):
-//   [đầu video: thương hiệu] -> [tiêu đề (cảnh hook)] -> [sân khấu: hình vẽ nét trắng] -> [công thức cam vàng] -> [phụ đề]
-// Nửa dưới màn hình (từ ~y 1590) để trống cho giao diện TikTok/Shorts.
+// Dữ liệu sân khấu của một cảnh, đã nối tiếp các cảnh trước nếu cảnh đó "giu_san_khau".
+export function sanKhauCuaCanh(ds: CanhProps[], i: number): DuLieuSanKhau | null {
+  const c = ds[i];
+  if (!c || c.minhHoa.loai !== 'san_khau') return null;
+  const d = hopLeSanKhau(c.minhHoa.duLieu);
+  if (!d) return null;
+  return c.giuSanKhau && i > 0 ? noiTiepSanKhau(sanKhauCuaCanh(ds, i - 1), d) : d;
+}
+
+// Bố cục dọc 1080x1920 theo video mẫu:
+//   [nhãn cam + tiêu đề cảnh]  ->  [SÂN KHẤU: vật thật chuyển động]  ->  [công thức]  ->  [phụ đề TikTok]
+// Khoảng ~360px dưới cùng và ~150px trên cùng để trống cho giao diện TikTok/Shorts.
+const Y_DAU = 196;
+const Y_SAN = 470;
+const Y_PHU_DE = 1452;
+
 export const Canh: React.FC<{
   canh: CanhProps;
   tieuDe: string;
   tongCanh: number;
   hook: HookThongTin;
   pc: PhongCach;
-}> = ({canh, tieuDe, tongCanh, hook, pc}) => {
+  sanKhau: DuLieuSanKhau | null;
+  giuTruoc: boolean; // sân khấu nối tiếp cảnh trước: không chạy hiệu ứng vào
+  giuSau: boolean; // cảnh sau nối tiếp sân khấu: không làm mờ sân khấu khi kết thúc
+}> = ({canh, tieuDe, tongCanh, hook, pc, sanKhau, giuTruoc, giuSau}) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
   const t = frame / fps;
 
-  const vao = smooth(frame / 10); // cảnh hiện ra mượt kiểu Manim (rate_func smooth)
+  const vao = kep(frame / 9);
   const ra = interpolate(frame, [canh.soFrame - 6, canh.soFrame], [1, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
+  const nhoeVao = (1 - vao) * 12 + (1 - ra) * 10;
 
   const giayAm = canh.cau.length ? canh.cau[canh.cau.length - 1].ket : 3;
-  const kieu = phanLoaiHinh(canh.minhHoa.loai, canh.minhHoa.moTa, canh.minhHoa.duLieu);
+  const kieu = sanKhau ? 'sankhau' : phanLoaiHinh(canh.minhHoa.loai, canh.minhHoa.moTa, canh.minhHoa.duLieu);
   const laMoDau = canh.so === 1;
   const laCuoi = canh.so === tongCanh;
   const coHinh = kieu !== null;
   const coHook = laMoDau && !!hook.chu;
-  const hienTieuDe = laMoDau && !coHook && !!tieuDe;
 
-  // Dòng công thức thứ i hiện cùng lúc với câu thoại thứ floor(i * số câu / số dòng).
+  // ----- công thức -----
   const nCau = canh.cau.length;
   const nDong = canh.noiDung.length;
   const batDong = canh.noiDung.map((_, i) => (nCau ? canh.cau[Math.min(nCau - 1, Math.floor((i * nCau) / nDong))].bat + 0.05 : 0.4 + i * 0.8));
-  const hienCongThuc = !(coHook && coHinh && nDong > 1);
-
+  const hienCongThuc = nDong > 0 && !(coHook && coHinh && nDong > 1);
   const kieuTB = canh.trinhBay;
   const dungBienDoi = kieuTB === 'bien_doi' && coTheBienDoi(canh.noiDung);
   const dungCongDon = (kieuTB === 'cong_don' || kieuTB === 'bien_doi') && !dungBienDoi && coTheCongDon(canh.noiDung);
   const nhipDong = Math.max(1.1, Math.min(1.8, (giayAm - 0.3) / Math.max(1, nDong)));
-  const thoiDiemDong = dungBienDoi || dungCongDon ? canh.noiDung.map((_, i) => 0.3 + i * nhipDong) : batDong;
+  // có sân khấu thì công thức hiện sau khi hình đã dựng được một phần
+  const treCT = coHinh ? Math.min(1.2, giayAm * 0.25) : 0.3;
+  const thoiDiemDong = dungBienDoi || dungCongDon ? canh.noiDung.map((_, i) => treCT + i * nhipDong) : batDong.map((b) => Math.max(b, coHinh ? treCT : 0));
   const hang = dungCongDon ? nhomHang(canh.noiDung) : [];
   const khungCuoi = /dap_an|ket_qua/i.test(canh.loai);
-
   const coNote = canh.chuThich.length > 0;
-  const cao = coHook ? 560 : coNote ? 560 : 640;
-  const heSo = Math.min(1.1, cao / 640);
-  const lonHon = !coHinh && !hienTieuDe && !coHook;
-  const caoCT = coNote ? 220 : coHinh ? 260 : 520;
-  const nHang = dungCongDon ? hang.length : 1;
+  const nHang = !hienCongThuc ? 0 : dungBienDoi ? 1 : dungCongDon ? hang.length : nDong;
+
+  // ----- phân chia chiều cao -----
+  const dayVung = Y_PHU_DE - 30; // đáy vùng nội dung
+  const coCTMax = coHinh ? 54 : 70;
+  const caoCT = hienCongThuc ? Math.min(coHinh ? 380 : 700, 70 + nHang * coCTMax * 1.95) : 0;
+  const caoNote = coNote ? 40 + canh.chuThich.length * 56 : 0;
+  const yNoiDung = coHook ? Y_SAN + 20 : Y_SAN;
+  const caoSan = Math.max(380, dayVung - yNoiDung - caoCT - caoNote - (caoCT ? 16 : 0) - (caoNote ? 16 : 0));
+  const tiLe = Math.min(1.12, caoSan / SK_H, 1000 / SK_W);
+  const lonHon = !coHinh;
   const coCT = Math.min(
     ...canh.noiDung.map((d) => coChuCongThuc(d, lonHon)),
-    Math.floor((caoCT - 30) / Math.max(1, nHang) / 1.5)
+    Math.floor((Math.max(120, caoCT) - 60) / Math.max(1, nHang) / 1.9)
   );
 
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        left: 60,
-        right: 60,
-        top: laMoDau ? 270 : 372,
-        bottom: 330,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 14,
-        fontFamily: FONT,
-        opacity: vao * ra,
-        transform: `translateY(${(1 - vao) * 36}px) scale(${0.97 + 0.03 * vao})`,
-      }}
-    >
-      {/* Tiêu đề (cảnh hook) */}
-      {coHook ? <HookChu chu={hook.chu} nhanManh={hook.nhanManh} kieu={hook.kieu} lead={canh.leadFrame} /> : null}
-      {hienTieuDe && !coHinh ? (
-        <div style={{height: 280, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontWeight: 800, fontSize: 80, lineHeight: 1.2, color: MAU.tieuDe}}>{tieuDe}</div>
-      ) : null}
+  const vaoSan = giuTruoc ? 1 : easeOut(kep((frame - 2) / 10));
+  const raSan = giuSau ? 1 : ra;
+  const tieuDeCanh = canh.tieuDeCanh;
+  const nhan = coHook ? (NHAN_HOOK[hook.kieu] || '').replace(/^[^A-Za-zÀ-ỹ]+/, '') : nhanCanh(canh.loai, canh.nhan);
 
-      {/* Sân khấu: hình vẽ */}
-      {coHinh && kieu !== null ? (
-        <div style={{height: cao, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-          <div style={{width: 960, height: 640, transform: `scale(${heSo})`, transformOrigin: 'center center', flexShrink: 0}}>
-            <MinhHoa kieu={kieu} mh={canh.minhHoa} giayAm={giayAm} />
+  return (
+    <div style={{position: 'absolute', inset: 0, fontFamily: FONT}}>
+      {/* Đầu cảnh: nhãn + tiêu đề (hoặc câu hook ở cảnh 1) */}
+      <div style={{position: 'absolute', left: 50, right: 50, top: Y_DAU, height: Y_SAN - Y_DAU - 10, display: 'flex', flexDirection: 'column', justifyContent: 'center', opacity: ra, filter: nhoeVao > 0.3 ? `blur(${nhoeVao}px)` : undefined}}>
+        {coHook ? (
+          <>
+            {nhan ? <TieuDeCanh nhan={nhan} chu="" tuKhoa="" /> : null}
+            <HookChu chu={hook.chu} nhanManh={hook.nhanManh} kieu={hook.kieu} lead={canh.leadFrame} />
+          </>
+        ) : (
+          <TieuDeCanh nhan={nhan} chu={tieuDeCanh || (laMoDau ? tieuDe : '')} tuKhoa={canh.tuKhoa} />
+        )}
+      </div>
+
+      {/* Sân khấu */}
+      {coHinh ? (
+        <div style={{position: 'absolute', left: 0, right: 0, top: yNoiDung, height: caoSan, display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: raSan * (giuTruoc ? 1 : kep(vaoSan * 1.5)), transform: `scale(${giuTruoc ? 1 : 0.94 + 0.06 * vaoSan})`}}>
+          <div style={{width: SK_W, height: SK_H, transform: `scale(${tiLe})`, flexShrink: 0}}>
+            {sanKhau ? (
+              <SanKhau du={sanKhau} giayAm={giayAm} />
+            ) : kieu ? (
+              <div style={{width: 960, height: 640, marginTop: (SK_H - 640) / 2}}>
+                <MinhHoa kieu={kieu} mh={canh.minhHoa} giayAm={giayAm} />
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}
 
-      {/* Khung chú thích viền vàng */}
-      {coNote ? <ChuThich dong={canh.chuThich} bd={Math.max(0.6, giayAm * 0.45)} /> : null}
-
-      {/* Công thức */}
-      <div style={{flex: 1, minHeight: caoCT, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 10}}>
-        {hienCongThuc && dungBienDoi ? (
-          <BienDoi dong={canh.noiDung} batDong={thoiDiemDong} t={t} co={coCT} maxWidth={940} khungCuoi={khungCuoi} mauGoc={MAU.vang} mauNhay="#FFD27A" />
-        ) : hienCongThuc && dungCongDon ? (
-          hang.map((h, r) => (
-            <BienDoi
-              key={r}
-              dong={h.dong}
-              batDong={h.chiSo.map((i) => thoiDiemDong[i])}
-              t={t}
-              co={coCT}
-              maxWidth={940}
-              khungCuoi={khungCuoi && r === hang.length - 1}
-              mauGoc={MAU.vang}
-              mauNhay="#FFD27A"
-              can="trai"
-            />
-          ))
-        ) : hienCongThuc ? (
-          canh.noiDung.map((d, i) => {
-            const bd = thoiDiemDong[i];
-            const p = t < bd ? 0 : Math.min(1, spring({frame: frame - Math.round(bd * fps), fps, config: {damping: 16}}));
-            return (
-              <div key={i} style={{opacity: p, transform: `translateY(${(1 - p) * 30}px)`, maxWidth: 960, textAlign: 'center', padding: '4px 20px'}}>
-                <Toan tex={d} size={coChuCongThuc(d, lonHon)} maxWidth={920} color={laChuThuong(d) ? '#ffffff' : MAU.vang} />
-              </div>
-            );
-          })
+      {/* Chú thích + công thức */}
+      <div style={{position: 'absolute', left: 50, right: 50, top: coHinh ? yNoiDung + caoSan + 16 : Y_SAN, bottom: 1920 - dayVung, display: 'flex', flexDirection: 'column', justifyContent: coHinh ? 'flex-start' : 'center', alignItems: 'center', gap: 16, opacity: ra}}>
+        {coNote ? <ChuThich dong={canh.chuThich} bd={Math.max(0.6, giayAm * 0.45)} /> : null}
+        {hienCongThuc ? (
+          <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: coHinh ? '14px 26px' : 0, borderRadius: 24, background: coHinh ? 'rgba(4,14,13,0.55)' : 'transparent', border: coHinh ? '2px solid rgba(59,242,154,0.25)' : 'none', opacity: kep((t - treCT + 0.3) * 3)}}>
+            {dungBienDoi ? (
+              <BienDoi dong={canh.noiDung} batDong={thoiDiemDong} t={t} co={coCT} maxWidth={920} khungCuoi={khungCuoi} mauGoc={MAU.vang} mauNhay="#FFD27A" />
+            ) : dungCongDon ? (
+              hang.map((h, r) => (
+                <BienDoi key={r} dong={h.dong} batDong={h.chiSo.map((i) => thoiDiemDong[i])} t={t} co={coCT} maxWidth={920} khungCuoi={khungCuoi && r === hang.length - 1} mauGoc={MAU.vang} mauNhay="#FFD27A" can="trai" />
+              ))
+            ) : (
+              canh.noiDung.map((d, i) => {
+                const bd = thoiDiemDong[i];
+                const p = t < bd ? 0 : Math.min(1, spring({frame: frame - Math.round(bd * fps), fps, config: {damping: 14}}));
+                return (
+                  <div key={i} style={{opacity: p, transform: `translateY(${(1 - p) * 30}px) scale(${0.9 + 0.1 * p})`, filter: p < 1 ? `blur(${(1 - p) * 6}px)` : undefined, maxWidth: 960, textAlign: 'center', padding: '2px 16px'}}>
+                    <Toan tex={d} size={Math.min(coCT * 1.08, coChuCongThuc(d, lonHon))} maxWidth={900} color={laChuThuong(d) ? '#ffffff' : MAU.vang} />
+                  </div>
+                );
+              })
+            )}
+          </div>
         ) : null}
       </div>
 
       {/* Phụ đề */}
       {pc.phuDe ? (
-        <div style={{height: 150, display: 'flex', alignItems: 'center'}}>
-          <div style={{width: '100%'}}>
-            <PhuDe cau={canh.cau} t={t} co={42} />
-          </div>
+        <div style={{position: 'absolute', left: 60, right: 60, top: Y_PHU_DE, height: 150, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+          {pc.kieuNen === 'neon' || !pc.kieuNen ? <PhuDeTikTok cau={canh.cau} t={t} /> : <PhuDe cau={canh.cau} t={t} co={42} />}
         </div>
       ) : null}
 
       {/* Âm thanh của cảnh */}
-      <Sequence from={0} durationInFrames={30} layout="none">
-        <Audio src={staticFile('sfx/whoosh.wav')} volume={laMoDau ? 0.2 : 0.3} />
-      </Sequence>
+      {!giuTruoc ? (
+        <Sequence from={0} durationInFrames={30} layout="none">
+          <Audio src={staticFile('sfx/whoosh.wav')} volume={laMoDau ? 0.18 : 0.28} />
+        </Sequence>
+      ) : null}
+      {khungCuoi ? (
+        <Sequence from={0} durationInFrames={60} layout="none">
+          <Audio src={staticFile('sfx/boom.wav')} volume={0.35} />
+        </Sequence>
+      ) : null}
       {hienCongThuc
         ? canh.noiDung.map((_, i) => {
             const tai = Math.round(thoiDiemDong[i] * fps);
-            const cuoi = laCuoi && i === nDong - 1;
+            const cuoi = (laCuoi || khungCuoi) && i === nDong - 1;
             return (
               <Sequence key={`sfx${i}`} from={tai} durationInFrames={cuoi ? 70 : 20} layout="none">
-                <Audio src={staticFile(cuoi ? 'sfx/ting.wav' : 'sfx/pop.wav')} volume={cuoi ? 0.5 : 0.25} />
+                <Audio src={staticFile(cuoi ? 'sfx/ting.wav' : 'sfx/click.wav')} volume={cuoi ? 0.5 : 0.22} />
               </Sequence>
             );
           })

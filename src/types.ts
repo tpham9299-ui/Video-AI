@@ -16,6 +16,10 @@ export type CanhProps = {
   cau: Cau[]; // các câu/đoạn lời thoại kèm mốc thời gian
   chuThich: string[]; // khung chú thích viền vàng (ý tưởng then chốt)
   trinhBay: string; // 'bien_doi' = các dòng công thức biến hình nối tiếp kiểu Manim; 'xep' = xếp chồng
+  tieuDeCanh: string; // câu tiêu đề lớn của cảnh (chữ trắng đậm)
+  tuKhoa: string; // cụm từ trong tiêu đề được tô cam
+  nhan: string; // nhãn viên thuốc màu cam (để trống = tự đặt theo loại cảnh)
+  giuSanKhau: boolean; // giữ nguyên sân khấu của cảnh trước rồi diễn tiếp (liền mạch như video mẫu)
 };
 
 export type ThuongHieuProps = {ten: string; khauHieu: string; handle: string; markNuoc: boolean; logo: string | null};
@@ -28,7 +32,7 @@ export type PhongCach = {
   doMoNen: number; // 0-1: độ tối phủ lên nền của bạn để chữ dễ đọc
   kyHieuTroi: boolean; // ký hiệu xác suất trôi lên trên nền
   quangSang: boolean; // quầng sáng màu khi dùng nền gradient mặc định
-  kieuNen: string; // 'luoi' = lưới phối cảnh như video mẫu (mặc định); 'luoi_phang' = lưới phẳng; 'gradient' = nền chuyển màu
+  kieuNen: string; // 'neon' = nền xanh đen có lưới mờ và đốm sáng trôi như video mẫu (mặc định); 'luoi' = lưới phối cảnh như video mẫu (mặc định); 'luoi_phang' = lưới phẳng; 'gradient' = nền chuyển màu
   kieuToan: string; // 'latex' = công thức phông LaTeX có chân như Manim (mặc định); 'dong_nhat' = công thức cùng phông không chân với chữ
   kieuHinh: string; // 'manim' = hình nét phẳng như video mẫu (mặc định); 'that' = vật 3D (xúc xắc, xu, bài)
   thanhTienDo: boolean;
@@ -48,6 +52,8 @@ export type Props = {
   hookKieu: string;
   nhanManh: string[]; // từ khóa trong hook được nhấn mạnh
   nhac: string | null;
+  amLuongNhac: number; // âm lượng nhạc nền khi không có giọng đọc (khi có giọng tự giảm còn ~40%)
+  chuDe: string; // chủ đề ngắn hiện ở góc trên (ví dụ "Hai bi cùng màu")
   nen: NenProps | null;
   thuongHieu: ThuongHieuProps;
   outro: OutroProps | null;

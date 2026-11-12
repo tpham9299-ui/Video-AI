@@ -145,7 +145,7 @@ def ghep(cac_tep, dich):
     chay(lenh)
 
 
-PHONG_CACH_MAC_DINH = {"doMoNen": 0.35, "kyHieuTroi": False, "quangSang": True, "kieuNen": "luoi", "kieuToan": "latex",
+PHONG_CACH_MAC_DINH = {"doMoNen": 0.35, "kyHieuTroi": False, "quangSang": True, "kieuNen": "neon", "kieuToan": "latex",
                        "kieuHinh": "manim", "thanhTienDo": False, "phuDe": True, "mau": {}}
 THUONG_HIEU_MAC_DINH = {"ten": "", "khauHieu": "", "handle": "", "markNuoc": True, "outroGiay": 5}
 DUOI_ANH = (".jpg", ".jpeg", ".png", ".webp")
@@ -212,6 +212,36 @@ def trinh_bay(c, noi_dung):
     if len(noi_dung) >= 2 and re.search(r"tinh|dap_an|ket_qua|diem_chot|huong", loai):
         return "cong_don"
     return "xep"
+
+
+def so_buoc_san_khau(du):
+    """Số bước của sân khấu (để kéo dài cảnh cho kịp diễn hết)."""
+    if not isinstance(du, dict):
+        return 0, False
+    buoc = [1]
+    for x in (du.get("vat") or []) + (du.get("hanh_dong") or []):
+        if isinstance(x, dict):
+            try:
+                buoc.append(int(float(x.get("buoc") or 1)))
+            except (TypeError, ValueError):
+                pass
+    vq = {str(v.get("id")) for v in (du.get("vat") or []) if isinstance(v, dict) and v.get("loai") == "vong_quay"}
+    co_quay = any(isinstance(h, dict) and h.get("kieu") == "quay" and str(h.get("vat")) in vq for h in (du.get("hanh_dong") or []))
+    return min(8, max(buoc)), co_quay
+
+
+def chon_nhac(public, id_):
+    """Nhạc nền: nếu thư mục public/nhac có tệp nhạc của bạn (workflow chép từ Drive VIDEO_XACSUAT/nhac) thì chọn một bài
+    theo mã video (xoay vòng giữa các video); không có thì dùng nhạc tự tạo nhac/nen.wav (không bản quyền vì do máy sinh ra)."""
+    thu_muc = os.path.join(public, "nhac")
+    if not os.path.isdir(thu_muc):
+        return None
+    rieng = sorted(f for f in os.listdir(thu_muc) if f.lower().endswith((".mp3", ".m4a", ".wav", ".ogg")) and not f.startswith("nen."))
+    if rieng:
+        ten = rieng[int(hashlib.md5(id_.encode("utf8")).hexdigest(), 16) % len(rieng)]
+        print("Nhạc nền: %s" % ten)
+        return "nhac/" + ten
+    return "nhac/nen.wav" if os.path.exists(os.path.join(thu_muc, "nen.wav")) else None
 
 
 def tim_tep(thu_muc, ten, duoi):
@@ -304,6 +334,9 @@ def main():
         so_frame = max(int(round((LEAD + tong_am + TAIL) * FPS)), 2 * FPS)
         loai_hinh = str((c.get("minh_hoa") or {}).get("loai") or "").lower()
         toi_thieu = {"venn": 4.6, "luoi_mau": 5.2, "dien_tich": 6.0, "thuc_nghiem": 5.6, "so_do_cay": 5.0, "bi_hop": 3.8}.get(loai_hinh, 0)
+        if loai_hinh == "san_khau":
+            sb, co_quay = so_buoc_san_khau((c.get("minh_hoa") or {}).get("du_lieu"))
+            toi_thieu = 1.0 + sb * 0.9 + (2.6 if co_quay else 0.8)
         so_frame = max(so_frame, int(round(toi_thieu * FPS)))
         tb = trinh_bay(c, noi_dung_tam)
         if tb in ("bien_doi", "cong_don") and len(noi_dung_tam) >= 1:
@@ -328,12 +361,16 @@ def main():
             "cau": cau,
             "trinhBay": trinh_bay(c, noi_dung),
             "chuThich": [str(x) for x in (c.get("chu_thich") or []) if str(x).strip()][:3],
+            "tieuDeCanh": str(c.get("tieu_de_canh") or "").strip()[:70],
+            "tuKhoa": str(c.get("tu_khoa") or "").strip()[:30],
+            "nhan": str(c.get("nhan") or "").strip()[:16],
+            "giuSanKhau": bool(c.get("giu_san_khau")) and i > 0,
         })
         bat_dau += so_frame
         so_tu = len(loi_thoai.split())
         print("Cảnh %d: %d câu, %d từ, giọng %.1fs (%.1f từ/giây), %d khung hình" % (so, len(cac_doan), so_tu, tong_am - GAP, so_tu / max(0.1, tong_am - GAP), so_frame))
 
-    nhac = "nhac/nen.wav" if os.path.exists(os.path.join(args.public, "nhac", "nen.wav")) else None
+    nhac = chon_nhac(args.public, id_an_toan)
     hook_chu = str(kb.get("hook_chu") or kb.get("hook") or "").strip()
     pc, nen_co_dinh, th = doc_phong_cach(args.phong_cach)
     nen = chon_nen(args.public, id_an_toan, nen_co_dinh)
@@ -353,6 +390,8 @@ def main():
         "hookKieu": str(kb.get("hook_kieu") or ""),
         "nhanManh": [str(x) for x in (kb.get("nhan_manh") or [])][:5],
         "nhac": nhac,
+        "amLuongNhac": float(os.environ.get("AM_LUONG_NHAC") or (0.16 if nhac and nhac.endswith("nen.wav") else 0.12)),
+        "chuDe": str(kb.get("chu_de_ngan") or kb.get("chu_de") or "")[:40],
         "nen": nen,
         "thuongHieu": thuong_hieu,
         "outro": outro,

@@ -1,1 +1,7 @@
 public/thuong_hieu/
+node_modules/
+out/
+public/giong/
+public/props.json
+public/nen/
+public/nen_chon.*

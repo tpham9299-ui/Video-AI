@@ -1,0 +1,721 @@
+// Thư viện VẬT THẬT cho sân khấu, phong cách neon như video mẫu: viền phát sáng trên nền tối, bật lên có độ nảy,
+// mỗi vật có chuyển động riêng (xúc xắc lăn, đồng xu lật, vòng quay quay, hộp quà mở, kim đồng hồ đo xác suất chạy...).
+import React from 'react';
+import {FONT} from '../theme';
+import {Toan} from '../Toan';
+import {bamChuoi, easeInOut, easeOut, kep, lerp, nay, NEN_VAT, NEN_VAT_2, neon, ngauNhien, popOut, tienDo, VONG_MAU} from './donghieu';
+import {Vat} from './dulieu';
+import {TrangThai} from './trangthai';
+
+const phatSang = (c: string, r = 10) => `drop-shadow(0 0 ${r}px ${c}) drop-shadow(0 0 ${Math.max(1, r / 5)}px ${c})`;
+const XAM_MO = 'rgba(160,170,170,0.35)';
+
+export const ChuNhanMau: React.FC<{chu: string; tuKhoa: string; mau: string}> = ({chu, tuKhoa, mau}) => {
+  if (!tuKhoa) return <>{chu}</>;
+  const i = chu.toLowerCase().indexOf(tuKhoa.toLowerCase());
+  if (i < 0) return <>{chu}</>;
+  return (
+    <>
+      {chu.slice(0, i)}
+      <span style={{color: mau}}>{chu.slice(i, i + tuKhoa.length)}</span>
+      {chu.slice(i + tuKhoa.length)}
+    </>
+  );
+};
+
+const Nhan: React.FC<{chu: string; co?: number; mau?: string; mo?: number}> = ({chu, co = 36, mau = '#fff', mo = 1}) =>
+  chu ? (
+    <div style={{marginTop: 10, fontFamily: FONT, fontWeight: 800, fontSize: co, color: mau, opacity: mo, background: 'rgba(0,0,0,0.5)', borderRadius: 12, padding: '3px 14px', whiteSpace: 'nowrap', textAlign: 'center'}}>
+      {chu}
+    </div>
+  ) : null;
+
+const DauTich: React.FC<{p: number; mau: string; co?: number; style?: React.CSSProperties}> = ({p, mau, co = 46, style}) =>
+  p > 0 ? (
+    <svg width={co} height={co} viewBox="0 0 50 50" style={{position: 'absolute', transform: `scale(${popOut(p, 2.4)})`, filter: phatSang(mau, 8), ...style}}>
+      <circle cx={25} cy={25} r={22} fill={mau} />
+      <path d="M14 26 L22 34 L37 17" stroke="#0b1a14" strokeWidth={6} fill="none" strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - kep(p * 1.6 - 0.4)} />
+    </svg>
+  ) : null;
+
+const DauX: React.FC<{p: number; co?: number; style?: React.CSSProperties}> = ({p, co = 120, style}) =>
+  p > 0 ? (
+    <svg width={co} height={co} viewBox="0 0 100 100" style={{position: 'absolute', filter: phatSang('#FF5C61', 6), ...style}}>
+      <path d="M18 18 L82 82" stroke="#FF5C61" strokeWidth={10} strokeLinecap="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - kep(p * 2)} />
+      <path d="M82 18 L18 82" stroke="#FF5C61" strokeWidth={10} strokeLinecap="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - kep(p * 2 - 1)} />
+    </svg>
+  ) : null;
+
+// trạng thái của phần tử thứ i (từ 1) trong nhóm: được chọn / bị loại / bị làm mờ vì phần tử khác được chọn
+function phanTu(st: TrangThai, i: number, mauGoc: string) {
+  const c = st.chon.get(i);
+  const l = st.loai.get(i) || st.loaiCa;
+  const pc = c ? c.p : st.chonCa;
+  const mauC = neon(c ? c.mau : st.mauChon || 'xanh_la');
+  const mo = (1 - 0.6 * Math.max(0, st.coChon - pc)) * (1 - 0.65 * l);
+  return {pc, l, mau: pc > 0.01 ? mauC : mauGoc, mo, xam: l > 0.5 || st.coChon - pc > 0.5};
+}
+
+// vào lần lượt: phần tử i xuất hiện trễ hơn một chút
+const vaoLanLuot = (st: TrangThai, i: number, n: number) => kep((st.t - st.ta - (i * Math.min(0.12, 0.9 / Math.max(1, n)))) / 0.4);
+
+type Ve = (v: Vat, st: TrangThai, frame: number, fps: number) => React.ReactNode;
+
+/* ---------------- NGƯỜI ---------------- */
+const Nguoi: Ve = (v, st) => {
+  const n = v.soLuong;
+  const cot = n <= 6 ? n : Math.ceil(n / 2);
+  const o = Math.min(190, 900 / cot) * v.co;
+  const goc = neon(v.mau, neon('xanh_la'));
+  return (
+    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+      <div style={{display: 'grid', gridTemplateColumns: `repeat(${cot}, ${o}px)`, rowGap: 14, justifyItems: 'center'}}>
+        {Array.from({length: n}, (_, k) => {
+          const i = k + 1;
+          const a = vaoLanLuot(st, k, n);
+          const s = phanTu(st, i, goc);
+          return (
+            <div key={k} style={{position: 'relative', width: o, display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: kep(a * 2) * s.mo, transform: `translateY(${(1 - easeOut(a)) * 40}px) scale(${popOut(a) * (1 + 0.08 * s.pc)})`, filter: s.xam ? 'grayscale(1)' : 'none'}}>
+              <svg width={o * 0.82} height={o * 0.98} viewBox="0 0 100 120" style={{overflow: 'visible', filter: phatSang(s.mau, 4 + 10 * s.pc)}}>
+                <path d="M14 116 Q14 64 50 64 Q86 64 86 116 Z" fill={s.pc > 0.01 ? s.mau + '33' : NEN_VAT} stroke={s.mau} strokeWidth={5} strokeLinejoin="round" />
+                <circle cx={50} cy={34} r={21} fill={s.pc > 0.01 ? s.mau + '33' : NEN_VAT} stroke={s.mau} strokeWidth={5} />
+              </svg>
+              <DauTich p={s.pc} mau={s.mau} co={o * 0.34} style={{right: o * 0.06, top: -4}} />
+              <DauX p={s.l} co={o * 0.8} style={{top: o * 0.08}} />
+              {v.ds[k] ? <div style={{fontFamily: FONT, fontWeight: 800, fontSize: Math.max(20, o * 0.2), color: '#fff', marginTop: 4}}>{v.ds[k]}</div> : null}
+            </div>
+          );
+        })}
+      </div>
+      <Nhan chu={v.nhan} />
+    </div>
+  );
+};
+
+/* ---------------- THẺ THÔNG TIN ---------------- */
+const The: Ve = (v, st) => {
+  const n = v.soLuong;
+  const w = 280 * v.co;
+  const h = 190 * v.co;
+  const goc = neon(v.mau, neon('cam'));
+  const r = ngauNhien(bamChuoi(v.id));
+  const khoang = Math.min(w + 24, 920 / n);
+  return (
+    <div style={{position: 'relative', width: Math.max(w, khoang * n), height: h + (v.nhan ? 60 : 10)}}>
+      {Array.from({length: n}, (_, k) => {
+        const i = k + 1;
+        const a = vaoLanLuot(st, k, n);
+        const s = phanTu(st, i, goc);
+        const goc0 = (k - (n - 1) / 2) * khoang;
+        const gocBung = (k / n) * Math.PI * 2 + r() * 0.6;
+        const bx = Math.cos(gocBung) * (230 + r() * 70) * Math.max(0.7, v.co);
+        const by = Math.sin(gocBung) * (150 + r() * 50) * Math.max(0.7, v.co);
+        const xoayBung = (r() - 0.5) * 50;
+        const x = lerp(goc0, bx, st.bung);
+        const y = lerp(0, by, st.bung);
+        const tieuDe = v.ds[k] || (n === 1 ? st.noiDung : '');
+        return (
+          <div key={k} style={{position: 'absolute', left: '50%', top: 0, width: w, height: h, marginLeft: -w / 2, opacity: kep(a * 2) * s.mo,
+            transform: `translate(${x}px, ${y + (1 - easeOut(a)) * 60}px) rotate(${lerp((k - (n - 1) / 2) * (n > 3 ? 4 : 0), xoayBung, st.bung)}deg) scale(${popOut(a) * (1 + 0.07 * s.pc)})`,
+            border: `5px solid ${s.mau}`, borderRadius: 22, background: `linear-gradient(160deg, ${NEN_VAT_2}, ${NEN_VAT})`, boxShadow: `0 0 ${10 + 18 * s.pc}px ${s.mau}`,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, fontFamily: FONT, color: '#fff', filter: s.xam ? 'grayscale(1)' : 'none'}}>
+            {tieuDe ? <div style={{fontWeight: 900, fontSize: Math.min(54 * v.co, (w * 1.6) / Math.max(4, tieuDe.length)) , textAlign: 'center', padding: '0 10px', lineHeight: 1.1}}>{tieuDe}</div> : null}
+            {n === 1 && st.giaTriChu ? <div style={{fontWeight: 900, fontSize: 54 * v.co, color: s.mau}}>{st.giaTriChu}</div> : null}
+            {n > 1 && !tieuDe ? <svg width={w * 0.5} height={h * 0.3} viewBox="0 0 100 40"><circle cx={20} cy={20} r={14} fill="none" stroke={s.mau} strokeWidth={5} /><rect x={42} y={10} width={52} height={7} rx={3} fill={s.mau} opacity={0.7} /><rect x={42} y={24} width={36} height={7} rx={3} fill="#ffffff" opacity={0.35} /></svg> : null}
+            <DauTich p={s.pc} mau={s.mau} co={46} style={{right: -16, top: -16}} />
+            <DauX p={s.l} co={h * 0.8} />
+          </div>
+        );
+      })}
+      {v.nhan ? <div style={{position: 'absolute', left: 0, right: 0, top: h + 4, display: 'flex', justifyContent: 'center'}}><Nhan chu={v.nhan} /></div> : null}
+    </div>
+  );
+};
+
+/* ---------------- LÁ BÀI ---------------- */
+const CHAT_DO = /[♥♦]/;
+const LaBai: Ve = (v, st) => {
+  const ds = v.ds.length ? v.ds : [st.giaTriChu || 'A♥'];
+  const n = Math.min(6, Math.max(v.soLuong, ds.length));
+  const w = 170 * v.co;
+  const h = 240 * v.co;
+  return (
+    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+      <div style={{display: 'flex', gap: n > 4 ? 10 : 22}}>
+        {Array.from({length: n}, (_, k) => {
+          const i = k + 1;
+          const a = vaoLanLuot(st, k, n);
+          const s = phanTu(st, i, '#ffffff');
+          const lat = st.quay >= 0 ? st.quay : kep((st.t - st.ta - k * 0.12 - 0.35) / 0.45);
+          const goc = lat * 180;
+          const mat = goc > 90;
+          const nd = ds[k % ds.length] || 'A♥';
+          const mauChu = CHAT_DO.test(nd) ? '#E0374A' : '#151515';
+          return (
+            <div key={k} style={{position: 'relative', width: w, height: h, opacity: kep(a * 2) * s.mo, transform: `translateY(${(1 - easeOut(a)) * -120}px) rotate(${(k - (n - 1) / 2) * 5 * (1 - easeOut(a)) * 3}deg) scale(${1 + 0.08 * s.pc})`}}>
+              <div style={{position: 'absolute', inset: 0, borderRadius: 16, transform: `scaleX(${Math.abs(Math.cos((goc * Math.PI) / 180))})`,
+                background: mat ? '#FAFAF5' : `repeating-linear-gradient(45deg, #13302b 0 10px, #0d211e 10px 20px)`, border: `4px solid ${s.pc > 0.01 ? s.mau : mat ? '#ddd' : neon('xanh_la')}`,
+                boxShadow: `0 0 ${8 + 18 * s.pc}px ${s.pc > 0.01 ? s.mau : 'rgba(59,242,154,0.5)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontWeight: 900, color: mauChu}}>
+                {mat ? (
+                  <>
+                    <div style={{position: 'absolute', left: 10, top: 6, fontSize: 30 * v.co, lineHeight: 1}}>{nd}</div>
+                    <div style={{fontSize: 64 * v.co}}>{nd.replace(/^[^♥♦♣♠]*/, '') || nd}</div>
+                  </>
+                ) : null}
+              </div>
+              <DauTich p={s.pc} mau={s.mau} co={44} style={{right: -14, top: -14}} />
+              <DauX p={s.l} co={w} style={{top: (h - w) / 2}} />
+            </div>
+          );
+        })}
+      </div>
+      <Nhan chu={v.nhan} />
+    </div>
+  );
+};
+
+/* ---------------- XÚC XẮC ---------------- */
+const CHAM: Record<number, number[][]> = {
+  1: [[1, 1]], 2: [[0, 0], [2, 2]], 3: [[0, 0], [1, 1], [2, 2]], 4: [[0, 0], [0, 2], [2, 0], [2, 2]],
+  5: [[0, 0], [0, 2], [1, 1], [2, 0], [2, 2]], 6: [[0, 0], [0, 2], [1, 0], [1, 2], [2, 0], [2, 2]],
+};
+export const MatXuc: React.FC<{mat: number; co: number; vien: string}> = ({mat, co, vien}) => (
+  <svg width={co} height={co} viewBox="0 0 100 100">
+    <rect x={4} y={4} width={92} height={92} rx={20} fill="#F7F7F2" stroke={vien} strokeWidth={5} />
+    {(CHAM[mat] || CHAM[1]).map(([r, c], i) => (
+      <circle key={i} cx={26 + c * 24} cy={26 + r * 24} r={9} fill={mat === 1 ? '#E0374A' : '#1b1b1b'} />
+    ))}
+  </svg>
+);
+const XucXac: Ve = (v, st, frame) => {
+  const n = v.soLuong;
+  const co = 170 * v.co;
+  return (
+    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+      <div style={{display: 'flex', gap: 46}}>
+        {Array.from({length: n}, (_, k) => {
+          const kq = v.ketQua[k] || ((k * 3 + 2) % 6) + 1;
+          const a = vaoLanLuot(st, k, n);
+          const s = phanTu(st, k + 1, neon(v.mau, neon('xanh_la')));
+          const q = st.quay;
+          const dangLan = q >= 0 && q < 1;
+          const truocQuay = st.coQuay && q < 0;
+          const mat = dangLan ? (Math.floor((frame + k * 5) / 3) % 6) + 1 : truocQuay ? ((kq + 2) % 6) + 1 : kq;
+          const xoay = dangLan ? (1 - easeOut(q)) * (720 + k * 90) : 0;
+          const nhay = dangLan ? -nay(q, 3) * 160 : 0;
+          return (
+            <div key={k} style={{position: 'relative', opacity: kep(a * 2) * s.mo, transform: `translateY(${nhay + (1 - easeOut(a)) * -200}px) rotate(${xoay}deg) scale(${popOut(a) * (1 + 0.1 * s.pc)})`, filter: phatSang(s.mau, 6 + 12 * s.pc)}}>
+              <MatXuc mat={mat} co={co} vien={s.mau} />
+              <DauTich p={s.pc} mau={s.mau} style={{right: -16, top: -16}} />
+            </div>
+          );
+        })}
+      </div>
+      <Nhan chu={v.nhan} />
+    </div>
+  );
+};
+
+/* ---------------- ĐỒNG XU ---------------- */
+const DongXu: Ve = (v, st) => {
+  const n = v.soLuong;
+  const co = 180 * v.co;
+  return (
+    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+      <div style={{display: 'flex', gap: 40}}>
+        {Array.from({length: n}, (_, k) => {
+          const kq = (v.ds[k] || 'S').toUpperCase().startsWith('N') ? 'N' : 'S';
+          const a = vaoLanLuot(st, k, n);
+          const s = phanTu(st, k + 1, '#FFD54A');
+          const q = st.quay;
+          const dangLat = q >= 0 && q < 1;
+          const goc = dangLat ? easeOut(q) * Math.PI * 9 : 0;
+          const sy = dangLat ? Math.cos(goc) : 1;
+          const matHien = dangLat ? (Math.floor(goc / Math.PI) % 2 === 0 ? kq : kq === 'S' ? 'N' : 'S') : st.coQuay && q < 0 ? 'S' : kq;
+          const len = dangLat ? -Math.sin(q * Math.PI) * 170 * v.co : 0;
+          return (
+            <div key={k} style={{position: 'relative', opacity: kep(a * 2) * s.mo, transform: `translateY(${len}px) scale(${popOut(a) * (1 + 0.1 * s.pc)})`}}>
+              <svg width={co} height={co} viewBox="0 0 100 100" style={{transform: `scaleY(${Math.max(0.06, Math.abs(sy))})`, filter: phatSang(s.pc > 0.01 ? s.mau : '#FFB300', 8)}}>
+                <defs>
+                  <radialGradient id={`xu${v.id}${k}`} cx="35%" cy="30%" r="75%">
+                    <stop offset="0%" stopColor="#FFF3B0" />
+                    <stop offset="55%" stopColor="#F5B82E" />
+                    <stop offset="100%" stopColor="#B7791F" />
+                  </radialGradient>
+                </defs>
+                <circle cx={50} cy={50} r={46} fill={`url(#xu${v.id}${k})`} stroke="#8a5a12" strokeWidth={3} />
+                <circle cx={50} cy={50} r={36} fill="none" stroke="#a86e16" strokeWidth={3} strokeDasharray="4 4" />
+                <text x={50} y={64} textAnchor="middle" fontFamily="Liberation Sans, sans-serif" fontWeight={900} fontSize={42} fill="#6b420b">{matHien}</text>
+              </svg>
+              <DauTich p={s.pc} mau={s.mau} style={{right: -10, top: -10}} />
+            </div>
+          );
+        })}
+      </div>
+      <Nhan chu={v.nhan || (n > 0 ? 'S = sấp · N = ngửa' : '')} co={24} />
+    </div>
+  );
+};
+
+/* ---------------- HỘP BI / TÚI ---------------- */
+const Bi: React.FC<{mau: string; r: number; sang?: number}> = ({mau, r, sang = 0}) => (
+  <svg width={r * 2} height={r * 2} viewBox="0 0 40 40" style={{overflow: 'visible', filter: sang ? phatSang(mau, 6 + 10 * sang) : 'none'}}>
+    <defs>
+      <radialGradient id={`bi${mau.replace('#', '')}`} cx="35%" cy="30%" r="70%">
+        <stop offset="0%" stopColor="#ffffff" stopOpacity={0.95} />
+        <stop offset="30%" stopColor={mau} />
+        <stop offset="100%" stopColor={mau} stopOpacity={0.55} />
+      </radialGradient>
+    </defs>
+    <circle cx={20} cy={20} r={18} fill={`url(#bi${mau.replace('#', '')})`} stroke="rgba(0,0,0,0.35)" strokeWidth={1.5} />
+  </svg>
+);
+const HopBi: Ve = (v, st) => {
+  const tui = v.loai === 'tui';
+  const W = 400 * v.co;
+  const H = 320 * v.co;
+  const r = 23 * v.co;
+  const tat: string[] = [];
+  v.nhom.forEach((g) => {
+    for (let i = 0; i < g.so; i++) tat.push(g.mau);
+  });
+  // các viên đã được lấy ra (theo từng lần lay_ra), lấy viên cùng màu cuối cùng trong hộp
+  const daLay: {idx: number; p: number; thu: number; k: number}[] = [];
+  const conLai = tat.map(() => true);
+  st.layRa.forEach((l) => {
+    for (let k = 0; k < l.so; k++) {
+      let idx = -1;
+      for (let j = tat.length - 1; j >= 0; j--) if (conLai[j] && (!l.mau || tat[j] === l.mau)) { idx = j; break; }
+      if (idx < 0) for (let j = tat.length - 1; j >= 0; j--) if (conLai[j]) { idx = j; break; }
+      if (idx < 0) break;
+      conLai[idx] = false;
+      daLay.push({idx, p: kep((l.p - k * 0.15) / 0.85), thu: l.thu, k: daLay.length});
+    }
+  });
+  const cot = Math.max(4, Math.floor((W - 40) / (r * 2.3)));
+  const viTri = (j: number) => ({x: 30 + (j % cot) * r * 2.3 + r, y: H - 26 - Math.floor(j / cot) * r * 2.1 - r});
+  const goc = neon(v.mau, neon('xanh_la'));
+  const khay = (k: number) => ({x: W + 40 + (k % 3) * r * 2.6, y: H * 0.25 + Math.floor(k / 3) * r * 2.6});
+  return (
+    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+      <div style={{position: 'relative', width: W, height: H}}>
+        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{position: 'absolute', overflow: 'visible', filter: phatSang(goc, 8 + 10 * st.sang)}}>
+          {tui ? (
+            <path d={`M${W * 0.28} ${H * 0.12} Q${W * 0.5} ${H * 0.2} ${W * 0.72} ${H * 0.12} L${W * 0.8} ${H * 0.3} Q${W * 1.02} ${H * 0.62} ${W * 0.86} ${H * 0.96} Q${W * 0.5} ${H * 1.04} ${W * 0.14} ${H * 0.96} Q${-W * 0.02} ${H * 0.62} ${W * 0.2} ${H * 0.3} Z`}
+              fill={NEN_VAT_2} stroke={goc} strokeWidth={6} strokeLinejoin="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - easeOut(st.vao)} />
+          ) : (
+            <path d={`M8 ${H * 0.08} L8 ${H - 18} Q8 ${H - 4} 24 ${H - 4} L${W - 24} ${H - 4} Q${W - 8} ${H - 4} ${W - 8} ${H - 18} L${W - 8} ${H * 0.08}`}
+              fill="rgba(79,195,247,0.07)" stroke={goc} strokeWidth={6} strokeLinecap="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - easeOut(st.vao)} />
+          )}
+          {tui ? <path d={`M${W * 0.26} ${H * 0.2} Q${W * 0.5} ${H * 0.3} ${W * 0.74} ${H * 0.2}`} stroke={goc} strokeWidth={5} fill="none" strokeDasharray="6 8" /> : null}
+        </svg>
+        {!tui
+          ? tat.map((m, j) => {
+              if (!conLai[j]) return null;
+              const a = kep((st.t - st.ta - 0.25 - j * Math.min(0.06, 1 / tat.length)) / 0.45);
+              const p = viTri(j);
+              return (
+                <div key={j} style={{position: 'absolute', left: p.x - r, top: p.y - r - (1 - easeOut(a)) * 260 - nay(a, 2) * 18, opacity: kep(a * 3)}}>
+                  <Bi mau={neon(m)} r={r} />
+                </div>
+              );
+            })
+          : (
+            <div style={{position: 'absolute', left: 0, right: 0, top: H * 0.45, display: 'flex', justifyContent: 'center', gap: 16, opacity: kep((st.vao - 0.4) * 2)}}>
+              {v.nhom.map((g, i) => (
+                <div key={i} style={{display: 'flex', alignItems: 'center', gap: 6, fontFamily: FONT, fontWeight: 900, fontSize: 40 * v.co, color: '#fff'}}>
+                  <Bi mau={neon(g.mau)} r={r} />×{g.so}
+                </div>
+              ))}
+            </div>
+          )}
+        {daLay.map((d) => {
+          const tu = tui ? {x: W / 2, y: H * 0.15} : viTri(d.idx);
+          const den = khay(d.k);
+          const p = easeInOut(d.p);
+          if (d.p <= 0) return null;
+          const x = lerp(tu.x, den.x, p);
+          const y = lerp(tu.y, den.y, p) - Math.sin(p * Math.PI) * 170;
+          return (
+            <div key={`l${d.k}`} style={{position: 'absolute', left: x - r * 1.15, top: y - r * 1.15, transform: `scale(${1 + 0.15 * p})`}}>
+              <Bi mau={neon(tat[d.idx])} r={r * 1.15} sang={p} />
+            </div>
+          );
+        })}
+      </div>
+      <Nhan chu={v.nhan} />
+    </div>
+  );
+};
+
+/* ---------------- HỘP QUÀ ---------------- */
+const HopQua: Ve = (v, st) => {
+  const W = 280 * v.co;
+  const H = 244 * v.co;
+  const q = st.quay < 0 ? 0 : easeOut(st.quay);
+  const mau = neon(v.mau, neon('cam'));
+  const r = ngauNhien(bamChuoi(v.id));
+  return (
+    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+      <div style={{position: 'relative', width: W, height: H + 60}}>
+        {/* tia lấp lánh */}
+        {q > 0 && q < 1
+          ? Array.from({length: 10}, (_, i) => {
+              const g = (i / 10) * Math.PI * 2 + r();
+              const d = 40 + q * 170;
+              return <div key={i} style={{position: 'absolute', left: W / 2 + Math.cos(g) * d - 6, top: 60 + Math.sin(g) * d * 0.7 - 6, width: 12, height: 12, borderRadius: 6, background: i % 2 ? '#FFD54A' : mau, opacity: 1 - q, boxShadow: `0 0 12px ${mau}`}} />;
+            })
+          : null}
+        {/* phần quà hiện lên */}
+        {q > 0 ? (
+          <div style={{position: 'absolute', left: 0, right: 0, top: 70 - q * 150, display: 'flex', justifyContent: 'center', opacity: q, transform: `scale(${popOut(q)})`}}>
+            <div style={{fontFamily: FONT, fontWeight: 900, fontSize: 58 * v.co, color: '#FFD54A', textShadow: `0 0 18px ${mau}`, whiteSpace: 'nowrap'}}>{v.emoji ? v.emoji + ' ' : ''}{st.giaTriChu || st.noiDung}</div>
+          </div>
+        ) : null}
+        <svg width={W} height={H} viewBox="0 0 230 200" style={{position: 'absolute', top: 60, overflow: 'visible', filter: phatSang(mau, 8 + 8 * st.sang)}}>
+          <rect x={20} y={70} width={190} height={125} rx={12} fill={NEN_VAT_2} stroke={mau} strokeWidth={6} />
+          <rect x={102} y={70} width={26} height={125} fill={mau} opacity={0.85} />
+          <g transform={`translate(${q * 150} ${-q * 120}) rotate(${q * 35} 115 60)`}>
+            <rect x={8} y={44} width={214} height={36} rx={10} fill={NEN_VAT_2} stroke={mau} strokeWidth={6} />
+            <rect x={102} y={44} width={26} height={36} fill={mau} opacity={0.85} />
+            <path d="M115 44 C 80 0, 60 30, 112 44 M115 44 C 150 0, 170 30, 118 44" stroke={mau} strokeWidth={7} fill="none" strokeLinecap="round" />
+          </g>
+        </svg>
+      </div>
+      <Nhan chu={v.nhan} />
+    </div>
+  );
+};
+
+/* ---------------- ĐỒNG HỒ ---------------- */
+const DongHo: Ve = (v, st) => {
+  const R = 150 * v.co;
+  const mau = neon(v.mau, neon('xanh_la'));
+  const q = st.quay < 0 ? 0 : st.quay;
+  const phut = 60 + easeInOut(q) * 360 * 3 + st.t * 6;
+  const gio = 300 + easeInOut(q) * 90 + st.t * 0.5;
+  return (
+    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+      <svg width={R * 2 + 20} height={R * 2 + 20} viewBox="-130 -130 260 260" style={{overflow: 'visible', filter: phatSang(mau, 12 + 10 * st.sang)}}>
+        <circle r={118} fill={NEN_VAT} stroke={mau} strokeWidth={9} pathLength={1} strokeDasharray={1} strokeDashoffset={1 - easeOut(st.vao)} />
+        {Array.from({length: 12}, (_, i) => {
+          const g = (i / 12) * Math.PI * 2;
+          return <line key={i} x1={Math.sin(g) * 96} y1={-Math.cos(g) * 96} x2={Math.sin(g) * (i % 3 ? 104 : 88)} y2={-Math.cos(g) * (i % 3 ? 104 : 88)} stroke="#fff" strokeOpacity={0.8} strokeWidth={i % 3 ? 4 : 7} strokeLinecap="round" />;
+        })}
+        <line x1={0} y1={0} x2={Math.sin((gio * Math.PI) / 180) * 52} y2={-Math.cos((gio * Math.PI) / 180) * 52} stroke="#fff" strokeWidth={10} strokeLinecap="round" />
+        <line x1={0} y1={0} x2={Math.sin((phut * Math.PI) / 180) * 82} y2={-Math.cos((phut * Math.PI) / 180) * 82} stroke={mau} strokeWidth={7} strokeLinecap="round" />
+        <circle r={10} fill="#fff" />
+      </svg>
+      <Nhan chu={st.giaTriChu || v.nhan} />
+    </div>
+  );
+};
+
+/* ---------------- ĐIỆN THOẠI ---------------- */
+const DienThoai: Ve = (v, st) => {
+  const W = 360 * v.co;
+  const H = 640 * v.co;
+  const mau = neon(v.mau, neon('xanh_la'));
+  return (
+    <div style={{position: 'relative', width: W, height: H, borderRadius: 44 * v.co, border: `6px solid ${mau}`, background: '#081312', boxShadow: `0 0 22px ${mau}`, padding: 22 * v.co, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 14, fontFamily: FONT, color: '#fff'}}>
+      <div style={{alignSelf: 'center', width: W * 0.3, height: 10, borderRadius: 5, background: '#26403c'}} />
+      {st.noiDung ? <div style={{fontWeight: 900, fontSize: 32 * v.co, textAlign: 'center', marginTop: 6}}>{st.noiDung}</div> : null}
+      {v.ds.map((d, k) => {
+        const a = kep((st.t - st.ta - 0.3 - k * 0.35) / 0.4);
+        const s = phanTu(st, k + 1, '#2E4B47');
+        return (
+          <div key={k} style={{position: 'relative', opacity: kep(a * 2) * Math.max(0.35, s.mo), transform: `translateX(${(1 - easeOut(a)) * (k % 2 ? 60 : -60)}px) scale(${1 + 0.05 * s.pc})`, background: s.pc > 0.01 ? s.mau + '33' : '#13241f', border: `3px solid ${s.pc > 0.01 ? s.mau : '#2E4B47'}`, borderRadius: 18, padding: '10px 14px', fontWeight: 800, fontSize: 28 * v.co}}>
+            {d}
+            <DauTich p={s.pc} mau={s.mau} co={36} style={{right: -12, top: -12}} />
+          </div>
+        );
+      })}
+      {st.giaTriChu ? <div style={{marginTop: 'auto', alignSelf: 'center', background: mau, color: '#06231a', fontWeight: 900, fontSize: 30 * v.co, padding: '8px 26px', borderRadius: 14}}>{st.giaTriChu}</div> : null}
+    </div>
+  );
+};
+
+/* ---------------- BÓNG BAY ---------------- */
+const BongBay: Ve = (v, st, frame) => {
+  const mau = neon(v.mau, neon('cam'));
+  const k = 0.55 + 0.75 * st.giaTri;
+  const R = 130 * v.co * k;
+  const lac = Math.sin(frame / 18) * 4;
+  return (
+    <div style={{position: 'relative', width: 260 * v.co * 1.4, height: 420 * v.co, display: 'flex', justifyContent: 'center'}}>
+      <svg width={260 * v.co * 1.4} height={420 * v.co} viewBox="-130 -60 260 420" style={{overflow: 'visible', transform: `rotate(${lac}deg)`, transformOrigin: '50% 100%'}}>
+        <defs>
+          <radialGradient id={`bb${v.id}`} cx="35%" cy="30%" r="75%">
+            <stop offset="0%" stopColor="#fff" stopOpacity={0.8} />
+            <stop offset="35%" stopColor={mau} />
+            <stop offset="100%" stopColor={mau} stopOpacity={0.75} />
+          </radialGradient>
+        </defs>
+        <path d={`M0 ${R * 1.2 + 40} C 30 ${R * 1.2 + 100}, -30 ${R * 1.2 + 160}, 0 340`} stroke="#ddd" strokeWidth={3} fill="none" />
+        <ellipse cx={0} cy={60} rx={R} ry={R * 1.2} fill={`url(#bb${v.id})`} style={{filter: phatSang(mau, 14)}} />
+        <path d={`M-10 ${60 + R * 1.2} L10 ${60 + R * 1.2} L0 ${60 + R * 1.2 + 14} Z`} fill={mau} />
+        <text x={0} y={72} textAnchor="middle" fontFamily="Liberation Sans, sans-serif" fontWeight={900} fontSize={Math.max(26, R * 0.36)} fill="#fff">{st.giaTriChu || v.nhan}</text>
+      </svg>
+    </div>
+  );
+};
+
+/* ---------------- ĐỒNG HỒ ĐO XÁC SUẤT ---------------- */
+const DongHoDo: Ve = (v, st) => {
+  const R = 210 * v.co;
+  const val = st.giaTri * easeInOut(kep((st.t - st.ta - 0.2) / 1.0));
+  const g = Math.PI * (1 - val);
+  const mau = val < 0.33 ? NEON_DO : val < 0.66 ? '#FFD54A' : neon('xanh_la');
+  const cung = (a0: number, a1: number, r: number) => `M${Math.cos(Math.PI * (1 - a0)) * r} ${-Math.sin(Math.PI * (1 - a0)) * r} A${r} ${r} 0 0 1 ${Math.cos(Math.PI * (1 - a1)) * r} ${-Math.sin(Math.PI * (1 - a1)) * r}`;
+  return (
+    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+      {v.nhan ? <div style={{fontFamily: FONT, fontWeight: 900, fontSize: 44, color: '#fff', marginBottom: 6}}>{v.nhan}</div> : null}
+      <svg width={R * 2 + 60} height={R + 70} viewBox={`${-R - 30} ${-R - 20} ${2 * R + 60} ${R + 70}`} style={{overflow: 'visible'}}>
+        <defs>
+          <linearGradient id={`dh${v.id}`} x1="0" x2="1">
+            <stop offset="0%" stopColor={NEON_DO} />
+            <stop offset="50%" stopColor="#FFD54A" />
+            <stop offset="100%" stopColor="#3BF29A" />
+          </linearGradient>
+        </defs>
+        <path d={cung(0, 1, R)} stroke="#203431" strokeWidth={26} fill="none" strokeLinecap="round" />
+        <path d={cung(0, Math.max(0.001, val), R)} stroke={`url(#dh${v.id})`} strokeWidth={26} fill="none" strokeLinecap="round" style={{filter: phatSang(mau, 10)}} />
+        <line x1={0} y1={0} x2={Math.cos(g) * (R - 30)} y2={-Math.sin(g) * (R - 30)} stroke="#fff" strokeWidth={9} strokeLinecap="round" />
+        <circle r={16} fill="#fff" />
+        <text x={-R} y={40} textAnchor="middle" fill="#9fb3b0" fontFamily="Liberation Sans, sans-serif" fontWeight={800} fontSize={30}>0</text>
+        <text x={R} y={40} textAnchor="middle" fill="#9fb3b0" fontFamily="Liberation Sans, sans-serif" fontWeight={800} fontSize={30}>1</text>
+      </svg>
+      <div style={{fontFamily: FONT, fontWeight: 900, fontSize: 64 * v.co, color: mau, textShadow: `0 0 16px ${mau}`, marginTop: -14}}>{st.giaTriChu || `${Math.round(val * 100)}%`}</div>
+    </div>
+  );
+};
+const NEON_DO = '#FF5C61';
+
+/* ---------------- BIỂU ĐỒ CỘT ---------------- */
+const BieuDoCot: Ve = (v, st) => {
+  const n = v.dsSo.length;
+  const W = Math.min(900, 220 * n) * v.co;
+  const H = 420 * v.co;
+  const max = Math.max(...v.dsSo, 1e-9);
+  const bw = (W / n) * 0.6;
+  const goc = neon(v.mau, neon('xanh_la'));
+  return (
+    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+      <div style={{position: 'relative', width: W, height: H, borderBottom: '4px solid rgba(255,255,255,0.6)'}}>
+        {v.dsSo.map((x, k) => {
+          const a = easeOut(kep((st.t - st.ta - 0.15 - k * 0.2) / 0.7));
+          const s = phanTu(st, k + 1, goc);
+          const h = (x / max) * (H - 60) * a;
+          return (
+            <div key={k} style={{position: 'absolute', left: (k + 0.5) * (W / n) - bw / 2, bottom: 0, width: bw, height: h, background: `linear-gradient(180deg, ${s.mau}, ${s.mau}55)`, border: `3px solid ${s.mau}`, borderBottom: 'none', borderRadius: '10px 10px 0 0', boxShadow: `0 0 ${10 + 16 * s.pc}px ${s.mau}`, opacity: s.mo}}>
+              <div style={{position: 'absolute', top: -46, left: -30, right: -30, textAlign: 'center', fontFamily: FONT, fontWeight: 900, fontSize: 32, color: '#fff', opacity: a}}>{Number.isInteger(x) ? x : x.toFixed(2)}</div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{display: 'flex', width: W}}>
+        {v.dsSo.map((_, k) => (
+          <div key={k} style={{flex: 1, textAlign: 'center', fontFamily: FONT, fontWeight: 800, fontSize: 26, color: '#cfe', marginTop: 8}}>{v.ds[k] || ''}</div>
+        ))}
+      </div>
+      <Nhan chu={v.nhan} />
+    </div>
+  );
+};
+
+/* ---------------- THANH XÁC SUẤT ---------------- */
+const Thanh: Ve = (v, st) => {
+  const W = 760 * v.co;
+  const mau = neon(v.mau, neon('cam'));
+  const val = st.giaTri * easeInOut(kep((st.t - st.ta - 0.2) / 0.9));
+  return (
+    <div style={{width: W, fontFamily: FONT, color: '#fff'}}>
+      <div style={{display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: 32, marginBottom: 8}}>
+        <span>{v.nhan}</span>
+        <span style={{color: mau}}>{st.giaTriChu}</span>
+      </div>
+      <div style={{position: 'relative', height: 56 * v.co, borderRadius: 30, border: `4px solid ${mau}`, background: '#0c1a19', overflow: 'hidden', boxShadow: `0 0 16px ${mau}66`}}>
+        <div style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: `${val * 100}%`, background: `linear-gradient(90deg, ${mau}88, ${mau})`, borderRadius: 30, boxShadow: `0 0 20px ${mau}`}} />
+      </div>
+    </div>
+  );
+};
+
+/* ---------------- VÒNG QUAY MAY MẮN ---------------- */
+const VongQuay: Ve = (v, st) => {
+  const n = v.ds.length;
+  const R = 240 * v.co;
+  const k = (v.ketQua[0] || 1) - 1;
+  const dich = 360 * 5 + (360 - (k + 0.5) * (360 / n));
+  const q = st.quay < 0 ? 0 : st.quay;
+  const goc = (1 - Math.pow(1 - q, 3.2)) * dich + (st.quay < 0 ? st.t * 8 : 0);
+  const xong = st.quay >= 1;
+  return (
+    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+      <div style={{position: 'relative', width: R * 2 + 30, height: R * 2 + 50}}>
+        <svg width={R * 2 + 30} height={R * 2 + 30} viewBox="-115 -115 230 230" style={{position: 'absolute', top: 20, overflow: 'visible', filter: phatSang(neon('xanh_la'), 10)}}>
+          <g transform={`rotate(${goc})`}>
+            {v.ds.map((d, i) => {
+              const a0 = (i / n) * Math.PI * 2 - Math.PI / 2;
+              const a1 = ((i + 1) / n) * Math.PI * 2 - Math.PI / 2;
+              const am = (a0 + a1) / 2;
+              const mau = neon(VONG_MAU[i % VONG_MAU.length]);
+              const sang = xong && i === k;
+              return (
+                <g key={i}>
+                  <path d={`M0 0 L${Math.cos(a0) * 104} ${Math.sin(a0) * 104} A104 104 0 0 1 ${Math.cos(a1) * 104} ${Math.sin(a1) * 104} Z`} fill={sang ? mau : mau + '55'} stroke="#0b1514" strokeWidth={2} />
+                  <text x={Math.cos(am) * 68} y={Math.sin(am) * 68 + 6} textAnchor="middle" fontFamily="Liberation Sans, sans-serif" fontWeight={900} fontSize={n > 8 ? 13 : 17} fill="#fff" transform={`rotate(${(am * 180) / Math.PI + 90} ${Math.cos(am) * 68} ${Math.sin(am) * 68})`}>{d}</text>
+                </g>
+              );
+            })}
+          </g>
+          <circle r={104} fill="none" stroke={neon('xanh_la')} strokeWidth={5} />
+          <circle r={14} fill="#fff" />
+        </svg>
+        <svg width={50} height={50} viewBox="0 0 50 50" style={{position: 'absolute', left: R + 15 - 25, top: 0, filter: phatSang('#FFD54A', 6)}}>
+          <path d="M5 4 L45 4 L25 44 Z" fill="#FFD54A" stroke="#7a5a00" strokeWidth={3} />
+        </svg>
+      </div>
+      <Nhan chu={v.nhan} />
+    </div>
+  );
+};
+
+/* ---------------- CỬA ---------------- */
+const Cua: Ve = (v, st) => {
+  const n = v.soLuong;
+  const w = Math.min(230, 880 / n - 26) * v.co;
+  const h = w * 1.5;
+  const goc = neon(v.mau, neon('cam'));
+  return (
+    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+      <div style={{display: 'flex', gap: 26}}>
+        {Array.from({length: n}, (_, k) => {
+          const a = vaoLanLuot(st, k, n);
+          const s = phanTu(st, k + 1, goc);
+          const mo = st.mo.get(k + 1) || 0;
+          return (
+            <div key={k} style={{position: 'relative', width: w, height: h, opacity: kep(a * 2) * Math.max(0.4, s.mo), transform: `scale(${popOut(a) * (1 + 0.06 * s.pc)})`, perspective: 800}}>
+              <div style={{position: 'absolute', inset: 0, borderRadius: 12, background: '#081312', border: `4px solid ${s.mau}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontWeight: 900, fontSize: w * 0.3, color: '#FFD54A', textShadow: '0 0 14px #FFB300'}}>
+                {mo > 0.3 ? v.ds[k] || '' : ''}
+              </div>
+              <div style={{position: 'absolute', inset: 0, borderRadius: 12, background: `linear-gradient(160deg, ${NEN_VAT_2}, ${NEN_VAT})`, border: `5px solid ${s.mau}`, boxShadow: `0 0 ${10 + 16 * s.pc}px ${s.mau}`, transformOrigin: '0% 50%', transform: `rotateY(${-mo * 100}deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontWeight: 900, fontSize: w * 0.42, color: s.mau}}>
+                {k + 1}
+                <div style={{position: 'absolute', right: w * 0.12, top: h * 0.5, width: 14, height: 14, borderRadius: 7, background: s.mau}} />
+              </div>
+              <DauTich p={s.pc} mau={s.mau} style={{right: -14, top: -14}} />
+            </div>
+          );
+        })}
+      </div>
+      <Nhan chu={v.nhan} />
+    </div>
+  );
+};
+
+/* ---------------- BÁNH CHIA PHẦN ---------------- */
+const Banh: Ve = (v, st) => {
+  const n = v.soLuong;
+  const R = 210 * v.co;
+  const goc = neon(v.mau, neon('cam'));
+  return (
+    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+      <svg width={R * 2 + 40} height={R * 2 + 40} viewBox="-120 -120 240 240" style={{overflow: 'visible'}}>
+        {Array.from({length: n}, (_, i) => {
+          const a = vaoLanLuot(st, i, n);
+          const s = phanTu(st, i + 1, goc);
+          const a0 = (i / n) * Math.PI * 2 - Math.PI / 2;
+          const a1 = ((i + 1) / n) * Math.PI * 2 - Math.PI / 2;
+          const am = (a0 + a1) / 2;
+          const ra = 10 * s.pc;
+          return (
+            <g key={i} transform={`translate(${Math.cos(am) * ra} ${Math.sin(am) * ra}) scale(${popOut(a)})`} opacity={kep(a * 2)}>
+              <path d={`M0 0 L${Math.cos(a0) * 100} ${Math.sin(a0) * 100} A100 100 0 0 1 ${Math.cos(a1) * 100} ${Math.sin(a1) * 100} Z`} fill={s.pc > 0.01 ? s.mau : NEN_VAT_2} stroke={s.mau} strokeWidth={3} style={{filter: s.pc > 0.01 ? phatSang(s.mau, 8) : 'none'}} />
+              {v.ds[i] ? <text x={Math.cos(am) * 64} y={Math.sin(am) * 64 + 6} textAnchor="middle" fontFamily="Liberation Sans, sans-serif" fontWeight={900} fontSize={16} fill="#fff">{v.ds[i]}</text> : null}
+            </g>
+          );
+        })}
+      </svg>
+      <Nhan chu={st.giaTriChu ? `${v.nhan} ${st.giaTriChu}`.trim() : v.nhan} />
+    </div>
+  );
+};
+
+/* ---------------- NHÃN NEON (chữ hai màu, nghiêng nhẹ) ---------------- */
+export const NhanNeon: React.FC<{chu: string; tuKhoa: string; mau: string; mauNhan: string; co?: number; xoay?: number}> = ({chu, tuKhoa, mau, mauNhan, co = 44, xoay = -3}) => (
+  <div style={{transform: `rotate(${xoay}deg)`, border: `4px solid ${mau}`, borderRadius: 14, background: 'rgba(6,18,16,0.92)', boxShadow: `0 0 16px ${mau}, inset 0 0 12px ${mau}44`, padding: `${co * 0.18}px ${co * 0.45}px`, fontFamily: FONT, fontWeight: 900, fontSize: co, color: '#fff', textTransform: 'uppercase', whiteSpace: 'nowrap', letterSpacing: 0.5}}>
+    <ChuNhanMau chu={chu} tuKhoa={tuKhoa} mau={mauNhan} />
+  </div>
+);
+const NhanVat: Ve = (v, st) => (
+  <NhanNeon chu={st.noiDung} tuKhoa={v.tuKhoa} mau={neon(v.mau, neon('xanh_la'))} mauNhan={neon('cam')} co={52 * v.co} xoay={v.xoay || -3} />
+);
+
+const Chu: Ve = (v, st) => (
+  <div style={{textAlign: 'center'}}>
+    <Toan tex={st.noiDung} size={56 * v.co} color={neon(v.mau, '#ffffff')} maxWidth={900} />
+  </div>
+);
+
+const SoDem: Ve = (v, st) => {
+  const mau = neon(v.mau, neon('xanh_la'));
+  const n = Math.round(st.giaTri);
+  return (
+    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: FONT, color: '#fff'}}>
+      {st.noiDung ? <div style={{fontWeight: 800, fontSize: 42 * v.co, opacity: 0.9}}>{st.noiDung}</div> : null}
+      <div style={{fontWeight: 900, fontSize: 150 * v.co, lineHeight: 1.05, color: mau, textShadow: `0 0 22px ${mau}`}}>{n.toLocaleString('vi-VN')}</div>
+      <Nhan chu={v.nhan} />
+    </div>
+  );
+};
+
+const BieuTuong: Ve = (v, st, frame) => (
+  <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+    <div style={{display: 'flex', gap: 14}}>
+      {Array.from({length: v.soLuong}, (_, k) => {
+        const a = vaoLanLuot(st, k, v.soLuong);
+        const s = phanTu(st, k + 1, '#fff');
+        return (
+          <div key={k} style={{fontSize: 140 * v.co, lineHeight: 1, opacity: kep(a * 2) * s.mo, transform: `translateY(${Math.sin(frame / 14 + k) * 5}px) scale(${popOut(a) * (1 + 0.12 * s.pc)})`, filter: `drop-shadow(0 0 ${8 + 14 * s.pc}px ${s.pc > 0.01 ? s.mau : 'rgba(255,255,255,0.35)'})${s.xam ? ' grayscale(1)' : ''}`}}>
+            {v.emoji}
+          </div>
+        );
+      })}
+    </div>
+    <Nhan chu={v.nhan} />
+  </div>
+);
+
+export const VE_VAT: Partial<Record<Vat['loai'], Ve>> = {
+  nguoi: Nguoi, the: The, the_bai: LaBai, xuc_xac: XucXac, dong_xu: DongXu, hop_bi: HopBi, tui: HopBi, hop_qua: HopQua,
+  dong_ho: DongHo, dien_thoai: DienThoai, bong_bay: BongBay, dong_ho_do: DongHoDo, bieu_do_cot: BieuDoCot, thanh: Thanh,
+  vong_quay: VongQuay, cua: Cua, banh: Banh, nhan: NhanVat, chu: Chu, so_dem: SoDem, bieu_tuong: BieuTuong,
+};
+
+// mũi tên cong nối hai điểm (pixel trên sân khấu), vẽ dần
+export const MuiTen: React.FC<{x1: number; y1: number; x2: number; y2: number; p: number; mau: string; nhan: string}> = ({x1, y1, x2, y2, p, mau, nhan}) => {
+  const mx = (x1 + x2) / 2;
+  const my = (y1 + y2) / 2;
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const L = Math.hypot(dx, dy) || 1;
+  const cx = mx - (dy / L) * L * 0.18;
+  const cy = my + (dx / L) * L * 0.18;
+  const tip = easeOut(kep((p - 0.7) / 0.3));
+  const g = Math.atan2(y2 - cy, x2 - cx);
+  return (
+    <>
+      <svg style={{position: 'absolute', left: 0, top: 0, overflow: 'visible', filter: phatSang(mau, 6)}} width={1} height={1}>
+        <path d={`M${x1} ${y1} Q${cx} ${cy} ${x2} ${y2}`} stroke={mau} strokeWidth={7} fill="none" strokeLinecap="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - easeOut(kep(p / 0.8))} />
+        <path d={`M${x2} ${y2} L${x2 - Math.cos(g - 0.45) * 30 * tip} ${y2 - Math.sin(g - 0.45) * 30 * tip} M${x2} ${y2} L${x2 - Math.cos(g + 0.45) * 30 * tip} ${y2 - Math.sin(g + 0.45) * 30 * tip}`} stroke={mau} strokeWidth={7} strokeLinecap="round" />
+      </svg>
+      {nhan ? (
+        <div style={{position: 'absolute', left: cx, top: cy, transform: 'translate(-50%,-50%)', opacity: tip}}>
+          <NhanNeon chu={nhan} tuKhoa="" mau={mau} mauNhan={mau} co={28} xoay={0} />
+        </div>
+      ) : null}
+    </>
+  );
+};
+
+export {tienDo};

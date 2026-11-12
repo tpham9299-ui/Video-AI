@@ -1,1 +1,550 @@
-{"id": "VT-manim", "tieuDe": "Hai bi cùng màu: đừng quên một trường hợp!", "hook": "Rất nhiều bạn tính thiếu một trường hợp ở câu bốc bi này. Bạn có thấy không?", "dapAn": "13/28", "lop": "11", "fps": 30, "tongFrame": 1125, "hookChu": "Câu bốc bi này, rất nhiều bạn tính thiếu 1 trường hợp!", "hookKieu": "sai_lam", "nhanManh": ["thiếu", "1 trường hợp"], "nhac": "nhac/nen.wav", "nen": null, "thuongHieu": {"ten": "", "khauHieu": "", "handle": "", "markNuoc": true, "logo": null}, "outro": null, "phongCach": {"doMoNen": 0.35, "kyHieuTroi": false, "quangSang": true, "kieuNen": "luoi", "kieuToan": "latex", "kieuHinh": "manim", "thanhTienDo": false, "phuDe": true, "mau": {}}, "canh": [{"so": 1, "loai": "mo_dau", "noiDung": [], "minhHoa": {"loai": "bi_hop", "moTa": "Chiếc hộp trắng vẽ dần, năm bi đỏ rồi ba bi xanh lần lượt rơi vào, số lượng ghi bên trái từng hàng.", "duLieu": {"nhom": [{"ten": "đỏ", "so": 5}, {"ten": "xanh", "so": 3}]}}, "audio": null, "batDau": 0, "soFrame": 132, "leadFrame": 7, "cau": [{"text": "Rất nhiều bạn tính thiếu một trường hợp ở câu bốc bi này.", "bat": 0.22, "ket": 3.041}, {"text": "Bạn có thấy không?", "bat": 3.131, "ket": 4.019}], "trinhBay": "xep", "chuThich": []}, {"so": 2, "loai": "de_bai", "noiDung": [], "minhHoa": {"loai": "bi_hop", "moTa": "Hai viên bi đỏ bay ra khay vạch đứt màu vàng bên dưới, sáng lên, kèm ghi chú số cách chọn hai bi đỏ.", "duLieu": {"nhom": [{"ten": "đỏ", "so": 5}, {"ten": "xanh", "so": 3}], "chon": [{"ten": "đỏ", "so": 2}], "ghi_chu": "\\binom{5}{2}=10"}}, "audio": null, "batDau": 132, "soFrame": 171, "leadFrame": 7, "cau": [{"text": "Lấy đồng thời hai bi.", "bat": 0.22, "ket": 1.317}, {"text": "Mỗi cách chọn hai bi đỏ là một khả năng,", "bat": 1.407, "ket": 3.497}, {"text": "và có tổng cộng mười cách như vậy.", "bat": 3.497, "ket": 5.273}], "trinhBay": "xep", "chuThich": []}, {"so": 3, "loai": "y_do", "noiDung": ["n(\\Omega)=\\binom{8}{2}=28"], "minhHoa": {"loai": "venn", "moTa": "Mỗi chấm là một cách lấy hai bi, rơi lần lượt vào vùng cùng đỏ, vùng cùng xanh và vùng khác màu ngoài hai vòng tròn.", "duLieu": {"A": "Cùng đỏ", "B": "Cùng xanh", "mau_A": "do", "mau_B": "xanh_duong", "dem": {"chiA": 10, "giao": 0, "chiB": 3, "ngoai": 15}, "to": ["chiA", "chiB"]}}, "audio": null, "batDau": 303, "soFrame": 164, "leadFrame": 7, "cau": [{"text": "Có hai mươi tám cách lấy hai bi.", "bat": 0.22, "ket": 1.97}, {"text": "Mười cách cùng đỏ, ba cách cùng xanh, còn mười lăm cách khác màu.", "bat": 2.06, "ket": 5.09}], "trinhBay": "cong_don", "chuThich": []}, {"so": 4, "loai": "diem_chot", "noiDung": ["P=P(\\textcolor{#FC6255}{ĐĐ})+P(\\textcolor{#58C4DD}{XX})", "P=P(\\textcolor{#FC6255}{ĐĐ})+P(\\textcolor{#58C4DD}{XX})=\\frac{5}{14}+\\frac{3}{28}"], "minhHoa": {"loai": "so_do_cay", "moTa": "Cây hai tầng: gốc lấy bi, tầng một đỏ hoặc xanh, tầng hai đỏ hoặc xanh; hai đường đi cùng màu sáng vàng và hiện tích xác suất ở lá.", "duLieu": {"goc": "Lấy 2 bi", "nhanh": [{"nhan": "Đỏ", "xs": "\\frac{5}{8}", "mau": "do", "con": [{"nhan": "Đỏ", "xs": "\\frac{4}{7}", "kq": "\\frac{5}{14}", "to": true}, {"nhan": "Xanh", "xs": "\\frac{3}{7}", "kq": "\\frac{15}{56}"}]}, {"nhan": "Xanh", "xs": "\\frac{3}{8}", "mau": "xanh_duong", "con": [{"nhan": "Đỏ", "xs": "\\frac{5}{7}", "kq": "\\frac{15}{56}"}, {"nhan": "Xanh", "xs": "\\frac{2}{7}", "kq": "\\frac{3}{28}", "to": true}]}]}}, "audio": null, "batDau": 467, "soFrame": 171, "leadFrame": 7, "cau": [{"text": "Cùng màu chỉ có hai khả năng rời nhau: hoặc cùng đỏ, hoặc cùng xanh.", "bat": 0.22, "ket": 3.459}, {"text": "Nên ta tính từng nhánh rồi cộng lại.", "bat": 3.549, "ket": 5.299}], "trinhBay": "cong_don", "chuThich": ["Hai trường hợp rời nhau", "nên ta cộng xác suất"]}, {"so": 5, "loai": "tinh_toan", "noiDung": [], "minhHoa": {"loai": "dien_tich", "moTa": "Hình vuông đơn vị chia hai cột theo lần một rồi chia từng cột theo lần hai; hai ô cùng màu sáng vàng và cộng lại thành đáp án bên phải.", "duLieu": {"ten_cot": "Lần 1", "ten_hang": "Lần 2", "tong": "\\frac{5}{14}+\\frac{3}{28}", "cot": [{"nhan": "Đỏ", "xs": "\\frac{5}{8}", "gia_tri": 0.625, "mau": "do", "hang": [{"nhan": "Đỏ", "xs": "\\frac{4}{7}", "gia_tri": 0.5714, "mau": "do", "kq": "\\frac{5}{14}", "to": true}, {"nhan": "Xanh", "xs": "\\frac{3}{7}", "gia_tri": 0.4286, "mau": "xanh_duong", "kq": "\\frac{15}{56}"}]}, {"nhan": "Xanh", "xs": "\\frac{3}{8}", "gia_tri": 0.375, "mau": "xanh_duong", "hang": [{"nhan": "Đỏ", "xs": "\\frac{5}{7}", "gia_tri": 0.7143, "mau": "do", "kq": "\\frac{15}{56}"}, {"nhan": "Xanh", "xs": "\\frac{2}{7}", "gia_tri": 0.2857, "mau": "xanh_duong", "kq": "\\frac{3}{28}", "to": true}]}]}}, "audio": null, "batDau": 638, "soFrame": 196, "leadFrame": 7, "cau": [{"text": "Nhìn bằng diện tích: hình vuông đơn vị chia", "bat": 0.22, "ket": 2.282}, {"text": "theo bi lần một, rồi chia theo bi lần hai.", "bat": 2.282, "ket": 4.295}, {"text": "Diện tích mỗi ô chính là xác suất.", "bat": 4.385, "ket": 6.135}], "trinhBay": "xep", "chuThich": []}, {"so": 6, "loai": "dap_an", "noiDung": ["P=\\frac{5}{14}+\\frac{3}{28}", "P=\\frac{5}{14}+\\frac{3}{28}=\\frac{13}{28}"], "minhHoa": {"loai": "khong", "moTa": "", "duLieu": null}, "audio": null, "batDau": 834, "soFrame": 114, "leadFrame": 7, "cau": [{"text": "Cộng lại, xác suất cần tìm là mười ba phần hai mươi tám.", "bat": 0.22, "ket": 3.041}], "trinhBay": "cong_don", "chuThich": []}, {"so": 7, "loai": "bai_hoc", "noiDung": [], "minhHoa": {"loai": "thuc_nghiem", "moTa": "Đồ thị tần suất sau mỗi lần thử tiến dần về đường nét đứt màu vàng là xác suất lý thuyết.", "duLieu": {"p": 0.4643, "p_xs": "\\frac{13}{28}", "n": 300, "ten": "Bốc hai bi, đếm lần cùng màu", "mau": "xanh_duong", "seed": 5}}, "audio": null, "batDau": 948, "soFrame": 177, "leadFrame": 7, "cau": [{"text": "Làm thử nhiều lần, tần suất sẽ tiến dần về mười ba phần hai mươi tám.", "bat": 0.22, "ket": 3.668}, {"text": "Bạn thấy còn cách nào nhanh hơn không?", "bat": 3.758, "ket": 5.508}], "trinhBay": "xep", "chuThich": []}]}
+{
+ "id": "VT-mau-neon",
+ "tieuDe": "Chọn 2 MC cùng giới: đừng quên một trường hợp!",
+ "hook": "Chọn hai bạn trong tám bạn, rất nhiều bạn tính thiếu đúng một trường hợp.",
+ "dapAn": "13/28",
+ "lop": "11",
+ "fps": 30,
+ "tongFrame": 1106,
+ "hookChu": "Chọn 2 trong 8 bạn, rất nhiều bạn tính THIẾU",
+ "hookKieu": "sai_lam",
+ "nhanManh": [
+  "THIẾU"
+ ],
+ "nhac": "nhac/nen.wav",
+ "amLuongNhac": 0.16,
+ "chuDe": "Chọn MC: cùng giới?",
+ "nen": null,
+ "thuongHieu": {
+  "ten": "",
+  "khauHieu": "",
+  "handle": "",
+  "markNuoc": true,
+  "logo": null
+ },
+ "outro": null,
+ "phongCach": {
+  "doMoNen": 0.35,
+  "kyHieuTroi": false,
+  "quangSang": true,
+  "kieuNen": "neon",
+  "kieuToan": "latex",
+  "kieuHinh": "manim",
+  "thanhTienDo": false,
+  "phuDe": true,
+  "mau": {}
+ },
+ "canh": [
+  {
+   "so": 1,
+   "loai": "mo_dau",
+   "noiDung": [],
+   "minhHoa": {
+    "loai": "san_khau",
+    "moTa": "Năm bạn nam viền xanh dương hiện lần lượt ở hàng trên, ba bạn nữ viền hồng ở hàng dưới; nhãn neon 'THIẾU 1 TRƯỜNG HỢP' bật lên và rung.",
+    "duLieu": {
+     "vat": [
+      {
+       "id": "nam",
+       "loai": "nguoi",
+       "x": 50,
+       "y": 26,
+       "so_luong": 5,
+       "mau": "xanh_duong",
+       "nhan": "5 bạn nam",
+       "buoc": 1
+      },
+      {
+       "id": "nu",
+       "loai": "nguoi",
+       "x": 50,
+       "y": 70,
+       "so_luong": 3,
+       "mau": "hong",
+       "nhan": "3 bạn nữ",
+       "buoc": 2
+      },
+      {
+       "id": "n1",
+       "loai": "nhan",
+       "x": 50,
+       "y": 50,
+       "noi_dung": "Thiếu 1 trường hợp?",
+       "tu_khoa": "1 trường hợp",
+       "mau": "xanh_la",
+       "buoc": 3
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 3,
+       "vat": "n1",
+       "kieu": "rung"
+      }
+     ]
+    }
+   },
+   "audio": "giong/VT-mau-neon_c1.mp3",
+   "batDau": 0,
+   "soFrame": 135,
+   "leadFrame": 7,
+   "cau": [
+    {
+     "text": "Chọn hai bạn trong tám bạn,",
+     "bat": 0.22,
+     "ket": 1.435
+    },
+    {
+     "text": "rất nhiều bạn tính thiếu đúng một trường hợp.",
+     "bat": 1.435,
+     "ket": 3.459
+    }
+   ],
+   "trinhBay": "xep",
+   "chuThich": [],
+   "tieuDeCanh": "",
+   "tuKhoa": "",
+   "nhan": "",
+   "giuSanKhau": false
+  },
+  {
+   "so": 2,
+   "loai": "de_bai",
+   "noiDung": [],
+   "minhHoa": {
+    "loai": "san_khau",
+    "moTa": "Giữ nguyên hai nhóm bạn; nhãn cũ biến mất, hai bạn nam thứ hai và thứ tư sáng xanh lá kèm dấu tích, các bạn khác tối đi; nhãn 'CÙNG GIỚI?' hiện giữa.",
+    "duLieu": {
+     "vat": [
+      {
+       "id": "n2",
+       "loai": "nhan",
+       "x": 50,
+       "y": 49,
+       "noi_dung": "Cùng giới?",
+       "tu_khoa": "giới",
+       "mau": "cam",
+       "buoc": 3
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 1,
+       "vat": "n1",
+       "kieu": "an"
+      },
+      {
+       "buoc": 2,
+       "vat": "nam",
+       "kieu": "chon",
+       "chi_so": [
+        2,
+        4
+       ],
+       "mau": "xanh_la"
+      },
+      {
+       "buoc": 3,
+       "vat": "n2",
+       "kieu": "sang"
+      }
+     ]
+    }
+   },
+   "audio": "giong/VT-mau-neon_c2.mp3",
+   "batDau": 135,
+   "soFrame": 199,
+   "leadFrame": 7,
+   "cau": [
+    {
+     "text": "Đội văn nghệ có năm nam, ba nữ.",
+     "bat": 0.22,
+     "ket": 1.97
+    },
+    {
+     "text": "Cô chọn ngẫu nhiên hai bạn dẫn chương trình.",
+     "bat": 2.06,
+     "ket": 4.019
+    },
+    {
+     "text": "Hỏi xác suất hai bạn cùng giới là bao nhiêu?",
+     "bat": 4.109,
+     "ket": 6.278
+    }
+   ],
+   "trinhBay": "xep",
+   "chuThich": [],
+   "tieuDeCanh": "Cô chọn ngẫu nhiên 2 MC",
+   "tuKhoa": "2 MC",
+   "nhan": "",
+   "giuSanKhau": true
+  },
+  {
+   "so": 3,
+   "loai": "y_do",
+   "noiDung": [],
+   "minhHoa": {
+    "loai": "san_khau",
+    "moTa": "Hai thẻ lớn 'HAI NAM' viền xanh dương bên trái và 'HAI NỮ' viền hồng bên phải bay vào; nhãn 'HOẶC' giữa hai thẻ; mũi tên cam chỉ từ nhóm tới từng thẻ.",
+    "duLieu": {
+     "vat": [
+      {
+       "id": "nam2",
+       "loai": "nguoi",
+       "x": 25,
+       "y": 22,
+       "so_luong": 2,
+       "mau": "xanh_duong",
+       "co": 0.9,
+       "buoc": 1
+      },
+      {
+       "id": "nu2",
+       "loai": "nguoi",
+       "x": 75,
+       "y": 22,
+       "so_luong": 2,
+       "mau": "hong",
+       "co": 0.9,
+       "buoc": 2
+      },
+      {
+       "id": "t1",
+       "loai": "the",
+       "x": 25,
+       "y": 66,
+       "noi_dung": "2 NAM",
+       "mau": "xanh_duong",
+       "tu_huong": "trai",
+       "buoc": 1
+      },
+      {
+       "id": "t2",
+       "loai": "the",
+       "x": 75,
+       "y": 66,
+       "noi_dung": "2 NỮ",
+       "mau": "hong",
+       "tu_huong": "phai",
+       "buoc": 2
+      },
+      {
+       "id": "hoac",
+       "loai": "nhan",
+       "x": 50,
+       "y": 66,
+       "noi_dung": "hoặc",
+       "tu_khoa": "hoặc",
+       "mau": "cam",
+       "buoc": 3
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 3,
+       "vat": "t1",
+       "kieu": "sang"
+      },
+      {
+       "buoc": 3,
+       "vat": "t2",
+       "kieu": "sang"
+      }
+     ]
+    }
+   },
+   "audio": "giong/VT-mau-neon_c3.mp3",
+   "batDau": 334,
+   "soFrame": 151,
+   "leadFrame": 7,
+   "cau": [
+    {
+     "text": "Thử nghĩ xem, cùng giới nghĩa là gì?",
+     "bat": 0.22,
+     "ket": 1.97
+    },
+    {
+     "text": "Hoặc hai bạn đều là nam, hoặc hai bạn đều là nữ.",
+     "bat": 2.06,
+     "ket": 4.646
+    }
+   ],
+   "trinhBay": "xep",
+   "chuThich": [],
+   "tieuDeCanh": "Cùng giới nghĩa là gì?",
+   "tuKhoa": "Cùng giới",
+   "nhan": "",
+   "giuSanKhau": false
+  },
+  {
+   "so": 4,
+   "loai": "bay",
+   "noiDung": [],
+   "minhHoa": {
+    "loai": "san_khau",
+    "moTa": "Thẻ '2 NAM' được chọn sáng xanh lá; thẻ '2 NỮ' rung mạnh rồi bị gạch chéo đỏ; nhãn 'QUÊN 2 NỮ' bật lên phía trên.",
+    "duLieu": {
+     "vat": [
+      {
+       "id": "quen",
+       "loai": "nhan",
+       "x": 72,
+       "y": 42,
+       "noi_dung": "Quên 2 nữ!",
+       "tu_khoa": "Quên",
+       "mau": "do",
+       "xoay": 4,
+       "buoc": 3
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 1,
+       "vat": "t1",
+       "kieu": "chon",
+       "mau": "xanh_la"
+      },
+      {
+       "buoc": 2,
+       "vat": "t2",
+       "kieu": "rung"
+      },
+      {
+       "buoc": 2,
+       "vat": "t2",
+       "kieu": "loai_bo"
+      },
+      {
+       "buoc": 1,
+       "vat": "hoac",
+       "kieu": "an"
+      }
+     ]
+    }
+   },
+   "audio": "giong/VT-mau-neon_c4.mp3",
+   "batDau": 485,
+   "soFrame": 136,
+   "leadFrame": 7,
+   "cau": [
+    {
+     "text": "Cái bẫy ở đây: nhiều bạn chỉ đếm cặp hai",
+     "bat": 0.22,
+     "ket": 2.31
+    },
+    {
+     "text": "nam rồi dừng, quên mất cặp hai nữ.",
+     "bat": 2.31,
+     "ket": 4.086
+    }
+   ],
+   "trinhBay": "xep",
+   "chuThich": [],
+   "tieuDeCanh": "Bẫy: chỉ đếm hai nam",
+   "tuKhoa": "hai nam",
+   "nhan": "",
+   "giuSanKhau": true
+  },
+  {
+   "so": 5,
+   "loai": "tinh_toan",
+   "noiDung": [
+    "n(\\Omega)=\\binom{8}{2}=28",
+    "\\binom{5}{2}+\\binom{3}{2}",
+    "\\binom{5}{2}+\\binom{3}{2}=10+3=13"
+   ],
+   "minhHoa": {
+    "loai": "san_khau",
+    "moTa": "Bộ đếm lớn chạy từ 0 lên 28 cách; bên dưới biểu đồ hai cột xanh dương 10 và hồng 3 mọc lên, cả hai cột sáng khi cộng.",
+    "duLieu": {
+     "vat": [
+      {
+       "id": "dem",
+       "loai": "so_dem",
+       "x": 50,
+       "y": 22,
+       "noi_dung": "Mọi cách chọn 2 bạn",
+       "gia_tri": 28,
+       "nhan": "cách",
+       "mau": "xanh_la",
+       "buoc": 1
+      },
+      {
+       "id": "cot",
+       "loai": "bieu_do_cot",
+       "x": 50,
+       "y": 72,
+       "ds": [
+        "2 nam",
+        "2 nữ"
+       ],
+       "ds_so": [
+        10,
+        3
+       ],
+       "mau": "xanh_duong",
+       "co": 0.8,
+       "buoc": 2
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 3,
+       "vat": "cot",
+       "kieu": "chon",
+       "chi_so": [
+        1,
+        2
+       ],
+       "mau": "cam"
+      }
+     ]
+    }
+   },
+   "audio": "giong/VT-mau-neon_c5.mp3",
+   "batDau": 621,
+   "soFrame": 177,
+   "leadFrame": 7,
+   "cau": [
+    {
+     "text": "Chọn hai bạn bất kỳ có hai mươi tám cách.",
+     "bat": 0.22,
+     "ket": 2.388
+    },
+    {
+     "text": "Hai nam có mười cách, hai nữ có ba cách, cộng lại mười ba.",
+     "bat": 2.478,
+     "ket": 5.508
+    }
+   ],
+   "trinhBay": "cong_don",
+   "chuThich": [],
+   "tieuDeCanh": "Đếm từng nhóm rồi cộng",
+   "tuKhoa": "cộng",
+   "nhan": "",
+   "giuSanKhau": false
+  },
+  {
+   "so": 6,
+   "loai": "dap_an",
+   "noiDung": [
+    "P=\\frac{13}{28}"
+   ],
+   "minhHoa": {
+    "loai": "san_khau",
+    "moTa": "Đồng hồ đo xác suất từ 0 tới 1, kim quét lên dừng ở 13/28, cung màu chuyển đỏ sang vàng, số 13/28 phát sáng bên dưới.",
+    "duLieu": {
+     "vat": [
+      {
+       "id": "do",
+       "loai": "dong_ho_do",
+       "x": 50,
+       "y": 50,
+       "gia_tri": 0.4643,
+       "gia_tri_chu": "13/28",
+       "nhan": "P(cùng giới)",
+       "co": 1.15,
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "do",
+       "kieu": "sang"
+      }
+     ]
+    }
+   },
+   "audio": "giong/VT-mau-neon_c6.mp3",
+   "batDau": 798,
+   "soFrame": 130,
+   "leadFrame": 7,
+   "cau": [
+    {
+     "text": "Vậy xác suất hai bạn cùng giới là mười",
+     "bat": 0.22,
+     "ket": 2.15
+    },
+    {
+     "text": "ba phần hai mươi tám, gần một nửa.",
+     "bat": 2.15,
+     "ket": 3.877
+    }
+   ],
+   "trinhBay": "cong_don",
+   "chuThich": [],
+   "tieuDeCanh": "Xác suất gần một nửa",
+   "tuKhoa": "một nửa",
+   "nhan": "",
+   "giuSanKhau": false
+  },
+  {
+   "so": 7,
+   "loai": "bai_hoc",
+   "noiDung": [],
+   "minhHoa": {
+    "loai": "san_khau",
+    "moTa": "Điện thoại hiện khung bình luận với hai lựa chọn hiện lần lượt, lựa chọn 'Có, quên 2 nữ' sáng xanh lá kèm dấu tích.",
+    "duLieu": {
+     "vat": [
+      {
+       "id": "dt",
+       "loai": "dien_thoai",
+       "x": 50,
+       "y": 50,
+       "noi_dung": "Bạn từng quên chưa?",
+       "ds": [
+        "Có, quên 2 nữ 😅",
+        "Chưa bao giờ 😎"
+       ],
+       "gia_tri_chu": "Bình luận ngay",
+       "co": 0.95,
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "dt",
+       "kieu": "chon",
+       "chi_so": [
+        1
+       ],
+       "mau": "xanh_la"
+      }
+     ]
+    }
+   },
+   "audio": "giong/VT-mau-neon_c7.mp3",
+   "batDau": 928,
+   "soFrame": 178,
+   "leadFrame": 7,
+   "cau": [
+    {
+     "text": "Ghi nhớ: gặp chữ cùng, hãy tách từng loại rồi cộng lại.",
+     "bat": 0.22,
+     "ket": 2.806
+    },
+    {
+     "text": "Bạn đã từng quên trường hợp nào chưa?",
+     "bat": 2.896,
+     "ket": 4.646
+    },
+    {
+     "text": "Bình luận nhé!",
+     "bat": 4.736,
+     "ket": 5.572
+    }
+   ],
+   "trinhBay": "xep",
+   "chuThich": [
+    "Cùng loại = loại 1 + loại 2 + ..."
+   ],
+   "tieuDeCanh": "Gặp chữ CÙNG: tách từng loại",
+   "tuKhoa": "tách từng loại",
+   "nhan": "",
+   "giuSanKhau": false
+  }
+ ]
+}

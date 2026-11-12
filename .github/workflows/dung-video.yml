@@ -23,6 +23,8 @@ jobs:
       DRIVE_NEN: ${{ vars.DRIVE_NEN }}
       DRIVE_FONT: ${{ vars.DRIVE_FONT }}
       DRIVE_THUONG_HIEU: ${{ vars.DRIVE_THUONG_HIEU }}
+      DRIVE_NHAC: ${{ vars.DRIVE_NHAC }}
+      AM_LUONG_NHAC: ${{ vars.AM_LUONG_NHAC }}
       GIONG: ${{ vars.GIONG }}
       TOC_DO: ${{ vars.TOC_DO }}
     steps:
@@ -60,6 +62,8 @@ jobs:
           mkdir -p public/fonts public/thuong_hieu
           rclone copy "gdrive:${DRIVE_THUONG_HIEU:-VIDEO_XACSUAT/thuong_hieu}" public/thuong_hieu --include "{logo,outro}.*" || echo "Chưa có thư mục thương hiệu"
           rclone copy "gdrive:${DRIVE_FONT:-VIDEO_XACSUAT/font}" public/fonts --include "tuy_chon-*" || echo "Không có phông riêng, dùng phông đóng gói sẵn"
+          # Nhạc nền riêng (tùy chọn): mp3/m4a/wav trong VIDEO_XACSUAT/nhac; không có thì dùng nhạc tự tạo public/nhac/nen.wav
+          rclone copy "gdrive:${DRIVE_NHAC:-VIDEO_XACSUAT/nhac}" public/nhac --max-size 30M --include "*.{mp3,m4a,wav,ogg,MP3,M4A,WAV}" || echo "Không có thư mục nhạc riêng, dùng nhạc tự tạo"
 
       - name: Ghi kịch bản
         env:

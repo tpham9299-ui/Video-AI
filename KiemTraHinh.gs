@@ -2,8 +2,74 @@
  * KIỂM TRA HÌNH MINH HỌA TRONG KỊCH BẢN (dán thành tệp KiemTraHinh.gs, cùng dự án với Code.gs)
  * Mục đích: bắt kịch bản mà phần mô tả hình minh họa thiếu/sai dạng NGAY khi viết, rồi buộc Gemini viết lại,
  * thay vì để bộ phận dựng video phải thay bằng "thẻ mô tả" nhàm chán.
- * Quy tắc phải khớp với src/bocuc.ts của bộ phận dựng video.
+ * Quy tắc phải khớp với src/bocuc.ts và src/sankhau/dulieu.ts của bộ phận dựng video.
+ * Bản này thêm: kiểm tra "san_khau" (vật thật + hành động), tiêu đề cảnh, và tuSuaKichBan_() tự sửa lỗi vặt để đỡ gọi lại Gemini.
  */
+
+var LOAI_VAT_ = ['nguoi', 'the', 'the_bai', 'xuc_xac', 'dong_xu', 'hop_bi', 'tui', 'hop_qua', 'dong_ho', 'dien_thoai', 'bong_bay',
+  'dong_ho_do', 'bieu_do_cot', 'thanh', 'vong_quay', 'cua', 'banh', 'nhan', 'chu', 'so_dem', 'mui_ten', 'bieu_tuong'];
+var KIEU_HANH_DONG_ = ['chon', 'loai_bo', 'sang', 'rung', 'quay', 'mo', 'lay_ra', 'dat_gia_tri', 'bung_ra', 'di_chuyen', 'phong_to', 'thu_nho', 'an', 'doi_chu'];
+var VAT_PHU_ = ['nhan', 'chu', 'mui_ten', 'bieu_tuong', 'so_dem'];   // vật phụ trợ (chữ, nhãn): không tính là "vật thật"
+
+// Kiểm tra sân khấu của một cảnh. idCu: id các vật đang có trên sân khấu từ cảnh trước (khi giu_san_khau). Trả '' nếu hợp lệ.
+function kiemTraSanKhau_(du, cn, idCu) {
+  if (!laDT_(du) || !Array.isArray(du.vat) || !du.vat.length) return 'HINH_' + cn + ': san_khau cần du_lieu.vat là mảng 1-16 vật {id, loai, x, y, buoc...}.';
+  if (du.vat.length > 16) return 'HINH_' + cn + ': tối đa 16 vật mỗi cảnh (nên 1-5).';
+  var ids = {}, coVatThat = !!(idCu && Object.keys(idCu).length);
+  for (var i = 0; i < du.vat.length; i++) {
+    var v = du.vat[i], ev = cn + ', vat[' + i + ']';
+    if (!laDT_(v) || LOAI_VAT_.indexOf(v.loai) < 0) return 'HINH_' + ev + ': "loai" phải thuộc: ' + LOAI_VAT_.join(', ') + '.';
+    if (!laChuoi_(v.id)) return 'HINH_' + ev + ': mỗi vật cần "id" (chuỗi ngắn, duy nhất).';
+    if (ids[v.id]) return 'HINH_' + ev + ': id "' + v.id + '" bị trùng.';
+    ids[v.id] = v;
+    if (v.loai !== 'mui_ten' && (!laSo_(v.x) || !laSo_(v.y) || v.x < 0 || v.x > 100 || v.y < 0 || v.y > 100)) return 'HINH_' + ev + ': ' + v.loai + ' cần x, y là số 0-100 (tâm vật).';
+    if ((v.loai === 'nhan' || v.loai === 'chu') && !laChuoi_(v.noi_dung)) return 'HINH_' + ev + ': "' + v.loai + '" cần "noi_dung".';
+    if (v.loai === 'bieu_tuong' && !laChuoi_(v.emoji)) return 'HINH_' + ev + ': "bieu_tuong" cần "emoji".';
+    if (v.loai === 'bieu_do_cot' && (!Array.isArray(v.ds_so) || !v.ds_so.length || v.ds_so.some(function (x) { return !(Number(x) >= 0); }))) return 'HINH_' + ev + ': bieu_do_cot cần "ds_so" là mảng số không âm (và "ds" là nhãn cột).';
+    if (v.loai === 'vong_quay' && (!Array.isArray(v.ds) || v.ds.length < 2 || v.ds.length > 12)) return 'HINH_' + ev + ': vong_quay cần "ds" là 2-12 nhãn ô.';
+    if ((v.loai === 'dong_ho_do' || v.loai === 'thanh') && v.gia_tri !== undefined && !(Number(v.gia_tri) >= 0 && Number(v.gia_tri) <= 1)) return 'HINH_' + ev + ': "gia_tri" của ' + v.loai + ' là xác suất 0-1 (ví dụ 0.4643); ghi phân số vào "gia_tri_chu".';
+    if ((v.loai === 'hop_bi' || v.loai === 'tui') && (!Array.isArray(v.nhom) || !v.nhom.length)) return 'HINH_' + ev + ': ' + v.loai + ' cần "nhom" là mảng {mau, so}.';
+    if (VAT_PHU_.indexOf(v.loai) < 0) coVatThat = true;
+  }
+  for (var j = 0; j < du.vat.length; j++) {
+    var m = du.vat[j];
+    if (m.loai === 'mui_ten' && ((m.tu && !ids[m.tu] && !(idCu && idCu[m.tu])) || (m.den && !ids[m.den] && !(idCu && idCu[m.den])))) return 'HINH_' + cn + ': mũi tên "' + m.id + '" nối tới id không có trên sân khấu.';
+  }
+  if (!coVatThat) return 'HINH_QUA_DON_GIAN_' + cn + ': sân khấu chỉ có chữ/nhãn/emoji. Hãy dùng vật thật (nguoi, the, hop_bi, xuc_xac, vong_quay, dong_ho_do...) diễn tả tình huống.';
+  var hd = du.hanh_dong || [];
+  if (!Array.isArray(hd)) return 'HINH_' + cn + ': "hanh_dong" phải là mảng.';
+  for (var k = 0; k < hd.length; k++) {
+    var h = hd[k];
+    if (!laDT_(h) || KIEU_HANH_DONG_.indexOf(h.kieu) < 0) return 'HINH_' + cn + ', hanh_dong[' + k + ']: "kieu" phải thuộc: ' + KIEU_HANH_DONG_.join(', ') + '.';
+    if (h.kieu !== 'thu_nho' && h.kieu !== 'phong_to' && !ids[h.vat] && !(idCu && idCu[h.vat])) return 'HINH_' + cn + ', hanh_dong[' + k + ']: "vat" = "' + h.vat + '" không phải id của vật nào trên sân khấu.';
+  }
+  if (!hd.length && !(idCu && Object.keys(idCu).length)) return 'HINH_IT_CHUYEN_DONG_' + cn + ': mỗi cảnh san_khau cần ít nhất 1 hành động (chon, quay, mo, lay_ra, rung, bung_ra, phong_to...) ăn khớp lời thoại.';
+  return '';
+}
+
+// Tự sửa lỗi vặt (không đổi nội dung bài): kẹp tọa độ, bỏ từ khóa không khớp tiêu đề, bỏ vật/hành động lạ, cắt chú thích dài.
+function tuSuaKichBan_(kb) {
+  if (!kb || !Array.isArray(kb.canh)) return;
+  kb.canh.forEach(function (c, i) {
+    if (!c) return;
+    if (c.tieu_de_canh) c.tieu_de_canh = String(c.tieu_de_canh).replace(/\s+/g, ' ').trim().slice(0, 60);
+    if (c.tu_khoa && (!c.tieu_de_canh || String(c.tieu_de_canh).toLowerCase().indexOf(String(c.tu_khoa).toLowerCase()) < 0)) c.tu_khoa = '';
+    if (i === 0) c.giu_san_khau = false;
+    if (Array.isArray(c.chu_thich)) c.chu_thich = c.chu_thich.slice(0, 3).map(function (x) { return String(x).slice(0, 60); });
+    var mh = c.minh_hoa;
+    if (!laDT_(mh) || mh.loai !== 'san_khau' || !laDT_(mh.du_lieu)) return;
+    var du = mh.du_lieu;
+    if (Array.isArray(du.vat)) {
+      du.vat = du.vat.filter(function (v) { return laDT_(v) && LOAI_VAT_.indexOf(v.loai) >= 0; });
+      du.vat.forEach(function (v, k) {
+        if (!laChuoi_(v.id)) v.id = 'v' + (i + 1) + '_' + k;
+        ['x', 'y', 'x2', 'y2'].forEach(function (t) { if (v[t] !== undefined && laSo_(Number(v[t]))) v[t] = Math.min(98, Math.max(2, Number(v[t]))); });
+        if ((v.loai === 'dong_ho_do' || v.loai === 'thanh' || v.loai === 'bong_bay') && Number(v.gia_tri) > 1 && Number(v.gia_tri) <= 100) v.gia_tri = Number(v.gia_tri) / 100;
+      });
+    }
+    if (Array.isArray(du.hanh_dong)) du.hanh_dong = du.hanh_dong.filter(function (h) { return laDT_(h) && KIEU_HANH_DONG_.indexOf(h.kieu) >= 0; });
+  });
+}
 
 var KIEU_HINH_VE_ = ['tron', 'chu_nhat', 'chu', 'mui_ten', 'duong', 'bi', 'xuc_xac', 'the_bai', 'dong_xu', 'bieu_tuong', 'luoi', 'truc_so'];
 
@@ -12,12 +78,13 @@ function laChuoi_(v) { return typeof v === 'string' && v.trim() !== ''; }
 function laDT_(v) { return v && typeof v === 'object' && !Array.isArray(v); }
 
 // Trả về '' nếu hợp lệ, hoặc câu mô tả lỗi (dùng làm lời nhắc sửa cho Gemini).
-function kiemTraMinhHoa_(mh, so) {
+function kiemTraMinhHoa_(mh, so, idCu) {
   var cn = 'CANH_' + so;
   if (!laDT_(mh)) return 'THIEU_MINH_HOA_' + cn + ': mỗi cảnh phải có đối tượng "minh_hoa".';
   var loai = String(mh.loai || '');
   if (loai === '' || loai === 'khong') return '';
   var du = mh.du_lieu;
+  if (loai === 'san_khau') return kiemTraSanKhau_(du, cn, idCu);
   if (!laDT_(du)) return 'HINH_' + cn + ': minh_hoa.loai là "' + loai + '" nhưng "du_lieu" là null/thiếu. Phải có du_lieu đúng dạng, hoặc đổi loai thành "khong".';
 
   if (loai === 'so_do_cay') {
@@ -261,10 +328,22 @@ function hopLeKichBan_(kb, dapAn) {
   if (tong > Number(cauHinh_('GIAY_TOI_DA'))) return 'QUA_DAI_' + tong + '_GIAY';
   if (String(kb.dap_an_cuoi).replace(/\s/g, '') !== dapAn) return 'DAP_AN_CUOI_SAI';
 
+  var idTruoc = {}, soSanKhau = 0;
   for (var j = 0; j < kb.canh.length; j++) {
     var cj = kb.canh[j];
-    var loi = kiemTraMinhHoa_(cj.minh_hoa, j + 1);
+    var laSK = cj.minh_hoa && cj.minh_hoa.loai === 'san_khau';
+    var idCu = laSK && cj.giu_san_khau ? idTruoc : null;
+    var loi = kiemTraMinhHoa_(cj.minh_hoa, j + 1, idCu);
     if (loi) return loi;
+    if (j > 0 && String(cj.tieu_de_canh || '').trim().length < 6) return 'THIEU_TIEU_DE_CANH_' + (j + 1) + ': từ cảnh 2, mỗi cảnh cần "tieu_de_canh" 3-8 từ (câu tiêu đề lớn ở đầu cảnh) và "tu_khoa" nằm nguyên văn trong đó.';
+    if (demTu_(cj.tieu_de_canh) > 10) return 'TIEU_DE_CANH_DAI_' + (j + 1) + ': "tieu_de_canh" tối đa 8-10 từ.';
+    if (laSK) {
+      soSanKhau++;
+      var moi = {};
+      if (cj.giu_san_khau) Object.keys(idTruoc).forEach(function (k) { moi[k] = true; });
+      cj.minh_hoa.du_lieu.vat.forEach(function (v) { moi[v.id] = true; });
+      idTruoc = moi;
+    } else idTruoc = {};
     if (cj.minh_hoa && cj.minh_hoa.loai && cj.minh_hoa.loai !== 'khong') {
       coHinh++;
       if (String(cj.minh_hoa.mo_ta || '').trim().length < 40) return 'MO_TA_HINH_QUA_NGAN_CANH_' + (j + 1) + ': "mo_ta" của hình phải chi tiết (ít nhất 40 ký tự): hình gồm những gì, đặt ở đâu, màu gì, hiện theo thứ tự nào, nhấn mạnh gì khi lời thoại nói tới.';
@@ -287,5 +366,7 @@ function hopLeKichBan_(kb, dapAn) {
   if (mDA && psDA.length && (psDA[psDA.length - 1][0] * Number(mDA[2]) !== psDA[psDA.length - 1][1] * Number(mDA[1]))) return 'DAP_AN_SAI_TREN_MAN_HINH: phân số cuối cùng ở dòng cuối của cảnh đáp án không bằng ' + dapAn + '.';
   var can = Math.max(3, Math.ceil(kb.canh.length / 2));
   if (coHinh < can) return 'IT_HINH_MINH_HOA: chỉ có ' + coHinh + ' cảnh có hình minh họa, cần ít nhất ' + can + '. Cảnh đề bài, bẫy, hướng giải, tính toán nên có hình.';
+  var canSK = Math.min(3, kb.canh.length - 2);
+  if (soSanKhau < canSK) return 'IT_SAN_KHAU: chỉ có ' + soSanKhau + ' cảnh dùng "san_khau" (vật thật chuyển động), cần ít nhất ' + canSK + ' (mo_dau, de_bai, bay, dap_an nên là san_khau).';
   return '';
 }

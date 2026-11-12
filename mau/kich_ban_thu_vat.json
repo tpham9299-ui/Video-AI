@@ -1,0 +1,90 @@
+{
+ "id": "VT-thu-vat",
+ "lop": "10",
+ "chu_de": "Thử bộ vật thật",
+ "chu_de_ngan": "Bộ vật thật: xem thử",
+ "tieu_de": "Xem thử toàn bộ vật thật",
+ "dap_an_cuoi": "1/6",
+ "canh": [
+  {"so": 1, "loai": "de_bai", "tieu_de_canh": "Xúc xắc lăn, đồng xu lật", "tu_khoa": "lăn",
+   "loi_thoai": "Tung hai con xúc xắc và hai đồng xu, mọi thứ lăn rồi dừng đúng mặt.",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {"loai": "san_khau", "mo_ta": "Hai xúc xắc lăn nảy rồi dừng ở mặt 3 và 5, hai đồng xu tung lật dừng ở S và N.", "du_lieu": {
+     "vat": [
+      {"id": "xx", "loai": "xuc_xac", "x": 50, "y": 28, "so_luong": 2, "ket_qua": [3, 5], "buoc": 1},
+      {"id": "xu", "loai": "dong_xu", "x": 50, "y": 75, "so_luong": 2, "ds": ["S", "N"], "buoc": 1}
+     ],
+     "hanh_dong": [
+      {"buoc": 2, "vat": "xx", "kieu": "quay"},
+      {"buoc": 3, "vat": "xu", "kieu": "quay"},
+      {"buoc": 4, "vat": "xx", "kieu": "chon", "chi_so": [2], "mau": "cam"}
+     ]}}},
+  {"so": 2, "loai": "thu_nho", "tieu_de_canh": "Vòng quay may mắn", "tu_khoa": "may mắn",
+   "loi_thoai": "Vòng quay có tám ô, kim dừng ngẫu nhiên. Lần này dừng ở ô số năm.",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {"loai": "san_khau", "mo_ta": "Vòng quay tám ô màu quay nhanh rồi chậm dần, dừng ở ô 5 sáng lên.", "du_lieu": {
+     "vat": [{"id": "vq", "loai": "vong_quay", "x": 50, "y": 50, "ds": ["1","2","3","4","5","6","7","8"], "ket_qua": 5, "buoc": 1}],
+     "hanh_dong": [{"buoc": 2, "vat": "vq", "kieu": "quay"}]}}},
+  {"so": 3, "loai": "y_do", "tieu_de_canh": "Ba cánh cửa và một hộp quà", "tu_khoa": "hộp quà",
+   "loi_thoai": "Sau một trong ba cánh cửa có quà. Mở cửa số hai, rồi mở hộp quà xem bên trong.",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {"loai": "san_khau", "mo_ta": "Ba cánh cửa cam, cửa 2 mở ra thấy dê; hộp quà bên dưới mở nắp, tia sáng và chữ 'Xe máy' bay lên.", "du_lieu": {
+     "vat": [
+      {"id": "cua", "loai": "cua", "x": 50, "y": 24, "co": 0.75, "so_luong": 3, "ds": ["🐐", "🐐", "🏍️"], "buoc": 1},
+      {"id": "qua", "loai": "hop_qua", "x": 50, "y": 80, "gia_tri_chu": "Xe máy", "emoji": "🏍️", "co": 0.8, "buoc": 2}
+     ],
+     "hanh_dong": [
+      {"buoc": 2, "vat": "cua", "kieu": "mo", "chi_so": [2]},
+      {"buoc": 3, "vat": "qua", "kieu": "mo"},
+      {"buoc": 4, "vat": "cua", "kieu": "chon", "chi_so": [3], "mau": "xanh_la"}
+     ]}}},
+  {"so": 4, "loai": "bay", "tieu_de_canh": "Rút bài và thẻ bung ra", "tu_khoa": "bung ra",
+   "loi_thoai": "Chia ba lá bài, lật mặt từng lá. Sáu thẻ trường hợp bung ra khắp màn hình.",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {"loai": "san_khau", "mo_ta": "Ba lá bài rơi xuống và lật mặt; sáu thẻ cam xếp hàng rồi bung tung tóe.", "du_lieu": {
+     "vat": [
+      {"id": "bai", "loai": "the_bai", "x": 50, "y": 22, "ds": ["A♥", "7♠", "K♦"], "buoc": 1},
+      {"id": "the", "loai": "the", "x": 50, "y": 74, "so_luong": 6, "co": 0.55, "buoc": 2}
+     ],
+     "hanh_dong": [
+      {"buoc": 3, "vat": "the", "kieu": "bung_ra"},
+      {"buoc": 4, "vat": "bai", "kieu": "loai_bo", "chi_so": [2]}
+     ]}}},
+  {"so": 5, "loai": "tinh_toan", "tieu_de_canh": "Lấy bi trong hộp và túi", "tu_khoa": "Lấy bi",
+   "loi_thoai": "Hộp có năm bi đỏ và ba bi xanh, lấy ra hai bi đỏ. Túi bên cạnh thì không nhìn thấy bên trong.",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {"loai": "san_khau", "mo_ta": "Hộp thủy tinh, bi rơi vào; hai bi đỏ bay ra khay; túi vải bên dưới, một bi xanh được lấy ra.", "du_lieu": {
+     "vat": [
+      {"id": "hop", "loai": "hop_bi", "x": 38, "y": 28, "nhom": [{"mau": "do", "so": 5}, {"mau": "xanh_duong", "so": 3}], "co": 0.85, "buoc": 1},
+      {"id": "tui", "loai": "tui", "x": 38, "y": 76, "nhom": [{"mau": "vang", "so": 4}, {"mau": "xanh_duong", "so": 2}], "co": 0.8, "buoc": 2}
+     ],
+     "hanh_dong": [
+      {"buoc": 2, "vat": "hop", "kieu": "lay_ra", "so": 2, "mau": "do"},
+      {"buoc": 3, "vat": "tui", "kieu": "lay_ra", "so": 1, "mau": "xanh_duong"}
+     ]}}},
+  {"so": 6, "loai": "diem_chot", "tieu_de_canh": "Đồng hồ, bóng bay và thanh", "tu_khoa": "bóng bay",
+   "loi_thoai": "Kim đồng hồ quay nhanh, bóng bay phồng to dần, thanh xác suất đầy lên tới ba phần tư.",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {"loai": "san_khau", "mo_ta": "Đồng hồ neon bên trái kim quay nhanh; bóng bay cam bên phải phồng to; thanh xác suất bên dưới đầy tới 3/4.", "du_lieu": {
+     "vat": [
+      {"id": "dh", "loai": "dong_ho", "x": 27, "y": 32, "co": 0.8, "nhan": "15 phút", "buoc": 1},
+      {"id": "bb", "loai": "bong_bay", "x": 74, "y": 34, "gia_tri": 0.2, "gia_tri_chu": "15 phút", "co": 0.8, "buoc": 1},
+      {"id": "th", "loai": "thanh", "x": 50, "y": 85, "gia_tri": 0.75, "gia_tri_chu": "3/4", "nhan": "Xác suất", "co": 0.95, "buoc": 3}
+     ],
+     "hanh_dong": [
+      {"buoc": 2, "vat": "dh", "kieu": "quay"},
+      {"buoc": 2, "vat": "bb", "kieu": "dat_gia_tri", "gia_tri": 0.95},
+      {"buoc": 4, "kieu": "phong_to", "vat": "th", "muc": 1.4}
+     ]}}},
+  {"so": 7, "loai": "bai_hoc", "tieu_de_canh": "Chiếc bánh chia tám phần", "tu_khoa": "tám phần",
+   "loi_thoai": "Chiếc bánh chia tám phần bằng nhau, ba phần được chọn. Mũi tên chỉ sang kết quả.",
+   "noi_dung_man_hinh": ["P=\\frac{3}{8}"],
+   "minh_hoa": {"loai": "san_khau", "mo_ta": "Bánh tám miếng, ba miếng cam tách ra phát sáng; mũi tên cong chỉ sang biểu tượng pizza.", "du_lieu": {
+     "vat": [
+      {"id": "banh", "loai": "banh", "x": 34, "y": 48, "so_luong": 8, "co": 0.85, "buoc": 1},
+      {"id": "pz", "loai": "bieu_tuong", "x": 82, "y": 48, "emoji": "🍕", "buoc": 3},
+      {"id": "mt", "loai": "mui_ten", "tu": "banh", "den": "pz", "nhan": "3/8", "buoc": 3}
+     ],
+     "hanh_dong": [{"buoc": 2, "vat": "banh", "kieu": "chon", "chi_so": [1, 2, 3], "mau": "cam"}]}}}
+ ]
+}
