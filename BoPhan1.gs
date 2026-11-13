@@ -410,29 +410,25 @@ function giaiThucTe_(r) {
   ]);
   var c1 = kq3[0], c2 = kq3[1], kc = kq3[2];
   nhatKy_('THOI_GIAN', 'Giải toán thực tế + mã kiểm chứng (3 yêu cầu Gemini) mất ' + Math.round((Date.now() - t0) / 1000) + ' giây');
-  var a1 = docSo_(c1 && c1.gia_tri), a2 = docSo_(c2 && c2.gia_tri);
-  if (!isFinite(a1) && !isFinite(a2)) throw new Error('DAP_AN_KHONG_HOP_LE');
-  if (!khopSo_(a1, a2)) {
-    if (!laUuTien_(r)) return { dat: false, c1: c1, c2: c2, ly_do: 'KHONG_KHOP_2_CACH: ' + a1 + ' vs ' + a2 };
-    var c3 = goiGemini_('Bạn là giáo viên Toán rất cẩn thận. Hai lời giải trước cho đáp số khác nhau. Hãy tự giải lại từ đầu, kiểm tra từng điều kiện và đơn vị. ' + dinhDang + de, 0.1, { suyNghi: 'high' });
-    var a3 = docSo_(c3 && c3.gia_tri);
-    if (khopSo_(a3, a1)) { c2 = c1; a2 = a1; }
-    else if (khopSo_(a3, a2)) { c1 = c2; a1 = a2; }
-    else return { dat: false, c1: c1, c2: c2, ly_do: 'KHONG_KHOP_3_CACH: ' + a1 + ' | ' + a2 + ' | ' + a3 };
-    nhatKy_('GIAI', r.id + ': giải lần 3 (đề ưu tiên) chốt ' + a1);
-  }
-  var tKc = Date.now(), kq, ok = false, mo = '';
-  try { kq = chayKiemChung_(kc && kc.ma); }
-  catch (eKc) { if (!laUuTien_(r)) throw eKc; kq = { kieu: 'loi', loi: eKc.message }; }
-  nhatKy_('THOI_GIAN', 'Chạy mã kiểm chứng mất ' + Math.round((Date.now() - tKc) / 1000) + ' giây');
-  var gk = docSo_(kq.gia_tri);
-  if (kq.kieu === 'gia_tri' || kq.kieu === 'chinh_xac' || kq.kieu === 'mo_phong') {
-    ok = kq.kieu === 'mo_phong' ? Math.abs(gk - a1) <= Math.max(0.02 * Math.abs(a1), 1e-3) : khopSo_(gk, a1);
-    mo = 'Tính số bằng máy: ' + vietSo_(gk);
-  } else if (laUuTien_(r)) mo = 'Mã kiểm chứng không chạy được (' + (kq.loi || kq.kieu) + ')';
-  else throw new Error('KIEM_CHUNG_KIEU_LA');
-  if (!ok && laUuTien_(r)) { ok = true; mo += ' | chốt theo các lời giải độc lập khớp nhau (đề ưu tiên)'; }
-  if (!ok) return { dat: false, c1: c1, c2: c2, ly_do: 'KIEM_CHUNG_KHONG_KHOP: ' + mo + ' vs ' + a1 };
+  var docTT = function (c) { var x = docSo_(c && c.gia_tri); return isFinite(x) ? x : null; };
+  if (docTT(c1) === null && docTT(c2) === null) throw new Error('DAP_AN_KHONG_HOP_LE');
+  var tt = trongTai_(r, {
+    de: de, dinhDang: dinhDang, c1: c1, c2: c2, kc: kc,
+    doc: docTT, bang: function (a, b) { return a !== null && b !== null && khopSo_(a, b); }, chu: vietSo_,
+    kiem: function (kq) {
+      var gk = docSo_(kq && kq.gia_tri);
+      if (!isFinite(gk)) return null;
+      var mp = kq.kieu === 'mo_phong';
+      return { v: mp ? null : gk, manh: mp ? 1 : 2, mo: 'Tính số bằng máy: ' + vietSo_(gk),
+        khop: function (x) { return mp ? Math.abs(gk - x) <= Math.max(0.02 * Math.abs(x), 1e-3) : khopSo_(gk, x); } };
+    },
+    promptMa: 'Viết MỘT hàm JavaScript thuần tên kiemChung() (không thư viện, không gọi mạng) tự tính đáp số bài toán thực tế sau bằng TÍNH SỐ, cài đặt trực tiếp từ ĐỀ BÀI (đọc kỹ đơn vị, điều kiện, yêu cầu làm tròn). ' +
+      'Bài cực trị: quét lưới mịn trên miền xác định rồi thu hẹp quanh điểm tốt nhất; tích phân: Simpson; lãi suất/dãy: mô phỏng từng kỳ; hình học: tính tọa độ. Tổng không quá 1 triệu phép tính, vòng lặp phải dừng. ' +
+      'Trả về {"kieu":"gia_tri","gia_tri":số_thực}. Trả JSON: {"ma":"function kiemChung(){...}"}\n\n' + de
+  });
+  if (!tt.dat) return { dat: false, c1: c1, c2: c2, ly_do: tt.ly_do };
+  c1 = tt.c1; c2 = tt.c2;
+  var a1 = tt.v, mo = tt.mo;
   // Giữ đúng số chữ số thập phân mà lời giải đưa ra (đề yêu cầu làm tròn), tối đa 4.
   var dapAn = vietSo_(a1);
   var hien = String((c1 && c1.dap_an_hien) || (c2 && c2.dap_an_hien) || '').trim().slice(0, 80);
@@ -611,39 +607,91 @@ function giaiXacSuat_(r) {
   Logger.log('Goi Gemini song song xong sau ' + Math.round((Date.now() - t0) / 1000) + ' giay');
   nhatKy_('THOI_GIAN', 'Giải + viết mã kiểm chứng (3 yêu cầu Gemini) mất ' + Math.round((Date.now() - t0) / 1000) + ' giây');
 
-  var v1 = chuanHoa_(c1), v2 = chuanHoa_(c2);
-  if (!v1 && !v2) throw new Error('DAP_AN_KHONG_HOP_LE');
-  if (!v1 || !v2 || v1.tu * v2.mau !== v2.tu * v1.mau) {
-    // Đề ưu tiên (người dùng gửi): không bỏ ngay mà giải thêm một lần thật kỹ rồi lấy đáp án được ít nhất 2 cách đồng ý.
-    if (!laUuTien_(r)) return { dat: false, c1: c1, c2: c2, ly_do: 'KHONG_KHOP_2_CACH: ' + (v1 ? v1.tu + '/' + v1.mau : '?') + ' vs ' + (v2 ? v2.tu + '/' + v2.mau : '?') };
-    var c3 = goiGemini_('Bạn là giáo viên Toán rất cẩn thận. Hai lời giải trước cho đáp án khác nhau. Hãy tự giải lại từ đầu, liệt kê rõ không gian mẫu, soát lỗi đếm trùng/đếm sót. ' + dinhDang + de, 0.1, { suyNghi: 'high' });
-    var v3 = chuanHoa_(c3);
-    var bang = function (a, b) { return a && b && a.tu * b.mau === b.tu * a.mau; };
-    if (bang(v3, v1)) { c2 = c1; v2 = v1; }
-    else if (bang(v3, v2)) { c1 = c2; v1 = v2; }
-    else return { dat: false, c1: c1, c2: c2, ly_do: 'KHONG_KHOP_3_CACH: ' + (v1 ? v1.tu + '/' + v1.mau : '?') + ' | ' + (v2 ? v2.tu + '/' + v2.mau : '?') + ' | ' + (v3 ? v3.tu + '/' + v3.mau : '?') };
-    nhatKy_('GIAI', r.id + ': giải lần 3 (đề ưu tiên) chốt ' + v1.tu + '/' + v1.mau);
-  }
+  if (!chuanHoa_(c1) && !chuanHoa_(c2)) throw new Error('DAP_AN_KHONG_HOP_LE');
+  var bangPS = function (a, b) { return !!(a && b && a.tu * b.mau === b.tu * a.mau); };
+  var tt = trongTai_(r, {
+    de: de, dinhDang: dinhDang, c1: c1, c2: c2, kc: kc,
+    doc: chuanHoa_, bang: bangPS, chu: function (v) { return v.tu + '/' + v.mau; },
+    kiem: function (kq) {
+      if (kq.kieu === 'chinh_xac') {
+        var v = chuanHoa_({ tu: kq.tu, mau: kq.mau });
+        return v ? { v: v, manh: 2, mo: 'Đếm vét cạn: ' + v.tu + '/' + v.mau, khop: function (x) { return bangPS(x, v); } } : null;
+      }
+      if (kq.kieu === 'mo_phong' && isFinite(Number(kq.gia_tri))) {
+        var n = Number(kq.n) || 200000;
+        return { v: null, manh: 1, mo: 'Mô phỏng n=' + n + ': ' + kq.gia_tri, khop: function (x) { var g = x.tu / x.mau; return Math.abs(Number(kq.gia_tri) - g) <= 5 * Math.sqrt(g * (1 - g) / n) + 1e-4; } };
+      }
+      return null;
+    },
+    promptMa: 'Viết MỘT hàm JavaScript thuần tên kiemChung() (không thư viện, không gọi mạng) kiểm chứng đáp án bài xác suất sau bằng máy. ' +
+      'Ưu tiên ĐẾM VÉT CẠN toàn bộ không gian mẫu (tối đa ~1 triệu phép lặp), nếu không được thì MÔ PHỎNG đúng n = 200000 lần. Mọi vòng lặp phải dừng; mảng không quá 100000 phần tử. ' +
+      'Trả về {"kieu":"chinh_xac","tu":số_nguyên,"mau":số_nguyên} hoặc {"kieu":"mo_phong","gia_tri":số_thực,"n":200000}. Cài đặt trực tiếp từ ĐỀ BÀI, đọc đề thật kỹ từng chữ (có hoàn lại không, phân biệt thứ tự không, "ít nhất"/"đúng"...). Trả JSON: {"ma":"function kiemChung(){...}"}\n\n' + de
+  });
+  if (!tt.dat) return { dat: false, c1: c1, c2: c2, ly_do: tt.ly_do };
+  return { dat: true, c1: tt.c1, c2: tt.c2, dap_an: tt.chu, dap_an_hien: tt.chu, mo_ta: tt.mo };
+}
 
-  var tKc = Date.now();
-  var kq;
-  try { kq = chayKiemChung_(kc.ma); }
-  catch (eKc) { if (!laUuTien_(r)) throw eKc; kq = { kieu: 'loi', loi: eKc.message }; }
-  nhatKy_('THOI_GIAN', 'Chạy mã kiểm chứng mất ' + Math.round((Date.now() - tKc) / 1000) + ' giây');
-  var gt = v1.tu / v1.mau, ok = false, mo = '';
-  if (kq.kieu === 'chinh_xac') {
-    var g = gcd_(kq.tu, kq.mau);
-    ok = (kq.tu / g === v1.tu && kq.mau / g === v1.mau);
-    mo = 'Đếm vét cạn: ' + kq.tu / g + '/' + kq.mau / g;
-  } else if (kq.kieu === 'mo_phong') {
-    var dungSai = 5 * Math.sqrt(gt * (1 - gt) / kq.n) + 1e-4;
-    ok = Math.abs(kq.gia_tri - gt) <= dungSai;
-    mo = 'Mô phỏng n=' + kq.n + ': ' + kq.gia_tri + ' (sai số cho phép ' + dungSai.toFixed(5) + ')';
-  } else if (laUuTien_(r)) { mo = 'Mã kiểm chứng không chạy được (' + (kq.loi || kq.kieu) + ')'; }
-  else { throw new Error('KIEM_CHUNG_KIEU_LA'); }
-  if (!ok && laUuTien_(r)) { ok = true; mo += ' | chốt theo các lời giải độc lập khớp nhau (đề ưu tiên)'; }
-  if (!ok) return { dat: false, c1: c1, c2: c2, ly_do: 'KIEM_CHUNG_KHONG_KHOP: ' + mo + ' vs ' + v1.tu + '/' + v1.mau };
-  return { dat: true, c1: c1, c2: c2, dap_an: v1.tu + '/' + v1.mau, dap_an_hien: v1.tu + '/' + v1.mau, mo_ta: mo };
+// TRỌNG TÀI: không loại đề chỉ vì hai cách giải lệch nhau hay lệch mã kiểm chứng. Bỏ phiếu giữa các nguồn ĐỘC LẬP:
+// mỗi lời giải = 1 phiếu, mã tính/đếm vét cạn = 2 phiếu, mô phỏng = 1 phiếu. Đáp án đạt >= 3 phiếu thì chốt.
+// Chưa đủ: giải lại (suy nghĩ kỹ, biết các đáp án đang lệch) + viết mã kiểm chứng MỚI; vẫn chưa đủ: giải thêm bằng phương pháp
+// khác hẳn. Chỉ loại khi sau các vòng đó vẫn không có đáp án nào được ít nhất 2 nguồn độc lập đồng ý.
+function trongTai_(r, o) {
+  var ung = [];   // {v, c, nguon}
+  var ma = [];    // {v, manh, mo, khop}
+  var themGiai = function (c, nguon) { var v = c ? o.doc(c) : null; if (v !== null && v !== undefined) ung.push({ v: v, c: c, nguon: nguon }); };
+  var chayMa = function (kc, ten) {
+    if (!kc || !kc.ma) return;
+    try { var k = o.kiem(chayKiemChung_(kc.ma)); if (k) ma.push(k); }
+    catch (e) { nhatKy_('GIAI', r.id + ': mã kiểm chứng ' + ten + ' lỗi (' + String(e.message).slice(0, 80) + ')'); }
+  };
+  var diem = function (v) {
+    var d = 0;
+    ung.forEach(function (u) { if (o.bang(u.v, v)) d += 1; });
+    ma.forEach(function (k) { if (k.khop(v)) d += k.manh; });
+    return d;
+  };
+  var tot = function () {
+    var ds = ung.map(function (u) { return u.v; });
+    ma.forEach(function (k) { if (k.v !== null && k.v !== undefined) ds.push(k.v); });
+    var best = null, bd = 0;
+    ds.forEach(function (v) { var d = diem(v); if (d > bd) { bd = d; best = v; } });
+    return { v: best, d: bd };
+  };
+  var tomTat = function () {
+    return ung.map(function (u) { return u.nguon + '=' + o.chu(u.v); }).concat(ma.map(function (k) { return k.mo; })).join(' | ');
+  };
+  var ketQua = function (v, vong) {
+    var khop = ung.filter(function (u) { return o.bang(u.v, v); });
+    var c1 = khop.length ? khop[0].c : o.c1;
+    var c2 = khop.filter(function (u) { return u.nguon === 'cach2'; }).length ? o.c2 : c1;   // giữ cách "thông minh" nếu nó đúng
+    var mo = ma.filter(function (k) { return k.khop(v); }).map(function (k) { return k.mo; }).join('; ') || 'các lời giải độc lập khớp nhau';
+    if (vong) nhatKy_('GIAI', r.id + ': trọng tài vòng ' + vong + ' chốt ' + o.chu(v) + ' (' + tomTat() + ')');
+    return { dat: true, v: v, chu: o.chu(v), c1: c1, c2: c2, mo: mo + (vong ? ' | phân xử sau ' + vong + ' vòng' : '') };
+  };
+  themGiai(o.c1, 'cach1');
+  themGiai(o.c2, 'cach2');
+  chayMa(o.kc, '1');
+  var t = tot();
+  if (t.v !== null && t.d >= 3) return ketQua(t.v, 0);
+  // vòng 1: giải lại thật kỹ (biết các đáp án đang lệch) + mã kiểm chứng mới viết độc lập
+  nhatKy_('GIAI', r.id + ': các nguồn chưa thống nhất (' + tomTat() + '), mở trọng tài');
+  var goiY = 'Các lời giải/máy tính trước cho các kết quả: ' + tomTat() + '. Có ít nhất một cái SAI. Hãy tự giải lại TỪ ĐẦU thật cẩn thận, đọc kỹ từng chữ của đề, ' +
+    'chỉ ra chỗ dễ sai (đếm trùng, đếm sót, hiểu sai đề, đơn vị, làm tròn) rồi cho đáp án đúng. ';
+  try { themGiai(goiGemini_('Bạn là giáo viên Toán chấm thi rất cẩn thận. ' + goiY + o.dinhDang + o.de, 0.1, { suyNghi: 'high' }), 'giai_lai'); }
+  catch (e1) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(e1.message))) throw e1; }
+  try { chayMa(goiGemini_(o.promptMa, 0.2, { suyNghi: cauHinh_('MUC_SUY_NGHI_GIAI') }), '2'); }
+  catch (e2) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(e2.message))) throw e2; }
+  t = tot();
+  if (t.v !== null && t.d >= 3) return ketQua(t.v, 1);
+  // vòng 2: giải bằng phương pháp khác hẳn (liệt kê trực tiếp / đặt lại mô hình)
+  try { themGiai(goiGemini_('Bạn là giáo viên Toán. Giải bài sau bằng một PHƯƠNG PHÁP KHÁC HẲN cách thông thường (ví dụ liệt kê trực tiếp các trường hợp nhỏ, đếm bằng bảng, đặt lại mô hình/tọa độ), ' +
+    'kiểm tra lại kết quả bằng một cách thứ hai trước khi trả lời. ' + o.dinhDang + o.de, 0.3, { suyNghi: 'high' }), 'cach_khac'); }
+  catch (e3) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(e3.message))) throw e3; }
+  t = tot();
+  if (t.v !== null && t.d >= 3) return ketQua(t.v, 2);
+  // đề ưu tiên (người dùng gửi): chấp nhận khi có ít nhất 2 nguồn độc lập đồng ý
+  if (laUuTien_(r) && t.v !== null && t.d >= 2) return ketQua(t.v, 2);
+  return { dat: false, ly_do: 'KHONG_THONG_NHAT sau trọng tài: ' + tomTat().slice(0, 250) };
 }
 
 // Chạy mã kiểm chứng do AI viết. Đã chặn các API nguy hiểm, nhưng KHÔNG phải sandbox tuyệt đối:
@@ -763,12 +811,13 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       }
       var hinhDe = deCoHinh_(r) ? String(r.de_bai || '') + ' ' + String(r.mo_ta_hinh || '') : '';
       var dg = null, lanSua = 0, hetGio = false;
+      var maxSua = Number(cauHinh_('SO_LAN_SUA_KICH_BAN')) || 3;   // GitHub: 6 vòng (không lo hết giờ)
       for (;;) {
         chuanBiKichBan_(kb, r, ctxSua);
         dg = danhGiaKichBan_(kb, r.dap_an, r.mon, hinhDe, spham);
         // hết lỗi nặng: xong nếu không còn lỗi nhẹ, hoặc đã nhờ sửa một lần (lỗi nhẹ không làm hỏng video)
         if (!dg.nang.length && (!dg.nhe.length || lanSua >= 1)) break;
-        if (lanSua >= 3) break;
+        if (lanSua >= maxSua) break;
         if (!conDuGoiGemini_()) { hetGio = true; break; }
         var dsLoi = dg.nang.concat(dg.nhe);
         nhatKy_('KICH_BAN_SUA', r.id + ' sửa ngay lần ' + (lanSua + 1) + ' (' + dg.nang.length + ' lỗi nặng, ' + dg.nhe.length + ' lỗi nhẹ): ' + dsLoi.map(function (x) { return String(x).split(':')[0]; }).join(', '));
@@ -783,7 +832,7 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       }
       if (dg.nang.length) {
         luuNhapKichBan_(r.id, kb);
-        if (hetGio || lanSua < 3) {
+        if (hetGio || lanSua < maxSua) {
           // hết thời gian của lần chạy: KHÔNG tính là lỗi, lần chạy sau sửa tiếp bản nháp
           ghi_(sh, r._row, { so_lan_loi: Math.max(0, (Number(r.so_lan_loi) || 1) - 1), ghi_chu: 'Đang sửa kịch bản (còn ' + dg.nang.length + ' lỗi), tiếp tục ở lần chạy sau' });
           nhatKy_('KICH_BAN_SUA', r.id + ': lưu bản nháp, còn ' + dg.nang.length + ' lỗi nặng: ' + dg.nang.map(function (x) { return String(x).split(':')[0]; }).join(', '));
@@ -1004,6 +1053,10 @@ function goiDeChoGitHub_(r) {
   var tk = {};
   var p = PropertiesService.getScriptProperties().getProperties();
   Object.keys(p).forEach(function (k) { if (/^TB_/.test(k)) tk[k] = p[k]; });
+  // lượt lỗi do Apps Script bị cắt 6 phút (ghi chú DANG_...) không phải lỗi của đề: GitHub làm lại từ đầu
+  if (/^DANG_|^TAI_CHO|^Chờ/.test(String(hang.ghi_chu))) { hang.so_lan_loi = 0; hang.ghi_chu = ''; }
+  if (!ch.SO_LAN_SUA_KICH_BAN) ch.SO_LAN_SUA_KICH_BAN = '6';
+  if (!ch.MAX_LAN_LOI || Number(ch.MAX_LAN_LOI) < 3) ch.MAX_LAN_LOI = '3';
   var goi = { hang: hang, cau_hinh: ch, thong_ke: tk, series: null, hook: '', goi_y: '' };
   try { if (typeof xacDinhSeries_ === 'function') goi.series = xacDinhSeries_(r); } catch (e) {}
   try { if (typeof chonKieuHook_ === 'function') goi.hook = chonKieuHook_(); } catch (e) {}

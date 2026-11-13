@@ -154,19 +154,30 @@ const sh = sheets.HANG_DOI;
 const truoc = sh.data[1].slice();
 const bc = {moi: 0, giai_ok: 0, loai: 0, kich_ban: 0, loi: 0};
 const trangThai = () => sh.data[1][COT.indexOf('trang_thai')];
-let lan = 0;
+// Lỗi của đề (Gemini trả JSON hỏng, kịch bản còn lỗi nặng...) thì SỬA/LÀM LẠI NGAY trong lần chạy này (tối đa MAX_LAN_LOI lượt),
+// không trả về Apps Script để chờ lượt sau.
+const cot = (k) => sh.data[1][COT.indexOf(k)];
+if (/^DANG_/.test(String(cot('ghi_chu')))) { sh.data[1][COT.indexOf('so_lan_loi')] = 0; sh.data[1][COT.indexOf('ghi_chu')] = ''; }
+let lan = 0, luot = 0;
 for (;;) {
   try {
     const bat = Date.now();
+    const ttTruoc = trangThai();
     if (trangThai() === 'MOI') ctx.xuLyGiai_(sh, bc, bat, false);
     if (trangThai() === 'DA_GIAI') ctx.xuLyKichBan_(sh, bc, bat, false);
-    // kịch bản còn lỗi nặng và mã đã lưu nháp để "lần chạy sau" sửa tiếp: trên GitHub sửa tiếp ngay
-    if (trangThai() === 'DA_GIAI' && /^Đang sửa kịch bản/.test(String(sh.data[1][COT.indexOf('ghi_chu')])) && lan < 2) { lan++; continue; }
+    const gc = String(cot('ghi_chu') || '');
+    const conLam = (trangThai() === 'MOI' || trangThai() === 'DA_GIAI') && gc && luot < 4;
+    if (conLam) {
+      luot++;
+      console.log(`Chưa xong (${trangThai()}: ${gc.slice(0, 120)}) -> làm tiếp ngay, lượt ${luot + 1}`);
+      if (ttTruoc === trangThai() && !/^Đang sửa kịch bản/.test(gc)) ngu(5000);
+      continue;
+    }
     out.ok = true;
     break;
   } catch (e) {
     const m = String(e && e.message);
-    if (m === 'QUA_TAI' && lan < 3) { lan++; console.log('Gemini quá tải, chờ ' + 45 * lan + ' giây rồi thử lại'); ngu(45000 * lan); continue; }
+    if (m === 'QUA_TAI' && lan < 4) { lan++; console.log('Gemini quá tải, chờ ' + 40 * lan + ' giây rồi thử lại'); ngu(40000 * lan); continue; }
     out.loi = m;
     console.log('LỖI: ' + m + '\n' + String(e && e.stack || '').slice(0, 800));
     break;
@@ -195,6 +206,12 @@ function giaLapGemini(body) {
   if (/kiemChung\(\)/.test(p)) return tl({ma: 'function kiemChung(){var m=1e9;for(var x=0.5;x<=20;x+=0.001){var s=x*x+128/x;if(s<m)m=s;}return {kieu:"gia_tri",gia_tri:m};}'});
   if (/ĐẠO DIỄN HÌNH ẢNH 3D/.test(p)) return tl(JSON.parse(fs.readFileSync(path.join(GOC, 'mau/kich_ban_thuc_te.json'), 'utf8')));
   if (/ĐẠO DIỄN HÌNH ẢNH/.test(p)) return tl(JSON.parse(fs.readFileSync(path.join(GOC, 'mau/kich_ban_mau.json'), 'utf8')));
+  if (xs && process.env.BP1_GIA_LAP_LECH) {
+    // chạy thử trọng tài: hai cách đầu SAI khác nhau, giải lại (suy nghĩ kỹ) mới đúng
+    if (/chấm thi rất cẩn thận/.test(p)) return tl({cac_buoc: ['x'], tu: 13, mau: 28});
+    if (/SUY LUẬN/.test(p)) return tl({cac_buoc: ['x'], tu: 1, mau: 2, y_tuong: 'sai'});
+    return tl({cac_buoc: ['x'], tu: 3, mau: 7});
+  }
   if (xs) return tl({cac_buoc: ['x'], tu: 13, mau: 28, y_tuong: 'cùng giới = 2 nam hoặc 2 nữ'});
   if (/Bài toán thực tế/.test(p)) return tl({mo_hinh: 'đáy x, cao h', cac_buoc: ['S=x^2+128/x'], gia_tri: 48, don_vi: 'm²', dap_an_hien: 'x = 4 m; S = 48 m²', y_tuong: 'khử h'});
   return tl({});
