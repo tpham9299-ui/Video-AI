@@ -823,7 +823,7 @@ const DanhSach: Ve = (v, st) => {
             <div style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: `${quet * 100}%`, background: c ? (c.mau === 'xanh_la' ? '#B9F6CA' : '#FFE27A') : 'transparent', borderRadius: 14}} />
             <div style={{position: 'relative', flexShrink: 0, width: 46 * v.co, height: 46 * v.co, borderRadius: '50%', background: '#F7C531', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 26 * v.co, color: '#2a1d00'}}>{k + 1}</div>
             <div style={{position: 'relative', fontWeight: 800, fontSize: 34 * v.co, textDecoration: l > 0.5 && !laMoi() ? 'line-through' : 'none', textDecorationColor: '#FF5C61', textDecorationThickness: 4}}>
-              {d}
+              {laToanNhan(d) ? <Toan tex={texNhan(d)} size={34 * v.co} color="#16181d" maxWidth={680} /> : d}
               {/* bộ hiệu ứng mới: nét gạch đỏ viết tay vẽ dần đè lên dòng sai */}
               {laMoi() && l > 0 ? <span style={{position: 'absolute', left: -8, right: -8, top: '18%', bottom: '18%'}}><GachTay w={0} h={0} p={l} /></span> : null}
             </div>
