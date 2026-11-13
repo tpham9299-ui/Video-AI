@@ -4,11 +4,14 @@ import {combineChunks} from '@remotion/renderer';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const [thuMuc, ra] = process.argv.slice(2);
-if (!thuMuc || !ra) {
+const [thuMucVao, raVao] = process.argv.slice(2);
+if (!thuMucVao || !raVao) {
   console.error('Cách dùng: node scripts/ghep_khuc.mjs <thư mục khúc> <ra.mp4>');
   process.exit(2);
 }
+// đường dẫn TUYỆT ĐỐI: Remotion ghi danh sách tệp vào thư mục tạm, đường dẫn tương đối sẽ trỏ sai chỗ
+const thuMuc = path.resolve(thuMucVao);
+const ra = path.resolve(raVao);
 const meta = fs.readdirSync(thuMuc).filter((f) => /^khuc_\d+\.json$/.test(f))
   .map((f) => JSON.parse(fs.readFileSync(path.join(thuMuc, f), 'utf8')))
   .sort((a, b) => a.i - b.i);
