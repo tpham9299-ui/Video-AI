@@ -39,11 +39,22 @@ def main():
     if not tam:
         sys.exit("Không lấy được khung hình nào")
     kt = os.path.join(ra, "%s_kt.jpg" % id_)
-    lenh = ["ffmpeg", "-y", "-loglevel", "error"]
-    for f in tam:
-        lenh += ["-i", f]
-    lenh += (["-filter_complex", "hstack=inputs=%d" % len(tam)] if len(tam) > 1 else []) + ["-q:v", "4", kt]
-    subprocess.run(lenh, check=True)
+    try:
+        # ghép ngang bằng Pillow: máy ghép video chỉ có ffmpeg rút gọn của Remotion (không có bộ lọc hstack)
+        from PIL import Image
+        ds = [Image.open(f).convert("RGB") for f in tam]
+        tong = Image.new("RGB", (sum(a.width for a in ds), max(a.height for a in ds)))
+        x = 0
+        for a in ds:
+            tong.paste(a, (x, 0))
+            x += a.width
+        tong.save(kt, quality=82)
+    except ImportError:
+        lenh = ["ffmpeg", "-y", "-loglevel", "error"]
+        for f in tam:
+            lenh += ["-i", f]
+        lenh += (["-filter_complex", "hstack=inputs=%d" % len(tam)] if len(tam) > 1 else []) + ["-q:v", "4", kt]
+        subprocess.run(lenh, check=True)
     for f in tam:
         os.remove(f)
     print("Đã tạo", kt, "| cảnh:", [c.get("so") for c in chon])

@@ -41,15 +41,22 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  dung:
+  # ============ DỰNG SONG SONG (3 tầng) ============
+  # 1) chuan_bi : giọng đọc, đóng gói Remotion (bundle), ảnh bìa, chia video thành SO_MAY_DUNG khúc (mặc định 4)
+  # 2) dung_khuc: mỗi khúc một máy GitHub dựng cùng lúc (hình H.264 + tiếng AAC căn khung, cơ chế của Remotion Lambda)
+  # 3) ghep     : ghép các khúc (không mã hóa lại => vài giây), ảnh kiểm tra, tải lên Drive, báo kết quả về Apps Script
+  # Video ~12,5 phút trên 1 máy -> khoảng 6-7 phút. Đặt GitHub Variable SO_MAY_DUNG = 1 để quay về dựng trên 1 máy.
+  chuan_bi:
     if: ${{ github.event.inputs.viec != 'dang' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 30
+    outputs:
+      id: ${{ steps.chia.outputs.id }}
+      giay: ${{ steps.chia.outputs.giay }}
+      so_khuc: ${{ steps.chia.outputs.so_khuc }}
+      khuc: ${{ steps.chia.outputs.khuc }}
     env:
       RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
-      APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
-      DUNG_VIDEO_SECRET: ${{ secrets.DUNG_VIDEO_SECRET }}
-      DRIVE_THU_MUC: ${{ vars.DRIVE_THU_MUC }}
       DRIVE_NEN: ${{ vars.DRIVE_NEN }}
       DRIVE_FONT: ${{ vars.DRIVE_FONT }}
       DRIVE_THUONG_HIEU: ${{ vars.DRIVE_THUONG_HIEU }}
@@ -63,29 +70,39 @@ jobs:
       AM_LUONG_NHAC: ${{ vars.AM_LUONG_NHAC }}
       GIONG: ${{ vars.GIONG }}
       TOC_DO: ${{ vars.TOC_DO }}
+      SO_MAY_DUNG: ${{ vars.SO_MAY_DUNG }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Cài công cụ hệ thống
+      - name: Cài công cụ (chạy song song)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg fonts-noto-color-emoji \
-            libnss3 libdbus-1-3 libatk1.0-0 libasound2t64 libxrandr2 libxkbcommon-dev libxfixes3 \
-            libxcomposite1 libxdamage1 libgbm-dev libcups2 libatk-bridge2.0-0 libpango-1.0-0 libcairo2
-          pip install "edge-tts>=7.2" gTTS numpy
-          curl -fsSL https://rclone.org/install.sh | sudo bash
+          ( sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-noto-color-emoji \
+              libnss3 libdbus-1-3 libatk1.0-0 libasound2t64 libxrandr2 libxkbcommon-dev libxfixes3 \
+              libxcomposite1 libxdamage1 libgbm-dev libcups2 libatk-bridge2.0-0 libpango-1.0-0 libcairo2 ) > /tmp/apt.log 2>&1 &
+          APT=$!
+          ( pip install -q "edge-tts>=7.2" gTTS numpy ) > /tmp/pip.log 2>&1 &
+          PIP=$!
+          ( curl -fsSL https://rclone.org/install.sh | sudo bash ) > /tmp/rclone.log 2>&1 &
+          RC=$!
+          npm ci
+          wait $APT || { cat /tmp/apt.log; exit 1; }
+          wait $PIP || { cat /tmp/pip.log; exit 1; }
+          wait $RC || { cat /tmp/rclone.log; exit 1; }
 
-      - name: Cài thư viện Node
-        run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+      - name: Lưu sẵn trình duyệt dựng hình
+        uses: actions/cache@v4
+        with:
+          path: node_modules/.remotion
+          key: remotion-chrome-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
       - name: Lấy ảnh/video nền từ Google Drive
         if: ${{ env.RCLONE_CONF != '' }}
@@ -116,39 +133,200 @@ jobs:
       - name: Tạo giọng đọc và mốc thời gian
         run: python3 scripts/chuanbi.py kich_ban.json
 
-      - name: Dựng video
-        id: dung
+      - name: Đóng gói Remotion + ảnh bìa
         run: |
           ID=$(python3 -c "import json;print(json.load(open('public/props.json',encoding='utf8'))['id'])")
-          GIAY=$(python3 -c "import json;p=json.load(open('public/props.json',encoding='utf8'));print(round(p['tongFrame']/p['fps']))")
-          mkdir -p out public/bia
+          # đóng gói SAU khi có giọng đọc/nhạc (thư mục public được chép vào gói)
+          npx remotion bundle src/index.ts --out-dir build
+          find build -name "*.map" -delete
+          mkdir -p out build/public/bia
           # ẢNH BÌA thiết kế (loại câu hỏi, lớp, tập, tiêu đề, hình minh họa thật của đề) -> out/ID_bia.jpg
           KHUNG=$(python3 -c "import json;print((json.load(open('public/props.json',encoding='utf8')).get('bia') or {}).get('khung',60))")
-          if npx remotion still src/index.ts AnhBia "out/${ID}_bia.png" --props=public/props.json --frame=$KHUNG; then
+          if npx remotion still build AnhBia "out/${ID}_bia.png" --props=public/props.json --frame=$KHUNG; then
             ffmpeg -y -loglevel error -i "out/${ID}_bia.png" -q:v 3 "out/${ID}_bia.jpg"
-            cp "out/${ID}_bia.png" "public/bia/${ID}.png"
+            cp "out/${ID}_bia.png" "build/public/bia/${ID}.png"
             # khung hình đầu của video = ảnh bìa (TikTok lấy khung 0 làm ảnh bìa)
             python3 -c "import json;f='public/props.json';p=json.load(open(f,encoding='utf8'));p['anhBiaDau']='bia/${ID}.png';p['tongFrame']+=1;json.dump(p,open(f,'w',encoding='utf8'),ensure_ascii=False)"
           else
             echo "Không dựng được ảnh bìa, video vẫn dựng bình thường"
           fi
-          npx remotion render src/index.ts Video "out/$ID.mp4" --props=public/props.json --concurrency=2
+          rm -f out/*.png
+
+      - name: Chia khúc
+        id: chia
+        run: |
+          python3 - <<'PY'
+          import json, os
+          p = json.load(open('public/props.json', encoding='utf8'))
+          tong = p['tongFrame']
+          muon = int(os.environ.get('SO_MAY_DUNG') or 4)
+          # mỗi khúc ít nhất ~5 giây, tối đa 10 máy (video ngắn không chia nhỏ quá, tốn công khởi động máy)
+          n = max(1, min(muon, 10, tong // 150))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write('id=%s\n' % p['id'])
+              f.write('giay=%d\n' % round(tong / p['fps']))
+              f.write('so_khuc=%d\n' % n)
+              f.write('khuc=%s\n' % json.dumps(list(range(n))))
+          print('Video %s: %d khung (%.1f giây) -> %d khúc' % (p['id'], tong, tong / p['fps'], n))
+          PY
+
+      - name: Gửi gói dựng cho các máy
+        uses: actions/upload-artifact@v4
+        with:
+          name: goi
+          path: |
+            build
+            public/props.json
+          retention-days: 1
+          compression-level: 1
+
+      - name: Gửi thông tin cho máy ghép
+        uses: actions/upload-artifact@v4
+        with:
+          name: thong-tin
+          path: |
+            public/props.json
+            out/*_bia.jpg
+          retention-days: 1
+          if-no-files-found: ignore
+
+  dung_khuc:
+    needs: chuan_bi
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: true
+      matrix:
+        khuc: ${{ fromJSON(needs.chuan_bi.outputs.khuc) }}
+    name: dựng khúc ${{ matrix.khuc }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts
+            package.json
+            package-lock.json
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Cài thư viện
+        run: |
+          # chỉ cài các gói hệ thống còn thiếu (máy GitHub đã có sẵn phần lớn thư viện của Chrome)
+          GOI="fonts-noto-color-emoji libnss3 libdbus-1-3 libatk1.0-0t64 libasound2t64 libxrandr2 libxkbcommon0 libxfixes3 libxcomposite1 libxdamage1 libgbm1 libcups2t64 libatk-bridge2.0-0t64 libpango-1.0-0 libcairo2"
+          THIEU=$(for g in $GOI; do dpkg -s "$g" >/dev/null 2>&1 || echo "$g"; done | tr '\n' ' ')
+          if [ -n "${THIEU// /}" ]; then
+            echo "Cài thêm: $THIEU"
+            ( sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends $THIEU ) > /tmp/apt.log 2>&1 &
+            APT=$!
+          fi
+          npm ci
+          if [ -n "${APT:-}" ]; then wait $APT || { cat /tmp/apt.log; exit 1; }; fi
+
+      - name: Lưu sẵn trình duyệt dựng hình
+        uses: actions/cache@v4
+        with:
+          path: node_modules/.remotion
+          key: remotion-chrome-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: goi
+
+      - name: Dựng khúc ${{ matrix.khuc }}
+        run: node scripts/dung_khuc.mjs build public/props.json ${{ matrix.khuc }} ${{ needs.chuan_bi.outputs.so_khuc }} khuc
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: khuc-${{ matrix.khuc }}
+          path: khuc
+          retention-days: 1
+          compression-level: 0
+
+  ghep:
+    needs: [chuan_bi, dung_khuc]
+    # luôn chạy (kể cả khi dựng lỗi) để báo kết quả về Apps Script; bỏ qua khi việc là "dang"
+    if: ${{ always() && needs.chuan_bi.result != 'skipped' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+      APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
+      DUNG_VIDEO_SECRET: ${{ secrets.DUNG_VIDEO_SECRET }}
+      DRIVE_THU_MUC: ${{ vars.DRIVE_THU_MUC }}
+      DA_DUNG: ${{ needs.chuan_bi.result == 'success' && needs.dung_khuc.result == 'success' }}
+    steps:
+      - uses: actions/checkout@v4
+        if: ${{ env.DA_DUNG == 'true' }}
+        with:
+          sparse-checkout: |
+            scripts
+            package.json
+            package-lock.json
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-node@v4
+        if: ${{ env.DA_DUNG == 'true' }}
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        if: ${{ env.DA_DUNG == 'true' }}
+        with:
+          python-version: '3.12'
+
+      - name: Cài thư viện
+        if: ${{ env.DA_DUNG == 'true' }}
+        run: |
+          ( pip install -q pillow ) > /tmp/pip.log 2>&1 &
+          PIP=$!
+          ( curl -fsSL https://rclone.org/install.sh | sudo bash ) > /tmp/rclone.log 2>&1 &
+          RC=$!
+          npm ci
+          wait $PIP || { cat /tmp/pip.log; exit 1; }
+          wait $RC || { cat /tmp/rclone.log; exit 1; }
+
+      - uses: actions/download-artifact@v4
+        if: ${{ env.DA_DUNG == 'true' }}
+        with:
+          name: thong-tin
+
+      - uses: actions/download-artifact@v4
+        if: ${{ env.DA_DUNG == 'true' }}
+        with:
+          pattern: khuc-*
+          path: khuc
+          merge-multiple: true
+
+      - name: Ghép video
+        id: dung
+        if: ${{ env.DA_DUNG == 'true' }}
+        run: |
+          ID="${{ needs.chuan_bi.outputs.id }}"
+          mkdir -p out
+          node scripts/ghep_khuc.mjs khuc "out/$ID.mp4"
           ls -la out
           echo "id=$ID" >> "$GITHUB_OUTPUT"
-          echo "giay=$GIAY" >> "$GITHUB_OUTPUT"
-          # ảnh kiểm tra (4 khung hình để AI so với đề) + ảnh bìa YouTube; lỗi ở đây không làm hỏng việc dựng
+          # ảnh kiểm tra (4 khung hình để AI so với đề); dùng ffmpeg đi kèm Remotion, lỗi ở đây không làm hỏng việc dựng
+          export PATH="$PWD/node_modules/@remotion/compositor-linux-x64-gnu:$PATH"
           python3 scripts/anh_kiem_tra.py public/props.json "out/$ID.mp4" out/ || echo "Không tạo được ảnh kiểm tra"
 
       - name: Lưu bản sao 3 ngày trên GitHub
+        if: ${{ steps.dung.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: video-${{ steps.dung.outputs.id }}
           path: out/*.mp4
           retention-days: 3
+          compression-level: 0
 
       - name: Tải video lên Google Drive
         id: drive
-        if: ${{ env.RCLONE_CONF != '' }}
+        if: ${{ steps.dung.outcome == 'success' && env.RCLONE_CONF != '' }}
         run: |
           mkdir -p ~/.config/rclone
           printf '%s' "$RCLONE_CONF" > ~/.config/rclone/rclone.conf
@@ -173,12 +351,12 @@ jobs:
           FILE_ID: ${{ steps.drive.outputs.file_id }}
           ANH_KT: ${{ steps.drive.outputs.anh_kt }}
           ANH_BIA: ${{ steps.drive.outputs.anh_bia }}
-          GIAY: ${{ steps.dung.outputs.giay }}
+          GIAY: ${{ needs.chuan_bi.outputs.giay }}
           TRANG_THAI: ${{ job.status }}
         run: |
           python3 - <<'PY'
           import json, os
-          ok = os.environ.get("TRANG_THAI") == "success" and bool(os.environ.get("FILE_ID"))
+          ok = os.environ.get("TRANG_THAI") == "success" and os.environ.get("DA_DUNG") == "true" and bool(os.environ.get("FILE_ID"))
           d = {
               "token": os.environ["DUNG_VIDEO_SECRET"],
               "id": os.environ["ID_VIDEO"],
