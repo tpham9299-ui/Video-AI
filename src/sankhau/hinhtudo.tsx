@@ -19,6 +19,17 @@ const CAM = '#FF8A3D';
 const TRANG = '#EAF2F4';
 const MAU_MAC = ['xanh_duong', 'xanh_la', 'cam', 'tim', 'hong', 'vang'];
 
+// biến hình một nhóm nét (bien_hinh): dời, rồi xoay + phóng quanh tâm c
+const bienTf = (b: {dx: number; dy: number; goc: number; s: number} | undefined, c: D) =>
+  b ? `translate(${b.dx.toFixed(2)} ${b.dy.toFixed(2)}) translate(${c[0]} ${c[1]}) rotate(${b.goc.toFixed(2)}) scale(${b.s.toFixed(3)}) translate(${-c[0]} ${-c[1]})` : undefined;
+// rơi xuống rồi nảy nhẹ khi chạm (0 -> 1)
+const nayXuong = (p: number) => {
+  const x = kep(p);
+  if (x < 0.62) return Math.pow(x / 0.62, 2);
+  const u = (x - 0.62) / 0.38;
+  return 1 - 0.07 * Math.sin(u * Math.PI) * (1 - u);
+};
+
 // điểm nằm ở tỉ lệ q (0..1) chiều dài của đường gấp khúc (khép kín thì tính cả cạnh cuối)
 function diemTheoTiLe(ds: D[], kin: boolean, q: number): D | null {
   const pts = kin && ds.length > 2 ? [...ds, ds[0]] : ds;
@@ -132,7 +143,7 @@ const daGiacDeu = (tam: D, r: number, n: number, xoay: number): D[] =>
   });
 
 // Chuyển một nét thành danh sách hình SVG đơn giản (đường dẫn d + có khép kín không), theo mức lặp hiện tại.
-type Net = {d: string; kin: boolean; tam: D; mo?: number; ds?: D[]}; // ds: các điểm của nét (để đặt đầu sao chổi)
+type Net = {d: string; kin: boolean; tam: D; mo?: number; ds?: D[]; dem?: number; xPhai?: number}; // ds: các điểm (đầu sao chổi); dem/xPhai: số vật + mép phải của một tầng (xep_chong)
 function dungNet(h: PhanHinh, muc: number): Net[] {
   const dd = (ds: D[], kin: boolean): string => (ds.length ? 'M' + ds.map((p) => `${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join('L') + (kin ? 'Z' : '') : '');
   const tamCua = (ds: D[]): D => (ds.length ? [ds.reduce((s, p) => s + p[0], 0) / ds.length, ds.reduce((s, p) => s + p[1], 0) / ds.length] : h.tam);
@@ -212,12 +223,12 @@ function dungNet(h: PhanHinh, muc: number): Net[] {
       hien.forEach((i, k) => {
         if (k > 0) y += i === null || hien[k - 1] === null ? khe / 2 + dy / 2 : dy;
         if (i === null) {
-          ra.push({d: [-1, 0, 1].map((t) => vong(h.tam[0], y + t * rc * 0.55, rc * 0.16)).join(''), kin: true, tam: [h.tam[0], y]});
+          ra.push({d: [-1, 0, 1].map((t) => vong(h.tam[0], y + t * rc * 0.55, rc * 0.16)).join(''), kin: true, tam: [h.tam[0], y], dem: -1, xPhai: h.tam[0] + h.r * 0.75});
           return;
         }
         const dem = veDem(i);
         const x0 = h.tam[0] - (dem - 1) * rc;
-        ra.push({d: Array.from({length: dem}, (_, j) => vong(x0 + 2 * rc * j, y, rc * 0.94)).join(''), kin: true, tam: [h.tam[0], y]});
+        ra.push({d: Array.from({length: dem}, (_, j) => vong(x0 + 2 * rc * j, y, rc * 0.94)).join(''), kin: true, tam: [h.tam[0], y], dem: hang[i], xPhai: x0 + 2 * rc * (dem - 1) + rc});
       });
       return ra;
     }
@@ -310,33 +321,90 @@ export const HinhTuDo: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
               );
             }
             if (h.kieu === 'chu') return null;
-            const moTo = kep((t - bd - 0.6) / 0.6) * (1 - 0.6 * lb);
-            const khoi = kg.nam && (toMau ? moTo > 0.01 : p > 0) ? nets.flatMap((n, k) => (toMau && n.kin && n.mo === undefined ? Array.from({length: KHOI}, (_, j) => {
-              const lop = KHOI - j; // vẽ từ lớp đáy lên
-              // hướng đùn: theo góc máy (hình nằm: luôn "xuống" màn hình dù bàn xoay; hình đứng: sang bên theo hướng xoay)
-              const d = (lop * 3.2) / s;
-              const g = (kg.xoay * Math.PI) / 180;
-              const hx = kg.huong ? kg.huong[0] : Math.sin(g), hy = kg.huong ? kg.huong[1] : Math.cos(g);
-              return <path key={`k${i}_${k}_${j}`} d={n.d} transform={`translate(${d * hx} ${d * hy})`} fill={toiMau(toMau, 0.32 + 0.25 * (j / KHOI))} fillOpacity={Math.min(0.95, 0.55 + (h.doTo || 0.28)) * moTo}
-                stroke={j === 0 ? toiMau(mau, 0.5) : 'none'} strokeWidth={j === 0 ? day * 0.8 : 0} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />;
-            }) : n.mo === undefined && !h.dut ? Array.from({length: 4}, (_, j) => {
-              const d = ((4 - j) * 3.2) / s;
-              const g = (kg.xoay * Math.PI) / 180;
-              const hx = kg.huong ? kg.huong[0] : Math.sin(g), hy = kg.huong ? kg.huong[1] : Math.cos(g);
-              return <path key={`kn${i}_${k}_${j}`} d={n.d} transform={`translate(${d * hx} ${d * hy})`} fill="none" stroke={toiMau(mau, 0.3 + 0.08 * j)} strokeWidth={day} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" opacity={kep(p * 3)} />;
-            }) : [])) : [];
-            return (khoi as React.ReactNode[]).concat(nets.map((n, k) => (
-              <path key={`${i}_${k}`} d={n.d} vectorEffect="non-scaling-stroke"
-                fill={n.kin && toMau ? toMau : 'none'} fillOpacity={n.mo !== undefined ? 0 : (h.doTo || 0.28) * kep((t - bd - 0.6) / 0.6) * (1 - 0.6 * lb) + (c ? 0.15 * c.p : 0)}
-                stroke={n.mo !== undefined ? '#FF5C61' : mau} strokeWidth={day} strokeLinejoin="round" strokeLinecap="round" opacity={(n.mo !== undefined ? n.mo : 1) * (1 - 0.65 * lb) * (h.moNet ?? 1)}
-                strokeDasharray={h.dut ? '8 7' : n.mo !== undefined ? '6 5' : undefined}
-                markerEnd={h.kieu === 'mui_ten' ? `url(#mt_${v.id})` : undefined}
-                {...(h.dut || n.mo !== undefined ? {} : {pathLength: 1, strokeDasharray: 1, strokeDashoffset: 1 - easeOut(kep(p))})}
-                style={{filter: c || st.sang > 0 ? `drop-shadow(0 0 ${8 + 10 * st.sang}px ${mau})` : `drop-shadow(0 0 4px ${mau}88)`}} />
-            )) as React.ReactNode[]).concat(moi && !h.dut ? nets.map((n, k) => (n.ds && n.mo === undefined ? <SaoChoi key={`sc${i}_${k}`} ds={n.ds} kin={n.kin} q={easeOut(kep(p))} s={s} mau={mau} /> : null)) : []);
+            const xep = h.kieu === 'xep_chong';
+            const moTo = (xep ? 1 : kep((t - bd - 0.6) / 0.6)) * (1 - 0.6 * lb);
+            // KHỐI MỌC LÊN: hình tô xong thì bề dày đùn tăng dần (hình phẳng nở thành khối), không hiện ra cứng đơ
+            const moc = easeOut(kep((t - bd - 0.5) / 0.8));
+            const g3 = (kg.xoay * Math.PI) / 180;
+            const hx = kg.huong ? kg.huong[0] : Math.sin(g3), hy = kg.huong ? kg.huong[1] : Math.cos(g3);
+            const tamKhung: D = [v.khung[0] / 2, v.khung[1] / 2];
+            return (
+              <g key={`g${i}`} transform={bienTf(st.bienNet.get(0), tamKhung)}>
+                <g transform={bienTf(st.bienNet.get(i + 1), h.tam)}>
+                  {nets.map((n, k) => {
+                    let tf = '';
+                    let moT = 1;
+                    let mocNet = moc;
+                    if (xep) {
+                      // XẾP TỪNG TẦNG: tầng rơi xuống lần lượt TỪ DƯỚI LÊN, nảy nhẹ khi chạm (như người thợ xếp ống thật)
+                      const thuTu = nets.length - 1 - k;
+                      const pr = kep((t - bd - thuTu * 0.26) / 0.55);
+                      if (pr <= 0) return null;
+                      tf = `translate(0 ${(-h.r * 0.9 * (1 - nayXuong(pr))).toFixed(2)})`;
+                      moT = kep(pr * 4);
+                      mocNet = nayXuong(pr);
+                    }
+                    if (st.tach > 0.001) {
+                      // TÁCH RỜI: các phần dạt ra xa tâm hình (cho thấy hình gồm những mảnh nào), "ghep" để liền lại
+                      const tam0 = xep ? h.tam : tamKhung;
+                      const ox = (n.tam[0] - tam0[0]) * 0.45 * st.tach;
+                      const oy = (n.tam[1] - tam0[1]) * 0.45 * st.tach + (xep ? (k - (nets.length - 1) / 2) * h.r * 0.14 * st.tach : 0);
+                      tf += ` translate(${ox.toFixed(2)} ${oy.toFixed(2)})`;
+                    }
+                    const tron = !!(n.kin && toMau && n.mo === undefined);
+                    const khoi = kg.nam && n.mo === undefined && !h.dut && (tron ? moTo > 0.01 && mocNet > 0.02 : p > 0)
+                      ? Array.from({length: tron ? KHOI : 4}, (_, j) => {
+                        const L = tron ? KHOI : 4;
+                        const d = (((L - j) * 3.2) / s) * (tron ? mocNet : kep(p * 3));
+                        return tron ? (
+                          <path key={`k${j}`} d={n.d} transform={`translate(${(d * hx).toFixed(3)} ${(d * hy).toFixed(3)})`} fill={toiMau(toMau, 0.32 + 0.25 * (j / L))} fillOpacity={Math.min(0.95, 0.55 + (h.doTo || 0.28)) * moTo}
+                            stroke={j === 0 ? toiMau(mau, 0.5) : 'none'} strokeWidth={j === 0 ? day * 0.8 : 0} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+                        ) : (
+                          <path key={`k${j}`} d={n.d} transform={`translate(${(d * hx).toFixed(3)} ${(d * hy).toFixed(3)})`} fill="none" stroke={toiMau(mau, 0.3 + 0.08 * j)} strokeWidth={day} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" opacity={kep(p * 3)} />
+                        );
+                      })
+                      : null;
+                    return (
+                      <g key={`${i}_${k}`} transform={tf || undefined} opacity={moT}>
+                        {khoi}
+                        <path d={n.d} vectorEffect="non-scaling-stroke"
+                          fill={n.kin && toMau ? toMau : 'none'} fillOpacity={n.mo !== undefined ? 0 : (h.doTo || 0.28) * (xep ? Math.max(1, 2.2) : 1) * moTo + (c ? 0.15 * c.p : 0)}
+                          stroke={n.mo !== undefined ? '#FF5C61' : mau} strokeWidth={day} strokeLinejoin="round" strokeLinecap="round" opacity={(n.mo !== undefined ? n.mo : 1) * (1 - 0.65 * lb) * (h.moNet ?? 1)}
+                          strokeDasharray={h.dut ? '8 7' : n.mo !== undefined ? '6 5' : undefined}
+                          markerEnd={h.kieu === 'mui_ten' ? `url(#mt_${v.id})` : undefined}
+                          {...(h.dut || n.mo !== undefined || xep ? {} : {pathLength: 1, strokeDasharray: 1, strokeDashoffset: 1 - easeOut(kep(p))})}
+                          style={{filter: c || st.sang > 0 ? `drop-shadow(0 0 ${8 + 10 * st.sang}px ${mau})` : `drop-shadow(0 0 4px ${mau}88)`}} />
+                        {moi && !h.dut && !xep && n.ds && n.mo === undefined ? <SaoChoi ds={n.ds} kin={n.kin} q={easeOut(kep(p))} s={s} mau={mau} /> : null}
+                      </g>
+                    );
+                  })}
+                </g>
+              </g>
+            );
           })}
         </g>
       </svg>
+      {/* ĐẾM TỪNG TẦNG (dem_tang): số vật của mỗi tầng bật ra bên phải lần lượt từ trên xuống, kèm vòng sóng */}
+      {st.demTang >= 0
+        ? v.hinh.map((h, i) => {
+            if (h.kieu !== 'xep_chong') return null;
+            const co = 40 * kc;
+            return dungNet(h, muc).map((n, k) => {
+              if (n.dem === undefined) return null;
+              const a = kep((st.demTang - k * 0.38) / 0.3);
+              if (a <= 0) return null;
+              const x = Math.min(W - 20, (n.xPhai || 0) * s + co * 1.1);
+              return (
+                <React.Fragment key={`dt${i}_${k}`}>
+                  {moi && n.dem > 0 ? <VongSong x={x} y={n.tam[1] * s} p={(st.demTang - k * 0.38) / 0.8} mau={GIAO_DIEN.nhan} R={44} soVong={1} /> : null}
+                  <div style={{position: 'absolute', left: x, top: n.tam[1] * s, transform: `translate(-50%,-50%) scale(${popOut(a, 1.8)})`, opacity: kep(a * 2), fontFamily: FONT_DAM, fontWeight: 900, fontSize: co, color: GIAO_DIEN.nhan, textShadow: '0 2px 8px rgba(0,0,0,0.8)', whiteSpace: 'nowrap'}}>
+                    {n.dem > 0 ? n.dem : '⋮'}
+                  </div>
+                </React.Fragment>
+              );
+            });
+          })
+        : null}
       {/* chữ rời (kieu "chu") */}
       {v.hinh.map((h, i) => {
         if (h.kieu !== 'chu') return null;

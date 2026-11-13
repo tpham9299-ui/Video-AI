@@ -16,7 +16,7 @@ var TU_VAT_3D_ = {
   cau: /cầu|quả bóng|bóng/, toa_nha: /nhà|tòa|tháp|cột|building/, thang: /thang/, xe: /xe|ô tô|tàu/, cay: /cây/
 };
 var KIEU_NET_ = ['da_giac', 'duong', 'mui_ten', 'tron', 'cung', 'chu', 'svg', 'da_giac_deu', 'koch', 'sierpinski', 'tham_so', 'lap', 'xep_chong'];
-var KIEU_HANH_DONG_ = ['chon', 'loai_bo', 'sang', 'rung', 'quay', 'mo', 'lay_ra', 'dat_gia_tri', 'bung_ra', 'di_chuyen', 'phong_to', 'thu_nho', 'an', 'doi_chu', 'goc_3d'];
+var KIEU_HANH_DONG_ = ['chon', 'loai_bo', 'sang', 'rung', 'quay', 'mo', 'lay_ra', 'dat_gia_tri', 'bung_ra', 'di_chuyen', 'phong_to', 'thu_nho', 'an', 'doi_chu', 'goc_3d', 'bien_hinh', 'tach', 'ghep', 'dem_tang'];
 var VAT_PHU_ = ['nhan', 'chu', 'mui_ten', 'bieu_tuong', 'so_dem'];   // vật phụ trợ (chữ, nhãn): không tính là "vật thật"
 
 // Kiểm tra sân khấu của một cảnh. idCu: id các vật đang có trên sân khấu từ cảnh trước (khi giu_san_khau). Trả '' nếu hợp lệ.
@@ -407,6 +407,7 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham) {
   }
   them(nang, noiDungLa_(kb));
   kiemTraPhepTinh_(kb).forEach(function (x) { nang.push(x); });
+  kiemTraHinhDungYen_(kb).forEach(function (x) { nhe.push(x); });
   kiemTraNhanDai_(kb).forEach(function (x) { nhe.push(x); });
   them(nhe, kiemTraCachDay_(kb));
   them(nhe, kiemTraTrinhBay_(kb));
@@ -678,7 +679,7 @@ var BI_DANH_HINH_ = {
 };
 var BI_DANH_VAT_ = { hinh_hop: 'khoi_hop', hop: 'khoi_hop', be: 'khoi_hop', be_nuoc: 'khoi_hop', lon: 'tru', hinh_tru: 'tru', coc: 'tru', hinh_non: 'non', qua_cau: 'cau', hinh_cau: 'cau',
   ngoi_nha: 'toa_nha', nha: 'toa_nha', o_to: 'xe', cai_cay: 'cay', bieu_do: 'bieu_do_cot', do_thi_ham: 'do_thi', hinh_ve: 'hinh_tu_do', hinh: 'hinh_tu_do', van_ban: 'chu', so: 'so_dem' };
-var BI_DANH_HANH_DONG_ = { xoay: 'quay', lac: 'quay', hien: 'sang', nhay: 'sang', nhap_nhay: 'sang', noi_bat: 'chon', to_mau: 'chon', gach: 'loai_bo', xoa: 'loai_bo',
+var BI_DANH_HANH_DONG_ = { lat: 'bien_hinh', dich: 'bien_hinh', cat_ghep: 'bien_hinh', doi_xung: 'bien_hinh', tach_ra: 'tach', no_ra: 'tach', ghep_lai: 'ghep', dem: 'dem_tang', dem_tung_tang: 'dem_tang', xoay: 'quay', lac: 'quay', hien: 'sang', nhay: 'sang', nhap_nhay: 'sang', noi_bat: 'chon', to_mau: 'chon', gach: 'loai_bo', xoa: 'loai_bo',
   zoom: 'phong_to', phong: 'phong_to', thu: 'thu_nho', doi_gia_tri: 'dat_gia_tri', tang: 'dat_gia_tri', giam: 'dat_gia_tri', dich_chuyen: 'di_chuyen', chay: 'di_chuyen', mo_ra: 'mo', camera: 'goc_3d' };
 function doiTenVat_(v) {
   if (LOAI_VAT_.indexOf(v.loai) >= 0) return v;
@@ -983,6 +984,24 @@ function kiemTraNhanDai_(kb) {
         if (dai > 24) loi.push('NHAN_QUA_DAI_CANH_' + (j + 1) + ': "' + x.slice(0, 40) + '" (' + dai + ' ký tự): nhãn/chữ trên hình tối đa ~22 ký tự (vd "u_1 = 3", "Tầng 1"); ý dài đưa vào lời thoại hoặc noi_dung_man_hinh.');
       });
     });
+  });
+  return loi;
+}
+
+
+// Cảnh có hình mà KHÔNG có chuyển động nào ngoài lúc xuất hiện (hình đứng yên như khối cứng suốt cảnh) -> nhắc thêm hành động.
+function kiemTraHinhDungYen_(kb) {
+  var loi = [];
+  (kb.canh || []).forEach(function (c, j) {
+    if (!c || !/mo_dau|de_bai|mo_hinh|y_do|diem_chot|tinh|kiem_tra|thu_nho|nhac_lai/.test(String(c.loai || ''))) return;
+    var du = c.minh_hoa && c.minh_hoa.loai === 'san_khau' && c.minh_hoa.du_lieu;
+    if (!du || !Array.isArray(du.vat) || !du.vat.length) return;
+    var soHD = (Array.isArray(du.hanh_dong) ? du.hanh_dong : []).filter(function (h) { return h && Number(h.buoc) >= 1; }).length;
+    var vatSau = du.vat.filter(function (v) { return v && Number(v.buoc) >= 2; }).length;
+    var netSau = 0;
+    du.vat.forEach(function (v) { if (v && Array.isArray(v.hinh)) v.hinh.forEach(function (h) { if (h && Number(h.buoc) >= 2) netSau++; }); });
+    var tuDong = du.vat.some(function (v) { return v && Array.isArray(v.hinh) && v.hinh.some(function (h) { return h && h.kieu === 'xep_chong'; }); }) ? 1 : 0;   // chồng vật tự xếp từng tầng
+    if (soHD + vatSau + netSau + tuDong < 2) loi.push('HINH_DUNG_YEN_CANH_' + (j + 1) + ': hình gần như đứng yên suốt cảnh. Thêm ít nhất 2 hành động khớp lời thoại (bien_hinh dời/xoay mảnh, tach/ghep, dem_tang, dat_gia_tri, chon, di_chuyen...) và tả chuyển động trong "mo_ta".');
   });
   return loi;
 }

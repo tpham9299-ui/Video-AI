@@ -82,7 +82,7 @@
    "noi_dung_man_hinh": [],
    "minh_hoa": {
     "loai": "san_khau",
-    "mo_ta": "Chồng ống có nhãn tầng trên cùng u_n = 3, tầng 1, 2, 3 ở dưới.",
+    "mo_ta": "Các tầng ống rơi xuống xếp lần lượt từ dưới lên; rồi số ống từng tầng bật ra bên phải (3, 4, ..., 22); nhãn u_n = 3 sáng lên.",
     "du_lieu": {
      "vat": [
       {
@@ -129,7 +129,21 @@
        ]
       }
      ],
-     "hanh_dong": []
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "chong2",
+       "kieu": "dem_tang"
+      },
+      {
+       "buoc": 3,
+       "vat": "chong2",
+       "kieu": "chon",
+       "chi_so": [
+        2
+       ]
+      }
+     ]
     }
    }
   },
@@ -145,32 +159,51 @@
    "trinh_bay": "xep",
    "minh_hoa": {
     "loai": "san_khau",
-    "mo_ta": "Danh sách số ống từng tầng từ trên xuống.",
+    "mo_ta": "Chồng ống tách các tầng ra xa nhau để thấy từng tầng hơn nhau một ống, rồi ghép lại; số ống từng tầng hiện bên phải.",
     "du_lieu": {
      "vat": [
       {
-       "id": "ds",
-       "loai": "danh_sach",
+       "id": "chong5",
+       "loai": "hinh_tu_do",
        "x": 50,
        "y": 50,
-       "noi_dung": "Số ống từ trên xuống",
-       "ds": [
-        "Tầng 1: 3 ống",
-        "Tầng 2: 4 ống",
-        "Tầng 3: 5 ống",
-        "Công sai: d = 1"
+       "khung": [
+        100,
+        80
        ],
-       "buoc": 1
+       "buoc": 1,
+       "hinh": [
+        {
+         "kieu": "xep_chong",
+         "tam": [
+          46,
+          42
+         ],
+         "r": 38,
+         "tren": 3,
+         "duoi": 22,
+         "mau": "xanh_duong",
+         "net": 2
+        }
+       ]
       }
      ],
      "hanh_dong": [
       {
        "buoc": 2,
-       "vat": "ds",
-       "kieu": "chon",
-       "chi_so": [
-        4
-       ]
+       "vat": "chong5",
+       "kieu": "tach",
+       "gia_tri": 1
+      },
+      {
+       "buoc": 2,
+       "vat": "chong5",
+       "kieu": "dem_tang"
+      },
+      {
+       "buoc": 3,
+       "vat": "chong5",
+       "kieu": "ghep"
       }
      ]
     }
@@ -189,7 +222,7 @@
    "trinh_bay": "xep",
    "minh_hoa": {
     "loai": "san_khau",
-    "mo_ta": "Nhãn công thức.",
+    "mo_ta": "Hai nhãn công thức bật lên lần lượt, nhãn S_n = 260 nhấp sáng.",
     "du_lieu": {
      "vat": [
       {
@@ -209,7 +242,13 @@
        "buoc": 2
       }
      ],
-     "hanh_dong": []
+     "hanh_dong": [
+      {
+       "buoc": 3,
+       "vat": "n1",
+       "kieu": "sang"
+      }
+     ]
     }
    }
   },
@@ -227,7 +266,7 @@
    "trinh_bay": "cong_don",
    "minh_hoa": {
     "loai": "san_khau",
-    "mo_ta": "Chồng ống nhỏ.",
+    "mo_ta": "Chồng ống thu nhỏ lùi lên trên nhường chỗ cho phương trình, rồi nhấp sáng.",
     "du_lieu": {
      "vat": [
       {
@@ -256,7 +295,20 @@
        ]
       }
      ],
-     "hanh_dong": []
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "chong3",
+       "kieu": "bien_hinh",
+       "ti_le": 0.8,
+       "dy": -4
+      },
+      {
+       "buoc": 3,
+       "vat": "chong3",
+       "kieu": "sang"
+      }
+     ]
     }
    }
   },

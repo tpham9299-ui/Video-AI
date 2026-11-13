@@ -27,6 +27,9 @@ export type TrangThai = {
   dy: number;
   an: number;
   tb?: (b: number) => number; // mốc thời gian của từng bước (cho nét có "buoc" riêng của hình tự do)
+  bienNet: Map<number, {dx: number; dy: number; goc: number; s: number}>; // bien_hinh: dời/xoay/phóng từng nét (0 = cả hình)
+  tach: number; // tach/ghep: 0 = liền, 1 = các nét tách xa nhau (hình "nổ" ra cho thấy cấu tạo)
+  demTang: number; // dem_tang: số giây từ lúc bắt đầu đếm (-1 = chưa đếm)
 };
 
 export const GIAY_QUAY: Record<string, number> = {
@@ -40,6 +43,7 @@ export function tinhTrangThai(v: Vat, ds: HanhDong[], t: number, tb: (b: number)
     chon: new Map(), chonCa: 0, mauChon: '', coChon: 0, loai: new Map(), loaiCa: 0, sang: 0, rung: 0,
     quay: -1, coQuay: false, mo: new Map(), layRa: [], bung: 0,
     giaTri: isFinite(v.giaTri) ? v.giaTri : v.loai === 'do_thi' ? NaN : 0.5, giaTriChu: v.giaTriChu, noiDung: v.noiDung, dx: 0, dy: 0, an: 0, tb,
+    bienNet: new Map(), tach: 0, demTang: -1,
   };
   const gtDau = isFinite(v.giaTri) ? v.giaTri : v.loai === 'do_thi' ? v.xTu : 0.5;
   let gtTruoc = v.loai === 'so_dem' ? 0 : gtDau;
@@ -111,6 +115,24 @@ export function tinhTrangThai(v: Vat, ds: HanhDong[], t: number, tb: (b: number)
       }
       case 'an':
         st.an = easeOut(p);
+        break;
+      case 'bien_hinh': {
+        // dời / xoay / phóng các nét (cắt ghép hình, lật đối xứng, đưa mảnh vào chỗ) - chuyển động êm 0,9 giây
+        const q = easeInOut(h.buoc <= 0 ? 1 : tienDo(t, bd, 0.9));
+        (h.chiSo.length ? h.chiSo : [0]).forEach((i) => {
+          const cu = st.bienNet.get(i) || {dx: 0, dy: 0, goc: 0, s: 1};
+          st.bienNet.set(i, {dx: lerp(cu.dx, h.dx, q), dy: lerp(cu.dy, h.dy, q), goc: lerp(cu.goc, h.goc, q), s: lerp(cu.s, h.tiLe, q)});
+        });
+        break;
+      }
+      case 'tach':
+      case 'ghep': {
+        const q = easeInOut(h.buoc <= 0 ? 1 : tienDo(t, bd, 0.8));
+        st.tach = lerp(st.tach, h.kieu === 'tach' ? (isFinite(h.giaTri) ? kep(h.giaTri, 0.2, 2) : 1) : 0, q);
+        break;
+      }
+      case 'dem_tang':
+        st.demTang = t - bd;
         break;
       case 'doi_chu':
         if (h.noiDung && p > 0.3) st.noiDung = h.noiDung;

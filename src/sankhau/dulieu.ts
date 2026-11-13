@@ -24,7 +24,7 @@ export type LoaiVat = (typeof LOAI_VAT)[number];
 
 export const KIEU_HANH_DONG = [
   'chon', 'loai_bo', 'sang', 'rung', 'quay', 'mo', 'lay_ra', 'dat_gia_tri', 'bung_ra', 'di_chuyen', 'phong_to', 'thu_nho', 'an', 'doi_chu', 'goc_3d',
-] as const;
+, 'bien_hinh', 'tach', 'ghep', 'dem_tang'] as const;
 export type KieuHanhDong = (typeof KIEU_HANH_DONG)[number];
 
 export type Nhom = {mau: string; so: number};
@@ -111,6 +111,7 @@ export type HanhDong = {
   noiDung: string;
   nghieng: number; // goc_3d: độ nghiêng sàn (0 = nhìn thẳng, 60 = nhìn chéo xuống như bàn cờ)
   xoay: number; // goc_3d: xoay quanh sân khấu (độ, -60..60)
+  dx: number; dy: number; goc: number; tiLe: number; // bien_hinh: dời (đơn vị khung của hình), xoay (độ), phóng (lần) các nét chi_so
 };
 
 export type GocNhin = {nghieng: number; xoay: number};
@@ -303,6 +304,10 @@ function hanhDong(raw: Record<string, unknown>): HanhDong | null {
     noiDung: chu(raw.noi_dung, 48),
     nghieng: so(raw.nghieng, 50, 0, 68),
     xoay: so(raw.xoay, 0, -70, 70),
+    dx: so(raw.dx, 0, -400, 400),
+    dy: so(raw.dy, 0, -400, 400),
+    goc: so(raw.goc, 0, -720, 720),
+    tiLe: so(raw.ti_le, 1, 0.1, 5),
   };
 }
 

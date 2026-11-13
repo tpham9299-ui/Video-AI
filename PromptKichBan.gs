@@ -153,6 +153,12 @@ function taoPromptKichBan_(r, c1, c2) {
     'NHÃN VÀ CHỮ TRÊN HÌNH: ngắn (tối đa ~22 ký tự: "u_1 = 3", "Tầng 1", "200\\,m"), ký hiệu toán viết LaTeX; câu dài đưa vào lời thoại hoặc noi_dung_man_hinh. Máy tự giữ mọi chữ trên hình CÙNG MỘT CỠ, không cần chỉnh co_chu. ',
     'Hình đều (tam giác đều, lục giác, bông tuyết) nên dùng da_giac_deu/koch với tam và r thay vì tự tính tọa độ; hình có số đo cụ thể thì tính tọa độ theo ĐÚNG tỉ lệ số đo. ',
     'Hành động: chon {chi_so:[số thứ tự nét, từ 1]} làm nét đó sáng cam | loai_bo {chi_so} làm mờ nét bị bỏ | dat_gia_tri {gia_tri} đổi bước lặp của koch/sierpinski, hình "mọc" mượt từ bước này sang bước kia | sang.\n',
+    'CHUYỂN ĐỘNG CỦA VẬT (BẮT BUỘC, đây là phần làm video sinh động - không để hình đứng yên như khối cứng): mỗi cảnh có hình phải có ÍT NHẤT 2 hành động ở các bước khác nhau, mỗi bước khớp đúng một ý trong lời thoại, và "mo_ta" phải tả rõ vật CHUYỂN ĐỘNG thế nào. Bộ hành động: ',
+    'bien_hinh {vat, chi_so:[số thứ tự nét] (bỏ trống = cả vật), dx, dy (dời, đơn vị khung của hình; vật thường: % sân khấu), goc (xoay, độ), ti_le (phóng)}: dời/xoay/phóng mảnh hình - CẮT GHÉP HÌNH (đưa tam giác sang ghép thành hình chữ nhật), LẬT ĐỐI XỨNG, đưa mảnh vào chỗ, vật trượt tới | ',
+    'tach {vat, gia_tri 0.5-1.5} rồi ghep {vat}: các phần của hình dạt ra xa cho thấy hình gồm những mảnh/tầng nào, rồi ghép lại | dem_tang {vat}: chồng vật xep_chong hiện số vật từng tầng lần lượt bên phải (đếm 3, 4, 5...) | ',
+    'dat_gia_tri: nước dâng, fractal mọc thêm, điểm chạy trên đồ thị, số chạy | di_chuyen {x, y}: vật đi tới vị trí mới | chon / loai_bo / sang / rung: làm nổi bật, gạch bỏ, nhấp sáng, rung khi sai. ',
+    'Máy tự thêm hiệu ứng vào cảnh (không cần viết): chồng vật xep_chong tự XẾP TỪNG TẦNG từ dưới lên (rơi xuống, nảy nhẹ), hình tô màu tự MỌC thành khối 3D, vật 3D tự mọc lên và lơ lửng nhẹ. ',
+    'Ví dụ cảnh đề xếp ống: buoc 1 chồng ống tự xếp từng tầng; buoc 2 dem_tang (số ống từng tầng bật ra: 3, 4, 5...); buoc 3 chon nét chu "u_1 = 3"; cảnh sau tach rồi ghep để thấy các tầng là cấp số cộng.\n',
     '  Ví dụ đề bông tuyết Koch cạnh 200 m: {"id":"dao","loai":"hinh_tu_do","x":50,"y":50,"khung":[100,100],"gia_tri":0,"hinh":[{"kieu":"koch","tam":[50,52],"r":44,"lap":3,"mau":"xanh_la","to":"xanh_la"},{"kieu":"chu","tam":[50,92],"noi_dung":"200\\\\,m"}]} kèm hanh_dong dat_gia_tri 1, 2, 3 ở các bước sau.\n'
   ];
   var goiY = tt ? [
