@@ -134,6 +134,7 @@ function nhanZalo_(e) {
     if (/^\/(giup|help)\b/.test(lenh)) { guiZaloToi_(chat, huongDanZalo_()); return tra; }
     if (/^\/(tt|trangthai|trạng thái)\b/.test(lenh) || lenh === 'tt') { guiZaloToi_(chat, tinhTrangUuTien_()); return tra; }
     if (/^\/huy\b/.test(lenh)) { guiZaloToi_(chat, huyUuTien_(chat)); return tra; }
+    if (/^\//.test(lenh) && typeof xuLyLenhZaloMoi_ === 'function' && xuLyLenhZaloMoi_(chat, chu, anh)) return tra;   // /duyet /sua /bo /cho /sanpham /xacnhan /huysp (SanPham.gs)
 
     var laDeChu = !anh && chu.length >= 25 && /\d/.test(chu);
     if (!anh && !laDeChu) { guiZaloToi_(chat, huongDanZalo_()); return tra; }
@@ -168,7 +169,9 @@ function dsNguoiGuiDe_() {
 function huongDanZalo_() {
   return '🤖 Gửi cho mình ẢNH CHỤP một đề toán (xác suất hoặc toán thực tế) hoặc GÕ đề, mình sẽ ưu tiên làm video hướng dẫn ngay.\n' +
     'Mẹo: chụp thẳng, rõ số; ảnh có nhiều câu thì ghi chú kèm ảnh, ví dụ "câu 3, lớp 12".\n' +
-    'Lệnh: /tt tiến độ | /huy hủy đề vừa gửi | /id mã chat';
+    'Lệnh: /tt tiến độ | /huy hủy đề vừa gửi | /id mã chat\n' +
+    'Duyệt video: /cho xem video chờ duyệt | /duyet [mã] | /sua [mã] <góp ý> | /bo [mã]\n' +
+    'Sản phẩm: /sanpham <tên hoặc link> | /xacnhan [mã] <giá bạn bán> | /huysp [mã]';
 }
 
 function tinhTrangUuTien_() {
@@ -219,7 +222,7 @@ function sauUuTien_() {
   if (hang.some(function (r) { return laUuTien_(r) && r.trang_thai === 'CO_KICH_BAN'; }) && typeof chayBoPhan2 === 'function') {
     try { chayBoPhan2(); } catch (e) { nhatKy_('UU_TIEN_LOI', 'gửi dựng: ' + e.message); }
   }
-  if (coDeUuTien_(hang)) {
+  if (coDeUuTien_(hang) || (typeof coViecSanPham_ === 'function' && coViecSanPham_())) {
     var nghiDen = Number(PropertiesService.getScriptProperties().getProperty('NGHI_DEN') || 0);
     var giay = nghiDen > Date.now() ? Math.ceil((nghiDen - Date.now()) / 1000) + 30 : 60;
     henUuTien_(giay);

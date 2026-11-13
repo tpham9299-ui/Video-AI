@@ -361,7 +361,7 @@ function kiemTraCachDay_(kb) {
 //  - nang: làm hỏng video hoặc sai nội dung (thiếu lời thoại, sai đáp án, không vẽ hình của đề, quá dài nhiều...) -> phải sửa.
 //  - nhe : chỉ chưa đẹp theo quy ước (tiêu đề, hook, số cảnh có hình...) -> thử sửa một lần, còn thì vẫn dùng được.
 // Gọi SAU tuSuaKichBan_ (máy đã tự sửa phần lớn lỗi vặt).
-function danhGiaKichBan_(kb, dapAn, mon, coHinhDe) {
+function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham) {
   var nang = [], nhe = [];
   var them = function (ds, loi) { if (loi) ds.push(loi); };
   if (!kb || !Array.isArray(kb.canh) || !kb.canh.length) return { nang: ['KHONG_CO_CANH: kịch bản phải có mảng "canh" gồm 6-12 cảnh.'], nhe: [] };
@@ -438,6 +438,7 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe) {
   if (coHinh < can) nhe.push('IT_HINH_MINH_HOA: chỉ có ' + coHinh + ' cảnh có hình, nên có ít nhất ' + can + '.');
   var canSK = Math.min(3, kb.canh.length - 2);
   if (soSanKhau < canSK) nhe.push('IT_SAN_KHAU: chỉ có ' + soSanKhau + ' cảnh dùng "san_khau", nên có ít nhất ' + canSK + '.');
+  if (sanPham && typeof kiemTraSanPhamTrongKichBan_ === 'function') nang = nang.concat(kiemTraSanPhamTrongKichBan_(kb, sanPham));
   return { nang: nang, nhe: nhe };
 }
 

@@ -43,7 +43,8 @@ var COT = ['id', 'trang_thai', 'lop', 'chu_de', 'de_bai', 'nguon', 'diem_tu_duy'
   'file_kich_ban', 'ghi_chu', 'so_lan_loi', 'cap_nhat', 'ma_bam', 'file_video',
   'mon', 'uu_tien', 'file_anh', 'zalo_chat', 'dap_an_hien',   // 5 cột lần 15
   'lich_dang', 'link_dang',    // 2 cột lần 16
-  'mo_ta_hinh'];               // lần 17: mô tả chi tiết hình vẽ kèm đề (đọc từ ảnh) để video vẽ lại đúng hình (hẹn giờ đăng, link đã đăng). Cột mới luôn nối vào CUỐI nên dữ liệu cũ không lệch
+  'mo_ta_hinh',                // lần 17: mô tả chi tiết hình vẽ kèm đề (đọc từ ảnh) để video vẽ lại đúng hình
+  'duyet', 'gop_y', 'san_pham']; // lần 19: trạng thái duyệt video, góp ý khi duyệt, sản phẩm trong bài (JSON) (hẹn giờ đăng, link đã đăng). Cột mới luôn nối vào CUỐI nên dữ liệu cũ không lệch
 
 // Tên model nằm trong CAU_HINH vì Google đổi tên/ngừng model thường xuyên.
 var MAC_DINH = {
@@ -69,7 +70,8 @@ var MAC_DINH = {
   MUC_SUY_NGHI_GIAI: 'mac_dinh', // khi GIẢI đề: mac_dinh (để Gemini tự quyết, chính xác hơn) | low | high
   UOC_GOI_GEMINI_GIAY: '75',   // ước lượng một lần gọi Gemini mất bao lâu; không đủ chừng này thời gian thì để lần chạy sau
   CHU_DE_VIDEO: 'XEN_KE',      // XAC_SUAT: chỉ xác suất | THUC_TE: chỉ toán thực tế | XEN_KE: luân phiên hai loại
-  GITHUB_NHANH: 'claude/apps-script-system-debug-59sl2w',   // nhánh GitHub chứa mã dựng video mới nhất ("-" = dùng nhánh mặc định như cũ)
+  GITHUB_NHANH: 'claude/apps-script-system-debug-59sl2w',
+  DUYET_TRUOC_KHI_DANG: 'BAT', // BAT: video phải được duyệt qua Zalo (/duyet) mới được đăng | TAT: đăng không cần duyệt   // nhánh GitHub chứa mã dựng video mới nhất ("-" = dùng nhánh mặc định như cũ)
   KIEU_MO_DAU: 'hook'          // hook: vào thẳng câu móc (khuyên dùng) | chao_hook: cho phép một lời chào cực ngắn kiểu "Chào bạn!" trước câu móc
 };
 
@@ -153,9 +155,11 @@ function chayBoPhan1() {
     damBaoCot_(sh);
     baoDongBiNgat_(sh);
     // Có đề ưu tiên (gửi qua Zalo) chưa xong: chỉ làm đề đó, các đề khác tạm dừng.
-    if (coDeUuTien_(docHang_(sh))) {
+    var coSP = typeof coViecSanPham_ === 'function' && coViecSanPham_();
+    if (coSP || coDeUuTien_(docHang_(sh))) {
       cheDoUuTien = true;
-      nhatKy_('UU_TIEN', 'Đang có đề ưu tiên từ Zalo: tạm dừng các đề khác');
+      nhatKy_('UU_TIEN', 'Đang có việc ưu tiên từ Zalo (đề/sản phẩm/góp ý): tạm dừng các đề khác');
+      if (coSP) xuLySanPham_(bc, bat);     // tìm hiểu sản phẩm mới / sáng tác đề cho sản phẩm đã xác nhận
       // đọc đề -> giải -> kịch bản liền một mạch để video ra sớm nhất
       xuLyDocDe_(sh, bc, bat);
       xuLyGiai_(sh, bc, bat, true);
@@ -738,11 +742,20 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien) {
         capNhatTb_('TB_GOI_KB_MS', Date.now() - tGoi);
       }
       var ctxSua = { y_tuong: String((c2 && c2.y_tuong) || '') };
+      var spham = null;
+      try { spham = r.san_pham ? JSON.parse(String(r.san_pham)) : null; } catch (eSp) { spham = null; }
+      // Người duyệt góp ý (/sua): sửa bản nháp theo góp ý trước, rồi mới kiểm tra như thường
+      if (String(r.gop_y || '').trim() && conDuGoiGemini_()) {
+        try {
+          var kbGY = suaKichBanBangGemini_(kb, ['GOP_Y_NGUOI_DUYET (bắt buộc làm theo, sửa đúng các cảnh liên quan): ' + String(r.gop_y)], prompt, sn);
+          if (kbGY && Array.isArray(kbGY.canh) && kbGY.canh.length) { kb = kbGY; ghi_(sh, r._row, { gop_y: '' }); nhatKy_('KICH_BAN_SUA', r.id + ': đã sửa theo góp ý của người duyệt'); }
+        } catch (eGY) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(eGY.message))) { luuNhapKichBan_(r.id, kb); throw eGY; } }
+      }
       var hinhDe = deCoHinh_(r) ? String(r.de_bai || '') + ' ' + String(r.mo_ta_hinh || '') : '';
       var dg = null, lanSua = 0, hetGio = false;
       for (;;) {
         chuanBiKichBan_(kb, r, ctxSua);
-        dg = danhGiaKichBan_(kb, r.dap_an, r.mon, hinhDe);
+        dg = danhGiaKichBan_(kb, r.dap_an, r.mon, hinhDe, spham);
         // hết lỗi nặng: xong nếu không còn lỗi nhẹ, hoặc đã nhờ sửa một lần (lỗi nhẹ không làm hỏng video)
         if (!dg.nang.length && (!dg.nhe.length || lanSua >= 1)) break;
         if (lanSua >= 3) break;
@@ -776,6 +789,7 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien) {
       kb.mon = laMonThucTe_(r) ? 'THUC_TE' : 'XAC_SUAT';
       if (r.dap_an_hien) kb.dap_an_hien = String(r.dap_an_hien);
       if (laUuTien_(r)) kb.uu_tien = 1;
+      if (spham) kb.san_pham = spham;   // bộ dựng video tự gắn nhãn có sản phẩm do kênh bán
       var tep = thuMucKichBan_().createFile(r.id + '.json', JSON.stringify(kb, null, 2), MimeType.PLAIN_TEXT);
       ghi_(sh, r._row, { trang_thai: 'CO_KICH_BAN', file_kich_ban: tep.getId(), ghi_chu: '', so_lan_loi: 0 });
       nhatKy_('KICH_BAN', r.id + ' -> đã lưu file ' + tep.getId());

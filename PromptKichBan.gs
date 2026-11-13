@@ -99,6 +99,16 @@ function taoPromptKichBan_(r, c1, c2) {
       (r.file_anh ? 'Ảnh chụp đề gốc được gửi kèm: nhìn kỹ và vẽ lại các hình trong ảnh y hệt (số hình, hình dạng, màu, nhãn). ' : '') +
       'Ít nhất một trong 3 cảnh đầu phải vẽ đúng hình này bằng hinh_tu_do, hinh_hoc hoặc do_thi.\n\n' : '\n'
   ];
+  var sp = null;
+  try { sp = r.san_pham ? JSON.parse(String(r.san_pham)) : null; } catch (e) { sp = null; }
+  var sanPham = sp ? [
+    'BÀI CÓ SẢN PHẨM DO KÊNH BÁN (phải MINH BẠCH, không phải quảng cáo trá hình): sản phẩm "' + sp.ten + '"' + (sp.thuong_hieu ? ' (' + sp.thuong_hieu + ')' : '') + ', giá kênh bán ' + sp.gia_ban + ' đồng' +
+      (sp.gia_thap ? ', giá thị trường ngày ' + sp.ngay + ': ' + sp.gia_thap + (sp.gia_cao > sp.gia_thap ? ' đến ' + sp.gia_cao : '') + ' đồng' : '') + '. Thông số đã xác minh: ' + ((sp.thong_so || []).join('; ') || '(chỉ dùng giá)') + '.\n',
+    '(a) Bài giảng toán là chính: người xem không mua vẫn học được kỹ năng hữu ích. Sản phẩm chỉ là bối cảnh đời thật của bài, xuất hiện tự nhiên (vật trên sân khấu, con số trong đề), không quảng cáo. ',
+    '(b) Chỉ dùng số liệu và thông số ở trên; không thêm công dụng, không so sánh với sản phẩm khác, KHÔNG nêu tên thương hiệu/sản phẩm cạnh tranh. ',
+    '(c) CẤM lời quảng cáo quá đà: "tốt nhất", "rẻ nhất", "số 1", "hàng đầu", "duy nhất", "cam kết", "100%", "mua ngay", "chốt đơn". Không kêu gọi mua giữa video. ',
+    '(d) Chỉ được nhắc một câu ngắn, trung thực ở cảnh bài học cuối, ví dụ: "Sản phẩm trong bài là ' + sp.ten + ', kênh có bán, thông tin ở giỏ hàng." Máy tự gắn nhãn "Có sản phẩm do kênh bán" lên video, bạn không cần viết nhãn.\n\n'
+  ] : [];
   var noiCanh = [
     'MẠCH NỐI GIỮA CÁC CẢNH (rất quan trọng, người nghe ghét cảm giác "chuyển slide"): cả video phải nghe như MỘT bài nói liền mạch của một người thật, không phải các đoạn rời ghép lại. ',
     'Câu ĐẦU của mỗi cảnh (từ cảnh 2) là một CÂU NỐI tự nhiên, bắt từ ý cuối của cảnh trước rồi dẫn sang ý mới, ví dụ: ',
@@ -163,6 +173,7 @@ function taoPromptKichBan_(r, c1, c2) {
     '(c) có một khoảnh khắc mời người xem đoán trước ("dừng video, đoán thử đi"); (d) ưu tiên đề có kết quả TRÁI TRỰC GIÁC hoặc tình huống đời thực gây tranh cãi (gameshow, bốc thăm, xổ số, sinh nhật trùng nhau, mật khẩu, trận đấu...); (e) câu ngắn, động từ mạnh, không giảng dài.\n'],
     moDau,
     khopDe,
+    sanPham,
     noiCanh,
     ['4) MỖI CẢNH CÓ: "loai"; "tieu_de_canh" (BẮT BUỘC từ cảnh 2: câu tiêu đề in chữ trắng thật lớn ở đầu cảnh, 3-8 từ, nói đúng ý chính của cảnh, ví dụ "Cùng giới nghĩa là gì?", "Bẫy: quên hai bạn nữ"); ',
     '"tu_khoa" (1-3 từ nằm NGUYÊN VĂN trong tieu_de_canh, được tô cam); "nhan" (tùy chọn, nhãn cam ngắn tối đa 2 từ, ví dụ "BƯỚC 1"; để trống thì máy tự đặt theo loại cảnh); ',

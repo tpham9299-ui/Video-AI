@@ -65,6 +65,7 @@ export type Props = {
   nhac: string | null;
   amLuongNhac: number; // âm lượng nhạc nền khi không có giọng đọc (khi có giọng tự giảm còn ~40%)
   baiHoc?: string[]; // 2-3 bài học rút ra (hiện ở màn kết)
+  quangCao?: {ten: string} | null; // video có sản phẩm do kênh bán: nhãn minh bạch
   duKien?: string[]; // 2-4 dữ kiện then chốt của đề (thẻ nhỏ trên đầu màn hình suốt phần giải)
   tiepTheo?: string; // câu hẹn video sau (màn kết)
   chuDe: string; // chủ đề ngắn hiện ở góc trên (ví dụ "Hai bi cùng màu")

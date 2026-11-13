@@ -24,7 +24,7 @@
 
 var MAC_DINH_DANG_ = {
   DANG_TU_DONG: 'TAT', GIO_DANG: '11:30,19:30', NEN_TANG_DANG: 'youtube,facebook,tiktok',
-  YOUTUBE_CHE_DO: 'public', YOUTUBE_CACH: 'apps_script', SO_LAN_THU_DANG: '3'
+  YOUTUBE_CHE_DO: 'public', YOUTUBE_CACH: 'apps_script', SO_LAN_THU_DANG: '3', DUYET_TRUOC_KHI_DANG: 'BAT'
 };
 var NEN_TANG_HOP_LE_ = ['youtube', 'facebook', 'tiktok'];
 var TEN_NEN_TANG_ = { youtube: '▶️ YouTube', facebook: '📘 Facebook', tiktok: '🎵 TikTok' };
@@ -89,9 +89,9 @@ function dangNgay() {
     _bat_dau_chay_ = Date.now();
     _bo_nho_cau_hinh_ = null;
     var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
-    var ds = docHang_(sh).filter(function (r) { return r.trang_thai === 'CO_VIDEO' && r.file_video; })
+    var ds = docHang_(sh).filter(function (r) { return r.trang_thai === 'CO_VIDEO' && r.file_video && (typeof daDuyet_ !== 'function' || daDuyet_(r)); })
       .sort(function (a, b) { return new Date(a.cap_nhat).getTime() - new Date(b.cap_nhat).getTime(); });
-    if (!ds.length) { Logger.log('Không có video nào ở trạng thái "Có video" để đăng.'); return; }
+    if (!ds.length) { Logger.log('Không có video "Có video" nào ĐÃ DUYỆT để đăng (duyệt bằng /duyet trên Zalo).'); return; }
     dangVideo_(sh, ds[0]);
     Logger.log('Đã gửi đăng ' + ds[0].id + '. Xem cột link_dang và tin Zalo.');
   } finally { khoa.releaseLock(); }
@@ -125,7 +125,8 @@ function khungDangHienTai_() {
 }
 
 function chonVideoDang_(hang) {
-  var cho = hang.filter(function (r) { return r.trang_thai === 'CO_VIDEO' && r.file_video; });
+  // chỉ video ĐÃ DUYỆT qua Zalo (/duyet) mới được đăng (trừ khi CAU_HINH DUYET_TRUOC_KHI_DANG = TAT)
+  var cho = hang.filter(function (r) { return r.trang_thai === 'CO_VIDEO' && r.file_video && (typeof daDuyet_ !== 'function' || daDuyet_(r)); });
   if (!cho.length) return null;
   var bay = Date.now();
   // 1) video có hẹn giờ riêng (cột lich_dang) đã tới giờ
@@ -159,7 +160,10 @@ function noiDungDang_(r) {
   var tieuDe = String(kb.tieu_de || r.chu_de || 'Bài toán hay').replace(/\s+/g, ' ').trim().slice(0, 90);
   var de = latexDoc_(String(kb.de_bai || r.de_bai || '')).replace(/\s+/g, ' ').trim();
   var baiHoc = (kb.bai_hoc_rut_ra || []).map(function (x) { return '• ' + x; }).join('\n');
+  var sp = kb.san_pham || null;
+  if (sp && the.indexOf('quangcao') < 0) the.push('quangcao');
   var moTa = [
+    sp ? '📢 Video có giới thiệu sản phẩm do kênh bán: ' + sp.ten + '. Thông tin giá và thông số lấy ngày ' + (sp.ngay || '') + '.\n' : '',
     String(kb.hook || tieuDe),
     '',
     '📌 Đề bài: ' + de.slice(0, 1500),
@@ -169,7 +173,7 @@ function noiDungDang_(r) {
     '',
     the.map(function (t) { return '#' + t; }).join(' ')
   ].join('\n').replace(/\n{3,}/g, '\n\n').slice(0, 4800);
-  return { tieu_de: tieuDe, yt_tieu_de: (tieuDe + ' #shorts').slice(0, 100), mo_ta: moTa, the: the };
+  return { tieu_de: tieuDe, yt_tieu_de: (tieuDe + ' #shorts').slice(0, 100), mo_ta: moTa, the: the, quang_cao: !!sp };
 }
 
 function dangVideo_(sh, r) {
@@ -187,7 +191,7 @@ function dangVideo_(sh, r) {
   if (can.length) {
     var gui = typeof guiWorkflowGitHub_ === 'function' ? guiWorkflowGitHub_({
       viec: 'dang', id: r.id,
-      dang: JSON.stringify({ file_id: String(r.file_video), ten: r.id, tieu_de: meta.tieu_de, yt_tieu_de: meta.yt_tieu_de, mo_ta: meta.mo_ta, the: meta.the, nen_tang: can, yt_che_do: chDang_('YOUTUBE_CHE_DO') })
+      dang: JSON.stringify({ file_id: String(r.file_video), ten: r.id, tieu_de: meta.tieu_de, yt_tieu_de: meta.yt_tieu_de, mo_ta: meta.mo_ta, the: meta.the, nen_tang: can, yt_che_do: chDang_('YOUTUBE_CHE_DO'), quang_cao: meta.quang_cao })
     }) : { ok: false, loi: 'Thiếu BoPhan2.gs bản mới (guiWorkflowGitHub_)' };
     if (gui.ok) {
       ghi_(sh, r._row, { trang_thai: 'DANG_DANG', link_dang: JSON.stringify(kq), ghi_chu: 'Đang đăng qua GitHub: ' + can.join(', ') });
@@ -205,10 +209,17 @@ function dangYouTube_(r, meta) {
     var f = DriveApp.getFileById(r.file_video);
     var mb = f.getSize() / 1048576;
     if (mb > 48) return { ok: false, loi: 'Video ' + mb.toFixed(1) + ' MB, quá giới hạn 48 MB của Apps Script. Đặt YOUTUBE_CACH = github (xem hướng dẫn).' };
-    var v = YouTube.Videos.insert({
+    var tn = {
       snippet: { title: meta.yt_tieu_de, description: meta.mo_ta, tags: meta.the, categoryId: '27', defaultLanguage: 'vi', defaultAudioLanguage: 'vi' },
       status: { privacyStatus: chDang_('YOUTUBE_CHE_DO'), selfDeclaredMadeForKids: false }
-    }, 'snippet,status', f.getBlob());
+    };
+    var v;
+    if (meta.quang_cao) {
+      // video có sản phẩm: khai báo "có quảng bá sản phẩm" với YouTube; dịch vụ cũ chưa hỗ trợ thì đăng không kèm (mô tả vẫn ghi rõ)
+      try { v = YouTube.Videos.insert(Object.assign({ paidProductPlacementDetails: { hasPaidProductPlacement: true } }, tn), 'snippet,status,paidProductPlacementDetails', f.getBlob()); }
+      catch (eQc) { v = null; }
+    }
+    if (!v) v = YouTube.Videos.insert(tn, 'snippet,status', f.getBlob());
     return { ok: true, url: 'https://youtube.com/shorts/' + v.id, id: v.id, che_do: v.status && v.status.privacyStatus };
   } catch (e) {
     return { ok: false, loi: String(e.message || e).slice(0, 200) };
