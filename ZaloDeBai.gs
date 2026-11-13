@@ -231,7 +231,7 @@ function sauUuTien_() {
 function xuLyDocDe_(sh, bc, bat) {
   var ds = docHang_(sh).filter(function (r) { return r.trang_thai === 'CHO_DOC'; });
   for (var i = 0; i < ds.length; i++) {
-    if (!duThoiGian_(bat, uocGoiMs_() + 20000)) { nhatKy_('DUNG_SOM', 'Không đủ thời gian đọc đề ưu tiên, để lần sau'); return; }
+    if (!duThoiGianViec_(bat, uocGoiMs_() + 20000)) { nhatKy_('DUNG_SOM', 'Không đủ thời gian đọc đề ưu tiên, để lần sau'); return; }
     var r = ds[i];
     if (!batDauViec_(sh, r, 'DOC_DE', bc)) { baoZaloDe_(r, '⚠️ Không đọc được đề ' + r.id + ' sau nhiều lần thử. Bạn gửi lại ảnh rõ hơn nhé.'); continue; }
     try {

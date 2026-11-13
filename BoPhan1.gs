@@ -519,7 +519,7 @@ function xuLyGiai_(sh, bc, bat, chiUuTien) {
   var ds = docHang_(sh).filter(function (r) { return r.trang_thai === 'MOI' && r.de_bai && (!chiUuTien || laUuTien_(r)); })
     .slice(0, Number(cauHinh_('SO_DE_TOI_DA_MOI_LAN')));
   for (var i = 0; i < ds.length; i++) {
-    if (!duThoiGian_(bat, tbMs_('TB_GIAI_MS', 150000) * 1.15)) { nhatKy_('DUNG_SOM', 'Không đủ thời gian cho đề giải tiếp theo, để lần chạy sau'); return; }
+    if (!duThoiGianViec_(bat, tbMs_('TB_GIAI_MS', 150000) * 1.15)) { nhatKy_('DUNG_SOM', 'Không đủ thời gian cho đề giải tiếp theo, để lần chạy sau'); return; }
     var r = ds[i];
     var t0 = Date.now();
     if (!batDauViec_(sh, r, 'GIAI', bc)) continue;
@@ -714,7 +714,7 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien) {
   var ds = docHang_(sh).filter(function (r) { return r.trang_thai === 'DA_GIAI' && (!chiUuTien || laUuTien_(r)); })
     .slice(0, Number(cauHinh_('SO_DE_TOI_DA_MOI_LAN')));
   for (var i = 0; i < ds.length; i++) {
-    if (!duThoiGian_(bat, tbMs_('TB_KICHBAN_MS', 100000) * 1.15)) { nhatKy_('DUNG_SOM', 'Không đủ thời gian cho kịch bản tiếp theo, để lần chạy sau'); return; }
+    if (!duThoiGianViec_(bat, tbMs_('TB_KICHBAN_MS', 100000) * 1.15)) { nhatKy_('DUNG_SOM', 'Không đủ thời gian cho kịch bản tiếp theo, để lần chạy sau'); return; }
     var r = ds[i];
     var t0 = Date.now();
     if (!batDauViec_(sh, r, 'VIET_KICH_BAN', bc)) continue;
@@ -879,6 +879,13 @@ function goiGeminiSong_(ds) {
 
 // Còn đủ thời gian để làm thêm một việc cần khoảng canMs mili-giây không?
 function duThoiGian_(bat, canMs) { return (Date.now() - bat) + canMs < THOI_GIAN_TOI_DA_MS; }
+// Như duThoiGian_ nhưng việc ĐẦU TIÊN của mỗi lần chạy luôn được làm. Trước đây, sau vài lần giải chậm (Gemini quá tải,
+// hết hạn mức model chính phải dùng model dự phòng) thời gian trung bình đo được vượt ~4 phút, nên mọi lần chạy đều
+// "không đủ thời gian" ngay từ giây đầu và đề đứng yên mãi. Việc nào thật sự quá 6 phút vẫn bị batDauViec_ đếm lỗi như cũ.
+function duThoiGianViec_(bat, canMs) {
+  if (Date.now() - bat < 30000) return true;
+  return duThoiGian_(bat, canMs);
+}
 // Thời gian trung bình đã đo được cho từng loại việc (lưu trong Script Properties).
 // Lấy số đo THẬT (bản cũ chặn trần ở mức mặc định nên luôn đoán thiếu, bắt đầu việc không kịp làm xong rồi bị ngắt).
 function tbMs_(khoa, macDinh) {

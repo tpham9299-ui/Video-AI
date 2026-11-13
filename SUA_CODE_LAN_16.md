@@ -82,3 +82,7 @@ Video ngắn hơn hoặc bằng 90 giây đăng dạng Reels; dài hơn đăng t
   - Muốn tắt nhạc theo cảnh: GitHub Variable `NHAC_THEO_CANH = 0`.
 - **Thẻ dữ kiện:** kịch bản có `du_kien` (2-4 dữ kiện như "V = 32 m³", "Không nắp"), hiện thành hàng thẻ nhỏ trên đầu màn hình suốt phần giải. Người xem lướt vào giữa video vẫn biết đề hỏi gì.
 - **Kịch bản mẫu** (`mau/kich_ban_thuc_te.json`, `mau/kich_ban_mau.json`) đã viết lại theo cách nối mới.
+
+## Sửa thêm: đề đứng yên, nhật ký lặp "Không đủ thời gian cho đề giải tiếp theo"
+Sau vài lần giải chậm (Gemini quá tải hoặc hết hạn mức model chính), thời gian trung bình đo được lên quá ~4 phút. Từ đó lần chạy nào cũng cho là "không đủ thời gian" ngay từ giây đầu và đề không bao giờ được giải.
+Bây giờ việc đầu tiên của mỗi lần chạy luôn được làm (`duThoiGianViec_`). Đề ưu tiên đi lần lượt đọc → giải → kịch bản, mỗi lượt cách nhau khoảng 1 phút.
