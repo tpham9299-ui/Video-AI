@@ -291,10 +291,17 @@ function layLinkDangNhapTikTok() {
   var url = layUrlWebApp_();
   var state = Utilities.getUuid().replace(/-/g, '');
   CacheService.getScriptCache().put('TIKTOK_STATE', state, 1800);
+  // Quyền xin TikTok: mặc định đủ cả đăng thẳng (video.publish) lẫn gửi vào hộp nháp (video.upload).
+  // TikTok báo lỗi "scope" khi ứng dụng (hoặc Sandbox) chưa bật quyền đó -> bật trong trang nhà phát triển,
+  // hoặc tạm thêm dòng TIKTOK_SCOPE = user.info.basic,video.upload trong CAU_HINH để chỉ dùng hộp nháp.
+  var quyen = String(cauHinh_('TIKTOK_SCOPE') || 'user.info.basic,video.upload,video.publish').replace(/\s+/g, '');
   var link = 'https://www.tiktok.com/v2/auth/authorize/?client_key=' + encodeURIComponent(key) +
-    '&scope=' + encodeURIComponent('user.info.basic,video.publish,video.upload') + '&response_type=code' +
+    '&scope=' + encodeURIComponent(quyen) + '&response_type=code' +
     '&redirect_uri=' + encodeURIComponent(url) + '&state=' + state;
-  Logger.log('Mở liên kết sau (trong 30 phút), đăng nhập tài khoản TikTok của kênh và bấm Đồng ý:\n' + link);
+  Logger.log((/^sb/.test(key) ? '🧪 Đây là key SANDBOX: tài khoản TikTok đăng nhập phải nằm trong "Target users" của Sandbox.\n' : '') +
+    'Quyền xin: ' + quyen + '\nRedirect URI phải khai báo trong Login Kit (đúng từng ký tự): ' + url +
+    '\nNếu TikTok báo "scope": vào Sandbox/ứng dụng > Add products > Content Posting API (bật Direct Post) + Login Kit, rồi tick đủ các quyền ở mục Scopes.' +
+    '\n\nMở liên kết sau (trong 30 phút), đăng nhập tài khoản TikTok của kênh và bấm Đồng ý:\n' + link);
 }
 
 function doGet(e) {

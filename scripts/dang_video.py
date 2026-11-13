@@ -142,6 +142,13 @@ def dang_tiktok(video, meta):
     nguon = {"source": "FILE_UPLOAD", "video_size": n, "chunk_size": chunk, "total_chunk_count": so_chunk}
     che_do = env("TIKTOK_CHE_DO", "truc_tiep")
     ghi_chu = ""
+    quyen_co = str(tk.get("scope") or "")
+    if che_do != "nhap" and quyen_co and "video.publish" not in quyen_co:
+        # mã TikTok chỉ có quyền video.upload (chưa bật Direct Post) -> tự chuyển sang gửi vào hộp nháp thay vì báo lỗi
+        print("Token TikTok không có quyền video.publish (quyền: %s) -> gửi vào hộp nháp" % quyen_co)
+        che_do = "nhap"
+    if che_do == "nhap" and quyen_co and "video.upload" not in quyen_co:
+        raise RuntimeError("Token TikTok thiếu quyền video.upload (quyền: %s). Bật Content Posting API rồi kết nối lại TikTok" % quyen_co)
     if che_do == "nhap":
         d = kiem_tra(requests.post(TT + "/post/publish/inbox/video/init/", headers=h, json={"source_info": nguon}, timeout=60), "TikTok init")
     else:
