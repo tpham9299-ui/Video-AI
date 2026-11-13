@@ -3,6 +3,7 @@ import {useCurrentFrame} from 'remotion';
 import {expoOut} from '../sankhau/chuyendong';
 import {kep} from '../sankhau/donghieu';
 import {FONT_DAM, FONT_SERIF} from '../theme';
+import {toiMau} from './KhongGian';
 
 // CHỮ 3 TẦNG (học từ các video motion typography): dòng dẫn nhỏ chữ nghiêng có chân -> TỪ CHỐT cực lớn màu nhấn -> dòng đuôi vừa.
 // Từng ký tự hiện từ mờ sang nét (blur-in) lần lượt; từ chốt đáp xuống hơi to rồi thu về, gạch mảnh quét dưới chân.
@@ -54,7 +55,7 @@ const DongChu: React.FC<{chu: string; f: number; tre: number; cham: number; dai:
   );
 };
 
-export const ChuBaTang: React.FC<{dan: string; chot: string; duoi: string; mau: string; tre?: number; coToiDa?: number; inHoa?: boolean}> = ({dan, chot, duoi, mau, tre = 0, coToiDa = 118, inHoa = true}) => {
+export const ChuBaTang: React.FC<{dan: string; chot: string; duoi: string; mau: string; tre?: number; coToiDa?: number; inHoa?: boolean; noi?: boolean}> = ({dan, chot, duoi, mau, tre = 0, coToiDa = 118, inHoa = true, noi = false}) => {
   const f = useCurrentFrame() - tre;
   const {batChot, xongChot, batDuoi} = nhipBaTang(dan, chot);
   const chotHien = inHoa ? chot.toUpperCase() : chot;
@@ -70,7 +71,10 @@ export const ChuBaTang: React.FC<{dan: string; chot: string; duoi: string; mau: 
         </div>
       ) : null}
       {chot ? (
-        <div style={{position: 'relative', fontFamily: FONT_DAM, fontWeight: 900, fontSize: co, lineHeight: 1.12, color: mau, letterSpacing: -1, textShadow: `0 6px 30px rgba(0,0,0,0.65), 0 0 34px ${mau}44`, padding: '0 6px'}}>
+        <div style={{position: 'relative', fontFamily: FONT_DAM, fontWeight: 900, fontSize: co, lineHeight: 1.12, color: mau, letterSpacing: -1, padding: '0 6px',
+          // chữ NỔI KHỐI 3D (hook, đáp án): các lớp bóng đặc xếp chồng tạo bề dày + nghiêng phối cảnh đung đưa
+          textShadow: noi ? Array.from({length: 9}, (_, i) => `0 ${(i + 1) * co * 0.017}px 0 ${toiMau(mau, 0.62 - i * 0.045)}`).join(', ') + `, 0 ${co * 0.2}px ${co * 0.3}px rgba(0,0,0,0.65)` : `0 6px 30px rgba(0,0,0,0.65), 0 0 34px ${mau}44`,
+          transform: noi ? `perspective(900px) rotateX(${12 + 2 * Math.sin(f / 37)}deg) rotateY(${5 * Math.sin(f / 29)}deg)` : undefined}}>
           <DongChu chu={chotHien} f={f} tre={batChot} cham={1.3} dai={10} nhoe={16} dy={-co * 0.25} s={1.35} />
           <div style={{position: 'absolute', left: '50%', bottom: -2, height: 5, width: `${gach * 70}%`, transform: 'translateX(-50%)', borderRadius: 3, background: `linear-gradient(90deg, transparent, ${mau}, transparent)`, opacity: 0.9, boxShadow: `0 0 12px ${mau}`}} />
         </div>

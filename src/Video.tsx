@@ -10,6 +10,7 @@ import {cacPha, phaCua} from './ThanhBuoc';
 import {Nen} from './Nen';
 import {FONT, FONT_DAM, BONG_CHU, vienChu, GIAO_DIEN, MAU, MAU_LOAI, chuTrenMau} from './theme';
 import {DuongTienTrinh} from './dong/DiemNhan';
+import {LuoiSan} from './dong/KhongGian';
 import {smooth} from './manim';
 import {LogoTron, ManKetTuTao, moHuyHieu, ThuongHieu} from './ThuongHieu';
 import {ThanhTienDo} from './ThanhTienDo';
@@ -119,6 +120,7 @@ const NoiDungVideo: React.FC<Props> = (props) => {
       <KieuToan kieu={phongCach.kieuToan || 'dam'} />
       <NapPhongToan />
       <Nen nen={nen} dsNen={props.dsNen} canh={canh} pc={phongCach} tongFrame={tongFrame} />
+      {moi ? <LuoiSan mau={GIAO_DIEN.nhan} /> : null}
       {nhac ? <Audio src={staticFile(nhac)} loop volume={amNhac} /> : null}
       {canh.map((c, i) => (
         <Sequence key={c.so} from={c.batDau} durationInFrames={c.soFrame + keoDai(i)}>

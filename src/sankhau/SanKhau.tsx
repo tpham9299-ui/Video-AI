@@ -91,7 +91,8 @@ const San3D: React.FC<{cam: Cam3D; mo: number}> = ({cam, mo}) => {
   );
 };
 
-export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boolean; cau?: {text: string; bat: number; ket: number}[]}> = ({du, giayAm, amThanh = true, cau}) => {
+// chiVat / boVat: chỉ vẽ / bỏ qua các vật này (bố cục vẫn tính trên đủ vật) - dùng để dựng vật cần đọc rõ ĐỨNG THẲNG trên bàn 3D
+export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boolean; cau?: {text: string; bat: number; ket: number}[]; chiVat?: string[]; boVat?: string[]}> = ({du, giayAm, amThanh = true, cau, chiVat, boVat}) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
   const t = frame / fps;
@@ -111,7 +112,8 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
   const lopPhang: {z: number; el: React.ReactNode}[] = [];
   const muiTen: React.ReactNode[] = [];
   const thuTu = (v: Vat) => (v.loai === 'nhan' || v.loai === 'mui_ten' ? 2 : v.loai === 'chu' || v.loai === 'so_dem' ? 1 : 0);
-  const dsVat = [...vatXep].sort((a, b) => thuTu(a) - thuTu(b));
+  const duocVe = (v: Vat) => (!chiVat || chiVat.includes(v.id)) && !(boVat && boVat.includes(v.id));
+  const dsVat = [...vatXep].filter(duocVe).sort((a, b) => thuTu(a) - thuTu(b));
 
   for (const v of dsVat) {
     const st = tinhTrangThai(v, du.hanhDong, t, tb, SK_W, SK_H);
@@ -175,7 +177,7 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
   // Manim "Flash": tia sáng ngắn bắn ra từ tâm vật lúc vật vừa xuất hiện (chỉ vật thật, không áp cho chữ/nhãn)
   const tia: React.ReactNode[] = [];
   for (const v of vatXep) {
-    if (v.buoc <= 0 || ['mui_ten', 'chu', 'nhan', 'bieu_tuong'].includes(v.loai)) continue;
+    if (v.buoc <= 0 || ['mui_ten', 'chu', 'nhan', 'bieu_tuong'].includes(v.loai) || !duocVe(v)) continue;
     const ta = tb(v.buoc);
     const p = (t - ta - 0.12) / 0.55;
     if (p <= 0 || p >= 1) continue;
@@ -198,7 +200,7 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
   }
 
   for (const v of vatXep) {
-    if (v.loai !== 'mui_ten') continue;
+    if (v.loai !== 'mui_ten' || !duocVe(v)) continue;
     const ta = tb(v.buoc);
     if (t < ta && v.buoc > 0) continue;
     const a = viTri.get(v.tu);

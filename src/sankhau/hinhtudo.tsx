@@ -12,6 +12,7 @@ import {PhanHinh, Vat} from './dulieu';
 import {TrangThai} from './trangthai';
 import {GIAO_DIEN, laMoi} from '../theme';
 import {VongSong} from '../dong/DiemNhan';
+import {KhongGian3D, toiMau} from '../dong/KhongGian';
 
 type D = [number, number];
 const CAM = '#FF8A3D';
@@ -221,6 +222,8 @@ export const HinhTuDo: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
   const nhan: React.ReactNode[] = [];
   const nNet = v.hinh.length;
   const moi = laMoi();
+  const kg = React.useContext(KhongGian3D);
+  const KHOI = 7; // số lớp đùn khối (hình tô màu nằm trên bàn 3D -> nổi thành khối có bề dày)
   // bộ hiệu ứng mới: nhiều chữ rời cùng một bước thì bật LẦN LƯỢT (0,3 giây/chữ) kèm vòng sóng, như các ga tàu hiện dần
   const treChu = new Map<number, number>();
   if (moi) {
@@ -266,7 +269,16 @@ export const HinhTuDo: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
               );
             }
             if (h.kieu === 'chu') return null;
-            return (nets.map((n, k) => (
+            const moTo = kep((t - bd - 0.6) / 0.6) * (1 - 0.6 * lb);
+            const khoi = kg.nam && toMau && moTo > 0.01 ? nets.flatMap((n, k) => (n.kin && n.mo === undefined ? Array.from({length: KHOI}, (_, j) => {
+              const lop = KHOI - j; // vẽ từ lớp đáy lên
+              // hướng đùn luôn là "xuống" trên màn hình dù bàn đang xoay (bù góc xoay của bàn)
+              const d = (lop * 2.4) / s;
+              const g = (kg.xoay * Math.PI) / 180;
+              return <path key={`k${i}_${k}_${j}`} d={n.d} transform={`translate(${d * Math.sin(g)} ${d * Math.cos(g)})`} fill={toiMau(toMau, 0.32 + 0.25 * (j / KHOI))} fillOpacity={Math.min(0.95, 0.55 + (h.doTo || 0.28)) * moTo}
+                stroke={j === 0 ? toiMau(mau, 0.5) : 'none'} strokeWidth={j === 0 ? day * 0.8 : 0} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />;
+            }) : [])) : [];
+            return (khoi as React.ReactNode[]).concat(nets.map((n, k) => (
               <path key={`${i}_${k}`} d={n.d} vectorEffect="non-scaling-stroke"
                 fill={n.kin && toMau ? toMau : 'none'} fillOpacity={n.mo !== undefined ? 0 : (h.doTo || 0.28) * kep((t - bd - 0.6) / 0.6) * (1 - 0.6 * lb) + (c ? 0.15 * c.p : 0)}
                 stroke={n.mo !== undefined ? '#FF5C61' : mau} strokeWidth={day} strokeLinejoin="round" strokeLinecap="round" opacity={(n.mo !== undefined ? n.mo : 1) * (1 - 0.65 * lb) * (h.moNet ?? 1)}
