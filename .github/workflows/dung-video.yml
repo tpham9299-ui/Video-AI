@@ -14,7 +14,7 @@ on:
       mau:
         description: 'Kịch bản mẫu để dựng thử (khi không có kich_ban)'
         type: choice
-        options: [kich_ban_thuc_te, kich_ban_koch, kich_ban_koch_moi, kich_ban_mau]
+        options: [kich_ban_thuc_te, kich_ban_koch, kich_ban_koch_moi, kich_ban_ong_thep, kich_ban_mau]
         default: kich_ban_thuc_te
       viec:
         description: 'dung = dựng video | dang = đăng video lên mạng xã hội'

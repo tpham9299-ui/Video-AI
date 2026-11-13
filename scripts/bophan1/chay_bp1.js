@@ -202,6 +202,8 @@ console.log(`Xong: ${out.id} -> ${out.hang.trang_thai || trangThai()} | ${JSON.s
 function giaLapGemini(body) {
   const p = ((body.contents[0].parts || []).find((x) => x.text) || {}).text || '';
   const tl = (o) => ({ok: true, code: 200, raw: JSON.stringify({candidates: [{content: {parts: [{text: JSON.stringify(o)}]}}]})});
+  if (process.env.BP1_GIA_LAP_VAN_DE && /kiemChung\(\)/.test(p)) return tl({ma: 'function kiemChung(){var n=0,s=0;while(s+n+3<=260){s+=n+3;n++;}return {kieu:"gia_tri",gia_tri:n};}'});
+  if (process.env.BP1_GIA_LAP_VAN_DE && /Bài toán thực tế|Giải bài sau|chấm thi/.test(p)) return tl({mo_hinh: 'cấp số cộng u1=3, d=1', cac_buoc: ['n(n+5)/2=260', 'n≈20,44'], gia_tri: 20, don_vi: 'tầng', dap_an_hien: '20 tầng, dư 10 ống', thu_nguoc: 'S20=250≠260', de_co_van_de: '260 ống không xếp vừa khít: 20 tầng dùng 250 ống, 21 tầng cần 273 ống; hiểu là xếp được 20 tầng trọn vẹn, dư 10 ống', y_tuong: 'cấp số cộng'});
   const xs = /xác suất/i.test(p) && !/thực tế/i.test(p);
   if (/kiemChung\(\)/.test(p) && xs) return tl({ma: 'function kiemChung(){var c=0,t=0;for(var i=0;i<8;i++)for(var j=i+1;j<8;j++){t++;if((i<5)==(j<5))c++;}return {kieu:"chinh_xac",tu:c,mau:t};}'});
   if (/kiemChung\(\)/.test(p)) return tl({ma: 'function kiemChung(){var m=1e9;for(var x=0.5;x<=20;x+=0.001){var s=x*x+128/x;if(s<m)m=s;}return {kieu:"gia_tri",gia_tri:m};}'});

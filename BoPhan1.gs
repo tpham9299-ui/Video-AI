@@ -659,12 +659,16 @@ function trongTai_(r, o) {
     ma.forEach(function (k) { if (k.khop(v)) d += k.manh; });
     return d;
   };
+  // đáp án điểm cao nhất + điểm của đáp án KHÁC cao nhì: chỉ chốt khi thắng rõ (nhì < 3 hoặc kém >= 2 phiếu),
+  // để hai mã kiểm chứng cùng hiểu sai đề không "thắng phiếu" ba lời giải đúng
   var tot = function () {
     var ds = ung.map(function (u) { return u.v; });
     ma.forEach(function (k) { if (k.v !== null && k.v !== undefined) ds.push(k.v); });
     var best = null, bd = 0;
     ds.forEach(function (v) { var d = diem(v); if (d > bd) { bd = d; best = v; } });
-    return { v: best, d: bd };
+    var nhi = 0;
+    ds.forEach(function (v) { if (best !== null && !o.bang(v, best)) nhi = Math.max(nhi, diem(v)); });
+    return { v: best, d: bd, nhi: nhi, ro: bd >= 3 && (nhi < 3 || bd - nhi >= 2) };
   };
   var tomTat = function () {
     return ung.map(function (u) { return u.nguon + '=' + o.chu(u.v); }).concat(ma.map(function (k) { return k.mo; })).join(' | ');
@@ -683,7 +687,7 @@ function trongTai_(r, o) {
   themGiai(o.c2, 'cach2');
   chayMa(o.kc, '1');
   var t = tot();
-  if (t.v !== null && t.d >= 3) return ketQua(t.v, 0);
+  if (t.v !== null && t.ro) return ketQua(t.v, 0);
   // vòng 1: giải lại thật kỹ (biết các đáp án đang lệch) + mã kiểm chứng mới viết độc lập
   nhatKy_('GIAI', r.id + ': các nguồn chưa thống nhất (' + tomTat() + '), mở trọng tài');
   var goiY = 'Các lời giải/máy tính trước cho các kết quả: ' + tomTat() + '. Có ít nhất một cái SAI. Hãy tự giải lại TỪ ĐẦU thật cẩn thận, đọc kỹ từng chữ của đề, ' +
@@ -693,15 +697,15 @@ function trongTai_(r, o) {
   try { chayMa(goiGemini_(o.promptMa, 0.2, { suyNghi: cauHinh_('MUC_SUY_NGHI_GIAI') }), '2'); }
   catch (e2) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(e2.message))) throw e2; }
   t = tot();
-  if (t.v !== null && t.d >= 3) return ketQua(t.v, 1);
+  if (t.v !== null && t.ro) return ketQua(t.v, 1);
   // vòng 2: giải bằng phương pháp khác hẳn (liệt kê trực tiếp / đặt lại mô hình)
   try { themGiai(goiGemini_('Bạn là giáo viên Toán. Giải bài sau bằng một PHƯƠNG PHÁP KHÁC HẲN cách thông thường (ví dụ liệt kê trực tiếp các trường hợp nhỏ, đếm bằng bảng, đặt lại mô hình/tọa độ), ' +
     'kiểm tra lại kết quả bằng một cách thứ hai trước khi trả lời. ' + o.dinhDang + o.de, 0.3, { suyNghi: 'high' }), 'cach_khac'); }
   catch (e3) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(e3.message))) throw e3; }
   t = tot();
-  if (t.v !== null && t.d >= 3) return ketQua(t.v, 2);
+  if (t.v !== null && t.ro) return ketQua(t.v, 2);
   // đề ưu tiên (người dùng gửi): chấp nhận khi có ít nhất 2 nguồn độc lập đồng ý
-  if (laUuTien_(r) && t.v !== null && t.d >= 2) return ketQua(t.v, 2);
+  if (laUuTien_(r) && t.v !== null && t.d >= 2 && t.d > t.nhi) return ketQua(t.v, 2);
   return { dat: false, ly_do: 'KHONG_THONG_NHAT sau trọng tài: ' + tomTat().slice(0, 250) };
 }
 
