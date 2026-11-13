@@ -29,3 +29,29 @@ nên một video tốn khoảng 18–20 phút-máy (trước ~13) dù chờ ng�
 - `scripts/ghep_khuc.mjs`: kiểm tra đủ khúc liền nhau rồi ghép.
 - `scripts/anh_kiem_tra.py`: ghép ảnh bằng Pillow (máy ghép dùng ffmpeg rút gọn của Remotion, không cần cài ffmpeg).
 - `.github/workflows/dung-video.yml`: 3 tầng; cài công cụ chạy song song; lưu sẵn trình duyệt dựng hình (cache).
+
+## Đo thực tế (video Koch 77 giây)
+| | Trước | Dựng song song |
+|---|---|---|
+| Tổng thời gian | ~12,5 phút | **~6,5–7,5 phút** |
+| Chuẩn bị (giọng đọc, đóng gói, ảnh bìa) | – | 1,8–2,4 phút |
+| 4 máy dựng cùng lúc | – | 2,5–3,7 phút (máy có cảnh 3D chậm nhất) |
+| Ghép + Drive + báo Apps Script | – | ~1,5 phút (phần lớn là tải lên Drive) |
+
+# Bộ hiệu ứng chuyển động mới (học từ 5 video mẫu bạn gửi)
+Bật bằng `phong_cach.json` → `"chuyenDong": "moi"` (mặc định vẫn là bộ cũ cho tới khi bạn duyệt).
+Chạy thử tay: Actions → Dựng video → Run workflow → chọn `kich_ban_koch_moi` (video lưu Drive tên `ZL-mau-koch-moi.mp4`).
+
+| Khoảnh khắc | Hiệu ứng |
+|---|---|
+| Mọi tiêu đề | **Chữ 3 tầng**: dòng dẫn nghiêng nhỏ → TỪ CHỐT cực lớn màu nhấn hiện từng ký tự mờ→nét → dòng đuôi |
+| Hook | Từ chốt đáp xuống + máy quay **đập zoom** |
+| Đọc đề | Nhãn/chữ trên hình bật **lần lượt** kèm **vòng sóng lan** |
+| Vẽ hình | **Đầu sao chổi** sáng chạy theo nét đang vẽ |
+| Cái bẫy | **Con dấu BẪY!** đóng xuống + màn hình rung + **nét gạch đỏ viết tay** trên dòng sai |
+| Mấu chốt | **Cửa tròn**: đĩa tối viền sáng nở ra che cảnh cũ |
+| Đáp án | Số chạy xong → **lóe sáng tia + vòng xung kích** + đập zoom |
+| Bài học | Máy quay **lùi ra** |
+| Suốt video | **Đường tiến trình** mảnh có chấm + đốm sáng chạy; dữ kiện dạng HUD; vòng quỹ đạo chấm quay chậm quanh hình; con trỏ gõ phím thay bút chì |
+| Màu | **Một màu nhấn** = màu loại câu hỏi (giống ảnh bìa) |
+| Nhịp | Các bước của hình dời tới **đầu cụm lời gần nhất** để hình đổi đúng lúc giọng nhắc tới |
