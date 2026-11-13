@@ -138,7 +138,6 @@ jobs:
           ID=$(python3 -c "import json;print(json.load(open('public/props.json',encoding='utf8'))['id'])")
           # đóng gói SAU khi có giọng đọc/nhạc (thư mục public được chép vào gói)
           npx remotion bundle src/index.ts --out-dir build
-          find build -name "*.map" -delete
           mkdir -p out build/public/bia
           # ẢNH BÌA thiết kế (loại câu hỏi, lớp, tập, tiêu đề, hình minh họa thật của đề) -> out/ID_bia.jpg
           KHUNG=$(python3 -c "import json;print((json.load(open('public/props.json',encoding='utf8')).get('bia') or {}).get('khung',60))")
