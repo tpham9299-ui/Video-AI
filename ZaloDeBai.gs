@@ -21,10 +21,12 @@
  */
 
 var ZALO_API_ = 'https://bot-api.zaloplatforms.com/bot';
+// Cách 3 (nếu không thêm được dòng vào sheet CAU_HINH): dán địa chỉ /exec vào giữa hai dấu nháy dưới đây.
+var WEB_APP_URL_DAN = '';
 
 function tokenNhanZalo_() {
   var p = PropertiesService.getScriptProperties();
-  return p.getProperty('ZALO_BOT_TOKEN_DE') || p.getProperty('ZALO_BOT_TOKEN');
+  return p.getProperty('ZALO_BOT_TOKEN_DE') || String(cauHinh_('ZALO_BOT_TOKEN_DE') || '').trim() || p.getProperty('ZALO_BOT_TOKEN');
 }
 
 /* ===================== CÀI ĐẶT WEBHOOK ===================== */
@@ -60,15 +62,17 @@ function dangKyWebhookZalo_(ghiDe) {
 // (chính là địa chỉ đã dán vào GitHub Secret APPS_SCRIPT_URL).
 function layUrlWebApp_() {
   var chuan = function (u) { return String(u || '').trim().split('?')[0].split('#')[0].replace(/\/+$/, ''); };
-  var tuDan = chuan(PropertiesService.getScriptProperties().getProperty('WEB_APP_URL'));
-  if (/^https:\/\/script\.google\.com\/.+\/exec$/.test(tuDan)) return tuDan;
+  // Lấy theo thứ tự: sheet CAU_HINH (dòng WEB_APP_URL) -> hằng WEB_APP_URL_DAN ở đầu tệp -> Script Property WEB_APP_URL
+  var dsDan = [cauHinh_('WEB_APP_URL'), WEB_APP_URL_DAN, PropertiesService.getScriptProperties().getProperty('WEB_APP_URL')].map(chuan).filter(Boolean);
+  for (var i = 0; i < dsDan.length; i++) if (/^https:\/\/script\.google\.com\/.+\/exec$/.test(dsDan[i])) return dsDan[i];
+  var tuDan = dsDan[0] || '';
   var tuDong = '';
   try { tuDong = chuan(ScriptApp.getService().getUrl()); } catch (e) {}
   if (/\/exec$/.test(tuDong)) return tuDong;
   throw new Error('Chưa có địa chỉ web app dạng .../exec' + (tuDan ? ' (WEB_APP_URL hiện là "' + tuDan + '", không đúng dạng)' : '') +
     (/\/dev$/.test(tuDong) ? ' (Apps Script chỉ trả về địa chỉ thử nghiệm .../dev)' : '') +
     '. Cách sửa: Triển khai > Quản lý các lượt triển khai > chọn bản "Ứng dụng web" > sao chép URL kết thúc bằng /exec ' +
-    '(giống GitHub Secret APPS_SCRIPT_URL) > Cài đặt dự án (bánh răng) > Thuộc tính tập lệnh > thêm WEB_APP_URL = URL đó > chạy lại caiDatZalo.');
+    '(giống GitHub Secret APPS_SCRIPT_URL) > mở sheet CAU_HINH, thêm một dòng: cột khoa = WEB_APP_URL, cột gia_tri = URL đó > chạy lại caiDatZalo.');
 }
 
 function goiZaloApi_(token, phuongThuc, than) {
