@@ -3,6 +3,7 @@
 import React from 'react';
 import {FONT, FONT_DAM, BONG_CHU, vienChu, laMoi} from '../theme';
 import {GachTay} from '../dong/DiemNhan';
+import {CoChuSan} from '../dong/KhongGian';
 import {Toan} from '../Toan';
 import {bamChuoi, easeInOut, easeOut, kep, lerp, nay, NEN_VAT, NEN_VAT_2, neon, ngauNhien, popOut, tienDo, VONG_MAU} from './donghieu';
 import {Vat} from './dulieu';
@@ -696,20 +697,39 @@ const Banh: Ve = (v, st) => {
 };
 
 /* ---------------- NHÃN NEON (chữ hai màu, nghiêng nhẹ) ---------------- */
-export const NhanNeon: React.FC<{chu: string; tuKhoa: string; mau: string; mauNhan: string; co?: number; xoay?: number}> = ({chu, tuKhoa, mau, mauNhan, co = 44, xoay = -3}) => (
-  <div style={{transform: `rotate(${xoay}deg)`, border: `4px solid ${mau}`, borderRadius: 14, background: 'rgba(6,18,16,0.92)', boxShadow: `0 0 16px ${mau}, inset 0 0 12px ${mau}44`, padding: `${co * 0.18}px ${co * 0.45}px`, fontFamily: FONT_DAM, fontWeight: 900, fontSize: co, color: '#fff', textTransform: 'uppercase', whiteSpace: 'nowrap', letterSpacing: 0.5}}>
-    <ChuNhanMau chu={chu} tuKhoa={tuKhoa} mau={mauNhan} />
-  </div>
-);
-const NhanVat: Ve = (v, st) => (
-  <NhanNeon chu={st.noiDung} tuKhoa={v.tuKhoa} mau={neon(v.mau, neon('xanh_la'))} mauNhan={neon('cam')} co={Math.min(52 * v.co, 860 / (Math.max(4, st.noiDung.length) * 0.66))} xoay={v.xoay || -3} />
-);
+// nhãn neon: ký hiệu toán (u_n, S_n = 260, \frac...) hiện bằng công thức thật (không còn "S_n" thô);
+// chữ dài thì XUỐNG DÒNG thay vì thu nhỏ đến mức không đọc được.
+export const laToanNhan = (s: string) => /[_^\\]|\d\s*[=+×·*/]\s*\d|^\s*[A-Za-z](_\{?\w+\}?)?\s*=/.test(s);
+// chữ thường trong nhãn toán (KaTeX bỏ dấu cách): bọc từng từ có chữ cái tiếng Việt / từ dài vào \text{}
+const texNhan = (s: string) => s.split(/\s+/).filter(Boolean).map((w) => (/[À-ỹà-ỹ]/.test(w) || /^[A-Za-z]{3,}[,.:]?$/.test(w) ? `\\text{${w}}` : w)).join('\\ ');
+export const NhanNeon: React.FC<{chu: string; tuKhoa: string; mau: string; mauNhan: string; co?: number; xoay?: number}> = ({chu, tuKhoa, mau, mauNhan, co = 44, xoay = -3}) => {
+  const toan = laToanNhan(chu);
+  const dai = chu.replace(/\\[a-zA-Z]+|[{}_^]/g, '').length > 18;
+  return (
+    <div style={{transform: `rotate(${xoay}deg)`, border: `4px solid ${mau}`, borderRadius: 14, background: 'rgba(6,18,16,0.92)', boxShadow: `0 0 16px ${mau}, inset 0 0 12px ${mau}44`, padding: `${co * 0.18}px ${co * 0.45}px`,
+      fontFamily: FONT_DAM, fontWeight: 900, fontSize: co, color: '#fff', textTransform: toan ? 'none' : 'uppercase', whiteSpace: dai ? 'normal' : 'nowrap', maxWidth: dai ? 760 : undefined, textAlign: 'center', lineHeight: 1.15, letterSpacing: 0.5}}>
+      {toan ? <Toan tex={texNhan(chu)} size={co * 1.05} color="#ffffff" maxWidth={720} /> : <ChuNhanMau chu={chu} tuKhoa={tuKhoa} mau={mauNhan} />}
+    </div>
+  );
+};
+const kepCo = (c: number) => Math.max(0.85, Math.min(1.2, c || 1));
+const NhanSan: React.FC<{v: Parameters<Ve>[0]; chu: string}> = ({v, chu}) => {
+  const k = React.useContext(CoChuSan);
+  const dai = chu.replace(/\\[a-zA-Z]+|[{}_^]/g, '').length;
+  const co = Math.max(34, 46 * kepCo(v.co) * (dai > 18 ? 0.86 : 1)) * k;
+  return <NhanNeon chu={chu} tuKhoa={v.tuKhoa} mau={neon(v.mau, neon('xanh_la'))} mauNhan={neon('cam')} co={co} xoay={v.xoay || -3} />;
+};
+const NhanVat: Ve = (v, st) => <NhanSan v={v} chu={st.noiDung} />;
 
-const Chu: Ve = (v, st) => (
-  <div style={{textAlign: 'center'}}>
-    <Toan tex={st.noiDung} size={56 * v.co} color={neon(v.mau, '#ffffff')} maxWidth={900} />
-  </div>
-);
+const ChuSan: React.FC<{v: Parameters<Ve>[0]; tex: string}> = ({v, tex}) => {
+  const k = React.useContext(CoChuSan);
+  return (
+    <div style={{textAlign: 'center'}}>
+      <Toan tex={tex} size={52 * kepCo(v.co) * k} color={neon(v.mau, '#ffffff')} maxWidth={900} />
+    </div>
+  );
+};
+const Chu: Ve = (v, st) => <ChuSan v={v} tex={st.noiDung} />;
 
 // một cột chữ số lăn dọc (kiểu đồng hồ công-tơ-mét): g là giá trị đang chạy, k là hàng (0 = hàng đơn vị)
 const CotSo: React.FC<{g: number; k: number; h: number}> = ({g, k, h}) => {

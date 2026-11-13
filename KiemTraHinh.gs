@@ -12,10 +12,10 @@ var LOAI_VAT_ = ['nguoi', 'the', 'the_bai', 'xuc_xac', 'dong_xu', 'hop_bi', 'tui
 var VAT_3D_ = ['khoi_hop', 'tru', 'non', 'cau', 'toa_nha', 'xe', 'cay', 'thang', 'xuc_xac', 'hop_bi', 'hop_qua', 'cua'];   // vật 3D thật (cảnh đời thực)
 var VAT_MO_HINH_ = ['hinh_hoc', 'do_thi', 'hinh_tu_do'];
 var TU_VAT_3D_ = {
-  khoi_hop: /hộp|bể|thùng|phòng|khối|lăng trụ|container|tủ|gạch/, tru: /trụ|lon|cốc|bồn|ống|thùng phi|cột tròn/, non: /nón|phễu|chóp nón/,
+  khoi_hop: /hộp|bể|thùng|phòng|khối|lăng trụ|container|tủ/, tru: /trụ|lon|cốc|bồn|ống nước|bình|thùng phi|cột tròn/, non: /nón|phễu|chóp nón/,
   cau: /cầu|quả bóng|bóng/, toa_nha: /nhà|tòa|tháp|cột|building/, thang: /thang/, xe: /xe|ô tô|tàu/, cay: /cây/
 };
-var KIEU_NET_ = ['da_giac', 'duong', 'mui_ten', 'tron', 'cung', 'chu', 'svg', 'da_giac_deu', 'koch', 'sierpinski', 'tham_so', 'lap'];
+var KIEU_NET_ = ['da_giac', 'duong', 'mui_ten', 'tron', 'cung', 'chu', 'svg', 'da_giac_deu', 'koch', 'sierpinski', 'tham_so', 'lap', 'xep_chong'];
 var KIEU_HANH_DONG_ = ['chon', 'loai_bo', 'sang', 'rung', 'quay', 'mo', 'lay_ra', 'dat_gia_tri', 'bung_ra', 'di_chuyen', 'phong_to', 'thu_nho', 'an', 'doi_chu', 'goc_3d'];
 var VAT_PHU_ = ['nhan', 'chu', 'mui_ten', 'bieu_tuong', 'so_dem'];   // vật phụ trợ (chữ, nhãn): không tính là "vật thật"
 
@@ -406,6 +406,8 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham) {
     }
   }
   them(nang, noiDungLa_(kb));
+  kiemTraPhepTinh_(kb).forEach(function (x) { nang.push(x); });
+  kiemTraNhanDai_(kb).forEach(function (x) { nhe.push(x); });
   them(nhe, kiemTraCachDay_(kb));
   them(nhe, kiemTraTrinhBay_(kb));
   them(nhe, kiemTraChuThich_(kb));
@@ -414,7 +416,11 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham) {
   if (coHinhDe) {
     // coHinhDe: chữ của đề + mô tả hình. Vật 3D chỉ được tính là "vẽ đúng hình" khi đề nhắc đúng loại vật đó.
     var chuDe = String(coHinhDe).toLowerCase();
+    // đề XẾP CHỒNG (ống, lon, gạch, khúc gỗ xếp thành tầng/hàng): phải vẽ đúng chồng vật (nét xep_chong hoặc các hình tròn), không thay bằng một khối trụ/hộp
+    var xepChong = /xếp|chồng|chất/.test(chuDe) && /tầng|hàng|lớp|chồng/.test(chuDe);
     var veHinh = kb.canh.slice(0, 3).some(function (c) {
+      var du0 = c && c.minh_hoa && c.minh_hoa.du_lieu;
+      if (xepChong) return !!(du0 && Array.isArray(du0.vat) && du0.vat.some(function (v) { return v && v.loai === 'hinh_tu_do' && Array.isArray(v.hinh) && v.hinh.some(function (h) { return h && (h.kieu === 'xep_chong' || h.kieu === 'tron' || (h.kieu === 'lap' && h.hinh && h.hinh.kieu === 'tron')); }); }));
       var du = c && c.minh_hoa && c.minh_hoa.du_lieu;
       if (!c || !c.minh_hoa || c.minh_hoa.loai !== 'san_khau' || !du || !Array.isArray(du.vat)) return false;
       return du.vat.some(function (v) {
@@ -424,7 +430,8 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham) {
         return !!tu && tu.test(chuDe);
       });
     });
-    if (!veHinh) nang.push('THIEU_HINH_DE: đề có hình (ảnh kèm hoặc hình dạng cụ thể) nhưng 3 cảnh đầu không vẽ lại hình đó. Hãy vẽ ĐÚNG hình của đề bằng "hinh_tu_do" (hoặc hinh_hoc/do_thi) ở cảnh mo_dau hoặc de_bai; không thay bằng vật khác.');
+    if (!veHinh && xepChong) nang.push('THIEU_HINH_DE: đề XẾP CHỒNG vật thành tầng/hàng. 3 cảnh đầu phải vẽ đúng chồng vật bằng hinh_tu_do với nét {"kieu":"xep_chong","tam":[50,55],"r":44,"hang":[số vật từng tầng từ trên xuống]} (hoặc "tren"/"duoi"), KHÔNG dùng một khối trụ/hộp thay cho cả chồng.');
+    else if (!veHinh) nang.push('THIEU_HINH_DE: đề có hình (ảnh kèm hoặc hình dạng cụ thể) nhưng 3 cảnh đầu không vẽ lại hình đó. Hãy vẽ ĐÚNG hình của đề bằng "hinh_tu_do" (hoặc hinh_hoc/do_thi) ở cảnh mo_dau hoặc de_bai; không thay bằng vật khác.');
   }
   if (thucTe && so3D < 2 && !coHinhDe) nhe.push('THIEU_CANH_3D: video toán thực tế nên có ít nhất 2 cảnh có vật 3D thật dựng lại tình huống của đề.');
   if (thucTe && soMoHinh < 1) nhe.push('THIEU_MO_HINH: video toán thực tế nên có ít nhất 1 cảnh hinh_hoc, do_thi hoặc hinh_tu_do để mô hình hóa.');
@@ -650,6 +657,7 @@ function kiemTraHinhTuDo_(v, ev) {
     if ((h.kieu === 'koch' || h.kieu === 'sierpinski') && h.lap !== undefined && !(Number(h.lap) >= 0 && Number(h.lap) <= 6)) return 'HINH_' + e + ': "lap" của ' + h.kieu + ' từ 0 đến 6.';
     if (h.kieu === 'svg' && !(typeof h.d === 'string' && /^[MmLlHhVvCcSsQqTtAaZz0-9.,\s\-eE+]+$/.test(h.d))) return 'HINH_' + e + ': svg cần "d" chỉ gồm lệnh đường dẫn SVG (M, L, C, Q, A, Z và số).';
     if (h.kieu === 'chu' && !laChuoi_(h.noi_dung)) return 'HINH_' + e + ': chu cần "noi_dung".';
+    if (h.kieu === 'xep_chong' && !(Array.isArray(h.hang) && h.hang.length >= 1) && !(Number(h.tren) >= 1 && Number(h.duoi) >= Number(h.tren))) return 'HINH_' + e + ': xep_chong cần "hang":[số vật mỗi tầng từ trên xuống] hoặc "tren" + "duoi" (số vật tầng trên cùng / dưới cùng).';
     if (h.kieu === 'tham_so' && (!phanTichBieuThuc_(String(h.x || '').replace(/(^|[^a-z])t(?![a-z])/g, '$1x')) || !phanTichBieuThuc_(String(h.y || '').replace(/(^|[^a-z])t(?![a-z])/g, '$1x')))) return 'HINH_' + e + ': tham_so cần "x" và "y" là biểu thức theo t viết kiểu máy tính.';
   }
   return '';
@@ -879,4 +887,102 @@ function tuSuaSau_(kb, ctx) {
     }
   }
   return sua;
+}
+
+
+/* ===================== MÁY TÍNH LẠI MỌI PHÉP TÍNH TRÊN MÀN HÌNH (lần 25) ===================== */
+// Mỗi dòng công thức "A = B = C" (hoặc ≈): vế nào chỉ gồm số và phép toán thì máy tự tính; hai vế số liền nhau lệch nhau
+// (quá sai số làm tròn) là LỖI NẶNG, Gemini phải sửa. Ví dụ bắt được: S_{20} = \frac{20(3+22)}{2} = 260 (thực ra 250).
+function texThanhSo_(s) {
+  var t = String(s || '');
+  t = t.replace(/\\(text|mathrm|mbox|textbf)\s*\{[^{}]*\}(\s*\^\s*(\{[^{}]*\}|\d))?/g, ' ');
+  t = t.replace(/\\left|\\right|\\displaystyle|\\,|\;|\\:|\\!|\\quad|\\qquad|~|\\ /g, ' ');
+  t = t.replace(/\{,\}/g, '.').replace(/\\%/g, '%');
+  // bỏ đơn vị ở cuối (m, cm², đồng, triệu đồng, ống, tầng...)
+  t = t.replace(/(\s*(m|cm|mm|km|dm|kg|g|l|ml|lít|đ|đồng|vnđ|triệu|tỷ|nghìn|ngàn|giờ|phút|giây|năm|tháng|ngày|ống|tầng|cái|người|học sinh|viên|lần|°|\\circ|\^\{?\\circ\}?)(\s*\^\s*\{?\d\}?)?)+\s*$/i, '');
+  t = t.replace(/\\[dt]?frac/g, '\\frac');
+  // \frac{a}{b} -> ((a)/(b)), \sqrt{a} -> sqrt(a), \sqrt[n]{a} -> pow(a,1/n)
+  var layNhom = function (x, i) {   // x[i] === '{'
+    var sau = 0;
+    for (var k = i; k < x.length; k++) { if (x[k] === '{') sau++; else if (x[k] === '}') { sau--; if (!sau) return { noi: x.slice(i + 1, k), het: k + 1 }; } }
+    return null;
+  };
+  for (var lan = 0; lan < 30; lan++) {
+    var i = t.indexOf('\\frac');
+    if (i >= 0) {
+      var j = i + 5; while (t[j] === ' ') j++;
+      var a = t[j] === '{' ? layNhom(t, j) : null; if (!a) return null;
+      var k = a.het; while (t[k] === ' ') k++;
+      var b = t[k] === '{' ? layNhom(t, k) : null; if (!b) return null;
+      t = t.slice(0, i) + '((' + a.noi + ')/(' + b.noi + '))' + t.slice(b.het);
+      continue;
+    }
+    i = t.indexOf('\\sqrt');
+    if (i >= 0) {
+      var p = i + 5, bac = '2';
+      if (t[p] === '[') { var q = t.indexOf(']', p); if (q < 0) return null; bac = t.slice(p + 1, q); p = q + 1; }
+      var c = t[p] === '{' ? layNhom(t, p) : null; if (!c) return null;
+      t = t.slice(0, i) + 'pow((' + c.noi + '),1/(' + bac + '))' + t.slice(c.het);
+      continue;
+    }
+    break;
+  }
+  t = t.replace(/\\cdot|\\times|·|×/g, '*').replace(/\\div|:/g, '/').replace(/−/g, '-').replace(/\\pi/g, '(3.141592653589793)');
+  t = t.replace(/[{}]/g, function (m) { return m === '{' ? '(' : ')'; });
+  t = t.replace(/(\d),(\d)/g, '$1.$2');                 // 2,5 -> 2.5
+  t = t.replace(/(\d)\s+(?=\d{3}(\D|$))/g, '$1');      // 138 548 -> 138548
+  t = t.replace(/%/g, '/100');
+  t = t.replace(/\^/g, '**');
+  t = t.replace(/(\d|\))\s*\(/g, '$1*(').replace(/\)\s*(\d)/g, ')*$1');
+  t = t.replace(/pow\*\(/g, 'pow(').replace(/(\d|\))\s*pow/g, '$1*pow');
+  if (/[A-Za-zÀ-ỹ\\]/.test(t.replace(/pow/g, ''))) return null;   // còn chữ/biến -> không phải phép tính thuần số
+  if (!/\d/.test(t) || !/^[\d\s.+\-*/()powe,]*$/.test(t)) return null;
+  try {
+    var v = Function('pow', '"use strict"; return (' + t + ');')(Math.pow);
+    return typeof v === 'number' && isFinite(v) ? v : null;
+  } catch (e) { return null; }
+}
+function soLe10_(s) { var m = /(\d)[.,]|\{,\}/.test(String(s)) ? /[.,]\s*(\d+)|\{,\}\s*(\d+)/.exec(String(s)) : null; return m ? (m[1] || m[2] || '').length : 0; }
+function kiemTraPhepTinh_(kb) {
+  var loi = [];
+  (kb.canh || []).forEach(function (c, j) {
+    (c && c.noi_dung_man_hinh || []).forEach(function (dong) {
+      var s = String(dong || '');
+      if (!/=|\\approx|≈/.test(s) || /\\neq|\\leq|\\geq|<|>/.test(s)) return;
+      var phan = s.split(/(\\approx|≈|=)/);
+      var ve = [], dau = [];
+      for (var k = 0; k < phan.length; k += 2) { ve.push(phan[k]); if (k + 1 < phan.length) dau.push(phan[k + 1]); }
+      for (var m = 0; m < ve.length - 1; m++) {
+        var a = texThanhSo_(ve[m]), b = texThanhSo_(ve[m + 1]);
+        if (a === null || b === null) continue;
+        var xapXi = dau[m] !== '=';
+        var tol = Math.max(0.5 * Math.pow(10, -soLe10_(ve[m + 1])) * 1.001, Math.abs(b) * (xapXi ? 0.006 : 1e-9), 1e-9);
+        if (Math.abs(a - b) > tol) {
+          loi.push('PHEP_TINH_SAI_CANH_' + (j + 1) + ': dòng "' + s.slice(0, 90) + '" sai: ' + ve[m].trim().slice(0, 40) + ' tính ra ' + (Math.round(a * 10000) / 10000) + ', không phải ' + (Math.round(b * 10000) / 10000) +
+            '. Sửa cho đúng; nếu đề không có đáp số tròn thì nói thật điều đó, không được ép phép tính sai.');
+          break;
+        }
+      }
+    });
+  });
+  return loi;
+}
+// nhãn/chữ trên hình quá dài (chữ sẽ nhỏ, khó đọc): nên tối đa ~22 ký tự
+function kiemTraNhanDai_(kb) {
+  var loi = [];
+  (kb.canh || []).forEach(function (c, j) {
+    var du = c && c.minh_hoa && c.minh_hoa.du_lieu;
+    if (!du || !Array.isArray(du.vat)) return;
+    du.vat.forEach(function (v) {
+      if (!v) return;
+      var ds = [];
+      if (v.loai === 'nhan' || v.loai === 'chu') ds.push(String(v.noi_dung || ''));
+      if (v.loai === 'hinh_tu_do' && Array.isArray(v.hinh)) v.hinh.forEach(function (h) { if (h) { if (h.kieu === 'chu') ds.push(String(h.noi_dung || '')); if (h.nhan) ds.push(String(h.nhan)); } });
+      ds.forEach(function (x) {
+        var dai = x.replace(/\\[a-zA-Z]+|[{}_^$]/g, '').length;
+        if (dai > 24) loi.push('NHAN_QUA_DAI_CANH_' + (j + 1) + ': "' + x.slice(0, 40) + '" (' + dai + ' ký tự): nhãn/chữ trên hình tối đa ~22 ký tự (vd "u_1 = 3", "Tầng 1"); ý dài đưa vào lời thoại hoặc noi_dung_man_hinh.');
+      });
+    });
+  });
+  return loi;
 }

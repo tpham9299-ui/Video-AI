@@ -398,7 +398,10 @@ function giaiThucTe_(r) {
   var t0 = Date.now();
   var de = 'Bài toán thực tế (lớp ' + r.lop + '):\n' + r.de_bai;
   var dinhDang = 'Đáp số cuối là MỘT con số (đại lượng đề hỏi). Nếu đề yêu cầu làm tròn thì "gia_tri" là số ĐÃ làm tròn đúng yêu cầu; nếu không thì giữ ít nhất 4 chữ số có nghĩa. ' +
-    'Trả JSON: {"mo_hinh":"đặt ẩn, điều kiện, hàm/biểu thức cần xét","cac_buoc":["..."],"gia_tri":0,"don_vi":"","dap_an_hien":"câu trả lời ngắn có đơn vị, ví dụ x = 4 m; S = 48 m²"}\n\n';
+    'BẮT BUỘC THỬ NGƯỢC: thay đáp số vào lại TẤT CẢ dữ kiện của đề và tính lại (ví dụ đề cho tổng 260 thì tính lại tổng với đáp số tìm được xem có đúng 260 không). ' +
+    'Nếu đề KHÔNG có đáp số thỏa mãn chính xác mọi dữ kiện (cần số nguyên mà phương trình không có nghiệm nguyên, dữ kiện mâu thuẫn, thiếu dữ kiện) thì ghi rõ vào "de_co_van_de" ' +
+    'và chọn CÁCH HIỂU HỢP LÝ NHẤT để vẫn trả lời được (ví dụ: xếp được tối đa bao nhiêu tầng trọn vẹn và còn dư bao nhiêu), ghi cách hiểu đó trong "de_co_van_de"; đề bình thường thì để "de_co_van_de" rỗng. ' +
+    'Trả JSON: {"mo_hinh":"đặt ẩn, điều kiện, hàm/biểu thức cần xét","cac_buoc":["..."],"gia_tri":0,"don_vi":"","dap_an_hien":"câu trả lời ngắn có đơn vị, ví dụ x = 4 m; S = 48 m²","thu_nguoc":"phép thử lại với đáp số","de_co_van_de":""}\n\n';
   var kq3 = goiGeminiSong_([
     { nhiet: 0.2, prompt: 'Bạn là giáo viên Toán giỏi. Giải bài toán thực tế sau thật cẩn thận: đặt ẩn, nêu điều kiện của ẩn, lập biểu thức, giải và kiểm tra điều kiện; soát kỹ đơn vị. ' + dinhDang + de },
     { nhiet: 0.5, prompt: 'Bạn là giáo viên Toán giỏi, dạy bằng SUY LUẬN. Giải bài toán thực tế sau bằng cách GỌN và DỄ HIỂU nhất: nhận ra đại lượng cố định để khử ẩn, đối xứng, bất đẳng thức, hình học trực quan... Mỗi bước nói rõ VÌ SAO làm vậy. ' +
@@ -433,7 +436,7 @@ function giaiThucTe_(r) {
   var dapAn = vietSo_(a1);
   var hien = String((c1 && c1.dap_an_hien) || (c2 && c2.dap_an_hien) || '').trim().slice(0, 80);
   if (!hien) hien = dapAn.replace('.', ',') + (c1 && c1.don_vi ? ' ' + c1.don_vi : '');
-  return { dat: true, c1: c1, c2: c2, dap_an: dapAn, dap_an_hien: hien, mo_ta: mo };
+  return { dat: true, c1: c1, c2: c2, dap_an: dapAn, dap_an_hien: hien, mo_ta: mo, de_co_van_de: tt.de_co_van_de };
 }
 
 /* ===================== BƯỚC A2: TÌM ĐỀ CÓ THẬT TRÊN INTERNET ===================== */
@@ -542,10 +545,16 @@ function xuLyGiai_(sh, bc, bat, chiUuTien, chiIds) {
           String(kq.ly_do).slice(0, 200) + '\nBạn có thể gửi lại ảnh rõ hơn hoặc gõ đề kèm đáp án mong đợi.');
       } else {
         if (!r.ma_bam) ghi_(sh, r._row, { ma_bam: bam_(r.de_bai) });
+        // đề có vấn đề (không có đáp số khớp chính xác, mâu thuẫn...): ghi lại để kịch bản nói thật và báo người gửi
+        var vanDe = String(kq.de_co_van_de || '').trim();
         ghi_(sh, r._row, {
           trang_thai: 'DA_GIAI', cach_1: JSON.stringify(kq.c1), cach_2: JSON.stringify(kq.c2),
-          dap_an: kq.dap_an, dap_an_hien: kq.dap_an_hien || '', kiem_chung: kq.mo_ta, ghi_chu: '', so_lan_loi: 0
+          dap_an: kq.dap_an, dap_an_hien: kq.dap_an_hien || '', kiem_chung: kq.mo_ta + (vanDe ? ' | DE_CO_VAN_DE: ' + vanDe : ''), ghi_chu: '', so_lan_loi: 0
         });
+        if (vanDe) {
+          nhatKy_('GIAI', r.id + ': ĐỀ CÓ VẤN ĐỀ - ' + vanDe);
+          if (laUuTien_(r)) baoZaloDe_(r, '⚠️ Đề này có vấn đề: ' + vanDe + '\nVideo sẽ nói rõ điều này và làm theo cách hiểu trên.');
+        }
         bc.giai_ok++;
         if (laUuTien_(r)) baoZaloDe_(r, '✅ Đã giải và kiểm chứng: đáp án ' + (kq.dap_an_hien || kq.dap_an) + '\n✍ Đang viết kịch bản video...');
       }
@@ -588,8 +597,8 @@ function giaiVaKiemChung_(r) {
 function giaiXacSuat_(r) {
   var t0 = Date.now();
   var de = 'Bài toán (lớp ' + r.lop + '):\n' + r.de_bai;
-  var dinhDang = 'Đáp án cuối là MỘT xác suất dạng phân số với tử và mẫu là số nguyên dương. ' +
-    'Trả JSON: {"cac_buoc":["..."],"tu":0,"mau":0}\n\n';
+  var dinhDang = 'Đáp án cuối là MỘT xác suất dạng phân số với tử và mẫu là số nguyên dương. Soát lại: đếm trùng/đếm sót, có hoàn lại không, có phân biệt thứ tự không. ' +
+    'Nếu đề mơ hồ hoặc mâu thuẫn, ghi rõ vào "de_co_van_de" cách hiểu hợp lý nhất đã dùng (đề bình thường để rỗng). Trả JSON: {"cac_buoc":["..."],"tu":0,"mau":0,"de_co_van_de":""}\n\n';
   // Ba việc độc lập nhau (hai cách giải + mã kiểm chứng) nên gọi đồng thời.
   var kq3 = goiGeminiSong_([
     { nhiet: 0.2, prompt: 'Bạn là giáo viên Toán giỏi. Giải bài toán xác suất sau thật cẩn thận, từng bước, ' +
@@ -628,7 +637,7 @@ function giaiXacSuat_(r) {
       'Trả về {"kieu":"chinh_xac","tu":số_nguyên,"mau":số_nguyên} hoặc {"kieu":"mo_phong","gia_tri":số_thực,"n":200000}. Cài đặt trực tiếp từ ĐỀ BÀI, đọc đề thật kỹ từng chữ (có hoàn lại không, phân biệt thứ tự không, "ít nhất"/"đúng"...). Trả JSON: {"ma":"function kiemChung(){...}"}\n\n' + de
   });
   if (!tt.dat) return { dat: false, c1: c1, c2: c2, ly_do: tt.ly_do };
-  return { dat: true, c1: tt.c1, c2: tt.c2, dap_an: tt.chu, dap_an_hien: tt.chu, mo_ta: tt.mo };
+  return { dat: true, c1: tt.c1, c2: tt.c2, dap_an: tt.chu, dap_an_hien: tt.chu, mo_ta: tt.mo, de_co_van_de: tt.de_co_van_de };
 }
 
 // TRỌNG TÀI: không loại đề chỉ vì hai cách giải lệch nhau hay lệch mã kiểm chứng. Bỏ phiếu giữa các nguồn ĐỘC LẬP:
@@ -666,7 +675,9 @@ function trongTai_(r, o) {
     var c2 = khop.filter(function (u) { return u.nguon === 'cach2'; }).length ? o.c2 : c1;   // giữ cách "thông minh" nếu nó đúng
     var mo = ma.filter(function (k) { return k.khop(v); }).map(function (k) { return k.mo; }).join('; ') || 'các lời giải độc lập khớp nhau';
     if (vong) nhatKy_('GIAI', r.id + ': trọng tài vòng ' + vong + ' chốt ' + o.chu(v) + ' (' + tomTat() + ')');
-    return { dat: true, v: v, chu: o.chu(v), c1: c1, c2: c2, mo: mo + (vong ? ' | phân xử sau ' + vong + ' vòng' : '') };
+    var vanDe = '';
+    khop.concat(ung).some(function (u) { var x = String((u.c && u.c.de_co_van_de) || '').trim(); if (x.length > 8) { vanDe = x; return true; } return false; });
+    return { dat: true, v: v, chu: o.chu(v), c1: c1, c2: c2, mo: mo + (vong ? ' | phân xử sau ' + vong + ' vòng' : ''), de_co_van_de: vanDe.slice(0, 300) };
   };
   themGiai(o.c1, 'cach1');
   themGiai(o.c2, 'cach2');

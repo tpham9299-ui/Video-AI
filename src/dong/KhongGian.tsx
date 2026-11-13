@@ -10,7 +10,7 @@ import {DuLieuSanKhau} from '../sankhau/dulieu';
 //  - "the": danh sách / biểu đồ / đồ thị / số đếm là tấm thẻ lơ lửng trong không gian: lật xoay vào, đung đưa nhẹ.
 //  - "khong": cảnh đã tự dùng máy chiếu 3D của sân khấu (vật 3D, goc_3d) thì giữ nguyên.
 
-export type Kieu3D = 'nam' | 'the' | 'khong';
+export type Kieu3D = 'nam' | 'dung' | 'the' | 'khong';
 const VAT_NAM = ['hinh_tu_do', 'hinh_hoc', 'luoi_o'];
 const VAT_THE = ['danh_sach', 'bieu_do_cot', 'do_thi', 'so_dem', 'nhan', 'chu', 'thanh', 'dong_ho_do', 'mui_ten'];
 const VAT_3D_RIENG = ['khoi_hop', 'tru', 'non', 'cau', 'toa_nha', 'xe', 'cay', 'thang'];
@@ -20,13 +20,19 @@ export const VAT_DUNG = ['so_dem', 'danh_sach', 'bieu_do_cot', 'do_thi'];
 export function phanLoai3D(du: DuLieuSanKhau | null): Kieu3D {
   if (!du || !du.vat.length) return 'khong';
   if (du.gocDau || du.hanhDong.some((h) => h.kieu === 'goc_3d') || du.vat.some((v) => VAT_3D_RIENG.includes(v.loai))) return 'khong';
+  // hình NHÌN CHÍNH DIỆN (chồng vật xếp tầng...): dựng đứng, máy xoay trái/phải cho thấy chiều sâu (nằm nghiêng sẽ bị dẹt)
+  if (du.vat.some((v) => v.loai === 'hinh_tu_do' && v.hinh.some((h) => h.kieu === 'xep_chong'))) return 'dung';
   if (du.vat.some((v) => VAT_NAM.includes(v.loai))) return 'nam';
   if (du.vat.every((v) => VAT_THE.includes(v.loai))) return 'the';
   return 'khong';
 }
 
+// CỠ CHỮ TRÊN SÂN KHẤU cố định trên màn hình: sân khấu bị thu nhỏ (nhường chỗ cho công thức) thì chữ trên hình được bù lại,
+// để mọi nhãn/chữ của mọi cảnh trông CÙNG MỘT CỠ (hết cảnh chữ to, cảnh chữ nhỏ).
+export const CoChuSan = React.createContext(1);
 // ngữ cảnh cho HinhTuDo: có đang nằm trên bàn 3D không (để đùn khối)
-export const KhongGian3D = React.createContext<{nam: boolean; doDay: number; xoay: number}>({nam: false, doDay: 0, xoay: 0});
+// huong: hướng đùn khối trên MẶT PHẲNG HÌNH (đơn vị) để bề dày luôn hiện đúng phía theo góc máy
+export const KhongGian3D = React.createContext<{nam: boolean; doDay: number; xoay: number; huong?: [number, number]}>({nam: false, doDay: 0, xoay: 0});
 
 export const toiMau = (hex: string, k: number) => {
   const m = /^#?([0-9a-f]{6})/i.exec(hex || '');
@@ -76,6 +82,33 @@ export function gocMayNam(f: number, soCanh: number, vaoMoi: boolean, kichTinh: 
   const lat = g('lat') * e;
   return {nghieng, xoay, lat, e};
 }
+// GÓC MÁY cho hình dựng đứng: xoay trái/phải quanh trục đứng + cúi/ngửa nhẹ; cùng quy tắc đứng yên - đổi góc êm ở mốc lời giảng
+const BO_GOC_DUNG: [number, number][] = [[-26, 6], [22, -3], [-12, 12], [28, 4], [8, -6], [-20, -2]];
+export function gocMayDung(f: number, soCanh: number, vaoMoi: boolean, mocDoi: number[] = []) {
+  const e = vaoMoi ? expoOut(kep(f / 30)) : 1;
+  const moc: number[] = [];
+  mocDoi.forEach((m) => { if (m > 20 && (!moc.length || m - moc[moc.length - 1] >= 75)) moc.push(m); });
+  let i = 0;
+  while (i < moc.length && f >= moc[i]) i++;
+  const g = (k: number) => BO_GOC_DUNG[((soCanh * 2 + k) % BO_GOC_DUNG.length + BO_GOC_DUNG.length) % BO_GOC_DUNG.length];
+  const A = g(Math.max(0, i - 1)), B = g(i);
+  const x = i > 0 ? kep((f - moc[i - 1]) / 24) : 1;
+  const m = i > 0 ? (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2) : 1;
+  const ry = (i > 0 ? A[0] + (B[0] - A[0]) * m : A[0]) - 40 * (1 - e) + 0.4 * Math.sin(f / 70);
+  const rx = (i > 0 ? A[1] + (B[1] - A[1]) * m : A[1]) + 10 * (1 - e);
+  // bề dày khối hiện về phía ngược hướng xoay (nhìn từ trái thấy mặt bên trái...)
+  const sy = Math.sin((ry * Math.PI) / 180), sx = Math.sin((rx * Math.PI) / 180);
+  const dai = Math.min(1, Math.hypot(sy, sx) + 0.35);
+  const huong: [number, number] = [(-sy / (Math.hypot(sy, sx) || 1)) * dai, (sx / (Math.hypot(sy, sx) || 1)) * dai + 0.15];
+  return {ry, rx, e, huong};
+}
+export const HinhDung3D: React.FC<{ry: number; rx: number; h: number; children: React.ReactNode}> = ({ry, rx, h, children}) => (
+  <div style={{position: 'absolute', inset: 0, perspective: 1700}}>
+    <div style={{position: 'absolute', left: '18%', right: '18%', top: h * 0.8, height: 60, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(0,0,0,0.5), rgba(0,0,0,0) 70%)'}} />
+    <div style={{position: 'absolute', inset: 0, transformStyle: 'preserve-3d', transform: `rotateY(${ry}deg) rotateX(${rx}deg) scale(0.95)`}}>{children}</div>
+  </div>
+);
+
 // vị trí trên màn hình (so với tâm sân khấu) của một điểm nằm trên mặt phẳng hình 3D: dùng để đặt lóe sáng / vật đứng đúng chỗ
 export function chieuNam(dx: number, dy: number, w: number, h: number, nghieng: number, xoay: number, lat = 0) {
   const s = 0.93;

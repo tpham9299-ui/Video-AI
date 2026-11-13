@@ -1,0 +1,465 @@
+{
+ "id": "ZL-mau-ong-thep",
+ "mon": "THUC_TE",
+ "lop": "11",
+ "chu_de": "Xếp ống thép thành tầng",
+ "chu_de_ngan": "Xếp 260 ống thép",
+ "de_bai": "Một phân xưởng cần xếp 260 ống thép thành khối hình thang cân theo các tầng nằm ngang. Tầng dưới nhiều hơn tầng ngay trên nó 1 ống, tầng trên cùng có đúng 3 ống. Hỏi xếp được bao nhiêu tầng và tầng dưới cùng có bao nhiêu ống?",
+ "dap_an": "20",
+ "dap_an_hien": "20 tầng trọn vẹn, tầng dưới 22 ống, dư 10 ống",
+ "dap_an_cuoi": "20",
+ "tieu_de": "Xếp 260 ống thép được mấy tầng? Thử lại mới thấy bất ngờ",
+ "hook": "Hai trăm sáu mươi ống thép, xếp thành mấy tầng? Đa số trả lời ngay hai mươi, nhưng thử lại mới thấy bất ngờ.",
+ "hook_chu": "Xếp 260 ỐNG THÉP được mấy tầng?",
+ "hook_kieu": "cau_hoi",
+ "nhan_manh": [
+  "ỐNG THÉP"
+ ],
+ "y_tuong_chinh": "Số ống mỗi tầng là cấp số cộng công sai 1, tổng n tầng là n(n+5)/2; thử lại thấy 260 không xếp vừa khít.",
+ "du_kien": [
+  "260 ống",
+  "Tầng trên: 3 ống",
+  "Mỗi tầng +1"
+ ],
+ "bai_hoc_rut_ra": [
+  "Xếp tầng đều nhau: số vật mỗi tầng là cấp số cộng",
+  "Tổng n số hạng: S_n = n(u_1+u_n)/2",
+  "Giải xong luôn thử lại vào đề"
+ ],
+ "canh": [
+  {
+   "so": 1,
+   "loai": "mo_dau",
+   "loi_thoai": "Hai trăm sáu mươi ống thép, xếp thành mấy tầng? Đa số trả lời ngay hai mươi, nhưng thử lại mới thấy bất ngờ.",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Chồng ống thép xếp tầng hình thang cân, tầng trên cùng 3 ống, rút gọn ở giữa.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "chong",
+       "loai": "hinh_tu_do",
+       "x": 50,
+       "y": 50,
+       "khung": [
+        100,
+        80
+       ],
+       "buoc": 1,
+       "hinh": [
+        {
+         "kieu": "xep_chong",
+         "tam": [
+          50,
+          42
+         ],
+         "r": 44,
+         "tren": 3,
+         "duoi": 22,
+         "mau": "xanh_duong",
+         "net": 2
+        }
+       ]
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "chong",
+       "kieu": "sang"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "so": 2,
+   "loai": "de_bai",
+   "tieu_de_canh": "Mỗi tầng thêm một ống",
+   "tu_khoa": "thêm một ống",
+   "loi_thoai": "Đề cho: tầng trên cùng có ba ống, mỗi tầng phía dưới nhiều hơn tầng trên một ống, tổng cộng hai trăm sáu mươi ống.",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Chồng ống có nhãn tầng trên cùng u_n = 3, tầng 1, 2, 3 ở dưới.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "chong2",
+       "loai": "hinh_tu_do",
+       "x": 50,
+       "y": 50,
+       "khung": [
+        100,
+        80
+       ],
+       "buoc": 1,
+       "hinh": [
+        {
+         "kieu": "xep_chong",
+         "tam": [
+          44,
+          42
+         ],
+         "r": 38,
+         "tren": 3,
+         "duoi": 22,
+         "mau": "xanh_duong",
+         "net": 2
+        },
+        {
+         "kieu": "chu",
+         "tam": [
+          88,
+          12
+         ],
+         "noi_dung": "u_n = 3",
+         "buoc": 2
+        },
+        {
+         "kieu": "chu",
+         "tam": [
+          88,
+          68
+         ],
+         "noi_dung": "\\text{Tầng 1}",
+         "buoc": 3
+        }
+       ]
+      }
+     ],
+     "hanh_dong": []
+    }
+   }
+  },
+  {
+   "so": 3,
+   "loai": "mo_hinh_hoa",
+   "tieu_de_canh": "Đếm từ trên xuống là cấp số cộng",
+   "tu_khoa": "cấp số cộng",
+   "loi_thoai": "Đếm từ trên xuống cho dễ: ba, bốn, năm ống, cứ thế tăng một. Đó là cấp số cộng với số hạng đầu ba, công sai một.",
+   "noi_dung_man_hinh": [
+    "u_1 = 3,\\ d = 1"
+   ],
+   "trinh_bay": "xep",
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Danh sách số ống từng tầng từ trên xuống.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "ds",
+       "loai": "danh_sach",
+       "x": 50,
+       "y": 50,
+       "noi_dung": "Số ống từ trên xuống",
+       "ds": [
+        "Tầng 1: 3 ống",
+        "Tầng 2: 4 ống",
+        "Tầng 3: 5 ống",
+        "Công sai: d = 1"
+       ],
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "ds",
+       "kieu": "chon",
+       "chi_so": [
+        4
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "so": 4,
+   "loai": "diem_chot",
+   "tieu_de_canh": "Tổng n tầng",
+   "tu_khoa": "Tổng",
+   "loi_thoai": "Tổng số ống của n tầng bằng n nhân tầng đầu cộng tầng cuối, chia hai. Tầng cuối có n cộng hai ống.",
+   "noi_dung_man_hinh": [
+    "S_n=\\frac{n(u_1+u_n)}{2}",
+    "u_n = n + 2"
+   ],
+   "trinh_bay": "xep",
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Nhãn công thức.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "n1",
+       "loai": "nhan",
+       "x": 30,
+       "y": 45,
+       "noi_dung": "S_n = 260",
+       "buoc": 1
+      },
+      {
+       "id": "n2",
+       "loai": "nhan",
+       "x": 70,
+       "y": 55,
+       "noi_dung": "u_n = n + 2",
+       "buoc": 2
+      }
+     ],
+     "hanh_dong": []
+    }
+   }
+  },
+  {
+   "so": 5,
+   "loai": "tinh_toan",
+   "tieu_de_canh": "Lập phương trình",
+   "tu_khoa": "phương trình",
+   "loi_thoai": "Thay vào: n nhân n cộng năm, chia hai, bằng hai trăm sáu mươi. Ra phương trình n bình cộng năm n trừ năm trăm hai mươi bằng không.",
+   "noi_dung_man_hinh": [
+    "\\frac{n(n+5)}{2}=260",
+    "n^2+5n-520=0",
+    "n\\approx 20{,}44"
+   ],
+   "trinh_bay": "cong_don",
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Chồng ống nhỏ.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "chong3",
+       "loai": "hinh_tu_do",
+       "x": 50,
+       "y": 50,
+       "khung": [
+        100,
+        80
+       ],
+       "buoc": 1,
+       "hinh": [
+        {
+         "kieu": "xep_chong",
+         "tam": [
+          50,
+          42
+         ],
+         "r": 40,
+         "tren": 3,
+         "duoi": 22,
+         "mau": "xanh_duong",
+         "net": 2
+        }
+       ]
+      }
+     ],
+     "hanh_dong": []
+    }
+   }
+  },
+  {
+   "so": 6,
+   "loai": "bay",
+   "tieu_de_canh": "Bẫy: làm tròn rồi chốt",
+   "tu_khoa": "làm tròn",
+   "loi_thoai": "Nhưng khoan, n phải là số nguyên. Làm tròn thành hai mươi rồi chốt luôn là bẫy, phải thử lại.",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Danh sách cách làm sai bị gạch.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "ds2",
+       "loai": "danh_sach",
+       "x": 50,
+       "y": 50,
+       "noi_dung": "Hai cách chốt",
+       "ds": [
+        "Làm tròn n = 20 rồi chốt",
+        "Thử lại vào tổng 260"
+       ],
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "ds2",
+       "kieu": "loai_bo",
+       "chi_so": [
+        1
+       ]
+      },
+      {
+       "buoc": 2,
+       "vat": "ds2",
+       "kieu": "rung"
+      },
+      {
+       "buoc": 3,
+       "vat": "ds2",
+       "kieu": "chon",
+       "chi_so": [
+        2
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "so": 7,
+   "loai": "kiem_tra",
+   "tieu_de_canh": "Thử lại mới thấy",
+   "tu_khoa": "Thử lại",
+   "loi_thoai": "Thử lại: hai mươi tầng chỉ có hai trăm năm mươi ống, hai mươi mốt tầng cần hai trăm bảy mươi ba ống. Vậy hai trăm sáu mươi ống không xếp vừa khít.",
+   "noi_dung_man_hinh": [
+    "S_{20}=\\frac{20\\cdot(3+22)}{2}=250",
+    "S_{21}=\\frac{21\\cdot(3+23)}{2}=273"
+   ],
+   "trinh_bay": "xep",
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Biểu đồ cột tổng ống 20 và 21 tầng.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "cot",
+       "loai": "bieu_do_cot",
+       "x": 50,
+       "y": 50,
+       "ds": [
+        "20 tầng",
+        "Cần",
+        "21 tầng"
+       ],
+       "ds_so": [
+        250,
+        260,
+        273
+       ],
+       "nhan": "Tổng số ống",
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "cot",
+       "kieu": "sang"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "so": 8,
+   "loai": "dap_an",
+   "tieu_de_canh": "Xếp được hai mươi tầng",
+   "tu_khoa": "hai mươi tầng",
+   "loi_thoai": "Vậy xếp được hai mươi tầng trọn vẹn, tầng dưới cùng hai mươi hai ống, và còn dư mười ống.",
+   "noi_dung_man_hinh": [
+    "260-250=10\\ \\text{ống dư}",
+    "n = 20"
+   ],
+   "trinh_bay": "xep",
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Chồng ống 20 tầng sáng lên, huy hiệu 20 tầng.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "chong4",
+       "loai": "hinh_tu_do",
+       "x": 50,
+       "y": 34,
+       "co": 0.8,
+       "khung": [
+        100,
+        80
+       ],
+       "buoc": 1,
+       "hinh": [
+        {
+         "kieu": "xep_chong",
+         "tam": [
+          50,
+          42
+         ],
+         "r": 44,
+         "tren": 3,
+         "duoi": 22,
+         "mau": "xanh_duong",
+         "net": 2
+        }
+       ]
+      },
+      {
+       "id": "so",
+       "loai": "so_dem",
+       "x": 50,
+       "y": 84,
+       "noi_dung": "Số tầng",
+       "gia_tri": 20,
+       "nhan": "tầng",
+       "kieu": "vien",
+       "buoc": 2
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "chong4",
+       "kieu": "sang"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "so": 9,
+   "loai": "bai_hoc",
+   "tieu_de_canh": "Giải xong phải thử lại",
+   "tu_khoa": "thử lại",
+   "loi_thoai": "Bài học: xếp tầng đều nhau là cấp số cộng, và giải xong luôn thử lại vào đề. Bạn có bắt được cái bẫy này không?",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Thẻ ghi nhớ.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "gn",
+       "loai": "danh_sach",
+       "x": 50,
+       "y": 50,
+       "noi_dung": "Ghi nhớ",
+       "ds": [
+        "Xếp tầng đều: cấp số cộng",
+        "Tổng: S_n = n(u_1+u_n)/2",
+        "Giải xong luôn thử lại"
+       ],
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "gn",
+       "kieu": "chon",
+       "chi_so": [
+        1,
+        2,
+        3
+       ]
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

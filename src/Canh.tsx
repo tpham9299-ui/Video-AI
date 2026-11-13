@@ -14,7 +14,7 @@ import {DuLieuSanKhau, hopLeSanKhau, noiTiepSanKhau} from './sankhau/dulieu';
 import {SanKhau, SK_H, SK_W, taoMocBuoc, taoMocBuocLoi} from './sankhau/SanKhau';
 import {ChuBaTang, nhipBaTang, tachBaTang} from './dong/ChuBaTang';
 import {cuaTron, DauBay, DiaCuaTron, LoeSang, mayQuay, QuyDao, SuKienMay, VienCuaTron} from './dong/DiemNhan';
-import {BanKinh3D, chieuNam, gocMayNam, KhongGian3D, phanLoai3D, The3D, VAT_DUNG} from './dong/KhongGian';
+import {BanKinh3D, chieuNam, CoChuSan, gocMayDung, gocMayNam, HinhDung3D, KhongGian3D, phanLoai3D, The3D, VAT_DUNG} from './dong/KhongGian';
 import {tinhGoc3D} from './sankhau/trangthai';
 import {nhanCanh, TieuDeCanh} from './TieuDeCanh';
 import {phaCua, ThanhBuoc} from './ThanhBuoc';
@@ -127,7 +127,8 @@ export const Canh: React.FC<{
   const lonHon = !coHinh;
   const coCT = Math.min(
     ...canh.noiDung.map((d) => coChuCongThuc(d, lonHon)),
-    Math.floor((Math.max(120, caoCT) - 60) / Math.max(1, nHang) / 1.9)
+    // dòng có phân số cao gấp ~2,3 lần cỡ chữ: chia chiều cao theo đúng hệ số để công thức không tràn xuống phụ đề
+    Math.floor((Math.max(120, caoCT) - 60) / Math.max(1, nHang) / (canh.noiDung.some((d) => /\\d?frac|\\binom|\\sqrt/.test(d)) ? 2.35 : 1.9))
   );
 
   // chuyển cảnh THEO MẠCH BÀI: cùng một bước (ví dụ hai cảnh tính liên tiếp) thì hòa tan mềm; sang bước mới thì trôi lên nhẹ;
@@ -149,8 +150,9 @@ export const Canh: React.FC<{
   // ===== KHÔNG GIAN 3D TỰ ĐỘNG: hình nằm trên bàn kính có bề dày / thẻ lơ lửng =====
   const kieu3D = moi ? phanLoai3D(sanKhau) : 'khong';
   // máy chỉ đổi góc ở mốc các bước của sân khấu (khớp lời giảng), góc do kịch bản chọn (goc_nhin) hoặc tự xoay vòng bộ góc
-  const mocDoi3D = kieu3D === 'nam' && sanKhau && tbCanh ? Array.from({length: Math.max(0, sanKhau.soBuoc - 1)}, (_, k) => Math.round(tbCanh(k + 2) * fps) + canh.leadFrame) : [];
+  const mocDoi3D = (kieu3D === 'nam' || kieu3D === 'dung') && sanKhau && tbCanh ? Array.from({length: Math.max(0, sanKhau.soBuoc - 1)}, (_, k) => Math.round(tbCanh(k + 2) * fps) + canh.leadFrame) : [];
   const gm = kieu3D === 'nam' ? gocMayNam(frame, canh.so, !giuTruoc, coHook || khungCuoi, mocDoi3D, canh.gocNhin || []) : null;
+  const gd = kieu3D === 'dung' ? gocMayDung(frame, canh.so, !giuTruoc, mocDoi3D) : null;
   const vatDung = gm && sanKhau ? sanKhau.vat.filter((v) => VAT_DUNG.includes(v.loai)).slice(0, 3) : [];
 
   // ===== BỘ HIỆU ỨNG MỚI: chữ 3 tầng, đập zoom, con dấu BẪY, lóe sáng đáp án =====
@@ -194,6 +196,7 @@ export const Canh: React.FC<{
         <NhoeHuong nx={ccSan.nx} ny={ccSan.ny} style={{position: 'absolute', left: 0, right: 0, top: yNoiDung, height: caoSan, display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: ccSan.mo, transform: `perspective(1600px) translate(${ccSan.x}px, ${ccSan.y}px) rotateY(${ccSan.ry}deg) scale(${ccSan.s})`}}>
           {moi && kieu3D !== 'nam' ? <QuyDao cx={540} cy={caoSan / 2} R={Math.min(caoSan, 1000) * 0.47} mau={mauNhan} mo={(giuTruoc ? 1 : kep((frame - 3) / 14)) * (1 - kep(sinN3d * 1.8))} /> : null}
           {!moi && pc.khungSanKhau !== false ? <KhungSan w={Math.min(1040, SK_W * tiLe + 40)} h={Math.min(caoSan - 6, SK_H * tiLe + 24)} p={(giuTruoc ? 1 : kep((frame - 3) / 14)) * (1 - kep(sinN3d * 1.8))} /> : null}
+          <CoChuSan.Provider value={Math.max(1, Math.min(1.5, 0.95 / tiLe))}>
           <div style={{width: SK_W, height: SK_H, transform: `scale(${tiLe})`, flexShrink: 0}}>
             {sanKhau && gm ? (
               <KhongGian3D.Provider value={{nam: true, doDay: 1, xoay: gm.xoay}}>
@@ -211,6 +214,12 @@ export const Canh: React.FC<{
                   );
                 })}
               </KhongGian3D.Provider>
+            ) : sanKhau && gd ? (
+              <KhongGian3D.Provider value={{nam: true, doDay: 1, xoay: 0, huong: gd.huong}}>
+                <HinhDung3D ry={gd.ry} rx={gd.rx} h={SK_H}>
+                  <SanKhau du={sanKhau} giayAm={giayAm} cau={canh.cau} />
+                </HinhDung3D>
+              </KhongGian3D.Provider>
             ) : sanKhau && kieu3D === 'the' ? (
               <The3D f={frame} vaoMoi={!giuTruoc} h={SK_H}>
                 <SanKhau du={sanKhau} giayAm={giayAm} cau={canh.cau} />
@@ -223,6 +232,7 @@ export const Canh: React.FC<{
               </div>
             ) : null}
           </div>
+          </CoChuSan.Provider>
         </NhoeHuong>
       ) : null}
 

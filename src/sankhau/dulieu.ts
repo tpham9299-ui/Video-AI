@@ -29,7 +29,7 @@ export type KieuHanhDong = (typeof KIEU_HANH_DONG)[number];
 
 export type Nhom = {mau: string; so: number};
 
-export const KIEU_NET = ['da_giac', 'duong', 'mui_ten', 'tron', 'cung', 'chu', 'svg', 'da_giac_deu', 'koch', 'sierpinski', 'tham_so', 'lap'] as const;
+export const KIEU_NET = ['da_giac', 'duong', 'mui_ten', 'tron', 'cung', 'chu', 'svg', 'da_giac_deu', 'koch', 'sierpinski', 'tham_so', 'lap', 'xep_chong'] as const;
 export type KieuNet = (typeof KIEU_NET)[number];
 // Một nét của hình tự do (tọa độ theo khung của vật, gốc trên-trái, y hướng xuống).
 export type PhanHinh = {
@@ -44,6 +44,7 @@ export type PhanHinh = {
   bieuX: string; bieuY: string; tTu: number; tDen: number; // đường cong tham số
   con: PhanHinh | null; soLan: number; dich: [number, number]; tiLe: number; tamXoay: [number, number]; // nhân bản
   noiDung: string; // chữ
+  hang: number[]; // xep_chong: số vật từng tầng từ trên xuống
   mau: string; to: string; doTo: number; net: number; dut: boolean; moNet: number;
   nhan: string; viTriNhan: [number, number] | null; coChu: number;
   buoc: number;
@@ -259,9 +260,16 @@ function netHinh(raw: Record<string, unknown>, khung: [number, number], dem: {di
     moNet: so(raw.mo, 1, 0.1, 1),
     nhan: chu(raw.nhan, 24),
     viTriNhan: laMang(raw.vi_tri_nhan) ? xy(raw.vi_tri_nhan, giua) : null,
-    coChu: so(raw.co_chu, 1, 0.5, 2),
+    coChu: so(raw.co_chu, 1, 0.85, 1.2), // mọi chữ trên hình gần như cùng cỡ (chống chữ lúc to lúc nhỏ)
+    hang: (() => {
+      if (laMang(raw.hang)) return raw.hang.slice(0, 60).map((x) => Math.round(so(x, 1, 1, 80)));
+      const tren = Math.round(so(raw.tren, 0, 0, 80)), duoi = Math.round(so(raw.duoi, 0, 0, 80)), b = Math.max(1, Math.round(so(raw.buoc_tang, 1, 1, 10)));
+      if (tren >= 1 && duoi >= tren) { const ds: number[] = []; for (let k = tren; k <= duoi && ds.length < 60; k += b) ds.push(k); return ds; }
+      return kieu === 'xep_chong' ? [3, 4, 5, 6] : [];
+    })(),
     buoc: Math.round(so(raw.buoc, 0, 0, 8)),
   };
+  if (kieu === 'xep_chong' && !h.to) h.to = 'co'; // chồng vật luôn tô kín
   if (kieu === 'lap') {
     if (sau > 0 || !laDT(raw.hinh)) return null;
     h.con = netHinh(raw.hinh, khung, dem, sau + 1);

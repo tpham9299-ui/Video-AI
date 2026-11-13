@@ -12,7 +12,7 @@ import {PhanHinh, Vat} from './dulieu';
 import {TrangThai} from './trangthai';
 import {GIAO_DIEN, laMoi} from '../theme';
 import {VongSong} from '../dong/DiemNhan';
-import {KhongGian3D, toiMau} from '../dong/KhongGian';
+import {CoChuSan, KhongGian3D, toiMau} from '../dong/KhongGian';
 
 type D = [number, number];
 const CAM = '#FF8A3D';
@@ -188,6 +188,39 @@ function dungNet(h: PhanHinh, muc: number): Net[] {
       }
       return [{d: dd(ds, false), kin: false, tam: tamCua(ds), ds}];
     }
+    case 'xep_chong': {
+      // CHỒNG VẬT XẾP TẦNG (ống, lon, khúc gỗ...): các tầng nằm ngang, vật trên nằm trong khe hai vật dưới (xếp tổ ong);
+      // nhiều tầng thì rút gọn như sách giáo khoa: 2 tầng trên cùng, dấu chấm dọc, 3 tầng dưới cùng.
+      const hang = h.hang.length ? h.hang : [3, 4, 5, 6];
+      const n = hang.length;
+      const hien: (number | null)[] = n > 7 ? [0, 1, null, n - 3, n - 2, n - 1] : hang.map((_, i) => i);
+      // tầng quá đông (vd 22 ống) thì vẽ RÚT GỌN như hình sách giáo khoa: tầng dưới cùng tối đa 10 vật, giữ đúng chênh lệch giữa các tầng
+      const veDem = (i: number) => {
+        const cuoi = hang[n - 1];
+        if (cuoi <= 10) return hang[i];
+        if (n > 7 && i <= 1) return Math.min(hang[i], 6);
+        return Math.max(1, 10 - (cuoi - hang[i]));
+      };
+      const maxDem = Math.max(...hien.filter((i): i is number => i !== null).map(veDem));
+      const rc = h.r / Math.max(1, maxDem);
+      const dy = rc * 1.732;
+      const khe = rc * 2.4; // chỗ của dấu chấm dọc
+      const cao = hien.reduce<number>((t, i, k) => (k === 0 ? 0 : t + (i === null || hien[k - 1] === null ? khe / 2 + dy / 2 : dy)), 0);
+      let y = h.tam[1] - cao / 2;
+      const ra: Net[] = [];
+      const vong = (cx: number, cy: number, r: number) => `M${(cx - r).toFixed(2)} ${cy.toFixed(2)}a${r.toFixed(2)} ${r.toFixed(2)} 0 1 0 ${(2 * r).toFixed(2)} 0a${r.toFixed(2)} ${r.toFixed(2)} 0 1 0 ${(-2 * r).toFixed(2)} 0Z`;
+      hien.forEach((i, k) => {
+        if (k > 0) y += i === null || hien[k - 1] === null ? khe / 2 + dy / 2 : dy;
+        if (i === null) {
+          ra.push({d: [-1, 0, 1].map((t) => vong(h.tam[0], y + t * rc * 0.55, rc * 0.16)).join(''), kin: true, tam: [h.tam[0], y]});
+          return;
+        }
+        const dem = veDem(i);
+        const x0 = h.tam[0] - (dem - 1) * rc;
+        ra.push({d: Array.from({length: dem}, (_, j) => vong(x0 + 2 * rc * j, y, rc * 0.94)).join(''), kin: true, tam: [h.tam[0], y]});
+      });
+      return ra;
+    }
     case 'lap': {
       if (!h.con) return [];
       const ra: Net[] = [];
@@ -223,6 +256,12 @@ export const HinhTuDo: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
   const nNet = v.hinh.length;
   const moi = laMoi();
   const kg = React.useContext(KhongGian3D);
+  const kc = React.useContext(CoChuSan);
+  // giữ nhãn/chữ nằm trong khung hình (không tràn mép, không bị cắt): ước lượng bề rộng theo số ký tự
+  const trongKhung = (x: number, chuoi: string, co: number) => {
+    const rong = Math.min(W, chuoi.replace(/\\[a-zA-Z]+|[{}_^$]/g, '').length * co * 0.56 + 24);
+    return Math.max(rong / 2 - 10, Math.min(W - rong / 2 + 10, x));
+  };
   const KHOI = 10; // số lớp đùn khối (hình tô màu nằm trên bàn 3D -> nổi thành khối có bề dày)
   // bộ hiệu ứng mới: nhiều chữ rời cùng một bước thì bật LẦN LƯỢT (0,3 giây/chữ) kèm vòng sóng, như các ga tàu hiện dần
   const treChu = new Map<number, number>();
@@ -260,11 +299,13 @@ export const HinhTuDo: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
             const nets = dungNet(h, muc);
             if (h.nhan) {
               const vt = h.viTriNhan || nets[0]?.tam || h.tam;
-              if (moi) nhan.push(<VongSong key={`vs${i}`} x={vt[0] * s} y={vt[1] * s} p={(t - bd - 0.5) / 0.9} mau={GIAO_DIEN.nhan} R={70} />);
+              const coN = 30 * h.coChu * kc;
+              const xN = trongKhung(vt[0] * s, h.nhan, coN);
+              if (moi) nhan.push(<VongSong key={`vs${i}`} x={xN} y={vt[1] * s} p={(t - bd - 0.5) / 0.9} mau={GIAO_DIEN.nhan} R={70} />);
               nhan.push(
-                <div key={`n${i}`} style={{position: 'absolute', left: vt[0] * s, top: vt[1] * s, transform: `translate(-50%,-50%) scale(${popOut(kep((t - bd - 0.5) / 0.35), 1.6)})`, opacity: kep((t - bd - 0.5) * 3) * (1 - 0.6 * lb),
+                <div key={`n${i}`} style={{position: 'absolute', left: xN, top: vt[1] * s, transform: `translate(-50%,-50%) scale(${popOut(kep((t - bd - 0.5) / 0.35), 1.6)})`, opacity: kep((t - bd - 0.5) * 3) * (1 - 0.6 * lb),
                   background: 'rgba(6,14,18,0.8)', border: `2px solid ${mau}66`, borderRadius: 10, padding: '2px 10px', whiteSpace: 'nowrap'}}>
-                  <Toan tex={h.nhan} size={30 * h.coChu} color={c ? mau : TRANG} />
+                  <Toan tex={h.nhan} size={coN} color={c ? mau : TRANG} />
                 </div>
               );
             }
@@ -272,15 +313,17 @@ export const HinhTuDo: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
             const moTo = kep((t - bd - 0.6) / 0.6) * (1 - 0.6 * lb);
             const khoi = kg.nam && (toMau ? moTo > 0.01 : p > 0) ? nets.flatMap((n, k) => (toMau && n.kin && n.mo === undefined ? Array.from({length: KHOI}, (_, j) => {
               const lop = KHOI - j; // vẽ từ lớp đáy lên
-              // hướng đùn luôn là "xuống" trên màn hình dù bàn đang xoay (bù góc xoay của bàn)
+              // hướng đùn: theo góc máy (hình nằm: luôn "xuống" màn hình dù bàn xoay; hình đứng: sang bên theo hướng xoay)
               const d = (lop * 3.2) / s;
               const g = (kg.xoay * Math.PI) / 180;
-              return <path key={`k${i}_${k}_${j}`} d={n.d} transform={`translate(${d * Math.sin(g)} ${d * Math.cos(g)})`} fill={toiMau(toMau, 0.32 + 0.25 * (j / KHOI))} fillOpacity={Math.min(0.95, 0.55 + (h.doTo || 0.28)) * moTo}
+              const hx = kg.huong ? kg.huong[0] : Math.sin(g), hy = kg.huong ? kg.huong[1] : Math.cos(g);
+              return <path key={`k${i}_${k}_${j}`} d={n.d} transform={`translate(${d * hx} ${d * hy})`} fill={toiMau(toMau, 0.32 + 0.25 * (j / KHOI))} fillOpacity={Math.min(0.95, 0.55 + (h.doTo || 0.28)) * moTo}
                 stroke={j === 0 ? toiMau(mau, 0.5) : 'none'} strokeWidth={j === 0 ? day * 0.8 : 0} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />;
             }) : n.mo === undefined && !h.dut ? Array.from({length: 4}, (_, j) => {
               const d = ((4 - j) * 3.2) / s;
               const g = (kg.xoay * Math.PI) / 180;
-              return <path key={`kn${i}_${k}_${j}`} d={n.d} transform={`translate(${d * Math.sin(g)} ${d * Math.cos(g)})`} fill="none" stroke={toiMau(mau, 0.3 + 0.08 * j)} strokeWidth={day} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" opacity={kep(p * 3)} />;
+              const hx = kg.huong ? kg.huong[0] : Math.sin(g), hy = kg.huong ? kg.huong[1] : Math.cos(g);
+              return <path key={`kn${i}_${k}_${j}`} d={n.d} transform={`translate(${d * hx} ${d * hy})`} fill="none" stroke={toiMau(mau, 0.3 + 0.08 * j)} strokeWidth={day} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" opacity={kep(p * 3)} />;
             }) : [])) : [];
             return (khoi as React.ReactNode[]).concat(nets.map((n, k) => (
               <path key={`${i}_${k}`} d={n.d} vectorEffect="non-scaling-stroke"
@@ -300,11 +343,13 @@ export const HinhTuDo: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
         const bd = (h.buoc > 0 && st.tb ? st.tb(h.buoc) - st.ta : 0.1 + i * 0.3) + (treChu.get(i) || 0);
         const a = kep((t - bd) / 0.35);
         const c = st.chon.get(i + 1);
+        const coC = 34 * h.coChu * kc;
+        const xC = trongKhung(h.tam[0] * s, h.noiDung, coC);
         return (
           <React.Fragment key={`c${i}`}>
-            {moi ? <VongSong x={h.tam[0] * s} y={h.tam[1] * s} p={(t - bd) / 0.9} mau={GIAO_DIEN.nhan} R={80} /> : null}
-            <div style={{position: 'absolute', left: h.tam[0] * s, top: h.tam[1] * s, transform: `translate(-50%,-50%) scale(${popOut(a, 1.6)})`, opacity: kep(a * 2)}}>
-              <Toan tex={h.noiDung} size={34 * h.coChu} color={c ? neon(c.mau, CAM) : h.mau ? neon(h.mau) : TRANG} />
+            {moi ? <VongSong x={xC} y={h.tam[1] * s} p={(t - bd) / 0.9} mau={GIAO_DIEN.nhan} R={80} /> : null}
+            <div style={{position: 'absolute', left: xC, top: h.tam[1] * s, transform: `translate(-50%,-50%) scale(${popOut(a, 1.6)})`, opacity: kep(a * 2), whiteSpace: 'nowrap'}}>
+              <Toan tex={h.noiDung} size={coC} color={c ? neon(c.mau, CAM) : h.mau ? neon(h.mau) : TRANG} />
             </div>
           </React.Fragment>
         );
