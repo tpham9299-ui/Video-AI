@@ -55,3 +55,15 @@ Chạy thử tay: Actions → Dựng video → Run workflow → chọn `kich_ban
 | Suốt video | **Đường tiến trình** mảnh có chấm + đốm sáng chạy; dữ kiện dạng HUD; vòng quỹ đạo chấm quay chậm quanh hình; con trỏ gõ phím thay bút chì |
 | Màu | **Một màu nhấn** = màu loại câu hỏi (giống ảnh bìa) |
 | Nhịp | Các bước của hình dời tới **đầu cụm lời gần nhất** để hình đổi đúng lúc giọng nhắc tới |
+
+## Không gian 3D tự động (học từ video "đếm tam giác" và "bí kíp Casio")
+Chỉ chạy khi bật bộ hiệu ứng mới. Không cần sửa kịch bản hay lời nhắc: hệ thống tự chọn theo loại vật trên sân khấu.
+
+| Loại cảnh | Cách dựng 3D |
+|---|---|
+| Có hình học / hình tự do / lưới ô | Hình **nằm trên bàn kính 3D có bề dày** và lưới mờ; máy quay **vào từ góc cao, lệch** rồi hạ xuống ~28°, sau đó **trôi xoay chậm** liên tục. Hình tô màu **đùn nổi thành khối** (bông tuyết thành hòn đảo dày). Vòng quỹ đạo chấm nằm trên mặt bàn |
+| Trên bàn có số đếm / danh sách / biểu đồ / đồ thị | Các vật đó **đứng thẳng** (dễ đọc) tại đúng chỗ của nó trên bàn |
+| Chỉ có danh sách / biểu đồ / đồ thị / số | **Thẻ lơ lửng**: lật xoay 3D vào, đung đưa nhẹ, có bóng dưới chân |
+| Cảnh đã dùng vật 3D riêng (bể nước, tòa nhà, xe...) hoặc góc 3D do kịch bản đặt | Giữ máy chiếu 3D sẵn có |
+| Suốt video | **Lưới sàn phối cảnh** trôi về phía người xem ở nửa dưới màn hình, quầng sáng chân trời màu nhấn |
+| Hook và đáp án | **Chữ chốt nổi khối 3D**, nghiêng phối cảnh đung đưa |
