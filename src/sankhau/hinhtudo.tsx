@@ -10,11 +10,51 @@ import {phanTichBieuThuc} from './bieuthuc';
 import {easeOut, kep, neon, popOut} from './donghieu';
 import {PhanHinh, Vat} from './dulieu';
 import {TrangThai} from './trangthai';
+import {GIAO_DIEN, laMoi} from '../theme';
+import {VongSong} from '../dong/DiemNhan';
 
 type D = [number, number];
 const CAM = '#FF8A3D';
 const TRANG = '#EAF2F4';
 const MAU_MAC = ['xanh_duong', 'xanh_la', 'cam', 'tim', 'hong', 'vang'];
+
+// điểm nằm ở tỉ lệ q (0..1) chiều dài của đường gấp khúc (khép kín thì tính cả cạnh cuối)
+function diemTheoTiLe(ds: D[], kin: boolean, q: number): D | null {
+  const pts = kin && ds.length > 2 ? [...ds, ds[0]] : ds;
+  if (pts.length < 2) return null;
+  let tong = 0;
+  const dai: number[] = [];
+  for (let i = 1; i < pts.length; i++) {
+    const l = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+    dai.push(l);
+    tong += l;
+  }
+  let con = kep(q) * tong;
+  for (let i = 0; i < dai.length; i++) {
+    if (con <= dai[i] || i === dai.length - 1) {
+      const u = dai[i] ? Math.min(1, con / dai[i]) : 0;
+      return [pts[i][0] + (pts[i + 1][0] - pts[i][0]) * u, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * u];
+    }
+    con -= dai[i];
+  }
+  return null;
+}
+
+// ĐẦU SAO CHỔI (bộ hiệu ứng mới): chấm sáng chạy ở mép nét đang vẽ, kéo theo đuôi mờ dần
+const SaoChoi: React.FC<{ds: D[]; kin: boolean; q: number; s: number; mau: string}> = ({ds, kin, q, s, mau}) => {
+  if (q <= 0.002 || q >= 0.995) return null;
+  const dau = diemTheoTiLe(ds, kin, q);
+  if (!dau) return null;
+  const mo = kep((1 - q) / 0.06);
+  const duoi = [0.012, 0.026, 0.044].map((d) => diemTheoTiLe(ds, kin, Math.max(0, q - d)));
+  return (
+    <g opacity={mo}>
+      {duoi.map((p, i) => (p ? <circle key={i} cx={p[0]} cy={p[1]} r={(7 - i * 1.8) / s} fill={mau} opacity={0.55 - i * 0.15} /> : null))}
+      <circle cx={dau[0]} cy={dau[1]} r={14 / s} fill={mau} opacity={0.35} style={{filter: `blur(${4 / s}px)`}} />
+      <circle cx={dau[0]} cy={dau[1]} r={6.5 / s} fill="#ffffff" style={{filter: `drop-shadow(0 0 ${6 / s}px ${mau})`}} />
+    </g>
+  );
+};
 
 export const KHUNG_HTD = {rong: 860, caoToiDa: 700};
 export function kichThuocHinhTuDo(v: Vat): {w: number; h: number} {
@@ -91,20 +131,22 @@ const daGiacDeu = (tam: D, r: number, n: number, xoay: number): D[] =>
   });
 
 // Chuyển một nét thành danh sách hình SVG đơn giản (đường dẫn d + có khép kín không), theo mức lặp hiện tại.
-type Net = {d: string; kin: boolean; tam: D; mo?: number};
+type Net = {d: string; kin: boolean; tam: D; mo?: number; ds?: D[]}; // ds: các điểm của nét (để đặt đầu sao chổi)
 function dungNet(h: PhanHinh, muc: number): Net[] {
   const dd = (ds: D[], kin: boolean): string => (ds.length ? 'M' + ds.map((p) => `${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join('L') + (kin ? 'Z' : '') : '');
   const tamCua = (ds: D[]): D => (ds.length ? [ds.reduce((s, p) => s + p[0], 0) / ds.length, ds.reduce((s, p) => s + p[1], 0) / ds.length] : h.tam);
   switch (h.kieu) {
     case 'da_giac':
-      return [{d: dd(h.diem, true), kin: true, tam: tamCua(h.diem)}];
+      return [{d: dd(h.diem, true), kin: true, tam: tamCua(h.diem), ds: h.diem}];
     case 'duong':
     case 'mui_ten':
-      return [{d: dd(h.diem, false), kin: false, tam: tamCua(h.diem)}];
+      return [{d: dd(h.diem, false), kin: false, tam: tamCua(h.diem), ds: h.diem}];
     case 'tron': {
       const [x, y] = h.tam;
       const r = h.r;
-      return [{d: `M${x - r} ${y}A${r} ${r} 0 1 0 ${x + r} ${y}A${r} ${r} 0 1 0 ${x - r} ${y}Z`, kin: true, tam: h.tam}];
+      // điểm vòng tròn theo đúng chiều vẽ của cung SVG (bắt đầu bên trái, đi ngược kim đồng hồ trên màn hình)
+      const ds = Array.from({length: 73}, (_, i) => [x - r * Math.cos((i / 72) * Math.PI * 2), y + r * Math.sin((i / 72) * Math.PI * 2)] as D);
+      return [{d: `M${x - r} ${y}A${r} ${r} 0 1 0 ${x + r} ${y}A${r} ${r} 0 1 0 ${x - r} ${y}Z`, kin: true, tam: h.tam, ds}];
     }
     case 'cung': {
       const [x, y] = h.tam;
@@ -117,12 +159,12 @@ function dungNet(h: PhanHinh, muc: number): Net[] {
       return [{d: h.d, kin: /z\s*$/i.test(h.d), tam: h.tam}];
     case 'da_giac_deu': {
       const ds = daGiacDeu(h.tam, h.r, h.soCanh, h.xoay);
-      return [{d: dd(ds, true), kin: true, tam: h.tam}];
+      return [{d: dd(ds, true), kin: true, tam: h.tam, ds}];
     }
     case 'koch': {
       const goc = h.diem.length >= 3 ? h.diem : daGiacDeu(h.tam, h.r, 3, h.xoay);
       const ds = koch(goc, Math.min(muc, h.lap));
-      return [{d: dd(ds, true), kin: true, tam: tamCua(goc)}];
+      return [{d: dd(ds, true), kin: true, tam: tamCua(goc), ds}];
     }
     case 'sierpinski': {
       const goc = h.diem.length >= 3 ? h.diem : daGiacDeu(h.tam, h.r, 3, h.xoay);
@@ -143,7 +185,7 @@ function dungNet(h: PhanHinh, muc: number): Net[] {
         const y = fy(t);
         if (isFinite(x) && isFinite(y)) ds.push([x, y]);
       }
-      return [{d: dd(ds, false), kin: false, tam: tamCua(ds)}];
+      return [{d: dd(ds, false), kin: false, tam: tamCua(ds), ds}];
     }
     case 'lap': {
       if (!h.con) return [];
@@ -161,7 +203,7 @@ function dungNet(h: PhanHinh, muc: number): Net[] {
             const q = bien([Number(x), Number(y)]);
             return `${c}${q[0].toFixed(2)} ${q[1].toFixed(2)}`;
           }) : n.d;
-          ra.push({d, kin: n.kin, tam: n.tam, mo: n.mo});
+          ra.push({d, kin: n.kin, tam: n.tam, mo: n.mo, ds: n.ds ? n.ds.map(bien) : undefined});
         });
       }
       return ra;
@@ -178,6 +220,18 @@ export const HinhTuDo: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
   const muc = isFinite(st.giaTri) ? st.giaTri : 99;
   const nhan: React.ReactNode[] = [];
   const nNet = v.hinh.length;
+  const moi = laMoi();
+  // bộ hiệu ứng mới: nhiều chữ rời cùng một bước thì bật LẦN LƯỢT (0,3 giây/chữ) kèm vòng sóng, như các ga tàu hiện dần
+  const treChu = new Map<number, number>();
+  if (moi) {
+    const dem = new Map<number, number>();
+    v.hinh.forEach((h, i) => {
+      if (h.kieu !== 'chu') return;
+      const k = dem.get(h.buoc) || 0;
+      treChu.set(i, k * 0.3);
+      dem.set(h.buoc, k + 1);
+    });
+  }
   return (
     <div style={{position: 'relative', width: W, height: H}}>
       {v.noiDung ? (
@@ -203,6 +257,7 @@ export const HinhTuDo: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
             const nets = dungNet(h, muc);
             if (h.nhan) {
               const vt = h.viTriNhan || nets[0]?.tam || h.tam;
+              if (moi) nhan.push(<VongSong key={`vs${i}`} x={vt[0] * s} y={vt[1] * s} p={(t - bd - 0.5) / 0.9} mau={GIAO_DIEN.nhan} R={70} />);
               nhan.push(
                 <div key={`n${i}`} style={{position: 'absolute', left: vt[0] * s, top: vt[1] * s, transform: `translate(-50%,-50%) scale(${popOut(kep((t - bd - 0.5) / 0.35), 1.6)})`, opacity: kep((t - bd - 0.5) * 3) * (1 - 0.6 * lb),
                   background: 'rgba(6,14,18,0.8)', border: `2px solid ${mau}66`, borderRadius: 10, padding: '2px 10px', whiteSpace: 'nowrap'}}>
@@ -211,7 +266,7 @@ export const HinhTuDo: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
               );
             }
             if (h.kieu === 'chu') return null;
-            return nets.map((n, k) => (
+            return (nets.map((n, k) => (
               <path key={`${i}_${k}`} d={n.d} vectorEffect="non-scaling-stroke"
                 fill={n.kin && toMau ? toMau : 'none'} fillOpacity={n.mo !== undefined ? 0 : (h.doTo || 0.28) * kep((t - bd - 0.6) / 0.6) * (1 - 0.6 * lb) + (c ? 0.15 * c.p : 0)}
                 stroke={n.mo !== undefined ? '#FF5C61' : mau} strokeWidth={day} strokeLinejoin="round" strokeLinecap="round" opacity={(n.mo !== undefined ? n.mo : 1) * (1 - 0.65 * lb) * (h.moNet ?? 1)}
@@ -219,20 +274,23 @@ export const HinhTuDo: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
                 markerEnd={h.kieu === 'mui_ten' ? `url(#mt_${v.id})` : undefined}
                 {...(h.dut || n.mo !== undefined ? {} : {pathLength: 1, strokeDasharray: 1, strokeDashoffset: 1 - easeOut(kep(p))})}
                 style={{filter: c || st.sang > 0 ? `drop-shadow(0 0 ${8 + 10 * st.sang}px ${mau})` : `drop-shadow(0 0 4px ${mau}88)`}} />
-            ));
+            )) as React.ReactNode[]).concat(moi && !h.dut ? nets.map((n, k) => (n.ds && n.mo === undefined ? <SaoChoi key={`sc${i}_${k}`} ds={n.ds} kin={n.kin} q={easeOut(kep(p))} s={s} mau={mau} /> : null)) : []);
           })}
         </g>
       </svg>
       {/* chữ rời (kieu "chu") */}
       {v.hinh.map((h, i) => {
         if (h.kieu !== 'chu') return null;
-        const bd = h.buoc > 0 && st.tb ? st.tb(h.buoc) - st.ta : 0.1 + i * 0.3;
+        const bd = (h.buoc > 0 && st.tb ? st.tb(h.buoc) - st.ta : 0.1 + i * 0.3) + (treChu.get(i) || 0);
         const a = kep((t - bd) / 0.35);
         const c = st.chon.get(i + 1);
         return (
-          <div key={`c${i}`} style={{position: 'absolute', left: h.tam[0] * s, top: h.tam[1] * s, transform: `translate(-50%,-50%) scale(${popOut(a, 1.6)})`, opacity: kep(a * 2)}}>
-            <Toan tex={h.noiDung} size={34 * h.coChu} color={c ? neon(c.mau, CAM) : h.mau ? neon(h.mau) : TRANG} />
-          </div>
+          <React.Fragment key={`c${i}`}>
+            {moi ? <VongSong x={h.tam[0] * s} y={h.tam[1] * s} p={(t - bd) / 0.9} mau={GIAO_DIEN.nhan} R={80} /> : null}
+            <div style={{position: 'absolute', left: h.tam[0] * s, top: h.tam[1] * s, transform: `translate(-50%,-50%) scale(${popOut(a, 1.6)})`, opacity: kep(a * 2)}}>
+              <Toan tex={h.noiDung} size={34 * h.coChu} color={c ? neon(c.mau, CAM) : h.mau ? neon(h.mau) : TRANG} />
+            </div>
+          </React.Fragment>
         );
       })}
       {nhan}

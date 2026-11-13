@@ -9,6 +9,7 @@ import {GIAY_QUAY, kichThuocVat, tinhCamera, tinhGoc3D, tinhTrangThai, tuXepSanK
 import {MuiTen, VE_VAT} from './vat';
 import {expoOut, NhoeHuong} from './chuyendong';
 import {Cam3D, chieu, Goc3D} from './chieu3d';
+import {laMoi} from '../theme';
 
 export const SK_W = 960;
 export const SK_H = 760;
@@ -18,6 +19,39 @@ export const taoMocBuoc = (soBuoc: number, giayAm: number) => {
   const S = Math.max(1, soBuoc);
   const span = Math.min(Math.max(0.9, giayAm * 0.8), S * 2.4);
   return (b: number) => (b <= 0 ? -100 : 0.12 + ((b - 1) * span) / S);
+};
+
+// Mốc bước KHỚP LỜI (bộ hiệu ứng mới): mỗi bước dời tới đầu cụm lời gần nhất (trong ±0,7 giây) để hình đổi đúng lúc giọng
+// đọc nhắc tới; các bước vẫn tăng dần và cách nhau ít nhất 0,35 giây.
+export const taoMocBuocLoi = (soBuoc: number, giayAm: number, cau: {text: string; bat: number; ket: number}[]) => {
+  const goc = taoMocBuoc(soBuoc, giayAm);
+  const neo: number[] = [];
+  cau.forEach((c) => {
+    const tu = c.text.split(/\s+/).filter(Boolean);
+    const tong = c.text.length || 1;
+    let t = c.bat;
+    let da = 0;
+    // đầu mỗi cụm ~4 từ trong câu (tính theo số ký tự, như phụ đề)
+    tu.forEach((w, i) => {
+      if (i % 4 === 0) neo.push(c.bat + (da / tong) * (c.ket - c.bat));
+      da += w.length + 1;
+    });
+    neo.push(t);
+  });
+  const S = Math.max(1, soBuoc);
+  const moc: number[] = [];
+  for (let b = 1; b <= S; b++) {
+    const g = goc(b);
+    let tot = g;
+    if (b > 1 && neo.length) {
+      let gan = 1e9;
+      for (const n of neo) if (Math.abs(n - g) < Math.abs(gan - g)) gan = n;
+      if (Math.abs(gan - g) <= 0.7) tot = gan + 0.05;
+    }
+    if (moc.length) tot = Math.max(tot, moc[moc.length - 1] + 0.35);
+    moc.push(tot);
+  }
+  return (b: number) => (b <= 0 ? -100 : b <= S ? moc[b - 1] : goc(b));
 };
 
 const AM_QUAY: Record<string, string> = {xuc_xac: 'lac', dong_xu: 'xu', vong_quay: 'quay', dong_ho: 'tich', hop_qua: 'mo', cua: 'cua', the_bai: 'lat'};
@@ -57,11 +91,11 @@ const San3D: React.FC<{cam: Cam3D; mo: number}> = ({cam, mo}) => {
   );
 };
 
-export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boolean}> = ({du, giayAm, amThanh = true}) => {
+export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boolean; cau?: {text: string; bat: number; ket: number}[]}> = ({du, giayAm, amThanh = true, cau}) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
   const t = frame / fps;
-  const tb = taoMocBuoc(du.soBuoc, giayAm);
+  const tb = laMoi() && cau && cau.length ? taoMocBuocLoi(du.soBuoc, giayAm, cau) : taoMocBuoc(du.soBuoc, giayAm);
   // tự xếp chống chồng lấn (đề đa dạng, AI đặt tọa độ chưa khéo vẫn không đè lên nhau)
   const vatXep = React.useMemo(() => tuXepSanKhau(du.vat, SK_W, SK_H), [du]);
   const cam = tinhCamera(du.hanhDong, vatXep, t, tb, SK_W, SK_H);

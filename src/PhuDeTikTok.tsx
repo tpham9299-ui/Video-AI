@@ -27,7 +27,7 @@ function chiaCum(cau: Cau[], toiDa: number): Cum[] {
   return kq;
 }
 
-export const PhuDeTikTok: React.FC<{cau: Cau[]; t: number; co?: number; kieu?: string; mauHop?: string}> = ({cau, t, co = 60, kieu = 'hop', mauHop = '#FF6B2C'}) => {
+export const PhuDeTikTok: React.FC<{cau: Cau[]; t: number; co?: number; kieu?: string; mauHop?: string; chuHop?: string}> = ({cau, t, co = 60, kieu = 'hop', mauHop = '#FF6B2C', chuHop = '#ffffff'}) => {
   const hop = kieu !== 'mau';
   const cum = chiaCum(cau, hop ? 5 : 6);
   let idx = -1;
@@ -55,7 +55,7 @@ export const PhuDeTikTok: React.FC<{cau: Cau[]; t: number; co?: number; kieu?: s
             {hop && o > 0 ? (
               <span style={{position: 'absolute', inset: `${coChu * 0.02}px 0`, borderRadius: coChu * 0.18, background: mauHop, transform: `scale(${0.6 + 0.4 * popOut(o, 2.2)})`, opacity: o, boxShadow: `0 6px 18px ${mauHop}66`}} />
             ) : null}
-            <span style={{position: 'relative', WebkitTextStroke: hop && o > 0.5 ? '0px' : `${coChu * 0.09}px #000`, paintOrder: 'stroke fill', textShadow: o > 0.5 ? '0 2px 0 rgba(0,0,0,0.35)' : BONG_CHU}}>{w}</span>
+            <span style={{position: 'relative', color: hop && o > 0.5 ? chuHop : undefined, WebkitTextStroke: hop && o > 0.5 ? '0px' : `${coChu * 0.09}px #000`, paintOrder: 'stroke fill', textShadow: o > 0.5 ? (chuHop === '#ffffff' ? '0 2px 0 rgba(0,0,0,0.35)' : 'none') : BONG_CHU}}>{w}</span>
           </span>
         );
       })}

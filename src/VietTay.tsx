@@ -13,13 +13,18 @@ export const ButChi: React.FC<{co?: number}> = ({co = 64}) => (
   </svg>
 );
 
-export const VietTay: React.FC<{p: number; children: React.ReactNode; but?: boolean}> = ({p, children, but = true}) => {
+export const VietTay: React.FC<{p: number; children: React.ReactNode; but?: boolean; conTro?: string; tho?: number}> = ({p, children, but = true, conTro, tho}) => {
+  const pc = tho ?? p; // tiến độ chưa kẹp (để con trỏ tắt hẳn sau khi viết xong)
   const w = kep(p) * 100;
   const nhac = kep((p - 1) / 0.25 + 1) >= 1 ? kep((p - 0.92) / 0.08) : 0; // bút nhấc lên cuối nét
   return (
     <span style={{position: 'relative', display: 'inline-block'}}>
       <span style={{display: 'inline-block', clipPath: p >= 1 ? undefined : `inset(-30% ${100 - w}% -30% -12%)`}}>{children}</span>
-      {but && p > 0 && p < 1 ? (
+      {/* bộ hiệu ứng mới: con trỏ gõ phím màu nhấn chạy theo mép chữ (thay bút chì) */}
+      {conTro && pc > 0 && pc < 1.4 ? (
+        <span style={{position: 'absolute', left: `${Math.min(100, w)}%`, top: '8%', bottom: '8%', width: 6, marginLeft: 4, borderRadius: 3, background: conTro, boxShadow: `0 0 12px ${conTro}`, opacity: pc < 1 ? 1 : kep((1.4 - pc) / 0.4) * (Math.floor(pc * 8) % 2 ? 0.25 : 1)}} />
+      ) : null}
+      {but && !conTro && p > 0 && p < 1 ? (
         <span style={{position: 'absolute', left: `${w}%`, bottom: '-18%', transform: `translate(-18%, ${-nhac * 30}px)`, opacity: 1 - nhac, pointerEvents: 'none'}}>
           <ButChi />
         </span>

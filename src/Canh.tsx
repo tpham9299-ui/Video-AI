@@ -11,11 +11,13 @@ import {PhuDeTikTok} from './PhuDeTikTok';
 import {kep} from './sankhau/donghieu';
 import {KIEU_CHUYEN, NhoeHuong, trangThaiChuyen} from './sankhau/chuyendong';
 import {DuLieuSanKhau, hopLeSanKhau, noiTiepSanKhau} from './sankhau/dulieu';
-import {SanKhau, SK_H, SK_W, taoMocBuoc} from './sankhau/SanKhau';
+import {SanKhau, SK_H, SK_W, taoMocBuoc, taoMocBuocLoi} from './sankhau/SanKhau';
+import {ChuBaTang, nhipBaTang, tachBaTang} from './dong/ChuBaTang';
+import {cuaTron, DauBay, DiaCuaTron, LoeSang, mayQuay, QuyDao, SuKienMay, VienCuaTron} from './dong/DiemNhan';
 import {tinhGoc3D} from './sankhau/trangthai';
 import {nhanCanh, TieuDeCanh} from './TieuDeCanh';
 import {phaCua, ThanhBuoc} from './ThanhBuoc';
-import {FONT, MAU} from './theme';
+import {chuTrenMau, FONT, GIAO_DIEN, laMoi, MAU} from './theme';
 import {Toan} from './Toan';
 import {VietTay} from './VietTay';
 import {CanhProps, PhongCach} from './types';
@@ -130,25 +132,60 @@ export const Canh: React.FC<{
   // chuyển cảnh THEO MẠCH BÀI: cùng một bước (ví dụ hai cảnh tính liên tiếp) thì hòa tan mềm; sang bước mới thì trôi lên nhẹ;
   // cái bẫy / đáp án mới phóng xuyên để tạo kịch tính. Không còn xoay vòng 4 kiểu bất kể nội dung (gây giật, khó chịu).
   const doiPha = laMoDau || phaCua(canh.loai) !== phaTruoc;
+  const moi = laMoi();
+  const mauNhan = GIAO_DIEN.nhan;
   const kieuTuDong = /bay|dap_an|ket_qua/i.test(canh.loai) ? 'phong' : doiPha ? 'truot_len' : 'mo';
-  const kieuCC = canh.chuyenCanh && (KIEU_CHUYEN as readonly string[]).includes(canh.chuyenCanh) ? canh.chuyenCanh : kieuTuDong;
+  const coCuaTron = moi && /diem_chot|y_tuong/i.test(canh.loai) && !giuTruoc;
+  const kieuCC = coCuaTron ? 'mo' : canh.chuyenCanh && (KIEU_CHUYEN as readonly string[]).includes(canh.chuyenCanh) ? canh.chuyenCanh : kieuTuDong;
   const ccSan = trangThaiChuyen(kieuCC, frame, ketThuc, giuTruoc, giuSau);
   // độ nghiêng 3D hiện tại của sân khấu: khung chữ nhật mờ dần khi camera nghiêng để không gian 3D phủ toàn khung
-  const g3c = sanKhau ? tinhGoc3D(sanKhau.gocDau, sanKhau.hanhDong, t, taoMocBuoc(sanKhau.soBuoc, giayAm)) : {nghieng: 0, xoay: 0};
+  const tbCanh = sanKhau ? (moi ? taoMocBuocLoi(sanKhau.soBuoc, giayAm, canh.cau) : taoMocBuoc(sanKhau.soBuoc, giayAm)) : null;
+  const g3c = sanKhau && tbCanh ? tinhGoc3D(sanKhau.gocDau, sanKhau.hanhDong, t, tbCanh) : {nghieng: 0, xoay: 0};
   const sinN3d = Math.sin((g3c.nghieng * Math.PI) / 180) + Math.min(0.5, Math.abs(g3c.xoay) / 60);
   const ccCT = trangThaiChuyen(kieuCC, frame - 4, ketThuc - 4);
   const tieuDeCanh = canh.tieuDeCanh;
+
+  // ===== BỘ HIỆU ỨNG MỚI: chữ 3 tầng, đập zoom, con dấu BẪY, lóe sáng đáp án =====
+  const baTang = coHook ? tachBaTang(hook.chu, hook.nhanManh) : tachBaTang(tieuDeCanh || (laMoDau ? tieuDe : ''), canh.tuKhoa);
+  const suKien: SuKienMay[] = [];
+  let fDau = -1; // khung hình đóng dấu BẪY
+  let loe: {f: number; x: number; y: number} | null = null;
+  if (moi) {
+    if (coHook && baTang.chot) suKien.push({f: canh.leadFrame + nhipBaTang(baTang.dan, baTang.chot).xongChot - 6, kieu: 'dap', manh: 1.1});
+    if (/bay/i.test(canh.loai)) {
+      const h = sanKhau && tbCanh ? sanKhau.hanhDong.find((x) => (x.kieu === 'loai_bo' || x.kieu === 'rung') && x.buoc > 0) : undefined;
+      fDau = Math.round((h && tbCanh ? tbCanh(h.buoc) : giayAm * 0.55) * fps) + canh.leadFrame;
+      suKien.push({f: fDau + 2, kieu: 'rung'}, {f: fDau, kieu: 'dap', manh: 0.6});
+    }
+    if (khungCuoi) {
+      const sd = sanKhau ? sanKhau.vat.find((v) => v.loai === 'so_dem') : undefined;
+      if (sd && tbCanh) {
+        const x = 540 + ((sd.x / 100) * SK_W - SK_W / 2) * tiLe;
+        const y = yNoiDung + caoSan / 2 + ((sd.y / 100) * SK_H - SK_H / 2) * tiLe;
+        loe = {f: Math.round((tbCanh(sd.buoc) + 1.25) * fps) + canh.leadFrame, x, y};
+      } else if (hienCongThuc && nDong) {
+        loe = {f: Math.round((thoiDiemDong[nDong - 1] + 0.7) * fps), x: 540, y: coHinh ? yNoiDung + caoSan + 16 + caoCT / 2 : 960};
+      }
+      if (loe) suKien.push({f: loe.f, kieu: 'dap', manh: 1});
+    }
+  }
+  const may = moi ? mayQuay(frame, ketThuc, suKien, /bai_hoc|ket_luan/i.test(canh.loai)) : {s: 1, x: 0, y: 0};
+  const goc_y = coHinh ? yNoiDung + caoSan / 2 : 960;
+  const iris = coCuaTron ? cuaTron(frame) : {p: 1};
   const nhan = coHook ? (NHAN_HOOK[hook.kieu] || '').replace(/^[^A-Za-zÀ-ỹ]+/, '') : nhanCanh(canh.loai, canh.nhan);
 
   return (
-    <div style={{position: 'absolute', inset: 0, fontFamily: FONT}}>
+    <>
+    {coCuaTron ? <DiaCuaTron f={frame} /> : null}
+    <div style={{position: 'absolute', inset: 0, fontFamily: FONT, transformOrigin: `540px ${goc_y}px`, transform: moi ? `translate(${may.x}px, ${may.y}px) scale(${may.s})` : undefined}}>
       {/* Sân khấu */}
       {coHinh ? (
         <NhoeHuong nx={ccSan.nx} ny={ccSan.ny} style={{position: 'absolute', left: 0, right: 0, top: yNoiDung, height: caoSan, display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: ccSan.mo, transform: `perspective(1600px) translate(${ccSan.x}px, ${ccSan.y}px) rotateY(${ccSan.ry}deg) scale(${ccSan.s})`}}>
-          {pc.khungSanKhau !== false ? <KhungSan w={Math.min(1040, SK_W * tiLe + 40)} h={Math.min(caoSan - 6, SK_H * tiLe + 24)} p={(giuTruoc ? 1 : kep((frame - 3) / 14)) * (1 - kep(sinN3d * 1.8))} /> : null}
+          {moi ? <QuyDao cx={540} cy={caoSan / 2} R={Math.min(caoSan, 1000) * 0.47} mau={mauNhan} mo={(giuTruoc ? 1 : kep((frame - 3) / 14)) * (1 - kep(sinN3d * 1.8))} /> : null}
+          {!moi && pc.khungSanKhau !== false ? <KhungSan w={Math.min(1040, SK_W * tiLe + 40)} h={Math.min(caoSan - 6, SK_H * tiLe + 24)} p={(giuTruoc ? 1 : kep((frame - 3) / 14)) * (1 - kep(sinN3d * 1.8))} /> : null}
           <div style={{width: SK_W, height: SK_H, transform: `scale(${tiLe})`, flexShrink: 0}}>
             {sanKhau ? (
-              <SanKhau du={sanKhau} giayAm={giayAm} />
+              <SanKhau du={sanKhau} giayAm={giayAm} cau={moi ? canh.cau : undefined} />
             ) : kieu ? (
               <div style={{width: 960, height: 640, marginTop: (SK_H - 640) / 2}}>
                 <MinhHoa kieu={kieu} mh={canh.minhHoa} giayAm={giayAm} />
@@ -177,7 +214,7 @@ export const Canh: React.FC<{
                 const p = t < bd ? 0 : kep((t - bd) / dai);
                 return (
                   <div key={i} style={{opacity: p > 0 ? 1 : 0, maxWidth: 960, textAlign: 'center', padding: '2px 16px'}}>
-                    <VietTay p={p} but={pc.butChi !== false}>
+                    <VietTay p={p} but={!moi && pc.butChi !== false} conTro={moi ? mauNhan : undefined} tho={t < bd ? 0 : (t - bd) / dai}>
                       <Toan tex={d} size={Math.min(coCT * 1.08, coChuCongThuc(d, lonHon))} maxWidth={900} color={laChuThuong(d) ? '#ffffff' : MAU.vang} />
                     </VietTay>
                   </div>
@@ -189,8 +226,10 @@ export const Canh: React.FC<{
       </NhoeHuong>
 
       {/* Đầu cảnh: nhãn + tiêu đề (hoặc câu hook ở cảnh 1) */}
-      <div style={{position: 'absolute', left: 50, right: 50, top: Y_DAU, height: Y_SAN - Y_DAU - 10, display: 'flex', flexDirection: 'column', justifyContent: 'center', opacity: ra, filter: nhoeVao > 0.3 ? `blur(${nhoeVao}px)` : undefined}}>
-        {coHook ? (
+      <div style={{position: 'absolute', left: 40, right: 40, top: moi ? (coHook ? 200 : 250) : Y_DAU, height: Y_SAN - (moi ? (coHook ? 200 : 250) : Y_DAU) - (moi ? 4 : 10), display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: moi ? 'center' : undefined, opacity: ra, filter: nhoeVao > 0.3 ? `blur(${nhoeVao}px)` : undefined}}>
+        {moi ? (
+          <ChuBaTang dan={baTang.dan} chot={baTang.chot} duoi={baTang.duoi} mau={mauNhan} tre={coHook ? canh.leadFrame : 0} coToiDa={coHook ? 128 : 102} />
+        ) : coHook ? (
           <>
             {nhan ? <TieuDeCanh nhan={nhan} chu="" tuKhoa="" /> : null}
             <HookChu chu={hook.chu} nhanManh={hook.nhanManh} kieu={hook.kieu} lead={canh.leadFrame} />
@@ -204,7 +243,7 @@ export const Canh: React.FC<{
       {/* Phụ đề */}
       {pc.phuDe ? (
         <div style={{position: 'absolute', left: 60, right: 60, top: Y_PHU_DE, height: 150, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: frame > canh.soFrame - 2 ? ra : 1}}>
-          {pc.kieuNen !== 'luoi' && pc.kieuNen !== 'luoi_phang' && pc.kieuNen !== 'gradient' ? <PhuDeTikTok cau={canh.cau} t={t} kieu={pc.kieuPhuDe} mauHop={pc.mauPhuDe} /> : <PhuDe cau={canh.cau} t={t} co={42} />}
+          {pc.kieuNen !== 'luoi' && pc.kieuNen !== 'luoi_phang' && pc.kieuNen !== 'gradient' ? <PhuDeTikTok cau={canh.cau} t={t} kieu={pc.kieuPhuDe} mauHop={moi ? mauNhan : pc.mauPhuDe} chuHop={moi ? chuTrenMau(mauNhan) : '#ffffff'} /> : <PhuDe cau={canh.cau} t={t} co={42} />}
         </div>
       ) : null}
 
@@ -238,6 +277,26 @@ export const Canh: React.FC<{
           <Audio src={staticFile(canh.audio)} volume={1} />
         </Sequence>
       ) : null}
+      {/* con dấu BẪY! đóng lên sân khấu (rung theo máy quay) */}
+      {fDau >= 0 && frame >= fDau ? (
+        <div style={{position: 'absolute', left: 540 + 150, top: yNoiDung + Math.min(caoSan * 0.26, 220), opacity: ra}}>
+          <DauBay f={frame - fDau} />
+        </div>
+      ) : null}
     </div>
+    {coCuaTron ? <VienCuaTron p={iris.p} mau={mauNhan} /> : null}
+    {loe ? <LoeSang f={frame - loe.f} x={loe.x} y={loe.y} mau={mauNhan} /> : null}
+    {fDau >= 0 ? (
+      <Sequence from={fDau} durationInFrames={50} layout="none">
+        <Audio src={staticFile('sfx/sai.wav')} volume={0.3} />
+        <Audio src={staticFile('sfx/boom.wav')} volume={0.22} />
+      </Sequence>
+    ) : null}
+    {loe ? (
+      <Sequence from={loe.f} durationInFrames={60} layout="none">
+        <Audio src={staticFile('sfx/ting.wav')} volume={0.35} />
+      </Sequence>
+    ) : null}
+    </>
   );
 };

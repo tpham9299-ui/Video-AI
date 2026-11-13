@@ -48,6 +48,7 @@ export type PhongCach = {
   soNenToiDa?: number; // số nền tối đa dùng trong một video (đổi theo nhóm cảnh)
   lopNeonTrenNen?: boolean; // phủ lưới mờ + đốm sáng neon lên nền của bạn cho đồng bộ phong cách
   phuDe: boolean;
+  chuyenDong?: string; // 'moi' = bộ hiệu ứng mới (chữ 3 tầng, máy quay sống, vòng sóng, dấu BẪY, lóe sáng đáp án) | 'cu'
   mau: Record<string, string>; // ghi đè bảng màu (vang, lam, hong, xanh, nen1, nen2)
 };
 

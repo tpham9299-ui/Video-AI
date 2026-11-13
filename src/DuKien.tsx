@@ -7,10 +7,28 @@ import {Toan} from './Toan';
 
 // THẺ DỮ KIỆN: 2-4 dữ kiện then chốt của đề ("V = 32 m³", "Không nắp"...) nằm thành hàng thẻ kính nhỏ ngay dưới thanh chủ đề
 // suốt phần giải, để người xem lướt vào giữa video vẫn biết đề đang hỏi gì. Thẻ bật lên lần lượt, thở nhẹ; ẩn ở cảnh bài học.
-export const DuKien: React.FC<{ds: string[]; tu: number; den: number}> = ({ds, tu, den}) => {
+export const DuKien: React.FC<{ds: string[]; tu: number; den: number; hud?: string}> = ({ds, tu, den, hud}) => {
   const f = useCurrentFrame();
   if (!ds.length || f < tu - 2 || f > den + 12) return null;
   const mo = kep((den + 12 - f) / 12);
+  if (hud) {
+    // bộ hiệu ứng mới: một dòng HUD mảnh (không khung), các dữ kiện cách nhau bằng chấm màu nhấn, hiện từ mờ sang nét
+    return (
+      <div style={{position: 'absolute', left: 30, right: 30, top: 210, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 18, opacity: mo * 0.92, pointerEvents: 'none'}}>
+        {ds.map((d, i) => {
+          const e = expoOut(kep((f - tu - i * 5) / 12));
+          const laToan = /[\\^_=]/.test(d);
+          const tex = laToan ? d.split(/\s+/).map((w) => (/[\\^_=0-9]/.test(w) || w.length <= 1 ? w : `\\text{${w}}`)).join('\\ ') : d;
+          return (
+            <div key={i} style={{display: 'flex', alignItems: 'center', gap: 10, opacity: e, filter: e < 0.98 ? `blur(${(1 - e) * 6}px)` : undefined, whiteSpace: 'nowrap'}}>
+              {i ? <span style={{width: 6, height: 6, borderRadius: 3, background: hud, boxShadow: `0 0 8px ${hud}`, marginRight: 8}} /> : null}
+              {laToan ? <Toan tex={tex} size={25} color="rgba(234,242,244,0.85)" /> : <span style={{fontFamily: FONT_DAM, fontWeight: 700, fontSize: 23, letterSpacing: 1.5, color: 'rgba(234,242,244,0.85)', textTransform: 'uppercase'}}>{d}</span>}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
   return (
     <div style={{position: 'absolute', left: 30, right: 30, top: 172, display: 'flex', justifyContent: 'center', gap: 12, opacity: mo, pointerEvents: 'none'}}>
       {ds.map((d, i) => {

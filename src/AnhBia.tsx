@@ -10,9 +10,8 @@ import {Video} from './Video';
 //  - giữa: ô kính viền neon chứa hình minh họa thật của đề (bông tuyết, bể nước, đồ thị...);
 //  - trên: logo kênh, LỚP, LOẠI CÂU HỎI (mỗi loại một màu), TẬP; tiêu đề chữ khối cực lớn, từ khóa nằm trên nền màu của loại;
 //  - dưới: câu mời gọi theo loại câu hỏi + "ĐÁP ÁN: ?".
-export const MAU_LOAI: Record<string, string> = {
-  'Xác suất': '#B79CFF', 'Hình học': '#4FC3F7', 'Tối ưu': '#3BF29A', 'Toán tiền bạc': '#FFD24A', 'Đo đạc': '#FF7EB6', 'Toán đi chợ': '#FF8A3D', 'Toán thực tế': '#3BF2D0',
-};
+export {MAU_LOAI} from './theme';
+import {MAU_LOAI} from './theme';
 const LOI_MOI: Record<string, string> = {
   'Xác suất': 'BẠN ĐOÁN ĐÚNG KHÔNG?', 'Hình học': 'NHÌN HÌNH LÀ HIỂU', 'Tối ưu': 'CÁCH TIẾT KIỆM NHẤT?', 'Toán tiền bạc': 'TÍNH TIỀN CHO ĐÚNG', 'Đo đạc': 'ĐO MÀ KHÔNG CẦN THƯỚC',
   'Toán đi chợ': 'MUA SAO CHO LỜI?', 'Toán thực tế': 'GIẢI TRONG 60 GIÂY',

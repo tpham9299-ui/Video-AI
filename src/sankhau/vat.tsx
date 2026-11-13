@@ -1,7 +1,8 @@
 // Thư viện VẬT THẬT cho sân khấu, phong cách neon như video mẫu: viền phát sáng trên nền tối, bật lên có độ nảy,
 // mỗi vật có chuyển động riêng (xúc xắc lăn, đồng xu lật, vòng quay quay, hộp quà mở, kim đồng hồ đo xác suất chạy...).
 import React from 'react';
-import {FONT, FONT_DAM, BONG_CHU, vienChu} from '../theme';
+import {FONT, FONT_DAM, BONG_CHU, vienChu, laMoi} from '../theme';
+import {GachTay} from '../dong/DiemNhan';
 import {Toan} from '../Toan';
 import {bamChuoi, easeInOut, easeOut, kep, lerp, nay, NEN_VAT, NEN_VAT_2, neon, ngauNhien, popOut, tienDo, VONG_MAU} from './donghieu';
 import {Vat} from './dulieu';
@@ -801,7 +802,11 @@ const DanhSach: Ve = (v, st) => {
           <div key={k} style={{position: 'relative', display: 'flex', alignItems: 'center', gap: 16, padding: `${10 * v.co}px ${12 * v.co}px`, borderRadius: 14, marginBottom: 6, overflow: 'hidden', opacity: kep(a * 2) * (1 - 0.55 * l), transform: `translateX(${(1 - a) * -60}px)`}}>
             <div style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: `${quet * 100}%`, background: c ? (c.mau === 'xanh_la' ? '#B9F6CA' : '#FFE27A') : 'transparent', borderRadius: 14}} />
             <div style={{position: 'relative', flexShrink: 0, width: 46 * v.co, height: 46 * v.co, borderRadius: '50%', background: '#F7C531', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 26 * v.co, color: '#2a1d00'}}>{k + 1}</div>
-            <div style={{position: 'relative', fontWeight: 800, fontSize: 34 * v.co, textDecoration: l > 0.5 ? 'line-through' : 'none', textDecorationColor: '#FF5C61', textDecorationThickness: 4}}>{d}</div>
+            <div style={{position: 'relative', fontWeight: 800, fontSize: 34 * v.co, textDecoration: l > 0.5 && !laMoi() ? 'line-through' : 'none', textDecorationColor: '#FF5C61', textDecorationThickness: 4}}>
+              {d}
+              {/* bộ hiệu ứng mới: nét gạch đỏ viết tay vẽ dần đè lên dòng sai */}
+              {laMoi() && l > 0 ? <span style={{position: 'absolute', left: -8, right: -8, top: '18%', bottom: '18%'}}><GachTay w={0} h={0} p={l} /></span> : null}
+            </div>
             {c ? <DauTich p={c.p} mau="#16C784" co={40} style={{right: 10, top: '50%', marginTop: -20}} /> : null}
           </div>
         );

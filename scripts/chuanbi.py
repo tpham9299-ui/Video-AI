@@ -318,7 +318,7 @@ def doc_phong_cach(tep):
                 if k in d:
                     pc[k] = d[k]
             co_dinh = str(d.get("nen_co_dinh") or "").strip()
-            for k in ("soNenToiDa", "lopNeonTrenNen", "kieuPhuDe", "mauPhuDe", "lopQuet", "butChi", "thanhBuoc", "tieuDeInHoa", "khungSanKhau", "loiMoiGiuaVideo"):
+            for k in ("soNenToiDa", "lopNeonTrenNen", "kieuPhuDe", "mauPhuDe", "lopQuet", "butChi", "thanhBuoc", "tieuDeInHoa", "khungSanKhau", "loiMoiGiuaVideo", "chuyenDong"):
                 if k in d:
                     pc[k] = d[k]
             if isinstance(d.get("thuongHieu"), dict):
@@ -688,6 +688,11 @@ def main():
         nhac = tron_nhac_theo_canh(args.public, id_an_toan, canh, canh_props) or nhac
     hook_chu = str(kb.get("hook_chu") or kb.get("hook") or "").strip()
     pc, nen_co_dinh, th = doc_phong_cach(args.phong_cach)
+    # bộ hiệu ứng chuyển động: "moi" (chữ 3 tầng, máy quay sống, vòng sóng, dấu BẪY, lóe sáng đáp án) | "cu"
+    # ưu tiên: biến môi trường KIEU_CHUYEN_DONG (chạy thử tay trên GitHub) > kịch bản "kieu_chuyen_dong" > phong_cach.json
+    kieu_cd = (os.environ.get("KIEU_CHUYEN_DONG") or str(kb.get("kieu_chuyen_dong") or "")).strip()
+    if kieu_cd in ("moi", "cu"):
+        pc["chuyenDong"] = kieu_cd
     ds_nen = chon_nen(args.public, id_an_toan, nen_co_dinh, pc.get("soNenToiDa", 3))
     thuong_hieu, outro = tim_thuong_hieu(args.public, th)
     bai_hoc = [str(x).strip()[:90] for x in (kb.get("bai_hoc_rut_ra") or []) if str(x).strip()][:3]

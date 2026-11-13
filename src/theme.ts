@@ -43,7 +43,20 @@ export const KHAI_BAO_PHONG: KhaiBaoPhong[] = [
 export const FONT_SERIF = '"VietSerif", "Liberation Serif", "DejaVu Serif", serif';
 
 // Giao diện hiện hành (đặt từ phong_cach.json ở Video.tsx): kiểu công thức và kiểu hình.
-export const GIAO_DIEN = {kieuToan: 'latex', kieuHinh: 'manim'};
+export const GIAO_DIEN = {kieuToan: 'latex', kieuHinh: 'manim', chuyenDong: 'cu', nhan: '#3BF2D0'};
+// màu của từng LOẠI CÂU HỎI (ảnh bìa + màu nhấn duy nhất của video ở bộ hiệu ứng mới)
+export const MAU_LOAI: Record<string, string> = {
+  'Xác suất': '#B79CFF', 'Hình học': '#4FC3F7', 'Tối ưu': '#3BF29A', 'Toán tiền bạc': '#FFD24A', 'Đo đạc': '#FF7EB6', 'Toán đi chợ': '#FF8A3D', 'Toán thực tế': '#3BF2D0',
+};
+export const laMoi = () => GIAO_DIEN.chuyenDong === 'moi';
+// chữ trên nền màu nhấn: màu sáng -> chữ tối
+export const chuTrenMau = (hex: string) => {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+  if (!m) return '#fff';
+  const n = parseInt(m[1], 16);
+  const l = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+  return l > 0.55 ? '#06201C' : '#ffffff';
+};
 
 export const FPS = 30;
 export const RONG = 1080;
