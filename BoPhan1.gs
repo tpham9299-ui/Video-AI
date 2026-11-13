@@ -729,26 +729,47 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien) {
       // Đề gửi kèm ảnh: cho Gemini NHÌN ảnh khi viết kịch bản để vẽ lại đúng hình của đề (không thay bằng vật "gần giống").
       var anhDe = anhDeChoGemini_(r);
       if (anhDe) sn.anh = anhDe;
-      var tGoi = Date.now();
-      var kb = goiGemini_(prompt, 0.6, sn);
-      capNhatTb_('TB_GOI_KB_MS', Date.now() - tGoi);
-      var loi = '';
-      for (var thu = 1; thu <= 3; thu++) {
-        if (cauHinh_('KIEU_MO_DAU') !== 'chao_hook') xoaLoiChao_(kb);
-        if (kb && r.dap_an_hien && !kb.dap_an_hien) kb.dap_an_hien = String(r.dap_an_hien);
-        suaDapAn_(kb, r.dap_an);
-        if (typeof tuSuaKichBan_ === 'function') tuSuaKichBan_(kb);   // sửa nhẹ các lỗi vặt (KiemTraHinh.gs) để đỡ phải gọi lại Gemini
-        loi = hopLeKichBan_(kb, r.dap_an, r.mon, deCoHinh_(r) ? String(r.de_bai || '') + ' ' + String(r.mo_ta_hinh || '') : '');
-        if (!loi) break;
-        var conDu = duThoiGian_(bat, tbMs_('TB_GOI_KB_MS', 80000) * 1.15);
-        nhatKy_('KICH_BAN_SUA', r.id + ' lần ' + thu + ' bị từ chối: ' + loi + (thu < 3 && conDu ? ' -> nhờ Gemini sửa lại' : ''));
-        if (thu === 3 || !conDu) break;
-        tGoi = Date.now();
-        kb = goiGemini_(prompt + '\n\nBẢN KỊCH BẢN BẠN VỪA VIẾT BỊ TỪ CHỐI VÌ LỖI: ' + moTaLoiKichBan_(loi) +
-          '\nHãy viết lại TOÀN BỘ kịch bản, sửa đúng lỗi trên, giữ nguyên các quy tắc và định dạng JSON ở trên.', 0.5, sn);
+      // Có bản nháp từ lần trước (đang sửa dở) thì sửa tiếp từ đó, không viết lại từ đầu.
+      var kb = docNhapKichBan_(r.id);
+      if (kb) nhatKy_('KICH_BAN', r.id + ': sửa tiếp bản nháp lần trước');
+      else {
+        var tGoi = Date.now();
+        kb = goiGemini_(prompt, 0.6, sn);
         capNhatTb_('TB_GOI_KB_MS', Date.now() - tGoi);
       }
-      if (loi) throw new Error('KICH_BAN_KHONG_HOP_LE: ' + loi);
+      var ctxSua = { y_tuong: String((c2 && c2.y_tuong) || '') };
+      var hinhDe = deCoHinh_(r) ? String(r.de_bai || '') + ' ' + String(r.mo_ta_hinh || '') : '';
+      var dg = null, lanSua = 0, hetGio = false;
+      for (;;) {
+        chuanBiKichBan_(kb, r, ctxSua);
+        dg = danhGiaKichBan_(kb, r.dap_an, r.mon, hinhDe);
+        // hết lỗi nặng: xong nếu không còn lỗi nhẹ, hoặc đã nhờ sửa một lần (lỗi nhẹ không làm hỏng video)
+        if (!dg.nang.length && (!dg.nhe.length || lanSua >= 1)) break;
+        if (lanSua >= 3) break;
+        if (!conDuGoiGemini_()) { hetGio = true; break; }
+        var dsLoi = dg.nang.concat(dg.nhe);
+        nhatKy_('KICH_BAN_SUA', r.id + ' sửa ngay lần ' + (lanSua + 1) + ' (' + dg.nang.length + ' lỗi nặng, ' + dg.nhe.length + ' lỗi nhẹ): ' + dsLoi.map(function (x) { return String(x).split(':')[0]; }).join(', '));
+        var kbMoi = null;
+        try { kbMoi = suaKichBanBangGemini_(kb, dsLoi, prompt, sn); }
+        catch (eS) {
+          if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(eS.message))) { luuNhapKichBan_(r.id, kb); throw eS; }
+          nhatKy_('KICH_BAN_SUA', r.id + ': Gemini sửa lỗi (' + String(eS.message).slice(0, 120) + ')');
+        }
+        if (kbMoi && Array.isArray(kbMoi.canh) && kbMoi.canh.length) kb = kbMoi;
+        lanSua++;
+      }
+      if (dg.nang.length) {
+        luuNhapKichBan_(r.id, kb);
+        if (hetGio || lanSua < 3) {
+          // hết thời gian của lần chạy: KHÔNG tính là lỗi, lần chạy sau sửa tiếp bản nháp
+          ghi_(sh, r._row, { so_lan_loi: Math.max(0, (Number(r.so_lan_loi) || 1) - 1), ghi_chu: 'Đang sửa kịch bản (còn ' + dg.nang.length + ' lỗi), tiếp tục ở lần chạy sau' });
+          nhatKy_('KICH_BAN_SUA', r.id + ': lưu bản nháp, còn ' + dg.nang.length + ' lỗi nặng: ' + dg.nang.map(function (x) { return String(x).split(':')[0]; }).join(', '));
+          continue;
+        }
+        throw new Error('KICH_BAN_KHONG_HOP_LE: ' + dg.nang[0]);
+      }
+      if (dg.nhe.length) nhatKy_('KICH_BAN_LUU_Y', r.id + ': dùng được, còn ' + dg.nhe.length + ' lưu ý nhẹ: ' + dg.nhe.map(function (x) { return String(x).split(':')[0]; }).join(', '));
+      xoaNhapKichBan_(r.id);
       chuanHoaThoiLuong_(kb);
       kb.id = r.id; kb.lop = r.lop; kb.chu_de = r.chu_de; kb.de_bai = r.de_bai;
       kb.dap_an = r.dap_an; kb.cach_giai = c1;
@@ -764,6 +785,37 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien) {
     } catch (e) { xuLyLoiHang_(sh, r, e, bc); }
   }
 }
+
+// Chuẩn bị kịch bản trước khi đánh giá: bỏ lời chào, khóa đáp án đúng, máy tự sửa lỗi vặt.
+function chuanBiKichBan_(kb, r, ctxSua) {
+  if (!kb || !Array.isArray(kb.canh)) return;
+  if (cauHinh_('KIEU_MO_DAU') !== 'chao_hook') xoaLoiChao_(kb);
+  if (r.dap_an_hien && !kb.dap_an_hien) kb.dap_an_hien = String(r.dap_an_hien);
+  var sua = typeof tuSuaKichBan_ === 'function' ? tuSuaKichBan_(kb, ctxSua) || [] : [];
+  suaDapAn_(kb, r.dap_an);   // sau khi tự sửa (có thể vừa thêm/đổi cảnh) để cảnh đáp án luôn đúng
+  if (sua.length) nhatKy_('KICH_BAN_TU_SUA', r.id + ': ' + sua.slice(0, 8).join('; ').slice(0, 450));
+}
+
+// Nhờ Gemini sửa ĐÚNG các lỗi còn lại (gửi kèm toàn bộ quy tắc + kịch bản hiện tại), giữ nguyên phần đã đúng.
+function suaKichBanBangGemini_(kb, dsLoi, prompt, sn) {
+  var p = prompt + '\n\n=== NHIỆM VỤ BÂY GIỜ: SỬA KỊCH BẢN, KHÔNG VIẾT LẠI TỪ ĐẦU ===\n' +
+    'Dưới đây là kịch bản bạn đã viết (máy đã tự sửa các lỗi vặt). Còn các lỗi sau, hãy sửa TẤT CẢ trong một lần:\n' +
+    dsLoi.map(function (x, i) { return (i + 1) + '. ' + moTaLoiKichBan_(x); }).join('\n') +
+    '\nYÊU CẦU: giữ nguyên mọi phần không liên quan tới lỗi (lời thoại, số liệu, đáp án, hình đã đúng); chỉ sửa đúng chỗ lỗi; tuân thủ mọi quy tắc ở trên ' +
+    '(đặc biệt: hình phải khớp đề, đáp án đúng, lời thoại không có ký hiệu LaTeX). Trả về TOÀN BỘ kịch bản JSON sau khi sửa, cùng định dạng.\n' +
+    'KỊCH BẢN HIỆN TẠI:\n' + JSON.stringify(kb);
+  return goiGemini_(p, 0.3, sn);
+}
+
+// Bản nháp kịch bản đang sửa dở (Drive, thư mục kịch bản): lần chạy sau sửa tiếp thay vì viết lại.
+function tepNhap_(id) { var it = thuMucKichBan_().getFilesByName('nhap_' + id + '.json'); return it.hasNext() ? it.next() : null; }
+function luuNhapKichBan_(id, kb) {
+  try { var f = tepNhap_(id); var noi = JSON.stringify(kb); if (f) f.setContent(noi); else thuMucKichBan_().createFile('nhap_' + id + '.json', noi, MimeType.PLAIN_TEXT); } catch (e) { nhatKy_('NHAP', 'Không lưu được bản nháp ' + id + ': ' + e.message); }
+}
+function docNhapKichBan_(id) {
+  try { var f = tepNhap_(id); if (!f) return null; var kb = JSON.parse(f.getBlob().getDataAsString()); return kb && Array.isArray(kb.canh) ? kb : null; } catch (e) { return null; }
+}
+function xoaNhapKichBan_(id) { try { var f = tepNhap_(id); if (f) f.setTrashed(true); } catch (e) {} }
 
 // Ảnh đề (đề gửi qua Zalo) để gửi kèm Gemini khi viết kịch bản; null nếu không có hoặc ảnh quá lớn.
 function anhDeChoGemini_(r) {
