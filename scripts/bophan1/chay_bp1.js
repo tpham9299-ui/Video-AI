@@ -24,6 +24,15 @@ const keys = String(process.env.GEMINI_KEYS || process.env.GEMINI_API_KEY || '')
 const GIA_LAP = process.env.BP1_GIA_LAP === '1';
 const out = {id: de.hang && de.hang.id, ok: false, hang: {}, kich_ban: null, nhat_ky: [], zalo: [], series_ghi: null, loi: ''};
 
+// thiếu key: báo ngay để Apps Script tự làm đề này tại chỗ (không tính là lỗi của đề)
+if (!GIA_LAP && !keys.length) {
+  out.loi = 'THIEU_GEMINI_API_KEY';
+  out.hang = null;
+  fs.writeFileSync(RA, JSON.stringify(out));
+  console.error('Chưa có key Gemini: thêm Secret GEMINI_KEYS (mỗi dòng một key) trong GitHub > Settings > Secrets and variables > Actions');
+  process.exit(1);
+}
+
 /* ---------------- sheet giả: HANG_DOI (một dòng), CAU_HINH, các sheet khác rỗng ---------------- */
 function taoSheet(ten, data) {
   const sh = {
