@@ -39,8 +39,7 @@ function dangKyWebhookZalo_(ghiDe) {
   if (!token) throw new Error('Chưa có ZALO_BOT_TOKEN (hoặc ZALO_BOT_TOKEN_DE) trong Script Properties.');
   var bi = p.getProperty('ZALO_WEBHOOK_SECRET');
   if (!bi) { bi = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '').slice(0, 8); p.setProperty('ZALO_WEBHOOK_SECRET', bi); }
-  var goc = p.getProperty('WEB_APP_URL') || ScriptApp.getService().getUrl();
-  if (!goc || !/\/exec$/.test(goc)) throw new Error('Chưa lấy được địa chỉ web app dạng .../exec. Hãy Deploy web app rồi chạy lại, hoặc đặt Script Property WEB_APP_URL = địa chỉ /exec.');
+  var goc = layUrlWebApp_();
   var url = goc + '?nguon=zalo&k=' + bi;
 
   var cu = goiZaloApi_(token, 'getWebhookInfo', {});
@@ -54,6 +53,22 @@ function dangKyWebhookZalo_(ghiDe) {
   var sau = goiZaloApi_(token, 'getWebhookInfo', {});
   Logger.log('getWebhookInfo: ' + JSON.stringify(sau).slice(0, 300).replace(bi, '***'));
   Logger.log(kq && kq.ok ? '✅ Đã đăng ký webhook. Gửi /id cho bot để kiểm tra, rồi gửi ảnh một đề toán.' : '❌ Zalo từ chối webhook, xem thông báo ở trên.');
+}
+
+// Địa chỉ web app dạng .../exec. Khi chạy từ trình soạn thảo, ScriptApp.getService().getUrl() thường trả địa chỉ thử
+// nghiệm .../dev (Zalo không gọi được), nên ưu tiên địa chỉ bạn tự dán vào Script Property WEB_APP_URL
+// (chính là địa chỉ đã dán vào GitHub Secret APPS_SCRIPT_URL).
+function layUrlWebApp_() {
+  var chuan = function (u) { return String(u || '').trim().split('?')[0].split('#')[0].replace(/\/+$/, ''); };
+  var tuDan = chuan(PropertiesService.getScriptProperties().getProperty('WEB_APP_URL'));
+  if (/^https:\/\/script\.google\.com\/.+\/exec$/.test(tuDan)) return tuDan;
+  var tuDong = '';
+  try { tuDong = chuan(ScriptApp.getService().getUrl()); } catch (e) {}
+  if (/\/exec$/.test(tuDong)) return tuDong;
+  throw new Error('Chưa có địa chỉ web app dạng .../exec' + (tuDan ? ' (WEB_APP_URL hiện là "' + tuDan + '", không đúng dạng)' : '') +
+    (/\/dev$/.test(tuDong) ? ' (Apps Script chỉ trả về địa chỉ thử nghiệm .../dev)' : '') +
+    '. Cách sửa: Triển khai > Quản lý các lượt triển khai > chọn bản "Ứng dụng web" > sao chép URL kết thúc bằng /exec ' +
+    '(giống GitHub Secret APPS_SCRIPT_URL) > Cài đặt dự án (bánh răng) > Thuộc tính tập lệnh > thêm WEB_APP_URL = URL đó > chạy lại caiDatZalo.');
 }
 
 function goiZaloApi_(token, phuongThuc, than) {

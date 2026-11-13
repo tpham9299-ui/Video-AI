@@ -40,10 +40,11 @@ Lệnh nhắn cho bot: `/id` (xem mã chat), `/tt` (tiến độ), `/huy` (hủy
 ### Cài đặt (làm một lần)
 1. Dán 5 tệp vào dự án Apps Script và lưu.
 2. **Deploy > Manage deployments > Edit > Version: New version > Deploy** (web app: Execute as *Me*, Who has access *Anyone*). Địa chỉ `/exec` giữ nguyên nên không cần sửa GitHub Secret.
-3. Chạy hàm **`caiDatZalo`** một lần, rồi xem *Nhật ký thực thi*:
+3. Thêm Script Property **`WEB_APP_URL`** = địa chỉ web app kết thúc bằng `/exec` (Triển khai > Quản lý các lượt triển khai > bản "Ứng dụng web" > sao chép URL; đây cũng là địa chỉ bạn đã dán vào GitHub Secret `APPS_SCRIPT_URL`). Khi chạy từ trình soạn thảo, Apps Script thường chỉ trả về địa chỉ thử nghiệm `/dev` mà Zalo không gọi được, nên cần bước này.
+4. Chạy hàm **`caiDatZalo`** một lần, rồi xem *Nhật ký thực thi*:
    - "✅ Đã đăng ký webhook" là xong.
    - Nếu báo bot đang có webhook khác (bot dùng chung với hệ thống khác): tạo một bot Zalo riêng cho việc nhận đề, đặt token của bot đó vào Script Property `ZALO_BOT_TOKEN_DE`, rồi chạy lại `caiDatZalo`. Chỉ chạy `caiDatZaloGhiDe` nếu bạn chắc chắn muốn ghi đè webhook cũ.
-4. Nhắn `/id` cho bot. Nếu mã chat chưa có trong `ZALO_CHAT_IDS`, thêm vào (cách nhau dấu phẩy).
-5. Gửi thử ảnh một đề. Muốn thử mà không cần Zalo: chạy hàm `thuDeUuTien`.
+5. Nhắn `/id` cho bot. Nếu mã chat chưa có trong `ZALO_CHAT_IDS`, thêm vào (cách nhau dấu phẩy).
+6. Gửi thử ảnh một đề. Muốn thử mà không cần Zalo: chạy hàm `thuDeUuTien`.
 
 `ZALO_WEBHOOK_SECRET` do `caiDatZalo` tự tạo; không cần nhập tay.
