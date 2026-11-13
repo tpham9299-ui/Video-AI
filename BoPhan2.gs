@@ -41,6 +41,57 @@ function caiDatBoPhan2() {
   Logger.log(thieu.length ? 'CÒN THIẾU bí mật: ' + thieu.join(', ') : 'Đã đủ 3 bí mật. Chạy kiemTraKetNoiGitHub() để thử kết nối.');
 }
 
+/* ===================== GIA HẠN TOKEN GITHUB ===================== */
+// Token GitHub (fine-grained) luôn có ngày hết hạn. Gia hạn = tạo lại token (Regenerate) -> GitHub cấp MÃ MỚI.
+// Vì Script Properties đã đầy, dán mã mới vào sheet CAU_HINH (dòng GITHUB_TOKEN_MOI) rồi chạy capNhatTokenGitHub():
+// hàm thử mã với GitHub, đạt thì lưu vào Script Properties (GITHUB_TOKEN) và XÓA dòng đó khỏi sheet.
+function capNhatTokenGitHub() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ch = ss.getSheetByName(TEN_CAU_HINH);
+  var v = ch.getDataRange().getValues(), hang = -1, token = '';
+  for (var i = 1; i < v.length; i++) if (String(v[i][0]).trim() === 'GITHUB_TOKEN_MOI') { hang = i + 1; token = String(v[i][1]).trim(); }
+  if (!token) { Logger.log('Chưa có dòng GITHUB_TOKEN_MOI (cột khoa) với mã token mới (cột gia_tri) trong sheet CAU_HINH.'); return; }
+  var p = PropertiesService.getScriptProperties();
+  var repo = p.getProperty('GITHUB_REPO') || 'tpham9299-ui/Video-AI';
+  var res = UrlFetchApp.fetch('https://api.github.com/repos/' + repo, {
+    headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json' }, muteHttpExceptions: true
+  });
+  if (res.getResponseCode() !== 200) { Logger.log('❌ Mã mới KHÔNG dùng được (HTTP ' + res.getResponseCode() + '), chưa lưu. Kiểm tra lại đã chép đủ mã chưa.'); return; }
+  p.setProperty('GITHUB_TOKEN', token);
+  ch.deleteRow(hang);   // không để mã bí mật nằm trên sheet
+  var han = hanToken_(res);
+  Logger.log('✅ Đã lưu token mới vào GITHUB_TOKEN và xóa dòng GITHUB_TOKEN_MOI khỏi sheet.' + (han ? ' Hạn mới: ' + Utilities.formatDate(han, 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy') : ' Token không có ngày hết hạn.'));
+  CacheService.getScriptCache().remove('DA_XEM_HAN_TOKEN');
+}
+
+// Ngày hết hạn đọc từ phản hồi của GitHub (header github-authentication-token-expiration); null nếu không hết hạn.
+function hanToken_(res) {
+  var h = res.getAllHeaders(), gt = '';
+  Object.keys(h).forEach(function (k) { if (k.toLowerCase() === 'github-authentication-token-expiration') gt = String(h[k]); });
+  var m = /(\d{4})-(\d{2})-(\d{2})/.exec(gt);
+  return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+}
+
+// Mỗi ngày kiểm tra một lần: token còn ≤ 7 ngày thì nhắn Zalo nhắc gia hạn (mỗi ngày một tin), hết hạn thì báo ngay.
+function kiemTraHanToken_() {
+  var c = CacheService.getScriptCache();
+  if (c.get('DA_XEM_HAN_TOKEN')) return;
+  c.put('DA_XEM_HAN_TOKEN', '1', 21600);
+  var p = PropertiesService.getScriptProperties();
+  var token = p.getProperty('GITHUB_TOKEN'), repo = p.getProperty('GITHUB_REPO');
+  if (!token || !repo) return;
+  var res = UrlFetchApp.fetch('https://api.github.com/repos/' + repo, { headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json' }, muteHttpExceptions: true });
+  var ngay = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyyMMdd');
+  if (res.getResponseCode() === 401) {
+    guiZaloMotLan_('TOKEN_HET_' + ngay, '❌ Token GitHub đã HẾT HẠN hoặc bị thu hồi: video không dựng được nữa. Tạo lại token (Regenerate) rồi dán vào sheet CAU_HINH dòng GITHUB_TOKEN_MOI và chạy capNhatTokenGitHub (xem SUA_CODE_LAN_16.md).');
+    return;
+  }
+  var han = hanToken_(res);
+  if (!han) return;
+  var con = Math.ceil((han.getTime() - Date.now()) / 86400000);
+  if (con <= 7) guiZaloMotLan_('TOKEN_SAP_HET_' + ngay, '⏰ Token GitHub còn ' + con + ' ngày là hết hạn (' + Utilities.formatDate(han, 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy') + '). Gia hạn sớm để video không bị dừng: Regenerate token trên GitHub, dán mã mới vào sheet CAU_HINH dòng GITHUB_TOKEN_MOI, rồi chạy capNhatTokenGitHub.');
+}
+
 // Kiểm tra token và tên repo có đúng không.
 function kiemTraKetNoiGitHub() {
   var p = PropertiesService.getScriptProperties();
@@ -57,6 +108,7 @@ function chayBoPhan2() {
   var khoa = LockService.getScriptLock();
   if (!khoa.tryLock(10000)) return;
   try {
+    try { kiemTraHanToken_(); } catch (eh) { Logger.log('Kiểm tra hạn token: ' + eh.message); }
     var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
     if (!sh) return;
     var hang = docHang_(sh);

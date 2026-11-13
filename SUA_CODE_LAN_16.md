@@ -86,3 +86,13 @@ Video ngắn hơn hoặc bằng 90 giây đăng dạng Reels; dài hơn đăng t
 ## Sửa thêm: đề đứng yên, nhật ký lặp "Không đủ thời gian cho đề giải tiếp theo"
 Sau vài lần giải chậm (Gemini quá tải hoặc hết hạn mức model chính), thời gian trung bình đo được lên quá ~4 phút. Từ đó lần chạy nào cũng cho là "không đủ thời gian" ngay từ giây đầu và đề không bao giờ được giải.
 Bây giờ việc đầu tiên của mỗi lần chạy luôn được làm (`duThoiGianViec_`). Đề ưu tiên đi lần lượt đọc → giải → kịch bản, mỗi lượt cách nhau khoảng 1 phút.
+
+## Gia hạn token GitHub (không làm đứt hệ thống)
+Token GitHub loại fine-grained luôn có ngày hết hạn. Gia hạn bằng cách tạo lại token; GitHub cấp **mã mới** nhưng giữ nguyên các quyền.
+1. GitHub > Settings > Developer settings > Fine-grained tokens > chọn token "Video Ai" > **Regenerate token**.
+2. Ở ô Expiration chọn thời hạn dài nhất có trong danh sách: "No expiration" nếu có, nếu không thì Custom 1 năm. Bấm **Regenerate token** và **chép ngay mã mới** (GitHub chỉ hiện một lần).
+3. Sheet **CAU_HINH**: thêm dòng `khoa` = `GITHUB_TOKEN_MOI`, `gia_tri` = mã vừa chép.
+4. Apps Script: chạy **`capNhatTokenGitHub`**. Hàm thử mã với GitHub; nếu đạt thì lưu vào `GITHUB_TOKEN` và tự xóa dòng đó khỏi sheet.
+
+Token cũ ngừng hoạt động ngay khi bấm Regenerate, nên làm bước 3–4 liền sau bước 2.
+Từ nay, mỗi ngày hệ thống tự xem hạn token; khi còn ≤ 7 ngày thì Zalo nhắc mỗi ngày, hết hạn thì báo ngay.
