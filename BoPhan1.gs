@@ -42,7 +42,8 @@ var COT = ['id', 'trang_thai', 'lop', 'chu_de', 'de_bai', 'nguon', 'diem_tu_duy'
   'yeu_to_tu_duy', 'bay_thuong_gap', 'cach_1', 'cach_2', 'dap_an', 'kiem_chung',
   'file_kich_ban', 'ghi_chu', 'so_lan_loi', 'cap_nhat', 'ma_bam', 'file_video',
   'mon', 'uu_tien', 'file_anh', 'zalo_chat', 'dap_an_hien',   // 5 cột lần 15
-  'lich_dang', 'link_dang'];   // 2 cột lần 16 (hẹn giờ đăng, link đã đăng). Cột mới luôn nối vào CUỐI nên dữ liệu cũ không lệch
+  'lich_dang', 'link_dang',    // 2 cột lần 16
+  'mo_ta_hinh'];               // lần 17: mô tả chi tiết hình vẽ kèm đề (đọc từ ảnh) để video vẽ lại đúng hình (hẹn giờ đăng, link đã đăng). Cột mới luôn nối vào CUỐI nên dữ liệu cũ không lệch
 
 // Tên model nằm trong CAU_HINH vì Google đổi tên/ngừng model thường xuyên.
 var MAC_DINH = {
@@ -725,6 +726,9 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien) {
       try { c2 = JSON.parse(r.cach_2); } catch (e2) {}
       var prompt = taoPromptKichBan_(r, c1, c2);   // lời nhắc nằm trong tệp PromptKichBan.gs
       var sn = { suyNghi: cauHinh_('MUC_SUY_NGHI_KICH_BAN') };
+      // Đề gửi kèm ảnh: cho Gemini NHÌN ảnh khi viết kịch bản để vẽ lại đúng hình của đề (không thay bằng vật "gần giống").
+      var anhDe = anhDeChoGemini_(r);
+      if (anhDe) sn.anh = anhDe;
       var tGoi = Date.now();
       var kb = goiGemini_(prompt, 0.6, sn);
       capNhatTb_('TB_GOI_KB_MS', Date.now() - tGoi);
@@ -734,7 +738,7 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien) {
         if (kb && r.dap_an_hien && !kb.dap_an_hien) kb.dap_an_hien = String(r.dap_an_hien);
         suaDapAn_(kb, r.dap_an);
         if (typeof tuSuaKichBan_ === 'function') tuSuaKichBan_(kb);   // sửa nhẹ các lỗi vặt (KiemTraHinh.gs) để đỡ phải gọi lại Gemini
-        loi = hopLeKichBan_(kb, r.dap_an, r.mon);
+        loi = hopLeKichBan_(kb, r.dap_an, r.mon, deCoHinh_(r) ? String(r.de_bai || '') + ' ' + String(r.mo_ta_hinh || '') : '');
         if (!loi) break;
         var conDu = duThoiGian_(bat, tbMs_('TB_GOI_KB_MS', 80000) * 1.15);
         nhatKy_('KICH_BAN_SUA', r.id + ' lần ' + thu + ' bị từ chối: ' + loi + (thu < 3 && conDu ? ' -> nhờ Gemini sửa lại' : ''));
@@ -759,6 +763,22 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien) {
       bc.kich_ban++;
     } catch (e) { xuLyLoiHang_(sh, r, e, bc); }
   }
+}
+
+// Ảnh đề (đề gửi qua Zalo) để gửi kèm Gemini khi viết kịch bản; null nếu không có hoặc ảnh quá lớn.
+function anhDeChoGemini_(r) {
+  var f = String(r.file_anh || '');
+  if (!f || /^https?:/i.test(f)) return null;
+  try {
+    var b = DriveApp.getFileById(f).getBlob();
+    if (b.getBytes().length > 12 * 1024 * 1024) return null;
+    return { mime: b.getContentType() || 'image/jpeg', data: Utilities.base64Encode(b.getBytes()) };
+  } catch (e) { nhatKy_('ANH_DE', r.id + ': không đọc được ảnh đề (' + e.message + ')'); return null; }
+}
+// Đề có hình (ảnh kèm, mô tả hình, hoặc nhắc tới hình dạng cụ thể) -> kịch bản BẮT BUỘC vẽ lại hình đó.
+function deCoHinh_(r) {
+  if (String(r.mo_ta_hinh || '').trim() || (r.file_anh && !/^https?:/i.test(String(r.file_anh)))) return true;
+  return /hình (vẽ|bên|dưới|sau)|như hình|bông tuyết|koch|sierpinski|fractal|tam giác|hình vuông|hình chữ nhật|hình tròn|đường tròn|nửa đường tròn|hình thang|lục giác|ngũ giác|đa giác|hình quạt|cung tròn|elip|parabol|hyperbol|đồ thị|mặt cắt|thiết kế theo hình|có dạng/i.test(String(r.de_bai || ''));
 }
 
 /* ===================== GỌI GEMINI (có dự phòng, thử lại) ===================== */

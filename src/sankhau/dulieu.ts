@@ -17,6 +17,8 @@ export const LOAI_VAT = [
   'luoi_o', 'danh_sach',
   // toán thực tế: vật 3D + hình học + đồ thị
   'khoi_hop', 'tru', 'non', 'cau', 'toa_nha', 'xe', 'cay', 'thang', 'hinh_hoc', 'do_thi',
+  // hình tự do: vẽ đúng hình của đề bằng các nét (đa giác, đường, tròn, cung, SVG, fractal, đường cong tham số, nhân bản)
+  'hinh_tu_do',
 ] as const;
 export type LoaiVat = (typeof LOAI_VAT)[number];
 
@@ -26,6 +28,26 @@ export const KIEU_HANH_DONG = [
 export type KieuHanhDong = (typeof KIEU_HANH_DONG)[number];
 
 export type Nhom = {mau: string; so: number};
+
+export const KIEU_NET = ['da_giac', 'duong', 'mui_ten', 'tron', 'cung', 'chu', 'svg', 'da_giac_deu', 'koch', 'sierpinski', 'tham_so', 'lap'] as const;
+export type KieuNet = (typeof KIEU_NET)[number];
+// Một nét của hình tự do (tọa độ theo khung của vật, gốc trên-trái, y hướng xuống).
+export type PhanHinh = {
+  kieu: KieuNet;
+  diem: [number, number][];
+  tam: [number, number];
+  r: number;
+  tu: number; den: number; // cung: góc bắt đầu/kết thúc (độ, 0 = hướng phải, chiều kim đồng hồ)
+  soCanh: number; xoay: number; // đa giác đều / tam giác gốc của fractal
+  lap: number; // fractal: số lần lặp tối đa (0-6)
+  d: string; // svg: chuỗi đường dẫn
+  bieuX: string; bieuY: string; tTu: number; tDen: number; // đường cong tham số
+  con: PhanHinh | null; soLan: number; dich: [number, number]; tiLe: number; tamXoay: [number, number]; // nhân bản
+  noiDung: string; // chữ
+  mau: string; to: string; doTo: number; net: number; dut: boolean; moNet: number;
+  nhan: string; viTriNhan: [number, number] | null; coChu: number;
+  buoc: number;
+};
 
 export type Vat = {
   id: string;
@@ -69,6 +91,8 @@ export type Vat = {
   nhanTruc: string[]; // do_thi: tên trục ["x", "y"]
   gocNghieng: number; // thang: góc với mặt đất (độ)
   soTang: number; // toa_nha: số tầng
+  khung: [number, number]; // hinh_tu_do: khung tọa độ [rộng, cao]
+  hinh: PhanHinh[]; // hinh_tu_do: các nét
 };
 
 export type HanhDong = {
@@ -156,7 +180,19 @@ function vat(raw: Record<string, unknown>, i: number): Vat | null {
     nhanTruc: laMang(raw.nhan_truc) ? raw.nhan_truc.slice(0, 2).map((x) => chu(x, 12)) : ['x', 'y'],
     gocNghieng: so(raw.goc_nghieng, 55, 5, 85),
     soTang: Math.round(so(raw.so_tang, 6, 1, 30)),
+    khung: [100, 100],
+    hinh: [],
   };
+  if (loai === 'hinh_tu_do') {
+    const k = laMang(raw.khung) ? raw.khung : [];
+    v.khung = [so(k[0], 100, 10, 2000), so(k[1], 100, 10, 2000)];
+    const dem = {diem: 0};
+    v.hinh = (laMang(raw.hinh) ? raw.hinh : []).filter(laDT).slice(0, 60).map((h) => netHinh(h, v.khung, dem, 0)).filter((h): h is PhanHinh => !!h);
+    if (!v.hinh.length) return null;
+    // mức lặp ban đầu của fractal = gia_tri nếu có, không thì lặp đủ (dat_gia_tri làm hình "mọc" từng bước)
+    const lapMax = Math.max(0, ...v.hinh.map((h) => (h.kieu === 'koch' || h.kieu === 'sierpinski' ? h.lap : h.con && (h.con.kieu === 'koch' || h.con.kieu === 'sierpinski') ? h.con.lap : 0)));
+    v.giaTri = so(raw.gia_tri, lapMax, 0, 6);
+  }
   if (loai === 'hinh_hoc') {
     if (laDT(raw.diem)) {
       Object.entries(raw.diem).slice(0, 16).forEach(([k, xy]) => {
@@ -180,6 +216,62 @@ function vat(raw: Record<string, unknown>, i: number): Vat | null {
   if (loai === 'danh_sach' && !v.ds.length) return null;
   if ((loai === 'hop_bi' || loai === 'tui') && !v.nhom.length) v.nhom = [{mau: 'do', so: 3}, {mau: 'xanh_duong', so: 2}];
   return v;
+}
+
+const SVG_HOP_LE = /^[MmLlHhVvCcSsQqTtAaZz0-9.,\s\-eE+]+$/;
+function netHinh(raw: Record<string, unknown>, khung: [number, number], dem: {diem: number}, sau: number): PhanHinh | null {
+  const kieu = KIEU_NET.find((k) => k === raw.kieu);
+  if (!kieu) return null;
+  const lo = -Math.max(khung[0], khung[1]);
+  const hi = 2 * Math.max(khung[0], khung[1]);
+  const xy = (v: unknown, mac: [number, number]): [number, number] => (laMang(v) && v.length >= 2 ? [so(v[0], mac[0], lo, hi), so(v[1], mac[1], lo, hi)] : mac);
+  const giua: [number, number] = [khung[0] / 2, khung[1] / 2];
+  const diem = laMang(raw.diem) ? raw.diem.slice(0, 400).filter((p) => laMang(p) && p.length >= 2).map((p) => xy(p, giua)) : [];
+  dem.diem += diem.length;
+  if (dem.diem > 2000) return null;
+  const toRaw = raw.to;
+  const h: PhanHinh = {
+    kieu,
+    diem,
+    tam: xy(raw.tam, giua),
+    r: so(raw.r, Math.min(khung[0], khung[1]) * 0.35, 0.1, hi),
+    tu: so(raw.tu, 0, -720, 720),
+    den: so(raw.den, 90, -720, 720),
+    soCanh: Math.round(so(raw.so_canh, 6, 3, 24)),
+    xoay: so(raw.xoay, 0, -360, 360),
+    lap: so(raw.lap, 3, 0, 6),
+    d: typeof raw.d === 'string' && raw.d.length <= 4000 && SVG_HOP_LE.test(raw.d) ? raw.d : '',
+    bieuX: chu(raw.x, 80),
+    bieuY: chu(raw.y, 80),
+    tTu: so(raw.t_tu, 0, -1e4, 1e4),
+    tDen: so(raw.t_den, 6.2832, -1e4, 1e4),
+    con: null,
+    soLan: Math.round(so(raw.so_lan, 3, 1, 40)),
+    dich: xy(raw.dich, [0, 0]),
+    tiLe: so(raw.ti_le, 1, 0.2, 3),
+    tamXoay: xy(raw.tam_xoay, giua),
+    noiDung: chu(raw.noi_dung, 40),
+    mau: tenMau(raw.mau),
+    to: toRaw === true ? 'co' : tenMau(toRaw),
+    doTo: so(raw.do_to, 0.28, 0.05, 1),
+    net: so(raw.net, 4, 1, 14),
+    dut: raw.dut === true,
+    moNet: so(raw.mo, 1, 0.1, 1),
+    nhan: chu(raw.nhan, 24),
+    viTriNhan: laMang(raw.vi_tri_nhan) ? xy(raw.vi_tri_nhan, giua) : null,
+    coChu: so(raw.co_chu, 1, 0.5, 2),
+    buoc: Math.round(so(raw.buoc, 0, 0, 8)),
+  };
+  if (kieu === 'lap') {
+    if (sau > 0 || !laDT(raw.hinh)) return null;
+    h.con = netHinh(raw.hinh, khung, dem, sau + 1);
+    if (!h.con || h.con.kieu === 'lap') return null;
+  }
+  if ((kieu === 'da_giac' && diem.length < 3) || ((kieu === 'duong' || kieu === 'mui_ten') && diem.length < 2)) return null;
+  if (kieu === 'svg' && !h.d) return null;
+  if (kieu === 'chu' && !h.noiDung) return null;
+  if (kieu === 'tham_so' && (!h.bieuX || !h.bieuY || h.tDen <= h.tTu)) return null;
+  return h;
 }
 
 function hanhDong(raw: Record<string, unknown>): HanhDong | null {

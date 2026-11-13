@@ -8,6 +8,7 @@ import {Vat} from './dulieu';
 import {TrangThai} from './trangthai';
 import {Goc3D} from './chieu3d';
 import {DoThi, HinhHoc} from './hinhhoc';
+import {HinhTuDo} from './hinhtudo';
 import {Cau, Cay, KhoiHop, Thang, ToaNha, Tru, Xe} from './vat3d';
 
 const phatSang = (c: string, r = 10) => `drop-shadow(0 0 ${r}px ${c}) drop-shadow(0 0 ${Math.max(1, r / 5)}px ${c})`;
@@ -834,6 +835,7 @@ export const VE_VAT: Partial<Record<Vat['loai'], Ve>> = {
   cau: (v, st) => <Cau v={v} st={st} />, toa_nha: (v, st, f) => <ToaNha v={v} st={st} frame={f} />, xe: (v, st) => <Xe v={v} st={st} />,
   cay: (v, st, f) => <Cay v={v} st={st} frame={f} />, thang: (v, st) => <Thang v={v} st={st} />,
   hinh_hoc: (v, st) => <HinhHoc v={v} st={st} />, do_thi: (v, st) => <DoThi v={v} st={st} />,
+  hinh_tu_do: (v, st) => <HinhTuDo v={v} st={st} />,
 };
 
 // mũi tên cong nối hai điểm (pixel trên sân khấu), vẽ dần

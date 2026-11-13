@@ -8,9 +8,14 @@
 
 var LOAI_VAT_ = ['nguoi', 'the', 'the_bai', 'xuc_xac', 'dong_xu', 'hop_bi', 'tui', 'hop_qua', 'dong_ho', 'dien_thoai', 'bong_bay',
   'dong_ho_do', 'bieu_do_cot', 'thanh', 'vong_quay', 'cua', 'banh', 'nhan', 'chu', 'so_dem', 'mui_ten', 'bieu_tuong', 'luoi_o', 'danh_sach',
-  'khoi_hop', 'tru', 'non', 'cau', 'toa_nha', 'xe', 'cay', 'thang', 'hinh_hoc', 'do_thi'];
+  'khoi_hop', 'tru', 'non', 'cau', 'toa_nha', 'xe', 'cay', 'thang', 'hinh_hoc', 'do_thi', 'hinh_tu_do'];
 var VAT_3D_ = ['khoi_hop', 'tru', 'non', 'cau', 'toa_nha', 'xe', 'cay', 'thang', 'xuc_xac', 'hop_bi', 'hop_qua', 'cua'];   // vật 3D thật (cảnh đời thực)
-var VAT_MO_HINH_ = ['hinh_hoc', 'do_thi'];
+var VAT_MO_HINH_ = ['hinh_hoc', 'do_thi', 'hinh_tu_do'];
+var TU_VAT_3D_ = {
+  khoi_hop: /hộp|bể|thùng|phòng|khối|lăng trụ|container|tủ|gạch/, tru: /trụ|lon|cốc|bồn|ống|thùng phi|cột tròn/, non: /nón|phễu|chóp nón/,
+  cau: /cầu|quả bóng|bóng/, toa_nha: /nhà|tòa|tháp|cột|building/, thang: /thang/, xe: /xe|ô tô|tàu/, cay: /cây/
+};
+var KIEU_NET_ = ['da_giac', 'duong', 'mui_ten', 'tron', 'cung', 'chu', 'svg', 'da_giac_deu', 'koch', 'sierpinski', 'tham_so', 'lap'];
 var KIEU_HANH_DONG_ = ['chon', 'loai_bo', 'sang', 'rung', 'quay', 'mo', 'lay_ra', 'dat_gia_tri', 'bung_ra', 'di_chuyen', 'phong_to', 'thu_nho', 'an', 'doi_chu', 'goc_3d'];
 var VAT_PHU_ = ['nhan', 'chu', 'mui_ten', 'bieu_tuong', 'so_dem'];   // vật phụ trợ (chữ, nhãn): không tính là "vật thật"
 
@@ -349,7 +354,7 @@ function kiemTraCachDay_(kb) {
 }
 
 // Thay cho hopLeKichBan_ cũ trong Code.gs (xóa hàm cũ). Giữ các kiểm tra cũ, thêm kiểm tra hình minh họa.
-function hopLeKichBan_(kb, dapAn, mon) {
+function hopLeKichBan_(kb, dapAn, mon, coHinhDe) {
   if (!kb || !Array.isArray(kb.canh) || kb.canh.length < 6 || kb.canh.length > 12) return 'SO_CANH_NGOAI_6_DEN_12';
   var thucTe = String(mon || '').toUpperCase() === 'THUC_TE';
   // bài giảng phải kỹ: có phần bài học rút ra (cảnh bai_hoc cuối video) và cảnh tính toán
@@ -402,7 +407,21 @@ function hopLeKichBan_(kb, dapAn, mon) {
   if (loiHook) return loiHook;
   var loiNoi = kiemTraNoiCanh_(kb);
   if (loiNoi) return loiNoi;
-  if (thucTe && so3D < 2) return 'THIEU_CANH_3D: video toán thực tế cần ít nhất 2 cảnh có VẬT 3D THẬT (khoi_hop, tru, non, cau, toa_nha, xe, cay, thang) dựng lại tình huống của đề (cảnh mo_dau/de_bai và cảnh dap_an), đặt goc_nhin 3D.';
+  if (coHinhDe) {
+    // coHinhDe: chữ của đề + mô tả hình. Vật 3D chỉ được tính là "vẽ đúng hình" khi đề nhắc đúng loại vật đó.
+    var chuDe = String(coHinhDe).toLowerCase();
+    var veHinh = kb.canh.slice(0, 3).some(function (c) {
+      var du = c && c.minh_hoa && c.minh_hoa.du_lieu;
+      if (!c || !c.minh_hoa || c.minh_hoa.loai !== 'san_khau' || !du || !Array.isArray(du.vat)) return false;
+      return du.vat.some(function (v) {
+        if (VAT_MO_HINH_.indexOf(v.loai) >= 0) return true;
+        var tu = TU_VAT_3D_[v.loai];
+        return !!tu && tu.test(chuDe);
+      });
+    });
+    if (!veHinh) return 'THIEU_HINH_DE: đề có hình (ảnh kèm hoặc hình dạng cụ thể) nhưng 3 cảnh đầu không vẽ lại hình đó. Hãy vẽ ĐÚNG hình của đề bằng "hinh_tu_do" (hoặc hinh_hoc/do_thi) ở cảnh mo_dau hoặc de_bai; không thay bằng vật khác.';
+  }
+  if (thucTe && so3D < 2 && !coHinhDe) return 'THIEU_CANH_3D: video toán thực tế cần ít nhất 2 cảnh có VẬT 3D THẬT (khoi_hop, tru, non, cau, toa_nha, xe, cay, thang) dựng lại tình huống của đề (cảnh mo_dau/de_bai và cảnh dap_an), đặt goc_nhin 3D.';
   if (thucTe && soMoHinh < 1) return 'THIEU_MO_HINH: video toán thực tế cần ít nhất 1 cảnh "hinh_hoc" (tam giác, góc, cạnh có độ dài) hoặc "do_thi" (đồ thị hàm số có điểm chạy) để mô hình hóa/kiểm tra.';
   var canDA = kb.canh[timCanhDapAn_(kb)];
   var dsDA = canDA.noi_dung_man_hinh || [];
@@ -429,6 +448,7 @@ function kiemTraVatThucTe_(v, ev) {
   }
   if (v.muc_nuoc !== undefined && !(Number(v.muc_nuoc) >= 0 && Number(v.muc_nuoc) <= 1)) return 'HINH_' + ev + ': "muc_nuoc" là tỉ lệ 0-1 (0.5 = nửa bể).';
   if (v.loai === 'thang' && v.goc_nghieng !== undefined && !(Number(v.goc_nghieng) >= 5 && Number(v.goc_nghieng) <= 85)) return 'HINH_' + ev + ': "goc_nghieng" của thang là góc với mặt đất 5-85 độ.';
+  if (v.loai === 'hinh_tu_do') return kiemTraHinhTuDo_(v, ev);
   if (v.loai === 'hinh_hoc') {
     if (!laDT_(v.diem) || Object.keys(v.diem).length < 2) return 'HINH_' + ev + ': hinh_hoc cần "diem" là đối tượng {"A":[x,y],...} có ít nhất 2 điểm, tọa độ 0-100.';
     var ten = Object.keys(v.diem);
@@ -592,5 +612,28 @@ function kiemTraNoiCanh_(kb) {
   }
   if (mayMoc.length >= 2) return 'NOI_CANH_MAY_MOC: các cảnh ' + mayMoc.join(', ') + ' mở bằng câu chuyển máy móc ("Bước tiếp theo", "Tiếp theo,", "Cái bẫy ở đây là"...). Hãy viết câu NỐI tự nhiên bắt từ ý cảnh trước, như một người đang nói liền mạch.';
   for (var k in dau) if (dau[k] >= 3) return 'NOI_CANH_LAP: ' + dau[k] + ' cảnh cùng mở đầu bằng "' + k + '...". Mỗi cảnh cần một câu nối khác nhau.';
+  return '';
+}
+
+
+// Hình tự do: khung, danh sách nét hợp lệ (tọa độ là số, đa giác ≥ 3 điểm, svg chỉ gồm lệnh đường dẫn...).
+function kiemTraHinhTuDo_(v, ev) {
+  if (v.khung !== undefined && (!Array.isArray(v.khung) || v.khung.length < 2 || !(Number(v.khung[0]) >= 10) || !(Number(v.khung[1]) >= 10))) return 'HINH_' + ev + ': "khung" của hinh_tu_do là [rộng, cao] (ví dụ [100,100]).';
+  if (!Array.isArray(v.hinh) || !v.hinh.length) return 'HINH_' + ev + ': hinh_tu_do cần "hinh" là mảng các nét {kieu, ...} (da_giac, duong, tron, koch...).';
+  if (v.hinh.length > 60) return 'HINH_' + ev + ': hinh_tu_do tối đa 60 nét.';
+  var laDiem = function (p) { return Array.isArray(p) && p.length >= 2 && laSo_(Number(p[0])) && laSo_(Number(p[1])); };
+  for (var i = 0; i < v.hinh.length; i++) {
+    var h = v.hinh[i], e = ev + ', hinh[' + i + ']';
+    if (h && h.kieu === 'lap' && laDT_(h.hinh)) h = h.hinh;
+    if (!laDT_(h) || KIEU_NET_.indexOf(h.kieu) < 0) return 'HINH_' + e + ': "kieu" phải thuộc: ' + KIEU_NET_.join(', ') + '.';
+    if ((h.kieu === 'da_giac' && !(Array.isArray(h.diem) && h.diem.length >= 3 && h.diem.every(laDiem))) ||
+        ((h.kieu === 'duong' || h.kieu === 'mui_ten') && !(Array.isArray(h.diem) && h.diem.length >= 2 && h.diem.every(laDiem)))) return 'HINH_' + e + ': ' + h.kieu + ' cần "diem" là mảng các [x, y] (đa giác ≥ 3 điểm, đường ≥ 2 điểm).';
+    if ((h.kieu === 'tron' || h.kieu === 'cung' || h.kieu === 'da_giac_deu') && (!laDiem(h.tam) || !(Number(h.r) > 0))) return 'HINH_' + e + ': ' + h.kieu + ' cần "tam":[x,y] và "r" > 0.';
+    if ((h.kieu === 'koch' || h.kieu === 'sierpinski') && !(laDiem(h.tam) && Number(h.r) > 0) && !(Array.isArray(h.diem) && h.diem.length >= 3)) return 'HINH_' + e + ': ' + h.kieu + ' cần "tam" + "r" (hình đều) hoặc "diem" (đa giác gốc).';
+    if ((h.kieu === 'koch' || h.kieu === 'sierpinski') && h.lap !== undefined && !(Number(h.lap) >= 0 && Number(h.lap) <= 6)) return 'HINH_' + e + ': "lap" của ' + h.kieu + ' từ 0 đến 6.';
+    if (h.kieu === 'svg' && !(typeof h.d === 'string' && /^[MmLlHhVvCcSsQqTtAaZz0-9.,\s\-eE+]+$/.test(h.d))) return 'HINH_' + e + ': svg cần "d" chỉ gồm lệnh đường dẫn SVG (M, L, C, Q, A, Z và số).';
+    if (h.kieu === 'chu' && !laChuoi_(h.noi_dung)) return 'HINH_' + e + ': chu cần "noi_dung".';
+    if (h.kieu === 'tham_so' && (!phanTichBieuThuc_(String(h.x || '').replace(/(^|[^a-z])t(?![a-z])/g, '$1x')) || !phanTichBieuThuc_(String(h.y || '').replace(/(^|[^a-z])t(?![a-z])/g, '$1x')))) return 'HINH_' + e + ': tham_so cần "x" và "y" là biểu thức theo t viết kiểu máy tính.';
+  }
   return '';
 }

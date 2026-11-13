@@ -87,6 +87,18 @@ function taoPromptKichBan_(r, c1, c2) {
     '"hook_kieu": sai_lam | thach_thuc | bat_ngo | ket_qua_truoc | cau_hoi. Không bịa thống kê kiểu "90% học sinh sai". ',
     '"hook_chu": câu hook rút gọn 3-11 từ để in chữ lớn; "nhan_manh": 1-3 cụm nằm NGUYÊN VĂN trong hook_chu (được tô vàng, rung).\n\n'
   ];
+  var coHinh = typeof deCoHinh_ === 'function' ? deCoHinh_(r) : false;
+  var khopDe = [
+    'HÌNH MINH HỌA PHẢI KHỚP ĐỀ GẦN NHƯ 100% (lỗi nặng nhất là vẽ một vật khác với đề): ',
+    '(a) Liệt kê trong đầu MỌI đối tượng có trong đề (hình dạng, vật, số lượng, số đo, cách sắp xếp, quy luật biến đổi) và vẽ ĐÚNG chúng, đúng hình dạng, đúng tỉ lệ, đúng nhãn số đo. ',
+    '(b) KHÔNG thay bằng vật "gần giống" trong danh sách (ví dụ đề hòn đảo hình bông tuyết Koch thì KHÔNG được vẽ bể nước hay hộp; đề sân hình chữ nhật có lối đi thì vẽ đúng sân và lối đi). ',
+    'Hình nào danh sách vật không có sẵn thì vẽ bằng "hinh_tu_do" (vẽ được mọi hình: đa giác, đường, tròn, cung, đường SVG, đa giác đều, bông tuyết Koch, tam giác Sierpinski, đường cong tham số, nhân bản hình). ',
+    '(c) Đề có quy luật lặp/biến đổi theo bước (fractal, dãy hình, xếp que diêm...) thì cho người xem THẤY quy luật đó chạy: dùng hinh_tu_do với "gia_tri" = bước đầu và các hành động dat_gia_tri 1, 2, 3 để hình biến đổi từng bước. ',
+    '(d) Cảnh mo_dau và de_bai phải cho thấy chính hình của đề; các cảnh mô hình hóa/tính toán nên tái sử dụng đúng hình đó (phóng to một phần, tô màu phần đang tính).\n',
+    coHinh ? 'ĐỀ NÀY CÓ HÌNH: ' + (r.mo_ta_hinh ? 'mô tả hình gốc: ' + String(r.mo_ta_hinh) + '. ' : '') +
+      (r.file_anh ? 'Ảnh chụp đề gốc được gửi kèm: nhìn kỹ và vẽ lại các hình trong ảnh y hệt (số hình, hình dạng, màu, nhãn). ' : '') +
+      'Ít nhất một trong 3 cảnh đầu phải vẽ đúng hình này bằng hinh_tu_do, hinh_hoc hoặc do_thi.\n\n' : '\n'
+  ];
   var noiCanh = [
     'MẠCH NỐI GIỮA CÁC CẢNH (rất quan trọng, người nghe ghét cảm giác "chuyển slide"): cả video phải nghe như MỘT bài nói liền mạch của một người thật, không phải các đoạn rời ghép lại. ',
     'Câu ĐẦU của mỗi cảnh (từ cảnh 2) là một CÂU NỐI tự nhiên, bắt từ ý cuối của cảnh trước rồi dẫn sang ý mới, ví dụ: ',
@@ -108,7 +120,17 @@ function taoPromptKichBan_(r, c1, c2) {
     '  hinh_hoc {x:50, y:50, diem:{"A":[x%,y%],...} tọa độ 0-100 trong khung hình (gốc trên trái, y hướng xuống), canh:[["A","B","5 m"],...] (cạnh vẽ lần lượt, nhãn độ dài, để "" nếu không ghi), goc:[["B","A","C","30°"]] (cung góc tại đỉnh giữa), vuong:[["A","H","B"]] (ký hiệu góc vuông tại H), to:[["A","B","C"]] (tô vùng), noi_dung: tiêu đề}: ',
     'mô hình tam giác đo đạc, mặt cắt, đường đi, mảnh vườn. Hành động "chon" {chi_so:[số thứ tự cạnh trong canh, từ 1]} làm sáng cạnh đó; "loai_bo" gạch cạnh. Đặt hình đúng TỈ LỆ (cạnh 3 dài gấp rưỡi cạnh 2...). | ',
     'do_thi {x:50, y:50, ham: biểu thức theo x viết kiểu máy tính ("x^2+128/x", "x*(60-2*x)^2", "3/sin(x)+3/cos(x)", "1000*1.06^x"; dùng * ^ / sqrt sin cos tan ln log exp abs, góc tính bằng radian trừ khi kieu:"do"), x_tu, x_den (khoảng vẽ, x_den > x_tu, nằm trong điều kiện của ẩn), y_tu, y_den (để 0 và 0 thì máy tự tính), gia_tri: vị trí x ban đầu của điểm chạy, danh_dau:[x cực trị/nghiệm], nhan_truc:["x","S"], noi_dung: tên hàm}: ',
-    'đồ thị vẽ dần, điểm chạy dọc đường cong (dat_gia_tri {gia_tri: x mới} để điểm trượt tới đó, hiện "x = … → y = …"), danh_dau hiện chấm và tọa độ. Rất hợp để kiểm tra cực trị.\n'
+    'đồ thị vẽ dần, điểm chạy dọc đường cong (dat_gia_tri {gia_tri: x mới} để điểm trượt tới đó, hiện "x = … → y = …"), danh_dau hiện chấm và tọa độ. Rất hợp để kiểm tra cực trị.\n',
+    '  HÌNH TỰ DO (vẽ ĐÚNG mọi hình của đề mà các vật trên không có):\n',
+    '  hinh_tu_do {x, y, co, khung:[rộng, cao] (khung tọa độ riêng, mặc định [100,100], gốc trên-trái, y hướng XUỐNG; giữ hình trong khoảng 5-95), noi_dung: tiêu đề nhỏ, gia_tri: bước lặp hiện tại của fractal, hinh:[các nét vẽ lần lượt]}. ',
+    'Mỗi nét {kieu, ...các trường riêng, mau, to (tên màu để tô kín, hoặc true), do_to 0.05-1, net (độ dày 1-14), dut:true (nét đứt), nhan (nhãn LaTeX ngắn), vi_tri_nhan:[x,y], buoc (bước xuất hiện riêng; bỏ trống = vẽ lần lượt)}: ',
+    'da_giac {diem:[[x,y],...]} (đa giác kín) | duong {diem} (đường gấp khúc hở) | mui_ten {diem:[[x1,y1],[x2,y2]]} | tron {tam:[x,y], r} | cung {tam, r, tu, den (độ, 0 = hướng phải, tăng theo chiều kim đồng hồ)} | chu {tam, noi_dung (LaTeX), co_chu} | ',
+    'svg {d: "M10 10 L90 10 Q50 60 10 10 Z"} (đường cong tự do: bờ biển, con sông, hình cong lạ) | da_giac_deu {tam, r, so_canh 3-24, xoay} | ',
+    'koch {tam, r, lap 0-6} hoặc {diem: đa giác gốc, lap}: bông tuyết Koch (gai hướng ra ngoài) | sierpinski {tam, r, lap 0-6}: tam giác Sierpinski | ',
+    'tham_so {x: "biểu thức theo t", y: "biểu thức theo t", t_tu, t_den}: đường cong tham số (xoắn ốc, hình tim, quỹ đạo) | lap {hinh: một nét, so_lan, dich:[dx,dy], xoay (độ mỗi lần), tam_xoay:[x,y], ti_le}: nhân bản (hàng cây, bậc thang, hoa văn, lát gạch). ',
+    'Hình đều (tam giác đều, lục giác, bông tuyết) nên dùng da_giac_deu/koch với tam và r thay vì tự tính tọa độ; hình có số đo cụ thể thì tính tọa độ theo ĐÚNG tỉ lệ số đo. ',
+    'Hành động: chon {chi_so:[số thứ tự nét, từ 1]} làm nét đó sáng cam | loai_bo {chi_so} làm mờ nét bị bỏ | dat_gia_tri {gia_tri} đổi bước lặp của koch/sierpinski, hình "mọc" mượt từ bước này sang bước kia | sang.\n',
+    '  Ví dụ đề bông tuyết Koch cạnh 200 m: {"id":"dao","loai":"hinh_tu_do","x":50,"y":50,"khung":[100,100],"gia_tri":0,"hinh":[{"kieu":"koch","tam":[50,52],"r":44,"lap":3,"mau":"xanh_la","to":"xanh_la"},{"kieu":"chu","tam":[50,92],"noi_dung":"200\\\\,m"}]} kèm hanh_dong dat_gia_tri 1, 2, 3 ở các bước sau.\n'
   ];
   var goiY = tt ? [
     '- GỢI Ý CHỌN VẬT (toán thực tế): bể/hộp/thùng -> khoi_hop (+ muc_nuoc dâng lên); lon/cốc/bồn -> tru; đo chiều cao nhà/cây -> toa_nha hoặc cay + hinh_hoc tam giác vuông có góc; thang, dây -> thang + hinh_hoc; ',
@@ -140,6 +162,7 @@ function taoPromptKichBan_(r, c1, c2) {
     ['GIỮ CHÂN NGƯỜI XEM (rất quan trọng trên TikTok): (a) cứ 2-3 giây phải có một thay đổi trên màn hình (vật mới, hành động, đổi cảnh); (b) mở một "vòng lặp tò mò" ở cảnh 1-2 và chỉ đóng ở cảnh đáp án ("đến cuối bạn sẽ thấy vì sao..."); ',
     '(c) có một khoảnh khắc mời người xem đoán trước ("dừng video, đoán thử đi"); (d) ưu tiên đề có kết quả TRÁI TRỰC GIÁC hoặc tình huống đời thực gây tranh cãi (gameshow, bốc thăm, xổ số, sinh nhật trùng nhau, mật khẩu, trận đấu...); (e) câu ngắn, động từ mạnh, không giảng dài.\n'],
     moDau,
+    khopDe,
     noiCanh,
     ['4) MỖI CẢNH CÓ: "loai"; "tieu_de_canh" (BẮT BUỘC từ cảnh 2: câu tiêu đề in chữ trắng thật lớn ở đầu cảnh, 3-8 từ, nói đúng ý chính của cảnh, ví dụ "Cùng giới nghĩa là gì?", "Bẫy: quên hai bạn nữ"); ',
     '"tu_khoa" (1-3 từ nằm NGUYÊN VĂN trong tieu_de_canh, được tô cam); "nhan" (tùy chọn, nhãn cam ngắn tối đa 2 từ, ví dụ "BƯỚC 1"; để trống thì máy tự đặt theo loại cảnh); ',

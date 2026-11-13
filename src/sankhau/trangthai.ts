@@ -1,3 +1,4 @@
+import {kichThuocHinhTuDo} from './hinhtudo';
 // Trạng thái của một vật tại thời điểm t (tính từ danh sách hành động), dùng chung giữa bộ máy sân khấu và các hình vẽ.
 import {easeInOut, easeOut, kep, lerp, tienDo} from './donghieu';
 import {HanhDong, Vat} from './dulieu';
@@ -25,6 +26,7 @@ export type TrangThai = {
   dx: number;
   dy: number;
   an: number;
+  tb?: (b: number) => number; // mốc thời gian của từng bước (cho nét có "buoc" riêng của hình tự do)
 };
 
 export const GIAY_QUAY: Record<string, number> = {
@@ -37,7 +39,7 @@ export function tinhTrangThai(v: Vat, ds: HanhDong[], t: number, tb: (b: number)
     t, ta, vao: v.buoc <= 0 ? 1 : tienDo(t, ta, 0.5),
     chon: new Map(), chonCa: 0, mauChon: '', coChon: 0, loai: new Map(), loaiCa: 0, sang: 0, rung: 0,
     quay: -1, coQuay: false, mo: new Map(), layRa: [], bung: 0,
-    giaTri: isFinite(v.giaTri) ? v.giaTri : v.loai === 'do_thi' ? NaN : 0.5, giaTriChu: v.giaTriChu, noiDung: v.noiDung, dx: 0, dy: 0, an: 0,
+    giaTri: isFinite(v.giaTri) ? v.giaTri : v.loai === 'do_thi' ? NaN : 0.5, giaTriChu: v.giaTriChu, noiDung: v.noiDung, dx: 0, dy: 0, an: 0, tb,
   };
   const gtDau = isFinite(v.giaTri) ? v.giaTri : v.loai === 'do_thi' ? v.xTu : 0.5;
   let gtTruoc = v.loai === 'so_dem' ? 0 : gtDau;
@@ -211,6 +213,7 @@ export function kichThuocVat(v: Vat): {w: number; h: number} {
     case 'thang': { const g = (v.gocNghieng * Math.PI) / 180; w = 460 * Math.cos(g) + 60; h = 460 * Math.sin(g) + 60; break; }
     case 'hinh_hoc': w = 880; h = 600; break;
     case 'do_thi': w = 860; h = 560; break;
+    case 'hinh_tu_do': ({w, h} = kichThuocHinhTuDo(v)); break;
     default: break;
   }
   return {w: w * v.co, h: h * v.co};

@@ -255,6 +255,7 @@ function xuLyDocDe_(sh, bc, bat) {
       ghi_(sh, r._row, {
         trang_thai: 'MOI', mon: mon, lop: lop, chu_de: String(j.chu_de || 'Đề gửi qua Zalo').slice(0, 60), de_bai: j.de_bai,
         diem_tu_duy: Number(j.diem_tu_duy) || '', yeu_to_tu_duy: j.yeu_to_tu_duy || '', bay_thuong_gap: j.bay_thuong_gap || '',
+        mo_ta_hinh: String(j.mo_ta_hinh || '').slice(0, 1500),
         ma_bam: b, so_lan_loi: 0, ghi_chu: ''
       });
       nhatKy_('DOC_DE', r.id + ' -> ' + mon + ' lớp ' + lop + ': ' + String(j.de_bai).slice(0, 120));
@@ -297,7 +298,8 @@ function docDe_(sh, r) {
     '- "mon": "XAC_SUAT" nếu câu hỏi là tính MỘT xác suất (đáp án là phân số); mọi bài khác (toán thực tế, hình học, hàm số, đại số, lãi suất...) là "THUC_TE" (đáp số là một con số).\n' +
     '- "lop": lớp phù hợp nhất (10, 11 hoặc 12). "dang": mã dạng gần nhất trong: ' + DANG_DUNG_DUOC.XAC_SUAT.concat(DANG_DUNG_DUOC.THUC_TE).join(', ') + ' (không khớp thì ghi "khac").\n' +
     '- "doc_duoc": false nếu không phải đề toán hoặc ảnh mờ không chắc chắn các con số; ghi "ly_do" ngắn gọn bằng tiếng Việt.\n' +
-    'Trả JSON: {"doc_duoc":true,"ly_do":"","mon":"","lop":"","dang":"","chu_de":"2-6 từ","de_bai":"","cau_da_chon":"","ghi_chu_doi":"","diem_tu_duy":1-10,"yeu_to_tu_duy":"vì sao cần suy nghĩ","bay_thuong_gap":"học sinh hay sai ở đâu"}';
+       '- "mo_ta_hinh": nếu ảnh có HÌNH VẼ (hình học, sơ đồ, hình minh họa, chuỗi hình theo bước...) thì mô tả thật chi tiết để vẽ lại y hệt: hình gì, bao nhiêu hình, xếp thế nào, hình dạng từng hình (tam giác đều, ngôi sao sáu cánh, bông tuyết Koch...), màu, các điểm và nhãn số đo trên hình, hình sau biến đổi từ hình trước ra sao. Không có hình thì để "".\n' +
+    'Trả JSON: {"doc_duoc":true,"ly_do":"","mon":"","lop":"","dang":"","chu_de":"2-6 từ","de_bai":"","mo_ta_hinh":"","cau_da_chon":"","ghi_chu_doi":"","diem_tu_duy":1-10,"yeu_to_tu_duy":"vì sao cần suy nghĩ","bay_thuong_gap":"học sinh hay sai ở đâu"}';
   var opts = { suyNghi: 'mac_dinh' };
   if (anh) opts.anh = { mime: anh.getContentType() || 'image/jpeg', data: Utilities.base64Encode(anh.getBytes()) };
   var j = goiGemini_(prompt, 0.1, opts);
