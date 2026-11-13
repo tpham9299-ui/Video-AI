@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Sau khi dựng: tạo 2 ảnh từ video bằng ffmpeg.
   <id>_kt.jpg  : ẢNH KIỂM TRA - 4 khung hình ghép ngang (giữa cảnh 1, 2, 3 và cảnh đáp án) để Gemini so với đề bài
-  <id>_bia.jpg : ẢNH BÌA - khung hình lúc câu móc hiện đầy đủ (giây ~1,5), dùng làm ảnh bìa YouTube
+  (ảnh bìa <id>_bia.jpg do Remotion dựng riêng: composition AnhBia, xem workflow)
 Cách dùng: python3 scripts/anh_kiem_tra.py public/props.json out/ID.mp4 out/
 """
 import json
@@ -46,9 +46,7 @@ def main():
     subprocess.run(lenh, check=True)
     for f in tam:
         os.remove(f)
-    bia = os.path.join(ra, "%s_bia.jpg" % id_)
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-ss", "1.6", "-i", video, "-frames:v", "1", "-q:v", "2", bia], check=True)
-    print("Đã tạo", kt, "và", bia, "| cảnh:", [c.get("so") for c in chon])
+    print("Đã tạo", kt, "| cảnh:", [c.get("so") for c in chon])
 
 
 if __name__ == "__main__":

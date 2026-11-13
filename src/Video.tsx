@@ -81,7 +81,24 @@ function taoAmLuongNhac(props: Props) {
   };
 }
 
+// Video có ảnh bìa ở khung hình đầu: khung 0 là ảnh bìa, toàn bộ nội dung lùi 1 khung (1/30 giây, mắt không nhận ra).
 export const Video: React.FC<Props> = (props) => {
+  if (props.anhBiaDau) {
+    return (
+      <AbsoluteFill style={{background: '#000'}}>
+        <Sequence from={0} durationInFrames={1}>
+          <Img src={staticFile(props.anhBiaDau)} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+        </Sequence>
+        <Sequence from={1}>
+          <NoiDungVideo {...props} anhBiaDau={null} tongFrame={props.tongFrame - 1} />
+        </Sequence>
+      </AbsoluteFill>
+    );
+  }
+  return <NoiDungVideo {...props} />;
+};
+
+const NoiDungVideo: React.FC<Props> = (props) => {
   const {canh, tongFrame, nhac, lop, tieuDe, nen, phongCach, hookChu, hookKieu, nhanManh, thuongHieu, outro} = props;
   Object.assign(MAU, phongCach.mau || {}); // ghi đè bảng màu theo phong_cach.json
   GIAO_DIEN.kieuToan = phongCach.kieuToan || 'dam';

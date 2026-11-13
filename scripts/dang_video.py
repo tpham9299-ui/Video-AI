@@ -156,7 +156,7 @@ def dang_tiktok(video, meta):
             raise RuntimeError("Video dài hơn giới hạn %s giây của tài khoản TikTok" % toi_da)
         cap = (meta.get("tieu_de", "") + "\n" + " ".join("#" + t for t in meta.get("the", [])))[:2000]
         d = kiem_tra(requests.post(TT + "/post/publish/video/init/", headers=h, json={
-            "post_info": dict({"title": cap, "privacy_level": quyen, "disable_duet": False, "disable_comment": False, "disable_stitch": False, "video_cover_timestamp_ms": 1600},
+            "post_info": dict({"title": cap, "privacy_level": quyen, "disable_duet": False, "disable_comment": False, "disable_stitch": False, "video_cover_timestamp_ms": 0 if meta.get("co_bia") else 1600},
                               # video có sản phẩm do kênh bán: bật nhãn "quảng bá doanh nghiệp của bạn" (nội dung thương mại)
                               **({"brand_organic_toggle": True} if meta.get("quang_cao") else {})),
             "source_info": nguon}, timeout=60), "TikTok init")

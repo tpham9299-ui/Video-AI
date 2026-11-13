@@ -795,6 +795,7 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien) {
       if (laUuTien_(r)) kb.uu_tien = 1;
       if (spham) kb.san_pham = spham;   // bộ dựng video tự gắn nhãn có sản phẩm do kênh bán
       if (r._series) { kb.series = { ten: r._series.ten, tap: r._series.tap }; if (typeof ghiTapCuoiSeries_ === 'function') ghiTapCuoiSeries_(r._series, kb.tieu_de); }
+      if (typeof phanLoaiCauHoi_ === 'function') kb.loai_cau_hoi = phanLoaiCauHoi_(r);   // loại câu hỏi: màu nhãn trên ảnh bìa + danh sách phát
       var tep = thuMucKichBan_().createFile(r.id + '.json', JSON.stringify(kb, null, 2), MimeType.PLAIN_TEXT);
       ghi_(sh, r._row, { trang_thai: 'CO_KICH_BAN', file_kich_ban: tep.getId(), ghi_chu: '', so_lan_loi: 0, series: kb.series ? kb.series.ten + ' #' + kb.series.tap : '' });
       nhatKy_('KICH_BAN', r.id + ' -> đã lưu file ' + tep.getId());

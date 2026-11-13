@@ -85,7 +85,8 @@ function taoPromptKichBan_(r, c1, c2) {
     chao ? 'Được phép mở bằng MỘT lời chào cực ngắn có năng lượng (tối đa 3 từ, ví dụ "Chào bạn!") rồi vào hook ngay trong cùng câu thoại; KHÔNG "hôm nay", "các bạn ơi", "mọi người". '
          : 'KHÔNG chào hỏi, KHÔNG "hôm nay", "các bạn ơi", "mọi người": vào thẳng câu móc. ',
     '"hook_kieu": sai_lam | thach_thuc | bat_ngo | ket_qua_truoc | cau_hoi. Không bịa thống kê kiểu "90% học sinh sai". ',
-    '"hook_chu": câu hook rút gọn 3-11 từ để in chữ lớn; "nhan_manh": 1-3 cụm nằm NGUYÊN VĂN trong hook_chu (được tô vàng, rung).\n\n'
+    '"hook_chu": câu hook rút gọn 3-11 từ để in chữ lớn; "nhan_manh": 1-3 cụm nằm NGUYÊN VĂN trong hook_chu (được tô vàng, rung). ',
+    '"tieu_de_bia": tiêu đề ẢNH BÌA 3-7 từ (≤ 34 ký tự), cực gợi tò mò, nói đúng nội dung, không bịa số liệu, nên chứa NGUYÊN VĂN một cụm trong nhan_manh (được tô màu trên ảnh bìa).\n\n'
   ];
   var coHinh = typeof deCoHinh_ === 'function' ? deCoHinh_(r) : false;
   var khopDe = [
@@ -169,7 +170,7 @@ function taoPromptKichBan_(r, c1, c2) {
     '"hanh_dong":[{"buoc":1,"vat":"t1","kieu":"chon","mau":"xanh_la"},{"buoc":2,"vat":"t2","kieu":"rung"},{"buoc":2,"vat":"t2","kieu":"loai_bo"}]}}}\n\n'
   ];
   var traVe = [
-    'Trả về MỘT đối tượng JSON: {"tieu_de":"tiêu đề đăng video < 60 ký tự, gây tò mò","chu_de_ngan":"chủ đề 2-5 từ (hiện góc trên)","bai_hoc_rut_ra":["","",""],"video_tiep_theo":"","hook_ung_vien":["","",""],"hook":"(đúng lời thoại cảnh 1)","hook_chu":"","hook_kieu":"","nhan_manh":[""],"y_tuong_chinh":"","du_kien":["",""],"hashtag":["#toanhoc","' + (tt ? '#toanthucte' : '#xacsuat') + '"],"dap_an_cuoi":"' + r.dap_an + '",',
+    'Trả về MỘT đối tượng JSON: {"tieu_de":"tiêu đề đăng video < 60 ký tự, gây tò mò","chu_de_ngan":"chủ đề 2-5 từ (hiện góc trên)","bai_hoc_rut_ra":["","",""],"video_tiep_theo":"","hook_ung_vien":["","",""],"hook":"(đúng lời thoại cảnh 1)","hook_chu":"","tieu_de_bia":"","hook_kieu":"","nhan_manh":[""],"y_tuong_chinh":"","du_kien":["",""],"hashtag":["#toanhoc","' + (tt ? '#toanthucte' : '#xacsuat') + '"],"dap_an_cuoi":"' + r.dap_an + '",',
     '"canh":[{"so":1,"loai":"mo_dau|de_bai|mo_hinh_hoa|nhac_lai|y_do|bay|thu_nho|diem_chot|tinh_toan|kiem_tra|dap_an|bai_hoc","tieu_de_canh":"","tu_khoa":"","nhan":"","giu_san_khau":false,"giong_doc":"","loi_thoai":"","noi_dung_man_hinh":[],"trinh_bay":"cong_don|bien_doi|xep","chu_thich":[],"minh_hoa":{"loai":"san_khau","mo_ta":"","du_lieu":{"goc_nhin":null,"vat":[],"hanh_dong":[]}}}]}'
   ];
 

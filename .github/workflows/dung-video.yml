@@ -121,7 +121,17 @@ jobs:
         run: |
           ID=$(python3 -c "import json;print(json.load(open('public/props.json',encoding='utf8'))['id'])")
           GIAY=$(python3 -c "import json;p=json.load(open('public/props.json',encoding='utf8'));print(round(p['tongFrame']/p['fps']))")
-          mkdir -p out
+          mkdir -p out public/bia
+          # ẢNH BÌA thiết kế (loại câu hỏi, lớp, tập, tiêu đề, hình minh họa thật của đề) -> out/ID_bia.jpg
+          KHUNG=$(python3 -c "import json;print((json.load(open('public/props.json',encoding='utf8')).get('bia') or {}).get('khung',60))")
+          if npx remotion still src/index.ts AnhBia "out/${ID}_bia.png" --props=public/props.json --frame=$KHUNG; then
+            ffmpeg -y -loglevel error -i "out/${ID}_bia.png" -q:v 3 "out/${ID}_bia.jpg"
+            cp "out/${ID}_bia.png" "public/bia/${ID}.png"
+            # khung hình đầu của video = ảnh bìa (TikTok lấy khung 0 làm ảnh bìa)
+            python3 -c "import json;f='public/props.json';p=json.load(open(f,encoding='utf8'));p['anhBiaDau']='bia/${ID}.png';p['tongFrame']+=1;json.dump(p,open(f,'w',encoding='utf8'),ensure_ascii=False)"
+          else
+            echo "Không dựng được ảnh bìa, video vẫn dựng bình thường"
+          fi
           npx remotion render src/index.ts Video "out/$ID.mp4" --props=public/props.json --concurrency=2
           ls -la out
           echo "id=$ID" >> "$GITHUB_OUTPUT"

@@ -65,6 +65,8 @@ export type Props = {
   nhac: string | null;
   amLuongNhac: number; // âm lượng nhạc nền khi không có giọng đọc (khi có giọng tự giảm còn ~40%)
   baiHoc?: string[]; // 2-3 bài học rút ra (hiện ở màn kết)
+  bia?: {loai: string; tieuDe: string; khung: number} | null;
+  anhBiaDau?: string | null; // ảnh bìa đặt ở khung hình đầu tiên (1/30 giây) để TikTok lấy làm ảnh bìa; cả video lùi 1 khung // ảnh bìa: loại câu hỏi, tiêu đề ngắn, khung hình lấy hình minh họa
   series?: {ten: string; tap: number} | null; // series video (hiện "TẬP n" trên thanh đầu)
   quangCao?: {ten: string} | null; // video có sản phẩm do kênh bán: nhãn minh bạch
   duKien?: string[]; // 2-4 dữ kiện then chốt của đề (thẻ nhỏ trên đầu màn hình suốt phần giải)

@@ -15,7 +15,7 @@
  * ============================================================
  */
 
-var MAC_DINH_NC_ = { TU_KIEM_TRA_VIDEO: 'BAT', DIEM_HINH_TOI_THIEU: '7', THU_HOOK: 'BAT', SERIES: 'BAT', BAO_CAO_GIO: '21' };
+var MAC_DINH_NC_ = { TU_KIEM_TRA_VIDEO: 'BAT', DIEM_HINH_TOI_THIEU: '7', THU_HOOK: 'BAT', SERIES: 'BAT', BAO_CAO_GIO: '21', PLAYLIST_THEO: 'lop,lop_loai' };
 function chNC_(k) { var v = cauHinh_(k); return v === undefined || v === null || String(v).trim() === '' ? MAC_DINH_NC_[k] : String(v).trim(); }
 var TEN_THONG_KE = 'THONG_KE';
 var COT_TK = ['id', 'video_yt', 'ngay_dang', 'luot_xem', 'thich', 'binh_luan', 'ty_le_xem', 'xem_tb_giay', 'hook_kieu', 'hook_chu', 'mon', 'chu_de', 'series', 'giay', 'cap_nhat'];
@@ -237,15 +237,24 @@ function chonKieuHook_() {
 
 /* ===================== 5. SERIES ===================== */
 
-function xacDinhSeries_(r) {
-  if (chNC_('SERIES').toUpperCase() === 'TAT') return null;
+// Phân loại đề -> tên series (cũng là cơ sở của "loại câu hỏi" trên ảnh bìa và danh sách phát).
+function tenSeriesTheoDe_(r) {
   var chu = (String(r.de_bai || '') + ' ' + String(r.chu_de || '') + ' ' + String(r.mo_ta_hinh || '')).toLowerCase();
-  var ten = r.san_pham ? 'Toán đi chợ'
-    : /koch|sierpinski|fractal|bông tuyết|lặp lại/.test(chu) ? 'Hình học kỳ diệu'
+  if (String(r.mon).toUpperCase() === 'XAC_SUAT' && !r.san_pham) return 'Xác suất không như bạn nghĩ';
+  return r.san_pham ? 'Toán đi chợ'
+    : /koch|sierpinski|fractal|bông tuyết|lặp lại|hình vẽ|tam giác|đường tròn|hình vuông|đa giác|lục giác/.test(chu) ? 'Hình học kỳ diệu'
     : /lãi|tiết kiệm|gửi ngân hàng|trả góp|lợi nhuận|doanh thu|giá bán/.test(chu) ? 'Toán và tiền bạc'
     : /nhỏ nhất|lớn nhất|tốn ít|tiết kiệm nhất|tối ưu/.test(chu) ? 'Tối ưu đời thường'
-    : /chiều cao|khoảng cách|thang|góc nâng|đo/.test(chu) ? 'Đo đạc thực tế'
-    : String(r.mon).toUpperCase() === 'XAC_SUAT' ? 'Xác suất không như bạn nghĩ' : 'Toán quanh ta';
+    : /chiều cao|khoảng cách|thang|góc nâng|đo /.test(chu) ? 'Đo đạc thực tế' : 'Toán quanh ta';
+}
+var LOAI_THEO_SERIES_ = { 'Xác suất không như bạn nghĩ': 'Xác suất', 'Hình học kỳ diệu': 'Hình học', 'Toán và tiền bạc': 'Toán tiền bạc', 'Tối ưu đời thường': 'Tối ưu',
+  'Đo đạc thực tế': 'Đo đạc', 'Toán đi chợ': 'Toán đi chợ', 'Toán quanh ta': 'Toán thực tế' };
+// Loại câu hỏi (in trên ảnh bìa, dùng chia danh sách phát): Xác suất, Hình học, Tối ưu, Toán tiền bạc, Đo đạc, Toán đi chợ, Toán thực tế.
+function phanLoaiCauHoi_(r) { return LOAI_THEO_SERIES_[tenSeriesTheoDe_(r)] || 'Toán thực tế'; }
+
+function xacDinhSeries_(r) {
+  if (chNC_('SERIES').toUpperCase() === 'TAT') return null;
+  var ten = tenSeriesTheoDe_(r);
   var p = PropertiesService.getScriptProperties();
   var khoa = 'SERIES_' + ten.replace(/\s+/g, '_');
   var daCo = {};
@@ -274,20 +283,64 @@ function ghiTapCuoiSeries_(se, tieuDe) {
   p.setProperty(khoa, JSON.stringify(daCo));
 }
 
-// Thêm video YouTube vào danh sách phát cùng tên series (tạo nếu chưa có).
-function themVaoPlaylist_(kb, videoId) {
-  if (!kb || !kb.series || typeof YouTube === 'undefined') return '';
-  try {
-    var p = PropertiesService.getScriptProperties();
-    var khoa = 'PLAYLIST_' + kb.series.ten.replace(/\s+/g, '_');
-    var pl = p.getProperty(khoa);
-    if (!pl) {
-      pl = YouTube.Playlists.insert({ snippet: { title: kb.series.ten, description: 'Series video dạy toán: ' + kb.series.ten }, status: { privacyStatus: 'public' } }, 'snippet,status').id;
-      p.setProperty(khoa, pl);
-    }
-    YouTube.PlaylistItems.insert({ snippet: { playlistId: pl, resourceId: { kind: 'youtube#video', videoId: videoId } } }, 'snippet');
-    return 'đã thêm vào danh sách phát "' + kb.series.ten + '"';
-  } catch (e) { return 'chưa thêm được vào danh sách phát (' + String(e.message).slice(0, 80) + ')'; }
+// Các danh sách phát YouTube của một video theo CAU_HINH > PLAYLIST_THEO (mặc định "lop,lop_loai"):
+//   lop      -> "Toán lớp 12"            lop_loai -> "Lớp 12 · Xác suất"            series -> tên series ("Hình học kỳ diệu")
+function tenPlaylistCua_(lop, loai, series) {
+  var ds = [];
+  String(chNC_('PLAYLIST_THEO')).toLowerCase().split(/[,;\s]+/).forEach(function (k) {
+    if (k === 'lop' && lop) ds.push({ ten: 'Toán lớp ' + lop, mo_ta: 'Video giải toán lớp ' + lop + ' ngắn gọn, dễ hiểu: xác suất, toán thực tế, hình học...' });
+    if (k === 'lop_loai' && lop && loai) ds.push({ ten: 'Lớp ' + lop + ' · ' + loai, mo_ta: 'Toán lớp ' + lop + ', chủ đề ' + loai.toLowerCase() + ': giải nhanh, hiểu bản chất.' });
+    if (k === 'series' && series) ds.push({ ten: series, mo_ta: 'Series video dạy toán: ' + series });
+  });
+  return ds;
+}
+function idPlaylist_(muc) {
+  var p = PropertiesService.getScriptProperties();
+  var khoa = 'PLAYLIST_' + muc.ten.replace(/[^\wÀ-ỹ]+/g, '_');
+  var pl = p.getProperty(khoa);
+  if (!pl) {
+    pl = YouTube.Playlists.insert({ snippet: { title: muc.ten, description: muc.mo_ta, defaultLanguage: 'vi' }, status: { privacyStatus: 'public' } }, 'snippet,status').id;
+    p.setProperty(khoa, pl);
+  }
+  return pl;
+}
+// Thêm video YouTube vào các danh sách phát (tạo danh sách nếu chưa có); không thêm trùng.
+function themVaoPlaylist_(kb, videoId, r) {
+  if (typeof YouTube === 'undefined' || !videoId) return '';
+  var lop = String((r && r.lop) || (kb && kb.lop) || '').trim();
+  var loai = (kb && kb.loai_cau_hoi) || (r ? phanLoaiCauHoi_(r) : '');
+  var ds = tenPlaylistCua_(lop, loai, kb && kb.series ? kb.series.ten : '');
+  var p = PropertiesService.getScriptProperties();
+  var daThem = [], loi = [];
+  ds.forEach(function (muc) {
+    try {
+      var pl = idPlaylist_(muc);
+      var khoa = 'PLI_' + videoId + '_' + pl;
+      if (p.getProperty(khoa)) return;
+      YouTube.PlaylistItems.insert({ snippet: { playlistId: pl, resourceId: { kind: 'youtube#video', videoId: videoId } } }, 'snippet');
+      p.setProperty(khoa, '1');
+      daThem.push(muc.ten);
+    } catch (e) { loi.push(muc.ten + ' (' + String(e.message).slice(0, 60) + ')'); }
+  });
+  return (daThem.length ? 'đã thêm vào danh sách phát: ' + daThem.join(', ') : '') + (loi.length ? (daThem.length ? '; ' : '') + 'chưa thêm được: ' + loi.join(', ') : '');
+}
+
+// Chạy tay một lần: xếp các video YouTube ĐÃ ĐĂNG trước đây vào danh sách phát theo lớp / loại câu hỏi.
+function xepPlaylistVideoCu() {
+  if (typeof YouTube === 'undefined') { Logger.log('Chưa bật dịch vụ YouTube Data API v3.'); return; }
+  var hang = docHang_(SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI));
+  var n = 0;
+  hang.forEach(function (r) {
+    var kq = {};
+    try { kq = JSON.parse(String(r.link_dang || '{}')); } catch (e) {}
+    var vid = kq.youtube && kq.youtube.ok && kq.youtube.id;
+    if (!vid) return;
+    var kb = {};
+    try { kb = JSON.parse(DriveApp.getFileById(r.file_kich_ban).getBlob().getDataAsString()); } catch (e2) {}
+    var t = themVaoPlaylist_(kb, vid, r);
+    if (t) { n++; Logger.log(r.id + ': ' + t); }
+  });
+  Logger.log('Xong: đã xử lý ' + n + ' video.');
 }
 
 /* ===================== 6. BÁO CÁO HẰNG NGÀY ===================== */

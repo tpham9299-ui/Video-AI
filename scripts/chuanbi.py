@@ -486,6 +486,30 @@ def tron_nhac_theo_canh(public, id_, canh_kb, canh_props):
     return ten
 
 
+LOAI_THEO_SERIES = {"Xác suất không như bạn nghĩ": "Xác suất", "Hình học kỳ diệu": "Hình học", "Toán và tiền bạc": "Toán tiền bạc",
+                    "Tối ưu đời thường": "Tối ưu", "Đo đạc thực tế": "Đo đạc", "Toán đi chợ": "Toán đi chợ", "Toán quanh ta": "Toán thực tế"}
+
+
+def tao_bia(kb, canh_kb, canh_props):
+    """Thông tin ảnh bìa: loại câu hỏi (màu riêng), tiêu đề ngắn, khung hình có hình minh họa rõ nhất (cảnh 1-3 có vật/hình)."""
+    loai = str(kb.get("loai_cau_hoi") or "").strip()
+    if not loai:
+        se = kb.get("series") if isinstance(kb.get("series"), dict) else {}
+        loai = LOAI_THEO_SERIES.get(str(se.get("ten") or ""), "")
+    if not loai:
+        loai = "Toán đi chợ" if kb.get("san_pham") else ("Xác suất" if str(kb.get("mon") or "").upper() == "XAC_SUAT" else "Toán thực tế")
+    tieu_de = str(kb.get("tieu_de_bia") or kb.get("hook_chu") or kb.get("tieu_de") or "").strip()
+    chon = 1 if len(canh_props) > 1 else 0
+    for i in range(min(3, len(canh_props))):
+        du = ((canh_kb[i].get("minh_hoa") or {}).get("du_lieu") or {}) if isinstance(canh_kb[i].get("minh_hoa"), dict) else {}
+        vat = du.get("vat") if isinstance(du, dict) else None
+        if isinstance(vat, list) and any(isinstance(v, dict) and v.get("loai") not in ("nhan", "chu", "so_dem", "danh_sach", "mui_ten") for v in vat):
+            chon = i
+            break
+    c = canh_props[chon]
+    return {"loai": loai, "tieuDe": tieu_de[:80], "khung": int(c["batDau"] + c["soFrame"] * 0.96)}   # lúc hình đã vẽ xong
+
+
 def tim_tep(thu_muc, ten, duoi):
     for d in duoi:
         f = os.path.join(thu_muc, ten + d)
@@ -688,6 +712,7 @@ def main():
         "amLuongNhac": float(os.environ.get("AM_LUONG_NHAC") or (0.16 if nhac and (nhac.endswith("nen.wav") or "/tron_" in nhac) else 0.12)),
         "chuDe": str(kb.get("chu_de_ngan") or kb.get("chu_de") or "")[:40],
         "baiHoc": bai_hoc,
+        "bia": tao_bia(kb, canh, canh_props),
         "series": {"ten": str(kb["series"].get("ten") or "")[:40], "tap": int(kb["series"].get("tap") or 0)} if isinstance(kb.get("series"), dict) and kb["series"].get("tap") else None,
         "quangCao": {"ten": str((kb.get("san_pham") or {}).get("ten") or "")[:60]} if isinstance(kb.get("san_pham"), dict) and (kb.get("san_pham") or {}).get("ten") else None,
         "duKien": [str(x).strip()[:30] for x in (kb.get("du_kien") or []) if str(x).strip()][:4],

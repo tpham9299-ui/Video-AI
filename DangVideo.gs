@@ -162,6 +162,7 @@ function noiDungDang_(r) {
   var baiHoc = (kb.bai_hoc_rut_ra || []).map(function (x) { return '• ' + x; }).join('\n');
   var sp = kb.san_pham || null;
   if (sp && the.indexOf('quangcao') < 0) the.push('quangcao');
+  if (kb.loai_cau_hoi) { var tl = kb.loai_cau_hoi.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]/g, ''); if (tl && the.indexOf(tl) < 0) the.push(tl); }
   var moTa = [
     sp ? '📢 Video có giới thiệu sản phẩm do kênh bán: ' + sp.ten + '. Thông tin giá và thông số lấy ngày ' + (sp.ngay || '') + '.\n' : '',
     String(kb.hook || tieuDe),
@@ -192,7 +193,7 @@ function dangVideo_(sh, r) {
   if (can.length) {
     var gui = typeof guiWorkflowGitHub_ === 'function' ? guiWorkflowGitHub_({
       viec: 'dang', id: r.id,
-      dang: JSON.stringify({ file_id: String(r.file_video), ten: r.id, tieu_de: meta.tieu_de, yt_tieu_de: meta.yt_tieu_de, mo_ta: meta.mo_ta, the: meta.the, nen_tang: can, yt_che_do: chDang_('YOUTUBE_CHE_DO'), quang_cao: meta.quang_cao })
+      dang: JSON.stringify({ file_id: String(r.file_video), ten: r.id, tieu_de: meta.tieu_de, yt_tieu_de: meta.yt_tieu_de, mo_ta: meta.mo_ta, the: meta.the, nen_tang: can, yt_che_do: chDang_('YOUTUBE_CHE_DO'), quang_cao: meta.quang_cao, co_bia: !!r.anh_bia })
     }) : { ok: false, loi: 'Thiếu BoPhan2.gs bản mới (guiWorkflowGitHub_)' };
     if (gui.ok) {
       ghi_(sh, r._row, { trang_thai: 'DANG_DANG', link_dang: JSON.stringify(kq), ghi_chu: 'Đang đăng qua GitHub: ' + can.join(', ') });
@@ -229,7 +230,7 @@ function dangYouTube_(r, meta) {
     }
     var kbYT = {};
     try { kbYT = JSON.parse(DriveApp.getFileById(r.file_kich_ban).getBlob().getDataAsString()); } catch (eK) {}
-    if (typeof themVaoPlaylist_ === 'function') { var pl = themVaoPlaylist_(kbYT, v.id); if (pl) ghiChuYT.push(pl); }
+    if (typeof themVaoPlaylist_ === 'function') { var pl = themVaoPlaylist_(kbYT, v.id, r); if (pl) ghiChuYT.push(pl); }
     if (typeof dangKyThongKe_ === 'function') dangKyThongKe_(r, v.id);
     return { ok: true, url: 'https://youtube.com/shorts/' + v.id, id: v.id, che_do: v.status && v.status.privacyStatus, ghi_chu: ghiChuYT.join(', ') };
   } catch (e) {
