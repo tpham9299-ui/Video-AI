@@ -3,6 +3,7 @@ import {AbsoluteFill, Audio, Img, interpolate, OffthreadVideo, Sequence, staticF
 import {Canh, sanKhauCuaCanh} from './Canh';
 import {LopQuet} from './LopQuet';
 import {MoDau} from './MoDau';
+import {DuKien} from './DuKien';
 import {ManKetChuyenNghiep} from './ManKet';
 import {cacPha, phaCua} from './ThanhBuoc';
 import {Nen} from './Nen';
@@ -71,7 +72,8 @@ function taoAmLuongNhac(props: Props) {
       if (f >= a && f <= b) { gan = 0; break; }
       gan = Math.min(gan, f < a ? a - f : f - b);
     }
-    const duck = interpolate(gan, [0, 10], [0.4, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
+    // giảm nhạc mềm (18 khung hình) để không nghe "phập phồng"; ở quãng nghỉ giữa hai cảnh nhạc dâng lên nối hai bước
+    const duck = interpolate(gan, [0, 18], [0.42, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
     const dauCuoi = interpolate(f, [0, 20, tongFrame - 45, tongFrame], [0.5, 1, 1, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
     return goc * duck * dauCuoi;
   };
@@ -85,6 +87,8 @@ export const Video: React.FC<Props> = (props) => {
   const amNhac = taoAmLuongNhac(props);
   const ketThuc = outro ? outro.batDau : tongFrame;
   const dsPha = cacPha(canh.map((c) => c.loai));
+  // cảnh trước còn ở lại 8 khung hình để hòa vào cảnh sau (trừ khi cảnh sau diễn tiếp trên cùng sân khấu)
+  const keoDai = (i: number) => (i < canh.length - 1 && !canh[i + 1].giuSanKhau ? 8 : 0);
   const coThuongHieu = !!thuongHieu && !!(thuongHieu.ten || thuongHieu.logo || thuongHieu.handle);
   return (
     <AbsoluteFill style={{fontFamily: FONT}}>
@@ -93,15 +97,17 @@ export const Video: React.FC<Props> = (props) => {
       <Nen nen={nen} dsNen={props.dsNen} canh={canh} pc={phongCach} tongFrame={tongFrame} />
       {nhac ? <Audio src={staticFile(nhac)} loop volume={amNhac} /> : null}
       {canh.map((c, i) => (
-        <Sequence key={c.so} from={c.batDau} durationInFrames={c.soFrame}>
+        <Sequence key={c.so} from={c.batDau} durationInFrames={c.soFrame + keoDai(i)}>
           <Canh canh={c} tieuDe={tieuDe} tongCanh={canh.length} hook={{chu: hookChu, kieu: hookKieu, nhanManh}} pc={phongCach}
-            sanKhau={sanKhauCuaCanh(canh, i)} cacBuoc={dsPha} phaTruoc={i > 0 ? phaCua(canh[i - 1].loai) : ''} giuTruoc={i > 0 && c.giuSanKhau && !!sanKhauCuaCanh(canh, i - 1)} giuSau={!!canh[i + 1] && canh[i + 1].giuSanKhau && !!sanKhauCuaCanh(canh, i)} />
+            sanKhau={sanKhauCuaCanh(canh, i)} cacBuoc={dsPha} phaTruoc={i > 0 ? phaCua(canh[i - 1].loai) : ''} giuTruoc={i > 0 && c.giuSanKhau && !!sanKhauCuaCanh(canh, i - 1)} giuSau={!!canh[i + 1] && canh[i + 1].giuSanKhau && !!sanKhauCuaCanh(canh, i)} keoDai={keoDai(i)} />
         </Sequence>
       ))}
       {/* chuyển cảnh motion graphic ở chỗ nối các cảnh (trừ cảnh nối tiếp sân khấu) */}
+      {/* lớp quét chỉ ở khoảnh khắc kịch tính (sang cái bẫy / đáp án); các chỗ nối khác hòa mờ tự nhiên.
+          phong_cach.json "lopQuet": "luon" để quét ở mọi chỗ nối như bản cũ, false để tắt hẳn. */}
       {phongCach.lopQuet !== false
         ? canh.map((c, i) =>
-            i > 0 && !c.giuSanKhau ? (
+            i > 0 && !c.giuSanKhau && (phongCach.lopQuet === 'luon' || (/dap_an|ket_qua|bay/i.test(c.loai) && phaCua(c.loai) !== phaCua(canh[i - 1].loai))) ? (
               <Sequence key={`quet${c.so}`} from={c.batDau - 7} durationInFrames={16} layout="none">
                 <LopQuet kieu={/dap_an|ket_qua|bay/i.test(c.loai) ? 'vong' : 'cheo'} />
               </Sequence>
@@ -112,7 +118,7 @@ export const Video: React.FC<Props> = (props) => {
       {canh.map((c) =>
         /dap_an|ket_qua/i.test(c.loai) && c.batDau > 40 ? (
           <Sequence key={`riser${c.so}`} from={c.batDau - 36} durationInFrames={40} layout="none">
-            <Audio src={staticFile('sfx/riser.wav')} volume={0.3} />
+            <Audio src={staticFile('sfx/riser.wav')} volume={0.2} />
           </Sequence>
         ) : null
       )}
@@ -127,6 +133,13 @@ export const Video: React.FC<Props> = (props) => {
           <Audio src={staticFile('sfx/sting.wav')} volume={0.55} />
         </Sequence>
       ) : null}
+      {/* thẻ dữ kiện: từ sau phần đề bài đến trước cảnh bài học */}
+      {props.duKien && props.duKien.length && canh.length > 3 ? (() => {
+        const iTu = canh.findIndex((c, i) => i > 0 && !/mo_dau|hook|de_bai/i.test(c.loai));
+        const iDen = canh.findIndex((c, i) => i > iTu && /bai_hoc|ket_luan/i.test(c.loai));
+        if (iTu < 0) return null;
+        return <DuKien ds={props.duKien} tu={canh[iTu].batDau + 6} den={iDen > 0 ? canh[iDen].batDau : ketThuc - 30} />;
+      })() : null}
       {canh.length > 1 ? <DauTrang chu={props.chuDe || tieuDe} lop={lop} tu={canh[1].batDau} lui={coThuongHieu ? 1 : 0} den={ketThuc} th={thuongHieu} /> : null}
       <ThuongHieu th={thuongHieu} canh={canh} ketThuc={ketThuc} tuDau={canh.length > 1 ? canh[1].batDau : 1e9} boLoiMoi={phongCach.loiMoiGiuaVideo !== true} />
       {phongCach.thanhTienDo ? <ThanhTienDo tongFrame={tongFrame} lop={lop} /> : null}

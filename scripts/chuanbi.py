@@ -117,9 +117,61 @@ def _gtts(text, tep, toc):
 
 THONG_KE_GIONG = {"edge": 0, "gtts": 0, "gemini": 0}
 
-PHONG_CACH_GIONG_MAC_DINH = ("Đọc đoạn sau bằng tiếng Việt chuẩn, giọng miền Bắc, như một thầy giáo trẻ đang làm video TikTok dạy toán: "
-                             "hào hứng, gần gũi, rõ ràng, tốc độ hơi nhanh, nhấn vào các con số và từ khóa, ngắt nghỉ tự nhiên theo dấu câu. "
-                             "Chỉ đọc đúng nội dung, không thêm bớt chữ nào:")
+PHONG_CACH_GIONG_MAC_DINH = ("Đọc đoạn sau bằng tiếng Việt chuẩn, giọng miền Bắc, như một thầy giáo trẻ đang nói chuyện trực tiếp với một bạn học sinh "
+                             "trong video TikTok dạy toán: tự nhiên như trò chuyện chứ không đọc văn bản, giọng ấm, có nụ cười trong giọng nói, "
+                             "lên xuống giọng rõ ràng, ngừng rất ngắn trước con số hoặc ý quan trọng rồi nhấn vào nó, câu hỏi thì lên giọng cuối câu, "
+                             "tốc độ hơi nhanh nhưng mọi chữ đều rõ. Chỉ đọc đúng nội dung, không thêm bớt chữ nào.")
+
+# Sắc thái giọng theo loại cảnh (kịch bản có thể ghi đè bằng trường "giong_doc" của từng cảnh).
+SAC_THAI_THEO_LOAI = [
+    (r"mo_dau|hook|cau_hoi", "hào hứng, gây tò mò, như đang thách đố người nghe, nhấn mạnh từ khóa"),
+    (r"de_bai", "rõ ràng, nhịp vừa phải như kể một câu chuyện ngắn, đọc chậm và rõ từng con số của đề"),
+    (r"nhac_lai|kien_thuc", "ấm áp, giải thích nhẹ nhàng như nhắc lại cho bạn mình"),
+    (r"mo_hinh", "tập trung, mạch lạc, như đang vẽ phác thảo cho người nghe cùng nhìn"),
+    (r"y_do|thu_nho", "tò mò, suy ngẫm, như đang cùng người nghe đặt câu hỏi"),
+    (r"bay", "hạ giọng một chút, cảnh báo nghiêm túc, hơi bí ẩn như sắp tiết lộ sai lầm"),
+    (r"diem_chot|y_tuong", "sáng lên như vừa phát hiện ra điều thú vị, kiểu 'à, ra là thế'"),
+    (r"tinh|giai", "tự tin, nhịp đều và chắc, nhấn vào từng kết quả trung gian"),
+    (r"kiem_tra", "cẩn thận, chắc chắn, như đang soát lại cho yên tâm"),
+    (r"dap_an|ket_qua", "phấn khích, rõ ràng, đọc đáp số chậm lại một nhịp để người nghe nhớ"),
+    (r"bai_hoc|ket_luan|chot", "thân thiện, chậm lại, đọng lại, như lời dặn cuối buổi học"),
+]
+
+
+def sac_thai_canh(c):
+    rieng = str(c.get("giong_doc") or "").strip()
+    if rieng:
+        return rieng[:160]
+    loai = str(c.get("loai") or "").lower()
+    for re_, mo_ta in SAC_THAI_THEO_LOAI:
+        if re.search(re_, loai):
+            return mo_ta
+    return ""
+
+
+def nghi_canh(canh, i):
+    """Nhịp nghỉ tự nhiên quanh mỗi cảnh (giây): cảnh nối tiếp cùng sân khấu thì liền mạch, trước cái bẫy / đáp án thì
+    lặng thêm một nhịp để tạo kịch tính, cảnh cuối để đọng lại. Thay cho khoảng lặng cố định giữa mọi cảnh (nghe máy móc)."""
+    c = canh[i]
+    loai = str(c.get("loai") or "").lower()
+    sau = canh[i + 1] if i + 1 < len(canh) else None
+    if i == 0:
+        lead = LEAD
+    elif c.get("giu_san_khau"):
+        lead = 0.12
+    elif re.search(r"bay|dap_an|ket_qua", loai):
+        lead = 0.34
+    else:
+        lead = LEAD
+    if sau is None:
+        tail = 0.85
+    elif sau.get("giu_san_khau"):
+        tail = 0.16
+    elif re.search(r"bay|dap_an|ket_qua", str(sau.get("loai") or "").lower()):
+        tail = 0.5
+    else:
+        tail = TAIL
+    return lead, tail
 
 
 def gemini_tts(text, tep_wav, giong, model, phong_cach):
@@ -178,8 +230,10 @@ def tao_giong_gemini(canh, thu_muc, args):
         if not van:
             continue
         wav = os.path.join(thu_muc, "gem_%d.wav" % i)
+        st = sac_thai_canh(c)
+        phong_cach = args.phong_cach_giong + (" Sắc thái của đoạn này: " + st + "." if st else "") + "\nĐoạn cần đọc:"
         try:
-            gemini_tts(van, wav, args.giong_gemini, args.tts_model, args.phong_cach_giong)
+            gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach)
         except Exception as e:
             print("Cảnh báo: %s -> cả video chuyển sang edge-tts" % str(e)[:200])
             return None
@@ -354,6 +408,84 @@ def chon_nhac(public, id_):
     return "nhac/nen.wav" if os.path.exists(os.path.join(thu_muc, "nen.wav")) else None
 
 
+TAM_TRANG_THEO_LOAI = [
+    (r"mo_dau|hook|cau_hoi", "chinh"), (r"de_bai|nhac_lai|kien_thuc|y_do|thu_nho", "nhe"), (r"bay", "cang"),
+    (r"dap_an|ket_qua", "bung"), (r"bai_hoc|ket_luan|chot", "nhe"), (r"mo_hinh|diem_chot|y_tuong|tinh|giai|kiem_tra", "chinh"),
+]
+
+
+def tam_trang_canh(c):
+    rieng = str(c.get("nhac") or "").strip().lower()
+    if rieng in ("nhe", "chinh", "cang", "bung"):
+        return rieng
+    loai = str(c.get("loai") or "").lower()
+    for re_, tt in TAM_TRANG_THEO_LOAI:
+        if re.search(re_, loai):
+            return tt
+    return "chinh"
+
+
+def tron_nhac_theo_canh(public, id_, canh_kb, canh_props):
+    """Ghép 4 bản nhạc tự tạo (nhe / chinh / cang / bung, cùng 120 BPM) theo diễn biến bài: mỗi cảnh một tâm trạng,
+    đổi bản đúng ranh giới ô nhịp gần đầu cảnh nhất và hòa chéo 0,6 giây, nên nghe như một bản nhạc có cao trào chứ
+    không phải một vòng lặp đều đều suốt video. Trả về đường dẫn tương đối trong public, hoặc None nếu thiếu tệp/thư viện."""
+    try:
+        import numpy as np
+        import wave
+    except Exception:
+        return None
+    tep = {"chinh": os.path.join(public, "nhac", "nen.wav")}
+    for k in ("nhe", "cang", "bung"):
+        tep[k] = os.path.join(public, "nhac", "tam_trang", k + ".wav")
+    if not all(os.path.exists(v) for v in tep.values()):
+        return None
+    du = {}
+    sr = None
+    for k, v in tep.items():
+        with wave.open(v, "rb") as w:
+            sr = w.getframerate()
+            du[k] = np.frombuffer(w.readframes(w.getnframes()), dtype="<i2").astype(np.float32) / 32768.0
+    gain = {"nhe": 0.85, "chinh": 1.0, "cang": 0.95, "bung": 1.0}
+    o = 2.0                                       # một ô nhịp = 2 giây (120 BPM, 4/4)
+    tong_giay = (canh_props[-1]["batDau"] + canh_props[-1]["soFrame"]) / FPS + 1.0
+    so_o = int(np.ceil(tong_giay / o))
+    # tâm trạng của từng ô nhịp: theo cảnh đang chạy ở giữa ô đó (đổi bản ở ranh giới ô gần đầu cảnh nhất)
+    moc = [(c["batDau"] / FPS, tam_trang_canh(ckb)) for c, ckb in zip(canh_props, canh_kb)]
+    def tam_trang_luc(t):
+        tt = moc[0][1]
+        for bd, k in moc:
+            if bd <= t + o / 2:
+                tt = k
+        return tt
+    n_o = int(sr * o)
+    dai_vong = len(du["chinh"])
+    ra = np.zeros(so_o * n_o + int(sr * 0.6), dtype=np.float32)
+    hoa = int(sr * 0.6)
+    for i in range(so_o):
+        k = tam_trang_luc(i * o)
+        a = (i * n_o) % dai_vong                 # giữ đúng vị trí trong vòng hợp âm dù đổi bản
+        doan = np.take(du[k], np.arange(a, a + n_o + hoa) % dai_vong) * gain[k]
+        env = np.ones(len(doan), dtype=np.float32)
+        truoc = tam_trang_luc((i - 1) * o) if i else k
+        sau = tam_trang_luc((i + 1) * o)
+        if i and truoc != k:
+            env[:hoa] = np.sin(np.linspace(0, np.pi / 2, hoa)) ** 2      # vào mềm khi vừa đổi tâm trạng
+        if sau != k:
+            env[n_o:] = np.cos(np.linspace(0, np.pi / 2, hoa)) ** 2      # phần dư hòa vào ô sau
+        else:
+            env[n_o:] = 0
+        ra[i * n_o : i * n_o + len(doan)] += doan * env
+    ra = np.clip(ra, -1, 1)
+    ten = "nhac/tron_%s.wav" % id_
+    with wave.open(os.path.join(public, ten), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(sr)
+        w.writeframes((ra * 32767).astype("<i2").tobytes())
+    print("Nhạc nền theo cảnh: " + " ".join("%d:%s" % (c["so"], tam_trang_canh(ckb)) for c, ckb in zip(canh_props, canh_kb)))
+    return ten
+
+
 def tim_tep(thu_muc, ten, duoi):
     for d in duoi:
         f = os.path.join(thu_muc, ten + d)
@@ -472,7 +604,8 @@ def main():
             os.remove(os.path.join(thu_muc_giong, "tam_" + ten))
         tong_am = do_thoi_luong(os.path.join(thu_muc_giong, ten))
 
-        cau, t = [], LEAD
+        lead_c, tail_c = nghi_canh(canh, i)
+        cau, t = [], lead_c
         for d, dd in zip(cac_doan, do_dai):
             doan = chia_phu_de(d)
             tong_ky_tu = float(sum(len(x) for x in doan))
@@ -483,7 +616,7 @@ def main():
                 t_doan += dai_x
             t += dd + gap
 
-        so_frame = max(int(round((LEAD + tong_am + TAIL) * FPS)), 2 * FPS)
+        so_frame = max(int(round((lead_c + tong_am + tail_c) * FPS)), 2 * FPS)
         loai_hinh = str((c.get("minh_hoa") or {}).get("loai") or "").lower()
         toi_thieu = {"venn": 4.6, "luoi_mau": 5.2, "dien_tich": 6.0, "thuc_nghiem": 5.6, "so_do_cay": 5.0, "bi_hop": 3.8}.get(loai_hinh, 0)
         if loai_hinh == "san_khau":
@@ -509,7 +642,7 @@ def main():
             "audio": "giong/" + ten,
             "batDau": bat_dau,
             "soFrame": so_frame,
-            "leadFrame": int(round(LEAD * FPS)),
+            "leadFrame": int(round(lead_c * FPS)),
             "cau": cau,
             "trinhBay": trinh_bay(c, noi_dung),
             "chuThich": [str(x) for x in (c.get("chu_thich") or []) if str(x).strip()][:3],
@@ -524,6 +657,11 @@ def main():
         print("Cảnh %d: %d câu, %d từ, giọng %.1fs (%.1f từ/giây), %d khung hình" % (so, len(cac_doan), so_tu, tong_am - GAP, so_tu / max(0.1, tong_am - GAP), so_frame))
 
     nhac = chon_nhac(args.public, id_an_toan)
+    if nhac == "nhac/nen.wav" and os.environ.get("NHAC_THEO_CANH", "1") != "0":
+        for f in os.listdir(os.path.join(args.public, "nhac")):
+            if f.startswith("tron_"):
+                os.remove(os.path.join(args.public, "nhac", f))
+        nhac = tron_nhac_theo_canh(args.public, id_an_toan, canh, canh_props) or nhac
     hook_chu = str(kb.get("hook_chu") or kb.get("hook") or "").strip()
     pc, nen_co_dinh, th = doc_phong_cach(args.phong_cach)
     ds_nen = chon_nen(args.public, id_an_toan, nen_co_dinh, pc.get("soNenToiDa", 3))
@@ -547,9 +685,10 @@ def main():
         "hookKieu": str(kb.get("hook_kieu") or ""),
         "nhanManh": [str(x) for x in (kb.get("nhan_manh") or [])][:5],
         "nhac": nhac,
-        "amLuongNhac": float(os.environ.get("AM_LUONG_NHAC") or (0.16 if nhac and nhac.endswith("nen.wav") else 0.12)),
+        "amLuongNhac": float(os.environ.get("AM_LUONG_NHAC") or (0.16 if nhac and (nhac.endswith("nen.wav") or "/tron_" in nhac) else 0.12)),
         "chuDe": str(kb.get("chu_de_ngan") or kb.get("chu_de") or "")[:40],
         "baiHoc": bai_hoc,
+        "duKien": [str(x).strip()[:30] for x in (kb.get("du_kien") or []) if str(x).strip()][:4],
         "tiepTheo": str(kb.get("video_tiep_theo") or "")[:70],
         "nen": ds_nen[0] if ds_nen else None,
         "dsNen": ds_nen,

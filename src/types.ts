@@ -20,7 +20,7 @@ export type CanhProps = {
   tuKhoa: string; // cụm từ trong tiêu đề được tô cam
   nhan: string; // nhãn viên thuốc màu cam (để trống = tự đặt theo loại cảnh)
   giuSanKhau: boolean;
-  chuyenCanh?: string; // truot_len | phong | luot_ngang | truot_xuong (để trống = tự xoay vòng) // giữ nguyên sân khấu của cảnh trước rồi diễn tiếp (liền mạch như video mẫu)
+  chuyenCanh?: string; // mo | truot_len | phong | luot_ngang | truot_xuong | lat_3d (để trống = tự chọn theo mạch bài) // giữ nguyên sân khấu của cảnh trước rồi diễn tiếp (liền mạch như video mẫu)
 };
 
 export type ThuongHieuProps = {ten: string; khauHieu: string; handle: string; markNuoc: boolean; logo: string | null; loiMoi?: string};
@@ -42,7 +42,7 @@ export type PhongCach = {
   butChi?: boolean; // bút chì chạy theo khi viết công thức (kiểu xep)
   thanhBuoc?: boolean; // thanh các bước bài giải ở đầu cảnh (thay nhãn cam)
   tieuDeInHoa?: boolean; // tiêu đề cảnh viết IN HOA như video mẫu
-  lopQuet?: boolean; // chuyển cảnh motion graphic (dải màu chéo / vòng sáng)
+  lopQuet?: boolean | 'luon'; // lớp quét chuyển cảnh: mặc định chỉ ở cái bẫy/đáp án; 'luon' = mọi chỗ nối; false = tắt
   kieuPhuDe?: string; // 'hop' (ô màu sau từ đang đọc, mặc định) | 'mau'
   mauPhuDe?: string; // màu ô phụ đề
   soNenToiDa?: number; // số nền tối đa dùng trong một video (đổi theo nhóm cảnh)
@@ -65,6 +65,7 @@ export type Props = {
   nhac: string | null;
   amLuongNhac: number; // âm lượng nhạc nền khi không có giọng đọc (khi có giọng tự giảm còn ~40%)
   baiHoc?: string[]; // 2-3 bài học rút ra (hiện ở màn kết)
+  duKien?: string[]; // 2-4 dữ kiện then chốt của đề (thẻ nhỏ trên đầu màn hình suốt phần giải)
   tiepTheo?: string; // câu hẹn video sau (màn kết)
   chuDe: string; // chủ đề ngắn hiện ở góc trên (ví dụ "Hai bi cùng màu")
   nen: NenProps | null;

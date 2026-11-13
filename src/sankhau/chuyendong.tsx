@@ -26,7 +26,7 @@ export const NhoeHuong: React.FC<{nx: number; ny: number; children: React.ReactN
   );
 };
 
-export const KIEU_CHUYEN = ['truot_len', 'phong', 'luot_ngang', 'truot_xuong', 'lat_3d'] as const;
+export const KIEU_CHUYEN = ['mo', 'truot_len', 'phong', 'luot_ngang', 'truot_xuong', 'lat_3d'] as const;
 export type KieuChuyen = (typeof KIEU_CHUYEN)[number];
 
 // Trạng thái chuyển cảnh của một khối nội dung: vào trong `vaoF` khung đầu, ra trong `raF` khung cuối.
@@ -58,9 +58,14 @@ export function trangThaiChuyen(kieu: string, f: number, tong: number, boVao = f
       y = -260 * conVao + 260 * b;
       ny = 24 * conVao + 24 * b;
       break;
+    case 'mo': // hòa tan mềm: hơi trôi lên + phóng rất nhẹ, dùng giữa hai cảnh cùng một mạch (không gây giật)
+      y = 26 * conVao - 14 * b;
+      s = 1 + 0.03 * conVao - 0.015 * b;
+      ny = 3 * conVao + 3 * b;
+      break;
     default: // truot_len
-      y = 260 * conVao - 260 * b;
-      ny = 24 * conVao + 24 * b;
+      y = 160 * conVao - 160 * b;
+      ny = 14 * conVao + 14 * b;
   }
   return {x, y, s, nx, ny, ry, mo: kep(a * 1.6) * (1 - b)};
 }

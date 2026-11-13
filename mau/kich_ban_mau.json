@@ -78,7 +78,8 @@
       "xoay": -22
      }
     }
-   }
+   },
+   "giong_doc": "hào hứng, thách đố"
   },
   {
    "so": 2,
@@ -136,14 +137,15 @@
       }
      ]
     }
-   }
+   },
+   "giong_doc": "kể chuyện, hồi hộp"
   },
   {
    "so": 3,
    "loai": "de_bai",
    "tieu_de_canh": "Đề cho gì? Hỏi gì?",
    "tu_khoa": "Hỏi gì",
-   "loi_thoai": "Tóm lại đề cho: ba cửa, một xe, bạn chọn cửa một, người dẫn mở một cửa dê. Câu hỏi: nếu đổi cửa, xác suất thắng là bao nhiêu?",
+   "loi_thoai": "Gói gọn lại cho dễ nhớ: ba cửa, một xe, bạn chọn cửa một, người dẫn mở một cửa có dê. Câu hỏi là nếu đổi cửa, xác suất thắng bằng bao nhiêu?",
    "noi_dung_man_hinh": [],
    "minh_hoa": {
     "loai": "san_khau",
@@ -177,14 +179,15 @@
       }
      ]
     }
-   }
+   },
+   "giong_doc": "rõ ràng, chậm từng ý"
   },
   {
    "so": 4,
    "loai": "nhac_lai",
    "tieu_de_canh": "Nhắc lại: xác suất là gì?",
    "tu_khoa": "xác suất",
-   "loi_thoai": "Nhắc lại nhé: xác suất bằng số khả năng thuận lợi chia cho tổng số khả năng như nhau. Lúc đầu xe nằm sau mỗi cửa với khả năng như nhau, nên mỗi cửa một phần ba.",
+   "loi_thoai": "Trước khi trả lời, nhớ lại một điều cơ bản: xác suất bằng số khả năng thuận lợi chia cho tổng số khả năng như nhau. Lúc đầu xe nằm sau mỗi cửa như nhau, nên mỗi cửa một phần ba.",
    "noi_dung_man_hinh": [
     "P=\\frac{\\text{thuận lợi}}{\\text{tất cả}}",
     "P(\\text{mỗi cửa})=\\frac{1}{3}"
@@ -224,14 +227,15 @@
       }
      ]
     }
-   }
+   },
+   "giong_doc": "ấm áp, giải thích"
   },
   {
    "so": 5,
    "loai": "y_do",
    "tieu_de_canh": "Còn 2 cửa: 50/50 thật không?",
    "tu_khoa": "50/50",
-   "loi_thoai": "Trực giác bảo: còn hai cửa, mỗi cửa một nửa, giữ hay đổi như nhau. Nhưng thử nghĩ xem, người dẫn có mở ngẫu nhiên không?",
+   "loi_thoai": "Vậy thì trực giác sẽ bảo: còn hai cửa, mỗi cửa một nửa, giữ hay đổi như nhau. Nhưng thử nghĩ xem, người dẫn có mở cửa ngẫu nhiên không?",
    "noi_dung_man_hinh": [],
    "minh_hoa": {
     "loai": "san_khau",
@@ -280,7 +284,8 @@
       }
      ]
     }
-   }
+   },
+   "giong_doc": "tò mò, đặt câu hỏi"
   },
   {
    "so": 6,
@@ -288,7 +293,7 @@
    "tieu_de_canh": "Bẫy: người dẫn BIẾT đáp án",
    "tu_khoa": "BIẾT",
    "chuyen_canh": "phong",
-   "loi_thoai": "Đây là cái bẫy. Người dẫn biết xe ở đâu, không bao giờ mở cửa bạn chọn và luôn mở cửa có dê.",
+   "loi_thoai": "Không hề, và đó chính là chỗ đánh lừa. Người dẫn biết xe ở đâu, không bao giờ mở cửa bạn chọn và luôn mở đúng cửa có dê.",
    "noi_dung_man_hinh": [],
    "minh_hoa": {
     "loai": "san_khau",
@@ -330,7 +335,8 @@
       }
      ]
     }
-   }
+   },
+   "giong_doc": "hạ giọng, bí ẩn"
   },
   {
    "so": 7,
@@ -341,7 +347,7 @@
     "Cửa bạn chọn: 1/3",
     "Hai cửa còn lại: 2/3"
    ],
-   "loi_thoai": "Lúc chọn, cửa của bạn chỉ có một phần ba. Hai cửa còn lại giữ hai phần ba. Người dẫn mở cửa dê, hai phần ba đó dồn hết vào cửa kia.",
+   "loi_thoai": "Thế nên hãy nhìn theo nhóm. Lúc chọn, cửa của bạn chỉ có một phần ba. Hai cửa còn lại giữ hai phần ba. Người dẫn mở cửa dê, hai phần ba đó dồn hết vào cửa kia.",
    "noi_dung_man_hinh": [],
    "minh_hoa": {
     "loai": "san_khau",
@@ -410,7 +416,8 @@
       }
      ]
     }
-   }
+   },
+   "giong_doc": "sáng lên, à ra thế"
   },
   {
    "so": 8,
@@ -418,7 +425,7 @@
    "tieu_de_canh": "Bước 1: xe nằm ở đâu?",
    "tu_khoa": "Bước 1",
    "chuyen_canh": "truot_len",
-   "loi_thoai": "Bước một, xét hết các trường hợp vị trí của xe. Xe ở cửa một thì đổi là thua. Xe ở cửa hai hoặc ba, người dẫn buộc phải mở cửa dê còn lại, đổi là thắng.",
+   "loi_thoai": "Muốn chắc chắn hơn, ta xét hết vị trí của xe. Xe ở cửa một thì đổi là thua. Xe ở cửa hai hoặc ba, người dẫn buộc phải mở cửa dê còn lại, đổi là thắng.",
    "noi_dung_man_hinh": [],
    "minh_hoa": {
     "loai": "san_khau",
@@ -468,7 +475,8 @@
       }
      ]
     }
-   }
+   },
+   "giong_doc": "tự tin, nhịp đều"
   },
   {
    "so": 9,
@@ -476,7 +484,7 @@
    "tieu_de_canh": "Bước 2: cộng các khả năng thắng",
    "tu_khoa": "cộng",
    "trinh_bay": "cong_don",
-   "loi_thoai": "Bước hai, mỗi trường hợp có xác suất một phần ba. Đổi cửa thắng ở hai trường hợp, nên cộng lại được hai phần ba. Giữ cửa chỉ thắng một trường hợp.",
+   "loi_thoai": "Mỗi trường hợp đó có xác suất một phần ba. Đổi cửa thắng ở hai trường hợp, cộng lại được hai phần ba. Giữ cửa chỉ thắng đúng một trường hợp.",
    "noi_dung_man_hinh": [
     "P(\\text{đổi})=\\frac{1}{3}+\\frac{1}{3}",
     "P(\\text{đổi})=\\frac{1}{3}+\\frac{1}{3}=\\frac{2}{3}"
@@ -517,7 +525,8 @@
       }
      ]
     }
-   }
+   },
+   "giong_doc": "chắc chắn, nhấn số"
   },
   {
    "so": 10,
@@ -525,7 +534,7 @@
    "tieu_de_canh": "Kiểm tra: chơi thử 30 lần",
    "tu_khoa": "30 lần",
    "chuyen_canh": "truot_len",
-   "loi_thoai": "Kiểm tra lại cho chắc: chơi thử ba mươi lần và luôn đổi cửa. Khoảng hai mươi lần bạn thắng, đúng gần hai phần ba.",
+   "loi_thoai": "Vẫn thấy khó tin? Chơi thử ba mươi lần và luôn đổi cửa. Khoảng hai mươi lần bạn thắng, đúng gần hai phần ba.",
    "noi_dung_man_hinh": [
     "\\frac{20}{30}\\approx\\frac{2}{3}"
    ],
@@ -589,7 +598,8 @@
      ]
     }
    },
-   "trinh_bay": "xep"
+   "trinh_bay": "xep",
+   "giong_doc": "cẩn thận, thuyết phục"
   },
   {
    "so": 11,
@@ -597,7 +607,7 @@
    "tieu_de_canh": "Đổi cửa: thắng 2/3",
    "tu_khoa": "2/3",
    "trinh_bay": "cong_don",
-   "loi_thoai": "Vậy giữ cửa thắng một phần ba, đổi cửa thắng hai phần ba. Đổi cửa, cơ hội gấp đôi!",
+   "loi_thoai": "Và kết luận là: giữ cửa thắng một phần ba, đổi cửa thắng hai phần ba. Đổi cửa, cơ hội gấp đôi!",
    "noi_dung_man_hinh": [
     "P(\\text{giữ})=\\frac{1}{3}",
     "P(\\text{đổi})=1-\\frac{1}{3}",
@@ -628,14 +638,15 @@
       }
      ]
     }
-   }
+   },
+   "giong_doc": "phấn khích, chiến thắng"
   },
   {
    "so": 12,
    "loai": "bai_hoc",
    "tieu_de_canh": "Ghi nhớ 3 điều",
    "tu_khoa": "3 điều",
-   "loi_thoai": "Ghi nhớ: xét hết trường hợp trước khi đoán năm mươi năm mươi. Ai biết trước mà cho thêm thông tin thì xác suất thay đổi. Thử nghĩ: một trăm cửa, mở chín mươi tám cửa dê, đổi thắng bao nhiêu? Bình luận nhé!",
+   "loi_thoai": "Vậy rút ra được gì? Xét hết trường hợp trước khi đoán năm mươi năm mươi. Ai biết trước mà cho thêm thông tin thì xác suất thay đổi. Thử nghĩ: một trăm cửa, mở chín mươi tám cửa dê, đổi thắng bao nhiêu? Bình luận nhé!",
    "noi_dung_man_hinh": [],
    "minh_hoa": {
     "loai": "san_khau",
@@ -701,7 +712,8 @@
       }
      ]
     }
-   }
+   },
+   "giong_doc": "thân thiện, đọng lại"
   }
  ],
  "bai_hoc_rut_ra": [
@@ -709,5 +721,10 @@
   "Người biết đáp án cho thêm tin: xác suất đổi",
   "Không chắc? Kiểm tra bằng cách thử nhiều lần"
  ],
- "video_tiep_theo": "100 cánh cửa: đổi thì thắng bao nhiêu?"
+ "video_tiep_theo": "100 cánh cửa: đổi thì thắng bao nhiêu?",
+ "du_kien": [
+  "3 cửa, 1 xe",
+  "Bạn chọn cửa 1",
+  "MC mở cửa dê"
+ ]
 }

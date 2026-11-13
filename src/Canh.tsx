@@ -78,13 +78,15 @@ export const Canh: React.FC<{
   giuSau: boolean; // cảnh sau nối tiếp sân khấu: không làm mờ sân khấu khi kết thúc
   cacBuoc?: string[]; // các pha của bài (thanh các bước)
   phaTruoc?: string; // pha của cảnh trước
-}> = ({canh, tieuDe, tongCanh, hook, pc, sanKhau, giuTruoc, giuSau, cacBuoc = [], phaTruoc = ''}) => {
+  keoDai?: number; // số khung hình cảnh này còn ở lại để HÒA vào cảnh sau (chuyển cảnh chồng mờ, không bị khoảng trống)
+}> = ({canh, tieuDe, tongCanh, hook, pc, sanKhau, giuTruoc, giuSau, cacBuoc = [], phaTruoc = '', keoDai = 0}) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
   const t = frame / fps;
 
   const vao = kep(frame / 9);
-  const ra = interpolate(frame, [canh.soFrame - 6, canh.soFrame], [1, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
+  const ketThuc = canh.soFrame + keoDai; // khung hình cuối cùng cảnh này còn hiện (gồm phần hòa vào cảnh sau)
+  const ra = interpolate(frame, [ketThuc - 8, ketThuc], [1, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
   const nhoeVao = (1 - vao) * 12 + (1 - ra) * 10;
 
   const giayAm = canh.cau.length ? canh.cau[canh.cau.length - 1].ket : 3;
@@ -125,13 +127,16 @@ export const Canh: React.FC<{
     Math.floor((Math.max(120, caoCT) - 60) / Math.max(1, nHang) / 1.9)
   );
 
-  // chuyển cảnh: mỗi cảnh một kiểu (lướt lên, phóng xuyên, lướt ngang...) hoặc theo "chuyen_canh" của kịch bản
-  const kieuCC = canh.chuyenCanh && (KIEU_CHUYEN as readonly string[]).includes(canh.chuyenCanh) ? canh.chuyenCanh : (['truot_len', 'phong', 'luot_ngang', 'lat_3d'] as const)[(canh.so - 1) % 4];
-  const ccSan = trangThaiChuyen(kieuCC, frame, canh.soFrame, giuTruoc, giuSau);
+  // chuyển cảnh THEO MẠCH BÀI: cùng một bước (ví dụ hai cảnh tính liên tiếp) thì hòa tan mềm; sang bước mới thì trôi lên nhẹ;
+  // cái bẫy / đáp án mới phóng xuyên để tạo kịch tính. Không còn xoay vòng 4 kiểu bất kể nội dung (gây giật, khó chịu).
+  const doiPha = laMoDau || phaCua(canh.loai) !== phaTruoc;
+  const kieuTuDong = /bay|dap_an|ket_qua/i.test(canh.loai) ? 'phong' : doiPha ? 'truot_len' : 'mo';
+  const kieuCC = canh.chuyenCanh && (KIEU_CHUYEN as readonly string[]).includes(canh.chuyenCanh) ? canh.chuyenCanh : kieuTuDong;
+  const ccSan = trangThaiChuyen(kieuCC, frame, ketThuc, giuTruoc, giuSau);
   // độ nghiêng 3D hiện tại của sân khấu: khung chữ nhật mờ dần khi camera nghiêng để không gian 3D phủ toàn khung
   const g3c = sanKhau ? tinhGoc3D(sanKhau.gocDau, sanKhau.hanhDong, t, taoMocBuoc(sanKhau.soBuoc, giayAm)) : {nghieng: 0, xoay: 0};
   const sinN3d = Math.sin((g3c.nghieng * Math.PI) / 180) + Math.min(0.5, Math.abs(g3c.xoay) / 60);
-  const ccCT = trangThaiChuyen(kieuCC, frame - 4, canh.soFrame - 4);
+  const ccCT = trangThaiChuyen(kieuCC, frame - 4, ketThuc - 4);
   const tieuDeCanh = canh.tieuDeCanh;
   const nhan = coHook ? (NHAN_HOOK[hook.kieu] || '').replace(/^[^A-Za-zÀ-ỹ]+/, '') : nhanCanh(canh.loai, canh.nhan);
 
@@ -198,29 +203,32 @@ export const Canh: React.FC<{
 
       {/* Phụ đề */}
       {pc.phuDe ? (
-        <div style={{position: 'absolute', left: 60, right: 60, top: Y_PHU_DE, height: 150, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+        <div style={{position: 'absolute', left: 60, right: 60, top: Y_PHU_DE, height: 150, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: frame > canh.soFrame - 2 ? ra : 1}}>
           {pc.kieuNen !== 'luoi' && pc.kieuNen !== 'luoi_phang' && pc.kieuNen !== 'gradient' ? <PhuDeTikTok cau={canh.cau} t={t} kieu={pc.kieuPhuDe} mauHop={pc.mauPhuDe} /> : <PhuDe cau={canh.cau} t={t} co={42} />}
         </div>
       ) : null}
 
       {/* Âm thanh của cảnh */}
-      {!giuTruoc ? (
+      {/* tiếng chuyển chỉ khi SANG BƯỚC MỚI và rất nhẹ (cảnh nối tiếp cùng bước thì im, để lời giảng liền mạch) */}
+      {!giuTruoc && doiPha && !laMoDau && !khungCuoi ? (
         <Sequence from={0} durationInFrames={30} layout="none">
-          <Audio src={staticFile('sfx/whoosh.wav')} volume={laMoDau ? 0.18 : 0.28} />
+          <Audio src={staticFile('sfx/swoosh.wav')} volume={0.13} />
         </Sequence>
       ) : null}
       {khungCuoi ? (
         <Sequence from={0} durationInFrames={60} layout="none">
-          <Audio src={staticFile('sfx/boom.wav')} volume={0.35} />
+          <Audio src={staticFile('sfx/boom.wav')} volume={0.26} />
         </Sequence>
       ) : null}
       {hienCongThuc
         ? canh.noiDung.map((_, i) => {
             const tai = Math.round(thoiDiemDong[i] * fps);
             const cuoi = (laCuoi || khungCuoi) && i === nDong - 1;
+            // tiếng "tách" khi hiện dòng: nhỏ, và bỏ qua nếu dòng trước vừa hiện (dồn tiếng gây khó chịu)
+            if (!cuoi && i > 0 && thoiDiemDong[i] - thoiDiemDong[i - 1] < 0.6) return null;
             return (
               <Sequence key={`sfx${i}`} from={tai} durationInFrames={cuoi ? 70 : 20} layout="none">
-                <Audio src={staticFile(cuoi ? 'sfx/ting.wav' : 'sfx/click.wav')} volume={cuoi ? 0.5 : 0.22} />
+                <Audio src={staticFile(cuoi ? 'sfx/ting.wav' : 'sfx/click.wav')} volume={cuoi ? 0.4 : 0.1} />
               </Sequence>
             );
           })

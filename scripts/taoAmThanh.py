@@ -2,6 +2,7 @@
 """Sinh toàn bộ âm thanh cho video bằng thuật toán (KHÔNG lấy từ bài hát nào nên không bao giờ dính bản quyền
 trên TikTok / YouTube Shorts):
   - public/nhac/nen.wav : nhạc nền sôi động 120 BPM (kick, clap, hi-hat, bass, arpeggio, pad có "pumping"), 32 giây lặp liền mạch
+  - public/nhac/tam_trang/{nhe,cang,bung}.wav : 3 bản cùng nhịp cho phần nhẹ nhàng, cái bẫy, đáp án (ghép theo cảnh)
   - public/sfx/*.wav    : bộ hiệu ứng: whoosh, swoosh, pop, click, ting, ding, sai, sting, boom, riser, zoom, tang,
                           lac (xúc xắc), xu (đồng xu), quay (vòng quay), tich (đồng hồ), mo (mở quà), cua (mở cửa), lat (lật bài)
 Chạy: pip install numpy scipy && python3 scripts/taoAmThanh.py
@@ -210,33 +211,57 @@ def lat():
     return loc(nhieu(len(t)), 2500, 9000) * np.exp(-((t - 0.05) ** 2) / 0.0008)
 
 
-# ---------------- NHẠC NỀN ----------------
-NOT = {"A2": 110.0, "F2": 87.31, "C3": 130.81, "G2": 98.0, "A3": 220.0, "C4": 261.63, "E4": 329.63, "F3": 174.61,
-       "A4": 440.0, "G3": 196.0, "B3": 246.94, "D4": 293.66, "C5": 523.25, "E5": 659.25, "G4": 392.0, "D5": 587.33}
+# ---------------- NHẠC NỀN (4 tâm trạng, cùng nhịp 120 BPM, cùng độ dài 16 ô nhịp = 32 giây) ----------------
+# chuanbi.py ghép 4 bản theo diễn biến của bài: đề bài/kiến thức -> "nhe", tính toán -> "chinh", cái bẫy -> "cang",
+# đáp án -> "bung". Vì cùng nhịp và cùng vòng hợp âm theo ô nhịp nên đổi bản ở ranh giới ô nhịp nghe liền mạch.
+TEN_NOT = {"C": 0, "C#": 1, "D": 2, "D#": 3, "E": 4, "F": 5, "F#": 6, "G": 7, "G#": 8, "A": 9, "A#": 10, "B": 11}
 
 
-def nhac_nen():
+def hz(ten):
+    not_, bat = ten[:-1], int(ten[-1])
+    return 440.0 * 2 ** ((TEN_NOT[not_] + 12 * (bat + 1) - 69) / 12)
+
+
+# (nốt bass, hợp âm pad, 4 nốt arpeggio) cho từng ô nhịp, lặp mỗi 4 ô
+VONG = {
+    "chinh": [("A2", ["A3", "C4", "E4"], ["A4", "C5", "E5", "C5"]), ("F2", ["F3", "A3", "C4"], ["A4", "C5", "F4", "C5"]),
+              ("C3", ["G3", "C4", "E4"], ["G4", "C5", "E5", "C5"]), ("G2", ["G3", "B3", "D4"], ["G4", "B4", "D5", "B4"])],
+    "nhe": [("A2", ["A3", "C4", "E4"], ["E5", "C5", "A4", "C5"]), ("F2", ["F3", "A3", "C4"], ["C5", "A4", "F4", "A4"]),
+            ("C3", ["G3", "C4", "E4"], ["E5", "C5", "G4", "C5"]), ("G2", ["G3", "B3", "D4"], ["D5", "B4", "G4", "B4"])],
+    "cang": [("A2", ["A3", "C4", "E4"], ["A4", "A4", "C5", "A4"]), ("A2", ["A3", "C4", "F4"], ["A4", "A4", "C5", "A4"]),
+             ("F2", ["F3", "A3", "C4"], ["A4", "A4", "C5", "A4"]), ("E2", ["E3", "G#3", "B3"], ["G#4", "G#4", "B4", "G#4"])],
+    "bung": [("F2", ["F3", "A3", "C4"], ["A4", "C5", "F5", "C5"]), ("G2", ["G3", "B3", "D4"], ["B4", "D5", "G5", "D5"]),
+             ("A2", ["A3", "C4", "E4"], ["C5", "E5", "A5", "E5"]), ("C3", ["G3", "C4", "E4"], ["C5", "E5", "G5", "E5"])],
+}
+# mức của từng lớp: kick, clap, hat, bass, arp, pad, độ "bơm" sidechain, tần số cắt của arp
+MUC = {
+    "chinh": dict(kick=0.9, clap=0.45, hat=1.0, bass=0.55, arp=1.0, pad=0.05, bom=0.65, cat=9000, hat16=False),
+    "nhe": dict(kick=0.0, clap=0.0, hat=0.45, bass=0.28, arp=0.7, pad=0.085, bom=0.0, cat=3200, hat16=False),
+    "cang": dict(kick=0.75, clap=0.0, hat=0.8, bass=0.7, arp=0.55, pad=0.06, bom=0.5, cat=2600, hat16=True),
+    "bung": dict(kick=1.0, clap=0.6, hat=1.1, bass=0.6, arp=1.15, pad=0.07, bom=0.7, cat=12000, hat16=True),
+}
+
+
+def nhac_nen(kieu="chinh"):
+    m = MUC[kieu]
+    hop_am = VONG[kieu]
     bpm = 120
     phach = 60 / bpm
     o_nhip = 4 * phach            # 2 giây
     so_o = 16                     # 32 giây
-    dai = so_o * o_nhip
-    n = int(SR * dai)
+    n = int(SR * so_o * o_nhip)
     t = np.arange(n) / SR
     out = np.zeros(n)
     bass = np.zeros(n)
     pad = np.zeros(n)
-    hop_am = [("A2", ["A3", "C4", "E4"], ["A4", "C5", "E5", "C5"]),
-              ("F2", ["F3", "A3", "C4"], ["A4", "C5", "F3", "C5"]),
-              ("C3", ["G3", "C4", "E4"], ["G4", "C5", "E5", "C5"]),
-              ("G2", ["G3", "B3", "D4"], ["G4", "B3", "D5", "B3"])]
+    arpv = np.zeros(n)
 
     def dat(dst, x, giay):
         k = int(SR * giay)
         if k >= n:
             return
-        m = min(len(x), n - k)
-        dst[k : k + m] += x[:m]
+        mm = min(len(x), n - k)
+        dst[k : k + mm] += x[:mm]
 
     kick = np.sin(2 * np.pi * np.cumsum(45 + 95 * np.exp(-moc(0.35) * 30)) / SR) * np.exp(-moc(0.35) * 9)
     clap = loc(nhieu(int(SR * 0.18)), 900, 5000) * np.exp(-moc(0.18) * 28)
@@ -245,39 +270,40 @@ def nhac_nen():
     for o in range(so_o):
         goc, ha, arp = hop_am[o % 4]
         t0 = o * o_nhip
-        full = o >= 2                      # 2 ô nhịp đầu nhẹ nhàng
         for b in range(4):
             tb = t0 + b * phach
-            if full:
-                dat(out, kick * 0.9, tb)
-                if b in (1, 3):
-                    dat(out, clap * 0.45, tb)
-            for h in range(2):
-                dat(out, hat * (0.22 if h else 0.12), tb + h * phach / 2)
-            # bass móc theo nốt móc đơn
-            for h in range(2):
-                g = moc(phach / 2 * 0.9)
-                f = NOT[goc] * (2 if h == 1 and b % 2 else 1)
-                x = signal.sawtooth(2 * np.pi * f * g) * np.exp(-g * 5)
-                dat(bass, x * (0.55 if full else 0.3), tb + h * phach / 2)
-        # arpeggio nốt móc kép
+            if m["kick"] and (kieu != "cang" or b in (0, 2)):
+                dat(out, kick * m["kick"], tb)
+            if m["clap"] and b in (1, 3):
+                dat(out, clap * m["clap"], tb)
+            chia = 4 if m["hat16"] else 2
+            for h in range(chia):
+                dat(out, hat * m["hat"] * (0.2 if h % 2 else 0.11), tb + h * phach / chia)
+            # bass: "cang" chạy nốt móc kép dồn dập, các bản khác móc đơn
+            chia_b = 4 if kieu == "cang" else 2
+            for h in range(chia_b):
+                g = moc(phach / chia_b * 0.9)
+                f = hz(goc) * (2 if (h == 1 and b % 2 and kieu != "cang") else 1)
+                x = signal.sawtooth(2 * np.pi * f * g) * np.exp(-g * (9 if kieu == "cang" else 5))
+                dat(bass, x * m["bass"], tb + h * phach / chia_b)
         for k in range(16):
+            if kieu == "nhe" and k % 2:
+                continue                  # bản nhẹ: arpeggio thưa
             ten = arp[k % 4]
-            g = moc(phach / 4 * 1.8)
-            f = NOT[ten]
-            x = (np.sin(2 * np.pi * f * g) + 0.3 * np.sin(2 * np.pi * 2 * f * g) + 0.1 * np.sin(2 * np.pi * 3 * f * g)) * np.exp(-g * 14)
-            dat(out, x * (0.16 if k % 4 == 0 else 0.11), t0 + k * phach / 4)
-        # pad
+            g = moc(phach / 4 * (3.0 if kieu == "nhe" else 1.8))
+            f = hz(ten)
+            x = (np.sin(2 * np.pi * f * g) + 0.3 * np.sin(2 * np.pi * 2 * f * g) + 0.1 * np.sin(2 * np.pi * 3 * f * g)) * np.exp(-g * (6 if kieu == "nhe" else 14))
+            dat(arpv, x * (0.16 if k % 4 == 0 else 0.11) * m["arp"], t0 + k * phach / 4)
         g = moc(o_nhip)
-        x = sum(np.sin(2 * np.pi * NOT[nn] * g) + np.sin(2 * np.pi * NOT[nn] * 1.004 * g) for nn in ha)
-        env = np.minimum(1, g / 0.15) * np.minimum(1, (o_nhip - g) / 0.15)
-        dat(pad, x * env * 0.05, t0)
-    # "pumping" theo kick (sidechain) cho pad và bass: nghe hiện đại, có nhịp
+        x = sum(np.sin(2 * np.pi * hz(nn) * g) + np.sin(2 * np.pi * hz(nn) * 1.004 * g) for nn in ha)
+        env = np.minimum(1, g / 0.25) * np.minimum(1, (o_nhip - g) / 0.25)
+        dat(pad, x * env * m["pad"], t0)
     pha = (t % phach) / phach
-    bom = np.where(t >= 2 * o_nhip, 0.35 + 0.65 * np.minimum(1, pha / 0.45), 1.0)
-    out += loc(bass, hi=900) * bom + loc(pad, hi=3000) * bom
-    out = np.tanh(out * 1.3)
-    return out
+    bom = (1 - m["bom"]) + m["bom"] * np.minimum(1, pha / 0.45) if m["bom"] else np.ones(n)
+    out += loc(arpv, hi=m["cat"]) + loc(bass, hi=900) * bom + loc(pad, hi=3000) * bom
+    if kieu == "cang":
+        out += 0.05 * np.sin(2 * np.pi * hz("A1") * t) * (0.6 + 0.4 * np.sin(2 * np.pi * t / (2 * o_nhip)))   # nền trầm rung, gây hồi hộp
+    return np.tanh(out * 1.3)
 
 
 if __name__ == "__main__":
@@ -287,5 +313,7 @@ if __name__ == "__main__":
           "xu": xu(), "quay": quay(), "tich": tich(), "mo": mo(), "cua": cua(), "lat": lat()}
     for ten, x in ds.items():
         luu(os.path.join(goc, "sfx", ten + ".wav"), x)
-    luu(os.path.join(goc, "nhac", "nen.wav"), nhac_nen())
-    print("Đã tạo %d hiệu ứng trong public/sfx và nhạc nền public/nhac/nen.wav" % len(ds))
+    luu(os.path.join(goc, "nhac", "nen.wav"), nhac_nen("chinh"))
+    for kieu in ("nhe", "cang", "bung"):
+        luu(os.path.join(goc, "nhac", "tam_trang", kieu + ".wav"), nhac_nen(kieu))
+    print("Đã tạo %d hiệu ứng trong public/sfx, nhạc nền public/nhac/nen.wav và 3 bản tâm trạng trong public/nhac/tam_trang" % len(ds))

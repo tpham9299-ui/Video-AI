@@ -5,3 +5,5 @@ public/giong/
 public/props.json
 public/nen/
 public/nen_chon.*
+public/nhac/tron_*
+__pycache__/

@@ -96,26 +96,58 @@ function chayBoPhan2() {
   }
 }
 
-// Gửi sự kiện repository_dispatch (kèm kịch bản) tới GitHub. Thành công khi GitHub trả 204.
+// Gửi kịch bản sang GitHub để dựng. Ưu tiên "workflow_dispatch" với ref = nhánh GITHUB_NHANH (CAU_HINH), để GitHub chạy đúng
+// mã mới nhất của nhánh đó thay vì mã cũ trên nhánh mặc định (master). Token chưa có quyền Actions hoặc nhánh không tồn tại
+// -> tự lùi về "repository_dispatch" như cũ (dựng bằng nhánh mặc định) và báo một lần để bạn biết.
 function kichHoatDungVideo_(r) {
-  var p = PropertiesService.getScriptProperties();
-  var token = p.getProperty('GITHUB_TOKEN'), repo = p.getProperty('GITHUB_REPO');
-  if (!token || !repo) throw new Error('THIEU_GITHUB_TOKEN_HOAC_REPO');
-
   var kb = JSON.parse(DriveApp.getFileById(r.file_kich_ban).getBlob().getDataAsString());
   delete kb.cach_giai;                       // lời giải chi tiết không cần cho việc dựng, bớt dung lượng
   kb.id = r.id;
-  var goi = { event_type: 'dung-video', client_payload: { id: r.id, kich_ban: kb } };
-  var thanVan = JSON.stringify(goi);
-  if (thanVan.length > 60000) { delete kb.de_bai; thanVan = JSON.stringify(goi); }   // GitHub giới hạn ~65.535 ký tự
-  if (thanVan.length > 60000) throw new Error('KICH_BAN_QUA_LON_' + thanVan.length);
+  if (JSON.stringify(kb).length > 52000) delete kb.de_bai;
+  var chuoi = JSON.stringify(kb);
+  if (chuoi.length > 60000) throw new Error('KICH_BAN_QUA_LON_' + chuoi.length);
 
+  var nhanh = nhanhGitHub_();
+  if (nhanh) {
+    var kq = guiWorkflowGitHub_({ viec: 'dung', id: r.id, kich_ban: chuoi });
+    if (kq.ok) return;
+    nhatKy_('GITHUB_NHANH', 'Không chạy được trên nhánh ' + nhanh + ' (' + kq.loi + '), lùi về cách cũ (nhánh mặc định)');
+    guiZaloMotLan_('NHANH_' + kq.ma, '⚠️ GitHub chưa chạy được trên nhánh ' + nhanh + ' (' + kq.loi + '). Video vẫn được dựng nhưng bằng mã của nhánh mặc định. ' +
+      (kq.ma === 403 ? 'Cách sửa: token GitHub cần thêm quyền "Actions: Read and write".' : 'Kiểm tra lại tên nhánh ở CAU_HINH > GITHUB_NHANH.'));
+  }
+  var p = PropertiesService.getScriptProperties();
+  var token = p.getProperty('GITHUB_TOKEN'), repo = p.getProperty('GITHUB_REPO');
+  if (!token || !repo) throw new Error('THIEU_GITHUB_TOKEN_HOAC_REPO');
+  var thanVan = JSON.stringify({ event_type: 'dung-video', client_payload: { id: r.id, kich_ban: kb } });
   var res = UrlFetchApp.fetch('https://api.github.com/repos/' + repo + '/dispatches', {
     method: 'post', contentType: 'application/json', muteHttpExceptions: true, payload: thanVan,
     headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }
   });
   var ma = res.getResponseCode();
   if (ma !== 204) throw new Error('GITHUB_' + ma + ': ' + String(res.getContentText()).replace(/\s+/g, ' ').slice(0, 200));
+}
+
+// Nhánh GitHub để dựng/đăng (CAU_HINH > GITHUB_NHANH). Để trống hoặc "-" = dùng cách cũ (nhánh mặc định).
+function nhanhGitHub_() {
+  var n = String(cauHinh_('GITHUB_NHANH') || '').trim();
+  return n === '-' ? '' : n;
+}
+
+// Chạy workflow dung-video.yml trên nhánh GITHUB_NHANH với các tham số (inputs). Trả {ok, ma, loi}.
+function guiWorkflowGitHub_(inputs) {
+  var p = PropertiesService.getScriptProperties();
+  var token = p.getProperty('GITHUB_TOKEN'), repo = p.getProperty('GITHUB_REPO');
+  if (!token || !repo) return { ok: false, ma: 0, loi: 'THIEU_GITHUB_TOKEN_HOAC_REPO' };
+  var nhanh = nhanhGitHub_();
+  if (!nhanh) return { ok: false, ma: 0, loi: 'CHUA_DAT_GITHUB_NHANH' };
+  var res = UrlFetchApp.fetch('https://api.github.com/repos/' + repo + '/actions/workflows/dung-video.yml/dispatches', {
+    method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+    payload: JSON.stringify({ ref: nhanh, inputs: inputs }),
+    headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }
+  });
+  var ma = res.getResponseCode();
+  if (ma === 204) return { ok: true, ma: ma };
+  return { ok: false, ma: ma, loi: 'HTTP ' + ma + ': ' + String(res.getContentText()).replace(/\s+/g, ' ').slice(0, 160) };
 }
 
 /* ===================== NHẬN KẾT QUẢ TỪ GITHUB ===================== */
@@ -135,6 +167,11 @@ function doPost(e) {
   if (!khoa.tryLock(120000)) return tra({ ok: false, loi: 'BAN' });   // đang chạy Bộ phận 1: GitHub sẽ thử lại
   try {
     var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
+    if (d.loai === 'dang') {   // kết quả đăng video lên mạng xã hội (DangVideo.gs)
+      var kqDang = typeof xuLyKetQuaDang_ === 'function' ? xuLyKetQuaDang_(sh, d) : { ok: false, loi: 'THIEU_DangVideo.gs' };
+      PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1');
+      return tra(kqDang);
+    }
     var r = null;
     docHang_(sh).forEach(function (x) { if (x.id === d.id) r = x; });
     if (!r) return tra({ ok: false, loi: 'KHONG_TIM_THAY' });

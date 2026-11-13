@@ -59,13 +59,21 @@ function kiemTraSanKhau_(du, cn, idCu) {
 function tuSuaKichBan_(kb) {
   if (!kb || !Array.isArray(kb.canh)) return;
   var loaiTheoId = {};   // id vật -> loại (giữ qua các cảnh giu_san_khau)
+  if (Array.isArray(kb.du_kien)) kb.du_kien = kb.du_kien.map(function (x) { return String(x).replace(/\s+/g, ' ').trim().slice(0, 30); }).filter(Boolean).slice(0, 4);
+  else delete kb.du_kien;
   kb.canh.forEach(function (c, i) {
     if (!c) return;
     if (c.tieu_de_canh) c.tieu_de_canh = String(c.tieu_de_canh).replace(/\s+/g, ' ').trim().slice(0, 60);
     if (c.tu_khoa && (!c.tieu_de_canh || String(c.tieu_de_canh).toLowerCase().indexOf(String(c.tu_khoa).toLowerCase()) < 0)) c.tu_khoa = '';
     if (i === 0) c.giu_san_khau = false;
     if (Array.isArray(kb.bai_hoc_rut_ra)) kb.bai_hoc_rut_ra = kb.bai_hoc_rut_ra.slice(0, 3).map(function (x) { return String(x).slice(0, 90); });
-    if (c.chuyen_canh && ['truot_len', 'phong', 'luot_ngang', 'truot_xuong', 'lat_3d'].indexOf(c.chuyen_canh) < 0) delete c.chuyen_canh;
+    if (c.chuyen_canh && ['mo', 'truot_len', 'phong', 'luot_ngang', 'truot_xuong', 'lat_3d'].indexOf(c.chuyen_canh) < 0) delete c.chuyen_canh;
+    if (c.giong_doc) c.giong_doc = String(c.giong_doc).replace(/\s+/g, ' ').trim().slice(0, 120);
+    // bỏ lời mở máy móc "Cảnh 3:", "Bước 2:" ở đầu lời thoại (nhãn bước đã hiện trên màn hình)
+    if (i > 0 && c.loi_thoai) {
+      var gon = String(c.loi_thoai).replace(/^\s*(cảnh\s+\d+|bước\s+(\d+|một|hai|ba|bốn|năm))\s*[:.,-]\s*/i, '');
+      if (gon.length >= 15) c.loi_thoai = gon.charAt(0).toUpperCase() + gon.slice(1);
+    }
     if (Array.isArray(c.chu_thich)) c.chu_thich = c.chu_thich.slice(0, 3).map(function (x) { return String(x).slice(0, 60); });
     var mh = c.minh_hoa;
     if (!laDT_(mh) || mh.loai !== 'san_khau' || !laDT_(mh.du_lieu)) return;
@@ -392,6 +400,8 @@ function hopLeKichBan_(kb, dapAn, mon) {
   if (loiCT) return loiCT;
   var loiHook = kiemTraHook_(kb);
   if (loiHook) return loiHook;
+  var loiNoi = kiemTraNoiCanh_(kb);
+  if (loiNoi) return loiNoi;
   if (thucTe && so3D < 2) return 'THIEU_CANH_3D: video toán thực tế cần ít nhất 2 cảnh có VẬT 3D THẬT (khoi_hop, tru, non, cau, toa_nha, xe, cay, thang) dựng lại tình huống của đề (cảnh mo_dau/de_bai và cảnh dap_an), đặt goc_nhin 3D.';
   if (thucTe && soMoHinh < 1) return 'THIEU_MO_HINH: video toán thực tế cần ít nhất 1 cảnh "hinh_hoc" (tam giác, góc, cạnh có độ dài) hoặc "do_thi" (đồ thị hàm số có điểm chạy) để mô hình hóa/kiểm tra.';
   var canDA = kb.canh[timCanhDapAn_(kb)];
@@ -564,4 +574,23 @@ function phanTichBieuThuc_(nguon, theoDo) {
     var f = tong();
     return i === s.length ? f : null;
   } catch (e) { return null; }
+}
+
+
+/* ===================== MẠCH NỐI GIỮA CÁC CẢNH ===================== */
+
+var MO_MAY_MOC_ = /^\s*(bước\s+(tiếp theo|kế tiếp|đầu tiên)|tiếp theo\s*[,:]|sau đây|bây giờ\s+(chúng\s+)?(ta|mình)\s+sẽ|cảnh\s+(này|tiếp)|cái bẫy (ở đây|là)|đầu tiên\s*(,|ta|chúng ta)|ở bước này|tiếp tục\s*[,:])/i;
+
+// Lời thoại phải nghe như một bài nói liền mạch: không được nhiều cảnh mở bằng câu chuyển máy móc, không lặp một kiểu mở đầu.
+function kiemTraNoiCanh_(kb) {
+  var mayMoc = [], dau = {};
+  for (var i = 1; i < kb.canh.length; i++) {
+    var lt = String(kb.canh[i].loi_thoai || '').trim();
+    if (MO_MAY_MOC_.test(lt)) mayMoc.push(i + 1);
+    var hai = lt.toLowerCase().split(/\s+/).slice(0, 2).join(' ');
+    if (hai.length >= 4) dau[hai] = (dau[hai] || 0) + 1;
+  }
+  if (mayMoc.length >= 2) return 'NOI_CANH_MAY_MOC: các cảnh ' + mayMoc.join(', ') + ' mở bằng câu chuyển máy móc ("Bước tiếp theo", "Tiếp theo,", "Cái bẫy ở đây là"...). Hãy viết câu NỐI tự nhiên bắt từ ý cảnh trước, như một người đang nói liền mạch.';
+  for (var k in dau) if (dau[k] >= 3) return 'NOI_CANH_LAP: ' + dau[k] + ' cảnh cùng mở đầu bằng "' + k + '...". Mỗi cảnh cần một câu nối khác nhau.';
+  return '';
 }

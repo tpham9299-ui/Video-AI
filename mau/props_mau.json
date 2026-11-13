@@ -5,7 +5,7 @@
  "dapAn": "2/3",
  "lop": "12",
  "fps": 30,
- "tongFrame": 2548,
+ "tongFrame": 2739,
  "hookChu": "Đổi cửa, cơ hội thắng GẤP ĐÔI?",
  "hookKieu": "bat_ngo",
  "nhanManh": [
@@ -18,6 +18,11 @@
   "Xét hết các trường hợp trước khi đoán 50/50",
   "Người biết đáp án cho thêm tin: xác suất đổi",
   "Không chắc? Kiểm tra bằng cách thử nhiều lần"
+ ],
+ "duKien": [
+  "3 cửa, 1 xe",
+  "Bạn chọn cửa 1",
+  "MC mở cửa dê"
  ],
  "tiepTheo": "100 cánh cửa: đổi thì thắng bao nhiêu?",
  "nen": null,
@@ -178,23 +183,23 @@
    },
    "audio": "giong/VT-mau-monty_c2.mp3",
    "batDau": 135,
-   "soFrame": 161,
-   "leadFrame": 7,
+   "soFrame": 158,
+   "leadFrame": 4,
    "cau": [
     {
      "text": "Bạn chọn cửa số một.",
-     "bat": 0.22,
-     "ket": 1.317
+     "bat": 0.12,
+     "ket": 1.217
     },
     {
      "text": "Người dẫn biết xe ở đâu, mở một cửa có dê.",
-     "bat": 1.407,
-     "ket": 3.784
+     "bat": 1.307,
+     "ket": 3.684
     },
     {
      "text": "Giờ bạn giữ hay đổi?",
-     "bat": 3.874,
-     "ket": 4.971
+     "bat": 3.774,
+     "ket": 4.871
     }
    ],
    "trinhBay": "xep",
@@ -243,24 +248,24 @@
     }
    },
    "audio": "giong/VT-mau-monty_c3.mp3",
-   "batDau": 296,
-   "soFrame": 209,
+   "batDau": 293,
+   "soFrame": 234,
    "leadFrame": 7,
    "cau": [
     {
-     "text": "Tóm lại đề cho: ba cửa, một xe,",
+     "text": "Gói gọn lại cho dễ nhớ: ba cửa,",
      "bat": 0.22,
-     "ket": 1.862
+     "ket": 1.888
     },
     {
-     "text": "bạn chọn cửa một, người dẫn mở một cửa dê.",
-     "bat": 1.862,
-     "ket": 4.086
+     "text": "một xe, bạn chọn cửa một, người dẫn mở một cửa có dê.",
+     "bat": 1.888,
+     "ket": 4.739
     },
     {
-     "text": "Câu hỏi: nếu đổi cửa, xác suất thắng là bao nhiêu?",
-     "bat": 4.176,
-     "ket": 6.553
+     "text": "Câu hỏi là nếu đổi cửa, xác suất thắng bằng bao nhiêu?",
+     "bat": 4.829,
+     "ket": 7.415
     }
    ],
    "trinhBay": "xep",
@@ -314,29 +319,24 @@
     }
    },
    "audio": "giong/VT-mau-monty_c4.mp3",
-   "batDau": 505,
-   "soFrame": 260,
+   "batDau": 527,
+   "soFrame": 285,
    "leadFrame": 7,
    "cau": [
     {
-     "text": "Nhắc lại nhé: xác suất bằng số khả năng thuận",
+     "text": "Trước khi trả lời, nhớ lại một điều cơ bản:",
      "bat": 0.22,
-     "ket": 2.403
+     "ket": 2.319
     },
     {
-     "text": "lợi chia cho tổng số khả năng như nhau.",
-     "bat": 2.403,
-     "ket": 4.295
+     "text": "xác suất bằng số khả năng thuận lợi chia cho tổng số khả năng như nhau.",
+     "bat": 2.319,
+     "ket": 5.784
     },
     {
-     "text": "Lúc đầu xe nằm sau mỗi cửa với khả năng",
-     "bat": 4.385,
-     "ket": 6.451
-    },
-    {
-     "text": "như nhau, nên mỗi cửa một phần ba.",
-     "bat": 6.451,
-     "ket": 8.251
+     "text": "Lúc đầu xe nằm sau mỗi cửa như nhau, nên mỗi cửa một phần ba.",
+     "bat": 5.874,
+     "ket": 9.113
     }
    ],
    "trinhBay": "xep",
@@ -400,19 +400,24 @@
     }
    },
    "audio": "giong/VT-mau-monty_c5.mp3",
-   "batDau": 765,
-   "soFrame": 190,
+   "batDau": 812,
+   "soFrame": 220,
    "leadFrame": 7,
    "cau": [
     {
-     "text": "Trực giác bảo: còn hai cửa, mỗi cửa một nửa, giữ hay đổi như nhau.",
+     "text": "Vậy thì trực giác sẽ bảo: còn hai cửa,",
      "bat": 0.22,
-     "ket": 3.459
+     "ket": 2.153
     },
     {
-     "text": "Nhưng thử nghĩ xem, người dẫn có mở ngẫu nhiên không?",
-     "bat": 3.549,
-     "ket": 5.926
+     "text": "mỗi cửa một nửa, giữ hay đổi như nhau.",
+     "bat": 2.153,
+     "ket": 4.086
+    },
+    {
+     "text": "Nhưng thử nghĩ xem, người dẫn có mở cửa ngẫu nhiên không?",
+     "bat": 4.176,
+     "ket": 6.762
     }
    ],
    "trinhBay": "xep",
@@ -469,24 +474,24 @@
     }
    },
    "audio": "giong/VT-mau-monty_c6.mp3",
-   "batDau": 955,
-   "soFrame": 171,
-   "leadFrame": 7,
+   "batDau": 1032,
+   "soFrame": 213,
+   "leadFrame": 10,
    "cau": [
     {
-     "text": "Đây là cái bẫy.",
-     "bat": 0.22,
-     "ket": 1.108
+     "text": "Không hề, và đó chính là chỗ đánh lừa.",
+     "bat": 0.34,
+     "ket": 2.299
     },
     {
-     "text": "Người dẫn biết xe ở đâu, không bao giờ",
-     "bat": 1.198,
-     "ket": 3.263
+     "text": "Người dẫn biết xe ở đâu, không bao giờ mở",
+     "bat": 2.389,
+     "ket": 4.598
     },
     {
-     "text": "mở cửa bạn chọn và luôn mở cửa có dê.",
-     "bat": 3.263,
-     "ket": 5.273
+     "text": "cửa bạn chọn và luôn mở đúng cửa có dê.",
+     "bat": 4.598,
+     "ket": 6.699
     }
    ],
    "trinhBay": "xep",
@@ -570,24 +575,29 @@
     }
    },
    "audio": "giong/VT-mau-monty_c7.mp3",
-   "batDau": 1126,
-   "soFrame": 231,
+   "batDau": 1245,
+   "soFrame": 272,
    "leadFrame": 7,
    "cau": [
     {
-     "text": "Lúc chọn, cửa của bạn chỉ có một phần ba.",
+     "text": "Thế nên hãy nhìn theo nhóm.",
      "bat": 0.22,
-     "ket": 2.388
+     "ket": 1.552
+    },
+    {
+     "text": "Lúc chọn, cửa của bạn chỉ có một phần ba.",
+     "bat": 1.642,
+     "ket": 3.81
     },
     {
      "text": "Hai cửa còn lại giữ hai phần ba.",
-     "bat": 2.478,
-     "ket": 4.228
+     "bat": 3.9,
+     "ket": 5.651
     },
     {
      "text": "Người dẫn mở cửa dê, hai phần ba đó dồn hết vào cửa kia.",
-     "bat": 4.318,
-     "ket": 7.349
+     "bat": 5.741,
+     "ket": 8.771
     }
    ],
    "trinhBay": "xep",
@@ -655,12 +665,12 @@
     }
    },
    "audio": "giong/VT-mau-monty_c8.mp3",
-   "batDau": 1357,
+   "batDau": 1517,
    "soFrame": 262,
    "leadFrame": 7,
    "cau": [
     {
-     "text": "Bước một, xét hết các trường hợp vị trí của xe.",
+     "text": "Muốn chắc chắn hơn, ta xét hết vị trí của xe.",
      "bat": 0.22,
      "ket": 2.597
     },
@@ -733,24 +743,24 @@
     }
    },
    "audio": "giong/VT-mau-monty_c9.mp3",
-   "batDau": 1619,
-   "soFrame": 231,
+   "batDau": 1779,
+   "soFrame": 224,
    "leadFrame": 7,
    "cau": [
     {
-     "text": "Bước hai, mỗi trường hợp có xác suất một phần ba.",
+     "text": "Mỗi trường hợp đó có xác suất một phần ba.",
      "bat": 0.22,
-     "ket": 2.597
+     "ket": 2.388
     },
     {
-     "text": "Đổi cửa thắng ở hai trường hợp, nên cộng lại được hai phần ba.",
-     "bat": 2.687,
-     "ket": 5.717
+     "text": "Đổi cửa thắng ở hai trường hợp, cộng lại được hai phần ba.",
+     "bat": 2.478,
+     "ket": 5.299
     },
     {
-     "text": "Giữ cửa chỉ thắng một trường hợp.",
-     "bat": 5.807,
-     "ket": 7.349
+     "text": "Giữ cửa chỉ thắng đúng một trường hợp.",
+     "bat": 5.389,
+     "ket": 7.14
     }
    ],
    "trinhBay": "cong_don",
@@ -828,19 +838,24 @@
     }
    },
    "audio": "giong/VT-mau-monty_c10.mp3",
-   "batDau": 1850,
-   "soFrame": 183,
+   "batDau": 2003,
+   "soFrame": 184,
    "leadFrame": 7,
    "cau": [
     {
-     "text": "Kiểm tra lại cho chắc: chơi thử ba mươi lần và luôn đổi cửa.",
+     "text": "Vẫn thấy khó tin?",
      "bat": 0.22,
-     "ket": 3.25
+     "ket": 1.108
+    },
+    {
+     "text": "Chơi thử ba mươi lần và luôn đổi cửa.",
+     "bat": 1.198,
+     "ket": 3.157
     },
     {
      "text": "Khoảng hai mươi lần bạn thắng, đúng gần hai phần ba.",
-     "bat": 3.34,
-     "ket": 5.717
+     "bat": 3.247,
+     "ket": 5.624
     }
    ],
    "trinhBay": "xep",
@@ -886,19 +901,19 @@
     }
    },
    "audio": "giong/VT-mau-monty_c11.mp3",
-   "batDau": 2033,
+   "batDau": 2187,
    "soFrame": 200,
-   "leadFrame": 7,
+   "leadFrame": 10,
    "cau": [
     {
-     "text": "Vậy giữ cửa thắng một phần ba, đổi cửa thắng hai phần ba.",
-     "bat": 0.22,
-     "ket": 3.041
+     "text": "Và kết luận là: giữ cửa thắng một phần ba, đổi cửa thắng hai phần ba.",
+     "bat": 0.34,
+     "ket": 3.788
     },
     {
      "text": "Đổi cửa, cơ hội gấp đôi!",
-     "bat": 3.131,
-     "ket": 4.463
+     "bat": 3.878,
+     "ket": 5.21
     }
    ],
    "trinhBay": "cong_don",
@@ -979,29 +994,34 @@
     }
    },
    "audio": "giong/VT-mau-monty_c12.mp3",
-   "batDau": 2233,
-   "soFrame": 315,
+   "batDau": 2387,
+   "soFrame": 352,
    "leadFrame": 7,
    "cau": [
     {
-     "text": "Ghi nhớ: xét hết trường hợp trước khi đoán năm mươi năm mươi.",
+     "text": "Vậy rút ra được gì?",
      "bat": 0.22,
-     "ket": 3.041
+     "ket": 1.317
+    },
+    {
+     "text": "Xét hết trường hợp trước khi đoán năm mươi năm mươi.",
+     "bat": 1.407,
+     "ket": 3.784
     },
     {
      "text": "Ai biết trước mà cho thêm thông tin thì xác suất thay đổi.",
-     "bat": 3.131,
-     "ket": 5.952
+     "bat": 3.874,
+     "ket": 6.696
     },
     {
      "text": "Thử nghĩ: một trăm cửa, mở chín mươi tám cửa dê, đổi thắng bao nhiêu?",
-     "bat": 6.042,
-     "ket": 9.282
+     "bat": 6.786,
+     "ket": 10.025
     },
     {
      "text": "Bình luận nhé!",
-     "bat": 9.372,
-     "ket": 10.208
+     "bat": 10.115,
+     "ket": 10.951
     }
    ],
    "trinhBay": "xep",

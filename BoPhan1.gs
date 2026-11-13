@@ -41,7 +41,8 @@ var _bo_nho_cau_hinh_ = null;               // đọc sheet CAU_HINH một lần
 var COT = ['id', 'trang_thai', 'lop', 'chu_de', 'de_bai', 'nguon', 'diem_tu_duy',
   'yeu_to_tu_duy', 'bay_thuong_gap', 'cach_1', 'cach_2', 'dap_an', 'kiem_chung',
   'file_kich_ban', 'ghi_chu', 'so_lan_loi', 'cap_nhat', 'ma_bam', 'file_video',
-  'mon', 'uu_tien', 'file_anh', 'zalo_chat', 'dap_an_hien'];   // 5 cột mới (lần 15) nối vào CUỐI nên dữ liệu cũ không bị lệch cột
+  'mon', 'uu_tien', 'file_anh', 'zalo_chat', 'dap_an_hien',   // 5 cột lần 15
+  'lich_dang', 'link_dang'];   // 2 cột lần 16 (hẹn giờ đăng, link đã đăng). Cột mới luôn nối vào CUỐI nên dữ liệu cũ không lệch
 
 // Tên model nằm trong CAU_HINH vì Google đổi tên/ngừng model thường xuyên.
 var MAC_DINH = {
@@ -67,6 +68,7 @@ var MAC_DINH = {
   MUC_SUY_NGHI_GIAI: 'mac_dinh', // khi GIẢI đề: mac_dinh (để Gemini tự quyết, chính xác hơn) | low | high
   UOC_GOI_GEMINI_GIAY: '75',   // ước lượng một lần gọi Gemini mất bao lâu; không đủ chừng này thời gian thì để lần chạy sau
   CHU_DE_VIDEO: 'XEN_KE',      // XAC_SUAT: chỉ xác suất | THUC_TE: chỉ toán thực tế | XEN_KE: luân phiên hai loại
+  GITHUB_NHANH: 'claude/apps-script-system-debug-59sl2w',   // nhánh GitHub chứa mã dựng video mới nhất ("-" = dùng nhánh mặc định như cũ)
   KIEU_MO_DAU: 'hook'          // hook: vào thẳng câu móc (khuyên dùng) | chao_hook: cho phép một lời chào cực ngắn kiểu "Chào bạn!" trước câu móc
 };
 
@@ -1061,6 +1063,7 @@ function onOpen() {
       .addItem('✍ Tự nhập đề (kho đề)', 'cheDoKhoDe'))
     .addSeparator()
     .addItem('✅ Đánh dấu đã làm video (các dòng đang chọn ở DOC_DE)', 'danhDauDaLamVideo')
+    .addItem('📤 Đăng ngay video cũ nhất chờ đăng', 'dangNgay')
     .addItem('🧹 Dọn ngay các đề đã xong', 'donNgay')
     .addItem('🔄 Cập nhật bảng đề và kịch bản', 'dongBoBangDoc')
     .addItem('🧱 Dựng lại bảng kịch bản', 'dungLaiBangKichBan')
@@ -1104,6 +1107,8 @@ var NHAN_TRANG_THAI = {
   CO_KICH_BAN: ['🎬 Có kịch bản', '#d9f0e1', '#0b6b2c'],
   DANG_DUNG: ['⏳ Đang dựng video', '#e8eaf6', '#3949ab'],
   CO_VIDEO: ['🎞 Có video', '#c8e6c9', '#1b5e20'],
+  DANG_DANG: ['📤 Đang đăng', '#e3f2fd', '#0d47a1'],
+  DA_DANG: ['🌐 Đã đăng', '#b2dfdb', '#004d40'],
   LOAI: ['❌ Loại (đáp án lệch)', '#fde2e0', '#b3261e'],
   LOI: ['⚠️ Lỗi, cần xem', '#fde2e0', '#b3261e']
 };
@@ -1515,7 +1520,7 @@ function danhDauDaLamVideo() {
   try {
     var q = ss.getSheetByName(TEN_HANG_DOI);
     docHang_(q).forEach(function (r) {
-      if (ids[r.id] && (r.trang_thai === 'CO_VIDEO' || r.trang_thai === 'CO_KICH_BAN')) { ghi_(q, r._row, { trang_thai: 'DA_XONG' }); n++; }
+      if (ids[r.id] && (r.trang_thai === 'CO_VIDEO' || r.trang_thai === 'CO_KICH_BAN' || r.trang_thai === 'DA_DANG')) { ghi_(q, r._row, { trang_thai: 'DA_XONG' }); n++; }
     });
     daDon = donDaXong_();
     dongBoBangDoc();
