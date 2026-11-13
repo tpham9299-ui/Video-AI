@@ -65,6 +65,7 @@ function xuLyLenhZaloMoi_(chat, chu, anh) {
   if (/^\/sanpham\b/.test(l)) { guiZaloToi_(chat, nhanSanPham_(chat, chu, anh)); return true; }
   if (/^\/xacnhan\b/.test(l)) { guiZaloToi_(chat, xacNhanSanPham_(chu)); return true; }
   if (/^\/huysp\b/.test(l)) { guiZaloToi_(chat, huySanPham_(chu)); return true; }
+  if (/^\/hoc\b/.test(l) && typeof nhanLenhHoc_ === 'function') { guiZaloToi_(chat, nhanLenhHoc_(chu)); return true; }
   return false;
 }
 

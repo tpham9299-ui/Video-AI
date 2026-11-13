@@ -1061,10 +1061,11 @@ function goiDeChoGitHub_(r) {
   try { if (typeof xacDinhSeries_ === 'function') goi.series = xacDinhSeries_(r); } catch (e) {}
   try { if (typeof chonKieuHook_ === 'function') goi.hook = chonKieuHook_(); } catch (e) {}
   try { if (typeof goiYTuSoLieu_ === 'function') goi.goi_y = goiYTuSoLieu_(); } catch (e) {}
+  try { if (typeof hocEditChoPrompt_ === 'function') goi.hoc_edit = hocEditChoPrompt_(); } catch (e) {}
   var nhap = docNhapKichBan_(r.id);
   if (nhap) goi.nhap = JSON.stringify(nhap);
   var s = JSON.stringify(goi);
-  if (s.length > 60000) { goi.goi_y = ''; s = JSON.stringify(goi); }
+  if (s.length > 60000) { goi.goi_y = ''; goi.hoc_edit = ''; s = JSON.stringify(goi); }
   if (s.length > 60000) { delete goi.nhap; s = JSON.stringify(goi); }
   return s.length > 60000 ? null : s;
 }

@@ -15,7 +15,8 @@
  * ============================================================
  */
 
-var MAC_DINH_NC_ = { TU_KIEM_TRA_VIDEO: 'BAT', DIEM_HINH_TOI_THIEU: '7', THU_HOOK: 'BAT', SERIES: 'BAT', BAO_CAO_GIO: '21', PLAYLIST_THEO: 'lop,lop_loai' };
+var MAC_DINH_NC_ = { TU_KIEM_TRA_VIDEO: 'BAT', DIEM_HINH_TOI_THIEU: '7', THU_HOOK: 'BAT', SERIES: 'BAT', BAO_CAO_GIO: '21', PLAYLIST_THEO: 'lop,lop_loai',
+  HOC_EDIT: 'BAT', HOC_EDIT_GIO: '2', HOC_EDIT_SO_VIDEO: '3', HOC_EDIT_TU_KHOA: 'math shorts animation|giải toán shorts|motion graphics math|toán học thú vị shorts|3d math animation' };
 function chNC_(k) { var v = cauHinh_(k); return v === undefined || v === null || String(v).trim() === '' ? MAC_DINH_NC_[k] : String(v).trim(); }
 var TEN_THONG_KE = 'THONG_KE';
 var COT_TK = ['id', 'video_yt', 'ngay_dang', 'luot_xem', 'thich', 'binh_luan', 'ty_le_xem', 'xem_tb_giay', 'hook_kieu', 'hook_chu', 'mon', 'chu_de', 'series', 'giay', 'cap_nhat'];
@@ -27,10 +28,12 @@ function caiDatNangCao() {
   var ch = ss.getSheetByName(TEN_CAU_HINH), co = {};
   ch.getDataRange().getValues().forEach(function (v) { co[v[0]] = true; });
   Object.keys(MAC_DINH_NC_).forEach(function (k) { if (!co[k]) ch.appendRow([k, MAC_DINH_NC_[k]]); });
-  ScriptApp.getProjectTriggers().forEach(function (t) { if (['capNhatThongKe', 'baoCaoHangNgay'].indexOf(t.getHandlerFunction()) >= 0) ScriptApp.deleteTrigger(t); });
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (['capNhatThongKe', 'baoCaoHangNgay', 'hocEditHangNgay'].indexOf(t.getHandlerFunction()) >= 0) ScriptApp.deleteTrigger(t); });
   _bo_nho_cau_hinh_ = null;
   ScriptApp.newTrigger('capNhatThongKe').timeBased().atHour(6).everyDays(1).create();
   ScriptApp.newTrigger('baoCaoHangNgay').timeBased().atHour(Number(chNC_('BAO_CAO_GIO')) || 21).everyDays(1).create();
+  ScriptApp.newTrigger('hocEditHangNgay').timeBased().atHour(Number(chNC_('HOC_EDIT_GIO')) || 2).everyDays(1).create();
+  thuMucHocEdit_();
   Logger.log('Đã đặt trigger: capNhatThongKe (6 giờ sáng), baoCaoHangNgay (' + chNC_('BAO_CAO_GIO') + ' giờ). Múi giờ theo cài đặt dự án: ' + Session.getScriptTimeZone());
   Logger.log(typeof YouTubeAnalytics === 'undefined' ? 'ℹ️ Chưa bật YouTube Analytics API (Dịch vụ +) nên chỉ có lượt xem/thích/bình luận, chưa có tỉ lệ xem.' : '✅ Đã bật YouTube Analytics.');
 }
@@ -378,4 +381,194 @@ function baoCaoHangNgay() {
     (loi.length ? '⚠️ ' + loi.length + ' lỗi hôm nay: ' + Object.keys(dongLoi).slice(0, 3).map(function (k) { return k + (dongLoi[k] > 1 ? ' (x' + dongLoi[k] + ')' : ''); }).join(' | ') + '\n' : '✨ Không có lỗi nào hôm nay\n') +
     (tk.length ? '🏆 Video nổi bật 7 ngày: ' + tk[0].chu_de + ' (' + tk[0].luot_xem + ' lượt xem' + (Number(tk[0].ty_le_xem) > 0 ? ', xem trung bình ' + tk[0].ty_le_xem + '%' : '') + ')' : '');
   guiZalo_(tin);
+}
+
+
+/* ===================== TỰ HỌC CÁCH EDIT MỖI NGÀY (lần 24) ===================== */
+// Mỗi ngày (trigger hocEditHangNgay, mặc định 2 giờ sáng) hệ thống XEM vài video ngắn rồi rút ra kỹ thuật edit, tích lũy vào
+// sheet HOC_EDIT; các kỹ thuật hệ thống làm được được đưa vào lời nhắc viết kịch bản (áp dụng ngay cho video sau), kỹ thuật cần
+// lập trình thêm được báo qua Zalo. Nguồn video:
+//  1. Thư mục Drive <thư mục gốc>/hoc_edit: video bạn lưu từ TikTok (nút "Lưu video" trong TikTok) hoặc bất kỳ đâu -> hệ thống
+//     tải lên Gemini để xem. (Hệ thống KHÔNG tự tải video từ TikTok vì điều khoản TikTok cấm tải tự động.)
+//  2. Lệnh Zalo "/hoc <link YouTube>": thêm video YouTube vào hàng chờ học.
+//  3. Tự tìm trên YouTube Shorts (YouTube Data API, theo HOC_EDIT_TU_KHOA): video ngắn nhiều lượt xem trong 7 ngày.
+var TEN_HOC_EDIT = 'HOC_EDIT';
+var COT_HE = ['ten', 'nhom', 'mo_ta', 'cach_ap_dung', 'kha_nang', 'diem', 'so_lan', 'nguon', 'lan_dau', 'lan_cuoi', 'ap_dung'];
+
+function shHocEdit_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(TEN_HOC_EDIT);
+  if (!sh) { sh = ss.insertSheet(TEN_HOC_EDIT); sh.appendRow(COT_HE); sh.setFrozenRows(1); }
+  return sh;
+}
+function thuMucHocEdit_() {
+  var goc = thuMucKichBan_().getParents().next();
+  var it = goc.getFoldersByName('hoc_edit');
+  return it.hasNext() ? it.next() : goc.createFolder('hoc_edit');
+}
+
+// Khả năng hiện có của bộ dựng (để Gemini quy kỹ thuật về cái làm được ngay)
+var KHA_NANG_DUNG_ = 'Bộ dựng video toán của kênh hiện LÀM ĐƯỢC: chữ tiêu đề 3 tầng hiện từng ký tự (dòng dẫn nghiêng nhỏ / từ chốt cực lớn màu nhấn / dòng đuôi), ' +
+  'chữ nổi khối 3D; máy quay đập zoom vào từ khóa, rung khi đóng dấu, lùi ra cuối bài; hình học nổi khối 3D đổi góc nhìn theo nhịp lời (6 góc: cheo_trai, tren_xuong, cheo_phai, thap_chinh_dien, cao_toan_canh, nghieng_nhe); ' +
+  'vòng sóng lan ở nhãn, nét vẽ có đầu sao chổi, con dấu BẪY + gạch đỏ viết tay, cửa tròn chuyển cảnh, lóe sáng tia + vòng xung kích ở đáp án, số chạy, công thức biến hình, ' +
+  'phụ đề từng từ có ô màu, đường tiến trình có chấm, chuyển cảnh (mo, truot_len, phong, luot_ngang, truot_xuong, lat_3d), nhạc theo tâm trạng cảnh, hiệu ứng âm thanh. ' +
+  'Phần KỊCH BẢN điều khiển được: câu móc mở đầu, nhịp và độ dài cảnh, câu nối, cách đặt câu hỏi/bẫy, chọn chuyển cảnh, chọn góc nhìn 3D, chữ chốt của tiêu đề, cách kết bài.';
+
+function hocEditHangNgay() {
+  if (String(chNC_('HOC_EDIT')).toUpperCase() === 'TAT') return;
+  var bat = Date.now();
+  _bat_dau_chay_ = bat;
+  _bo_nho_cau_hinh_ = null;
+  var props = PropertiesService.getScriptProperties();
+  var toiDa = Number(chNC_('HOC_EDIT_SO_VIDEO')) || 3;
+  var ds = [];
+  // 1) video bạn lưu vào Drive hoc_edit
+  try {
+    var it = thuMucHocEdit_().getFiles();
+    while (it.hasNext() && ds.length < toiDa) {
+      var f = it.next();
+      if (!/^video\//.test(f.getMimeType()) || props.getProperty('HE_' + f.getId())) continue;
+      if (f.getSize() > 45 * 1024 * 1024) { props.setProperty('HE_' + f.getId(), 'qua_lon'); continue; }
+      ds.push({ loai: 'drive', id: f.getId(), ten: f.getName() });
+    }
+  } catch (e) { nhatKy_('HOC_EDIT', 'Không đọc được thư mục hoc_edit: ' + e.message); }
+  // 2) link YouTube gửi qua Zalo
+  var hang = [];
+  try { hang = JSON.parse(props.getProperty('HOC_EDIT_HANG') || '[]'); } catch (e) {}
+  while (hang.length && ds.length < toiDa) { var l = hang.shift(); if (!props.getProperty('HE_' + l.id)) ds.push(l); }
+  props.setProperty('HOC_EDIT_HANG', JSON.stringify(hang.slice(0, 30)));
+  // 3) tự tìm YouTube Shorts nổi bật tuần này
+  if (ds.length < toiDa && typeof YouTube !== 'undefined') {
+    var tuKhoa = String(chNC_('HOC_EDIT_TU_KHOA')).split('|').map(function (x) { return x.trim(); }).filter(Boolean);
+    var q = tuKhoa[Math.floor(Date.now() / 86400000) % Math.max(1, tuKhoa.length)];
+    try {
+      var kq = YouTube.Search.list('snippet', { q: q, type: 'video', videoDuration: 'short', order: 'viewCount', maxResults: 15,
+        publishedAfter: new Date(Date.now() - 7 * 86400000).toISOString(), relevanceLanguage: /[à-ỹ]/i.test(q) ? 'vi' : 'en' });
+      (kq.items || []).forEach(function (x) {
+        var id = x.id && x.id.videoId;
+        if (id && ds.length < toiDa && !props.getProperty('HE_yt_' + id)) ds.push({ loai: 'youtube', id: 'yt_' + id, url: 'https://www.youtube.com/watch?v=' + id, ten: x.snippet.title });
+      });
+    } catch (e) { nhatKy_('HOC_EDIT', 'Tìm YouTube lỗi: ' + e.message); }
+  }
+  if (!ds.length) { nhatKy_('HOC_EDIT', 'Hôm nay không có video mới để học'); return; }
+  var moi = [], canLapTrinh = [], soVideo = 0;
+  for (var i = 0; i < ds.length; i++) {
+    if (Date.now() - bat > 4.3 * 60 * 1000) break;
+    try {
+      var p = xemVideoHocEdit_(ds[i]);
+      props.setProperty('HE_' + ds[i].id, new Date().toISOString().slice(0, 10));
+      if (!p || !Array.isArray(p.ky_thuat)) continue;
+      soVideo++;
+      var r = ghiKyThuat_(p.ky_thuat, ds[i].ten || ds[i].url || ds[i].id);
+      moi = moi.concat(r.moi);
+      canLapTrinh = canLapTrinh.concat(r.canLapTrinh);
+    } catch (e) {
+      nhatKy_('HOC_EDIT', 'Không xem được ' + (ds[i].ten || ds[i].id) + ': ' + String(e.message).slice(0, 200));
+      if (!/HET_GIO|QUA_TAI|HET_HAN_MUC/.test(String(e.message))) props.setProperty('HE_' + ds[i].id, 'loi');
+    }
+  }
+  var tin = '🎓 Học edit hôm nay: xem ' + soVideo + ' video, ' + moi.length + ' kỹ thuật mới.';
+  if (moi.length) tin += '\n✅ Áp dụng ngay vào kịch bản:\n' + moi.slice(0, 6).map(function (k) { return '• ' + k; }).join('\n');
+  if (canLapTrinh.length) tin += '\n🛠 Cần lập trình thêm cho bộ dựng (nhờ Claude làm khi bạn muốn):\n' + canLapTrinh.slice(0, 5).map(function (k) { return '• ' + k; }).join('\n');
+  nhatKy_('HOC_EDIT', tin.replace(/\n/g, ' | ').slice(0, 480));
+  if (soVideo) guiZalo_(tin);
+}
+
+function loiNhacHocEdit_() {
+  return 'Bạn là biên tập viên video ngắn (TikTok/Shorts) chuyên phân tích KỸ THUẬT EDIT. Xem video này và rút ra các kỹ thuật edit/thiết kế giúp video cuốn hút: ' +
+    'mở đầu (3 giây đầu), nhịp cắt, chuyển cảnh, chuyển động máy quay/góc nhìn 3D, chữ động (kinetic typography), bố cục, màu, âm thanh/nhạc, cách giữ chân và kêu gọi tương tác. ' +
+    'CHỈ học CÁCH LÀM (kỹ thuật), không chép nội dung, nhân vật, thương hiệu, nhạc có bản quyền.\n' + KHA_NANG_DUNG_ + '\n' +
+    'Với mỗi kỹ thuật, cho biết cách áp dụng vào video GIẢI TOÁN của kênh và "kha_nang": "co_san" (bộ dựng đã làm được, chỉ cần kịch bản dùng đúng), "qua_kich_ban" (áp dụng được bằng cách viết kịch bản khác đi), ' +
+    'hoặc "can_lap_trinh" (cần lập trình thêm hiệu ứng mới). "diem" 1-10 = mức đáng học cho video toán (rối mắt, chóng mặt, câu view rẻ tiền thì điểm thấp).\n' +
+    'Trả JSON: {"tom_tat":"1 câu","ky_thuat":[{"ten":"tên ngắn 3-7 chữ","nhom":"mo_dau|nhip|chuyen_canh|may_quay|chu|bo_cuc|mau|am_thanh|tuong_tac","mo_ta":"làm thế nào, thấy ở giây nào","cach_ap_dung":"áp dụng vào video toán ra sao (1-2 câu cụ thể)","kha_nang":"co_san|qua_kich_ban|can_lap_trinh","diem":8}]} (tối đa 6 kỹ thuật, ưu tiên cái đáng học nhất).';
+}
+
+// Gemini xem video: YouTube dùng thẳng URL; video Drive tải lên Gemini Files API (cùng key cho tải lên và hỏi).
+function xemVideoHocEdit_(v) {
+  var key = khoDanhSachKey_()[0];
+  if (!key) throw new Error('THIEU_GEMINI_API_KEY');
+  var model = cauHinh_('MODEL_CHINH');
+  var phan;
+  if (v.loai === 'youtube') phan = [{ file_data: { file_uri: v.url, mime_type: 'video/mp4' } }];
+  else {
+    var blob = DriveApp.getFileById(v.id).getBlob();
+    var up = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/upload/v1beta/files?uploadType=media&key=' + encodeURIComponent(key), {
+      method: 'post', contentType: blob.getContentType() || 'video/mp4', payload: blob.getBytes(), muteHttpExceptions: true });
+    if (up.getResponseCode() !== 200) throw new Error('Tải video lên Gemini lỗi HTTP ' + up.getResponseCode() + ': ' + up.getContentText().slice(0, 150));
+    var tep = JSON.parse(up.getContentText()).file;
+    for (var k = 0; k < 20 && tep.state !== 'ACTIVE'; k++) {   // chờ Gemini xử lý video (tối đa ~100 giây)
+      if (tep.state === 'FAILED') throw new Error('Gemini không xử lý được video');
+      Utilities.sleep(5000);
+      tep = JSON.parse(UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/' + tep.name + '?key=' + encodeURIComponent(key), { muteHttpExceptions: true }).getContentText());
+    }
+    if (tep.state !== 'ACTIVE') throw new Error('Gemini xử lý video quá lâu');
+    phan = [{ file_data: { file_uri: tep.uri, mime_type: tep.mimeType || 'video/mp4' } }];
+  }
+  var body = { contents: [{ parts: phan.concat([{ text: loiNhacHocEdit_() }]) }], generationConfig: { temperature: 0.4, responseMimeType: 'application/json' } };
+  var res = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(key), {
+    method: 'post', contentType: 'application/json', payload: JSON.stringify(body), muteHttpExceptions: true });
+  if (res.getResponseCode() !== 200) throw new Error('Gemini HTTP ' + res.getResponseCode() + ': ' + res.getContentText().slice(0, 150));
+  return docKetQua_(res.getContentText());
+}
+
+// Gộp kỹ thuật trùng tên (tích lũy số lần gặp); trả về danh sách kỹ thuật mới để báo cáo.
+function ghiKyThuat_(ds, nguon) {
+  var sh = shHocEdit_();
+  var v = sh.getDataRange().getValues();
+  var chiSo = {};
+  for (var i = 1; i < v.length; i++) chiSo[String(v[i][0]).toLowerCase().trim()] = i + 1;
+  var homNay = new Date();
+  var moi = [], canLapTrinh = [];
+  ds.slice(0, 6).forEach(function (k) {
+    if (!k || !k.ten) return;
+    var ten = String(k.ten).trim().slice(0, 60), khoa = ten.toLowerCase();
+    var kn = /can_lap_trinh/.test(k.kha_nang) ? 'can_lap_trinh' : /qua_kich_ban/.test(k.kha_nang) ? 'qua_kich_ban' : 'co_san';
+    var diem = Math.max(1, Math.min(10, Number(k.diem) || 5));
+    if (chiSo[khoa]) {
+      var r = chiSo[khoa];
+      var cu = sh.getRange(r, 1, 1, COT_HE.length).getValues()[0];
+      var soLan = (Number(cu[6]) || 1) + 1;
+      var diemCu = Number(cu[5]) || diem;
+      sh.getRange(r, 6, 1, 5).setValues([[Math.round((diemCu * (soLan - 1) + diem) / soLan * 10) / 10, soLan, String(nguon).slice(0, 80), cu[8] || homNay, homNay]]);
+    } else {
+      sh.appendRow([ten, String(k.nhom || ''), String(k.mo_ta || '').slice(0, 300), String(k.cach_ap_dung || '').slice(0, 300), kn, diem, 1, String(nguon).slice(0, 80), homNay, homNay, diem >= 6 && kn !== 'can_lap_trinh' ? 'BAT' : 'TAT']);
+      chiSo[khoa] = sh.getLastRow();
+      if (diem >= 6) (kn === 'can_lap_trinh' ? canLapTrinh : moi).push(ten + ': ' + String(k.cach_ap_dung || '').slice(0, 120));
+    }
+  });
+  return { moi: moi, canLapTrinh: canLapTrinh };
+}
+
+// Khối "BÀI HỌC EDIT" đưa vào lời nhắc viết kịch bản: các kỹ thuật đang BẬT, điểm cao, gặp nhiều lần, ưu tiên mới học.
+// Mỗi video chỉ áp 4 kỹ thuật, xoay vòng theo ngày để video không cái nào giống cái nào. Tắt một kỹ thuật: cột ap_dung = TAT.
+function hocEditChoPrompt_() {
+  try {
+    var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HOC_EDIT);
+    if (!sh || sh.getLastRow() < 2) return '';
+    var ds = sh.getDataRange().getValues().slice(1).filter(function (x) { return String(x[10]).toUpperCase() === 'BAT' && x[4] !== 'can_lap_trinh'; })
+      .map(function (x) {
+        var ngay = x[9] instanceof Date ? (Date.now() - x[9].getTime()) / 86400000 : 30;
+        return { ten: x[0], cach: x[3], diem: Number(x[5]) * (1 + Math.log(1 + Number(x[6]))) * (ngay < 7 ? 1.3 : 1) };
+      }).sort(function (a, b) { return b.diem - a.diem; }).slice(0, 12);
+    if (!ds.length) return '';
+    var lech = Math.floor(Date.now() / 86400000) % ds.length;
+    var chon = ds.slice(lech).concat(ds.slice(0, lech)).slice(0, 4);
+    return 'BÀI HỌC EDIT HỆ THỐNG TỰ HỌC TỪ CÁC VIDEO NGẮN NỔI BẬT (áp dụng tự nhiên vào video này, không làm rối mắt, không phá các quy tắc ở trên):\n' +
+      chon.map(function (k) { return '- ' + k.ten + ': ' + k.cach; }).join('\n') + '\n';
+  } catch (e) { return ''; }
+}
+
+// Lệnh Zalo: /hoc <link YouTube> (TikTok: lưu video vào thư mục Drive hoc_edit)
+function nhanLenhHoc_(chu) {
+  var m = /(youtu\.be\/|youtube\.com\/(?:watch\?v=|shorts\/))([A-Za-z0-9_-]{6,})/.exec(String(chu));
+  if (!m) {
+    if (/tiktok\.com/i.test(chu)) return '📥 Video TikTok: bạn bấm "Lưu video" trong TikTok rồi tải vào thư mục Drive "hoc_edit" (cạnh thư mục kịch bản). Mỗi đêm hệ thống tự xem và học (hệ thống không tự tải từ TikTok vì điều khoản TikTok không cho phép).';
+    return 'Cách dùng: /hoc <link YouTube>. Video TikTok/Facebook: lưu về máy rồi tải vào thư mục Drive "hoc_edit".';
+  }
+  var props = PropertiesService.getScriptProperties();
+  var hang = [];
+  try { hang = JSON.parse(props.getProperty('HOC_EDIT_HANG') || '[]'); } catch (e) {}
+  hang.push({ loai: 'youtube', id: 'yt_' + m[2], url: 'https://www.youtube.com/watch?v=' + m[2], ten: 'YouTube ' + m[2] });
+  props.setProperty('HOC_EDIT_HANG', JSON.stringify(hang.slice(-30)));
+  return '📚 Đã thêm vào hàng chờ học edit (' + hang.length + ' video). Hệ thống xem lúc ' + chNC_('HOC_EDIT_GIO') + ' giờ sáng và báo kết quả qua Zalo. Muốn học ngay: chạy hocEditHangNgay() trong Apps Script.';
 }

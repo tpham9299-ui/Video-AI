@@ -131,7 +131,7 @@ if (de.nhap && hang.id) tep['nhap_' + hang.id + '.json'] = String(de.nhap); // b
 
 ctx.__out = out;
 ctx.__thuMuc = thuMuc;
-ctx.__pre = {series: de.series || null, hook: de.hook || '', goi_y: de.goi_y || ''};
+ctx.__pre = {series: de.series || null, hook: de.hook || '', goi_y: de.goi_y || '', hoc_edit: de.hoc_edit || ''};
 ctx.__anh = process.env.BP1_ANH && fs.existsSync(process.env.BP1_ANH) ? {mime: /\.png$/i.test(process.env.BP1_ANH) ? 'image/png' : 'image/jpeg', data: fs.readFileSync(process.env.BP1_ANH).toString('base64')} : null;
 vm.runInContext(`
   THOI_GIAN_TOI_DA_MS = 22 * 60 * 1000;      // GitHub: 22 phút cho một đề (Apps Script chỉ 4,6 phút)
@@ -143,6 +143,7 @@ vm.runInContext(`
   xacDinhSeries_ = function () { return __pre.series; };
   chonKieuHook_ = function () { return __pre.hook; };
   goiYTuSoLieu_ = function () { return __pre.goi_y; };
+  hocEditChoPrompt_ = function () { return __pre.hoc_edit; };
   ghiTapCuoiSeries_ = function (se, tieuDe) { __out.series_ghi = {se: se, tieu_de: tieuDe}; };
   anhDeChoGemini_ = function () { return __anh; };
   thuMucKichBan_ = function () { return __thuMuc; };

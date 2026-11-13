@@ -114,7 +114,9 @@ function taoPromptKichBan_(r, c1, c2) {
     r._series ? 'SERIES: video này là tập ' + r._series.tap + ' của series "' + r._series.ten + '"' + (r._series.truoc ? ' (tập trước: "' + r._series.truoc + '")' : '') +
       '. Có thể nhắc nhẹ một câu nối với tập trước nếu tự nhiên; "video_tiep_theo" hẹn một bài cùng series.\n' : '',
     r._hook ? 'KIỂU MỞ ĐẦU CẦN THỬ Ở VIDEO NÀY: "' + r._hook + '" (đặt "hook_kieu" = "' + r._hook + '" và viết câu móc đúng kiểu đó, thật mạnh). Hệ thống đang đo kiểu mở đầu nào giữ chân người xem tốt nhất.\n' : '',
-    typeof goiYTuSoLieu_ === 'function' ? goiYTuSoLieu_() : ''
+    typeof goiYTuSoLieu_ === 'function' ? goiYTuSoLieu_() : '',
+    typeof hocEditChoPrompt_ === 'function' ? hocEditChoPrompt_() : '',
+    'GÓC NHÌN 3D (tùy chọn): cảnh có hình học/hình tự do được dựng nổi khối 3D; có thể thêm "goc_nhin": ["..."] (1-3 góc, máy đổi góc ở các bước của cảnh) chọn trong: cheo_trai, tren_xuong (nhìn thẳng từ trên khi cần đọc số đo chính xác), cheo_phai, thap_chinh_dien (góc thấp hùng vĩ, hợp hook/đáp án), cao_toan_canh, nghieng_nhe. Hai cảnh liền nhau nên khác góc; không cần thì bỏ trống.\n'
   ];
   var noiCanh = [
     'MẠCH NỐI GIỮA CÁC CẢNH (rất quan trọng, người nghe ghét cảm giác "chuyển slide"): cả video phải nghe như MỘT bài nói liền mạch của một người thật, không phải các đoạn rời ghép lại. ',
