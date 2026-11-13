@@ -109,6 +109,12 @@ function taoPromptKichBan_(r, c1, c2) {
     '(c) CẤM lời quảng cáo quá đà: "tốt nhất", "rẻ nhất", "số 1", "hàng đầu", "duy nhất", "cam kết", "100%", "mua ngay", "chốt đơn". Không kêu gọi mua giữa video. ',
     '(d) Chỉ được nhắc một câu ngắn, trung thực ở cảnh bài học cuối, ví dụ: "Sản phẩm trong bài là ' + sp.ten + ', kênh có bán, thông tin ở giỏ hàng." Máy tự gắn nhãn "Có sản phẩm do kênh bán" lên video, bạn không cần viết nhãn.\n\n'
   ] : [];
+  var nangCao = [
+    r._series ? 'SERIES: video này là tập ' + r._series.tap + ' của series "' + r._series.ten + '"' + (r._series.truoc ? ' (tập trước: "' + r._series.truoc + '")' : '') +
+      '. Có thể nhắc nhẹ một câu nối với tập trước nếu tự nhiên; "video_tiep_theo" hẹn một bài cùng series.\n' : '',
+    r._hook ? 'KIỂU MỞ ĐẦU CẦN THỬ Ở VIDEO NÀY: "' + r._hook + '" (đặt "hook_kieu" = "' + r._hook + '" và viết câu móc đúng kiểu đó, thật mạnh). Hệ thống đang đo kiểu mở đầu nào giữ chân người xem tốt nhất.\n' : '',
+    typeof goiYTuSoLieu_ === 'function' ? goiYTuSoLieu_() : ''
+  ];
   var noiCanh = [
     'MẠCH NỐI GIỮA CÁC CẢNH (rất quan trọng, người nghe ghét cảm giác "chuyển slide"): cả video phải nghe như MỘT bài nói liền mạch của một người thật, không phải các đoạn rời ghép lại. ',
     'Câu ĐẦU của mỗi cảnh (từ cảnh 2) là một CÂU NỐI tự nhiên, bắt từ ý cuối của cảnh trước rồi dẫn sang ý mới, ví dụ: ',
@@ -174,6 +180,7 @@ function taoPromptKichBan_(r, c1, c2) {
     moDau,
     khopDe,
     sanPham,
+    nangCao,
     noiCanh,
     ['4) MỖI CẢNH CÓ: "loai"; "tieu_de_canh" (BẮT BUỘC từ cảnh 2: câu tiêu đề in chữ trắng thật lớn ở đầu cảnh, 3-8 từ, nói đúng ý chính của cảnh, ví dụ "Cùng giới nghĩa là gì?", "Bẫy: quên hai bạn nữ"); ',
     '"tu_khoa" (1-3 từ nằm NGUYÊN VĂN trong tieu_de_canh, được tô cam); "nhan" (tùy chọn, nhãn cam ngắn tối đa 2 từ, ví dụ "BƯỚC 1"; để trống thì máy tự đặt theo loại cảnh); ',

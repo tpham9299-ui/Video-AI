@@ -36,7 +36,7 @@ const ManKet: React.FC<{tep: string; loai: 'video' | 'anh'}> = ({tep, loai}) => 
 };
 
 // Dòng chủ đề nhỏ cố định ở góc trên (như "20 ĐÔ MUA AI NÀO?" của video mẫu): phần sau dấu ":" hoặc "?" tô cam.
-const DauTrang: React.FC<{chu: string; lop: string; tu: number; lui: number; den: number; th: ThuongHieuProps}> = ({chu, lop, tu, lui, den, th}) => {
+const DauTrang: React.FC<{chu: string; lop: string; tu: number; lui: number; den: number; th: ThuongHieuProps; tap?: number}> = ({chu, lop, tu, lui, den, th, tap}) => {
   const f = useCurrentFrame();
   const e = smooth((f - tu) / 12);
   if (!chu || e <= 0 || f >= den) return null;
@@ -50,6 +50,7 @@ const DauTrang: React.FC<{chu: string; lop: string; tu: number; lui: number; den
     <div style={{position: 'absolute', left: 40, right: 40, top: 118, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 14, fontFamily: FONT_DAM, fontWeight: 900, fontSize: 30, color: '#fff', opacity: 0.95 * e * (1 - an), transform: `translateY(${(1 - e) * -20}px)`, whiteSpace: 'nowrap', textShadow: '0 2px 8px rgba(0,0,0,0.6)'}}>
       {lui ? <LogoTron th={th} co={52} goc={f * 2} sang={0.3} /> : null}
       {lop ? <span style={{background: '#3BF29A', color: '#062019', borderRadius: 8, padding: '1px 10px', fontSize: 24, textShadow: 'none'}}>LỚP {lop}</span> : null}
+      {tap ? <span style={{background: '#FF8A3D', color: '#1a0d02', borderRadius: 8, padding: '1px 10px', fontSize: 24, textShadow: 'none'}}>TẬP {tap}</span> : null}
       <span style={{overflow: 'hidden', textOverflow: 'ellipsis'}}>
         {dau}
         <span style={{color: '#FF8A3D'}}>{sau}</span>
@@ -142,7 +143,7 @@ export const Video: React.FC<Props> = (props) => {
         if (iTu < 0) return null;
         return <DuKien ds={props.duKien} tu={canh[iTu].batDau + 6} den={iDen > 0 ? canh[iDen].batDau : ketThuc - 30} />;
       })() : null}
-      {canh.length > 1 ? <DauTrang chu={props.chuDe || tieuDe} lop={lop} tu={canh[1].batDau} lui={coThuongHieu ? 1 : 0} den={ketThuc} th={thuongHieu} /> : null}
+      {canh.length > 1 ? <DauTrang chu={props.chuDe || tieuDe} lop={lop} tu={canh[1].batDau} lui={coThuongHieu ? 1 : 0} den={ketThuc} th={thuongHieu} tap={props.series ? props.series.tap : 0} /> : null}
       <ThuongHieu th={thuongHieu} canh={canh} ketThuc={ketThuc} tuDau={canh.length > 1 ? canh[1].batDau : 1e9} boLoiMoi={phongCach.loiMoiGiuaVideo !== true} />
       {phongCach.thanhTienDo ? <ThanhTienDo tongFrame={tongFrame} lop={lop} /> : null}
       {outro ? (

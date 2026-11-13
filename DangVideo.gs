@@ -169,6 +169,7 @@ function noiDungDang_(r) {
     '📌 Đề bài: ' + de.slice(0, 1500),
     '🎯 Đáp án và cách giải thông minh có trong video, thử tự giải trước nhé!',
     baiHoc ? '\n💡 Ghi nhớ:\n' + baiHoc : '',
+    kb.series ? '\n📚 Series "' + kb.series.ten + '" – tập ' + kb.series.tap : '',
     kb.video_tiep_theo ? '\n👉 Video sau: ' + kb.video_tiep_theo : '',
     '',
     the.map(function (t) { return '#' + t; }).join(' ')
@@ -220,7 +221,17 @@ function dangYouTube_(r, meta) {
       catch (eQc) { v = null; }
     }
     if (!v) v = YouTube.Videos.insert(tn, 'snippet,status', f.getBlob());
-    return { ok: true, url: 'https://youtube.com/shorts/' + v.id, id: v.id, che_do: v.status && v.status.privacyStatus };
+    var ghiChuYT = [];
+    // ảnh bìa: khung hình lúc câu móc hiện đầy đủ (YouTube chỉ cho đặt khi kênh đã xác minh số điện thoại)
+    if (r.anh_bia) {
+      try { YouTube.Thumbnails.set(v.id, DriveApp.getFileById(String(r.anh_bia)).getBlob()); ghiChuYT.push('đã đặt ảnh bìa'); }
+      catch (eB) { ghiChuYT.push('chưa đặt được ảnh bìa (kênh cần xác minh số điện thoại)'); }
+    }
+    var kbYT = {};
+    try { kbYT = JSON.parse(DriveApp.getFileById(r.file_kich_ban).getBlob().getDataAsString()); } catch (eK) {}
+    if (typeof themVaoPlaylist_ === 'function') { var pl = themVaoPlaylist_(kbYT, v.id); if (pl) ghiChuYT.push(pl); }
+    if (typeof dangKyThongKe_ === 'function') dangKyThongKe_(r, v.id);
+    return { ok: true, url: 'https://youtube.com/shorts/' + v.id, id: v.id, che_do: v.status && v.status.privacyStatus, ghi_chu: ghiChuYT.join(', ') };
   } catch (e) {
     return { ok: false, loi: String(e.message || e).slice(0, 200) };
   }

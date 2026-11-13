@@ -238,12 +238,17 @@ function doPost(e) {
       if (r.trang_thai === 'CO_VIDEO' && String(r.file_video) === String(d.file_id)) return tra({ ok: true, lap: true });
       if (r.trang_thai === 'DA_XONG') return tra({ ok: true, lap: true });
       var canDuyetVideo = typeof canDuyet_ === 'function' && canDuyet_();
-      ghi_(sh, r._row, { trang_thai: 'CO_VIDEO', file_video: String(d.file_id), ghi_chu: '', so_lan_loi: 0, duyet: canDuyetVideo ? 'CHO' : '' });
+      ghi_(sh, r._row, { trang_thai: 'CO_VIDEO', file_video: String(d.file_id), ghi_chu: '', so_lan_loi: 0, duyet: canDuyetVideo ? 'CHO' : '', anh_kt: d.anh_kt || '', anh_bia: d.anh_bia || '' });
+      // AI xem video trước (NangCao.gs): đạt mới gửi bạn duyệt, chưa đạt thì tự sửa rồi dựng lại
+      r.file_video = String(d.file_id); r.anh_kt = d.anh_kt || ''; r.anh_bia = d.anh_bia || '';
+      var aiXem = canDuyetVideo && typeof giaoAiXemVideo_ === 'function' && giaoAiXemVideo_(sh, r, d);
       nhatKy_('DUNG_VIDEO', r.id + ' -> xong, file ' + d.file_id);
       var tinVideo = '🎞 Video đã dựng xong: ' + (r.chu_de || r.id) + (d.giay ? ' (' + d.giay + ' giây)' : '') +
         '\nhttps://drive.google.com/file/d/' + d.file_id + '/view' +
         (canDuyetVideo ? '\n👉 Xem rồi trả lời: /duyet ' + r.id + ' (cho đăng) | /sua ' + r.id + ' <góp ý> (sửa rồi dựng lại) | /bo ' + r.id + ' (không đăng)' : '');
-      if (laUuTien_(r) && r.zalo_chat) {
+      if (aiXem) {
+        nhatKy_('AI_XEM', r.id + ': video xong, AI đang xem trước khi gửi bạn duyệt');
+      } else if (laUuTien_(r) && r.zalo_chat) {
         var cacheV = CacheService.getScriptCache();
         if (!cacheV.get('ZALO_VIDEO_' + r.id + '_' + d.file_id)) {
           cacheV.put('ZALO_VIDEO_' + r.id + '_' + d.file_id, '1', 21600);

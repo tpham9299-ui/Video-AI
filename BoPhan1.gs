@@ -44,7 +44,8 @@ var COT = ['id', 'trang_thai', 'lop', 'chu_de', 'de_bai', 'nguon', 'diem_tu_duy'
   'mon', 'uu_tien', 'file_anh', 'zalo_chat', 'dap_an_hien',   // 5 cột lần 15
   'lich_dang', 'link_dang',    // 2 cột lần 16
   'mo_ta_hinh',                // lần 17: mô tả chi tiết hình vẽ kèm đề (đọc từ ảnh) để video vẽ lại đúng hình
-  'duyet', 'gop_y', 'san_pham']; // lần 19: trạng thái duyệt video, góp ý khi duyệt, sản phẩm trong bài (JSON) (hẹn giờ đăng, link đã đăng). Cột mới luôn nối vào CUỐI nên dữ liệu cũ không lệch
+  'duyet', 'gop_y', 'san_pham', // lần 19: trạng thái duyệt video, góp ý khi duyệt, sản phẩm trong bài (JSON)
+  'anh_kt', 'anh_bia', 'ai_kiem_tra', 'series'];   // lần 20: ảnh kiểm tra/ảnh bìa (Drive), kết quả AI xem video, series (hẹn giờ đăng, link đã đăng). Cột mới luôn nối vào CUỐI nên dữ liệu cũ không lệch
 
 // Tên model nằm trong CAU_HINH vì Google đổi tên/ngừng model thường xuyên.
 var MAC_DINH = {
@@ -728,6 +729,9 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien) {
       var c1 = {}, c2 = {};
       try { c1 = JSON.parse(r.cach_1); } catch (e1) {}
       try { c2 = JSON.parse(r.cach_2); } catch (e2) {}
+      // series (đánh số tập, nhắc tập trước) và kiểu mở đầu đang thử (NangCao.gs)
+      r._series = typeof xacDinhSeries_ === 'function' ? xacDinhSeries_(r) : null;
+      r._hook = typeof chonKieuHook_ === 'function' ? chonKieuHook_() : '';
       var prompt = taoPromptKichBan_(r, c1, c2);   // lời nhắc nằm trong tệp PromptKichBan.gs
       var sn = { suyNghi: cauHinh_('MUC_SUY_NGHI_KICH_BAN') };
       // Đề gửi kèm ảnh: cho Gemini NHÌN ảnh khi viết kịch bản để vẽ lại đúng hình của đề (không thay bằng vật "gần giống").
@@ -790,8 +794,9 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien) {
       if (r.dap_an_hien) kb.dap_an_hien = String(r.dap_an_hien);
       if (laUuTien_(r)) kb.uu_tien = 1;
       if (spham) kb.san_pham = spham;   // bộ dựng video tự gắn nhãn có sản phẩm do kênh bán
+      if (r._series) { kb.series = { ten: r._series.ten, tap: r._series.tap }; if (typeof ghiTapCuoiSeries_ === 'function') ghiTapCuoiSeries_(r._series, kb.tieu_de); }
       var tep = thuMucKichBan_().createFile(r.id + '.json', JSON.stringify(kb, null, 2), MimeType.PLAIN_TEXT);
-      ghi_(sh, r._row, { trang_thai: 'CO_KICH_BAN', file_kich_ban: tep.getId(), ghi_chu: '', so_lan_loi: 0 });
+      ghi_(sh, r._row, { trang_thai: 'CO_KICH_BAN', file_kich_ban: tep.getId(), ghi_chu: '', so_lan_loi: 0, series: kb.series ? kb.series.ten + ' #' + kb.series.tap : '' });
       nhatKy_('KICH_BAN', r.id + ' -> đã lưu file ' + tep.getId());
       if (laUuTien_(r)) baoZaloDe_(r, '🎬 Kịch bản xong (' + kb.canh.length + ' cảnh, khoảng ' + kb.tong_giay + ' giây). Đang dựng video, thường mất 10-20 phút...');
       capNhatTb_('TB_KICHBAN_MS', Date.now() - t0);
@@ -876,7 +881,8 @@ function goiGemini_(prompt, nhiet, opts) {
     var coTheThuLai = false;
     for (var m = 0; m < models.length; m++) {
       if (!conDuGoiGemini_()) throw new Error(soQuaTai && soQuaTai === soLoi ? 'QUA_TAI' : 'HET_GIO');
-      var phan = opts.anh ? [{ inline_data: { mime_type: opts.anh.mime, data: opts.anh.data } }, { text: prompt }] : [{ text: prompt }];
+      var dsAnh = opts.anhs || (opts.anh ? [opts.anh] : []);
+      var phan = dsAnh.map(function (a) { return { inline_data: { mime_type: a.mime, data: a.data } }; }).concat([{ text: prompt }]);
       var kq = khoGoiCoSuyNghi_(models[m], {
         contents: [{ parts: phan }],
         generationConfig: { temperature: nhiet, responseMimeType: 'application/json' }
