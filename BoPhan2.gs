@@ -199,7 +199,12 @@ function guiWorkflowGitHub_(inputs) {
   });
   var ma = res.getResponseCode();
   if (ma === 204) return { ok: true, ma: ma };
-  return { ok: false, ma: ma, loi: 'HTTP ' + ma + ': ' + String(res.getContentText()).replace(/\s+/g, ' ').slice(0, 160) };
+  var noi = String(res.getContentText()).replace(/\s+/g, ' ');
+  if (ma === 403 && /not accessible by personal access token/i.test(noi)) {
+    return { ok: false, ma: ma, loi: 'Token GitHub CHƯA có quyền "Actions: Read and write" (GitHub > Settings > Developer settings > Fine-grained tokens > Edit > Add permissions > Actions)' };
+  }
+  if (ma === 404) return { ok: false, ma: ma, loi: 'Không thấy workflow dung-video.yml trên nhánh "' + nhanh + '" (kiểm tra CAU_HINH > GITHUB_NHANH)' };
+  return { ok: false, ma: ma, loi: 'HTTP ' + ma + ': ' + noi.slice(0, 160) };
 }
 
 /* ===================== NHẬN KẾT QUẢ TỪ GITHUB ===================== */
