@@ -20,6 +20,7 @@ export type CanhProps = {
   tuKhoa: string; // cụm từ trong tiêu đề được tô cam
   nhan: string; // nhãn viên thuốc màu cam (để trống = tự đặt theo loại cảnh)
   giuSanKhau: boolean;
+  gocNhin?: string[]; // 3D: các góc máy lần lượt (cheo_trai | tren_xuong | cheo_phai | thap_chinh_dien | cao_toan_canh | nghieng_nhe)
   chuyenCanh?: string; // mo | truot_len | phong | luot_ngang | truot_xuong | lat_3d (để trống = tự chọn theo mạch bài) // giữ nguyên sân khấu của cảnh trước rồi diễn tiếp (liền mạch như video mẫu)
 };
 

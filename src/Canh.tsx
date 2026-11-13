@@ -148,7 +148,9 @@ export const Canh: React.FC<{
 
   // ===== KHÔNG GIAN 3D TỰ ĐỘNG: hình nằm trên bàn kính có bề dày / thẻ lơ lửng =====
   const kieu3D = moi ? phanLoai3D(sanKhau) : 'khong';
-  const gm = kieu3D === 'nam' ? gocMayNam(frame, canh.batDau + frame, !giuTruoc, coHook || khungCuoi) : null;
+  // máy chỉ đổi góc ở mốc các bước của sân khấu (khớp lời giảng), góc do kịch bản chọn (goc_nhin) hoặc tự xoay vòng bộ góc
+  const mocDoi3D = kieu3D === 'nam' && sanKhau && tbCanh ? Array.from({length: Math.max(0, sanKhau.soBuoc - 1)}, (_, k) => Math.round(tbCanh(k + 2) * fps) + canh.leadFrame) : [];
+  const gm = kieu3D === 'nam' ? gocMayNam(frame, canh.so, !giuTruoc, coHook || khungCuoi, mocDoi3D, canh.gocNhin || []) : null;
   const vatDung = gm && sanKhau ? sanKhau.vat.filter((v) => VAT_DUNG.includes(v.loai)).slice(0, 3) : [];
 
   // ===== BỘ HIỆU ỨNG MỚI: chữ 3 tầng, đập zoom, con dấu BẪY, lóe sáng đáp án =====

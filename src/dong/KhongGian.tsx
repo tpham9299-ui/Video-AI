@@ -36,26 +36,44 @@ export const toiMau = (hex: string, k: number) => {
   return `#${c(n >> 16)}${c((n >> 8) & 255)}${c(n & 255)}`;
 };
 
-// góc máy cho cảnh "nam": HÌNH tự xoay qua nhiều góc nhìn (không có tấm nền bao quanh). Máy quay đi qua một chuỗi góc
-// (nghiêng xuống / xoay quanh / lật nghiêng), mỗi góc ~3,5 giây: di chuyển êm 65% thời gian, dừng ngắm 35%.
-// Tính theo khung hình TUYỆT ĐỐI của video để hai cảnh nối tiếp cùng sân khấu không bị giật góc.
-const CAC_GOC: [number, number, number][] = [
-  [34, -24, 0], [16, 18, 9], [50, 6, -7], [24, -10, 12], [42, 26, -3], [12, -4, -10],
+// GÓC MÁY cho cảnh "nam" - ĐA DẠNG nhưng KHÔNG GÂY CHÓNG MẶT (quy tắc của người quay phim):
+//  - máy ĐỨNG YÊN phần lớn thời gian; chỉ đổi góc ở các mốc lời giảng sang ý mới (bước của sân khấu), cách nhau >= 2,5 giây;
+//  - mỗi lần đổi chỉ ~0,8 giây, tăng tốc rồi hãm êm (không giật), thay đổi tối đa ~40 độ;
+//  - không lật nghiêng liên tục; chỉ trôi rất nhẹ (<0,5 độ) để hình không "chết";
+//  - bộ góc nhiều kiểu: nhìn từ trên xuống, chéo 3/4 trái/phải, góc thấp chính diện, nhìn cao toàn cảnh, nghiêng nhẹ.
+export type GocNhin = {ten: string; nghieng: number; xoay: number; lat: number};
+export const BO_GOC: GocNhin[] = [
+  {ten: 'cheo_trai', nghieng: 34, xoay: -22, lat: 0},
+  {ten: 'tren_xuong', nghieng: 8, xoay: 0, lat: 0},
+  {ten: 'cheo_phai', nghieng: 30, xoay: 20, lat: 0},
+  {ten: 'thap_chinh_dien', nghieng: 52, xoay: 0, lat: 0},
+  {ten: 'cao_toan_canh', nghieng: 22, xoay: -8, lat: 0},
+  {ten: 'nghieng_nhe', nghieng: 28, xoay: 10, lat: 7},
 ];
 export const NGHIENG_NAM = 30;
-export function gocMayNam(f: number, fTuyetDoi: number, vaoMoi: boolean, kichTinh: boolean) {
-  const e = vaoMoi ? expoOut(kep(f / 34)) : 1;
-  const DOAN = 105;
-  const k = Math.floor(fTuyetDoi / DOAN);
-  const u = (fTuyetDoi % DOAN) / DOAN;
-  const q = kep((u - 0.35) / 0.65);
-  const m = q * q * (3 - 2 * q);
-  const A = CAC_GOC[k % CAC_GOC.length];
-  const B = CAC_GOC[(k + 1) % CAC_GOC.length];
-  const g = (i: number) => A[i] + (B[i] - A[i]) * m;
-  const nghieng = g(0) + (kichTinh ? 30 : 20) * (1 - e) + 1.5 * Math.sin(fTuyetDoi / 41);
-  const xoay = g(1) + (kichTinh ? -40 : -20) * (1 - e) + 2.5 * Math.sin(fTuyetDoi / 57);
-  const lat = g(2) * e;
+const DOI = 24; // số khung hình của một lần đổi góc
+const em = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+export function chonGoc(ten: string | undefined, chiSo: number): GocNhin {
+  const g = ten ? BO_GOC.find((x) => x.ten === ten) : undefined;
+  return g || BO_GOC[((chiSo % BO_GOC.length) + BO_GOC.length) % BO_GOC.length];
+}
+// mocDoi: các khung hình (tính từ đầu cảnh) máy được phép đổi góc; dsGoc: góc kịch bản chọn (nếu có), không thì tự xoay vòng bộ góc
+export function gocMayNam(f: number, soCanh: number, vaoMoi: boolean, kichTinh: boolean, mocDoi: number[] = [], dsGoc: string[] = []) {
+  const e = vaoMoi ? expoOut(kep(f / 30)) : 1;
+  // các mốc đổi góc cách nhau ít nhất 75 khung (2,5 giây)
+  const moc: number[] = [];
+  mocDoi.forEach((m) => { if (m > 20 && (!moc.length || m - moc[moc.length - 1] >= 75)) moc.push(m); });
+  let i = 0;
+  while (i < moc.length && f >= moc[i]) i++;
+  const goc = (k: number) => chonGoc(dsGoc[k], soCanh * 2 + k);
+  let A = goc(Math.max(0, i - 1)), B = goc(i);
+  let m = 1;
+  if (i > 0) { m = em(kep((f - moc[i - 1]) / DOI)); A = goc(i - 1); B = goc(i); } else { A = goc(0); B = goc(0); }
+  const g = (k: 'nghieng' | 'xoay' | 'lat') => A[k] + (B[k] - A[k]) * m;
+  const troi = 0.4 * Math.sin(f / 70);
+  const nghieng = g('nghieng') + (kichTinh ? 26 : 16) * (1 - e) + troi;
+  const xoay = g('xoay') + (kichTinh ? -30 : -14) * (1 - e) + troi;
+  const lat = g('lat') * e;
   return {nghieng, xoay, lat, e};
 }
 // vị trí trên màn hình (so với tâm sân khấu) của một điểm nằm trên mặt phẳng hình 3D: dùng để đặt lóe sáng / vật đứng đúng chỗ

@@ -675,6 +675,7 @@ def main():
             "nhan": str(c.get("nhan") or "").strip()[:16],
             "giuSanKhau": bool(c.get("giu_san_khau")) and i > 0,
             "chuyenCanh": str(c.get("chuyen_canh") or ""),
+            "gocNhin": [str(x) for x in (c.get("goc_nhin") or [])][:4] if isinstance(c.get("goc_nhin"), list) else ([str(c.get("goc_nhin"))] if c.get("goc_nhin") else []),
         })
         bat_dau += so_frame
         so_tu = len(loi_thoai.split())
