@@ -11,7 +11,8 @@
  *   Mỗi giai đoạn bot đều nhắn cho bạn biết đang tới đâu.
  *
  * CÀI ĐẶT (một lần):
- *   a) Script Properties đã có ZALO_BOT_TOKEN, ZALO_CHAT_IDS (mã chat của bạn; gửi /id cho bot để biết mã).
+ *   a) Script Properties đã có ZALO_BOT_TOKEN. Người được gửi đề: ZALO_CHAT_IDS hoặc dòng ZALO_NGUOI_GUI_DE trong sheet CAU_HINH
+ *      (gửi /id cho bot để biết mã chat; mã chat là riêng cho từng bot).
  *      Bot đang dùng chung với hệ thống khác có webhook riêng? Tạo một bot Zalo khác cho việc nhận đề và đặt token vào ZALO_BOT_TOKEN_DE.
  *   b) Deploy > Manage deployments > Edit > Version: New version (để web app có hàm mới). Web app: Execute as Me, Who has access: Anyone.
  *   c) Chạy caiDatZalo() một lần: tự tạo ZALO_WEBHOOK_SECRET và đăng ký webhook với Zalo. Xem Nhật ký thực thi để biết kết quả.
@@ -119,15 +120,15 @@ function nhanZalo_(e) {
     if (cache.get(maTin)) return tra;
     cache.put(maTin, '1', 21600);
 
-    var choPhep = String(p.getProperty('ZALO_CHAT_IDS') || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+    var choPhep = dsNguoiGuiDe_();
     var chu = String(m.text || m.caption || '').trim();
     var anh = m.photo_url || m.photo || m.url || '';
     if (typeof anh !== 'string') anh = (anh && (anh.url || anh.photo_url)) || '';
     var lenh = chu.toLowerCase();
 
-    if (/^\/(id|start)\b/.test(lenh)) { guiZaloToi_(chat, '🆔 Mã chat của bạn: ' + chat + (choPhep.indexOf(chat) >= 0 ? '\n✅ Bạn đã có quyền gửi đề.' : '\n➕ Thêm mã này vào ZALO_CHAT_IDS (Script Properties) để gửi đề.')); return tra; }
+    if (/^\/(id|start)\b/.test(lenh)) { guiZaloToi_(chat, '🆔 Mã chat của bạn: ' + chat + (choPhep.indexOf(chat) >= 0 ? '\n✅ Bạn đã có quyền gửi đề.' : '\n➕ Để gửi đề: mở sheet CAU_HINH, dòng ZALO_NGUOI_GUI_DE, thêm mã này vào cột gia_tri (nhiều mã cách nhau dấu phẩy).')); return tra; }
     if (choPhep.indexOf(chat) < 0) {
-      if (!cache.get('ZLA_' + chat)) { cache.put('ZLA_' + chat, '1', 21600); guiZaloToi_(chat, 'Bạn chưa có quyền gửi đề cho hệ thống này. Mã chat của bạn: ' + chat); }
+      if (!cache.get('ZLA_' + chat)) { cache.put('ZLA_' + chat, '1', 21600); guiZaloToi_(chat, 'Bạn chưa có quyền gửi đề cho hệ thống này. Mã chat của bạn: ' + chat + '\nChủ hệ thống mở sheet CAU_HINH, thêm dòng khoa = ZALO_NGUOI_GUI_DE, gia_tri = ' + chat + ' (nhiều mã cách nhau dấu phẩy) rồi gửi lại đề.'); }
       return tra;
     }
     if (/^\/(giup|help)\b/.test(lenh)) { guiZaloToi_(chat, huongDanZalo_()); return tra; }
@@ -155,6 +156,13 @@ function nhanZalo_(e) {
     try { nhatKy_('ZALO_LOI', String(err.message).slice(0, 300)); } catch (e2) {}
   }
   return tra;
+}
+
+// Ai được gửi đề: ZALO_CHAT_IDS (Script Properties) + dòng ZALO_NGUOI_GUI_DE trong sheet CAU_HINH.
+// Lưu ý: mã chat là RIÊNG cho từng bot, nên nếu nhận đề bằng bot khác (ZALO_BOT_TOKEN_DE) thì mã sẽ khác mã cũ.
+function dsNguoiGuiDe_() {
+  var a = String(PropertiesService.getScriptProperties().getProperty('ZALO_CHAT_IDS') || '') + ',' + String(cauHinh_('ZALO_NGUOI_GUI_DE') || '');
+  return a.split(/[,;\s]+/).map(function (x) { return x.trim(); }).filter(Boolean);
 }
 
 function huongDanZalo_() {

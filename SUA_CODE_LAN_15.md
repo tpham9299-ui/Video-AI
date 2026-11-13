@@ -44,7 +44,7 @@ Lệnh nhắn cho bot: `/id` (xem mã chat), `/tt` (tiến độ), `/huy` (hủy
 4. Chạy hàm **`caiDatZalo`** một lần, rồi xem *Nhật ký thực thi*:
    - "✅ Đã đăng ký webhook" là xong.
    - Nếu báo bot đang có webhook khác (bot dùng chung với hệ thống khác): tạo một bot Zalo riêng cho việc nhận đề, đặt token của bot đó vào Script Property `ZALO_BOT_TOKEN_DE`, rồi chạy lại `caiDatZalo`. Chỉ chạy `caiDatZaloGhiDe` nếu bạn chắc chắn muốn ghi đè webhook cũ.
-5. Nhắn `/id` cho bot. Nếu mã chat chưa có trong `ZALO_CHAT_IDS`, thêm vào (cách nhau dấu phẩy).
+5. Nhắn `/id` cho bot để lấy mã chat, rồi thêm dòng `ZALO_NGUOI_GUI_DE` vào sheet CAU_HINH với `gia_tri` là mã đó (nhiều mã cách nhau dấu phẩy). Mã chat là riêng cho từng bot.
 6. Gửi thử ảnh một đề. Muốn thử mà không cần Zalo: chạy hàm `thuDeUuTien`.
 
 `ZALO_WEBHOOK_SECRET` do `caiDatZalo` tự tạo; không cần nhập tay.
