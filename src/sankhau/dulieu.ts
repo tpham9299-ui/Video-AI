@@ -15,6 +15,8 @@ export const LOAI_VAT = [
   'nguoi', 'the', 'the_bai', 'xuc_xac', 'dong_xu', 'hop_bi', 'tui', 'hop_qua', 'dong_ho', 'dien_thoai', 'bong_bay',
   'dong_ho_do', 'bieu_do_cot', 'thanh', 'vong_quay', 'cua', 'banh', 'nhan', 'chu', 'so_dem', 'mui_ten', 'bieu_tuong',
   'luoi_o', 'danh_sach',
+  // toán thực tế: vật 3D + hình học + đồ thị
+  'khoi_hop', 'tru', 'non', 'cau', 'toa_nha', 'xe', 'cay', 'thang', 'hinh_hoc', 'do_thi',
 ] as const;
 export type LoaiVat = (typeof LOAI_VAT)[number];
 
@@ -52,6 +54,21 @@ export type Vat = {
   tuHuong: string; // hướng bay vào: trai | phai | tren | duoi | '' (bật tại chỗ)
   soCot: number; // luoi_o: số cột
   kieu: string; // biến thể hiển thị (so_dem: 'vien' = viên thuốc vàng như huy hiệu)
+  // --- toán thực tế ---
+  kichThuoc: number[]; // khoi_hop [dài, rộng, cao]; tru/non [bán kính, cao]; cau [bán kính]; toa_nha [rộng, sâu, cao]
+  nhanKT: string[]; // nhãn kích thước tương ứng ("3 m", "2 m"...)
+  mucNuoc: number; // 0-1: mực nước/chất lỏng trong khoi_hop, tru, non
+  diem: Record<string, [number, number]>; // hinh_hoc: điểm có tên -> [x%, y%] trong khung hình học
+  canh: [string, string, string][]; // hinh_hoc: [điểm1, điểm2, nhãn độ dài]
+  gocDanh: [string, string, string, string][]; // hinh_hoc: [đầu1, đỉnh, đầu2, nhãn góc]
+  vuong: [string, string, string][]; // hinh_hoc: ký hiệu góc vuông tại đỉnh giữa
+  to: string[][]; // hinh_hoc: các đa giác tô màu (danh sách tên điểm)
+  ham: string; // do_thi: biểu thức theo x, ví dụ "3/sin(x)+3/cos(x)"
+  xTu: number; xDen: number; yTu: number; yDen: number; // do_thi: khoảng vẽ (yTu = yDen = 0 thì tự tính)
+  danhDau: number[]; // do_thi: các giá trị x cần đánh dấu (cực tiểu, nghiệm...)
+  nhanTruc: string[]; // do_thi: tên trục ["x", "y"]
+  gocNghieng: number; // thang: góc với mặt đất (độ)
+  soTang: number; // toa_nha: số tầng
 };
 
 export type HanhDong = {
@@ -77,7 +94,7 @@ export type DuLieuSanKhau = {vat: Vat[]; hanhDong: HanhDong[]; soBuoc: number; g
 const MAU_HOP_LE = ['do', 'xanh_duong', 'xanh_la', 'vang', 'tim', 'cam', 'hong', 'trang', 'xam', 'nau', 'ngoc', 'den'];
 const tenMau = (v: unknown): string => (typeof v === 'string' && MAU_HOP_LE.includes(v) ? v : '');
 const toiDaSoLuong: Partial<Record<LoaiVat, number>> = {
-  nguoi: 12, the: 8, the_bai: 6, xuc_xac: 3, dong_xu: 4, cua: 4, banh: 12, bieu_tuong: 10, luoi_o: 64,
+  nguoi: 12, the: 8, the_bai: 6, xuc_xac: 3, dong_xu: 4, cua: 4, banh: 12, bieu_tuong: 10, luoi_o: 64, cay: 6, xe: 3,
 };
 
 function vat(raw: Record<string, unknown>, i: number): Vat | null {
@@ -111,7 +128,7 @@ function vat(raw: Record<string, unknown>, i: number): Vat | null {
     noiDung: chu(raw.noi_dung, loai === 'chu' ? 60 : 48),
     tuKhoa: chu(raw.tu_khoa, 30),
     soLuong: Math.round(so(raw.so_luong, loai === 'cua' ? 3 : loai === 'banh' ? 8 : loai === 'luoi_o' ? 36 : ds.length || 1, 1, mac)),
-    giaTri: so(raw.gia_tri, loai === 'so_dem' ? 10 : 0.5, 0, loai === 'so_dem' ? 1e6 : 1),
+    giaTri: loai === 'do_thi' ? so(raw.gia_tri, NaN, -1e6, 1e6) : so(raw.gia_tri, loai === 'so_dem' ? 10 : 0.5, 0, loai === 'so_dem' ? 1e6 : 1),
     giaTriChu: chu(raw.gia_tri_chu, 20),
     ketQua,
     ds,
@@ -122,7 +139,40 @@ function vat(raw: Record<string, unknown>, i: number): Vat | null {
     tuHuong: typeof raw.tu_huong === 'string' && ['trai', 'phai', 'tren', 'duoi'].includes(raw.tu_huong) ? raw.tu_huong : '',
     soCot: Math.round(so(raw.so_cot, 0, 0, 12)),
     kieu: chu(raw.kieu, 12),
+    kichThuoc: laMang(raw.kich_thuoc) ? raw.kich_thuoc.slice(0, 3).map((x) => so(x, 1, 0.01, 1e6)) : [],
+    nhanKT: laMang(raw.nhan_kich_thuoc) ? raw.nhan_kich_thuoc.slice(0, 3).map((x) => chu(x, 16)) : [],
+    mucNuoc: so(raw.muc_nuoc, 0, 0, 1),
+    diem: {},
+    canh: [],
+    gocDanh: [],
+    vuong: [],
+    to: [],
+    ham: chu(raw.ham, 80),
+    xTu: so(raw.x_tu, 0, -1e4, 1e4),
+    xDen: so(raw.x_den, 10, -1e4, 1e4),
+    yTu: so(raw.y_tu, 0, -1e6, 1e6),
+    yDen: so(raw.y_den, 0, -1e6, 1e6),
+    danhDau: laMang(raw.danh_dau) ? raw.danh_dau.slice(0, 4).map((x) => so(x, 0, -1e4, 1e4)) : [],
+    nhanTruc: laMang(raw.nhan_truc) ? raw.nhan_truc.slice(0, 2).map((x) => chu(x, 12)) : ['x', 'y'],
+    gocNghieng: so(raw.goc_nghieng, 55, 5, 85),
+    soTang: Math.round(so(raw.so_tang, 6, 1, 30)),
   };
+  if (loai === 'hinh_hoc') {
+    if (laDT(raw.diem)) {
+      Object.entries(raw.diem).slice(0, 16).forEach(([k, xy]) => {
+        if (laMang(xy) && xy.length >= 2) v.diem[chu(k, 6)] = [so(xy[0], 50, -20, 120), so(xy[1], 50, -20, 120)];
+      });
+    }
+    const coDiem = (t: unknown) => typeof t === 'string' && !!v.diem[t];
+    if (laMang(raw.canh)) raw.canh.slice(0, 16).forEach((c) => { if (laMang(c) && coDiem(c[0]) && coDiem(c[1])) v.canh.push([c[0] as string, c[1] as string, chu(c[2], 20)]); });
+    if (laMang(raw.goc)) raw.goc.slice(0, 6).forEach((c) => { if (laMang(c) && coDiem(c[0]) && coDiem(c[1]) && coDiem(c[2])) v.gocDanh.push([c[0] as string, c[1] as string, c[2] as string, chu(c[3], 12)]); });
+    if (laMang(raw.vuong)) raw.vuong.slice(0, 6).forEach((c) => { if (laMang(c) && coDiem(c[0]) && coDiem(c[1]) && coDiem(c[2])) v.vuong.push([c[0] as string, c[1] as string, c[2] as string]); });
+    if (laMang(raw.to)) raw.to.slice(0, 4).forEach((c) => { if (laMang(c) && c.length >= 3 && c.every(coDiem)) v.to.push(c as string[]); });
+    if (!Object.keys(v.diem).length) return null;
+  }
+  if (loai === 'do_thi' && (!v.ham || v.xDen <= v.xTu)) return null;
+  // khối chứa nước: gia_tri chính là mực nước (dat_gia_tri làm nước dâng/rút)
+  if ((loai === 'khoi_hop' || loai === 'tru' || loai === 'non') && raw.gia_tri === undefined) v.giaTri = v.mucNuoc;
   if ((loai === 'nhan' || loai === 'chu') && !v.noiDung) return null;
   if (loai === 'bieu_tuong' && !v.emoji) return null;
   if (loai === 'vong_quay' && v.ds.length < 2) v.ds = ['1', '2', '3', '4', '5', '6'];
@@ -144,7 +194,7 @@ function hanhDong(raw: Record<string, unknown>): HanhDong | null {
     kieu,
     chiSo,
     mau: tenMau(raw.mau),
-    giaTri: so(raw.gia_tri, NaN, 0, 1e6),
+    giaTri: so(raw.gia_tri, NaN, -1e6, 1e6),
     giaTriChu: chu(raw.gia_tri_chu, 20),
     x: so(raw.x, 50, 0, 100),
     y: so(raw.y, 50, 0, 100),

@@ -6,9 +6,17 @@ on:
   repository_dispatch:
     types: [dung-video]
   workflow_dispatch:
+    inputs:
+      mau:
+        description: 'Kịch bản mẫu để dựng thử'
+        type: choice
+        options: [kich_ban_thuc_te, kich_ban_mau]
+        default: kich_ban_thuc_te
 
+# Mỗi đề một nhóm: đề ưu tiên (gửi qua Zalo) được dựng SONG SONG với video đang dựng, không phải xếp hàng chờ;
+# cùng một đề gửi lặp thì chỉ dựng một lần.
 concurrency:
-  group: dung-video
+  group: dung-video-${{ github.event.client_payload.id || github.run_id }}
   cancel-in-progress: false
 
 jobs:
@@ -77,7 +85,7 @@ jobs:
         run: |
           if [ -z "$KICH_BAN" ] || [ "$KICH_BAN" = "null" ]; then
             echo "Không có kịch bản gửi kèm -> dùng kịch bản mẫu"
-            cp mau/kich_ban_mau.json kich_ban.json
+            cp "mau/${{ github.event.inputs.mau || 'kich_ban_mau' }}.json" kich_ban.json
           else
             printf '%s' "$KICH_BAN" > kich_ban.json
           fi

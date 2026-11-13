@@ -2,15 +2,16 @@ import React from 'react';
 import {AbsoluteFill, Audio, Img, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame} from 'remotion';
 import {Canh, sanKhauCuaCanh} from './Canh';
 import {LopQuet} from './LopQuet';
+import {MoDau} from './MoDau';
 import {ManKetChuyenNghiep} from './ManKet';
 import {cacPha, phaCua} from './ThanhBuoc';
 import {Nen} from './Nen';
 import {FONT, FONT_DAM, BONG_CHU, vienChu, GIAO_DIEN, MAU} from './theme';
 import {smooth} from './manim';
-import {ManKetTuTao, moHuyHieu, ThuongHieu} from './ThuongHieu';
+import {LogoTron, ManKetTuTao, moHuyHieu, ThuongHieu} from './ThuongHieu';
 import {ThanhTienDo} from './ThanhTienDo';
 import {KieuToan, NapPhongToan} from './Toan';
-import {Props} from './types';
+import {Props, ThuongHieuProps} from './types';
 
 // Chớp sáng ở khung hình đầu tiên: cắt ngang thói quen lướt của người xem.
 const ChopSang: React.FC = () => {
@@ -33,7 +34,7 @@ const ManKet: React.FC<{tep: string; loai: 'video' | 'anh'}> = ({tep, loai}) => 
 };
 
 // Dòng chủ đề nhỏ cố định ở góc trên (như "20 ĐÔ MUA AI NÀO?" của video mẫu): phần sau dấu ":" hoặc "?" tô cam.
-const DauTrang: React.FC<{chu: string; lop: string; tu: number; lui: number; den: number}> = ({chu, lop, tu, lui, den}) => {
+const DauTrang: React.FC<{chu: string; lop: string; tu: number; lui: number; den: number; th: ThuongHieuProps}> = ({chu, lop, tu, lui, den, th}) => {
   const f = useCurrentFrame();
   const e = smooth((f - tu) / 12);
   if (!chu || e <= 0 || f >= den) return null;
@@ -42,11 +43,15 @@ const DauTrang: React.FC<{chu: string; lop: string; tu: number; lui: number; den
   const cat = s.search(/[:?!]/);
   const dau = cat > 0 ? s.slice(0, cat + 1) : s;
   const sau = cat > 0 ? s.slice(cat + 1) : '';
+  // thanh đầu trang CANH GIỮA: [logo kênh] [LỚP] CHỦ ĐỀ — cân đối hai bên
   return (
-    <div style={{position: 'absolute', left: 54 + lui, right: 150, top: 130, fontFamily: FONT_DAM, fontWeight: 900, fontSize: 30, color: '#fff', opacity: 0.92 * e * (1 - an), transform: `translateX(${(1 - e) * -30 + an * 40}px)`, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textShadow: '0 2px 8px rgba(0,0,0,0.6)'}}>
-      {lop ? <span style={{background: '#3BF29A', color: '#062019', borderRadius: 8, padding: '1px 10px', marginRight: 12, fontSize: 24}}>LỚP {lop}</span> : null}
-      {dau}
-      <span style={{color: '#FF8A3D'}}>{sau}</span>
+    <div style={{position: 'absolute', left: 40, right: 40, top: 118, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 14, fontFamily: FONT_DAM, fontWeight: 900, fontSize: 30, color: '#fff', opacity: 0.95 * e * (1 - an), transform: `translateY(${(1 - e) * -20}px)`, whiteSpace: 'nowrap', textShadow: '0 2px 8px rgba(0,0,0,0.6)'}}>
+      {lui ? <LogoTron th={th} co={52} goc={f * 2} sang={0.3} /> : null}
+      {lop ? <span style={{background: '#3BF29A', color: '#062019', borderRadius: 8, padding: '1px 10px', fontSize: 24, textShadow: 'none'}}>LỚP {lop}</span> : null}
+      <span style={{overflow: 'hidden', textOverflow: 'ellipsis'}}>
+        {dau}
+        <span style={{color: '#FF8A3D'}}>{sau}</span>
+      </span>
     </div>
   );
 };
@@ -112,13 +117,18 @@ export const Video: React.FC<Props> = (props) => {
         ) : null
       )}
       {hookChu ? (
+        <Sequence from={0} durationInFrames={24} layout="none">
+          <MoDau />
+        </Sequence>
+      ) : null}
+      {hookChu ? (
         <Sequence from={0} durationInFrames={8} layout="none">
           <ChopSang />
           <Audio src={staticFile('sfx/sting.wav')} volume={0.55} />
         </Sequence>
       ) : null}
-      {canh.length > 1 ? <DauTrang chu={props.chuDe || tieuDe} lop={lop} tu={canh[1].batDau} lui={coThuongHieu ? 96 : 0} den={ketThuc} /> : null}
-      <ThuongHieu th={thuongHieu} canh={canh} ketThuc={ketThuc} boLoiMoi={phongCach.loiMoiGiuaVideo !== true} />
+      {canh.length > 1 ? <DauTrang chu={props.chuDe || tieuDe} lop={lop} tu={canh[1].batDau} lui={coThuongHieu ? 1 : 0} den={ketThuc} th={thuongHieu} /> : null}
+      <ThuongHieu th={thuongHieu} canh={canh} ketThuc={ketThuc} tuDau={canh.length > 1 ? canh[1].batDau : 1e9} boLoiMoi={phongCach.loiMoiGiuaVideo !== true} />
       {phongCach.thanhTienDo ? <ThanhTienDo tongFrame={tongFrame} lop={lop} /> : null}
       {outro ? (
         <Sequence from={outro.batDau} durationInFrames={outro.soFrame}>

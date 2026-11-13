@@ -37,9 +37,10 @@ export function tinhTrangThai(v: Vat, ds: HanhDong[], t: number, tb: (b: number)
     t, ta, vao: v.buoc <= 0 ? 1 : tienDo(t, ta, 0.5),
     chon: new Map(), chonCa: 0, mauChon: '', coChon: 0, loai: new Map(), loaiCa: 0, sang: 0, rung: 0,
     quay: -1, coQuay: false, mo: new Map(), layRa: [], bung: 0,
-    giaTri: v.giaTri, giaTriChu: v.giaTriChu, noiDung: v.noiDung, dx: 0, dy: 0, an: 0,
+    giaTri: isFinite(v.giaTri) ? v.giaTri : v.loai === 'do_thi' ? NaN : 0.5, giaTriChu: v.giaTriChu, noiDung: v.noiDung, dx: 0, dy: 0, an: 0,
   };
-  let gtTruoc = v.loai === 'so_dem' ? 0 : v.giaTri;
+  const gtDau = isFinite(v.giaTri) ? v.giaTri : v.loai === 'do_thi' ? v.xTu : 0.5;
+  let gtTruoc = v.loai === 'so_dem' ? 0 : gtDau;
   let x = (v.x / 100) * W;
   let y = (v.y / 100) * H;
   const x0 = x;
@@ -201,6 +202,15 @@ export function kichThuocVat(v: Vat): {w: number; h: number} {
     case 'luoi_o': { const c = v.soCot || Math.min(12, Math.ceil(Math.sqrt(n * 1.6))); const r = Math.ceil(n / c); const o = Math.min(860 / c, 560 / r); w = o * c; h = o * r + (v.nhan ? 50 : 0); break; }
     case 'danh_sach': w = 820; h = 100 + v.ds.length * 72; break;
     case 'mui_ten': w = 0; h = 0; break;
+    case 'khoi_hop': { const k = v.kichThuoc.length ? v.kichThuoc : [3, 2, 1.5]; const m = Math.max(...k); w = (330 * (k[0] / m) + 330 * ((k[1] || k[0]) / m) * 0.9 + 80); h = 330 * ((k[2] || k[0]) / m) + 200; break; }
+    case 'tru': case 'non': w = 420; h = 420; break;
+    case 'cau': w = 340; h = 340; break;
+    case 'toa_nha': w = 300; h = Math.min(560, v.soTang * 44) + 140; break;
+    case 'xe': w = n * 360; h = 230; break;
+    case 'cay': w = n * 180; h = 250; break;
+    case 'thang': { const g = (v.gocNghieng * Math.PI) / 180; w = 460 * Math.cos(g) + 60; h = 460 * Math.sin(g) + 60; break; }
+    case 'hinh_hoc': w = 880; h = 600; break;
+    case 'do_thi': w = 860; h = 560; break;
     default: break;
   }
   return {w: w * v.co, h: h * v.co};

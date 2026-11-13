@@ -8,6 +8,7 @@ import {FONT_DAM} from './theme';
 export const PHA: [RegExp, string][] = [
   [/mo_dau|hook|cau_hoi|de_bai/, 'ĐỀ BÀI'],
   [/nhac_lai|kien_thuc|ly_thuyet/, 'KIẾN THỨC'],
+  [/mo_hinh/, 'MÔ HÌNH'],
   [/y_do|thu_nho|phan_tich/, 'PHÂN TÍCH'],
   [/bay/, 'CÁI BẪY'],
   [/diem_chot|y_tuong/, 'MẤU CHỐT'],

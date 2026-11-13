@@ -12,6 +12,7 @@ export const NHAN_CANH: [RegExp, string][] = [
   [/de_bai/, 'ĐỀ BÀI'],
   [/nhac_lai|kien_thuc/, 'KIẾN THỨC'],
   [/kiem_tra/, 'KIỂM TRA'],
+  [/mo_hinh/, 'MÔ HÌNH HÓA'],
   [/y_do/, 'Ý ĐỒ'],
   [/thu_nho/, 'THỬ NHỎ'],
   [/diem_chot|y_tuong/, 'MẤU CHỐT'],

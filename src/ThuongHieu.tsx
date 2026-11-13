@@ -89,7 +89,38 @@ export function moHuyHieu(t: number, ketThucGiay: number) {
   return {mo1, mo2};
 }
 
-export const ThuongHieu: React.FC<{th: ThuongHieuProps; canh: CanhProps[]; ketThuc: number; boLoiMoi?: boolean}> = ({th, canh, ketThuc, boLoiMoi = false}) => {
+// WATERMARK ĐỘNG: logo nhỏ trong vòng kính ở GÓC sân khấu (không nằm sau nội dung), mỗi nhóm cảnh trượt sang góc khác,
+// vệt sáng quét qua định kỳ, nhịp sáng nhẹ. Vừa giữ thương hiệu vừa không che nội dung.
+const GOC_WM: [number, number][] = [[972, 520], [108, 1330], [972, 1330], [108, 520]];
+const WatermarkDong: React.FC<{th: ThuongHieuProps; canh: CanhProps[]; tu: number}> = ({th, canh, tu}) => {
+  const f = useCurrentFrame();
+  if (f < tu) return null;
+  // nhóm cảnh hiện tại (các cảnh nối tiếp sân khấu tính là một nhóm)
+  let nhom = 0;
+  let bdNhom = 0;
+  canh.forEach((c, i) => {
+    if (i > 0 && !c.giuSanKhau && f >= c.batDau) { nhom++; bdNhom = c.batDau; }
+  });
+  const [x1, y1] = GOC_WM[(nhom + GOC_WM.length - 1) % GOC_WM.length];
+  const [x2, y2] = GOC_WM[nhom % GOC_WM.length];
+  const p = nhom === 0 ? 1 : easeInOut(kep((f - bdNhom) / 18));
+  const x = x1 + (x2 - x1) * p;
+  const y = y1 + (y2 - y1) * p;
+  const quet = ((f - tu) % 150) / 150; // vệt sáng mỗi 5 giây
+  const nhip = 0.5 + 0.5 * Math.sin(f / 22);
+  const vao = kep((f - tu) / 15);
+  return (
+    <div style={{position: 'absolute', left: x - 44, top: y - 44, width: 88, height: 88, opacity: 0.62 * vao, transform: `scale(${0.9 + 0.06 * nhip}) rotate(${(1 - p) * -25}deg)`}}>
+      <div style={{position: 'absolute', inset: -4, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.25)', boxShadow: `0 0 ${10 + 10 * nhip}px rgba(59,242,154,0.45)`}} />
+      <div style={{position: 'absolute', inset: 0, borderRadius: '50%', overflow: 'hidden', background: 'rgba(8,16,20,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+        {th.logo ? <Img src={staticFile(th.logo)} style={{width: '82%', height: '82%', objectFit: 'contain'}} /> : <span style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: 30, color: '#fff'}}>{chuCai(th)}</span>}
+        <span style={{position: 'absolute', top: -20, bottom: -20, width: 26, left: `${-30 + quet * 160}%`, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.75), transparent)', transform: 'skewX(-20deg)', opacity: quet < 0.6 ? 1 : 0}} />
+      </div>
+    </div>
+  );
+};
+
+export const ThuongHieu: React.FC<{th: ThuongHieuProps; canh: CanhProps[]; ketThuc: number; boLoiMoi?: boolean; tuDau?: number}> = ({th, canh, ketThuc, boLoiMoi = false, tuDau = 1e9}) => {
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
   if (!th || (!th.ten && !th.logo && !th.handle)) return null;
@@ -108,12 +139,13 @@ export const ThuongHieu: React.FC<{th: ThuongHieuProps; canh: CanhProps[]; ketTh
   const r = ngauNhien(7);
   return (
     <>
-      {th.logo && th.markNuoc ? (
-        <Img src={staticFile(th.logo)} style={{position: 'absolute', left: 240, top: 700, width: 600, opacity: 0.05, objectFit: 'contain', transform: `translate(${Math.sin(t / 3) * 20}px, ${Math.cos(t / 4) * 16}px) rotate(${Math.sin(t / 5) * 4}deg)`}} />
-      ) : null}
-      <div style={{position: 'absolute', left: 48, top: 112}}>
+      {th.markNuoc ? <WatermarkDong th={th} canh={canh} tu={tuDau} /> : null}
+      {/* huy hiệu canh giữa: mở ở đầu video và giữa video; khi thanh đầu trang (có logo) đã hiện thì ẩn huy hiệu */}
+      <div style={{position: 'absolute', left: 0, right: 0, top: 112, display: 'flex', justifyContent: 'center', opacity: f < tuDau ? 1 : kep(mo2 * 3)}}>
+        <div style={{position: 'relative'}}>
         {song > 0 ? <div style={{position: 'absolute', left: 33 - 33 * (1 + song), top: 33 - 33 * (1 + song), width: 66 * (1 + song), height: 66 * (1 + song), borderRadius: '50%', border: `3px solid ${XANH}`, opacity: 1 - song}} /> : null}
         <HuyHieu th={th} vao={vao} mo={mo} dong2={dong2} sang={Math.max(mo, song)} goc={t * 70 + r() * 360} />
+        </div>
       </div>
       {(th.handle || th.ten) && !boLoiMoi ? (
         <Sequence from={tuMoi} durationInFrames={Math.round(3.4 * fps)} layout="none">

@@ -8,6 +8,7 @@ import {DuLieuSanKhau, Vat} from './dulieu';
 import {GIAY_QUAY, kichThuocVat, tinhCamera, tinhGoc3D, tinhTrangThai, tuXepSanKhau} from './trangthai';
 import {MuiTen, VE_VAT} from './vat';
 import {expoOut, NhoeHuong} from './chuyendong';
+import {Cam3D, chieu, Goc3D} from './chieu3d';
 
 export const SK_W = 960;
 export const SK_H = 760;
@@ -21,14 +22,40 @@ export const taoMocBuoc = (soBuoc: number, giayAm: number) => {
 
 const AM_QUAY: Record<string, string> = {xuc_xac: 'lac', dong_xu: 'xu', vong_quay: 'quay', dong_ho: 'tich', hop_qua: 'mo', cua: 'cua', the_bai: 'lat'};
 
-// Sàn 3D: mặt phẳng lưới phát sáng mờ dần ra xa, chỉ hiện khi camera nghiêng (càng nghiêng càng rõ).
-const San3D: React.FC<{mo: number}> = ({mo}) => (
-  <div style={{position: 'absolute', left: -420, top: -380, width: SK_W + 840, height: SK_H + 760, opacity: mo, transform: 'translateZ(-2px)',
-    background: 'repeating-linear-gradient(0deg, rgba(120,220,255,0.17) 0 2px, transparent 2px 80px), repeating-linear-gradient(90deg, rgba(120,220,255,0.17) 0 2px, transparent 2px 80px)',
-    WebkitMaskImage: 'radial-gradient(ellipse 50% 50% at 50% 50%, #000 35%, transparent 75%)', maskImage: 'radial-gradient(ellipse 50% 50% at 50% 50%, #000 35%, transparent 75%)'}}>
-    <div style={{position: 'absolute', left: '25%', right: '25%', top: '30%', bottom: '30%', borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(59,242,154,0.12), transparent 70%)'}} />
-  </div>
-);
+// Sàn 3D: lưới chiếu phối cảnh trải rộng ra ngoài sân khấu (phủ toàn khung hình), mờ dần về phía xa; chỉ hiện khi camera nghiêng.
+const San3D: React.FC<{cam: Cam3D; mo: number}> = ({cam, mo}) => {
+  const O = 90;
+  const X0 = cam.cx - 1700, X1 = cam.cx + 1700, Y0 = cam.cy - 1500, Y1 = cam.cy + 1300;
+  const net: React.ReactNode[] = [];
+  const doMo = (yy: number) => Math.max(0, Math.min(1, (yy - Y0) / 900)) * (0.55 + 0.45 * Math.max(0, Math.min(1, (Y1 - yy) / 900)));
+  for (let yy = Y0; yy <= Y1; yy += O) {
+    const a = chieu(cam, X0, yy);
+    const b = chieu(cam, X1, yy);
+    net.push(<line key={`h${yy}`} x1={a.sx} y1={a.sy} x2={b.sx} y2={b.sy} stroke="#7fe3ff" strokeOpacity={0.2 * doMo(yy)} strokeWidth={1.6 * Math.min(1.6, a.s)} />);
+  }
+  for (let xx = X0; xx <= X1; xx += O) {
+    // đường dọc chia đoạn để mờ dần theo độ xa
+    for (let yy = Y0; yy < Y1; yy += O * 2) {
+      const a = chieu(cam, xx, yy);
+      const b = chieu(cam, xx, yy + O * 2);
+      net.push(<line key={`v${xx}_${yy}`} x1={a.sx} y1={a.sy} x2={b.sx} y2={b.sy} stroke="#7fe3ff" strokeOpacity={0.2 * doMo(yy + O)} strokeWidth={1.6 * Math.min(1.6, b.s)} />);
+    }
+  }
+  // quầng sáng giữa sàn (elip chiếu)
+  const tam = chieu(cam, cam.cx, cam.cy);
+  return (
+    <svg width={1} height={1} style={{position: 'absolute', left: 0, top: 0, overflow: 'visible', opacity: mo, pointerEvents: 'none'}}>
+      <ellipse cx={tam.sx} cy={tam.sy} rx={520 * tam.s} ry={520 * tam.s * Math.cos((cam.n * Math.PI) / 180)} fill="url(#quangSan)" />
+      <defs>
+        <radialGradient id="quangSan">
+          <stop offset="0%" stopColor="rgba(59,242,154,0.16)" />
+          <stop offset="100%" stopColor="rgba(59,242,154,0)" />
+        </radialGradient>
+      </defs>
+      {net}
+    </svg>
+  );
+};
 
 export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boolean}> = ({du, giayAm, amThanh = true}) => {
   const frame = useCurrentFrame();
@@ -42,11 +69,12 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
   const g3 = tinhGoc3D(du.gocDau, du.hanhDong, t, tb);
   const co3d = g3.nghieng > 0.3 || Math.abs(g3.xoay) > 0.3;
   const sinN = Math.sin((g3.nghieng * Math.PI) / 180);
+  const cam3: Cam3D = {n: g3.nghieng, r: g3.xoay, d: 2000, cx: SK_W / 2, cy: SK_H / 2};
   const bong: React.ReactNode[] = [];
   const viTri = new Map<string, {x: number; y: number}>();
 
-  const lop: React.ReactNode[] = [];
-  const lopPhang: React.ReactNode[] = [];
+  const lop: {z: number; el: React.ReactNode}[] = [];
+  const lopPhang: {z: number; el: React.ReactNode}[] = [];
   const muiTen: React.ReactNode[] = [];
   const thuTu = (v: Vat) => (v.loai === 'nhan' || v.loai === 'mui_ten' ? 2 : v.loai === 'chu' || v.loai === 'so_dem' ? 1 : 0);
   const dsVat = [...vatXep].sort((a, b) => thuTu(a) - thuTu(b));
@@ -55,8 +83,19 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
     const st = tinhTrangThai(v, du.hanhDong, t, tb, SK_W, SK_H);
     const x = (v.x / 100) * SK_W + st.dx;
     const y = (v.y / 100) * SK_H + st.dy;
-    viTri.set(v.id, {x, y});
-    if (v.loai === 'mui_ten') continue;
+    if (v.loai === 'mui_ten') {
+      const p0 = chieu(cam3, x, y, 0);
+      viTri.set(v.id, {x: p0.sx, y: p0.sy});
+      continue;
+    }
+    const kt = kichThuocVat(v);
+    // nhãn, chữ, bộ đếm là chú thích màn hình: khi nhìn 3D vẫn nằm phẳng (không bị phối cảnh phóng to)
+    const phang = ['nhan', 'chu', 'so_dem'].includes(v.loai);
+    const san = chieu(cam3, x, y, 0);
+    // vật đứng trên sàn: tâm vật nâng lên nửa chiều cao (theo hướng đứng của màn hình), tỉ lệ theo độ sâu của chân vật
+    const tamVat = phang ? san : {sx: san.sx, sy: san.sy - kt.h * 0.5 * sinN * san.s, s: san.s, z: san.z};
+    const tiLeSau = phang ? 1 : Math.min(1.5, Math.max(0.55, tamVat.s));
+    viTri.set(v.id, {x: tamVat.sx, y: tamVat.sy});
     if (t < st.ta && v.buoc > 0) continue;
     const ve = VE_VAT[v.loai];
     if (!ve) continue;
@@ -72,32 +111,31 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
     const sangNhip = st.sang > 0 ? 1 + 0.06 * st.sang : 1;
     const ngang = v.tuHuong === 'trai' || v.tuHuong === 'phai';
     const nhoeHuong = v.tuHuong ? (1 - expoOut(a)) * 34 : 0;
-    const kt = kichThuocVat(v);
-    // nhãn, chữ, bộ đếm là chú thích màn hình: khi nhìn 3D vẫn nằm phẳng phía trên (không bị phối cảnh phóng to/nghiêng)
-    const phang = co3d && ['nhan', 'chu', 'so_dem'].includes(v.loai);
-    const dung = co3d && !phang ? `rotateZ(${-g3.xoay}deg) rotateX(${-g3.nghieng}deg) translateY(${-kt.h * 0.62 * sinN}px) ` : '';
     if (co3d && !phang && kt.w > 0) {
       bong.push(
-        <div key={`b${v.id}`} style={{position: 'absolute', left: x - kt.w * 0.4, top: y - kt.w * 0.12, width: kt.w * 0.8, height: kt.w * 0.24, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0) 70%)', opacity: sinN * mo, transform: 'translateZ(1px)'}} />
+        <div key={`b${v.id}`} style={{position: 'absolute', left: san.sx - kt.w * 0.42 * san.s, top: san.sy - kt.w * 0.13 * san.s * (0.35 + 0.65 * Math.cos((g3.nghieng * Math.PI) / 180)), width: kt.w * 0.84 * san.s, height: kt.w * 0.26 * san.s * (0.35 + 0.65 * Math.cos((g3.nghieng * Math.PI) / 180)), borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 70%)', opacity: sinN * mo}} />
       );
     }
-    (phang ? lopPhang : lop).push(
-      <NhoeHuong
-        key={v.id}
-        nx={ngang ? nhoeHuong : 0}
-        ny={v.tuHuong && !ngang ? nhoeHuong : 0}
-        style={{
-          position: 'absolute',
-          left: x,
-          top: y,
-          transform: `translate(-50%, -50%) ${dung}translate(${ox + st.rung}px, ${oy}px) scale(${sc * sangNhip * (1 - 0.3 * st.an)})`,
-          opacity: mo,
-          filter: !v.tuHuong && nhoe > 0.3 ? `blur(${nhoe}px)` : undefined,
-        }}
-      >
-        {ve(v, st, frame, fps)}
-      </NhoeHuong>
-    );
+    (phang ? lopPhang : lop).push({
+      z: tamVat.z,
+      el: (
+        <NhoeHuong
+          key={v.id}
+          nx={ngang ? nhoeHuong : 0}
+          ny={v.tuHuong && !ngang ? nhoeHuong : 0}
+          style={{
+            position: 'absolute',
+            left: tamVat.sx,
+            top: tamVat.sy,
+            transform: `translate(-50%, -50%) translate(${ox + st.rung}px, ${oy}px) scale(${sc * sangNhip * (1 - 0.3 * st.an) * tiLeSau})`,
+            opacity: mo,
+            filter: !v.tuHuong && nhoe > 0.3 ? `blur(${nhoe}px)` : undefined,
+          }}
+        >
+          {ve(v, st, frame, fps)}
+        </NhoeHuong>
+      ),
+    });
   }
 
   // Manim "Flash": tia sáng ngắn bắn ra từ tâm vật lúc vật vừa xuất hiện (chỉ vật thật, không áp cho chữ/nhãn)
@@ -131,10 +169,12 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
     if (t < ta && v.buoc > 0) continue;
     const a = viTri.get(v.tu);
     const b = viTri.get(v.den);
-    const x1 = a ? a.x : (v.x / 100) * SK_W;
-    const y1 = a ? a.y : (v.y / 100) * SK_H;
-    const x2 = b ? b.x : (v.x2 / 100) * SK_W;
-    const y2 = b ? b.y : (v.y2 / 100) * SK_H;
+    const pa = chieu(cam3, (v.x / 100) * SK_W, (v.y / 100) * SK_H);
+    const pb = chieu(cam3, (v.x2 / 100) * SK_W, (v.y2 / 100) * SK_H);
+    const x1 = a ? a.x : pa.sx;
+    const y1 = a ? a.y : pa.sy;
+    const x2 = b ? b.x : pb.sx;
+    const y2 = b ? b.y : pb.sy;
     // rút ngắn hai đầu để mũi tên không đè lên vật
     const L = Math.hypot(x2 - x1, y2 - y1) || 1;
     const cat = Math.min(L * 0.3, a || b ? 110 : 0);
@@ -172,18 +212,16 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
 
   const z = cam.z;
   return (
-    <div style={{position: 'relative', width: SK_W, height: SK_H, overflow: z > 1.01 ? 'hidden' : 'visible'}}>
+    <div style={{position: 'relative', width: SK_W, height: SK_H, overflow: z > 1.01 && !co3d ? 'hidden' : 'visible'}}>
       <div style={{position: 'absolute', left: 0, top: 0, width: SK_W, height: SK_H, transformOrigin: '0 0', transform: `translate(${SK_W / 2}px, ${SK_H / 2}px) scale(${z}) translate(${-cam.cx}px, ${-cam.cy}px)`}}>
-        <div style={{position: 'absolute', inset: 0, perspective: 1500, perspectiveOrigin: '50% 25%'}}>
-          <div style={{position: 'absolute', inset: 0, transformStyle: 'preserve-3d', transform: co3d ? `rotateX(${g3.nghieng}deg) rotateZ(${g3.xoay}deg)` : undefined}}>
-            {co3d ? <San3D mo={sinN} /> : null}
-            {bong}
-            {muiTen}
-            {tia}
-            {lop}
-          </div>
-        </div>
-        {lopPhang}
+        <Goc3D.Provider value={{n: g3.nghieng, r: g3.xoay}}>
+          {co3d ? <San3D cam={cam3} mo={sinN} /> : null}
+          {bong}
+          {muiTen}
+          {tia}
+          {[...lop].sort((p, q) => p.z - q.z).map((o) => o.el)}
+          {lopPhang.map((o) => o.el)}
+        </Goc3D.Provider>
       </div>
       {amGon.map((x, i) => (
         <Sequence key={i} from={x.f} durationInFrames={Math.round((GIAY_QUAY.vong_quay + 0.5) * fps)} layout="none">

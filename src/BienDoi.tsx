@@ -99,8 +99,11 @@ export const BienDoi: React.FC<{
   );
   if (!geo) return <div style={{position: 'relative', width: maxWidth, height: co * 2}}>{ban}</div>;
 
-  const le = can === 'trai' ? 50 : 0;
-  const sc = geo.map((g) => Math.min(1, (maxWidth - 2 * le) / g.w));
+  const le0 = can === 'trai' ? 30 : 0;
+  const sc = geo.map((g) => Math.min(1, (maxWidth - 2 * le0) / g.w));
+  // 'trai': cả khối được đặt giữa theo dòng rộng nhất (dòng cuối), phần đầu dòng vẫn đứng yên khi viết thêm -> cân đối hai bên
+  const rongNhat = Math.max(...geo.map((g, i) => g.w * sc[i]));
+  const le = can === 'trai' ? Math.max(le0, (maxWidth - rongNhat) / 2) : 0;
   const cao = Math.max(...geo.map((g, s) => g.h * sc[s])) + 64;
   const cx = maxWidth / 2;
   const cy = cao / 2;

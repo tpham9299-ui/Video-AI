@@ -11,7 +11,8 @@ import {PhuDeTikTok} from './PhuDeTikTok';
 import {kep} from './sankhau/donghieu';
 import {KIEU_CHUYEN, NhoeHuong, trangThaiChuyen} from './sankhau/chuyendong';
 import {DuLieuSanKhau, hopLeSanKhau, noiTiepSanKhau} from './sankhau/dulieu';
-import {SanKhau, SK_H, SK_W} from './sankhau/SanKhau';
+import {SanKhau, SK_H, SK_W, taoMocBuoc} from './sankhau/SanKhau';
+import {tinhGoc3D} from './sankhau/trangthai';
 import {nhanCanh, TieuDeCanh} from './TieuDeCanh';
 import {phaCua, ThanhBuoc} from './ThanhBuoc';
 import {FONT, MAU} from './theme';
@@ -127,29 +128,19 @@ export const Canh: React.FC<{
   // chuyển cảnh: mỗi cảnh một kiểu (lướt lên, phóng xuyên, lướt ngang...) hoặc theo "chuyen_canh" của kịch bản
   const kieuCC = canh.chuyenCanh && (KIEU_CHUYEN as readonly string[]).includes(canh.chuyenCanh) ? canh.chuyenCanh : (['truot_len', 'phong', 'luot_ngang', 'lat_3d'] as const)[(canh.so - 1) % 4];
   const ccSan = trangThaiChuyen(kieuCC, frame, canh.soFrame, giuTruoc, giuSau);
+  // độ nghiêng 3D hiện tại của sân khấu: khung chữ nhật mờ dần khi camera nghiêng để không gian 3D phủ toàn khung
+  const g3c = sanKhau ? tinhGoc3D(sanKhau.gocDau, sanKhau.hanhDong, t, taoMocBuoc(sanKhau.soBuoc, giayAm)) : {nghieng: 0, xoay: 0};
+  const sinN3d = Math.sin((g3c.nghieng * Math.PI) / 180) + Math.min(0.5, Math.abs(g3c.xoay) / 60);
   const ccCT = trangThaiChuyen(kieuCC, frame - 4, canh.soFrame - 4);
   const tieuDeCanh = canh.tieuDeCanh;
   const nhan = coHook ? (NHAN_HOOK[hook.kieu] || '').replace(/^[^A-Za-zÀ-ỹ]+/, '') : nhanCanh(canh.loai, canh.nhan);
 
   return (
     <div style={{position: 'absolute', inset: 0, fontFamily: FONT}}>
-      {/* Đầu cảnh: nhãn + tiêu đề (hoặc câu hook ở cảnh 1) */}
-      <div style={{position: 'absolute', left: 50, right: 50, top: Y_DAU, height: Y_SAN - Y_DAU - 10, display: 'flex', flexDirection: 'column', justifyContent: 'center', opacity: ra, filter: nhoeVao > 0.3 ? `blur(${nhoeVao}px)` : undefined}}>
-        {coHook ? (
-          <>
-            {nhan ? <TieuDeCanh nhan={nhan} chu="" tuKhoa="" /> : null}
-            <HookChu chu={hook.chu} nhanManh={hook.nhanManh} kieu={hook.kieu} lead={canh.leadFrame} />
-          </>
-        ) : (
-          <TieuDeCanh nhan={nhan} chu={tieuDeCanh || (laMoDau ? tieuDe : '')} tuKhoa={canh.tuKhoa} inHoa={pc.tieuDeInHoa !== false}
-            dau={pc.thanhBuoc !== false && cacBuoc.length >= 3 && phaCua(canh.loai) ? <ThanhBuoc cacBuoc={cacBuoc} hienTai={phaCua(canh.loai)} moi={phaCua(canh.loai) !== phaTruoc} /> : undefined} />
-        )}
-      </div>
-
       {/* Sân khấu */}
       {coHinh ? (
         <NhoeHuong nx={ccSan.nx} ny={ccSan.ny} style={{position: 'absolute', left: 0, right: 0, top: yNoiDung, height: caoSan, display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: ccSan.mo, transform: `perspective(1600px) translate(${ccSan.x}px, ${ccSan.y}px) rotateY(${ccSan.ry}deg) scale(${ccSan.s})`}}>
-          {pc.khungSanKhau !== false ? <KhungSan w={Math.min(1040, SK_W * tiLe + 40)} h={Math.min(caoSan - 6, SK_H * tiLe + 24)} p={giuTruoc ? 1 : kep((frame - 3) / 14)} /> : null}
+          {pc.khungSanKhau !== false ? <KhungSan w={Math.min(1040, SK_W * tiLe + 40)} h={Math.min(caoSan - 6, SK_H * tiLe + 24)} p={(giuTruoc ? 1 : kep((frame - 3) / 14)) * (1 - kep(sinN3d * 1.8))} /> : null}
           <div style={{width: SK_W, height: SK_H, transform: `scale(${tiLe})`, flexShrink: 0}}>
             {sanKhau ? (
               <SanKhau du={sanKhau} giayAm={giayAm} />
@@ -191,6 +182,19 @@ export const Canh: React.FC<{
           </div>
         ) : null}
       </NhoeHuong>
+
+      {/* Đầu cảnh: nhãn + tiêu đề (hoặc câu hook ở cảnh 1) */}
+      <div style={{position: 'absolute', left: 50, right: 50, top: Y_DAU, height: Y_SAN - Y_DAU - 10, display: 'flex', flexDirection: 'column', justifyContent: 'center', opacity: ra, filter: nhoeVao > 0.3 ? `blur(${nhoeVao}px)` : undefined}}>
+        {coHook ? (
+          <>
+            {nhan ? <TieuDeCanh nhan={nhan} chu="" tuKhoa="" /> : null}
+            <HookChu chu={hook.chu} nhanManh={hook.nhanManh} kieu={hook.kieu} lead={canh.leadFrame} />
+          </>
+        ) : (
+          <TieuDeCanh nhan={nhan} chu={tieuDeCanh || (laMoDau ? tieuDe : '')} tuKhoa={canh.tuKhoa} inHoa={pc.tieuDeInHoa !== false}
+            dau={pc.thanhBuoc !== false && cacBuoc.length >= 3 && phaCua(canh.loai) ? <ThanhBuoc cacBuoc={cacBuoc} hienTai={phaCua(canh.loai)} moi={phaCua(canh.loai) !== phaTruoc} /> : undefined} />
+        )}
+      </div>
 
       {/* Phụ đề */}
       {pc.phuDe ? (

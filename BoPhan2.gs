@@ -12,8 +12,10 @@
  *   GITHUB_REPO        dạng  ten-tai-khoan/ten-repo
  *   DUNG_VIDEO_SECRET  chuỗi bí mật tự đặt (>= 24 ký tự); đặt GIỐNG HỆT trong GitHub Secrets
  *
- * Lưu ý: dự án này dùng doPost() để nhận kết quả từ GitHub. Một dự án Apps Script chỉ có MỘT doPost();
- * nếu sau này bạn gắn thêm webhook khác vào đây, hãy gộp chung.
+ * Lưu ý: dự án này dùng doPost() để nhận kết quả từ GitHub VÀ tin nhắn Zalo (đề ưu tiên, xem ZaloDeBai.gs).
+ * Một dự án Apps Script chỉ có MỘT doPost(): tin Zalo được nhận ra nhờ tham số ?nguon=zalo trên địa chỉ webhook.
+ * Đề ưu tiên (gửi qua Zalo) được gửi dựng TRƯỚC, kể cả khi đang có video khác đang dựng (GitHub dựng song song);
+ * trong lúc còn đề ưu tiên chưa xong, các đề thường không được gửi dựng.
  * ============================================================
  */
 
@@ -68,22 +70,27 @@ function chayBoPhan2() {
       if (phut > BP2_QUA_HAN_PHUT) baoLoiDung_(sh, r, 'QUA_HAN: GitHub không báo kết quả sau ' + BP2_QUA_HAN_PHUT + ' phút');
       else dangDung++;
     });
-    if (dangDung > 0) return;   // mỗi lúc chỉ dựng 1 video (đúng hạn mức miễn phí, dễ theo dõi)
-
-    // 2) Lấy kịch bản chờ lâu nhất
-    var ds = hang.filter(function (r) { return r.trang_thai === 'CO_KICH_BAN' && r.file_kich_ban; })
-      .sort(function (a, b) { return new Date(a.cap_nhat).getTime() - new Date(b.cap_nhat).getTime(); });
+    // 2) Đề ưu tiên (Zalo) trước, rồi kịch bản chờ lâu nhất
+    var conUuTien = hang.some(function (r) { return laUuTien_(r) && ['CHO_DOC', 'MOI', 'DA_GIAI', 'CO_KICH_BAN', 'DANG_DUNG'].indexOf(r.trang_thai) >= 0; });
+    var ds = hang.filter(function (r) { return r.trang_thai === 'CO_KICH_BAN' && r.file_kich_ban && (laUuTien_(r) || !conUuTien); })
+      .sort(function (a, b) {
+        var u = (laUuTien_(b) ? 1 : 0) - (laUuTien_(a) ? 1 : 0);
+        return u || new Date(a.cap_nhat).getTime() - new Date(b.cap_nhat).getTime();
+      });
     if (!ds.length) return;
-
     var r = ds[0];
+    // mỗi lúc chỉ dựng 1 video thường; đề ưu tiên được dựng song song (tối đa 2 video cùng lúc)
+    if (dangDung > 0 && !(laUuTien_(r) && dangDung < 2)) return;
+
     try {
       kichHoatDungVideo_(r);
       ghi_(sh, r._row, { trang_thai: 'DANG_DUNG', ghi_chu: '' });
-      nhatKy_('DUNG_VIDEO', r.id + ' -> đã gửi sang GitHub để dựng');
+      nhatKy_('DUNG_VIDEO', r.id + ' -> đã gửi sang GitHub để dựng' + (laUuTien_(r) ? ' (ưu tiên)' : ''));
     } catch (e) {
       baoLoiDung_(sh, r, e.message);
     }
-    dongBoBangDoc();
+    if (laUuTien_(r)) PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1');   // đề ưu tiên: không chờ vẽ bảng
+    else dongBoBangDoc();
   } finally {
     khoa.releaseLock();
   }
@@ -117,6 +124,7 @@ function kichHoatDungVideo_(r) {
 // Sao chép địa chỉ kết thúc bằng /exec vào GitHub Secret APPS_SCRIPT_URL.
 // Mỗi lần sửa mã nhớ Deploy > Manage deployments > Edit > Version: New version.
 function doPost(e) {
+  if (e && e.parameter && e.parameter.nguon === 'zalo' && typeof nhanZalo_ === 'function') return nhanZalo_(e);   // tin nhắn Zalo (ZaloDeBai.gs)
   var tra = function (o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); };
   var d;
   try { d = JSON.parse(e.postData.contents); } catch (x) { return tra({ ok: false, loi: 'JSON_HONG' }); }
@@ -137,8 +145,16 @@ function doPost(e) {
       if (r.trang_thai === 'DA_XONG') return tra({ ok: true, lap: true });
       ghi_(sh, r._row, { trang_thai: 'CO_VIDEO', file_video: String(d.file_id), ghi_chu: '', so_lan_loi: 0 });
       nhatKy_('DUNG_VIDEO', r.id + ' -> xong, file ' + d.file_id);
-      guiZaloMotLan_('VIDEO_' + r.id + '_' + d.file_id, '🎞 Video đã dựng xong: ' + (r.chu_de || r.id) + (d.giay ? ' (' + d.giay + ' giây)' : '') +
-        '\nhttps://drive.google.com/file/d/' + d.file_id + '/view');
+      var tinVideo = '🎞 Video đã dựng xong: ' + (r.chu_de || r.id) + (d.giay ? ' (' + d.giay + ' giây)' : '') +
+        '\nhttps://drive.google.com/file/d/' + d.file_id + '/view';
+      if (laUuTien_(r) && r.zalo_chat) {
+        var cacheV = CacheService.getScriptCache();
+        if (!cacheV.get('ZALO_VIDEO_' + r.id + '_' + d.file_id)) {
+          cacheV.put('ZALO_VIDEO_' + r.id + '_' + d.file_id, '1', 21600);
+          guiZaloToi_(r.zalo_chat, '🎉 Video cho đề bạn gửi đã xong' + (r.dap_an_hien ? ' (đáp án ' + r.dap_an_hien + ')' : '') + '!' + tinVideo.slice(tinVideo.indexOf('\n')) +
+            '\nHệ thống quay lại làm các đề khác.');
+        }
+      } else guiZaloMotLan_('VIDEO_' + r.id + '_' + d.file_id, tinVideo);
     } else {
       if (r.trang_thai !== 'DANG_DUNG') return tra({ ok: true, lap: true });   // lỗi đã được xử lý rồi
       baoLoiDung_(sh, r, d.loi || 'GITHUB_BAO_LOI');
@@ -169,6 +185,8 @@ function baoLoiDung_(sh, r, lyDo) {
   });
   nhatKy_('DUNG_LOI', r.id + ' (lần ' + n + '): ' + lyDo);
   if (het) guiZaloMotLan_('LOI_' + r.id + '_' + n, '❌ Dựng video ' + r.id + ' lỗi ' + n + ' lần, cần xem: ' + String(lyDo).slice(0, 200));
+  if (laUuTien_(r) && r.zalo_chat) guiZaloToi_(r.zalo_chat, het ? '❌ Dựng video cho đề ' + r.id + ' lỗi ' + n + ' lần nên dừng lại: ' + String(lyDo).slice(0, 150)
+    : '🔁 Dựng video đề ' + r.id + ' gặp trục trặc, hệ thống tự dựng lại (lần ' + (n + 1) + ').');
 }
 
 /* ===================== DỌN FILE VIDEO KHI ĐÁNH DẤU ĐÃ ĐĂNG ===================== */

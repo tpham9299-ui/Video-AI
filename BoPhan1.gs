@@ -10,8 +10,11 @@
  * Nguồn đề (menu 🎬 Video AI > 📚 Nguồn đề): mặc định UU_TIEN_INTERNET = tìm đề có thật trên internet
  * bằng Gemini + Google Search trước; không có đề nào đạt thì mới để AI sáng tác.
  *
+ * Chủ đề video (CAU_HINH > CHU_DE_VIDEO): XAC_SUAT | THUC_TE (toán thực tế, đáp số là một số) | XEN_KE (luân phiên hai loại).
+ * Đề gửi qua Zalo (ảnh chụp hoặc chữ) được ƯU TIÊN: các đề khác tạm dừng cho tới khi video của đề đó dựng xong (xem ZaloDeBai.gs).
+ *
  * Trạng thái của một dòng trong HANG_DOI:
- *   MOI -> DA_GIAI -> CO_KICH_BAN   (đi tiếp sang Bộ phận 2)
+ *   (CHO_DOC: đề Zalo chờ đọc ảnh) -> MOI -> DA_GIAI -> CO_KICH_BAN   (đi tiếp sang Bộ phận 2)
  *   LOAI (đáp án không khớp) | LOI (lỗi quá số lần cho phép)
  *
  * PHIÊN BẢN GIAO DIỆN v6 (canh giữa + giãn dòng + văn bản dài canh trái; dòng 1 của DOC_DE có ghi "giao diện v6").
@@ -37,7 +40,8 @@ var _bo_nho_cau_hinh_ = null;               // đọc sheet CAU_HINH một lần
 
 var COT = ['id', 'trang_thai', 'lop', 'chu_de', 'de_bai', 'nguon', 'diem_tu_duy',
   'yeu_to_tu_duy', 'bay_thuong_gap', 'cach_1', 'cach_2', 'dap_an', 'kiem_chung',
-  'file_kich_ban', 'ghi_chu', 'so_lan_loi', 'cap_nhat', 'ma_bam','file_video'];
+  'file_kich_ban', 'ghi_chu', 'so_lan_loi', 'cap_nhat', 'ma_bam', 'file_video',
+  'mon', 'uu_tien', 'file_anh', 'zalo_chat', 'dap_an_hien'];   // 5 cột mới (lần 15) nối vào CUỐI nên dữ liệu cũ không bị lệch cột
 
 // Tên model nằm trong CAU_HINH vì Google đổi tên/ngừng model thường xuyên.
 var MAC_DINH = {
@@ -61,8 +65,32 @@ var MAC_DINH = {
   CHU_KY_CHAY_PHUT: '60',      // trigger chayBoPhan1 chạy mỗi bao nhiêu phút (30, 60, 120...). Chạy caiDatTrigger() lại sau khi đổi
   MUC_SUY_NGHI_KICH_BAN: 'low', // mức "suy nghĩ" của Gemini khi viết kịch bản/tìm đề: low (nhanh, khuyên dùng) | high | tat (không gửi tham số)
   MUC_SUY_NGHI_GIAI: 'mac_dinh', // khi GIẢI đề: mac_dinh (để Gemini tự quyết, chính xác hơn) | low | high
-  UOC_GOI_GEMINI_GIAY: '75'    // ước lượng một lần gọi Gemini mất bao lâu; không đủ chừng này thời gian thì để lần chạy sau
+  UOC_GOI_GEMINI_GIAY: '75',   // ước lượng một lần gọi Gemini mất bao lâu; không đủ chừng này thời gian thì để lần chạy sau
+  CHU_DE_VIDEO: 'XEN_KE',      // XAC_SUAT: chỉ xác suất | THUC_TE: chỉ toán thực tế | XEN_KE: luân phiên hai loại
+  KIEU_MO_DAU: 'hook'          // hook: vào thẳng câu móc (khuyên dùng) | chao_hook: cho phép một lời chào cực ngắn kiểu "Chào bạn!" trước câu móc
 };
+
+// Toán thực tế theo lớp: chỉ những dạng bộ dựng video vẽ được bằng vật 3D (bể, lon, tòa nhà, thang, xe, cây), hình học trên sàn và đồ thị.
+var CHUONG_TRINH_THUC_TE = {
+  '10': 'Hàm số bậc hai và ứng dụng tối ưu (doanh thu, lợi nhuận, rào vườn diện tích lớn nhất, cổng parabol, quỹ đạo ném); hệ thức lượng trong tam giác (đo chiều cao tòa nhà/cây/cột cờ, khoảng cách qua sông bằng góc); bất phương trình bậc nhất hai ẩn trong sản xuất',
+  '11': 'Cấp số cộng, cấp số nhân, hàm số mũ và logarit trong đời sống (lãi kép, gửi tiết kiệm, trả góp, tăng dân số, phân rã); lượng giác ứng dụng (độ cao cabin vòng đu quay, bóng nắng); khoảng cách và góc trong không gian (thang dựa tường, mái nhà)',
+  '12': 'Ứng dụng đạo hàm tìm giá trị lớn nhất/nhỏ nhất (thể tích hộp/bể/lon, diện tích vật liệu, chi phí kéo dây, quãng đường ngắn nhất, lợi nhuận); tích phân tính quãng đường từ vận tốc, diện tích, thể tích bồn/bể; chuyển động của xe'
+};
+
+// CHỈ nhận những dạng bài này (bộ dựng video minh họa được rõ ràng). Dạng lạ ngoài danh sách bị bỏ ngay khi tìm/sáng tác đề.
+var DANG_DUNG_DUOC = {
+  XAC_SUAT: ['dem_to_hop', 'bi_hop', 'xuc_xac', 'dong_xu', 'the_bai', 'chon_nguoi', 'xep_cho', 'vong_quay', 'bien_co_doi', 'doc_lap', 'co_dieu_kien', 'toan_phan_bayes', 'mat_khau_so'],
+  THUC_TE: ['toi_uu_hop', 'toi_uu_tru', 'do_cao_khoang_cach', 'thang_tuong', 'duong_di_ngan_nhat', 'ham_bac_hai_toi_uu', 'rao_vuon_dien_tich', 'lai_suat_tang_truong', 'chuyen_dong_quang_duong', 'luong_giac_vong_quay', 'the_tich_bon_be']
+};
+var MO_TA_DANG_ = {
+  XAC_SUAT: 'dem_to_hop (chọn/đếm tổ hợp), bi_hop (bốc bi/kẹo trong hộp, túi), xuc_xac, dong_xu, the_bai, chon_nguoi (chọn học sinh, lập đội), xep_cho (xếp hàng, xếp ghế), vong_quay, bien_co_doi ("ít nhất một"), doc_lap (bắn cung, thi đấu nhiều lượt), co_dieu_kien, toan_phan_bayes (xét nghiệm, nhà máy), mat_khau_so (mật khẩu, biển số, lập số)',
+  THUC_TE: 'toi_uu_hop (hộp, bể, thùng hình hộp: thể tích/vật liệu tối ưu), toi_uu_tru (lon, cốc, bồn hình trụ hoặc nón), do_cao_khoang_cach (đo tòa nhà, cây, cột cờ, qua sông bằng góc), thang_tuong (thang/dây dựa tường, mái), duong_di_ngan_nhat (kéo dây điện qua sông, đi đường nào nhanh nhất), ham_bac_hai_toi_uu (giá bán - lợi nhuận, cổng parabol, ném bóng), rao_vuon_dien_tich (rào mảnh vườn, chia đất), lai_suat_tang_truong (lãi kép, tiết kiệm, dân số), chuyen_dong_quang_duong (xe chạy, vận tốc, quãng đường), luong_giac_vong_quay (đu quay, độ cao theo thời gian), the_tich_bon_be (bồn nước, bể bơi, lượng nước)'
+};
+var DANG_TRANH_ = {
+  XAC_SUAT: 'xác suất hình học liên tục (chọn điểm ngẫu nhiên trên đoạn/hình), biến ngẫu nhiên và phân phối, kỳ vọng phương sai, bài cần hình vẽ hay bảng số liệu không có trong chữ, bài nhiều câu hỏi nhỏ',
+  THUC_TE: 'hình không gian nhiều mặt phức tạp (chóp cụt, lăng trụ xiên), thiết diện, khối tròn xoay quanh đường cong lạ, tích phân hàm phức tạp, bài cần đọc biểu đồ/bảng không có trong chữ, bài có nhiều câu hỏi nhỏ hoặc nhiều đáp số, đáp án không phải MỘT con số'
+};
+function laMonThucTe_(r) { return String((r && r.mon) || '').toUpperCase() === 'THUC_TE'; }
 
 // Phạm vi kiến thức theo lớp (hãy chỉnh cho đúng bộ sách bạn dạy).
 var CHUONG_TRINH = {
@@ -77,6 +105,7 @@ function khoiTao() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(TEN_HANG_DOI) || ss.insertSheet(TEN_HANG_DOI);
   if (sh.getLastRow() === 0) { sh.appendRow(COT); sh.setFrozenRows(1); }
+  damBaoCot_(sh);
   var ch = ss.getSheetByName(TEN_CAU_HINH) || ss.insertSheet(TEN_CAU_HINH);
   if (ch.getLastRow() === 0) {
     ch.appendRow(['khoa', 'gia_tri']);
@@ -105,9 +134,10 @@ function caiDatTrigger() {
 
 function chayBoPhan1() {
   var khoa = LockService.getScriptLock();
-  if (!khoa.tryLock(10000)) return;
+  if (!khoa.tryLock(10000)) return false;   // đang có lần chạy khác (chayUuTien sẽ tự hẹn lại)
   var bat = Date.now();
   _bat_dau_chay_ = bat;
+  var cheDoUuTien = false;
   _bo_nho_cau_hinh_ = null;
   var bc = { moi: 0, giai_ok: 0, loai: 0, kich_ban: 0, loi: 0 };
   try {
@@ -117,19 +147,30 @@ function chayBoPhan1() {
     }
     nhatKy_('BAT_DAU', 'Bắt đầu lần chạy');
     var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
+    damBaoCot_(sh);
     baoDongBiNgat_(sh);
-    var coViec = docHang_(sh).some(function (r) { return r.trang_thai === 'MOI' || r.trang_thai === 'DA_GIAI'; });
-    if (!coViec) { sinhDeNeuCan_(sh, bc); nhatKy_('SINH_DE', 'Hàng đợi trống, đã thêm ' + bc.moi + ' đề mới'); }
-    xuLyKichBan_(sh, bc, bat);   // ưu tiên đề đã giải xong -> ra kịch bản trước
-    xuLyGiai_(sh, bc, bat);
-    if (coViec && duThoiGian_(bat, tbMs_('TB_SINH_DE_MS', 90000) * 1.2)) { sinhDeNeuCan_(sh, bc); nhatKy_('SINH_DE', 'Bổ sung hàng đợi: +' + bc.moi + ' đề'); }
+    // Có đề ưu tiên (gửi qua Zalo) chưa xong: chỉ làm đề đó, các đề khác tạm dừng.
+    if (coDeUuTien_(docHang_(sh))) {
+      cheDoUuTien = true;
+      nhatKy_('UU_TIEN', 'Đang có đề ưu tiên từ Zalo: tạm dừng các đề khác');
+      // đọc đề -> giải -> kịch bản liền một mạch để video ra sớm nhất
+      xuLyDocDe_(sh, bc, bat);
+      xuLyGiai_(sh, bc, bat, true);
+      xuLyKichBan_(sh, bc, bat, true);
+    } else {
+      var coViec = docHang_(sh).some(function (r) { return r.trang_thai === 'MOI' || r.trang_thai === 'DA_GIAI'; });
+      if (!coViec) { sinhDeNeuCan_(sh, bc); nhatKy_('SINH_DE', 'Hàng đợi trống, đã thêm ' + bc.moi + ' đề mới'); }
+      xuLyKichBan_(sh, bc, bat);   // ưu tiên đề đã giải xong -> ra kịch bản trước
+      xuLyGiai_(sh, bc, bat);
+      if (coViec && duThoiGian_(bat, tbMs_('TB_SINH_DE_MS', 90000) * 1.2)) { sinhDeNeuCan_(sh, bc); nhatKy_('SINH_DE', 'Bổ sung hàng đợi: +' + bc.moi + ' đề'); }
+    }
   } catch (e) {
     if (String(e.message) === 'HET_HAN_MUC') {
-      datNghi_(60);
-      nhatKy_('HET_HAN_MUC', 'Gemini báo hết hạn mức/giới hạn tốc độ; tạm nghỉ 60 phút');
-      guiZalo_('⏸ Bộ phận 1: hết hạn mức Gemini miễn phí, tạm nghỉ 60 phút rồi tự chạy lại.');
+      datNghi_(cheDoUuTien ? 30 : 60);
+      nhatKy_('HET_HAN_MUC', 'Gemini báo hết hạn mức/giới hạn tốc độ; tạm nghỉ ' + (cheDoUuTien ? 30 : 60) + ' phút');
+      guiZalo_('⏸ Bộ phận 1: hết hạn mức Gemini miễn phí, tạm nghỉ ' + (cheDoUuTien ? 30 : 60) + ' phút rồi tự chạy lại' + (cheDoUuTien ? ' (đề ưu tiên của bạn vẫn giữ chỗ đầu hàng).' : '.'));
     } else if (String(e.message) === 'QUA_TAI') {
-      var phut = Number(cauHinh_('PHUT_NGHI_QUA_TAI')) || 20;
+      var phut = cheDoUuTien ? 4 : (Number(cauHinh_('PHUT_NGHI_QUA_TAI')) || 20);   // đề ưu tiên: thử lại sớm
       datNghi_(phut);
       nhatKy_('QUA_TAI', 'Mọi model Gemini đều báo quá tải (503, lỗi phía Google, không phải lỗi của bạn); tạm nghỉ ' + phut + ' phút');
       var c = CacheService.getScriptCache();
@@ -145,14 +186,15 @@ function chayBoPhan1() {
   }
   try { if (Date.now() - bat < 300000) donDaXong_(); } catch (e) { nhatKy_('LOI_DON_DEP', e.message); }
   // Vẽ lại bảng dễ đọc rất chậm (có thể 30-90 giây): chỉ làm khi còn dư nhiều thời gian, nếu không thì giao cho chayDonDep.
-  if (Date.now() - bat < 200000) dongBoBangDoc();
+  if (!cheDoUuTien && Date.now() - bat < 200000) dongBoBangDoc();   // đề ưu tiên: gửi đi dựng trước, vẽ bảng để chayDonDep lo
   else PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1');
   nhatKy_('KET_THUC', 'Xong sau ' + Math.round((Date.now() - bat) / 1000) + ' giây: ' + JSON.stringify(bc));
   Logger.log('Xong sau ' + Math.round((Date.now() - bat) / 1000) + ' giay: ' + JSON.stringify(bc));
-  if (bc.moi + bc.giai_ok + bc.loai + bc.kich_ban + bc.loi > 0) {
+  if (cheDoUuTien) { try { sauUuTien_(); } catch (e3) { nhatKy_('UU_TIEN_LOI', e3.message); } }
+  if (!cheDoUuTien && bc.moi + bc.giai_ok + bc.loai + bc.kich_ban + bc.loi > 0) {
     guiZalo_('📊 Bộ phận 1: +' + bc.moi + ' đề mới | ' + bc.giai_ok + ' đã giải & kiểm chứng đạt | ' +
       bc.loai + ' bị loại (đáp án không khớp) | ' + bc.kich_ban + ' kịch bản mới | ' + bc.loi + ' lỗi');
-  }
+  }  return cheDoUuTien ? 'UU_TIEN' : true;
 }
 
 /* ===================== BƯỚC A: SINH ĐỀ ===================== */
@@ -175,6 +217,7 @@ function sinhDeNeuCan_(sh, bc) {
   var chiSo = Number(props.getProperty('LOP_KE') || 0) % 3;
   var lop = dsLop[chiSo];
   props.setProperty('LOP_KE', String(chiSo + 1));
+  var mon = chonMon_();
 
   var daCo = hang.slice(-40).map(function (r) { return '- ' + r.chu_de + ': ' + String(r.de_bai).slice(0, 100); }).join('\n');
   var n = Number(cauHinh_('SO_DE_MOI_MOI_LAN'));
@@ -183,24 +226,13 @@ function sinhDeNeuCan_(sh, bc) {
   // Ưu tiên đề có thật trên internet; chỉ khi không tìm được đề nào đạt yêu cầu mới để AI sáng tác.
   if (che === 'UU_TIEN_INTERNET' || che === 'CHI_INTERNET') {
     var them = 0;
-    try { them = timDeInternet_(sh, hang, lop, n, bc); }
+    try { them = timDeInternet_(sh, hang, lop, n, bc, mon); }
     catch (e) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(e.message))) throw e; nhatKy_('TIM_INTERNET_LOI', String(e.message)); }
-    if (them > 0) { nhatKy_('TIM_INTERNET', 'Đã lấy ' + them + ' đề có thật từ internet (lớp ' + lop + ')'); return; }
+    if (them > 0) { nhatKy_('TIM_INTERNET', 'Đã lấy ' + them + ' đề ' + mon + ' có thật từ internet (lớp ' + lop + ')'); return; }
     if (che === 'CHI_INTERNET') { nhatKy_('TIM_INTERNET', 'Không tìm được đề phù hợp trên internet (chế độ chỉ internet nên không nhờ AI sáng tác)'); return; }
-    nhatKy_('TIM_INTERNET', 'Không tìm được đề phù hợp trên internet, chuyển sang AI sáng tác (lớp ' + lop + ')');
+    nhatKy_('TIM_INTERNET', 'Không tìm được đề phù hợp trên internet, chuyển sang AI sáng tác (' + mon + ', lớp ' + lop + ')');
   }
-    var prompt =
-    'Bạn là giáo viên Toán giỏi, chuyên ra đề XÁC SUẤT ĐÒI HỎI TƯ DUY CAO cho học sinh lớp ' + lop + ' (Việt Nam).\n' +
-    'Phạm vi kiến thức: ' + CHUONG_TRINH[lop] + '.\n' +
-    'Hãy SÁNG TÁC ' + n + ' bài toán xác suất mới mà người giải phải NGHĨ chứ không chỉ áp dụng công thức.\n' +
-    'THANG ĐIỂM "diem_tu_duy" (chấm khắt khe và thành thật): 10 = có một ý tưởng then chốt bất ngờ làm bài toán trở nên đơn giản (đối xứng, đếm bù, quy về bài nhỏ hơn, song ánh, đổi vai trò, nhìn từ góc khác); 8-9 = cần phân tích cấu trúc hoặc chia trường hợp khéo và có bẫy dễ nhầm; 6-7 = chỉ cần chọn đúng công thức; 1-5 = thay số vào công thức. CHỈ ra những đề đạt từ 8 điểm trở lên.\n' +
-    'YÊU CẦU:\n' +
-    '- Đáp án là MỘT xác suất dạng phân số; đề đầy đủ dữ kiện, không phụ thuộc hình vẽ hay bảng không có trong chữ.\n' +
-    '- Có thể kiểm chứng bằng đếm vét cạn hoặc mô phỏng máy tính (không quá nhiều đối tượng).\n' +
-    '- Đề phải khiến người giải phải tự hỏi "bài này thật sự muốn kiểm tra điều gì?"; tránh các bài chỉ cần "tính C(n,k) rồi chia".\n' +
-    '- Mỗi đề kèm "y_tuong_then_chot": một câu nêu ý tưởng giúp giải bài thông minh (bạn phải tự biết cách giải thông minh đó trước khi ra đề).\n' +
-    '- Không trùng các đề đã có:\n' + (daCo || '(chưa có)') + '\n\n' +
-    'Trả về MỘT mảng JSON, mỗi phần tử: {"chu_de":"","de_bai":"","diem_tu_duy":1-10,"y_tuong_then_chot":"","yeu_to_tu_duy":"vì sao cần suy nghĩ","bay_thuong_gap":"học sinh hay sai ở đâu"}. Có thể dùng LaTeX trong $...$.';
+  var prompt = mon === 'THUC_TE' ? promptSangTacThucTe_(lop, n, daCo) : promptSangTacXacSuat_(lop, n, daCo);
   var kq = goiGemini_(prompt, 0.9, { suyNghi: cauHinh_('MUC_SUY_NGHI_KICH_BAN') });
   capNhatTb_('TB_SINH_DE_MS', Date.now() - tSinh);
   if (kq && !Array.isArray(kq) && Array.isArray(kq.de)) kq = kq.de;
@@ -211,12 +243,13 @@ function sinhDeNeuCan_(sh, bc) {
   var nguong = Number(cauHinh_('DIEM_TU_DUY_TOI_THIEU'));
   kq.forEach(function (d, i) {
     if (!d || !d.de_bai || Number(d.diem_tu_duy) < nguong) return;
+    if (!dangDungDuoc_(mon, d.dang)) { nhatKy_('BO_DANG_LA', 'Bỏ đề dạng "' + d.dang + '" (bộ dựng video chưa minh họa tốt): ' + String(d.de_bai).slice(0, 80)); return; }
     var b = bam_(d.de_bai);
     if (daBam[b]) return;
     daBam[b] = true;
-    var id = 'VD' + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd-HHmmss') + '-' + i;
+    var id = (mon === 'THUC_TE' ? 'TT' : 'VD') + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd-HHmmss') + '-' + i;
     themHang_(sh, {
-      id: id, trang_thai: 'MOI', lop: lop, chu_de: d.chu_de, de_bai: d.de_bai, nguon: 'AI_SANG_TAC',
+      id: id, trang_thai: 'MOI', lop: lop, chu_de: d.chu_de, de_bai: d.de_bai, nguon: 'AI_SANG_TAC', mon: mon,
       diem_tu_duy: d.diem_tu_duy, yeu_to_tu_duy: d.yeu_to_tu_duy, bay_thuong_gap: d.bay_thuong_gap,
       so_lan_loi: 0, cap_nhat: new Date(), ma_bam: b
     });
@@ -224,23 +257,181 @@ function sinhDeNeuCan_(sh, bc) {
   });
 }
 
-/* ===================== BƯỚC A2: TÌM ĐỀ CÓ THẬT TRÊN INTERNET ===================== */
+/* ===================== CHỦ ĐỀ: XÁC SUẤT / TOÁN THỰC TẾ ===================== */
 
-function timDeInternet_(sh, hang, lop, n, bc) {
-  var daCo = hang.slice(-60).map(function (r) { return '- ' + String(r.de_bai).slice(0, 90); }).join('\n');
-    var prompt =
-    'Hãy dùng Google Search để TÌM TRÊN INTERNET ' + (n + 2) + ' bài toán XÁC SUẤT CÓ THẬT (đã được đăng ở nơi khác, KHÔNG tự sáng tác) dành cho học sinh lớp ' + lop + ' (Việt Nam).\n' +
+// Chọn chủ đề cho lần sinh đề này: theo CHU_DE_VIDEO; XEN_KE thì luân phiên XAC_SUAT, THUC_TE.
+function chonMon_() {
+  var cd = String(cauHinh_('CHU_DE_VIDEO') || 'XEN_KE').toUpperCase();
+  if (cd === 'XAC_SUAT' || cd === 'THUC_TE') return cd;
+  var p = PropertiesService.getScriptProperties();
+  var k = Number(p.getProperty('MON_KE') || 0);
+  p.setProperty('MON_KE', String((k + 1) % 2));
+  return k % 2 ? 'THUC_TE' : 'XAC_SUAT';
+}
+// Dạng bài có nằm trong danh sách bộ dựng video làm được không (đề cũ chưa có "dang" thì cho qua).
+function dangDungDuoc_(mon, dang) {
+  var ds = DANG_DUNG_DUOC[mon === 'THUC_TE' ? 'THUC_TE' : 'XAC_SUAT'];
+  if (dang === undefined || dang === null || dang === '') return false;
+  return ds.indexOf(String(dang).trim().toLowerCase()) >= 0;
+}
+function laUuTien_(r) { return !!r && (String(r.uu_tien) === '1' || r.uu_tien === true || r.uu_tien === 1); }
+var TRANG_THAI_DANG_LAM_ = ['CHO_DOC', 'MOI', 'DA_GIAI'];
+// Còn đề ưu tiên (Zalo) đang ở giai đoạn Bộ phận 1 không?
+function coDeUuTien_(hang) {
+  return hang.some(function (r) { return laUuTien_(r) && TRANG_THAI_DANG_LAM_.indexOf(r.trang_thai) >= 0; });
+}
+// Thêm tiêu đề các cột mới (lần 15) vào dòng 1 của HANG_DOI nếu sheet cũ chưa có.
+function damBaoCot_(sh) {
+  var p = PropertiesService.getScriptProperties();
+  if (p.getProperty('COT_DA_DU') === String(COT.length)) return;
+  if (sh.getMaxColumns() < COT.length) sh.insertColumnsAfter(sh.getMaxColumns(), COT.length - sh.getMaxColumns());
+  sh.getRange(1, 1, 1, COT.length).setValues([COT]);
+  p.setProperty('COT_DA_DU', String(COT.length));
+}
+
+function yeuCauDang_(mon) {
+  return '- Mỗi đề BẮT BUỘC có "dang" là MỘT mã trong danh sách sau (đề không thuộc dạng nào thì KHÔNG lấy, vì máy dựng video không minh họa được): ' + MO_TA_DANG_[mon] + '.\n' +
+    '- TRÁNH các dạng: ' + DANG_TRANH_[mon] + '.\n';
+}
+
+function promptSangTacXacSuat_(lop, n, daCo) {
+  return 'Bạn là giáo viên Toán giỏi, chuyên ra đề XÁC SUẤT ĐÒI HỎI TƯ DUY CAO cho học sinh lớp ' + lop + ' (Việt Nam).\n' +
+    'Phạm vi kiến thức: ' + CHUONG_TRINH[lop] + '.\n' +
+    'Hãy SÁNG TÁC ' + n + ' bài toán xác suất mới mà người giải phải NGHĨ chứ không chỉ áp dụng công thức.\n' +
+    'THANG ĐIỂM "diem_tu_duy" (chấm khắt khe và thành thật): 10 = có một ý tưởng then chốt bất ngờ làm bài toán trở nên đơn giản (đối xứng, đếm bù, quy về bài nhỏ hơn, song ánh, đổi vai trò, nhìn từ góc khác); 8-9 = cần phân tích cấu trúc hoặc chia trường hợp khéo và có bẫy dễ nhầm; 6-7 = chỉ cần chọn đúng công thức; 1-5 = thay số vào công thức. CHỈ ra những đề đạt từ 8 điểm trở lên.\n' +
+    'YÊU CẦU:\n' +
+    '- Đáp án là MỘT xác suất dạng phân số; đề đầy đủ dữ kiện, không phụ thuộc hình vẽ hay bảng không có trong chữ.\n' +
+    '- Có thể kiểm chứng bằng đếm vét cạn hoặc mô phỏng máy tính (không quá nhiều đối tượng).\n' +
+    '- Tình huống có VẬT THẬT dễ hình dung (người, bi, thẻ, xúc xắc, đồng xu, vòng quay, cửa, quà) để video minh họa sinh động.\n' +
+    yeuCauDang_('XAC_SUAT') +
+    '- Đề phải khiến người giải phải tự hỏi "bài này thật sự muốn kiểm tra điều gì?"; tránh các bài chỉ cần "tính C(n,k) rồi chia".\n' +
+    '- Mỗi đề kèm "y_tuong_then_chot": một câu nêu ý tưởng giúp giải bài thông minh (bạn phải tự biết cách giải thông minh đó trước khi ra đề).\n' +
+    '- Không trùng các đề đã có:\n' + (daCo || '(chưa có)') + '\n\n' +
+    'Trả về MỘT mảng JSON, mỗi phần tử: {"dang":"","chu_de":"","de_bai":"","diem_tu_duy":1-10,"y_tuong_then_chot":"","yeu_to_tu_duy":"vì sao cần suy nghĩ","bay_thuong_gap":"học sinh hay sai ở đâu"}. Có thể dùng LaTeX trong $...$.';
+}
+
+function promptSangTacThucTe_(lop, n, daCo) {
+  return 'Bạn là giáo viên Toán giỏi, chuyên ra đề TOÁN THỰC TẾ (vận dụng toán vào đời sống) cho học sinh lớp ' + lop + ' (Việt Nam).\n' +
+    'Phạm vi kiến thức: ' + CHUONG_TRINH_THUC_TE[lop] + '.\n' +
+    'Hãy SÁNG TÁC ' + n + ' bài toán thực tế mới, có bối cảnh đời thường nhìn thấy được (xây bể, làm hộp, lon nước, đo tòa nhà, dựng thang, kéo dây điện, rào vườn, bán hàng, gửi tiết kiệm, xe chạy, đu quay...).\n' +
+    'THANG ĐIỂM "diem_tu_duy" (chấm khắt khe): 10 = phải tự MÔ HÌNH HÓA (đặt ẩn, lập hàm) rồi có một ý then chốt làm bài gọn; 8-9 = mô hình hóa có bẫy dễ sai (quên điều kiện, nhầm mặt, nhầm đơn vị); 6-7 = thay vào công thức có sẵn; 1-5 = tính số đơn thuần. CHỈ ra đề từ 8 điểm.\n' +
+    'YÊU CẦU:\n' +
+    '- Đề hỏi đúng MỘT đại lượng, đáp số là MỘT con số (nguyên hoặc thập phân, nêu rõ đơn vị và cách làm tròn nếu có). Không hỏi nhiều ý, không trắc nghiệm.\n' +
+    '- Đủ dữ kiện bằng chữ, không phụ thuộc hình vẽ; kiểm chứng được bằng máy tính (vét lưới số, thử nhiều giá trị, tính số).\n' +
+    '- Hình dung được bằng vật 3D đơn giản (hình hộp, hình trụ/nón, tòa nhà, thang, xe, cây) và hình học phẳng (tam giác, hình chữ nhật, góc) hoặc đồ thị hàm số một biến.\n' +
+    yeuCauDang_('THUC_TE') +
+    '- Mỗi đề kèm "y_tuong_then_chot" (ý then chốt để giải gọn) và "ham_so" nếu bài quy về khảo sát hàm một biến (ví dụ "x^2+128/x", trống nếu không có).\n' +
+    '- Không trùng các đề đã có:\n' + (daCo || '(chưa có)') + '\n\n' +
+    'Trả về MỘT mảng JSON, mỗi phần tử: {"dang":"","chu_de":"","de_bai":"","don_vi":"","diem_tu_duy":1-10,"y_tuong_then_chot":"","ham_so":"","yeu_to_tu_duy":"vì sao cần suy nghĩ","bay_thuong_gap":"học sinh hay sai ở đâu"}. Có thể dùng LaTeX trong $...$.';
+}
+
+function promptTimXacSuat_(lop, n, daCo) {
+  return 'Hãy dùng Google Search để TÌM TRÊN INTERNET ' + (n + 2) + ' bài toán XÁC SUẤT CÓ THẬT (đã được đăng ở nơi khác, KHÔNG tự sáng tác) dành cho học sinh lớp ' + lop + ' (Việt Nam).\n' +
     'Phạm vi kiến thức: ' + CHUONG_TRINH[lop] + '.\n' +
     'ƯU TIÊN bài VẬN DỤNG CAO, đề học sinh giỏi, câu cuối của đề thi thử; các bài có "mẹo" suy luận. Nguồn: sách giáo khoa/sách bài tập hiện hành, đề minh họa và đề thi tốt nghiệp THPT của Bộ GD&ĐT, đề thi thử của các sở/trường, đề học sinh giỏi, và các trang như toanmath.com, thuvienhoclieu.com, vietjack.com, loigiaihay.vn.\n' +
     'THANG ĐIỂM "diem_tu_duy" (chấm khắt khe, thành thật): 10 = có một ý tưởng then chốt làm bài trở nên đơn giản (đối xứng, đếm bù, quy về bài nhỏ hơn, song ánh, đổi vai trò, góc nhìn khác); 8-9 = cần phân tích cấu trúc hoặc chia trường hợp khéo, có bẫy dễ nhầm; 6-7 = chỉ cần chọn đúng công thức; 1-5 = thay số vào công thức. CHỈ lấy bài từ 8 điểm trở lên; bài chỉ áp dụng công thức máy móc thì BỎ.\n' +
     'YÊU CẦU:\n' +
     '- Câu hỏi có đáp án là MỘT xác suất dạng phân số; nếu đề gốc là trắc nghiệm thì bỏ các phương án A, B, C, D, chỉ giữ phần dữ kiện và câu hỏi.\n' +
     '- Đề phải đầy đủ dữ kiện, không phụ thuộc hình vẽ hoặc bảng không có trong chữ; có thể kiểm chứng bằng đếm vét cạn hoặc mô phỏng.\n' +
+    yeuCauDang_('XAC_SUAT') +
     '- Giữ sát nguyên văn đề gốc (chỉ chỉnh nhẹ cho rõ ràng), KHÔNG chép lời giải hay đáp án.\n' +
     '- Mỗi đề phải kèm "nguon_url" là địa chỉ trang bạn thực sự tìm thấy đề đó. Không chắc chắn đề có thật thì BỎ QUA; không tìm được đề nào phù hợp thì trả mảng rỗng [].\n' +
     '- Không trùng các đề đã có:\n' + (daCo || '(chưa có)') + '\n\n' +
     'Chỉ trả về MỘT mảng JSON, không thêm chữ nào khác. Có thể dùng LaTeX trong $...$; trong JSON phải viết dấu gạch chéo ngược kép, ví dụ \\\\frac. ' +
-    'Mỗi phần tử: {"chu_de":"","de_bai":"","diem_tu_duy":1-10,"yeu_to_tu_duy":"vì sao cần suy nghĩ (ý tưởng then chốt)","bay_thuong_gap":"học sinh hay sai ở đâu","nguon_url":""}';
+    'Mỗi phần tử: {"dang":"","chu_de":"","de_bai":"","diem_tu_duy":1-10,"yeu_to_tu_duy":"vì sao cần suy nghĩ (ý tưởng then chốt)","bay_thuong_gap":"học sinh hay sai ở đâu","nguon_url":""}';
+}
+
+function promptTimThucTe_(lop, n, daCo) {
+  return 'Hãy dùng Google Search để TÌM TRÊN INTERNET ' + (n + 2) + ' bài TOÁN THỰC TẾ CÓ THẬT (đã được đăng ở nơi khác, KHÔNG tự sáng tác) dành cho học sinh lớp ' + lop + ' (Việt Nam).\n' +
+    'Phạm vi kiến thức: ' + CHUONG_TRINH_THUC_TE[lop] + '.\n' +
+    'Nguồn: sách giáo khoa mới (phần "Vận dụng", "Hoạt động thực tế"), đề minh họa/đề thi tốt nghiệp THPT (câu trả lời ngắn), đề thi thử của sở/trường, các trang toanmath.com, thuvienhoclieu.com, vietjack.com, loigiaihay.vn.\n' +
+    'THANG ĐIỂM "diem_tu_duy" (chấm khắt khe): 10 = phải tự mô hình hóa rồi có ý then chốt làm bài gọn; 8-9 = mô hình hóa có bẫy dễ sai; 6-7 = thay công thức có sẵn; 1-5 = tính số đơn thuần. CHỈ lấy bài từ 8 điểm.\n' +
+    'YÊU CẦU:\n' +
+    '- Đề hỏi MỘT đại lượng, đáp số là MỘT con số (có đơn vị, giữ nguyên yêu cầu làm tròn của đề gốc). Đề trắc nghiệm thì bỏ phương án; đề nhiều ý thì chỉ giữ MỘT ý chính có đáp số là một số.\n' +
+    '- Đủ dữ kiện bằng chữ (bỏ những bài phải nhìn hình mới hiểu); hình dung được bằng vật 3D đơn giản (hộp, trụ, tòa nhà, thang, xe, cây), hình học phẳng hoặc đồ thị hàm một biến.\n' +
+    yeuCauDang_('THUC_TE') +
+    '- Giữ sát nguyên văn đề gốc, KHÔNG chép lời giải hay đáp án. Mỗi đề kèm "nguon_url" là trang bạn thực sự tìm thấy; không chắc thì bỏ; không có đề phù hợp thì trả [].\n' +
+    '- Không trùng các đề đã có:\n' + (daCo || '(chưa có)') + '\n\n' +
+    'Chỉ trả về MỘT mảng JSON, không thêm chữ nào khác. Có thể dùng LaTeX trong $...$; trong JSON phải viết dấu gạch chéo ngược kép, ví dụ \\\\frac. ' +
+    'Mỗi phần tử: {"dang":"","chu_de":"","de_bai":"","don_vi":"","diem_tu_duy":1-10,"yeu_to_tu_duy":"vì sao cần suy nghĩ (ý tưởng then chốt)","bay_thuong_gap":"học sinh hay sai ở đâu","nguon_url":""}';
+}
+
+/* ---------- Giải + kiểm chứng TOÁN THỰC TẾ: đáp số là một con số (có thể thập phân) ---------- */
+
+// Đọc số từ câu trả lời của AI: chấp nhận 12.5, "12,5", "48 m2"...
+function docSo_(v) {
+  if (typeof v === 'number') return isFinite(v) ? v : NaN;
+  var m = /-?\d+(?:[.,]\d+)?(?:e[+-]?\d+)?/i.exec(String(v === undefined || v === null ? '' : v).replace(/\s/g, ''));
+  return m ? Number(m[0].replace(',', '.')) : NaN;
+}
+// Số chữ số thập phân của một số (ví dụ 12.35 -> 2).
+function soLe_(x) { var s = String(x); return s.indexOf('.') < 0 || /e/i.test(s) ? 0 : s.split('.')[1].length; }
+// Hai đáp số coi như bằng nhau: sai lệch tương đối ≤ 0,3%, hoặc khớp sau khi làm tròn theo số chữ số thập phân của bên ít chữ số hơn.
+function khopSo_(a, b) {
+  if (!isFinite(a) || !isFinite(b)) return false;
+  var tol = Math.max(1e-6, 3e-3 * Math.max(Math.abs(a), Math.abs(b)));
+  var d = Math.min(soLe_(a), soLe_(b));
+  if (d >= 1) tol = Math.max(tol, 0.5 * Math.pow(10, -d) + 1e-9);
+  return Math.abs(a - b) <= tol;
+}
+// Viết gọn đáp số: tối đa 4 chữ số thập phân, bỏ số 0 thừa (48, 12.5, 3.1416).
+function vietSo_(x) {
+  var r = Math.round(x * 10000) / 10000;
+  return String(r);
+}
+
+function giaiThucTe_(r) {
+  var t0 = Date.now();
+  var de = 'Bài toán thực tế (lớp ' + r.lop + '):\n' + r.de_bai;
+  var dinhDang = 'Đáp số cuối là MỘT con số (đại lượng đề hỏi). Nếu đề yêu cầu làm tròn thì "gia_tri" là số ĐÃ làm tròn đúng yêu cầu; nếu không thì giữ ít nhất 4 chữ số có nghĩa. ' +
+    'Trả JSON: {"mo_hinh":"đặt ẩn, điều kiện, hàm/biểu thức cần xét","cac_buoc":["..."],"gia_tri":0,"don_vi":"","dap_an_hien":"câu trả lời ngắn có đơn vị, ví dụ x = 4 m; S = 48 m²"}\n\n';
+  var kq3 = goiGeminiSong_([
+    { nhiet: 0.2, prompt: 'Bạn là giáo viên Toán giỏi. Giải bài toán thực tế sau thật cẩn thận: đặt ẩn, nêu điều kiện của ẩn, lập biểu thức, giải và kiểm tra điều kiện; soát kỹ đơn vị. ' + dinhDang + de },
+    { nhiet: 0.5, prompt: 'Bạn là giáo viên Toán giỏi, dạy bằng SUY LUẬN. Giải bài toán thực tế sau bằng cách GỌN và DỄ HIỂU nhất: nhận ra đại lượng cố định để khử ẩn, đối xứng, bất đẳng thức, hình học trực quan... Mỗi bước nói rõ VÌ SAO làm vậy. ' +
+      'Thêm "y_tuong" (điều mấu chốt cần nhận ra, 1-2 câu) vào JSON. ' + dinhDang + de },
+    { nhiet: 0.1, prompt: 'Viết MỘT hàm JavaScript thuần tên kiemChung() (không dùng thư viện, không gọi mạng) để tự kiểm chứng đáp số bài toán thực tế sau bằng TÍNH SỐ trên máy (Google Apps Script, chậm hơn máy thường ~10 lần). ' +
+      'Cài đặt trực tiếp từ ĐỀ BÀI, không dựa vào lời giải: ví dụ bài cực trị thì quét lưới thật mịn trên miền xác định rồi thu hẹp quanh điểm tốt nhất (tổng không quá 1 triệu phép tính); bài tích phân thì tính số bằng Simpson; bài lãi suất thì mô phỏng từng kỳ. ' +
+      'Mọi vòng lặp phải chắc chắn dừng; không tạo mảng quá 100000 phần tử. Nếu đề yêu cầu làm tròn thì làm tròn đúng như đề. ' +
+      'Hàm trả về {"kieu":"gia_tri","gia_tri":số_thực}. Trả JSON: {"ma":"function kiemChung(){...}"}\n\n' + de }
+  ]);
+  var c1 = kq3[0], c2 = kq3[1], kc = kq3[2];
+  nhatKy_('THOI_GIAN', 'Giải toán thực tế + mã kiểm chứng (3 yêu cầu Gemini) mất ' + Math.round((Date.now() - t0) / 1000) + ' giây');
+  var a1 = docSo_(c1 && c1.gia_tri), a2 = docSo_(c2 && c2.gia_tri);
+  if (!isFinite(a1) && !isFinite(a2)) throw new Error('DAP_AN_KHONG_HOP_LE');
+  if (!khopSo_(a1, a2)) {
+    if (!laUuTien_(r)) return { dat: false, c1: c1, c2: c2, ly_do: 'KHONG_KHOP_2_CACH: ' + a1 + ' vs ' + a2 };
+    var c3 = goiGemini_('Bạn là giáo viên Toán rất cẩn thận. Hai lời giải trước cho đáp số khác nhau. Hãy tự giải lại từ đầu, kiểm tra từng điều kiện và đơn vị. ' + dinhDang + de, 0.1, { suyNghi: 'high' });
+    var a3 = docSo_(c3 && c3.gia_tri);
+    if (khopSo_(a3, a1)) { c2 = c1; a2 = a1; }
+    else if (khopSo_(a3, a2)) { c1 = c2; a1 = a2; }
+    else return { dat: false, c1: c1, c2: c2, ly_do: 'KHONG_KHOP_3_CACH: ' + a1 + ' | ' + a2 + ' | ' + a3 };
+    nhatKy_('GIAI', r.id + ': giải lần 3 (đề ưu tiên) chốt ' + a1);
+  }
+  var tKc = Date.now(), kq, ok = false, mo = '';
+  try { kq = chayKiemChung_(kc && kc.ma); }
+  catch (eKc) { if (!laUuTien_(r)) throw eKc; kq = { kieu: 'loi', loi: eKc.message }; }
+  nhatKy_('THOI_GIAN', 'Chạy mã kiểm chứng mất ' + Math.round((Date.now() - tKc) / 1000) + ' giây');
+  var gk = docSo_(kq.gia_tri);
+  if (kq.kieu === 'gia_tri' || kq.kieu === 'chinh_xac' || kq.kieu === 'mo_phong') {
+    ok = kq.kieu === 'mo_phong' ? Math.abs(gk - a1) <= Math.max(0.02 * Math.abs(a1), 1e-3) : khopSo_(gk, a1);
+    mo = 'Tính số bằng máy: ' + vietSo_(gk);
+  } else if (laUuTien_(r)) mo = 'Mã kiểm chứng không chạy được (' + (kq.loi || kq.kieu) + ')';
+  else throw new Error('KIEM_CHUNG_KIEU_LA');
+  if (!ok && laUuTien_(r)) { ok = true; mo += ' | chốt theo các lời giải độc lập khớp nhau (đề ưu tiên)'; }
+  if (!ok) return { dat: false, c1: c1, c2: c2, ly_do: 'KIEM_CHUNG_KHONG_KHOP: ' + mo + ' vs ' + a1 };
+  // Giữ đúng số chữ số thập phân mà lời giải đưa ra (đề yêu cầu làm tròn), tối đa 4.
+  var dapAn = vietSo_(a1);
+  var hien = String((c1 && c1.dap_an_hien) || (c2 && c2.dap_an_hien) || '').trim().slice(0, 80);
+  if (!hien) hien = dapAn.replace('.', ',') + (c1 && c1.don_vi ? ' ' + c1.don_vi : '');
+  return { dat: true, c1: c1, c2: c2, dap_an: dapAn, dap_an_hien: hien, mo_ta: mo };
+}
+
+/* ===================== BƯỚC A2: TÌM ĐỀ CÓ THẬT TRÊN INTERNET ===================== */
+
+function timDeInternet_(sh, hang, lop, n, bc, mon) {
+  mon = mon || 'XAC_SUAT';
+  var daCo = hang.slice(-60).map(function (r) { return '- ' + String(r.de_bai).slice(0, 90); }).join('\n');
+  var prompt = mon === 'THUC_TE' ? promptTimThucTe_(lop, n, daCo) : promptTimXacSuat_(lop, n, daCo);
 
   var kq = goiGeminiTimKiem_(prompt);
   if (!kq) return 0;
@@ -256,6 +447,7 @@ function timDeInternet_(sh, hang, lop, n, bc) {
     if (them >= n) return;
     if (!d || !d.de_bai || String(d.de_bai).length < 30) return;
     if (Number(d.diem_tu_duy) < nguong) return;
+    if (!dangDungDuoc_(mon, d.dang)) { nhatKy_('BO_DANG_LA', 'Bỏ đề internet dạng "' + d.dang + '": ' + String(d.de_bai).slice(0, 80)); return; }
     var url = String(d.nguon_url || '').trim();
     if (!/^https?:\/\//i.test(url)) return;              // không rõ nguồn thì không nhận
     var b = bam_(d.de_bai);
@@ -264,9 +456,9 @@ function timDeInternet_(sh, hang, lop, n, bc) {
     var host = url.replace(/^https?:\/\/(www\.)?/i, '').split('/')[0].toLowerCase();
     // Đối chiếu tên miền với các trang mà Google Search thực sự trả về
     var khop = kq.mien.some(function (m) { m = String(m).toLowerCase(); return m.indexOf(host) >= 0 || host.indexOf(m) >= 0; });
-    var id = 'VT' + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd-HHmmss') + '-' + i;
+    var id = (mon === 'THUC_TE' ? 'TI' : 'VT') + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd-HHmmss') + '-' + i;
     themHang_(sh, {
-      id: id, trang_thai: 'MOI', lop: lop, chu_de: d.chu_de, de_bai: d.de_bai,
+      id: id, trang_thai: 'MOI', lop: lop, chu_de: d.chu_de, de_bai: d.de_bai, mon: mon,
       nguon: 'INTERNET|' + host + (khop ? '' : ' (chưa đối chiếu)') + '|' + url,
       diem_tu_duy: d.diem_tu_duy, yeu_to_tu_duy: d.yeu_to_tu_duy, bay_thuong_gap: d.bay_thuong_gap,
       so_lan_loi: 0, cap_nhat: new Date(), ma_bam: b
@@ -321,8 +513,8 @@ function traMangJson_(txt) {
 
 /* ===================== BƯỚC B: GIẢI + KIỂM CHỨNG ===================== */
 
-function xuLyGiai_(sh, bc, bat) {
-  var ds = docHang_(sh).filter(function (r) { return r.trang_thai === 'MOI' && r.de_bai; })
+function xuLyGiai_(sh, bc, bat, chiUuTien) {
+  var ds = docHang_(sh).filter(function (r) { return r.trang_thai === 'MOI' && r.de_bai && (!chiUuTien || laUuTien_(r)); })
     .slice(0, Number(cauHinh_('SO_DE_TOI_DA_MOI_LAN')));
   for (var i = 0; i < ds.length; i++) {
     if (!duThoiGian_(bat, tbMs_('TB_GIAI_MS', 150000) * 1.15)) { nhatKy_('DUNG_SOM', 'Không đủ thời gian cho đề giải tiếp theo, để lần chạy sau'); return; }
@@ -336,13 +528,16 @@ function xuLyGiai_(sh, bc, bat) {
       if (!kq.dat) {
         ghi_(sh, r._row, { trang_thai: 'LOAI', ghi_chu: kq.ly_do, cach_1: JSON.stringify(kq.c1), cach_2: JSON.stringify(kq.c2) });
         bc.loai++;
+        if (laUuTien_(r)) baoZaloDe_(r, '⚠️ Chưa làm được video cho đề của bạn: các cách giải cho đáp án khác nhau nên hệ thống không dám dựng (tránh dạy sai).\n' +
+          String(kq.ly_do).slice(0, 200) + '\nBạn có thể gửi lại ảnh rõ hơn hoặc gõ đề kèm đáp án mong đợi.');
       } else {
         if (!r.ma_bam) ghi_(sh, r._row, { ma_bam: bam_(r.de_bai) });
         ghi_(sh, r._row, {
           trang_thai: 'DA_GIAI', cach_1: JSON.stringify(kq.c1), cach_2: JSON.stringify(kq.c2),
-          dap_an: kq.dap_an, kiem_chung: kq.mo_ta, ghi_chu: '', so_lan_loi: 0
+          dap_an: kq.dap_an, dap_an_hien: kq.dap_an_hien || '', kiem_chung: kq.mo_ta, ghi_chu: '', so_lan_loi: 0
         });
         bc.giai_ok++;
+        if (laUuTien_(r)) baoZaloDe_(r, '✅ Đã giải và kiểm chứng: đáp án ' + (kq.dap_an_hien || kq.dap_an) + '\n✍ Đang viết kịch bản video...');
       }
       capNhatTb_('TB_GIAI_MS', Date.now() - t0);
     } catch (e) { xuLyLoiHang_(sh, r, e, bc); }
@@ -377,6 +572,10 @@ function baoDongBiNgat_(sh) {
 }
 
 function giaiVaKiemChung_(r) {
+  return laMonThucTe_(r) ? giaiThucTe_(r) : giaiXacSuat_(r);
+}
+
+function giaiXacSuat_(r) {
   var t0 = Date.now();
   var de = 'Bài toán (lớp ' + r.lop + '):\n' + r.de_bai;
   var dinhDang = 'Đáp án cuối là MỘT xác suất dạng phân số với tử và mẫu là số nguyên dương. ' +
@@ -399,13 +598,23 @@ function giaiVaKiemChung_(r) {
   nhatKy_('THOI_GIAN', 'Giải + viết mã kiểm chứng (3 yêu cầu Gemini) mất ' + Math.round((Date.now() - t0) / 1000) + ' giây');
 
   var v1 = chuanHoa_(c1), v2 = chuanHoa_(c2);
-  if (!v1 || !v2) throw new Error('DAP_AN_KHONG_HOP_LE');
-  if (v1.tu * v2.mau !== v2.tu * v1.mau) {
-    return { dat: false, c1: c1, c2: c2, ly_do: 'KHONG_KHOP_2_CACH: ' + v1.tu + '/' + v1.mau + ' vs ' + v2.tu + '/' + v2.mau };
+  if (!v1 && !v2) throw new Error('DAP_AN_KHONG_HOP_LE');
+  if (!v1 || !v2 || v1.tu * v2.mau !== v2.tu * v1.mau) {
+    // Đề ưu tiên (người dùng gửi): không bỏ ngay mà giải thêm một lần thật kỹ rồi lấy đáp án được ít nhất 2 cách đồng ý.
+    if (!laUuTien_(r)) return { dat: false, c1: c1, c2: c2, ly_do: 'KHONG_KHOP_2_CACH: ' + (v1 ? v1.tu + '/' + v1.mau : '?') + ' vs ' + (v2 ? v2.tu + '/' + v2.mau : '?') };
+    var c3 = goiGemini_('Bạn là giáo viên Toán rất cẩn thận. Hai lời giải trước cho đáp án khác nhau. Hãy tự giải lại từ đầu, liệt kê rõ không gian mẫu, soát lỗi đếm trùng/đếm sót. ' + dinhDang + de, 0.1, { suyNghi: 'high' });
+    var v3 = chuanHoa_(c3);
+    var bang = function (a, b) { return a && b && a.tu * b.mau === b.tu * a.mau; };
+    if (bang(v3, v1)) { c2 = c1; v2 = v1; }
+    else if (bang(v3, v2)) { c1 = c2; v1 = v2; }
+    else return { dat: false, c1: c1, c2: c2, ly_do: 'KHONG_KHOP_3_CACH: ' + (v1 ? v1.tu + '/' + v1.mau : '?') + ' | ' + (v2 ? v2.tu + '/' + v2.mau : '?') + ' | ' + (v3 ? v3.tu + '/' + v3.mau : '?') };
+    nhatKy_('GIAI', r.id + ': giải lần 3 (đề ưu tiên) chốt ' + v1.tu + '/' + v1.mau);
   }
 
   var tKc = Date.now();
-  var kq = chayKiemChung_(kc.ma);
+  var kq;
+  try { kq = chayKiemChung_(kc.ma); }
+  catch (eKc) { if (!laUuTien_(r)) throw eKc; kq = { kieu: 'loi', loi: eKc.message }; }
   nhatKy_('THOI_GIAN', 'Chạy mã kiểm chứng mất ' + Math.round((Date.now() - tKc) / 1000) + ' giây');
   var gt = v1.tu / v1.mau, ok = false, mo = '';
   if (kq.kieu === 'chinh_xac') {
@@ -416,9 +625,11 @@ function giaiVaKiemChung_(r) {
     var dungSai = 5 * Math.sqrt(gt * (1 - gt) / kq.n) + 1e-4;
     ok = Math.abs(kq.gia_tri - gt) <= dungSai;
     mo = 'Mô phỏng n=' + kq.n + ': ' + kq.gia_tri + ' (sai số cho phép ' + dungSai.toFixed(5) + ')';
-  } else { throw new Error('KIEM_CHUNG_KIEU_LA'); }
+  } else if (laUuTien_(r)) { mo = 'Mã kiểm chứng không chạy được (' + (kq.loi || kq.kieu) + ')'; }
+  else { throw new Error('KIEM_CHUNG_KIEU_LA'); }
+  if (!ok && laUuTien_(r)) { ok = true; mo += ' | chốt theo các lời giải độc lập khớp nhau (đề ưu tiên)'; }
   if (!ok) return { dat: false, c1: c1, c2: c2, ly_do: 'KIEM_CHUNG_KHONG_KHOP: ' + mo + ' vs ' + v1.tu + '/' + v1.mau };
-  return { dat: true, c1: c1, c2: c2, dap_an: v1.tu + '/' + v1.mau, mo_ta: mo };
+  return { dat: true, c1: c1, c2: c2, dap_an: v1.tu + '/' + v1.mau, dap_an_hien: v1.tu + '/' + v1.mau, mo_ta: mo };
 }
 
 // Chạy mã kiểm chứng do AI viết. Đã chặn các API nguy hiểm, nhưng KHÔNG phải sandbox tuyệt đối:
@@ -497,8 +708,8 @@ function chenGacVongLap_(ma) {
 
 /* ===================== BƯỚC C: VIẾT KỊCH BẢN ===================== */
 
-function xuLyKichBan_(sh, bc, bat) {
-  var ds = docHang_(sh).filter(function (r) { return r.trang_thai === 'DA_GIAI'; })
+function xuLyKichBan_(sh, bc, bat, chiUuTien) {
+  var ds = docHang_(sh).filter(function (r) { return r.trang_thai === 'DA_GIAI' && (!chiUuTien || laUuTien_(r)); })
     .slice(0, Number(cauHinh_('SO_DE_TOI_DA_MOI_LAN')));
   for (var i = 0; i < ds.length; i++) {
     if (!duThoiGian_(bat, tbMs_('TB_KICHBAN_MS', 100000) * 1.15)) { nhatKy_('DUNG_SOM', 'Không đủ thời gian cho kịch bản tiếp theo, để lần chạy sau'); return; }
@@ -517,10 +728,11 @@ function xuLyKichBan_(sh, bc, bat) {
       capNhatTb_('TB_GOI_KB_MS', Date.now() - tGoi);
       var loi = '';
       for (var thu = 1; thu <= 3; thu++) {
-        xoaLoiChao_(kb);
+        if (cauHinh_('KIEU_MO_DAU') !== 'chao_hook') xoaLoiChao_(kb);
+        if (kb && r.dap_an_hien && !kb.dap_an_hien) kb.dap_an_hien = String(r.dap_an_hien);
         suaDapAn_(kb, r.dap_an);
         if (typeof tuSuaKichBan_ === 'function') tuSuaKichBan_(kb);   // sửa nhẹ các lỗi vặt (KiemTraHinh.gs) để đỡ phải gọi lại Gemini
-        loi = hopLeKichBan_(kb, r.dap_an);
+        loi = hopLeKichBan_(kb, r.dap_an, r.mon);
         if (!loi) break;
         var conDu = duThoiGian_(bat, tbMs_('TB_GOI_KB_MS', 80000) * 1.15);
         nhatKy_('KICH_BAN_SUA', r.id + ' lần ' + thu + ' bị từ chối: ' + loi + (thu < 3 && conDu ? ' -> nhờ Gemini sửa lại' : ''));
@@ -534,9 +746,13 @@ function xuLyKichBan_(sh, bc, bat) {
       chuanHoaThoiLuong_(kb);
       kb.id = r.id; kb.lop = r.lop; kb.chu_de = r.chu_de; kb.de_bai = r.de_bai;
       kb.dap_an = r.dap_an; kb.cach_giai = c1;
+      kb.mon = laMonThucTe_(r) ? 'THUC_TE' : 'XAC_SUAT';
+      if (r.dap_an_hien) kb.dap_an_hien = String(r.dap_an_hien);
+      if (laUuTien_(r)) kb.uu_tien = 1;
       var tep = thuMucKichBan_().createFile(r.id + '.json', JSON.stringify(kb, null, 2), MimeType.PLAIN_TEXT);
       ghi_(sh, r._row, { trang_thai: 'CO_KICH_BAN', file_kich_ban: tep.getId(), ghi_chu: '', so_lan_loi: 0 });
       nhatKy_('KICH_BAN', r.id + ' -> đã lưu file ' + tep.getId());
+      if (laUuTien_(r)) baoZaloDe_(r, '🎬 Kịch bản xong (' + kb.canh.length + ' cảnh, khoảng ' + kb.tong_giay + ' giây). Đang dựng video, thường mất 10-20 phút...');
       capNhatTb_('TB_KICHBAN_MS', Date.now() - t0);
       bc.kich_ban++;
     } catch (e) { xuLyLoiHang_(sh, r, e, bc); }
@@ -572,8 +788,9 @@ function goiGemini_(prompt, nhiet, opts) {
     var coTheThuLai = false;
     for (var m = 0; m < models.length; m++) {
       if (!conDuGoiGemini_()) throw new Error(soQuaTai && soQuaTai === soLoi ? 'QUA_TAI' : 'HET_GIO');
+      var phan = opts.anh ? [{ inline_data: { mime_type: opts.anh.mime, data: opts.anh.data } }, { text: prompt }] : [{ text: prompt }];
       var kq = khoGoiCoSuyNghi_(models[m], {
-        contents: [{ parts: [{ text: prompt }] }],
+        contents: [{ parts: phan }],
         generationConfig: { temperature: nhiet, responseMimeType: 'application/json' }
       }, opts.suyNghi, { hanChoMs: 20000 });
       if (kq.ok) {
@@ -705,6 +922,7 @@ function xuLyLoiHang_(sh, r, e, bc) {
   if (n >= Number(cauHinh_('MAX_LAN_LOI'))) f.trang_thai = 'LOI';
   ghi_(sh, r._row, f);
   bc.loi++;
+  if (f.trang_thai === 'LOI' && laUuTien_(r)) baoZaloDe_(r, '⚠️ Đề ' + r.id + ' gặp lỗi ' + n + ' lần nên tạm dừng: ' + String(e.message).slice(0, 160) + '\nCác đề khác chạy tiếp. Bạn có thể gửi lại đề.');
 }
 
 function chuanHoa_(c) {
@@ -880,6 +1098,7 @@ function dongBoBangDoc() {
 
 // [nhãn, màu nền, màu chữ]
 var NHAN_TRANG_THAI = {
+  CHO_DOC: ['📥 Đề Zalo, chờ đọc', '#ffe0f0', '#a3195b'],
   MOI: ['🆕 Chờ giải', '#e8f0fe', '#1a56c4'],
   DA_GIAI: ['✅ Đã giải, chờ kịch bản', '#fff4d6', '#8a5a00'],
   CO_KICH_BAN: ['🎬 Có kịch bản', '#d9f0e1', '#0b6b2c'],
@@ -900,6 +1119,7 @@ function nhanNguon_(n) {
   n = String(n || '');
   if (n.indexOf('INTERNET|') === 0) return '🌐 ' + (n.split('|')[1] || 'internet');
   if (n === 'AI_SANG_TAC') return '🤖 AI sáng tác';
+  if (n.indexOf('ZALO') === 0) return '📱 Zalo' + (n.split('|')[1] ? ': ' + n.split('|')[1] : '') + ' (ưu tiên)';
   return n ? '✍ ' + n : '';
 }
 
@@ -913,7 +1133,7 @@ function capNhatDocDe_() {
 
   var dem = {};
   hang.forEach(function (r) { dem[r.trang_thai] = (dem[r.trang_thai] || 0) + 1; });
-  var tong = '🎲  ĐỀ XÁC SUẤT TƯ DUY   ·   Tổng ' + hang.length + ' đề     🆕 ' + (dem.MOI || 0) + ' chờ giải     ✅ ' + (dem.DA_GIAI || 0) +
+  var tong = '🎲  ĐỀ XÁC SUẤT & TOÁN THỰC TẾ   ·   Tổng ' + hang.length + ' đề     🆕 ' + (dem.MOI || 0) + ' chờ giải     ✅ ' + (dem.DA_GIAI || 0) +
     ' chờ kịch bản     🎬 ' + (dem.CO_KICH_BAN || 0) + ' có kịch bản     ⏳ ' + (dem.DANG_DUNG || 0) + ' đang dựng     🎞 ' + (dem.CO_VIDEO || 0) + ' có video     ❌ ' + (dem.LOAI || 0) + ' loại     ⚠️ ' + (dem.LOI || 0) +
     ' lỗi          (cập nhật ' + Utilities.formatDate(new Date(), 'GMT+7', 'dd/MM HH:mm') + ' · giao diện v6)';
 
@@ -942,7 +1162,7 @@ function capNhatDocDe_() {
   var dong = hang.map(function (r) {
     var nhan = NHAN_TRANG_THAI[r.trang_thai] || [String(r.trang_thai), '#ffffff', '#202124'];
     var d = Number(r.diem_tu_duy) || 0;
-    return [r.id, nhan[0], r.lop ? 'Lớp ' + r.lop : '', [r.chu_de, nhanNguon_(r.nguon)].filter(Boolean).join('\n'), latexDoc_(r.de_bai), r.dap_an || '',
+    return [r.id, nhan[0], r.lop ? 'Lớp ' + r.lop : '', [(laMonThucTe_(r) ? '🏗 ' : '🎲 ') + (r.chu_de || ''), nhanNguon_(r.nguon)].filter(Boolean).join('\n'), latexDoc_(r.de_bai), r.dap_an_hien || r.dap_an || '',
       d ? '★ ' + d + '/10' : '', latexDoc_(r.yeu_to_tu_duy), latexDoc_(r.bay_thuong_gap),
       '',   // cột Kịch bản: điền liên kết thật (rich text) ở bên dưới, không dùng công thức để tránh #ERROR!
       r.ghi_chu || ''];
@@ -1364,6 +1584,7 @@ function moTaLoiKichBan_(loi) {
   if (s.indexOf('LOI_THOAI_CHUA_LATEX') === 0) return 'lời thoại có ký hiệu \\ hoặc $ (' + s + '). Hãy đọc công thức thành lời, không dùng ký hiệu.';
   if (s.indexOf('THIEU_LOI_THOAI') === 0) return 'có cảnh thiếu lời thoại (' + s + '). Cảnh nào cũng phải có lời thoại.';
   if (s.indexOf('DAP_AN_CUOI') === 0) return 'trường dap_an_cuoi phải đúng bằng đáp án đã kiểm chứng ghi trong đề bài ở trên.';
+  if (s.indexOf('THIEU_CANH_3D') === 0 || s.indexOf('THIEU_MO_HINH') === 0 || s.indexOf('HINH_') === 0) return s;
   return s;
 }
 function datLaiTb() {

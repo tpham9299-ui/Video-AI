@@ -6,6 +6,9 @@ import {Toan} from '../Toan';
 import {bamChuoi, easeInOut, easeOut, kep, lerp, nay, NEN_VAT, NEN_VAT_2, neon, ngauNhien, popOut, tienDo, VONG_MAU} from './donghieu';
 import {Vat} from './dulieu';
 import {TrangThai} from './trangthai';
+import {Goc3D} from './chieu3d';
+import {DoThi, HinhHoc} from './hinhhoc';
+import {Cau, Cay, KhoiHop, Thang, ToaNha, Tru, Xe} from './vat3d';
 
 const phatSang = (c: string, r = 10) => `drop-shadow(0 0 ${r}px ${c}) drop-shadow(0 0 ${Math.max(1, r / 5)}px ${c})`;
 const XAM_MO = 'rgba(160,170,170,0.35)';
@@ -199,9 +202,11 @@ const GOC_MAT: Record<number, [number, number]> = {1: [0, 0], 6: [0, 180], 3: [0
 const MAT_KHOI: [number, string][] = [
   [1, 'rotateY(0deg)'], [6, 'rotateY(180deg)'], [3, 'rotateY(90deg)'], [4, 'rotateY(-90deg)'], [2, 'rotateX(90deg)'], [5, 'rotateX(-90deg)'],
 ];
-export const Xuc3D: React.FC<{co: number; rx: number; ry: number; vien: string}> = ({co, rx, ry, vien}) => (
+export const Xuc3D: React.FC<{co: number; rx: number; ry: number; vien: string}> = ({co, rx, ry, vien}) => {
+  const g = React.useContext(Goc3D); // camera nghiêng -> thấy mặt trên khối; camera xoay -> khối xoay theo
+  return (
   <div style={{width: co, height: co, perspective: co * 5}}>
-    <div style={{position: 'relative', width: co, height: co, transformStyle: 'preserve-3d', transform: `rotateX(${rx}deg) rotateY(${ry}deg)`}}>
+    <div style={{position: 'relative', width: co, height: co, transformStyle: 'preserve-3d', transform: `rotateX(${-g.n * 0.6}deg) rotateY(${g.r}deg) rotateX(${rx}deg) rotateY(${ry}deg)`}}>
       {MAT_KHOI.map(([m, xoay]) => (
         <div key={m} style={{position: 'absolute', inset: 0, transform: `${xoay} translateZ(${co / 2}px)`, backfaceVisibility: 'hidden', borderRadius: co * 0.16, overflow: 'hidden', boxShadow: `inset 0 0 ${co * 0.12}px rgba(0,0,0,0.25), 0 0 ${co * 0.08}px ${vien}`}}>
           <MatXuc mat={m} co={co} vien={vien} />
@@ -209,7 +214,8 @@ export const Xuc3D: React.FC<{co: number; rx: number; ry: number; vien: string}>
       ))}
     </div>
   </div>
-);
+  );
+};
 const XucXac: Ve = (v, st) => {
   const n = v.soLuong;
   const co = 160 * v.co;
@@ -245,6 +251,11 @@ const XucXac: Ve = (v, st) => {
 };
 
 /* ---------------- ĐỒNG XU ---------------- */
+// Khối preserve-3d tự thêm góc camera (đọc từ ngữ cảnh) trước phép xoay riêng của vật.
+export const XoayTheoCam: React.FC<{style?: React.CSSProperties; sau: string; heSo?: number; children: React.ReactNode}> = ({style, sau, heSo = 0.6, children}) => {
+  const g = React.useContext(Goc3D);
+  return <div style={{...style, transform: `rotateX(${-g.n * heSo}deg) rotateY(${g.r}deg) ${sau}`}}>{children}</div>;
+};
 const MatXu: React.FC<{chu: string; co: number; id: string}> = ({chu, co, id}) => (
   <svg width={co} height={co} viewBox="0 0 100 100">
     <defs>
@@ -278,13 +289,13 @@ const DongXu: Ve = (v, st) => {
           return (
             <div key={k} style={{position: 'relative', opacity: kep(a * 2) * s.mo, transform: `translateY(${len}px) scale(${popOut(a) * (1 + 0.1 * s.pc)})`}}>
               <div style={{width: co, height: co, perspective: co * 4}}>
-                <div style={{position: 'relative', width: co, height: co, transformStyle: 'preserve-3d', transform: `rotateY(-26deg) rotateX(${goc + 30}deg)`}}>
+                <XoayTheoCam style={{position: 'relative', width: co, height: co, transformStyle: 'preserve-3d'}} sau={`rotateY(-26deg) rotateX(${goc + 30}deg)`}>
                   {[-6, -4.5, -3, -1.5, 0, 1.5, 3, 4.5, 6].map((z) => (
                     <div key={z} style={{position: 'absolute', inset: 0, borderRadius: '50%', background: '#a86e16', transform: `translateZ(${z * v.co}px)`}} />
                   ))}
                   <div style={{position: 'absolute', inset: 0, transform: `translateZ(${6 * v.co}px)`, backfaceVisibility: 'hidden'}}><MatXu chu="S" co={co} id={`xs${v.id}${k}`} /></div>
                   <div style={{position: 'absolute', inset: 0, transform: `rotateX(180deg) translateZ(${6 * v.co}px)`, backfaceVisibility: 'hidden'}}><MatXu chu="N" co={co} id={`xn${v.id}${k}`} /></div>
-                </div>
+                </XoayTheoCam>
               </div>
               <DauTich p={s.pc} mau={s.mau} style={{right: -10, top: -10}} />
             </div>
@@ -819,6 +830,10 @@ export const VE_VAT: Partial<Record<Vat['loai'], Ve>> = {
   nguoi: Nguoi, the: The, the_bai: LaBai, xuc_xac: XucXac, dong_xu: DongXu, hop_bi: HopBi, tui: HopBi, hop_qua: HopQua,
   dong_ho: DongHo, dien_thoai: DienThoai, bong_bay: BongBay, dong_ho_do: DongHoDo, bieu_do_cot: BieuDoCot, thanh: Thanh,
   vong_quay: VongQuay, cua: Cua, banh: Banh, nhan: NhanVat, chu: Chu, so_dem: SoDem, bieu_tuong: BieuTuong, luoi_o: LuoiO, danh_sach: DanhSach,
+  khoi_hop: (v, st) => <KhoiHop v={v} st={st} />, tru: (v, st) => <Tru v={v} st={st} />, non: (v, st) => <Tru v={v} st={st} />,
+  cau: (v, st) => <Cau v={v} st={st} />, toa_nha: (v, st, f) => <ToaNha v={v} st={st} frame={f} />, xe: (v, st) => <Xe v={v} st={st} />,
+  cay: (v, st, f) => <Cay v={v} st={st} frame={f} />, thang: (v, st) => <Thang v={v} st={st} />,
+  hinh_hoc: (v, st) => <HinhHoc v={v} st={st} />, do_thi: (v, st) => <DoThi v={v} st={st} />,
 };
 
 // mũi tên cong nối hai điểm (pixel trên sân khấu), vẽ dần

@@ -349,6 +349,7 @@ export function nhanLoaiCanh(loai: string): string {
   if (/mo_dau|hook|cau_hoi/.test(l)) return '🔥 Câu hỏi';
   if (/de_bai|de$/.test(l)) return '📝 Đề bài';
   if (/y_do/.test(l)) return '🧭 Ý đồ bài toán';
+  if (/mo_hinh/.test(l)) return '📐 Mô hình hóa';
   if (/thu_nho/.test(l)) return '🔬 Thử nhỏ';
   if (/diem_chot/.test(l)) return '🔑 Điểm mấu chốt';
   if (/bay/.test(l)) return '⚠️ Cái bẫy';
