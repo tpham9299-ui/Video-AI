@@ -259,6 +259,12 @@ function xuLyKetQuaDang_(sh, d) {
 function layLinkDangNhapTikTok() {
   var key = String(cauHinh_('TIKTOK_CLIENT_KEY') || '').trim();
   if (!key) throw new Error('Chưa có dòng TIKTOK_CLIENT_KEY trong sheet CAU_HINH.');
+  // báo rõ đang dùng key nào và có bị trùng dòng không (dòng dưới cùng thắng), để chắc thay key đã có tác dụng
+  var dong = [];
+  SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_CAU_HINH).getDataRange().getValues().forEach(function (v, i) {
+    if (String(v[0]).trim() === 'TIKTOK_CLIENT_KEY') dong.push('dòng ' + (i + 1) + ': ' + String(v[1]).trim());
+  });
+  Logger.log('Client key đang dùng: ' + key + (dong.length > 1 ? '\n⚠️ Sheet CAU_HINH có ' + dong.length + ' dòng TIKTOK_CLIENT_KEY (' + dong.join(' | ') + '), hệ thống lấy dòng DƯỚI CÙNG. Hãy xóa bớt, chỉ giữ một dòng.' : ''));
   var url = layUrlWebApp_();
   var state = Utilities.getUuid().replace(/-/g, '');
   CacheService.getScriptCache().put('TIKTOK_STATE', state, 1800);
