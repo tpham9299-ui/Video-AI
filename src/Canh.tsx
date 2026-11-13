@@ -168,7 +168,7 @@ export const Canh: React.FC<{
       if (sd && tbCanh) {
         const dx = (sd.x / 100) * SK_W - SK_W / 2;
         const dy = (sd.y / 100) * SK_H - SK_H / 2;
-        const p = gm ? chieuNam(dx, dy, SK_W, SK_H, gm.nghieng, gm.xoay) : {x: dx, y: dy};
+        const p = gm ? chieuNam(dx, dy, SK_W, SK_H, gm.nghieng, gm.xoay, gm.lat) : {x: dx, y: dy};
         const x = 540 + p.x * tiLe;
         const y = yNoiDung + caoSan / 2 + p.y * tiLe;
         loe = {f: Math.round((tbCanh(sd.buoc) + 1.25) * fps) + canh.leadFrame, x, y};
@@ -195,13 +195,13 @@ export const Canh: React.FC<{
           <div style={{width: SK_W, height: SK_H, transform: `scale(${tiLe})`, flexShrink: 0}}>
             {sanKhau && gm ? (
               <KhongGian3D.Provider value={{nam: true, doDay: 1, xoay: gm.xoay}}>
-                <BanKinh3D w={SK_W} h={SK_H} mau={mauNhan} nghieng={gm.nghieng} xoay={gm.xoay} nen={<QuyDao cx={SK_W / 2} cy={SK_H / 2} R={Math.min(SK_W, SK_H) * 0.47} mau={mauNhan} mo={giuTruoc ? 1 : kep((frame - 3) / 14)} />}>
+                <BanKinh3D w={SK_W} h={SK_H} mau={mauNhan} nghieng={gm.nghieng} xoay={gm.xoay} lat={gm.lat} nen={<QuyDao cx={SK_W / 2} cy={SK_H / 2} R={Math.min(SK_W, SK_H) * 0.47} mau={mauNhan} mo={giuTruoc ? 1 : kep((frame - 3) / 14)} />}>
                   <SanKhau du={sanKhau} giayAm={giayAm} cau={canh.cau} boVat={vatDung.map((v) => v.id)} />
                 </BanKinh3D>
                 {vatDung.map((v) => {
                   const dx = (v.x / 100) * SK_W - SK_W / 2;
                   const dy = (v.y / 100) * SK_H - SK_H / 2;
-                  const p = chieuNam(dx, dy, SK_W, SK_H, gm.nghieng, gm.xoay);
+                  const p = chieuNam(dx, dy, SK_W, SK_H, gm.nghieng, gm.xoay, gm.lat);
                   return (
                     <div key={v.id} style={{position: 'absolute', inset: 0, transform: `translate(${p.x - dx}px, ${p.y - dy}px)`}}>
                       <SanKhau du={sanKhau} giayAm={giayAm} cau={canh.cau} chiVat={[v.id]} amThanh={false} />

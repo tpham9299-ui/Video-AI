@@ -223,7 +223,7 @@ export const HinhTuDo: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
   const nNet = v.hinh.length;
   const moi = laMoi();
   const kg = React.useContext(KhongGian3D);
-  const KHOI = 7; // số lớp đùn khối (hình tô màu nằm trên bàn 3D -> nổi thành khối có bề dày)
+  const KHOI = 10; // số lớp đùn khối (hình tô màu nằm trên bàn 3D -> nổi thành khối có bề dày)
   // bộ hiệu ứng mới: nhiều chữ rời cùng một bước thì bật LẦN LƯỢT (0,3 giây/chữ) kèm vòng sóng, như các ga tàu hiện dần
   const treChu = new Map<number, number>();
   if (moi) {
@@ -270,13 +270,17 @@ export const HinhTuDo: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
             }
             if (h.kieu === 'chu') return null;
             const moTo = kep((t - bd - 0.6) / 0.6) * (1 - 0.6 * lb);
-            const khoi = kg.nam && toMau && moTo > 0.01 ? nets.flatMap((n, k) => (n.kin && n.mo === undefined ? Array.from({length: KHOI}, (_, j) => {
+            const khoi = kg.nam && (toMau ? moTo > 0.01 : p > 0) ? nets.flatMap((n, k) => (toMau && n.kin && n.mo === undefined ? Array.from({length: KHOI}, (_, j) => {
               const lop = KHOI - j; // vẽ từ lớp đáy lên
               // hướng đùn luôn là "xuống" trên màn hình dù bàn đang xoay (bù góc xoay của bàn)
-              const d = (lop * 2.4) / s;
+              const d = (lop * 3.2) / s;
               const g = (kg.xoay * Math.PI) / 180;
               return <path key={`k${i}_${k}_${j}`} d={n.d} transform={`translate(${d * Math.sin(g)} ${d * Math.cos(g)})`} fill={toiMau(toMau, 0.32 + 0.25 * (j / KHOI))} fillOpacity={Math.min(0.95, 0.55 + (h.doTo || 0.28)) * moTo}
                 stroke={j === 0 ? toiMau(mau, 0.5) : 'none'} strokeWidth={j === 0 ? day * 0.8 : 0} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />;
+            }) : n.mo === undefined && !h.dut ? Array.from({length: 4}, (_, j) => {
+              const d = ((4 - j) * 3.2) / s;
+              const g = (kg.xoay * Math.PI) / 180;
+              return <path key={`kn${i}_${k}_${j}`} d={n.d} transform={`translate(${d * Math.sin(g)} ${d * Math.cos(g)})`} fill="none" stroke={toiMau(mau, 0.3 + 0.08 * j)} strokeWidth={day} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" opacity={kep(p * 3)} />;
             }) : [])) : [];
             return (khoi as React.ReactNode[]).concat(nets.map((n, k) => (
               <path key={`${i}_${k}`} d={n.d} vectorEffect="non-scaling-stroke"
