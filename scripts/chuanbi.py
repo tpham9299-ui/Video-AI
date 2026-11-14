@@ -622,6 +622,15 @@ def main():
     args = ap.parse_args()
 
     kb = json.load(open(args.kich_ban, encoding="utf8"))
+    # cảnh ghi "dung_ban_ve": bung lại vật/điểm/vùng từ bản vẽ chung kb.ban_ve (Apps Script nén để kịch bản nhiều cảnh vừa giới hạn gửi)
+    bv = kb.get("ban_ve") if isinstance(kb.get("ban_ve"), dict) else None
+    for c in kb.get("canh") or []:
+        du = (c.get("minh_hoa") or {}).get("du_lieu") if isinstance(c.get("minh_hoa"), dict) else None
+        for v in (du.get("vat") or []) if isinstance(du, dict) else []:
+            if isinstance(v, dict) and v.get("dung_ban_ve") and bv:
+                for k in ("vat", "diem", "vung", "nhin"):
+                    if k in bv and k not in v:
+                        v[k] = bv[k]
     de_bai_the = the_de_bai(kb)
     canh = kb.get("canh") or []
     if not canh:

@@ -167,6 +167,21 @@ function kichHoatDungVideo_(r) {
   var kdCu = {};
   try { kdCu = JSON.parse(String(r.ai_kiem_tra || '{}')); } catch (e0) {}
   kb._kiem_duyet = (Number(kdCu.kd_lan) || 0) >= 2 ? 'bao' : 'chan';
+  // KỊCH BẢN NHIỀU CẢNH -> NÉN cho vừa giới hạn gửi GitHub (65.535 ký tự):
+  //  (1) cảnh dùng y nguyên bản vẽ cảnh thực tế: chỉ ghi "dung_ban_ve" (máy dựng tự bung lại từ kb.ban_ve)
+  if (kb.ban_ve && Array.isArray(kb.canh)) {
+    var khoaBv = function (v) { return JSON.stringify({ vat: v.vat || [], diem: v.diem || [], vung: v.vung || [], nhin: v.nhin || 'ngang' }); };
+    var mau = khoaBv(kb.ban_ve);
+    kb.canh.forEach(function (c) {
+      var du = c && c.minh_hoa && c.minh_hoa.du_lieu;
+      (du && Array.isArray(du.vat) ? du.vat : []).forEach(function (v) {
+        if (v && v.loai === 'canh_that' && khoaBv(v) === mau) { delete v.vat; delete v.diem; delete v.vung; delete v.nhin; v.dung_ban_ve = true; }
+      });
+    });
+  }
+  //  (2) vẫn dài: bỏ phần không dùng khi dựng, rút gọn mô tả cảnh
+  ['hook_ung_vien', 'hashtag', 'y_tuong_chinh', 'tu_kiem_tra'].forEach(function (k) { if (JSON.stringify(kb).length > 50000) delete kb[k]; });
+  if (JSON.stringify(kb).length > 52000) kb.canh.forEach(function (c) { if (c && c.minh_hoa && c.minh_hoa.mo_ta) c.minh_hoa.mo_ta = String(c.minh_hoa.mo_ta).slice(0, 90); });
   if (JSON.stringify(kb).length > 52000) delete kb.de_bai;
   var chuoi = JSON.stringify(kb);
   if (chuoi.length > 60000) throw new Error('KICH_BAN_QUA_LON_' + chuoi.length);

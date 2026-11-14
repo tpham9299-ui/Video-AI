@@ -26,7 +26,7 @@ export const NhoeHuong: React.FC<{nx: number; ny: number; children: React.ReactN
   );
 };
 
-export const KIEU_CHUYEN = ['mo', 'truot_len', 'phong', 'luot_ngang', 'truot_xuong', 'lat_3d'] as const;
+export const KIEU_CHUYEN = ['mo', 'truot_len', 'phong', 'luot_ngang', 'truot_xuong', 'lat_3d', 'quet_sang', 'tron_mo', 'zoom_xuyen', 'nghieng', 'lat_ngang', 'day_ngang'] as const;
 export type KieuChuyen = (typeof KIEU_CHUYEN)[number];
 
 // Trạng thái chuyển cảnh của một khối nội dung: vào trong `vaoF` khung đầu, ra trong `raF` khung cuối.
@@ -40,7 +40,39 @@ export function trangThaiChuyen(kieu: string, f: number, tong: number, boVao = f
   let nx = 0;
   let ny = 0;
   let ry = 0;
+  let rx = 0;
+  let rz = 0;
+  let clip: string | undefined;
   switch (kieu) {
+    case 'quet_sang': // màn quét: nội dung lộ dần từ trái sang theo một vệt sáng, ra thì trượt nhẹ sang trái
+      clip = conVao > 0.001 ? `inset(0 ${(conVao * 100).toFixed(1)}% 0 0)` : undefined;
+      x = -60 * b;
+      nx = 10 * b;
+      break;
+    case 'tron_mo': // vòng tròn mở rộng từ tâm (như ống kính mở)
+      clip = conVao > 0.001 ? `circle(${(a * 120).toFixed(1)}% at 50% 45%)` : undefined;
+      s = 1 + 0.05 * conVao - 0.06 * b;
+      nx = ny = 6 * b;
+      break;
+    case 'zoom_xuyen': // phóng xuyên qua: cảnh mới lao từ xa tới, cảnh cũ phóng to tan mất
+      s = 1 - 0.35 * conVao + 0.3 * b;
+      nx = ny = 14 * conVao + 12 * b;
+      break;
+    case 'nghieng': // nghiêng nhẹ vào khung + trôi lên (chuyển động có hồn, không giật)
+      rz = -7 * conVao + 5 * b;
+      y = 90 * conVao - 60 * b;
+      s = 1 - 0.06 * conVao;
+      ny = 10 * conVao + 8 * b;
+      break;
+    case 'lat_ngang': // lật quanh trục ngang
+      rx = 70 * conVao - 55 * b;
+      s = 1 - 0.06 * conVao;
+      ny = 8 * conVao + 6 * b;
+      break;
+    case 'day_ngang': // đẩy ngang mạnh: cảnh cũ bị đẩy sang trái, cảnh mới vào từ phải
+      x = 620 * conVao - 620 * b;
+      nx = 30 * conVao + 30 * b;
+      break;
     case 'lat_3d':
       ry = -75 * conVao + 60 * b;
       s = 1 - 0.08 * conVao;
@@ -67,5 +99,5 @@ export function trangThaiChuyen(kieu: string, f: number, tong: number, boVao = f
       y = 160 * conVao - 160 * b;
       ny = 14 * conVao + 14 * b;
   }
-  return {x, y, s, nx, ny, ry, mo: kep(a * 1.6) * (1 - b)};
+  return {x, y, s, nx, ny, ry, rx, rz, clip, mo: kep(a * 1.6) * (1 - b)};
 }

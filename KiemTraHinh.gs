@@ -177,7 +177,7 @@ function tuSuaKichBan_(kb, ctx) {
     if (c.tu_khoa && (!c.tieu_de_canh || String(c.tieu_de_canh).toLowerCase().indexOf(String(c.tu_khoa).toLowerCase()) < 0)) c.tu_khoa = '';
     if (i === 0) c.giu_san_khau = false;
     if (Array.isArray(kb.bai_hoc_rut_ra)) kb.bai_hoc_rut_ra = kb.bai_hoc_rut_ra.slice(0, 3).map(function (x) { return String(x).slice(0, 90); });
-    if (c.chuyen_canh && ['mo', 'truot_len', 'phong', 'luot_ngang', 'truot_xuong', 'lat_3d'].indexOf(c.chuyen_canh) < 0) delete c.chuyen_canh;
+    if (c.chuyen_canh && ['mo', 'truot_len', 'phong', 'luot_ngang', 'truot_xuong', 'lat_3d', 'quet_sang', 'tron_mo', 'zoom_xuyen', 'nghieng', 'lat_ngang', 'day_ngang'].indexOf(c.chuyen_canh) < 0) delete c.chuyen_canh;
     if (c.giong_doc) c.giong_doc = String(c.giong_doc).replace(/\s+/g, ' ').trim().slice(0, 120);
     // bỏ lời mở máy móc "Cảnh 3:", "Bước 2:" ở đầu lời thoại (nhãn bước đã hiện trên màn hình)
     if (i > 0 && c.loi_thoai) {
@@ -468,8 +468,10 @@ function kiemTraCachDay_(kb) {
 function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc) {
   var nang = [], nhe = [];
   var them = function (ds, loi) { if (loi) ds.push(loi); };
-  if (!kb || !Array.isArray(kb.canh) || !kb.canh.length) return { nang: ['KHONG_CO_CANH: kịch bản phải có mảng "canh" gồm 6-12 cảnh.'], nhe: [] };
-  if (kb.canh.length < 6 || kb.canh.length > 12) nang.push('SO_CANH_NGOAI_6_DEN_12: hiện có ' + kb.canh.length + ' cảnh, cần 6-12 cảnh.');
+  if (!kb || !Array.isArray(kb.canh) || !kb.canh.length) return { nang: ['KHONG_CO_CANH: kịch bản phải có mảng "canh" gồm 14-18 cảnh.'], nhe: [] };
+  // VIDEO NHIỀU CẢNH, CHI TIẾT: 14-18 cảnh (dưới 10 hoặc trên 22 phải viết lại; 10-13 vẫn dùng được nhưng nhắc tách thêm)
+  if (kb.canh.length < 10 || kb.canh.length > 22) nang.push('SO_CANH_NGOAI_10_DEN_22: hiện có ' + kb.canh.length + ' cảnh, cần 14-18 cảnh (mỗi cảnh một ý: mỗi bước tính một cảnh, đề bài 1-2 cảnh, mô phỏng 2-3 cảnh...).');
+  else if (kb.canh.length < 13) nhe.push('IT_CANH: ' + kb.canh.length + ' cảnh, nên tách thành 14-18 cảnh cho chi tiết (mỗi bước tính, mỗi ý một cảnh).');
   var thucTe = String(mon || '').toUpperCase() === 'THUC_TE';
   if (!Array.isArray(kb.bai_hoc_rut_ra) || kb.bai_hoc_rut_ra.filter(function (x) { return String(x).trim().length >= 8; }).length < 2) nhe.push('THIEU_BAI_HOC_RUT_RA: cần "bai_hoc_rut_ra" là mảng 3 câu ngắn (mỗi câu ≤ 12 từ).');
   if (!kb.canh.some(function (c) { return /tinh|giai/i.test(String(c.loai || '')); })) nhe.push('THIEU_CANH_TINH_TOAN: cần ít nhất một cảnh "tinh_toan".');
@@ -482,7 +484,7 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc) {
     tong += uocGiayDoc_(c.loi_thoai);
   }
   if (/^\s*(xin\s+)?chào/i.test(kb.canh[0].loi_thoai) && !(typeof cauHinh_ === 'function' && cauHinh_('KIEU_MO_DAU') === 'chao_hook')) nhe.push('MO_DAU_BANG_LOI_CHAO');
-  var gioiHan = Number(cauHinh_('GIAY_TOI_DA')) || 130;
+  var gioiHan = Math.max(Number(cauHinh_('GIAY_TOI_DA')) || 190, 180);   // video nhiều cảnh: tối thiểu 180 giây dù CAU_HINH còn giá trị cũ
   if (tong > gioiHan * 1.15) nang.push('QUA_DAI_' + tong + '_GIAY');
   else if (tong > gioiHan) nhe.push('QUA_DAI_' + tong + '_GIAY');
   if (String(kb.dap_an_cuoi).replace(/\s/g, '') !== dapAn) nang.push('DAP_AN_CUOI_SAI');

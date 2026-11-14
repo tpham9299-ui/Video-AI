@@ -174,7 +174,7 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
             position: 'absolute',
             left: tamVat.sx,
             top: tamVat.sy,
-            transform: `translate(-50%, -50%) translate(${ox + st.rung}px, ${oy + loLung}px)${bienVat} scale(${sc * sangNhip * (1 - 0.3 * st.an) * tiLeSau})`,
+            transform: `translate(-50%, -50%) translate(${ox + st.rung}px, ${oy + loLung}px)${bienVat}${st.nghiengDi ? ` rotate(${st.nghiengDi.toFixed(2)}deg)` : ''} scale(${sc * sangNhip * (1 - 0.3 * st.an) * tiLeSau})`,
             opacity: mo,
             filter: !v.tuHuong && nhoe > 0.3 ? `blur(${nhoe}px)` : undefined,
           }}

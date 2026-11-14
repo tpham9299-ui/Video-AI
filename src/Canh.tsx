@@ -151,7 +151,11 @@ export const Canh: React.FC<{
   const doiPha = laMoDau || phaCua(canh.loai) !== phaTruoc;
   const moi = laMoi();
   const mauNhan = GIAO_DIEN.nhan;
-  const kieuTuDong = /bay|dap_an|ket_qua/i.test(canh.loai) ? 'phong' : doiPha ? 'truot_len' : 'mo';
+  // CHUYỂN CẢNH ĐA DẠNG, có chủ đích: sang PHẦN mới (đề bài -> mô phỏng -> lỗi sai...) dùng chuyển cảnh mạnh, xoay vòng nhiều kiểu;
+  // các cảnh trong cùng một phần dùng chuyển cảnh nhẹ (cũng xoay vòng, không lặp một kiểu); cái bẫy / đáp án thì phóng xuyên kịch tính
+  const KIEU_DOI_PHAN = ['quet_sang', 'tron_mo', 'day_ngang', 'lat_3d', 'zoom_xuyen', 'lat_ngang'];
+  const KIEU_CUNG_PHAN = ['mo', 'nghieng', 'truot_len', 'luot_ngang', 'mo', 'truot_xuong'];
+  const kieuTuDong = /bay/i.test(canh.loai) ? 'zoom_xuyen' : /dap_an|ket_qua/i.test(canh.loai) ? 'phong' : doiPha ? KIEU_DOI_PHAN[canh.so % KIEU_DOI_PHAN.length] : KIEU_CUNG_PHAN[canh.so % KIEU_CUNG_PHAN.length];
   const coCuaTron = moi && /diem_chot|y_tuong/i.test(canh.loai) && !giuTruoc;
   const kieuCC = coCuaTron ? 'mo' : canh.chuyenCanh && (KIEU_CHUYEN as readonly string[]).includes(canh.chuyenCanh) ? canh.chuyenCanh : kieuTuDong;
   const ccSan = trangThaiChuyen(kieuCC, frame, ketThuc, giuTruoc, giuSau);
@@ -234,10 +238,15 @@ export const Canh: React.FC<{
   return (
     <>
     {coCuaTron ? <DiaCuaTron f={frame} /> : null}
+    {/* chuyển cảnh "quét sáng": một vệt sáng màu nhấn chạy ngang khung đúng lúc nội dung lộ ra */}
+    {kieuCC === 'quet_sang' && !giuTruoc && frame < 14 ? (
+      <div style={{position: 'absolute', top: 0, bottom: 0, left: `${-15 + (frame / 12) * 120}%`, width: 90, transform: 'skewX(-14deg)', pointerEvents: 'none', zIndex: 5,
+        background: `linear-gradient(90deg, transparent, ${mauNhan}55, #ffffffaa, ${mauNhan}55, transparent)`, opacity: Math.min(1, (14 - frame) / 5), filter: 'blur(2px)'}} />
+    ) : null}
     <div style={{position: 'absolute', inset: 0, fontFamily: FONT, transformOrigin: `540px ${goc_y}px`, transform: moi ? `translate(${may.x}px, ${may.y}px) scale(${may.s})` : undefined}}>
       {/* Sân khấu */}
       {coHinh ? (
-        <NhoeHuong nx={ccSan.nx} ny={ccSan.ny} style={{position: 'absolute', left: 0, right: 0, top: yNoiDung, height: caoSan, display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: ccSan.mo, transform: `perspective(1600px) translate(${ccSan.x}px, ${ccSan.y}px) rotateY(${ccSan.ry}deg) scale(${ccSan.s})`}}>
+        <NhoeHuong nx={ccSan.nx} ny={ccSan.ny} style={{position: 'absolute', left: 0, right: 0, top: yNoiDung, height: caoSan, display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: ccSan.mo, transform: `perspective(1600px) translate(${ccSan.x}px, ${ccSan.y}px) rotateX(${ccSan.rx}deg) rotateY(${ccSan.ry}deg) rotateZ(${ccSan.rz}deg) scale(${ccSan.s})`, clipPath: ccSan.clip}}>
           {moi && kieu3D !== 'nam' ? <QuyDao cx={540} cy={caoSan / 2} R={Math.min(caoSan, 1000) * 0.47} mau={mauNhan} mo={(giuTruoc ? 1 : kep((frame - 3) / 14)) * (1 - kep(sinN3d * 1.8))} /> : null}
           {!moi && pc.khungSanKhau !== false ? <KhungSan w={Math.min(1040, SK_W * tiLe + 40)} h={Math.min(caoSan - 6, SK_H * tiLe + 24)} p={(giuTruoc ? 1 : kep((frame - 3) / 14)) * (1 - kep(sinN3d * 1.8))} /> : null}
           <CoChuSan.Provider value={Math.max(1.05, Math.min(1.6, 1.05 / tiLe))}>
@@ -277,7 +286,7 @@ export const Canh: React.FC<{
       ) : null}
 
       {/* Chú thích + công thức */}
-      <NhoeHuong nx={ccCT.nx} ny={ccCT.ny} style={{position: 'absolute', left: 50, right: 50, top: coHinh ? yNoiDung + caoSan + 16 : Y_SAN, bottom: 1920 - dayVung, display: 'flex', flexDirection: 'column', justifyContent: coHinh ? 'flex-start' : 'center', alignItems: 'center', gap: 16, opacity: frame < 4 ? 0 : ccCT.mo, transform: `perspective(1600px) translate(${ccCT.x}px, ${ccCT.y}px) rotateY(${ccCT.ry}deg) scale(${ccCT.s})`}}>
+      <NhoeHuong nx={ccCT.nx} ny={ccCT.ny} style={{position: 'absolute', left: 50, right: 50, top: coHinh ? yNoiDung + caoSan + 16 : Y_SAN, bottom: 1920 - dayVung, display: 'flex', flexDirection: 'column', justifyContent: coHinh ? 'flex-start' : 'center', alignItems: 'center', gap: 16, opacity: frame < 4 ? 0 : ccCT.mo, transform: `perspective(1600px) translate(${ccCT.x}px, ${ccCT.y}px) rotateX(${ccCT.rx}deg) rotateY(${ccCT.ry}deg) rotateZ(${ccCT.rz}deg) scale(${ccCT.s})`, clipPath: ccCT.clip}}>
         <VuaKhung maxW={980} maxH={dayVung - (coHinh ? yNoiDung + caoSan + 16 : Y_SAN)} goc="center top">
         {theDe ? (
           <TheDeBai de={theDe} giuNguyen={theDeGiu} caoToiDa={caoTheMax} moc={(() => {

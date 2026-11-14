@@ -16,6 +16,7 @@ export type TrangThai = {
   loaiCa: number;
   sang: number; // nhịp sáng 0..1
   rung: number; // độ lệch rung (px)
+  nghiengDi: number; // vật đang di chuyển: nghiêng người theo hướng đi (độ), như có quán tính
   quay: number; // tiến độ lần quay/mở gần nhất (0..1), -1 nếu chưa quay
   coQuay: boolean; // có hành động quay/mở trong cảnh không
   mo: Map<number, number>; // cửa thứ i mở bao nhiêu
@@ -41,7 +42,7 @@ export function tinhTrangThai(v: Vat, ds: HanhDong[], t: number, tb: (b: number)
   const ta = tb(v.buoc);
   const st: TrangThai = {
     t, ta, vao: v.buoc <= 0 ? 1 : tienDo(t, ta, 0.5),
-    chon: new Map(), chonCa: 0, mauChon: '', coChon: 0, loai: new Map(), loaiCa: 0, sang: 0, rung: 0,
+    chon: new Map(), chonCa: 0, mauChon: '', coChon: 0, loai: new Map(), loaiCa: 0, sang: 0, rung: 0, nghiengDi: 0,
     quay: -1, coQuay: false, mo: new Map(), layRa: [], bung: 0,
     giaTri: isFinite(v.giaTri) ? v.giaTri : v.loai === 'do_thi' ? NaN : 0.5, giaTriChu: v.giaTriChu, noiDung: v.noiDung, dx: 0, dy: 0, an: 0, tb,
     bienNet: new Map(), tach: 0, demTang: -1,
@@ -107,11 +108,21 @@ export function tinhTrangThai(v: Vat, ds: HanhDong[], t: number, tb: (b: number)
         st.bung = easeOut(h.buoc <= 0 ? 1 : tienDo(t, bd, 0.8));
         break;
       case 'di_chuyen': {
-        const q = easeInOut(p);
+        // ĐI THEO ĐƯỜNG CONG có quán tính: thời gian theo quãng đường, vồng lên một cung mềm, về đích hơi vượt rồi nảy lại,
+        // thân vật nghiêng theo hướng đi rồi đứng thẳng khi dừng (không còn trượt thẳng đều như máy)
         const nx = (h.x / 100) * W;
         const ny = (h.y / 100) * H;
-        x = lerp(x, nx, q);
-        y = lerp(y, ny, q);
+        const L = Math.hypot(nx - x, ny - y);
+        const dur = Math.max(0.7, Math.min(1.4, 0.6 + L / 900));
+        const pr = h.buoc <= 0 ? 1 : tienDo(t, bd, dur);
+        const c1 = 1.25, c3 = c1 + 1;
+        const q = pr < 1 ? 1 + c3 * Math.pow(pr - 1, 3) + c1 * Math.pow(pr - 1, 2) : 1;   // easeOutBack
+        const vong = Math.min(140, L * 0.28) * Math.sin(Math.PI * Math.min(1, pr));
+        const ux = L ? (nx - x) / L : 0, uy = L ? (ny - y) / L : 0;
+        const x0 = x, y0 = y;
+        x = lerp(x0, nx, q) + uy * vong * (ux >= 0 ? -1 : 1) * 0.2;
+        y = lerp(y0, ny, q) - Math.abs(ux) * vong;
+        st.nghiengDi = pr < 1 ? Math.sin(Math.PI * pr) * ux * 12 : 0;
         break;
       }
       case 'an':

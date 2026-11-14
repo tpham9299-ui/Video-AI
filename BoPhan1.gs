@@ -64,8 +64,8 @@ var MAC_DINH = {
   TOI_DA_CHO_DUNG_VIDEO: '10', // số kịch bản chờ dựng video tối đa; đạt mức này thì tạm dừng sinh đề (0 = không giới hạn)
   NGAY_GIU_LOAI: '7',          // đề bị LOAI quá số ngày này sẽ được dọn (0 = không dọn)
   CACH_XU_LY_FILE: 'CHUYEN',    // CHUYEN: đưa file kịch bản vào thư mục da_xong | XOA: bỏ vào thùng rác | GIU: để nguyên
-  GIAY_MUC_TIEU: '60-100',     // thời lượng video mong muốn (giây), đưa vào lời nhắc cho AI (bài giảng kỹ: 60-100 giây)
-  GIAY_TOI_DA: '130',          // kịch bản dài hơn mức này sẽ bị từ chối và viết lại
+  GIAY_MUC_TIEU: '100-160',    // thời lượng video mong muốn (giây): 14-18 cảnh chi tiết
+  GIAY_TOI_DA: '190',          // kịch bản dài hơn mức này sẽ bị từ chối và viết lại
   CHU_KY_CHAY_PHUT: '15',      // trigger chayBoPhan1 chạy mỗi bao nhiêu phút. Khi giải trên GitHub mỗi lần chạy chỉ vài giây nên 10-15 phút là an toàn. Chạy caiDatTrigger() lại sau khi đổi
   ZALO_THONG_BAO: 'IT',        // IT = chỉ báo việc quan trọng (video đạt kiểm duyệt, báo cáo ngày, lỗi cần bạn ra tay) | VUA = thêm đăng video, hết hạn mức | DAY_DU = báo mọi tiến độ
   GIAI_TREN_GITHUB: 'BAT',     // BAT = giải + viết kịch bản trên GitHub (nhanh, không giới hạn 6 phút) | TAT = làm tại Apps Script như cũ
@@ -1910,7 +1910,7 @@ function moTaLoiKichBan_(loi) {
   if (s.indexOf('QUA_DAI') === 0) return 'tổng thời lượng lời thoại ước tính ' + s.replace(/\D/g, '') + ' giây, vượt giới hạn ' + cauHinh_('GIAY_TOI_DA') +
     ' giây. Hãy rút gọn: cắt câu thừa, mỗi cảnh lời thoại tối đa 40 từ, nhưng vẫn giữ đủ các bước giảng.';
   if (s.indexOf('MO_DAU') === 0) return 'cảnh 1 mở đầu bằng lời chào. Hãy mở bằng một câu hỏi gây tò mò hoặc cảnh báo cái bẫy.';
-  if (s.indexOf('SO_CANH') === 0) return 'số cảnh phải từ 6 đến 12 (bài giảng kỹ: đề bài, nhắc lại kiến thức, ý đồ, bẫy, mấu chốt, tính từng bước, kiểm tra, đáp án, bài học).';
+  if (s.indexOf('SO_CANH') === 0) return 'số cảnh phải từ 14 đến 18 (mỗi ý một cảnh: đề bài 1-2, mô phỏng 2-3, lỗi sai 1-2, giải 5-7 với mỗi bước tính một cảnh, thử lại 1-2, chốt 1-2)';
   if (s.indexOf('LOI_THOAI_CHUA_LATEX') === 0) return 'lời thoại có ký hiệu \\ hoặc $ (' + s + '). Hãy đọc công thức thành lời, không dùng ký hiệu.';
   if (s.indexOf('THIEU_LOI_THOAI') === 0) return 'có cảnh thiếu lời thoại (' + s + '). Cảnh nào cũng phải có lời thoại.';
   if (s.indexOf('DAP_AN_CUOI') === 0) return 'trường dap_an_cuoi phải đúng bằng đáp án đã kiểm chứng ghi trong đề bài ở trên.';

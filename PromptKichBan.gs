@@ -195,7 +195,7 @@ function taoPromptKichBan_(r, c1, c2) {
     noiCanh,
     ['4) MỖI CẢNH CÓ: "loai"; "tieu_de_canh" (BẮT BUỘC từ cảnh 2: câu tiêu đề in chữ trắng thật lớn ở đầu cảnh, 3-8 từ, nói đúng ý chính của cảnh, ví dụ "Cùng giới nghĩa là gì?", "Bẫy: quên hai bạn nữ"); ',
     '"tu_khoa" (1-3 từ nằm NGUYÊN VĂN trong tieu_de_canh, được tô cam); "nhan" (tùy chọn, nhãn cam ngắn tối đa 2 từ, ví dụ "BƯỚC 1"; để trống thì máy tự đặt theo loại cảnh); ',
-    '"loi_thoai"; "noi_dung_man_hinh"; "trinh_bay"; "chu_thich" (tùy chọn); "chuyen_canh" (tùy chọn: truot_len | phong | luot_ngang | truot_xuong | lat_3d (xoay 3D như lật trang); để trống thì máy tự xoay vòng, dùng "phong" cho cảnh bẫy/đáp án để tạo kịch tính); "giu_san_khau" (true nếu cảnh này DIỄN TIẾP trên sân khấu của cảnh trước: vật cũ còn nguyên, chỉ thêm vật hoặc hành động mới, giống video mẫu giữ nguyên hàng thẻ suốt nhiều cảnh. Nên dùng cho 2-3 cảnh liên tiếp cùng tình huống); "minh_hoa".\n',
+    '"loi_thoai"; "noi_dung_man_hinh"; "trinh_bay"; "chu_thich" (tùy chọn); "chuyen_canh" (tùy chọn: mo | truot_len | nghieng | luot_ngang | truot_xuong | day_ngang | quet_sang | tron_mo | zoom_xuyen | lat_3d | lat_ngang | phong; để trống thì máy tự chọn đa dạng theo mạch bài); "giu_san_khau" (true nếu cảnh này DIỄN TIẾP trên sân khấu của cảnh trước: vật cũ còn nguyên, chỉ thêm vật hoặc hành động mới, giống video mẫu giữ nguyên hàng thẻ suốt nhiều cảnh. Nên dùng cho 2-3 cảnh liên tiếp cùng tình huống); "minh_hoa".\n',
     'LỜI THOẠI: câu ngắn (≤ 16 từ mỗi câu), mỗi cảnh ≤ 45 từ, giọng tự nhiên như đang nói chuyện ("để ý nhé", "thử nghĩ xem", "vì sao?"). Số và công thức viết thành LỜI ("ba phần năm", "C tám hai"), KHÔNG có ký hiệu LaTeX, dấu / hay %. Đừng đọc lại thứ đã hiện trên màn hình từng chữ một.\n',
     'CÔNG THỨC "noi_dung_man_hinh": mảng LaTeX (không kèm $), chỉ ở cảnh cần (tinh_toan, dap_an, có thể diem_chot); các cảnh khác để [] vì hình đã nói thay chữ. Tối đa 3 dòng (cong_don tối đa 4), mỗi dòng ngắn; chữ tiếng Việt đặt trong \\text{}; chỉ dùng \\frac, \\times, \\cdot, \\binom, \\text, ^, _, \\cup, \\cap, \\Rightarrow, \\overline. ',
     'Dòng công thức ngắn ở cảnh thu_nho/diem_chot nên dùng "xep": máy hiện từng dòng như đang VIẾT TAY bằng bút chì. Tô màu biến theo vật trên sân khấu (ví dụ x cam, y xanh) bằng \\\\textcolor để người xem nối hình với công thức. ',
@@ -245,17 +245,31 @@ function vanDeDe_(r) {
 
 
 // QUY TRÌNH CỐ ĐỊNH 6 PHẦN cho MỌI video (toán thực tế và xác suất như nhau). Máy kiểm tra thứ tự và nội dung từng phần.
+function giayMucTieu_() {
+  // video nhiều cảnh hơn: mục tiêu cũ (60-100 giây) không đủ cho 14-18 cảnh -> tự nâng nếu CAU_HINH còn giá trị cũ
+  var g = String(cauHinh_('GIAY_MUC_TIEU') || '');
+  var tren = Number((g.match(/(\d+)\s*$/) || [])[1]) || 0;
+  return tren >= 130 ? g : '100-160';
+}
 function quyTrinh6Phan_(tt) {
-  return 'QUY TRÌNH CỐ ĐỊNH 6 PHẦN (BẮT BUỘC cho mọi video, đúng thứ tự, không được bỏ phần nào; 9-12 cảnh, tổng ' + cauHinh_('GIAY_MUC_TIEU') + ' giây):\n' +
-    'PHẦN 1 - ĐỀ BÀI (luôn đi đầu, KHÔNG được nhảy thẳng vào mô phỏng):\n' +
-    '  (1) mo_dau: câu móc ≤ 5 giây, chính là CÂU HỎI của đề nói cho hấp dẫn (không nói chuyện khác).\n' +
-    '  (2) de_bai: ĐỌC RÕ TOÀN BỘ ĐỀ: lời thoại nêu ĐỦ mọi dữ kiện và mọi con số của đề (không bỏ số nào) rồi nói rõ đề hỏi gì. ' +
-    'Hình: ' + (tt ? 'cảnh thật 3D của đề với số liệu gắn lên vật' : 'tình huống đời thực bằng vật thật') + '. Máy tự hiện THẺ ĐỀ BÀI (ĐỀ CHO / CẦN TÌM) từ "de_cho" và "can_tim" nên KHÔNG làm danh_sach "Đề cho / Cần tìm" trên sân khấu. Đề dài có thể dùng 2 cảnh de_bai liên tiếp.\n' +
-    'PHẦN 2 - MÔ PHỎNG: (3) ' + (tt ? 'mo_hinh_hoa: dựng hình minh họa, đặt ẩn ngay trên vật, chuyển sang hình học/biểu thức, nêu điều kiện của ẩn' : 'y_do hoặc thu_nho: dựng lại tình huống bằng vật thật chuyển động (bốc, tung, chia, xếp...), cho thấy không gian mẫu hoặc trường hợp nhỏ') + '. Hình phải chuyển động theo lời (ít nhất 2 hành động).\n' +
-    'PHẦN 3 - LỖI SAI THƯỜNG GẶP: (4) bay: cách làm sai mà học sinh hay mắc, cho thấy nó sai ở đâu (rung + loai_bo) và VÌ SAO sai.\n' +
-    'PHẦN 4 - GIẢI: (5) nhac_lai (nếu cần): kiến thức/công thức sẽ dùng, ý nghĩa bằng lời thường; (6) diem_chot: ý then chốt và vì sao đúng; (7)-(8) tinh_toan: TỪNG BƯỚC, mỗi cảnh 1-2 bước, mọi con số hiện trên màn hình; (9) dap_an: ' + (tt ? 'quay lại cảnh thật 3D với kích thước đúng đáp số + so_dem kieu "vien"' : 'đáp án lớn, rõ (dong_ho_do hoặc so_dem)') + '.\n' +
-    'PHẦN 5 - THỬ LẠI: (10) kiem_tra: THẾ NGƯỢC đáp án vào đề (hoặc cách thứ hai / mô phỏng / trường hợp đặc biệt) để chứng minh đáp án đúng, nói rõ "thử lại".\n' +
-    'PHẦN 6 - CHỐT KIẾN THỨC: (11) bai_hoc: 2-3 điều rút ra (danh_sach), dấu hiệu nhận ra dạng bài, một chỗ dùng ngoài đời, một câu hỏi biến thể cho người xem tự luyện.\n' +
+  return 'QUY TRÌNH CỐ ĐỊNH 6 PHẦN (BẮT BUỘC cho mọi video, đúng thứ tự, không được bỏ phần nào). VIDEO NHIỀU CẢNH, CHI TIẾT: 14-18 cảnh, mỗi cảnh 5-10 giây (lời thoại 12-30 từ, MỘT ý), tổng ' + giayMucTieu_() + ' giây. ' +
+    'Nhiều cảnh nghĩa là chia nhỏ từng ý cho người học dễ theo, KHÔNG phải nói dài dòng hay lặp lại.\n' +
+    'PHẦN 1 - ĐỀ BÀI (2-3 cảnh, luôn đi đầu, KHÔNG nhảy thẳng vào mô phỏng):\n' +
+    '  mo_dau: câu móc ≤ 5 giây, chính là CÂU HỎI của đề nói cho hấp dẫn.\n' +
+    '  de_bai (1-2 cảnh): ĐỌC RÕ TOÀN BỘ ĐỀ, nêu ĐỦ mọi dữ kiện và con số rồi nói rõ đề hỏi gì. Hình: ' + (tt ? 'cảnh thật của đề (canh_that) với số liệu gắn lên vật, mỗi dữ kiện hiện ra đúng lúc được đọc (buoc)' : 'tình huống đời thực bằng vật thật') +
+    '. Máy tự hiện THẺ ĐỀ BÀI (ĐỀ CHO / CẦN TÌM) từ "de_cho" và "can_tim" nên KHÔNG làm danh_sach "Đề cho / Cần tìm" trên sân khấu.\n' +
+    'PHẦN 2 - MÔ PHỎNG (2-3 cảnh): ' + (tt ? 'mo_hinh_hoa: dựng hình minh họa từng lớp (vật thật -> đường đo -> hình học), đặt ẩn ngay trên vật, nêu điều kiện của ẩn; có thể thêm y_do: đề thật sự hỏi đại lượng nào, cái gì cố định, cái gì thay đổi'
+      : 'y_do / thu_nho: dựng lại tình huống bằng vật thật chuyển động (bốc, tung, chia, xếp...), cho thấy không gian mẫu, thử trường hợp nhỏ để thấy quy luật') + '.\n' +
+    'PHẦN 3 - LỖI SAI THƯỜNG GẶP (1-2 cảnh): bay: diễn lại cách làm sai mà học sinh hay mắc (rung + loai_bo), chỉ ra sai ở đâu và VÌ SAO sai; cảnh sau có thể nói cách tránh.\n' +
+    'PHẦN 4 - GIẢI (5-7 cảnh): nhac_lai: kiến thức/công thức sẽ dùng, ý nghĩa bằng lời thường kèm ví dụ nhỏ; diem_chot: ý then chốt và vì sao đúng; tinh_toan: MỖI BƯỚC TÍNH MỘT CẢNH (nói đang tính gì, vì sao, mọi con số hiện trên màn hình, hình minh họa phần đang tính sáng lên); ' +
+    'dap_an: ' + (tt ? 'quay lại cảnh thật với đáp số gắn đúng chỗ + so_dem kieu "vien"' : 'đáp án lớn, rõ (dong_ho_do hoặc so_dem)') + '.\n' +
+    'PHẦN 5 - THỬ LẠI (1-2 cảnh): kiem_tra: THẾ NGƯỢC đáp án vào đề (hoặc cách thứ hai / mô phỏng nhiều lần / trường hợp đặc biệt) để chứng minh đáp án đúng, nói rõ "thử lại".\n' +
+    'PHẦN 6 - CHỐT KIẾN THỨC (1-2 cảnh): bai_hoc: 2-3 điều rút ra (danh_sach), dấu hiệu nhận ra dạng bài, một chỗ dùng ngoài đời, một câu hỏi biến thể cho người xem tự luyện.\n' +
+    'CHẤT LƯỢNG TỪNG CẢNH (vì nhiều cảnh nên mỗi cảnh phải chăm chút): ' +
+    '(a) "mo_ta" viết 2-4 câu theo khung "Bố cục: vật gì ở đâu. Bước 1 (khi nói ...): vật nào làm gì. Bước 2 (khi nói ...): ...", tả rõ HƯỚNG và CÁCH vật di chuyển (bay vào từ trái, trượt theo đường cong tới..., tách ra, ghép lại, nảy nhẹ khi dừng); ' +
+    '(b) mỗi cảnh có hình phải có 2-4 hành động ở các bước khác nhau, mỗi bước khớp đúng một cụm lời thoại; vật vào cảnh bằng "tu_huong" (trai | phai | tren | duoi) khác nhau cho sinh động; di_chuyen để vật đi tới chỗ mới (máy tự cho đi theo đường cong có quán tính); ' +
+    '(c) cảnh liền nhau nối mạch: dùng "giu_san_khau": true để diễn tiếp trên hình cũ (vật cũ giữ nguyên, chỉ thêm vật/hành động mới) cho 2-3 cảnh cùng tình huống, tránh hình nhảy lung tung; ' +
+    '(d) "chuyen_canh" (tùy chọn): mo | truot_len | nghieng | luot_ngang | truot_xuong | day_ngang | quet_sang | tron_mo | zoom_xuyen | lat_3d | lat_ngang | phong - sang phần mới dùng kiểu mạnh (quet_sang, tron_mo, day_ngang, lat_3d), trong cùng phần dùng kiểu nhẹ (mo, nghieng, truot_len); để trống thì máy tự xoay vòng đa dạng.\n' +
     'Trả thêm "de_cho": mảng 2-5 dữ kiện của đề, mỗi cái ≤ 60 ký tự, đủ MỌI con số của đề (ví dụ "Tầng trên cùng: 3 ống", "Mỗi tầng dưới hơn 1 ống", "Tổng 260 ống"); ' +
     '"can_tim": điều đề hỏi, ≤ 80 ký tự (ví dụ "Xếp được bao nhiêu tầng? Dư bao nhiêu ống?"). Viết chữ thường, công thức ngắn thì dùng LaTeX.\n';
 }
