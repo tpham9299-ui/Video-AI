@@ -10,8 +10,8 @@ import {ThuongHieuProps} from './types';
 
 // MÀN KẾT THÚC (tự tạo, ~6 giây), bố cục 2 tầng trên nền tối:
 //  Tầng 1 - TÓM TẮT: chip "ĐÁP ÁN", tiêu đề "BÀI HỌC RÚT RA", thẻ có 2-3 ý đánh số hiện lần lượt kèm dấu tích.
-//  Tầng 2 - KÊNH: logo trong vòng sáng, tên kênh + khẩu hiệu, hàng nút Theo dõi / Lưu lại / Chia sẻ (ngón tay bấm "Theo dõi"
-//  thành "Đã theo dõi"), dòng hẹn "Video sau". Mọi thứ vào bằng chuyển động mượt (lướt + nhòe nhẹ), không chói mắt.
+//  Tầng 2 - KÊNH: logo trong vòng sáng, tên kênh + khẩu hiệu, hàng nút Thích / Lưu lại / Chia sẻ (ngón tay bấm "Thích";
+//  chữ "Đăng ký kênh" (YouTube) / "Theo dõi" (TikTok, Facebook) in riêng lúc đăng), dòng hẹn "Video sau". Mọi thứ vào bằng chuyển động mượt (lướt + nhòe nhẹ), không chói mắt.
 const XANH = '#3BF29A';
 const CAM = '#FF8A3D';
 
@@ -32,13 +32,14 @@ const NutCTA: React.FC<{icon: React.ReactNode; chu: string; tu: number; chinh?: 
         boxShadow: chinh ? `0 6px 0 ${da ? '#0f7a52' : '#9a3a0c'}, 0 0 30px ${da ? XANH : CAM}88` : 'none'}}>
         {da ? <span style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: 64, color: '#062019'}}>✓</span> : icon}
       </div>
-      <div style={{fontFamily: FONT_DAM, fontWeight: 800, fontSize: chinh ? 30 : 26, color: chinh ? '#fff' : 'rgba(255,255,255,0.8)'}}>{da ? 'Đã theo dõi' : chu}</div>
+      <div style={{fontFamily: FONT_DAM, fontWeight: 800, fontSize: chinh ? 30 : 26, color: chinh ? '#fff' : 'rgba(255,255,255,0.8)'}}>{da ? 'Đã thích' : chu}</div>
     </div>
   );
 };
 
 const IconCong = () => (
-  <svg width={60} height={60} viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="#fff" strokeWidth={3.2} strokeLinecap="round" /></svg>
+  // trái tim "Thích" (trung tính cho mọi nền tảng: chữ "Đăng ký kênh" / "Theo dõi" riêng từng nền tảng được in lúc đăng)
+  <svg width={60} height={60} viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-7.5-10.1A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.8c0 5.5-7.5 10.1-7.5 10.1z" fill="#fff" /></svg>
 );
 const IconLuu = () => (
   <svg width={48} height={48} viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinejoin="round" /></svg>
@@ -103,7 +104,7 @@ export const ManKetChuyenNghiep: React.FC<{th: ThuongHieuProps; baiHoc: string[]
       <div style={{position: 'absolute', left: 0, right: 0, top: coBaiHoc ? 1135 : 620, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18}}>
         {!ten && !th.logo ? (
           <Vao tu={tuKenh} style={{textAlign: 'center', fontFamily: FONT_DAM, fontWeight: 900, fontSize: 54, lineHeight: 1.15, color: '#fff', WebkitTextStroke: vienChu(54), paintOrder: 'stroke fill', textShadow: BONG_CHU}}>
-            THEO DÕI ĐỂ HỌC<br /><span style={{color: XANH}}>MẸO XÁC SUẤT MỖI NGÀY</span>
+            HỌC MẸO TOÁN<br /><span style={{color: XANH}}>MỖI NGÀY CÙNG KÊNH</span>
           </Vao>
         ) : null}
         <Vao tu={tuKenh} style={{display: 'flex', alignItems: 'center', gap: 22}}>
@@ -117,7 +118,7 @@ export const ManKetChuyenNghiep: React.FC<{th: ThuongHieuProps; baiHoc: string[]
         </Vao>
         <div style={{position: 'relative', display: 'flex', gap: 54, marginTop: 18, alignItems: 'flex-end'}}>
           <div style={{position: 'relative'}}>
-            <NutCTA icon={<IconCong />} chu="Theo dõi" tu={tuNut} chinh bam={bam} />
+            <NutCTA icon={<IconCong />} chu="Thích" tu={tuNut} chinh bam={bam} />
             <NgonTay p={(f - tuBam) / 18} />
           </div>
           <NutCTA icon={<IconLuu />} chu="Lưu lại" tu={tuNut + 4} />

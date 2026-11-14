@@ -975,6 +975,19 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
   }
 }
 
+// Câu kêu gọi cuối video, xoay vòng cho đỡ nhàm (một câu dùng được cho cả YouTube lẫn TikTok/Facebook).
+var CAU_KEU_GOI_ = [
+  'Thấy hay thì đăng ký kênh hoặc bấm theo dõi để không bỏ lỡ tập sau nhé!',
+  'Bấm theo dõi hoặc đăng ký kênh ngay, tập sau còn một bài hay hơn nữa đó!',
+  'Muốn giải toán nhanh như vậy mỗi ngày, nhớ đăng ký kênh hoặc theo dõi mình nhé!',
+  'Đừng quên đăng ký kênh hoặc theo dõi để học thêm mẹo toán ở tập sau!'
+];
+function chonCauKeuGoi_(r) {
+  var h = 0, id = String((r && r.id) || '');
+  for (var i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 1000;
+  return CAU_KEU_GOI_[h % CAU_KEU_GOI_.length];
+}
+
 // Chuẩn bị kịch bản trước khi đánh giá: bỏ lời chào, khóa đáp án đúng, máy tự sửa lỗi vặt.
 function chuanBiKichBan_(kb, r, ctxSua) {
   if (!kb || !Array.isArray(kb.canh)) return;
@@ -982,6 +995,12 @@ function chuanBiKichBan_(kb, r, ctxSua) {
   if (r.dap_an_hien && !kb.dap_an_hien) kb.dap_an_hien = String(r.dap_an_hien);
   var sua = typeof tuSuaKichBan_ === 'function' ? tuSuaKichBan_(kb, ctxSua) || [] : [];
   if (typeof tuSuaQuyTrinh_ === 'function') sua = sua.concat(tuSuaQuyTrinh_(kb, r.de_bai) || []);
+  // câu KÊU GỌI cuối video (dùng chung cho mọi nền tảng: YouTube "đăng ký", TikTok/Facebook "theo dõi"; dải chữ riêng từng nền tảng in lúc đăng)
+  var cuoi = kb.canh[kb.canh.length - 1];
+  if (cuoi && !/đăng ký|theo dõi|follow|subscribe/i.test(String(cuoi.loi_thoai || ''))) {
+    cuoi.loi_thoai = String(cuoi.loi_thoai || '').replace(/\s+$/, '') + ' ' + chonCauKeuGoi_(r);
+    sua.push('thêm câu kêu gọi đăng ký / theo dõi cuối video');
+  }
   // bản vẽ nhìn từ trên: tường đặt nhầm lên cạnh ngắn (tổng rào không khớp đề) -> tự đổi cạnh dài/ngắn
   if (typeof tuSuaSoDoVung_ === 'function') kb.canh.forEach(function (c, i) {
     var vs = c && c.minh_hoa && c.minh_hoa.du_lieu && c.minh_hoa.du_lieu.vat;

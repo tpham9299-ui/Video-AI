@@ -71,7 +71,7 @@ const LoiMoi: React.FC<{th: ThuongHieuProps}> = ({th}) => {
       <LogoTron th={th} co={64} goc={f * 4} />
       <div style={{fontFamily: FONT, color: '#fff'}}>
         <div style={{fontWeight: 900, fontSize: 32}}>{th.handle || th.ten}</div>
-        <div style={{fontWeight: 700, fontSize: 22, color: '#cfe'}}>{th.loiMoi || 'Theo dõi để học mẹo xác suất'}</div>
+        <div style={{fontWeight: 700, fontSize: 22, color: '#cfe'}}>{th.loiMoi || 'Học mẹo toán mỗi ngày cùng kênh'}</div>
       </div>
       <Chuong f={f} />
       <div style={{width: 58, height: 58, borderRadius: 29, background: bam > 0.5 ? XANH : CAM, display: 'flex', alignItems: 'center', justifyContent: 'center', transform: `scale(${1 + 0.25 * Math.sin(bam * Math.PI)})`, fontFamily: FONT_DAM, fontWeight: 900, fontSize: 40, color: '#062019'}}>
@@ -184,7 +184,7 @@ export const ManKetTuTao: React.FC<{th: ThuongHieuProps}> = ({th}) => {
       <div style={{position: 'absolute', top: 930, left: 0, right: 0, textAlign: 'center', fontFamily: FONT_DAM, fontWeight: 900, fontSize: 64, color: '#fff', textShadow: `0 0 20px ${XANH}`}}>{ten.slice(0, soChu)}</div>
       {th.khauHieu ? <div style={{position: 'absolute', top: 1020, left: 60, right: 60, textAlign: 'center', fontFamily: FONT, fontWeight: 700, fontSize: 34, color: '#cfe', opacity: kep((f - 20) / 10)}}>{th.khauHieu}</div> : null}
       <div style={{position: 'absolute', top: 1110, padding: '16px 46px', borderRadius: 40, background: bam > 0.5 ? XANH : CAM, fontFamily: FONT_DAM, fontWeight: 900, fontSize: 40, color: '#062019', transform: `scale(${popOut(kep((f - 16) / 10)) * (1 - 0.12 * Math.sin(bam * Math.PI))})`, boxShadow: `0 0 26px ${bam > 0.5 ? XANH : CAM}`}}>
-        {bam > 0.5 ? '✓ Đã theo dõi' : '+ Theo dõi'}
+        {bam > 0.5 ? '♥ Đã thích' : '♥ Thích'}
       </div>
       <Audio src={staticFile('sfx/boom.wav')} volume={0.3} />
       <Sequence from={Math.round(1.4 * fps)} layout="none">

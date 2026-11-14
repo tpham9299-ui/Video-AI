@@ -27,9 +27,15 @@ const LENH: Record<string, string> = {
   ldots: '…', cdots: '⋯', dots: '…', vdots: '⋮', sum: 'Σ', prod: 'Π', triangle: '△', sim: '~', percent: '%', quad: ' ', qquad: ' ',
 };
 
+// SỐ THẬP PHÂN KIỂU VIỆT: "3.46m" -> "3,46m" (công thức và nhãn trên hình cùng dùng dấu phẩy như "10,8").
+// Chỉ đổi số có ĐÚNG MỘT dấu chấm (không đụng "1.000.000", "v1.2.3"); trong TeX viết {,} để KaTeX không chèn khoảng trắng.
+export function thapPhanViet(s: string, tex = false): string {
+  return s.replace(/(^|[^\d.\w])(\d+)\.(\d+)(?![\d.])/g, (_, a, b, c) => `${a}${b}${tex ? '{,}' : ','}${c}`);
+}
+
 export function texSangChu(s: unknown): string {
   let x = chuanTex(s);
-  if (!coTex(x) && !/[{}]/.test(x)) return x;
+  if (!coTex(x) && !/[{}]/.test(x)) return thapPhanViet(x);
   const nhom = '\\{([^{}]*)\\}';
   for (let lan = 0; lan < 6; lan++) {
     const truoc = x;
@@ -50,7 +56,7 @@ export function texSangChu(s: unknown): string {
   x = x.replace(/\\left|\\right|\\displaystyle|\\limits/g, '');
   x = x.replace(/\\[,;:!> ]/g, ' ').replace(/\\%/g, '%').replace(/\{,\}/g, ',');
   x = x.replace(/\\([a-zA-Z]+)/g, (m, ten) => (LENH[ten] !== undefined ? LENH[ten] : ten));
-  return x.replace(/[{}]/g, '').replace(/\s+/g, ' ').trim();
+  return thapPhanViet(x.replace(/[{}]/g, '').replace(/\s+/g, ' ').trim());
 }
 
 // cắt chuỗi dài: chữ thường cắt ở ranh giới từ + "…"; công thức không cắt (cắt giữa lệnh làm KaTeX báo lỗi)
@@ -68,7 +74,7 @@ export function bocChuViet(tex: string): string {
   // dấu % trong KaTeX là CHÚ THÍCH (mất cả phần sau: "Lãi 1,2%/tháng" thành "Lãi 1,2") -> phải viết \%
   // \frac thường thu tử/mẫu còn ~70% -> nhỏ hơn hẳn số bên cạnh: dùng \dfrac để tử/mẫu CÙNG CỠ với số thường
   // S_max: KaTeX chỉ hạ chữ đầu ("S" + chỉ số "m" + "ax") -> bọc cả cụm chỉ số: S_{max}
-  const x = chuanTex(tex).replace(/(^|[^\\])%/g, '$1\\%').replace(/\\frac(?=\s*\{)/g, '\\dfrac').replace(/_([a-zA-Z]{2,4})(?![a-zA-Z{])/g, '_{$1}')
+  const x = thapPhanViet(chuanTex(tex), true).replace(/(^|[^\\])%/g, '$1\\%').replace(/\\frac(?=\s*\{)/g, '\\dfrac').replace(/_([a-zA-Z]{2,4})(?![a-zA-Z{])/g, '_{$1}')
     .replace(/(\d|\})\s*\\[,;: ]\s*(km|cm|mm|m|kg|g|ha|l)(?=\^|[^a-zA-Z]|$)/g, '$1\\,\\text{$2}')   // đơn vị "30\\,m": chữ đứng, không nghiêng như biến
     .replace(/<=>/g, ' \\Leftrightarrow ').replace(/=>/g, ' \\Rightarrow ').replace(/-+>/g, ' \\rightarrow ');   // mũi tên gõ tay "->" (KaTeX hiện thành dấu trừ và dấu lớn hơn)
   if (!/[A-Za-zÀ-ỹ]{2,}/.test(x)) return x;

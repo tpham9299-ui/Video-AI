@@ -96,9 +96,16 @@ function duyetVideo_(chu) {
     if (!t.ma && cho.length > 1) return 'Đang có ' + cho.length + ' video chờ duyệt, hãy ghi rõ mã, ví dụ /duyet ' + cho[0].id + '\n\n' + danhSachChoDuyet_();
     var r = t.ma ? cho.filter(function (x) { return x.id === t.ma; })[0] : cho[0];
     if (!r) return 'Không có video nào đang chờ duyệt.';
-    ghi_(sh, r._row, { duyet: 'DA_DUYET' });
+    // ghi THỜI ĐIỂM DUYỆT (đăng theo đúng thứ tự duyệt -> số tập theo thứ tự duyệt; video chưa duyệt / bị bỏ không chiếm số)
+    var kqD = {};
+    try { kqD = JSON.parse(String(r.link_dang || '{}')) || {}; } catch (eD) { kqD = {}; }
+    kqD._duyet_luc = Date.now();
+    ghi_(sh, r._row, { duyet: 'DA_DUYET', link_dang: JSON.stringify(kqD) });
+    r.duyet = 'DA_DUYET'; r.link_dang = JSON.stringify(kqD);
     var bat = String(cauHinh_('DANG_TU_DONG') || 'TAT').toUpperCase() === 'BAT';
-    return '✅ Đã duyệt ' + r.id + ' (' + (r.chu_de || '') + ').' + (bat ? ' Video sẽ được đăng ở khung giờ tới (' + (cauHinh_('GIO_DANG') || '11:30,19:30') + ').' : ' Lịch đăng tự động đang TẮT (CAU_HINH > DANG_TU_DONG); muốn đăng ngay dùng menu 📤 trong Sheet.') +
+    var tapDuKien = typeof duKienTap_ === 'function' ? duKienTap_(hang, r) : 0;
+    return '✅ Đã duyệt ' + r.id + ' (' + (r.chu_de || '') + ').' +
+      (tapDuKien ? ' Dự kiến đăng là Toán lớp ' + String(r.lop).replace(/[^0-9]/g, '') + ' – Tập ' + tapDuKien + ' (số chính thức chốt lúc đăng, theo số bài đã có trên các kênh).' : '') + (bat ? ' Video sẽ được đăng ở khung giờ tới (' + (cauHinh_('GIO_DANG') || '11:30,19:30') + ').' : ' Lịch đăng tự động đang TẮT (CAU_HINH > DANG_TU_DONG); muốn đăng ngay dùng menu 📤 trong Sheet.') +
       (cho.length > 1 ? '\nCòn ' + (cho.length - 1) + ' video chờ duyệt, nhắn /cho để xem.' : '');
   } finally { khoa.releaseLock(); }
 }

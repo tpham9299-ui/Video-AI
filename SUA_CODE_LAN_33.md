@@ -120,8 +120,23 @@ Chốt cuối vẫn là bạn: chế độ "duyệt trước khi đăng" đang B
 - CHỌN GIỌNG: workflow "Nghe thử giọng đọc" đã tạo 15 giọng mẫu trong Drive VIDEO_XACSUAT/giong_mau (13 giọng Gemini + 2 giọng edge,
   cùng một đoạn bài giảng). Chọn xong đặt biến GitHub GIONG_GEMINI = tên giọng (vd Charon). Muốn luôn dùng edge: MAY_GIONG = edge.
 
+## 15. Tiêu đề hút người xem, kêu gọi đăng ký / theo dõi, số tập theo thứ tự duyệt
+- **Tiêu đề riêng từng nền tảng** (Gemini viết lúc đăng): YouTube Shorts ≤ 70 ký tự (+ #shorts), câu mở đầu TikTok, câu mở đầu Facebook.
+  Gây tò mò, có con số / vật thật, thách đố người xem; KHÔNG lộ đáp án (máy kiểm tra, lộ thì bỏ), KHÔNG giật tít sai sự thật.
+  Tiêu đề được lưu lại nên lần đăng thử lại dùng đúng tiêu đề cũ.
+- **Kêu gọi cuối video**:
+  - Lời thoại cảnh cuối tự thêm một câu chung, ví dụ "Thấy hay thì đăng ký kênh hoặc bấm theo dõi để không bỏ lỡ tập sau nhé!" (4 câu xoay vòng).
+  - Lúc đăng, mỗi nền tảng một bản: YouTube có dải đỏ "ĐĂNG KÝ KÊNH ĐỂ XEM TẬP SAU", TikTok/Facebook có dải cam "NHẤN THEO DÕI ĐỂ XEM TẬP SAU"
+    ở 4 giây cuối (dưới phụ đề), cùng "TẬP N" góc phải trên.
+  - Mô tả: YouTube "🔔 ĐĂNG KÝ KÊNH và bật chuông…", Facebook "👉 Nhấn THEO DÕI trang…", TikTok "👉 Theo dõi để không bỏ lỡ tập sau!".
+  - Màn kết lúc dựng thành trung tính (nút "Thích", "HỌC MẸO TOÁN MỖI NGÀY CÙNG KÊNH"), không còn ghi cứng "theo dõi… xác suất".
+- **Số tập theo thứ tự DUYỆT**: video chưa duyệt / bị bỏ không chiếm số; video đã duyệt được đăng đúng thứ tự bạn bấm /duyet
+  (trước đây đề ưu tiên chen lên trước); bấm /duyet bot trả lời luôn số tập dự kiến; số chính thức chốt lúc đăng (đếm bài đã có trên các kênh).
+- **Số thập phân kiểu Việt trên hình**: nhãn "3.46m" -> "3,46m" (thống nhất với công thức "10,8"). Huy hiệu "2′₀ triệu đồng" trong video
+  bạn gửi là lỗi bánh số lăn với số thập phân, đã sửa ở mục 8 (video đó dựng trước khi có bản sửa).
+
 ## Cần dán lại vào Apps Script
-`KiemTraHinh.gs`, `PromptKichBan.gs`, `BoPhan1.gs`, `BoPhan2.gs`, `NangCao.gs`, `DangVideo.gs` (tất cả bản mới nhất trong thư mục bàn giao), rồi Triển khai > Quản lý > Phiên bản mới.
+`KiemTraHinh.gs`, `PromptKichBan.gs`, `BoPhan1.gs`, `BoPhan2.gs`, `NangCao.gs`, `DangVideo.gs`, `SanPham.gs` (tất cả bản mới nhất trong thư mục bàn giao), rồi Triển khai > Quản lý > Phiên bản mới.
 
 ## Còn lưu ý
 - Trong GEMINI_KEYS có **3 key bị Google từ chối** ("API key not valid"): key thứ 2, 5, 7 (bắt đầu "AQ.Ab8…").
