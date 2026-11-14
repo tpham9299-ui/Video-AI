@@ -138,8 +138,8 @@ vm.runInContext(`
   KIEM_CHUNG_TOI_DA_MS = 60000;
   _bat_dau_chay_ = Date.now();
   nhatKy_ = function (muc, nd) { var s = muc + ': ' + String(nd).slice(0, 500); __out.nhat_ky.push([new Date().toISOString(), muc, String(nd).slice(0, 500)]); console.log(s); };
-  guiZalo_ = function (t) { __out.zalo.push({tat_ca: true, noi_dung: String(t)}); };
-  baoZaloDe_ = function (r, t) { __out.zalo.push({id: r.id, noi_dung: String(t)}); };
+  guiZalo_ = function (t, muc, khoa) { __out.zalo.push({tat_ca: true, noi_dung: String(t), muc: muc || 'thap', khoa: khoa || ''}); };
+  baoZaloDe_ = function (r, t, muc) { __out.zalo.push({id: r.id, noi_dung: String(t), muc: muc || 'thap'}); };
   xacDinhSeries_ = function () { return __pre.series; };
   chonKieuHook_ = function () { return __pre.hook; };
   goiYTuSoLieu_ = function () { return __pre.goi_y; };

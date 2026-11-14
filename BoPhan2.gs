@@ -128,7 +128,7 @@ function chonVaGuiDung_(sh) {
     hang.forEach(function (r) {
       if (r.trang_thai !== 'DANG_DUNG') return;
       var phut = r.cap_nhat instanceof Date ? (bayGio - r.cap_nhat.getTime()) / 60000 : 99999;
-      if (phut > BP2_QUA_HAN_PHUT) baoLoiDung_(sh, r, 'QUA_HAN: GitHub không báo kết quả sau ' + BP2_QUA_HAN_PHUT + ' phút');
+      if (phut > BP2_QUA_HAN_PHUT) { kiemTraGitHubBiChan_(); baoLoiDung_(sh, r, 'QUA_HAN: GitHub không báo kết quả sau ' + BP2_QUA_HAN_PHUT + ' phút'); }
       else dangDung++;
     });
     // 2) Đề ưu tiên (Zalo) trước, rồi kịch bản chờ lâu nhất
@@ -216,6 +216,39 @@ function guiWorkflowGitHub_(inputs, tepWorkflow) {
   return { ok: false, ma: ma, loi: 'HTTP ' + ma + ': ' + noi.slice(0, 160) };
 }
 
+// GitHub nhận lệnh (204) nhưng KHÔNG chạy job (thanh toán lỗi, hết phút vì repo private, Actions bị tắt...): không có kết quả gửi về.
+// Gọi khi một việc trên GitHub quá hạn: đọc vài lần chạy gần nhất, thấy lý do bị chặn thì báo bạn (tối đa 1 lần/ngày).
+function kiemTraGitHubBiChan_() {
+  try {
+    var c = CacheService.getScriptCache();
+    if (c.get('GH_KT_CHAN')) return '';
+    c.put('GH_KT_CHAN', '1', 1800);
+    var p = PropertiesService.getScriptProperties();
+    var token = p.getProperty('GITHUB_TOKEN'), repo = p.getProperty('GITHUB_REPO');
+    if (!token || !repo) return '';
+    var h = { headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json' }, muteHttpExceptions: true };
+    var runs = JSON.parse(UrlFetchApp.fetch('https://api.github.com/repos/' + repo + '/actions/runs?per_page=5', h).getContentText()).workflow_runs || [];
+    var hong = runs.filter(function (x) { return x.conclusion === 'failure' && new Date(x.updated_at) - new Date(x.created_at) < 120000; });
+    if (hong.length < 2) return '';
+    var cr = JSON.parse(UrlFetchApp.fetch('https://api.github.com/repos/' + repo + '/check-suites/' + hong[0].check_suite_id + '/check-runs', h).getContentText()).check_runs || [];
+    var lyDo = '';
+    for (var i = 0; i < cr.length && !lyDo; i++) {
+      if (!cr[i].output || !cr[i].output.annotations_count) continue;
+      var an = JSON.parse(UrlFetchApp.fetch('https://api.github.com/repos/' + repo + '/check-runs/' + cr[i].id + '/annotations', h).getContentText()) || [];
+      an.forEach(function (a) { if (!lyDo && /payment|spending limit|billing|minutes/i.test(String(a.message))) lyDo = String(a.message); });
+    }
+    if (!lyDo) return '';
+    var rieng = false;
+    try { rieng = JSON.parse(UrlFetchApp.fetch('https://api.github.com/repos/' + repo, h).getContentText())['private'] === true; } catch (e2) {}
+    nhatKy_('GITHUB_BI_CHAN', lyDo.slice(0, 300));
+    guiZalo_('🚨 GitHub ĐANG CHẶN mọi lần chạy (giải đề + dựng video đều dừng): "' + lyDo.slice(0, 160) + '"\n' +
+      (rieng ? '👉 Repo đang ở chế độ PRIVATE nên bị tính phút theo gói. Cách nhanh nhất: GitHub > repo > Settings > General > Danger Zone > Change visibility > Public (repo public chạy Actions miễn phí không giới hạn; Secrets vẫn an toàn).'
+             : '👉 Vào GitHub > Settings > Billing and plans để cập nhật thanh toán hoặc tăng giới hạn chi tiêu.') +
+      '\nTrong lúc chờ, đề vẫn được giải chậm tại Apps Script.', 'cao', 'GH_CHAN_' + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd'));
+    return lyDo;
+  } catch (e) { return ''; }
+}
+
 /* ===================== NHẬN KẾT QUẢ TỪ GITHUB ===================== */
 
 // Triển khai: Deploy > New deployment > Web app > Execute as: Me > Who has access: Anyone.
@@ -280,11 +313,8 @@ function doPost(e) {
 }
 
 // Gửi Zalo tối đa MỘT lần cho mỗi khóa (nhớ trong 6 giờ) để không bao giờ báo lặp dù hàm bị gọi nhiều lần.
-function guiZaloMotLan_(khoaTin, noiDung) {
-  var cache = CacheService.getScriptCache();
-  if (cache.get('ZALO_' + khoaTin)) return;
-  cache.put('ZALO_' + khoaTin, '1', 21600);
-  guiZalo_(noiDung);
+function guiZaloMotLan_(khoaTin, noiDung, muc) {
+  guiZalo_(noiDung, muc || 'cao', khoaTin);
 }
 
 // Dựng lỗi: đưa về CO_KICH_BAN để thử lại; quá MAX_LAN_LOI lần thì đánh dấu LOI và báo Zalo.
@@ -297,8 +327,8 @@ function baoLoiDung_(sh, r, lyDo) {
     ghi_chu: ('DUNG_VIDEO: ' + String(lyDo)).slice(0, 300)
   });
   nhatKy_('DUNG_LOI', r.id + ' (lần ' + n + '): ' + lyDo);
-  if (het) guiZaloMotLan_('LOI_' + r.id + '_' + n, '❌ Dựng video ' + r.id + ' lỗi ' + n + ' lần, cần xem: ' + String(lyDo).slice(0, 200));
-  if (laUuTien_(r) && r.zalo_chat) guiZaloToi_(r.zalo_chat, het ? '❌ Dựng video cho đề ' + r.id + ' lỗi ' + n + ' lần nên dừng lại: ' + String(lyDo).slice(0, 150)
+  if (het && !(laUuTien_(r) && r.zalo_chat)) guiZaloMotLan_('LOI_' + r.id + '_' + n, '❌ Dựng video ' + r.id + ' lỗi ' + n + ' lần nên dừng, cần xem: ' + String(lyDo).slice(0, 200), 'vua');
+  if (laUuTien_(r) && r.zalo_chat && (het || duocThongBao_('thap'))) guiZaloToi_(r.zalo_chat, het ? '❌ Dựng video cho đề ' + r.id + ' lỗi ' + n + ' lần nên dừng lại: ' + String(lyDo).slice(0, 150)
     : '🔁 Dựng video đề ' + r.id + ' gặp trục trặc, hệ thống tự dựng lại (lần ' + (n + 1) + ').');
 }
 

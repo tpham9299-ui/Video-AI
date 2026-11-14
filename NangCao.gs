@@ -103,7 +103,7 @@ function xuLyAiXem_(sh, r) {
     ai_kiem_tra: JSON.stringify({ diem: kq.diem, van_de: kq.van_de, lan_sua: lan + 1, luc: new Date().toISOString() }),
     ghi_chu: 'AI tự sửa hình (điểm ' + kq.diem + '/10)'
   });
-  baoZaloDe_(r, '🤖 AI xem video ' + r.id + ' thấy hình chưa khớp đề (' + kq.diem + '/10): ' + kq.van_de.slice(0, 3).join('; ').slice(0, 300) + '\n🔧 Đang tự sửa kịch bản và dựng lại, xong sẽ gửi bạn duyệt.');
+  baoZaloDe_(r, '🤖 AI xem video ' + r.id + ' thấy hình chưa khớp đề (' + kq.diem + '/10): ' + kq.van_de.slice(0, 3).join('; ').slice(0, 300) + '\n🔧 Đang tự sửa kịch bản và dựng lại, xong sẽ gửi bạn duyệt.', 'thap');
   henUuTien_(20);
 }
 
@@ -134,7 +134,7 @@ function aiChamVideo_(r) {
 function guiDuyet_(r, ghiChu) {
   var tin = '🎞 Video đã dựng xong: ' + (r.chu_de || r.id) + '\nhttps://drive.google.com/file/d/' + r.file_video + '/view' + (ghiChu ? '\n' + ghiChu : '') +
     '\n👉 Xem rồi trả lời: /duyet ' + r.id + ' (cho đăng) | /sua ' + r.id + ' <góp ý> | /bo ' + r.id;
-  if (r.zalo_chat) guiZaloToi_(r.zalo_chat, tin); else guiZaloMotLan_('DUYET_' + r.id + '_' + r.file_video, tin);
+  if (r.zalo_chat) guiZaloToi_(r.zalo_chat, tin); else guiZaloMotLan_('DUYET_' + r.id + '_' + r.file_video, tin, 'cao');
 }
 
 /* ===================== 2. SỐ LIỆU YOUTUBE ===================== */
@@ -380,7 +380,7 @@ function baoCaoHangNgay() {
     '🔑 Token GitHub: ' + tokenTin + '\n' +
     (loi.length ? '⚠️ ' + loi.length + ' lỗi hôm nay: ' + Object.keys(dongLoi).slice(0, 3).map(function (k) { return k + (dongLoi[k] > 1 ? ' (x' + dongLoi[k] + ')' : ''); }).join(' | ') + '\n' : '✨ Không có lỗi nào hôm nay\n') +
     (tk.length ? '🏆 Video nổi bật 7 ngày: ' + tk[0].chu_de + ' (' + tk[0].luot_xem + ' lượt xem' + (Number(tk[0].ty_le_xem) > 0 ? ', xem trung bình ' + tk[0].ty_le_xem + '%' : '') + ')' : '');
-  guiZalo_(tin);
+  guiZalo_(tin, 'cao', 'BAO_CAO_' + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd'));
 }
 
 
@@ -471,7 +471,7 @@ function hocEditHangNgay() {
   if (moi.length) tin += '\n✅ Áp dụng ngay vào kịch bản:\n' + moi.slice(0, 6).map(function (k) { return '• ' + k; }).join('\n');
   if (canLapTrinh.length) tin += '\n🛠 Cần lập trình thêm cho bộ dựng (nhờ Claude làm khi bạn muốn):\n' + canLapTrinh.slice(0, 5).map(function (k) { return '• ' + k; }).join('\n');
   nhatKy_('HOC_EDIT', tin.replace(/\n/g, ' | ').slice(0, 480));
-  if (soVideo) guiZalo_(tin);
+  if (soVideo) guiZalo_(tin, canLapTrinh.length ? 'vua' : 'thap');
 }
 
 function loiNhacHocEdit_() {

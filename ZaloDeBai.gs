@@ -90,14 +90,31 @@ function guiZaloToi_(chatId, noiDung) {
   if (!chatId) return;
   var token = tokenNhanZalo_();
   if (!token) return;
-  goiZaloApi_(token, 'sendMessage', { chat_id: String(chatId), text: ('[VIDEO] ' + noiDung).slice(0, 2000) });
+  goiZaloApi_(token, 'sendMessage', { chat_id: String(chatId), text: String(noiDung).slice(0, 2000) });
 }
-// Báo tiến độ của một đề ưu tiên: nhắn cho người gửi; đề ưu tiên tự đánh dấu (không có người gửi) thì báo chung.
-function baoZaloDe_(r, noiDung) {
+// Báo về một đề ưu tiên: nhắn cho người gửi; đề ưu tiên tự đánh dấu (không có người gửi) thì báo chung.
+// muc như guiZalo_: tiến độ ('thap') chỉ ghi nhật ký, trừ khi CAU_HINH ZALO_THONG_BAO = DAY_DU.
+function baoZaloDe_(r, noiDung, muc) {
   try {
+    if (!duocThongBao_(muc)) { nhatKy_('ZALO_AN', (r && r.id ? r.id + ': ' : '') + String(noiDung).replace(/\n/g, ' | ').slice(0, 300)); return; }
     if (r && r.zalo_chat) guiZaloToi_(r.zalo_chat, noiDung);
-    else guiZalo_(noiDung);
+    else guiZalo_(noiDung, muc);
   } catch (e) { Logger.log('Lỗi báo Zalo: ' + e.message); }
+}
+// Người nhận thông báo chung = những người đã nhắn cho BOT ĐỀ BÀI và có quyền (mã chat riêng cho từng bot nên phải lấy
+// đúng mã của bot này) + ZALO_NGUOI_GUI_DE. Chưa ai nhắn bot đề bài thì mới dùng ZALO_CHAT_IDS cũ.
+function nhoNguoiNhan_(chat) {
+  var p = PropertiesService.getScriptProperties();
+  var ds = String(p.getProperty('ZALO_NHAN_TB') || '').split(',').filter(Boolean);
+  if (ds.indexOf(chat) >= 0) return;
+  ds.push(chat);
+  p.setProperty('ZALO_NHAN_TB', ds.slice(-10).join(','));
+}
+function dsNhanThongBao_() {
+  var p = PropertiesService.getScriptProperties();
+  var ds = (String(p.getProperty('ZALO_NHAN_TB') || '') + ',' + String(cauHinh_('ZALO_NGUOI_GUI_DE') || '')).split(/[,;\s]+/).map(function (x) { return x.trim(); }).filter(Boolean);
+  if (!ds.length) ds = String(p.getProperty('ZALO_CHAT_IDS') || '').split(/[,;\s]+/).map(function (x) { return x.trim(); }).filter(Boolean);
+  return ds.filter(function (x, i) { return ds.indexOf(x) === i; });
 }
 
 /* ===================== NHẬN TIN (gọi từ doPost) ===================== */
@@ -131,6 +148,7 @@ function nhanZalo_(e) {
       if (!cache.get('ZLA_' + chat)) { cache.put('ZLA_' + chat, '1', 21600); guiZaloToi_(chat, 'Bạn chưa có quyền gửi đề cho hệ thống này. Mã chat của bạn: ' + chat + '\nChủ hệ thống mở sheet CAU_HINH, thêm dòng khoa = ZALO_NGUOI_GUI_DE, gia_tri = ' + chat + ' (nhiều mã cách nhau dấu phẩy) rồi gửi lại đề.'); }
       return tra;
     }
+    nhoNguoiNhan_(chat);   // thông báo chung của hệ thống sẽ gửi qua bot này cho bạn
     if (/^\/(giup|help)\b/.test(lenh)) { guiZaloToi_(chat, huongDanZalo_()); return tra; }
     if (/^\/(tt|trangthai|trạng thái)\b/.test(lenh) || lenh === 'tt') { guiZaloToi_(chat, tinhTrangUuTien_()); return tra; }
     if (/^\/huy\b/.test(lenh)) { guiZaloToi_(chat, huyUuTien_(chat)); return tra; }
@@ -150,7 +168,7 @@ function nhanZalo_(e) {
     });
     nhatKy_('ZALO_DE', id + ': nhận ' + (anh ? 'ảnh đề' : 'đề dạng chữ') + ' từ ' + chat);
     guiZaloToi_(chat, '📥 Đã nhận đề (' + id + ')! Hệ thống ƯU TIÊN làm video cho bài này ngay, các bài khác tạm dừng.\n' +
-      'Các bước: đọc đề → giải 2 cách + kiểm chứng bằng máy → viết kịch bản → dựng video. Tổng thường 15-30 phút, mỗi bước mình sẽ nhắn bạn.' +
+      'Các bước: đọc đề → giải 2 cách + kiểm chứng bằng máy → viết kịch bản → dựng video → KIỂM DUYỆT tự động. Thường 15-30 phút; mình chỉ nhắn khi video đã đạt kiểm duyệt (hoặc khi cần bạn giúp).' +
       (truoc ? '\n⏳ Trước bài này còn ' + truoc + ' đề ưu tiên đang làm.' : '') + '\nNhắn /tt để xem tiến độ.');
     henUuTien_(20);
   } catch (err) {
@@ -236,12 +254,12 @@ function xuLyDocDe_(sh, bc, bat) {
   for (var i = 0; i < ds.length; i++) {
     if (!duThoiGianViec_(bat, uocGoiMs_() + 20000)) { nhatKy_('DUNG_SOM', 'Không đủ thời gian đọc đề ưu tiên, để lần sau'); return; }
     var r = ds[i];
-    if (!batDauViec_(sh, r, 'DOC_DE', bc)) { baoZaloDe_(r, '⚠️ Không đọc được đề ' + r.id + ' sau nhiều lần thử. Bạn gửi lại ảnh rõ hơn nhé.'); continue; }
+    if (!batDauViec_(sh, r, 'DOC_DE', bc)) { baoZaloDe_(r, '⚠️ Không đọc được đề ' + r.id + ' sau nhiều lần thử. Bạn gửi lại ảnh rõ hơn nhé.', 'cao'); continue; }
     try {
       var j = docDe_(sh, r);
       if (!j || j.doc_duoc === false || !j.de_bai || String(j.de_bai).length < 15) {
         ghi_(sh, r._row, { trang_thai: 'LOAI', ghi_chu: 'KHONG_DOC_DUOC: ' + String((j && j.ly_do) || '').slice(0, 200) });
-        baoZaloDe_(r, '🤔 Mình chưa đọc được đề này' + (j && j.ly_do ? ': ' + j.ly_do : '') + '.\nBạn chụp lại thẳng, đủ sáng, rõ số (hoặc gõ đề) rồi gửi lại nhé.');
+        baoZaloDe_(r, '🤔 Mình chưa đọc được đề này' + (j && j.ly_do ? ': ' + j.ly_do : '') + '.\nBạn chụp lại thẳng, đủ sáng, rõ số (hoặc gõ đề) rồi gửi lại nhé.', 'cao');
         bc.loai++;
         continue;
       }
@@ -252,7 +270,7 @@ function xuLyDocDe_(sh, bc, bat) {
       var cu = docHang_(sh).filter(function (x) { return x.ma_bam === b && x.file_video && x.id !== r.id; })[0];
       if (cu) {
         ghi_(sh, r._row, { trang_thai: 'LOAI', uu_tien: '', ghi_chu: 'TRUNG_DE: đã có video ở ' + cu.id });
-        baoZaloDe_(r, '🎞 Đề này đã có video rồi: https://drive.google.com/file/d/' + cu.file_video + '/view');
+        baoZaloDe_(r, '🎞 Đề này đã có video rồi: https://drive.google.com/file/d/' + cu.file_video + '/view', 'cao');
         continue;
       }
       ghi_(sh, r._row, {
@@ -263,10 +281,10 @@ function xuLyDocDe_(sh, bc, bat) {
       });
       nhatKy_('DOC_DE', r.id + ' -> ' + mon + ' lớp ' + lop + ': ' + String(j.de_bai).slice(0, 120));
       baoZaloDe_(r, '📖 Đã đọc đề (' + (mon === 'XAC_SUAT' ? 'xác suất' : 'toán thực tế') + ', lớp ' + lop + (j.cau_da_chon ? ', ' + j.cau_da_chon : '') + '):\n' +
-        latexDoc_(String(j.de_bai)).slice(0, 600) + (j.ghi_chu_doi ? '\n📝 ' + j.ghi_chu_doi : '') + '\n🧮 Đang giải bằng 2 cách và kiểm chứng bằng máy...');
+        latexDoc_(String(j.de_bai)).slice(0, 600) + (j.ghi_chu_doi ? '\n📝 ' + j.ghi_chu_doi : '') + '\n🧮 Đang giải bằng 2 cách và kiểm chứng bằng máy...', 'thap');
     } catch (e) {
       xuLyLoiHang_(sh, r, e, bc);
-      if (Number(r.so_lan_loi) >= Number(cauHinh_('MAX_LAN_LOI'))) baoZaloDe_(r, '⚠️ Đọc đề ' + r.id + ' bị lỗi: ' + String(e.message).slice(0, 150));
+      if (Number(r.so_lan_loi) >= Number(cauHinh_('MAX_LAN_LOI'))) baoZaloDe_(r, '⚠️ Đọc đề ' + r.id + ' bị lỗi: ' + String(e.message).slice(0, 150), 'cao');
     }
   }
 }

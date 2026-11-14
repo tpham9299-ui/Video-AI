@@ -258,7 +258,8 @@ function ketThucDang_(sh, r, kq) {
     loi.map(function (n) { return '\n❌ ' + TEN_NEN_TANG_[n] + ': ' + String((kq[n] || {}).loi || 'lỗi').slice(0, 150); }).join('') +
     boQua.map(function (n) { return '\n⏭ ' + TEN_NEN_TANG_[n] + ': ' + String(kq[n].loi || 'chưa cài đặt').slice(0, 100); }).join('') +
     (loi.length && !xong ? '\n🔁 Sẽ thử lại nền tảng lỗi ở khung giờ sau.' : '');
-  try { guiZaloMotLan_('DANG_' + r.id + '_' + (kq._thu || 0) + '_' + dat.join(''), tin); } catch (e) { guiZalo_(tin); }
+  // đăng thành công: mức vừa (đã có trong báo cáo ngày); lỗi không tự thử lại được: mức cao
+  try { guiZaloMotLan_('DANG_' + r.id + '_' + (kq._thu || 0) + '_' + dat.join(''), tin, loi.length && xong ? 'cao' : 'vua'); } catch (e) {}
 }
 
 // Gọi từ doPost (BoPhan2.gs) khi GitHub báo kết quả đăng: {token, loai:"dang", id, ket_qua:{facebook:{ok,url|loi,bo_qua}, ...}}

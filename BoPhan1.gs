@@ -67,6 +67,7 @@ var MAC_DINH = {
   GIAY_MUC_TIEU: '60-100',     // thời lượng video mong muốn (giây), đưa vào lời nhắc cho AI (bài giảng kỹ: 60-100 giây)
   GIAY_TOI_DA: '130',          // kịch bản dài hơn mức này sẽ bị từ chối và viết lại
   CHU_KY_CHAY_PHUT: '15',      // trigger chayBoPhan1 chạy mỗi bao nhiêu phút. Khi giải trên GitHub mỗi lần chạy chỉ vài giây nên 10-15 phút là an toàn. Chạy caiDatTrigger() lại sau khi đổi
+  ZALO_THONG_BAO: 'IT',        // IT = chỉ báo việc quan trọng (video đạt kiểm duyệt, báo cáo ngày, lỗi cần bạn ra tay) | VUA = thêm đăng video, hết hạn mức | DAY_DU = báo mọi tiến độ
   GIAI_TREN_GITHUB: 'BAT',     // BAT = giải + viết kịch bản trên GitHub (nhanh, không giới hạn 6 phút) | TAT = làm tại Apps Script như cũ
   SO_DE_GITHUB_CUNG_LUC: '3',  // số đề GitHub xử lý song song (đề ưu tiên Zalo luôn được gửi ngay)
   MUC_SUY_NGHI_KICH_BAN: 'low', // mức "suy nghĩ" của Gemini khi viết kịch bản/tìm đề: low (nhanh, khuyên dùng) | high | tat (không gửi tham số)
@@ -182,18 +183,18 @@ function chayBoPhan1() {
     if (String(e.message) === 'HET_HAN_MUC') {
       datNghi_(cheDoUuTien ? 30 : 60);
       nhatKy_('HET_HAN_MUC', 'Gemini báo hết hạn mức/giới hạn tốc độ; tạm nghỉ ' + (cheDoUuTien ? 30 : 60) + ' phút');
-      guiZalo_('⏸ Bộ phận 1: hết hạn mức Gemini miễn phí, tạm nghỉ ' + (cheDoUuTien ? 30 : 60) + ' phút rồi tự chạy lại' + (cheDoUuTien ? ' (đề ưu tiên của bạn vẫn giữ chỗ đầu hàng).' : '.'));
+      guiZalo_('⏸ Hết hạn mức Gemini miễn phí hôm nay, hệ thống tự nghỉ rồi chạy lại' + (cheDoUuTien ? ' (đề ưu tiên của bạn vẫn giữ chỗ đầu hàng).' : '.'), 'vua', 'HHM_' + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd'));
     } else if (String(e.message) === 'QUA_TAI') {
       var phut = cheDoUuTien ? 4 : (Number(cauHinh_('PHUT_NGHI_QUA_TAI')) || 20);   // đề ưu tiên: thử lại sớm
       datNghi_(phut);
       nhatKy_('QUA_TAI', 'Mọi model Gemini đều báo quá tải (503, lỗi phía Google, không phải lỗi của bạn); tạm nghỉ ' + phut + ' phút');
       var c = CacheService.getScriptCache();
-      if (!c.get('ZALO_QUA_TAI')) { c.put('ZALO_QUA_TAI', '1', 10800); guiZalo_('⏳ Bộ phận 1: Gemini đang quá tải (503), hệ thống tự thử lại sau ' + phut + ' phút.'); }
+      if (!c.get('ZALO_QUA_TAI')) { c.put('ZALO_QUA_TAI', '1', 10800); guiZalo_('⏳ Gemini đang quá tải (503), hệ thống tự thử lại sau ' + phut + ' phút.', 'thap'); }
     } else if (String(e.message) === 'HET_GIO') {
       nhatKy_('DUNG_SOM', 'Không đủ thời gian cho lần gọi Gemini tiếp theo, phần còn lại để lần chạy sau');
     } else {
       nhatKy_('LOI', String(e.message) + ' | ' + String(e.stack || '').slice(0, 300));
-      guiZalo_('❌ Bộ phận 1 gặp lỗi: ' + String(e.message).slice(0, 300));
+      guiZalo_('❌ Bộ phận 1 gặp lỗi: ' + String(e.message).slice(0, 300), 'vua', 'BP1LOI_' + String(e.message).slice(0, 60));
     }
   } finally {
     khoa.releaseLock();
@@ -207,7 +208,7 @@ function chayBoPhan1() {
   if (cheDoUuTien) { try { sauUuTien_(); } catch (e3) { nhatKy_('UU_TIEN_LOI', e3.message); } }
   if (!cheDoUuTien && bc.moi + bc.giai_ok + bc.loai + bc.kich_ban + bc.loi > 0) {
     guiZalo_('📊 Bộ phận 1: +' + bc.moi + ' đề mới | ' + bc.giai_ok + ' đã giải & kiểm chứng đạt | ' +
-      bc.loai + ' bị loại (đáp án không khớp) | ' + bc.kich_ban + ' kịch bản mới | ' + bc.loi + ' lỗi');
+      bc.loai + ' bị loại (đáp án không khớp) | ' + bc.kich_ban + ' kịch bản mới | ' + bc.loi + ' lỗi', 'thap');
   }  return cheDoUuTien ? 'UU_TIEN' : true;
 }
 
@@ -542,7 +543,7 @@ function xuLyGiai_(sh, bc, bat, chiUuTien, chiIds) {
         ghi_(sh, r._row, { trang_thai: 'LOAI', ghi_chu: kq.ly_do, cach_1: JSON.stringify(kq.c1), cach_2: JSON.stringify(kq.c2) });
         bc.loai++;
         if (laUuTien_(r)) baoZaloDe_(r, '⚠️ Chưa làm được video cho đề của bạn: các cách giải cho đáp án khác nhau nên hệ thống không dám dựng (tránh dạy sai).\n' +
-          String(kq.ly_do).slice(0, 200) + '\nBạn có thể gửi lại ảnh rõ hơn hoặc gõ đề kèm đáp án mong đợi.');
+          String(kq.ly_do).slice(0, 200) + '\nBạn có thể gửi lại ảnh rõ hơn hoặc gõ đề kèm đáp án mong đợi.', 'cao');
       } else {
         if (!r.ma_bam) ghi_(sh, r._row, { ma_bam: bam_(r.de_bai) });
         // đề có vấn đề (không có đáp số khớp chính xác, mâu thuẫn...): ghi lại để kịch bản nói thật và báo người gửi
@@ -553,10 +554,10 @@ function xuLyGiai_(sh, bc, bat, chiUuTien, chiIds) {
         });
         if (vanDe) {
           nhatKy_('GIAI', r.id + ': ĐỀ CÓ VẤN ĐỀ - ' + vanDe);
-          if (laUuTien_(r)) baoZaloDe_(r, '⚠️ Đề này có vấn đề: ' + vanDe + '\nVideo sẽ nói rõ điều này và làm theo cách hiểu trên.');
+          if (laUuTien_(r)) baoZaloDe_(r, '⚠️ Đề này có vấn đề: ' + vanDe + '\nVideo sẽ nói rõ điều này và làm theo cách hiểu trên.', 'cao');
         }
         bc.giai_ok++;
-        if (laUuTien_(r)) baoZaloDe_(r, '✅ Đã giải và kiểm chứng: đáp án ' + (kq.dap_an_hien || kq.dap_an) + '\n✍ Đang viết kịch bản video...');
+        if (laUuTien_(r)) baoZaloDe_(r, '✅ Đã giải và kiểm chứng: đáp án ' + (kq.dap_an_hien || kq.dap_an) + '\n✍ Đang viết kịch bản video...', 'thap');
       }
       capNhatTb_('TB_GIAI_MS', Date.now() - t0);
     } catch (e) { xuLyLoiHang_(sh, r, e, bc); }
@@ -869,7 +870,7 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       var tep = thuMucKichBan_().createFile(r.id + '.json', JSON.stringify(kb, null, 2), MimeType.PLAIN_TEXT);
       ghi_(sh, r._row, { trang_thai: 'CO_KICH_BAN', file_kich_ban: tep.getId(), ghi_chu: '', so_lan_loi: 0, series: kb.series ? kb.series.ten + ' #' + kb.series.tap : '' });
       nhatKy_('KICH_BAN', r.id + ' -> đã lưu file ' + tep.getId());
-      if (laUuTien_(r)) baoZaloDe_(r, '🎬 Kịch bản xong (' + kb.canh.length + ' cảnh, khoảng ' + kb.tong_giay + ' giây). Đang dựng video, thường mất 10-20 phút...');
+      if (laUuTien_(r)) baoZaloDe_(r, '🎬 Kịch bản xong (' + kb.canh.length + ' cảnh, khoảng ' + kb.tong_giay + ' giây). Đang dựng video, thường mất 10-20 phút...', 'thap');
       capNhatTb_('TB_KICHBAN_MS', Date.now() - t0);
       bc.kich_ban++;
     } catch (e) { xuLyLoiHang_(sh, r, e, bc); }
@@ -1094,6 +1095,7 @@ function giaoBoPhan1ChoGitHub_(sh, chiUuTien) {
     var luc = m ? Number(m[1]) : (r.cap_nhat instanceof Date ? r.cap_nhat.getTime() : 0);
     if (bayGio - luc > GH_QUA_HAN_PHUT * 60000) {
       ghi_(sh, r._row, { trang_thai: m ? m[2] : 'MOI', ghi_chu: 'TAI_CHO: GitHub không trả kết quả sau ' + GH_QUA_HAN_PHUT + ' phút, làm tại Apps Script' });
+      if (typeof kiemTraGitHubBiChan_ === 'function') kiemTraGitHubBiChan_();
       nhatKy_('GITHUB_BP1', r.id + ': GitHub quá hạn, chuyển về làm tại Apps Script');
     } else dangChay++;
   });
@@ -1114,7 +1116,7 @@ function giaoBoPhan1ChoGitHub_(sh, chiUuTien) {
     var kq = guiWorkflowGitHub_({ id: r.id, de: duLieu }, 'bo-phan-1.yml');
     if (!kq.ok) {
       nhatKy_('GITHUB_BP1_LOI', 'Không gửi được đề sang GitHub (' + kq.loi + '), lần này làm tại Apps Script');
-      guiZaloMotLan_('GH_BP1_' + kq.ma, '⚠️ Không gửi được đề sang GitHub để giải (' + String(kq.loi).slice(0, 150) + '). Hệ thống tạm làm tại Apps Script (chậm hơn).');
+      guiZaloMotLan_('GH_BP1_' + kq.ma + '_' + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd'), '⚠️ Không gửi được đề sang GitHub để giải (' + String(kq.loi).slice(0, 150) + '). Hệ thống tạm làm tại Apps Script (chậm hơn).');
       return { gui: gui, loi: kq.loi };
     }
     ghi_(sh, r._row, { trang_thai: 'GITHUB', ghi_chu: 'GITHUB|' + Date.now() + '|' + r.trang_thai + ' (đang ' + (r.trang_thai === 'MOI' ? 'giải + viết kịch bản' : 'viết kịch bản') + ' trên GitHub)' });
@@ -1139,9 +1141,9 @@ function nhanKetQuaBoPhan1_(sh, d) {
     var lyDo = String(d.loi || 'GitHub báo lỗi');
     var tamNghi = /^(QUA_TAI|HET_HAN_MUC)$/.test(lyDo);
     ghi_(sh, r._row, { trang_thai: cu, ghi_chu: tamNghi ? 'Chờ Gemini (' + lyDo + '), GitHub sẽ thử lại' : 'TAI_CHO: GitHub lỗi (' + lyDo.slice(0, 150) + '), làm tại Apps Script' });
-    if (lyDo === 'HET_HAN_MUC') { datNghi_(60); guiZaloMotLan_('GH_HET_HAN_MUC', '⏸ Mọi key Gemini trên GitHub đã hết hạn mức hôm nay, Bộ phận 1 tạm nghỉ 60 phút.'); }
+    if (lyDo === 'HET_HAN_MUC') { datNghi_(60); guiZaloMotLan_('GH_HHM_' + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd'), '⏸ Mọi key Gemini trên GitHub đã hết hạn mức hôm nay, Bộ phận 1 tạm nghỉ 60 phút.', 'vua'); }
     else if (lyDo === 'QUA_TAI') datNghi_(10);
-    if (/THIEU_GEMINI/.test(lyDo)) guiZaloMotLan_('GH_THIEU_KEY', '⚠️ GitHub chưa có key Gemini (Secret GEMINI_KEYS) nên đề đang được làm tại Apps Script (chậm). Thêm Secret để chạy nhanh.');
+    if (/THIEU_GEMINI/.test(lyDo)) guiZaloMotLan_('GH_THIEU_KEY_' + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd'), '⚠️ GitHub chưa có key Gemini (Secret GEMINI_KEYS) nên đề đang được làm tại Apps Script (chậm). Thêm Secret để chạy nhanh.');
     nhatKy_('GITHUB_BP1', r.id + ': GitHub lỗi: ' + lyDo.slice(0, 200));
     return { ok: true };
   }
@@ -1159,9 +1161,10 @@ function nhanKetQuaBoPhan1_(sh, d) {
   if (d.loi === 'QUA_TAI') datNghi_(10);
   ghi_(sh, r._row, f);
   if (d.series_ghi && typeof ghiTapCuoiSeries_ === 'function') { try { ghiTapCuoiSeries_(d.series_ghi.se, d.series_ghi.tieu_de); } catch (e) {} }
-  (d.zalo || []).forEach(function (z) { try { if (z.id) baoZaloDe_(r, z.noi_dung); else guiZalo_(z.noi_dung); } catch (e) {} });
+  (d.zalo || []).forEach(function (z) { try { if (z.id) baoZaloDe_(r, z.noi_dung, z.muc); else guiZalo_(z.noi_dung, z.muc, z.khoa); } catch (e) {} });
   nhatKy_('GITHUB_BP1', r.id + ' -> ' + f.trang_thai + (d.kich_ban ? ' (đã lưu kịch bản)' : '') + (d.loi ? ' | ' + d.loi : ''));
-  if (f.trang_thai === 'LOAI' || f.trang_thai === 'LOI') guiZaloMotLan_('BP1_' + r.id + '_' + f.trang_thai, (f.trang_thai === 'LOAI' ? '❌ Loại đề ' : '⚠️ Lỗi đề ') + r.id + ': ' + String(f.ghi_chu || '').slice(0, 200));
+  // đề máy tự sinh bị loại/lỗi: hệ thống tự thay đề khác, không làm phiền (vẫn có trong báo cáo ngày); đề bạn gửi thì báo
+  if ((f.trang_thai === 'LOAI' || f.trang_thai === 'LOI') && laUuTien_(r)) baoZaloDe_(r, (f.trang_thai === 'LOAI' ? '❌ Không làm được video cho đề ' : '⚠️ Đề ') + r.id + (f.trang_thai === 'LOAI' ? ': ' : ' tạm dừng vì lỗi: ') + String(f.ghi_chu || '').slice(0, 200), 'cao');
   // chạy tiếp ngay: có kịch bản -> gửi dựng; còn đề chờ -> gửi GitHub
   if (f.trang_thai === 'CO_KICH_BAN' && typeof chonVaGuiDung_ === 'function') { try { chonVaGuiDung_(sh); } catch (e) { nhatKy_('DUNG_LOI', e.message); } }
   try { if (!dangNghi_()) giaoBoPhan1ChoGitHub_(sh, false); } catch (e) { nhatKy_('GITHUB_BP1_LOI', e.message); }
@@ -1225,7 +1228,7 @@ function xuLyLoiHang_(sh, r, e, bc) {
   if (n >= Number(cauHinh_('MAX_LAN_LOI'))) f.trang_thai = 'LOI';
   ghi_(sh, r._row, f);
   bc.loi++;
-  if (f.trang_thai === 'LOI' && laUuTien_(r)) baoZaloDe_(r, '⚠️ Đề ' + r.id + ' gặp lỗi ' + n + ' lần nên tạm dừng: ' + String(e.message).slice(0, 160) + '\nCác đề khác chạy tiếp. Bạn có thể gửi lại đề.');
+  if (f.trang_thai === 'LOI' && laUuTien_(r)) baoZaloDe_(r, '⚠️ Đề ' + r.id + ' gặp lỗi ' + n + ' lần nên tạm dừng: ' + String(e.message).slice(0, 160) + '\nCác đề khác chạy tiếp. Bạn có thể gửi lại đề.', 'cao');
 }
 
 function chuanHoa_(c) {
@@ -1295,18 +1298,29 @@ function datNghi_(phut) {
 
 // Gửi tin qua Zalo Bot API: POST https://bot-api.zaloplatforms.com/bot<TOKEN>/sendMessage {chat_id, text}
 // ZALO_CHAT_IDS là danh sách chat_id cách nhau bằng dấu phẩy (gửi cho nhiều người).
-function guiZalo_(noiDung) {
-  var p = PropertiesService.getScriptProperties();
-  var token = p.getProperty('ZALO_BOT_TOKEN'), ds = p.getProperty('ZALO_CHAT_IDS');
-  if (!token || !ds) return;
-  var van = ('[VIDEO] ' + noiDung).slice(0, 2000); // tiền tố để phân biệt với các hệ thống khác dùng chung bot
-  ds.split(',').forEach(function (id) {
-    id = id.trim();
+// MỌI thông báo của hệ thống đi qua MỘT bot: bot nhận đề (ZALO_BOT_TOKEN_DE; chưa có thì ZALO_BOT_TOKEN).
+// muc: 'cao' = luôn gửi (video đã qua kiểm duyệt chờ bạn xem, báo cáo ngày, lỗi cần bạn ra tay)
+//      'vua' = chỉ gửi khi CAU_HINH ZALO_THONG_BAO = VUA hoặc DAY_DU (đăng video thành công, hết hạn mức...)
+//      'thap' (mặc định) = tiến độ, lỗi tạm thời đã tự xử lý: chỉ ghi NHAT_KY, gửi khi ZALO_THONG_BAO = DAY_DU
+// khoa (tùy chọn): mỗi khóa chỉ gửi 1 lần trong 6 giờ, không bao giờ báo lặp.
+function duocThongBao_(muc) {
+  var che = String(cauHinh_('ZALO_THONG_BAO') || 'IT').trim().toUpperCase();
+  var hang = { cao: 3, vua: 2, thap: 1 }[muc || 'thap'] || 1;
+  return hang >= (che === 'DAY_DU' ? 1 : che === 'VUA' ? 2 : 3);
+}
+function guiZalo_(noiDung, muc, khoa) {
+  if (!duocThongBao_(muc)) { try { nhatKy_('ZALO_AN', String(noiDung).replace(/\n/g, ' | ').slice(0, 300)); } catch (e0) {} return; }
+  if (khoa) { var c = CacheService.getScriptCache(); if (c.get('ZALO_' + khoa)) return; c.put('ZALO_' + khoa, '1', 21600); }
+  var token = typeof tokenNhanZalo_ === 'function' ? tokenNhanZalo_() : PropertiesService.getScriptProperties().getProperty('ZALO_BOT_TOKEN');
+  var ds = typeof dsNhanThongBao_ === 'function' ? dsNhanThongBao_() : String(PropertiesService.getScriptProperties().getProperty('ZALO_CHAT_IDS') || '').split(',');
+  if (!token || !ds.length) return;
+  ds.forEach(function (id) {
+    id = String(id).trim();
     if (!id) return;
     try {
       UrlFetchApp.fetch('https://bot-api.zaloplatforms.com/bot' + token + '/sendMessage', {
         method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-        payload: JSON.stringify({ chat_id: id, text: van })
+        payload: JSON.stringify({ chat_id: id, text: String(noiDung).slice(0, 2000) })
       });
     } catch (e) { Logger.log('Loi gui Zalo: ' + e.message); }
   });
