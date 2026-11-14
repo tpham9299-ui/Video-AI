@@ -15,10 +15,12 @@ const ma = (k) => k.slice(0, 6) + '…' + k.slice(-4);
 
 async function thu(k, model) {
   try {
+    const ac = new AbortController();
+    const hen = setTimeout(() => ac.abort(), 45000);   // mỗi lần thử tối đa 45 giây (không treo cả bước)
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(k)}`, {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({contents: [{parts: [{text: 'Trả lời đúng một chữ: ok'}]}], generationConfig: {maxOutputTokens: 5, temperature: 0}}),
-    });
+      method: 'POST', headers: {'Content-Type': 'application/json'}, signal: ac.signal,
+      body: JSON.stringify({contents: [{parts: [{text: 'Trả lời đúng một chữ: ok'}]}], generationConfig: {maxOutputTokens: 16, temperature: 0, thinkingConfig: {thinkingBudget: 0}}}),
+    }).finally(() => clearTimeout(hen));
     const raw = await res.text();
     if (res.ok) return {loai: 'DUNG_DUOC'};
     const msg = ((/"message":\s*"([^"]{0,140})/.exec(raw) || [])[1] || raw.slice(0, 140)).replace(/\s+/g, ' ');
@@ -27,7 +29,7 @@ async function thu(k, model) {
     if (res.status === 404) return {loai: 'MODEL_KHONG_CO', msg};
     return {loai: 'LOI_KHAC', msg: `HTTP ${res.status}: ${msg}`};
   } catch (e) {
-    return {loai: 'LOI_MANG', msg: String(e.message || e).slice(0, 120)};
+    return {loai: 'LOI_MANG', msg: /abort/i.test(String(e && e.name) + String(e && e.message)) ? 'quá 45 giây không trả lời' : String(e.message || e).slice(0, 120)};
   }
 }
 
@@ -50,6 +52,7 @@ for (const {k, ten} of dsKey) {
     ketLuan = v.includes('HET_NGAY') ? {loai: 'HET_NGAY'} : v.includes('GIOI_HAN_PHUT') ? {loai: 'GIOI_HAN_PHUT'} : {loai: v[0] || 'LOI_KHAC', msg: theoModel._msg};
   }
   ketQua.push({ten, ma: ma(k), ...ketLuan, theo_model: Object.fromEntries(Object.entries(theoModel).filter(([m]) => m !== '_msg'))});
+  console.log(`đã thử ${ten} (${ma(k)}): ${ketLuan.loai}`);
 }
 
 const NHAN = {DUNG_DUOC: '✅ dùng được', HET_NGAY: '⏳ hết hạn mức ngày (giữ, chờ reset)', GIOI_HAN_PHUT: '⏳ đang giới hạn theo phút (giữ)', LOI_THAT: '❌ LỖI THẬT -> nên xóa', MODEL_KHONG_CO: '⚠️ không có quyền dùng các model', LOI_KHAC: '⚠️ lỗi khác', LOI_MANG: '⚠️ lỗi mạng'};
