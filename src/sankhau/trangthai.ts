@@ -216,6 +216,21 @@ export function boCucDanhSach(v: Vat, k = 1) {
   return {W, pad, huy, co, coTieuDe, dong, h};
 }
 
+// THẺ (the): thẻ có chữ tự RỘNG RA theo nội dung (không thu chữ nhỏ xíu trong thẻ hẹp); dài quá thì xuống tối đa 2 dòng
+export function kichThe(v: Vat, k = 1) {
+  const n = v.soLuong;
+  const chuDai = Math.max(0, ...Array.from({length: n}, (_, i) => texSangChu(v.ds[i] || (n === 1 ? v.noiDung : '')).length));
+  const co = Math.max(36 * k, Math.min(52 * k, 54 * v.co * k));
+  if (!chuDai) return {w: 280 * v.co, h: 190 * v.co, co, dong: 1};
+  const rongToiDa = n === 1 ? 860 : Math.max(200, 920 / n - 24);
+  const can = chuDai * 0.58 * co + 56;
+  const dong = can > rongToiDa ? 2 : 1;
+  const coThat = dong === 2 ? Math.max(32 * k, Math.min(co, (rongToiDa * 2 - 80) / (chuDai * 0.58))) : co;
+  const w = Math.max(260 * Math.min(1, v.co), Math.min(rongToiDa, dong === 2 ? rongToiDa : can));
+  const h = Math.max(150 * Math.min(1, v.co), dong * coThat * 1.2 + 70 + (n === 1 && v.giaTriChu ? 60 : 0));
+  return {w, h, co: coThat, dong};
+}
+
 export function kichThuocVat(v: Vat, k = 1): {w: number; h: number} {
   const n = v.soLuong;
   const cot = n <= 6 ? n : Math.ceil(n / 2);
@@ -223,7 +238,7 @@ export function kichThuocVat(v: Vat, k = 1): {w: number; h: number} {
   let h = 300;
   switch (v.loai) {
     case 'nguoi': { const o = Math.min(190, 900 / cot); w = o * cot; h = Math.ceil(n / cot) * o * 1.15 + (v.nhan ? 50 : 0); break; }
-    case 'the': w = n === 1 ? 280 : Math.min(280 + 24, 920 / n) * n; h = 190 + (v.nhan ? 60 : 0); break;
+    case 'the': { const b = kichThe(v, k); w = n === 1 ? b.w : Math.min(b.w + 24, 920 / n) * n; h = b.h + (v.nhan ? 70 : 10); break; }
     case 'the_bai': w = Math.max(n, v.ds.length || 1) * 192; h = 260; break;
     case 'xuc_xac': w = n * 216; h = 220; break;
     case 'dong_xu': w = n * 220; h = 250; break;
@@ -238,8 +253,15 @@ export function kichThuocVat(v: Vat, k = 1): {w: number; h: number} {
     case 'vong_quay': w = 510; h = 560; break;
     case 'cua': w = n * (Math.min(230, 880 / n - 26) + 26); h = Math.min(230, 880 / n - 26) * 1.5 + 20; break;
     case 'banh': w = 460; h = 480; break;
-    case 'nhan': w = Math.min(900, Math.max(4, v.noiDung.length) * 32 + 60); h = 90; break;
-    case 'chu': w = Math.min(900, Math.max(3, v.noiDung.length) * 30); h = 80; break;
+    case 'nhan': {
+      // khớp NhanSan/NhanNeon: cỡ 46*k (dài > 18 ký tự thì 0,86 lần và xuống dòng trong 760px)
+      const dai = Math.max(4, texSangChu(v.noiDung).length);
+      const co = Math.max(34, 46 * Math.max(0.85, Math.min(1.2, v.co)) * (dai > 18 ? 0.86 : 1)) * k;
+      const rong = dai * 0.64 * co + co * 0.9 + 8;
+      const dong = dai > 18 ? Math.ceil(rong / 760) : 1;
+      w = Math.min(dai > 18 ? 800 : 940, rong); h = dong * co * 1.18 + co * 0.36 + 10; break;
+    }
+    case 'chu': { const co = 52 * Math.max(0.85, Math.min(1.2, v.co)) * k; const dai = Math.max(3, texSangChu(v.noiDung).length); w = Math.min(900, dai * 0.56 * co); h = co * 1.5 * Math.ceil((dai * 0.56 * co) / 900); break; }
     case 'so_dem': w = v.kieu === 'vien' ? 380 : 320; h = v.kieu === 'vien' ? 120 : 260; break;
     case 'bieu_tuong': w = n * 154; h = 200; break;
     case 'luoi_o': { const c = v.soCot || Math.min(12, Math.ceil(Math.sqrt(n * 1.6))); const r = Math.ceil(n / c); const o = Math.min(860 / c, 560 / r); w = o * c; h = o * r + (v.nhan ? 50 : 0); break; }

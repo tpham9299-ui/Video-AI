@@ -3,6 +3,7 @@
 // đa giác đều, đường cong tham số, nhân bản (lặp) và các bộ SINH HÌNH cho dạng khó vẽ tay: bông tuyết Koch, tam giác Sierpinski.
 // Vẽ kiểu Manim: từng nét vẽ dần (Create), tô màu hiện sau, nhãn bật lên. Bộ sinh hình có số lần lặp "biến hình" liên tục theo
 // giá trị của vật (hành động dat_gia_tri: 0 -> 1 -> 2 -> 3), ví dụ bông tuyết mọc thêm gai ngay trước mắt người xem.
+import {TI_LE_RONG, VatThuc} from './vatthuc';
 import React from 'react';
 import {FONT_DAM} from '../theme';
 import {Toan} from '../Toan';
@@ -205,6 +206,8 @@ function dungNet(h: PhanHinh, muc: number): Net[] {
       }
       return [{d: dd(ds, false), kin: false, tam: tamCua(ds), ds}];
     }
+    case 'vat':
+      return [{d: '', kin: false, tam: [h.tam[0], h.tam[1] - h.cao * 0.5]}];
     case 'xep_chong': {
       // CHỒNG VẬT XẾP TẦNG (ống, lon, khúc gỗ...): các tầng nằm ngang, vật trên nằm trong khe hai vật dưới (xếp tổ ong);
       // nhiều tầng thì rút gọn như sách giáo khoa: 2 tầng trên cùng, dấu chấm dọc, 3 tầng dưới cùng.
@@ -291,6 +294,16 @@ export const HinhTuDo: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
     const rong = Math.min(W, chuoi.replace(/\\[a-zA-Z]+|[{}_^$]/g, '').length * co * 0.56 + 24);
     return Math.max(rong / 2 - 10, Math.min(W - rong / 2 + 10, x));
   };
+  // giới hạn sân khấu (960px) tính trong tọa độ của hình: chữ đặt ngoài hình vẫn không được vượt mép sân khấu (= mép màn hình)
+  const goc0 = (v.x / 100) * 960 + st.dx - W / 2;
+  const bienTrai = -goc0 + 14, bienPhai = 960 - goc0 - 14;
+  // hộp các chữ rời (kieu "chu") để số đếm tầng né ra, không đè lên
+  const hopChu = v.hinh.filter((h) => h.kieu === 'chu').map((h) => {
+    const coC = 34 * h.coChu * kc, rong = h.noiDung.replace(/\\[a-zA-Z]+|[{}_^$]/g, '').length * coC * 0.56 + 24;
+    const x = trongKhung(h.tam[0] * s, h.noiDung, coC);
+    return {x0: x - rong / 2, x1: x + rong / 2, y0: h.tam[1] * s - coC * 0.7, y1: h.tam[1] * s + coC * 0.7};
+  });
+  const coVatThuc = v.hinh.some((h) => h.kieu === 'vat');   // cảnh thật (cột cờ, nhà...): hình học vẽ thêm là chú thích phẳng
   const KHOI = 10; // số lớp đùn khối (hình tô màu nằm trên bàn 3D -> nổi thành khối có bề dày)
   // bộ hiệu ứng mới: nhiều chữ rời cùng một bước thì bật LẦN LƯỢT (0,3 giây/chữ) kèm vòng sóng, như các ga tàu hiện dần
   const treChu = new Map<number, number>();
@@ -315,7 +328,8 @@ export const HinhTuDo: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
             const toMau = h.to ? neon(h.to === 'co' ? h.mau || MAU_MAC[i % MAU_MAC.length] : h.to) : '';
             const nets = dungNet(h, muc);
             if (h.nhan) {
-              const vt = h.viTriNhan || nets[0]?.tam || h.tam;
+              // vật thực tế: nhãn mặc định bên phải vật, ngang giữa thân (vd "h = ?" cạnh cột cờ)
+              const vt = h.viTriNhan || (h.kieu === 'vat' ? [h.tam[0] + (h.rong || h.cao * (TI_LE_RONG[h.ten] || 1)) / 2 + 3, h.tam[1] - h.cao * 0.55] as D : nets[0]?.tam || h.tam);
               const coN = 30 * h.coChu * kc;
               const [xN, yN] = dich(trongKhung(vt[0] * s, h.nhan, coN), vt[1] * s);
               if (moi) nhan.push(<VongSong key={`vs${i}`} x={xN} y={yN} p={(t - bd - 0.5) / 0.9} mau={GIAO_DIEN.nhan} R={70} />);
@@ -327,6 +341,14 @@ export const HinhTuDo: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
               );
             }
             if (h.kieu === 'chu') return null;
+            if (h.kieu === 'vat') {
+              // vật thực tế: mọc từ chân lên, có nhịp chuyển động riêng (cờ bay, đèn quét...); nghiêng theo "xoay" (thang dựa tường)
+              return (
+                <g key={i} transform={h.xoay ? `rotate(${h.xoay} ${h.tam[0]} ${h.tam[1]})` : undefined} opacity={1 - 0.6 * lb} style={c ? {filter: `drop-shadow(0 0 ${2 + 3 * c.p}px ${mau})`} : undefined}>
+                  <VatThuc ten={h.ten} x={h.tam[0]} y={h.tam[1]} cao={h.cao} rong={h.rong || undefined} lat={h.lat} mau={mau} t={st.t} p={(t - bd) / 0.8} />
+                </g>
+              );
+            }
             const xep = h.kieu === 'xep_chong';
             const moTo = (xep ? 1 : kep((t - bd - 0.6) / 0.6)) * (1 - 0.6 * lb);
             // KHỐI MỌC LÊN: hình tô xong thì bề dày đùn tăng dần (hình phẳng nở thành khối), không hiện ra cứng đơ
@@ -380,7 +402,9 @@ export const HinhTuDo: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
                         </g>
                       );
                     }
-                    const tron = !!(n.kin && toMau && n.mo === undefined);
+                    // CHỈ mặt VẬT THẬT mới đùn thành khối (tô do_to ≥ 0,25). Mảng tô mờ (tam giác vuông đánh dấu, vùng tô nhạt)
+                    // là CHÚ THÍCH: giữ phẳng, trong suốt, không che vật thật (cột cờ, người) phía sau.
+                    const tron = !!(n.kin && toMau && n.mo === undefined) && (h.doTo || 0.28) >= 0.25 && !coVatThuc;
                     const laKhoi = tron || (h.kieu !== 'mui_ten' && (h.net || 4) >= 6);
                     const khoi = kg.nam && laKhoi && n.mo === undefined && !h.dut && (tron ? moTo > 0.01 && mocNet > 0.02 : p > 0)
                       ? Array.from({length: tron ? KHOI : 4}, (_, j) => {
@@ -436,7 +460,13 @@ export const HinhTuDo: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
               if (n.dem === undefined || n.an) return null;   // phần bị lược: số chạy nằm trong nhãn ngoặc (bên dưới)
               const a = kep((st.demTang - k * 0.38) / 0.3);
               if (a <= 0) return null;
-              const [x, y] = dich(Math.min(W - 20, (n.xPhai || 0) * s + co * 1.1), n.tam[1] * s);
+              let xd = Math.min(Math.max(W - 20, bienPhai - co), (n.xPhai || 0) * s + co * 1.1);
+              const yd = n.tam[1] * s, nua = String(n.dem).length * co * 0.32 + 6;
+              // né chữ rời (vd nhãn "Tầng 1" cạnh hàng dưới cùng): dời số sang phải chữ đó, hết chỗ thì sang trái
+              for (const b of hopChu) {
+                if (xd + nua > b.x0 && xd - nua < b.x1 && yd + co * 0.55 > b.y0 && yd - co * 0.55 < b.y1) xd = b.x1 + nua + 8 <= bienPhai ? b.x1 + nua + 8 : b.x0 - nua - 8;
+              }
+              const [x, y] = dich(xd, yd);
               return (
                 <React.Fragment key={`dt${i}_${k}`}>
                   {moi && n.dem > 0 ? <VongSong x={x} y={y} p={(st.demTang - k * 0.38) / 0.8} mau={GIAO_DIEN.nhan} R={44} soVong={1} /> : null}
@@ -480,6 +510,10 @@ export const HinhTuDo: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
           const [x1, y1] = dich(xNgoac, n.an.yTren * s);
           const [x2, y2] = dich(xNgoac, n.an.yDuoi * s);
           const cao = Math.max(12, y2 - y1), rong = co * 0.55;
+          // nhãn "+15 tầng" không vượt mép sân khấu: thiếu chỗ thì thu nhỏ chữ cho vừa
+          const rongNhan = (`+${n.an.soAn} ${h.tenTang}`.length * 0.62 + 0.4) * co;
+          const choTrong = bienPhai - (xNgoac + rong + 10);
+          const coNhan = choTrong < rongNhan ? Math.max(22, co * (choTrong / rongNhan)) : co;
           const ngoac = `M0 0 C${rong * 0.6} 0 ${rong * 0.2} ${cao * 0.5 - 6} ${rong} ${cao * 0.5} C${rong * 0.2} ${cao * 0.5 + 6} ${rong * 0.6} ${cao} 0 ${cao}`;
           return (
             <React.Fragment key={`an${i}_${k}`}>
@@ -487,11 +521,11 @@ export const HinhTuDo: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
                 <path d={ngoac} fill="none" stroke={GIAO_DIEN.nhan} strokeWidth={3} strokeLinecap="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - a} style={{filter: `drop-shadow(0 0 5px ${GIAO_DIEN.nhan})`}} />
               </svg>
               <div style={{position: 'absolute', left: x1 + rong + 10, top: (y1 + y2) / 2, transform: `translateY(-50%) scale(${popOut(a, 1.5)})`, transformOrigin: '0 50%', opacity: a, whiteSpace: 'nowrap',
-                fontFamily: FONT_DAM, fontWeight: 900, fontSize: co, color: '#fff', textShadow: '0 2px 8px rgba(0,0,0,0.85)', lineHeight: 1.1}}>
+                fontFamily: FONT_DAM, fontWeight: 900, fontSize: coNhan, color: '#fff', textShadow: '0 2px 8px rgba(0,0,0,0.85)', lineHeight: 1.1}}>
                 +{n.an.soAn} <span style={{color: GIAO_DIEN.nhan}}>{h.tenTang}</span>
                 {/* đang dem_tang: số vật CHẠY NHANH qua các tầng bị lược (5 → 19) cho người xem cảm nhận "còn rất nhiều tầng" */}
                 {st.demTang >= 0 && kep((st.demTang - k * 0.38) / 0.3) > 0 ? (
-                  <div style={{fontSize: co * 0.8, color: GIAO_DIEN.nhan, opacity: kep((st.demTang - k * 0.38) / 0.3)}}>
+                  <div style={{fontSize: coNhan * 0.8, color: GIAO_DIEN.nhan, opacity: kep((st.demTang - k * 0.38) / 0.3)}}>
                     {n.an.tu} → {Math.round(n.an.tu + (n.an.den - n.an.tu) * easeOut(kep((st.demTang - k * 0.38) / 1.3)))}
                   </div>
                 ) : null}

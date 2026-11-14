@@ -1,3 +1,4 @@
+import {TEN_VAT_THUC} from './vatthuc';
 import {catChu, chuanTex, texSangChu} from '../chu';
 // "Sân khấu": cách kịch bản mô tả một cảnh sinh động bằng VẬT THẬT (người, thẻ, xúc xắc, vòng quay, hộp quà, đồng hồ đo xác suất...)
 // và HÀNH ĐỘNG theo từng bước lời giảng (xuất hiện, chọn, loại bỏ, quay, mở, lấy ra, phóng to...).
@@ -33,7 +34,7 @@ export type KieuHanhDong = (typeof KIEU_HANH_DONG)[number];
 
 export type Nhom = {mau: string; so: number};
 
-export const KIEU_NET = ['da_giac', 'duong', 'mui_ten', 'tron', 'cung', 'chu', 'svg', 'da_giac_deu', 'koch', 'sierpinski', 'tham_so', 'lap', 'xep_chong'] as const;
+export const KIEU_NET = ['da_giac', 'duong', 'mui_ten', 'tron', 'cung', 'chu', 'svg', 'da_giac_deu', 'koch', 'sierpinski', 'tham_so', 'lap', 'xep_chong', 'vat'] as const;
 export type KieuNet = (typeof KIEU_NET)[number];
 // Một nét của hình tự do (tọa độ theo khung của vật, gốc trên-trái, y hướng xuống).
 export type PhanHinh = {
@@ -50,6 +51,7 @@ export type PhanHinh = {
   noiDung: string; // chữ
   hang: number[]; // xep_chong: số vật từng tầng từ trên xuống
   tenTang: string; // xep_chong: gọi tầng là gì (tầng, hàng, lớp)
+  ten: string; cao: number; rong: number; lat: boolean; // vat: vật thực tế (cột cờ, ngân hàng...), chân tại tam, cao/rộng theo khung
   mau: string; to: string; doTo: number; net: number; dut: boolean; moNet: number;
   nhan: string; viTriNhan: [number, number] | null; coChu: number;
   buoc: number;
@@ -274,9 +276,19 @@ function netHinh(raw: Record<string, unknown>, khung: [number, number], dem: {di
       return kieu === 'xep_chong' ? [3, 4, 5, 6] : [];
     })(),
     tenTang: chu(raw.ten_tang, 10) || 'tầng',
+    ten: typeof raw.ten === 'string' ? raw.ten.trim() : '',
+    cao: so(raw.cao, khung[1] * 0.5, 0.5, hi),
+    rong: so(raw.rong, 0, 0, hi),
+    lat: raw.lat === true,
     buoc: Math.round(so(raw.buoc, 0, 0, 8)),
   };
   if (kieu === 'xep_chong' && !h.to) h.to = 'co'; // chồng vật luôn tô kín
+  if (kieu === 'vat') {
+    if (!(TEN_VAT_THUC as readonly string[]).includes(h.ten)) return null;
+    if (laMang(raw.goc)) h.tam = xy(raw.goc, giua);   // goc = điểm CHÂN vật
+    // thang/vật nghiêng cho bằng hai điểm [chân, đỉnh]: tự tính chiều dài và góc nghiêng
+    if (diem.length >= 2) { h.tam = diem[0]; h.cao = Math.hypot(diem[1][0] - diem[0][0], diem[1][1] - diem[0][1]); h.xoay = (Math.atan2(diem[1][0] - diem[0][0], diem[0][1] - diem[1][1]) * 180) / Math.PI; }
+  }
   if (kieu === 'lap') {
     if (sau > 0 || !laDT(raw.hinh)) return null;
     h.con = netHinh(raw.hinh, khung, dem, sau + 1);

@@ -91,7 +91,8 @@ export function moHuyHieu(t: number, ketThucGiay: number) {
 
 // WATERMARK ĐỘNG: logo nhỏ trong vòng kính ở GÓC sân khấu (không nằm sau nội dung), mỗi nhóm cảnh trượt sang góc khác,
 // vệt sáng quét qua định kỳ, nhịp sáng nhẹ. Vừa giữ thương hiệu vừa không che nội dung.
-const GOC_WM: [number, number][] = [[972, 520], [108, 1330], [972, 1330], [108, 520]];
+// (cũ: chạy qua 4 góc sân khấu -> đè lên thẻ chữ/công thức) nay ĐỨNG YÊN ở góc trên-trái, ngoài vùng nội dung
+const GOC_WM: [number, number][] = [[70, 70]];
 const WatermarkDong: React.FC<{th: ThuongHieuProps; canh: CanhProps[]; tu: number}> = ({th, canh, tu}) => {
   const f = useCurrentFrame();
   if (f < tu) return null;
@@ -110,7 +111,7 @@ const WatermarkDong: React.FC<{th: ThuongHieuProps; canh: CanhProps[]; tu: numbe
   const nhip = 0.5 + 0.5 * Math.sin(f / 22);
   const vao = kep((f - tu) / 15);
   return (
-    <div style={{position: 'absolute', left: x - 44, top: y - 44, width: 88, height: 88, opacity: 0.62 * vao, transform: `scale(${0.9 + 0.06 * nhip}) rotate(${(1 - p) * -25}deg)`}}>
+    <div data-kd-bo="1" style={{position: 'absolute', left: x - 44, top: y - 44, width: 88, height: 88, opacity: 0.55 * vao, transform: `scale(${0.72 + 0.04 * nhip})`}}>
       <div style={{position: 'absolute', inset: -4, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.25)', boxShadow: `0 0 ${10 + 10 * nhip}px rgba(59,242,154,0.45)`}} />
       <div style={{position: 'absolute', inset: 0, borderRadius: '50%', overflow: 'hidden', background: 'rgba(8,16,20,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
         {th.logo ? <Img src={staticFile(th.logo)} style={{width: '82%', height: '82%', objectFit: 'contain'}} /> : <span style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: 30, color: '#fff'}}>{chuCai(th)}</span>}
@@ -141,7 +142,8 @@ export const ThuongHieu: React.FC<{th: ThuongHieuProps; canh: CanhProps[]; ketTh
     <>
       {th.markNuoc ? <WatermarkDong th={th} canh={canh} tu={tuDau} /> : null}
       {/* huy hiệu canh giữa: mở ở đầu video và giữa video; khi thanh đầu trang (có logo) đã hiện thì ẩn huy hiệu */}
-      <div style={{position: 'absolute', left: 0, right: 0, top: 112, display: 'flex', justifyContent: 'center', opacity: f < tuDau ? 1 : kep(mo2 * 3)}}>
+      {/* chỉ hiện ở đầu video (trước khi thanh đầu trang hiện); bỏ lần hiện giữa video vì đè lên thanh chủ đề */}
+      <div data-kd-bo="1" style={{position: 'absolute', left: 0, right: 0, top: 112, display: 'flex', justifyContent: 'center', opacity: f < tuDau ? 1 : 0}}>
         <div style={{position: 'relative'}}>
         {song > 0 ? <div style={{position: 'absolute', left: 33 - 33 * (1 + song), top: 33 - 33 * (1 + song), width: 66 * (1 + song), height: 66 * (1 + song), borderRadius: '50%', border: `3px solid ${XANH}`, opacity: 1 - song}} /> : null}
         <HuyHieu th={th} vao={vao} mo={mo} dong2={dong2} sang={Math.max(mo, song)} goc={t * 70 + r() * 360} />

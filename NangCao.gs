@@ -15,7 +15,7 @@
  * ============================================================
  */
 
-var MAC_DINH_NC_ = { TU_KIEM_TRA_VIDEO: 'BAT', DIEM_HINH_TOI_THIEU: '7', THU_HOOK: 'BAT', SERIES: 'BAT', BAO_CAO_GIO: '21', PLAYLIST_THEO: 'lop,lop_loai',
+var MAC_DINH_NC_ = { TU_KIEM_TRA_VIDEO: 'BAT', DIEM_HINH_TOI_THIEU: '8', THU_HOOK: 'BAT', SERIES: 'BAT', BAO_CAO_GIO: '21', PLAYLIST_THEO: 'lop,lop_loai',
   HOC_EDIT: 'BAT', HOC_EDIT_GIO: '2', HOC_EDIT_SO_VIDEO: '3', HOC_EDIT_TU_KHOA: 'math shorts animation|giải toán shorts|motion graphics math|toán học thú vị shorts|3d math animation' };
 function chNC_(k) { var v = cauHinh_(k); return v === undefined || v === null || String(v).trim() === '' ? MAC_DINH_NC_[k] : String(v).trim(); }
 var TEN_THONG_KE = 'THONG_KE';
@@ -74,40 +74,88 @@ function chayKiemTraVideo() {
   try { if (typeof sauUuTien_ === 'function') sauUuTien_(); } catch (e2) {}
 }
 
+// AI KIỂM DUYỆT video vừa dựng (bước cuối, sau kiểm duyệt bố cục tự động trên GitHub). Chỉ video ĐẠT mới được gửi bạn / đăng.
+// Chưa đạt: tự viết lại kịch bản theo nhận xét rồi dựng lại, tối đa SO_LAN_TU_SUA_VIDEO lần (mặc định 2). Vẫn chưa đạt thì giữ lại
+// (duyet = KHONG_DAT), không gửi, không đăng; báo bạn một tin ngắn kèm lý do (nhắn /xem <mã> nếu vẫn muốn xem).
+function docAiKT_(r) { try { return JSON.parse(String(r.ai_kiem_tra || '{}')) || {}; } catch (e) { return {}; } }
+function ghiAiKT_(sh, r, them, cot) {
+  var o = docAiKT_(r);
+  Object.keys(them).forEach(function (k) { o[k] = them[k]; });
+  o.luc = new Date().toISOString();
+  var f = cot || {};
+  f.ai_kiem_tra = JSON.stringify(o).slice(0, 1800);
+  ghi_(sh, r._row, f);
+  r.ai_kiem_tra = f.ai_kiem_tra;
+}
+// gửi kịch bản về Bộ phận 1 viết lại theo góp ý (giống lệnh /sua), giữ bản cũ làm bản nháp để sửa đúng chỗ
+function traVeSuaKichBan_(sh, r, gopY, ghiChu, them) {
+  var kb = JSON.parse(DriveApp.getFileById(r.file_kich_ban).getBlob().getDataAsString());
+  luuNhapKichBan_(r.id, kb);
+  ghiAiKT_(sh, r, them, { trang_thai: 'DA_GIAI', duyet: '', uu_tien: 1, so_lan_loi: 0, gop_y: String(gopY).slice(0, 1500), ghi_chu: String(ghiChu).slice(0, 200) });
+  henUuTien_(20);
+}
+
+// GitHub báo KIỂM DUYỆT BỐ CỤC không đạt (đo trên khung hình thật: chữ tràn mép, chữ đè, TeX thô, công thức lỗi)
+function xuLyKiemDuyetBoCuc_(sh, r, kd) {
+  var nang = (kd && kd.nang) || [];
+  var lan = (Number(docAiKT_(r).kd_lan) || 0) + 1;
+  nhatKy_('KIEM_DUYET', r.id + ' lần ' + lan + ': ' + nang.length + ' lỗi bố cục | ' + nang.slice(0, 4).join(' | ').slice(0, 400));
+  if (!r.file_kich_ban) { baoLoiDung_(sh, r, 'KIEM_DUYET: ' + nang.slice(0, 2).join('; ')); return { ok: true }; }
+  traVeSuaKichBan_(sh, r,
+    'KIỂM DUYỆT BỐ CỤC TỰ ĐỘNG (đo trên khung hình thật) KHÔNG ĐẠT, PHẢI SỬA HẾT: ' + nang.slice(0, 10).join(' || ') +
+    '. Cách sửa chung: bớt vật/chữ trong cảnh bị lỗi, đặt các vật cách xa nhau (x, y), nhãn ngắn ≤ 22 ký tự, công thức LaTeX đúng cú pháp.',
+    'Kiểm duyệt bố cục lần ' + lan + ' chưa đạt: tự sửa kịch bản', { kd_lan: lan, kd_loi: nang.slice(0, 5) });
+  return { ok: true, sua: true };
+}
+
 function xuLyAiXem_(sh, r) {
   var kq = null;
   try { kq = aiChamVideo_(r); } catch (e) {
     if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(e.message))) throw e;
     nhatKy_('AI_XEM_LOI', r.id + ': ' + e.message);
   }
-  var cu = {};
-  try { cu = JSON.parse(String(r.ai_kiem_tra || '{}')); } catch (e3) {}
+  var cu = docAiKT_(r);
   var lan = Number(cu.lan_sua) || 0;
-  var nguong = Number(chNC_('DIEM_HINH_TOI_THIEU')) || 7;
-  if (!kq) { ghi_(sh, r._row, { duyet: 'CHO' }); guiDuyet_(r, '(AI chưa xem được video, bạn xem kỹ giúp)'); return; }
-  var ghiAi = JSON.stringify({ diem: kq.diem, van_de: kq.van_de, lan_sua: lan, luc: new Date().toISOString() });
-  nhatKy_('AI_XEM', r.id + ': ' + kq.diem + '/10' + (kq.van_de.length ? ' | ' + kq.van_de.join('; ').slice(0, 300) : ''));
-  if (kq.diem >= nguong || lan >= 1) {
-    ghi_(sh, r._row, { duyet: 'CHO', ai_kiem_tra: ghiAi });
-    guiDuyet_(r, '🤖 AI đã xem: ' + kq.diem + '/10' + (kq.diem < nguong ? ' (đã tự sửa 1 lần nhưng vẫn chưa đạt, bạn xem kỹ giúp)' : '') +
-      (kq.van_de.length ? '\nLưu ý: ' + kq.van_de.slice(0, 3).join('; ') : ''));
+  var toiDa = Number(cauHinh_('SO_LAN_TU_SUA_VIDEO')) || 2;
+  var nguong = Number(chNC_('DIEM_HINH_TOI_THIEU')) || 8;
+  if (!kq) {
+    // AI không chấm được (lỗi mạng/ảnh): video đã qua kiểm duyệt bố cục tự động, vẫn cho qua nhưng ghi rõ
+    ghiAiKT_(sh, r, { diem: null }, { duyet: canDuyet_() ? 'CHO' : '' });
+    if (canDuyet_()) guiDuyet_(r, '(Đã qua kiểm duyệt bố cục tự động; AI chưa chấm được hình, bạn xem kỹ giúp)');
     return;
   }
-  // chưa đạt: tự viết lại kịch bản theo nhận xét của AI rồi dựng lại (giống lệnh /sua)
-  if (!r.file_kich_ban) { ghi_(sh, r._row, { duyet: 'CHO', ai_kiem_tra: ghiAi }); guiDuyet_(r, '🤖 AI chấm ' + kq.diem + '/10 nhưng không còn kịch bản để tự sửa.'); return; }
-  var kb = JSON.parse(DriveApp.getFileById(r.file_kich_ban).getBlob().getDataAsString());
-  luuNhapKichBan_(r.id, kb);
-  ghi_(sh, r._row, {
-    trang_thai: 'DA_GIAI', duyet: '', uu_tien: 1, so_lan_loi: 0,
-    gop_y: ('AI XEM VIDEO CHẤM ' + kq.diem + '/10. Vấn đề: ' + kq.van_de.join('; ') + '. Cách sửa: ' + kq.gop_y).slice(0, 1500),
-    ai_kiem_tra: JSON.stringify({ diem: kq.diem, van_de: kq.van_de, lan_sua: lan + 1, luc: new Date().toISOString() }),
-    ghi_chu: 'AI tự sửa hình (điểm ' + kq.diem + '/10)'
-  });
-  baoZaloDe_(r, '🤖 AI xem video ' + r.id + ' thấy hình chưa khớp đề (' + kq.diem + '/10): ' + kq.van_de.slice(0, 3).join('; ').slice(0, 300) + '\n🔧 Đang tự sửa kịch bản và dựng lại, xong sẽ gửi bạn duyệt.', 'thap');
-  henUuTien_(20);
+  nhatKy_('AI_XEM', r.id + ': ' + kq.diem + '/10' + (kq.van_de.length ? ' | ' + kq.van_de.join('; ').slice(0, 300) : ''));
+  if (kq.diem >= nguong && !kq.loi_nang) {
+    ghiAiKT_(sh, r, { diem: kq.diem, van_de: kq.van_de }, { duyet: canDuyet_() ? 'CHO' : '' });
+    if (canDuyet_()) guiDuyet_(r, '✅ Đạt kiểm duyệt: ' + kq.diem + '/10' + (lan ? ' (đã tự sửa ' + lan + ' lần)' : ''));
+    else guiZalo_('✅ Video ' + (r.chu_de || r.id) + ' đạt kiểm duyệt (' + kq.diem + '/10), xếp lịch đăng.', 'vua');
+    return;
+  }
+  if (lan >= toiDa || !r.file_kich_ban) {
+    ghiAiKT_(sh, r, { diem: kq.diem, van_de: kq.van_de }, { duyet: 'KHONG_DAT', ghi_chu: ('KHÔNG ĐẠT kiểm duyệt (' + kq.diem + '/10): ' + kq.van_de.join('; ')).slice(0, 300) });
+    guiZalo_('⛔ Video "' + (r.chu_de || r.id) + '" chưa đạt kiểm duyệt sau ' + lan + ' lần tự sửa nên KHÔNG gửi, KHÔNG đăng (' + kq.diem + '/10).\n' +
+      'Lý do: ' + kq.van_de.slice(0, 3).join('; ').slice(0, 300) + '\nVẫn muốn xem: /xem ' + r.id, 'cao', 'KHONG_DAT_' + r.id);
+    return;
+  }
+  traVeSuaKichBan_(sh, r,
+    'AI KIỂM DUYỆT VIDEO CHẤM ' + kq.diem + '/10 (cần ≥ ' + nguong + '). Vấn đề: ' + kq.van_de.join('; ') + '. Cách sửa: ' + kq.gop_y,
+    'AI kiểm duyệt ' + kq.diem + '/10: tự sửa lần ' + (lan + 1), { diem: kq.diem, van_de: kq.van_de, lan_sua: lan + 1 });
+  baoZaloDe_(r, '🤖 Kiểm duyệt video ' + r.id + ' chưa đạt (' + kq.diem + '/10): ' + kq.van_de.slice(0, 3).join('; ').slice(0, 300) + '\n🔧 Đang tự sửa và dựng lại.', 'thap');
 }
 
-// Gemini nhìn ảnh 4 khung hình (+ ảnh đề nếu có) và chấm mức khớp đề. Trả {diem, van_de[], gop_y}.
+// /xem <mã>: lấy link video bị giữ lại vì chưa đạt kiểm duyệt
+function xemVideoKhongDat_(chu) {
+  var id = String(chu || '').replace(/^\/xem\s*/i, '').trim();
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
+  var r = docHang_(sh).filter(function (x) { return x.id === id; })[0];
+  if (!r || !r.file_video) return 'Không thấy video ' + id + '.';
+  var o = docAiKT_(r);
+  return '🎞 ' + (r.chu_de || r.id) + ' (' + (String(r.duyet) === 'KHONG_DAT' ? 'CHƯA ĐẠT kiểm duyệt' : 'trạng thái ' + (r.duyet || r.trang_thai)) + (o.diem !== undefined && o.diem !== null ? ', ' + o.diem + '/10' : '') + ')\nhttps://drive.google.com/file/d/' + r.file_video + '/view' +
+    (o.van_de && o.van_de.length ? '\nVấn đề: ' + o.van_de.slice(0, 3).join('; ') : '') + '\nCho đăng: /duyet ' + r.id + ' | Sửa: /sua ' + r.id + ' <góp ý> | Bỏ: /bo ' + r.id;
+}
+
+// Gemini nhìn LƯỚI KHUNG HÌNH (mỗi phần của quy trình một khung) + ảnh đề nếu có, chấm theo TIÊU CHÍ CỦA BẠN.
+// Trả {diem, van_de[], gop_y, loi_nang}. loi_nang = vi phạm tiêu chí bắt buộc (thiếu đề bài, chữ đè/tràn, TeX thô, đáp án sai).
 function aiChamVideo_(r) {
   var anhs = [];
   var kt = DriveApp.getFileById(String(r.anh_kt)).getBlob();
@@ -117,17 +165,21 @@ function aiChamVideo_(r) {
   var kb = {};
   try { kb = JSON.parse(DriveApp.getFileById(r.file_kich_ban).getBlob().getDataAsString()); } catch (e) {}
   var canh = (kb.canh || []);
-  var moTa = canh.map(function (c, i) { return 'Cảnh ' + (i + 1) + ' (' + c.loai + '): ' + (c.tieu_de_canh || '') + ' | hình: ' + String((c.minh_hoa || {}).mo_ta || '').slice(0, 160); }).join('\n');
-  var prompt = 'Bạn là người kiểm duyệt video dạy toán TikTok. ẢNH 1 là 4 khung hình ghép ngang của video: cảnh 1, cảnh 2, cảnh 3 và cảnh đáp án.' +
-    (anhDe ? ' ẢNH 2 là ảnh chụp đề gốc.' : '') + '\nĐỀ BÀI: ' + r.de_bai + (r.mo_ta_hinh ? '\nMÔ TẢ HÌNH CỦA ĐỀ: ' + r.mo_ta_hinh : '') +
-    '\nĐÁP ÁN ĐÚNG: ' + (r.dap_an_hien || r.dap_an) + '\nKỊCH BẢN DỰ ĐỊNH:\n' + moTa + '\n' +
-    'Hãy chấm khắt khe (0-10) theo: (1) hình minh họa có thể hiện ĐÚNG đối tượng/hình dạng/quy luật của đề không (ví dụ đề bông tuyết Koch mà vẽ cái hộp là sai nặng, tối đa 3 điểm); ' +
-    '(2) số liệu, nhãn trên hình có đúng đề không; (3) trình bày: chữ đè lên nhau, chữ bị cắt, khung trống không có gì, hình quá nhỏ/khó nhìn; (4) cảnh đáp án có hiện đúng đáp án không.\n' +
-    'Trả JSON: {"diem":0-10,"van_de":["mỗi vấn đề một câu ngắn, nói rõ cảnh nào"],"gop_y":"chỉ dẫn sửa cụ thể theo từng cảnh để vẽ đúng đề (dùng hinh_tu_do nếu cần)"}';
+  var moTa = canh.map(function (c, i) { return 'Cảnh ' + (i + 1) + ' (' + c.loai + '): ' + (c.tieu_de_canh || '') + ' | hình: ' + String((c.minh_hoa || {}).mo_ta || '').slice(0, 140); }).join('\n');
+  var prompt = 'Bạn là người KIỂM DUYỆT KHẮT KHE video dạy toán TikTok trước khi gửi cho chủ kênh. ẢNH 1 là lưới khung hình của video, theo thứ tự: ' +
+    'đề bài, mô phỏng, lỗi sai, giải, đáp án, thử lại, chốt kiến thức (có thể thiếu vài khung).' + (anhDe ? ' ẢNH 2 là ảnh chụp đề gốc.' : '') +
+    '\nĐỀ BÀI: ' + r.de_bai + (r.mo_ta_hinh ? '\nMÔ TẢ HÌNH CỦA ĐỀ: ' + r.mo_ta_hinh : '') + '\nĐÁP ÁN ĐÚNG: ' + (r.dap_an_hien || r.dap_an) + '\nKỊCH BẢN:\n' + moTa + '\n' +
+    'TIÊU CHÍ BẮT BUỘC của chủ kênh (vi phạm bất kỳ điều nào = loi_nang true, tối đa 5 điểm):\n' +
+    '(1) Khung đầu phải nêu RÕ ĐỀ BÀI: đề cho gì, dữ kiện, cần tìm gì (thẻ ĐỀ CHO / CẦN TÌM đọc được); không được nhảy thẳng vào mô phỏng.\n' +
+    '(2) Không có chữ đè lên chữ, không có chữ tràn/bị cắt ở mép màn hình, không có chữ quá nhỏ khó đọc trên điện thoại.\n' +
+    '(3) Không có mã LaTeX thô (\\frac, ^{}, $...$, dấu gạch chéo) hiện trên màn hình; công thức phải hiện đẹp.\n' +
+    '(4) Hình minh họa đúng đối tượng/hình dạng/số liệu của đề (vẽ vật khác đề là sai nặng); đáp án hiện đúng ' + (r.dap_an_hien || r.dap_an) + '.\n' +
+    'TIÊU CHÍ CHẤT LƯỢNG (trừ điểm): hình hấp dẫn, có chiều sâu, không trống trải; bố cục cân đối; màu sắc thống nhất; đủ 6 phần đúng thứ tự.\n' +
+    'Trả JSON: {"diem":0-10,"loi_nang":true|false,"van_de":["mỗi vấn đề một câu ngắn, nói rõ khung/cảnh nào"],"gop_y":"chỉ dẫn sửa cụ thể theo từng cảnh của kịch bản"}';
   var j = goiGemini_(prompt, 0.1, { suyNghi: 'low', anhs: anhs });
   var diem = Math.max(0, Math.min(10, Number(j && j.diem)));
   if (!isFinite(diem)) throw new Error('AI không trả điểm');
-  return { diem: diem, van_de: (Array.isArray(j.van_de) ? j.van_de : []).map(String).slice(0, 6), gop_y: String(j.gop_y || '').slice(0, 800) };
+  return { diem: diem, loi_nang: j.loi_nang === true, van_de: (Array.isArray(j.van_de) ? j.van_de : []).map(String).slice(0, 6), gop_y: String(j.gop_y || '').slice(0, 800) };
 }
 
 // Gửi tin xin duyệt (dùng chung cho mọi đường).
@@ -372,10 +424,10 @@ function baoCaoHangNgay() {
   var nghi = Number(PropertiesService.getScriptProperties().getProperty('NGHI_DEN') || 0) > Date.now();
   var tin = '📊 BÁO CÁO NGÀY ' + Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'dd/MM') + '\n' +
     '✅ Hôm nay: ' + dem('GIAI', /ĐẠT/) + ' đề giải đạt | ' + dem('KICH_BAN', /đã lưu file/) + ' kịch bản | ' + dem('DUNG_VIDEO', /xong/) + ' video dựng xong | ' + dem('DANG_VIDEO', /đạt [a-z]/) + ' lần đăng\n' +
-    '🤖 AI xem video: ' + dem('AI_XEM') + ' lần | tự sửa kịch bản: ' + dem('KICH_BAN_SUA') + ' | máy tự sửa lỗi vặt: ' + dem('KICH_BAN_TU_SUA') + '\n' +
+    '🛡 Kiểm duyệt: ' + dem('KIEM_DUYET') + ' lần bố cục chưa đạt (đã tự sửa) | 🤖 AI chấm video: ' + dem('AI_XEM') + ' lần | tự sửa kịch bản: ' + dem('KICH_BAN_SUA') + ' | máy tự sửa lỗi vặt: ' + dem('KICH_BAN_TU_SUA') + '\n' +
     '📥 Hàng đợi: ' + tt(function (r) { return r.trang_thai === 'MOI'; }) + ' chờ giải, ' + tt(function (r) { return r.trang_thai === 'DA_GIAI'; }) + ' chờ kịch bản, ' +
     tt(function (r) { return r.trang_thai === 'CO_KICH_BAN' || r.trang_thai === 'DANG_DUNG'; }) + ' đang/chờ dựng, ' +
-    tt(function (r) { return r.trang_thai === 'CO_VIDEO' && String(r.duyet) !== 'DA_DUYET'; }) + ' CHỜ BẠN DUYỆT, ' + tt(function (r) { return r.trang_thai === 'CO_VIDEO' && String(r.duyet) === 'DA_DUYET'; }) + ' đã duyệt chờ đăng\n' +
+    tt(function (r) { return r.trang_thai === 'CO_VIDEO' && String(r.duyet) !== 'DA_DUYET'; }) + ' CHỜ BẠN DUYỆT, ' + tt(function (r) { return r.trang_thai === 'CO_VIDEO' && String(r.duyet) === 'KHONG_DAT'; }) + ' bị giữ vì chưa đạt kiểm duyệt (/xem <mã>), ' + tt(function (r) { return r.trang_thai === 'CO_VIDEO' && String(r.duyet) === 'DA_DUYET'; }) + ' đã duyệt chờ đăng\n' +
     '⚡ Gemini: ' + dem('QUA_TAI') + ' lần quá tải, ' + dem('HET_HAN_MUC') + ' lần hết hạn mức' + (nghi ? ' (đang tạm nghỉ)' : '') + '\n' +
     '🔑 Token GitHub: ' + tokenTin + '\n' +
     (loi.length ? '⚠️ ' + loi.length + ' lỗi hôm nay: ' + Object.keys(dongLoi).slice(0, 3).map(function (k) { return k + (dongLoi[k] > 1 ? ' (x' + dongLoi[k] + ')' : ''); }).join(' | ') + '\n' : '✨ Không có lỗi nào hôm nay\n') +

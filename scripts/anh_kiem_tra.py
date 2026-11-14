@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Sau khi dựng: tạo 2 ảnh từ video bằng ffmpeg.
-  <id>_kt.jpg  : ẢNH KIỂM TRA - 4 khung hình ghép ngang (giữa cảnh 1, 2, 3 và cảnh đáp án) để Gemini so với đề bài
+  <id>_kt.jpg  : ẢNH KIỂM TRA - lưới khung hình, mỗi phần của quy trình một khung, để Gemini kiểm duyệt
   (ảnh bìa <id>_bia.jpg do Remotion dựng riêng: composition AnhBia, xem workflow)
 Cách dùng: python3 scripts/anh_kiem_tra.py public/props.json out/ID.mp4 out/
 """
@@ -17,19 +17,21 @@ def main():
     fps = p.get("fps", 30)
     canh = p.get("canh") or []
     id_ = p.get("id") or os.path.splitext(os.path.basename(video))[0]
+    # MỘT khung cho mỗi phần của quy trình (đề bài, mô phỏng, lỗi sai, giải, đáp án, thử lại, chốt) để AI kiểm duyệt đủ cả video
+    mau = [(r"de_bai", 0.92), (r"mo_hinh|mo_phong|y_do|thu_nho", 0.7), (r"bay", 0.7), (r"tinh", 0.85), (r"dap_an|ket_qua", 0.8), (r"kiem_tra|thu_lai", 0.8), (r"bai_hoc|chot", 0.8)]
     chon = []
-    for i in range(min(3, len(canh))):
-        chon.append(canh[i])
-    da = [c for c in canh if re.search(r"dap_an|ket_qua", str(c.get("loai") or ""))]
-    if da and da[-1] not in chon:
-        chon.append(da[-1])
-    elif len(canh) > 3:
-        chon.append(canh[-2])
+    for re_, ti in mau:
+        ds = [c for c in canh if re.search(re_, str(c.get("loai") or ""))]
+        c = ds[-1] if re_ == r"tinh" and ds else (ds[0] if ds else None)
+        if c is not None and all(c is not x for x, _ in chon):
+            chon.append((c, ti))
+    if len(chon) < 3:
+        chon = [(c, 0.62) for c in canh[:4]]
     try:
         dai = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", video], capture_output=True, text=True).stdout.strip())
     except ValueError:
         dai = 1e9
-    moc = [min((c["batDau"] + c["soFrame"] * 0.62) / fps, max(0.0, dai - 0.3)) for c in chon]
+    moc = [min((c["batDau"] + c["soFrame"] * ti) / fps + (1 / fps if p.get("anhBiaDau") else 0), max(0.0, dai - 0.3)) for c, ti in chon]
     tam = []
     for k, t in enumerate(moc):
         f = os.path.join(ra, "_kt%d.jpg" % k)
@@ -43,11 +45,12 @@ def main():
         # ghép ngang bằng Pillow: máy ghép video chỉ có ffmpeg rút gọn của Remotion (không có bộ lọc hstack)
         from PIL import Image
         ds = [Image.open(f).convert("RGB") for f in tam]
-        tong = Image.new("RGB", (sum(a.width for a in ds), max(a.height for a in ds)))
-        x = 0
-        for a in ds:
-            tong.paste(a, (x, 0))
-            x += a.width
+        cot = min(4, len(ds))
+        hang = (len(ds) + cot - 1) // cot
+        w, h = ds[0].width, ds[0].height
+        tong = Image.new("RGB", (w * cot, h * hang), (8, 12, 14))
+        for k, a in enumerate(ds):
+            tong.paste(a, ((k % cot) * w, (k // cot) * h))
         tong.save(kt, quality=82)
     except ImportError:
         lenh = ["ffmpeg", "-y", "-loglevel", "error"]
@@ -57,7 +60,7 @@ def main():
         subprocess.run(lenh, check=True)
     for f in tam:
         os.remove(f)
-    print("Đã tạo", kt, "| cảnh:", [c.get("so") for c in chon])
+    print("Đã tạo", kt, "| cảnh:", [c.get("so") for c, _ in chon])
 
 
 if __name__ == "__main__":

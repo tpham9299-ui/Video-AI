@@ -62,7 +62,7 @@ export const Toan: React.FC<{
       </span>
     );
   }
-  return <span ref={ref} data-maxw={maxWidth} style={chung} dangerouslySetInnerHTML={{__html: html}} />;
+  return <span ref={ref} data-maxw={maxWidth} data-tex={String(tex).slice(0, 80)} style={chung} dangerouslySetInnerHTML={{__html: html}} />;
 };
 
 // Chờ phông nạp xong trước khi chụp khung hình đầu tiên, để đo bề rộng chữ chính xác.

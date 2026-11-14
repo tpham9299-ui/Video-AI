@@ -7,6 +7,7 @@ import {DuKien} from './DuKien';
 import {NhanQuangCao} from './NhanQuangCao';
 import {ManKetChuyenNghiep} from './ManKet';
 import {phaCua, SAU_PHA} from './ThanhBuoc';
+import {KiemDuyet} from './KiemDuyet';
 import {Nen} from './Nen';
 import {FONT, FONT_DAM, BONG_CHU, vienChu, GIAO_DIEN, MAU, MAU_LOAI, chuTrenMau} from './theme';
 import {DuongTienTrinh} from './dong/DiemNhan';
@@ -42,7 +43,7 @@ const DauTrang: React.FC<{chu: string; lop: string; tu: number; lui: number; den
   const f = useCurrentFrame();
   const e = smooth((f - tu) / 12);
   if (!chu || e <= 0 || f >= den) return null;
-  const an = lui ? moHuyHieu(f / 30, den / 30).mo2 : 0;
+  const an = 0; // huy hiệu giữa video đã bỏ (từng đè lên thanh này)
   const s = chu.toUpperCase();
   const cat = s.search(/[:?!]/);
   const dau = cat > 0 ? s.slice(0, cat + 1) : s;
@@ -51,8 +52,8 @@ const DauTrang: React.FC<{chu: string; lop: string; tu: number; lui: number; den
   return (
     <div style={{position: 'absolute', left: 40, right: 40, top: 118, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 14, fontFamily: FONT_DAM, fontWeight: 900, fontSize: 30, color: '#fff', opacity: 0.95 * e * (1 - an), transform: `translateY(${(1 - e) * -20}px)`, whiteSpace: 'nowrap', textShadow: '0 2px 8px rgba(0,0,0,0.6)'}}>
       {lui ? <LogoTron th={th} co={52} goc={f * 2} sang={0.3} /> : null}
-      {lop ? <span style={{background: nhan || '#3BF29A', color: nhan ? chuTrenMau(nhan) : '#062019', borderRadius: 8, padding: '1px 10px', fontSize: 24, textShadow: 'none'}}>LỚP {lop}</span> : null}
-      {tap ? <span style={{background: '#FF8A3D', color: '#1a0d02', borderRadius: 8, padding: '1px 10px', fontSize: 24, textShadow: 'none'}}>TẬP {tap}</span> : null}
+      {lop ? <span data-kd-bo="1" style={{background: nhan || '#3BF29A', color: nhan ? chuTrenMau(nhan) : '#062019', borderRadius: 8, padding: '1px 10px', fontSize: 24, textShadow: 'none'}}>LỚP {lop}</span> : null}
+      {tap ? <span data-kd-bo="1" style={{background: '#FF8A3D', color: '#1a0d02', borderRadius: 8, padding: '1px 10px', fontSize: 24, textShadow: 'none'}}>TẬP {tap}</span> : null}
       <span style={{overflow: 'hidden', textOverflow: 'ellipsis'}}>
         {dau}
         <span style={{color: nhan || '#FF8A3D'}}>{sau}</span>
@@ -188,6 +189,7 @@ const NoiDungVideo: React.FC<Props> = (props) => {
           {outro.loai === 'tu_tao' ? <ManKetChuyenNghiep th={thuongHieu} baiHoc={props.baiHoc || []} dapAn={props.dapAn} tiepTheo={props.tiepTheo || ''} /> : <ManKet tep={outro.tep} loai={outro.loai} />}
         </Sequence>
       ) : null}
+      {props.kiemDuyet ? <KiemDuyet /> : null}
     </AbsoluteFill>
   );
 };

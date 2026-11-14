@@ -8,7 +8,7 @@ import {Toan} from '../Toan';
 import {texSangChu} from '../chu';
 import {bamChuoi, easeInOut, easeOut, kep, lerp, nay, NEN_VAT, NEN_VAT_2, neon, ngauNhien, popOut, tienDo, VONG_MAU} from './donghieu';
 import {Vat} from './dulieu';
-import {boCucDanhSach, TrangThai} from './trangthai';
+import {boCucDanhSach, kichThe, TrangThai} from './trangthai';
 import {Goc3D} from './chieu3d';
 import {DoThi, HinhHoc} from './hinhhoc';
 import {HinhTuDo} from './hinhtudo';
@@ -109,8 +109,9 @@ const Nguoi: Ve = (v, st) => {
 /* ---------------- THẺ THÔNG TIN ---------------- */
 const The: Ve = (v, st) => {
   const n = v.soLuong;
-  const w = 280 * v.co;
-  const h = 190 * v.co;
+  const kt = kichThe(v, KC);
+  const w = kt.w;
+  const h = kt.h;
   const goc = neon(v.mau, neon('cam'));
   const r = ngauNhien(bamChuoi(v.id));
   const khoang = Math.min(w + 24, 920 / n);
@@ -135,7 +136,7 @@ const The: Ve = (v, st) => {
             transform: `translate(${x}px, ${y + (1 - easeOut(a)) * 60}px) rotate(${lerp((k - (n - 1) / 2) * (n > 3 ? 4 : 0), xoayBung, st.bung)}deg) scale(${popOut(a) * (1 + 0.07 * s.pc)})`,
             border: `5px solid ${ve > 0.85 ? s.mau : 'transparent'}`, borderRadius: 22, background: `linear-gradient(160deg, ${NEN_VAT_2}, ${NEN_VAT})`, backgroundClip: 'padding-box', boxShadow: ve > 0.85 ? `0 0 ${10 + 18 * s.pc}px ${s.mau}` : 'none',
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, fontFamily: FONT, color: '#fff', filter: s.xam ? 'grayscale(1)' : 'none'}}>
-            {tieuDe ? <div style={{opacity: kep((ve - 0.35) / 0.4), fontWeight: 900, fontSize: Math.min(54 * v.co, (w * 1.6) / Math.max(4, tieuDe.length)) , textAlign: 'center', padding: '0 10px', lineHeight: 1.1}}>{tieuDe}</div> : null}
+            {tieuDe ? <div style={{opacity: kep((ve - 0.35) / 0.4), fontWeight: 900, fontSize: kt.co, textAlign: 'center', padding: '0 22px', lineHeight: 1.18, textShadow: '0 2px 10px rgba(0,0,0,0.6)'}}>{laToanNhan(tieuDe) ? <Toan tex={texNhan(tieuDe)} size={kt.co} color="#ffffff" maxWidth={w - 40} /> : tieuDe}</div> : null}
             {n === 1 && st.giaTriChu ? <div style={{fontWeight: 900, fontSize: 54 * v.co, color: s.mau}}>{tc(st.giaTriChu)}</div> : null}
             {n > 1 && !tieuDe ? <svg width={w * 0.5} height={h * 0.3} viewBox="0 0 100 40"><circle cx={20} cy={20} r={14} fill="none" stroke={s.mau} strokeWidth={5} /><rect x={42} y={10} width={52} height={7} rx={3} fill={s.mau} opacity={0.7} /><rect x={42} y={24} width={36} height={7} rx={3} fill="#ffffff" opacity={0.35} /></svg> : null}
             {ve < 1 ? (
@@ -569,7 +570,7 @@ const BieuDoCot: Ve = (v, st) => {
           const h = (x / max) * (H - 60) * a;
           return (
             <div key={k} style={{position: 'absolute', left: (k + 0.5) * (W / n) - bw / 2, bottom: 0, width: bw, height: h, background: `linear-gradient(180deg, ${s.mau}, ${s.mau}55)`, border: `3px solid ${s.mau}`, borderBottom: 'none', borderRadius: '10px 10px 0 0', boxShadow: `0 0 ${10 + 16 * s.pc}px ${s.mau}`, opacity: s.mo}}>
-              <div style={{position: 'absolute', top: -58 * KC, left: -40, right: -40, textAlign: 'center', fontFamily: FONT_DAM, fontWeight: 900, fontSize: 42 * KC, color: '#fff', opacity: a, textShadow: '0 2px 10px rgba(0,0,0,0.8)'}}>{Number.isInteger(x) ? x : x.toFixed(2)}</div>
+              <div style={{position: 'absolute', top: -58 * KC, left: -40, right: -40, textAlign: 'center', fontFamily: FONT_DAM, fontWeight: 900, fontSize: Math.min(42 * KC, (W / n) / (0.62 * Math.max(2, String(Number.isInteger(x) ? x : x.toFixed(2)).length))), color: '#fff', opacity: a, textShadow: '0 2px 10px rgba(0,0,0,0.8)', whiteSpace: 'nowrap'}}>{Number.isInteger(x) ? x : x.toFixed(2)}</div>
             </div>
           );
         })}

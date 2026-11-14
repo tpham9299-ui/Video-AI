@@ -22,7 +22,7 @@ export function phanLoai3D(du: DuLieuSanKhau | null): Kieu3D {
   if (!du || !du.vat.length) return 'khong';
   if (du.gocDau || du.hanhDong.some((h) => h.kieu === 'goc_3d') || du.vat.some((v) => VAT_3D_RIENG.includes(v.loai))) return 'khong';
   // hình NHÌN CHÍNH DIỆN (chồng vật xếp tầng...): dựng đứng, máy xoay trái/phải cho thấy chiều sâu (nằm nghiêng sẽ bị dẹt)
-  if (du.vat.some((v) => v.loai === 'hinh_tu_do' && v.hinh.some((h) => h.kieu === 'xep_chong'))) return 'dung';
+  if (du.vat.some((v) => v.loai === 'hinh_tu_do' && v.hinh.some((h) => h.kieu === 'xep_chong' || h.kieu === 'vat'))) return 'dung';
   if (du.vat.some((v) => VAT_NAM.includes(v.loai))) return 'nam';
   if (du.vat.every((v) => VAT_THE.includes(v.loai))) return 'the';
   return 'khong';

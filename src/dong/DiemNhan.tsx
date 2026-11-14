@@ -25,11 +25,12 @@ export const VongSong: React.FC<{x: number; y: number; p: number; mau: string; R
 
 /* ---------- con dấu "BẪY!" đóng xuống (cái bẫy) ---------- */
 export const DauBay: React.FC<{f: number; chu?: string}> = ({f, chu = 'BẪY!'}) => {
-  if (f < 0) return null;
+  if (f < 0 || f > 62) return null;
   const a = expoOut(kep(f / 7));
   const do_ = '#FF4D4F';
+  // con dấu chỉ đóng ~1,5 giây rồi tan (không che chữ của cảnh suốt thời gian còn lại)
   return (
-    <div style={{position: 'absolute', transform: `translate(-50%, -50%) rotate(-12deg) scale(${2.6 - 1.6 * a})`, opacity: kep(f / 3) * 0.96, pointerEvents: 'none'}}>
+    <div data-kd-bo="1" style={{position: 'absolute', transform: `translate(-50%, -50%) rotate(-12deg) scale(${2.6 - 1.6 * a})`, opacity: kep(f / 3) * kep((62 - f) / 14) * 0.96, pointerEvents: 'none'}}>
       <div style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: 96, letterSpacing: 6, color: do_, padding: '6px 34px', border: `9px solid ${do_}`, borderRadius: 18, outline: `3px solid ${do_}`, outlineOffset: 6,
         textShadow: `0 0 18px ${do_}88`, boxShadow: `0 0 40px ${do_}55, inset 0 0 30px ${do_}33`, background: 'rgba(30,6,8,0.35)', whiteSpace: 'nowrap'}}>
         {chu}
@@ -104,7 +105,7 @@ export const DuongTienTrinh: React.FC<{cacPha: string[]; mocPha: {pha: string; t
   const doiLuc = f - m.tu;
   const vaoNhan = expoOut(kep(doiLuc / 10));
   return (
-    <div style={{position: 'absolute', left: 0, top: 0, width: 1080, height: 260, opacity: mo, pointerEvents: 'none'}}>
+    <div data-kd-bo="1" style={{position: 'absolute', left: 0, top: 0, width: 1080, height: 260, opacity: mo, pointerEvents: 'none'}}>
       <svg width={1080} height={260} style={{position: 'absolute', left: 0, top: 0, overflow: 'visible'}}>
         <line x1={X0} y1={Y} x2={X1} y2={Y} stroke="rgba(255,255,255,0.16)" strokeWidth={2} />
         <line x1={X0} y1={Y} x2={xSang} y2={Y} stroke={mau} strokeWidth={3} opacity={0.85} style={{filter: `drop-shadow(0 0 6px ${mau})`}} />

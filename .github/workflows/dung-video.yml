@@ -14,7 +14,7 @@ on:
       mau:
         description: 'Kịch bản mẫu để dựng thử (khi không có kich_ban)'
         type: choice
-        options: [kich_ban_thuc_te, kich_ban_koch, kich_ban_koch_moi, kich_ban_ong_thep, kich_ban_mau]
+        options: [kich_ban_thuc_te, kich_ban_koch, kich_ban_koch_moi, kich_ban_ong_thep, kich_ban_cot_co, kich_ban_mau]
         default: kich_ban_thuc_te
       viec:
         description: 'dung = dựng video | dang = đăng video lên mạng xã hội'
@@ -71,6 +71,9 @@ jobs:
       GIONG: ${{ vars.GIONG }}
       TOC_DO: ${{ vars.TOC_DO }}
       SO_MAY_DUNG: ${{ vars.SO_MAY_DUNG }}
+      APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
+      DUNG_VIDEO_SECRET: ${{ secrets.DUNG_VIDEO_SECRET }}
+      ID_VIDEO: ${{ github.event.client_payload.id || github.event.inputs.id }}
     steps:
       - uses: actions/checkout@v4
 
@@ -151,6 +154,44 @@ jobs:
           fi
           rm -f out/*.png
 
+      # KIỂM DUYỆT BỐ CỤC: chụp 3 khung mẫu mỗi cảnh, đo chữ tràn mép / đè nhau / bị cắt / mã TeX thô / công thức lỗi / chữ quá nhỏ.
+      # Kịch bản từ Apps Script (_kiem_duyet = chan): có lỗi nặng thì KHÔNG dựng, gửi báo cáo về để Gemini sửa kịch bản rồi dựng lại.
+      # Dựng thử tay (không có mã đề) hoặc _kiem_duyet = bao: chỉ ghi báo cáo, vẫn dựng.
+      - name: Kiểm duyệt bố cục
+        id: kd
+        run: |
+          node scripts/kiem_duyet.mjs build public/props.json out/kiem_duyet.json 2>&1 | grep -v "character metrics\|memory\|Memory\|docker\|lower amount" || true
+          [ -s out/kiem_duyet.json ] || echo '{"nang":[],"nhe":[],"hong":true}' > out/kiem_duyet.json
+          python3 - <<'PY'
+          import json, os
+          b = json.load(open('out/kiem_duyet.json', encoding='utf8'))
+          kb = json.load(open('kich_ban.json', encoding='utf8'))
+          che_do = str(kb.get('_kiem_duyet') or ('chan' if os.environ.get('ID_VIDEO') else 'bao'))
+          chan = che_do == 'chan' and len(b.get('nang') or []) > 0 and bool(os.environ.get('ID_VIDEO'))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write('chan=%s\n' % ('true' if chan else 'false'))
+          print('Chế độ kiểm duyệt: %s | lỗi nặng: %d | %s' % (che_do, len(b.get('nang') or []), 'DỪNG, gửi về tự sửa' if chan else 'dựng tiếp'))
+          PY
+
+      - name: Kiểm duyệt không đạt - báo về Apps Script để tự sửa kịch bản
+        if: steps.kd.outputs.chan == 'true' && env.APPS_SCRIPT_URL != ''
+        run: |
+          python3 - <<'PY'
+          import json, os
+          b = json.load(open('out/kiem_duyet.json', encoding='utf8'))
+          d = {"token": os.environ["DUNG_VIDEO_SECRET"], "id": os.environ["ID_VIDEO"], "ok": False, "loi": "KIEM_DUYET_BO_CUC",
+               "kiem_duyet": {"nang": b.get("nang", [])[:15], "nhe": b.get("nhe", [])[:10]}}
+          json.dump(d, open("bao_kiem_duyet.json", "w", encoding="utf8"), ensure_ascii=False)
+          PY
+          for lan in 1 2 3 4 5 6; do
+            KQ=$(curl -sS -L -H 'Content-Type: application/json' --data @bao_kiem_duyet.json "$APPS_SCRIPT_URL" || true)
+            echo "Lần $lan: $KQ"
+            if echo "$KQ" | grep -Eq '"ok" *: *true'; then break; fi
+            if echo "$KQ" | grep -q 'BAN'; then sleep 60; continue; fi
+            sleep 20
+          done
+          echo "Bố cục chưa đạt: dừng dựng (Apps Script sẽ sửa kịch bản rồi gửi dựng lại)"; exit 1
+
       - name: Chia khúc
         id: chia
         run: |
@@ -186,6 +227,7 @@ jobs:
           path: |
             public/props.json
             out/*_bia.jpg
+            out/kiem_duyet.json
           retention-days: 1
           if-no-files-found: ignore
 

@@ -51,7 +51,8 @@ function coViecSanPham_() {
   return docSP_(sh).some(function (r) { return r.trang_thai === 'CHO_TIM' || r.trang_thai === 'DA_XAC_NHAN'; });
 }
 function canDuyet_() { return String(cauHinh_('DUYET_TRUOC_KHI_DANG') || 'BAT').toUpperCase() !== 'TAT'; }
-function daDuyet_(r) { return !canDuyet_() || String(r.duyet || '') === 'DA_DUYET'; }
+// video đang được AI kiểm duyệt hoặc chưa đạt kiểm duyệt thì KHÔNG bao giờ được đăng
+function daDuyet_(r) { var dv = String(r.duyet || ''); if (dv === 'AI_XEM' || dv === 'KHONG_DAT') return false; return !canDuyet_() || dv === 'DA_DUYET'; }
 
 /* ===================== LỆNH ZALO MỚI (gọi từ nhanZalo_) ===================== */
 
@@ -62,6 +63,7 @@ function xuLyLenhZaloMoi_(chat, chu, anh) {
   if (/^\/sua\b/.test(l)) { guiZaloToi_(chat, yeuCauSuaVideo_(chat, chu)); return true; }
   if (/^\/bo\b/.test(l)) { guiZaloToi_(chat, boVideo_(chu)); return true; }
   if (/^\/cho\b/.test(l)) { guiZaloToi_(chat, danhSachChoDuyet_()); return true; }
+  if (/^\/xem\b/.test(l) && typeof xemVideoKhongDat_ === 'function') { guiZaloToi_(chat, xemVideoKhongDat_(chu)); return true; }
   if (/^\/sanpham\b/.test(l)) { guiZaloToi_(chat, nhanSanPham_(chat, chu, anh)); return true; }
   if (/^\/xacnhan\b/.test(l)) { guiZaloToi_(chat, xacNhanSanPham_(chu)); return true; }
   if (/^\/huysp\b/.test(l)) { guiZaloToi_(chat, huySanPham_(chu)); return true; }

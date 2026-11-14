@@ -163,6 +163,10 @@ function kichHoatDungVideo_(r) {
   var kb = JSON.parse(DriveApp.getFileById(r.file_kich_ban).getBlob().getDataAsString());
   delete kb.cach_giai;                       // lời giải chi tiết không cần cho việc dựng, bớt dung lượng
   kb.id = r.id;
+  // kiểm duyệt bố cục trên GitHub: 'chan' = lỗi nặng thì dừng, gửi về để tự sửa kịch bản; sau 2 lần sửa vẫn lỗi -> 'bao' (dựng rồi AI chấm)
+  var kdCu = {};
+  try { kdCu = JSON.parse(String(r.ai_kiem_tra || '{}')); } catch (e0) {}
+  kb._kiem_duyet = (Number(kdCu.kd_lan) || 0) >= 2 ? 'bao' : 'chan';
   if (JSON.stringify(kb).length > 52000) delete kb.de_bai;
   var chuoi = JSON.stringify(kb);
   if (chuoi.length > 60000) throw new Error('KICH_BAN_QUA_LON_' + chuoi.length);
@@ -278,6 +282,11 @@ function doPost(e) {
     docHang_(sh).forEach(function (x) { if (x.id === d.id) r = x; });
     if (!r) return tra({ ok: false, loi: 'KHONG_TIM_THAY' });
 
+    // KIỂM DUYỆT BỐ CỤC không đạt (chữ tràn/đè, TeX thô...): chưa dựng, tự sửa kịch bản rồi dựng lại (NangCao.gs)
+    if (d.kiem_duyet && !d.ok) {
+      if (r.trang_thai !== 'DANG_DUNG') return tra({ ok: true, lap: true });
+      if (typeof xuLyKiemDuyetBoCuc_ === 'function') return tra(xuLyKiemDuyetBoCuc_(sh, r, d.kiem_duyet));
+    }
     // Chống xử lý lặp: GitHub (hoặc mạng) có thể gửi cùng một kết quả nhiều lần; chỉ lần đầu được báo Zalo/ghi.
     if (d.ok && d.file_id) {
       if (r.trang_thai === 'CO_VIDEO' && String(r.file_video) === String(d.file_id)) return tra({ ok: true, lap: true });
@@ -286,7 +295,8 @@ function doPost(e) {
       ghi_(sh, r._row, { trang_thai: 'CO_VIDEO', file_video: String(d.file_id), ghi_chu: '', so_lan_loi: 0, duyet: canDuyetVideo ? 'CHO' : '', anh_kt: d.anh_kt || '', anh_bia: d.anh_bia || '' });
       // AI xem video trước (NangCao.gs): đạt mới gửi bạn duyệt, chưa đạt thì tự sửa rồi dựng lại
       r.file_video = String(d.file_id); r.anh_kt = d.anh_kt || ''; r.anh_bia = d.anh_bia || '';
-      var aiXem = canDuyetVideo && typeof giaoAiXemVideo_ === 'function' && giaoAiXemVideo_(sh, r, d);
+      // AI kiểm duyệt MỌI video (kể cả khi tắt duyệt tay): chưa đạt thì tự sửa, không gửi bạn / không đăng
+      var aiXem = typeof giaoAiXemVideo_ === 'function' && giaoAiXemVideo_(sh, r, d);
       nhatKy_('DUNG_VIDEO', r.id + ' -> xong, file ' + d.file_id);
       var tinVideo = '🎞 Video đã dựng xong: ' + (r.chu_de || r.id) + (d.giay ? ' (' + d.giay + ' giây)' : '') +
         '\nhttps://drive.google.com/file/d/' + d.file_id + '/view' +
