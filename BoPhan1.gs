@@ -863,6 +863,20 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
         }
         throw new Error('KICH_BAN_KHONG_HOP_LE: ' + dg.nang[0]);
       }
+      // thiếu cảnh giải thích công thức (từ đâu ra, ý nghĩa đại lượng, khi nào dùng) -> bước riêng viết bổ sung; lỗi nặng mới thì bỏ
+      if (typeof boSungGiaiThichCongThuc_ === 'function' && canBoSungGiaiThich_(kb) && conDuGoiGemini_()) {
+        var kbLuu = JSON.stringify(kb);
+        try {
+          var canhGT = boSungGiaiThichCongThuc_(kb, r, sn);
+          if (canhGT) {
+            kb.canh = canhGT;
+            chuanBiKichBan_(kb, r, ctxSua);
+            var dgGT = danhGiaKichBan_(kb, r.dap_an, r.mon, hinhDe, spham, r.de_bai);
+            if (dgGT.nang.length) { kb = JSON.parse(kbLuu); nhatKy_('KICH_BAN_GIAI_THICH', r.id + ': bỏ cảnh giải thích bổ sung (' + dgGT.nang.map(function (x) { return String(x).split(':')[0]; }).join(', ') + ')'); }
+            else { dg = dgGT; nhatKy_('KICH_BAN_GIAI_THICH', r.id + ': đã thêm cảnh giải thích công thức, nay ' + demCanhGiaiThich_(kb) + ' cảnh, tổng ' + kb.canh.length + ' cảnh'); }
+          }
+        } catch (eGT) { kb = JSON.parse(kbLuu); if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(eGT.message))) { luuNhapKichBan_(r.id, kb); throw eGT; } }
+      }
       if (dg.nhe.length) nhatKy_('KICH_BAN_LUU_Y', r.id + ': dùng được, còn ' + dg.nhe.length + ' lưu ý nhẹ: ' + dg.nhe.map(function (x) { return String(x).split(':')[0]; }).join(', '));
       xoaNhapKichBan_(r.id);
       chuanHoaThoiLuong_(kb);
@@ -891,6 +905,11 @@ function chuanBiKichBan_(kb, r, ctxSua) {
   if (r.dap_an_hien && !kb.dap_an_hien) kb.dap_an_hien = String(r.dap_an_hien);
   var sua = typeof tuSuaKichBan_ === 'function' ? tuSuaKichBan_(kb, ctxSua) || [] : [];
   if (typeof tuSuaQuyTrinh_ === 'function') sua = sua.concat(tuSuaQuyTrinh_(kb, r.de_bai) || []);
+  // bản vẽ nhìn từ trên: tường đặt nhầm lên cạnh ngắn (tổng rào không khớp đề) -> tự đổi cạnh dài/ngắn
+  if (typeof tuSuaSoDoVung_ === 'function') kb.canh.forEach(function (c, i) {
+    var vs = c && c.minh_hoa && c.minh_hoa.du_lieu && c.minh_hoa.du_lieu.vat;
+    (Array.isArray(vs) ? vs : []).forEach(function (v) { if (v && v.loai === 'canh_that' && tuSuaSoDoVung_(v, r.de_bai)) sua.push('SO_DO_VUNG_CANH_' + (i + 1)); });
+  });
   if (r._banVe && typeof chenBanVe_ === 'function') { sua = sua.concat(chenBanVe_(kb, r._banVe)); kb.ban_ve = r._banVe; }
   suaDapAn_(kb, r.dap_an);   // sau khi tự sửa (có thể vừa thêm/đổi cảnh) để cảnh đáp án luôn đúng
   if (sua.length) nhatKy_('KICH_BAN_TU_SUA', r.id + ': ' + sua.slice(0, 8).join('; ').slice(0, 450));

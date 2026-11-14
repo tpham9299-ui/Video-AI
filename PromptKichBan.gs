@@ -296,12 +296,16 @@ function lapBanVe_(r, anhDe) {
     .map(function (m) { return m[2] + ' -> ' + m[1].filter(function (t) { return t[0] !== '@'; }).join(' / '); });
   var prompt = 'Bạn là HỌA SĨ BẢN VẼ KỸ THUẬT cho video dạy toán. Đọc kỹ đề rồi lập BẢN VẼ cảnh thực tế của đề, đúng 100% vật, vị trí và số đo của đề.\n' +
     'ĐỀ: ' + r.de_bai + (r.mo_ta_hinh ? '\nMÔ TẢ HÌNH CỦA ĐỀ: ' + r.mo_ta_hinh : '') + (anhDe ? '\n(Ảnh đề gửi kèm: nhìn ảnh để đặt vật đúng như hình.)' : '') + '\n' +
+    ((r.dap_an_hien || r.dap_an) ? 'ĐÁP ÁN ĐÃ GIẢI (để vẽ ĐÚNG TỈ LỆ, không ghi đáp án lên hình): ' + String(r.dap_an_hien || r.dap_an).slice(0, 300) + '\n' : '') +
     'VẬT THẬT MÁY NHẬN RA TRONG ĐỀ (bắt buộc có trong bản vẽ): ' + yeuCau.join('; ') + '\n' +
     'Định dạng bản vẽ (máy TỰ tính tọa độ, bạn chỉ ghi số đo thật bằng mét):\n' +
     'NHÌN NGANG: {"loai":"canh_that","nhin":"ngang","vat":[{"ma":"A","ten":"nguoi","cao":1.6,"x":0},{"ma":"B","ten":"cot_co","cao":15.6,"x":20}],"diem":[{"ma":"H","x":20,"cao":1.6}],"do":[{"kieu":"khoang_cach","tu":"A","den":"B","nhan":"20 m"},{"kieu":"chieu_cao","vat":"B","nhan":"h = ?"},{"kieu":"tia","tu":"A.mat","den":"B.dinh","goc":"35°"},{"kieu":"tam_giac","dinh":["A.mat","H","B.dinh"]},{"kieu":"vuong","tai":"H"}]}\n' +
     'vat: ma, ten, cao (m), x (m), tren:"B" (đứng trên vật B), rong (m), lat, bien (biển tên cho cong_trinh/cua_hang), emoji (bieu_tuong); thang dựa tường {"ten":"thang","x":chân,"dinh_x":..,"dinh_cao":..}. Điểm neo: A, A.dinh, A.mat, A.giua, mã trong diem.\n' +
     'do: khoang_cach {tu,den,nhan} | chieu_cao {vat,nhan} | tia {tu,den,goc} | doan {tu,den,nhan} | bong {vat,dai,nhan} | tam_giac {dinh} | vuong {tai} | chu {tai,nhan}.\n' +
     'NHÌN TỪ TRÊN (vườn, ruộng, hàng rào quanh đất, sân, hồ bơi): {"loai":"canh_that","nhin":"tren","vung":[{"ma":"V","ten":"vuon","x":0,"y":0,"rong":20,"dai":12,"hang_rao":true,"tuong":"trai","canh":["20 m","12 m"]}],"vat":[],"do":[{"kieu":"doan","tu":"V.tl","den":"V.br","nhan":"d = ?"}]} (hang_rao true hoặc mảng cạnh ["tren","phai","duoi"]; tuong = cạnh sát bức tường có sẵn, không rào)\n' +
+    'QUY TẮC NHÌN TỪ TRÊN: "rong" = cạnh NGANG (tren/duoi), "dai" = cạnh DỌC (trai/phai). Bài tìm kích thước tối ưu: vẽ theo kích thước của ĐÁP ÁN. ' +
+    'Cạnh sát tường phải là cạnh mà đề/đáp án nói "song song tường" (vd đáp án cạnh song song tường 60 m -> tường nằm trên cạnh dài 60 m). ' +
+    'TỔNG các cạnh có rào phải ĐÚNG bằng tổng chiều dài lưới/rào của đề. "canh": [nhãn cạnh ngang, nhãn cạnh dọc] - nhãn phải đúng ý nghĩa ẩn trong lời giải (cạnh song song tường là x thì nhãn cạnh đó là "x").\n' +
     'THƯ VIỆN TÊN VẬT: ' + TEN_VAT_THUC_.join(', ') + '. Vật không có trong thư viện: cong_trinh + bien (ghi đúng tên công trình) hoặc bieu_tuong + emoji. KHÔNG dùng khối hộp/khối trụ.\n' +
     'Chỉ đưa số ĐỀ CHO vào nhãn; đại lượng cần tìm ghi "?" (vd "h = ?"). Mọi vị trí phải nhất quán với số đo (khoảng cách 20 m thì hai vật cách nhau đúng 20 trên trục x).\n' +
     'Trả JSON: {"vat_trong_de":["liệt kê mọi vật/địa điểm thật trong đề"],"ban_ve":{...canh_that...},"tu_kiem_tra":"đối chiếu từng số của đề với bản vẽ"}';
@@ -313,9 +317,10 @@ function lapBanVe_(r, anhDe) {
     var bv = j && j.ban_ve;
     if (!bv || typeof bv !== 'object') continue;
     bv.loai = 'canh_that'; bv.id = 'canh'; bv.x = 50; bv.y = 50; bv.buoc = 1;
+    if (typeof tuSuaSoDoVung_ === 'function' && tuSuaSoDoVung_(bv, r.de_bai)) nhatKy_('BAN_VE', r.id + ': tự đổi cạnh dài/ngắn cho tổng rào khớp đề');
     var loi = kiemTraCanhThat_(bv, 'BAN_VE');
     if (!loi) {
-      var thieu = kiemTraVatThucDe_({ canh: [{ minh_hoa: { du_lieu: { vat: [bv] } } }] }, r.de_bai);
+      var thieu = kiemTraVatThucDe_({ canh: [{ minh_hoa: { du_lieu: { vat: [bv] } } }] }, r.de_bai).concat(kiemTraSoDoVung_(bv, r.de_bai));
       if (!thieu.length) return bv;
       loi = thieu.join(' ');
     }
@@ -368,4 +373,79 @@ function chenBanVe_(kb, banVe) {
     sua.push('cảnh ' + c.so + ' dùng bản vẽ thực tế');
   });
   return sua;
+}
+
+// ===================== BỔ SUNG CẢNH GIẢI THÍCH CÔNG THỨC (bước riêng, sau khi kịch bản đạt) =====================
+// Kịch bản dùng công thức mà chỉ có 0-1 cảnh giải thích -> nhờ Gemini viết RIÊNG 3 cảnh: (1) công thức TỪ ĐÂU RA,
+// (2) Ý NGHĨA từng đại lượng ứng với bài này, (3) KHI NÀO DÙNG / sau này vận dụng thế nào.
+// Gemini chỉ viết lời + dòng công thức + chọn MẪU HÌNH; máy tự dựng minh_hoa từ mẫu nên luôn hợp lệ.
+function demCanhGiaiThich_(kb) {
+  return (kb.canh || []).filter(function (c) { return typeof laCanhGiaiThichCongThuc_ === 'function' ? laCanhGiaiThichCongThuc_(c) : /nhac_lai/.test(String(c && c.loai)); }).length;
+}
+function canBoSungGiaiThich_(kb) {
+  if (!kb || !Array.isArray(kb.canh)) return false;
+  var dung = kb.canh.some(function (c) { return /tinh|giai/.test(String(c && c.loai)) && (c.noi_dung_man_hinh || []).some(function (d) { return /=/.test(String(d)); }); });
+  return dung && demCanhGiaiThich_(kb) < 2;
+}
+function hinhTuMau_(m, kb, id) {
+  m = m || {};
+  var kieu = String(m.kieu || 'the');
+  if (kieu === 'ban_ve' && kb.ban_ve) {
+    var bv = JSON.parse(JSON.stringify(kb.ban_ve));
+    bv.id = id; bv.x = 50; bv.y = 50; bv.buoc = 1;
+    if (Array.isArray(m.nhan_canh) && bv.vung && bv.vung[0]) bv.vung[0].canh = m.nhan_canh.slice(0, 2).map(String);
+    bv.do = (Array.isArray(m.ghi_chu) ? m.ghi_chu : []).slice(0, 1).map(function (t) { return { kieu: 'chu', tai: ((bv.vung && bv.vung[0] && bv.vung[0].ma) || 'V') + '.giua', nhan: String(t).slice(0, 40), buoc: 2 }; });
+    if (bv.nhin !== 'tren') bv.do = (kb.ban_ve.do || []).map(function (d) { var x = JSON.parse(JSON.stringify(d)); x.buoc = 2; return x; });
+    return { vat: [bv], hanh_dong: [] };
+  }
+  if (kieu === 'do_thi' && m.ham && Number(m.x_den) > Number(m.x_tu)) {
+    var dt = { id: id, loai: 'do_thi', x: 50, y: 50, ham: String(m.ham), x_tu: Number(m.x_tu), x_den: Number(m.x_den), nhan_truc: ['x', String(m.truc_y || 'y')], noi_dung: String(m.tieu_de || '').slice(0, 40), buoc: 1 };
+    if (m.y_tu !== undefined && m.y_den !== undefined && Number(m.y_den) > Number(m.y_tu)) { dt.y_tu = Number(m.y_tu); dt.y_den = Number(m.y_den); }
+    var hd = [];
+    if (m.diem_x !== undefined && isFinite(Number(m.diem_x))) { dt.gia_tri = Number(m.x_tu); hd.push({ buoc: 2, vat: id, kieu: 'dat_gia_tri', gia_tri: Number(m.diem_x) }); }
+    return { vat: [dt], hanh_dong: hd };
+  }
+  var ds = (Array.isArray(m.dong) ? m.dong : []).map(function (x) { return String(x).replace(/\s+/g, ' ').trim().slice(0, 46); }).filter(Boolean).slice(0, 4);
+  if (!ds.length) ds = ['Công thức dùng trong bài'];
+  return { vat: [{ id: id, loai: 'danh_sach', x: 50, y: 50, noi_dung: String(m.tieu_de || 'Ghi nhớ').slice(0, 34), ds: ds, buoc: 1 }],
+    hanh_dong: ds.map(function (_, i) { return { buoc: i + 1, vat: id, kieu: 'chon', chi_so: [i] }; }).slice(0, 3) };
+}
+function boSungGiaiThichCongThuc_(kb, r, sn) {
+  if (!canBoSungGiaiThich_(kb)) return null;
+  var cu = kb.canh.filter(function (c) { return typeof laCanhGiaiThichCongThuc_ === 'function' && laCanhGiaiThichCongThuc_(c); });
+  var tinh = kb.canh.filter(function (c) { return /tinh|diem_chot|y_do/.test(String(c.loai)); }).map(function (c) { return '- ' + c.loi_thoai + ' | ' + (c.noi_dung_man_hinh || []).join(' ; '); }).join('\n');
+  var prompt = 'Bạn là GIÁO VIÊN TOÁN giỏi giảng giải. Video dạy bài toán dưới đây đang thiếu phần GIẢI THÍCH CÔNG THỨC. Viết ĐÚNG 3 cảnh giải thích công thức chính được dùng.\n' +
+    'ĐỀ: ' + r.de_bai + '\nĐÁP ÁN: ' + String(r.dap_an_hien || r.dap_an || '') + '\nCÁC BƯỚC GIẢI TRONG VIDEO:\n' + tinh.slice(0, 2500) + '\n' +
+    (cu.length ? 'CẢNH GIẢI THÍCH ĐANG CÓ (sẽ được thay bằng 3 cảnh mới, có thể giữ ý hay): ' + cu.map(function (c) { return c.loi_thoai + ' | ' + (c.noi_dung_man_hinh || []).join(' ; '); }).join(' || ') + '\n' : '') +
+    '3 CẢNH BẮT BUỘC theo thứ tự:\n' +
+    '1) "tu_dau" - CÔNG THỨC TỪ ĐÂU RA: giải thích trực quan vì sao công thức đúng (ví dụ thử số, hình vuông/hình chữ nhật, hằng đẳng thức), không chép định nghĩa khô khan.\n' +
+    '2) "dai_luong" - Ý NGHĨA TỪNG ĐẠI LƯỢNG: mỗi chữ trong công thức ứng với cái gì TRONG BÀI NÀY (chỉ lên hình: cạnh nào, tổng nào), đơn vị gì.\n' +
+    '3) "van_dung" - KHI NÀO DÙNG: dấu hiệu nhận ra bài dùng được công thức này, điều kiện (dấu "=" xảy ra khi nào), sau này gặp dạng nào thì dùng.\n' +
+    'Mỗi cảnh: "tieu_de_canh" (≤ 6 từ), "loi_thoai" (lời giảng tự nhiên, 22-40 từ, xưng "mình"/"các bạn", không chào), "noi_dung_man_hinh": 1-2 dòng LaTeX, mỗi dòng ≤ 24 ký tự hiển thị (tách dài ở dấu =),\n' +
+    '"hinh": chọn MỘT mẫu: {"kieu":"the","tieu_de":"...","dong":["2-4 dòng chữ ngắn ≤ 40 ký tự, viết thường, không LaTeX"]}' +
+    (kb.ban_ve ? ' | {"kieu":"ban_ve","nhan_canh":["nhãn cạnh ngang","nhãn cạnh dọc"],"ghi_chu":["1 ghi chú ngắn"]} (vẽ lại cảnh thực tế của đề, gắn tên đại lượng lên đúng chỗ - nên dùng cho cảnh 2)' : '') +
+    ' | {"kieu":"do_thi","ham":"biểu thức theo x kiểu máy tính","x_tu":0,"x_den":..,"diem_x":điểm cần chỉ,"truc_y":"S","tieu_de":"..."}.\n' +
+    'Trả JSON: {"canh":[{"muc":"tu_dau","tieu_de_canh":"","loi_thoai":"","noi_dung_man_hinh":[],"hinh":{}},{"muc":"dai_luong",...},{"muc":"van_dung",...}]}';
+  var j = null;
+  try { j = goiGemini_(prompt, 0.5, { suyNghi: (sn && sn.suyNghi) || 'low' }); } catch (e) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(e.message))) throw e; return null; }
+  var ds = j && Array.isArray(j.canh) ? j.canh.filter(function (c) { return c && String(c.loi_thoai || '').trim().length > 20; }).slice(0, 3) : [];
+  if (ds.length < 2) return null;
+  var NHAN = { tu_dau: 'TỪ ĐÂU RA', dai_luong: 'Ý NGHĨA', van_dung: 'KHI NÀO DÙNG' };
+  var moi = ds.map(function (c, i) {
+    var muc = NHAN[c.muc] ? c.muc : ['tu_dau', 'dai_luong', 'van_dung'][i];
+    var du = hinhTuMau_(c.hinh, kb, 'gt' + (i + 1));
+    return { loai: 'nhac_lai', tieu_de_canh: String(c.tieu_de_canh || NHAN[muc]).slice(0, 40), nhan: NHAN[muc], tu_khoa: '', giu_san_khau: false, giong_doc: 'chậm rãi, rõ ràng',
+      loi_thoai: String(c.loi_thoai).replace(/\s+/g, ' ').trim(), noi_dung_man_hinh: (Array.isArray(c.noi_dung_man_hinh) ? c.noi_dung_man_hinh : []).map(String).slice(0, 2), trinh_bay: 'xep', chu_thich: [],
+      minh_hoa: { loai: 'san_khau', mo_ta: 'Giải thích công thức - ' + NHAN[muc].toLowerCase() + ': ' + String(c.tieu_de_canh || '').slice(0, 60) + '. Hình: ' + (du.vat[0].loai === 'canh_that' ? 'vẽ lại cảnh thực tế của đề, gắn tên đại lượng lên cạnh' : du.vat[0].loai === 'do_thi' ? 'đồ thị, chấm điểm cần chú ý' : 'thẻ ghi nhớ, sáng lần lượt từng dòng'), du_lieu: du },
+      thoi_luong_giay: 7 };
+  });
+  // chèn: thay cảnh giải thích cũ; nếu không có thì đặt ngay trước bước tính đầu tiên
+  var viTri = -1;
+  for (var i = 0; i < kb.canh.length; i++) { if (cu.indexOf(kb.canh[i]) >= 0) { viTri = viTri < 0 ? i : viTri; } }
+  var con = kb.canh.filter(function (c) { return cu.indexOf(c) < 0; });
+  if (viTri < 0) { viTri = con.findIndex(function (c) { return /tinh_toan/.test(String(c.loai)); }); if (viTri < 0) viTri = Math.max(1, con.length - 4); }
+  else viTri = con.filter(function (c, k) { return kb.canh.indexOf(c) < viTri; }).length;
+  var canh = con.slice(0, viTri).concat(moi, con.slice(viTri));
+  canh.forEach(function (c, k) { c.so = k + 1; });
+  return canh;
 }

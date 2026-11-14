@@ -107,6 +107,52 @@ function laCanhGiaiThichCongThuc_(c) {
   return /công thức|định lý|bất đẳng thức|tính chất/.test(t) && /từ đâu|vì sao|tại sao|nghĩa là|ý nghĩa|đại lượng|chính là|ở đây|áp dụng|dùng khi/.test(t);
 }
 
+// BẢN VẼ NHÌN TỪ TRÊN phải khớp số đo của đề: tổng các cạnh có rào = tổng chiều dài lưới/rào đề cho
+// (vd 120 m lưới, một cạnh sát tường: tường phải nằm trên cạnh song song tường, rào 3 cạnh còn lại cộng lại đúng 120).
+function kiemTraSoDoVung_(bv, deGoc) {
+  var de = String(deGoc || '').toLowerCase();
+  if (!bv || bv.nhin !== 'tren' || !Array.isArray(bv.vung) || !/rào|lưới|hàng rào|dây thép/.test(de)) return [];
+  var m = /(\d+(?:[.,]\d+)?)\s*(?:m|mét)\b[^.?!]{0,40}?(?:lưới|rào|dây)|(?:lưới|rào|dây)[^.?!\d]{0,30}?(\d+(?:[.,]\d+)?)\s*(?:m|mét)\b/.exec(de);
+  if (!m) return [];
+  var tong = Number(String(m[1] || m[2]).replace(',', '.'));
+  var loi = [];
+  bv.vung.forEach(function (z) {
+    if (!z || !(Number(z.rong) > 0) || !(Number(z.dai) > 0)) return;
+    var tuong = Array.isArray(z.tuong) ? z.tuong : z.tuong ? [z.tuong] : [];
+    var canh = z.hang_rao === true ? ['tren', 'duoi', 'trai', 'phai'].filter(function (c) { return tuong.indexOf(c) < 0; }) : Array.isArray(z.hang_rao) ? z.hang_rao : [];
+    if (!canh.length) return;
+    var s = canh.reduce(function (a, c) { return a + (/tren|duoi/.test(c) ? Number(z.rong) : /trai|phai/.test(c) ? Number(z.dai) : 0); }, 0);
+    if (Math.abs(s - tong) > tong * 0.02 + 0.01) loi.push('BAN_VE_SAI_SO_DO: các cạnh có rào (' + canh.join(', ') + ') cộng lại ' + s + ' m nhưng đề cho ' + tong + ' m lưới/rào. "rong" là cạnh ngang (tren/duoi), "dai" là cạnh dọc (trai/phai); đặt "tuong" đúng cạnh song song tường và dùng kích thước của đáp án.');
+  });
+  return loi;
+}
+
+// Tự sửa lỗi hay gặp nhất: đặt tường lên cạnh ngắn thay vì cạnh dài -> đổi rong <-> dai (và đổi 2 nhãn cạnh) nếu nhờ vậy tổng rào khớp đề.
+function tuSuaSoDoVung_(bv, deGoc) {
+  var sua = false;
+  // nhãn cạnh là số ("30 m", "60 m"): nhãn cạnh ngang phải bằng "rong", nhãn cạnh dọc bằng "dai"
+  var soNhan = function (t) { var m = /^\s*(\d+(?:[.,]\d+)?)\s*(?:m|mét)?\s*$/.exec(String(t || '')); return m ? Number(m[1].replace(',', '.')) : NaN; };
+  (bv && Array.isArray(bv.vung) ? bv.vung : []).forEach(function (z) {
+    if (!z || !Array.isArray(z.canh) || z.canh.length < 2) return;
+    var a = soNhan(z.canh[0]), b = soNhan(z.canh[1]);
+    if (a === Number(z.dai) && b === Number(z.rong) && a !== b) { var t = z.canh[0]; z.canh[0] = z.canh[1]; z.canh[1] = t; sua = true; }
+  });
+  if (!kiemTraSoDoVung_(bv, deGoc).length) return sua;
+  (bv.vung || []).forEach(function (z) {
+    if (!z || !(Number(z.rong) > 0) || !(Number(z.dai) > 0)) return;
+    var thu = JSON.parse(JSON.stringify(z));
+    var t = thu.rong; thu.rong = thu.dai; thu.dai = t;
+    var a = Array.isArray(thu.canh) ? soNhan(thu.canh[0]) : NaN, b = Array.isArray(thu.canh) ? soNhan(thu.canh[1]) : NaN;
+    var nhanSoDung = a === Number(thu.rong) && b === Number(thu.dai);   // nhãn số đã khớp kích thước sau khi đổi -> giữ nguyên
+    if (Array.isArray(thu.canh) && thu.canh.length >= 2 && !nhanSoDung) { var c0 = thu.canh[0]; thu.canh[0] = thu.canh[1]; thu.canh[1] = c0; }
+    if (!kiemTraSoDoVung_({ nhin: 'tren', vung: [thu] }, deGoc).length && kiemTraSoDoVung_({ nhin: 'tren', vung: [z] }, deGoc).length) {
+      Object.keys(thu).forEach(function (k) { z[k] = thu[k]; });
+      sua = true;
+    }
+  });
+  return sua;
+}
+
 // Đề nói tới vật thực tế (cột cờ, ngân hàng, tòa nhà...) mà 3 cảnh đầu không vẽ đúng vật đó (thay bằng khối hộp/trụ vô nghĩa) -> lỗi nặng.
 function kiemTraVatThucDe_(kb, deGoc) {
   var de = String(deGoc || '').toLowerCase();
@@ -143,7 +189,10 @@ var VAT_PHU_ = ['nhan', 'chu', 'mui_ten', 'bieu_tuong', 'so_dem'];   // vật ph
 
 // Kiểm tra sân khấu của một cảnh. idCu: id các vật đang có trên sân khấu từ cảnh trước (khi giu_san_khau). Trả '' nếu hợp lệ.
 function kiemTraSanKhau_(du, cn, idCu) {
-  if (!laDT_(du) || !Array.isArray(du.vat) || !du.vat.length) return 'HINH_' + cn + ': san_khau cần du_lieu.vat là mảng 1-16 vật {id, loai, x, y, buoc...}.';
+  var giuCu = !!(idCu && Object.keys(idCu).length);
+  // giữ sân khấu cảnh trước: được phép không thêm vật mới, chỉ có hành động trên vật cũ
+  if (laDT_(du) && giuCu && (du.vat === undefined || (Array.isArray(du.vat) && !du.vat.length))) du.vat = [];
+  else if (!laDT_(du) || !Array.isArray(du.vat) || !du.vat.length) return 'HINH_' + cn + ': san_khau cần du_lieu.vat là mảng 1-16 vật {id, loai, x, y, buoc...}.';
   if (du.vat.length > 16) return 'HINH_' + cn + ': tối đa 16 vật mỗi cảnh (nên 1-5).';
   var ids = {}, coVatThat = !!(idCu && Object.keys(idCu).length);
   for (var i = 0; i < du.vat.length; i++) {
