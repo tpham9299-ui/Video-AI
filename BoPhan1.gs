@@ -266,7 +266,7 @@ function sinhDeNeuCan_(sh, bc) {
     themHang_(sh, {
       id: id, trang_thai: 'MOI', lop: lop, chu_de: d.chu_de, de_bai: d.de_bai, nguon: 'AI_SANG_TAC', mon: mon,
       diem_tu_duy: d.diem_tu_duy, yeu_to_tu_duy: d.yeu_to_tu_duy, bay_thuong_gap: d.bay_thuong_gap,
-      so_lan_loi: 0, cap_nhat: new Date(), ma_bam: b
+      so_lan_loi: 0, cap_nhat: new Date(), ma_bam: b, kiem_chung: duKienDapAn_(d)
     });
     bc.moi++;
   });
@@ -309,6 +309,16 @@ function yeuCauDang_(mon) {
     '- TRÁNH các dạng: ' + DANG_TRANH_[mon] + '.\n';
 }
 
+// ĐỀ PHẢI CÓ ĐÚNG MỘT ĐÁP ÁN CHÍNH XÁC (dùng chung cho mọi prompt sáng tác / tìm đề). Người ra đề phải TỰ GIẢI và ghi "dap_an":
+// đáp án này được đối chiếu với kết quả hệ thống tự giải (trọng tài nhiều cách giải + mã kiểm chứng); lệch nhau = đề mơ hồ -> sửa hoặc xóa.
+function yeuCauDapAnChinhXac_(mon) {
+  return '- ĐÁP ÁN DUY NHẤT VÀ CHÍNH XÁC TUYỆT ĐỐI (bắt buộc): mọi dữ kiện nhất quán, đủ, không mâu thuẫn; câu hỏi chỉ hiểu được MỘT cách ' +
+    '(không dùng "khoảng", "gần", "có thể", "tối đa/tối thiểu" mơ hồ; nói rõ có hoàn lại hay không, có phân biệt thứ tự hay không, các vật có giống nhau không); ' +
+    (mon === 'THUC_TE'
+      ? 'nêu rõ đơn vị và làm tròn đến hàng nào nếu đáp số không nguyên; bài cần số nguyên (số người, số tầng...) thì chọn số liệu để nghiệm nguyên khớp ĐÚNG; bài cực trị phải có cực trị nằm trong miền xác định. '
+      : 'đáp án là MỘT phân số tối giản xác định duy nhất. ') +
+    'TỰ GIẢI TRƯỚC khi đưa đề: ghi "dap_an" (một con số' + (mon === 'THUC_TE' ? '' : ' hoặc phân số a/b') + ') và "kiem_tra" (thử lại đáp số với từng dữ kiện). Đề nào bạn KHÔNG chắc đáp án duy nhất thì KHÔNG đưa ra.\n';
+}
 function promptSangTacXacSuat_(lop, n, daCo) {
   return 'Bạn là giáo viên Toán giỏi, chuyên ra đề XÁC SUẤT ĐÒI HỎI TƯ DUY CAO cho học sinh lớp ' + lop + ' (Việt Nam).\n' +
     'Phạm vi kiến thức: ' + CHUONG_TRINH[lop] + '.\n' +
@@ -318,11 +328,11 @@ function promptSangTacXacSuat_(lop, n, daCo) {
     '- Đáp án là MỘT xác suất dạng phân số; đề đầy đủ dữ kiện, không phụ thuộc hình vẽ hay bảng không có trong chữ.\n' +
     '- Có thể kiểm chứng bằng đếm vét cạn hoặc mô phỏng máy tính (không quá nhiều đối tượng).\n' +
     '- Tình huống có VẬT THẬT dễ hình dung (người, bi, thẻ, xúc xắc, đồng xu, vòng quay, cửa, quà) để video minh họa sinh động.\n' +
-    yeuCauDang_('XAC_SUAT') +
+    yeuCauDang_('XAC_SUAT') + yeuCauDapAnChinhXac_('XAC_SUAT') +
     '- Đề phải khiến người giải phải tự hỏi "bài này thật sự muốn kiểm tra điều gì?"; tránh các bài chỉ cần "tính C(n,k) rồi chia".\n' +
     '- Mỗi đề kèm "y_tuong_then_chot": một câu nêu ý tưởng giúp giải bài thông minh (bạn phải tự biết cách giải thông minh đó trước khi ra đề).\n' +
     '- Không trùng các đề đã có:\n' + (daCo || '(chưa có)') + '\n\n' +
-    'Trả về MỘT mảng JSON, mỗi phần tử: {"dang":"","chu_de":"","de_bai":"","diem_tu_duy":1-10,"y_tuong_then_chot":"","yeu_to_tu_duy":"vì sao cần suy nghĩ","bay_thuong_gap":"học sinh hay sai ở đâu"}. Có thể dùng LaTeX trong $...$.';
+    'Trả về MỘT mảng JSON, mỗi phần tử: {"dang":"","chu_de":"","de_bai":"","diem_tu_duy":1-10,"y_tuong_then_chot":"","yeu_to_tu_duy":"vì sao cần suy nghĩ","bay_thuong_gap":"học sinh hay sai ở đâu","dap_an":"a/b","kiem_tra":""}. Có thể dùng LaTeX trong $...$.';
 }
 
 function promptSangTacThucTe_(lop, n, daCo) {
@@ -334,10 +344,10 @@ function promptSangTacThucTe_(lop, n, daCo) {
     '- Đề hỏi đúng MỘT đại lượng, đáp số là MỘT con số (nguyên hoặc thập phân, nêu rõ đơn vị và cách làm tròn nếu có). Không hỏi nhiều ý, không trắc nghiệm.\n' +
     '- Đủ dữ kiện bằng chữ, không phụ thuộc hình vẽ; kiểm chứng được bằng máy tính (vét lưới số, thử nhiều giá trị, tính số).\n' +
     '- Hình dung được bằng vật 3D đơn giản (hình hộp, hình trụ/nón, tòa nhà, thang, xe, cây) và hình học phẳng (tam giác, hình chữ nhật, góc) hoặc đồ thị hàm số một biến.\n' +
-    yeuCauDang_('THUC_TE') +
+    yeuCauDang_('THUC_TE') + yeuCauDapAnChinhXac_('THUC_TE') +
     '- Mỗi đề kèm "y_tuong_then_chot" (ý then chốt để giải gọn) và "ham_so" nếu bài quy về khảo sát hàm một biến (ví dụ "x^2+128/x", trống nếu không có).\n' +
     '- Không trùng các đề đã có:\n' + (daCo || '(chưa có)') + '\n\n' +
-    'Trả về MỘT mảng JSON, mỗi phần tử: {"dang":"","chu_de":"","de_bai":"","don_vi":"","diem_tu_duy":1-10,"y_tuong_then_chot":"","ham_so":"","yeu_to_tu_duy":"vì sao cần suy nghĩ","bay_thuong_gap":"học sinh hay sai ở đâu"}. Có thể dùng LaTeX trong $...$.';
+    'Trả về MỘT mảng JSON, mỗi phần tử: {"dang":"","chu_de":"","de_bai":"","don_vi":"","diem_tu_duy":1-10,"y_tuong_then_chot":"","ham_so":"","yeu_to_tu_duy":"vì sao cần suy nghĩ","bay_thuong_gap":"học sinh hay sai ở đâu","dap_an":"","kiem_tra":""}. Có thể dùng LaTeX trong $...$.';
 }
 
 function promptTimXacSuat_(lop, n, daCo) {
@@ -348,12 +358,12 @@ function promptTimXacSuat_(lop, n, daCo) {
     'YÊU CẦU:\n' +
     '- Câu hỏi có đáp án là MỘT xác suất dạng phân số; nếu đề gốc là trắc nghiệm thì bỏ các phương án A, B, C, D, chỉ giữ phần dữ kiện và câu hỏi.\n' +
     '- Đề phải đầy đủ dữ kiện, không phụ thuộc hình vẽ hoặc bảng không có trong chữ; có thể kiểm chứng bằng đếm vét cạn hoặc mô phỏng.\n' +
-    yeuCauDang_('XAC_SUAT') +
+    yeuCauDang_('XAC_SUAT') + yeuCauDapAnChinhXac_('XAC_SUAT') + '- Đề internet: chép ĐÁP ÁN CỦA NGUỒN vào "dap_an" nếu nguồn có lời giải; đề không có đáp án rõ ràng thì bỏ qua.\n' +
     '- Giữ sát nguyên văn đề gốc (chỉ chỉnh nhẹ cho rõ ràng), KHÔNG chép lời giải hay đáp án.\n' +
     '- Mỗi đề phải kèm "nguon_url" là địa chỉ trang bạn thực sự tìm thấy đề đó. Không chắc chắn đề có thật thì BỎ QUA; không tìm được đề nào phù hợp thì trả mảng rỗng [].\n' +
     '- Không trùng các đề đã có:\n' + (daCo || '(chưa có)') + '\n\n' +
     'Chỉ trả về MỘT mảng JSON, không thêm chữ nào khác. Có thể dùng LaTeX trong $...$; trong JSON phải viết dấu gạch chéo ngược kép, ví dụ \\\\frac. ' +
-    'Mỗi phần tử: {"dang":"","chu_de":"","de_bai":"","diem_tu_duy":1-10,"yeu_to_tu_duy":"vì sao cần suy nghĩ (ý tưởng then chốt)","bay_thuong_gap":"học sinh hay sai ở đâu","nguon_url":""}';
+    'Mỗi phần tử: {"dang":"","chu_de":"","de_bai":"","diem_tu_duy":1-10,"yeu_to_tu_duy":"vì sao cần suy nghĩ (ý tưởng then chốt)","bay_thuong_gap":"học sinh hay sai ở đâu","nguon_url":"","dap_an":"","kiem_tra":""}';
 }
 
 function promptTimThucTe_(lop, n, daCo) {
@@ -364,11 +374,11 @@ function promptTimThucTe_(lop, n, daCo) {
     'YÊU CẦU:\n' +
     '- Đề hỏi MỘT đại lượng, đáp số là MỘT con số (có đơn vị, giữ nguyên yêu cầu làm tròn của đề gốc). Đề trắc nghiệm thì bỏ phương án; đề nhiều ý thì chỉ giữ MỘT ý chính có đáp số là một số.\n' +
     '- Đủ dữ kiện bằng chữ (bỏ những bài phải nhìn hình mới hiểu); hình dung được bằng vật 3D đơn giản (hộp, trụ, tòa nhà, thang, xe, cây), hình học phẳng hoặc đồ thị hàm một biến.\n' +
-    yeuCauDang_('THUC_TE') +
+    yeuCauDang_('THUC_TE') + yeuCauDapAnChinhXac_('THUC_TE') + '- Đề internet: chép ĐÁP ÁN CỦA NGUỒN vào "dap_an" nếu nguồn có lời giải; đề không có đáp án rõ ràng thì bỏ qua.\n' +
     '- Giữ sát nguyên văn đề gốc, KHÔNG chép lời giải hay đáp án. Mỗi đề kèm "nguon_url" là trang bạn thực sự tìm thấy; không chắc thì bỏ; không có đề phù hợp thì trả [].\n' +
     '- Không trùng các đề đã có:\n' + (daCo || '(chưa có)') + '\n\n' +
     'Chỉ trả về MỘT mảng JSON, không thêm chữ nào khác. Có thể dùng LaTeX trong $...$; trong JSON phải viết dấu gạch chéo ngược kép, ví dụ \\\\frac. ' +
-    'Mỗi phần tử: {"dang":"","chu_de":"","de_bai":"","don_vi":"","diem_tu_duy":1-10,"yeu_to_tu_duy":"vì sao cần suy nghĩ (ý tưởng then chốt)","bay_thuong_gap":"học sinh hay sai ở đâu","nguon_url":""}';
+    'Mỗi phần tử: {"dang":"","chu_de":"","de_bai":"","don_vi":"","diem_tu_duy":1-10,"yeu_to_tu_duy":"vì sao cần suy nghĩ (ý tưởng then chốt)","bay_thuong_gap":"học sinh hay sai ở đâu","nguon_url":"","dap_an":"","kiem_tra":""}';
 }
 
 /* ---------- Giải + kiểm chứng TOÁN THỰC TẾ: đáp số là một con số (có thể thập phân) ---------- */
@@ -487,7 +497,7 @@ function timDeInternet_(sh, hang, lop, n, bc, mon) {
       id: id, trang_thai: 'MOI', lop: lop, chu_de: d.chu_de, de_bai: d.de_bai, mon: mon,
       nguon: 'INTERNET|' + host + (khop ? '' : ' (chưa đối chiếu)') + '|' + url,
       diem_tu_duy: d.diem_tu_duy, yeu_to_tu_duy: d.yeu_to_tu_duy, bay_thuong_gap: d.bay_thuong_gap,
-      so_lan_loi: 0, cap_nhat: new Date(), ma_bam: b
+      so_lan_loi: 0, cap_nhat: new Date(), ma_bam: b, kiem_chung: duKienDapAn_(d)
     });
     them++;
     bc.moi++;
@@ -537,6 +547,63 @@ function traMangJson_(txt) {
   try { return JSON.parse(s.replace(/(?<!\\)\\(?![\\"\/u])/g, '\\\\')); } catch (e2) { return null; }
 }
 
+/* ===================== ĐỀ PHẢI CÓ ĐÁP ÁN CHẮC CHẮN ===================== */
+// Đáp án người ra đề tự giải (lưu vào cột kiem_chung lúc thêm đề, dạng "DU_KIEN: 48").
+function duKienDapAn_(d) {
+  var x = String((d && d.dap_an) || '').replace(/\$/g, '').trim();
+  return x ? 'DU_KIEN: ' + x.slice(0, 40) : '';
+}
+function layDuKien_(r) { var m = /DU_KIEN:\s*([^|]+)/.exec(String(r.kiem_chung || '')); return m ? m[1].trim() : ''; }
+// Hai đáp án có bằng nhau không (số thực theo khopSo_, phân số a/b so theo giá trị).
+function giaTriDapAn_(x) {
+  var s = String(x || '').replace(/\\[dt]?frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g, '$1/$2').replace(/[{}\s]/g, '').replace(/,(?=\d)/g, '.');
+  var p = /(-?\d+(?:\.\d+)?)\/(-?\d+(?:\.\d+)?)/.exec(s);
+  if (p && Number(p[2]) !== 0) return Number(p[1]) / Number(p[2]);
+  var m = /-?\d+(?:\.\d+)?/.exec(s);
+  return m ? Number(m[0]) : NaN;
+}
+function dapAnBang_(a, b) {
+  var x = giaTriDapAn_(a), y = giaTriDapAn_(b);
+  if (!isFinite(x) || !isFinite(y)) return true;   // không đọc được số -> không dùng để loại
+  return Math.abs(x - y) <= 1e-9 * Math.max(1, Math.abs(x)) || khopSo_(x, y);
+}
+// Nhờ Gemini VIẾT LẠI đề (giữ bối cảnh, dạng bài, độ khó) để có đúng một đáp án chính xác. Trả {de_bai, dap_an} hoặc null.
+function suaDeChoChinhXac_(r, lyDo) {
+  var mon = laMonThucTe_(r) ? 'THUC_TE' : 'XAC_SUAT';
+  var prompt = 'Bạn là giáo viên Toán ra đề rất cẩn thận. Đề dưới đây KHÔNG DÙNG ĐƯỢC vì: ' + lyDo + '\n' +
+    'ĐỀ CŨ (lớp ' + r.lop + '): ' + r.de_bai + '\n' +
+    'Hãy VIẾT LẠI đề: giữ bối cảnh, dạng bài và độ khó, nhưng sửa số liệu / câu chữ để đề có ĐÚNG MỘT đáp án chính xác, không ai hiểu khác được.\n' +
+    yeuCauDapAnChinhXac_(mon) +
+    'Tự giải lại đề mới bằng HAI cách khác nhau, hai cách phải ra cùng đáp số. Không chắc chắn thì trả "chac_chan": false.\n' +
+    'Trả JSON: {"de_bai":"đề mới đầy đủ","dap_an":"","kiem_tra":"thử lại đáp số với từng dữ kiện","chac_chan":true|false}';
+  var j = goiGemini_(prompt, 0.3, { suyNghi: 'high' });
+  if (!j || j.chac_chan !== true || String(j.de_bai || '').trim().length < 30 || !String(j.dap_an || '').trim()) return null;
+  return { de_bai: String(j.de_bai).trim(), dap_an: String(j.dap_an).trim() };
+}
+// Đề không có đáp án chắc chắn (các cách giải lệch nhau / đề mơ hồ / lệch đáp án của người ra đề):
+// sửa đề MỘT lần rồi giải lại từ đầu; đã sửa rồi vẫn hỏng (hoặc là đề người dùng gửi, không được tự đổi) -> đánh dấu XOA,
+// cuối lần chạy dọn khỏi sheet (lưu mã băm để không sinh lại đề đó).
+function xuLyDeKhongChac_(sh, r, lyDo, bc, kq) {
+  var daSua = /DA_SUA_DE/.test(String(r.kiem_chung || ''));
+  if (!laUuTien_(r) && !daSua && conDuGoiGemini_()) {
+    var moi = null;
+    try { moi = suaDeChoChinhXac_(r, lyDo); } catch (e) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(e.message))) throw e; }
+    if (moi) {
+      ghi_(sh, r._row, {
+        trang_thai: 'MOI', de_bai: moi.de_bai, ma_bam: bam_(moi.de_bai), cach_1: '', cach_2: '', dap_an: '', dap_an_hien: '',
+        kiem_chung: 'DA_SUA_DE | DU_KIEN: ' + moi.dap_an.slice(0, 40), so_lan_loi: 0, ghi_chu: 'Đã sửa đề để có đáp án duy nhất, giải lại từ đầu'
+      });
+      nhatKy_('SUA_DE', r.id + ': đề cũ hỏng (' + String(lyDo).slice(0, 160) + ') -> đã viết lại đề, giải lại');
+      return;
+    }
+  }
+  ghi_(sh, r._row, { trang_thai: 'XOA', ghi_chu: ('XÓA: ' + lyDo).slice(0, 300), cach_1: kq && kq.c1 ? JSON.stringify(kq.c1) : '', cach_2: kq && kq.c2 ? JSON.stringify(kq.c2) : '' });
+  nhatKy_('XOA_DE', r.id + ': ' + (daSua ? 'đã sửa đề mà vẫn ' : '') + 'không có đáp án chắc chắn -> xóa (' + String(lyDo).slice(0, 160) + ')');
+  bc.loai++;
+  if (laUuTien_(r)) baoZaloDe_(r, '⚠️ Đề ' + r.id + ' không có đáp án chắc chắn nên hệ thống KHÔNG làm video (tránh dạy sai) và đã xóa khỏi danh sách.\n' +
+    'Lý do: ' + String(lyDo).slice(0, 200) + '\nBạn có thể gửi lại đề rõ hơn (ghi đủ dữ kiện, kèm đáp án mong đợi).', 'cao');
+}
+
 /* ===================== BƯỚC B: GIẢI + KIỂM CHỨNG ===================== */
 
 function xuLyGiai_(sh, bc, bat, chiUuTien, chiIds) {
@@ -551,23 +618,21 @@ function xuLyGiai_(sh, bc, bat, chiUuTien, chiIds) {
       nhatKy_('GIAI', 'Bắt đầu giải ' + r.id + ' (lần ' + r.so_lan_loi + ')');
       var kq = giaiVaKiemChung_(r);
       nhatKy_('GIAI', r.id + ' -> ' + (kq.dat ? 'ĐẠT ' + kq.dap_an : 'LOẠI ' + kq.ly_do));
-      if (!kq.dat) {
-        ghi_(sh, r._row, { trang_thai: 'LOAI', ghi_chu: kq.ly_do, cach_1: JSON.stringify(kq.c1), cach_2: JSON.stringify(kq.c2) });
-        bc.loai++;
-        if (laUuTien_(r)) baoZaloDe_(r, '⚠️ Chưa làm được video cho đề của bạn: các cách giải cho đáp án khác nhau nên hệ thống không dám dựng (tránh dạy sai).\n' +
-          String(kq.ly_do).slice(0, 200) + '\nBạn có thể gửi lại ảnh rõ hơn hoặc gõ đề kèm đáp án mong đợi.', 'cao');
+      var vanDe0 = kq.dat ? String(kq.de_co_van_de || '').trim() : '';
+      var duKien = layDuKien_(r);
+      var lyDoHong = !kq.dat ? 'các cách giải độc lập cho đáp án khác nhau (' + String(kq.ly_do || '').slice(0, 150) + ')'
+        : vanDe0 ? 'đề mơ hồ / không có đáp số chính xác: ' + vanDe0.slice(0, 180)
+        : (duKien && !dapAnBang_(duKien, kq.dap_an)) ? 'đáp án người ra đề (' + duKien + ') lệch đáp án hệ thống giải và kiểm chứng (' + kq.dap_an + ')'
+        : '';
+      if (lyDoHong) {
+        xuLyDeKhongChac_(sh, r, lyDoHong, bc, kq);
       } else {
         if (!r.ma_bam) ghi_(sh, r._row, { ma_bam: bam_(r.de_bai) });
-        // đề có vấn đề (không có đáp số khớp chính xác, mâu thuẫn...): ghi lại để kịch bản nói thật và báo người gửi
-        var vanDe = String(kq.de_co_van_de || '').trim();
+        // tới đây: đáp án đã được nhiều nguồn độc lập thống nhất, đề rõ ràng, khớp đáp án người ra đề (nếu có)
         ghi_(sh, r._row, {
           trang_thai: 'DA_GIAI', cach_1: JSON.stringify(kq.c1), cach_2: JSON.stringify(kq.c2),
-          dap_an: kq.dap_an, dap_an_hien: kq.dap_an_hien || '', kiem_chung: kq.mo_ta + (vanDe ? ' | DE_CO_VAN_DE: ' + vanDe : ''), ghi_chu: '', so_lan_loi: 0
+          dap_an: kq.dap_an, dap_an_hien: kq.dap_an_hien || '', kiem_chung: kq.mo_ta + (duKien ? ' | khớp đáp án người ra đề ' + duKien : ''), ghi_chu: '', so_lan_loi: 0
         });
-        if (vanDe) {
-          nhatKy_('GIAI', r.id + ': ĐỀ CÓ VẤN ĐỀ - ' + vanDe);
-          if (laUuTien_(r)) baoZaloDe_(r, '⚠️ Đề này có vấn đề: ' + vanDe + '\nVideo sẽ nói rõ điều này và làm theo cách hiểu trên.', 'cao');
-        }
         bc.giai_ok++;
         if (laUuTien_(r)) baoZaloDe_(r, '✅ Đã giải và kiểm chứng: đáp án ' + (kq.dap_an_hien || kq.dap_an) + '\n✍ Đang viết kịch bản video...', 'thap');
       }
@@ -1204,7 +1269,8 @@ function nhanKetQuaBoPhan1_(sh, d) {
   (d.zalo || []).forEach(function (z) { try { if (z.id) baoZaloDe_(r, z.noi_dung, z.muc); else guiZalo_(z.noi_dung, z.muc, z.khoa); } catch (e) {} });
   nhatKy_('GITHUB_BP1', r.id + ' -> ' + f.trang_thai + (d.kich_ban ? ' (đã lưu kịch bản)' : '') + (d.loi ? ' | ' + d.loi : ''));
   // đề máy tự sinh bị loại/lỗi: hệ thống tự thay đề khác, không làm phiền (vẫn có trong báo cáo ngày); đề bạn gửi thì báo
-  if ((f.trang_thai === 'LOAI' || f.trang_thai === 'LOI') && laUuTien_(r)) baoZaloDe_(r, (f.trang_thai === 'LOAI' ? '❌ Không làm được video cho đề ' : '⚠️ Đề ') + r.id + (f.trang_thai === 'LOAI' ? ': ' : ' tạm dừng vì lỗi: ') + String(f.ghi_chu || '').slice(0, 200), 'cao');
+  if ((f.trang_thai === 'LOAI' || f.trang_thai === 'XOA' || f.trang_thai === 'LOI') && laUuTien_(r)) baoZaloDe_(r, (f.trang_thai !== 'LOI' ? '❌ Không làm video cho đề ' : '⚠️ Đề ') + r.id + (f.trang_thai !== 'LOI' ? ' (không có đáp án chắc chắn, đã xóa khỏi danh sách): ' : ' tạm dừng vì lỗi: ') + String(f.ghi_chu || '').slice(0, 200), 'cao');
+  if (f.trang_thai === 'XOA' || f.trang_thai === 'LOAI') PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1');   // dọn khỏi sheet ở lần chạy tới
   // chạy tiếp ngay: có kịch bản -> gửi dựng; còn đề chờ -> gửi GitHub
   if (f.trang_thai === 'CO_KICH_BAN' && typeof chonVaGuiDung_ === 'function') { try { chonVaGuiDung_(sh); } catch (e) { nhatKy_('DUNG_LOI', e.message); } }
   try { if (!dangNghi_()) giaoBoPhan1ChoGitHub_(sh, false); } catch (e) { nhatKy_('GITHUB_BP1_LOI', e.message); }
@@ -1466,6 +1532,7 @@ var NHAN_TRANG_THAI = {
   DANG_DANG: ['📤 Đang đăng', '#e3f2fd', '#0d47a1'],
   DA_DANG: ['🌐 Đã đăng', '#b2dfdb', '#004d40'],
   LOAI: ['❌ Loại (đáp án lệch)', '#fde2e0', '#b3261e'],
+  XOA: ['🗑 Xóa (không có đáp án chắc chắn)', '#fde2e0', '#b3261e'],
   LOI: ['⚠️ Lỗi, cần xem', '#fde2e0', '#b3261e']
 };
 var LOP_MAU = { '10': '#e1f5fe', '11': '#fff0d9', '12': '#f1e4f7' };
@@ -1828,7 +1895,7 @@ function xoaKichBanKhoiSheet_(id) {
   }
 }
 
-// Dọn: các đề DA_XONG và các đề LOAI đã quá NGAY_GIU_LOAI ngày. Trả về số dòng đã dọn.
+// Dọn: các đề DA_XONG + mọi đề không có đáp án chắc chắn (XOA, LOAI, đề mơ hồ chưa dựng video). Trả về số dòng đã dọn.
 function donDaXong_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(TEN_HANG_DOI);
@@ -1837,7 +1904,10 @@ function donDaXong_() {
   var bayGio = Date.now();
   var xoa = docHang_(sh).filter(function (r) {
     if (r.trang_thai === 'DA_XONG') return true;
-    if (r.trang_thai === 'LOAI' && ngayGiu > 0 && r.cap_nhat instanceof Date && (bayGio - r.cap_nhat.getTime()) > ngayGiu * 86400000) return true;
+    // đề không có đáp án chắc chắn: XOA (đã thử sửa mà không được), LOAI (lệch đáp án, kiểu cũ) -> xóa NGAY, không giữ lại
+    if (r.trang_thai === 'XOA' || r.trang_thai === 'LOAI') return true;
+    // đề cũ được làm theo "cách hiểu hợp lý" (DE_CO_VAN_DE) mà chưa dựng video: đáp án mơ hồ -> xóa (trừ đề người dùng tự gửi)
+    if (/DE_CO_VAN_DE/.test(String(r.kiem_chung || '')) && !laUuTien_(r) && (r.trang_thai === 'DA_GIAI' || r.trang_thai === 'CO_KICH_BAN')) return true;
     return false;
   });
   if (!xoa.length) return 0;
@@ -1851,6 +1921,7 @@ function donDaXong_() {
 
   xoa.forEach(function (r) {
     if (r.trang_thai === 'DA_XONG') { xuLyFileKichBan_(r.file_kich_ban); xuLyFileVideo_(r.file_video); xoaKichBanKhoiSheet_(r.id); }
+    else if (r.file_kich_ban) { try { xuLyFileKichBan_(r.file_kich_ban); xoaKichBanKhoiSheet_(r.id); } catch (eF) {} }
   });
   xoa.map(function (r) { return r._row; }).sort(function (a, b) { return b - a; })
     .forEach(function (row) { sh.deleteRow(row); });   // xóa từ dưới lên để số dòng không bị lệch

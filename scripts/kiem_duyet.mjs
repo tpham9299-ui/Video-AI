@@ -143,8 +143,10 @@ async function aiNhinHinh(anh) {
     '(5) Chữ không đè lên hình/chữ khác làm khó đọc; công thức không bị cắt; không có mã LaTeX thô.\n' +
     'Bỏ qua chuyện thẩm mỹ nhỏ. Trả JSON: {"dung": true|false, "van_de": ["ẢNH n (cảnh ...): lỗi gì, phải sửa thế nào"]}';
   const parts = [{text: prompt}, ...anh.map((a) => ({inline_data: {mime_type: 'image/jpeg', data: fs.readFileSync(a.tep).toString('base64')}}))];
-  const models = [process.env.MODEL_AI_NHIN || 'gemini-flash-latest', 'gemini-2.5-flash'];
+  // cùng bộ model với Bộ phận 1 (model chính + dự phòng); MODEL_AI_NHIN để ưu tiên model khác
+  const models = [...new Set([process.env.MODEL_AI_NHIN, 'gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-flash-latest', 'gemini-flash-lite-latest'].filter(Boolean))];
   const hetNgay = new Set();
+  const loiModel = {};
   let lyDo = 'mọi lần gọi Gemini đều lỗi';
   for (let vong = 0; vong < 3; vong++) {
     let choMs = 0;
@@ -158,7 +160,8 @@ async function aiNhinHinh(anh) {
         if (!res) continue;
         if (!res.ok) {
           const raw = await res.text().catch(() => '');
-          lyDo = `${model} HTTP ${res.status}`;
+          loiModel[model] = `HTTP ${res.status}${res.status === 429 ? (/PerDay|per day|daily/i.test(raw) ? ' hết hạn mức ngày' : ' giới hạn phút') : ''}`;
+          lyDo = Object.entries(loiModel).map(([m, l]) => `${m} ${l}`).join('; ');
           if (res.status === 429 && /PerDay|per day|daily/i.test(raw)) { hetNgay.add(model + '|' + k); continue; }   // hết hạn mức ngày: key kế
           if (res.status === 429) { const m = /"retryDelay":\s*"(\d+)/.exec(raw); const c = Math.min(60, (m ? Number(m[1]) : 15) + 1) * 1000; choMs = choMs ? Math.min(choMs, c) : c; continue; }
           // key LỖI THẬT (không phải hết hạn mức): ghi lại để báo Zalo người dùng gỡ key
