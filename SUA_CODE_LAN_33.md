@@ -135,6 +135,16 @@ Chốt cuối vẫn là bạn: chế độ "duyệt trước khi đăng" đang B
 - **Số thập phân kiểu Việt trên hình**: nhãn "3.46m" -> "3,46m" (thống nhất với công thức "10,8"). Huy hiệu "2′₀ triệu đồng" trong video
   bạn gửi là lỗi bánh số lăn với số thập phân, đã sửa ở mục 8 (video đó dựng trước khi có bản sửa).
 
+## 16. Giọng nam Charon / giọng nữ Kore, đổi gió theo quy tắc
+- Mỗi video MỘT giọng từ đầu đến cuối (Gemini đọc cả video một lần). Giọng của từng video chọn theo QUY TẮC trong CAU_HINH, không ngẫu nhiên:
+  - QUY_TAC_GIONG = CHU_KY (mặc định), CHU_KY_GIONG = 3: cứ 3 video giọng nam (Charon) thì 1 video giọng nữ (Kore):
+    nam, nam, nam, nữ, nam, nam, nam, nữ... -> kênh có giọng chủ đạo, đổi gió đều đặn. Đổi CHU_KY_GIONG = 2, 4... để đổi nhịp.
+  - QUY_TAC_GIONG = THEO_MON: toán thực tế giọng nam, xác suất giọng nữ (mỗi chuyên mục một "người dẫn").
+  - QUY_TAC_GIONG = CHI_NAM / CHI_NU: luôn một giọng.
+  - GIONG_NAM = Charon, GIONG_NU = Kore (đổi tên giọng Gemini khác nếu muốn).
+- Video đã được chọn giọng thì dựng lại vẫn giữ nguyên giọng đó.
+- Gemini không đọc được: video giọng nam dùng edge NamMinh (nam), video giọng nữ dùng edge HoaiMy (nữ) -> không bao giờ đổi giới tính giọng.
+
 ## Cần dán lại vào Apps Script
 `KiemTraHinh.gs`, `PromptKichBan.gs`, `BoPhan1.gs`, `BoPhan2.gs`, `NangCao.gs`, `DangVideo.gs`, `SanPham.gs` (tất cả bản mới nhất trong thư mục bàn giao), rồi Triển khai > Quản lý > Phiên bản mới.
 

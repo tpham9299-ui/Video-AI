@@ -159,6 +159,35 @@ function chonVaGuiDung_(sh) {
 // Gửi kịch bản sang GitHub để dựng. Ưu tiên "workflow_dispatch" với ref = nhánh GITHUB_NHANH (CAU_HINH), để GitHub chạy đúng
 // mã mới nhất của nhánh đó thay vì mã cũ trên nhánh mặc định (master). Token chưa có quyền Actions hoặc nhánh không tồn tại
 // -> tự lùi về "repository_dispatch" như cũ (dựng bằng nhánh mặc định) và báo một lần để bạn biết.
+// GIỌNG ĐỌC THEO QUY TẮC (mỗi video một giọng; kênh có giọng chủ đạo, đổi gió có nhịp đều):
+//  CHU_KY (mặc định): đếm video gửi dựng, cứ CHU_KY_GIONG video giọng NAM thì 1 video giọng NỮ (3 -> nam, nam, nam, nữ, nam, nam, nam, nữ...)
+//  THEO_MON: toán thực tế giọng nam, xác suất giọng nữ (mỗi chuyên mục một "người dẫn")
+//  CHI_NAM / CHI_NU: luôn một giọng.
+// Video đã được chọn giọng thì dựng lại vẫn giữ nguyên giọng đó (lưu theo mã video).
+function chonGiongDoc_(r) {
+  var nam = String(cauHinh_('GIONG_NAM') || 'Charon').trim(), nu = String(cauHinh_('GIONG_NU') || 'Kore').trim();
+  var p = PropertiesService.getScriptProperties();
+  var daChon = {};
+  try { daChon = JSON.parse(p.getProperty('GIONG_THEO_VIDEO') || '{}'); } catch (e) {}
+  if (daChon[r.id]) return { gioi: daChon[r.id], ten: daChon[r.id] === 'nu' ? nu : nam };
+  var qt = String(cauHinh_('QUY_TAC_GIONG') || 'CHU_KY').toUpperCase();
+  var gioi = 'nam';
+  if (qt === 'CHI_NU') gioi = 'nu';
+  else if (qt === 'THEO_MON') gioi = laMonThucTe_(r) ? 'nam' : 'nu';
+  else if (qt === 'CHU_KY') {
+    var k = Math.max(1, Number(cauHinh_('CHU_KY_GIONG')) || 3);
+    var dem = Number(p.getProperty('GIONG_DEM') || 0);
+    gioi = (dem % (k + 1)) === k ? 'nu' : 'nam';
+    p.setProperty('GIONG_DEM', String(dem + 1));
+  }
+  daChon[r.id] = gioi;
+  var ids = Object.keys(daChon);
+  if (ids.length > 300) ids.slice(0, ids.length - 300).forEach(function (x) { delete daChon[x]; });
+  p.setProperty('GIONG_THEO_VIDEO', JSON.stringify(daChon));
+  nhatKy_('GIONG_DOC', r.id + ': giọng ' + (gioi === 'nu' ? 'nữ ' + nu : 'nam ' + nam) + ' (quy tắc ' + qt + ')');
+  return { gioi: gioi, ten: gioi === 'nu' ? nu : nam };
+}
+
 function kichHoatDungVideo_(r) {
   var kb = JSON.parse(DriveApp.getFileById(r.file_kich_ban).getBlob().getDataAsString());
   delete kb.cach_giai;                       // lời giải chi tiết không cần cho việc dựng, bớt dung lượng
@@ -167,6 +196,9 @@ function kichHoatDungVideo_(r) {
   var kdCu = {};
   try { kdCu = JSON.parse(String(r.ai_kiem_tra || '{}')); } catch (e0) {}
   kb._kiem_duyet = (Number(kdCu.kd_lan) || 0) >= 2 ? 'bao' : 'chan';
+  // giọng đọc của video này theo QUY TẮC (không ngẫu nhiên); cùng một video dựng lại thì giữ nguyên giọng đã chọn
+  var gd = chonGiongDoc_(r);
+  kb.giong = gd.ten; kb.gioi_tinh_giong = gd.gioi;
   // KỊCH BẢN NHIỀU CẢNH -> NÉN cho vừa giới hạn gửi GitHub (65.535 ký tự):
   //  (1) cảnh dùng y nguyên bản vẽ cảnh thực tế: chỉ ghi "dung_ban_ve" (máy dựng tự bung lại từ kb.ban_ve)
   if (kb.ban_ve && Array.isArray(kb.canh)) {

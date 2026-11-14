@@ -49,6 +49,9 @@ var COT = ['id', 'trang_thai', 'lop', 'chu_de', 'de_bai', 'nguon', 'diem_tu_duy'
 
 // Tên model nằm trong CAU_HINH vì Google đổi tên/ngừng model thường xuyên.
 var MAC_DINH = {
+  // GIỌNG ĐỌC (mỗi video MỘT giọng từ đầu đến cuối): QUY_TAC_GIONG = CHU_KY (mặc định: cứ CHU_KY_GIONG video giọng nam thì 1 video giọng nữ)
+  // | THEO_MON (toán thực tế = nam, xác suất = nữ) | CHI_NAM | CHI_NU. Tên giọng Gemini: GIONG_NAM, GIONG_NU.
+  QUY_TAC_GIONG: 'CHU_KY', CHU_KY_GIONG: '3', GIONG_NAM: 'Charon', GIONG_NU: 'Kore',
   MODEL_CHINH: 'gemini-3.8-flash',
   MODEL_DU_PHONG: 'gemini-3.6-flash',
   MODEL_DU_PHONG_2: 'gemini-flash-latest', // model dự phòng thứ 3 (tùy chọn, có thể để trống)

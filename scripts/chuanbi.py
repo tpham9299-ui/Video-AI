@@ -809,13 +809,21 @@ def main():
     co_key = bool(os.environ.get("GEMINI_KEYS") or os.environ.get("GEMINI_API_KEY"))
     ap.add_argument("--may-giong", default=os.environ.get("MAY_GIONG") or ("gemini" if co_key else "edge"),
                     help="gemini (mặc định khi có key: đọc cả video một lần) | edge")
-    ap.add_argument("--giong-gemini", default=os.environ.get("GIONG_GEMINI") or "Puck")
+    ap.add_argument("--giong-gemini", default=os.environ.get("GIONG_GEMINI") or "Charon")
     ap.add_argument("--tts-model", default=os.environ.get("TTS_MODEL") or "gemini-2.5-flash-preview-tts")
     ap.add_argument("--toc-do-gemini", default=os.environ.get("TOC_DO_GEMINI") or "1.08")
     ap.add_argument("--phong-cach-giong", default=os.environ.get("PHONG_CACH_GIONG") or PHONG_CACH_GIONG_MAC_DINH)
     args = ap.parse_args()
 
     kb = json.load(open(args.kich_ban, encoding="utf8"))
+    # giọng do Apps Script chọn theo quy tắc (Charon nam / Kore nữ...); dự phòng edge cùng giới tính để không đổi giọng nam <-> nữ
+    if str(kb.get("giong") or "").strip() and re.fullmatch(r"[A-Za-z]{3,20}", str(kb["giong"]).strip()):
+        args.giong_gemini = str(kb["giong"]).strip()
+    if str(kb.get("gioi_tinh_giong") or "") == "nu":
+        args.giong = "vi-VN-HoaiMyNeural"
+    elif str(kb.get("gioi_tinh_giong") or "") == "nam":
+        args.giong = "vi-VN-NamMinhNeural"
+    print("Giọng của video này: Gemini %s (dự phòng edge %s)" % (args.giong_gemini, args.giong))
     # cảnh ghi "dung_ban_ve": bung lại vật/điểm/vùng từ bản vẽ chung kb.ban_ve (Apps Script nén để kịch bản nhiều cảnh vừa giới hạn gửi)
     bv = kb.get("ban_ve") if isinstance(kb.get("ban_ve"), dict) else None
     for c in kb.get("canh") or []:
