@@ -282,8 +282,8 @@ def tao_giong_gemini(canh, thu_muc, args):
         if not van:
             continue
         wav = os.path.join(thu_muc, "gem_%d.wav" % i)
-        st = sac_thai_canh(c)
-        phong_cach = args.phong_cach_giong + (" Sắc thái của đoạn này: " + st + "." if st else "") + "\nĐoạn cần đọc:"
+        # CÙNG MỘT chỉ dẫn giọng cho mọi cảnh: trước đây mỗi cảnh một sắc thái ("hào hứng", "cảnh báo"...) làm chất giọng đổi liên tục
+        phong_cach = args.phong_cach_giong + " Giữ NGUYÊN một chất giọng, cao độ và tốc độ như các đoạn khác của cùng video.\nĐoạn cần đọc:"
         try:
             gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach)
         except Exception as e:
@@ -311,7 +311,7 @@ async def tao_cac_doan(cac_doan, thu_muc, args):
         van = chuan_hoa_doc(d)
         async with sem:
             # edge-tts đôi khi trả "No audio was received" với MỘT câu cụ thể (thường câu ngắn, không dấu kết):
-            # thử lại với chữ hơi khác (thêm dấu chấm / dấu phẩy mở đầu) để cả video giữ MỘT giọng, chỉ khi hết cách mới dùng giọng Google
+            # thử lại với chữ hơi khác (thêm dấu chấm / dấu phẩy mở đầu) để cả video giữ MỘT giọng (không bao giờ đổi sang giọng khác)
             bien_the = [van, van.rstrip(" .,!?") + ".", "À, " + van[0].lower() + van[1:] if van else van]
             for k, v in enumerate(bien_the):
                 try:
@@ -321,17 +321,22 @@ async def tao_cac_doan(cac_doan, thu_muc, args):
                         print("edge-tts đọc được sau khi chỉnh chữ (cách %d): %s" % (k, v[:60]))
                     return tep
                 except Exception as e:
-                    print("Cảnh báo: edge-tts lỗi (%s)%s" % (str(e)[:120], ", thử chỉnh chữ" if k < len(bien_the) - 1 else ", chuyển sang giọng dự phòng Google"))
+                    print("Cảnh báo: edge-tts lỗi (%s)%s" % (str(e)[:120], ", thử chỉnh chữ" if k < len(bien_the) - 1 else ", chờ rồi thử lại"))
+        # KHÔNG dùng giọng Google dự phòng (giọng khác hẳn -> video lẫn giọng). Chờ rồi thử lại edge-tts thêm vài vòng;
+        # vẫn lỗi thì dừng dựng (GitHub báo lỗi, hệ thống tự dựng lại sau) thay vì ra video lẫn giọng.
         loi = None
         for lan in range(3):
-            try:
-                await asyncio.to_thread(_gtts, van, tep, 1.18)
-                THONG_KE_GIONG["gtts"] += 1
-                return tep
-            except Exception as e:
-                loi = e
-                await asyncio.sleep(2 * (lan + 1))
-        raise RuntimeError("Không tạo được giọng đọc bằng cả edge-tts lẫn Google TTS: %s | đoạn: %s" % (loi, d[:60]))
+            await asyncio.sleep(15 * (lan + 1))
+            for v in bien_the:
+                try:
+                    async with sem:
+                        await _tts(v, tep, args.giong, args.toc_do, args.cao_do)
+                    THONG_KE_GIONG["edge"] += 1
+                    print("edge-tts đọc được sau khi chờ thử lại (vòng %d)" % (lan + 1))
+                    return tep
+                except Exception as e:
+                    loi = e
+        raise RuntimeError("edge-tts không đọc được đoạn này sau nhiều lần thử (không dùng giọng khác để tránh lẫn giọng): %s | đoạn: %s" % (loi, d[:60]))
 
     cac_tep = await asyncio.gather(*[mot(i, d) for i, d in enumerate(cac_doan)])
     return list(cac_tep)
@@ -722,8 +727,10 @@ def main():
     ap.add_argument("--cao-do", default=os.environ.get("CAO_DO", "+0Hz"))
     ap.add_argument("--phong-cach", default="phong_cach.json")
     ap.add_argument("--gia-lap", action="store_true", help="dùng tiếng bíp thay giọng thật (để thử máy)")
-    ap.add_argument("--may-giong", default=os.environ.get("MAY_GIONG") or ("gemini" if os.environ.get("GEMINI_API_KEY") else "edge"),
-                    help="gemini (giọng AI tự nhiên, cần GEMINI_API_KEY) | edge")
+    # MỘT GIỌNG CỐ ĐỊNH cho mọi video: mặc định edge-tts (giọng NamMinh, không đổi giữa các cảnh, không phụ thuộc hạn mức).
+    # Gemini TTS (MAY_GIONG=gemini) tự nhiên hơn nhưng là giọng AI sinh ra: mỗi lần gọi có thể lệch chất giọng, hết hạn mức thì phải đổi giọng.
+    ap.add_argument("--may-giong", default=os.environ.get("MAY_GIONG") or "edge",
+                    help="edge (mặc định, một giọng cố định) | gemini (giọng AI, cần GEMINI_KEYS)")
     ap.add_argument("--giong-gemini", default=os.environ.get("GIONG_GEMINI") or "Puck")
     ap.add_argument("--tts-model", default=os.environ.get("TTS_MODEL") or "gemini-2.5-flash-preview-tts")
     ap.add_argument("--toc-do-gemini", default=os.environ.get("TOC_DO_GEMINI") or "1.08")
