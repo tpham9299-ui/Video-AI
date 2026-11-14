@@ -109,13 +109,16 @@ Chốt cuối vẫn là bạn: chế độ "duyệt trước khi đăng" đang B
 - YouTube đăng qua Apps Script (mặc định) dùng đúng bản video đã in số tập (GitHub tải bản đó lên Drive, thư mục VIDEO_XACSUAT/video/da_danh_so).
 - Lưu ý: TikTok chỉ đếm được nếu ứng dụng TikTok có quyền "video.list"; không có thì dùng số của YouTube/Facebook/sổ hệ thống.
 
-## 14. Giọng đọc thống nhất
-- Nguyên nhân giọng đổi liên tục: (1) giọng Gemini được tạo riêng từng cảnh với sắc thái khác nhau ("hào hứng", "cảnh báo"...) nên chất giọng lệch;
-  (2) khi key Gemini hết hạn mức giọng đọc thì video chuyển sang giọng khác (edge / Google).
-- Nay MẶC ĐỊNH một giọng cố định cho MỌI video: edge-tts "NamMinh" (không phụ thuộc hạn mức, không đổi giữa các cảnh).
-  Không bao giờ chuyển sang giọng Google: edge-tts lỗi thì thử lại nhiều vòng, vẫn lỗi thì dừng dựng và hệ thống dựng lại sau.
-- Muốn dùng giọng Gemini (tự nhiên hơn, nhưng có thể lệch nhẹ và tốn hạn mức): đặt biến GitHub MAY_GIONG = gemini.
-  Khi đó mọi cảnh dùng chung một chỉ dẫn giọng (không còn đổi sắc thái theo cảnh).
+## 14. Giọng đọc: một người đọc xuyên suốt cả video
+- Nguyên nhân giọng đổi liên tục: giọng Gemini được tạo RIÊNG TỪNG CẢNH (mỗi lần gọi AI "diễn" khác một chút, lại kèm sắc thái khác nhau)
+  nên nghe như mỗi cảnh một người; khi hết hạn mức thì video chuyển sang giọng khác.
+- Nay Gemini đọc TOÀN BỘ lời thoại của video trong MỘT lần gọi (một người kể một mạch), máy tự cắt theo cảnh ở các khoảng ngừng
+  (kiểm tra vị trí cắt khớp độ dài chữ từng cảnh). Mỗi video chỉ tốn 1 lượt gọi thay vì 13-18, gần như không hết hạn mức.
+  Đã chạy thật: video tòa nhà đọc một lần 79 giây, cắt đúng 13 cảnh.
+- Không đọc được (hết key, cắt không chắc chắn) thì CẢ video dùng một giọng edge-tts; không bao giờ trộn hai giọng trong một video,
+  không bao giờ dùng giọng Google dự phòng.
+- CHỌN GIỌNG: workflow "Nghe thử giọng đọc" đã tạo 15 giọng mẫu trong Drive VIDEO_XACSUAT/giong_mau (13 giọng Gemini + 2 giọng edge,
+  cùng một đoạn bài giảng). Chọn xong đặt biến GitHub GIONG_GEMINI = tên giọng (vd Charon). Muốn luôn dùng edge: MAY_GIONG = edge.
 
 ## Cần dán lại vào Apps Script
 `KiemTraHinh.gs`, `PromptKichBan.gs`, `BoPhan1.gs`, `BoPhan2.gs`, `NangCao.gs`, `DangVideo.gs` (tất cả bản mới nhất trong thư mục bàn giao), rồi Triển khai > Quản lý > Phiên bản mới.
