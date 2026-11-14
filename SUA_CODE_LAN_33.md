@@ -43,6 +43,12 @@ Nếu chèn vào mà sinh lỗi nặng mới thì bỏ, giữ kịch bản cũ.
   Nay thử đọc lại với chữ hơi khác (thêm dấu chấm, "À,") trước. Gemini TTS hết hạn mức ngày thì chuyển ngay, không chờ 4 phút.
 - Số trên trục đồ thị và nhãn "MẸO NHỚ" to hơn (trước 23-25 px, dưới ngưỡng dễ đọc).
 
+## 7. Ký hiệu toán (suy ra, tương đương, xấp xỉ, ≤ ≥ ≠, mũi tên...) cùng cỡ với chữ
+- Phông chữ chính không có các ký hiệu này nên trình duyệt mượn phông khác, vẽ rất nhỏ và mảnh (⇒ chỉ bằng nửa chữ số).
+- Thêm phông "VietKyHieu" CHỈ áp cho các ký tự toán (mũi tên phóng 135-140%, ký hiệu quan hệ 122-126%, nét đậm),
+  dùng chung cho công thức, thẻ chữ, nhãn trên hình và phụ đề, nên mọi chỗ cùng một cỡ.
+- Ký hiệu gõ thẳng (⇒ ≈ ≤) trong công thức được đổi sang lệnh TeX để có đúng khoảng cách hai bên.
+
 ## Cần dán lại vào Apps Script
 `KiemTraHinh.gs`, `PromptKichBan.gs`, `BoPhan1.gs` (bản trong thư mục bàn giao), rồi Triển khai > Quản lý > Phiên bản mới.
 

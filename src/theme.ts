@@ -1,14 +1,14 @@
 // Phông chữ ĐÓNG GÓI SẴN trong public/fonts (không tải từ Google Fonts nên không thể lỗi mạng/lỗi tên phông).
 // Thứ tự ưu tiên: phông riêng của bạn (tuy_chon-*.ttf, nếu có) > Liberation Sans (chữ, số, biến) > DejaVu Sans (ký hiệu toán) > phông hệ thống.
 // Be Vietnam Pro (OFL): phông thiết kế riêng cho tiếng Việt, nét đậm mạnh, hợp tiêu đề và phụ đề TikTok.
-export const FONT = '"VietTuyChon", "VietNoi", "VietSans", "VietSym", "Liberation Sans", "DejaVu Sans", sans-serif';
+export const FONT = '"VietKyHieu", "VietTuyChon", "VietNoi", "VietSans", "VietSym", "Liberation Sans", "DejaVu Sans", sans-serif';
 // Montserrat Black (OFL, có đủ dấu tiếng Việt): nét rất đậm, bè ngang cho TIÊU ĐỀ, phụ đề, nhãn, con số lớn.
-export const FONT_DAM = '"VietTuyChonDam", "VietDam", "VietNoi", "VietSans", "DejaVu Sans", sans-serif';
+export const FONT_DAM = '"VietKyHieuDam", "VietTuyChonDam", "VietDam", "VietNoi", "VietSans", "DejaVu Sans", sans-serif';
 // Chữ kiểu "sticker" TikTok: viền tối dày + bóng đổ khối 3D để chữ nổi trên nền nhiều hình ảnh.
 export const BONG_CHU = '0 3px 0 rgba(4,12,12,0.95), 0 6px 0 rgba(4,12,12,0.6), 0 10px 22px rgba(0,0,0,0.55)';
 export const vienChu = (co: number) => `${Math.max(2, co * 0.07).toFixed(1)}px rgba(4,12,12,0.95)`;
 
-export type KhaiBaoPhong = [family: string, tep: string, weight: string, style: string];
+export type KhaiBaoPhong = [family: string, tep: string, weight: string, style: string, them?: {unicodeRange?: string; sizeAdjust?: string}];
 export const KHAI_BAO_PHONG: KhaiBaoPhong[] = [
   ['VietDam', 'Montserrat-VF.ttf', '100 900', 'normal'],
   ['VietDam', 'Montserrat-Italic-VF.ttf', '100 900', 'italic'],
@@ -33,6 +33,12 @@ export const KHAI_BAO_PHONG: KhaiBaoPhong[] = [
   ['VietSym', 'DejaVuSans-Bold.ttf', '700', 'normal'],
   ['VietSym', 'DejaVuSans-Oblique.ttf', '400', 'italic'],
   ['VietSym', 'DejaVuSans-BoldOblique.ttf', '700', 'italic'],
+  // KÝ HIỆU TOÁN trong chữ thường (⇒ ⇔ → ≈ ≤ ≥ ≠ ± × ÷ ∞ √ ...): phông chữ chính không có hoặc vẽ rất nhỏ, mảnh so với chữ đậm.
+  // Hai họ phông CHỈ áp cho các ký tự này (unicode-range), phóng to (size-adjust) và nét đậm cho khớp cỡ chữ bên cạnh.
+  ['VietKyHieu', 'DejaVuSans-Bold.ttf', '100 900', 'normal', {unicodeRange: 'U+2190-21FF', sizeAdjust: '135%'}],
+  ['VietKyHieu', 'DejaVuSans-Bold.ttf', '100 900', 'normal', {unicodeRange: 'U+2200-22FF, U+00B1, U+00D7, U+00F7', sizeAdjust: '122%'}],
+  ['VietKyHieuDam', 'DejaVuSans-Bold.ttf', '100 900', 'normal', {unicodeRange: 'U+2190-21FF', sizeAdjust: '140%'}],
+  ['VietKyHieuDam', 'DejaVuSans-Bold.ttf', '100 900', 'normal', {unicodeRange: 'U+2200-22FF, U+00B1, U+00D7, U+00F7', sizeAdjust: '126%'}],
   // phông riêng (tùy chọn): lỗi/thiếu tệp thì bỏ qua, không làm hỏng video
   ['VietTuyChon', 'tuy_chon-regular.ttf', '400', 'normal'],
   ['VietTuyChon', 'tuy_chon-bold.ttf', '700', 'normal'],

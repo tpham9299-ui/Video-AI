@@ -61,6 +61,14 @@ export function catChu(s: string, max: number): string {
   return (i > max * 0.6 ? cat.slice(0, i) : cat).replace(/[\s,.;:–-]+$/, '') + '…';
 }
 
+
+// KÝ HIỆU QUAN HỆ gõ thẳng bằng ký tự (⇒ ≈ ≤...) trong công thức: đổi sang lệnh TeX để KaTeX đặt đúng khoảng cách phép quan hệ.
+// CỠ của ký hiệu do phông "VietKyHieu" lo (theme.ts: phóng to riêng các ký tự này) - áp chung cho công thức, thẻ chữ, phụ đề.
+const KY_TU_LON: Record<string, string> = {'⇒': '\\Rightarrow', '⇔': '\\Leftrightarrow', '→': '\\rightarrow', '≈': '\\approx', '≤': '\\le', '≥': '\\ge', '≠': '\\ne', '≡': '\\equiv'};
+export function phongKyHieu(tex: string): string {
+  return tex.replace(/[⇒⇔→≈≤≥≠≡]/g, (c) => ` ${KY_TU_LON[c]} `);
+}
+
 // Công thức trộn chữ tiếng Việt ("Cửa bạn chọn: \frac{1}{3}"): KaTeX coi chữ là biến (nghiêng, mất khoảng trắng) -> bọc các cụm
 // chữ thường vào \text{...}. Không đụng lệnh TeX, biến 1 chữ cái, tên hàm (sin, cos, log, max...) và phần đã nằm trong \text{}.
 const HAM = new Set(['sin', 'cos', 'tan', 'cot', 'log', 'ln', 'lg', 'max', 'min', 'lim', 'exp', 'det', 'mod', 'gcd']);
@@ -70,7 +78,7 @@ export function bocChuViet(tex: string): string {
   // S_max: KaTeX chỉ hạ chữ đầu ("S" + chỉ số "m" + "ax") -> bọc cả cụm chỉ số: S_{max}
   const x = chuanTex(tex).replace(/(^|[^\\])%/g, '$1\\%').replace(/\\frac(?=\s*\{)/g, '\\dfrac').replace(/_([a-zA-Z]{2,4})(?![a-zA-Z{])/g, '_{$1}')
     .replace(/<=>/g, ' \\Leftrightarrow ').replace(/=>/g, ' \\Rightarrow ').replace(/-+>/g, ' \\rightarrow ');   // mũi tên gõ tay "->" (KaTeX hiện thành dấu trừ và dấu lớn hơn)
-  if (!/[A-Za-zÀ-ỹ]{2,}/.test(x)) return x;
+  if (!/[A-Za-zÀ-ỹ]{2,}/.test(x)) return phongKyHieu(x);
   let ra = '';
   let i = 0;
   const re = /\\(?:text|mathrm|textbf|operatorname|mbox)\s*\{[^{}]*\}|\\[a-zA-Z]+|[A-Za-zÀ-ỹ]+(?:[ ]+[A-Za-zÀ-ỹ]+)*/g;
@@ -88,5 +96,5 @@ export function bocChuViet(tex: string): string {
     const sau = /^\s/.test(x.slice(i)) && x.slice(i).trim() ? ' ' : '';
     ra += `\\text{${truoc}${w}${sau}}`;
   }
-  return ra + x.slice(i);
+  return phongKyHieu(ra + x.slice(i));
 }

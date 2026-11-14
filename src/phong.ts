@@ -13,9 +13,9 @@ export function napPhong(): Promise<void> {
     return loi;
   }
   const viec: Promise<unknown>[] = [];
-  for (const [fam, tep, weight, style] of KHAI_BAO_PHONG) {
+  for (const [fam, tep, weight, style, them] of KHAI_BAO_PHONG) {
     try {
-      const ff = new (window as any).FontFace(fam, `url(${staticFile('fonts/' + tep)})`, {weight, style});
+      const ff = new (window as any).FontFace(fam, `url(${staticFile('fonts/' + tep)})`, {weight, style, ...(them || {})});
       viec.push(ff.load().then((x: any) => f.add(x)).catch(() => undefined));
     } catch (e) {
       /* bỏ qua */
