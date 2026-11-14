@@ -732,5 +732,6 @@
   "Bạn chọn cửa 1",
   "Người dẫn biết xe ở đâu, mở 1 cửa có dê"
  ],
- "can_tim": "Đổi cửa thì xác suất thắng là bao nhiêu?"
+ "can_tim": "Đổi cửa thì xác suất thắng là bao nhiêu?",
+ "mon": "XAC_SUAT"
 }

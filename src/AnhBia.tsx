@@ -4,6 +4,7 @@ import {FONT_DAM, vienChu} from './theme';
 import {LogoTron} from './ThuongHieu';
 import {Props} from './types';
 import {Video} from './Video';
+import {Xuc3D} from './sankhau/vat';
 
 // ẢNH BÌA (1080x1920, cùng khổ video dọc) dựng bằng Remotion "still":
 //  - nền: chính video, đóng băng ở cảnh có hình minh họa rõ nhất, phóng to + làm mờ + tối;
@@ -46,6 +47,7 @@ export const AnhBia: React.FC<Props> = (props) => {
         <div style={{position: 'absolute', left: -60, top: -540, width: 1080, height: 1920}}>{video}</div>
         <div style={{position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(7,17,19,0) 75%, rgba(7,17,19,0.85) 100%)'}} />
       </div>
+      {b.loai === 'Xác suất' ? <TrangTriXacSuat mau={mau} /> : null}
       {/* hàng nhãn trên cùng */}
       <div style={{position: 'absolute', top: 110, left: 0, right: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 18}}>
         {coBrand ? <LogoTron th={props.thuongHieu} co={84} sang={0.6} /> : null}
@@ -82,3 +84,27 @@ export const AnhBia: React.FC<Props> = (props) => {
     </AbsoluteFill>
   );
 };
+
+// ẢNH BÌA XÁC SUẤT: thêm xúc xắc 3D nổi ở góc khung, chồng xu, nhãn tròn "P = ?" nghiêng và thanh đo 0%-100% có dấu hỏi
+// (người xem nhận ra ngay đây là bài xác suất, khung hình bớt trống, có điểm nhìn).
+const TrangTriXacSuat: React.FC<{mau: string}> = ({mau}) => (
+  <>
+    <div style={{position: 'absolute', left: 18, top: 548, filter: `drop-shadow(0 18px 30px rgba(0,0,0,0.7)) drop-shadow(0 0 22px ${mau}66)`}}>
+      <Xuc3D co={150} rx={-28} ry={38} vien={mau} />
+    </div>
+    <div style={{position: 'absolute', right: 70, top: 1250, filter: 'drop-shadow(0 14px 24px rgba(0,0,0,0.7))', transform: 'rotate(14deg)'}}>
+      <Xuc3D co={110} rx={-20} ry={-30} vien="#FF8A3D" />
+    </div>
+    <div style={{position: 'absolute', right: 34, top: 520, width: 210, height: 210, borderRadius: '50%', background: `radial-gradient(circle at 35% 30%, #F1E9FF 0%, ${mau} 55%, #7B5BE0 100%)`,
+      border: '6px solid #ffffff', boxShadow: `0 0 40px ${mau}, 0 16px 30px rgba(0,0,0,0.6)`, display: 'flex', alignItems: 'center', justifyContent: 'center', transform: 'rotate(12deg)',
+      fontSize: 70, fontWeight: 900, color: '#140a2a', fontStyle: 'italic'}}>P&nbsp;=&nbsp;?</div>
+    {[0, 1, 2, 3].map((k) => (
+      <div key={k} style={{position: 'absolute', left: 80 + k * 6, top: 1400 - k * 22, width: 120, height: 40, borderRadius: '50%', background: 'linear-gradient(180deg, #FFE27A, #E0A800)', border: '3px solid #8a6400', boxShadow: '0 6px 0 #8a6400'}} />
+    ))}
+    <div style={{position: 'absolute', left: 110, right: 110, top: 1452, height: 26, borderRadius: 13, background: `linear-gradient(90deg, #FF5C61, #FFD54A, #3BF29A)`, boxShadow: '0 0 20px rgba(0,0,0,0.6)', border: '3px solid rgba(255,255,255,0.8)'}}>
+      <div style={{position: 'absolute', left: '62%', top: -64, transform: 'translateX(-50%)', width: 70, height: 70, borderRadius: '50%', background: '#fff', color: '#140a2a', fontSize: 52, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 26px ${mau}`}}>?</div>
+      <div style={{position: 'absolute', left: -6, top: 30, fontSize: 30, fontWeight: 900, color: '#fff'}}>0%</div>
+      <div style={{position: 'absolute', right: -6, top: 30, fontSize: 30, fontWeight: 900, color: '#fff'}}>100%</div>
+    </div>
+  </>
+);
