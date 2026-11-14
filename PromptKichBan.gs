@@ -156,7 +156,10 @@ function taoPromptKichBan_(r, c1, c2) {
     '- Ít nhất 3 cảnh có vật 3D thật (mo_dau, de_bai, dap_an) và ít nhất 1 cảnh hinh_hoc hoặc do_thi (mo_hinh_hoa, kiem_tra). Ít nhất 3 cảnh dùng góc nhìn 3D (goc_nhin hoặc goc_3d); cảnh có công thức, danh sách, đồ thị để nhìn thẳng.\n'
   ] : [
     '- GỢI Ý CHỌN VẬT: người/học sinh -> nguoi; bi, kẹo trong hộp -> hop_bi + lay_ra; bốc thăm -> tui hoặc the + chon; quà -> hop_qua + mo; xúc xắc, đồng xu, bài -> đúng vật đó + quay; quay số -> vong_quay; ',
-    'đếm số cách / không gian mẫu -> luoi_o hoặc so_dem; liệt kê trường hợp, luật chơi -> danh_sach; so sánh hai trường hợp -> the hoặc bieu_do_cot; phần bù "ít nhất một" -> banh hoặc thanh; đáp án -> dong_ho_do; cái bẫy -> rung + loai_bo + nhan.\n'
+    'đếm số cách / không gian mẫu -> luoi_o hoặc so_dem; liệt kê trường hợp, luật chơi -> danh_sach; so sánh hai trường hợp -> the hoặc bieu_do_cot; phần bù "ít nhất một" -> banh hoặc thanh; đáp án -> dong_ho_do; cái bẫy -> rung + loai_bo + nhan.\n' +
+    '- MÔ PHỎNG XÁC SUẤT PHẢI ĐA DẠNG VÀ CHUYỂN ĐỘNG: cả video dùng ÍT NHẤT 4 loại vật chính khác nhau (vd hop_bi -> luoi_o -> bieu_do_cot -> dong_ho_do), hai cảnh liền nhau không lặp cùng vật chính (trừ khi giu_san_khau để diễn tiếp). ' +
+    'Mỗi cảnh mô phỏng phải có hành động thật: lay_ra (bốc bi/thẻ), quay (vòng quay, xúc xắc lăn, đồng xu tung), mo (mở hộp quà/cửa), dat_gia_tri (đồng hồ/thanh/bộ đếm chạy), chon/loai_bo từng trường hợp trên luoi_o. ' +
+    'Cảnh kiem_tra nên MÔ PHỎNG NHIỀU LẦN THỬ (luoi_o lấp đầy dần các lần thắng, so_dem chạy số lần, bieu_do_cot tần suất tiến về xác suất lý thuyết). Không dùng danh_sach chữ cho cảnh mô phỏng.\n'
   ];
   var viDu = tt ? [
     'VÍ DỤ MỘT CẢNH TỐT (bài bể nước không nắp, đáy vuông, thể tích 32 m³):\n',

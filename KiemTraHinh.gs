@@ -451,6 +451,12 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc) {
   kiemTraBaCham_(kb).forEach(function (x) { nang.push(x); });
   kiemTraCuPhapTex_(kb).forEach(function (x) { nang.push(x); });
   kiemTraVatThucDe_(kb, deGoc).forEach(function (x) { nang.push(x); });
+  if (!thucTe) {
+    // xác suất: mô phỏng phải đa dạng (ít nhất 4 loại vật chính), không lặp một kiểu hình cả video
+    var loaiChinh = {};
+    kb.canh.forEach(function (c) { var du = c && c.minh_hoa && c.minh_hoa.du_lieu; if (du && Array.isArray(du.vat)) du.vat.forEach(function (v) { if (v && VAT_PHU_.indexOf(v.loai) < 0 && v.loai !== 'danh_sach') loaiChinh[v.loai] = 1; }); });
+    if (Object.keys(loaiChinh).length < 4) nhe.push('MO_PHONG_DON_DIEU: cả video chỉ dùng ' + Object.keys(loaiChinh).length + ' loại vật chính (' + Object.keys(loaiChinh).join(', ') + '). Video xác suất cần ít nhất 4 loại khác nhau (hop_bi, xuc_xac, vong_quay, the_bai, luoi_o, bieu_do_cot, dong_ho_do, banh...) và mỗi cảnh có hành động (lay_ra, quay, mo, dat_gia_tri).');
+  }
   var qt = kiemTraQuyTrinh_(kb, deGoc);
   qt.nang.forEach(function (x) { nang.push(x); });
   qt.nhe.forEach(function (x) { nhe.push(x); });
