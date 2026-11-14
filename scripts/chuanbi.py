@@ -299,6 +299,83 @@ def tao_giong_gemini(canh, thu_muc, args):
     return kq
 
 
+def tim_khoang_lang(wav, nguong_db=-38, toi_thieu=0.4):
+    """Các khoảng lặng trong tệp âm thanh: [(bắt đầu, kết thúc)] (giây), dùng bộ lọc silencedetect của ffmpeg."""
+    r = subprocess.run(["ffmpeg", "-hide_banner", "-i", wav, "-af", "silencedetect=noise=%ddB:d=%.2f" % (nguong_db, toi_thieu), "-f", "null", "-"],
+                       capture_output=True, text=True)
+    ds, bd = [], None
+    for dong in r.stderr.splitlines():
+        m = re.search(r"silence_start: ([\d.]+)", dong)
+        if m:
+            bd = float(m.group(1))
+        m = re.search(r"silence_end: ([\d.]+)", dong)
+        if m and bd is not None:
+            ds.append((bd, float(m.group(1))))
+            bd = None
+    return ds
+
+
+def tao_giong_gemini_mot_lan(canh, thu_muc, args):
+    """GIỌNG THỐNG NHẤT CẢ VIDEO: Gemini đọc TOÀN BỘ lời thoại trong MỘT lần gọi (một người, một mạch, một cảm xúc liền),
+    rồi máy cắt theo cảnh ở các khoảng ngừng giữa đoạn (chọn khoảng ngừng gần vị trí dự kiến theo số chữ của từng cảnh).
+    Trước đây mỗi cảnh gọi riêng một lần -> mỗi cảnh như một người đọc khác. Cắt không chắc chắn -> trả None (cả video dùng edge)."""
+    van = [chuan_hoa_doc(str(c.get("loi_thoai") or "").strip()) for c in canh]
+    if not all(van):
+        return None
+    toan_bai = "\n\n".join(van)
+    phong_cach = (args.phong_cach_giong + " Đây là TOÀN BỘ lời giảng của một video: đọc liền mạch từ đầu đến cuối như MỘT người kể, "
+                  "giữ nguyên một chất giọng, cao độ và tốc độ. Giữa hai đoạn (cách nhau một dòng trống) NGỪNG HẲN khoảng 1,2 giây; "
+                  "trong một đoạn thì đọc liền, tự nhiên.\nLời giảng:")
+    ky_tu = [max(1, len(v)) for v in van]
+    for lan in range(2):
+        wav = os.path.join(thu_muc, "ca_bai_%d.wav" % lan)
+        try:
+            gemini_tts(toan_bai, wav, args.giong_gemini, args.tts_model, phong_cach)
+        except Exception as e:
+            print("Cảnh báo: Gemini đọc cả bài lỗi: %s" % str(e)[:200])
+            return None
+        D = do_thoi_luong(wav)
+        # đọc thiếu / bị cắt cụt: Việt ~13-17 ký tự mỗi giây
+        if D < sum(ky_tu) / 30.0:
+            print("Gemini đọc cả bài quá ngắn (%.1f giây cho %d ký tự), đọc lại" % (D, sum(ky_tu)))
+            continue
+        lang = tim_khoang_lang(wav)
+        cat, truoc, ok = [], 0.0, True
+        tich = 0
+        for k in range(len(van) - 1):
+            tich += ky_tu[k]
+            du_kien = D * tich / sum(ky_tu)
+            cua_so = max(2.5, 0.35 * D * ky_tu[k] / sum(ky_tu))
+            ung = [(b, e) for b, e in lang if (b + e) / 2 > truoc + 0.6 and abs((b + e) / 2 - du_kien) <= cua_so]
+            if not ung:
+                ok = False
+                break
+            b, e = max(ung, key=lambda x: (x[1] - x[0]) - 0.12 * abs((x[0] + x[1]) / 2 - du_kien))
+            cat.append((b, e))
+            truoc = (b + e) / 2
+        if not ok:
+            print("Không tìm đủ khoảng ngừng giữa các cảnh (lần %d), đọc lại" % (lan + 1))
+            continue
+        # đoạn cắt ra phải hợp lý so với số chữ của cảnh
+        moc = [0.0] + [(b + e) / 2 for b, e in cat] + [D]
+        lech = [(moc[k + 1] - moc[k]) / (D * ky_tu[k] / sum(ky_tu)) for k in range(len(van))]
+        if min(lech) < 0.45 or max(lech) > 2.2:
+            print("Cắt cảnh không khớp độ dài chữ (tỉ lệ %.2f-%.2f), đọc lại" % (min(lech), max(lech)))
+            continue
+        kq = {}
+        tempo = float(args.toc_do_gemini or 1.0)
+        loc = ("atempo=%.3f," % tempo if abs(tempo - 1) > 0.01 else "") + "aresample=44100"
+        for k in range(len(van)):
+            ra = os.path.join(thu_muc, "gem_%d.mp3" % k)
+            chay(["ffmpeg", "-y", "-loglevel", "error", "-ss", "%.3f" % moc[k], "-to", "%.3f" % moc[k + 1], "-i", wav, "-af", loc,
+                  "-c:a", "libmp3lame", "-b:a", "128k", ra])
+            kq[k] = ra
+        THONG_KE_GIONG["gemini"] = len(van)
+        print("Gemini đọc cả video MỘT lần (%.1f giây), cắt thành %d cảnh" % (D, len(van)))
+        return kq
+    return None
+
+
 async def tao_cac_doan(cac_doan, thu_muc, args):
     cac_tep = []
     sem = asyncio.Semaphore(3)
@@ -727,10 +804,11 @@ def main():
     ap.add_argument("--cao-do", default=os.environ.get("CAO_DO", "+0Hz"))
     ap.add_argument("--phong-cach", default="phong_cach.json")
     ap.add_argument("--gia-lap", action="store_true", help="dùng tiếng bíp thay giọng thật (để thử máy)")
-    # MỘT GIỌNG CỐ ĐỊNH cho mọi video: mặc định edge-tts (giọng NamMinh, không đổi giữa các cảnh, không phụ thuộc hạn mức).
-    # Gemini TTS (MAY_GIONG=gemini) tự nhiên hơn nhưng là giọng AI sinh ra: mỗi lần gọi có thể lệch chất giọng, hết hạn mức thì phải đổi giọng.
-    ap.add_argument("--may-giong", default=os.environ.get("MAY_GIONG") or "edge",
-                    help="edge (mặc định, một giọng cố định) | gemini (giọng AI, cần GEMINI_KEYS)")
+    # MỘT GIỌNG CHO CẢ VIDEO: mặc định Gemini đọc TOÀN BỘ lời thoại trong MỘT lần gọi (một người đọc xuyên suốt, giọng tự nhiên),
+    # rồi cắt theo cảnh. Không đọc được thì CẢ video dùng edge-tts (không bao giờ trộn hai giọng trong một video). MAY_GIONG=edge để luôn dùng edge.
+    co_key = bool(os.environ.get("GEMINI_KEYS") or os.environ.get("GEMINI_API_KEY"))
+    ap.add_argument("--may-giong", default=os.environ.get("MAY_GIONG") or ("gemini" if co_key else "edge"),
+                    help="gemini (mặc định khi có key: đọc cả video một lần) | edge")
     ap.add_argument("--giong-gemini", default=os.environ.get("GIONG_GEMINI") or "Puck")
     ap.add_argument("--tts-model", default=os.environ.get("TTS_MODEL") or "gemini-2.5-flash-preview-tts")
     ap.add_argument("--toc-do-gemini", default=os.environ.get("TOC_DO_GEMINI") or "1.08")
@@ -765,7 +843,13 @@ def main():
     tam_gem = tempfile.mkdtemp()
     giong_gem = None
     if not args.gia_lap and args.may_giong == "gemini":
-        giong_gem = tao_giong_gemini(canh, tam_gem, args)
+        # mặc định: đọc cả video MỘT lần (một người đọc xuyên suốt). CACH_DOC_GEMINI=tung_canh để quay về kiểu cũ.
+        if (os.environ.get("CACH_DOC_GEMINI") or "mot_lan") == "tung_canh":
+            giong_gem = tao_giong_gemini(canh, tam_gem, args)
+        else:
+            giong_gem = tao_giong_gemini_mot_lan(canh, tam_gem, args)
+        if not giong_gem:
+            print("Gemini không đọc được cả video -> CẢ video dùng một giọng edge-tts (không trộn giọng)")
     for i, c in enumerate(canh):
         so = int(c.get("so") or i + 1)
         loi_thoai = str(c.get("loi_thoai") or "").strip()
