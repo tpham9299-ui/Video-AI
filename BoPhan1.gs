@@ -998,6 +998,7 @@ function chuanBiKichBan_(kb, r, ctxSua) {
   if (r.dap_an_hien && !kb.dap_an_hien) kb.dap_an_hien = String(r.dap_an_hien);
   var sua = typeof tuSuaKichBan_ === 'function' ? tuSuaKichBan_(kb, ctxSua) || [] : [];
   if (typeof tuSuaQuyTrinh_ === 'function') sua = sua.concat(tuSuaQuyTrinh_(kb, r.de_bai) || []);
+  if (typeof tuSuaBoCucDe_ === 'function') sua = sua.concat(tuSuaBoCucDe_(kb, r.de_bai) || []);   // đề bàn tròn -> người ngồi quanh bàn tròn
   // câu KÊU GỌI cuối video (dùng chung cho mọi nền tảng: YouTube "đăng ký", TikTok/Facebook "theo dõi"; dải chữ riêng từng nền tảng in lúc đăng)
   var cuoi = kb.canh[kb.canh.length - 1];
   if (cuoi && !/đăng ký|theo dõi|follow|subscribe/i.test(String(cuoi.loi_thoai || ''))) {

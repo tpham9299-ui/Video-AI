@@ -20,7 +20,7 @@ const so = (v: unknown, mac: number, thap: number, cao: number): number => {
 export const LOAI_VAT = [
   'nguoi', 'the', 'the_bai', 'xuc_xac', 'dong_xu', 'hop_bi', 'tui', 'hop_qua', 'dong_ho', 'dien_thoai', 'bong_bay',
   'dong_ho_do', 'bieu_do_cot', 'thanh', 'vong_quay', 'cua', 'banh', 'nhan', 'chu', 'so_dem', 'mui_ten', 'bieu_tuong',
-  'luoi_o', 'danh_sach',
+  'luoi_o', 'danh_sach', 'ban_tron',
   // toán thực tế: vật 3D + hình học + đồ thị
   'khoi_hop', 'tru', 'non', 'cau', 'toa_nha', 'xe', 'cay', 'thang', 'hinh_hoc', 'do_thi',
   // hình tự do: vẽ đúng hình của đề bằng các nét (đa giác, đường, tròn, cung, SVG, fractal, đường cong tham số, nhân bản)

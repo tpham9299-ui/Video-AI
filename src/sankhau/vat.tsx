@@ -9,7 +9,7 @@ import {texSangChu} from '../chu';
 import {NguoiCuDong} from './NguoiCuDong';
 import {bamChuoi, easeInOut, easeOut, kep, lerp, nay, NEN_VAT, NEN_VAT_2, neon, ngauNhien, popOut, tienDo, VONG_MAU} from './donghieu';
 import {Vat} from './dulieu';
-import {boCucDanhSach, cotThe, kichThe, TrangThai} from './trangthai';
+import {boCucDanhSach, cotThe, kichBanTron, kichThe, TrangThai} from './trangthai';
 import {Goc3D} from './chieu3d';
 import {DoThi, HinhHoc} from './hinhhoc';
 import {HinhTuDo} from './hinhtudo';
@@ -75,6 +75,54 @@ type Ve = (v: Vat, st: TrangThai, frame: number, fps: number) => React.ReactNode
 let KC = 1;
 export const datHeSoChu = (k: number) => { KC = Math.max(1, Math.min(1.6, k || 1)); };
 const tc = texSangChu;
+
+/* ---------------- BÀN TRÒN: ghế xếp quanh bàn, mỗi ghế một người (đề "ngồi quanh bàn tròn", "xếp vòng tròn") ----------------
+   ds: nhãn từng ghế theo chiều kim đồng hồ từ ghế trên cùng ("Nam", "Nữ", tên; "_" = ghế trống). Áo theo nhãn: nữ hồng, nam xanh.
+   chon/loai_bo theo số ghế; quay = cả vòng dịch đi gia_tri ghế (minh họa "xoay vòng vẫn là một cách xếp"). */
+const BanTron: Ve = (v, st) => {
+  const n = Math.max(3, Math.min(16, v.soLuong || v.ds.length || 6));
+  const kb = kichBanTron(n, v.co);
+  const o = kb.o, Rg = kb.Rg, Rb = kb.Rb;     // ô mỗi người, bán kính vòng ghế, bán kính mặt bàn (người to, bàn vừa đủ)
+  const buocQuay = Number(v.giaTri) || 1;
+  const xoay = st.quay < 0 ? 0 : easeInOut(Math.min(1, st.quay)) * (360 / n) * buocQuay;
+  const goc = neon(v.mau, neon('xanh_la'));
+  const S = (Rg + o) * 2 + 20;
+  const MAU_KHAC = ['#3BF29A', '#FFD54A', '#B79CFF', '#FF8A3D'];
+  return (
+    <div style={{position: 'relative', width: S, height: S + 10}}>
+      {/* mặt bàn */}
+      <div style={{position: 'absolute', left: S / 2 - Rb, top: S / 2 - Rb, width: Rb * 2, height: Rb * 2, borderRadius: '50%',
+        background: 'radial-gradient(circle at 40% 35%, #3a2a1c 0%, #22170e 70%)', border: `5px solid ${goc}`, boxShadow: `0 0 26px ${goc}66, inset 0 0 30px rgba(0,0,0,0.6)`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 24, boxSizing: 'border-box',
+        fontFamily: FONT_DAM, fontWeight: 900, fontSize: Math.max(30 * KC, Rb * 0.2), color: '#fff', opacity: kep(st.vao * 2)}}>{tc(st.noiDung || '')}</div>
+      {Array.from({length: n}, (_, k) => {
+        const i = k + 1;
+        const a = vaoLanLuot(st, k, n);
+        const s = phanTu(st, i, goc);
+        const nhan = v.ds[k] || '';
+        const trong = nhan === '_' || nhan === '';
+        const rad = ((-90 + (k * 360) / n + xoay) * Math.PI) / 180;
+        const x = S / 2 + Rg * Math.cos(rad), y = S / 2 + Rg * Math.sin(rad);
+        const mau = /nữ|nu\b|gái/i.test(nhan) ? '#FF7EB6' : /nam|trai/i.test(nhan) ? '#4FC3F7' : MAU_KHAC[k % 4];
+        return (
+          <div key={k} style={{position: 'absolute', left: x - o / 2, top: y - o * 0.62, width: o, display: 'flex', flexDirection: 'column', alignItems: 'center',
+            opacity: kep(a * 2) * s.mo, transform: `scale(${popOut(a) * (1 + 0.1 * s.pc)})`, filter: s.xam ? 'grayscale(1)' : 'none'}}>
+            {/* ghế */}
+            <div style={{position: 'absolute', top: o * 0.28, width: o * 0.62, height: o * 0.62, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', border: `3px solid ${s.pc > 0.01 ? s.mau : 'rgba(255,255,255,0.28)'}`}} />
+            {trong ? <div style={{height: o * 0.9}} /> : (
+              <svg width={o * 0.56} height={o * 0.9} viewBox="-32 -108 64 114" style={{position: 'relative', overflow: 'visible', filter: s.pc > 0.01 ? phatSang(s.mau, 4 + 10 * s.pc) : 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))'}}>
+                <NguoiCuDong t={st.t + k * 0.41} hat={k * 1.3} toc={['#2b1c12', '#4a2c17', '#1d1d1d', '#6b3e1f'][k % 4]} dongTac={s.pc > 0.01 ? 'gio_tay' : 'dung'} sang={s.pc} mauAo={s.pc > 0.01 ? s.mau : mau} />
+              </svg>
+            )}
+            {!trong ? <div style={{fontFamily: FONT_DAM, fontWeight: 800, fontSize: Math.min(Math.max(26 * KC, o * 0.24), (o * 1.05) / Math.max(2, tc(nhan).length * 0.66)), color: '#fff', whiteSpace: 'nowrap', textShadow: '0 2px 6px rgba(0,0,0,0.8)'}}>{tc(nhan)}</div> : null}
+            <DauTich p={s.pc} mau={s.mau} co={o * 0.3} style={{right: 0, top: -2}} />
+          </div>
+        );
+      })}
+      {v.nhan ? <div style={{position: 'absolute', left: 0, right: 0, bottom: -8, textAlign: 'center'}}><Nhan chu={v.nhan} /></div> : null}
+    </div>
+  );
+};
 
 /* ---------------- NGƯỜI ---------------- */
 const Nguoi: Ve = (v, st) => {
@@ -897,7 +945,7 @@ const BieuTuong: Ve = (v, st, frame) => (
 );
 
 export const VE_VAT: Partial<Record<Vat['loai'], Ve>> = {
-  nguoi: Nguoi, the: The, the_bai: LaBai, xuc_xac: XucXac, dong_xu: DongXu, hop_bi: HopBi, tui: HopBi, hop_qua: HopQua,
+  nguoi: Nguoi, ban_tron: BanTron, the: The, the_bai: LaBai, xuc_xac: XucXac, dong_xu: DongXu, hop_bi: HopBi, tui: HopBi, hop_qua: HopQua,
   dong_ho: DongHo, dien_thoai: DienThoai, bong_bay: BongBay, dong_ho_do: DongHoDo, bieu_do_cot: BieuDoCot, thanh: Thanh,
   vong_quay: VongQuay, cua: Cua, banh: Banh, nhan: NhanVat, chu: Chu, so_dem: SoDem, bieu_tuong: BieuTuong, luoi_o: LuoiO, danh_sach: DanhSach,
   khoi_hop: (v, st) => <KhoiHop v={v} st={st} />, tru: (v, st) => <Tru v={v} st={st} />, non: (v, st) => <Tru v={v} st={st} />,

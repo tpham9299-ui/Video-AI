@@ -140,6 +140,7 @@ async function aiNhinHinh(anh) {
     'Kiểm tra TỪNG ảnh, chỉ báo lỗi THẬT:\n' +
     '(1) Vật/địa điểm thật trong đề (cột cờ, tòa nhà, ngân hàng, hàng rào, tường, cây, người, xe...) phải vẽ ĐÚNG là vật đó; khối hộp/khối trụ/thẻ chữ thay vật thật là SAI.\n' +
     '(2) KHÔNG có vật bị vẽ LẶP (2 tòa nhà, 2 người khi đề chỉ có 1), không có vật thừa sót lại từ cảnh trước.\n' +
+    '(2b) CÁCH SẮP XẾP đúng điều kiện đề: ngồi quanh BÀN TRÒN phải là vòng tròn quanh bàn (xếp hàng ngang là SAI), đúng số người / số vật và nhãn; không có vật nào đè lên vật khác.\n' +
     '(3) Số đo trên hình đúng số của đề, đặt đúng chỗ (khoảng cách nằm dưới đoạn đúng, chiều cao cạnh đúng vật, góc ở đúng đỉnh); tỉ lệ hình không mâu thuẫn số đo.\n' +
     '(4) Mọi số, phép tính, đáp số hiện trên màn hình phải đúng và khớp đáp án ' + dapAn + ' (cảnh đáp án phải hiện đúng đáp án; huy hiệu số phải đọc được rõ).\n' +
     '(5) Chữ không đè lên hình/chữ khác làm khó đọc; công thức không bị cắt; không có mã LaTeX thô.\n' +

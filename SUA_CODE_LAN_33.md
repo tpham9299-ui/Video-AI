@@ -158,6 +158,18 @@ Chốt cuối vẫn là bạn: chế độ "duyệt trước khi đăng" đang B
   có chấm + tên trên hình, mỗi số đo một nhãn riêng (không gộp "500m/1200m"). Máy kiểm tra: đề nhắc điểm nào mà bản vẽ thiếu -> vẽ lại.
   Nhãn trên hình tự né nhau và né vật (không còn chữ dính chữ). Tên điểm có dấu phẩy trên (A') hiện rõ.
 
+## 18. Hình bám sát cấu trúc đề: bàn tròn, khai thác nhiều cảnh
+- **Vật mới "bàn tròn" (ban_tron)**: bàn tròn, ghế xếp đều quanh bàn, mỗi ghế một người có nhãn (Nam/Nữ/tên; "_" = ghế trống),
+  áo theo nhãn (nữ hồng, nam xanh); chon/loai_bo theo số ghế; quay = cả vòng xoay 1 ghế (minh họa "xoay vòng vẫn là một cách xếp").
+- **Kiểm tra bố cục theo đề**: đề "ngồi quanh bàn tròn / xếp vòng tròn" mà các cảnh đầu không có bàn tròn = lỗi nặng (BO_CUC_SAI_DE).
+  Máy TỰ SỬA: nhóm người (>= 3) đang xếp hàng được đổi thành bàn tròn, giữ nguyên nhãn. AI nhìn hình (trước dựng) và AI chấm video
+  (sau dựng) đều soi thêm "cách sắp xếp đúng điều kiện đề, không có vật đè vật".
+- **Kịch bản bám đề** (thêm vào hướng dẫn viết kịch bản): bố cục đúng cấu trúc đề; đúng số lượng và nhãn (6 nam 6 nữ = 12 người đúng nhãn);
+  mỗi điều kiện của đề phải THẤY trên hình (không chỉ nói); "mo_ta" chi tiết như kịch bản quay phim (vật nào, ở đâu, bao nhiêu, nhãn gì,
+  chuyển động gì theo lời thoại); KHAI THÁC NHIỀU CẢNH: một hình chính xuyên suốt, mỗi cảnh làm rõ thêm một ý của lời giải ngay trên hình đó.
+- **Không tái diễn chồng hình**: hai lớp chặn - bộ tự xếp không cho vật đè nhau (mục 17) + kiểm duyệt đo vật đè vật trên khung hình,
+  đè ở >= 2 khung = lỗi nặng, không dựng, tự sửa kịch bản.
+
 ## Cần dán lại vào Apps Script
 `KiemTraHinh.gs`, `PromptKichBan.gs`, `BoPhan1.gs`, `BoPhan2.gs`, `NangCao.gs`, `DangVideo.gs`, `SanPham.gs` (tất cả bản mới nhất trong thư mục bàn giao), rồi Triển khai > Quản lý > Phiên bản mới.
 

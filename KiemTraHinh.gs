@@ -7,7 +7,7 @@
  */
 
 var LOAI_VAT_ = ['canh_that', 'nguoi', 'the', 'the_bai', 'xuc_xac', 'dong_xu', 'hop_bi', 'tui', 'hop_qua', 'dong_ho', 'dien_thoai', 'bong_bay',
-  'dong_ho_do', 'bieu_do_cot', 'thanh', 'vong_quay', 'cua', 'banh', 'nhan', 'chu', 'so_dem', 'mui_ten', 'bieu_tuong', 'luoi_o', 'danh_sach',
+  'dong_ho_do', 'bieu_do_cot', 'thanh', 'vong_quay', 'cua', 'banh', 'nhan', 'chu', 'so_dem', 'mui_ten', 'bieu_tuong', 'luoi_o', 'danh_sach', 'ban_tron',
   'khoi_hop', 'tru', 'non', 'cau', 'toa_nha', 'xe', 'cay', 'thang', 'hinh_hoc', 'do_thi', 'hinh_tu_do'];
 var VAT_3D_ = ['khoi_hop', 'tru', 'non', 'cau', 'toa_nha', 'xe', 'cay', 'thang', 'xuc_xac', 'hop_bi', 'hop_qua', 'cua'];   // vật 3D thật (cảnh đời thực)
 var VAT_MO_HINH_ = ['hinh_hoc', 'do_thi', 'hinh_tu_do', 'canh_that'];   // canh_that: cảnh thực tế tự dựng cũng là hình vẽ của đề
@@ -126,6 +126,42 @@ function kiemTraDiemDe_(bv, deGoc) {
     (/sông|bờ/i.test(String(deGoc)) ? '; bài qua sông: NHÌN TỪ TRÊN, vung "song" là dải sông, điểm nằm trên hai bờ.' : '.')] : [];
 }
 
+// BỐ CỤC PHẢI ĐÚNG CẤU TRÚC ĐỀ: đề "ngồi quanh bàn tròn / xếp vòng tròn" mà hình vẽ người xếp HÀNG NGANG là sai điều kiện bài toán
+// (đếm hoán vị vòng khác hẳn xếp hàng). [quy luật đề, vật bắt buộc, mô tả]
+var TU_BO_CUC_ = [
+  [/bàn tròn|quanh (một )?(cái )?bàn|ngồi quanh|xếp (thành )?(một )?vòng( tròn)?|đứng thành vòng|vòng tròn/, 'ban_tron', 'bàn tròn / xếp vòng tròn']
+];
+function kiemTraBoCucDe_(kb, deGoc) {
+  var de = String(deGoc || '').toLowerCase();
+  var loi = [];
+  TU_BO_CUC_.forEach(function (m) {
+    if (!m[0].test(de)) return;
+    var co = (kb.canh || []).slice(0, 8).some(function (c) { var du = c && c.minh_hoa && c.minh_hoa.du_lieu; return du && Array.isArray(du.vat) && du.vat.some(function (v) { return v && v.loai === m[1]; }); });
+    if (!co) loi.push('BO_CUC_SAI_DE: đề là ' + m[2] + ' nhưng các cảnh đề bài / mô phỏng không vẽ "' + m[1] + '" (vẽ người xếp hàng ngang là SAI điều kiện bài toán). ' +
+      'Dùng {"loai":"' + m[1] + '","ds":["Nam","Nữ",...]} ở cảnh đề bài và các cảnh mô phỏng, chon/loai_bo từng ghế, quay để minh họa xoay vòng.');
+  });
+  return loi;
+}
+// Tự sửa: đề bàn tròn -> nhóm người (>= 3) đang xếp hàng ở các cảnh được đổi thành bàn tròn (giữ nhãn, hành động chọn theo ghế).
+function tuSuaBoCucDe_(kb, deGoc) {
+  var de = String(deGoc || '').toLowerCase();
+  if (!TU_BO_CUC_[0][0].test(de) || !kb || !Array.isArray(kb.canh)) return [];
+  var sua = [];
+  kb.canh.forEach(function (c, i) {
+    var du = c && c.minh_hoa && c.minh_hoa.du_lieu;
+    (du && Array.isArray(du.vat) ? du.vat : []).forEach(function (v) {
+      if (!v || v.loai !== 'nguoi') return;
+      var n = Array.isArray(v.ds) && v.ds.length ? v.ds.length : Number(v.so_luong) || 1;
+      if (n < 3 || n > 16) return;
+      v.loai = 'ban_tron';
+      if (!Array.isArray(v.ds) || !v.ds.length) v.ds = Array.from({ length: n }, function (_, k) { return String(k + 1); });
+      v.so_luong = v.ds.length;
+      sua.push('cảnh ' + (i + 1) + ': nhóm ' + n + ' người -> bàn tròn (đề ngồi quanh bàn tròn)');
+    });
+  });
+  return sua;
+}
+
 // BẢN VẼ NHÌN TỪ TRÊN phải khớp số đo của đề: tổng các cạnh có rào = tổng chiều dài lưới/rào đề cho
 // (vd 120 m lưới, một cạnh sát tường: tường phải nằm trên cạnh song song tường, rào 3 cạnh còn lại cộng lại đúng 120).
 function kiemTraSoDoVung_(bv, deGoc) {
@@ -228,6 +264,7 @@ function kiemTraSanKhau_(du, cn, idCu) {
     if (v.loai === 'vong_quay' && (!Array.isArray(v.ds) || v.ds.length < 2 || v.ds.length > 12)) return 'HINH_' + ev + ': vong_quay cần "ds" là 2-12 nhãn ô.';
     if ((v.loai === 'dong_ho_do' || v.loai === 'thanh') && v.gia_tri !== undefined && !(Number(v.gia_tri) >= 0 && Number(v.gia_tri) <= 1)) return 'HINH_' + ev + ': "gia_tri" của ' + v.loai + ' là xác suất 0-1 (ví dụ 0.4643); ghi phân số vào "gia_tri_chu".';
     if (v.loai === 'danh_sach' && (!Array.isArray(v.ds) || v.ds.length < 1 || v.ds.length > 6)) return 'HINH_' + ev + ': danh_sach cần "ds" là 1-6 dòng ngắn.';
+    if (v.loai === 'ban_tron' && !((Array.isArray(v.ds) && v.ds.length >= 3 && v.ds.length <= 16) || (Number(v.so_luong) >= 3 && Number(v.so_luong) <= 16))) return 'HINH_' + ev + ': ban_tron cần "ds" là 3-16 nhãn ghế theo chiều kim đồng hồ ("Nam", "Nữ", tên; "_" = ghế trống).';
     if (v.loai === 'luoi_o' && v.so_luong !== undefined && !(Number(v.so_luong) >= 1 && Number(v.so_luong) <= 64)) return 'HINH_' + ev + ': luoi_o có tối đa 64 ô ("so_luong").';
     if ((v.loai === 'hop_bi' || v.loai === 'tui') && (!Array.isArray(v.nhom) || !v.nhom.length)) return 'HINH_' + ev + ': ' + v.loai + ' cần "nhom" là mảng {mau, so}.';
     var loiVat = kiemTraVatThucTe_(v, ev);
@@ -638,6 +675,7 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc) {
   kiemTraBaCham_(kb).forEach(function (x) { nang.push(x); });
   kiemTraCuPhapTex_(kb).forEach(function (x) { nang.push(x); });
   kiemTraVatThucDe_(kb, deGoc).forEach(function (x) { nang.push(x); });
+  kiemTraBoCucDe_(kb, deGoc).forEach(function (x) { nang.push(x); });
   // CÔNG THỨC: phải có cảnh giải thích công thức (từ đâu ra, ý nghĩa đại lượng, áp dụng); mỗi cảnh ≤ 3 dòng công thức
   var dungCongThuc = kb.canh.some(function (c) { return /tinh|giai/.test(String(c && c.loai)) && (c.noi_dung_man_hinh || []).some(function (d) { return /=/.test(String(d)); }); });
   var soGiaiThich = kb.canh.filter(laCanhGiaiThichCongThuc_).length;

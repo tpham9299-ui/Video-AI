@@ -177,6 +177,7 @@ function aiChamVideo_(r) {
     '(3) Không có mã LaTeX thô (\\frac, ^{}, $...$, dấu gạch chéo) hiện trên màn hình; công thức phải hiện đẹp.\n' +
     '(4) Hình minh họa đúng đối tượng/hình dạng/số liệu của đề (vẽ vật khác đề là sai nặng); đáp án hiện đúng ' + (r.dap_an_hien || r.dap_an) + '.\n' +
     '(5) Không có vật bị vẽ LẶP hoặc vật thừa sót lại từ cảnh trước (2 tòa nhà, 2 người khi đề chỉ có 1).\n' +
+    '(5b) Cách sắp xếp đúng điều kiện đề (ngồi quanh bàn tròn phải vẽ vòng tròn quanh bàn, không phải hàng ngang); không có hình/người/chữ nào đè lên nhau.\n' +
     '(6) LỜI GIẢI ĐÚNG: mọi phép tính, số trung gian, công thức hiện trên màn hình phải đúng toán học và dẫn đúng tới đáp án; số đo trên hình khớp đề.\n' +
     '(7) Huy hiệu/con số đáp án đọc được rõ ràng (không bị lăn dở, không mất chữ số); dòng công thức cuối hiện đầy đủ.\n' +
     'TIÊU CHÍ CHẤT LƯỢNG (trừ điểm): hình hấp dẫn, có chiều sâu, không trống trải; bố cục cân đối; màu sắc thống nhất; đủ 6 phần đúng thứ tự.\n' +

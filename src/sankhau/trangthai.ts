@@ -35,7 +35,7 @@ export type TrangThai = {
 };
 
 export const GIAY_QUAY: Record<string, number> = {
-  xuc_xac: 1.3, dong_xu: 1.25, vong_quay: 2.8, dong_ho: 1.7, hop_qua: 0.9, the_bai: 0.6, cua: 0.7, bong_bay: 0.6,
+  xuc_xac: 1.3, dong_xu: 1.25, vong_quay: 2.8, dong_ho: 1.7, hop_qua: 0.9, the_bai: 0.6, cua: 0.7, bong_bay: 0.6, ban_tron: 1.6,
 };
 
 export function tinhTrangThai(v: Vat, ds: HanhDong[], t: number, tb: (b: number) => number, W: number, H: number): TrangThai {
@@ -235,6 +235,12 @@ export function boCucDanhSach(v: Vat, k0 = 1) {
 
 // THẺ (the): thẻ có chữ tự RỘNG RA theo nội dung (không thu chữ nhỏ xíu trong thẻ hẹp); dài quá thì xuống tối đa 2 dòng
 export const cotThe = (n: number) => (n > 6 ? Math.ceil(n / 2) : n);
+// BÀN TRÒN: mỗi người một ô o; vòng ghế vừa đủ chứa n người (không chồng nhau); mặt bàn ở trong vòng ghế
+export function kichBanTron(n: number, co: number) {
+  const o = (n <= 8 ? 120 : 104) * Math.max(0.6, co);
+  const Rg = Math.max((n * o * 1.1) / (2 * Math.PI), 150 * Math.max(0.6, co));
+  return {o, Rg, Rb: Math.max(70, Rg - o * 0.66)};
+}
 export function kichThe(v: Vat, k = 1) {
   const n = v.soLuong;
   const chuDai = Math.max(0, ...Array.from({length: n}, (_, i) => texSangChu(v.ds[i] || (n === 1 ? v.noiDung : '')).length));
@@ -286,6 +292,7 @@ export function kichThuocVat(v: Vat, k = 1): {w: number; h: number} {
     case 'bieu_tuong': w = n * 154; h = 200; break;
     case 'luoi_o': { const c = v.soCot || Math.min(12, Math.ceil(Math.sqrt(n * 1.6))); const r = Math.ceil(n / c); const o = Math.min(860 / c, 560 / r); w = o * c; h = o * r + (v.nhan ? 50 : 0); break; }
     case 'danh_sach': { const b = boCucDanhSach(v, k); w = b.W; h = b.h; break; }
+    case 'ban_tron': { const b = kichBanTron(Math.max(3, Math.min(16, n || v.ds.length || 6)), v.co); w = h = (b.Rg + b.o) * 2 + 30 + (v.nhan ? 60 : 0); break; }
     case 'mui_ten': w = 0; h = 0; break;
     case 'khoi_hop': { const k = v.kichThuoc.length ? v.kichThuoc : [3, 2, 1.5]; const m = Math.max(...k); w = (330 * (k[0] / m) + 330 * ((k[1] || k[0]) / m) * 0.9 + 80); h = 330 * ((k[2] || k[0]) / m) + 200; break; }
     case 'tru': case 'non': w = 420; h = 420; break;
