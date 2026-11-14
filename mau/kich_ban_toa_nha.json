@@ -54,47 +54,43 @@
     "loai": "san_khau",
     "mo_ta": "Cảnh 3D ban ngày với một người đứng cách tòa nhà lớn, camera xoay nhẹ quanh hai vật.",
     "du_lieu": {
-     "goc_nhin": {
-      "nghieng": 25,
-      "xoay": -30
-     },
      "vat": [
       {
-       "id": "nguoi",
-       "loai": "nguoi",
-       "cao": 1.6,
-       "x": 2,
+       "loai": "canh_that",
+       "nhin": "ngang",
+       "vat": [
+        {
+         "ma": "A",
+         "ten": "nguoi",
+         "cao": 1.6,
+         "x": 0
+        },
+        {
+         "ma": "B",
+         "ten": "toa_nha",
+         "cao": 37.4,
+         "x": 30
+        }
+       ],
+       "diem": [
+        {
+         "ma": "H",
+         "x": 30,
+         "cao": 1.6
+        }
+       ],
+       "do": [],
+       "id": "canh",
+       "x": 50,
        "y": 50,
-       "buoc": 1,
-       "co": 1,
-       "mau": "xanh_duong",
-       "nhan": "An"
-      },
-      {
-       "id": "nha",
-       "loai": "toa_nha",
-       "cao": 37.4,
-       "x": 60,
-       "y": 50,
-       "buoc": 1,
-       "co": 1,
-       "mau": "do",
-       "nhan": "Tòa nhà"
+       "buoc": 1
       }
      ],
      "hanh_dong": [
       {
-       "buoc": 1,
-       "kieu": "goc_3d",
-       "nghieng": 30,
-       "xoay": 10
-      },
-      {
        "buoc": 2,
-       "vat": "nguoi",
-       "kieu": "di_chuyen",
-       "x": 5,
-       "y": 50
+       "vat": "canh",
+       "kieu": "sang"
       }
      ]
     }
@@ -107,7 +103,7 @@
    "tieu_de_canh": "Dữ kiện bài toán thực tế",
    "tu_khoa": "Dữ kiện",
    "nhan": "ĐỀ BÀI",
-   "giu_san_khau": true,
+   "giu_san_khau": false,
    "giong_doc": "rõ ràng, chậm rãi",
    "loi_thoai": "Bạn An cách tòa nhà ba mươi mét, nhìn lên đỉnh với góc năm mươi độ. Mắt cách đất một phẩy sáu mét.",
    "noi_dung_man_hinh": [],
@@ -192,7 +188,7 @@
    "tieu_de_canh": "Mô hình hóa tam giác vuông",
    "tu_khoa": "Mô hình",
    "nhan": "MÔ HÌNH",
-   "giu_san_khau": true,
+   "giu_san_khau": false,
    "giong_doc": "tập trung, mạch lạc",
    "loi_thoai": "Ta tách chiều cao thành hai phần. Phần dưới bằng một phẩy sáu mét, phần trên tạo thành một tam giác vuông.",
    "noi_dung_man_hinh": [],
@@ -290,42 +286,78 @@
     "loai": "san_khau",
     "mo_ta": "Nhân vật người thật và bảng công thức xuất hiện cùng lúc, người chỉ tay vào bảng.",
     "du_lieu": {
-     "goc_nhin": null,
      "vat": [
       {
-       "id": "nguoi_huong",
-       "loai": "nguoi",
-       "cao": 1.6,
-       "x": 25,
+       "loai": "canh_that",
+       "nhin": "ngang",
+       "vat": [
+        {
+         "ma": "A",
+         "ten": "nguoi",
+         "cao": 1.6,
+         "x": 0
+        },
+        {
+         "ma": "B",
+         "ten": "toa_nha",
+         "cao": 37.4,
+         "x": 30
+        }
+       ],
+       "diem": [
+        {
+         "ma": "H",
+         "x": 30,
+         "cao": 1.6
+        }
+       ],
+       "do": [
+        {
+         "kieu": "khoang_cach",
+         "tu": "A",
+         "den": "B",
+         "nhan": "30 m",
+         "buoc": 2
+        },
+        {
+         "kieu": "chieu_cao",
+         "vat": "B",
+         "nhan": "h = ?",
+         "buoc": 2
+        },
+        {
+         "kieu": "tia",
+         "tu": "A.mat",
+         "den": "B.dinh",
+         "goc": "50°",
+         "buoc": 2
+        },
+        {
+         "kieu": "tam_giac",
+         "dinh": [
+          "A.mat",
+          "H",
+          "B.dinh"
+         ],
+         "buoc": 3
+        },
+        {
+         "kieu": "vuong",
+         "tai": "H",
+         "buoc": 3
+        }
+       ],
+       "id": "canh",
+       "x": 50,
        "y": 50,
-       "buoc": 1,
-       "co": 1,
-       "mau": "xanh_duong",
-       "nhan": "An"
-      },
-      {
-       "id": "chu_ct",
-       "loai": "chu",
-       "x": 65,
-       "y": 50,
-       "buoc": 1,
-       "co": 1,
-       "mau": "xanh_duong",
-       "noi_dung": "\\tan(50^\\circ) = \\frac{h'}{30}"
+       "buoc": 1
       }
      ],
      "hanh_dong": [
       {
-       "buoc": 1,
-       "vat": "chu_ct",
-       "kieu": "sang"
-      },
-      {
        "buoc": 2,
-       "vat": "nguoi_huong",
-       "kieu": "di_chuyen",
-       "x": 30,
-       "y": 50
+       "vat": "canh",
+       "kieu": "sang"
       }
      ]
     }
@@ -348,42 +380,78 @@
     "loai": "san_khau",
     "mo_ta": "Nhân vật người đứng cạnh tháp nhỏ, nhãn cảnh báo rung nhẹ ở vị trí chiều cao mắt người.",
     "du_lieu": {
-     "goc_nhin": null,
      "vat": [
       {
-       "id": "nguoi_bay",
-       "loai": "nguoi",
-       "cao": 1.6,
-       "x": 30,
-       "y": 50,
-       "buoc": 1,
-       "co": 1,
-       "mau": "xanh_duong",
-       "nhan": "An"
-      },
-      {
-       "id": "nhan_bay",
-       "loai": "nhan",
+       "loai": "canh_that",
+       "nhin": "ngang",
+       "vat": [
+        {
+         "ma": "A",
+         "ten": "nguoi",
+         "cao": 1.6,
+         "x": 0
+        },
+        {
+         "ma": "B",
+         "ten": "toa_nha",
+         "cao": 37.4,
+         "x": 30
+        }
+       ],
+       "diem": [
+        {
+         "ma": "H",
+         "x": 30,
+         "cao": 1.6
+        }
+       ],
+       "do": [
+        {
+         "kieu": "khoang_cach",
+         "tu": "A",
+         "den": "B",
+         "nhan": "30 m",
+         "buoc": 2
+        },
+        {
+         "kieu": "chieu_cao",
+         "vat": "B",
+         "nhan": "h = ?",
+         "buoc": 2
+        },
+        {
+         "kieu": "tia",
+         "tu": "A.mat",
+         "den": "B.dinh",
+         "goc": "50°",
+         "buoc": 2
+        },
+        {
+         "kieu": "tam_giac",
+         "dinh": [
+          "A.mat",
+          "H",
+          "B.dinh"
+         ],
+         "buoc": 3
+        },
+        {
+         "kieu": "vuong",
+         "tai": "H",
+         "buoc": 3
+        }
+       ],
+       "id": "canh",
        "x": 50,
-       "y": 25,
-       "buoc": 1,
-       "co": 1,
-       "mau": "do",
-       "noi_dung": "Cộng chiều cao mắt!"
+       "y": 50,
+       "buoc": 1
       }
      ],
      "hanh_dong": [
       {
-       "buoc": 1,
-       "vat": "nhan_bay",
-       "kieu": "rung"
-      },
-      {
        "buoc": 2,
-       "vat": "nguoi_bay",
-       "kieu": "di_chuyen",
-       "x": 35,
-       "y": 50
+       "vat": "canh",
+       "kieu": "sang"
       }
      ]
     }
@@ -584,42 +652,78 @@
     "loai": "san_khau",
     "mo_ta": "Nhân vật người thật cầm bảng tính toán chi tiết cho phần chiều cao h', bảng di chuyển nhẹ.",
     "du_lieu": {
-     "goc_nhin": null,
      "vat": [
       {
-       "id": "nguoi_tinh",
-       "loai": "nguoi",
-       "cao": 1.6,
-       "x": 20,
+       "loai": "canh_that",
+       "nhin": "ngang",
+       "vat": [
+        {
+         "ma": "A",
+         "ten": "nguoi",
+         "cao": 1.6,
+         "x": 0
+        },
+        {
+         "ma": "B",
+         "ten": "toa_nha",
+         "cao": 37.4,
+         "x": 30
+        }
+       ],
+       "diem": [
+        {
+         "ma": "H",
+         "x": 30,
+         "cao": 1.6
+        }
+       ],
+       "do": [
+        {
+         "kieu": "khoang_cach",
+         "tu": "A",
+         "den": "B",
+         "nhan": "30 m",
+         "buoc": 2
+        },
+        {
+         "kieu": "chieu_cao",
+         "vat": "B",
+         "nhan": "h = ?",
+         "buoc": 2
+        },
+        {
+         "kieu": "tia",
+         "tu": "A.mat",
+         "den": "B.dinh",
+         "goc": "50°",
+         "buoc": 2
+        },
+        {
+         "kieu": "tam_giac",
+         "dinh": [
+          "A.mat",
+          "H",
+          "B.dinh"
+         ],
+         "buoc": 3
+        },
+        {
+         "kieu": "vuong",
+         "tai": "H",
+         "buoc": 3
+        }
+       ],
+       "id": "canh",
+       "x": 50,
        "y": 50,
-       "buoc": 1,
-       "co": 1,
-       "mau": "xanh_duong",
-       "nhan": "An"
-      },
-      {
-       "id": "bang_tinh",
-       "loai": "chu",
-       "x": 65,
-       "y": 50,
-       "buoc": 1,
-       "co": 1,
-       "mau": "cam",
-       "noi_dung": "h' = 30 \\cdot \\tan(50^\\circ)"
+       "buoc": 1
       }
      ],
      "hanh_dong": [
       {
-       "buoc": 1,
-       "vat": "bang_tinh",
-       "kieu": "sang"
-      },
-      {
        "buoc": 2,
-       "vat": "nguoi_tinh",
-       "kieu": "di_chuyen",
-       "x": 25,
-       "y": 50
+       "vat": "canh",
+       "kieu": "sang"
       }
      ]
     }
@@ -646,42 +750,78 @@
     "loai": "san_khau",
     "mo_ta": "Nhân vật người thật xuất hiện bên cạnh biểu tượng phép cộng tổng chiều cao.",
     "du_lieu": {
-     "goc_nhin": null,
      "vat": [
       {
-       "id": "nguoi_tong",
-       "loai": "nguoi",
-       "cao": 1.6,
-       "x": 20,
+       "loai": "canh_that",
+       "nhin": "ngang",
+       "vat": [
+        {
+         "ma": "A",
+         "ten": "nguoi",
+         "cao": 1.6,
+         "x": 0
+        },
+        {
+         "ma": "B",
+         "ten": "toa_nha",
+         "cao": 37.4,
+         "x": 30
+        }
+       ],
+       "diem": [
+        {
+         "ma": "H",
+         "x": 30,
+         "cao": 1.6
+        }
+       ],
+       "do": [
+        {
+         "kieu": "khoang_cach",
+         "tu": "A",
+         "den": "B",
+         "nhan": "30 m",
+         "buoc": 2
+        },
+        {
+         "kieu": "chieu_cao",
+         "vat": "B",
+         "nhan": "h = ?",
+         "buoc": 2
+        },
+        {
+         "kieu": "tia",
+         "tu": "A.mat",
+         "den": "B.dinh",
+         "goc": "50°",
+         "buoc": 2
+        },
+        {
+         "kieu": "tam_giac",
+         "dinh": [
+          "A.mat",
+          "H",
+          "B.dinh"
+         ],
+         "buoc": 3
+        },
+        {
+         "kieu": "vuong",
+         "tai": "H",
+         "buoc": 3
+        }
+       ],
+       "id": "canh",
+       "x": 50,
        "y": 50,
-       "buoc": 1,
-       "co": 1,
-       "mau": "xanh_duong",
-       "nhan": "An"
-      },
-      {
-       "id": "bang_tong",
-       "loai": "chu",
-       "x": 65,
-       "y": 50,
-       "buoc": 1,
-       "co": 1,
-       "mau": "xanh_la",
-       "noi_dung": "H = h' + 1{,}6"
+       "buoc": 1
       }
      ],
      "hanh_dong": [
       {
-       "buoc": 1,
-       "vat": "bang_tong",
-       "kieu": "sang"
-      },
-      {
        "buoc": 2,
-       "vat": "nguoi_tong",
-       "kieu": "di_chuyen",
-       "x": 25,
-       "y": 50
+       "vat": "canh",
+       "kieu": "sang"
       }
      ]
     }
@@ -791,42 +931,78 @@
     "loai": "san_khau",
     "mo_ta": "Nhân vật người thật xuất hiện bên cạnh công thức kiểm tra ngược lại giá trị góc nâng.",
     "du_lieu": {
-     "goc_nhin": null,
      "vat": [
       {
-       "id": "nguoi_kt",
-       "loai": "nguoi",
-       "cao": 1.6,
-       "x": 20,
+       "loai": "canh_that",
+       "nhin": "ngang",
+       "vat": [
+        {
+         "ma": "A",
+         "ten": "nguoi",
+         "cao": 1.6,
+         "x": 0
+        },
+        {
+         "ma": "B",
+         "ten": "toa_nha",
+         "cao": 37.4,
+         "x": 30
+        }
+       ],
+       "diem": [
+        {
+         "ma": "H",
+         "x": 30,
+         "cao": 1.6
+        }
+       ],
+       "do": [
+        {
+         "kieu": "khoang_cach",
+         "tu": "A",
+         "den": "B",
+         "nhan": "30 m",
+         "buoc": 2
+        },
+        {
+         "kieu": "chieu_cao",
+         "vat": "B",
+         "nhan": "h = ?",
+         "buoc": 2
+        },
+        {
+         "kieu": "tia",
+         "tu": "A.mat",
+         "den": "B.dinh",
+         "goc": "50°",
+         "buoc": 2
+        },
+        {
+         "kieu": "tam_giac",
+         "dinh": [
+          "A.mat",
+          "H",
+          "B.dinh"
+         ],
+         "buoc": 3
+        },
+        {
+         "kieu": "vuong",
+         "tai": "H",
+         "buoc": 3
+        }
+       ],
+       "id": "canh",
+       "x": 50,
        "y": 50,
-       "buoc": 1,
-       "co": 1,
-       "mau": "xanh_duong",
-       "nhan": "An"
-      },
-      {
-       "id": "kt",
-       "loai": "chu",
-       "x": 65,
-       "y": 50,
-       "buoc": 1,
-       "co": 1,
-       "mau": "xanh_la",
-       "noi_dung": "\\frac{37{,}4 - 1{,}6}{30} = \\tan(50^\\circ)"
+       "buoc": 1
       }
      ],
      "hanh_dong": [
       {
-       "buoc": 1,
-       "vat": "kt",
-       "kieu": "sang"
-      },
-      {
        "buoc": 2,
-       "vat": "nguoi_kt",
-       "kieu": "di_chuyen",
-       "x": 25,
-       "y": 50
+       "vat": "canh",
+       "kieu": "sang"
       }
      ]
     }

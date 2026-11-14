@@ -359,18 +359,37 @@ function banVeChoPrompt_(r) {
 // Máy tự chèn bản vẽ: kịch bản không dùng canh_that ở các cảnh đầu (hoặc vẽ sai vật) -> cảnh de_bai và mo_hinh_hoa dùng bản vẽ đã duyệt.
 function chenBanVe_(kb, banVe) {
   if (!banVe || !kb || !Array.isArray(kb.canh)) return [];
-  var coRoi = kb.canh.slice(0, 4).some(function (c) { var du = c && c.minh_hoa && c.minh_hoa.du_lieu; return du && Array.isArray(du.vat) && du.vat.some(function (v) { return v && v.loai === 'canh_that'; }); });
-  if (coRoi) return [];
+  var coCT = function (c) { var du = c && c.minh_hoa && c.minh_hoa.du_lieu; return !!(du && Array.isArray(du.vat) && du.vat.some(function (v) { return v && v.loai === 'canh_that'; })); };
+  var banSao = function (c, doCuaCanh) {
+    var bv = JSON.parse(JSON.stringify(banVe));
+    bv.do = doCuaCanh(bv.do || []);
+    (bv.do || []).forEach(function (d) { d.buoc = d.buoc || (/tam_giac|vuong/.test(String(d.kieu)) ? 3 : 2); });
+    c.minh_hoa = { loai: 'san_khau', mo_ta: (c.minh_hoa && c.minh_hoa.mo_ta) || 'Cảnh thực tế của đề theo bản vẽ đã duyệt', du_lieu: { vat: [bv], hanh_dong: [{ buoc: 2, vat: bv.id || 'canh', kieu: 'sang' }] } };
+    c.giu_san_khau = false;
+  };
+  // sân khấu chỉ có người + chữ/nhãn (không vẽ gì về bài): cảnh tính toán nên nhìn vào BẢN VẼ có số đo, tam giác
+  var CHI_CHU_ = ['nguoi', 'chu', 'nhan', 'the', 'mui_ten', 'bieu_tuong'];
+  var chiNguoiChu = function (c) {
+    var du = c && c.minh_hoa && c.minh_hoa.du_lieu;
+    var vs = du && Array.isArray(du.vat) ? du.vat : [];
+    return !c.giu_san_khau && vs.length > 0 && vs.every(function (v) { return v && CHI_CHU_.indexOf(v.loai) >= 0; });
+  };
+  var coRoi = kb.canh.slice(0, 4).some(coCT);
   var sua = [];
   kb.canh.forEach(function (c) {
-    if (!c || !/^(mo_dau|de_bai|mo_hinh_hoa)$/.test(String(c.loai))) return;
-    var bv = JSON.parse(JSON.stringify(banVe));
-    if (c.loai === 'mo_dau') bv.do = [];
-    if (c.loai === 'de_bai') bv.do = (bv.do || []).filter(function (d) { return d && !/tam_giac|vuong/.test(String(d.kieu)); });
-    (bv.do || []).forEach(function (d, i) { d.buoc = c.loai === 'mo_hinh_hoa' && /tam_giac|vuong/.test(String(d.kieu)) ? 3 : 2; });
-    c.minh_hoa = { loai: 'san_khau', mo_ta: (c.minh_hoa && c.minh_hoa.mo_ta) || 'Cảnh thực tế của đề theo bản vẽ đã duyệt', du_lieu: { vat: [bv], hanh_dong: [] } };
-    c.giu_san_khau = false;
-    sua.push('cảnh ' + c.so + ' dùng bản vẽ thực tế');
+    if (!c) return;
+    var loai = String(c.loai || '');
+    if (coCT(c)) { if (c.giu_san_khau) { c.giu_san_khau = false; sua.push('cảnh ' + c.so + ': bản vẽ thực tế không giữ vật cảnh trước'); } return; }
+    if (loai === 'mo_dau') { banSao(c, function () { return []; }); sua.push('cảnh ' + c.so + ' (mở đầu) dùng bản vẽ thực tế'); return; }
+    if (!coRoi && /^(de_bai|mo_hinh_hoa)$/.test(loai)) {
+      banSao(c, function (ds) { return loai === 'de_bai' ? ds.filter(function (d) { return d && !/tam_giac|vuong/.test(String(d.kieu)); }) : ds; });
+      sua.push('cảnh ' + c.so + ' dùng bản vẽ thực tế');
+      return;
+    }
+    if (/^(y_do|tinh_toan|kiem_tra|bay|dap_an|ket_qua)$/.test(loai) && chiNguoiChu(c)) {
+      banSao(c, function (ds) { return ds; });
+      sua.push('cảnh ' + c.so + ' (' + loai + ') nhìn vào bản vẽ có số đo thay cho người + chữ');
+    }
   });
   return sua;
 }

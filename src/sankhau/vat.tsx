@@ -768,11 +768,18 @@ const CotSo: React.FC<{g: number; k: number; h: number}> = ({g, k, h}) => {
     </span>
   );
 };
-const SoLan: React.FC<{g: number; co: number}> = ({g, co}) => {
-  const n = Math.max(1, String(Math.round(Math.max(g, 0))).length);
+// số thập phân (37,4 m): lăn số đã nhân 10^tp rồi chèn dấu phẩy - trước đây chữ số cuối dừng lưng chừng giữa 7 và 8
+const soThapPhan = (x: number) => { const m = /\.(\d+)/.exec(String(Math.round(x * 100) / 100)); return m ? Math.min(2, m[1].length) : 0; };
+const SoLan: React.FC<{g: number; co: number; dich?: number}> = ({g, co, dich}) => {
+  const tp = soThapPhan(dich ?? g);
+  const G = Math.max(0, g) * Math.pow(10, tp);
+  const n = Math.max(1 + tp, String(Math.round(G)).length);
   const h = co * 1.12;
   const cot = [];
-  for (let k = n - 1; k >= 0; k--) cot.push(<CotSo key={k} g={Math.max(0, g)} k={k} h={h} />);
+  for (let k = n - 1; k >= 0; k--) {
+    cot.push(<CotSo key={k} g={tp ? Math.round(G * 1000) / 1000 : G} k={k} h={h} />);
+    if (tp && k === tp) cot.push(<span key={`p${k}`} style={{lineHeight: `${h}px`}}>,</span>);
+  }
   return <span style={{display: 'inline-flex', fontVariantNumeric: 'tabular-nums'}}>{cot}</span>;
 };
 
@@ -783,7 +790,7 @@ const SoDem: Ve = (v, st) => {
     // huy hiệu viên thuốc vàng như video mẫu ("75 Skill"): số lăn + chữ nhỏ bên cạnh
     return (
       <div style={{display: 'flex', alignItems: 'baseline', gap: 10, padding: `${10 * v.co}px ${28 * v.co}px`, borderRadius: 60, background: 'linear-gradient(180deg, #FFE27A, #F7C531)', border: '4px solid #FFF3C4', boxShadow: '0 8px 28px rgba(247,197,49,0.45)', fontFamily: FONT, color: '#2a1d00'}}>
-        <span style={{fontWeight: 900, fontSize: 84 * v.co, lineHeight: 1}}><SoLan g={g} co={84 * v.co} /></span>
+        <span style={{fontWeight: 900, fontSize: 84 * v.co, lineHeight: 1}}><SoLan g={g} co={84 * v.co} dich={v.giaTri} /></span>
         <span style={{fontWeight: 800, fontSize: Math.max(40 * v.co, 40 * KC)}}>{v.nhan || tc(st.noiDung)}</span>
       </div>
     );
@@ -791,7 +798,7 @@ const SoDem: Ve = (v, st) => {
   return (
     <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: FONT, color: '#fff'}}>
       {st.noiDung ? <div style={{fontWeight: 800, fontSize: Math.max(42 * v.co, 42 * KC), opacity: 0.92, textAlign: 'center'}}>{tc(st.noiDung)}</div> : null}
-      <div style={{fontWeight: 900, fontSize: 150 * v.co, lineHeight: 1.05, color: mau, textShadow: `0 0 22px ${mau}`}}><SoLan g={g} co={150 * v.co} /></div>
+      <div style={{fontWeight: 900, fontSize: 150 * v.co, lineHeight: 1.05, color: mau, textShadow: `0 0 22px ${mau}`}}><SoLan g={g} co={150 * v.co} dich={v.giaTri} /></div>
       <Nhan chu={v.nhan} />
     </div>
   );

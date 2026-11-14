@@ -115,9 +115,12 @@ export const Canh: React.FC<{
   const kieuTB = canh.trinhBay;
   const dungBienDoi = kieuTB === 'bien_doi' && coTheBienDoi(canh.noiDung);
   const dungCongDon = (kieuTB === 'cong_don' || kieuTB === 'bien_doi') && !dungBienDoi && coTheCongDon(canh.noiDung);
-  const nhipDong = Math.max(1.1, Math.min(1.8, (giayAm - 0.3) / Math.max(1, nDong)));
   // có sân khấu thì công thức hiện sau khi hình đã dựng được một phần
   const treCT = coHinh ? Math.min(1.2, giayAm * 0.25) : 0.3;
+  // nhịp hiện từng dòng: dòng CUỐI phải viết xong trước khi hết cảnh ít nhất 1,2 giây (người xem kịp đọc kết quả)
+  const giayCanh = (canh.soFrame - (canh.leadFrame || 0)) / fps;
+  const nhipToiDa = nDong > 1 ? (giayCanh - treCT - 0.9 - 1.2) / (nDong - 1) : 1.8;
+  const nhipDong = Math.max(0.6, Math.min(1.8, Math.max(1.1, (giayAm - 0.3) / Math.max(1, nDong)), nhipToiDa));
   const thoiDiemDong = dungBienDoi || dungCongDon ? canh.noiDung.map((_, i) => treCT + i * nhipDong) : batDong.map((b) => Math.max(b, coHinh ? treCT : 0));
   const hang = dungCongDon ? nhomHang(canh.noiDung) : [];
   const khungCuoi = /dap_an|ket_qua/i.test(canh.loai);

@@ -77,6 +77,7 @@ export function bocChuViet(tex: string): string {
   // \frac thường thu tử/mẫu còn ~70% -> nhỏ hơn hẳn số bên cạnh: dùng \dfrac để tử/mẫu CÙNG CỠ với số thường
   // S_max: KaTeX chỉ hạ chữ đầu ("S" + chỉ số "m" + "ax") -> bọc cả cụm chỉ số: S_{max}
   const x = chuanTex(tex).replace(/(^|[^\\])%/g, '$1\\%').replace(/\\frac(?=\s*\{)/g, '\\dfrac').replace(/_([a-zA-Z]{2,4})(?![a-zA-Z{])/g, '_{$1}')
+    .replace(/(\d|\})\s*\\[,;: ]\s*(km|cm|mm|m|kg|g|ha|l)(?=\^|[^a-zA-Z]|$)/g, '$1\\,\\text{$2}')   // đơn vị "30\\,m": chữ đứng, không nghiêng như biến
     .replace(/<=>/g, ' \\Leftrightarrow ').replace(/=>/g, ' \\Rightarrow ').replace(/-+>/g, ' \\rightarrow ');   // mũi tên gõ tay "->" (KaTeX hiện thành dấu trừ và dấu lớn hơn)
   if (!/[A-Za-zÀ-ỹ]{2,}/.test(x)) return phongKyHieu(x);
   let ra = '';

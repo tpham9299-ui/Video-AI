@@ -623,6 +623,11 @@ def do_dai_hien(tex):
 QUAN_HE = re.compile(r"(=|\\approx|\\Rightarrow|\\Leftrightarrow|\\le(?![a-z])|\\ge(?![a-z])|\\leq|\\geq|\\ne(?![a-z])|<|>)")
 
 
+def chuan_don_vi(tex):
+    """Đơn vị sau số trong công thức ("30\\,m", "37{,}4\\,m^2") viết chữ đứng \\text{m}: KaTeX mặc định coi m là biến, vẽ nghiêng như chữ "п"."""
+    return re.sub(r"(\d|\})\s*\\[,;: ]\s*(km|cm|mm|m|kg|g|ha|l)(?=\^|[^a-zA-Z]|$)", lambda m: m.group(1) + "\\,\\text{" + m.group(2) + "}", tex)
+
+
 def tach_cong_thuc(tex, toi_da=24):
     """Công thức dài: tách thành nhiều dòng TẠI dấu quan hệ ngoài cùng (=, ≈, ⇒...), dòng sau bắt đầu bằng dấu đó,
     như viết bảng - thay vì để máy ngắt dòng bừa giữa công thức (khó đọc, chữ nhỏ)."""
@@ -767,7 +772,7 @@ def main():
             can = 1.25 + (len(noi_dung_tam) - 1) * 1.45 + 0.9 + (1.6 if re.search(r"dap_an|ket_qua", str(c.get("loai") or "").lower()) else 0.6)
             so_frame = max(so_frame, int(round(can * FPS)))
         mh = c.get("minh_hoa") or {}
-        noi_dung = [str(x) for x in (c.get("noi_dung_man_hinh") or []) if str(x).strip()]
+        noi_dung = [chuan_don_vi(str(x)) for x in (c.get("noi_dung_man_hinh") or []) if str(x).strip()]
         canh_props.append({
             "so": so,
             "loai": str(c.get("loai") or ""),

@@ -49,8 +49,17 @@ Nếu chèn vào mà sinh lỗi nặng mới thì bỏ, giữ kịch bản cũ.
   dùng chung cho công thức, thẻ chữ, nhãn trên hình và phụ đề, nên mọi chỗ cùng một cỡ.
 - Ký hiệu gõ thẳng (⇒ ≈ ≤) trong công thức được đổi sang lệnh TeX để có đúng khoảng cách hai bên.
 
+## 8. Sửa sau khi xem video tòa nhà (đề mới, Gemini viết thật: 13 cảnh, đáp án đúng 37,4 m)
+- **Vật bị vẽ 2 lần**: cảnh có bản vẽ thực tế mà "giữ sân khấu" thì khối nhà 3D của cảnh trước vẫn còn, thành 2 tòa nhà, 2 người.
+  Nay cảnh có bản vẽ thực tế luôn dựng lại từ đầu. Cảnh mở đầu cũng dùng bản vẽ đã duyệt thay cho khối hộp 3D.
+- **Cảnh tính toán chỉ có người + một dòng chữ** (chữ còn đè lên người): nay tự đổi sang bản vẽ có số đo, tam giác vuông,
+  để người xem thấy đang tính cạnh nào trên hình.
+- **Huy hiệu đáp án số thập phân**: 37,4 trước hiện thành "3⁄" (bánh số dừng lưng chừng). Nay lăn đúng và có dấu phẩy.
+- **Đơn vị** "30 m" trước bị vẽ nghiêng như chữ "п". Nay viết chữ đứng.
+- **Dòng công thức cuối hiện quá muộn** (vừa viết xong thì hết cảnh): nay dòng cuối luôn xong trước khi hết cảnh ít nhất 1,2 giây.
+
 ## Cần dán lại vào Apps Script
-`KiemTraHinh.gs`, `PromptKichBan.gs`, `BoPhan1.gs` (bản trong thư mục bàn giao), rồi Triển khai > Quản lý > Phiên bản mới.
+`KiemTraHinh.gs`, `PromptKichBan.gs`, `BoPhan1.gs` (bản trong thư mục bàn giao; PromptKichBan.gs có cập nhật thêm ở mục 8), rồi Triển khai > Quản lý > Phiên bản mới.
 
 ## Còn lưu ý
 - Trong GEMINI_KEYS có **3 key bị Google từ chối** ("API key not valid"): key thứ 2, 5, 7 (bắt đầu "AQ.Ab8…").
