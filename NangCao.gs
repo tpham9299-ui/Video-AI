@@ -119,9 +119,12 @@ function xuLyAiXem_(sh, r) {
   var toiDa = Number(cauHinh_('SO_LAN_TU_SUA_VIDEO')) || 2;
   var nguong = Number(chNC_('DIEM_HINH_TOI_THIEU')) || 8;
   if (!kq) {
-    // AI không chấm được (lỗi mạng/ảnh): video đã qua kiểm duyệt bố cục tự động, vẫn cho qua nhưng ghi rõ
-    ghiAiKT_(sh, r, { diem: null }, { duyet: canDuyet_() ? 'CHO' : '' });
-    if (canDuyet_()) guiDuyet_(r, '(Đã qua kiểm duyệt bố cục tự động; AI chưa chấm được hình, bạn xem kỹ giúp)');
+    // AI CHƯA CHẤM ĐƯỢC (hết key, mạng...): KHÔNG BAO GIỜ coi là đạt. Giữ trạng thái AI_XEM để lượt sau chấm lại;
+    // quá 6 lượt vẫn không chấm được thì giữ video lại (không gửi duyệt, không đăng) và báo người dùng.
+    var loiAi = (Number(cu.lan_loi_ai) || 0) + 1;
+    if (loiAi < 6) { ghiAiKT_(sh, r, { lan_loi_ai: loiAi }, { duyet: 'AI_XEM' }); nhatKy_('AI_XEM_LOI', r.id + ': chưa chấm được, sẽ chấm lại (lần ' + loiAi + ')'); return; }
+    ghiAiKT_(sh, r, { diem: null, lan_loi_ai: loiAi }, { duyet: 'KHONG_DAT', ghi_chu: 'AI chưa chấm được video sau ' + loiAi + ' lần thử, giữ lại chưa gửi' });
+    guiZalo_('⏸ Video "' + (r.chu_de || r.id) + '" đã dựng xong nhưng AI kiểm duyệt chưa chấm được (hết key/lỗi mạng) nên CHƯA gửi, CHƯA đăng.\nXem tay: /xem ' + r.id, 'cao', 'AI_KHONG_CHAM_' + r.id);
     return;
   }
   nhatKy_('AI_XEM', r.id + ': ' + kq.diem + '/10' + (kq.van_de.length ? ' | ' + kq.van_de.join('; ').slice(0, 300) : ''));
@@ -166,14 +169,16 @@ function aiChamVideo_(r) {
   try { kb = JSON.parse(DriveApp.getFileById(r.file_kich_ban).getBlob().getDataAsString()); } catch (e) {}
   var canh = (kb.canh || []);
   var moTa = canh.map(function (c, i) { return 'Cảnh ' + (i + 1) + ' (' + c.loai + '): ' + (c.tieu_de_canh || '') + ' | hình: ' + String((c.minh_hoa || {}).mo_ta || '').slice(0, 140); }).join('\n');
-  var prompt = 'Bạn là người KIỂM DUYỆT KHẮT KHE video dạy toán TikTok trước khi gửi cho chủ kênh. ẢNH 1 là lưới khung hình của video, theo thứ tự: ' +
-    'đề bài, mô phỏng, lỗi sai, giải, đáp án, thử lại, chốt kiến thức (có thể thiếu vài khung).' + (anhDe ? ' ẢNH 2 là ảnh chụp đề gốc.' : '') +
+  var prompt = 'Bạn là người KIỂM DUYỆT KHẮT KHE video dạy toán TikTok trước khi gửi cho chủ kênh. ẢNH 1 là lưới khung hình của video: MỖI CẢNH MỘT KHUNG theo đúng thứ tự cảnh của kịch bản bên dưới (đọc từ trái sang phải, trên xuống dưới).' + (anhDe ? ' ẢNH 2 là ảnh chụp đề gốc.' : '') +
     '\nĐỀ BÀI: ' + r.de_bai + (r.mo_ta_hinh ? '\nMÔ TẢ HÌNH CỦA ĐỀ: ' + r.mo_ta_hinh : '') + '\nĐÁP ÁN ĐÚNG: ' + (r.dap_an_hien || r.dap_an) + '\nKỊCH BẢN:\n' + moTa + '\n' +
     'TIÊU CHÍ BẮT BUỘC của chủ kênh (vi phạm bất kỳ điều nào = loi_nang true, tối đa 5 điểm):\n' +
     '(1) Khung đầu phải nêu RÕ ĐỀ BÀI: đề cho gì, dữ kiện, cần tìm gì (thẻ ĐỀ CHO / CẦN TÌM đọc được); không được nhảy thẳng vào mô phỏng.\n' +
     '(2) Không có chữ đè lên chữ, không có chữ tràn/bị cắt ở mép màn hình, không có chữ quá nhỏ khó đọc trên điện thoại.\n' +
     '(3) Không có mã LaTeX thô (\\frac, ^{}, $...$, dấu gạch chéo) hiện trên màn hình; công thức phải hiện đẹp.\n' +
     '(4) Hình minh họa đúng đối tượng/hình dạng/số liệu của đề (vẽ vật khác đề là sai nặng); đáp án hiện đúng ' + (r.dap_an_hien || r.dap_an) + '.\n' +
+    '(5) Không có vật bị vẽ LẶP hoặc vật thừa sót lại từ cảnh trước (2 tòa nhà, 2 người khi đề chỉ có 1).\n' +
+    '(6) LỜI GIẢI ĐÚNG: mọi phép tính, số trung gian, công thức hiện trên màn hình phải đúng toán học và dẫn đúng tới đáp án; số đo trên hình khớp đề.\n' +
+    '(7) Huy hiệu/con số đáp án đọc được rõ ràng (không bị lăn dở, không mất chữ số); dòng công thức cuối hiện đầy đủ.\n' +
     'TIÊU CHÍ CHẤT LƯỢNG (trừ điểm): hình hấp dẫn, có chiều sâu, không trống trải; bố cục cân đối; màu sắc thống nhất; đủ 6 phần đúng thứ tự.\n' +
     'Trả JSON: {"diem":0-10,"loi_nang":true|false,"van_de":["mỗi vấn đề một câu ngắn, nói rõ khung/cảnh nào"],"gop_y":"chỉ dẫn sửa cụ thể theo từng cảnh của kịch bản"}';
   var j = goiGemini_(prompt, 0.1, { suyNghi: 'low', anhs: anhs });

@@ -780,7 +780,9 @@ const SoLan: React.FC<{g: number; co: number; dich?: number}> = ({g, co, dich}) 
     cot.push(<CotSo key={k} g={tp ? Math.round(G * 1000) / 1000 : G} k={k} h={h} />);
     if (tp && k === tp) cot.push(<span key={`p${k}`} style={{lineHeight: `${h}px`}}>,</span>);
   }
-  return <span style={{display: 'inline-flex', fontVariantNumeric: 'tabular-nums'}}>{cot}</span>;
+  // số các bánh số ĐANG chỉ (máy kiểm duyệt đọc để đối chiếu với đáp án đã kiểm chứng)
+  const hien = tp ? (Math.round(G) / Math.pow(10, tp)).toFixed(tp).replace('.', ',') : String(Math.round(G));
+  return <span data-kd-so={hien} style={{display: 'inline-flex', fontVariantNumeric: 'tabular-nums'}}>{cot}</span>;
 };
 
 const SoDem: Ve = (v, st) => {

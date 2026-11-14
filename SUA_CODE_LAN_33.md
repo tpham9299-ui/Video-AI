@@ -64,8 +64,23 @@ Bản phóng to ký hiệu (⇒ ≈ ≤...) không hợp, đã hoàn tác: ký h
 - Áp dụng cho: giải toán + viết kịch bản (GitHub), giọng đọc Gemini và AI nhìn hình (bước dựng video).
   Kho key riêng của Apps Script (KhoKey.gs của bạn) không nằm trong mã nguồn nên chưa đổi.
 
+## 10. Kiểm duyệt chặt hơn để lời giải, hình, đáp án không sai
+Các lỗi ở video mẫu hôm nay mình phát hiện bằng mắt, hệ thống tự động chưa bắt được. Nay bịt các lỗ hổng:
+- **AI chấm video thấy MỌI CẢNH** (trước chỉ xem 7 khung, cảnh khác có thể lọt lỗi). Thêm tiêu chí: không vật vẽ lặp, mọi phép tính
+  trên màn hình đúng và dẫn đúng tới đáp án, huy hiệu đáp án đọc rõ, dòng công thức cuối hiện đủ.
+- **AI chấm lỗi KHÔNG còn cho qua**: trước đây AI không chấm được (hết key, mạng) thì video vẫn được gửi. Nay giữ lại, lượt sau chấm lại;
+  6 lượt vẫn không chấm được thì giữ video (không gửi, không đăng) và báo Zalo "/xem" để bạn xem tay.
+- **AI nhìn hình TRƯỚC KHI DỰNG xem mọi cảnh** (trước chỉ 2 cảnh) với danh sách kiểm tra: vật thật đúng đề, không vật lặp, số đo đúng chỗ,
+  số và đáp án trên màn hình khớp đáp án đã kiểm chứng. Không chạy được thì ghi rõ trong nhật ký (trước đây bỏ qua trong im lặng).
+- **Máy tự đọc chữ trên khung đáp án**: đáp số hiện trên màn hình (kể cả huy hiệu số lăn) phải đúng đáp án đã kiểm chứng; sai -> lỗi nặng, không dựng.
+  Đã thử: cố tình cho huy hiệu hiện 36,9 thay vì 37,4 -> máy chặn đúng.
+- **Kiểm phép tính lượng giác**: dòng "30 · tan(50°) ≈ 34,1" trước đây không kiểm được, nay máy tính thật và bắt lỗi.
+- Nhận diện key hỏng bằng 6 ký tự đầu + 4 ký tự cuối (3 key hỏng hiện tại cùng bắt đầu "AQ.Ab8").
+
+Chốt cuối vẫn là bạn: chế độ "duyệt trước khi đăng" đang BẬT, không video nào được đăng khi bạn chưa gõ /duyet.
+
 ## Cần dán lại vào Apps Script
-`KiemTraHinh.gs`, `PromptKichBan.gs`, `BoPhan1.gs`, `BoPhan2.gs` (bản trong thư mục bàn giao; BoPhan2.gs mới thêm ở mục 9 để báo key hỏng), rồi Triển khai > Quản lý > Phiên bản mới.
+`KiemTraHinh.gs`, `PromptKichBan.gs`, `BoPhan1.gs`, `BoPhan2.gs`, `NangCao.gs` (bản trong thư mục bàn giao; BoPhan2.gs ở mục 9, NangCao.gs + KiemTraHinh.gs cập nhật ở mục 10), rồi Triển khai > Quản lý > Phiên bản mới.
 
 ## Còn lưu ý
 - Trong GEMINI_KEYS có **3 key bị Google từ chối** ("API key not valid"): key thứ 2, 5, 7 (bắt đầu "AQ.Ab8…").

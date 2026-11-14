@@ -1137,6 +1137,8 @@ function texThanhSo_(s) {
   t = t.replace(/\\(text|mathrm|mbox|textbf)\s*\{[^{}]*\}(\s*\^\s*(\{[^{}]*\}|\d))?/g, ' ');
   t = t.replace(/\\left|\\right|\\displaystyle|\\,|\;|\\:|\\!|\\quad|\\qquad|~|\\ /g, ' ');
   t = t.replace(/\{,\}/g, '.').replace(/\\%/g, '%');
+  // lượng giác theo ĐỘ: \tan(50^\circ), \sin 30°, \cos(60°) -> lg_tan(50)... (tính thật để bắt phép tính sai ở bài góc nâng)
+  t = t.replace(/\\(sin|cos|tan|cot)\s*\(?\s*(\d+(?:[.,]\d+)?|\d+\{,\}\d+)\s*(?:\^\s*\{?\s*\\circ\s*\}?|°)\s*\)?/g, function (m, f, x) { return ' lg' + f + '(' + String(x).replace('{,}', '.').replace(',', '.') + ') '; });
   // bỏ đơn vị ở cuối (m, cm², đồng, triệu đồng, ống, tầng...)
   t = t.replace(/(\s*(m|cm|mm|km|dm|kg|g|l|ml|lít|đ|đồng|vnđ|triệu|tỷ|nghìn|ngàn|giờ|phút|giây|năm|tháng|ngày|ống|tầng|cái|người|học sinh|viên|lần|°|\\circ|\^\{?\\circ\}?)(\s*\^\s*\{?\d\}?)?)+\s*$/i, '');
   t = t.replace(/\\[dt]?frac/g, '\\frac');
@@ -1174,10 +1176,14 @@ function texThanhSo_(s) {
   t = t.replace(/\^/g, '**');
   t = t.replace(/(\d|\))\s*\(/g, '$1*(').replace(/\)\s*(\d)/g, ')*$1');
   t = t.replace(/pow\*\(/g, 'pow(').replace(/(\d|\))\s*pow/g, '$1*pow');
-  if (/[A-Za-zÀ-ỹ\\]/.test(t.replace(/pow/g, ''))) return null;   // còn chữ/biến -> không phải phép tính thuần số
-  if (!/\d/.test(t) || !/^[\d\s.+\-*/()powe,]*$/.test(t)) return null;
+  t = t.replace(/(lgsin|lgcos|lgtan|lgcot)\*\(/g, '$1(').replace(/(\d|\))\s*(lg(?:sin|cos|tan|cot))/g, '$1*$2');
+  var bo = t.replace(/pow|lgsin|lgcos|lgtan|lgcot/g, '');
+  if (/[A-Za-zÀ-ỹ\\]/.test(bo)) return null;   // còn chữ/biến -> không phải phép tính thuần số
+  if (!/\d/.test(t) || !/^[\d\s.+\-*/()e,]*$/.test(bo)) return null;
   try {
-    var v = Function('pow', '"use strict"; return (' + t + ');')(Math.pow);
+    var R = Math.PI / 180;
+    var v = Function('pow', 'lgsin', 'lgcos', 'lgtan', 'lgcot', '"use strict"; return (' + t + ');')(Math.pow,
+      function (x) { return Math.sin(x * R); }, function (x) { return Math.cos(x * R); }, function (x) { return Math.tan(x * R); }, function (x) { return 1 / Math.tan(x * R); });
     return typeof v === 'number' && isFinite(v) ? v : null;
   } catch (e) { return null; }
 }

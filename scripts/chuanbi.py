@@ -201,12 +201,13 @@ def ghi_key_hong(k, code, noi):
     ly = "HTTP %d: %s" % (code, re.sub(r"\s+", " ", m.group(1) if m else noi)[:160])
     try:
         ds = json.load(open(TEP_KEY_HONG_JSON, encoding="utf8")) if os.path.exists(TEP_KEY_HONG_JSON) else []
-        if not any(x.get("dau") == k[:8] for x in ds):
-            ds.append({"so": so, "dau": k[:8], "ly_do": ly})
+        ma = k[:6] + "_" + k[-4:]
+        if not any(x.get("dau") == ma for x in ds):
+            ds.append({"so": so, "dau": ma, "ly_do": ly})
         json.dump(ds, open(TEP_KEY_HONG_JSON, "w", encoding="utf8"))
     except Exception:
         pass
-    print("KEY_HONG: key thứ %s (bắt đầu %s…) lỗi thật: %s -> bỏ qua, sẽ báo Zalo" % (so or "?", k[:6], ly))
+    print("KEY_HONG: key thứ %s (%s) lỗi thật: %s -> bỏ qua, sẽ báo Zalo" % (so or "?", k[:6] + "_" + k[-4:], ly))
 
 
 def gemini_tts(text, tep_wav, giong, model, phong_cach):

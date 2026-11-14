@@ -17,7 +17,7 @@ const giao = (a: Hop, b: Hop): Hop | null => {
 };
 const dt = (h: Hop) => Math.max(0, h.w) * Math.max(0, h.h);
 
-function doKhungHinh(goc: HTMLElement): LoiKD[] {
+function doKhungHinh(goc: HTMLElement): {loi: LoiKD[]; chu: string[]; so: string[]} {
   const g = goc.getBoundingClientRect();
   const tl = g.width / 1080 || 1;
   const quy = (r: DOMRect | Hop): Hop => {
@@ -112,7 +112,10 @@ function doKhungHinh(goc: HTMLElement): LoiKD[] {
       loi.push({kieu: 'CHU_DE', chu: a.chu, chu2: b.chu, hop: gi});
     }
   }
-  return loi;
+  // CHỮ NHÌN THẤY trên khung (để máy đối chiếu đáp án) + số hiển thị của huy hiệu số lăn (data-kd-so: số các bánh số đang chỉ)
+  const so: string[] = [];
+  goc.querySelectorAll('[data-kd-so]').forEach((e) => { if (doMo(e) > 0.55) so.push(String(e.getAttribute('data-kd-so'))); });
+  return {loi, chu: khoi.map((k) => k.chu).slice(0, 120), so};
 }
 
 export const KiemDuyet: React.FC = () => {
@@ -125,8 +128,8 @@ export const KiemDuyet: React.FC = () => {
       xong = true;
       try {
         const goc = document.getElementById('kd-goc');
-        const loi = goc && goc.parentElement ? doKhungHinh(goc.parentElement) : [];
-        console.log('KD|' + JSON.stringify({frame: f, loi}));
+        const kq = goc && goc.parentElement ? doKhungHinh(goc.parentElement) : {loi: [], chu: [], so: []};
+        console.log('KD|' + JSON.stringify({frame: f, ...kq}));
       } catch (e) {
         console.log('KD|' + JSON.stringify({frame: f, loi: [], hong: String(e)}));
       }

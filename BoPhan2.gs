@@ -349,15 +349,15 @@ function baoKeyHong_(ds) {
   var daBao = String(pr.getProperty('KEY_HONG_DA_BAO') || '').split(',').filter(function (x) { return x.indexOf(ngay + ':') === 0; });
   ds.slice(0, 10).forEach(function (k) {
     if (!k || !k.dau) return;
-    var dau = String(k.dau).replace(/[^\w.-]/g, '').slice(0, 8);
+    var dau = String(k.dau).replace(/[^\w.-]/g, '').slice(0, 12);
     if (daBao.indexOf(ngay + ':' + dau) >= 0) return;   // hôm nay đã báo key này rồi
     daBao.push(ngay + ':' + dau);
     pr.setProperty('KEY_HONG_DA_BAO', daBao.join(','));
     guiZaloMotLan_('KEY_HONG_' + dau + '_' + ngay,
-      '🔑 Key Gemini thứ ' + (k.so || '?') + ' trong GEMINI_KEYS (bắt đầu "' + dau.slice(0, 6) + '…") bị LỖI THẬT, không phải hết hạn mức:\n' +
+      '🔑 Key Gemini thứ ' + (k.so || '?') + ' trong GEMINI_KEYS (đầu "' + dau.split('_')[0] + '", cuối "' + (dau.split('_')[1] || '') + '") bị LỖI THẬT, không phải hết hạn mức:\n' +
       String(k.ly_do || '').slice(0, 160) + '\n' +
       'Hệ thống đã tự bỏ qua key này. Bạn gỡ nó khỏi GitHub > Settings > Secrets and variables > Actions > GEMINI_KEYS (và khỏi kho key Apps Script nếu có).', 'cao');
-    nhatKy_('KEY_HONG', 'key thứ ' + (k.so || '?') + ' (' + dau.slice(0, 6) + '…): ' + String(k.ly_do || '').slice(0, 160));
+    nhatKy_('KEY_HONG', 'key thứ ' + (k.so || '?') + ' (' + dau + '): ' + String(k.ly_do || '').slice(0, 160));
   });
 }
 

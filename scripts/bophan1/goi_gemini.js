@@ -16,6 +16,7 @@ const {model, bodies, batDauKey = 0, gioiHanGiay = 300} = cauHinh;
 const TEP_KEY_HONG = path.join(os.tmpdir(), 'gemini_key_hong.txt');
 const TEP_KEY_HONG_JSON = path.join(os.tmpdir(), 'gemini_key_hong.json');
 const TEP_HET_NGAY = path.join(os.tmpdir(), 'gemini_key_het_ngay.txt');
+const maKey = (k) => k.slice(0, 6) + '_' + k.slice(-4);   // nhận diện key: 6 ký tự đầu + 4 cuối (nhiều key chung phần đầu)
 const docDong = (t) => (fs.existsSync(t) ? fs.readFileSync(t, 'utf8') : '').split('\n').filter(Boolean);
 const hong = new Set(docDong(TEP_KEY_HONG));
 const hetNgay = new Set(docDong(TEP_HET_NGAY));   // dạng "model|key"
@@ -42,10 +43,10 @@ function ghiKeyHong(k, code, raw) {
   try { fs.appendFileSync(TEP_KEY_HONG, k + '\n'); } catch (e) { /* bỏ */ }
   try {
     const ds = fs.existsSync(TEP_KEY_HONG_JSON) ? JSON.parse(fs.readFileSync(TEP_KEY_HONG_JSON, 'utf8')) : [];
-    if (!ds.some((x) => x.dau === k.slice(0, 8))) ds.push({so, dau: k.slice(0, 8), ly_do: ly});
+    if (!ds.some((x) => x.dau === maKey(k))) ds.push({so, dau: maKey(k), ly_do: ly});
     fs.writeFileSync(TEP_KEY_HONG_JSON, JSON.stringify(ds));
   } catch (e) { /* bỏ */ }
-  process.stderr.write(`KEY_HONG: key thứ ${so} trong GEMINI_KEYS (bắt đầu ${k.slice(0, 6)}…) lỗi thật: ${ly} -> bỏ qua, sẽ báo Zalo\n`);
+  process.stderr.write(`KEY_HONG: key thứ ${so} trong GEMINI_KEYS (${maKey(k)}) lỗi thật: ${ly} -> bỏ qua, sẽ báo Zalo\n`);
 }
 function ghiHetNgay(k) {
   const khoa = model + '|' + k;
