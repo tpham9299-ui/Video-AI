@@ -65,7 +65,8 @@ function dungNgang(raw: R): R[] {
   const X = (xm: number) => lechX + (xm - x0) * k;
   const Y = (hm: number) => yDat - hm * k;
   // vật thấp quá (người 1,6 m cạnh tháp 100 m) vẫn vẽ đủ lớn để nhìn rõ; các điểm neo tính theo kích thước VẼ
-  const caoVe = (v: R) => Math.max(so(v.cao, 1) * k, chuoi(v.ten) === 'nguoi' ? 7 : 4);
+  // (người quan sát luôn đủ lớn để nhận ra là người: như hình sách giáo khoa, người vẽ to hơn tỉ lệ thật)
+  const caoVe = (v: R) => Math.max(so(v.cao, 1) * k, chuoi(v.ten) === 'nguoi' ? 13 : 7);
   const neo = new Map<string, D>();
   const huongMat = new Map<string, number>();
   chinh.forEach((v) => {
@@ -81,7 +82,13 @@ function dungNgang(raw: R): R[] {
     neo.set(ma + '.mat', [x + (v.lat === true ? -1 : 1) * c * 0.05, yNen - c * 0.93]);
     huongMat.set(ma, v.lat === true ? -1 : 1);
   });
-  diem.forEach((d) => neo.set(chuoi(d.ma), [X(so(d.x)), Y(so(d.cao))]));
+  // điểm ở ĐỘ CAO TẦM MẮT (vd H trên cột cờ ngang tầm mắt) khớp đúng mắt đã vẽ của người quan sát (người được vẽ to hơn tỉ lệ)
+  const nguoiMat = chinh.filter((v) => chuoi(v.ten) === 'nguoi' && !v.tren).map((v) => ({cao: so(v.cao, 1.6), y: (neo.get(chuoi(v.ma) + '.mat') || [0, 0])[1]}));
+  const yDiem = (h: number) => {
+    const m = nguoiMat.find((n) => Math.abs(h - n.cao) <= Math.max(0.15, n.cao * 0.08) || Math.abs(h - n.cao * 0.93) <= 0.1);
+    return m ? m.y : Y(h);
+  };
+  diem.forEach((d) => neo.set(chuoi(d.ma), [X(so(d.x)), yDiem(so(d.cao))]));
   // vật được đo chiều cao: nhãn đặt trên đường đo, không đặt cạnh vật nữa
   const coDoCao = new Set(doRaw.filter((d) => chuoi(d.kieu) === 'chieu_cao').map((d) => chuoi(d.vat)));
   const out: R[] = [{kieu: 'duong', diem: [[3, yDat], [97, yDat]], mau: 'xam', net: 3, buoc: 1}];

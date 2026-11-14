@@ -50,12 +50,15 @@ const VE: Record<TenVatThuc, (p: P) => React.ReactNode> = {
   },
   // NGƯỜI QUAN SÁT (nhìn nghiêng, mặt hướng phải): mắt ở 93% chiều cao
   nguoi: ({mau, t}) => (
-    <g stroke={mau} strokeWidth={3.2} strokeLinecap="round" fill="none">
-      <circle cx={0} cy={-88} r={8} fill={`${mau}33`} />
-      <circle cx={4.5} cy={-89} r={1.3} fill={mau} stroke="none" />
-      <path d="M0 -79 L0 -42" />
-      <path d={`M0 -70 L${9 + Math.sin(t * 2) * 1} -54 M0 -70 L-8 -55`} />
-      <path d="M0 -42 L8 0 M0 -42 L-7 0" />
+    <g strokeLinecap="round" strokeLinejoin="round">
+      {/* thân áo + quần (khối đặc, nhìn rõ là người ngay cả khi nhỏ), đầu có tóc, mắt nhìn sang phải */}
+      <path d="M-7 -76 Q0 -80 7 -76 L8 -44 L-8 -44 Z" fill={mau} stroke={mau} strokeWidth={2} />
+      <path d="M-7 -45 L-8 0 L-2 0 L0 -30 L2 0 L8 0 L7 -45 Z" fill="#2c4a6e" stroke="#9fc3ff" strokeWidth={1.5} />
+      <path d={`M7 -72 L${15 + Math.sin(t * 2) * 1} -55`} stroke={mau} strokeWidth={6} fill="none" />
+      <path d="M-7 -72 L-11 -50" stroke={mau} strokeWidth={6} fill="none" />
+      <circle cx={0} cy={-88} r={10} fill="#f4c99a" stroke="#f9dfc0" strokeWidth={1} />
+      <path d="M-10 -89 Q-9 -100 1 -99 Q10 -99 10 -91 Q4 -95 -10 -89 Z" fill="#2b1c12" />
+      <circle cx={6} cy={-88} r={1.8} fill="#1d1d1d" />
     </g>
   ),
   // TÒA NHÀ CAO TẦNG: lưới cửa sổ sáng tắt, ăng-ten đỉnh có đèn nhấp nháy
