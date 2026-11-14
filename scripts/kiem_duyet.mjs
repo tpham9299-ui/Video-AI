@@ -7,6 +7,20 @@ import path from 'node:path';
 import os from 'node:os';
 import {openBrowser, renderStill, selectComposition} from '@remotion/renderer';
 
+// --- key Gemini hỏng (dùng chung với Bộ phận 1 / giọng đọc): khai báo TRƯỚC khi chạy kiểm duyệt ---
+var TEP_KEY_HONG_JSON = path.join(os.tmpdir(), 'gemini_key_hong.json');
+function maKey(k) { return k.slice(0, 6) + '_' + k.slice(-4); }
+function dsKeyHong() { try { return JSON.parse(fs.readFileSync(TEP_KEY_HONG_JSON, 'utf8')); } catch (e) { return []; } }
+function ghiKeyHong(k, code, raw) {
+  const ds = dsKeyHong();
+  if (ds.some((x) => x.dau === maKey(k))) return;
+  const goc = String(process.env.GEMINI_KEYS || '').split(/[\s,;]+/).filter(Boolean);
+  const m = /"message":\s*"([^"]{0,160})/.exec(raw);
+  ds.push({so: goc.indexOf(k) + 1 || 0, dau: maKey(k), ly_do: `HTTP ${code}: ${(m ? m[1] : raw).replace(/\s+/g, ' ').slice(0, 160)}`});
+  try { fs.writeFileSync(TEP_KEY_HONG_JSON, JSON.stringify(ds)); } catch (e) { /* bỏ */ }
+  console.log(`KEY_HONG: key ${maKey(k)} lỗi thật (HTTP ${code}) -> bỏ qua, sẽ báo Zalo`);
+}
+
 const [bundle, tepProps, tepRa, tepKichBan] = process.argv.slice(2);
 const props = JSON.parse(fs.readFileSync(tepProps, 'utf8'));
 const lech = props.anhBiaDau ? 1 : 0;   // khung 0 là ảnh bìa
@@ -109,18 +123,6 @@ bao.nhe.slice(0, 10).forEach((x) => console.log('  [nhẹ] ' + x));
 // AI NHÌN HÌNH TRƯỚC KHI DỰNG: Gemini xem ảnh cảnh đề bài + mô phỏng, đối chiếu với đề: vẽ ĐÚNG vật thật của đề chưa (cột cờ ra cột cờ,
 // ngân hàng ra ngân hàng, hàng rào ra hàng rào), số đo có đúng chỗ không. Sai thì trả lỗi nặng -> kịch bản được sửa trước khi dựng.
 // Cần GEMINI_API_KEY (hoặc GEMINI_KEYS) trong GitHub Secrets; không có thì bỏ qua bước này.
-const TEP_KEY_HONG_JSON = path.join(os.tmpdir(), 'gemini_key_hong.json');
-const maKey = (k) => k.slice(0, 6) + '_' + k.slice(-4);
-function dsKeyHong() { try { return JSON.parse(fs.readFileSync(TEP_KEY_HONG_JSON, 'utf8')); } catch (e) { return []; } }
-function ghiKeyHong(k, code, raw) {
-  const ds = dsKeyHong();
-  if (ds.some((x) => x.dau === maKey(k))) return;
-  const goc = String(process.env.GEMINI_KEYS || '').split(/[\s,;]+/).filter(Boolean);
-  const m = /"message":\s*"([^"]{0,160})/.exec(raw);
-  ds.push({so: goc.indexOf(k) + 1 || 0, dau: maKey(k), ly_do: `HTTP ${code}: ${(m ? m[1] : raw).replace(/\s+/g, ' ').slice(0, 160)}`});
-  try { fs.writeFileSync(TEP_KEY_HONG_JSON, JSON.stringify(ds)); } catch (e) { /* bỏ */ }
-  console.log(`KEY_HONG: key ${maKey(k)} lỗi thật (HTTP ${code}) -> bỏ qua, sẽ báo Zalo`);
-}
 async function aiNhinHinh(anh) {
   const hongTruoc = new Set(dsKeyHong().map((x) => x.dau));
   const keys = [...new Set(String((process.env.GEMINI_KEYS || '') + ',' + (process.env.GEMINI_API_KEY || '')).split(/[\s,;]+/).filter(Boolean))].filter((k) => !hongTruoc.has(maKey(k)));
