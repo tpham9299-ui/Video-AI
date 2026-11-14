@@ -1,11 +1,15 @@
+import {catChu, chuanTex, texSangChu} from '../chu';
 // "Sân khấu": cách kịch bản mô tả một cảnh sinh động bằng VẬT THẬT (người, thẻ, xúc xắc, vòng quay, hộp quà, đồng hồ đo xác suất...)
 // và HÀNH ĐỘNG theo từng bước lời giảng (xuất hiện, chọn, loại bỏ, quay, mở, lấy ra, phóng to...).
 // Tệp này chỉ kiểm tra/chuẩn hóa dữ liệu (không phụ thuộc React). Quy tắc phải khớp với KiemTraHinh.gs (kiemTraSanKhau_).
 
 const laDT = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const laMang = (v: unknown): v is unknown[] => Array.isArray(v);
+// chữ có thể chứa công thức: sửa lỗi TeX thường gặp, cắt ở ranh giới từ (không cắt giữa lệnh TeX -> KaTeX báo lỗi, lộ mã thô)
 const chu = (v: unknown, max = 40): string =>
-  typeof v === 'string' ? v.trim().slice(0, max) : typeof v === 'number' && isFinite(v) ? String(v) : '';
+  typeof v === 'string' ? catChu(chuanTex(v), max).slice(0, max * 3) : typeof v === 'number' && isFinite(v) ? String(v) : '';
+// chữ chỉ hiện dạng thường (nhãn, tên phần tử, giá trị chữ): đổi TeX sang ký tự đọc được (\frac{1}{3} -> 1/3, u_1 -> u₁)
+const chuDon = (v: unknown, max = 40): string => catChu(texSangChu(chu(v, max * 2)), max);
 const so = (v: unknown, mac: number, thap: number, cao: number): number => {
   const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN;
   return isFinite(n) ? Math.min(cao, Math.max(thap, n)) : mac;
@@ -127,7 +131,7 @@ const toiDaSoLuong: Partial<Record<LoaiVat, number>> = {
 function vat(raw: Record<string, unknown>, i: number): Vat | null {
   const loai = LOAI_VAT.find((l) => l === raw.loai);
   if (!loai) return null;
-  const ds = laMang(raw.ds) ? raw.ds.slice(0, 12).map((x) => chu(x, raw.loai === 'danh_sach' || raw.loai === 'dien_thoai' ? 52 : 24)) : [];
+  const ds = laMang(raw.ds) ? raw.ds.slice(0, 12).map((x) => (raw.loai === 'danh_sach' ? chu(x, 60) : chuDon(x, raw.loai === 'dien_thoai' ? 52 : 24))) : [];
   const dsSo = laMang(raw.ds_so) ? raw.ds_so.slice(0, 8).map((x) => so(x, 0, 0, 1e6)) : [];
   const ketQua = (laMang(raw.ket_qua) ? raw.ket_qua : raw.ket_qua !== undefined ? [raw.ket_qua] : [])
     .slice(0, 6)
@@ -151,12 +155,12 @@ function vat(raw: Record<string, unknown>, i: number): Vat | null {
     den: chu(raw.den, 24),
     co: so(raw.co, 1, 0.4, 2.5),
     mau: tenMau(raw.mau),
-    nhan: chu(raw.nhan, 36),
-    noiDung: chu(raw.noi_dung, loai === 'chu' ? 60 : 48),
-    tuKhoa: chu(raw.tu_khoa, 30),
+    nhan: chuDon(raw.nhan, 36),
+    noiDung: ['nhan', 'chu', 'hinh_hoc'].includes(loai) ? chu(raw.noi_dung, loai === 'chu' ? 60 : 48) : chuDon(raw.noi_dung, 48),
+    tuKhoa: chuDon(raw.tu_khoa, 30),
     soLuong: Math.round(so(raw.so_luong, loai === 'cua' ? 3 : loai === 'banh' ? 8 : loai === 'luoi_o' ? 36 : ds.length || 1, 1, mac)),
     giaTri: loai === 'do_thi' ? so(raw.gia_tri, NaN, -1e6, 1e6) : so(raw.gia_tri, loai === 'so_dem' ? 10 : 0.5, 0, loai === 'so_dem' ? 1e6 : 1),
-    giaTriChu: chu(raw.gia_tri_chu, 20),
+    giaTriChu: chuDon(raw.gia_tri_chu, 20),
     ketQua,
     ds,
     dsSo,

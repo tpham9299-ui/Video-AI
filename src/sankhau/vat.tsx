@@ -1,13 +1,14 @@
 // Thư viện VẬT THẬT cho sân khấu, phong cách neon như video mẫu: viền phát sáng trên nền tối, bật lên có độ nảy,
 // mỗi vật có chuyển động riêng (xúc xắc lăn, đồng xu lật, vòng quay quay, hộp quà mở, kim đồng hồ đo xác suất chạy...).
 import React from 'react';
-import {FONT, FONT_DAM, BONG_CHU, vienChu, laMoi} from '../theme';
+import {FONT, FONT_DAM, BONG_CHU, vienChu, laMoi, GIAO_DIEN} from '../theme';
 import {GachTay} from '../dong/DiemNhan';
 import {CoChuSan} from '../dong/KhongGian';
 import {Toan} from '../Toan';
+import {texSangChu} from '../chu';
 import {bamChuoi, easeInOut, easeOut, kep, lerp, nay, NEN_VAT, NEN_VAT_2, neon, ngauNhien, popOut, tienDo, VONG_MAU} from './donghieu';
 import {Vat} from './dulieu';
-import {TrangThai} from './trangthai';
+import {boCucDanhSach, TrangThai} from './trangthai';
 import {Goc3D} from './chieu3d';
 import {DoThi, HinhHoc} from './hinhhoc';
 import {HinhTuDo} from './hinhtudo';
@@ -29,12 +30,15 @@ export const ChuNhanMau: React.FC<{chu: string; tuKhoa: string; mau: string}> = 
   );
 };
 
-const Nhan: React.FC<{chu: string; co?: number; mau?: string; mo?: number}> = ({chu, co = 36, mau = '#fff', mo = 1}) =>
-  chu ? (
-    <div style={{marginTop: 10, fontFamily: FONT_DAM, fontWeight: 800, fontSize: co, color: mau, opacity: mo, background: 'rgba(0,0,0,0.5)', borderRadius: 12, padding: '3px 14px', whiteSpace: 'nowrap', textAlign: 'center'}}>
-      {chu}
+// nhãn dưới vật: chữ ĐỦ TO để đọc trên điện thoại (sân khấu bị thu nhỏ thì hệ số chữ bù lại), TeX đổi sang chữ thường đọc được
+const Nhan: React.FC<{chu: string; co?: number; mau?: string; mo?: number}> = ({chu, co = 42, mau = '#fff', mo = 1}) => {
+  const t = texSangChu(chu);
+  return t ? (
+    <div style={{marginTop: 12, fontFamily: FONT_DAM, fontWeight: 800, fontSize: co * KC, color: mau, opacity: mo, background: 'rgba(4,14,14,0.78)', border: '2px solid rgba(255,255,255,0.12)', borderRadius: 14, padding: '4px 18px', whiteSpace: t.length > 26 ? 'normal' : 'nowrap', maxWidth: 860, textAlign: 'center', lineHeight: 1.2}}>
+      {t}
     </div>
   ) : null;
+};
 
 const DauTich: React.FC<{p: number; mau: string; co?: number; style?: React.CSSProperties}> = ({p, mau, co = 46, style}) =>
   p > 0 ? (
@@ -66,6 +70,10 @@ function phanTu(st: TrangThai, i: number, mauGoc: string) {
 const vaoLanLuot = (st: TrangThai, i: number, n: number) => kep((st.t - st.ta - (i * Math.min(0.12, 0.9 / Math.max(1, n)))) / 0.4);
 
 type Ve = (v: Vat, st: TrangThai, frame: number, fps: number) => React.ReactNode;
+// hệ số bù cỡ chữ của sân khấu (sân khấu bị thu nhỏ để vừa khung -> chữ phóng lại cho đủ đọc): SanKhau đặt trước khi vẽ
+let KC = 1;
+export const datHeSoChu = (k: number) => { KC = Math.max(1, Math.min(1.6, k || 1)); };
+const tc = texSangChu;
 
 /* ---------------- NGƯỜI ---------------- */
 const Nguoi: Ve = (v, st) => {
@@ -88,7 +96,7 @@ const Nguoi: Ve = (v, st) => {
               </svg>
               <DauTich p={s.pc} mau={s.mau} co={o * 0.34} style={{right: o * 0.06, top: -4}} />
               <DauX p={s.l} co={o * 0.8} style={{top: o * 0.08}} />
-              {v.ds[k] ? <div style={{fontFamily: FONT_DAM, fontWeight: 800, fontSize: Math.max(20, o * 0.2), color: '#fff', marginTop: 4}}>{v.ds[k]}</div> : null}
+              {v.ds[k] ? <div style={{fontFamily: FONT_DAM, fontWeight: 800, fontSize: Math.max(32 * KC, o * 0.22), color: '#fff', marginTop: 4, textAlign: 'center', lineHeight: 1.1}}>{v.ds[k]}</div> : null}
             </div>
           );
         })}
@@ -128,7 +136,7 @@ const The: Ve = (v, st) => {
             border: `5px solid ${ve > 0.85 ? s.mau : 'transparent'}`, borderRadius: 22, background: `linear-gradient(160deg, ${NEN_VAT_2}, ${NEN_VAT})`, backgroundClip: 'padding-box', boxShadow: ve > 0.85 ? `0 0 ${10 + 18 * s.pc}px ${s.mau}` : 'none',
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, fontFamily: FONT, color: '#fff', filter: s.xam ? 'grayscale(1)' : 'none'}}>
             {tieuDe ? <div style={{opacity: kep((ve - 0.35) / 0.4), fontWeight: 900, fontSize: Math.min(54 * v.co, (w * 1.6) / Math.max(4, tieuDe.length)) , textAlign: 'center', padding: '0 10px', lineHeight: 1.1}}>{tieuDe}</div> : null}
-            {n === 1 && st.giaTriChu ? <div style={{fontWeight: 900, fontSize: 54 * v.co, color: s.mau}}>{st.giaTriChu}</div> : null}
+            {n === 1 && st.giaTriChu ? <div style={{fontWeight: 900, fontSize: 54 * v.co, color: s.mau}}>{tc(st.giaTriChu)}</div> : null}
             {n > 1 && !tieuDe ? <svg width={w * 0.5} height={h * 0.3} viewBox="0 0 100 40"><circle cx={20} cy={20} r={14} fill="none" stroke={s.mau} strokeWidth={5} /><rect x={42} y={10} width={52} height={7} rx={3} fill={s.mau} opacity={0.7} /><rect x={42} y={24} width={36} height={7} rx={3} fill="#ffffff" opacity={0.35} /></svg> : null}
             {ve < 1 ? (
               <svg width={w} height={h} style={{position: 'absolute', left: -5, top: -5, overflow: 'visible'}}>
@@ -422,7 +430,7 @@ const HopQua: Ve = (v, st) => {
         {/* phần quà hiện lên */}
         {q > 0 ? (
           <div style={{position: 'absolute', left: 0, right: 0, top: 70 - q * 150, display: 'flex', justifyContent: 'center', opacity: q, transform: `scale(${popOut(q)})`}}>
-            <div style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: 58 * v.co, color: '#FFD54A', textShadow: `0 0 18px ${mau}`, whiteSpace: 'nowrap'}}>{v.emoji ? v.emoji + ' ' : ''}{st.giaTriChu || st.noiDung}</div>
+            <div style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: 58 * v.co, color: '#FFD54A', textShadow: `0 0 18px ${mau}`, whiteSpace: 'nowrap'}}>{v.emoji ? v.emoji + ' ' : ''}{tc(st.giaTriChu || st.noiDung)}</div>
           </div>
         ) : null}
         <svg width={W} height={H} viewBox="0 0 230 200" style={{position: 'absolute', top: 60, overflow: 'visible', filter: phatSang(mau, 8 + 8 * st.sang)}}>
@@ -472,7 +480,7 @@ const DienThoai: Ve = (v, st) => {
   return (
     <div style={{position: 'relative', width: W, height: H, borderRadius: 44 * v.co, border: `6px solid ${mau}`, background: '#081312', boxShadow: `0 0 22px ${mau}`, padding: 22 * v.co, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 14, fontFamily: FONT, color: '#fff'}}>
       <div style={{alignSelf: 'center', width: W * 0.3, height: 10, borderRadius: 5, background: '#26403c'}} />
-      {st.noiDung ? <div style={{fontWeight: 900, fontSize: 32 * v.co, textAlign: 'center', marginTop: 6}}>{st.noiDung}</div> : null}
+      {st.noiDung ? <div style={{fontWeight: 900, fontSize: Math.max(34 * KC, 32 * v.co), textAlign: 'center', marginTop: 6}}>{tc(st.noiDung)}</div> : null}
       {v.ds.map((d, k) => {
         const a = kep((st.t - st.ta - 0.3 - k * 0.35) / 0.4);
         const s = phanTu(st, k + 1, '#2E4B47');
@@ -483,7 +491,7 @@ const DienThoai: Ve = (v, st) => {
           </div>
         );
       })}
-      {st.giaTriChu ? <div style={{marginTop: 'auto', alignSelf: 'center', background: mau, color: '#06231a', fontWeight: 900, fontSize: 30 * v.co, padding: '8px 26px', borderRadius: 14}}>{st.giaTriChu}</div> : null}
+      {st.giaTriChu ? <div style={{marginTop: 'auto', alignSelf: 'center', background: mau, color: '#06231a', fontWeight: 900, fontSize: Math.max(34 * KC, 30 * v.co), padding: '8px 26px', borderRadius: 14}}>{tc(st.giaTriChu)}</div> : null}
     </div>
   );
 };
@@ -507,7 +515,7 @@ const BongBay: Ve = (v, st, frame) => {
         <path d={`M0 ${R * 1.2 + 40} C 30 ${R * 1.2 + 100}, -30 ${R * 1.2 + 160}, 0 340`} stroke="#ddd" strokeWidth={3} fill="none" />
         <ellipse cx={0} cy={60} rx={R} ry={R * 1.2} fill={`url(#bb${v.id})`} style={{filter: phatSang(mau, 14)}} />
         <path d={`M-10 ${60 + R * 1.2} L10 ${60 + R * 1.2} L0 ${60 + R * 1.2 + 14} Z`} fill={mau} />
-        <text x={0} y={72} textAnchor="middle" fontFamily="Liberation Sans, sans-serif" fontWeight={900} fontSize={Math.max(26, R * 0.36)} fill="#fff">{st.giaTriChu || v.nhan}</text>
+        <text x={0} y={72} textAnchor="middle" fontFamily="Liberation Sans, sans-serif" fontWeight={900} fontSize={Math.max(30, R * 0.36)} fill="#fff">{tc(st.giaTriChu || v.nhan)}</text>
       </svg>
     </div>
   );
@@ -522,7 +530,7 @@ const DongHoDo: Ve = (v, st) => {
   const cung = (a0: number, a1: number, r: number) => `M${Math.cos(Math.PI * (1 - a0)) * r} ${-Math.sin(Math.PI * (1 - a0)) * r} A${r} ${r} 0 0 1 ${Math.cos(Math.PI * (1 - a1)) * r} ${-Math.sin(Math.PI * (1 - a1)) * r}`;
   return (
     <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
-      {v.nhan ? <div style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: 44, color: '#fff', marginBottom: 6}}>{v.nhan}</div> : null}
+      {v.nhan ? <div style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: 46 * KC, color: '#fff', marginBottom: 6, textAlign: 'center'}}>{v.nhan}</div> : null}
       <svg width={R * 2 + 60} height={R + 70} viewBox={`${-R - 30} ${-R - 20} ${2 * R + 60} ${R + 70}`} style={{overflow: 'visible'}}>
         <defs>
           <linearGradient id={`dh${v.id}`} x1="0" x2="1">
@@ -538,7 +546,7 @@ const DongHoDo: Ve = (v, st) => {
         <text x={-R} y={40} textAnchor="middle" fill="#9fb3b0" fontFamily="Liberation Sans, sans-serif" fontWeight={800} fontSize={30}>0</text>
         <text x={R} y={40} textAnchor="middle" fill="#9fb3b0" fontFamily="Liberation Sans, sans-serif" fontWeight={800} fontSize={30}>1</text>
       </svg>
-      <div style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: 64 * v.co, color: mau, textShadow: `0 0 16px ${mau}`, marginTop: -14}}>{st.giaTriChu || `${Math.round(val * 100)}%`}</div>
+      <div style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: Math.max(64 * v.co, 60 * KC), color: mau, textShadow: `0 0 16px ${mau}`, marginTop: -14}}>{tc(st.giaTriChu) || `${Math.round(val * 100)}%`}</div>
     </div>
   );
 };
@@ -561,14 +569,14 @@ const BieuDoCot: Ve = (v, st) => {
           const h = (x / max) * (H - 60) * a;
           return (
             <div key={k} style={{position: 'absolute', left: (k + 0.5) * (W / n) - bw / 2, bottom: 0, width: bw, height: h, background: `linear-gradient(180deg, ${s.mau}, ${s.mau}55)`, border: `3px solid ${s.mau}`, borderBottom: 'none', borderRadius: '10px 10px 0 0', boxShadow: `0 0 ${10 + 16 * s.pc}px ${s.mau}`, opacity: s.mo}}>
-              <div style={{position: 'absolute', top: -46, left: -30, right: -30, textAlign: 'center', fontFamily: FONT_DAM, fontWeight: 900, fontSize: 32, color: '#fff', opacity: a}}>{Number.isInteger(x) ? x : x.toFixed(2)}</div>
+              <div style={{position: 'absolute', top: -58 * KC, left: -40, right: -40, textAlign: 'center', fontFamily: FONT_DAM, fontWeight: 900, fontSize: 42 * KC, color: '#fff', opacity: a, textShadow: '0 2px 10px rgba(0,0,0,0.8)'}}>{Number.isInteger(x) ? x : x.toFixed(2)}</div>
             </div>
           );
         })}
       </div>
       <div style={{display: 'flex', width: W}}>
         {v.dsSo.map((_, k) => (
-          <div key={k} style={{flex: 1, textAlign: 'center', fontFamily: FONT_DAM, fontWeight: 800, fontSize: 26, color: '#cfe', marginTop: 8}}>{v.ds[k] || ''}</div>
+          <div key={k} style={{flex: 1, textAlign: 'center', fontFamily: FONT_DAM, fontWeight: 800, fontSize: 36 * KC, color: '#e6fff7', marginTop: 10, lineHeight: 1.1, padding: '0 4px'}}>{v.ds[k] || ''}</div>
         ))}
       </div>
       <Nhan chu={v.nhan} />
@@ -583,9 +591,9 @@ const Thanh: Ve = (v, st) => {
   const val = st.giaTri * easeInOut(kep((st.t - st.ta - 0.2) / 0.9));
   return (
     <div style={{width: W, fontFamily: FONT, color: '#fff'}}>
-      <div style={{display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: 32, marginBottom: 8}}>
+      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 16, fontWeight: 900, fontSize: 42 * KC, marginBottom: 10, textShadow: '0 2px 10px rgba(0,0,0,0.8)'}}>
         <span>{v.nhan}</span>
-        <span style={{color: mau}}>{st.giaTriChu}</span>
+        <span style={{color: mau}}>{tc(st.giaTriChu)}</span>
       </div>
       <div style={{position: 'relative', height: 56 * v.co, borderRadius: 30, border: `4px solid ${mau}`, background: '#0c1a19', overflow: 'hidden', boxShadow: `0 0 16px ${mau}66`}}>
         <div style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: `${val * 100}%`, background: `linear-gradient(90deg, ${mau}88, ${mau})`, borderRadius: 30, boxShadow: `0 0 20px ${mau}`}} />
@@ -617,7 +625,7 @@ const VongQuay: Ve = (v, st) => {
               return (
                 <g key={i}>
                   <path d={`M0 0 L${Math.cos(a0) * 104} ${Math.sin(a0) * 104} A104 104 0 0 1 ${Math.cos(a1) * 104} ${Math.sin(a1) * 104} Z`} fill={sang ? mau : mau + '55'} stroke="#0b1514" strokeWidth={2} />
-                  <text x={Math.cos(am) * 68} y={Math.sin(am) * 68 + 6} textAnchor="middle" fontFamily="Liberation Sans, sans-serif" fontWeight={900} fontSize={n > 8 ? 13 : 17} fill="#fff" transform={`rotate(${(am * 180) / Math.PI + 90} ${Math.cos(am) * 68} ${Math.sin(am) * 68})`}>{d}</text>
+                  <text x={Math.cos(am) * 68} y={Math.sin(am) * 68 + 6} textAnchor="middle" fontFamily="Liberation Sans, sans-serif" fontWeight={900} fontSize={Math.max(n > 8 ? 15 : 20, ((n > 8 ? 30 : 36) * KC) / ((R * 2 + 30) / 230))} fill="#fff" transform={`rotate(${(am * 180) / Math.PI + 90} ${Math.cos(am) * 68} ${Math.sin(am) * 68})`}>{d}</text>
                 </g>
               );
             })}
@@ -686,7 +694,7 @@ const Banh: Ve = (v, st) => {
           return (
             <g key={i} transform={`translate(${Math.cos(am) * ra} ${Math.sin(am) * ra}) scale(${popOut(a)})`} opacity={kep(a * 2)}>
               <path d={`M0 0 L${Math.cos(a0) * 100} ${Math.sin(a0) * 100} A100 100 0 0 1 ${Math.cos(a1) * 100} ${Math.sin(a1) * 100} Z`} fill={s.pc > 0.01 ? s.mau : NEN_VAT_2} stroke={s.mau} strokeWidth={3} style={{filter: s.pc > 0.01 ? phatSang(s.mau, 8) : 'none'}} />
-              {v.ds[i] ? <text x={Math.cos(am) * 64} y={Math.sin(am) * 64 + 6} textAnchor="middle" fontFamily="Liberation Sans, sans-serif" fontWeight={900} fontSize={16} fill="#fff">{v.ds[i]}</text> : null}
+              {v.ds[i] ? <text x={Math.cos(am) * 62} y={Math.sin(am) * 62 + 8} textAnchor="middle" fontFamily="Liberation Sans, sans-serif" fontWeight={900} fontSize={Math.max(n > 6 ? 17 : 23, (40 * KC) / ((R * 2 + 40) / 240))} fill="#fff" stroke="rgba(0,0,0,0.55)" strokeWidth={3} paintOrder="stroke">{v.ds[i]}</text> : null}
             </g>
           );
         })}
@@ -765,13 +773,13 @@ const SoDem: Ve = (v, st) => {
     return (
       <div style={{display: 'flex', alignItems: 'baseline', gap: 10, padding: `${10 * v.co}px ${28 * v.co}px`, borderRadius: 60, background: 'linear-gradient(180deg, #FFE27A, #F7C531)', border: '4px solid #FFF3C4', boxShadow: '0 8px 28px rgba(247,197,49,0.45)', fontFamily: FONT, color: '#2a1d00'}}>
         <span style={{fontWeight: 900, fontSize: 84 * v.co, lineHeight: 1}}><SoLan g={g} co={84 * v.co} /></span>
-        <span style={{fontWeight: 800, fontSize: 40 * v.co}}>{v.nhan || st.noiDung}</span>
+        <span style={{fontWeight: 800, fontSize: Math.max(40 * v.co, 40 * KC)}}>{v.nhan || tc(st.noiDung)}</span>
       </div>
     );
   }
   return (
     <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: FONT, color: '#fff'}}>
-      {st.noiDung ? <div style={{fontWeight: 800, fontSize: 42 * v.co, opacity: 0.9}}>{st.noiDung}</div> : null}
+      {st.noiDung ? <div style={{fontWeight: 800, fontSize: Math.max(42 * v.co, 42 * KC), opacity: 0.92, textAlign: 'center'}}>{tc(st.noiDung)}</div> : null}
       <div style={{fontWeight: 900, fontSize: 150 * v.co, lineHeight: 1.05, color: mau, textShadow: `0 0 22px ${mau}`}}><SoLan g={g} co={150 * v.co} /></div>
       <Nhan chu={v.nhan} />
     </div>
@@ -807,27 +815,39 @@ const LuoiO: Ve = (v, st) => {
   );
 };
 
-/* ---------------- THẺ DANH SÁCH: thẻ sáng nổi, các dòng đánh số trượt vào, dòng được chọn tô vàng quét ngang ---------------- */
+/* ---------------- THẺ DANH SÁCH: thẻ kính tối viền neon (hợp tông video), chữ to tự xuống dòng; dòng trượt vào kèm nhòe,
+   dòng được chọn sáng dải màu quét ngang + dấu tích, dòng bị loại mờ đi + nét gạch đỏ viết tay ---------------- */
 const DanhSach: Ve = (v, st) => {
-  const W = 820 * v.co;
+  const b = boCucDanhSach(v, KC);
+  const nhan = GIAO_DIEN.nhan || '#3BF29A';
   return (
-    <div style={{width: W, borderRadius: 26, background: 'rgba(250,251,252,0.97)', boxShadow: '0 18px 50px rgba(0,0,0,0.45), 0 0 0 4px rgba(124,92,255,0.35)', padding: `${22 * v.co}px ${26 * v.co}px`, fontFamily: FONT, color: '#16181d'}}>
-      {st.noiDung ? <div style={{fontWeight: 900, fontSize: 38 * v.co, marginBottom: 14 * v.co}}>{st.noiDung}</div> : null}
+    <div style={{position: 'relative', width: b.W, boxSizing: 'border-box', borderRadius: 28, background: 'linear-gradient(160deg, rgba(16,40,44,0.94), rgba(6,16,20,0.94))', border: `3px solid ${nhan}aa`,
+      boxShadow: `0 20px 60px rgba(0,0,0,0.55), 0 0 26px ${nhan}44, inset 0 0 30px ${nhan}14`, padding: b.pad, fontFamily: FONT_DAM, color: '#fff', textAlign: 'left'}}>
+      {st.noiDung ? (
+        <div style={{display: 'flex', alignItems: 'center', gap: 12, fontWeight: 900, fontSize: b.coTieuDe, color: nhan, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10, textShadow: `0 0 14px ${nhan}88`}}>
+          <span style={{width: 10, height: b.coTieuDe * 0.9, borderRadius: 5, background: nhan, boxShadow: `0 0 10px ${nhan}`, flexShrink: 0}} />
+          {tc(st.noiDung)}
+        </div>
+      ) : null}
       {v.ds.map((d, k) => {
-        const a = kep((st.t - st.ta - 0.15 - k * 0.18) / 0.35);
+        const a = kep((st.t - st.ta - 0.15 - k * 0.22) / 0.4);
         const c = st.chon.get(k + 1);
         const l = st.loai.get(k + 1) || 0;
-        const quet = c ? c.p : 0;
+        const quet = c ? easeOut(c.p) : 0;
+        const mauChon = c ? (c.mau === 'xanh_la' ? '#3BF29A' : c.mau === 'do' ? '#FF5C61' : '#FFD54A') : nhan;
         return (
-          <div key={k} style={{position: 'relative', display: 'flex', alignItems: 'center', gap: 16, padding: `${10 * v.co}px ${12 * v.co}px`, borderRadius: 14, marginBottom: 6, overflow: 'hidden', opacity: kep(a * 2) * (1 - 0.55 * l), transform: `translateX(${(1 - a) * -60}px)`}}>
-            <div style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: `${quet * 100}%`, background: c ? (c.mau === 'xanh_la' ? '#B9F6CA' : '#FFE27A') : 'transparent', borderRadius: 14}} />
-            <div style={{position: 'relative', flexShrink: 0, width: 46 * v.co, height: 46 * v.co, borderRadius: '50%', background: '#F7C531', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 26 * v.co, color: '#2a1d00'}}>{k + 1}</div>
-            <div style={{position: 'relative', fontWeight: 800, fontSize: 34 * v.co, textDecoration: l > 0.5 && !laMoi() ? 'line-through' : 'none', textDecorationColor: '#FF5C61', textDecorationThickness: 4}}>
-              {laToanNhan(d) ? <Toan tex={texNhan(d)} size={34 * v.co} color="#16181d" maxWidth={680} /> : d}
-              {/* bộ hiệu ứng mới: nét gạch đỏ viết tay vẽ dần đè lên dòng sai */}
-              {laMoi() && l > 0 ? <span style={{position: 'absolute', left: -8, right: -8, top: '18%', bottom: '18%'}}><GachTay w={0} h={0} p={l} /></span> : null}
+          <div key={k} style={{position: 'relative', display: 'flex', alignItems: 'center', gap: 18, padding: '12px 14px', borderRadius: 16, marginTop: 8, overflow: 'hidden',
+            opacity: kep(a * 2) * (1 - 0.6 * l), transform: `translateX(${(1 - easeOut(a)) * -70}px)`, filter: a < 0.98 ? `blur(${(1 - a) * 6}px)` : undefined,
+            background: 'rgba(255,255,255,0.045)', border: '1px solid rgba(255,255,255,0.07)'}}>
+            <div style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: `${quet * 100}%`, background: `linear-gradient(90deg, ${mauChon}55, ${mauChon}22)`, borderRadius: 16}} />
+            {c ? <div style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, background: mauChon, boxShadow: `0 0 12px ${mauChon}`, opacity: quet}} /> : null}
+            <div style={{position: 'relative', flexShrink: 0, width: b.huy, height: b.huy, borderRadius: '50%', border: `3px solid ${c ? mauChon : nhan}`, background: 'rgba(0,0,0,0.35)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: b.huy * 0.5, color: c ? mauChon : nhan, boxShadow: `0 0 12px ${c ? mauChon : nhan}66`}}>{k + 1}</div>
+            <div style={{position: 'relative', flex: 1, fontWeight: 800, fontSize: b.co, lineHeight: 1.22, textShadow: '0 2px 8px rgba(0,0,0,0.6)'}}>
+              {laToanNhan(d) ? <Toan tex={texNhan(d)} size={b.co} color="#ffffff" maxWidth={b.W - b.pad * 2 - b.huy - 90} /> : d}
+              {l > 0 ? <span style={{position: 'absolute', left: -8, right: -8, top: '18%', bottom: '18%'}}><GachTay w={0} h={0} p={l} /></span> : null}
             </div>
-            {c ? <DauTich p={c.p} mau="#16C784" co={40} style={{right: 10, top: '50%', marginTop: -20}} /> : null}
+            {c ? <DauTich p={c.p} mau={mauChon} co={44} style={{position: 'relative', flexShrink: 0}} /> : <div style={{width: 44, flexShrink: 0}} />}
           </div>
         );
       })}

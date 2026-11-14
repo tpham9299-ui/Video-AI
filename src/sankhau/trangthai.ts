@@ -1,3 +1,4 @@
+import {texSangChu} from '../chu';
 import {kichThuocHinhTuDo} from './hinhtudo';
 // Trạng thái của một vật tại thời điểm t (tính từ danh sách hành động), dùng chung giữa bộ máy sân khấu và các hình vẽ.
 import {easeInOut, easeOut, kep, lerp, tienDo} from './donghieu';
@@ -197,7 +198,25 @@ export function tinhGoc3D(gocDau: {nghieng: number; xoay: number} | null, ds: Ha
 }
 
 // Ước lượng kích thước (px trên khung 960x760, chưa nhân co) của từng loại vật: dùng để tự xếp chống chồng lấn và nâng vật lên khỏi sàn 3D.
-export function kichThuocVat(v: Vat): {w: number; h: number} {
+// BỐ CỤC THẺ DANH SÁCH (dùng chung cho vẽ + tự xếp chống chồng lấn): cỡ chữ đủ to, dòng dài tự xuống dòng (tối đa 3 dòng)
+export function boCucDanhSach(v: Vat, k = 1) {
+  const W = Math.min(920, 880 * Math.max(0.85, Math.min(1.05, v.co)));
+  const pad = 30;
+  const huy = 56 * k; // huy hiệu số thứ tự
+  const rongChu = W - pad * 2 - huy - 18 - 46;
+  const dai = (s: string) => texSangChu(s).length;
+  const daiNhat = Math.max(1, ...v.ds.map(dai));
+  let co = 46 * k;
+  const soDong = (fs: number, s: string) => Math.max(1, Math.ceil((dai(s) * 0.55 * fs) / rongChu));
+  while (co > 34 * k && v.ds.some((s) => soDong(co, s) > 2)) co -= 2;
+  if (daiNhat * 0.55 * co <= rongChu * 0.55 && v.ds.length <= 3) co = Math.min(52 * k, co * 1.1);
+  const dong = v.ds.map((s) => Math.min(3, soDong(co, s)));
+  const coTieuDe = 40 * k;
+  const h = pad * 2 + (v.noiDung ? coTieuDe * 1.5 + 8 : 0) + dong.reduce((a, n) => a + n * co * 1.22 + 24 + 8, 0);
+  return {W, pad, huy, co, coTieuDe, dong, h};
+}
+
+export function kichThuocVat(v: Vat, k = 1): {w: number; h: number} {
   const n = v.soLuong;
   const cot = n <= 6 ? n : Math.ceil(n / 2);
   let w = 300;
@@ -224,7 +243,7 @@ export function kichThuocVat(v: Vat): {w: number; h: number} {
     case 'so_dem': w = v.kieu === 'vien' ? 380 : 320; h = v.kieu === 'vien' ? 120 : 260; break;
     case 'bieu_tuong': w = n * 154; h = 200; break;
     case 'luoi_o': { const c = v.soCot || Math.min(12, Math.ceil(Math.sqrt(n * 1.6))); const r = Math.ceil(n / c); const o = Math.min(860 / c, 560 / r); w = o * c; h = o * r + (v.nhan ? 50 : 0); break; }
-    case 'danh_sach': w = 820; h = 100 + v.ds.length * 72; break;
+    case 'danh_sach': { const b = boCucDanhSach(v, k); w = b.W; h = b.h; break; }
     case 'mui_ten': w = 0; h = 0; break;
     case 'khoi_hop': { const k = v.kichThuoc.length ? v.kichThuoc : [3, 2, 1.5]; const m = Math.max(...k); w = (330 * (k[0] / m) + 330 * ((k[1] || k[0]) / m) * 0.9 + 80); h = 330 * ((k[2] || k[0]) / m) + 200; break; }
     case 'tru': case 'non': w = 420; h = 420; break;
@@ -243,9 +262,9 @@ export function kichThuocVat(v: Vat): {w: number; h: number} {
 
 // TỰ XẾP: đẩy các vật đang chồng lên nhau ra xa (theo trục chồng ít hơn), giữ trong khung; nếu tổng thể vẫn quá khung
 // thì thu nhỏ đều. Giữ nguyên ý đồ bố cục của kịch bản khi không có chồng lấn.
-export function tuXepSanKhau(dsVat: Vat[], W: number, H: number): Vat[] {
+export function tuXepSanKhau(dsVat: Vat[], W: number, H: number, k = 1): Vat[] {
   const xs = dsVat.filter((v) => v.loai !== 'mui_ten');
-  const hop = xs.map((v) => ({v, x: (v.x / 100) * W, y: (v.y / 100) * H, ...kichThuocVat(v)}));
+  const hop = xs.map((v) => ({v, x: (v.x / 100) * W, y: (v.y / 100) * H, ...kichThuocVat(v, k)}));
   const PAD = 18;
   const kep2 = (b: (typeof hop)[number]) => {
     b.x = Math.min(W - Math.min(b.w, W) / 2, Math.max(Math.min(b.w, W) / 2, b.x));

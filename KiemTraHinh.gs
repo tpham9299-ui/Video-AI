@@ -361,7 +361,7 @@ function kiemTraCachDay_(kb) {
 //  - nang: làm hỏng video hoặc sai nội dung (thiếu lời thoại, sai đáp án, không vẽ hình của đề, quá dài nhiều...) -> phải sửa.
 //  - nhe : chỉ chưa đẹp theo quy ước (tiêu đề, hook, số cảnh có hình...) -> thử sửa một lần, còn thì vẫn dùng được.
 // Gọi SAU tuSuaKichBan_ (máy đã tự sửa phần lớn lỗi vặt).
-function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham) {
+function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc) {
   var nang = [], nhe = [];
   var them = function (ds, loi) { if (loi) ds.push(loi); };
   if (!kb || !Array.isArray(kb.canh) || !kb.canh.length) return { nang: ['KHONG_CO_CANH: kịch bản phải có mảng "canh" gồm 6-12 cảnh.'], nhe: [] };
@@ -410,6 +410,9 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham) {
   kiemTraHinhDungYen_(kb).forEach(function (x) { nhe.push(x); });
   kiemTraNhanDai_(kb).forEach(function (x) { nhe.push(x); });
   kiemTraBaCham_(kb).forEach(function (x) { nang.push(x); });
+  var qt = kiemTraQuyTrinh_(kb, deGoc);
+  qt.nang.forEach(function (x) { nang.push(x); });
+  qt.nhe.forEach(function (x) { nhe.push(x); });
   them(nhe, kiemTraCachDay_(kb));
   them(nhe, kiemTraTrinhBay_(kb));
   them(nhe, kiemTraChuThich_(kb));
@@ -987,6 +990,53 @@ function kiemTraNhanDai_(kb) {
     });
   });
   return loi;
+}
+
+
+// QUY TRÌNH CỐ ĐỊNH 6 PHẦN: ĐỀ BÀI -> MÔ PHỎNG -> LỖI SAI -> GIẢI -> THỬ LẠI -> CHỐT. Kiểm tra đủ phần, đúng thứ tự,
+// và phần đề bài nêu ĐỦ dữ kiện (de_cho + can_tim chứa mọi con số của đề).
+var PHA_6_ = [[/mo_dau|hook|cau_hoi|de_bai/, 0, 'ĐỀ BÀI'], [/mo_hinh|mo_phong|y_do|thu_nho|phan_tich/, 1, 'MÔ PHỎNG'], [/bay|loi_sai/, 2, 'LỖI SAI'],
+  [/nhac_lai|kien_thuc|ly_thuyet|diem_chot|y_tuong|tinh|giai|dap_an|ket_qua/, 3, 'GIẢI'], [/kiem_tra|thu_lai/, 4, 'THỬ LẠI'], [/bai_hoc|ket_luan|chot/, 5, 'CHỐT']];
+function phaCua_(loai) {
+  var l = String(loai || '').toLowerCase();
+  for (var i = 0; i < PHA_6_.length; i++) if (PHA_6_[i][0].test(l)) return PHA_6_[i][1];
+  return -1;
+}
+function kiemTraQuyTrinh_(kb, deGoc) {
+  var nang = [], nhe = [];
+  var ds = (kb.canh || []).map(function (c) { return phaCua_(c && c.loai); });
+  var coPha = [0, 0, 0, 0, 0, 0];
+  ds.forEach(function (p) { if (p >= 0) coPha[p]++; });
+  var thieu = [];
+  for (var p = 0; p < 6; p++) if (!coPha[p]) thieu.push(PHA_6_[p][2]);
+  if (thieu.length) nang.push('THIEU_PHAN_QUY_TRINH: thiếu phần ' + thieu.join(', ') + '. Mọi video phải đủ 6 phần theo thứ tự: ĐỀ BÀI (mo_dau, de_bai) -> MÔ PHỎNG (mo_hinh_hoa / y_do / thu_nho) -> LỖI SAI (bay) -> GIẢI (nhac_lai, diem_chot, tinh_toan, dap_an) -> THỬ LẠI (kiem_tra) -> CHỐT (bai_hoc).');
+  var iDe = -1;
+  (kb.canh || []).forEach(function (c, i) { if (iDe < 0 && String(c && c.loai) === 'de_bai') iDe = i; });
+  if (iDe < 0 || iDe > 1) nang.push('DE_BAI_PHAI_DUNG_DAU: cảnh "de_bai" phải là cảnh 1 hoặc 2 (ngay sau câu móc), đọc rõ toàn bộ đề trước khi mô phỏng.');
+  var sai = [];
+  for (var i = 1; i < ds.length; i++) {
+    if (ds[i] < 0) continue;
+    var truoc = -1;
+    for (var j = i - 1; j >= 0; j--) if (ds[j] >= 0) { truoc = ds[j]; break; }
+    if (truoc > ds[i]) sai.push('cảnh ' + (i + 1) + ' (' + kb.canh[i].loai + ', phần ' + PHA_6_[ds[i]][2] + ') đứng sau phần ' + PHA_6_[truoc][2]);
+  }
+  if (sai.length) nang.push('SAI_THU_TU_QUY_TRINH: ' + sai.slice(0, 3).join('; ') + '. Sắp lại cảnh theo đúng 6 phần.');
+  // phần đề bài: thẻ ĐỀ CHO / CẦN TÌM
+  var cho = Array.isArray(kb.de_cho) ? kb.de_cho.map(String).filter(function (x) { return x.trim(); }) : [];
+  if (cho.length < 2) nang.push('THIEU_DE_CHO: cần "de_cho" là mảng 2-5 dữ kiện của đề (đủ mọi con số), máy hiện thành thẻ ĐỀ BÀI ở đầu video.');
+  if (String(kb.can_tim || '').trim().length < 5) nang.push('THIEU_CAN_TIM: cần "can_tim" nêu rõ đề hỏi gì (≤ 80 ký tự).');
+  if (deGoc && cho.length) {
+    var soDe = (String(deGoc).replace(/(câu|bài|lớp|ví dụ)\s*\d+/gi, ' ').match(/\d+(?:[.,]\d+)?/g) || [])
+      .map(function (x) { return x.replace(',', '.'); }).filter(function (x, k, a) { return a.indexOf(x) === k; });
+    var coChu = (cho.join(' ') + ' ' + kb.can_tim + ' ' + (kb.canh || []).filter(function (c) { return /de_bai|mo_dau/.test(String(c.loai)); }).map(function (c) { return (c.noi_dung_man_hinh || []).join(' '); }).join(' ')).replace(/\{,\}/g, '.').replace(/,/g, '.');
+    var mat = soDe.filter(function (x) { return !new RegExp('(^|[^\\d.])' + x.replace('.', '\\.') + '(?![\\d])').test(coChu); });
+    if (soDe.length && mat.length > Math.max(1, soDe.length * 0.34)) nang.push('DE_BAI_THIEU_DU_KIEN: thẻ đề bài (de_cho/can_tim) còn thiếu các số của đề: ' + mat.slice(0, 6).join(', ') + '. Phần đề bài phải nêu đủ mọi dữ kiện.');
+    else if (mat.length) nhe.push('DE_BAI_THIEU_SO: de_cho chưa có số ' + mat.join(', ') + ' của đề (nếu là dữ kiện thì thêm vào).');
+  }
+  // lời thoại cảnh đề bài phải đủ dài để đọc hết đề
+  var loiDe = (kb.canh || []).filter(function (c) { return String(c && c.loai) === 'de_bai'; }).map(function (c) { return String(c.loi_thoai || ''); }).join(' ');
+  if (iDe >= 0 && loiDe.split(/\s+/).filter(Boolean).length < 18) nang.push('DE_BAI_QUA_SO_SAI: lời thoại phần đề bài quá ngắn; phải đọc đủ mọi dữ kiện của đề và nói rõ đề hỏi gì.');
+  return { nang: nang, nhe: nhe };
 }
 
 

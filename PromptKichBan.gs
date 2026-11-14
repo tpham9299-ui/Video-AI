@@ -32,17 +32,7 @@ function taoPromptKichBan_(r, c1, c2) {
     '(c) "diem_chot": ý then chốt (đại lượng cố định để khử ẩn, đối xứng, bất đẳng thức, đường gấp khúc duỗi thẳng...) và VÌ SAO nó đúng; (d) chỉ khi suy luận đã dẫn tới mới dùng công thức. Ghi ý tưởng then chốt vào "y_tuong_chinh" (một câu, ít nhất 30 ký tự).\n\n',
 
     '3) ĐÂY LÀ MỘT BÀI GIẢNG, PHẢI KỸ VÀ RÕ: người xem chưa biết gì cũng phải hiểu, và tự làm lại được bài tương tự. ',
-    'CẤU TRÚC 9-12 CẢNH, tổng ' + cauHinh_('GIAY_MUC_TIEU') + ' giây:\n',
-    '(1) mo_dau: MÓC CÂU trên cảnh thật 3D ấn tượng (camera xoay quanh vật, goc_nhin).\n',
-    '(2) de_bai: cảnh 3D của đề, các số liệu gắn lên vật (nhan_kich_thuoc), rồi danh_sach "Đề cho: ...", "Cần tìm: ..." (có thể là cảnh 3 giu_san_khau).\n',
-    '(3) mo_hinh_hoa: đặt ẩn ngay trên vật 3D (nhãn x, h) rồi chuyển sang hinh_hoc hoặc biểu thức; nêu điều kiện của ẩn.\n',
-    '(4) nhac_lai: kiến thức cần dùng (công thức thể tích/diện tích, định lý, đạo hàm, lãi kép...) kèm ý nghĩa bằng lời thường.\n',
-    '(5) y_do hoặc diem_chot: ý then chốt.\n',
-    '(6) bay: lỗi hay gặp (tính cả nắp, nhầm đơn vị, quên điều kiện, nhầm góc) và VÌ SAO sai.\n',
-    '(7)-(8) tinh_toan: TỪNG BƯỚC, mỗi cảnh 1-2 bước, nói rõ đang tính gì và vì sao; mọi con số hiện trên màn hình.\n',
-    '(9) kiem_tra: KIỂM TRA TRỰC QUAN: do_thi của hàm với điểm chạy dọc đồ thị (dat_gia_tri) dừng ở cực trị (danh_dau), hoặc so sánh hai phương án bằng bieu_do_cot / hai vật 3D cạnh nhau.\n',
-    '(10) dap_an: quay lại cảnh thật 3D với kích thước đúng đáp số + so_dem kieu "vien" lăn tới đáp số.\n',
-    '(11) bai_hoc: CHI TIẾT, gồm (a) 2-3 điều rút ra (danh_sach), (b) dấu hiệu nhận ra dạng bài, (c) một chỗ dùng ngoài đời, (d) một câu hỏi biến thể để người xem tự luyện và trả lời ở bình luận.\n',
+    quyTrinh6Phan_(true),
     'Ngoài "canh", trả thêm: "bai_hoc_rut_ra" (mảng 3 câu, mỗi câu ≤ 12 từ, là quy tắc dùng được ngay, ví dụ "Thể tích cố định: rút một ẩn theo ẩn kia") và "video_tiep_theo" (≤ 10 từ, hẹn bài kế tiếp).\n'
   ] : [
     'Bạn là giáo viên Toán kiêm biên kịch và ĐẠO DIỄN HÌNH ẢNH cho video ngắn TikTok/YouTube Shorts (video dọc) dạy học sinh lớp ' + r.lop + ' giải bài xác suất. ',
@@ -67,17 +57,7 @@ function taoPromptKichBan_(r, c1, c2) {
     'Ghi ý tưởng then chốt vào "y_tuong_chinh" (một câu, ít nhất 30 ký tự).\n\n',
 
     '3) ĐÂY LÀ MỘT BÀI GIẢNG, PHẢI KỸ: người xem chưa biết gì cũng phải hiểu mình đang học gì, vì sao làm từng bước, và tự làm lại được bài tương tự. ',
-    'CẤU TRÚC 8-11 CẢNH, tổng ' + cauHinh_('GIAY_MUC_TIEU') + ' giây:\n',
-    '(1) mo_dau: MÓC CÂU.\n',
-    '(2) de_bai: tình huống đời thực, rồi nói rõ ĐỀ CHO GÌ và ĐỀ HỎI GÌ (nên dùng danh_sach hai dòng "Đề cho: ...", "Cần tìm: ...").\n',
-    '(3) nhac_lai: nhắc lại kiến thức cần dùng (định nghĩa hoặc công thức), giải thích ý nghĩa bằng lời thường, kèm ví dụ rất nhỏ; ghi công thức vào noi_dung_man_hinh.\n',
-    '(4) y_do: bài thật sự hỏi gì, khó ở đâu.\n',
-    '(5) bay: cái bẫy hay gặp, VÌ SAO sai.\n',
-    '(6) thu_nho hoặc diem_chot: ý tưởng then chốt.\n',
-    '(7)-(8) tinh_toan: TỪNG BƯỚC, mỗi cảnh 1-2 bước, mỗi bước nói rõ đang tính gì và vì sao (ví dụ "bước một, đếm tất cả khả năng"), mọi con số hiện trên màn hình.\n',
-    '(9) kiem_tra: soát lại đáp án bằng trực giác, trường hợp đặc biệt, cách thứ hai hoặc mô phỏng (luoi_o, thuc_nghiem).\n',
-    '(10) dap_an.\n',
-    '(11) bai_hoc: CHI TIẾT, gồm (a) 2-3 điều rút ra (dùng danh_sach), (b) dấu hiệu nhận ra dạng bài này, (c) một chỗ dùng ngoài đời, (d) một câu hỏi biến thể để người xem tự luyện và trả lời ở bình luận.\n',
+    quyTrinh6Phan_(false),
     'Ngoài "canh", trả thêm: "bai_hoc_rut_ra" (mảng 3 câu, mỗi câu ≤ 12 từ, là quy tắc làm bài dùng được ngay, ví dụ "Gặp chữ CÙNG: tách từng loại rồi cộng"; dùng làm các dòng danh_sach ở cảnh bai_hoc cuối video) và "video_tiep_theo" (≤ 10 từ, hẹn bài kế tiếp cùng chủ đề).\n'
   ];
   var moDau = [
@@ -184,7 +164,7 @@ function taoPromptKichBan_(r, c1, c2) {
     '"hanh_dong":[{"buoc":1,"vat":"t1","kieu":"chon","mau":"xanh_la"},{"buoc":2,"vat":"t2","kieu":"rung"},{"buoc":2,"vat":"t2","kieu":"loai_bo"}]}}}\n\n'
   ];
   var traVe = [
-    'Trả về MỘT đối tượng JSON: {"tieu_de":"tiêu đề đăng video < 60 ký tự, gây tò mò","chu_de_ngan":"chủ đề 2-5 từ (hiện góc trên)","bai_hoc_rut_ra":["","",""],"video_tiep_theo":"","hook_ung_vien":["","",""],"hook":"(đúng lời thoại cảnh 1)","hook_chu":"","tieu_de_bia":"","hook_kieu":"","nhan_manh":[""],"y_tuong_chinh":"","du_kien":["",""],"hashtag":["#toanhoc","' + (tt ? '#toanthucte' : '#xacsuat') + '"],"dap_an_cuoi":"' + r.dap_an + '",',
+    'Trả về MỘT đối tượng JSON: {"tieu_de":"tiêu đề đăng video < 60 ký tự, gây tò mò","chu_de_ngan":"chủ đề 2-5 từ (hiện góc trên)","bai_hoc_rut_ra":["","",""],"video_tiep_theo":"","hook_ung_vien":["","",""],"hook":"(đúng lời thoại cảnh 1)","hook_chu":"","tieu_de_bia":"","hook_kieu":"","nhan_manh":[""],"y_tuong_chinh":"","de_cho":["",""],"can_tim":"","du_kien":["",""],"hashtag":["#toanhoc","' + (tt ? '#toanthucte' : '#xacsuat') + '"],"dap_an_cuoi":"' + r.dap_an + '",',
     '"canh":[{"so":1,"loai":"mo_dau|de_bai|mo_hinh_hoa|nhac_lai|y_do|bay|thu_nho|diem_chot|tinh_toan|kiem_tra|dap_an|bai_hoc","tieu_de_canh":"","tu_khoa":"","nhan":"","giu_san_khau":false,"giong_doc":"","loi_thoai":"","noi_dung_man_hinh":[],"trinh_bay":"cong_don|bien_doi|xep","chu_thich":[],"minh_hoa":{"loai":"san_khau","mo_ta":"","du_lieu":{"goc_nhin":null,"vat":[],"hanh_dong":[]}}}]}'
   ];
 
@@ -245,4 +225,21 @@ function vanDeDe_(r) {
   return chung + 'ĐỀ CÓ VẤN ĐỀ (bước giải đã thử ngược và phát hiện): ' + m[1] + '\n' +
     'Video PHẢI nói thật điều này một cách tích cực, như một phát hiện thú vị dạy học sinh biết THỬ LẠI đáp số (ví dụ: "Thử lại: 20 tầng chỉ có 250 ống, 21 tầng lại cần 273 ống, nên 260 ống không xếp vừa khít; xếp được 20 tầng trọn vẹn và còn dư 10 ống"). ' +
     'Có một cảnh "kiem_tra" cho phép thử ngược này; đáp số và các phép tính theo đúng cách hiểu ở trên.\n';
+}
+
+
+// QUY TRÌNH CỐ ĐỊNH 6 PHẦN cho MỌI video (toán thực tế và xác suất như nhau). Máy kiểm tra thứ tự và nội dung từng phần.
+function quyTrinh6Phan_(tt) {
+  return 'QUY TRÌNH CỐ ĐỊNH 6 PHẦN (BẮT BUỘC cho mọi video, đúng thứ tự, không được bỏ phần nào; 9-12 cảnh, tổng ' + cauHinh_('GIAY_MUC_TIEU') + ' giây):\n' +
+    'PHẦN 1 - ĐỀ BÀI (luôn đi đầu, KHÔNG được nhảy thẳng vào mô phỏng):\n' +
+    '  (1) mo_dau: câu móc ≤ 5 giây, chính là CÂU HỎI của đề nói cho hấp dẫn (không nói chuyện khác).\n' +
+    '  (2) de_bai: ĐỌC RÕ TOÀN BỘ ĐỀ: lời thoại nêu ĐỦ mọi dữ kiện và mọi con số của đề (không bỏ số nào) rồi nói rõ đề hỏi gì. ' +
+    'Hình: ' + (tt ? 'cảnh thật 3D của đề với số liệu gắn lên vật' : 'tình huống đời thực bằng vật thật') + '. Máy tự hiện THẺ ĐỀ BÀI (ĐỀ CHO / CẦN TÌM) từ "de_cho" và "can_tim" nên KHÔNG làm danh_sach "Đề cho / Cần tìm" trên sân khấu. Đề dài có thể dùng 2 cảnh de_bai liên tiếp.\n' +
+    'PHẦN 2 - MÔ PHỎNG: (3) ' + (tt ? 'mo_hinh_hoa: dựng hình minh họa, đặt ẩn ngay trên vật, chuyển sang hình học/biểu thức, nêu điều kiện của ẩn' : 'y_do hoặc thu_nho: dựng lại tình huống bằng vật thật chuyển động (bốc, tung, chia, xếp...), cho thấy không gian mẫu hoặc trường hợp nhỏ') + '. Hình phải chuyển động theo lời (ít nhất 2 hành động).\n' +
+    'PHẦN 3 - LỖI SAI THƯỜNG GẶP: (4) bay: cách làm sai mà học sinh hay mắc, cho thấy nó sai ở đâu (rung + loai_bo) và VÌ SAO sai.\n' +
+    'PHẦN 4 - GIẢI: (5) nhac_lai (nếu cần): kiến thức/công thức sẽ dùng, ý nghĩa bằng lời thường; (6) diem_chot: ý then chốt và vì sao đúng; (7)-(8) tinh_toan: TỪNG BƯỚC, mỗi cảnh 1-2 bước, mọi con số hiện trên màn hình; (9) dap_an: ' + (tt ? 'quay lại cảnh thật 3D với kích thước đúng đáp số + so_dem kieu "vien"' : 'đáp án lớn, rõ (dong_ho_do hoặc so_dem)') + '.\n' +
+    'PHẦN 5 - THỬ LẠI: (10) kiem_tra: THẾ NGƯỢC đáp án vào đề (hoặc cách thứ hai / mô phỏng / trường hợp đặc biệt) để chứng minh đáp án đúng, nói rõ "thử lại".\n' +
+    'PHẦN 6 - CHỐT KIẾN THỨC: (11) bai_hoc: 2-3 điều rút ra (danh_sach), dấu hiệu nhận ra dạng bài, một chỗ dùng ngoài đời, một câu hỏi biến thể cho người xem tự luyện.\n' +
+    'Trả thêm "de_cho": mảng 2-5 dữ kiện của đề, mỗi cái ≤ 60 ký tự, đủ MỌI con số của đề (ví dụ "Tầng trên cùng: 3 ống", "Mỗi tầng dưới hơn 1 ống", "Tổng 260 ống"); ' +
+    '"can_tim": điều đề hỏi, ≤ 80 ký tự (ví dụ "Xếp được bao nhiêu tầng? Dư bao nhiêu ống?"). Viết chữ thường, công thức ngắn thì dùng LaTeX.\n';
 }

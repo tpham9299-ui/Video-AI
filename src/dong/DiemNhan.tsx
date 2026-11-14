@@ -2,7 +2,7 @@ import React from 'react';
 import {useCurrentFrame} from 'remotion';
 import {expoOut} from '../sankhau/chuyendong';
 import {easeOut, kep} from '../sankhau/donghieu';
-import {FONT_DAM} from '../theme';
+import {FONT_DAM, chuTrenMau} from '../theme';
 
 // CÁC ĐIỂM NHẤN CHUYỂN ĐỘNG của bộ hiệu ứng mới (phongCach.chuyenDong = "moi"). Tất cả là nét/vòng/chữ vector
 // nên dựng rất nhẹ (không làm mờ toàn màn hình).
@@ -94,7 +94,7 @@ export const DuongTienTrinh: React.FC<{cacPha: string[]; mocPha: {pha: string; t
   const f = useCurrentFrame();
   if (f < tu || f > den || cacPha.length < 2) return null;
   const mo = kep((f - tu) / 12) * kep((den - f) / 10);
-  const X0 = 150, X1 = 930, Y = 190;
+  const X0 = 150, X1 = 930, Y = 186;
   const n = cacPha.length;
   const xCua = (i: number) => X0 + ((X1 - X0) * i) / (n - 1);
   const m = mocPha.find((x) => f >= x.tu && f < x.den) || mocPha[mocPha.length - 1];
@@ -120,7 +120,8 @@ export const DuongTienTrinh: React.FC<{cacPha: string[]; mocPha: {pha: string; t
         })}
         <circle cx={xSang} cy={Y} r={5} fill="#fff" style={{filter: `drop-shadow(0 0 8px ${mau}) drop-shadow(0 0 3px #fff)`}} />
       </svg>
-      <div style={{position: 'absolute', left: Math.max(60, Math.min(1020, xCua(iHien))), top: Y - 32, transform: `translateX(-50%) translateY(${(1 - vaoNhan) * 8}px)`, opacity: vaoNhan, fontFamily: FONT_DAM, fontWeight: 800, fontSize: 19, letterSpacing: 3, color: mau, whiteSpace: 'nowrap', textShadow: '0 2px 8px rgba(0,0,0,0.8)'}}>
+      {/* tên bước hiện tại: viên thuốc màu nhấn nằm NGAY TRÊN đường (không đè chip tiêu đề phía trên, không đè dòng dữ kiện phía dưới) */}
+      <div style={{position: 'absolute', left: Math.max(90, Math.min(990, xCua(iHien))), top: Y, transform: `translate(-50%, -50%) scale(${0.7 + 0.3 * vaoNhan})`, opacity: vaoNhan, fontFamily: FONT_DAM, fontWeight: 900, fontSize: 22, letterSpacing: 2, color: chuTrenMau(mau), background: mau, borderRadius: 999, padding: '3px 14px', whiteSpace: 'nowrap', boxShadow: `0 0 14px ${mau}`}}>
         {m.pha}
       </div>
     </div>

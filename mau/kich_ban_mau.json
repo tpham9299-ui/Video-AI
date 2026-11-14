@@ -184,54 +184,6 @@
   },
   {
    "so": 4,
-   "loai": "nhac_lai",
-   "tieu_de_canh": "Nhắc lại: xác suất là gì?",
-   "tu_khoa": "xác suất",
-   "loi_thoai": "Trước khi trả lời, nhớ lại một điều cơ bản: xác suất bằng số khả năng thuận lợi chia cho tổng số khả năng như nhau. Lúc đầu xe nằm sau mỗi cửa như nhau, nên mỗi cửa một phần ba.",
-   "noi_dung_man_hinh": [
-    "P=\\frac{\\text{thuận lợi}}{\\text{tất cả}}",
-    "P(\\text{mỗi cửa})=\\frac{1}{3}"
-   ],
-   "trinh_bay": "xep",
-   "minh_hoa": {
-    "loai": "san_khau",
-    "mo_ta": "Chiếc bánh chia 3 phần bằng nhau, mỗi phần ghi 1/3 và sáng lần lượt; công thức xác suất được viết tay bằng bút chì bên dưới.",
-    "du_lieu": {
-     "vat": [
-      {
-       "id": "b3",
-       "loai": "banh",
-       "x": 50,
-       "y": 50,
-       "so_luong": 3,
-       "ds": [
-        "1/3",
-        "1/3",
-        "1/3"
-       ],
-       "co": 0.9,
-       "buoc": 1
-      }
-     ],
-     "hanh_dong": [
-      {
-       "buoc": 2,
-       "vat": "b3",
-       "kieu": "chon",
-       "chi_so": [
-        1,
-        2,
-        3
-       ],
-       "mau": "xanh_duong"
-      }
-     ]
-    }
-   },
-   "giong_doc": "ấm áp, giải thích"
-  },
-  {
-   "so": 5,
    "loai": "y_do",
    "tieu_de_canh": "Còn 2 cửa: 50/50 thật không?",
    "tu_khoa": "50/50",
@@ -288,7 +240,7 @@
    "giong_doc": "tò mò, đặt câu hỏi"
   },
   {
-   "so": 6,
+   "so": 5,
    "loai": "bay",
    "tieu_de_canh": "Bẫy: người dẫn BIẾT đáp án",
    "tu_khoa": "BIẾT",
@@ -337,6 +289,54 @@
     }
    },
    "giong_doc": "hạ giọng, bí ẩn"
+  },
+  {
+   "so": 6,
+   "loai": "nhac_lai",
+   "tieu_de_canh": "Nhắc lại: xác suất là gì?",
+   "tu_khoa": "xác suất",
+   "loi_thoai": "Trước khi trả lời, nhớ lại một điều cơ bản: xác suất bằng số khả năng thuận lợi chia cho tổng số khả năng như nhau. Lúc đầu xe nằm sau mỗi cửa như nhau, nên mỗi cửa một phần ba.",
+   "noi_dung_man_hinh": [
+    "P=\\frac{\\text{thuận lợi}}{\\text{tất cả}}",
+    "P(\\text{mỗi cửa})=\\frac{1}{3}"
+   ],
+   "trinh_bay": "xep",
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Chiếc bánh chia 3 phần bằng nhau, mỗi phần ghi 1/3 và sáng lần lượt; công thức xác suất được viết tay bằng bút chì bên dưới.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "b3",
+       "loai": "banh",
+       "x": 50,
+       "y": 50,
+       "so_luong": 3,
+       "ds": [
+        "1/3",
+        "1/3",
+        "1/3"
+       ],
+       "co": 0.9,
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "b3",
+       "kieu": "chon",
+       "chi_so": [
+        1,
+        2,
+        3
+       ],
+       "mau": "xanh_duong"
+      }
+     ]
+    }
+   },
+   "giong_doc": "ấm áp, giải thích"
   },
   {
    "so": 7,
@@ -530,11 +530,51 @@
   },
   {
    "so": 10,
+   "loai": "dap_an",
+   "tieu_de_canh": "Đổi cửa: thắng 2/3",
+   "tu_khoa": "2/3",
+   "trinh_bay": "cong_don",
+   "loi_thoai": "Kết luận: giữ cửa thắng một phần ba, đổi cửa thắng hai phần ba. Đổi cửa, cơ hội gấp đôi!",
+   "noi_dung_man_hinh": [
+    "P(\\text{giữ})=\\frac{1}{3}",
+    "P(\\text{đổi})=1-\\frac{1}{3}",
+    "P(\\text{đổi})=1-\\frac{1}{3}=\\frac{2}{3}"
+   ],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Đồng hồ đo xác suất kim quét lên dừng ở 2/3, cung chuyển sang xanh lá, số 2/3 phát sáng.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "do",
+       "loai": "dong_ho_do",
+       "x": 50,
+       "y": 50,
+       "gia_tri": 0.6667,
+       "gia_tri_chu": "2/3",
+       "nhan": "Thắng khi đổi",
+       "co": 1.0,
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "do",
+       "kieu": "sang"
+      }
+     ]
+    }
+   },
+   "giong_doc": "phấn khích, chiến thắng"
+  },
+  {
+   "so": 11,
    "loai": "kiem_tra",
    "tieu_de_canh": "Kiểm tra: chơi thử 30 lần",
    "tu_khoa": "30 lần",
    "chuyen_canh": "truot_len",
-   "loi_thoai": "Vẫn thấy khó tin? Chơi thử ba mươi lần và luôn đổi cửa. Khoảng hai mươi lần bạn thắng, đúng gần hai phần ba.",
+   "loi_thoai": "Thử lại cho chắc: chơi ba mươi lần và luôn đổi cửa. Khoảng hai mươi lần bạn thắng, đúng gần hai phần ba như đáp án.",
    "noi_dung_man_hinh": [
     "\\frac{20}{30}\\approx\\frac{2}{3}"
    ],
@@ -600,46 +640,6 @@
    },
    "trinh_bay": "xep",
    "giong_doc": "cẩn thận, thuyết phục"
-  },
-  {
-   "so": 11,
-   "loai": "dap_an",
-   "tieu_de_canh": "Đổi cửa: thắng 2/3",
-   "tu_khoa": "2/3",
-   "trinh_bay": "cong_don",
-   "loi_thoai": "Và kết luận là: giữ cửa thắng một phần ba, đổi cửa thắng hai phần ba. Đổi cửa, cơ hội gấp đôi!",
-   "noi_dung_man_hinh": [
-    "P(\\text{giữ})=\\frac{1}{3}",
-    "P(\\text{đổi})=1-\\frac{1}{3}",
-    "P(\\text{đổi})=1-\\frac{1}{3}=\\frac{2}{3}"
-   ],
-   "minh_hoa": {
-    "loai": "san_khau",
-    "mo_ta": "Đồng hồ đo xác suất kim quét lên dừng ở 2/3, cung chuyển sang xanh lá, số 2/3 phát sáng.",
-    "du_lieu": {
-     "vat": [
-      {
-       "id": "do",
-       "loai": "dong_ho_do",
-       "x": 50,
-       "y": 50,
-       "gia_tri": 0.6667,
-       "gia_tri_chu": "2/3",
-       "nhan": "Thắng khi đổi",
-       "co": 1.0,
-       "buoc": 1
-      }
-     ],
-     "hanh_dong": [
-      {
-       "buoc": 2,
-       "vat": "do",
-       "kieu": "sang"
-      }
-     ]
-    }
-   },
-   "giong_doc": "phấn khích, chiến thắng"
   },
   {
    "so": 12,
@@ -726,5 +726,11 @@
   "3 cửa, 1 xe",
   "Bạn chọn cửa 1",
   "MC mở cửa dê"
- ]
+ ],
+ "de_cho": [
+  "3 cửa: 1 cửa có xe máy, 2 cửa có dê",
+  "Bạn chọn cửa 1",
+  "Người dẫn biết xe ở đâu, mở 1 cửa có dê"
+ ],
+ "can_tim": "Đổi cửa thì xác suất thắng là bao nhiêu?"
 }

@@ -556,6 +556,46 @@ def chon_man_ket(outro_tep, th, bai_hoc):
     return outro_tep
 
 
+LA_CHO = re.compile(r"^\s*(đề\s*cho|cho\s*biết|dữ\s*kiện|biết)\s*[:：-]\s*", re.I)
+LA_TIM = re.compile(r"^\s*(cần\s*tìm|đề\s*hỏi|hỏi|tìm|yêu\s*cầu)\s*[:：-]\s*", re.I)
+
+
+def the_de_bai(kb):
+    """Thẻ ĐỀ BÀI: {cho: [...], tim: "..."} lấy từ de_cho / can_tim của kịch bản; thiếu thì lấy từ danh_sach "Đề cho/Cần tìm"
+    ở cảnh de_bai, rồi tới du_kien. Đồng thời BỎ danh_sach trùng lặp đó khỏi sân khấu (thẻ đã nêu)."""
+    cho = [str(x).strip() for x in (kb.get("de_cho") or []) if str(x).strip()]
+    tim = str(kb.get("can_tim") or "").strip()
+    for c in kb.get("canh") or []:
+        if str(c.get("loai")) != "de_bai":
+            continue
+        du = (c.get("minh_hoa") or {}).get("du_lieu") or {}
+        vat = du.get("vat") if isinstance(du, dict) else None
+        if not isinstance(vat, list):
+            continue
+        giu = []
+        for v in vat:
+            ds = [str(x) for x in (v.get("ds") or [])] if isinstance(v, dict) and v.get("loai") == "danh_sach" else []
+            trung = [x for x in ds if LA_CHO.match(x) or LA_TIM.match(x)]
+            if ds and len(trung) * 2 >= len(ds):
+                for x in ds:
+                    if LA_TIM.match(x) and not tim:
+                        tim = LA_TIM.sub("", x).strip()
+                    elif LA_CHO.match(x) and len(cho) < 5:
+                        cho.append(LA_CHO.sub("", x).strip())
+                    elif not LA_TIM.match(x) and not kb.get("de_cho") and len(cho) < 5:
+                        cho.append(x.strip())
+                continue   # bỏ danh_sách trùng với thẻ đề bài
+            giu.append(v)
+        if (cho or tim) and len(giu) < len(vat):
+            du["vat"] = giu
+            ids = {v.get("id") for v in giu if isinstance(v, dict)}
+            if isinstance(du.get("hanh_dong"), list):
+                du["hanh_dong"] = [h for h in du["hanh_dong"] if not isinstance(h, dict) or not h.get("vat") or h.get("vat") in ids]
+    if not cho:
+        cho = [str(x).strip() for x in (kb.get("du_kien") or []) if str(x).strip()][:4]
+    return {"cho": [x[:90] for x in cho[:5]], "tim": tim[:110]} if (cho or tim) else None
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("kich_ban")
@@ -575,6 +615,7 @@ def main():
     args = ap.parse_args()
 
     kb = json.load(open(args.kich_ban, encoding="utf8"))
+    de_bai_the = the_de_bai(kb)
     canh = kb.get("canh") or []
     if not canh:
         sys.exit("Kịch bản không có cảnh nào.")
@@ -722,6 +763,7 @@ def main():
         "series": {"ten": str(kb["series"].get("ten") or "")[:40], "tap": int(kb["series"].get("tap") or 0)} if isinstance(kb.get("series"), dict) and kb["series"].get("tap") else None,
         "quangCao": {"ten": str((kb.get("san_pham") or {}).get("ten") or "")[:60]} if isinstance(kb.get("san_pham"), dict) and (kb.get("san_pham") or {}).get("ten") else None,
         "duKien": [str(x).strip()[:30] for x in (kb.get("du_kien") or []) if str(x).strip()][:4],
+        "deBai": de_bai_the,
         "tiepTheo": str(kb.get("video_tiep_theo") or "")[:70],
         "nen": ds_nen[0] if ds_nen else None,
         "dsNen": ds_nen,

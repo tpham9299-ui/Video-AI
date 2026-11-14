@@ -830,7 +830,7 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       var maxSua = Number(cauHinh_('SO_LAN_SUA_KICH_BAN')) || 3;   // GitHub: 6 vòng (không lo hết giờ)
       for (;;) {
         chuanBiKichBan_(kb, r, ctxSua);
-        dg = danhGiaKichBan_(kb, r.dap_an, r.mon, hinhDe, spham);
+        dg = danhGiaKichBan_(kb, r.dap_an, r.mon, hinhDe, spham, r.de_bai);
         // hết lỗi nặng: xong nếu không còn lỗi nhẹ, hoặc đã nhờ sửa một lần (lỗi nhẹ không làm hỏng video)
         if (!dg.nang.length && (!dg.nhe.length || lanSua >= 1)) break;
         if (lanSua >= maxSua) break;

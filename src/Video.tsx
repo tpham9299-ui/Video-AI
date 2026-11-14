@@ -6,7 +6,7 @@ import {MoDau} from './MoDau';
 import {DuKien} from './DuKien';
 import {NhanQuangCao} from './NhanQuangCao';
 import {ManKetChuyenNghiep} from './ManKet';
-import {cacPha, phaCua} from './ThanhBuoc';
+import {phaCua, SAU_PHA} from './ThanhBuoc';
 import {Nen} from './Nen';
 import {FONT, FONT_DAM, BONG_CHU, vienChu, GIAO_DIEN, MAU, MAU_LOAI, chuTrenMau} from './theme';
 import {DuongTienTrinh} from './dong/DiemNhan';
@@ -111,7 +111,8 @@ const NoiDungVideo: React.FC<Props> = (props) => {
   const moi = GIAO_DIEN.chuyenDong === 'moi';
   const amNhac = taoAmLuongNhac(props);
   const ketThuc = outro ? outro.batDau : tongFrame;
-  const dsPha = cacPha(canh.map((c) => c.loai));
+  // quy trình cố định: luôn đủ 6 phần theo đúng thứ tự (người xem biết bài đang ở bước nào)
+  const dsPha = SAU_PHA;
   // cảnh trước còn ở lại 8 khung hình để hòa vào cảnh sau (trừ khi cảnh sau diễn tiếp trên cùng sân khấu)
   const keoDai = (i: number) => (i < canh.length - 1 && !canh[i + 1].giuSanKhau ? 8 : 0);
   const coThuongHieu = !!thuongHieu && !!(thuongHieu.ten || thuongHieu.logo || thuongHieu.handle);
@@ -124,7 +125,7 @@ const NoiDungVideo: React.FC<Props> = (props) => {
       {nhac ? <Audio src={staticFile(nhac)} loop volume={amNhac} /> : null}
       {canh.map((c, i) => (
         <Sequence key={c.so} from={c.batDau} durationInFrames={c.soFrame + keoDai(i)}>
-          <Canh canh={c} tieuDe={tieuDe} tongCanh={canh.length} hook={{chu: hookChu, kieu: hookKieu, nhanManh}} pc={phongCach}
+          <Canh canh={c} tieuDe={tieuDe} deBai={props.deBai || null} theDeGiu={canh.slice(0, i).some((x) => x.loai === 'de_bai')} tongCanh={canh.length} hook={{chu: hookChu, kieu: hookKieu, nhanManh}} pc={phongCach}
             sanKhau={sanKhauCuaCanh(canh, i)} cacBuoc={dsPha} phaTruoc={i > 0 ? phaCua(canh[i - 1].loai) : ''} giuTruoc={i > 0 && c.giuSanKhau && !!sanKhauCuaCanh(canh, i - 1)} giuSau={!!canh[i + 1] && canh[i + 1].giuSanKhau && !!sanKhauCuaCanh(canh, i)} keoDai={keoDai(i)} />
         </Sequence>
       ))}

@@ -6,7 +6,8 @@ import {Audio, Sequence, staticFile, useCurrentFrame, useVideoConfig} from 'remo
 import {easeOut, kep, neon, popOut} from './donghieu';
 import {DuLieuSanKhau, Vat} from './dulieu';
 import {GIAY_QUAY, kichThuocVat, tinhCamera, tinhGoc3D, tinhTrangThai, tuXepSanKhau} from './trangthai';
-import {MuiTen, VE_VAT} from './vat';
+import {datHeSoChu, MuiTen, VE_VAT} from './vat';
+import {CoChuSan} from '../dong/KhongGian';
 import {expoOut, NhoeHuong} from './chuyendong';
 import {Cam3D, chieu, Goc3D} from './chieu3d';
 import {laMoi} from '../theme';
@@ -99,7 +100,9 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
   const t = frame / fps;
   const tb = laMoi() && cau && cau.length ? taoMocBuocLoi(du.soBuoc, giayAm, cau) : taoMocBuoc(du.soBuoc, giayAm);
   // tự xếp chống chồng lấn (đề đa dạng, AI đặt tọa độ chưa khéo vẫn không đè lên nhau)
-  const vatXep = React.useMemo(() => tuXepSanKhau(du.vat, SK_W, SK_H), [du]);
+  const kChu = React.useContext(CoChuSan);
+  datHeSoChu(kChu);
+  const vatXep = React.useMemo(() => tuXepSanKhau(du.vat, SK_W, SK_H, Math.max(1, Math.min(1.6, kChu))), [du, kChu]);
   const cam = tinhCamera(du.hanhDong, vatXep, t, tb, SK_W, SK_H);
   // góc nhìn 3D: nghiêng sàn + xoay quanh trục đứng; vật luôn quay mặt về camera (billboard) và đứng trên sàn có bóng đổ
   const g3 = tinhGoc3D(du.gocDau, du.hanhDong, t, tb);
@@ -126,7 +129,7 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
       viTri.set(v.id, {x: p0.sx, y: p0.sy});
       continue;
     }
-    const kt = kichThuocVat(v);
+    const kt = kichThuocVat(v, kChu);
     // nhãn, chữ, bộ đếm là chú thích màn hình: khi nhìn 3D vẫn nằm phẳng (không bị phối cảnh phóng to)
     const phang = ['nhan', 'chu', 'so_dem'].includes(v.loai);
     const san = chieu(cam3, x, y, 0);

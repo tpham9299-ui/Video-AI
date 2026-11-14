@@ -4,6 +4,7 @@ import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import {laChuThuong} from './bocuc';
 import {khopVua} from './vua';
+import {bocChuViet, chuanTex, texSangChu} from './chu';
 import {napPhong} from './phong';
 import {FONT, FONT_DAM, FONT_SERIF, GIAO_DIEN} from './theme';
 
@@ -17,13 +18,15 @@ export const Toan: React.FC<{
   maxWidth?: number;
   chuThuong?: boolean;
 }> = ({tex, size = 52, color = '#ffffff', style, maxWidth, chuThuong}) => {
+  tex = chuanTex(tex);
   const thuong = chuThuong !== undefined ? chuThuong : laChuThuong(tex);
   const ref = useRef<HTMLSpanElement>(null);
 
   const html = useMemo(() => {
     if (thuong) return null;
     try {
-      return katex.renderToString(String(tex), {throwOnError: false, strict: 'ignore', displayMode: false, output: 'html'});
+      // lỗi cú pháp TeX: KHÔNG hiện mã đỏ thô -> thử lại bản đã sửa, vẫn lỗi thì hiện dạng chữ đọc được (null)
+      return katex.renderToString(bocChuViet(String(tex)), {throwOnError: true, strict: 'ignore', displayMode: false, output: 'html'});
     } catch (e) {
       return null;
     }
@@ -52,9 +55,10 @@ export const Toan: React.FC<{
     ...style,
   };
   if (thuong || html === null) {
+    const hien = thuong ? String(tex) : texSangChu(tex);
     return (
       <span ref={ref} data-maxw={maxWidth} style={{...chung, ...(GIAO_DIEN.kieuToan === 'latex' ? {fontFamily: FONT_SERIF, fontStyle: 'italic', fontWeight: 400} : GIAO_DIEN.kieuToan === 'dam' ? {fontFamily: FONT_DAM, fontWeight: 800, textShadow: '0 3px 0 rgba(4,12,12,0.9)'} : {fontFamily: FONT, fontWeight: 700}), whiteSpace: 'nowrap'}}>
-        {String(tex)}
+        {hien}
       </span>
     );
   }

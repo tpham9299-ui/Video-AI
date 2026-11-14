@@ -4,6 +4,7 @@ import {expoOut} from './sankhau/chuyendong';
 import {kep} from './sankhau/donghieu';
 import {FONT_DAM} from './theme';
 import {Toan} from './Toan';
+import {texSangChu} from './chu';
 
 // THẺ DỮ KIỆN: 2-4 dữ kiện then chốt của đề ("V = 32 m³", "Không nắp"...) nằm thành hàng thẻ kính nhỏ ngay dưới thanh chủ đề
 // suốt phần giải, để người xem lướt vào giữa video vẫn biết đề đang hỏi gì. Thẻ bật lên lần lượt, thở nhẹ; ẩn ở cảnh bài học.
@@ -14,7 +15,7 @@ export const DuKien: React.FC<{ds: string[]; tu: number; den: number; hud?: stri
   if (hud) {
     // bộ hiệu ứng mới: một dòng HUD mảnh (không khung), các dữ kiện cách nhau bằng chấm màu nhấn, hiện từ mờ sang nét
     return (
-      <div style={{position: 'absolute', left: 30, right: 30, top: 210, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 18, opacity: mo * 0.92, pointerEvents: 'none'}}>
+      <div style={{position: 'absolute', left: 40, right: 40, top: 212, display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', columnGap: 18, rowGap: 4, opacity: mo * 0.95, pointerEvents: 'none'}}>
         {ds.map((d, i) => {
           const e = expoOut(kep((f - tu - i * 5) / 12));
           const laToan = /[\\^_=]/.test(d);
@@ -22,7 +23,7 @@ export const DuKien: React.FC<{ds: string[]; tu: number; den: number; hud?: stri
           return (
             <div key={i} style={{display: 'flex', alignItems: 'center', gap: 10, opacity: e, filter: e < 0.98 ? `blur(${(1 - e) * 6}px)` : undefined, whiteSpace: 'nowrap'}}>
               {i ? <span style={{width: 6, height: 6, borderRadius: 3, background: hud, boxShadow: `0 0 8px ${hud}`, marginRight: 8}} /> : null}
-              {laToan ? <Toan tex={tex} size={25} color="rgba(234,242,244,0.85)" /> : <span style={{fontFamily: FONT_DAM, fontWeight: 700, fontSize: 23, letterSpacing: 1.5, color: 'rgba(234,242,244,0.85)', textTransform: 'uppercase'}}>{d}</span>}
+              {laToan ? <Toan tex={tex} size={31} color="rgba(240,246,248,0.95)" maxWidth={960} /> : <span style={{fontFamily: FONT_DAM, fontWeight: 800, fontSize: 29, letterSpacing: 1, color: 'rgba(240,246,248,0.95)', textTransform: 'uppercase'}}>{texSangChu(d)}</span>}
             </div>
           );
         })}
@@ -30,7 +31,7 @@ export const DuKien: React.FC<{ds: string[]; tu: number; den: number; hud?: stri
     );
   }
   return (
-    <div style={{position: 'absolute', left: 30, right: 30, top: 172, display: 'flex', justifyContent: 'center', gap: 12, opacity: mo, pointerEvents: 'none'}}>
+    <div style={{position: 'absolute', left: 30, right: 30, top: 172, display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 12, opacity: mo, pointerEvents: 'none'}}>
       {ds.map((d, i) => {
         const e = expoOut(kep((f - tu - i * 4) / 12));
         const laToan = /[\\^_=]/.test(d);
@@ -40,7 +41,7 @@ export const DuKien: React.FC<{ds: string[]; tu: number; den: number; hud?: stri
           <div key={i} style={{display: 'flex', alignItems: 'center', gap: 6, padding: '4px 16px 4px 12px', borderRadius: 999, background: 'rgba(10,22,26,0.72)', border: '1.5px solid rgba(59,242,154,0.45)',
             boxShadow: `0 0 ${10 + 6 * Math.sin((f + i * 20) / 22)}px rgba(59,242,154,0.18)`, transform: `translateY(${(1 - e) * -14}px) scale(${0.85 + 0.15 * e})`, opacity: e, whiteSpace: 'nowrap'}}>
             <span style={{width: 8, height: 8, borderRadius: 4, background: '#3BF29A', boxShadow: '0 0 8px #3BF29A'}} />
-            {laToan ? <Toan tex={tex} size={28} color="#EAF2F4" /> : <span style={{fontFamily: FONT_DAM, fontWeight: 800, fontSize: 26, color: '#EAF2F4'}}>{d}</span>}
+            {laToan ? <Toan tex={tex} size={32} color="#EAF2F4" maxWidth={960} /> : <span style={{fontFamily: FONT_DAM, fontWeight: 800, fontSize: 30, color: '#EAF2F4'}}>{texSangChu(d)}</span>}
           </div>
         );
       })}

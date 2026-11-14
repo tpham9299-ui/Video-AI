@@ -214,6 +214,57 @@
   },
   {
    "so": 4,
+   "loai": "bay",
+   "tieu_de_canh": "Bẫy: làm tròn rồi chốt",
+   "tu_khoa": "làm tròn",
+   "loi_thoai": "Lỗi hay gặp: giải ra số tầng lẻ rồi làm tròn thành hai mươi và chốt luôn, quên rằng số tầng phải nguyên và chưa chắc dùng hết hai trăm sáu mươi ống.",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Danh sách cách làm sai bị gạch.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "ds2",
+       "loai": "danh_sach",
+       "x": 50,
+       "y": 50,
+       "noi_dung": "Hai cách chốt",
+       "ds": [
+        "Làm tròn n = 20 rồi chốt",
+        "Thử lại vào tổng 260"
+       ],
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "ds2",
+       "kieu": "loai_bo",
+       "chi_so": [
+        1
+       ]
+      },
+      {
+       "buoc": 2,
+       "vat": "ds2",
+       "kieu": "rung"
+      },
+      {
+       "buoc": 3,
+       "vat": "ds2",
+       "kieu": "chon",
+       "chi_so": [
+        2
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "so": 5,
    "loai": "diem_chot",
    "tieu_de_canh": "Tổng n tầng",
    "tu_khoa": "Tổng",
@@ -256,7 +307,7 @@
    }
   },
   {
-   "so": 5,
+   "so": 6,
    "loai": "tinh_toan",
    "tieu_de_canh": "Lập phương trình",
    "tu_khoa": "phương trình",
@@ -317,103 +368,7 @@
    }
   },
   {
-   "so": 6,
-   "loai": "bay",
-   "tieu_de_canh": "Bẫy: làm tròn rồi chốt",
-   "tu_khoa": "làm tròn",
-   "loi_thoai": "Nhưng khoan, n phải là số nguyên. Làm tròn thành hai mươi rồi chốt luôn là bẫy, phải thử lại.",
-   "noi_dung_man_hinh": [],
-   "minh_hoa": {
-    "loai": "san_khau",
-    "mo_ta": "Danh sách cách làm sai bị gạch.",
-    "du_lieu": {
-     "vat": [
-      {
-       "id": "ds2",
-       "loai": "danh_sach",
-       "x": 50,
-       "y": 50,
-       "noi_dung": "Hai cách chốt",
-       "ds": [
-        "Làm tròn n = 20 rồi chốt",
-        "Thử lại vào tổng 260"
-       ],
-       "buoc": 1
-      }
-     ],
-     "hanh_dong": [
-      {
-       "buoc": 2,
-       "vat": "ds2",
-       "kieu": "loai_bo",
-       "chi_so": [
-        1
-       ]
-      },
-      {
-       "buoc": 2,
-       "vat": "ds2",
-       "kieu": "rung"
-      },
-      {
-       "buoc": 3,
-       "vat": "ds2",
-       "kieu": "chon",
-       "chi_so": [
-        2
-       ]
-      }
-     ]
-    }
-   }
-  },
-  {
    "so": 7,
-   "loai": "kiem_tra",
-   "tieu_de_canh": "Thử lại mới thấy",
-   "tu_khoa": "Thử lại",
-   "loi_thoai": "Thử lại: hai mươi tầng chỉ có hai trăm năm mươi ống, hai mươi mốt tầng cần hai trăm bảy mươi ba ống. Vậy hai trăm sáu mươi ống không xếp vừa khít.",
-   "noi_dung_man_hinh": [
-    "S_{20}=\\frac{20\\cdot(3+22)}{2}=250",
-    "S_{21}=\\frac{21\\cdot(3+23)}{2}=273"
-   ],
-   "trinh_bay": "xep",
-   "minh_hoa": {
-    "loai": "san_khau",
-    "mo_ta": "Biểu đồ cột tổng ống 20 và 21 tầng.",
-    "du_lieu": {
-     "vat": [
-      {
-       "id": "cot",
-       "loai": "bieu_do_cot",
-       "x": 50,
-       "y": 50,
-       "ds": [
-        "20 tầng",
-        "Cần",
-        "21 tầng"
-       ],
-       "ds_so": [
-        250,
-        260,
-        273
-       ],
-       "nhan": "Tổng số ống",
-       "buoc": 1
-      }
-     ],
-     "hanh_dong": [
-      {
-       "buoc": 2,
-       "vat": "cot",
-       "kieu": "sang"
-      }
-     ]
-    }
-   }
-  },
-  {
-   "so": 8,
    "loai": "dap_an",
    "tieu_de_canh": "Xếp được hai mươi tầng",
    "tu_khoa": "hai mươi tầng",
@@ -478,6 +433,51 @@
    }
   },
   {
+   "so": 8,
+   "loai": "kiem_tra",
+   "tieu_de_canh": "Thử lại mới thấy",
+   "tu_khoa": "Thử lại",
+   "loi_thoai": "Thử lại: hai mươi tầng có hai trăm năm mươi ống, cộng mười ống dư là đúng hai trăm sáu mươi. Thêm tầng hai mươi mốt thì cần hai trăm bảy mươi ba ống, không đủ.",
+   "noi_dung_man_hinh": [
+    "S_{20}=\\frac{20\\cdot(3+22)}{2}=250",
+    "S_{21}=\\frac{21\\cdot(3+23)}{2}=273"
+   ],
+   "trinh_bay": "xep",
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Biểu đồ cột tổng ống 20 và 21 tầng.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "cot",
+       "loai": "bieu_do_cot",
+       "x": 50,
+       "y": 50,
+       "ds": [
+        "20 tầng",
+        "Cần",
+        "21 tầng"
+       ],
+       "ds_so": [
+        250,
+        260,
+        273
+       ],
+       "nhan": "Tổng số ống",
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "cot",
+       "kieu": "sang"
+      }
+     ]
+    }
+   }
+  },
+  {
    "so": 9,
    "loai": "bai_hoc",
    "tieu_de_canh": "Giải xong phải thử lại",
@@ -518,5 +518,11 @@
     }
    }
   }
- ]
+ ],
+ "de_cho": [
+  "Tầng trên cùng: 3 ống",
+  "Mỗi tầng dưới hơn tầng trên 1 ống",
+  "Tổng cộng: 260 ống"
+ ],
+ "can_tim": "Xếp được bao nhiêu tầng? Dư bao nhiêu ống?"
 }

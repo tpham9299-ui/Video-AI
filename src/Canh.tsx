@@ -21,6 +21,7 @@ import {nhanCanh, TieuDeCanh} from './TieuDeCanh';
 import {phaCua, ThanhBuoc} from './ThanhBuoc';
 import {chuTrenMau, FONT, GIAO_DIEN, laMoi, MAU} from './theme';
 import {Toan} from './Toan';
+import {boCucTheDe, coTheDe, DeBai, TheDeBai} from './TheDeBai';
 import {VietTay} from './VietTay';
 import {CanhProps, PhongCach} from './types';
 
@@ -83,7 +84,9 @@ export const Canh: React.FC<{
   cacBuoc?: string[]; // các pha của bài (thanh các bước)
   phaTruoc?: string; // pha của cảnh trước
   keoDai?: number; // số khung hình cảnh này còn ở lại để HÒA vào cảnh sau (chuyển cảnh chồng mờ, không bị khoảng trống)
-}> = ({canh, tieuDe, tongCanh, hook, pc, sanKhau, giuTruoc, giuSau, cacBuoc = [], phaTruoc = '', keoDai = 0}) => {
+  deBai?: DeBai | null; // thẻ ĐỀ BÀI (cảnh de_bai)
+  theDeGiu?: boolean; // đã có cảnh de_bai trước: thẻ hiện sẵn đủ, không chạy lại
+}> = ({canh, tieuDe, deBai, theDeGiu, tongCanh, hook, pc, sanKhau, giuTruoc, giuSau, cacBuoc = [], phaTruoc = '', keoDai = 0}) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
   const t = frame / fps;
@@ -104,7 +107,9 @@ export const Canh: React.FC<{
   const nCau = canh.cau.length;
   const nDong = canh.noiDung.length;
   const batDong = canh.noiDung.map((_, i) => (nCau ? canh.cau[Math.min(nCau - 1, Math.floor((i * nCau) / nDong))].bat + 0.05 : 0.4 + i * 0.8));
-  const hienCongThuc = nDong > 0 && !(coHook && coHinh && nDong > 1);
+  // cảnh ĐỀ BÀI: thẻ "ĐỀ CHO / CẦN TÌM" thay cho dòng công thức (đề phải được nêu đủ trước khi vào mô phỏng)
+  const theDe = canh.loai === 'de_bai' && coTheDe(deBai) ? deBai! : null;
+  const hienCongThuc = !theDe && nDong > 0 && !(coHook && coHinh && nDong > 1);
   const kieuTB = canh.trinhBay;
   const dungBienDoi = kieuTB === 'bien_doi' && coTheBienDoi(canh.noiDung);
   const dungCongDon = (kieuTB === 'cong_don' || kieuTB === 'bien_doi') && !dungBienDoi && coTheCongDon(canh.noiDung);
@@ -121,7 +126,7 @@ export const Canh: React.FC<{
   const dayVung = Y_PHU_DE - 30; // đáy vùng nội dung
   const coCTMax = coHinh ? 54 : 70;
   const caoCT = hienCongThuc ? Math.min(coHinh ? 380 : 700, 70 + nHang * coCTMax * 1.95) : 0;
-  const caoNote = coNote ? 40 + canh.chuThich.length * 56 : 0;
+  const caoNote = (coNote ? 40 + canh.chuThich.length * 56 : 0) + (theDe ? boCucTheDe(theDe).cao + (coNote ? 16 : 0) : 0);
   const yNoiDung = coHook ? Y_SAN + 20 : Y_SAN;
   const caoSan = Math.max(380, dayVung - yNoiDung - caoCT - caoNote - (caoCT ? 16 : 0) - (caoNote ? 16 : 0));
   const tiLe = Math.min(1.12, caoSan / SK_H, 1000 / SK_W);
@@ -224,7 +229,7 @@ export const Canh: React.FC<{
         <NhoeHuong nx={ccSan.nx} ny={ccSan.ny} style={{position: 'absolute', left: 0, right: 0, top: yNoiDung, height: caoSan, display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: ccSan.mo, transform: `perspective(1600px) translate(${ccSan.x}px, ${ccSan.y}px) rotateY(${ccSan.ry}deg) scale(${ccSan.s})`}}>
           {moi && kieu3D !== 'nam' ? <QuyDao cx={540} cy={caoSan / 2} R={Math.min(caoSan, 1000) * 0.47} mau={mauNhan} mo={(giuTruoc ? 1 : kep((frame - 3) / 14)) * (1 - kep(sinN3d * 1.8))} /> : null}
           {!moi && pc.khungSanKhau !== false ? <KhungSan w={Math.min(1040, SK_W * tiLe + 40)} h={Math.min(caoSan - 6, SK_H * tiLe + 24)} p={(giuTruoc ? 1 : kep((frame - 3) / 14)) * (1 - kep(sinN3d * 1.8))} /> : null}
-          <CoChuSan.Provider value={Math.max(1, Math.min(1.5, 0.95 / tiLe))}>
+          <CoChuSan.Provider value={Math.max(1.05, Math.min(1.6, 1.05 / tiLe))}>
           <div style={{width: SK_W, height: SK_H, transform: `scale(${tiLe})`, flexShrink: 0}}>
             {sanKhau && gm ? (
               <KhongGian3D.Provider value={{nam: true, doDay: 1, xoay: gm.xoay}}>
@@ -262,6 +267,13 @@ export const Canh: React.FC<{
 
       {/* Chú thích + công thức */}
       <NhoeHuong nx={ccCT.nx} ny={ccCT.ny} style={{position: 'absolute', left: 50, right: 50, top: coHinh ? yNoiDung + caoSan + 16 : Y_SAN, bottom: 1920 - dayVung, display: 'flex', flexDirection: 'column', justifyContent: coHinh ? 'flex-start' : 'center', alignItems: 'center', gap: 16, opacity: frame < 4 ? 0 : ccCT.mo, transform: `perspective(1600px) translate(${ccCT.x}px, ${ccCT.y}px) rotateY(${ccCT.ry}deg) scale(${ccCT.s})`}}>
+        {theDe ? (
+          <TheDeBai de={theDe} giuNguyen={theDeGiu} moc={(() => {
+            // mỗi dữ kiện hiện đúng lúc lời đọc tới (chia đều theo các câu), "cần tìm" ở câu cuối
+            const n = theDe.cho.length + (theDe.tim ? 1 : 0);
+            return Array.from({length: n}, (_, i) => (nCau ? canh.cau[Math.min(nCau - 1, Math.floor((i * nCau) / n))].bat + 0.1 : 0.4 + i * 0.9));
+          })()} />
+        ) : null}
         {coNote ? <ChuThich dong={canh.chuThich} bd={Math.max(0.6, giayAm * 0.45)} /> : null}
         {hienCongThuc ? (
           <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: coHinh ? '14px 26px' : 0, borderRadius: 24, background: coHinh ? 'rgba(4,14,13,0.55)' : 'transparent', border: coHinh ? '2px solid rgba(59,242,154,0.25)' : 'none', opacity: kep((t - treCT + 0.3) * 3)}}>
