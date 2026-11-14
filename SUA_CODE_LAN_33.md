@@ -170,9 +170,27 @@ Chốt cuối vẫn là bạn: chế độ "duyệt trước khi đăng" đang B
 - **Không tái diễn chồng hình**: hai lớp chặn - bộ tự xếp không cho vật đè nhau (mục 17) + kiểm duyệt đo vật đè vật trên khung hình,
   đè ở >= 2 khung = lỗi nặng, không dựng, tự sửa kịch bản.
 
+## 19. Chồng hình vẫn còn (số đếm "70" đè lên dãy ô) - xếp theo KÍCH THƯỚC ĐO THẬT
+- Nguyên nhân: trước đây sân khấu xếp vật theo kích thước ƯỚC LƯỢNG; chữ to/số to/nhãn dài thì kích thước thật lớn hơn ước lượng nên vẫn đè nhau.
+- Sửa (src/sankhau/SanKhau.tsx, trangthai.ts): trước khi quay, sân khấu vẽ thử từng vật, ĐO kích thước thật trên màn hình (sau khi phông chữ tải xong),
+  rồi xếp lại bằng số đo đó (tách vật, thu nhỏ đều nếu tràn khung). Video chờ đo xong mới quay khung hình.
+- Kiểm duyệt máy (VAT_DE) vẫn đo vùng đè giữa mọi cặp vật trên từng khung; đè ≥ 2 khung là lỗi nặng -> không cho đăng.
+- Đã chạy kiểm duyệt bố cục trên 5 kịch bản thử (số đếm + dãy ô, nhóm người + thẻ, bàn tròn, tòa nhà, rào vườn): 0 lỗi nặng.
+
+## 20. Cảnh "THỬ LẠI" phải thử thật, chỉ bỏ khi không thể thử
+- Trước: một số video cảnh thử lại chỉ có khung chữ "THỬ LẠI", không có phép thử.
+- Prompt (PromptKichBan.gs, PHẦN 5): cảnh kiem_tra BẮT BUỘC có phép thử bằng số cụ thể trên màn hình (thế ngược đáp án vào đề / cách thứ hai /
+  mô phỏng / so với giá trị khác), lời thoại đọc đúng phép thử, hình minh họa thể hiện phép thử (không dùng một nhãn chữ).
+- Chỉ khi bài THẬT SỰ không có cách kiểm độc lập nào mới được bỏ, và phải ghi lý do vào "khong_thu_lai".
+- Kiểm tra (KiemTraHinh.gs, kiemTraQuyTrinh_):
+  - THU_LAI_HINH_THUC (lỗi nặng, bắt viết lại kịch bản): cảnh thử lại không có công thức chứa số và dấu =, <, >, ≈… hoặc lời thoại không có số.
+  - THU_LAI_CHI_CO_CHU (lỗi nhẹ): hình cảnh thử lại chỉ toàn nhãn chữ.
+  - Thiếu phần THỬ LẠI mà không có "khong_thu_lai" (≥ 6 chữ lý do) -> vẫn báo THIEU_PHAN_QUY_TRINH như cũ.
+- Đã thử: kịch bản mẫu tòa nhà (thử lại thật) -> không báo; cảnh chỉ có khung chữ -> báo nặng; bỏ cảnh có lý do -> cho qua; bỏ không lý do -> báo thiếu.
+
 ## Cần dán lại vào Apps Script
 `KiemTraHinh.gs`, `PromptKichBan.gs`, `BoPhan1.gs`, `BoPhan2.gs`, `NangCao.gs`, `DangVideo.gs`, `SanPham.gs` (tất cả bản mới nhất trong thư mục bàn giao), rồi Triển khai > Quản lý > Phiên bản mới.
 
 ## Còn lưu ý
-- Trong GEMINI_KEYS có **3 key bị Google từ chối** ("API key not valid"): key thứ 2, 5, 7 (bắt đầu "AQ.Ab8…").
-  Hệ thống tự bỏ qua, nhưng nên thay bằng key tạo ở Google AI Studio để đủ hạn mức (giải toán lần này mất 981 giây vì thiếu key).
+- Lần kiểm tra key gần nhất (workflow "Kiểm tra key Gemini"): 11/12 key dùng được, 1 key hết hạn mức ngày (giữ, tự reset), không key nào lỗi thật.
+  Khi có key lỗi thật, hệ thống tự báo qua Zalo (mỗi key một lần/ngày) để gỡ khỏi GEMINI_KEYS.

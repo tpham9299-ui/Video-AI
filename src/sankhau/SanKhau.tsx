@@ -2,10 +2,10 @@
 // điều khiển camera (phóng to vào chi tiết quan trọng) và phát âm thanh đúng lúc. Chuyển động lấy cảm hứng từ video mẫu:
 // vật bật lên có độ nảy + mờ nhòe khi vào, phần được chọn sáng viền và gắn dấu tích, phần còn lại tối và ngả xám.
 import React from 'react';
-import {Audio, Sequence, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
+import {Audio, continueRender, delayRender, Sequence, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
 import {easeOut, kep, neon, popOut} from './donghieu';
 import {DuLieuSanKhau, Vat} from './dulieu';
-import {GIAY_QUAY, kichThuocVat, tinhCamera, tinhGoc3D, tinhTrangThai, tuXepSanKhau} from './trangthai';
+import {DoThat, GIAY_QUAY, kichThuocVat, tinhCamera, tinhGoc3D, tinhTrangThai, tuXepSanKhau} from './trangthai';
 import {datHeSoChu, MuiTen, VE_VAT} from './vat';
 import {CoChuSan} from '../dong/KhongGian';
 import {expoOut, NhoeHuong} from './chuyendong';
@@ -102,7 +102,33 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
   // tự xếp chống chồng lấn (đề đa dạng, AI đặt tọa độ chưa khéo vẫn không đè lên nhau)
   const kChu = React.useContext(CoChuSan);
   datHeSoChu(kChu);
-  const vatXep = React.useMemo(() => tuXepSanKhau(du.vat, SK_W, SK_H, Math.max(1, Math.min(1.6, kChu))), [du, kChu]);
+  // ĐO KÍCH THƯỚC THẬT: lần vẽ đầu xếp theo ước lượng, chờ phông chữ, đo khung từng vật (offsetWidth/Height: không tính hiệu ứng phóng)
+  // rồi xếp lại theo số đo thật trước khi chụp khung hình -> vật nào (kể cả loại mới) cũng không đè lên nhau vì ước lượng sai
+  const gocRef = React.useRef<HTMLDivElement>(null);
+  const [doThat, setDoThat] = React.useState<DoThat | null>(null);
+  const [cho] = React.useState(() => delayRender('Đo kích thước vật trên sân khấu'));
+  const vatXep = React.useMemo(() => tuXepSanKhau(du.vat, SK_W, SK_H, Math.max(1, Math.min(1.6, kChu)), doThat), [du, kChu, doThat]);
+  const coLucDo = React.useRef(new Map<string, number>());
+  React.useLayoutEffect(() => {
+    if (doThat) return;
+    let xong = false;
+    const do_ = () => {
+      if (xong) return;
+      xong = true;
+      const m: DoThat = new Map();
+      gocRef.current?.querySelectorAll<HTMLElement>('[data-kd-vat]').forEach((el) => {
+        const id = el.getAttribute('data-kd-vat') || '';
+        if (id && el.offsetWidth > 0) m.set(id, {w: el.offsetWidth, h: el.offsetHeight, co: coLucDo.current.get(id) || 1});
+      });
+      setDoThat(m);
+    };
+    const fonts = (document as Document & {fonts?: {ready: Promise<unknown>}}).fonts;
+    if (fonts) fonts.ready.then(() => requestAnimationFrame(do_)); else do_();
+    const du2 = setTimeout(do_, 3000);
+    return () => clearTimeout(du2);
+  }, [doThat]);
+  React.useEffect(() => { if (doThat) continueRender(cho); }, [doThat, cho]);
+  vatXep.forEach((v) => { if (!doThat) coLucDo.current.set(v.id, v.co); });
   const cam = tinhCamera(du.hanhDong, vatXep, t, tb, SK_W, SK_H);
   // góc nhìn 3D: nghiêng sàn + xoay quanh trục đứng; vật luôn quay mặt về camera (billboard) và đứng trên sàn có bóng đổ
   // phang2D (phần đề bài): bỏ mọi góc máy nghiêng/xoay 3D, vật vẫn bay vào, di chuyển, sáng... trên mặt phẳng
@@ -259,9 +285,14 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
     return x.f >= 0;
   });
 
+  // lúc ĐO: dựng thêm (ẩn) các vật lớp này không vẽ, để mọi lớp sân khấu (3D tách lớp) đo ĐỦ vật -> cùng một bố cục
+  const doAn: React.ReactNode[] = !doThat ? vatXep.filter((v) => !duocVe(v) && v.loai !== 'mui_ten').map((v) => {
+    const st = tinhTrangThai(v, du.hanhDong, t, tb, SK_W, SK_H);
+    return <div key={`do${v.id}`} data-kd-vat={v.id} data-kd-bo="1" style={{position: 'absolute', left: -5000, top: 0, visibility: 'hidden', pointerEvents: 'none'}}>{(() => { const ve2 = VE_VAT[v.loai]; return ve2 ? ve2(v, st, frame, fps) : null; })()}</div>;
+  }) : [];
   const z = cam.z;
   return (
-    <div style={{position: 'relative', width: SK_W, height: SK_H, overflow: z > 1.01 && !co3d ? 'hidden' : 'visible'}}>
+    <div ref={gocRef} style={{position: 'relative', width: SK_W, height: SK_H, overflow: z > 1.01 && !co3d ? 'hidden' : 'visible'}}>
       <div style={{position: 'absolute', left: 0, top: 0, width: SK_W, height: SK_H, transformOrigin: '0 0', transform: `translate(${SK_W / 2}px, ${SK_H / 2}px) scale(${z}) translate(${-cam.cx}px, ${-cam.cy}px)`}}>
         <Goc3D.Provider value={{n: g3.nghieng, r: g3.xoay}}>
           {co3d ? <San3D cam={cam3} mo={sinN} /> : null}
@@ -270,6 +301,7 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
           {tia}
           {[...lop].sort((p, q) => p.z - q.z).map((o) => o.el)}
           {lopPhang.map((o) => o.el)}
+          {doAn}
         </Goc3D.Provider>
       </div>
       {amGon.map((x, i) => (

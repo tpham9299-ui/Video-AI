@@ -320,14 +320,22 @@ export function kichThuocVat(v: Vat, k = 1): {w: number; h: number} {
 
 // TỰ XẾP: đẩy các vật đang chồng lên nhau ra xa (theo trục chồng ít hơn), giữ trong khung; nếu tổng thể vẫn quá khung
 // thì thu nhỏ đều. Giữ nguyên ý đồ bố cục của kịch bản khi không có chồng lấn.
-export function tuXepSanKhau(dsVat: Vat[], W: number, H: number, k = 1): Vat[] {
+// doThat: KÍCH THƯỚC ĐO THẬT trên trang (SanKhau đo sau lần vẽ đầu) -> xếp theo số đo thật thay cho ước lượng (không còn vật đè vật
+// vì ước lượng sai). Kích thước tỉ lệ theo co: số đo lúc co = m.co -> quy về co của vật.
+export type DoThat = Map<string, {w: number; h: number; co: number}>;
+export function tuXepSanKhau(dsVat: Vat[], W: number, H: number, k = 1, doThat?: DoThat | null): Vat[] {
   const xs = dsVat.filter((v) => v.loai !== 'mui_ten');
   // kích thước vẽ thật thường lớn hơn ước lượng (viền sáng, bóng, nhãn dưới chân) -> cộng khoảng an toàn
   const AN_TOAN: Record<string, [number, number]> = {danh_sach: [1.06, 1.22], nguoi: [1.08, 1.2], the: [1.06, 1.14]};
   // THẺ CHỮ giữ nguyên cỡ (chữ phải đọc được); chỉ VẬT HÌNH (người, đồ vật...) được thu nhỏ khi sân khấu chật
   const CO_DINH = new Set(['nhan', 'chu']);
   const heSo = (loai: string, f: number) => (CO_DINH.has(loai) ? 1 : loai === 'danh_sach' ? Math.max(0.8, f) : f);
-  const goc = xs.map((v) => { const kt = kichThuocVat(v, k); const [aw, ah] = AN_TOAN[v.loai] || [1.04, 1.08]; return {v, w: kt.w * aw, h: kt.h * ah, coDinh: CO_DINH.has(v.loai)}; });
+  const goc = xs.map((v) => {
+    const m = doThat && doThat.get(v.id);
+    if (m && m.w > 4 && m.h > 4) { const r = v.co / (m.co || 1); return {v, w: m.w * r * 1.03, h: m.h * r * 1.03, coDinh: CO_DINH.has(v.loai)}; }
+    const kt = kichThuocVat(v, k); const [aw, ah] = AN_TOAN[v.loai] || [1.04, 1.08];
+    return {v, w: kt.w * aw, h: kt.h * ah, coDinh: CO_DINH.has(v.loai)};
+  });
   const PAD = 26;
   const tach = (f: number) => {
     const hop = goc.map((g) => ({v: g.v, x: (g.v.x / 100) * W, y: (g.v.y / 100) * H, w: g.w * heSo(g.v.loai, f), h: g.h * heSo(g.v.loai, f)}));

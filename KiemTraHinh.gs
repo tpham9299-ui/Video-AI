@@ -1391,7 +1391,9 @@ function kiemTraQuyTrinh_(kb, deGoc) {
   var coPha = [0, 0, 0, 0, 0, 0];
   ds.forEach(function (p) { if (p >= 0) coPha[p]++; });
   var thieu = [];
-  for (var p = 0; p < 6; p++) if (!coPha[p]) thieu.push(PHA_6_[p][2]);
+  // THỬ LẠI chỉ được bỏ khi kịch bản ghi rõ lý do không thể thử lại (khong_thu_lai)
+  var boThuLai = String(kb.khong_thu_lai || '').trim().split(/\s+/).length >= 6;
+  for (var p = 0; p < 6; p++) if (!coPha[p] && !(p === 4 && boThuLai)) thieu.push(PHA_6_[p][2]);
   if (thieu.length) nang.push('THIEU_PHAN_QUY_TRINH: thiếu phần ' + thieu.join(', ') + '. Mọi video phải đủ 6 phần theo thứ tự: ĐỀ BÀI (mo_dau, de_bai) -> MÔ PHỎNG (mo_hinh_hoa / y_do / thu_nho) -> LỖI SAI (bay) -> GIẢI (nhac_lai, diem_chot, tinh_toan, dap_an) -> THỬ LẠI (kiem_tra) -> CHỐT (bai_hoc).');
   var iDe = -1;
   (kb.canh || []).forEach(function (c, i) { if (iDe < 0 && String(c && c.loai) === 'de_bai') iDe = i; });
@@ -1404,6 +1406,17 @@ function kiemTraQuyTrinh_(kb, deGoc) {
     if (truoc > ds[i]) sai.push('cảnh ' + (i + 1) + ' (' + kb.canh[i].loai + ', phần ' + PHA_6_[ds[i]][2] + ') đứng sau phần ' + PHA_6_[truoc][2]);
   }
   if (sai.length) nang.push('SAI_THU_TU_QUY_TRINH: ' + sai.slice(0, 3).join('; ') + '. Sắp lại cảnh theo đúng 6 phần.');
+  // THỬ LẠI phải THẬT: có phép thử bằng số trên màn hình + lời thoại có số + hình không chỉ là nhãn chữ
+  (kb.canh || []).forEach(function (c, i) {
+    if (!c || phaCua_(c.loai) !== 4) return;
+    var ct = (c.noi_dung_man_hinh || []).map(String);
+    var coPhepThu = ct.some(function (d) { return /\d/.test(d) && /=|<|>|\\le|\\ge|\\approx|\\neq|≈|≤|≥/.test(d); });
+    var loiCoSo = /\d|một|hai|ba|bốn|năm|sáu|bảy|tám|chín|mười|trăm|nghìn/.test(String(c.loi_thoai || '').toLowerCase());
+    var du = c.minh_hoa && c.minh_hoa.du_lieu, vs = du && Array.isArray(du.vat) ? du.vat : [];
+    var chiChu = !c.giu_san_khau && vs.length > 0 && vs.every(function (v) { return v && ['nhan', 'chu', 'the', 'mui_ten', 'bieu_tuong'].indexOf(v.loai) >= 0; });
+    if (!coPhepThu || !loiCoSo) nang.push('THU_LAI_HINH_THUC_CANH_' + (i + 1) + ': cảnh thử lại chưa thử thật. "noi_dung_man_hinh" phải có phép thử bằng SỐ (thế đáp án vào đề / cách thứ hai / so với giá trị khác, vd "60 + 2 \\cdot 30 = 120 \\checkmark"), lời thoại đọc phép thử đó; bài thật sự không thử lại được thì bỏ cảnh và ghi lý do vào "khong_thu_lai".');
+    else if (chiChu) nhe.push('THU_LAI_CHI_CO_CHU_CANH_' + (i + 1) + ': hình cảnh thử lại chỉ có nhãn chữ; nên minh họa phép thử (bản vẽ có số đo, luoi_o / bieu_do_cot đếm kết quả, chon các trường hợp).');
+  });
   // phần đề bài: thẻ ĐỀ CHO / CẦN TÌM
   var cho = Array.isArray(kb.de_cho) ? kb.de_cho.map(String).filter(function (x) { return x.trim(); }) : [];
   if (cho.length < 2) nang.push('THIEU_DE_CHO: cần "de_cho" là mảng 2-5 dữ kiện của đề (đủ mọi con số), máy hiện thành thẻ ĐỀ BÀI ở đầu video.');
