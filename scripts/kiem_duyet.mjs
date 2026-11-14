@@ -4,6 +4,7 @@
 // Thoát mã 0 luôn; số lỗi nặng ghi trong báo cáo (máy dựng tự quyết định chặn hay chỉ báo).
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import {openBrowser, renderStill, selectComposition} from '@remotion/renderer';
 
 const [bundle, tepProps, tepRa, tepKichBan] = process.argv.slice(2);
@@ -84,8 +85,20 @@ bao.nhe.slice(0, 10).forEach((x) => console.log('  [nhẹ] ' + x));
 // AI NHÌN HÌNH TRƯỚC KHI DỰNG: Gemini xem ảnh cảnh đề bài + mô phỏng, đối chiếu với đề: vẽ ĐÚNG vật thật của đề chưa (cột cờ ra cột cờ,
 // ngân hàng ra ngân hàng, hàng rào ra hàng rào), số đo có đúng chỗ không. Sai thì trả lỗi nặng -> kịch bản được sửa trước khi dựng.
 // Cần GEMINI_API_KEY (hoặc GEMINI_KEYS) trong GitHub Secrets; không có thì bỏ qua bước này.
+const TEP_KEY_HONG_JSON = path.join(os.tmpdir(), 'gemini_key_hong.json');
+function dsKeyHong() { try { return JSON.parse(fs.readFileSync(TEP_KEY_HONG_JSON, 'utf8')); } catch (e) { return []; } }
+function ghiKeyHong(k, code, raw) {
+  const ds = dsKeyHong();
+  if (ds.some((x) => x.dau === k.slice(0, 8))) return;
+  const goc = String(process.env.GEMINI_KEYS || '').split(/[\s,;]+/).filter(Boolean);
+  const m = /"message":\s*"([^"]{0,160})/.exec(raw);
+  ds.push({so: goc.indexOf(k) + 1 || 0, dau: k.slice(0, 8), ly_do: `HTTP ${code}: ${(m ? m[1] : raw).replace(/\s+/g, ' ').slice(0, 160)}`});
+  try { fs.writeFileSync(TEP_KEY_HONG_JSON, JSON.stringify(ds)); } catch (e) { /* bỏ */ }
+  console.log(`KEY_HONG: key bắt đầu ${k.slice(0, 6)}… lỗi thật (HTTP ${code}) -> bỏ qua, sẽ báo Zalo`);
+}
 async function aiNhinHinh(anh) {
-  const keys = String(process.env.GEMINI_KEYS || process.env.GEMINI_API_KEY || '').split(/[\s,;]+/).filter(Boolean);
+  const hongTruoc = new Set(dsKeyHong().map((x) => x.dau));
+  const keys = [...new Set(String((process.env.GEMINI_KEYS || '') + ',' + (process.env.GEMINI_API_KEY || '')).split(/[\s,;]+/).filter(Boolean))].filter((k) => !hongTruoc.has(k.slice(0, 8)));
   if (!keys.length || !anh.length || !tepKichBan || !fs.existsSync(tepKichBan)) return [];
   const kb = JSON.parse(fs.readFileSync(tepKichBan, 'utf8'));
   const de = String(kb.de_bai || '').trim();
@@ -103,7 +116,13 @@ async function aiNhinHinh(anh) {
         method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({contents: [{role: 'user', parts}], generationConfig: {temperature: 0.1, responseMimeType: 'application/json'}}),
       }).catch(() => null);
-      if (!res || !res.ok) continue;
+      if (res && !res.ok) {
+        const raw = await res.text().catch(() => '');
+        // key LỖI THẬT (không phải hết hạn mức): ghi lại để báo Zalo người dùng gỡ key
+        if (res.status === 401 || ([400, 403].includes(res.status) && /API_KEY_INVALID|API key not valid|API key expired|SERVICE_DISABLED|has not been used|is disabled|suspended|PERMISSION_DENIED|billing/i.test(raw))) ghiKeyHong(k, res.status, raw);
+        continue;
+      }
+      if (!res) continue;
       const j = await res.json().catch(() => null);
       const txt = j && j.candidates && j.candidates[0] && j.candidates[0].content && (j.candidates[0].content.parts || []).map((p) => p.text || '').join('');
       let kq = null;

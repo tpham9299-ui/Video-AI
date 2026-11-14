@@ -174,15 +174,50 @@ def nghi_canh(canh, i):
     return lead, tail
 
 
+# ---------- Kho key Gemini (xoay vòng như Bộ phận 1) ----------
+# Hết hạn mức NGÀY -> bỏ key đó, sang key kế. Giới hạn THEO PHÚT -> chờ retryDelay rồi thử lại. Key LỖI THẬT -> ghi
+# /tmp/gemini_key_hong.json để báo Zalo người dùng gỡ key.
+KEY_HET_NGAY = set()
+KEY_HONG = set()
+TEP_KEY_HONG_JSON = os.path.join(tempfile.gettempdir(), "gemini_key_hong.json")
+
+
+def ds_key_gemini():
+    ds = []
+    for nguon in (os.environ.get("GEMINI_KEYS", ""), os.environ.get("GEMINI_API_KEY", "")):
+        for k in re.split(r"[\s,;]+", nguon):
+            if k and k not in ds:
+                ds.append(k)
+    return ds
+
+
+def ghi_key_hong(k, code, noi):
+    if k in KEY_HONG:
+        return
+    KEY_HONG.add(k)
+    ds_goc = [x for x in re.split(r"[\s,;]+", os.environ.get("GEMINI_KEYS", "")) if x]
+    so = ds_goc.index(k) + 1 if k in ds_goc else 0
+    m = re.search(r'"message":\s*"([^"]{0,160})', noi)
+    ly = "HTTP %d: %s" % (code, re.sub(r"\s+", " ", m.group(1) if m else noi)[:160])
+    try:
+        ds = json.load(open(TEP_KEY_HONG_JSON, encoding="utf8")) if os.path.exists(TEP_KEY_HONG_JSON) else []
+        if not any(x.get("dau") == k[:8] for x in ds):
+            ds.append({"so": so, "dau": k[:8], "ly_do": ly})
+        json.dump(ds, open(TEP_KEY_HONG_JSON, "w", encoding="utf8"))
+    except Exception:
+        pass
+    print("KEY_HONG: key thứ %s (bắt đầu %s…) lỗi thật: %s -> bỏ qua, sẽ báo Zalo" % (so or "?", k[:6], ly))
+
+
 def gemini_tts(text, tep_wav, giong, model, phong_cach):
     """Giọng Gemini TTS (Google): một lần gọi cho cả lời thoại của cảnh. Trả về tệp WAV 24 kHz.
-    Cần biến môi trường GEMINI_API_KEY (GitHub Secret). Tự chờ và thử lại khi bị giới hạn tốc độ (429) hoặc quá tải (503)."""
+    Dùng mọi key trong GEMINI_KEYS / GEMINI_API_KEY (GitHub Secret), xoay vòng khi key hết hạn mức ngày hoặc hỏng."""
     import base64
     import urllib.error
     import urllib.request
     import time
-    key = os.environ.get("GEMINI_API_KEY", "").split(",")[0].strip()
-    if not key:
+    keys = ds_key_gemini()
+    if not keys:
         raise RuntimeError("chưa có GEMINI_API_KEY")
     than = {
         "contents": [{"parts": [{"text": phong_cach + "\n" + text}]}],
@@ -191,35 +226,47 @@ def gemini_tts(text, tep_wav, giong, model, phong_cach):
     }
     url = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent" % model
     loi = None
-    for lan in range(6):
-        req = urllib.request.Request(url, data=json.dumps(than).encode("utf8"), method="POST",
-                                     headers={"Content-Type": "application/json", "x-goog-api-key": key})
-        try:
-            with urllib.request.urlopen(req, timeout=120) as r:
-                d = json.loads(r.read().decode("utf8"))
-            phan = d["candidates"][0]["content"]["parts"]
-            b64 = next(p["inlineData"]["data"] for p in phan if "inlineData" in p)
-            pcm = tep_wav + ".pcm"
-            with open(pcm, "wb") as f:
-                f.write(base64.b64decode(b64))
-            chay(["ffmpeg", "-y", "-loglevel", "error", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", pcm, tep_wav])
-            os.remove(pcm)
-            return
-        except urllib.error.HTTPError as e:
-            noi = e.read().decode("utf8", "ignore")[:4000]
-            loi = "HTTP %d %s" % (e.code, noi[:300])
-            if e.code == 429 and re.search(r"PerDay|per day|daily", noi, re.I):
-                break   # hết hạn mức NGÀY: chờ cũng vô ích, chuyển ngay sang edge-tts
-            if e.code in (429, 500, 503):
-                m = re.search(r'"retryDelay":\s*"(\d+)', noi)
-                cho = min(60, int(m.group(1)) + 2) if m else 10 * (lan + 1)
-                print("Gemini TTS bận (%d), chờ %d giây rồi thử lại" % (e.code, cho))
-                time.sleep(cho)
-                continue
+    for vong in range(4):
+        dung = [k for k in keys if k not in KEY_HONG and k not in KEY_HET_NGAY]
+        if not dung:
             break
-        except Exception as e:
-            loi = str(e)
-            time.sleep(5)
+        cho_min = 0
+        for key in dung:
+            req = urllib.request.Request(url, data=json.dumps(than).encode("utf8"), method="POST",
+                                         headers={"Content-Type": "application/json", "x-goog-api-key": key})
+            try:
+                with urllib.request.urlopen(req, timeout=120) as r:
+                    d = json.loads(r.read().decode("utf8"))
+                phan = d["candidates"][0]["content"]["parts"]
+                b64 = next(p["inlineData"]["data"] for p in phan if "inlineData" in p)
+                pcm = tep_wav + ".pcm"
+                with open(pcm, "wb") as f:
+                    f.write(base64.b64decode(b64))
+                chay(["ffmpeg", "-y", "-loglevel", "error", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", pcm, tep_wav])
+                os.remove(pcm)
+                return
+            except urllib.error.HTTPError as e:
+                noi = e.read().decode("utf8", "ignore")[:4000]
+                loi = "HTTP %d %s" % (e.code, noi[:300])
+                if e.code == 429 and re.search(r"PerDay|per day|daily", noi, re.I):
+                    KEY_HET_NGAY.add(key)   # hết hạn mức NGÀY: sang key kế, không gọi lại key này
+                    print("Gemini TTS: key %s… hết hạn mức ngày, chuyển key khác" % key[:6])
+                    continue
+                if e.code == 401 or (e.code in (400, 403) and re.search(r"API_KEY_INVALID|API key not valid|API key expired|SERVICE_DISABLED|has not been used|is disabled|suspended|PERMISSION_DENIED|billing", noi, re.I)):
+                    ghi_key_hong(key, e.code, noi)
+                    continue
+                if e.code in (429, 500, 503):
+                    m = re.search(r'"retryDelay":\s*"(\d+)', noi)
+                    cho = min(60, int(m.group(1)) + 2) if m else 10 * (vong + 1)
+                    cho_min = min(cho_min, cho) if cho_min else cho
+                    continue
+                raise RuntimeError("Gemini TTS lỗi: %s" % loi)
+            except Exception as e:
+                loi = str(e)
+        if not cho_min:
+            break
+        print("Gemini TTS: mọi key đang bận/giới hạn theo phút, chờ %d giây rồi thử lại" % cho_min)
+        time.sleep(cho_min)
     raise RuntimeError("Gemini TTS lỗi: %s" % loi)
 
 

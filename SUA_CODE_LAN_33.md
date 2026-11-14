@@ -43,11 +43,8 @@ Nếu chèn vào mà sinh lỗi nặng mới thì bỏ, giữ kịch bản cũ.
   Nay thử đọc lại với chữ hơi khác (thêm dấu chấm, "À,") trước. Gemini TTS hết hạn mức ngày thì chuyển ngay, không chờ 4 phút.
 - Số trên trục đồ thị và nhãn "MẸO NHỚ" to hơn (trước 23-25 px, dưới ngưỡng dễ đọc).
 
-## 7. Ký hiệu toán (suy ra, tương đương, xấp xỉ, ≤ ≥ ≠, mũi tên...) cùng cỡ với chữ
-- Phông chữ chính không có các ký hiệu này nên trình duyệt mượn phông khác, vẽ rất nhỏ và mảnh (⇒ chỉ bằng nửa chữ số).
-- Thêm phông "VietKyHieu" CHỈ áp cho các ký tự toán (mũi tên phóng 135-140%, ký hiệu quan hệ 122-126%, nét đậm),
-  dùng chung cho công thức, thẻ chữ, nhãn trên hình và phụ đề, nên mọi chỗ cùng một cỡ.
-- Ký hiệu gõ thẳng (⇒ ≈ ≤) trong công thức được đổi sang lệnh TeX để có đúng khoảng cách hai bên.
+## 7. Ký hiệu toán: ĐÃ TRẢ VỀ BẢN CŨ
+Bản phóng to ký hiệu (⇒ ≈ ≤...) không hợp, đã hoàn tác: ký hiệu hiển thị như trước. Các sửa khác vẫn giữ (đơn vị chữ đứng, S_max, mũi tên "->").
 
 ## 8. Sửa sau khi xem video tòa nhà (đề mới, Gemini viết thật: 13 cảnh, đáp án đúng 37,4 m)
 - **Vật bị vẽ 2 lần**: cảnh có bản vẽ thực tế mà "giữ sân khấu" thì khối nhà 3D của cảnh trước vẫn còn, thành 2 tòa nhà, 2 người.
@@ -58,8 +55,17 @@ Nếu chèn vào mà sinh lỗi nặng mới thì bỏ, giữ kịch bản cũ.
 - **Đơn vị** "30 m" trước bị vẽ nghiêng như chữ "п". Nay viết chữ đứng.
 - **Dòng công thức cuối hiện quá muộn** (vừa viết xong thì hết cảnh): nay dòng cuối luôn xong trước khi hết cảnh ít nhất 1,2 giây.
 
+## 9. Xoay vòng key Gemini và báo key hỏng
+- **Hết hạn mức NGÀY** (lỗi 429 "per day"): hệ thống ghi nhớ key đó đã hết cho model này và chuyển ngay sang key kế, không gọi lại.
+  Mọi key đều hết hạn mức ngày thì đổi sang model dự phòng. Hết cả model thì tạm nghỉ 60 phút rồi tự chạy lại, như trước.
+- **Giới hạn THEO PHÚT** (429 khác): thử key khác. Mọi key cùng bận thì chờ đúng thời gian Google yêu cầu (tối đa 60 giây) rồi thử lại, tối đa 4 vòng.
+- **Key LỖI THẬT** (sai key, hết hiệu lực, bị khóa, chưa bật API, lỗi thanh toán): hệ thống bỏ qua key đó và **bot Zalo đề bài báo bạn**:
+  key thứ mấy trong GEMINI_KEYS, mấy ký tự đầu, lý do. Mỗi key chỉ báo 1 lần mỗi ngày. Bạn gỡ key đó khỏi Secret GEMINI_KEYS.
+- Áp dụng cho: giải toán + viết kịch bản (GitHub), giọng đọc Gemini và AI nhìn hình (bước dựng video).
+  Kho key riêng của Apps Script (KhoKey.gs của bạn) không nằm trong mã nguồn nên chưa đổi.
+
 ## Cần dán lại vào Apps Script
-`KiemTraHinh.gs`, `PromptKichBan.gs`, `BoPhan1.gs` (bản trong thư mục bàn giao; PromptKichBan.gs có cập nhật thêm ở mục 8), rồi Triển khai > Quản lý > Phiên bản mới.
+`KiemTraHinh.gs`, `PromptKichBan.gs`, `BoPhan1.gs`, `BoPhan2.gs` (bản trong thư mục bàn giao; BoPhan2.gs mới thêm ở mục 9 để báo key hỏng), rồi Triển khai > Quản lý > Phiên bản mới.
 
 ## Còn lưu ý
 - Trong GEMINI_KEYS có **3 key bị Google từ chối** ("API key not valid"): key thứ 2, 5, 7 (bắt đầu "AQ.Ab8…").

@@ -93,6 +93,10 @@ jobs:
           else:
               d = {"id": os.environ["ID_DE"], "ok": False, "hang": None,
                    "loi": "Xem nhật ký: https://github.com/%s/actions/runs/%s" % (os.environ["GITHUB_REPOSITORY"], os.environ["GITHUB_RUN_ID"])}
+          # key Gemini LỖI THẬT (không phải hết hạn mức): gửi kèm để Apps Script báo Zalo cho người dùng gỡ key
+          if os.path.exists("/tmp/gemini_key_hong.json"):
+              try: d["key_hong"] = json.load(open("/tmp/gemini_key_hong.json", encoding="utf8"))
+              except Exception: pass
           d["token"] = os.environ["DUNG_VIDEO_SECRET"]
           d["loai"] = "bo_phan_1"
           d["id"] = d.get("id") or os.environ["ID_DE"]

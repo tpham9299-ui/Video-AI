@@ -92,7 +92,6 @@ export const KieuToan: React.FC<{kieu: string}> = ({kieu}) => (
     .katex { font-family: ${FONT} !important; font-size: 1.05em !important; font-weight: 700; }
     .katex .mathnormal, .katex .mathit, .katex .mathdefault, .katex .textit { font-family: ${FONT} !important; font-style: italic; font-weight: 700; }
     .katex .mathrm, .katex .textrm, .katex .text, .katex .text * { font-family: ${FONT} !important; font-style: normal; font-weight: 700; }
-    .katex .mrel, .katex .mbin { font-family: ${FONT} !important; }
     .katex .mathbf, .katex .textbf, .katex .boldsymbol { font-family: ${FONT} !important; font-weight: 800; }
     .katex .mathsf, .katex .textsf { font-family: ${FONT} !important; }
     .toan-ngat { white-space: normal !important; }

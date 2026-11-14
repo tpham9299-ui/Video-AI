@@ -285,6 +285,9 @@ function doPost(e) {
   if (!khoa.tryLock(120000)) return tra({ ok: false, loi: 'BAN' });   // đang chạy Bộ phận 1: GitHub sẽ thử lại
   try {
     var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
+    // key Gemini lỗi thật (GitHub phát hiện): báo Zalo để người dùng gỡ key, mỗi key một lần mỗi ngày
+    if (Array.isArray(d.key_hong) && d.key_hong.length) baoKeyHong_(d.key_hong);
+    if (d.loai === 'key_hong') return tra({ ok: true });
     if (d.loai === 'bo_phan_1') {   // kết quả giải + kịch bản từ GitHub (BoPhan1.gs, lần 23)
       return tra(nhanKetQuaBoPhan1_(sh, d));
     }
@@ -338,6 +341,26 @@ function doPost(e) {
 }
 
 // Gửi Zalo tối đa MỘT lần cho mỗi khóa (nhớ trong 6 giờ) để không bao giờ báo lặp dù hàm bị gọi nhiều lần.
+// Key Gemini LỖI THẬT (sai key, hết hiệu lực, bị khóa, chưa bật API) - KHÔNG phải hết hạn mức ngày (hết hạn mức thì hệ thống
+// tự chuyển key và chờ, không làm phiền). ds: [{so, dau, ly_do}] - "so" là thứ tự key trong Secret GEMINI_KEYS.
+function baoKeyHong_(ds) {
+  var ngay = Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd');
+  var pr = PropertiesService.getScriptProperties();
+  var daBao = String(pr.getProperty('KEY_HONG_DA_BAO') || '').split(',').filter(function (x) { return x.indexOf(ngay + ':') === 0; });
+  ds.slice(0, 10).forEach(function (k) {
+    if (!k || !k.dau) return;
+    var dau = String(k.dau).replace(/[^\w.-]/g, '').slice(0, 8);
+    if (daBao.indexOf(ngay + ':' + dau) >= 0) return;   // hôm nay đã báo key này rồi
+    daBao.push(ngay + ':' + dau);
+    pr.setProperty('KEY_HONG_DA_BAO', daBao.join(','));
+    guiZaloMotLan_('KEY_HONG_' + dau + '_' + ngay,
+      '🔑 Key Gemini thứ ' + (k.so || '?') + ' trong GEMINI_KEYS (bắt đầu "' + dau.slice(0, 6) + '…") bị LỖI THẬT, không phải hết hạn mức:\n' +
+      String(k.ly_do || '').slice(0, 160) + '\n' +
+      'Hệ thống đã tự bỏ qua key này. Bạn gỡ nó khỏi GitHub > Settings > Secrets and variables > Actions > GEMINI_KEYS (và khỏi kho key Apps Script nếu có).', 'cao');
+    nhatKy_('KEY_HONG', 'key thứ ' + (k.so || '?') + ' (' + dau.slice(0, 6) + '…): ' + String(k.ly_do || '').slice(0, 160));
+  });
+}
+
 function guiZaloMotLan_(khoaTin, noiDung, muc) {
   guiZalo_(noiDung, muc || 'cao', khoaTin);
 }
