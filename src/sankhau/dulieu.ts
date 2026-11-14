@@ -358,6 +358,9 @@ export function hopLeSanKhau(d: unknown): DuLieuSanKhau | null {
   const g = d.goc_nhin;
   if (g === 'ban') gocDau = {nghieng: 52, xoay: -18};
   else if (laDT(g)) gocDau = {nghieng: so(g.nghieng, 50, 0, 68), xoay: so(g.xoay, 0, -70, 70)};
+  // cảnh thực tế tự dựng (canh_that) đứng thẳng như bản vẽ: bỏ góc máy nghiêng nằm sàn (nhìn méo, chữ đo bị dẹt)
+  const coCanhThat = laMang(d.vat) && d.vat.some((x) => laDT(x) && x.loai === 'canh_that');
+  if (coCanhThat) return {vat: ds, hanhDong: hd.filter((h) => h.kieu !== 'goc_3d'), soBuoc, gocDau: null};
   return {vat: ds, hanhDong: hd, soBuoc, gocDau};
 }
 
