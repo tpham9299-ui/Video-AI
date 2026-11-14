@@ -6,7 +6,7 @@
  * Bản này thêm: kiểm tra "san_khau" (vật thật + hành động), tiêu đề cảnh, và tuSuaKichBan_() tự sửa lỗi vặt để đỡ gọi lại Gemini.
  */
 
-var LOAI_VAT_ = ['nguoi', 'the', 'the_bai', 'xuc_xac', 'dong_xu', 'hop_bi', 'tui', 'hop_qua', 'dong_ho', 'dien_thoai', 'bong_bay',
+var LOAI_VAT_ = ['canh_that', 'nguoi', 'the', 'the_bai', 'xuc_xac', 'dong_xu', 'hop_bi', 'tui', 'hop_qua', 'dong_ho', 'dien_thoai', 'bong_bay',
   'dong_ho_do', 'bieu_do_cot', 'thanh', 'vong_quay', 'cua', 'banh', 'nhan', 'chu', 'so_dem', 'mui_ten', 'bieu_tuong', 'luoi_o', 'danh_sach',
   'khoi_hop', 'tru', 'non', 'cau', 'toa_nha', 'xe', 'cay', 'thang', 'hinh_hoc', 'do_thi', 'hinh_tu_do'];
 var VAT_3D_ = ['khoi_hop', 'tru', 'non', 'cau', 'toa_nha', 'xe', 'cay', 'thang', 'xuc_xac', 'hop_bi', 'hop_qua', 'cua'];   // vật 3D thật (cảnh đời thực)
@@ -18,7 +18,8 @@ var TU_VAT_3D_ = {
 var KIEU_NET_ = ['da_giac', 'duong', 'mui_ten', 'tron', 'cung', 'chu', 'svg', 'da_giac_deu', 'koch', 'sierpinski', 'tham_so', 'lap', 'xep_chong', 'vat'];
 // THƯ VIỆN VẬT THỰC TẾ (nét "vat" của hinh_tu_do) và từ khóa trong đề bắt buộc vẽ đúng vật đó
 var TEN_VAT_THUC_ = ['cot_co', 'nguoi', 'toa_nha', 'ngan_hang', 'nha', 'truong_hoc', 'cay', 'cay_thong', 'hai_dang', 'thap_nuoc', 'cot_dien', 'den_duong',
-  'nui', 'mat_troi', 'xe_hoi', 'thuyen', 'may_bay', 'khinh_khi_cau', 'cau', 'song', 'thang', 'tien', 'heo_dat', 'dieu', 'tuong', 'ho_nuoc'];
+  'nui', 'mat_troi', 'xe_hoi', 'thuyen', 'may_bay', 'khinh_khi_cau', 'cau', 'song', 'thang', 'tien', 'heo_dat', 'dieu', 'tuong', 'ho_nuoc',
+  'hang_rao', 'cong_trinh', 'cua_hang', 'xe_may', 'xe_dap', 'xe_buyt', 'con_duong', 'qua_bong', 'ro_bong_ro', 'gieng', 'cong', 'bieu_tuong'];
 var TU_VAT_THUC_ = [
   [/cột cờ/, ['cot_co'], 'cột cờ'], [/ngân hàng|gửi tiết kiệm|gửi tiền|sổ tiết kiệm/, ['ngan_hang', 'tien', 'heo_dat'], 'ngân hàng / tiền gửi'],
   [/tòa nhà|toà nhà|chung cư|cao ốc|nhà cao tầng/, ['toa_nha'], 'tòa nhà'], [/ngôi nhà|căn nhà|mái nhà/, ['nha', 'toa_nha'], 'ngôi nhà'],
@@ -29,10 +30,41 @@ var TU_VAT_THUC_ = [
   [/khinh khí cầu/, ['khinh_khi_cau'], 'khinh khí cầu'], [/cây cầu|chiếc cầu|nhịp cầu|cầu bắc/, ['cau'], 'cây cầu'], [/con sông|dòng sông|bờ sông|qua sông/, ['song'], 'dòng sông'],
   [/cái thang|chiếc thang|thang dựa|thang tựa/, ['thang'], 'cái thang'], [/con diều|thả diều/, ['dieu'], 'con diều'], [/bức tường|bờ tường/, ['tuong'], 'bức tường'],
   [/hồ nước|cái hồ|mặt hồ|(^|[\s,.])ao (cá|nước|làng)/, ['ho_nuoc'], 'hồ nước'], [/heo đất|lợn đất/, ['heo_dat'], 'heo đất'],
-  [/người quan sát|đứng cách|nhìn lên|nhìn xuống|góc nâng|góc hạ|tầm mắt/, ['nguoi'], 'người quan sát']
+  [/người quan sát|đứng cách|nhìn lên|nhìn xuống|góc nâng|góc hạ|tầm mắt/, ['nguoi'], 'người quan sát'],
+  [/hàng rào|rào xung quanh|rào quanh|làm rào/, ['hang_rao'], 'hàng rào'], [/xe máy/, ['xe_may'], 'xe máy'], [/xe đạp/, ['xe_dap'], 'xe đạp'], [/xe buýt|xe khách/, ['xe_buyt'], 'xe buýt'],
+  [/bưu điện|bệnh viện|nhà máy|ủy ban|uỷ ban|nhà văn hóa|khách sạn/, ['cong_trinh'], 'công trình (có biển tên)'], [/cửa hàng|siêu thị|tiệm|quầy hàng|chợ\b/, ['cua_hang'], 'cửa hàng'],
+  [/con đường|đường thẳng nối|quãng đường|đoạn đường/, ['con_duong', 'xe_hoi', 'xe_may', 'xe_dap'], 'con đường / xe'], [/rổ bóng|bóng rổ/, ['ro_bong_ro'], 'rổ bóng rổ'], [/cái giếng|giếng nước/, ['gieng'], 'cái giếng'],
+  [/mảnh vườn|khu vườn|vườn rau|mảnh đất|thửa ruộng|sân bóng|hồ bơi|bể bơi/, ['@canh_that', '@hinh_hoc', '@hinh_tu_do'], 'mảnh đất / vườn (vẽ nhìn từ trên với canh_that nhin "tren")']
 ];
 // vật 3D cũ cũng chấp nhận được cho một số tên
 var THAY_VAT_THUC_ = { toa_nha: ['toa_nha'], nha: ['toa_nha'], cay: ['cay'], cay_thong: ['cay'], xe_hoi: ['xe'], thang: ['thang'], nguoi: ['nguoi'] };
+// CẢNH THỰC TẾ TỰ DỰNG (canh_that): kiểm tra tên vật, mã, số đo và mọi điểm neo của phép đo đều trỏ tới vật/điểm có thật.
+function kiemTraCanhThat_(v, ev) {
+  var nhin = v.nhin === 'tren' ? 'tren' : 'ngang';
+  var vat = Array.isArray(v.vat) ? v.vat : [], vung = Array.isArray(v.vung) ? v.vung : [], diem = Array.isArray(v.diem) ? v.diem : [];
+  if (!vat.length && !vung.length) return 'HINH_' + ev + ': canh_that cần "vat" (và/hoặc "vung" khi nhin "tren").';
+  var neo = {};
+  for (var i = 0; i < vat.length; i++) {
+    var x = vat[i];
+    if (!laDT_(x) || TEN_VAT_THUC_.indexOf(String(x.ten)) < 0) return 'HINH_' + ev + ', vat[' + i + ']: "ten" phải thuộc thư viện: ' + TEN_VAT_THUC_.join(', ') + ' (vật khác: dùng "cong_trinh" kèm "bien" ghi tên, hoặc "bieu_tuong" kèm "emoji").';
+    if (x.ten === 'mat_troi' && x.x === undefined) continue;
+    if (!laChuoi_(x.ma)) return 'HINH_' + ev + ', vat[' + i + ']: mỗi vật cần "ma" (A, B, C...) để các phép đo trỏ tới.';
+    if (x.ten === 'thang' && x.dinh_x !== undefined) { if (!laSo_(x.x) || !laSo_(x.dinh_cao)) return 'HINH_' + ev + ': thang dựa tường cần "x" (chân), "dinh_x", "dinh_cao" (mét).'; }
+    else if (!laSo_(x.cao) || x.cao <= 0 || !laSo_(x.x)) return 'HINH_' + ev + ', vật ' + x.ma + ': cần "cao" (mét, > 0) và "x" (vị trí ngang, mét)' + (nhin === 'tren' ? ' và "y"' : '') + '.';
+    ['', '.chan', '.dinh', '.mat', '.giua'].forEach(function (h) { neo[x.ma + h] = 1; });
+  }
+  diem.forEach(function (d) { if (d && d.ma) neo[d.ma] = 1; });
+  vung.forEach(function (z) { if (z && z.ma) ['', '.tl', '.tr', '.bl', '.br', '.giua', '.tren', '.duoi', '.trai', '.phai'].forEach(function (h) { neo[z.ma + h] = 1; }); });
+  var dsDo = Array.isArray(v.do) ? v.do : [];
+  for (var j = 0; j < dsDo.length; j++) {
+    var d = dsDo[j];
+    if (!laDT_(d)) continue;
+    var can = [d.tu, d.den, d.vat, d.tai].concat(Array.isArray(d.dinh) ? d.dinh : []).filter(function (a) { return a !== undefined && a !== ''; });
+    for (var q = 0; q < can.length; q++) if (!neo[String(can[q])]) return 'HINH_' + ev + ', do[' + j + '] (' + d.kieu + '): điểm "' + can[q] + '" không có. Dùng mã vật (A), A.dinh, A.mat, A.giua, mã trong "diem"' + (vung.length ? ', hoặc góc vùng V.tl/V.tr/V.bl/V.br' : '') + '.';
+  }
+  return '';
+}
+
 // Đề nói tới vật thực tế (cột cờ, ngân hàng, tòa nhà...) mà 3 cảnh đầu không vẽ đúng vật đó (thay bằng khối hộp/trụ vô nghĩa) -> lỗi nặng.
 function kiemTraVatThucDe_(kb, deGoc) {
   var de = String(deGoc || '').toLowerCase();
@@ -45,13 +77,14 @@ function kiemTraVatThucDe_(kb, deGoc) {
       if (!v) return;
       co['@' + v.loai] = true;
       if (Array.isArray(v.hinh)) v.hinh.forEach(function (h) { if (h && h.kieu === 'vat') co[h.ten] = true; });
+      if (v.loai === 'canh_that') { (v.vat || []).forEach(function (x) { if (x) co[x.ten] = true; }); if ((v.vung || []).some(function (z) { return z && z.hang_rao === true; })) co.hang_rao = true; }
     });
   });
   var loi = [];
   TU_VAT_THUC_.forEach(function (m) {
     if (!m[0].test(de)) return;
     var dat = m[1].some(function (t) { return co[t] || (THAY_VAT_THUC_[t] || []).some(function (l) { return co['@' + l]; }); });
-    if (!dat) loi.push('VAT_THUC_TE_SAI: đề nói tới ' + m[2] + ' nhưng 3 cảnh đầu không vẽ vật đó. Dùng hinh_tu_do với nét {"kieu":"vat","ten":"' + m[1][0] + '","goc":[x, y chân vật],"cao":...} đúng tỉ lệ đề, đặt chung khung với tia nhìn/số đo; KHÔNG thay bằng khối hộp/khối trụ.');
+    if (!dat) loi.push('VAT_THUC_TE_SAI: đề nói tới ' + m[2] + ' nhưng 3 cảnh đầu không vẽ vật đó. Dùng vật canh_that (vat: {"ma":"A","ten":"' + m[1].filter(function (t) { return t[0] !== '@'; })[0] + '","cao":mét,"x":mét} + các phép đo) đúng số đo của đề; KHÔNG thay bằng khối hộp/khối trụ.');
   });
   return loi.slice(0, 4);
 }
@@ -70,6 +103,7 @@ function kiemTraSanKhau_(du, cn, idCu) {
     if (ids[v.id]) return 'HINH_' + ev + ': id "' + v.id + '" bị trùng.';
     ids[v.id] = v;
     if (v.loai !== 'mui_ten' && (!laSo_(v.x) || !laSo_(v.y) || v.x < 0 || v.x > 100 || v.y < 0 || v.y > 100)) return 'HINH_' + ev + ': ' + v.loai + ' cần x, y là số 0-100 (tâm vật).';
+    if (v.loai === 'canh_that') { var lct = kiemTraCanhThat_(v, ev); if (lct) return lct; coVatThat = true; continue; }
     if ((v.loai === 'nhan' || v.loai === 'chu') && !laChuoi_(v.noi_dung)) return 'HINH_' + ev + ': "' + v.loai + '" cần "noi_dung".';
     if (v.loai === 'bieu_tuong' && !laChuoi_(v.emoji)) return 'HINH_' + ev + ': "bieu_tuong" cần "emoji".';
     if (v.loai === 'bieu_do_cot' && (!Array.isArray(v.ds_so) || !v.ds_so.length || v.ds_so.some(function (x) { return !(Number(x) >= 0); }))) return 'HINH_' + ev + ': bieu_do_cot cần "ds_so" là mảng số không âm (và "ds" là nhãn cột).';
@@ -1118,6 +1152,17 @@ function tuSuaQuyTrinh_(kb, deGoc) {
   }
   var cho = Array.isArray(kb.de_cho) ? kb.de_cho.filter(function (x) { return String(x).trim(); }) : [];
   if (cho.length < 2 && Array.isArray(kb.du_kien) && kb.du_kien.length >= 2) { kb.de_cho = kb.du_kien.map(String).slice(0, 5); sua.push('de_cho lấy từ du_kien'); }
+  // thẻ ĐỀ CHO thiếu số của đề -> dựng lại từ chính các vế câu có số trong đề (không bao giờ thiếu dữ kiện)
+  if (deGoc) {
+    var soDe = (String(deGoc).replace(/(câu|bài|lớp|ví dụ)\s*\d+/gi, ' ').match(/\d+(?:[.,]\d+)?/g) || []).map(function (x) { return x.replace(',', '.'); });
+    var coChu = (Array.isArray(kb.de_cho) ? kb.de_cho.join(' ') : '').replace(/,/g, '.');
+    var mat = soDe.filter(function (x, i) { return soDe.indexOf(x) === i && coChu.indexOf(x) < 0; });
+    if (mat.length) {
+      var ve = String(deGoc).split(/(?<=[.;!])\s+|,\s+(?=[^\d])/).map(function (x) { return x.replace(/\s+/g, ' ').trim(); })
+        .filter(function (x) { return /\d/.test(x) && !/\?\s*$|^\s*(hỏi|tính|tìm)\b/i.test(x); });
+      if (ve.length) { kb.de_cho = ve.slice(0, 5).map(function (x) { return x.replace(/[.;]$/, '').slice(0, 70); }); sua.push('de_cho dựng lại từ các dữ kiện của đề'); }
+    }
+  }
   if (String(kb.can_tim || '').trim().length < 5 && deGoc) {
     var cau = String(deGoc).split(/(?<=[.?!])\s+/).filter(function (x) { return /\?|^\s*(hỏi|tính|tìm|xác định|chứng minh)/i.test(x); });
     if (cau.length) { kb.can_tim = cau[cau.length - 1].replace(/^\s*hỏi\s*/i, '').trim().slice(0, 110); sua.push('can_tim lấy từ câu hỏi của đề'); }
@@ -1201,7 +1246,7 @@ function kiemTraHinhDungYen_(kb) {
     var vatSau = du.vat.filter(function (v) { return v && Number(v.buoc) >= 2; }).length;
     var netSau = 0;
     du.vat.forEach(function (v) { if (v && Array.isArray(v.hinh)) v.hinh.forEach(function (h) { if (h && Number(h.buoc) >= 2) netSau++; }); });
-    var tuDong = du.vat.some(function (v) { return v && Array.isArray(v.hinh) && v.hinh.some(function (h) { return h && h.kieu === 'xep_chong'; }); }) ? 1 : 0;   // chồng vật tự xếp từng tầng
+    var tuDong = du.vat.some(function (v) { return v && ((Array.isArray(v.hinh) && v.hinh.some(function (h) { return h && h.kieu === 'xep_chong'; })) || (v.loai === 'canh_that' && Array.isArray(v.do) && v.do.length)); }) ? 1 : 0;   // chồng vật tự xếp / cảnh thực tế tự vẽ dần các phép đo   // chồng vật tự xếp từng tầng
     if (soHD + vatSau + netSau + tuDong < 2) loi.push('HINH_DUNG_YEN_CANH_' + (j + 1) + ': hình gần như đứng yên suốt cảnh. Thêm ít nhất 2 hành động khớp lời thoại (bien_hinh dời/xoay mảnh, tach/ghep, dem_tang, dat_gia_tri, chon, di_chuyen...) và tả chuyển động trong "mo_ta".');
   });
   return loi;

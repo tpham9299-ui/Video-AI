@@ -74,6 +74,7 @@ jobs:
       APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
       DUNG_VIDEO_SECRET: ${{ secrets.DUNG_VIDEO_SECRET }}
       ID_VIDEO: ${{ github.event.client_payload.id || github.event.inputs.id }}
+      GEMINI_KEYS: ${{ secrets.GEMINI_KEYS }}
     steps:
       - uses: actions/checkout@v4
 
@@ -160,7 +161,7 @@ jobs:
       - name: Kiểm duyệt bố cục
         id: kd
         run: |
-          node scripts/kiem_duyet.mjs build public/props.json out/kiem_duyet.json 2>&1 | grep -v "character metrics\|memory\|Memory\|docker\|lower amount" || true
+          node scripts/kiem_duyet.mjs build public/props.json out/kiem_duyet.json kich_ban.json 2>&1 | grep -v "character metrics\|memory\|Memory\|docker\|lower amount" || true
           [ -s out/kiem_duyet.json ] || echo '{"nang":[],"nhe":[],"hong":true}' > out/kiem_duyet.json
           python3 - <<'PY'
           import json, os

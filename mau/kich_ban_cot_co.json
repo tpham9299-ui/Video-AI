@@ -50,86 +50,46 @@
      "vat": [
       {
        "id": "canh",
-       "loai": "hinh_tu_do",
+       "loai": "canh_that",
        "x": 50,
        "y": 50,
-       "khung": [
-        100,
-        80
-       ],
+       "nhin": "ngang",
        "buoc": 1,
-       "hinh": [
+       "vat": [
         {
-         "kieu": "duong",
-         "diem": [
-          [
-           4,
-           72
-          ],
-          [
-           96,
-           72
-          ]
-         ],
-         "mau": "xam",
-         "net": 3,
-         "buoc": 1
+         "ten": "mat_troi"
         },
         {
-         "kieu": "vat",
-         "ten": "mat_troi",
-         "goc": [
-          12,
-          12
-         ],
-         "cao": 12,
-         "buoc": 1
-        },
-        {
-         "kieu": "vat",
-         "ten": "cay",
-         "goc": [
-          52,
-          72
-         ],
-         "cao": 14,
-         "buoc": 1
-        },
-        {
-         "kieu": "vat",
-         "ten": "cot_co",
-         "goc": [
-          84,
-          72
-         ],
-         "cao": 50,
-         "mau": "cam",
-         "buoc": 1
-        },
-        {
-         "kieu": "vat",
+         "ma": "A",
          "ten": "nguoi",
-         "goc": [
-          20,
-          72
-         ],
-         "cao": 5.4,
-         "mau": "xanh_la",
-         "buoc": 1
+         "cao": 1.6,
+         "x": 0
+        },
+        {
+         "ma": "T",
+         "ten": "cay",
+         "cao": 4,
+         "x": 9
+        },
+        {
+         "ma": "B",
+         "ten": "cot_co",
+         "cao": 15.6,
+         "x": 20,
+         "mau": "cam"
         }
-       ]
+       ],
+       "diem": [
+        {
+         "ma": "H",
+         "x": 20,
+         "cao": 1.6
+        }
+       ],
+       "do": []
       }
      ],
-     "hanh_dong": [
-      {
-       "buoc": 2,
-       "vat": "canh",
-       "kieu": "chon",
-       "chi_so": [
-        4
-       ]
-      }
-     ]
+     "hanh_dong": []
     }
    }
   },
@@ -148,177 +108,74 @@
      "vat": [
       {
        "id": "canh",
-       "loai": "hinh_tu_do",
+       "loai": "canh_that",
        "x": 50,
        "y": 50,
-       "khung": [
-        100,
-        80
-       ],
+       "nhin": "ngang",
        "buoc": 1,
-       "hinh": [
+       "vat": [
         {
-         "kieu": "duong",
-         "diem": [
-          [
-           4,
-           72
-          ],
-          [
-           96,
-           72
-          ]
-         ],
-         "mau": "xam",
-         "net": 3,
-         "buoc": 1
+         "ten": "mat_troi"
         },
         {
-         "kieu": "vat",
-         "ten": "mat_troi",
-         "goc": [
-          12,
-          12
-         ],
-         "cao": 12,
-         "buoc": 1
-        },
-        {
-         "kieu": "vat",
-         "ten": "cay",
-         "goc": [
-          52,
-          72
-         ],
-         "cao": 14,
-         "buoc": 1
-        },
-        {
-         "kieu": "vat",
-         "ten": "cot_co",
-         "goc": [
-          84,
-          72
-         ],
-         "cao": 50,
-         "mau": "cam",
-         "buoc": 1,
-         "nhan": "h = ?"
-        },
-        {
-         "kieu": "vat",
+         "ma": "A",
          "ten": "nguoi",
-         "goc": [
-          20,
-          72
-         ],
-         "cao": 5.4,
-         "mau": "xanh_la",
-         "buoc": 1
+         "cao": 1.6,
+         "x": 0
         },
         {
-         "kieu": "mui_ten",
-         "diem": [
-          [
-           22,
-           76
-          ],
-          [
-           83,
-           76
-          ]
-         ],
-         "mau": "trang",
-         "net": 2,
+         "ma": "T",
+         "ten": "cay",
+         "cao": 4,
+         "x": 9
+        },
+        {
+         "ma": "B",
+         "ten": "cot_co",
+         "cao": 15.6,
+         "x": 20,
+         "mau": "cam"
+        }
+       ],
+       "diem": [
+        {
+         "ma": "H",
+         "x": 20,
+         "cao": 1.6
+        }
+       ],
+       "do": [
+        {
+         "kieu": "khoang_cach",
+         "tu": "A",
+         "den": "B",
+         "nhan": "20 m",
          "buoc": 2
         },
         {
-         "kieu": "chu",
-         "tam": [
-          52,
-          79
-         ],
-         "noi_dung": "20\\,m",
+         "kieu": "chieu_cao",
+         "vat": "A",
+         "nhan": "1,6 m",
+         "ben": "trai",
          "buoc": 2
         },
         {
-         "kieu": "chu",
-         "tam": [
-          11,
-          66
-         ],
-         "noi_dung": "1{,}6\\,m",
+         "kieu": "tia",
+         "tu": "A.mat",
+         "den": "B.dinh",
+         "goc": "35°",
          "buoc": 3
         },
         {
-         "kieu": "duong",
-         "diem": [
-          [
-           21.5,
-           67.3
-          ],
-          [
-           84,
-           23.5
-          ]
-         ],
-         "mau": "vang",
-         "net": 3,
-         "dut": true,
-         "buoc": 2
-        },
-        {
-         "kieu": "duong",
-         "diem": [
-          [
-           21.5,
-           67.3
-          ],
-          [
-           84,
-           67.3
-          ]
-         ],
-         "mau": "trang",
-         "net": 2,
-         "dut": true,
-         "buoc": 2
-        },
-        {
-         "kieu": "cung",
-         "tam": [
-          21.5,
-          67.3
-         ],
-         "r": 10,
-         "tu": -35,
-         "den": 0,
-         "mau": "vang",
-         "net": 3,
-         "buoc": 3
-        },
-        {
-         "kieu": "chu",
-         "tam": [
-          37,
-          63.5
-         ],
-         "noi_dung": "35^\\circ",
+         "kieu": "chieu_cao",
+         "vat": "B",
+         "nhan": "h = ?",
          "buoc": 3
         }
        ]
       }
      ],
-     "hanh_dong": [
-      {
-       "buoc": 3,
-       "vat": "canh",
-       "kieu": "chon",
-       "chi_so": [
-        4
-       ]
-      }
-     ]
+     "hanh_dong": []
     }
    }
   },
@@ -339,208 +196,83 @@
      "vat": [
       {
        "id": "canh",
-       "loai": "hinh_tu_do",
+       "loai": "canh_that",
        "x": 50,
        "y": 50,
-       "khung": [
-        100,
-        80
-       ],
+       "nhin": "ngang",
        "buoc": 1,
-       "hinh": [
+       "vat": [
         {
-         "kieu": "duong",
-         "diem": [
-          [
-           4,
-           72
-          ],
-          [
-           96,
-           72
-          ]
-         ],
-         "mau": "xam",
-         "net": 3,
-         "buoc": 1
+         "ten": "mat_troi"
         },
         {
-         "kieu": "vat",
-         "ten": "mat_troi",
-         "goc": [
-          12,
-          12
-         ],
-         "cao": 12,
-         "buoc": 1
-        },
-        {
-         "kieu": "vat",
-         "ten": "cay",
-         "goc": [
-          52,
-          72
-         ],
-         "cao": 14,
-         "buoc": 1
-        },
-        {
-         "kieu": "vat",
-         "ten": "cot_co",
-         "goc": [
-          84,
-          72
-         ],
-         "cao": 50,
-         "mau": "cam",
-         "buoc": 1,
-         "nhan": "h = ?"
-        },
-        {
-         "kieu": "vat",
+         "ma": "A",
          "ten": "nguoi",
-         "goc": [
-          20,
-          72
-         ],
-         "cao": 5.4,
-         "mau": "xanh_la",
+         "cao": 1.6,
+         "x": 0
+        },
+        {
+         "ma": "T",
+         "ten": "cay",
+         "cao": 4,
+         "x": 9
+        },
+        {
+         "ma": "B",
+         "ten": "cot_co",
+         "cao": 15.6,
+         "x": 20,
+         "mau": "cam"
+        }
+       ],
+       "diem": [
+        {
+         "ma": "H",
+         "x": 20,
+         "cao": 1.6
+        }
+       ],
+       "do": [
+        {
+         "kieu": "khoang_cach",
+         "tu": "A",
+         "den": "B",
+         "nhan": "20 m",
          "buoc": 1
         },
         {
-         "kieu": "mui_ten",
-         "diem": [
-          [
-           22,
-           76
-          ],
-          [
-           83,
-           76
-          ]
+         "kieu": "tia",
+         "tu": "A.mat",
+         "den": "B.dinh",
+         "goc": "35°",
+         "buoc": 1
+        },
+        {
+         "kieu": "tam_giac",
+         "dinh": [
+          "A.mat",
+          "H",
+          "B.dinh"
          ],
-         "mau": "trang",
-         "net": 2,
          "buoc": 2
         },
         {
-         "kieu": "chu",
-         "tam": [
-          52,
-          79
-         ],
-         "noi_dung": "20\\,m",
+         "kieu": "vuong",
+         "tai": "H",
          "buoc": 2
         },
         {
-         "kieu": "chu",
-         "tam": [
-          11,
-          66
-         ],
-         "noi_dung": "1{,}6\\,m",
-         "buoc": 3
-        },
-        {
-         "kieu": "duong",
-         "diem": [
-          [
-           21.5,
-           67.3
-          ],
-          [
-           84,
-           23.5
-          ]
-         ],
-         "mau": "vang",
-         "net": 3,
-         "dut": true,
-         "buoc": 2
-        },
-        {
-         "kieu": "duong",
-         "diem": [
-          [
-           21.5,
-           67.3
-          ],
-          [
-           84,
-           67.3
-          ]
-         ],
-         "mau": "trang",
-         "net": 2,
-         "dut": true,
-         "buoc": 2
-        },
-        {
-         "kieu": "cung",
-         "tam": [
-          21.5,
-          67.3
-         ],
-         "r": 10,
-         "tu": -35,
-         "den": 0,
-         "mau": "vang",
-         "net": 3,
-         "buoc": 3
-        },
-        {
-         "kieu": "chu",
-         "tam": [
-          37,
-          63.5
-         ],
-         "noi_dung": "35^\\circ",
-         "buoc": 3
-        },
-        {
-         "kieu": "da_giac",
-         "diem": [
-          [
-           21.5,
-           67.3
-          ],
-          [
-           84,
-           67.3
-          ],
-          [
-           84,
-           23.5
-          ]
-         ],
-         "mau": "cam",
-         "to": "cam",
-         "do_to": 0.18,
-         "net": 2,
-         "buoc": 2
-        },
-        {
-         "kieu": "chu",
-         "tam": [
-          90,
-          45
-         ],
-         "noi_dung": "x",
+         "kieu": "chieu_cao",
+         "vat": "B",
+         "tu": "H",
+         "den": "B.dinh",
+         "nhan": "x",
          "buoc": 3
         }
        ]
       }
      ],
-     "hanh_dong": [
-      {
-       "buoc": 3,
-       "vat": "canh",
-       "kieu": "chon",
-       "chi_so": [
-        11
-       ]
-      }
-     ]
+     "hanh_dong": []
     }
    }
   },
@@ -561,194 +293,80 @@
      "vat": [
       {
        "id": "canh",
-       "loai": "hinh_tu_do",
+       "loai": "canh_that",
        "x": 50,
        "y": 50,
-       "khung": [
-        100,
-        80
-       ],
+       "nhin": "ngang",
        "buoc": 1,
-       "hinh": [
+       "vat": [
         {
-         "kieu": "duong",
-         "diem": [
-          [
-           4,
-           72
-          ],
-          [
-           96,
-           72
-          ]
-         ],
-         "mau": "xam",
-         "net": 3,
-         "buoc": 1
+         "ten": "mat_troi"
         },
         {
-         "kieu": "vat",
-         "ten": "mat_troi",
-         "goc": [
-          12,
-          12
-         ],
-         "cao": 12,
-         "buoc": 1
-        },
-        {
-         "kieu": "vat",
-         "ten": "cay",
-         "goc": [
-          52,
-          72
-         ],
-         "cao": 14,
-         "buoc": 1
-        },
-        {
-         "kieu": "vat",
-         "ten": "cot_co",
-         "goc": [
-          84,
-          72
-         ],
-         "cao": 50,
-         "mau": "cam",
-         "buoc": 1,
-         "nhan": "h = ?"
-        },
-        {
-         "kieu": "vat",
+         "ma": "A",
          "ten": "nguoi",
-         "goc": [
-          20,
-          72
-         ],
-         "cao": 5.4,
-         "mau": "xanh_la",
+         "cao": 1.6,
+         "x": 0
+        },
+        {
+         "ma": "T",
+         "ten": "cay",
+         "cao": 4,
+         "x": 9
+        },
+        {
+         "ma": "B",
+         "ten": "cot_co",
+         "cao": 15.6,
+         "x": 20,
+         "mau": "cam"
+        }
+       ],
+       "diem": [
+        {
+         "ma": "H",
+         "x": 20,
+         "cao": 1.6
+        }
+       ],
+       "do": [
+        {
+         "kieu": "khoang_cach",
+         "tu": "A",
+         "den": "B",
+         "nhan": "20 m",
          "buoc": 1
         },
         {
-         "kieu": "mui_ten",
-         "diem": [
-          [
-           22,
-           76
-          ],
-          [
-           83,
-           76
-          ]
+         "kieu": "tia",
+         "tu": "A.mat",
+         "den": "B.dinh",
+         "goc": "35°",
+         "buoc": 1
+        },
+        {
+         "kieu": "tam_giac",
+         "dinh": [
+          "A.mat",
+          "H",
+          "B.dinh"
          ],
-         "mau": "trang",
-         "net": 2,
+         "buoc": 1
+        },
+        {
+         "kieu": "chieu_cao",
+         "vat": "B",
+         "tu": "H",
+         "den": "B.dinh",
+         "nhan": "x",
+         "buoc": 1
+        },
+        {
+         "kieu": "chieu_cao",
+         "vat": "A",
+         "nhan": "1,6 m",
+         "ben": "trai",
          "buoc": 2
-        },
-        {
-         "kieu": "chu",
-         "tam": [
-          52,
-          79
-         ],
-         "noi_dung": "20\\,m",
-         "buoc": 2
-        },
-        {
-         "kieu": "chu",
-         "tam": [
-          11,
-          66
-         ],
-         "noi_dung": "1{,}6\\,m",
-         "buoc": 3
-        },
-        {
-         "kieu": "duong",
-         "diem": [
-          [
-           21.5,
-           67.3
-          ],
-          [
-           84,
-           23.5
-          ]
-         ],
-         "mau": "vang",
-         "net": 3,
-         "dut": true,
-         "buoc": 2
-        },
-        {
-         "kieu": "duong",
-         "diem": [
-          [
-           21.5,
-           67.3
-          ],
-          [
-           84,
-           67.3
-          ]
-         ],
-         "mau": "trang",
-         "net": 2,
-         "dut": true,
-         "buoc": 2
-        },
-        {
-         "kieu": "cung",
-         "tam": [
-          21.5,
-          67.3
-         ],
-         "r": 10,
-         "tu": -35,
-         "den": 0,
-         "mau": "vang",
-         "net": 3,
-         "buoc": 3
-        },
-        {
-         "kieu": "chu",
-         "tam": [
-          37,
-          63.5
-         ],
-         "noi_dung": "35^\\circ",
-         "buoc": 3
-        },
-        {
-         "kieu": "da_giac",
-         "diem": [
-          [
-           21.5,
-           67.3
-          ],
-          [
-           84,
-           67.3
-          ],
-          [
-           84,
-           23.5
-          ]
-         ],
-         "mau": "cam",
-         "to": "cam",
-         "do_to": 0.18,
-         "net": 2,
-         "buoc": 2
-        },
-        {
-         "kieu": "chu",
-         "tam": [
-          90,
-          45
-         ],
-         "noi_dung": "x",
-         "buoc": 3
         }
        ]
       },
@@ -767,14 +385,6 @@
        "buoc": 2,
        "vat": "sai",
        "kieu": "rung"
-      },
-      {
-       "buoc": 3,
-       "vat": "canh",
-       "kieu": "chon",
-       "chi_so": [
-        8
-       ]
       }
      ]
     }
@@ -798,208 +408,76 @@
      "vat": [
       {
        "id": "canh",
-       "loai": "hinh_tu_do",
+       "loai": "canh_that",
        "x": 50,
        "y": 50,
-       "khung": [
-        100,
-        80
-       ],
+       "nhin": "ngang",
        "buoc": 1,
-       "hinh": [
+       "vat": [
         {
-         "kieu": "duong",
-         "diem": [
-          [
-           4,
-           72
-          ],
-          [
-           96,
-           72
-          ]
-         ],
-         "mau": "xam",
-         "net": 3,
-         "buoc": 1
+         "ten": "mat_troi"
         },
         {
-         "kieu": "vat",
-         "ten": "mat_troi",
-         "goc": [
-          12,
-          12
-         ],
-         "cao": 12,
-         "buoc": 1
-        },
-        {
-         "kieu": "vat",
-         "ten": "cay",
-         "goc": [
-          52,
-          72
-         ],
-         "cao": 14,
-         "buoc": 1
-        },
-        {
-         "kieu": "vat",
-         "ten": "cot_co",
-         "goc": [
-          84,
-          72
-         ],
-         "cao": 50,
-         "mau": "cam",
-         "buoc": 1,
-         "nhan": "h = ?"
-        },
-        {
-         "kieu": "vat",
+         "ma": "A",
          "ten": "nguoi",
-         "goc": [
-          20,
-          72
-         ],
-         "cao": 5.4,
-         "mau": "xanh_la",
+         "cao": 1.6,
+         "x": 0
+        },
+        {
+         "ma": "T",
+         "ten": "cay",
+         "cao": 4,
+         "x": 9
+        },
+        {
+         "ma": "B",
+         "ten": "cot_co",
+         "cao": 15.6,
+         "x": 20,
+         "mau": "cam"
+        }
+       ],
+       "diem": [
+        {
+         "ma": "H",
+         "x": 20,
+         "cao": 1.6
+        }
+       ],
+       "do": [
+        {
+         "kieu": "tia",
+         "tu": "A.mat",
+         "den": "B.dinh",
+         "goc": "35°",
          "buoc": 1
         },
         {
-         "kieu": "mui_ten",
-         "diem": [
-          [
-           22,
-           76
-          ],
-          [
-           83,
-           76
-          ]
+         "kieu": "tam_giac",
+         "dinh": [
+          "A.mat",
+          "H",
+          "B.dinh"
          ],
-         "mau": "trang",
-         "net": 2,
+         "buoc": 1
+        },
+        {
+         "kieu": "vuong",
+         "tai": "H",
+         "buoc": 1
+        },
+        {
+         "kieu": "chieu_cao",
+         "vat": "B",
+         "tu": "H",
+         "den": "B.dinh",
+         "nhan": "x",
          "buoc": 2
-        },
-        {
-         "kieu": "chu",
-         "tam": [
-          52,
-          79
-         ],
-         "noi_dung": "20\\,m",
-         "buoc": 2
-        },
-        {
-         "kieu": "chu",
-         "tam": [
-          11,
-          66
-         ],
-         "noi_dung": "1{,}6\\,m",
-         "buoc": 3
-        },
-        {
-         "kieu": "duong",
-         "diem": [
-          [
-           21.5,
-           67.3
-          ],
-          [
-           84,
-           23.5
-          ]
-         ],
-         "mau": "vang",
-         "net": 3,
-         "dut": true,
-         "buoc": 2
-        },
-        {
-         "kieu": "duong",
-         "diem": [
-          [
-           21.5,
-           67.3
-          ],
-          [
-           84,
-           67.3
-          ]
-         ],
-         "mau": "trang",
-         "net": 2,
-         "dut": true,
-         "buoc": 2
-        },
-        {
-         "kieu": "cung",
-         "tam": [
-          21.5,
-          67.3
-         ],
-         "r": 10,
-         "tu": -35,
-         "den": 0,
-         "mau": "vang",
-         "net": 3,
-         "buoc": 3
-        },
-        {
-         "kieu": "chu",
-         "tam": [
-          37,
-          63.5
-         ],
-         "noi_dung": "35^\\circ",
-         "buoc": 3
-        },
-        {
-         "kieu": "da_giac",
-         "diem": [
-          [
-           21.5,
-           67.3
-          ],
-          [
-           84,
-           67.3
-          ],
-          [
-           84,
-           23.5
-          ]
-         ],
-         "mau": "cam",
-         "to": "cam",
-         "do_to": 0.18,
-         "net": 2,
-         "buoc": 2
-        },
-        {
-         "kieu": "chu",
-         "tam": [
-          90,
-          45
-         ],
-         "noi_dung": "x",
-         "buoc": 3
         }
        ]
       }
      ],
-     "hanh_dong": [
-      {
-       "buoc": 2,
-       "vat": "canh",
-       "kieu": "chon",
-       "chi_so": [
-        11
-       ]
-      }
-     ]
+     "hanh_dong": []
     }
    }
   },
@@ -1021,208 +499,77 @@
      "vat": [
       {
        "id": "canh",
-       "loai": "hinh_tu_do",
+       "loai": "canh_that",
        "x": 50,
        "y": 50,
-       "khung": [
-        100,
-        80
-       ],
+       "nhin": "ngang",
        "buoc": 1,
-       "hinh": [
+       "vat": [
         {
-         "kieu": "duong",
-         "diem": [
-          [
-           4,
-           72
-          ],
-          [
-           96,
-           72
-          ]
-         ],
-         "mau": "xam",
-         "net": 3,
-         "buoc": 1
+         "ten": "mat_troi"
         },
         {
-         "kieu": "vat",
-         "ten": "mat_troi",
-         "goc": [
-          12,
-          12
-         ],
-         "cao": 12,
-         "buoc": 1
-        },
-        {
-         "kieu": "vat",
-         "ten": "cay",
-         "goc": [
-          52,
-          72
-         ],
-         "cao": 14,
-         "buoc": 1
-        },
-        {
-         "kieu": "vat",
-         "ten": "cot_co",
-         "goc": [
-          84,
-          72
-         ],
-         "cao": 50,
-         "mau": "cam",
-         "buoc": 1,
-         "nhan": "h = ?"
-        },
-        {
-         "kieu": "vat",
+         "ma": "A",
          "ten": "nguoi",
-         "goc": [
-          20,
-          72
+         "cao": 1.6,
+         "x": 0
+        },
+        {
+         "ma": "T",
+         "ten": "cay",
+         "cao": 4,
+         "x": 9
+        },
+        {
+         "ma": "B",
+         "ten": "cot_co",
+         "cao": 15.6,
+         "x": 20,
+         "mau": "cam"
+        }
+       ],
+       "diem": [
+        {
+         "ma": "H",
+         "x": 20,
+         "cao": 1.6
+        }
+       ],
+       "do": [
+        {
+         "kieu": "tam_giac",
+         "dinh": [
+          "A.mat",
+          "H",
+          "B.dinh"
          ],
-         "cao": 5.4,
-         "mau": "xanh_la",
          "buoc": 1
         },
         {
-         "kieu": "mui_ten",
-         "diem": [
-          [
-           22,
-           76
-          ],
-          [
-           83,
-           76
-          ]
-         ],
-         "mau": "trang",
-         "net": 2,
+         "kieu": "chieu_cao",
+         "vat": "B",
+         "tu": "H",
+         "den": "B.dinh",
+         "nhan": "x",
+         "buoc": 1
+        },
+        {
+         "kieu": "chieu_cao",
+         "vat": "A",
+         "nhan": "1,6 m",
+         "ben": "trai",
          "buoc": 2
         },
         {
-         "kieu": "chu",
-         "tam": [
-          52,
-          79
-         ],
-         "noi_dung": "20\\,m",
-         "buoc": 2
-        },
-        {
-         "kieu": "chu",
-         "tam": [
-          11,
-          66
-         ],
-         "noi_dung": "1{,}6\\,m",
-         "buoc": 3
-        },
-        {
-         "kieu": "duong",
-         "diem": [
-          [
-           21.5,
-           67.3
-          ],
-          [
-           84,
-           23.5
-          ]
-         ],
-         "mau": "vang",
-         "net": 3,
-         "dut": true,
-         "buoc": 2
-        },
-        {
-         "kieu": "duong",
-         "diem": [
-          [
-           21.5,
-           67.3
-          ],
-          [
-           84,
-           67.3
-          ]
-         ],
-         "mau": "trang",
-         "net": 2,
-         "dut": true,
-         "buoc": 2
-        },
-        {
-         "kieu": "cung",
-         "tam": [
-          21.5,
-          67.3
-         ],
-         "r": 10,
-         "tu": -35,
-         "den": 0,
-         "mau": "vang",
-         "net": 3,
-         "buoc": 3
-        },
-        {
-         "kieu": "chu",
-         "tam": [
-          37,
-          63.5
-         ],
-         "noi_dung": "35^\\circ",
-         "buoc": 3
-        },
-        {
-         "kieu": "da_giac",
-         "diem": [
-          [
-           21.5,
-           67.3
-          ],
-          [
-           84,
-           67.3
-          ],
-          [
-           84,
-           23.5
-          ]
-         ],
-         "mau": "cam",
-         "to": "cam",
-         "do_to": 0.18,
-         "net": 2,
-         "buoc": 2
-        },
-        {
-         "kieu": "chu",
-         "tam": [
-          90,
-          45
-         ],
-         "noi_dung": "x",
+         "kieu": "chieu_cao",
+         "vat": "B",
+         "nhan": "h = ?",
          "buoc": 3
         }
        ]
       }
      ],
-     "hanh_dong": [
-      {
-       "buoc": 2,
-       "vat": "canh",
-       "kieu": "chon",
-       "chi_so": [
-        4
-       ]
-      }
-     ]
+     "hanh_dong": []
     }
    }
   },
@@ -1243,129 +590,60 @@
      "vat": [
       {
        "id": "canh",
-       "loai": "hinh_tu_do",
+       "loai": "canh_that",
        "x": 50,
        "y": 50,
-       "khung": [
-        100,
-        80
-       ],
+       "nhin": "ngang",
        "buoc": 1,
-       "hinh": [
+       "vat": [
         {
-         "kieu": "duong",
-         "diem": [
-          [
-           4,
-           72
-          ],
-          [
-           96,
-           72
-          ]
-         ],
-         "mau": "xam",
-         "net": 3,
-         "buoc": 1
+         "ten": "mat_troi"
         },
         {
-         "kieu": "vat",
-         "ten": "mat_troi",
-         "goc": [
-          12,
-          12
-         ],
-         "cao": 12,
-         "buoc": 1
-        },
-        {
-         "kieu": "vat",
-         "ten": "cay",
-         "goc": [
-          52,
-          72
-         ],
-         "cao": 14,
-         "buoc": 1
-        },
-        {
-         "kieu": "vat",
-         "ten": "cot_co",
-         "goc": [
-          84,
-          72
-         ],
-         "cao": 50,
-         "mau": "cam",
-         "buoc": 1
-        },
-        {
-         "kieu": "vat",
+         "ma": "A",
          "ten": "nguoi",
-         "goc": [
-          20,
-          72
-         ],
-         "cao": 5.4,
-         "mau": "xanh_la",
+         "cao": 1.6,
+         "x": 0
+        },
+        {
+         "ma": "T",
+         "ten": "cay",
+         "cao": 4,
+         "x": 9
+        },
+        {
+         "ma": "B",
+         "ten": "cot_co",
+         "cao": 15.6,
+         "x": 20,
+         "mau": "cam"
+        }
+       ],
+       "diem": [
+        {
+         "ma": "H",
+         "x": 20,
+         "cao": 1.6
+        }
+       ],
+       "do": [
+        {
+         "kieu": "khoang_cach",
+         "tu": "A",
+         "den": "B",
+         "nhan": "20 m",
          "buoc": 1
         },
         {
-         "kieu": "mui_ten",
-         "diem": [
-          [
-           22,
-           76
-          ],
-          [
-           83,
-           76
-          ]
-         ],
-         "mau": "trang",
-         "net": 2,
-         "buoc": 2
-        },
-        {
-         "kieu": "chu",
-         "tam": [
-          52,
-          79
-         ],
-         "noi_dung": "20\\,m",
-         "buoc": 2
-        },
-        {
-         "kieu": "chu",
-         "tam": [
-          11,
-          66
-         ],
-         "noi_dung": "1{,}6\\,m",
-         "buoc": 3
-        },
-        {
-         "kieu": "chu",
-         "tam": [
-          70,
-          40
-         ],
-         "noi_dung": "h \\approx 15{,}6\\,m",
+         "kieu": "chieu_cao",
+         "vat": "B",
+         "nhan": "h ≈ 15,6 m",
          "buoc": 2
         }
        ]
       }
      ],
-     "hanh_dong": [
-      {
-       "buoc": 2,
-       "vat": "canh",
-       "kieu": "chon",
-       "chi_so": [
-        4
-       ]
-      }
-     ]
+     "hanh_dong": []
     }
    }
   },
@@ -1386,208 +664,78 @@
      "vat": [
       {
        "id": "canh",
-       "loai": "hinh_tu_do",
+       "loai": "canh_that",
        "x": 50,
        "y": 50,
-       "khung": [
-        100,
-        80
-       ],
+       "nhin": "ngang",
        "buoc": 1,
-       "hinh": [
+       "vat": [
         {
-         "kieu": "duong",
-         "diem": [
-          [
-           4,
-           72
-          ],
-          [
-           96,
-           72
-          ]
-         ],
-         "mau": "xam",
-         "net": 3,
-         "buoc": 1
+         "ten": "mat_troi"
         },
         {
-         "kieu": "vat",
-         "ten": "mat_troi",
-         "goc": [
-          12,
-          12
-         ],
-         "cao": 12,
-         "buoc": 1
-        },
-        {
-         "kieu": "vat",
-         "ten": "cay",
-         "goc": [
-          52,
-          72
-         ],
-         "cao": 14,
-         "buoc": 1
-        },
-        {
-         "kieu": "vat",
-         "ten": "cot_co",
-         "goc": [
-          84,
-          72
-         ],
-         "cao": 50,
-         "mau": "cam",
-         "buoc": 1,
-         "nhan": "h = ?"
-        },
-        {
-         "kieu": "vat",
+         "ma": "A",
          "ten": "nguoi",
-         "goc": [
-          20,
-          72
-         ],
-         "cao": 5.4,
-         "mau": "xanh_la",
+         "cao": 1.6,
+         "x": 0
+        },
+        {
+         "ma": "T",
+         "ten": "cay",
+         "cao": 4,
+         "x": 9
+        },
+        {
+         "ma": "B",
+         "ten": "cot_co",
+         "cao": 15.6,
+         "x": 20,
+         "mau": "cam"
+        }
+       ],
+       "diem": [
+        {
+         "ma": "H",
+         "x": 20,
+         "cao": 1.6
+        }
+       ],
+       "do": [
+        {
+         "kieu": "tia",
+         "tu": "A.mat",
+         "den": "B.dinh",
+         "goc": "35°",
          "buoc": 1
         },
         {
-         "kieu": "mui_ten",
-         "diem": [
-          [
-           22,
-           76
-          ],
-          [
-           83,
-           76
-          ]
+         "kieu": "tam_giac",
+         "dinh": [
+          "A.mat",
+          "H",
+          "B.dinh"
          ],
-         "mau": "trang",
-         "net": 2,
+         "buoc": 1
+        },
+        {
+         "kieu": "chieu_cao",
+         "vat": "B",
+         "tu": "H",
+         "den": "B.dinh",
+         "nhan": "x",
          "buoc": 2
         },
         {
-         "kieu": "chu",
-         "tam": [
-          52,
-          79
-         ],
-         "noi_dung": "20\\,m",
+         "kieu": "khoang_cach",
+         "tu": "A",
+         "den": "B",
+         "nhan": "20 m",
          "buoc": 2
-        },
-        {
-         "kieu": "chu",
-         "tam": [
-          11,
-          66
-         ],
-         "noi_dung": "1{,}6\\,m",
-         "buoc": 3
-        },
-        {
-         "kieu": "duong",
-         "diem": [
-          [
-           21.5,
-           67.3
-          ],
-          [
-           84,
-           23.5
-          ]
-         ],
-         "mau": "vang",
-         "net": 3,
-         "dut": true,
-         "buoc": 2
-        },
-        {
-         "kieu": "duong",
-         "diem": [
-          [
-           21.5,
-           67.3
-          ],
-          [
-           84,
-           67.3
-          ]
-         ],
-         "mau": "trang",
-         "net": 2,
-         "dut": true,
-         "buoc": 2
-        },
-        {
-         "kieu": "cung",
-         "tam": [
-          21.5,
-          67.3
-         ],
-         "r": 10,
-         "tu": -35,
-         "den": 0,
-         "mau": "vang",
-         "net": 3,
-         "buoc": 3
-        },
-        {
-         "kieu": "chu",
-         "tam": [
-          37,
-          63.5
-         ],
-         "noi_dung": "35^\\circ",
-         "buoc": 3
-        },
-        {
-         "kieu": "da_giac",
-         "diem": [
-          [
-           21.5,
-           67.3
-          ],
-          [
-           84,
-           67.3
-          ],
-          [
-           84,
-           23.5
-          ]
-         ],
-         "mau": "cam",
-         "to": "cam",
-         "do_to": 0.18,
-         "net": 2,
-         "buoc": 2
-        },
-        {
-         "kieu": "chu",
-         "tam": [
-          90,
-          45
-         ],
-         "noi_dung": "x",
-         "buoc": 3
         }
        ]
       }
      ],
-     "hanh_dong": [
-      {
-       "buoc": 2,
-       "vat": "canh",
-       "kieu": "chon",
-       "chi_so": [
-        9
-       ]
-      }
-     ]
+     "hanh_dong": []
     }
    }
   },

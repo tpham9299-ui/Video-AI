@@ -17,6 +17,7 @@ function taoPromptKichBan_(r, c1, c2) {
     'ĐỀ: ' + r.de_bai + '\n',
     'ĐÁP SỐ (đã kiểm chứng bằng máy, KHÔNG được đổi): ' + r.dap_an + (r.dap_an_hien ? ' (trình bày: ' + r.dap_an_hien + ')' : '') + '\n',
     vanDeDe_(r),
+    banVeChoPrompt_(r),
     'Yếu tố cần suy nghĩ: ' + r.yeu_to_tu_duy + '\nBẫy học sinh hay sai: ' + r.bay_thuong_gap + '\n',
     'MÔ HÌNH HÓA: ' + (c1.mo_hinh || c2.mo_hinh || '(tự nêu từ lời giải)') + '\n',
     'LỜI GIẢI GỌN (ưu tiên dùng để dạy): ' + (c2.y_tuong ? 'Ý tưởng then chốt: ' + c2.y_tuong + '\n' : '\n') + buocC2 + '\n',
@@ -130,13 +131,18 @@ function taoPromptKichBan_(r, c1, c2) {
     'koch {tam, r, lap 0-6} hoặc {diem: đa giác gốc, lap}: bông tuyết Koch (gai hướng ra ngoài) | sierpinski {tam, r, lap 0-6}: tam giác Sierpinski | ',
     'tham_so {x: "biểu thức theo t", y: "biểu thức theo t", t_tu, t_den}: đường cong tham số (xoắn ốc, hình tim, quỹ đạo) | lap {hinh: một nét, so_lan, dich:[dx,dy], xoay (độ mỗi lần), tam_xoay:[x,y], ti_le}: nhân bản (hàng cây, bậc thang, hoa văn, lát gạch). ',
     'xep_chong {tam:[x,y], r: nửa bề rộng tầng dưới cùng, hang:[số vật từng tầng TỪ TRÊN XUỐNG] hoặc tren + duoi (+ buoc_tang, mặc định 1)}: CHỒNG VẬT XẾP TẦNG (ống thép, lon, khúc gỗ, quả cam, gạch) đúng như hình đề, tầng nhiều thì tự rút gọn "⋮" ở giữa như sách giáo khoa; ĐỀ XẾP ỐNG/LON THÀNH TẦNG BẮT BUỘC dùng nét này (không dùng khối trụ); thêm ten_tang (vd "tầng", "hàng") để máy ghi "+15 tầng" ở chỗ rút gọn. Nhãn từng tầng dùng nét chu đặt bên phải. ',
-    'vat {ten, goc:[x,y] (điểm CHÂN vật trên mặt đất; mat_troi, may_bay: tâm), cao (chiều cao theo khung, ĐÚNG TỈ LỆ số đo của đề), rong (chỉ cau, song, ho_nuoc, tuong), lat:true (quay mặt sang trái), diem:[[chân],[đỉnh]] (thang dựa tường)}: VẬT THỰC TẾ vẽ sẵn, đẹp, có chuyển động nhẹ: ' +
-    'cot_co (cột cờ đỏ sao vàng bay), nguoi (người quan sát, MẮT ở 93% chiều cao), toa_nha, ngan_hang, nha, truong_hoc, cay, cay_thong, hai_dang, thap_nuoc, cot_dien, den_duong, nui, mat_troi, xe_hoi, thuyen, may_bay, khinh_khi_cau, cau, song, thang, tien (chồng tiền + xu), heo_dat, dieu, tuong, ho_nuoc. ' +
-    'ĐỀ CÓ VẬT THỰC TẾ NÀO THÌ PHẢI VẼ ĐÚNG VẬT ĐÓ bằng nét vat (cột cờ = cot_co, ngân hàng/gửi tiết kiệm = ngan_hang + tien, tòa nhà = toa_nha...), TUYỆT ĐỐI không thay bằng khối hộp/khối trụ/thẻ chữ. ' +
-    'Đặt vật CHUNG KHUNG với các nét hình học: duong cho mặt đất và tia nhìn (dut:true), cung cho góc, chu cho số đo, da_giac tô mờ (do_to ≤ 0.2) cho tam giác cần tính - để tia nhìn chạm đúng đỉnh cột, số đo nằm đúng chỗ. ' +
-    'Ví dụ đề đo cột cờ (đứng cách 20 m, góc nâng 35°, mắt cao 1,6 m), khung [100,80], đất y=72: {"kieu":"duong","diem":[[4,72],[96,72]]}, {"kieu":"vat","ten":"cot_co","goc":[84,72],"cao":50,"nhan":"h = ?"}, {"kieu":"vat","ten":"nguoi","goc":[20,72],"cao":5.4}, ' +
-    '{"kieu":"duong","diem":[[21.5,67.3],[84,23.5]],"dut":true,"mau":"vang"} (tia nhìn từ mắt tới đỉnh), {"kieu":"cung","tam":[21.5,67.3],"r":10,"tu":-35,"den":0}, {"kieu":"chu","tam":[52,79],"noi_dung":"20\\\\,m"}. ' +
-    '"mo_ta" của mỗi cảnh phải nói RÕ vẽ VẬT GÌ (tên vật thật của đề), đặt ở đâu, số đo nào gắn vào đâu và chuyển động ra sao.\n',
+    'CẢNH THỰC TẾ (BẮT BUỘC khi đề có vật/địa điểm thật: cột cờ, tòa nhà, ngân hàng, cây, người quan sát, hàng rào, vườn, sông, thang...): dùng vật "canh_that". BẠN KHÔNG TÍNH TỌA ĐỘ: chỉ ghi số đo THẬT của đề (mét), máy tự đặt tỉ lệ, dựng đúng vật và vẽ đường đo kiểu bản vẽ kỹ thuật. ' +
+    'NHÌN NGANG (đo chiều cao, khoảng cách, góc nâng/hạ, bóng nắng, thang dựa tường): {"id":"canh","loai":"canh_that","x":50,"y":50,"nhin":"ngang","vat":[{"ma":"A","ten":"nguoi","cao":1.6,"x":0},{"ma":"B","ten":"cot_co","cao":15.6,"x":20}],"diem":[{"ma":"H","x":20,"cao":1.6}],' +
+    '"do":[{"kieu":"khoang_cach","tu":"A","den":"B","nhan":"20 m","buoc":2},{"kieu":"chieu_cao","vat":"B","nhan":"h = ?","buoc":2},{"kieu":"tia","tu":"A.mat","den":"B.dinh","goc":"35°","buoc":2},{"kieu":"tam_giac","dinh":["A.mat","H","B.dinh"],"buoc":3},{"kieu":"vuong","tai":"H","buoc":3}]}. ' +
+    'vat: ma (A, B...), ten (thư viện bên dưới), cao (mét), x (vị trí ngang, mét), tren:"B" nếu đứng trên vật B, rong (mét, cho cầu/sông/tường/hàng rào/đường), lat:true quay sang trái, bien:"BƯU ĐIỆN" (biển tên cho cong_trinh, cua_hang), emoji (cho bieu_tuong); thang dựa tường: {"ten":"thang","x":chân,"dinh_x":x chạm tường,"dinh_cao":độ cao chạm}. ' +
+    'Điểm neo: "A" chân vật, "A.dinh" đỉnh, "A.mat" mắt người, "A.giua", hoặc mã trong "diem" (x, cao). ' +
+    'do: khoang_cach {tu, den, nhan} | chieu_cao {vat, nhan} | tia {tu, den, goc} (tia nhìn + góc nâng/hạ) | doan {tu, den, nhan, dut} (dây, đoạn cần tính) | bong {vat, dai, nhan} (bóng nắng dài dai mét) | tam_giac {dinh:[3 điểm]} | vuong {tai} | chu {tai, nhan}. Mỗi phép đo có "buoc" để HIỆN DẦN theo lời giảng. ' +
+    'NHÌN TỪ TRÊN (mảnh vườn, hàng rào quanh đất, ruộng, sân, hồ bơi, khoảng cách trên mặt đất): {"loai":"canh_that","nhin":"tren","vung":[{"ma":"V","ten":"vuon|ruong|san|san_bong|ho_boi|dat|song|duong","x":0,"y":0,"rong":20,"dai":12,"hang_rao":true,"canh":["20 m","12 m"],"nhan":"Vườn rau"}],"vat":[{"ma":"N","ten":"nha","x":-7,"y":6,"cao":6}],"do":[{"kieu":"doan","tu":"V.tl","den":"V.br","nhan":"d = ?"}]} (góc vùng V.tl V.tr V.bl V.br, V.giua, trung điểm V.tren V.duoi V.trai V.phai). ' +
+    'THƯ VIỆN VẬT (vẽ sẵn đúng hình, có chuyển động nhẹ): cot_co, nguoi, toa_nha, ngan_hang, nha, truong_hoc, cay, cay_thong, hai_dang, thap_nuoc, cot_dien, den_duong, nui, mat_troi, xe_hoi, thuyen, may_bay, khinh_khi_cau, cau, song, thang, tien, heo_dat, dieu, tuong, ho_nuoc, ' +
+    'hang_rao, cong_trinh (+ bien: bưu điện, bệnh viện, nhà máy, ủy ban...), cua_hang (+ bien: chợ, siêu thị, tiệm...), xe_may, xe_dap, xe_buyt, con_duong, qua_bong, ro_bong_ro, gieng, cong, bieu_tuong (+ emoji cho vật chưa có: 🐄 🚜 🏊 ⛽...). ' +
+    'TUYỆT ĐỐI không thay vật thật bằng khối hộp/khối trụ/thẻ chữ; vật chưa có thì cong_trinh + bien hoặc bieu_tuong + emoji. ' +
+    'Có thể dùng lại CÙNG canh_that (giữ nguyên ma, x, cao) ở nhiều cảnh, mỗi cảnh thêm/bớt phép đo cho đúng ý đang giảng (de_bai: số đo của đề; mo_hinh_hoa: tam_giac + vuong; dap_an: chieu_cao ghi đáp số). ' +
+    '"mo_ta" mỗi cảnh phải ghi rõ vẽ VẬT GÌ (tên thật trong đề), số đo nào, đo từ đâu tới đâu.\n',
     'DẤU BA CHẤM ("…", "⋮", "⋯") TRONG HÌNH ĐỀ KHÔNG PHẢI HÌNH VẼ: nó nghĩa là "còn nhiều phần giống quy luật bị lược đi". TUYỆT ĐỐI không vẽ lại ba chấm bằng tron/chu. Phải đọc ra nó thay cho cái gì (bao nhiêu tầng/hàng/số hạng, quy luật gì) rồi dựng bằng nét có quy luật: chồng tầng -> xep_chong với ĐỦ hang (máy tự làm khoảng rút gọn: các hàng mờ trôi qua + ngoặc "+n tầng" + số đếm chạy khi dem_tang); dãy hình lặp -> lap với so_lan thật; dãy số -> danh_sach hoặc so_dem dat_gia_tri chạy số. Lời thoại nói rõ phần bị lược ("ở giữa còn mười lăm tầng nữa, tầng nào cũng hơn tầng trên một ống"). ',
     'PHÂN BIỆT VẬT THẬT VÀ CHÚ THÍCH (đừng biến cả ảnh đề thành 3D): VẬT THẬT (ống, khối, bể, đất, mảnh hình tô màu) mới dựng 3D có bề dày, đổ bóng, xoay góc nhìn. CHÚ THÍCH (nhãn số đo, chữ "Tầng 1", đường kích thước, mũi tên chỉ dẫn, ngoặc gộp, ký hiệu ba chấm, công thức) luôn PHẲNG, quay mặt về người xem, đặt bám theo vật - máy tự tách hai lớp này. Vì vậy: vật thật thì cho to:true và net dày; chú thích thì dùng chu/nhan/mui_ten, không tô, không vẽ thành hình. ',
     'NHÃN VÀ CHỮ TRÊN HÌNH: ngắn (tối đa ~22 ký tự: "u_1 = 3", "Tầng 1", "200\\,m"), ký hiệu toán viết LaTeX; câu dài đưa vào lời thoại hoặc noi_dung_man_hinh. Máy tự giữ mọi chữ trên hình CÙNG MỘT CỠ, không cần chỉnh co_chu. ',
@@ -252,4 +258,93 @@ function quyTrinh6Phan_(tt) {
     'PHẦN 6 - CHỐT KIẾN THỨC: (11) bai_hoc: 2-3 điều rút ra (danh_sach), dấu hiệu nhận ra dạng bài, một chỗ dùng ngoài đời, một câu hỏi biến thể cho người xem tự luyện.\n' +
     'Trả thêm "de_cho": mảng 2-5 dữ kiện của đề, mỗi cái ≤ 60 ký tự, đủ MỌI con số của đề (ví dụ "Tầng trên cùng: 3 ống", "Mỗi tầng dưới hơn 1 ống", "Tổng 260 ống"); ' +
     '"can_tim": điều đề hỏi, ≤ 80 ký tự (ví dụ "Xếp được bao nhiêu tầng? Dư bao nhiêu ống?"). Viết chữ thường, công thức ngắn thì dùng LaTeX.\n';
+}
+
+
+// ===================== BẢN VẼ CẢNH THỰC TẾ (bước riêng, trước khi viết kịch bản) =====================
+// Gemini chỉ làm MỘT việc: đọc đề (và ảnh đề) rồi lập bản vẽ canh_that: vật thật nào, cao bao nhiêu mét, đứng ở đâu, đo gì.
+// Máy kiểm tra bản vẽ (đúng tên thư viện, điểm neo có thật, đủ vật của đề), sai thì cho sửa 1 lần. Kịch bản phải dùng ĐÚNG bản vẽ này.
+function canBanVe_(r) {
+  var de = String((r && r.de_bai) || '').toLowerCase() + ' ' + String((r && r.mo_ta_hinh) || '').toLowerCase();
+  if (typeof TU_VAT_THUC_ === 'undefined') return false;
+  return TU_VAT_THUC_.some(function (m) { return m[0].test(de); });
+}
+function lapBanVe_(r, anhDe) {
+  if (!canBanVe_(r)) return null;
+  var yeuCau = TU_VAT_THUC_.filter(function (m) { return m[0].test((String(r.de_bai) + ' ' + String(r.mo_ta_hinh || '')).toLowerCase()); })
+    .map(function (m) { return m[2] + ' -> ' + m[1].filter(function (t) { return t[0] !== '@'; }).join(' / '); });
+  var prompt = 'Bạn là HỌA SĨ BẢN VẼ KỸ THUẬT cho video dạy toán. Đọc kỹ đề rồi lập BẢN VẼ cảnh thực tế của đề, đúng 100% vật, vị trí và số đo của đề.\n' +
+    'ĐỀ: ' + r.de_bai + (r.mo_ta_hinh ? '\nMÔ TẢ HÌNH CỦA ĐỀ: ' + r.mo_ta_hinh : '') + (anhDe ? '\n(Ảnh đề gửi kèm: nhìn ảnh để đặt vật đúng như hình.)' : '') + '\n' +
+    'VẬT THẬT MÁY NHẬN RA TRONG ĐỀ (bắt buộc có trong bản vẽ): ' + yeuCau.join('; ') + '\n' +
+    'Định dạng bản vẽ (máy TỰ tính tọa độ, bạn chỉ ghi số đo thật bằng mét):\n' +
+    'NHÌN NGANG: {"loai":"canh_that","nhin":"ngang","vat":[{"ma":"A","ten":"nguoi","cao":1.6,"x":0},{"ma":"B","ten":"cot_co","cao":15.6,"x":20}],"diem":[{"ma":"H","x":20,"cao":1.6}],"do":[{"kieu":"khoang_cach","tu":"A","den":"B","nhan":"20 m"},{"kieu":"chieu_cao","vat":"B","nhan":"h = ?"},{"kieu":"tia","tu":"A.mat","den":"B.dinh","goc":"35°"},{"kieu":"tam_giac","dinh":["A.mat","H","B.dinh"]},{"kieu":"vuong","tai":"H"}]}\n' +
+    'vat: ma, ten, cao (m), x (m), tren:"B" (đứng trên vật B), rong (m), lat, bien (biển tên cho cong_trinh/cua_hang), emoji (bieu_tuong); thang dựa tường {"ten":"thang","x":chân,"dinh_x":..,"dinh_cao":..}. Điểm neo: A, A.dinh, A.mat, A.giua, mã trong diem.\n' +
+    'do: khoang_cach {tu,den,nhan} | chieu_cao {vat,nhan} | tia {tu,den,goc} | doan {tu,den,nhan} | bong {vat,dai,nhan} | tam_giac {dinh} | vuong {tai} | chu {tai,nhan}.\n' +
+    'NHÌN TỪ TRÊN (vườn, ruộng, hàng rào quanh đất, sân, hồ bơi): {"loai":"canh_that","nhin":"tren","vung":[{"ma":"V","ten":"vuon","x":0,"y":0,"rong":20,"dai":12,"hang_rao":true,"canh":["20 m","12 m"]}],"vat":[],"do":[{"kieu":"doan","tu":"V.tl","den":"V.br","nhan":"d = ?"}]}\n' +
+    'THƯ VIỆN TÊN VẬT: ' + TEN_VAT_THUC_.join(', ') + '. Vật không có trong thư viện: cong_trinh + bien (ghi đúng tên công trình) hoặc bieu_tuong + emoji. KHÔNG dùng khối hộp/khối trụ.\n' +
+    'Chỉ đưa số ĐỀ CHO vào nhãn; đại lượng cần tìm ghi "?" (vd "h = ?"). Mọi vị trí phải nhất quán với số đo (khoảng cách 20 m thì hai vật cách nhau đúng 20 trên trục x).\n' +
+    'Trả JSON: {"vat_trong_de":["liệt kê mọi vật/địa điểm thật trong đề"],"ban_ve":{...canh_that...},"tu_kiem_tra":"đối chiếu từng số của đề với bản vẽ"}';
+  var opts = { suyNghi: 'low' };
+  if (anhDe) opts.anh = anhDe;
+  for (var lan = 0; lan < 2; lan++) {
+    var j = null;
+    try { j = goiGemini_(prompt, 0.2, opts); } catch (e) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(e.message))) throw e; return banVeMacDinh_(r); }
+    var bv = j && j.ban_ve;
+    if (!bv || typeof bv !== 'object') continue;
+    bv.loai = 'canh_that'; bv.id = 'canh'; bv.x = 50; bv.y = 50; bv.buoc = 1;
+    var loi = kiemTraCanhThat_(bv, 'BAN_VE');
+    if (!loi) {
+      var thieu = kiemTraVatThucDe_({ canh: [{ minh_hoa: { du_lieu: { vat: [bv] } } }] }, r.de_bai);
+      if (!thieu.length) return bv;
+      loi = thieu.join(' ');
+    }
+    if (lan === 1) break;
+    prompt += '\nBẢN VẼ LẦN TRƯỚC BỊ LỖI, SỬA LẠI: ' + loi + '\nBản vẽ lần trước: ' + JSON.stringify(bv).slice(0, 3000);
+  }
+  return banVeMacDinh_(r);
+}
+// Dự phòng khi Gemini không lập được bản vẽ: dựng bản vẽ cơ bản từ các vật máy nhận ra trong đề (chiều cao mặc định hợp lý,
+// đặt cách đều trên mặt đất). Không có số đo, nhưng ĐÚNG VẬT của đề - không bao giờ để khối hộp thay cột cờ.
+var CAO_MAC_DINH_ = { cot_co: 12, nguoi: 1.6, toa_nha: 30, ngan_hang: 12, nha: 7, truong_hoc: 10, cay: 6, cay_thong: 8, hai_dang: 25, thap_nuoc: 15, cot_dien: 9, den_duong: 6,
+  nui: 200, xe_hoi: 1.5, thuyen: 4, cau: 8, song: 2, thang: 4, tien: 0.6, heo_dat: 0.5, dieu: 6, tuong: 3, ho_nuoc: 1, hang_rao: 1.5, cong_trinh: 12, cua_hang: 5,
+  xe_may: 1.1, xe_dap: 1, xe_buyt: 3, con_duong: 0.5, qua_bong: 0.3, ro_bong_ro: 3, gieng: 1.2, cong: 2.5, bieu_tuong: 2 };
+function banVeMacDinh_(r) {
+  var de = (String(r.de_bai || '') + ' ' + String(r.mo_ta_hinh || '')).toLowerCase();
+  var ten = [];
+  TU_VAT_THUC_.forEach(function (m) { if (m[0].test(de)) { var t = m[1].filter(function (x) { return x[0] !== '@'; })[0]; if (t && ten.indexOf(t) < 0) ten.push(t); } });
+  if (!ten.length) return null;
+  if (/vườn|ruộng|mảnh đất|sân bóng|hồ bơi|bể bơi/.test(de)) {
+    return { id: 'canh', loai: 'canh_that', x: 50, y: 50, buoc: 1, nhin: 'tren', vung: [{ ma: 'V', ten: /ruộng/.test(de) ? 'ruong' : /sân bóng/.test(de) ? 'san_bong' : /hồ bơi|bể bơi/.test(de) ? 'ho_boi' : 'vuon', x: 0, y: 0, rong: 20, dai: 12, hang_rao: ten.indexOf('hang_rao') >= 0 }], vat: [], do: [] };
+  }
+  var x = 0, vat = [];
+  ten.sort(function (a, b) { return (a === 'nguoi' ? -1 : 0) - (b === 'nguoi' ? -1 : 0); });
+  ten.slice(0, 5).forEach(function (t, i) {
+    var cao = CAO_MAC_DINH_[t] || 3;
+    vat.push({ ma: String.fromCharCode(65 + i), ten: t, cao: cao, x: x, bien: t === 'cong_trinh' ? ((/bưu điện|bệnh viện|nhà máy|ủy ban|khách sạn/.exec(de) || [''])[0]) : undefined });
+    x += Math.max(4, cao * 0.9);
+  });
+  return { id: 'canh', loai: 'canh_that', x: 50, y: 50, buoc: 1, nhin: 'ngang', vat: vat, do: [] };
+}
+function banVeChoPrompt_(r) {
+  if (!r || !r._banVe) return '';
+  return 'BẢN VẼ CẢNH THỰC TẾ ĐÃ DUYỆT (BẮT BUỘC dùng nguyên vẹn vật này, cùng ma/ten/cao/x, cho các cảnh mo_dau, de_bai, mo_hinh_hoa, bay, dap_an, kiem_tra; ' +
+    'mỗi cảnh chỉ thêm/bớt phần "do" và đổi "buoc" cho khớp lời giảng; cảnh dap_an đổi nhãn "?" thành đáp số): ' + JSON.stringify(r._banVe) + '\n';
+}
+// Máy tự chèn bản vẽ: kịch bản không dùng canh_that ở các cảnh đầu (hoặc vẽ sai vật) -> cảnh de_bai và mo_hinh_hoa dùng bản vẽ đã duyệt.
+function chenBanVe_(kb, banVe) {
+  if (!banVe || !kb || !Array.isArray(kb.canh)) return [];
+  var coRoi = kb.canh.slice(0, 4).some(function (c) { var du = c && c.minh_hoa && c.minh_hoa.du_lieu; return du && Array.isArray(du.vat) && du.vat.some(function (v) { return v && v.loai === 'canh_that'; }); });
+  if (coRoi) return [];
+  var sua = [];
+  kb.canh.forEach(function (c) {
+    if (!c || !/^(mo_dau|de_bai|mo_hinh_hoa)$/.test(String(c.loai))) return;
+    var bv = JSON.parse(JSON.stringify(banVe));
+    if (c.loai === 'mo_dau') bv.do = [];
+    if (c.loai === 'de_bai') bv.do = (bv.do || []).filter(function (d) { return d && !/tam_giac|vuong/.test(String(d.kieu)); });
+    (bv.do || []).forEach(function (d, i) { d.buoc = c.loai === 'mo_hinh_hoa' && /tam_giac|vuong/.test(String(d.kieu)) ? 3 : 2; });
+    c.minh_hoa = { loai: 'san_khau', mo_ta: (c.minh_hoa && c.minh_hoa.mo_ta) || 'Cảnh thực tế của đề theo bản vẽ đã duyệt', du_lieu: { vat: [bv], hanh_dong: [] } };
+    c.giu_san_khau = false;
+    sua.push('cảnh ' + c.so + ' dùng bản vẽ thực tế');
+  });
+  return sua;
 }

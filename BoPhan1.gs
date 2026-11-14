@@ -807,6 +807,13 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       // Đề gửi kèm ảnh: cho Gemini NHÌN ảnh khi viết kịch bản để vẽ lại đúng hình của đề (không thay bằng vật "gần giống").
       var anhDe = anhDeChoGemini_(r);
       if (anhDe) sn.anh = anhDe;
+      // BẢN VẼ cảnh thực tế (bước riêng): vật thật, số đo, phép đo -> kịch bản phải dùng đúng bản vẽ này
+      r._banVe = null;
+      if (typeof lapBanVe_ === 'function' && conDuGoiGemini_()) {
+        try { r._banVe = lapBanVe_(r, anhDe); if (r._banVe) nhatKy_('BAN_VE', r.id + ': đã lập bản vẽ ' + (r._banVe.vat || []).map(function (v) { return v.ten; }).join(', ')); }
+        catch (eBv) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(eBv.message))) throw eBv; }
+      }
+      prompt = taoPromptKichBan_(r, c1, c2);
       // Có bản nháp từ lần trước (đang sửa dở) thì sửa tiếp từ đó, không viết lại từ đầu.
       var kb = docNhapKichBan_(r.id);
       if (kb) nhatKy_('KICH_BAN', r.id + ': sửa tiếp bản nháp lần trước');
@@ -884,6 +891,7 @@ function chuanBiKichBan_(kb, r, ctxSua) {
   if (r.dap_an_hien && !kb.dap_an_hien) kb.dap_an_hien = String(r.dap_an_hien);
   var sua = typeof tuSuaKichBan_ === 'function' ? tuSuaKichBan_(kb, ctxSua) || [] : [];
   if (typeof tuSuaQuyTrinh_ === 'function') sua = sua.concat(tuSuaQuyTrinh_(kb, r.de_bai) || []);
+  if (r._banVe && typeof chenBanVe_ === 'function') { sua = sua.concat(chenBanVe_(kb, r._banVe)); kb.ban_ve = r._banVe; }
   suaDapAn_(kb, r.dap_an);   // sau khi tự sửa (có thể vừa thêm/đổi cảnh) để cảnh đáp án luôn đúng
   if (sua.length) nhatKy_('KICH_BAN_TU_SUA', r.id + ': ' + sua.slice(0, 8).join('; ').slice(0, 450));
 }

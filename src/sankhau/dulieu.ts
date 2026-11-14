@@ -1,3 +1,4 @@
+import {canhThatSangHinh} from './canhthat';
 import {TEN_VAT_THUC} from './vatthuc';
 import {catChu, chuanTex, texSangChu} from '../chu';
 // "Sân khấu": cách kịch bản mô tả một cảnh sinh động bằng VẬT THẬT (người, thẻ, xúc xắc, vòng quay, hộp quà, đồng hồ đo xác suất...)
@@ -51,7 +52,7 @@ export type PhanHinh = {
   noiDung: string; // chữ
   hang: number[]; // xep_chong: số vật từng tầng từ trên xuống
   tenTang: string; // xep_chong: gọi tầng là gì (tầng, hàng, lớp)
-  ten: string; cao: number; rong: number; lat: boolean; // vat: vật thực tế (cột cờ, ngân hàng...), chân tại tam, cao/rộng theo khung
+  ten: string; cao: number; rong: number; lat: boolean; bien: string; emoji: string; // vat: vật thực tế (cột cờ, ngân hàng...), chân tại tam, cao/rộng theo khung
   mau: string; to: string; doTo: number; net: number; dut: boolean; moNet: number;
   nhan: string; viTriNhan: [number, number] | null; coChu: number;
   buoc: number;
@@ -196,7 +197,7 @@ function vat(raw: Record<string, unknown>, i: number): Vat | null {
     const k = laMang(raw.khung) ? raw.khung : [];
     v.khung = [so(k[0], 100, 10, 2000), so(k[1], 100, 10, 2000)];
     const dem = {diem: 0};
-    v.hinh = (laMang(raw.hinh) ? raw.hinh : []).filter(laDT).slice(0, 60).map((h) => netHinh(h, v.khung, dem, 0)).filter((h): h is PhanHinh => !!h);
+    v.hinh = (laMang(raw.hinh) ? raw.hinh : []).filter(laDT).slice(0, 140).map((h) => netHinh(h, v.khung, dem, 0)).filter((h): h is PhanHinh => !!h);
     if (!v.hinh.length) return null;
     // mức lặp ban đầu của fractal = gia_tri nếu có, không thì lặp đủ (dat_gia_tri làm hình "mọc" từng bước)
     const lapMax = Math.max(0, ...v.hinh.map((h) => (h.kieu === 'koch' || h.kieu === 'sierpinski' ? h.lap : h.con && (h.con.kieu === 'koch' || h.con.kieu === 'sierpinski') ? h.con.lap : 0)));
@@ -280,6 +281,8 @@ function netHinh(raw: Record<string, unknown>, khung: [number, number], dem: {di
     cao: so(raw.cao, khung[1] * 0.5, 0.5, hi),
     rong: so(raw.rong, 0, 0, hi),
     lat: raw.lat === true,
+    bien: chuDon(raw.bien, 22),
+    emoji: chu(raw.emoji, 8),
     buoc: Math.round(so(raw.buoc, 0, 0, 8)),
   };
   if (kieu === 'xep_chong' && !h.to) h.to = 'co'; // chồng vật luôn tô kín
@@ -335,7 +338,8 @@ export function hopLeSanKhau(d: unknown): DuLieuSanKhau | null {
   const daCo = new Set<string>();
   d.vat.slice(0, 16).forEach((x, i) => {
     if (!laDT(x)) return;
-    const v = vat(x, i);
+    // cảnh thực tế mô tả theo nghĩa -> máy tự dựng thành hình tự do đúng tỉ lệ (canhthat.ts)
+    const v = vat(x.loai === 'canh_that' ? canhThatSangHinh(x) : x, i);
     if (!v || daCo.has(v.id)) return;
     daCo.add(v.id);
     ds.push(v);

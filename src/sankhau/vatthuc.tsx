@@ -9,6 +9,7 @@ import React from 'react';
 export const TEN_VAT_THUC = [
   'cot_co', 'nguoi', 'toa_nha', 'ngan_hang', 'nha', 'truong_hoc', 'cay', 'cay_thong', 'hai_dang', 'thap_nuoc', 'cot_dien', 'den_duong',
   'nui', 'mat_troi', 'xe_hoi', 'thuyen', 'may_bay', 'khinh_khi_cau', 'cau', 'song', 'thang', 'tien', 'heo_dat', 'dieu', 'tuong', 'ho_nuoc',
+  'hang_rao', 'cong_trinh', 'cua_hang', 'xe_may', 'xe_dap', 'xe_buyt', 'con_duong', 'qua_bong', 'ro_bong_ro', 'gieng', 'cong', 'bieu_tuong',
 ] as const;
 export type TenVatThuc = (typeof TEN_VAT_THUC)[number];
 
@@ -17,9 +18,10 @@ export const TI_LE_RONG: Record<string, number> = {
   cot_co: 0.32, nguoi: 0.36, toa_nha: 0.5, ngan_hang: 1.05, nha: 1.05, truong_hoc: 1.5, cay: 0.75, cay_thong: 0.6, hai_dang: 0.4, thap_nuoc: 0.55,
   cot_dien: 0.5, den_duong: 0.45, nui: 1.8, mat_troi: 1, xe_hoi: 2.4, thuyen: 1.6, may_bay: 2.2, khinh_khi_cau: 0.75, cau: 3, song: 3, thang: 0.5,
   tien: 1.3, heo_dat: 1.35, dieu: 0.7, tuong: 1, ho_nuoc: 3,
+  hang_rao: 3, cong_trinh: 0.9, cua_hang: 1.1, xe_may: 1.9, xe_dap: 1.7, xe_buyt: 3, con_duong: 4, qua_bong: 1, ro_bong_ro: 0.45, gieng: 0.9, cong: 1.2, bieu_tuong: 1,
 };
 
-type P = {mau: string; t: number; rong: number; nen: string};
+type P = {mau: string; t: number; rong: number; nen: string; bien: string; emoji: string};
 const VANG = '#FFD54A', DO = '#FF4D5E', TRANG = '#EAF6F4', XAM = '#9FB3B0', XANH_LA = '#3BF29A', XANH = '#4FC3F7', NAU = '#C08552';
 
 const sao5 = (cx: number, cy: number, r: number) =>
@@ -84,8 +86,8 @@ const VE: Record<TenVatThuc, (p: P) => React.ReactNode> = {
           <line x1={x + 1.5} y1={-60} x2={x + 1.5} y2={-15} stroke={TRANG} strokeWidth={0.5} opacity={0.6} />
         </g>
       ))}
-      <rect x={-50} y={-72} width={100} height={10} fill={`${mau}55`} stroke={mau} strokeWidth={1.2} />
-      <text x={0} y={-64.3} textAnchor="middle" fontSize={7.2} fontWeight={900} fill={TRANG} fontFamily="Be Vietnam Pro, Liberation Sans, sans-serif" letterSpacing={1.5}>NGÂN HÀNG</text>
+      <rect x={-54} y={-75} width={108} height={14} fill={mau} stroke={TRANG} strokeWidth={1} />
+      <text x={0} y={-64} textAnchor="middle" fontSize={11.5} fontWeight={900} fill="#0b0b18" fontFamily="Be Vietnam Pro, Liberation Sans, sans-serif" letterSpacing={0.5}>NGÂN HÀNG</text>
       <polygon points="-54,-72 0,-100 54,-72" fill={`${mau}33`} stroke={mau} strokeWidth={1.6} />
       <circle cx={0} cy={-82} r={7} fill={VANG} stroke="#a77b00" strokeWidth={1} />
       <text x={0} y={-79} textAnchor="middle" fontSize={9} fontWeight={900} fill="#5a3d00" fontFamily="Liberation Sans, sans-serif">₫</text>
@@ -315,6 +317,120 @@ const VE: Record<TenVatThuc, (p: P) => React.ReactNode> = {
     for (let r = 0; r < 10; r++) for (let x = -L + (r % 2 ? 0 : -6); x < L; x += 12) gach.push(<rect key={`${r}_${x}`} x={Math.max(-L, x)} y={-100 + r * 10} width={Math.min(12, L - Math.max(-L, x))} height={10} fill="none" stroke={mau} strokeWidth={0.5} opacity={0.5} />);
     return <g><rect x={-L} y={-100} width={rong} height={100} fill={`${NAU}55`} stroke={mau} strokeWidth={1.4} />{gach}</g>;
   },
+  // HÀNG RÀO (nhìn ngang): cọc đều + 2 thanh ngang, rong = chiều dài, cao = chiều cao rào
+  hang_rao: ({mau, rong}) => {
+    const L = rong / 2, n = Math.max(3, Math.round(rong / 22));
+    return (
+      <g stroke={mau || NAU} strokeWidth={2.2} strokeLinecap="round">
+        <line x1={-L} y1={-70} x2={L} y2={-70} strokeWidth={4} />
+        <line x1={-L} y1={-30} x2={L} y2={-30} strokeWidth={4} />
+        {Array.from({length: n + 1}, (_, i) => {
+          const x = -L + (rong * i) / n;
+          return <path key={i} d={`M${x - 5} 0 L${x - 5} -88 L${x} -100 L${x + 5} -88 L${x + 5} 0 Z`} fill={`${NAU}cc`} stroke={mau || '#e8b77d'} strokeWidth={1.4} />;
+        })}
+      </g>
+    );
+  },
+  // CÔNG TRÌNH CÓ BIỂN TÊN (bưu điện, bệnh viện, nhà máy, siêu thị, ủy ban...): toà nhà + BIỂN ghi đúng tên trong đề
+  cong_trinh: ({mau, bien}) => (
+    <g>
+      <rect x={-44} y={-82} width={88} height={82} fill={`${mau}22`} stroke={mau} strokeWidth={1.6} />
+      {[0, 1, 2].map((r) => [0, 1, 2, 3].map((c) => <rect key={`${r}${c}`} x={-36 + c * 19} y={-62 + r * 17} width={11} height={10} fill={`${VANG}99`} stroke={TRANG} strokeWidth={0.5} />))}
+      <rect x={-10} y={-18} width={20} height={18} fill={`${XANH}66`} stroke={TRANG} strokeWidth={1} />
+      <rect x={-54} y={-104} width={108} height={24} rx={3} fill={mau} stroke={TRANG} strokeWidth={1} />
+      <text x={0} y={-87} textAnchor="middle" fontSize={Math.min(15, 175 / Math.max(6, (bien || 'CÔNG TRÌNH').length))} fontWeight={900} fill="#06161a" fontFamily="Be Vietnam Pro, Liberation Sans, sans-serif">{(bien || 'CÔNG TRÌNH').toUpperCase()}</text>
+    </g>
+  ),
+  // CỬA HÀNG / CHỢ / SIÊU THỊ: mái hiên sọc, quầy, biển tên
+  cua_hang: ({mau, bien}) => (
+    <g>
+      <rect x={-50} y={-70} width={100} height={70} fill={`${mau}22`} stroke={mau} strokeWidth={1.6} />
+      {Array.from({length: 8}, (_, i) => <path key={i} d={`M${-55 + i * 13.75} -70 L${-55 + (i + 1) * 13.75} -70 L${-55 + (i + 1) * 13.75} -60 Q${-55 + (i + 0.5) * 13.75} -52 ${-55 + i * 13.75} -60 Z`} fill={i % 2 ? TRANG : DO} />)}
+      <rect x={-40} y={-48} width={50} height={30} fill={`${XANH}55`} stroke={TRANG} strokeWidth={1} />
+      <rect x={18} y={-48} width={22} height={48} fill={`${NAU}99`} stroke={TRANG} strokeWidth={1} />
+      <rect x={-54} y={-96} width={108} height={24} rx={3} fill={VANG} />
+      <text x={0} y={-79} textAnchor="middle" fontSize={Math.min(15, 175 / Math.max(6, (bien || 'CỬA HÀNG').length))} fontWeight={900} fill="#3a2600" fontFamily="Be Vietnam Pro, Liberation Sans, sans-serif">{(bien || 'CỬA HÀNG').toUpperCase()}</text>
+    </g>
+  ),
+  xe_may: ({mau, t}) => {
+    const b = (x: number) => <g transform={`translate(${x} -22) rotate(${t * 300})`}><circle r={21} fill="#1d2b30" stroke={TRANG} strokeWidth={3} /><line x1={-15} y1={0} x2={15} y2={0} stroke={XAM} strokeWidth={2} /><line x1={0} y1={-15} x2={0} y2={15} stroke={XAM} strokeWidth={2} /></g>;
+    return (
+      <g>
+        <path d="M-60 -40 Q-40 -66 -5 -62 L30 -62 L58 -42 L70 -40" fill="none" stroke={mau} strokeWidth={6} strokeLinecap="round" />
+        <path d="M-30 -62 Q-10 -78 18 -70 L18 -62 Z" fill={`${mau}aa`} stroke={mau} strokeWidth={1.4} />
+        <path d="M52 -44 L62 -90 L74 -92" stroke={TRANG} strokeWidth={4} fill="none" strokeLinecap="round" />
+        <circle cx={66} cy={-80} r={4} fill={VANG} />
+        {b(-62)}{b(62)}
+      </g>
+    );
+  },
+  xe_dap: ({mau, t}) => {
+    const b = (x: number) => <g transform={`translate(${x} -30) rotate(${t * 260})`}><circle r={28} fill="none" stroke={TRANG} strokeWidth={3} />{[0, 45, 90, 135].map((a) => <line key={a} x1={-28 * Math.cos((a * Math.PI) / 180)} y1={-28 * Math.sin((a * Math.PI) / 180)} x2={28 * Math.cos((a * Math.PI) / 180)} y2={28 * Math.sin((a * Math.PI) / 180)} stroke={XAM} strokeWidth={0.8} />)}</g>;
+    return (
+      <g stroke={mau} strokeWidth={4} fill="none" strokeLinecap="round" strokeLinejoin="round">
+        {b(-55)}{b(55)}
+        <path d="M-55 -30 L-15 -30 L20 -70 L-28 -70 Z M-15 -30 L-28 -78 M55 -30 L20 -70 L18 -88 L32 -92 M-34 -80 L-20 -80" />
+      </g>
+    );
+  },
+  xe_buyt: ({mau, t}) => {
+    const b = (x: number) => <g transform={`translate(${x} -14) rotate(${t * 240})`}><circle r={13} fill="#1d2b30" stroke={TRANG} strokeWidth={2} /><line x1={-9} y1={0} x2={9} y2={0} stroke={XAM} strokeWidth={2} /></g>;
+    return (
+      <g>
+        <rect x={-148} y={-100} width={296} height={86} rx={12} fill={`${VANG}cc`} stroke={mau} strokeWidth={2} />
+        {Array.from({length: 7}, (_, i) => <rect key={i} x={-136 + i * 38} y={-88} width={30} height={28} rx={3} fill={`${XANH}aa`} stroke={TRANG} strokeWidth={1} />)}
+        <rect x={-148} y={-48} width={296} height={8} fill={DO} />
+        {b(-100)}{b(100)}
+      </g>
+    );
+  },
+  // CON ĐƯỜNG (nhìn ngang, rong = chiều dài): mặt đường + vạch kẻ trôi
+  con_duong: ({rong, t}) => {
+    const L = rong / 2;
+    return (
+      <g>
+        <rect x={-L} y={-100} width={rong} height={100} fill="#2a3338" stroke={XAM} strokeWidth={1.4} />
+        {Array.from({length: Math.ceil(rong / 40) + 1}, (_, i) => <rect key={i} x={-L + ((i * 40 + t * 30) % (rong + 40)) - 20} y={-54} width={22} height={8} fill={TRANG} opacity={0.8} />)}
+      </g>
+    );
+  },
+  // QUẢ BÓNG: chân = TÂM quả bóng, cao = đường kính
+  qua_bong: ({t}) => (
+    <g transform={`rotate(${t * 90})`}>
+      <circle r={50} fill={TRANG} stroke="#1d1d1d" strokeWidth={3} />
+      <polygon points={sao5(0, 0, 18).split(' ').filter((_, i) => i % 2 === 0).join(' ')} fill="#1d1d1d" />
+      {[0, 72, 144, 216, 288].map((a) => <line key={a} x1={Math.cos((a - 90) * Math.PI / 180) * 18} y1={Math.sin((a - 90) * Math.PI / 180) * 18} x2={Math.cos((a - 90) * Math.PI / 180) * 50} y2={Math.sin((a - 90) * Math.PI / 180) * 50} stroke="#1d1d1d" strokeWidth={2.5} />)}
+    </g>
+  ),
+  ro_bong_ro: ({mau}) => (
+    <g>
+      <rect x={-3} y={-100} width={6} height={100} fill={`${XAM}cc`} />
+      <rect x={-2} y={-100} width={30} height={22} fill={`${TRANG}cc`} stroke={mau} strokeWidth={1.2} />
+      <ellipse cx={32} cy={-80} rx={10} ry={2.5} fill="none" stroke={DO} strokeWidth={2} />
+      <path d="M22 -80 L25 -68 L32 -66 L39 -68 L42 -80" stroke={TRANG} strokeWidth={0.8} fill="none" />
+    </g>
+  ),
+  gieng: ({mau}) => (
+    <g>
+      <rect x={-40} y={-40} width={80} height={40} fill="#6b7b80" stroke={mau} strokeWidth={1.6} />
+      {[0, 1, 2].map((r) => [0, 1, 2, 3].map((c) => <rect key={`${r}${c}`} x={-40 + c * 20 + (r % 2) * 10} y={-40 + r * 13.3} width={20} height={13.3} fill="none" stroke={TRANG} strokeWidth={0.4} opacity={0.5} />))}
+      <path d="M-34 -40 L-34 -92 M34 -40 L34 -92 M-44 -92 L0 -104 L44 -92" stroke={NAU} strokeWidth={4} fill="none" />
+      <line x1={0} y1={-90} x2={0} y2={-55} stroke={TRANG} strokeWidth={1} />
+      <rect x={-7} y={-56} width={14} height={11} fill={`${NAU}cc`} />
+    </g>
+  ),
+  cong: ({mau}) => (
+    <g stroke={mau} strokeWidth={2}>
+      <rect x={-60} y={-100} width={14} height={100} fill={`${mau}44`} />
+      <rect x={46} y={-100} width={14} height={100} fill={`${mau}44`} />
+      {Array.from({length: 9}, (_, i) => <line key={i} x1={-42 + i * 10.5} y1={-82} x2={-42 + i * 10.5} y2={0} strokeWidth={1.6} />)}
+      <line x1={-46} y1={-82} x2={46} y2={-82} strokeWidth={3} /><line x1={-46} y1={-40} x2={46} y2={-40} strokeWidth={3} />
+    </g>
+  ),
+  // BIỂU TƯỢNG DỰ PHÒNG: vật chưa có trong thư viện -> emoji màu đúng vật (🏥 bệnh viện, 🚜 máy cày, 🐄 bò...), chân ở đáy
+  bieu_tuong: ({emoji}) => (
+    <text x={0} y={-8} textAnchor="middle" fontSize={92} fontFamily="Noto Color Emoji, Apple Color Emoji, Segoe UI Emoji, sans-serif">{emoji || '❓'}</text>
+  ),
   ho_nuoc: ({rong, t}) => (
     <g>
       <ellipse cx={0} cy={-50} rx={rong / 2} ry={50} fill={`${XANH}44`} stroke={XANH} strokeWidth={1.6} />
@@ -324,7 +440,7 @@ const VE: Record<TenVatThuc, (p: P) => React.ReactNode> = {
 };
 
 // Vẽ một vật thực tế: chân tại (x, y) khung, cao h khung đơn vị; lat = lật ngang; p = tiến độ xuất hiện (vật "mọc" từ chân lên)
-export const VatThuc: React.FC<{ten: string; x: number; y: number; cao: number; rong?: number; lat?: boolean; mau: string; t: number; p: number}> = ({ten, x, y, cao, rong, lat, mau, t, p}) => {
+export const VatThuc: React.FC<{ten: string; x: number; y: number; cao: number; rong?: number; lat?: boolean; mau: string; t: number; p: number; bien?: string; emoji?: string}> = ({ten, x, y, cao, rong, lat, mau, t, p, bien = '', emoji = ''}) => {
   const ve = VE[ten as TenVatThuc];
   if (!ve) return null;
   const k = cao / 100;
@@ -338,7 +454,7 @@ export const VatThuc: React.FC<{ten: string; x: number; y: number; cao: number; 
           <stop offset="0%" stopColor="#7d8f93" /><stop offset="45%" stopColor="#f2f7f8" /><stop offset="100%" stopColor="#6b7b80" />
         </linearGradient>
       </defs>
-      {ve({mau, t, rong: rongDv, nen: ''})}
+      {ve({mau, t, rong: rongDv, nen: '', bien, emoji})}
     </g>
   );
 };

@@ -345,7 +345,7 @@ export const HinhTuDo: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
               // vật thực tế: mọc từ chân lên, có nhịp chuyển động riêng (cờ bay, đèn quét...); nghiêng theo "xoay" (thang dựa tường)
               return (
                 <g key={i} transform={h.xoay ? `rotate(${h.xoay} ${h.tam[0]} ${h.tam[1]})` : undefined} opacity={1 - 0.6 * lb} style={c ? {filter: `drop-shadow(0 0 ${2 + 3 * c.p}px ${mau})`} : undefined}>
-                  <VatThuc ten={h.ten} x={h.tam[0]} y={h.tam[1]} cao={h.cao} rong={h.rong || undefined} lat={h.lat} mau={mau} t={st.t} p={(t - bd) / 0.8} />
+                  <VatThuc ten={h.ten} x={h.tam[0]} y={h.tam[1]} cao={h.cao} rong={h.rong || undefined} lat={h.lat} mau={mau} t={st.t} p={(t - bd) / 0.8} bien={h.bien} emoji={h.emoji} />
                 </g>
               );
             }
