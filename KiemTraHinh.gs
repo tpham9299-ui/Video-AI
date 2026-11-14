@@ -1080,6 +1080,51 @@ function phaCua_(loai) {
   for (var i = 0; i < PHA_6_.length; i++) if (PHA_6_[i][0].test(l)) return PHA_6_[i][1];
   return -1;
 }
+// MÁY TỰ SỬA QUY TRÌNH (trước khi chấm, đỡ phải nhờ Gemini viết lại cả kịch bản):
+//  - cảnh lệch thứ tự 6 phần -> sắp lại ổn định theo phần (cảnh đang "giữ sân khấu" mà bị tách khỏi cảnh trước thì được chép
+//    đủ các vật đang có trên sân khấu để không mất hình);
+//  - thiếu de_cho / can_tim -> lấy từ du_kien và câu hỏi của đề.
+function tuSuaQuyTrinh_(kb, deGoc) {
+  var sua = [];
+  if (!kb || !Array.isArray(kb.canh) || !kb.canh.length) return sua;
+  var ds = kb.canh.map(function (c, i) { return {c: c, i: i, p: phaCua_(c && c.loai)}; });
+  // pha của cảnh không nhận ra (loại lạ) = pha cảnh liền trước
+  for (var k = 0; k < ds.length; k++) if (ds[k].p < 0) ds[k].p = k ? ds[k - 1].p : 0;
+  var lech = ds.some(function (x, k) { return k && x.p < ds[k - 1].p; });
+  if (lech) {
+    // sân khấu thực tế của từng cảnh (cộng dồn theo chuỗi giu_san_khau) trước khi đổi chỗ
+    var sanKhau = [], truoc = null;
+    kb.canh.forEach(function (c, i) {
+      var du = c && c.minh_hoa && c.minh_hoa.loai === 'san_khau' && c.minh_hoa.du_lieu;
+      var vat = du && Array.isArray(du.vat) ? du.vat : [];
+      var gop = {};
+      if (c.giu_san_khau && truoc) truoc.forEach(function (v) { if (v && v.id) gop[v.id] = v; });
+      vat.forEach(function (v) { if (v && v.id) gop[v.id] = v; });
+      sanKhau[i] = Object.keys(gop).map(function (id) { return gop[id]; });
+      truoc = du ? sanKhau[i] : null;
+    });
+    var moi = ds.slice().sort(function (a, b) { return a.p - b.p || a.i - b.i; });
+    moi.forEach(function (x, k) {
+      var c = x.c;
+      var truocCu = x.i - 1, truocMoi = k ? moi[k - 1].i : -1;
+      if (c.giu_san_khau && truocCu !== truocMoi) {
+        c.giu_san_khau = false;
+        if (c.minh_hoa && c.minh_hoa.du_lieu && Array.isArray(c.minh_hoa.du_lieu.vat)) c.minh_hoa.du_lieu.vat = sanKhau[x.i];
+      }
+    });
+    kb.canh = moi.map(function (x) { return x.c; });
+    kb.canh.forEach(function (c, k) { c.so = k + 1; if (k === 0) c.giu_san_khau = false; });
+    sua.push('sắp lại cảnh theo quy trình 6 phần');
+  }
+  var cho = Array.isArray(kb.de_cho) ? kb.de_cho.filter(function (x) { return String(x).trim(); }) : [];
+  if (cho.length < 2 && Array.isArray(kb.du_kien) && kb.du_kien.length >= 2) { kb.de_cho = kb.du_kien.map(String).slice(0, 5); sua.push('de_cho lấy từ du_kien'); }
+  if (String(kb.can_tim || '').trim().length < 5 && deGoc) {
+    var cau = String(deGoc).split(/(?<=[.?!])\s+/).filter(function (x) { return /\?|^\s*(hỏi|tính|tìm|xác định|chứng minh)/i.test(x); });
+    if (cau.length) { kb.can_tim = cau[cau.length - 1].replace(/^\s*hỏi\s*/i, '').trim().slice(0, 110); sua.push('can_tim lấy từ câu hỏi của đề'); }
+  }
+  return sua;
+}
+
 function kiemTraQuyTrinh_(kb, deGoc) {
   var nang = [], nhe = [];
   var ds = (kb.canh || []).map(function (c) { return phaCua_(c && c.loai); });
