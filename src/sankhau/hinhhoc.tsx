@@ -227,8 +227,11 @@ export const DoThi: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
       <div style={{position: 'absolute', right: pad.r - 24, top: y0 - 40, fontFamily: FONT_DAM, fontWeight: 900, fontStyle: 'italic', fontSize: 38, color: TRANG}}>{v.nhanTruc[0] || 'x'}</div>
       <div style={{position: 'absolute', left: x0 + 14, top: pad.t - 30, fontFamily: FONT_DAM, fontWeight: 900, fontStyle: 'italic', fontSize: 38, color: TRANG}}>{v.nhanTruc[1] || 'y'}</div>
       {v.noiDung ? (
-        <div style={{position: 'absolute', right: pad.r + 10, top: pad.t, opacity: kep((t - 1.2) / 0.4)}}>
-          <Toan tex={v.noiDung} size={46} color={mau} />
+        // tiêu đề đồ thị nằm TRÊN khung đồ thị (trước đây nằm trong vùng vẽ -> đè lên số trên trục và đường cong)
+        <div style={{position: 'absolute', left: 0, right: 0, top: -74, display: 'flex', justifyContent: 'center', opacity: kep((t - 1.2) / 0.4)}}>
+          <div style={{background: 'rgba(4,14,16,0.82)', border: `2px solid ${mau}66`, borderRadius: 14, padding: '4px 18px'}}>
+            <Toan tex={v.noiDung} size={42} color={mau} maxWidth={W - 60} />
+          </div>
         </div>
       ) : null}
       {isFinite(yc) && trongKhung(yc) ? (

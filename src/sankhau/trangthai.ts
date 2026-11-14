@@ -275,7 +275,7 @@ export function kichThuocVat(v: Vat, k = 1): {w: number; h: number} {
     case 'cay': w = n * 180; h = 250; break;
     case 'thang': { const g = (v.gocNghieng * Math.PI) / 180; w = 460 * Math.cos(g) + 60; h = 460 * Math.sin(g) + 60; break; }
     case 'hinh_hoc': w = 880; h = 600; break;
-    case 'do_thi': w = 860; h = 560; break;
+    case 'do_thi': w = 860; h = 560 + (v.noiDung ? 150 : 0); break;   // chừa chỗ tiêu đề phía trên (tâm vật giữ nguyên nên cộng cả hai phía)
     case 'hinh_tu_do': ({w, h} = kichThuocHinhTuDo(v)); break;
     default: break;
   }
