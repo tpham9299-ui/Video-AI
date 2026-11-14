@@ -20,6 +20,7 @@ export const NHAN_CANH: [RegExp, string][] = [
   [/thuc_te|doi_song/, 'NGOÀI ĐỜI'],
   [/tinh|giai/, 'TÍNH NHANH'],
   [/dap_an|ket_qua/, 'ĐÁP ÁN'],
+  [/lien_he/, 'NGOÀI ĐỜI'],
   [/bai_hoc|ket_luan|chot/, 'GHI NHỚ'],
 ];
 export const nhanCanh = (loai: string, nhan: string) => {

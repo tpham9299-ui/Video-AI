@@ -251,7 +251,7 @@ export function kichThuocVat(v: Vat, k = 1): {w: number; h: number} {
   let w = 300;
   let h = 300;
   switch (v.loai) {
-    case 'nguoi': { const o = Math.min(190, 900 / cot); w = o * cot; h = Math.ceil(n / cot) * o * 1.15 + (v.nhan ? 50 : 0); break; }
+    case 'nguoi': { const o = Math.min(190, 900 / cot); w = o * cot; h = Math.ceil(n / cot) * o * 1.35 + (v.nhan ? 50 : 0); break; }
     case 'the': { const b = kichThe(v, k); w = n === 1 ? b.w : Math.min(b.w + 24, 920 / n) * n; h = b.h + (v.nhan ? 70 : 10); break; }
     case 'the_bai': w = Math.max(n, v.ds.length || 1) * 192; h = 260; break;
     case 'xuc_xac': w = n * 216; h = 220; break;

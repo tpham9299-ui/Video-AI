@@ -6,6 +6,7 @@ import {GachTay} from '../dong/DiemNhan';
 import {CoChuSan} from '../dong/KhongGian';
 import {Toan} from '../Toan';
 import {texSangChu} from '../chu';
+import {NguoiCuDong} from './NguoiCuDong';
 import {bamChuoi, easeInOut, easeOut, kep, lerp, nay, NEN_VAT, NEN_VAT_2, neon, ngauNhien, popOut, tienDo, VONG_MAU} from './donghieu';
 import {Vat} from './dulieu';
 import {boCucDanhSach, kichThe, TrangThai} from './trangthai';
@@ -90,14 +91,11 @@ const Nguoi: Ve = (v, st) => {
           const s = phanTu(st, i, goc);
           return (
             <div key={k} style={{position: 'relative', width: o, display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: kep(a * 2) * s.mo, transform: `translateY(${(1 - easeOut(a)) * 40}px) scale(${popOut(a) * (1 + 0.08 * s.pc)})`, filter: s.xam ? 'grayscale(1)' : 'none'}}>
-              {/* người rõ ràng (không còn người que): áo màu riêng từng người, mặt, tóc; được chọn thì phát sáng */}
-              <svg width={o * 0.82} height={o * 0.98} viewBox="0 0 100 120" style={{overflow: 'visible', filter: s.pc > 0.01 ? phatSang(s.mau, 4 + 10 * s.pc) : 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))'}}>
-                <path d="M16 118 Q16 70 50 68 Q84 70 84 118 Z" fill={s.mau} stroke={s.pc > 0.01 ? '#fff' : 'rgba(255,255,255,0.35)'} strokeWidth={2.5} strokeLinejoin="round" />
-                <path d="M38 70 L50 86 L62 70" fill="none" stroke="rgba(0,0,0,0.25)" strokeWidth={3} />
-                <circle cx={50} cy={38} r={21} fill="#f4c99a" stroke="#f9dfc0" strokeWidth={1.5} />
-                <path d={k % 2 ? 'M28 40 Q26 12 50 13 Q76 13 72 42 Q70 26 50 26 Q34 26 28 40 Z' : 'M29 36 Q30 14 50 14 Q71 14 71 36 Q62 24 50 25 Q38 24 29 36 Z'} fill={['#2b1c12', '#4a2c17', '#1d1d1d', '#6b3e1f'][k % 4]} />
-                <circle cx={42} cy={40} r={2.6} fill="#1d1d1d" /><circle cx={58} cy={40} r={2.6} fill="#1d1d1d" />
-                <path d="M43 49 Q50 54 57 49" fill="none" stroke="#a0522d" strokeWidth={2.4} strokeLinecap="round" />
+              {/* NGƯỜI CỬ ĐỘNG: đứng thở + đung đưa tay; được CHỌN thì giơ tay; đang di chuyển thì bước đi vung tay chân; kịch bản ghi dong_tac thì theo đó */}
+              <svg width={o * 0.62} height={o * 1.1} viewBox="-32 -108 64 114" style={{overflow: 'visible', filter: s.pc > 0.01 ? phatSang(s.mau, 4 + 10 * s.pc) : 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))'}}>
+                <NguoiCuDong t={st.t + k * 0.37} hat={k * 1.7} toc={['#2b1c12', '#4a2c17', '#1d1d1d', '#6b3e1f'][k % 4]}
+                  dongTac={st.nghiengDi ? 'di' : s.pc > 0.01 ? 'gio_tay' : v.kieu || 'dung'} sang={s.pc}
+                  mauAo={s.pc > 0.01 ? s.mau : ['#3BF29A', '#4FC3F7', '#FF8A3D', '#B79CFF', '#FFD54A', '#FF7EB6'][k % 6]} />
               </svg>
               <DauTich p={s.pc} mau={s.mau} co={o * 0.34} style={{right: o * 0.06, top: -4}} />
               <DauX p={s.l} co={o * 0.8} style={{top: o * 0.08}} />

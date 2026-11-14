@@ -603,6 +603,51 @@ def the_de_bai(kb):
     return {"cho": [cat(x, 120) for x in cho[:5]], "tim": cat(tim, 140)} if (cho or tim) else None
 
 
+def do_dai_hien(tex):
+    """Số ký tự HIỆN RA của một công thức (bỏ lệnh TeX, ngoặc), để ước bề rộng."""
+    x = re.sub(r"\\(text|mathrm|textbf)\s*\{([^{}]*)\}", r"\2", tex)
+    x = re.sub(r"\\d?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}", lambda m: m.group(1) if len(m.group(1)) > len(m.group(2)) else m.group(2), x)
+    x = re.sub(r"\\[a-zA-Z]+", "x", x)
+    return len(re.sub(r"[{}_^\s]", "", x))
+
+
+QUAN_HE = re.compile(r"(=|\\approx|\\Rightarrow|\\Leftrightarrow|\\le(?![a-z])|\\ge(?![a-z])|\\leq|\\geq|\\ne(?![a-z])|<|>)")
+
+
+def tach_cong_thuc(tex, toi_da=24):
+    """Công thức dài: tách thành nhiều dòng TẠI dấu quan hệ ngoài cùng (=, ≈, ⇒...), dòng sau bắt đầu bằng dấu đó,
+    như viết bảng - thay vì để máy ngắt dòng bừa giữa công thức (khó đọc, chữ nhỏ)."""
+    if do_dai_hien(tex) <= toi_da or "\\text{" in tex and not QUAN_HE.search(tex):
+        return [tex]
+    manh, sau, sau_ngoac, i, bd = [], 0, 0, 0, 0
+    while i < len(tex):
+        ch = tex[i]
+        if ch == "{":
+            sau_ngoac += 1
+        elif ch == "}":
+            sau_ngoac -= 1
+        elif sau_ngoac == 0:
+            m = QUAN_HE.match(tex, i)
+            if m and i > bd:
+                manh.append(tex[bd:i].strip())
+                bd = i
+                i = m.end()
+                continue
+        i += 1
+    manh.append(tex[bd:].strip())
+    manh = [m for m in manh if m]
+    if len(manh) <= 1:
+        return [tex]
+    # gộp tham lam: mỗi dòng không quá toi_da ký tự hiện ra
+    dong = [manh[0]]
+    for m in manh[1:]:
+        if do_dai_hien(dong[-1] + m) <= toi_da:
+            dong[-1] = dong[-1] + " " + m
+        else:
+            dong.append(m)
+    return dong if len(dong) <= 4 else [tex]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("kich_ban")
@@ -654,6 +699,9 @@ def main():
         so = int(c.get("so") or i + 1)
         loi_thoai = str(c.get("loi_thoai") or "").strip()
         noi_dung_tam = [str(x) for x in (c.get("noi_dung_man_hinh") or []) if str(x).strip()]
+        # công thức dài -> nhiều dòng ngắt tại dấu "=" (giữ chữ to, không ngắt bừa); cảnh biến đổi (bien_doi) giữ nguyên từng bước
+        if str(c.get("trinh_bay") or "") != "bien_doi":
+            noi_dung_tam = [d for x in noi_dung_tam for d in tach_cong_thuc(x)]
         if not loi_thoai:
             sys.exit("Cảnh %d không có lời thoại." % so)
         cac_doan = tach_cau(loi_thoai)

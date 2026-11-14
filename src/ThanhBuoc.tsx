@@ -12,7 +12,7 @@ export const PHA: [RegExp, string][] = [
   [/bay|loi_sai/, 'LỖI SAI'],
   [/nhac_lai|kien_thuc|ly_thuyet|diem_chot|y_tuong|tinh|giai|dap_an|ket_qua/, 'GIẢI'],
   [/kiem_tra|thu_lai/, 'THỬ LẠI'],
-  [/bai_hoc|ket_luan|chot/, 'CHỐT'],
+  [/bai_hoc|ket_luan|chot|lien_he/, 'CHỐT'],
 ];
 export const SAU_PHA = PHA.map((p) => p[1]);
 export const phaCua = (loai: string) => {

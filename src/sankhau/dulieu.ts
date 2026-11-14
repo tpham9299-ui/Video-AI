@@ -52,7 +52,7 @@ export type PhanHinh = {
   noiDung: string; // chữ
   hang: number[]; // xep_chong: số vật từng tầng từ trên xuống
   tenTang: string; // xep_chong: gọi tầng là gì (tầng, hàng, lớp)
-  ten: string; cao: number; rong: number; lat: boolean; bien: string; emoji: string; // vat: vật thực tế (cột cờ, ngân hàng...), chân tại tam, cao/rộng theo khung
+  ten: string; cao: number; rong: number; lat: boolean; bien: string; emoji: string; dongTac: string; gocChi: number; // vat: vật thực tế (cột cờ, ngân hàng...), chân tại tam, cao/rộng theo khung
   mau: string; to: string; doTo: number; net: number; dut: boolean; moNet: number;
   nhan: string; viTriNhan: [number, number] | null; coChu: number;
   buoc: number;
@@ -172,7 +172,7 @@ function vat(raw: Record<string, unknown>, i: number): Vat | null {
     xoay: so(raw.xoay, 0, -20, 20),
     tuHuong: typeof raw.tu_huong === 'string' && ['trai', 'phai', 'tren', 'duoi'].includes(raw.tu_huong) ? raw.tu_huong : '',
     soCot: Math.round(so(raw.so_cot, 0, 0, 12)),
-    kieu: chu(raw.kieu, 12),
+    kieu: loai === 'nguoi' && typeof raw.dong_tac === 'string' ? chu(raw.dong_tac, 12) : chu(raw.kieu, 12),
     kichThuoc: laMang(raw.kich_thuoc) ? raw.kich_thuoc.slice(0, 3).map((x) => so(x, 1, 0.01, 1e6)) : [],
     nhanKT: laMang(raw.nhan_kich_thuoc) ? raw.nhan_kich_thuoc.slice(0, 3).map((x) => chu(x, 16)) : [],
     mucNuoc: so(raw.muc_nuoc, 0, 0, 1),
@@ -282,6 +282,8 @@ function netHinh(raw: Record<string, unknown>, khung: [number, number], dem: {di
     rong: so(raw.rong, 0, 0, hi),
     lat: raw.lat === true,
     bien: chuDon(raw.bien, 22),
+    dongTac: chu(raw.dong_tac, 12),
+    gocChi: so(raw.goc_chi, -30, -90, 90),
     emoji: chu(raw.emoji, 8),
     buoc: Math.round(so(raw.buoc, 0, 0, 8)),
   };

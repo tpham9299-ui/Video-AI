@@ -181,7 +181,7 @@ function taoPromptKichBan_(r, c1, c2) {
   ];
   var traVe = [
     'Trả về MỘT đối tượng JSON: {"tieu_de":"tiêu đề đăng video < 60 ký tự, gây tò mò","chu_de_ngan":"chủ đề 2-5 từ (hiện góc trên)","bai_hoc_rut_ra":["","",""],"video_tiep_theo":"","hook_ung_vien":["","",""],"hook":"(đúng lời thoại cảnh 1)","hook_chu":"","tieu_de_bia":"","hook_kieu":"","nhan_manh":[""],"y_tuong_chinh":"","de_cho":["",""],"can_tim":"","du_kien":["",""],"hashtag":["#toanhoc","' + (tt ? '#toanthucte' : '#xacsuat') + '"],"dap_an_cuoi":"' + r.dap_an + '",',
-    '"canh":[{"so":1,"loai":"mo_dau|de_bai|mo_hinh_hoa|nhac_lai|y_do|bay|thu_nho|diem_chot|tinh_toan|kiem_tra|dap_an|bai_hoc","tieu_de_canh":"","tu_khoa":"","nhan":"","giu_san_khau":false,"giong_doc":"","loi_thoai":"","noi_dung_man_hinh":[],"trinh_bay":"cong_don|bien_doi|xep","chu_thich":[],"minh_hoa":{"loai":"san_khau","mo_ta":"","du_lieu":{"goc_nhin":null,"vat":[],"hanh_dong":[]}}}]}'
+    '"canh":[{"so":1,"loai":"mo_dau|de_bai|mo_hinh_hoa|y_do|thu_nho|bay|nhac_lai|diem_chot|tinh_toan|dap_an|kiem_tra|lien_he_thuc_te|bai_hoc","tieu_de_canh":"","tu_khoa":"","nhan":"","giu_san_khau":false,"giong_doc":"","loi_thoai":"","noi_dung_man_hinh":[],"trinh_bay":"cong_don|bien_doi|xep","chu_thich":[],"minh_hoa":{"loai":"san_khau","mo_ta":"","du_lieu":{"goc_nhin":null,"vat":[],"hanh_dong":[]}}}]}'
   ];
 
   return [].concat(
@@ -252,7 +252,7 @@ function giayMucTieu_() {
   return tren >= 130 ? g : '100-160';
 }
 function quyTrinh6Phan_(tt) {
-  return 'QUY TRÌNH CỐ ĐỊNH 6 PHẦN (BẮT BUỘC cho mọi video, đúng thứ tự, không được bỏ phần nào). VIDEO NHIỀU CẢNH, CHI TIẾT: 14-18 cảnh, mỗi cảnh 5-10 giây (lời thoại 12-30 từ, MỘT ý), tổng ' + giayMucTieu_() + ' giây. ' +
+  return 'QUY TRÌNH CỐ ĐỊNH 6 PHẦN (BẮT BUỘC cho mọi video, đúng thứ tự, không được bỏ phần nào). VIDEO NHIỀU CẢNH, CHI TIẾT: 15-20 cảnh, mỗi cảnh 5-10 giây (lời thoại 12-30 từ, MỘT ý), tổng ' + giayMucTieu_() + ' giây. ' +
     'Nhiều cảnh nghĩa là chia nhỏ từng ý cho người học dễ theo, KHÔNG phải nói dài dòng hay lặp lại.\n' +
     'PHẦN 1 - ĐỀ BÀI (2-3 cảnh, luôn đi đầu, KHÔNG nhảy thẳng vào mô phỏng):\n' +
     '  mo_dau: câu móc ≤ 5 giây, chính là CÂU HỎI của đề nói cho hấp dẫn.\n' +
@@ -261,10 +261,17 @@ function quyTrinh6Phan_(tt) {
     'PHẦN 2 - MÔ PHỎNG (2-3 cảnh): ' + (tt ? 'mo_hinh_hoa: dựng hình minh họa từng lớp (vật thật -> đường đo -> hình học), đặt ẩn ngay trên vật, nêu điều kiện của ẩn; có thể thêm y_do: đề thật sự hỏi đại lượng nào, cái gì cố định, cái gì thay đổi'
       : 'y_do / thu_nho: dựng lại tình huống bằng vật thật chuyển động (bốc, tung, chia, xếp...), cho thấy không gian mẫu, thử trường hợp nhỏ để thấy quy luật') + '.\n' +
     'PHẦN 3 - LỖI SAI THƯỜNG GẶP (1-2 cảnh): bay: diễn lại cách làm sai mà học sinh hay mắc (rung + loai_bo), chỉ ra sai ở đâu và VÌ SAO sai; cảnh sau có thể nói cách tránh.\n' +
-    'PHẦN 4 - GIẢI (5-7 cảnh): nhac_lai: kiến thức/công thức sẽ dùng, ý nghĩa bằng lời thường kèm ví dụ nhỏ; diem_chot: ý then chốt và vì sao đúng; tinh_toan: MỖI BƯỚC TÍNH MỘT CẢNH (nói đang tính gì, vì sao, mọi con số hiện trên màn hình, hình minh họa phần đang tính sáng lên); ' +
-    'dap_an: ' + (tt ? 'quay lại cảnh thật với đáp số gắn đúng chỗ + so_dem kieu "vien"' : 'đáp án lớn, rõ (dong_ho_do hoặc so_dem)') + '.\n' +
+    'PHẦN 4 - GIẢI (6-8 cảnh), dẫn dắt như người thầy giỏi:\n' +
+    '  y_do (HƯỚNG SUY NGHĨ): vì sao nghĩ tới cách này, từ dấu hiệu nào trong đề (đề hỏi "lớn nhất" -> nghĩ tới hàm số / đạo hàm; "góc nâng" -> nghĩ tới tam giác vuông...), đi từ cái đã biết tới cái cần tìm.\n' +
+    '  nhac_lai (GIẢI THÍCH CÔNG THỨC, 2-3 cảnh liền nhau, BẮT BUỘC khi bài dùng công thức): (a) công thức TỪ ĐÂU RA (vẽ/diễn giải ngắn bằng hình, không chép suông); (b) Ý NGHĨA TỪNG ĐẠI LƯỢNG trong công thức (mỗi ký hiệu là gì, đơn vị gì, chỉ lên hình); (c) ÁP DỤNG vào bài này thế nào (ký hiệu nào ứng với số nào của đề).\n' +
+    '  diem_chot: ý then chốt và vì sao đúng. tinh_toan: MỖI BƯỚC TÍNH MỘT CẢNH (nói đang tính gì, vì sao), hình minh họa phần đang tính sáng lên.\n' +
+    '  dap_an: ' + (tt ? 'quay lại cảnh thật với đáp số gắn đúng chỗ + so_dem kieu "vien"' : 'đáp án lớn, rõ (dong_ho_do hoặc so_dem)') + ', nói đáp số kèm ý nghĩa thực tế ("tức là cột cờ cao gần bằng tòa nhà 5 tầng").\n' +
     'PHẦN 5 - THỬ LẠI (1-2 cảnh): kiem_tra: THẾ NGƯỢC đáp án vào đề (hoặc cách thứ hai / mô phỏng nhiều lần / trường hợp đặc biệt) để chứng minh đáp án đúng, nói rõ "thử lại".\n' +
-    'PHẦN 6 - CHỐT KIẾN THỨC (1-2 cảnh): bai_hoc: 2-3 điều rút ra (danh_sach), dấu hiệu nhận ra dạng bài, một chỗ dùng ngoài đời, một câu hỏi biến thể cho người xem tự luyện.\n' +
+    'PHẦN 6 - CHỐT KIẾN THỨC (2-3 cảnh): lien_he_thuc_te: cách nghĩ / công thức này dùng ở đâu ngoài đời (2-3 ví dụ cụ thể, có hình vật thật); bai_hoc: 2-3 điều rút ra (danh_sach), dấu hiệu nhận ra dạng bài, SAU NÀY VẬN DỤNG công thức ra sao, một câu hỏi biến thể cho người xem tự luyện.\n' +
+    'CÔNG THỨC TRÊN MÀN HÌNH: mỗi cảnh tối đa 2-3 dòng "noi_dung_man_hinh", mỗi dòng NGẮN (≤ 24 ký tự hiện ra, một phép biến đổi); công thức dài thì tách sang cảnh sau hoặc thành nhiều dòng tại dấu "=" (dòng sau bắt đầu bằng "= ..."), KHÔNG nhồi một dòng dài.\n' +
+    'CHẤT LƯỢNG BÀI GIẢNG (nghe và nhìn): lời thoại như đang nói chuyện với một bạn học sinh: câu ngắn, có câu hỏi gợi mở ("vậy cái gì đang thay đổi?"), có câu nối giữa các cảnh ("có được x rồi, giờ ta tìm..."), nhấn vào từ khóa; "giong_doc" thay đổi theo cảnh (tò mò, chậm rãi khi giải thích, nhấn mạnh khi cảnh báo, hào hứng khi ra đáp án). ' +
+    'Hình: mỗi cảnh một điểm nhìn chính, không nhồi vật; dùng lại cùng hình qua nhiều cảnh (giu_san_khau) và cho thêm dần lớp mới để người xem thấy bài "lớn lên" từng bước. ' +
+    'Nhân vật người (nguoi) có "dong_tac": dung | di | vay_tay | chi | suy_nghi | vui | nhin_len | gio_tay | chao - chọn động tác khớp lời (đang suy nghĩ -> suy_nghi, ra đáp án -> vui, chỉ vào hình -> chi); người đang di_chuyen tự bước đi.\n' +
     'CHẤT LƯỢNG TỪNG CẢNH (vì nhiều cảnh nên mỗi cảnh phải chăm chút): ' +
     '(a) "mo_ta" viết 2-4 câu theo khung "Bố cục: vật gì ở đâu. Bước 1 (khi nói ...): vật nào làm gì. Bước 2 (khi nói ...): ...", tả rõ HƯỚNG và CÁCH vật di chuyển (bay vào từ trái, trượt theo đường cong tới..., tách ra, ghép lại, nảy nhẹ khi dừng); ' +
     '(b) mỗi cảnh có hình phải có 2-4 hành động ở các bước khác nhau, mỗi bước khớp đúng một cụm lời thoại; vật vào cảnh bằng "tu_huong" (trai | phai | tren | duoi) khác nhau cho sinh động; di_chuyen để vật đi tới chỗ mới (máy tự cho đi theo đường cong có quán tính); ' +

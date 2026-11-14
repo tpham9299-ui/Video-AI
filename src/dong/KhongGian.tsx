@@ -2,7 +2,7 @@ import React from 'react';
 import {useCurrentFrame} from 'remotion';
 import {expoOut} from '../sankhau/chuyendong';
 import {kep} from '../sankhau/donghieu';
-import {DuLieuSanKhau} from '../sankhau/dulieu';
+import {DuLieuSanKhau, Vat} from '../sankhau/dulieu';
 
 // KHÔNG GIAN 3D TỰ ĐỘNG (bộ hiệu ứng mới, học từ video "đếm tam giác" và "bí kíp Casio"):
 //  - "nam": hình học/hình tự do NẰM trên một bàn kính có bề dày, máy quay nghiêng xuống và xoay quanh chậm;
@@ -21,9 +21,17 @@ export const VAT_DUNG = ['so_dem', 'danh_sach', 'bieu_do_cot', 'do_thi', 'nhan',
 export function phanLoai3D(du: DuLieuSanKhau | null): Kieu3D {
   if (!du || !du.vat.length) return 'khong';
   if (du.gocDau || du.hanhDong.some((h) => h.kieu === 'goc_3d') || du.vat.some((v) => VAT_3D_RIENG.includes(v.loai))) return 'khong';
-  // hình NHÌN CHÍNH DIỆN (chồng vật xếp tầng...): dựng đứng, máy xoay trái/phải cho thấy chiều sâu (nằm nghiêng sẽ bị dẹt)
-  if (du.vat.some((v) => v.loai === 'hinh_tu_do' && v.hinh.some((h) => h.kieu === 'xep_chong' || h.kieu === 'vat'))) return 'dung';
-  if (du.vat.some((v) => VAT_NAM.includes(v.loai))) return 'nam';
+  // PHÂN BIỆT 3D / 2D: chỉ VẬT KHỐI THẬT mới cần chuyển động 3D.
+  //  - chồng vật xếp tầng (ống, lon): dựng đứng, máy xoay trái/phải cho thấy chiều sâu
+  if (du.vat.some((v) => v.loai === 'hinh_tu_do' && v.hinh.some((h) => h.kieu === 'xep_chong'))) return 'dung';
+  //  - bản vẽ cảnh thực tế nhìn ngang (đo chiều cao, góc nâng...): PHẲNG như bản vẽ kỹ thuật, đường đo/góc phải đọc chính xác
+  if (du.vat.some((v) => v.loai === 'hinh_tu_do' && v.kieu === 'canh_ngang')) return 'khong';
+  //  - mặt bằng nhìn từ trên (vườn, ruộng, hàng rào) và hình TÔ ĐẶC là mặt vật thật (mảnh đất, đảo...): nằm nghiêng 3D nhẹ
+  const laMatVatThat = (v: Vat) => v.loai === 'hinh_tu_do' && (v.kieu === 'canh_tren' || v.hinh.some((h) => !!h.to && (h.doTo || 0.28) >= 0.25 && ['da_giac', 'tron', 'da_giac_deu', 'koch', 'svg'].includes(h.kieu)));
+  if (du.vat.some(laMatVatThat)) return 'nam';
+  //  - hình học, đồ thị, hình chỉ có đường nét, sơ đồ: PHẲNG (xoay 3D làm méo góc, khó đọc số)
+  if (du.vat.some((v) => VAT_NAM.includes(v.loai))) return 'khong';
+  //  - hộp chữ / thẻ / danh sách / biểu đồ: thẻ nổi nhẹ (hiệu ứng thị giác của hộp chữ)
   if (du.vat.every((v) => VAT_THE.includes(v.loai))) return 'the';
   return 'khong';
 }

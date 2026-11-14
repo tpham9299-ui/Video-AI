@@ -31,7 +31,8 @@ const nhanTex = (s: string) => s.replace(/(\d),(\d)/g, '$1{,}$2').replace(/°/g,
 export function canhThatSangHinh(raw: R): R {
   const nhin = chuoi(raw.nhin) === 'tren' ? 'tren' : 'ngang';
   const hinh = nhin === 'tren' ? dungTren(raw) : dungNgang(raw);
-  return {id: raw.id, loai: 'hinh_tu_do', x: raw.x ?? 50, y: raw.y ?? 50, co: raw.co, buoc: raw.buoc ?? 1, khung: [W, H], noi_dung: raw.noi_dung, tu_huong: raw.tu_huong, hinh};
+  // kieu: đánh dấu để bộ dựng biết bản vẽ nhìn ngang (giữ PHẲNG như bản vẽ kỹ thuật) hay mặt bằng nhìn từ trên (nghiêng 3D nhẹ được)
+  return {id: raw.id, loai: 'hinh_tu_do', kieu: nhin === 'tren' ? 'canh_tren' : 'canh_ngang', x: raw.x ?? 50, y: raw.y ?? 50, co: raw.co, buoc: raw.buoc ?? 1, khung: [W, H], noi_dung: raw.noi_dung, tu_huong: raw.tu_huong, hinh};
 }
 
 /* ------------------------------ NHÌN NGANG ------------------------------ */
@@ -79,7 +80,7 @@ function dungNgang(raw: R): R[] {
     neo.set(ma + '.chan', [x, yNen]);
     neo.set(ma + '.dinh', [x, yNen - c * (chuoi(v.ten) === 'cot_co' ? 0.97 : 1)]);
     neo.set(ma + '.giua', [x, yNen - c / 2]);
-    neo.set(ma + '.mat', [x + (v.lat === true ? -1 : 1) * c * 0.05, yNen - c * 0.93]);
+    neo.set(ma + '.mat', [x + (v.lat === true ? -1 : 1) * c * 0.04, yNen - c * 0.91]);
     huongMat.set(ma, v.lat === true ? -1 : 1);
   });
   // điểm ở ĐỘ CAO TẦM MẮT (vd H trên cột cờ ngang tầm mắt) khớp đúng mắt đã vẽ của người quan sát (người được vẽ to hơn tỉ lệ)
@@ -104,8 +105,21 @@ function dungNgang(raw: R): R[] {
       out.push({kieu: 'vat', ten: 'thang', diem: [[x, y], dinh], mau: v.mau, buoc: v.buoc ?? 1, nhan: v.nhan});
       return;
     }
+    // người quan sát: tự CHỈ TAY / NGƯỚC NHÌN theo tia nhìn của chính mình (nếu có), không thì đứng thở; kịch bản ghi dong_tac thì theo kịch bản
+    let dongTac = chuoi(v.dong_tac), gocChi = -30;
+    if (chuoi(v.ten) === 'nguoi') {
+      const tia = doRaw.find((d) => chuoi(d.kieu) === 'tia' && chuoi(d.tu).split('.')[0] === ma);
+      const dich = tia ? neo.get(chuoi(tia.den)) : undefined;
+      const mat = neo.get(ma + '.mat');
+      if (dich && mat) {
+        const g = (Math.atan2(dich[1] - mat[1], Math.abs(dich[0] - mat[0])) * 180) / Math.PI;
+        gocChi = Math.max(-80, Math.min(60, g));
+        if (!dongTac) dongTac = gocChi < -50 ? 'nhin_len' : 'chi';
+      }
+      if (!dongTac) dongTac = 'dung';
+    }
     out.push({kieu: 'vat', ten: chuoi(v.ten), goc: [x, y], cao: caoVe(v), rong: v.rong !== undefined ? so(v.rong) * k : undefined, lat: v.lat === true,
-      bien: v.bien, emoji: v.emoji, mau: v.mau, buoc: v.buoc ?? 1, nhan: coDoCao.has(ma) ? undefined : v.nhan});
+      bien: v.bien, emoji: v.emoji, mau: v.mau, buoc: v.buoc ?? 1, nhan: coDoCao.has(ma) ? undefined : v.nhan, dong_tac: dongTac || undefined, goc_chi: gocChi});
   });
   const lay = (s: unknown): D | null => neo.get(chuoi(s)) || null;
   const soDoCao = new Map<string, number>();   // nhiều đường đo cùng một bên vật -> lùi dần ra ngoài, không chồng nhãn

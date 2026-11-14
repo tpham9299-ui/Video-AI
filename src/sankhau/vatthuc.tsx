@@ -1,3 +1,4 @@
+import {NguoiCuDong} from './NguoiCuDong';
 import React from 'react';
 
 // THƯ VIỆN VẬT THỰC TẾ (nét "vat" của hinh_tu_do): vẽ ĐÚNG vật của đề (cột cờ, ngân hàng, tòa nhà, cây, người quan sát,
@@ -21,7 +22,7 @@ export const TI_LE_RONG: Record<string, number> = {
   hang_rao: 3, cong_trinh: 0.9, cua_hang: 1.1, xe_may: 1.9, xe_dap: 1.7, xe_buyt: 3, con_duong: 4, qua_bong: 1, ro_bong_ro: 0.45, gieng: 0.9, cong: 1.2, bieu_tuong: 1,
 };
 
-type P = {mau: string; t: number; rong: number; nen: string; bien: string; emoji: string};
+type P = {mau: string; t: number; rong: number; nen: string; bien: string; emoji: string; dongTac?: string; gocChi?: number};
 const VANG = '#FFD54A', DO = '#FF4D5E', TRANG = '#EAF6F4', XAM = '#9FB3B0', XANH_LA = '#3BF29A', XANH = '#4FC3F7', NAU = '#C08552';
 
 const sao5 = (cx: number, cy: number, r: number) =>
@@ -49,18 +50,8 @@ const VE: Record<TenVatThuc, (p: P) => React.ReactNode> = {
     );
   },
   // NGƯỜI QUAN SÁT (nhìn nghiêng, mặt hướng phải): mắt ở 93% chiều cao
-  nguoi: ({mau, t}) => (
-    <g strokeLinecap="round" strokeLinejoin="round">
-      {/* thân áo + quần (khối đặc, nhìn rõ là người ngay cả khi nhỏ), đầu có tóc, mắt nhìn sang phải */}
-      <path d="M-7 -76 Q0 -80 7 -76 L8 -44 L-8 -44 Z" fill={mau} stroke={mau} strokeWidth={2} />
-      <path d="M-7 -45 L-8 0 L-2 0 L0 -30 L2 0 L8 0 L7 -45 Z" fill="#2c4a6e" stroke="#9fc3ff" strokeWidth={1.5} />
-      <path d={`M7 -72 L${15 + Math.sin(t * 2) * 1} -55`} stroke={mau} strokeWidth={6} fill="none" />
-      <path d="M-7 -72 L-11 -50" stroke={mau} strokeWidth={6} fill="none" />
-      <circle cx={0} cy={-88} r={10} fill="#f4c99a" stroke="#f9dfc0" strokeWidth={1} />
-      <path d="M-10 -89 Q-9 -100 1 -99 Q10 -99 10 -91 Q4 -95 -10 -89 Z" fill="#2b1c12" />
-      <circle cx={6} cy={-88} r={1.8} fill="#1d1d1d" />
-    </g>
-  ),
+  // NGƯỜI có khớp tay chân, cử động theo động tác (đứng thở, đi bộ, chỉ tay theo tia nhìn, ngước nhìn, vẫy tay...)
+  nguoi: ({mau, t, dongTac, gocChi}) => <NguoiCuDong dongTac={dongTac || 'dung'} t={t} mauAo={mau || '#FF8A3D'} gocChi={gocChi} />,
   // TÒA NHÀ CAO TẦNG: lưới cửa sổ sáng tắt, ăng-ten đỉnh có đèn nhấp nháy
   toa_nha: ({mau, t}) => {
     const cs: React.ReactNode[] = [];
@@ -443,7 +434,7 @@ const VE: Record<TenVatThuc, (p: P) => React.ReactNode> = {
 };
 
 // Vẽ một vật thực tế: chân tại (x, y) khung, cao h khung đơn vị; lat = lật ngang; p = tiến độ xuất hiện (vật "mọc" từ chân lên)
-export const VatThuc: React.FC<{ten: string; x: number; y: number; cao: number; rong?: number; lat?: boolean; mau: string; t: number; p: number; bien?: string; emoji?: string}> = ({ten, x, y, cao, rong, lat, mau, t, p, bien = '', emoji = ''}) => {
+export const VatThuc: React.FC<{ten: string; x: number; y: number; cao: number; rong?: number; lat?: boolean; mau: string; t: number; p: number; bien?: string; emoji?: string; dongTac?: string; gocChi?: number}> = ({ten, x, y, cao, rong, lat, mau, t, p, bien = '', emoji = '', dongTac, gocChi}) => {
   const ve = VE[ten as TenVatThuc];
   if (!ve) return null;
   const k = cao / 100;
@@ -457,7 +448,7 @@ export const VatThuc: React.FC<{ten: string; x: number; y: number; cao: number; 
           <stop offset="0%" stopColor="#7d8f93" /><stop offset="45%" stopColor="#f2f7f8" /><stop offset="100%" stopColor="#6b7b80" />
         </linearGradient>
       </defs>
-      {ve({mau, t, rong: rongDv, nen: '', bien, emoji})}
+      {ve({mau, t, rong: rongDv, nen: '', bien, emoji, dongTac, gocChi})}
     </g>
   );
 };
