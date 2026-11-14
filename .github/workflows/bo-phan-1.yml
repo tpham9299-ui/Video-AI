@@ -62,6 +62,26 @@ jobs:
       - name: Giải + kiểm chứng + viết kịch bản
         run: node scripts/bophan1/chay_bp1.js
 
+      # chạy tay (không có mã đề): in kết quả + kịch bản ra nhật ký để xem / đem đi dựng thử
+      - name: In kết quả chạy thử
+        if: ${{ always() && env.ID_DE == '' }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          if not os.path.exists("ket_qua_bp1.json"):
+              print("Không có ket_qua_bp1.json"); raise SystemExit
+          d = json.load(open("ket_qua_bp1.json", encoding="utf8"))
+          h = d.get("hang") or {}
+          print("TRANG_THAI:", h.get("trang_thai"), "| DAP_AN:", h.get("dap_an"), "|", h.get("dap_an_hien"), "| GHI_CHU:", str(h.get("ghi_chu"))[:400])
+          for x in (d.get("nhat_ky") or [])[-40:]:
+              print("NK", x[1], str(x[2])[:400])
+          kb = d.get("kich_ban")
+          if kb:
+              print("=====KICH_BAN_BAT_DAU=====")
+              print(kb if isinstance(kb, str) else json.dumps(kb, ensure_ascii=False))
+              print("=====KICH_BAN_KET_THUC=====")
+          PY
+
       - name: Gửi kết quả về Apps Script
         if: ${{ always() && env.APPS_SCRIPT_URL != '' && env.ID_DE != '' }}
         run: |
