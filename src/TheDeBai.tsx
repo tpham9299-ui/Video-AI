@@ -13,23 +13,24 @@ export type DeBai = {cho: string[]; tim: string};
 export const coTheDe = (d: DeBai | null | undefined) => !!d && (d.cho.length > 0 || !!d.tim);
 
 // cỡ chữ + chiều cao ước tính (Canh dùng để chừa chỗ cho thẻ, sân khấu thu gọn tương ứng)
-export function boCucTheDe(d: DeBai, rong = 960) {
-  const dai = Math.max(8, ...d.cho.map((x) => texSangChu(x).length), texSangChu(d.tim).length * 0.9);
-  const co = Math.max(38, Math.min(48, Math.floor((rong - 140) / (dai * 0.56))));
-  const dong = (s: string) => Math.max(1, Math.ceil((texSangChu(s).length * 0.56 * co) / (rong - 140)));
-  const cao = 46 + 24 + d.cho.reduce((a, s) => a + dong(s) * co * 1.25 + 10, 0) + (d.tim ? 34 + dong(d.tim) * co * 1.3 + 40 : 0) + 30;
-  return {co, cao: Math.min(620, cao)};
+export function boCucTheDe(d: DeBai, rong = 960, caoToiDa = 640) {
+  // cỡ chữ lớn nhất mà thẻ vẫn VỪA chỗ trống (không tràn xuống phụ đề); dòng dài tự xuống dòng
+  const dong = (s: string, co: number) => Math.max(1, Math.ceil((texSangChu(s).length * 0.56 * co) / (rong - 140)));
+  const caoVoi = (co: number) => 46 + 24 + d.cho.reduce((a, s) => a + dong(s, co) * co * 1.25 + 10, 0) + (d.tim ? 34 + dong(d.tim, co * 1.05) * co * 1.05 * 1.3 + 40 : 0) + 30;
+  let co = 48;
+  while (co > 30 && caoVoi(co) > caoToiDa) co -= 2;
+  return {co, cao: Math.min(caoToiDa, caoVoi(co))};
 }
 
 const Dong: React.FC<{s: string; co: number; mau: string; mx: number}> = ({s, co, mau, mx}) =>
   coTex(s) ? <Toan tex={s} size={co} color={mau} maxWidth={mx} /> : <span style={{fontSize: co, color: mau}}>{s}</span>;
 
-export const TheDeBai: React.FC<{de: DeBai; moc: number[]; giuNguyen?: boolean; rong?: number}> = ({de, moc, giuNguyen, rong = 960}) => {
+export const TheDeBai: React.FC<{de: DeBai; moc: number[]; giuNguyen?: boolean; rong?: number; caoToiDa?: number}> = ({de, moc, giuNguyen, rong = 960, caoToiDa = 640}) => {
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
   const t = f / fps;
   const nhan = GIAO_DIEN.nhan || '#3BF29A';
-  const {co} = boCucTheDe(de, rong);
+  const {co} = boCucTheDe(de, rong, caoToiDa);
   const hien = (i: number) => (giuNguyen ? 1 : expoOut(kep((t - (moc[i] ?? 0.3 + i * 0.7)) / 0.45)));
   const aThe = giuNguyen ? 1 : expoOut(kep((t - 0.15) / 0.4));
   const iTim = de.cho.length;

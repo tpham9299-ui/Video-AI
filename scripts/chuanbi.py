@@ -593,7 +593,14 @@ def the_de_bai(kb):
                 du["hanh_dong"] = [h for h in du["hanh_dong"] if not isinstance(h, dict) or not h.get("vat") or h.get("vat") in ids]
     if not cho:
         cho = [str(x).strip() for x in (kb.get("du_kien") or []) if str(x).strip()][:4]
-    return {"cho": [x[:90] for x in cho[:5]], "tim": tim[:110]} if (cho or tim) else None
+    def cat(x, n):   # cắt ở ranh giới từ, có dấu … (không cụt chữ giữa chừng)
+        x = re.sub(r"\s+", " ", x).strip()
+        if len(x) <= n:
+            return x
+        c = x[:n - 1]
+        i = c.rfind(" ")
+        return (c[:i] if i > n * 0.6 else c).rstrip(" ,.;:") + "…"
+    return {"cho": [cat(x, 120) for x in cho[:5]], "tim": cat(tim, 140)} if (cho or tim) else None
 
 
 def main():

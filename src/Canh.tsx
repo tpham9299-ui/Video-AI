@@ -126,7 +126,9 @@ export const Canh: React.FC<{
   const dayVung = Y_PHU_DE - 30; // đáy vùng nội dung
   const coCTMax = coHinh ? 54 : 70;
   const caoCT = hienCongThuc ? Math.min(coHinh ? 380 : 700, 70 + nHang * coCTMax * 1.95) : 0;
-  const caoNote = (coNote ? 40 + canh.chuThich.length * 56 : 0) + (theDe ? boCucTheDe(theDe).cao + (coNote ? 16 : 0) : 0);
+  // thẻ đề bài: tối đa phần còn lại sau khi chừa sân khấu ≥ 380px (không bao giờ tràn xuống phụ đề)
+  const caoTheMax = Math.max(300, Y_PHU_DE - 30 - (coHook ? Y_SAN + 20 : Y_SAN) - 380 - 32 - (coNote ? 56 + canh.chuThich.length * 56 : 0));
+  const caoNote = (coNote ? 40 + canh.chuThich.length * 56 : 0) + (theDe ? boCucTheDe(theDe, 960, caoTheMax).cao + (coNote ? 16 : 0) : 0);
   const yNoiDung = coHook ? Y_SAN + 20 : Y_SAN;
   const caoSan = Math.max(380, dayVung - yNoiDung - caoCT - caoNote - (caoCT ? 16 : 0) - (caoNote ? 16 : 0));
   const tiLe = Math.min(1.12, caoSan / SK_H, 1000 / SK_W);
@@ -268,7 +270,7 @@ export const Canh: React.FC<{
       {/* Chú thích + công thức */}
       <NhoeHuong nx={ccCT.nx} ny={ccCT.ny} style={{position: 'absolute', left: 50, right: 50, top: coHinh ? yNoiDung + caoSan + 16 : Y_SAN, bottom: 1920 - dayVung, display: 'flex', flexDirection: 'column', justifyContent: coHinh ? 'flex-start' : 'center', alignItems: 'center', gap: 16, opacity: frame < 4 ? 0 : ccCT.mo, transform: `perspective(1600px) translate(${ccCT.x}px, ${ccCT.y}px) rotateY(${ccCT.ry}deg) scale(${ccCT.s})`}}>
         {theDe ? (
-          <TheDeBai de={theDe} giuNguyen={theDeGiu} moc={(() => {
+          <TheDeBai de={theDe} giuNguyen={theDeGiu} caoToiDa={caoTheMax} moc={(() => {
             // mỗi dữ kiện hiện đúng lúc lời đọc tới (chia đều theo các câu), "cần tìm" ở câu cuối
             const n = theDe.cho.length + (theDe.tim ? 1 : 0);
             return Array.from({length: n}, (_, i) => (nCau ? canh.cau[Math.min(nCau - 1, Math.floor((i * nCau) / n))].bat + 0.1 : 0.4 + i * 0.9));

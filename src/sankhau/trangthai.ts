@@ -279,6 +279,15 @@ export function kichThuocVat(v: Vat, k = 1): {w: number; h: number} {
     case 'hinh_tu_do': ({w, h} = kichThuocHinhTuDo(v)); break;
     default: break;
   }
+  // NHÃN DƯỚI VẬT (Nhan: chữ 42*k): cộng vào kích thước để tự xếp không cho nhãn đè lên vật bên dưới / bên cạnh
+  const NHAN_DUOI = ['hop_bi', 'tui', 'hop_qua', 'dong_ho', 'bieu_do_cot', 'vong_quay', 'cua', 'banh', 'bieu_tuong', 'xuc_xac', 'dong_xu', 'the_bai', 'so_dem', 'bong_bay'];
+  const chuNhan = texSangChu(v.loai === 'banh' || v.loai === 'luoi_o' ? `${v.nhan} ${v.giaTriChu}`.trim() : v.nhan);
+  if (chuNhan && (NHAN_DUOI.includes(v.loai) || v.loai === 'luoi_o')) {
+    const coN = 42 * k;
+    const rongN = Math.min(860, chuNhan.length * 0.6 * coN + 50);
+    h += (v.loai === 'luoi_o' ? 30 : 70) * k * (rongN >= 860 ? 2 : 1);
+    w = Math.max(w, rongN / Math.max(0.4, v.co));
+  }
   return {w: w * v.co, h: h * v.co};
 }
 

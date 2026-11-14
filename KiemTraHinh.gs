@@ -485,6 +485,15 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc) {
   kiemTraBaCham_(kb).forEach(function (x) { nang.push(x); });
   kiemTraCuPhapTex_(kb).forEach(function (x) { nang.push(x); });
   kiemTraVatThucDe_(kb, deGoc).forEach(function (x) { nang.push(x); });
+  // cảnh ĐỀ BÀI phải cho thấy VẬT THẬT của đề (hộp bi, xúc xắc, đồng xu, người, cột cờ...), không chỉ toàn khung chữ
+  var CHU_THUAN_ = ['nhan', 'chu', 'the', 'danh_sach', 'so_dem', 'mui_ten'];
+  kb.canh.forEach(function (c, j) {
+    if (!c || String(c.loai) !== 'de_bai') return;
+    var du = c.minh_hoa && c.minh_hoa.du_lieu;
+    var vat = du && Array.isArray(du.vat) ? du.vat : [];
+    var coVat = vat.some(function (v) { return v && CHU_THUAN_.indexOf(v.loai) < 0; }) || (c.giu_san_khau && j > 0);
+    if (!coVat) nang.push('DE_BAI_CHI_CO_CHU_CANH_' + (j + 1) + ': cảnh đề bài chỉ có khung chữ. Phải vẽ VẬT THẬT của đề (' + (thucTe ? 'canh_that với vật thật' : 'hop_bi với đúng số bi từng màu, xuc_xac, dong_xu, the_bai, nguoi, vong_quay...') + ') - thẻ ĐỀ CHO / CẦN TÌM máy đã tự hiện, không cần nhắc lại bằng chữ trên sân khấu.');
+  });
   if (!thucTe) {
     // xác suất: mô phỏng phải đa dạng (ít nhất 4 loại vật chính), không lặp một kiểu hình cả video
     var loaiChinh = {};
