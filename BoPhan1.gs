@@ -435,9 +435,21 @@ function giaiThucTe_(r) {
   var a1 = tt.v, mo = tt.mo;
   // Giữ đúng số chữ số thập phân mà lời giải đưa ra (đề yêu cầu làm tròn), tối đa 4.
   var dapAn = vietSo_(a1);
-  var hien = String((c1 && c1.dap_an_hien) || (c2 && c2.dap_an_hien) || '').trim().slice(0, 80);
+  var hien = catDapAnHien_(String((c1 && c1.dap_an_hien) || (c2 && c2.dap_an_hien) || '').trim(), 110);
   if (!hien) hien = dapAn.replace('.', ',') + (c1 && c1.don_vi ? ' ' + c1.don_vi : '');
   return { dat: true, c1: c1, c2: c2, dap_an: dapAn, dap_an_hien: hien, mo_ta: mo, de_co_van_de: tt.de_co_van_de };
+}
+
+// Rút gọn đáp án hiển thị mà KHÔNG cắt giữa số ("Diện tích tối đa: 18" thay vì 1800 m²): bỏ ngoặc giải thích trước,
+// rồi mới cắt ở dấu phân cách (, ; .) gần nhất.
+function catDapAnHien_(s, max) {
+  s = String(s || '').replace(/\s+/g, ' ').trim();
+  if (s.length <= max) return s;
+  var bo = s.replace(/\s*\([^()]*\)/g, '').trim();
+  if (bo.length >= 4 && bo.length <= max) return bo;
+  var cat = s.slice(0, max);
+  var i = Math.max(cat.lastIndexOf(', '), cat.lastIndexOf('; '), cat.lastIndexOf('. '), cat.lastIndexOf(' ('));
+  return (i > max * 0.4 ? cat.slice(0, i) : cat.replace(/\s+\S*$/, '')).replace(/[\s,;:(]+$/, '').trim();
 }
 
 /* ===================== BƯỚC A2: TÌM ĐỀ CÓ THẬT TRÊN INTERNET ===================== */
