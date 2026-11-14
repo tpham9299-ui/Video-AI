@@ -79,6 +79,23 @@ Các lỗi ở video mẫu hôm nay mình phát hiện bằng mắt, hệ thốn
 
 Chốt cuối vẫn là bạn: chế độ "duyệt trước khi đăng" đang BẬT, không video nào được đăng khi bạn chưa gõ /duyet.
 
+## 11. Đề phải có đáp án chắc chắn, đề lệch/mơ hồ thì sửa hoặc xóa
+- **Khi tạo đề** (AI sáng tác hoặc tìm trên internet): bắt buộc đề có ĐÚNG MỘT đáp án chính xác, dữ kiện không mâu thuẫn, câu hỏi chỉ hiểu
+  một cách (nói rõ làm tròn, có hoàn lại không, có phân biệt thứ tự không...). Người ra đề phải TỰ GIẢI và ghi đáp án; đề internet chép đáp án của nguồn.
+- **Khi giải**: đáp án phải được nhiều cách giải độc lập + mã máy tính thống nhất (trọng tài, như trước) VÀ khớp đáp án của người ra đề.
+- **Đề không đạt** (các cách giải lệch nhau / đề mơ hồ / lệch đáp án người ra đề):
+  1. Hệ thống nhờ AI VIẾT LẠI đề một lần (giữ bối cảnh, dạng bài, độ khó; sửa số liệu cho có một đáp án duy nhất) rồi giải lại TỪ ĐẦU qua đủ các bước kiểm chứng.
+  2. Sửa rồi vẫn không đạt -> xóa hẳn khỏi sheet (mã băm lưu vào LUU_TRU để không sinh lại đúng đề đó).
+  3. Đề bạn tự gửi qua Zalo: không tự đổi đề của bạn; không chắc chắn thì báo Zalo và xóa, bạn gửi lại đề rõ hơn.
+- **Bỏ hẳn kiểu "làm theo cách hiểu hợp lý nhất"**: trước đây đề mơ hồ vẫn được làm video kèm ghi chú; nay không còn.
+- **Dọn sheet**: các đề LOAI (lệch đáp án) đang có sẽ bị xóa ngay ở lần chạy tới (trước đây giữ 7 ngày), cùng các đề cũ bị đánh dấu
+  "DE_CO_VAN_DE" mà chưa dựng video (trừ đề bạn tự gửi).
+
+## 12. Kiểm tra key Gemini
+- Workflow mới **"Kiểm tra key Gemini"** (GitHub > Actions > Kiểm tra key Gemini > Run workflow): thử từng key, báo dùng được /
+  hết hạn mức ngày (giữ, chờ reset) / giới hạn phút (giữ) / LỖI THẬT (nên xóa, đồng thời bot Zalo báo). Nhật ký chỉ hiện 6 ký tự đầu + 4 ký tự cuối của key.
+- AI nhìn hình trước khi dựng dùng đúng bộ model của hệ thống (gemini-2.5-flash đã bị Google ngừng nên trước đây luôn lỗi).
+
 ## Cần dán lại vào Apps Script
 `KiemTraHinh.gs`, `PromptKichBan.gs`, `BoPhan1.gs`, `BoPhan2.gs`, `NangCao.gs` (bản trong thư mục bàn giao; BoPhan2.gs ở mục 9, NangCao.gs + KiemTraHinh.gs cập nhật ở mục 10), rồi Triển khai > Quản lý > Phiên bản mới.
 
