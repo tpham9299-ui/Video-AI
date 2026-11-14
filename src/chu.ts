@@ -64,7 +64,8 @@ export function catChu(s: string, max: number): string {
 const HAM = new Set(['sin', 'cos', 'tan', 'cot', 'log', 'ln', 'lg', 'max', 'min', 'lim', 'exp', 'det', 'mod', 'gcd']);
 export function bocChuViet(tex: string): string {
   // dấu % trong KaTeX là CHÚ THÍCH (mất cả phần sau: "Lãi 1,2%/tháng" thành "Lãi 1,2") -> phải viết \%
-  const x = chuanTex(tex).replace(/(^|[^\\])%/g, '$1\\%');
+  // \frac thường thu tử/mẫu còn ~70% -> nhỏ hơn hẳn số bên cạnh: dùng \dfrac để tử/mẫu CÙNG CỠ với số thường
+  const x = chuanTex(tex).replace(/(^|[^\\])%/g, '$1\\%').replace(/\\frac(?=\s*\{)/g, '\\dfrac');
   if (!/[A-Za-zÀ-ỹ]{2,}/.test(x)) return x;
   let ra = '';
   let i = 0;

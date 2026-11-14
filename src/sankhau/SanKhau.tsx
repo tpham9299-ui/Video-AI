@@ -94,7 +94,7 @@ const San3D: React.FC<{cam: Cam3D; mo: number}> = ({cam, mo}) => {
 };
 
 // chiVat / boVat: chỉ vẽ / bỏ qua các vật này (bố cục vẫn tính trên đủ vật) - dùng để dựng vật cần đọc rõ ĐỨNG THẲNG trên bàn 3D
-export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boolean; cau?: {text: string; bat: number; ket: number}[]; chiVat?: string[]; boVat?: string[]}> = ({du, giayAm, amThanh = true, cau, chiVat, boVat}) => {
+export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boolean; cau?: {text: string; bat: number; ket: number}[]; chiVat?: string[]; boVat?: string[]; phang?: boolean}> = ({du, giayAm, amThanh = true, cau, chiVat, boVat, phang: phang2D = false}) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
   const t = frame / fps;
@@ -105,7 +105,8 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
   const vatXep = React.useMemo(() => tuXepSanKhau(du.vat, SK_W, SK_H, Math.max(1, Math.min(1.6, kChu))), [du, kChu]);
   const cam = tinhCamera(du.hanhDong, vatXep, t, tb, SK_W, SK_H);
   // góc nhìn 3D: nghiêng sàn + xoay quanh trục đứng; vật luôn quay mặt về camera (billboard) và đứng trên sàn có bóng đổ
-  const g3 = tinhGoc3D(du.gocDau, du.hanhDong, t, tb);
+  // phang2D (phần đề bài): bỏ mọi góc máy nghiêng/xoay 3D, vật vẫn bay vào, di chuyển, sáng... trên mặt phẳng
+  const g3 = phang2D ? {nghieng: 0, xoay: 0} : tinhGoc3D(du.gocDau, du.hanhDong, t, tb);
   const co3d = g3.nghieng > 0.3 || Math.abs(g3.xoay) > 0.3;
   const sinN = Math.sin((g3.nghieng * Math.PI) / 180);
   const cam3: Cam3D = {n: g3.nghieng, r: g3.xoay, d: 2000, cx: SK_W / 2, cy: SK_H / 2};

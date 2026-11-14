@@ -77,6 +77,7 @@ export type Props = {
   tiepTheo?: string; // câu hẹn video sau (màn kết)
   chuDe: string; // chủ đề ngắn hiện ở góc trên (ví dụ "Hai bi cùng màu")
   nen: NenProps | null;
+  nenTuTao?: {kieu: string; hue: number; hat: number} | null; // nền tự tạo riêng cho video này
   dsNen?: NenProps[]; // nhiều nền của bạn: đổi nền theo nhóm cảnh
   thuongHieu: ThuongHieuProps;
   outro: OutroProps | null;

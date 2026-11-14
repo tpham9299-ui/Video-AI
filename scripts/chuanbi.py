@@ -580,7 +580,7 @@ def the_de_bai(kb):
                 for x in ds:
                     if LA_TIM.match(x) and not tim:
                         tim = LA_TIM.sub("", x).strip()
-                    elif LA_CHO.match(x) and len(cho) < 5:
+                    elif LA_CHO.match(x) and len(cho) < 5 and not kb.get("de_cho"):   # đã có de_cho thì không thêm trùng
                         cho.append(LA_CHO.sub("", x).strip())
                     elif not LA_TIM.match(x) and not kb.get("de_cho") and len(cho) < 5:
                         cho.append(x.strip())
@@ -742,7 +742,13 @@ def main():
     kieu_cd = (os.environ.get("KIEU_CHUYEN_DONG") or str(kb.get("kieu_chuyen_dong") or "")).strip()
     if kieu_cd in ("moi", "cu"):
         pc["chuyenDong"] = kieu_cd
-    ds_nen = chon_nen(args.public, id_an_toan, nen_co_dinh, pc.get("soNenToiDa", 3))
+    # NỀN: mặc định mỗi video TỰ TẠO một nền riêng (kiểu + tông màu sinh từ mã video); nền ảnh trên Drive chỉ dùng khi DUNG_NEN_DRIVE=1
+    dung_nen_drive = os.environ.get("DUNG_NEN_DRIVE") == "1" or pc.get("dungNenDrive") is True
+    ds_nen = chon_nen(args.public, id_an_toan, nen_co_dinh, pc.get("soNenToiDa", 3)) if dung_nen_drive else []
+    import hashlib
+    bam = int(hashlib.sha1(id_.encode("utf8")).hexdigest()[:8], 16)
+    kieu_nen = ["cuc_quang", "hat_sang", "song", "luc_giac", "tia", "ky_hieu", "luoi"]
+    nen_tu_tao = None if ds_nen else {"kieu": kieu_nen[bam % len(kieu_nen)], "hue": (bam >> 8) % 360, "hat": bam}
     thuong_hieu, outro = tim_thuong_hieu(args.public, th)
     bai_hoc = [str(x).strip()[:90] for x in (kb.get("bai_hoc_rut_ra") or []) if str(x).strip()][:3]
     # Mặc định KHÔNG chèn màn kết/outro vào cuối video (video dừng ngay sau cảnh bài học).
@@ -774,6 +780,7 @@ def main():
         "tiepTheo": str(kb.get("video_tiep_theo") or "")[:70],
         "nen": ds_nen[0] if ds_nen else None,
         "dsNen": ds_nen,
+        "nenTuTao": nen_tu_tao,
         "thuongHieu": thuong_hieu,
         "outro": outro,
         "phongCach": pc,

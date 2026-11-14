@@ -8,6 +8,7 @@ import {NhanQuangCao} from './NhanQuangCao';
 import {ManKetChuyenNghiep} from './ManKet';
 import {phaCua, SAU_PHA} from './ThanhBuoc';
 import {KiemDuyet} from './KiemDuyet';
+import {NenTuTao} from './NenTuTao';
 import {Nen} from './Nen';
 import {FONT, FONT_DAM, BONG_CHU, vienChu, GIAO_DIEN, MAU, MAU_LOAI, chuTrenMau} from './theme';
 import {DuongTienTrinh} from './dong/DiemNhan';
@@ -120,9 +121,12 @@ const NoiDungVideo: React.FC<Props> = (props) => {
   return (
     <AbsoluteFill style={{fontFamily: FONT}}>
       <KieuToan kieu={phongCach.kieuToan || 'dam'} />
+      {/* chữ xuống dòng CÂN BẰNG (các dòng dài gần bằng nhau, không còn một chữ lẻ loi ở dòng dưới), tránh ngắt ở cụm ngắn */}
+      <style>{'div, span { text-wrap: balance; } .katex, .katex * { text-wrap: nowrap; }'}</style>
       <NapPhongToan />
-      <Nen nen={nen} dsNen={props.dsNen} canh={canh} pc={phongCach} tongFrame={tongFrame} />
-      {moi ? <LuoiSan mau={GIAO_DIEN.nhan} /> : null}
+      {/* nền tự tạo riêng cho từng video (mặc định); chỉ dùng nền ảnh của bạn khi đặt DUNG_NEN_DRIVE=1 */}
+      {props.nenTuTao ? <NenTuTao cfg={props.nenTuTao} nhan={GIAO_DIEN.nhan} /> : <Nen nen={nen} dsNen={props.dsNen} canh={canh} pc={phongCach} tongFrame={tongFrame} />}
+      {moi && (!props.nenTuTao || props.nenTuTao.kieu === 'luoi') ? <LuoiSan mau={GIAO_DIEN.nhan} /> : null}
       {nhac ? <Audio src={staticFile(nhac)} loop volume={amNhac} /> : null}
       {canh.map((c, i) => (
         <Sequence key={c.so} from={c.batDau} durationInFrames={c.soFrame + keoDai(i)}>

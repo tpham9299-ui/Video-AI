@@ -21,6 +21,7 @@ import {nhanCanh, TieuDeCanh} from './TieuDeCanh';
 import {phaCua, ThanhBuoc} from './ThanhBuoc';
 import {chuTrenMau, FONT, GIAO_DIEN, laMoi, MAU} from './theme';
 import {Toan} from './Toan';
+import {VuaKhung} from './VuaKhung';
 import {boCucTheDe, coTheDe, DeBai, TheDeBai} from './TheDeBai';
 import {VietTay} from './VietTay';
 import {CanhProps, PhongCach} from './types';
@@ -70,7 +71,8 @@ const KhungSan: React.FC<{w: number; h: number; p: number}> = ({w, h, p}) => {
 // Khoảng ~360px dưới cùng và ~150px trên cùng để trống cho giao diện TikTok/Shorts.
 const Y_DAU = 196;
 const Y_SAN = 470;
-const Y_PHU_DE = 1452;
+const Y_PHU_DE = 1478;   // phụ đề thấp xuống một chút, nhường chỗ cho hình minh họa
+const SAN_TOI_THIEU = 560;   // sân khấu (hình minh họa) luôn cao ít nhất chừng này: chữ/công thức tự thu gọn để nhường
 
 export const Canh: React.FC<{
   canh: CanhProps;
@@ -125,12 +127,17 @@ export const Canh: React.FC<{
   // ----- phân chia chiều cao -----
   const dayVung = Y_PHU_DE - 30; // đáy vùng nội dung
   const coCTMax = coHinh ? 54 : 70;
-  const caoCT = hienCongThuc ? Math.min(coHinh ? 380 : 700, 70 + nHang * coCTMax * 1.95) : 0;
+  // cảnh ĐỀ BÀI có thẻ đề: bỏ dòng tiêu đề cảnh (thẻ đã nêu đề cho gì / cần tìm gì), hình được đẩy lên cao -> to hơn
+  const anTieuDe = canh.loai === 'de_bai' && !!theDe && !coHook;
+  const yNoiDungTam = coHook ? Y_SAN + 20 : anTieuDe ? 262 : Y_SAN;
+  const caoNoteTho = coNote ? 40 + canh.chuThich.length * 56 : 0;
+  const caoCT = hienCongThuc ? Math.min(coHinh ? Math.max(150, dayVung - yNoiDungTam - SAN_TOI_THIEU - caoNoteTho - 32) : 700, 70 + nHang * coCTMax * 1.95) : 0;
   // thẻ đề bài: tối đa phần còn lại sau khi chừa sân khấu ≥ 380px (không bao giờ tràn xuống phụ đề)
-  const caoTheMax = Math.max(300, Y_PHU_DE - 30 - (coHook ? Y_SAN + 20 : Y_SAN) - 380 - 32 - (coNote ? 56 + canh.chuThich.length * 56 : 0));
+  const sanToiThieu = anTieuDe ? 620 : SAN_TOI_THIEU;   // cảnh đề bài: hình to hơn nữa (đã bỏ dòng tiêu đề)
+  const caoTheMax = Math.max(300, Y_PHU_DE - 30 - yNoiDungTam - (coHinh ? sanToiThieu : 380) - 32 - (coNote ? 56 + canh.chuThich.length * 56 : 0));
   const caoNote = (coNote ? 40 + canh.chuThich.length * 56 : 0) + (theDe ? boCucTheDe(theDe, 960, caoTheMax).cao + (coNote ? 16 : 0) : 0);
-  const yNoiDung = coHook ? Y_SAN + 20 : Y_SAN;
-  const caoSan = Math.max(380, dayVung - yNoiDung - caoCT - caoNote - (caoCT ? 16 : 0) - (caoNote ? 16 : 0));
+  const yNoiDung = yNoiDungTam;
+  const caoSan = Math.max(coHinh ? Math.min(sanToiThieu, dayVung - yNoiDung - 160) : 380, dayVung - yNoiDung - caoCT - caoNote - (caoCT ? 16 : 0) - (caoNote ? 16 : 0));
   const tiLe = Math.min(1.12, caoSan / SK_H, 1000 / SK_W);
   const lonHon = !coHinh;
   const coCT = Math.min(
@@ -156,7 +163,9 @@ export const Canh: React.FC<{
   const tieuDeCanh = canh.tieuDeCanh;
 
   // ===== KHÔNG GIAN 3D TỰ ĐỘNG: hình nằm trên bàn kính có bề dày / thẻ lơ lửng =====
-  const kieu3D = moi ? phanLoai3D(sanKhau) : 'khong';
+  // phần ĐỀ BÀI (mở đầu + đọc đề): hình PHẲNG 2D, vật chuyển động trên mặt phẳng; không xoay máy 3D (chỉ hộp chữ có hiệu ứng)
+  const phan2D = /mo_dau|de_bai|hook|cau_hoi/.test(canh.loai);
+  const kieu3D = moi && !phan2D ? phanLoai3D(sanKhau) : 'khong';
   // máy chỉ đổi góc ở mốc các bước của sân khấu (khớp lời giảng), góc do kịch bản chọn (goc_nhin) hoặc tự xoay vòng bộ góc
   const mocDoi3D = (kieu3D === 'nam' || kieu3D === 'dung') && sanKhau && tbCanh ? Array.from({length: Math.max(0, sanKhau.soBuoc - 1)}, (_, k) => Math.round(tbCanh(k + 2) * fps) + canh.leadFrame) : [];
   const gm = kieu3D === 'nam' ? gocMayNam(frame, canh.so, !giuTruoc, coHook || khungCuoi, mocDoi3D, canh.gocNhin || []) : null;
@@ -256,7 +265,7 @@ export const Canh: React.FC<{
                 <SanKhau du={sanKhau} giayAm={giayAm} cau={canh.cau} />
               </The3D>
             ) : sanKhau ? (
-              <SanKhau du={sanKhau} giayAm={giayAm} cau={moi ? canh.cau : undefined} />
+              <SanKhau du={sanKhau} giayAm={giayAm} cau={moi ? canh.cau : undefined} phang={phan2D} />
             ) : kieu ? (
               <div style={{width: 960, height: 640, marginTop: (SK_H - 640) / 2}}>
                 <MinhHoa kieu={kieu} mh={canh.minhHoa} giayAm={giayAm} />
@@ -269,6 +278,7 @@ export const Canh: React.FC<{
 
       {/* Chú thích + công thức */}
       <NhoeHuong nx={ccCT.nx} ny={ccCT.ny} style={{position: 'absolute', left: 50, right: 50, top: coHinh ? yNoiDung + caoSan + 16 : Y_SAN, bottom: 1920 - dayVung, display: 'flex', flexDirection: 'column', justifyContent: coHinh ? 'flex-start' : 'center', alignItems: 'center', gap: 16, opacity: frame < 4 ? 0 : ccCT.mo, transform: `perspective(1600px) translate(${ccCT.x}px, ${ccCT.y}px) rotateY(${ccCT.ry}deg) scale(${ccCT.s})`}}>
+        <VuaKhung maxW={980} maxH={dayVung - (coHinh ? yNoiDung + caoSan + 16 : Y_SAN)} goc="center top">
         {theDe ? (
           <TheDeBai de={theDe} giuNguyen={theDeGiu} caoToiDa={caoTheMax} moc={(() => {
             // mỗi dữ kiện hiện đúng lúc lời đọc tới (chia đều theo các câu), "cần tìm" ở câu cuối
@@ -302,12 +312,17 @@ export const Canh: React.FC<{
             )}
           </div>
         ) : null}
+        </VuaKhung>
       </NhoeHuong>
 
       {/* Đầu cảnh: nhãn + tiêu đề (hoặc câu hook ở cảnh 1) */}
       <div style={{position: 'absolute', left: 40, right: 40, top: moi ? (coHook ? 200 : 250) : Y_DAU, height: Y_SAN - (moi ? (coHook ? 200 : 250) : Y_DAU) - (moi ? 4 : 10), display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: moi ? 'center' : undefined, opacity: ra, filter: nhoeVao > 0.3 ? `blur(${nhoeVao}px)` : undefined}}>
         {moi ? (
-          <ChuBaTang dan={baTang.dan} chot={baTang.chot} duoi={baTang.duoi} mau={mauNhan} tre={coHook ? canh.leadFrame : 0} coToiDa={coHook ? 128 : 102} noi={coHook || khungCuoi} />
+          anTieuDe ? null : (
+            <VuaKhung maxW={1000} maxH={Y_SAN - (coHook ? 200 : 250) - 8}>
+              <ChuBaTang dan={baTang.dan} chot={baTang.chot} duoi={baTang.duoi} mau={mauNhan} tre={coHook ? canh.leadFrame : 0} coToiDa={coHook ? 128 : 102} noi={coHook || khungCuoi} />
+            </VuaKhung>
+          )
         ) : coHook ? (
           <>
             {nhan ? <TieuDeCanh nhan={nhan} chu="" tuKhoa="" /> : null}

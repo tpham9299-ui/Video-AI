@@ -209,6 +209,9 @@ export function boCucDanhSach(v: Vat, k = 1) {
   let co = 46 * k;
   const soDong = (fs: number, s: string) => Math.max(1, Math.ceil((dai(s) * 0.55 * fs) / rongChu));
   while (co > 34 * k && v.ds.some((s) => soDong(co, s) > 2)) co -= 2;
+  // dòng chỉ dư chút xíu: thu chữ nhẹ (≤ 18%) cho nằm gọn MỘT dòng thay vì ngắt giữa chừng
+  const coMotDong = rongChu / (0.55 * daiNhat);
+  if (v.ds.some((s) => soDong(co, s) > 1) && coMotDong >= Math.max(co * 0.82, 40 * k)) co = Math.floor(coMotDong);
   if (daiNhat * 0.55 * co <= rongChu * 0.55 && v.ds.length <= 3) co = Math.min(52 * k, co * 1.1);
   const dong = v.ds.map((s) => Math.min(3, soDong(co, s)));
   const coTieuDe = 40 * k;

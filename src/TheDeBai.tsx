@@ -19,6 +19,10 @@ export function boCucTheDe(d: DeBai, rong = 960, caoToiDa = 640) {
   const caoVoi = (co: number) => 46 + 24 + d.cho.reduce((a, s) => a + dong(s, co) * co * 1.25 + 10, 0) + (d.tim ? 34 + dong(d.tim, co * 1.05) * co * 1.05 * 1.3 + 40 : 0) + 30;
   let co = 48;
   while (co > 30 && caoVoi(co) > caoToiDa) co -= 2;
+  // dữ kiện chỉ dư chút: thu nhẹ cho nằm một dòng (đẹp hơn ngắt giữa chừng)
+  const daiNhat = Math.max(8, ...d.cho.map((x) => texSangChu(x).length));
+  const coMot = Math.floor((rong - 140) / (0.56 * daiNhat));
+  if (coMot < co && coMot >= Math.max(40, co * 0.82)) co = coMot;   // không thu dưới 40px chỉ để vừa một dòng (xuống dòng cân bằng còn đẹp hơn chữ nhỏ)
   return {co, cao: Math.min(caoToiDa, caoVoi(co))};
 }
 
