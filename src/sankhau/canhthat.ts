@@ -223,20 +223,32 @@ function dungTren(raw: R): R[] {
     } else if (ten === 'song') {
       for (let i = 1; i < 3; i++) out.push({kieu: 'duong', diem: Array.from({length: 9}, (_, q) => [ax + (q * w) / 8, ay + (i * h) / 3 + Math.sin(q * 1.4) * 1]), mau: 'trang', net: 1, buoc});
     }
-    if (v.hang_rao === true) {
-      // HÀNG RÀO quanh vùng: viền nâu dày + cọc rào đều
-      out.push({kieu: 'da_giac', diem: [[ax, ay], [ax + w, ay], [ax + w, ay + h], [ax, ay + h]], mau: 'nau', net: 4, buoc: (buoc as number) + 1});
-      const chuVi = 2 * (w + h), n = Math.max(8, Math.round(chuVi / 5));
-      for (let i = 0; i < n; i++) {
-        let d = (i * chuVi) / n;
-        let p: D;
-        if (d < w) p = [ax + d, ay]; else if ((d -= w) < h) p = [ax + w, ay + d]; else if ((d -= h) < w) p = [ax + w - d, ay + h]; else p = [ax, ay + h - (d - w)];
-        out.push({kieu: 'tron', tam: p, r: 0.9, mau: 'nau', to: 'nau', do_to: 1, net: 1, buoc: (buoc as number) + 1});
-      }
-    }
+    // HÀNG RÀO theo TỪNG CẠNH: hang_rao true (cả 4 cạnh) hoặc mảng cạnh ["tren","phai","duoi","trai"];
+    // "tuong": cạnh sát BỨC TƯỜNG GẠCH có sẵn (vẽ tường gạch dày, không rào cạnh đó)
+    const CANH: Record<string, [D, D]> = {tren: [[ax, ay], [ax + w, ay]], phai: [[ax + w, ay], [ax + w, ay + h]], duoi: [[ax + w, ay + h], [ax, ay + h]], trai: [[ax, ay + h], [ax, ay]]};
+    const tuong = Array.isArray(v.tuong) ? v.tuong.map(chuoi) : chuoi(v.tuong) ? [chuoi(v.tuong)] : [];
+    const raoCanh = v.hang_rao === true ? Object.keys(CANH).filter((c) => !tuong.includes(c)) : Array.isArray(v.hang_rao) ? v.hang_rao.map(chuoi).filter((c) => CANH[c]) : [];
+    const b1 = (buoc as number) + 1;
+    tuong.filter((c) => CANH[c]).forEach((c) => {
+      const [p, q] = CANH[c];
+      const dx = q[0] - p[0], dy = q[1] - p[1], L = Math.hypot(dx, dy) || 1;
+      const ngoai = (c === 'tren' || c === 'trai') ? -1 : 1;   // tường dày về phía NGOÀI vùng
+      const sx = c === 'tren' || c === 'duoi' ? 0 : ngoai * 3.2, sy = c === 'tren' || c === 'duoi' ? ngoai * 3.2 : 0;
+      out.push({kieu: 'da_giac', diem: [p, q, [q[0] + sx, q[1] + sy], [p[0] + sx, p[1] + sy]], mau: 'do', to: 'nau', do_to: 0.85, net: 2, buoc: b1});
+      const n = Math.max(3, Math.round(L / 4));
+      for (let i = 1; i < n; i++) out.push({kieu: 'duong', diem: [[p[0] + (dx * i) / n, p[1] + (dy * i) / n], [p[0] + (dx * i) / n + sx, p[1] + (dy * i) / n + sy]], mau: 'xam', net: 1, buoc: b1});
+      out.push({kieu: 'duong', diem: [[p[0] + sx / 2, p[1] + sy / 2], [q[0] + sx / 2, q[1] + sy / 2]], mau: 'xam', net: 1, buoc: b1});
+      out.push({kieu: 'chu', tam: [(p[0] + q[0]) / 2 + sx * 2.4, (p[1] + q[1]) / 2 + sy * 2.4], noi_dung: '\\text{Tường gạch}', buoc: b1});
+    });
+    raoCanh.forEach((c) => {
+      const [p, q] = CANH[c];
+      out.push({kieu: 'duong', diem: [p, q], mau: 'nau', net: 4, buoc: b1});
+      const L = Math.hypot(q[0] - p[0], q[1] - p[1]), n = Math.max(2, Math.round(L / 5));
+      for (let i = 0; i <= n; i++) out.push({kieu: 'tron', tam: [p[0] + ((q[0] - p[0]) * i) / n, p[1] + ((q[1] - p[1]) * i) / n], r: 0.9, mau: 'nau', to: 'nau', do_to: 1, net: 1, buoc: b1});
+    });
     const canh = Array.isArray(v.canh) ? v.canh.map(chuoi) : [];
-    if (canh[0]) out.push({kieu: 'chu', tam: [ax + w / 2, ay - 4], noi_dung: nhanTex(canh[0]), buoc: (buoc as number) + 1});
-    if (canh[1]) out.push({kieu: 'chu', tam: [ax + w + 7, ay + h / 2], noi_dung: nhanTex(canh[1]), buoc: (buoc as number) + 1});
+    if (canh[0]) out.push({kieu: 'chu', tam: [ax + w / 2, tuong.includes('tren') ? ay + h + 5 : ay - 4], noi_dung: nhanTex(canh[0]), buoc: (buoc as number) + 1});
+    if (canh[1]) out.push({kieu: 'chu', tam: [tuong.includes('phai') ? ax - 7 : ax + w + 6, ay + h / 2], noi_dung: nhanTex(canh[1]), buoc: (buoc as number) + 1});
     if (chuoi(v.nhan)) out.push({kieu: 'chu', tam: [ax + w / 2, ay + h / 2], noi_dung: nhanTex(chuoi(v.nhan)), buoc});
     const ds: [string, D][] = [['tl', [ax, ay]], ['tr', [ax + w, ay]], ['bl', [ax, ay + h]], ['br', [ax + w, ay + h]], ['giua', [ax + w / 2, ay + h / 2]],
       ['tren', [ax + w / 2, ay]], ['duoi', [ax + w / 2, ay + h]], ['trai', [ax, ay + h / 2]], ['phai', [ax + w, ay + h / 2]]];
