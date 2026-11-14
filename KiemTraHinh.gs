@@ -96,19 +96,38 @@ function kiemTraCanhThat_(v, ev) {
   return '';
 }
 
+// Cảnh GIẢI THÍCH CÔNG THỨC: loại nhac_lai/kien_thuc/ly_thuyet/cong_thuc/giai_thich..., hoặc cảnh (không phải bước tính) mà lời thoại
+// nói về công thức + nguồn gốc / ý nghĩa đại lượng / cách dùng (AI hay đặt tên loại khác nhau).
+function laCanhGiaiThichCongThuc_(c) {
+  if (!c) return false;
+  var l = String(c.loai || '');
+  if (/nhac_lai|kien_thuc|ly_thuyet|cong_thuc|giai_thich|nguon_goc|y_nghia|dinh_ly|tinh_chat/.test(l)) return true;
+  if (/tinh_toan|dap_an|ket_qua|kiem_tra|bay|loi_sai|mo_dau|de_bai/.test(l)) return false;
+  var t = (String(c.tieu_de_canh || '') + ' ' + String(c.loi_thoai || '')).toLowerCase();
+  return /công thức|định lý|bất đẳng thức|tính chất/.test(t) && /từ đâu|vì sao|tại sao|nghĩa là|ý nghĩa|đại lượng|chính là|ở đây|áp dụng|dùng khi/.test(t);
+}
+
 // Đề nói tới vật thực tế (cột cờ, ngân hàng, tòa nhà...) mà 3 cảnh đầu không vẽ đúng vật đó (thay bằng khối hộp/trụ vô nghĩa) -> lỗi nặng.
 function kiemTraVatThucDe_(kb, deGoc) {
   var de = String(deGoc || '').toLowerCase();
   if (!de) return [];
   var co = {};
-  (kb.canh || []).slice(0, 4).forEach(function (c) {
+  (kb.canh || []).slice(0, 6).forEach(function (c) {
     var du = c && c.minh_hoa && c.minh_hoa.du_lieu;
     if (!du || !Array.isArray(du.vat)) return;
     du.vat.forEach(function (v) {
       if (!v) return;
       co['@' + v.loai] = true;
       if (Array.isArray(v.hinh)) v.hinh.forEach(function (h) { if (h && h.kieu === 'vat') co[h.ten] = true; });
-      if (v.loai === 'canh_that') { (v.vat || []).forEach(function (x) { if (x) co[x.ten] = true; }); if ((v.vung || []).some(function (z) { return z && z.hang_rao === true; })) co.hang_rao = true; }
+      if (v.loai === 'canh_that') {
+        (v.vat || []).forEach(function (x) { if (x) co[x.ten] = true; });
+        // nhìn từ trên: hàng rào / bức tường vẽ bằng thuộc tính của vùng ("hang_rao": true | ["tren","phai"...], "tuong": "duoi")
+        (v.vung || []).forEach(function (z) {
+          if (!z) return;
+          if (z.hang_rao === true || (Array.isArray(z.hang_rao) && z.hang_rao.length) || (typeof z.hang_rao === 'string' && z.hang_rao)) co.hang_rao = true;
+          if (z.tuong) co.tuong = true;
+        });
+      }
     });
   });
   var loi = [];
@@ -520,7 +539,7 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc) {
   kiemTraVatThucDe_(kb, deGoc).forEach(function (x) { nang.push(x); });
   // CÔNG THỨC: phải có cảnh giải thích công thức (từ đâu ra, ý nghĩa đại lượng, áp dụng); mỗi cảnh ≤ 3 dòng công thức
   var dungCongThuc = kb.canh.some(function (c) { return /tinh|giai/.test(String(c && c.loai)) && (c.noi_dung_man_hinh || []).some(function (d) { return /=/.test(String(d)); }); });
-  var soGiaiThich = kb.canh.filter(function (c) { return /nhac_lai|kien_thuc|ly_thuyet/.test(String(c && c.loai)); }).length;
+  var soGiaiThich = kb.canh.filter(laCanhGiaiThichCongThuc_).length;
   if (dungCongThuc && soGiaiThich === 0) nang.push('THIEU_GIAI_THICH_CONG_THUC: bài dùng công thức nhưng không có cảnh "nhac_lai" giải thích. Thêm 2-3 cảnh nhac_lai trước phần tính: công thức TỪ ĐÂU RA, Ý NGHĨA từng đại lượng (chỉ lên hình), ÁP DỤNG vào bài này thế nào.');
   else if (dungCongThuc && soGiaiThich < 2) nhe.push('GIAI_THICH_CONG_THUC_SO_SAI: chỉ có ' + soGiaiThich + ' cảnh nhac_lai; nên 2-3 cảnh (từ đâu ra, ý nghĩa đại lượng, áp dụng vào bài).');
   kb.canh.forEach(function (c, j) { if (c && Array.isArray(c.noi_dung_man_hinh) && c.noi_dung_man_hinh.length > 3) nhe.push('QUA_NHIEU_DONG_CONG_THUC_CANH_' + (j + 1) + ': ' + c.noi_dung_man_hinh.length + ' dòng công thức (chữ sẽ nhỏ). Tối đa 2-3 dòng mỗi cảnh, tách phần còn lại sang cảnh sau.'); });
@@ -1158,7 +1177,7 @@ function kiemTraCuPhapTex_(kb) {
 // QUY TRÌNH CỐ ĐỊNH 6 PHẦN: ĐỀ BÀI -> MÔ PHỎNG -> LỖI SAI -> GIẢI -> THỬ LẠI -> CHỐT. Kiểm tra đủ phần, đúng thứ tự,
 // và phần đề bài nêu ĐỦ dữ kiện (de_cho + can_tim chứa mọi con số của đề).
 var PHA_6_ = [[/mo_dau|hook|cau_hoi|de_bai/, 0, 'ĐỀ BÀI'], [/mo_hinh|mo_phong|y_do|thu_nho|phan_tich/, 1, 'MÔ PHỎNG'], [/bay|loi_sai/, 2, 'LỖI SAI'],
-  [/nhac_lai|kien_thuc|ly_thuyet|diem_chot|y_tuong|tinh|giai|dap_an|ket_qua/, 3, 'GIẢI'], [/kiem_tra|thu_lai/, 4, 'THỬ LẠI'], [/bai_hoc|ket_luan|chot|lien_he/, 5, 'CHỐT']];
+  [/nhac_lai|kien_thuc|ly_thuyet|cong_thuc|dinh_ly|nguon_goc|y_nghia|diem_chot|y_tuong|tinh|giai|dap_an|ket_qua/, 3, 'GIẢI'], [/kiem_tra|thu_lai/, 4, 'THỬ LẠI'], [/bai_hoc|ket_luan|chot|lien_he/, 5, 'CHỐT']];
 function phaCua_(loai) {
   var l = String(loai || '').toLowerCase();
   for (var i = 0; i < PHA_6_.length; i++) if (PHA_6_[i][0].test(l)) return PHA_6_[i][1];
