@@ -140,7 +140,7 @@ export const DoThi: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
   const f = React.useMemo(() => phanTichBieuThuc(v.ham, v.kieu === 'do'), [v.ham, v.kieu]);
   const W = 860 * v.co;
   const H = 560 * v.co;
-  const pad = {l: 96, r: 44, t: 50, b: 70};
+  const pad = {l: 112, r: 44, t: 50, b: 70};
   const mau = neon(v.mau, CAM);
   const t = st.t - st.ta;
   const N = 220;
@@ -219,10 +219,10 @@ export const DoThi: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
         })}
       </svg>
       {vachX.map((x) => (
-        <div key={`vx${x}`} style={{position: 'absolute', left: X(x), top: y0 + 10, transform: 'translateX(-50%)', fontFamily: FONT_DAM, fontWeight: 800, fontSize: 28, color: 'rgba(255,255,255,0.75)', opacity: kep(pTruc)}}>{soViet(x)}</div>
+        <div key={`vx${x}`} style={{position: 'absolute', left: X(x), top: y0 + 10, transform: 'translateX(-50%)', fontFamily: FONT_DAM, fontWeight: 800, fontSize: 33, color: 'rgba(255,255,255,0.75)', opacity: kep(pTruc)}}>{soViet(x)}</div>
       ))}
       {vachY.map((y) => (Math.abs(Y(y) - y0) < 6 ? null : (
-        <div key={`vy${y}`} style={{position: 'absolute', left: x0 - 12, top: Y(y), transform: 'translate(-100%,-50%)', fontFamily: FONT_DAM, fontWeight: 800, fontSize: 28, color: 'rgba(255,255,255,0.75)', opacity: kep(pTruc)}}>{soViet(y)}</div>
+        <div key={`vy${y}`} style={{position: 'absolute', left: x0 - 12, top: Y(y), transform: 'translate(-100%,-50%)', fontFamily: FONT_DAM, fontWeight: 800, fontSize: 33, color: 'rgba(255,255,255,0.75)', opacity: kep(pTruc)}}>{soViet(y)}</div>
       )))}
       <div style={{position: 'absolute', right: pad.r - 24, top: y0 - 40, fontFamily: FONT_DAM, fontWeight: 900, fontStyle: 'italic', fontSize: 38, color: TRANG}}>{v.nhanTruc[0] || 'x'}</div>
       <div style={{position: 'absolute', left: x0 + 14, top: pad.t - 30, fontFamily: FONT_DAM, fontWeight: 900, fontStyle: 'italic', fontSize: 38, color: TRANG}}>{v.nhanTruc[1] || 'y'}</div>

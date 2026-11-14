@@ -12,7 +12,7 @@ export const ChuThich: React.FC<{dong: string[]; bd: number}> = ({dong, bd}) => 
   if (a <= 0) return <div style={{height: 70 + dong.length * 58}} />;
   return (
     <div style={{position: 'relative', width: 860, maxWidth: 'calc(100% - 60px)', margin: '0 auto', transform: `rotate(${-1.5 * a}deg) scale(${popOut(a, 1.8)})`, opacity: kep(a * 2)}}>
-      <div style={{position: 'absolute', left: 30, top: -20, zIndex: 2, background: '#16181d', color: '#FFD54A', fontFamily: FONT_DAM, fontWeight: 900, fontSize: 28, letterSpacing: 1.5, padding: '4px 18px', borderRadius: 10, border: '2px solid #FFD54A', boxShadow: '0 0 14px rgba(255,213,74,0.5)'}}>
+      <div style={{position: 'absolute', left: 30, top: -20, zIndex: 2, background: '#16181d', color: '#FFD54A', fontFamily: FONT_DAM, fontWeight: 900, fontSize: 32, letterSpacing: 1.5, padding: '4px 18px', borderRadius: 10, border: '2px solid #FFD54A', boxShadow: '0 0 14px rgba(255,213,74,0.5)'}}>
         MẸO NHỚ
       </div>
       <div style={{background: 'linear-gradient(160deg, rgba(40,32,8,0.95), rgba(14,12,4,0.95))', border: '3px solid rgba(255,213,74,0.75)', borderRadius: 22, padding: '34px 30px 22px', boxShadow: '0 0 26px rgba(255,213,74,0.28), 0 18px 40px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8}}>

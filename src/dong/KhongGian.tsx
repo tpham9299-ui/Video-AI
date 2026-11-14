@@ -25,9 +25,11 @@ export function phanLoai3D(du: DuLieuSanKhau | null): Kieu3D {
   //  - chồng vật xếp tầng (ống, lon): dựng đứng, máy xoay trái/phải cho thấy chiều sâu
   if (du.vat.some((v) => v.loai === 'hinh_tu_do' && v.hinh.some((h) => h.kieu === 'xep_chong'))) return 'dung';
   //  - bản vẽ cảnh thực tế nhìn ngang (đo chiều cao, góc nâng...): PHẲNG như bản vẽ kỹ thuật, đường đo/góc phải đọc chính xác
-  if (du.vat.some((v) => v.loai === 'hinh_tu_do' && v.kieu === 'canh_ngang')) return 'khong';
-  //  - mặt bằng nhìn từ trên (vườn, ruộng, hàng rào) và hình TÔ ĐẶC là mặt vật thật (mảnh đất, đảo...): nằm nghiêng 3D nhẹ
-  const laMatVatThat = (v: Vat) => v.loai === 'hinh_tu_do' && (v.kieu === 'canh_tren' || v.hinh.some((h) => !!h.to && (h.doTo || 0.28) >= 0.25 && ['da_giac', 'tron', 'da_giac_deu', 'koch', 'svg'].includes(h.kieu)));
+  //  - mặt bằng nhìn từ trên (vườn, ruộng, hàng rào quanh đất): cũng PHẲNG như bản đồ - nghiêng 3D làm cạnh dài/ngắn
+  //    trông sai tỉ lệ và nhãn số đo bị che/dẹt (người xem phải so được cạnh 60 m dài gấp đôi cạnh 30 m)
+  if (du.vat.some((v) => v.loai === 'hinh_tu_do' && (v.kieu === 'canh_ngang' || v.kieu === 'canh_tren'))) return 'khong';
+  //  - hình TÔ ĐẶC là mặt vật thật (mảnh đất, đảo...): nằm nghiêng 3D nhẹ
+  const laMatVatThat = (v: Vat) => v.loai === 'hinh_tu_do' && (v.hinh.some((h) => !!h.to && (h.doTo || 0.28) >= 0.25 && ['da_giac', 'tron', 'da_giac_deu', 'koch', 'svg'].includes(h.kieu)));
   if (du.vat.some(laMatVatThat)) return 'nam';
   //  - hình học, đồ thị, hình chỉ có đường nét, sơ đồ: PHẲNG (xoay 3D làm méo góc, khó đọc số)
   if (du.vat.some((v) => VAT_NAM.includes(v.loai))) return 'khong';

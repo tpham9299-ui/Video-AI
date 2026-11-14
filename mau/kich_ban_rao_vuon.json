@@ -845,23 +845,49 @@
    "chu_thich": [],
    "minh_hoa": {
     "loai": "san_khau",
-    "mo_ta": "Các hình ảnh ứng dụng thực tế như rào trang trại, làm sân bóng.",
+    "mo_ta": "Liên hệ thực tế: người chỉ vào hang_rao, qua_bong, nha - những nơi dùng đúng cách nghĩ của bài.",
     "du_lieu": {
      "vat": [
       {
-       "id": "nhan_tt",
-       "loai": "nhan",
+       "id": "canh_lh",
+       "loai": "canh_that",
+       "nhin": "ngang",
        "x": 50,
        "y": 50,
-       "noi_dung": "ỨNG DỤNG THI CÔNG",
-       "tu_khoa": "ỨNG DỤNG",
-       "buoc": 1
+       "buoc": 1,
+       "vat": [
+        {
+         "ma": "A",
+         "ten": "nguoi",
+         "cao": 1.7,
+         "x": 0
+        },
+        {
+         "ma": "B",
+         "ten": "hang_rao",
+         "cao": 1.3,
+         "x": 3
+        },
+        {
+         "ma": "C",
+         "ten": "qua_bong",
+         "cao": 0.6,
+         "x": 5.6
+        },
+        {
+         "ma": "D",
+         "ten": "nha",
+         "cao": 3.4,
+         "x": 8.2
+        }
+       ],
+       "do": []
       }
      ],
      "hanh_dong": [
       {
-       "buoc": 1,
-       "vat": "nhan_tt",
+       "buoc": 2,
+       "vat": "canh_lh",
        "kieu": "sang"
       }
      ]

@@ -232,6 +232,39 @@ function kiemTraSanKhau_(du, cn, idCu) {
   return '';
 }
 
+// CẢNH LIÊN HỆ THỰC TẾ chỉ có hộp chữ ("ỨNG DỤNG THI CÔNG"): máy tự vẽ VẬT THẬT được nhắc trong lời thoại
+// (chuồng trại -> hàng rào, sân bóng -> quả bóng, gửi tiết kiệm -> ngân hàng...) đứng cạnh một người đang chỉ vào.
+var LIEN_HE_VAT_ = [[/chuồng|trang trại|nông trại|rào/, 'hang_rao'], [/sân bóng|bóng đá|đá bóng/, 'qua_bong'], [/bóng rổ/, 'ro_bong_ro'],
+  [/tòa nhà|cao ốc|chung cư/, 'toa_nha'], [/xây nhà|ngôi nhà|nhà ở|thi công|công trình|vật liệu/, 'nha'], [/ngân hàng|lãi suất|gửi tiết kiệm|vay/, 'ngan_hang'],
+  [/heo đất|để dành/, 'heo_dat'], [/tiền|mua|bán|giá|chi phí/, 'tien'], [/xe buýt/, 'xe_buyt'], [/xe máy/, 'xe_may'], [/xe đạp/, 'xe_dap'], [/ô tô|xe hơi|lái xe|quãng đường/, 'xe_hoi'],
+  [/cây|vườn|trồng/, 'cay'], [/cây cầu|bắc cầu/, 'cau'], [/thuyền|sông|ca nô/, 'thuyen'], [/máy bay/, 'may_bay'], [/cột điện|dây điện/, 'cot_dien'],
+  [/hồ bơi|bể bơi|hồ nước|bể nước/, 'ho_nuoc'], [/trường|lớp học|học sinh/, 'truong_hoc'], [/cửa hàng|siêu thị|quán/, 'cua_hang'], [/hải đăng/, 'hai_dang'], [/thang/, 'thang'], [/diều/, 'dieu']];
+// chiều cao minh họa (không phải số đo): giữ vật lớn thấp lại để người đứng cạnh không bị tí hon
+var CAO_LIEN_HE_ = { hang_rao: 1.3, qua_bong: 0.6, ro_bong_ro: 3, toa_nha: 4.5, nha: 3.4, ngan_hang: 3.6, heo_dat: 0.8, tien: 0.8, xe_buyt: 2.6, xe_may: 1.2, xe_dap: 1.1, xe_hoi: 1.5,
+  cay: 3.2, cau: 3, thuyen: 2, may_bay: 2.5, cot_dien: 4, ho_nuoc: 0.8, truong_hoc: 3.8, cua_hang: 3.2, hai_dang: 4.5, thang: 3, dieu: 3 };
+function suaLienHeThucTe_(kb) {
+  var sua = [];
+  var CHU_ = ['nhan', 'chu', 'the', 'danh_sach', 'so_dem', 'mui_ten', 'bieu_tuong'];
+  (kb.canh || []).forEach(function (c, i) {
+    if (!c || !/lien_he/.test(String(c.loai || ''))) return;
+    var mh = c.minh_hoa, du = mh && mh.du_lieu;
+    var vat = du && Array.isArray(du.vat) ? du.vat : [];
+    if (vat.some(function (v) { return v && CHU_.indexOf(v.loai) < 0; })) return;   // đã có vật thật
+    var loi = (String(c.loi_thoai || '') + ' ' + String((mh && mh.mo_ta) || '')).toLowerCase();
+    var ten = [];
+    LIEN_HE_VAT_.forEach(function (m) { if (ten.length < 3 && m[0].test(loi) && ten.indexOf(m[1]) < 0) ten.push(m[1]); });
+    if (!ten.length) return;
+    var ds = [{ ma: 'A', ten: 'nguoi', cao: 1.7, x: 0 }], x = 3;
+    ten.forEach(function (t, k) { var cao = CAO_LIEN_HE_[t] || 3; ds.push({ ma: String.fromCharCode(66 + k), ten: t, cao: cao, x: x }); x += Math.max(2.6, cao * 0.9); });
+    var ct = { id: 'canh_lh', loai: 'canh_that', nhin: 'ngang', x: 50, y: 50, buoc: 1, vat: ds, do: [] };
+    if (typeof kiemTraCanhThat_ === 'function' && kiemTraCanhThat_(ct, 'LIEN_HE')) return;
+    c.minh_hoa = { loai: 'san_khau', mo_ta: 'Liên hệ thực tế: người chỉ vào ' + ten.join(', ') + ' - những nơi dùng đúng cách nghĩ của bài.', du_lieu: { vat: [ct], hanh_dong: [{ buoc: 2, vat: 'canh_lh', kieu: 'sang' }] } };
+    c.giu_san_khau = false;
+    sua.push('cảnh ' + (i + 1) + ' (liên hệ thực tế): vẽ vật thật ' + ten.join(', '));
+  });
+  return sua;
+}
+
 // Tự sửa lỗi vặt (không đổi nội dung bài): kẹp tọa độ, bỏ từ khóa không khớp tiêu đề, bỏ vật/hành động lạ, cắt chú thích dài.
 function tuSuaKichBan_(kb, ctx) {
   if (!kb || !Array.isArray(kb.canh)) return [];
@@ -1091,6 +1124,7 @@ function tuSuaSau_(kb, ctx) {
       sua.push('thêm cảnh bài học cuối');
     }
   }
+  suaLienHeThucTe_(kb).forEach(function (x) { sua.push(x); });
   return sua;
 }
 

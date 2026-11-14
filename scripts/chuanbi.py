@@ -206,8 +206,10 @@ def gemini_tts(text, tep_wav, giong, model, phong_cach):
             os.remove(pcm)
             return
         except urllib.error.HTTPError as e:
-            noi = e.read().decode("utf8", "ignore")[:300]
-            loi = "HTTP %d %s" % (e.code, noi)
+            noi = e.read().decode("utf8", "ignore")[:4000]
+            loi = "HTTP %d %s" % (e.code, noi[:300])
+            if e.code == 429 and re.search(r"PerDay|per day|daily", noi, re.I):
+                break   # hết hạn mức NGÀY: chờ cũng vô ích, chuyển ngay sang edge-tts
             if e.code in (429, 500, 503):
                 m = re.search(r'"retryDelay":\s*"(\d+)', noi)
                 cho = min(60, int(m.group(1)) + 2) if m else 10 * (lan + 1)
@@ -236,6 +238,7 @@ def tao_giong_gemini(canh, thu_muc, args):
             gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach)
         except Exception as e:
             print("Cảnh báo: %s -> cả video chuyển sang edge-tts" % str(e)[:200])
+            THONG_KE_GIONG["gemini"] = 0   # bỏ hết phần Gemini đã tạo: cả video một giọng
             return None
         nhanh = os.path.join(thu_muc, "gem_%d.mp3" % i)
         tempo = float(args.toc_do_gemini or 1.0)
@@ -257,12 +260,18 @@ async def tao_cac_doan(cac_doan, thu_muc, args):
             return tep
         van = chuan_hoa_doc(d)
         async with sem:
-            try:
-                await _tts(van, tep, args.giong, args.toc_do, args.cao_do)
-                THONG_KE_GIONG["edge"] += 1
-                return tep
-            except Exception as e:
-                print("Cảnh báo: edge-tts lỗi (%s), chuyển sang giọng dự phòng Google" % str(e)[:120])
+            # edge-tts đôi khi trả "No audio was received" với MỘT câu cụ thể (thường câu ngắn, không dấu kết):
+            # thử lại với chữ hơi khác (thêm dấu chấm / dấu phẩy mở đầu) để cả video giữ MỘT giọng, chỉ khi hết cách mới dùng giọng Google
+            bien_the = [van, van.rstrip(" .,!?") + ".", "À, " + van[0].lower() + van[1:] if van else van]
+            for k, v in enumerate(bien_the):
+                try:
+                    await _tts(v, tep, args.giong, args.toc_do, args.cao_do)
+                    THONG_KE_GIONG["edge"] += 1
+                    if k:
+                        print("edge-tts đọc được sau khi chỉnh chữ (cách %d): %s" % (k, v[:60]))
+                    return tep
+                except Exception as e:
+                    print("Cảnh báo: edge-tts lỗi (%s)%s" % (str(e)[:120], ", thử chỉnh chữ" if k < len(bien_the) - 1 else ", chuyển sang giọng dự phòng Google"))
         loi = None
         for lan in range(3):
             try:

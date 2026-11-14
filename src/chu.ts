@@ -43,6 +43,8 @@ export function texSangChu(s: unknown): string {
     x = x.replace(new RegExp(`_\\s*${nhom}`, 'g'), (_, a) => doiKyTu(a, SO_DUOI, '_'));
     if (x === truoc) break;
   }
+  // chỉ số chữ nhiều ký tự (S_max, S_min, v_tb): đổi cả cụm, không chỉ chữ đầu ("Sₘax")
+  x = x.replace(/_([a-z]{2,4})(?![a-z])/g, (_, a) => (Array.from(a as string).every((c) => SO_DUOI[c]) ? Array.from(a as string).map((c) => SO_DUOI[c]).join('') : ` ${a}`));
   x = x.replace(/\^([0-9a-z+\-])/g, (_, a) => doiKyTu(a, SO_TREN, '^'));
   x = x.replace(/_([0-9a-z])/g, (_, a) => doiKyTu(a, SO_DUOI, '_'));
   x = x.replace(/\\left|\\right|\\displaystyle|\\limits/g, '');
@@ -65,7 +67,9 @@ const HAM = new Set(['sin', 'cos', 'tan', 'cot', 'log', 'ln', 'lg', 'max', 'min'
 export function bocChuViet(tex: string): string {
   // dấu % trong KaTeX là CHÚ THÍCH (mất cả phần sau: "Lãi 1,2%/tháng" thành "Lãi 1,2") -> phải viết \%
   // \frac thường thu tử/mẫu còn ~70% -> nhỏ hơn hẳn số bên cạnh: dùng \dfrac để tử/mẫu CÙNG CỠ với số thường
-  const x = chuanTex(tex).replace(/(^|[^\\])%/g, '$1\\%').replace(/\\frac(?=\s*\{)/g, '\\dfrac');
+  // S_max: KaTeX chỉ hạ chữ đầu ("S" + chỉ số "m" + "ax") -> bọc cả cụm chỉ số: S_{max}
+  const x = chuanTex(tex).replace(/(^|[^\\])%/g, '$1\\%').replace(/\\frac(?=\s*\{)/g, '\\dfrac').replace(/_([a-zA-Z]{2,4})(?![a-zA-Z{])/g, '_{$1}')
+    .replace(/<=>/g, ' \\Leftrightarrow ').replace(/=>/g, ' \\Rightarrow ').replace(/-+>/g, ' \\rightarrow ');   // mũi tên gõ tay "->" (KaTeX hiện thành dấu trừ và dấu lớn hơn)
   if (!/[A-Za-zÀ-ỹ]{2,}/.test(x)) return x;
   let ra = '';
   let i = 0;

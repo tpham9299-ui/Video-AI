@@ -33,6 +33,16 @@ Nếu chèn vào mà sinh lỗi nặng mới thì bỏ, giữ kịch bản cũ.
 - Đáp án hiển thị không còn bị cắt giữa số ("Diện tích tối đa: 18" thay vì 1800 m²).
 - Kịch bản mẫu mới `mau/kich_ban_rao_vuon.json` (18 cảnh) để dựng thử trên GitHub: chọn mau = kich_ban_rao_vuon.
 
+## 6. Sửa sau khi xem video dựng thật (18 cảnh, 108 giây, kiểm duyệt 54/54 khung: 0 lỗi nặng)
+- **Mặt bằng nhìn từ trên (vườn, ruộng) luôn PHẲNG 2D** như bản đồ. Trước đây có cảnh phẳng, có cảnh nghiêng 3D:
+  nhãn cạnh bị che và cạnh 60 m trông không còn dài gấp đôi cạnh 30 m. 3D chỉ còn cho vật khối thật (ống xếp chồng, mặt tô đặc).
+- **Cảnh liên hệ thực tế chỉ có hộp chữ** -> máy tự vẽ vật thật được nhắc trong lời thoại (chuồng trại -> hàng rào,
+  sân bóng -> quả bóng, xây nhà -> ngôi nhà, gửi tiết kiệm -> ngân hàng...) cạnh một người, đúng tỉ lệ nhìn được.
+- **Chỉ số nhiều chữ**: "S_max" trước hiện thành "Sₘax" (chỉ hạ chữ m). Nay hạ cả cụm "max". Mũi tên gõ tay "->", "=>" hiện thành mũi tên thật.
+- **Một giọng cho cả video**: edge-tts đôi khi không đọc được một câu cụ thể, trước đây câu đó chuyển sang giọng Google (giọng khác hẳn).
+  Nay thử đọc lại với chữ hơi khác (thêm dấu chấm, "À,") trước. Gemini TTS hết hạn mức ngày thì chuyển ngay, không chờ 4 phút.
+- Số trên trục đồ thị và nhãn "MẸO NHỚ" to hơn (trước 23-25 px, dưới ngưỡng dễ đọc).
+
 ## Cần dán lại vào Apps Script
 `KiemTraHinh.gs`, `PromptKichBan.gs`, `BoPhan1.gs` (bản trong thư mục bàn giao), rồi Triển khai > Quản lý > Phiên bản mới.
 
