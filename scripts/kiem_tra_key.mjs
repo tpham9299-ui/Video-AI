@@ -36,30 +36,28 @@ async function thu(k, model) {
 if (!dsKey.length) { console.log('Không có key nào trong GEMINI_KEYS / GEMINI_API_KEY'); process.exit(0); }
 const ketQua = [];
 for (const {k, ten} of dsKey) {
-  const theoModel = {};
-  let ketLuan = null;
+  const theoModel = {}, lyDo = {};
   for (const m of MODELS) {
     const r = await thu(k, m);
     theoModel[m] = r.loai;
-    if (r.loai === 'LOI_THAT') { ketLuan = {loai: 'LOI_THAT', msg: r.msg}; break; }   // key hỏng: hỏng với mọi model
-    if (r.loai === 'DUNG_DUOC' && !ketLuan) ketLuan = {loai: 'DUNG_DUOC', model: m};
-    if (r.loai === 'DUNG_DUOC' && m === MODELS[0]) break;   // chạy tốt với model chính: đủ
-    if (!ketLuan && r.loai !== 'MODEL_KHONG_CO' && !theoModel._msg) theoModel._msg = r.msg;
+    if (r.msg) lyDo[m] = r.msg;
     await new Promise((x) => setTimeout(x, 400));
   }
-  if (!ketLuan) {
-    const v = Object.entries(theoModel).filter(([m]) => m !== '_msg').map(([, l]) => l);
-    ketLuan = v.includes('HET_NGAY') ? {loai: 'HET_NGAY'} : v.includes('GIOI_HAN_PHUT') ? {loai: 'GIOI_HAN_PHUT'} : {loai: v[0] || 'LOI_KHAC', msg: theoModel._msg};
-  }
-  ketQua.push({ten, ma: ma(k), ...ketLuan, theo_model: Object.fromEntries(Object.entries(theoModel).filter(([m]) => m !== '_msg'))});
+  const v = Object.values(theoModel);
+  const chay = MODELS.filter((m) => theoModel[m] === 'DUNG_DUOC');
+  const ketLuan = chay.length ? {loai: 'DUNG_DUOC', model: chay[0]}
+    : v.includes('HET_NGAY') ? {loai: 'HET_NGAY'} : v.includes('GIOI_HAN_PHUT') ? {loai: 'GIOI_HAN_PHUT'}
+    : v.filter((x) => x === 'LOI_THAT').length >= 2 ? {loai: 'LOI_THAT', msg: Object.values(lyDo)[0]}
+    : {loai: v.find((x) => x !== 'MODEL_KHONG_CO') || 'LOI_KHAC', msg: Object.values(lyDo)[0]};
+  ketQua.push({ten, ma: ma(k), ...ketLuan, theo_model: theoModel, ly_do: lyDo});
   console.log(`đã thử ${ten} (${ma(k)}): ${ketLuan.loai}`);
 }
 
 const NHAN = {DUNG_DUOC: '✅ dùng được', HET_NGAY: '⏳ hết hạn mức ngày (giữ, chờ reset)', GIOI_HAN_PHUT: '⏳ đang giới hạn theo phút (giữ)', LOI_THAT: '❌ LỖI THẬT -> nên xóa', MODEL_KHONG_CO: '⚠️ không có quyền dùng các model', LOI_KHAC: '⚠️ lỗi khác', LOI_MANG: '⚠️ lỗi mạng'};
 console.log('=====KET_QUA_KEY=====');
 for (const r of ketQua) {
-  console.log(`${r.ten} (${r.ma}): ${NHAN[r.loai] || r.loai}${r.model && r.model !== MODELS[0] ? ` [model chính ${MODELS[0]}: ${r.theo_model[MODELS[0]]}; chạy được ${r.model}]` : ''}${r.msg ? ' | ' + r.msg : ''}`);
-  console.log('    theo model: ' + Object.entries(r.theo_model).map(([m, l]) => `${m}=${l}`).join(', '));
+  console.log(`${r.ten} (${r.ma}): ${NHAN[r.loai] || r.loai}${r.model && r.model !== MODELS[0] ? ` [model chính ${MODELS[0]}: ${r.theo_model[MODELS[0]]}; chạy được: ${MODELS.filter((m) => r.theo_model[m] === 'DUNG_DUOC').join(', ')}]` : ''}${r.msg ? ' | ' + r.msg : ''}`);
+  console.log('    theo model: ' + Object.entries(r.theo_model).map(([m, l]) => `${m}=${l}${l !== 'DUNG_DUOC' && r.ly_do[m] ? ' (' + r.ly_do[m].slice(0, 70) + ')' : ''}`).join(', '));
 }
 const dem = (l) => ketQua.filter((r) => r.loai === l).length;
 console.log(`TONG: ${ketQua.length} key | dùng được ${dem('DUNG_DUOC')} | hết hạn mức ngày ${dem('HET_NGAY')} | giới hạn phút ${dem('GIOI_HAN_PHUT')} | lỗi thật ${dem('LOI_THAT')} | khác ${ketQua.length - dem('DUNG_DUOC') - dem('HET_NGAY') - dem('GIOI_HAN_PHUT') - dem('LOI_THAT')}`);

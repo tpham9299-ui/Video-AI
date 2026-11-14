@@ -5,8 +5,9 @@
 //  - Key HẾT HẠN MỨC NGÀY (429 "per day") cho model này: ghi nhớ cả lần chạy, chuyển ngay sang key kế, không gọi lại key đó nữa.
 //  - Key bị giới hạn THEO PHÚT (429 khác): thử key khác; mọi key đều đang bị giới hạn phút thì CHỜ đúng thời gian Google yêu cầu
 //    (retryDelay, tối đa 60 giây) rồi thử lại vòng mới (tối đa 4 vòng).
-//  - Key LỖI THẬT (sai key, hết hiệu lực, bị khóa, chưa bật API...): ghi vào /tmp/gemini_key_hong.json để báo người dùng gỡ,
-//    bỏ qua key đó cho mọi lần gọi sau.
+//  - Key bị TỪ CHỐI (401/"API key not valid"...) ở một model: chỉ bỏ key đó cho RIÊNG model đó (key dạng mới "AQ." có thể bị
+//    một model từ chối nhưng model khác vẫn chạy). Chỉ khi key bị từ chối ở >= 2 model khác nhau và CHƯA thành công lần nào
+//    mới ghi /tmp/gemini_key_hong.json để báo người dùng gỡ.
 //  - Mọi key còn dùng được đều hết hạn mức ngày -> het = true (mã .gs chuyển sang model khác hoặc tạm nghỉ).
 const fs = require('fs');
 const os = require('os');
@@ -18,7 +19,11 @@ const TEP_KEY_HONG_JSON = path.join(os.tmpdir(), 'gemini_key_hong.json');
 const TEP_HET_NGAY = path.join(os.tmpdir(), 'gemini_key_het_ngay.txt');
 const maKey = (k) => k.slice(0, 6) + '_' + k.slice(-4);   // nhận diện key: 6 ký tự đầu + 4 cuối (nhiều key chung phần đầu)
 const docDong = (t) => (fs.existsSync(t) ? fs.readFileSync(t, 'utf8') : '').split('\n').filter(Boolean);
-const hong = new Set(docDong(TEP_KEY_HONG));
+const hong = new Set(docDong(TEP_KEY_HONG));   // key hỏng thật (đã xác nhận)
+const TEP_TU_CHOI = path.join(os.tmpdir(), 'gemini_key_tu_choi.txt');   // "model|key" bị từ chối
+const TEP_TOT = path.join(os.tmpdir(), 'gemini_key_tot.txt');            // key đã thành công ít nhất 1 lần
+const tuChoi = new Set(docDong(TEP_TU_CHOI));
+const tot = new Set(docDong(TEP_TOT));
 const hetNgay = new Set(docDong(TEP_HET_NGAY));   // dạng "model|key"
 const tatCa = cauHinh.keys || [];
 const url = (k) => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(k)}`;
@@ -35,6 +40,14 @@ function lyDoHong(code, raw) {
   const m = /"message":\s*"([^"]{0,160})/.exec(raw);
   return `HTTP ${code}: ${(m ? m[1] : raw).replace(/\s+/g, ' ').slice(0, 160)}`;
 }
+function ghiTuChoi(k, code, raw) {
+  const khoa = model + '|' + k;
+  if (!tuChoi.has(khoa)) { tuChoi.add(khoa); try { fs.appendFileSync(TEP_TU_CHOI, khoa + '\n'); } catch (e) { /* bỏ */ } }
+  process.stderr.write(`KEY_TU_CHOI: key thứ ${tatCa.indexOf(k) + 1} (${maKey(k)}) bị ${model} từ chối (HTTP ${code}) -> bỏ key này cho model này\n`);
+  const soModel = new Set([...tuChoi].filter((x) => x.endsWith('|' + k)).map((x) => x.split('|')[0])).size;
+  if (soModel >= 2 && !tot.has(k)) ghiKeyHong(k, code, raw);
+}
+function ghiTot(k) { if (!tot.has(k)) { tot.add(k); try { fs.appendFileSync(TEP_TOT, k + '\n'); } catch (e) { /* bỏ */ } } }
 function ghiKeyHong(k, code, raw) {
   if (hong.has(k)) return;
   hong.add(k);
@@ -59,23 +72,23 @@ function ghiHetNgay(k) {
 async function mot(body, i) {
   let cuoi = {ok: false, code: 0, raw: 'KHONG_CO_KEY', het: false};
   for (let vong = 0; vong < 4; vong++) {
-    const dung = tatCa.filter((k) => !hong.has(k) && !hetNgay.has(model + '|' + k));
+    const dung = tatCa.filter((k) => !hong.has(k) && !hetNgay.has(model + '|' + k) && !tuChoi.has(model + '|' + k));
     if (!dung.length) break;
     let choMs = 0;   // >0: có key chỉ bị giới hạn theo phút -> chờ rồi thử vòng mới
     for (let lan = 0; lan < dung.length; lan++) {
       const k = dung[(batDauKey + i + lan) % dung.length];
-      if (hong.has(k) || hetNgay.has(model + '|' + k)) continue;
+      if (hong.has(k) || hetNgay.has(model + '|' + k) || tuChoi.has(model + '|' + k)) continue;
       try {
         const ac = new AbortController();
         const hen = setTimeout(() => ac.abort(), gioiHanGiay * 1000);
         const res = await fetch(url(k), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body), signal: ac.signal});
         clearTimeout(hen);
         const raw = await res.text();
-        if (res.ok) return {ok: true, code: res.status, raw};
+        if (res.ok) { ghiTot(k); return {ok: true, code: res.status, raw}; }
         cuoi = {ok: false, code: res.status, raw, het: false};
         const loai = phanLoai(res.status, raw);
         if (loai === 'het_ngay') { ghiHetNgay(k); continue; }
-        if (loai === 'hong') { ghiKeyHong(k, res.status, raw); continue; }
+        if (loai === 'hong') { ghiTuChoi(k, res.status, raw); continue; }
         if (loai === 'phut') {
           const m = /"retryDelay":\s*"(\d+)/.exec(raw);
           const cho = Math.min(60, (m ? Number(m[1]) : 15) + 1) * 1000;
@@ -92,7 +105,7 @@ async function mot(body, i) {
     await ngu(choMs);
   }
   // không còn key nào dùng được vì hết hạn mức ngày (key hỏng không tính) -> báo hết hạn mức để đổi model / tạm nghỉ
-  const conKey = tatCa.filter((k) => !hong.has(k));
+  const conKey = tatCa.filter((k) => !hong.has(k) && !tuChoi.has(model + '|' + k));
   if (conKey.length && conKey.every((k) => hetNgay.has(model + '|' + k))) cuoi.het = true;
   if (!conKey.length) cuoi = {ok: false, code: 401, raw: 'MOI_KEY_DEU_HONG', het: false};
   return cuoi;

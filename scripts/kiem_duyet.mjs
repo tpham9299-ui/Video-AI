@@ -124,8 +124,7 @@ bao.nhe.slice(0, 10).forEach((x) => console.log('  [nhẹ] ' + x));
 // ngân hàng ra ngân hàng, hàng rào ra hàng rào), số đo có đúng chỗ không. Sai thì trả lỗi nặng -> kịch bản được sửa trước khi dựng.
 // Cần GEMINI_API_KEY (hoặc GEMINI_KEYS) trong GitHub Secrets; không có thì bỏ qua bước này.
 async function aiNhinHinh(anh) {
-  const hongTruoc = new Set(dsKeyHong().map((x) => x.dau));
-  const keys = [...new Set(String((process.env.GEMINI_KEYS || '') + ',' + (process.env.GEMINI_API_KEY || '')).split(/[\s,;]+/).filter(Boolean))].filter((k) => !hongTruoc.has(maKey(k)));
+  const keys = [...new Set(String((process.env.GEMINI_KEYS || '') + ',' + (process.env.GEMINI_API_KEY || '')).split(/[\s,;]+/).filter(Boolean))];
   if (!keys.length) return {chay: false, ly_do: 'không có key Gemini dùng được', loi: []};
   if (!anh.length || !tepKichBan || !fs.existsSync(tepKichBan)) return {chay: false, ly_do: 'thiếu ảnh hoặc kịch bản', loi: []};
   const kb = JSON.parse(fs.readFileSync(tepKichBan, 'utf8'));
@@ -152,7 +151,7 @@ async function aiNhinHinh(anh) {
     let choMs = 0;
     for (const model of models) {
       for (const k of keys) {
-        if (hetNgay.has(model + '|' + k) || dsKeyHong().some((x) => x.dau === maKey(k))) continue;
+        if (hetNgay.has(model + '|' + k)) continue;
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(k)}`, {
           method: 'POST', headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({contents: [{role: 'user', parts}], generationConfig: {temperature: 0.1, responseMimeType: 'application/json'}}),
@@ -165,7 +164,8 @@ async function aiNhinHinh(anh) {
           if (res.status === 429 && /PerDay|per day|daily/i.test(raw)) { hetNgay.add(model + '|' + k); continue; }   // hết hạn mức ngày: key kế
           if (res.status === 429) { const m = /"retryDelay":\s*"(\d+)/.exec(raw); const c = Math.min(60, (m ? Number(m[1]) : 15) + 1) * 1000; choMs = choMs ? Math.min(choMs, c) : c; continue; }
           // key LỖI THẬT (không phải hết hạn mức): ghi lại để báo Zalo người dùng gỡ key
-          if (res.status === 401 || ([400, 403].includes(res.status) && /API_KEY_INVALID|API key not valid|API key expired|SERVICE_DISABLED|has not been used|is disabled|suspended|PERMISSION_DENIED|billing/i.test(raw))) ghiKeyHong(k, res.status, raw);
+          // bị model này từ chối: bỏ key cho model này (key dạng "AQ." có thể chạy với model khác), không báo hỏng
+          if (res.status === 401 || ([400, 403].includes(res.status) && /API_KEY_INVALID|API key not valid|API key expired|SERVICE_DISABLED|has not been used|is disabled|suspended|PERMISSION_DENIED|billing/i.test(raw))) hetNgay.add(model + '|' + k);
           continue;
         }
         const j = await res.json().catch(() => null);

@@ -254,7 +254,9 @@ def gemini_tts(text, tep_wav, giong, model, phong_cach):
                     print("Gemini TTS: key %s… hết hạn mức ngày, chuyển key khác" % key[:6])
                     continue
                 if e.code == 401 or (e.code in (400, 403) and re.search(r"API_KEY_INVALID|API key not valid|API key expired|SERVICE_DISABLED|has not been used|is disabled|suspended|PERMISSION_DENIED|billing", noi, re.I)):
-                    ghi_key_hong(key, e.code, noi)
+                    # bị model giọng đọc từ chối: key có thể vẫn tốt với model chữ (key dạng "AQ.") -> chỉ bỏ key cho giọng đọc, không báo hỏng
+                    KEY_HONG.add(key)
+                    print("Gemini TTS: key %s bị model giọng từ chối (HTTP %d), bỏ key này cho giọng đọc" % (key[:6] + "_" + key[-4:], e.code))
                     continue
                 if e.code in (429, 500, 503):
                     m = re.search(r'"retryDelay":\s*"(\d+)', noi)
