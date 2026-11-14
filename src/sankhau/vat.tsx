@@ -90,9 +90,14 @@ const Nguoi: Ve = (v, st) => {
           const s = phanTu(st, i, goc);
           return (
             <div key={k} style={{position: 'relative', width: o, display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: kep(a * 2) * s.mo, transform: `translateY(${(1 - easeOut(a)) * 40}px) scale(${popOut(a) * (1 + 0.08 * s.pc)})`, filter: s.xam ? 'grayscale(1)' : 'none'}}>
-              <svg width={o * 0.82} height={o * 0.98} viewBox="0 0 100 120" style={{overflow: 'visible', filter: phatSang(s.mau, 4 + 10 * s.pc)}}>
-                <path d="M14 116 Q14 64 50 64 Q86 64 86 116 Z" fill={s.pc > 0.01 ? s.mau + '33' : NEN_VAT} stroke={s.mau} strokeWidth={5} strokeLinejoin="round" />
-                <circle cx={50} cy={34} r={21} fill={s.pc > 0.01 ? s.mau + '33' : NEN_VAT} stroke={s.mau} strokeWidth={5} />
+              {/* người rõ ràng (không còn người que): áo màu riêng từng người, mặt, tóc; được chọn thì phát sáng */}
+              <svg width={o * 0.82} height={o * 0.98} viewBox="0 0 100 120" style={{overflow: 'visible', filter: s.pc > 0.01 ? phatSang(s.mau, 4 + 10 * s.pc) : 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))'}}>
+                <path d="M16 118 Q16 70 50 68 Q84 70 84 118 Z" fill={s.mau} stroke={s.pc > 0.01 ? '#fff' : 'rgba(255,255,255,0.35)'} strokeWidth={2.5} strokeLinejoin="round" />
+                <path d="M38 70 L50 86 L62 70" fill="none" stroke="rgba(0,0,0,0.25)" strokeWidth={3} />
+                <circle cx={50} cy={38} r={21} fill="#f4c99a" stroke="#f9dfc0" strokeWidth={1.5} />
+                <path d={k % 2 ? 'M28 40 Q26 12 50 13 Q76 13 72 42 Q70 26 50 26 Q34 26 28 40 Z' : 'M29 36 Q30 14 50 14 Q71 14 71 36 Q62 24 50 25 Q38 24 29 36 Z'} fill={['#2b1c12', '#4a2c17', '#1d1d1d', '#6b3e1f'][k % 4]} />
+                <circle cx={42} cy={40} r={2.6} fill="#1d1d1d" /><circle cx={58} cy={40} r={2.6} fill="#1d1d1d" />
+                <path d="M43 49 Q50 54 57 49" fill="none" stroke="#a0522d" strokeWidth={2.4} strokeLinecap="round" />
               </svg>
               <DauTich p={s.pc} mau={s.mau} co={o * 0.34} style={{right: o * 0.06, top: -4}} />
               <DauX p={s.l} co={o * 0.8} style={{top: o * 0.08}} />
@@ -320,6 +325,12 @@ const DongXu: Ve = (v, st) => {
 };
 
 /* ---------------- HỘP BI / TÚI ---------------- */
+const laMauToi = (hex: string) => {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+  if (!m) return false;
+  const n = parseInt(m[1], 16);
+  return 0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255) < 70;
+};
 const Bi: React.FC<{mau: string; r: number; sang?: number}> = ({mau, r, sang = 0}) => (
   <svg width={r * 2} height={r * 2} viewBox="0 0 40 40" style={{overflow: 'visible', filter: sang ? phatSang(mau, 6 + 10 * sang) : 'none'}}>
     <defs>
@@ -329,7 +340,8 @@ const Bi: React.FC<{mau: string; r: number; sang?: number}> = ({mau, r, sang = 0
         <stop offset="100%" stopColor={mau} stopOpacity={0.55} />
       </radialGradient>
     </defs>
-    <circle cx={20} cy={20} r={18} fill={`url(#bi${mau.replace('#', '')})`} stroke="rgba(0,0,0,0.35)" strokeWidth={1.5} />
+    {/* bi màu tối (đen, xám đậm) có viền sáng để nhìn rõ trên nền tối - không bị nhầm thành bi đỏ hay mất hút */}
+    <circle cx={20} cy={20} r={18} fill={`url(#bi${mau.replace('#', '')})`} stroke={laMauToi(mau) ? '#d7e3e6' : 'rgba(0,0,0,0.35)'} strokeWidth={laMauToi(mau) ? 2.4 : 1.5} />
   </svg>
 );
 const HopBi: Ve = (v, st) => {

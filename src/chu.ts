@@ -63,7 +63,8 @@ export function catChu(s: string, max: number): string {
 // chữ thường vào \text{...}. Không đụng lệnh TeX, biến 1 chữ cái, tên hàm (sin, cos, log, max...) và phần đã nằm trong \text{}.
 const HAM = new Set(['sin', 'cos', 'tan', 'cot', 'log', 'ln', 'lg', 'max', 'min', 'lim', 'exp', 'det', 'mod', 'gcd']);
 export function bocChuViet(tex: string): string {
-  const x = chuanTex(tex);
+  // dấu % trong KaTeX là CHÚ THÍCH (mất cả phần sau: "Lãi 1,2%/tháng" thành "Lãi 1,2") -> phải viết \%
+  const x = chuanTex(tex).replace(/(^|[^\\])%/g, '$1\\%');
   if (!/[A-Za-zÀ-ỹ]{2,}/.test(x)) return x;
   let ra = '';
   let i = 0;

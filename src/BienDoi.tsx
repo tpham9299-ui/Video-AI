@@ -21,7 +21,7 @@ const htmlTu = (tex: string): string => {
   let v = cacheHtml.get(tex);
   if (v === undefined) {
     try {
-      v = katex.renderToString(tex, {throwOnError: true, strict: 'ignore', displayMode: false, output: 'html'});
+      v = katex.renderToString(tex.replace(/(^|[^\\])%/g, '$1\\%'), {throwOnError: true, strict: 'ignore', displayMode: false, output: 'html'});
     } catch (e) {
       // TeX sai cú pháp: hiện dạng chữ đọc được, không bao giờ hiện mã đỏ thô
       v = texSangChu(tex).replace(/[&<>]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'})[c] as string);
