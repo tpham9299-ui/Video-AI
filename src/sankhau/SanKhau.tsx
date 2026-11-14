@@ -168,6 +168,8 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
       el: (
         <NhoeHuong
           key={v.id}
+          kdVat={v.id}
+          kdLoai={v.loai}
           nx={ngang ? nhoeHuong : 0}
           ny={v.tuHuong && !ngang ? nhoeHuong : 0}
           style={{

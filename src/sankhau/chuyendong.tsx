@@ -9,11 +9,11 @@ export const expoIn = (p: number) => (p <= 0 ? 0 : Math.pow(2, 10 * kep(p) - 10)
 
 let dem = 0;
 // Bọc nội dung bằng bộ lọc nhòe theo trục x/y (px). Không nhòe thì không tạo bộ lọc.
-export const NhoeHuong: React.FC<{nx: number; ny: number; children: React.ReactNode; style?: React.CSSProperties}> = ({nx, ny, children, style}) => {
+export const NhoeHuong: React.FC<{nx: number; ny: number; children: React.ReactNode; style?: React.CSSProperties; kdVat?: string; kdLoai?: string}> = ({nx, ny, children, style, kdVat, kdLoai}) => {
   const id = React.useMemo(() => `nh${++dem}`, []);
   const co = nx > 0.4 || ny > 0.4;
   return (
-    <div style={{...style, filter: co ? `url(#${id})` : style?.filter}}>
+    <div data-kd-vat={kdVat} data-kd-loai={kdLoai} style={{...style, filter: co ? `url(#${id})` : style?.filter}}>
       {co ? (
         <svg width={0} height={0} style={{position: 'absolute'}}>
           <filter id={id} x="-20%" y="-30%" width="140%" height="160%">

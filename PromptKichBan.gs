@@ -302,6 +302,12 @@ function lapBanVe_(r, anhDe) {
     'vat: ma, ten, cao (m), x (m), tren:"B" (đứng trên vật B), rong (m), lat, bien (biển tên cho cong_trinh/cua_hang), emoji (bieu_tuong); thang dựa tường {"ten":"thang","x":chân,"dinh_x":..,"dinh_cao":..}. Điểm neo: A, A.dinh, A.mat, A.giua, mã trong diem.\n' +
     'do: khoang_cach {tu,den,nhan} | chieu_cao {vat,nhan} | tia {tu,den,goc} | doan {tu,den,nhan} | bong {vat,dai,nhan} | tam_giac {dinh} | vuong {tai} | chu {tai,nhan}.\n' +
     'NHÌN TỪ TRÊN (vườn, ruộng, hàng rào quanh đất, sân, hồ bơi): {"loai":"canh_that","nhin":"tren","vung":[{"ma":"V","ten":"vuon","x":0,"y":0,"rong":20,"dai":12,"hang_rao":true,"tuong":"trai","canh":["20 m","12 m"]}],"vat":[],"do":[{"kieu":"doan","tu":"V.tl","den":"V.br","nhan":"d = ?"}]} (hang_rao true hoặc mảng cạnh ["tren","phai","duoi"]; tuong = cạnh sát bức tường có sẵn, không rào)\n' +
+    'BÀI CÓ CÁC ĐIỂM TRÊN MẶT ĐẤT (đường ống / dây điện qua sông, đi từ A qua P đến B, quãng đường ngắn nhất, hai bờ sông...): BẮT BUỘC NHÌN TỪ TRÊN, ' +
+    'vẽ dải sông bằng vung "song", MỌI điểm đề nhắc tới (A, A\', B, P...) phải có trong "diem" với tọa độ mét đúng số đo, mỗi số đo MỘT nhãn riêng (không gộp "500m/1200m"). Ví dụ: ' +
+    '{"loai":"canh_that","nhin":"tren","vung":[{"ma":"S","ten":"song","x":0,"y":0,"rong":1400,"dai":500,"nhan":"Sông"}],' +
+    '"diem":[{"ma":"A","x":0,"y":0},{"ma":"A\'","x":0,"y":500},{"ma":"B","x":1200,"y":500},{"ma":"P","x":700,"y":500}],' +
+    '"vat":[{"ma":"NM","ten":"cong_trinh","bien":"Nhà máy","cao":150,"x":1200,"y":700}],' +
+    '"do":[{"kieu":"doan","tu":"A","den":"A\'","nhan":"500 m"},{"kieu":"doan","tu":"A\'","den":"B","nhan":"1200 m"},{"kieu":"doan","tu":"A","den":"P","nhan":"ống dưới nước"},{"kieu":"doan","tu":"P","den":"B","nhan":"ống trên bờ"}]}\n' +
     'QUY TẮC NHÌN TỪ TRÊN: "rong" = cạnh NGANG (tren/duoi), "dai" = cạnh DỌC (trai/phai). Bài tìm kích thước tối ưu: vẽ theo kích thước của ĐÁP ÁN. ' +
     'Cạnh sát tường phải là cạnh mà đề/đáp án nói "song song tường" (vd đáp án cạnh song song tường 60 m -> tường nằm trên cạnh dài 60 m). ' +
     'TỔNG các cạnh có rào phải ĐÚNG bằng tổng chiều dài lưới/rào của đề. "canh": [nhãn cạnh ngang, nhãn cạnh dọc] - nhãn phải đúng ý nghĩa ẩn trong lời giải (cạnh song song tường là x thì nhãn cạnh đó là "x").\n' +
@@ -319,7 +325,7 @@ function lapBanVe_(r, anhDe) {
     if (typeof tuSuaSoDoVung_ === 'function' && tuSuaSoDoVung_(bv, r.de_bai)) nhatKy_('BAN_VE', r.id + ': tự đổi cạnh dài/ngắn cho tổng rào khớp đề');
     var loi = kiemTraCanhThat_(bv, 'BAN_VE');
     if (!loi) {
-      var thieu = kiemTraVatThucDe_({ canh: [{ minh_hoa: { du_lieu: { vat: [bv] } } }] }, r.de_bai).concat(kiemTraSoDoVung_(bv, r.de_bai));
+      var thieu = kiemTraVatThucDe_({ canh: [{ minh_hoa: { du_lieu: { vat: [bv] } } }] }, r.de_bai).concat(kiemTraSoDoVung_(bv, r.de_bai), kiemTraDiemDe_(bv, r.de_bai));
       if (!thieu.length) return bv;
       loi = thieu.join(' ');
     }

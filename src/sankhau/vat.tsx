@@ -9,7 +9,7 @@ import {texSangChu} from '../chu';
 import {NguoiCuDong} from './NguoiCuDong';
 import {bamChuoi, easeInOut, easeOut, kep, lerp, nay, NEN_VAT, NEN_VAT_2, neon, ngauNhien, popOut, tienDo, VONG_MAU} from './donghieu';
 import {Vat} from './dulieu';
-import {boCucDanhSach, kichThe, TrangThai} from './trangthai';
+import {boCucDanhSach, cotThe, kichThe, TrangThai} from './trangthai';
 import {Goc3D} from './chieu3d';
 import {DoThi, HinhHoc} from './hinhhoc';
 import {HinhTuDo} from './hinhtudo';
@@ -99,7 +99,7 @@ const Nguoi: Ve = (v, st) => {
               </svg>
               <DauTich p={s.pc} mau={s.mau} co={o * 0.34} style={{right: o * 0.06, top: -4}} />
               <DauX p={s.l} co={o * 0.8} style={{top: o * 0.08}} />
-              {v.ds[k] ? <div style={{fontFamily: FONT_DAM, fontWeight: 800, fontSize: Math.max(32 * KC, o * 0.22), color: '#fff', marginTop: 4, textAlign: 'center', lineHeight: 1.1}}>{v.ds[k]}</div> : null}
+              {v.ds[k] ? <div style={{fontFamily: FONT_DAM, fontWeight: 800, fontSize: Math.min(Math.max(32 * KC, o * 0.22), (o * 0.92) / Math.max(2, tc(v.ds[k]).length * 0.7)), color: '#fff', marginTop: 4, textAlign: 'center', lineHeight: 1.1, whiteSpace: 'nowrap'}}>{v.ds[k]}</div> : null}
             </div>
           );
         })}
@@ -117,26 +117,30 @@ const The: Ve = (v, st) => {
   const h = kt.h;
   const goc = neon(v.mau, neon('cam'));
   const r = ngauNhien(bamChuoi(v.id));
-  const khoang = Math.min(w + 24, 920 / n);
+  // nhiều hơn 6 thẻ: 2 hàng, thẻ không chồng lên nhau
+  const cot = cotThe(n), hang = Math.ceil(n / cot);
+  const khoang = w + 26;
   return (
-    <div style={{position: 'relative', width: Math.max(w, khoang * n), height: h + (v.nhan ? 60 : 10)}}>
+    <div style={{position: 'relative', width: Math.max(w, khoang * cot), height: hang * (h + 26) + (v.nhan ? 60 : 10)}}>
       {Array.from({length: n}, (_, k) => {
         const i = k + 1;
         const a = vaoLanLuot(st, k, n);
         const s = phanTu(st, i, goc);
-        const goc0 = (k - (n - 1) / 2) * khoang;
+        const ck = k % cot, hk = Math.floor(k / cot);
+        const goc0 = (ck - (Math.min(cot, n - hk * cot) - 1) / 2) * khoang;
+        const y0 = hk * (h + 26);
         const gocBung = (k / n) * Math.PI * 2 + r() * 0.6;
         const bx = Math.cos(gocBung) * (230 + r() * 70) * Math.max(0.7, v.co);
         const by = Math.sin(gocBung) * (150 + r() * 50) * Math.max(0.7, v.co);
         const xoayBung = (r() - 0.5) * 50;
         const x = lerp(goc0, bx, st.bung);
-        const y = lerp(0, by, st.bung);
+        const y = lerp(y0, by, st.bung);
         const tieuDe = v.ds[k] || (n === 1 ? st.noiDung : '');
         // Manim DrawBorderThenFill: viền vẽ dần quanh thẻ trước, nền và chữ hiện sau
         const ve = kep((st.t - st.ta - k * Math.min(0.12, 0.9 / Math.max(1, n))) / 0.5);
         return (
           <div key={k} style={{position: 'absolute', left: '50%', top: 0, width: w, height: h, marginLeft: -w / 2, opacity: kep(a * 2) * s.mo,
-            transform: `translate(${x}px, ${y + (1 - easeOut(a)) * 60}px) rotate(${lerp((k - (n - 1) / 2) * (n > 3 ? 4 : 0), xoayBung, st.bung)}deg) scale(${popOut(a) * (1 + 0.07 * s.pc)})`,
+            transform: `translate(${x}px, ${y + (1 - easeOut(a)) * 60}px) rotate(${lerp(n > 6 ? 0 : (k - (n - 1) / 2) * (n > 3 ? 2.5 : 0), xoayBung, st.bung)}deg) scale(${popOut(a) * (1 + 0.07 * s.pc)})`,
             border: `5px solid ${ve > 0.85 ? s.mau : 'transparent'}`, borderRadius: 22, background: `linear-gradient(160deg, ${NEN_VAT_2}, ${NEN_VAT})`, backgroundClip: 'padding-box', boxShadow: ve > 0.85 ? `0 0 ${10 + 18 * s.pc}px ${s.mau}` : 'none',
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, fontFamily: FONT, color: '#fff', filter: s.xam ? 'grayscale(1)' : 'none'}}>
             {tieuDe ? <div style={{opacity: kep((ve - 0.35) / 0.4), fontWeight: 900, fontSize: kt.co, textAlign: 'center', padding: '0 22px', lineHeight: 1.18, textShadow: '0 2px 10px rgba(0,0,0,0.6)'}}>{laToanNhan(tieuDe) ? <Toan tex={texNhan(tieuDe)} size={kt.co} color="#ffffff" maxWidth={w - 40} /> : tieuDe}</div> : null}

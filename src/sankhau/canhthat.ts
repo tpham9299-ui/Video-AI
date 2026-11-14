@@ -26,7 +26,8 @@ const so = (v: unknown, mac = 0) => {
 const chuoi = (v: unknown) => (typeof v === 'string' ? v.trim() : typeof v === 'number' ? String(v) : '');
 const mang = (v: unknown): R[] => (Array.isArray(v) ? v.filter((x) => x && typeof x === 'object') as R[] : []);
 const W = 100, H = 80;
-const nhanTex = (s: string) => s.replace(/(\d),(\d)/g, '$1{,}$2').replace(/°/g, '^\\circ').replace(/\s*m$/, '\\,m');
+// A' (tên điểm có dấu phẩy trên): KaTeX vẽ dấu ' thành chỉ số nhỏ xíu, gần như không thấy -> viết dấu ' bằng chữ thường cho rõ
+const nhanTex = (s: string) => s.replace(/(\d),(\d)/g, '$1{,}$2').replace(/°/g, '^\\circ').replace(/\s*m$/, '\\,m').replace(/([A-Z])'/g, "$1\\text{'}");
 
 export function canhThatSangHinh(raw: R): R {
   const nhin = chuoi(raw.nhin) === 'tren' ? 'tren' : 'ngang';
@@ -278,6 +279,35 @@ function dungTren(raw: R): R[] {
   });
   diem.forEach((d) => neo.set(chuoi(d.ma), P(so(d.x), so(d.y))));
   const lay = (s: unknown): D | null => neo.get(chuoi(s)) || null;
+  // NHÃN KHÔNG ĐÈ NHAU: mỗi nhãn thử vài chỗ (hai bên đường, xa dần), chọn chỗ chưa có nhãn nào (ước lượng khung chữ theo số ký tự)
+  const daDat: {x: number; y: number; w: number; h: number}[] = [];
+  // vật đã vẽ (nhà máy, cây...) cũng là chỗ nhãn phải né
+  out.forEach((h) => {
+    if (h.kieu === 'vat' && Array.isArray(h.goc)) { const c = Number(h.cao) || 5; daDat.push({x: h.goc[0] as number, y: (h.goc[1] as number) - c / 2, w: c * 0.9, h: c}); }
+    // chữ đã đặt trước (tên vùng "Sông", nhãn cạnh vườn...)
+    if (h.kieu === 'chu' && Array.isArray(h.tam)) { const t = String(h.noi_dung || '').replace(/\\[a-z]+|[{}]/g, ''); daDat.push({x: h.tam[0] as number, y: h.tam[1] as number, w: Math.max(5, t.length * 2.9), h: 6}); }
+  });
+  const datNhan = (cho: D[], chu: string): D => {
+    const w = Math.max(5, chu.length * 2.9), h = 6;
+    // diện tích đè lên các nhãn / vật đã đặt (0 = chỗ trống); hết chỗ trống thì lấy chỗ ĐÈ ÍT NHẤT
+    const de = (c: D) => daDat.reduce((t, o) => t + Math.max(0, (o.w + w) / 2 + 0.6 - Math.abs(o.x - c[0])) * Math.max(0, (o.h + h) / 2 + 0.4 - Math.abs(o.y - c[1])), 0);
+    const chon = cho.find((c) => de(c) === 0) || cho.reduce((a, c) => (de(c) < de(a) ? c : a), cho[0]);
+    daDat.push({x: chon[0], y: chon[1], w, h});
+    return chon;
+  };
+  // ĐIỂM CỦA ĐỀ (A, A', B, P...): chấm tròn + tên, tên lệch ra phía ngoài hình
+  const tamX = (x0 + x1) / 2, tamY = (y0 + y1) / 2;
+  const [cx, cy] = P(tamX, tamY);
+  diem.forEach((d) => {
+    const ma = chuoi(d.ma);
+    const p = neo.get(ma);
+    if (!p) return;
+    const hx = p[0] >= cx ? 1 : -1, hy = p[1] >= cy ? 1 : -1;
+    const buoc = d.buoc ?? 1;
+    out.push({kieu: 'tron', tam: p, r: 1.3, to: true, mau: d.mau || 'vang', buoc});
+    const ten = chuoi(d.nhan) || ma;
+    out.push({kieu: 'chu', tam: datNhan([[p[0] + hx * 3, p[1] + hy * 3.4], [p[0] - hx * 3, p[1] + hy * 3.4], [p[0] + hx * 3, p[1] - hy * 3.4]], ten), noi_dung: nhanTex(ten), buoc});
+  });
   for (const d of mang(raw.do).slice(0, 12)) {
     const a = lay(d.tu), b = lay(d.den);
     if (!a || !b) continue;
@@ -285,7 +315,13 @@ function dungTren(raw: R): R[] {
     out.push({kieu: 'duong', diem: [a, b], mau: d.mau || 'vang', net: 2.5, dut: d.dut === true || chuoi(d.kieu) === 'tia', buoc});
     if (chuoi(d.nhan)) {
       const L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
-      out.push({kieu: 'chu', tam: [(a[0] + b[0]) / 2 - ((b[1] - a[1]) / L) * 4, (a[1] + b[1]) / 2 + ((b[0] - a[0]) / L) * 4], noi_dung: nhanTex(chuoi(d.nhan)), buoc});
+      const nx = -(b[1] - a[1]) / L, ny = (b[0] - a[0]) / L;
+      const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+      // thử hai bên đoạn, xa dần, và trượt dọc theo đoạn (đoạn ngắn nằm cạnh nhãn khác)
+      const dx = (b[0] - a[0]) / L, dy = (b[1] - a[1]) / L;
+      const cho: D[] = [];
+      [0, -0.25, 0.25].forEach((t) => [4, -4, 8, -8, 12, -12, 16, -16].forEach((k) => cho.push([mx + dx * t * L + nx * k, my + dy * t * L + ny * k])));
+      out.push({kieu: 'chu', tam: datNhan(cho, chuoi(d.nhan)), noi_dung: nhanTex(chuoi(d.nhan)), buoc});
     }
   }
   return out;

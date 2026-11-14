@@ -210,9 +210,12 @@ export function tinhGoc3D(gocDau: {nghieng: number; xoay: number} | null, ds: Ha
 
 // Ước lượng kích thước (px trên khung 960x760, chưa nhân co) của từng loại vật: dùng để tự xếp chống chồng lấn và nâng vật lên khỏi sàn 3D.
 // BỐ CỤC THẺ DANH SÁCH (dùng chung cho vẽ + tự xếp chống chồng lấn): cỡ chữ đủ to, dòng dài tự xuống dòng (tối đa 3 dòng)
-export function boCucDanhSach(v: Vat, k = 1) {
-  const W = Math.min(920, 880 * Math.max(0.85, Math.min(1.05, v.co)));
-  const pad = 30;
+export function boCucDanhSach(v: Vat, k0 = 1) {
+  // sân khấu chật (bộ tự xếp hạ v.co xuống < 1): thẻ thu nhẹ theo, tối đa còn 78% (chữ vẫn to, đọc rõ)
+  const cs = Math.min(1, Math.max(0.78, v.co));
+  const k = k0 * cs;
+  const W = Math.min(920, 880 * Math.max(0.78, Math.min(1.05, v.co)));
+  const pad = 30 * cs;
   const huy = 56 * k; // huy hiệu số thứ tự
   const rongChu = W - pad * 2 - huy - 18 - 46;
   const dai = (s: string) => texSangChu(s).length;
@@ -231,16 +234,19 @@ export function boCucDanhSach(v: Vat, k = 1) {
 }
 
 // THẺ (the): thẻ có chữ tự RỘNG RA theo nội dung (không thu chữ nhỏ xíu trong thẻ hẹp); dài quá thì xuống tối đa 2 dòng
+export const cotThe = (n: number) => (n > 6 ? Math.ceil(n / 2) : n);
 export function kichThe(v: Vat, k = 1) {
   const n = v.soLuong;
   const chuDai = Math.max(0, ...Array.from({length: n}, (_, i) => texSangChu(v.ds[i] || (n === 1 ? v.noiDung : '')).length));
   const co = Math.max(36 * k, Math.min(52 * k, 54 * v.co * k));
   if (!chuDai) return {w: 280 * v.co, h: 190 * v.co, co, dong: 1};
-  const rongToiDa = n === 1 ? 860 : Math.max(200, 920 / n - 24);
+  // nhiều hơn 6 thẻ: xếp 2 hàng (không xòe chồng lên nhau che mất số); mỗi thẻ rộng vừa khoảng cách để không đè thẻ bên cạnh
+  const cot = cotThe(n);
+  const rongToiDa = n === 1 ? 860 : Math.max(120, 940 / cot - 26);
   const can = chuDai * 0.58 * co + 56;
   const dong = can > rongToiDa ? 2 : 1;
   const coThat = dong === 2 ? Math.max(32 * k, Math.min(co, (rongToiDa * 2 - 80) / (chuDai * 0.58))) : co;
-  const w = Math.max(260 * Math.min(1, v.co), Math.min(rongToiDa, dong === 2 ? rongToiDa : can));
+  const w = n === 1 ? Math.max(260 * Math.min(1, v.co), Math.min(rongToiDa, dong === 2 ? rongToiDa : can)) : Math.min(rongToiDa, Math.max(150, dong === 2 ? rongToiDa : can));
   const h = Math.max(150 * Math.min(1, v.co), dong * coThat * 1.2 + 70 + (n === 1 && v.giaTriChu ? 60 : 0));
   return {w, h, co: coThat, dong};
 }
@@ -251,8 +257,8 @@ export function kichThuocVat(v: Vat, k = 1): {w: number; h: number} {
   let w = 300;
   let h = 300;
   switch (v.loai) {
-    case 'nguoi': { const o = Math.min(190, 900 / cot); w = o * cot; h = Math.ceil(n / cot) * o * 1.35 + (v.nhan ? 50 : 0); break; }
-    case 'the': { const b = kichThe(v, k); w = n === 1 ? b.w : Math.min(b.w + 24, 920 / n) * n; h = b.h + (v.nhan ? 70 : 10); break; }
+    case 'nguoi': { const o = Math.min(190, 900 / cot); w = o * cot; h = Math.ceil(n / cot) * (o * 1.35 + (v.ds && v.ds.length ? 44 : 0)) + (v.nhan ? 56 : 0); break; }
+    case 'the': { const b = kichThe(v, k); const c = cotThe(n); w = n === 1 ? b.w : (b.w + 26) * c; h = Math.ceil(n / c) * (b.h + 26) + (v.nhan ? 70 : 10); break; }
     case 'the_bai': w = Math.max(n, v.ds.length || 1) * 192; h = 260; break;
     case 'xuc_xac': w = n * 216; h = 220; break;
     case 'dong_xu': w = n * 220; h = 250; break;
@@ -309,54 +315,72 @@ export function kichThuocVat(v: Vat, k = 1): {w: number; h: number} {
 // thì thu nhỏ đều. Giữ nguyên ý đồ bố cục của kịch bản khi không có chồng lấn.
 export function tuXepSanKhau(dsVat: Vat[], W: number, H: number, k = 1): Vat[] {
   const xs = dsVat.filter((v) => v.loai !== 'mui_ten');
-  const hop = xs.map((v) => ({v, x: (v.x / 100) * W, y: (v.y / 100) * H, ...kichThuocVat(v, k)}));
-  const PAD = 18;
-  const kep2 = (b: (typeof hop)[number]) => {
-    b.x = Math.min(W - Math.min(b.w, W) / 2, Math.max(Math.min(b.w, W) / 2, b.x));
-    b.y = Math.min(H - Math.min(b.h, H) / 2, Math.max(Math.min(b.h, H) / 2, b.y));
-  };
-  for (let lan = 0; lan < 40; lan++) {
-    let dich = false;
-    for (let i = 0; i < hop.length; i++) {
-      for (let j = i + 1; j < hop.length; j++) {
-        const a = hop[i];
-        const b = hop[j];
-        const ox = (a.w + b.w) / 2 + PAD - Math.abs(a.x - b.x);
-        const oy = (a.h + b.h) / 2 + PAD - Math.abs(a.y - b.y);
-        if (ox <= 0 || oy <= 0) continue;
-        dich = true;
-        // nhãn/chữ nhỏ thì chỉ dời nhãn, vật lớn đứng yên
-        const nhoA = a.v.loai === 'nhan' || a.v.loai === 'chu';
-        const nhoB = b.v.loai === 'nhan' || b.v.loai === 'chu';
-        const ka = nhoA && !nhoB ? 1 : nhoB && !nhoA ? 0 : 0.5;
-        if (oy < ox) {
-          const s = a.y <= b.y ? -1 : 1;
-          a.y += s * oy * ka;
-          b.y -= s * oy * (1 - ka);
-        } else {
-          const s = a.x <= b.x ? -1 : 1;
-          a.x += s * ox * ka;
-          b.x -= s * ox * (1 - ka);
+  // kích thước vẽ thật thường lớn hơn ước lượng (viền sáng, bóng, nhãn dưới chân) -> cộng khoảng an toàn
+  const AN_TOAN: Record<string, [number, number]> = {danh_sach: [1.06, 1.22], nguoi: [1.08, 1.2], the: [1.06, 1.14]};
+  // THẺ CHỮ giữ nguyên cỡ (chữ phải đọc được); chỉ VẬT HÌNH (người, đồ vật...) được thu nhỏ khi sân khấu chật
+  const CO_DINH = new Set(['nhan', 'chu']);
+  const heSo = (loai: string, f: number) => (CO_DINH.has(loai) ? 1 : loai === 'danh_sach' ? Math.max(0.8, f) : f);
+  const goc = xs.map((v) => { const kt = kichThuocVat(v, k); const [aw, ah] = AN_TOAN[v.loai] || [1.04, 1.08]; return {v, w: kt.w * aw, h: kt.h * ah, coDinh: CO_DINH.has(v.loai)}; });
+  const PAD = 26;
+  const tach = (f: number) => {
+    const hop = goc.map((g) => ({v: g.v, x: (g.v.x / 100) * W, y: (g.v.y / 100) * H, w: g.w * heSo(g.v.loai, f), h: g.h * heSo(g.v.loai, f)}));
+    for (let lan = 0; lan < 60; lan++) {
+      let dich = false;
+      for (let i = 0; i < hop.length; i++) {
+        for (let j = i + 1; j < hop.length; j++) {
+          const a = hop[i];
+          const b = hop[j];
+          const ox = (a.w + b.w) / 2 + PAD - Math.abs(a.x - b.x);
+          const oy = (a.h + b.h) / 2 + PAD - Math.abs(a.y - b.y);
+          if (ox <= 0 || oy <= 0) continue;
+          dich = true;
+          // nhãn/chữ nhỏ thì chỉ dời nhãn, vật lớn đứng yên
+          const nhoA = a.v.loai === 'nhan' || a.v.loai === 'chu';
+          const nhoB = b.v.loai === 'nhan' || b.v.loai === 'chu';
+          const ka = nhoA && !nhoB ? 1 : nhoB && !nhoA ? 0 : 0.5;
+          if (oy < ox) {
+            const s = a.y <= b.y ? -1 : 1;
+            a.y += s * oy * ka;
+            b.y -= s * oy * (1 - ka);
+          } else {
+            const s = a.x <= b.x ? -1 : 1;
+            a.x += s * ox * ka;
+            b.x -= s * ox * (1 - ka);
+          }
+          // KHÔNG ép vào khung ở đây (ép sau mỗi lần tách làm vật bị đẩy chồng lại mãi) - tách xong mới đưa cả cụm vào khung
         }
-        kep2(a);
-        kep2(b);
       }
+      if (!dich) break;
     }
-    if (!dich) break;
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    hop.forEach((b) => { x0 = Math.min(x0, b.x - b.w / 2); x1 = Math.max(x1, b.x + b.w / 2); y0 = Math.min(y0, b.y - b.h / 2); y1 = Math.max(y1, b.y + b.h / 2); });
+    return {hop, x0, y0, x1, y1, tiLe: Math.min(W / Math.max(1, x1 - x0), H / Math.max(1, y1 - y0))};
+  };
+  // thu nhỏ dần CHỈ các vật hình cho tới khi cả cụm (đã tách rời, không đè nhau) vừa khung
+  let f = 1;
+  let kq = tach(f);
+  for (let lan = 0; lan < 6 && kq.tiLe < 0.999 && f > 0.6; lan++) {
+    f = Math.max(0.6, f * kq.tiLe * 0.97);   // vật hình nhỏ hơn 60% thì khó nhìn: phần còn lại thu đều cả cụm (kể cả thẻ chữ)
+    kq = tach(f);
   }
-  // vẫn tràn khung (quá nhiều vật lớn): thu nhỏ đều quanh tâm
-  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
-  hop.forEach((b) => { x0 = Math.min(x0, b.x - b.w / 2); x1 = Math.max(x1, b.x + b.w / 2); y0 = Math.min(y0, b.y - b.h / 2); y1 = Math.max(y1, b.y + b.h / 2); });
-  const s = Math.min(1, W / Math.max(1, x1 - x0), H / Math.max(1, y1 - y0));
+  const {hop, x0, y0, x1, y1} = kq;
+  // vẫn tràn (thẻ chữ quá to): thu đều cả cụm quanh tâm; vừa rồi thì chỉ dời cả cụm vào trong khung
+  const s = Math.min(1, kq.tiLe);
   const cx = (x0 + x1) / 2;
   const cy = (y0 + y1) / 2;
   const thuNho = s < 0.999;
-  const moi = new Map(hop.map((b) => [b.v.id, {x: ((thuNho ? W / 2 + (b.x - cx) * s : b.x) / W) * 100, y: ((thuNho ? H / 2 + (b.y - cy) * s : b.y) / H) * 100, co: b.v.co * s}]));
+  const dx = thuNho ? 0 : x0 < 0 ? -x0 : x1 > W ? W - x1 : 0;
+  const dy = thuNho ? 0 : y0 < 0 ? -y0 : y1 > H ? H - y1 : 0;
+  const moi = new Map(hop.map((b, i) => [b.v.id, {
+    x: ((thuNho ? W / 2 + (b.x - cx) * s : b.x + dx) / W) * 100,
+    y: ((thuNho ? H / 2 + (b.y - cy) * s : b.y + dy) / H) * 100,
+    co: b.v.co * heSo(goc[i].v.loai, f) * s,
+  }]));
   return dsVat.map((v) => {
     const m = moi.get(v.id);
     if (!m) return v;
     // chỉ ghi đè khi có dời đáng kể hoặc phải thu nhỏ
-    if (!thuNho && Math.abs(m.x - v.x) < 0.5 && Math.abs(m.y - v.y) < 0.5) return v;
+    if (Math.abs(m.co - v.co) < 0.005 && Math.abs(m.x - v.x) < 0.5 && Math.abs(m.y - v.y) < 0.5) return v;
     return {...v, x: m.x, y: m.y, co: m.co};
   });
 }

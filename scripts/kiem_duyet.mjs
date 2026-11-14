@@ -106,12 +106,15 @@ const moTa = (l) => {
     case 'CHU_DE': return `${ten(l.canh)}: chữ ${c} ĐÈ LÊN chữ "${String(l.chu2).slice(0, 40)}" -> tách vị trí hai vật (x, y), bớt vật hoặc bớt chữ trong cảnh`;
     case 'CAT_CHU': return `${ten(l.canh)}: chữ ${c} bị khung CẮT MẤT một phần -> rút ngắn chữ`;
     case 'CHU_NHO': return `${ten(l.canh)}: chữ ${c} quá nhỏ (${l.co}px) -> bớt vật trong cảnh để hình to hơn, hoặc rút ngắn chữ`;
+    case 'VAT_DE': return `${ten(l.canh)}: hai vật ĐÈ LÊN NHAU (${l.chu} và ${l.chu2}) -> đặt hai vật xa nhau (x, y), bớt số lượng hoặc tách sang cảnh khác`;
     default: return `${ten(l.canh)}: ${l.kieu} ${c}`;
   }
 };
 const ds = [...gop.values()];
-const nang = ds.filter((l) => NANG.has(l.kieu)).map(moTa).concat(aiLoi, loiDapAn);
-const nhe = ds.filter((l) => !NANG.has(l.kieu)).map(moTa);
+// vật đè vật chỉ tính nặng khi lặp lại ở >= 2 khung mẫu (1 khung có thể là lúc vật đang bay vào)
+const laNang = (l) => NANG.has(l.kieu) || (l.kieu === 'VAT_DE' && l.so >= 2);
+const nang = ds.filter(laNang).map(moTa).concat(aiLoi, loiDapAn);
+const nhe = ds.filter((l) => !laNang(l)).map(moTa);
 if (!aiKq.chay) nhe.push('AI_NHIN_HINH_KHONG_CHAY: ' + (aiKq.ly_do || 'không gọi được Gemini') + ' - hình chưa được AI đối chiếu với đề');
 const bao = {so_khung: tho.length, so_khung_mau: mau.length, nang: [...new Set(nang)], nhe: [...new Set(nhe)], ai_nhin: aiKq.chay ? (aiLoi.length ? 'sai' : 'dung') : 'khong_chay', chi_tiet: ds.slice(0, 80)};
 fs.writeFileSync(tepRa, JSON.stringify(bao, null, 1));

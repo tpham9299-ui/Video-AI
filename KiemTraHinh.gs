@@ -107,6 +107,25 @@ function laCanhGiaiThichCongThuc_(c) {
   return /công thức|định lý|bất đẳng thức|tính chất/.test(t) && /từ đâu|vì sao|tại sao|nghĩa là|ý nghĩa|đại lượng|chính là|ở đây|áp dụng|dùng khi/.test(t);
 }
 
+// ĐIỂM CỦA ĐỀ phải có trên bản vẽ: đề nhắc tới A, A', B, P... (chữ in hoa đứng riêng, "AA'", "A'B") mà bản vẽ không có điểm/vật
+// mang tên đó -> lỗi (hình vẽ không giúp người xem theo dõi lời giải). Chỉ xét khi đề có >= 2 điểm.
+function diemTrongDe_(de) {
+  var ds = [], m, re = /(^|[^A-Za-zÀ-ỹ0-9])((?:[A-Z]'?){1,3})(?![A-Za-zÀ-ỹ0-9])/g;
+  while ((m = re.exec(String(de || '')))) {
+    (m[2].match(/[A-Z]'?/g) || []).forEach(function (x) { if (ds.indexOf(x) < 0) ds.push(x); });
+  }
+  return ds.filter(function (x) { return !/^[VSI]$/.test(x); });   // V, S thường là thể tích / diện tích, không phải điểm
+}
+function kiemTraDiemDe_(bv, deGoc) {
+  var can = diemTrongDe_(deGoc);
+  if (can.length < 2 || !bv) return [];
+  var co = {};
+  (bv.diem || []).concat(bv.vat || []).forEach(function (x) { if (x && x.ma) co[String(x.ma)] = 1; });
+  var thieu = can.filter(function (x) { return !co[x]; });
+  return thieu.length ? ['BAN_VE_THIEU_DIEM: đề nhắc tới điểm ' + thieu.join(', ') + ' nhưng bản vẽ không có. Thêm từng điểm vào "diem" (ma, x, y theo mét, đúng số đo của đề)' +
+    (/sông|bờ/i.test(String(deGoc)) ? '; bài qua sông: NHÌN TỪ TRÊN, vung "song" là dải sông, điểm nằm trên hai bờ.' : '.')] : [];
+}
+
 // BẢN VẼ NHÌN TỪ TRÊN phải khớp số đo của đề: tổng các cạnh có rào = tổng chiều dài lưới/rào đề cho
 // (vd 120 m lưới, một cạnh sát tường: tường phải nằm trên cạnh song song tường, rào 3 cạnh còn lại cộng lại đúng 120).
 function kiemTraSoDoVung_(bv, deGoc) {

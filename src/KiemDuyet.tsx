@@ -112,6 +112,17 @@ function doKhungHinh(goc: HTMLElement): {loi: LoiKD[]; chu: string[]; so: string
       loi.push({kieu: 'CHU_DE', chu: a.chu, chu2: b.chu, hop: gi});
     }
   }
+  // VẬT ĐÈ VẬT trên sân khấu (người bị thẻ che, nhóm người đè lên thẻ chữ...): đo khung bao thật của từng vật
+  const vat = Array.from(goc.querySelectorAll('[data-kd-vat]')).filter((e) => e.getAttribute('data-kd-loai') !== 'mui_ten' && !boQua(e) && doMo(e) > 0.55)
+    .map((e) => ({id: String(e.getAttribute('data-kd-vat')), loai: String(e.getAttribute('data-kd-loai')), hop: quy(e.getBoundingClientRect())}))
+    .filter((x) => dt(x.hop) > 900);
+  for (let i = 0; i < vat.length; i++) {
+    for (let j = i + 1; j < vat.length; j++) {
+      const gi = giao(vat[i].hop, vat[j].hop);
+      if (!gi) continue;
+      if (dt(gi) > 0.15 * Math.min(dt(vat[i].hop), dt(vat[j].hop))) loi.push({kieu: 'VAT_DE', chu: vat[i].loai + ' ' + vat[i].id, chu2: vat[j].loai + ' ' + vat[j].id, hop: gi});
+    }
+  }
   // CHỮ NHÌN THẤY trên khung (để máy đối chiếu đáp án) + số hiển thị của huy hiệu số lăn (data-kd-so: số các bánh số đang chỉ)
   const so: string[] = [];
   goc.querySelectorAll('[data-kd-so]').forEach((e) => { if (doMo(e) > 0.55) so.push(String(e.getAttribute('data-kd-so'))); });

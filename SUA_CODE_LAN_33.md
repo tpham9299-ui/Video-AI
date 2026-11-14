@@ -145,6 +145,19 @@ Chốt cuối vẫn là bạn: chế độ "duyệt trước khi đăng" đang B
 - Video đã được chọn giọng thì dựng lại vẫn giữ nguyên giọng đó.
 - Gemini không đọc được: video giọng nam dùng edge NamMinh (nam), video giọng nữ dùng edge HoaiMy (nữ) -> không bao giờ đổi giới tính giọng.
 
+## 17. Vật đè vật (người bị thẻ che, nhóm người đè lên thẻ chữ) và hình không liên quan đề
+- **Nguyên nhân chồng hình**: bộ tự xếp sân khấu ép từng vật vào khung NGAY sau mỗi lần tách -> khi tổng kích thước lớn hơn khung,
+  các vật bị đẩy chồng lại mãi; khung bao vẫn "vừa" nên không thu nhỏ -> vật đè vật.
+- **Sửa**: tách các vật cho hết chồng TRƯỚC, rồi mới đưa cả cụm vào khung: thẻ chữ giữ cỡ (thu nhẹ tối đa còn ~80%), vật hình (người, đồ vật)
+  thu nhỏ dần (tối thiểu ~60%), chật hơn nữa thì thu đều cả cụm. Kích thước ước lượng có thêm khoảng an toàn (viền, bóng, tên dưới chân).
+- **Dãy thẻ nhiều hơn 6 lá**: xếp 2 hàng, mỗi lá rộng vừa khoảng cách -> không còn xòe chồng che mất số.
+- **Tên dưới chân người** tự co cỡ chữ theo bề rộng mỗi người (không tràn sang người bên cạnh).
+- **Kiểm duyệt mới VẬT ĐÈ VẬT**: đo khung bao thật của từng vật trên khung hình; hai vật chồng > 15% (ở >= 2 khung mẫu) = lỗi nặng ->
+  không dựng, gửi về tự sửa. Đã thử: tắt bộ tự xếp thì máy bắt đúng "thẻ danh sách bị nhóm người đè" và "dãy thẻ che nhân vật An".
+- **Bài có điểm trên mặt đất (đường ống / dây điện qua sông...)**: bản vẽ BẮT BUỘC nhìn từ trên, dải sông, mọi điểm của đề (A, A', B, P)
+  có chấm + tên trên hình, mỗi số đo một nhãn riêng (không gộp "500m/1200m"). Máy kiểm tra: đề nhắc điểm nào mà bản vẽ thiếu -> vẽ lại.
+  Nhãn trên hình tự né nhau và né vật (không còn chữ dính chữ). Tên điểm có dấu phẩy trên (A') hiện rõ.
+
 ## Cần dán lại vào Apps Script
 `KiemTraHinh.gs`, `PromptKichBan.gs`, `BoPhan1.gs`, `BoPhan2.gs`, `NangCao.gs`, `DangVideo.gs`, `SanPham.gs` (tất cả bản mới nhất trong thư mục bàn giao), rồi Triển khai > Quản lý > Phiên bản mới.
 
