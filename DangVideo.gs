@@ -151,7 +151,7 @@ function docKetQuaDang_(r) {
 }
 
 // Tiêu đề, mô tả, thẻ cho bài đăng (lấy từ kịch bản).
-function noiDungDang_(r) {
+function noiDungDang_(r, tap) {
   var kb = {};
   try { kb = JSON.parse(DriveApp.getFileById(r.file_kich_ban).getBlob().getDataAsString()); } catch (e) {}
   var the = (kb.hashtag || []).map(function (h) { return String(h).replace(/^#+/, '').replace(/\s+/g, ''); }).filter(Boolean);
@@ -170,7 +170,7 @@ function noiDungDang_(r) {
     '📌 Đề bài: ' + de.slice(0, 1500),
     '🎯 Đáp án và cách giải thông minh có trong video, thử tự giải trước nhé!',
     baiHoc ? '\n💡 Ghi nhớ:\n' + baiHoc : '',
-    kb.series ? '\n📚 Series "' + kb.series.ten + '" – tập ' + kb.series.tap : '',
+    r.lop ? '\n📚 Toán lớp ' + String(r.lop).replace(/[^0-9]/g, '') + ' – Tập ' + (tap || '{TAP}') : '',
     kb.video_tiep_theo ? '\n👉 Video sau: ' + kb.video_tiep_theo : '',
     '',
     the.map(function (t) { return '#' + t; }).join(' ')
@@ -184,16 +184,22 @@ function dangVideo_(sh, r) {
   var kq = docKetQuaDang_(r);
   var can = ds.filter(function (n) { return !(kq[n] && (kq[n].ok || kq[n].bo_qua)); });
   if (!can.length) { ketThucDang_(sh, r, kq); return; }
-  var meta = noiDungDang_(r);
-  nhatKy_('DANG_VIDEO', r.id + ' -> đăng lên ' + can.join(', '));
-  if (can.indexOf('youtube') >= 0 && chDang_('YOUTUBE_CACH') !== 'github') {
-    kq.youtube = dangYouTube_(r, meta);
+  var tapDaGan = Number(kq._tap) || 0;
+  var meta = noiDungDang_(r, tapDaGan);
+  nhatKy_('DANG_VIDEO', r.id + ' -> đăng lên ' + can.join(', ') + (tapDaGan ? ' (tập ' + tapDaGan + ')' : ''));
+  var ytApps = can.indexOf('youtube') >= 0 && chDang_('YOUTUBE_CACH') !== 'github';
+  // lần thử lại: đã có bản video ĐÃ ĐÁNH SỐ trên Drive -> Apps Script đăng YouTube ngay bằng bản đó
+  if (ytApps && tapDaGan && kq._file_tap) {
+    kq.youtube = dangYouTube_(r, meta, kq._file_tap);
     can = can.filter(function (n) { return n !== 'youtube'; });
+    ytApps = false;
   }
   if (can.length) {
+    var lopSo = String(r.lop || '').replace(/[^0-9]/g, '');
     var gui = typeof guiWorkflowGitHub_ === 'function' ? guiWorkflowGitHub_({
       viec: 'dang', id: r.id,
-      dang: JSON.stringify({ file_id: String(r.file_video), ten: r.id, tieu_de: meta.tieu_de, yt_tieu_de: meta.yt_tieu_de, mo_ta: meta.mo_ta, the: meta.the, nen_tang: can, yt_che_do: chDang_('YOUTUBE_CHE_DO'), quang_cao: meta.quang_cao, co_bia: !!r.anh_bia })
+      dang: JSON.stringify({ file_id: String(r.file_video), ten: r.id, tieu_de: meta.tieu_de, yt_tieu_de: meta.yt_tieu_de, mo_ta: meta.mo_ta, the: meta.the, nen_tang: can, yt_che_do: chDang_('YOUTUBE_CHE_DO'), quang_cao: meta.quang_cao, co_bia: !!r.anh_bia,
+        lop: lopSo, tap_da_gan: tapDaGan, tap_he_thong: lopSo ? daDangLop_(lopSo) : 0, dem_youtube: (lopSo && !tapDaGan) ? demBaiLopYouTube_(lopSo) : -1, yt_apps_script: ytApps })
     }) : { ok: false, loi: 'Thiếu BoPhan2.gs bản mới (guiWorkflowGitHub_)' };
     if (gui.ok) {
       ghi_(sh, r._row, { trang_thai: 'DANG_DANG', link_dang: JSON.stringify(kq), ghi_chu: 'Đang đăng qua GitHub: ' + can.join(', ') });
@@ -205,10 +211,10 @@ function dangVideo_(sh, r) {
 }
 
 // YouTube: đăng thẳng từ Apps Script bằng dịch vụ nâng cao YouTube Data API v3 (dưới quyền tài khoản Google của bạn).
-function dangYouTube_(r, meta) {
+function dangYouTube_(r, meta, fileId) {
   if (typeof YouTube === 'undefined') return { ok: false, loi: 'Chưa bật dịch vụ YouTube Data API v3 trong Apps Script (Dịch vụ + > YouTube Data API v3)' };
   try {
-    var f = DriveApp.getFileById(r.file_video);
+    var f = DriveApp.getFileById(String(fileId || r.file_video));   // fileId: bản đã in số tập (GitHub tạo lúc đăng)
     var mb = f.getSize() / 1048576;
     if (mb > 48) return { ok: false, loi: 'Video ' + mb.toFixed(1) + ' MB, quá giới hạn 48 MB của Apps Script. Đặt YOUTUBE_CACH = github (xem hướng dẫn).' };
     var tn = {
@@ -238,6 +244,28 @@ function dangYouTube_(r, meta) {
   }
 }
 
+/* ===================== SỐ TẬP THEO LỚP ===================== */
+// Số bài "Toán lớp N" hệ thống đã đăng thành công (sổ ghi trong Script Properties, cập nhật mỗi lần đăng xong).
+function daDangLop_(lop) { return Number(PropertiesService.getScriptProperties().getProperty('DA_DANG_LOP_' + lop) || 0); }
+// Đếm bài lớp N đã có trên kênh YouTube (video có thẻ #toanN hoặc chữ "lớp N" trong tiêu đề/mô tả). -1 nếu không đếm được.
+function demBaiLopYouTube_(lop) {
+  if (typeof YouTube === 'undefined') return -1;
+  try {
+    var ch = YouTube.Channels.list('contentDetails', { mine: true });
+    var up = ch && ch.items && ch.items[0] && ch.items[0].contentDetails.relatedPlaylists.uploads;
+    if (!up) return -1;
+    var re1 = new RegExp('#toan' + lop + '(?!\\d)', 'i'), re2 = new RegExp('lớp\\s*' + lop + '(?!\\d)', 'i');
+    var dem = 0, tok = null;
+    for (var i = 0; i < 20; i++) {
+      var d = YouTube.PlaylistItems.list('snippet', { playlistId: up, maxResults: 50, pageToken: tok || undefined });
+      (d.items || []).forEach(function (v) { var t = (v.snippet.title || '') + ' ' + (v.snippet.description || ''); if (re1.test(t) || re2.test(t)) dem++; });
+      tok = d.nextPageToken;
+      if (!tok) break;
+    }
+    return dem;
+  } catch (e) { nhatKy_('DANG_VIDEO', 'Không đếm được bài trên YouTube: ' + String(e.message).slice(0, 150)); return -1; }
+}
+
 // Gộp kết quả, cập nhật trạng thái, báo Zalo.
 function ketThucDang_(sh, r, kq) {
   var ds = dsNenTangDang_();
@@ -252,8 +280,10 @@ function ketThucDang_(sh, r, kq) {
     trang_thai: trangThai, link_dang: JSON.stringify(kq),
     ghi_chu: (loi.length ? 'Đăng lỗi: ' + loi.map(function (n) { return n + ' (' + String((kq[n] || {}).loi || '').slice(0, 80) + ')'; }).join('; ') + (xong ? '' : ' -> thử lại ở khung giờ sau') : '').slice(0, 300)
   });
-  nhatKy_('DANG_VIDEO', r.id + ': đạt ' + (dat.join(',') || '-') + ' | lỗi ' + (loi.join(',') || '-') + ' | bỏ qua ' + (boQua.join(',') || '-'));
-  var tin = (dat.length ? '📤 Đã đăng video "' + (r.chu_de || r.id) + '":' : '⚠️ Chưa đăng được video "' + (r.chu_de || r.id) + '":') +
+  var lopSo = String(r.lop || '').replace(/[^0-9]/g, '');
+  if (dat.length && kq._tap && lopSo && Number(kq._tap) > daDangLop_(lopSo)) PropertiesService.getScriptProperties().setProperty('DA_DANG_LOP_' + lopSo, String(kq._tap));
+  nhatKy_('DANG_VIDEO', r.id + (kq._tap ? ' (Toán lớp ' + lopSo + ' – tập ' + kq._tap + ')' : '') + ': đạt ' + (dat.join(',') || '-') + ' | lỗi ' + (loi.join(',') || '-') + ' | bỏ qua ' + (boQua.join(',') || '-'));
+  var tin = (dat.length ? '📤 Đã đăng video "' + (r.chu_de || r.id) + '"' + (kq._tap ? ' (Toán lớp ' + lopSo + ' – Tập ' + kq._tap + ')' : '') + ':' : '⚠️ Chưa đăng được video "' + (r.chu_de || r.id) + '":') +
     dat.map(function (n) { return '\n' + TEN_NEN_TANG_[n] + ': ' + (kq[n].url || 'đã đăng') + (kq[n].ghi_chu ? ' (' + kq[n].ghi_chu + ')' : ''); }).join('') +
     loi.map(function (n) { return '\n❌ ' + TEN_NEN_TANG_[n] + ': ' + String((kq[n] || {}).loi || 'lỗi').slice(0, 150); }).join('') +
     boQua.map(function (n) { return '\n⏭ ' + TEN_NEN_TANG_[n] + ': ' + String(kq[n].loi || 'chưa cài đặt').slice(0, 100); }).join('') +
@@ -271,6 +301,12 @@ function xuLyKetQuaDang_(sh, d) {
   var kq = docKetQuaDang_(r);
   var moi = d.ket_qua || {};
   Object.keys(moi).forEach(function (n) { if (NEN_TANG_HOP_LE_.indexOf(n) >= 0) kq[n] = moi[n]; });
+  if (moi._tap) { kq._tap = Number(moi._tap); kq._dem = moi._dem || kq._dem; }
+  if (moi._file_tap) kq._file_tap = String(moi._file_tap);
+  // YouTube đăng bằng dịch vụ YouTube của Apps Script, dùng đúng bản video GitHub vừa in số tập
+  if (kq.youtube && kq.youtube.cho_apps_script) {
+    kq.youtube = kq._file_tap ? dangYouTube_(r, noiDungDang_(r, kq._tap), kq._file_tap) : { ok: false, loi: 'GitHub chưa tạo được bản video đã đánh số tập' };
+  }
   ketThucDang_(sh, r, kq);
   return { ok: true };
 }

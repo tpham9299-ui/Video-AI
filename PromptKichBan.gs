@@ -94,8 +94,7 @@ function taoPromptKichBan_(r, c1, c2) {
     '(d) Chỉ được nhắc một câu ngắn, trung thực ở cảnh bài học cuối, ví dụ: "Sản phẩm trong bài là ' + sp.ten + ', kênh có bán, thông tin ở giỏ hàng." Máy tự gắn nhãn "Có sản phẩm do kênh bán" lên video, bạn không cần viết nhãn.\n\n'
   ] : [];
   var nangCao = [
-    r._series ? 'SERIES: video này là tập ' + r._series.tap + ' của series "' + r._series.ten + '"' + (r._series.truoc ? ' (tập trước: "' + r._series.truoc + '")' : '') +
-      '. Có thể nhắc nhẹ một câu nối với tập trước nếu tự nhiên; "video_tiep_theo" hẹn một bài cùng series.\n' : '',
+    r._series ? 'SERIES: video thuộc chuỗi "' + r._series.ten + '". TUYỆT ĐỐI KHÔNG nói hay ghi SỐ TẬP (số tập do hệ thống đánh lúc đăng); "video_tiep_theo" hẹn một bài cùng lớp.\n' : '',
     r._hook ? 'KIỂU MỞ ĐẦU CẦN THỬ Ở VIDEO NÀY: "' + r._hook + '" (đặt "hook_kieu" = "' + r._hook + '" và viết câu móc đúng kiểu đó, thật mạnh). Hệ thống đang đo kiểu mở đầu nào giữ chân người xem tốt nhất.\n' : '',
     typeof goiYTuSoLieu_ === 'function' ? goiYTuSoLieu_() : '',
     typeof hocEditChoPrompt_ === 'function' ? hocEditChoPrompt_() : '',

@@ -312,26 +312,14 @@ var LOAI_THEO_SERIES_ = { 'Xác suất không như bạn nghĩ': 'Xác suất', 
 // Loại câu hỏi (in trên ảnh bìa, dùng chia danh sách phát): Xác suất, Hình học, Tối ưu, Toán tiền bạc, Đo đạc, Toán đi chợ, Toán thực tế.
 function phanLoaiCauHoi_(r) { return LOAI_THEO_SERIES_[tenSeriesTheoDe_(r)] || 'Toán thực tế'; }
 
+// SERIES = "Toán lớp N". SỐ TẬP KHÔNG cấp lúc viết kịch bản nữa (trước đây cấp sớm theo 7 chủ đề nên video bị loại / đăng
+// không theo thứ tự làm số nhảy lung tung). Số tập được đánh LÚC ĐĂNG: đếm số bài lớp đó đã có trên YouTube/Facebook/TikTok
+// (DangVideo.gs + dang_video.py), rồi in "TẬP N" vào video.
 function xacDinhSeries_(r) {
   if (chNC_('SERIES').toUpperCase() === 'TAT') return null;
-  var ten = tenSeriesTheoDe_(r);
-  var p = PropertiesService.getScriptProperties();
-  var khoa = 'SERIES_' + ten.replace(/\s+/g, '_');
-  var daCo = {};
-  try { daCo = JSON.parse(p.getProperty(khoa) || '{}'); } catch (e) {}
-  // cùng một đề (viết lại kịch bản) giữ nguyên số tập
-  if (daCo.theo && daCo.theo[r.id]) return { ten: ten, tap: daCo.theo[r.id], truoc: daCo.truoc_cua && daCo.truoc_cua[r.id] || '' };
-  var tap = (Number(daCo.tap) || 0) + 1;
-  var truoc = daCo.cuoi || '';
-  daCo.tap = tap;
-  daCo.theo = daCo.theo || {};
-  daCo.truoc_cua = daCo.truoc_cua || {};
-  daCo.theo[r.id] = tap;
-  daCo.truoc_cua[r.id] = truoc;
-  var ids = Object.keys(daCo.theo);
-  if (ids.length > 60) ids.slice(0, ids.length - 60).forEach(function (k) { delete daCo.theo[k]; delete daCo.truoc_cua[k]; });
-  p.setProperty(khoa, JSON.stringify(daCo));
-  return { ten: ten, tap: tap, truoc: truoc };
+  var lop = String((r && r.lop) || '').replace(/[^0-9]/g, '');
+  if (!lop) return null;
+  return { ten: 'Toán lớp ' + lop, tap: 0, truoc: '' };
 }
 function ghiTapCuoiSeries_(se, tieuDe) {
   if (!se) return;

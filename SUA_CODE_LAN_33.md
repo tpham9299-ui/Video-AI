@@ -96,8 +96,29 @@ Chốt cuối vẫn là bạn: chế độ "duyệt trước khi đăng" đang B
   hết hạn mức ngày (giữ, chờ reset) / giới hạn phút (giữ) / LỖI THẬT (nên xóa, đồng thời bot Zalo báo). Nhật ký chỉ hiện 6 ký tự đầu + 4 ký tự cuối của key.
 - AI nhìn hình trước khi dựng dùng đúng bộ model của hệ thống (gemini-2.5-flash đã bị Google ngừng nên trước đây luôn lỗi).
 
+## 13. Số tập đánh đúng theo lớp, theo số bài đã có trên kênh
+- Trước đây số tập cấp LÚC VIẾT KỊCH BẢN, theo 7 chủ đề (Tối ưu đời thường, Đo đạc thực tế...), kể cả video sau đó bị loại / xóa / không đăng,
+  và thứ tự đăng khác thứ tự viết -> số nhảy lung tung.
+- Nay: chuỗi theo LỚP ("Toán lớp 10/11/12"). Số tập đánh LÚC ĐĂNG:
+  1. Đếm số bài của lớp đó đã có trên YouTube (Apps Script đếm bằng dịch vụ YouTube), Facebook, TikTok (GitHub đếm, nếu quyền truy cập cho phép)
+     qua thẻ #toan10 / #toan11 / #toan12 (hệ thống luôn gắn khi đăng) hoặc chữ "lớp N"; cộng với sổ ghi của hệ thống.
+  2. Số tập = số lớn nhất trong các nguồn + 1.
+  3. In "TẬP N" lên góc phải trên của video (mọi khung hình), ghi "📚 Toán lớp N – Tập N" trong mô tả, rồi mới đăng.
+  4. Một nền tảng đăng lỗi, hôm sau thử lại: giữ nguyên số tập đã cấp (không đếm lại).
+- Video lúc dựng KHÔNG còn in số tập; lời thoại cũng không được nói số tập.
+- YouTube đăng qua Apps Script (mặc định) dùng đúng bản video đã in số tập (GitHub tải bản đó lên Drive, thư mục VIDEO_XACSUAT/video/da_danh_so).
+- Lưu ý: TikTok chỉ đếm được nếu ứng dụng TikTok có quyền "video.list"; không có thì dùng số của YouTube/Facebook/sổ hệ thống.
+
+## 14. Giọng đọc thống nhất
+- Nguyên nhân giọng đổi liên tục: (1) giọng Gemini được tạo riêng từng cảnh với sắc thái khác nhau ("hào hứng", "cảnh báo"...) nên chất giọng lệch;
+  (2) khi key Gemini hết hạn mức giọng đọc thì video chuyển sang giọng khác (edge / Google).
+- Nay MẶC ĐỊNH một giọng cố định cho MỌI video: edge-tts "NamMinh" (không phụ thuộc hạn mức, không đổi giữa các cảnh).
+  Không bao giờ chuyển sang giọng Google: edge-tts lỗi thì thử lại nhiều vòng, vẫn lỗi thì dừng dựng và hệ thống dựng lại sau.
+- Muốn dùng giọng Gemini (tự nhiên hơn, nhưng có thể lệch nhẹ và tốn hạn mức): đặt biến GitHub MAY_GIONG = gemini.
+  Khi đó mọi cảnh dùng chung một chỉ dẫn giọng (không còn đổi sắc thái theo cảnh).
+
 ## Cần dán lại vào Apps Script
-`KiemTraHinh.gs`, `PromptKichBan.gs`, `BoPhan1.gs`, `BoPhan2.gs`, `NangCao.gs` (bản trong thư mục bàn giao; BoPhan2.gs ở mục 9, NangCao.gs + KiemTraHinh.gs cập nhật ở mục 10), rồi Triển khai > Quản lý > Phiên bản mới.
+`KiemTraHinh.gs`, `PromptKichBan.gs`, `BoPhan1.gs`, `BoPhan2.gs`, `NangCao.gs`, `DangVideo.gs` (tất cả bản mới nhất trong thư mục bàn giao), rồi Triển khai > Quản lý > Phiên bản mới.
 
 ## Còn lưu ý
 - Trong GEMINI_KEYS có **3 key bị Google từ chối** ("API key not valid"): key thứ 2, 5, 7 (bắt đầu "AQ.Ab8…").

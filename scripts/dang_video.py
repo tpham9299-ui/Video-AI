@@ -120,7 +120,13 @@ def luu_refresh_tiktok(d):
         print("CẢNH BÁO: không lưu được refresh token TikTok mới lên Drive:", e)
 
 
-def dang_tiktok(video, meta):
+_TK_TIKTOK = {}
+
+
+def token_tiktok():
+    """Access token TikTok, làm mới MỘT lần cho cả lần chạy (refresh token đổi sau mỗi lần dùng)."""
+    if _TK_TIKTOK.get("access_token"):
+        return _TK_TIKTOK
     key, bi = env("TIKTOK_CLIENT_KEY"), env("TIKTOK_CLIENT_SECRET")
     refresh = doc_refresh_tiktok() if key and bi else ""
     if not key or not bi or not refresh:
@@ -131,6 +137,12 @@ def dang_tiktok(video, meta):
         raise RuntimeError("TikTok không cấp access token: %s" % json.dumps(tk, ensure_ascii=False)[:200])
     if tk.get("refresh_token") and tk["refresh_token"] != refresh:
         luu_refresh_tiktok(tk)
+    _TK_TIKTOK.update(tk)
+    return _TK_TIKTOK
+
+
+def dang_tiktok(video, meta):
+    tk = token_tiktok()
     h = {"Authorization": "Bearer " + tk["access_token"], "Content-Type": "application/json; charset=UTF-8"}
     n = os.path.getsize(video)
     MB = 1024 * 1024
@@ -215,6 +227,123 @@ def dang_youtube(video, meta):
     return {"ok": True, "url": "https://youtube.com/shorts/%s" % d.get("id"), "id": d.get("id"), "che_do": d.get("status", {}).get("privacyStatus")}
 
 
+# ---------------- SỐ TẬP THEO LỚP (đánh lúc đăng, theo số bài đã có trên kênh) ----------------
+# Bài thuộc lớp N nhận ra qua thẻ #toanN (hệ thống luôn gắn khi đăng) hoặc chữ "lớp N" trong tiêu đề/mô tả.
+def thuoc_lop(chu, lop):
+    import re as _re
+    chu = (chu or "").lower()
+    return bool(_re.search(r"#toan%s(?!\d)" % lop, chu) or _re.search(r"lớp\s*%s(?!\d)" % lop, chu))
+
+
+def dem_facebook(lop):
+    page, token = env("FB_PAGE_ID"), env("FB_PAGE_TOKEN")
+    if not page or not token:
+        return None
+    dem, url, tham_so = 0, "%s/%s/videos" % (GRAPH, page), {"fields": "description,title", "limit": 100, "access_token": token}
+    for _ in range(15):
+        d = kiem_tra(requests.get(url, params=tham_so, timeout=60), "FB đếm bài")
+        dem += sum(1 for v in d.get("data", []) if thuoc_lop((v.get("description") or "") + " " + (v.get("title") or ""), lop))
+        nxt = (d.get("paging") or {}).get("next")
+        if not nxt:
+            break
+        url, tham_so = nxt, None
+    return dem
+
+
+def dem_tiktok(lop):
+    tk = token_tiktok()   # BoQua nếu chưa cài TikTok
+    h = {"Authorization": "Bearer " + tk["access_token"], "Content-Type": "application/json; charset=UTF-8"}
+    dem, cursor = 0, None
+    for _ in range(15):
+        than = {"max_count": 20}
+        if cursor:
+            than["cursor"] = cursor
+        d = kiem_tra(requests.post(TT + "/video/list/?fields=id,title,video_description", json=than, headers=h, timeout=60), "TikTok đếm bài")
+        dd = d.get("data") or {}
+        dem += sum(1 for v in dd.get("videos", []) if thuoc_lop((v.get("video_description") or "") + " " + (v.get("title") or ""), lop))
+        if not dd.get("has_more"):
+            break
+        cursor = dd.get("cursor")
+    return dem
+
+
+def dem_youtube(lop):
+    cid, bi, rt = env("YT_CLIENT_ID"), env("YT_CLIENT_SECRET"), env("YT_REFRESH_TOKEN")
+    if not cid or not bi or not rt:
+        return None
+    tk = kiem_tra(requests.post("https://oauth2.googleapis.com/token", data={"client_id": cid, "client_secret": bi, "refresh_token": rt, "grant_type": "refresh_token"}, timeout=60), "YouTube token")
+    h = {"Authorization": "Bearer " + tk["access_token"]}
+    ch = kiem_tra(requests.get("https://www.googleapis.com/youtube/v3/channels", params={"part": "contentDetails", "mine": "true"}, headers=h, timeout=60), "YouTube kênh")
+    up = ch["items"][0]["contentDetails"]["relatedPlaylists"]["uploads"]
+    dem, tok = 0, None
+    for _ in range(20):
+        ts = {"part": "snippet", "playlistId": up, "maxResults": 50}
+        if tok:
+            ts["pageToken"] = tok
+        d = kiem_tra(requests.get("https://www.googleapis.com/youtube/v3/playlistItems", params=ts, headers=h, timeout=60), "YouTube đếm bài")
+        dem += sum(1 for v in d.get("items", []) if thuoc_lop((v["snippet"].get("title") or "") + " " + (v["snippet"].get("description") or ""), lop))
+        tok = d.get("nextPageToken")
+        if not tok:
+            break
+    return dem
+
+
+def gan_so_tap(meta):
+    """Số tập = (số bài lớp đó NHIỀU NHẤT trên các kênh, và số hệ thống đã ghi nhận) + 1. Đã gán ở lần đăng trước thì giữ nguyên."""
+    lop = str(meta.get("lop") or "").strip()
+    if not lop:
+        return 0, {}
+    if int(meta.get("tap_da_gan") or 0) > 0:
+        return int(meta["tap_da_gan"]), {"da_gan": True}
+    dem = {}
+    if meta.get("dem_youtube") is not None and int(meta.get("dem_youtube")) >= 0:
+        dem["youtube"] = int(meta["dem_youtube"])   # Apps Script đếm (dịch vụ YouTube của tài khoản)
+    for ten, ham in (("facebook", dem_facebook), ("tiktok", dem_tiktok), ("youtube_gh", dem_youtube)):
+        if ten == "youtube_gh" and "youtube" in dem:
+            continue
+        try:
+            v = ham(lop)
+            if v is not None:
+                dem[ten.replace("_gh", "")] = v
+        except BoQua:
+            pass
+        except Exception as e:
+            print("Không đếm được bài trên %s: %s" % (ten, str(e)[:160]))
+    he_thong = int(meta.get("tap_he_thong") or 0)
+    dem["he_thong"] = he_thong
+    n = max(dem.values()) + 1
+    print("Đếm bài Toán lớp %s đã có: %s -> video này là TẬP %d" % (lop, json.dumps(dem, ensure_ascii=False), n))
+    return n, dem
+
+
+def in_so_tap(video, n):
+    """In "TẬP N" lên góc phải trên của video (mọi khung hình, kể cả khung bìa đầu). Lỗi thì dùng video gốc."""
+    import shutil
+    if not shutil.which("ffmpeg"):
+        print("Không có ffmpeg: không in được số tập vào video (mô tả vẫn ghi số tập)")
+        return video
+    phong = os.path.abspath("public/fonts/BeVietnamPro-Black.ttf")
+    ra = os.path.join(os.path.dirname(video), "tap_%d_%s" % (n, os.path.basename(video)))
+    loc = ("drawtext=fontfile='%s':text='TẬP %d':fontsize=44:fontcolor=0x1a0d02:box=1:boxcolor=0xFF8A3D@1:boxborderw=16:"
+           "x=w-tw-64:y=58" % (phong, n))
+    r = subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", video, "-vf", loc, "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
+                        "-pix_fmt", "yuv420p", "-c:a", "copy", "-movflags", "+faststart", ra], capture_output=True, text=True)
+    if r.returncode != 0 or not os.path.exists(ra):
+        print("In số tập lỗi, dùng video gốc:", r.stderr[-300:])
+        return video
+    print("Đã in TẬP %d vào video" % n)
+    return ra
+
+
+def tai_len_drive(video):
+    """Đưa bản đã in số tập lên Drive (để Apps Script đăng YouTube bằng đúng bản này). Trả file id."""
+    thu_muc = "gdrive:%s/da_danh_so" % (env("DRIVE_THU_MUC") or "VIDEO_XACSUAT/video")
+    subprocess.run(["rclone", "copy", video, thu_muc], check=True, timeout=900)
+    r = subprocess.run(["rclone", "lsjson", thu_muc, "--files-only", "--include", os.path.basename(video)], capture_output=True, text=True, timeout=120)
+    d = json.loads(r.stdout or "[]")
+    return d[0]["ID"] if d else ""
+
+
 DANG = {"facebook": dang_facebook, "tiktok": dang_tiktok, "youtube": dang_youtube}
 
 
@@ -251,7 +380,27 @@ def main():
             ket_qua[n] = {"ok": False, "loi": "Không tải được video từ Drive: %s" % str(e)[:150]}
         bao_ve_apps_script(id_video, ket_qua)
         return
+    tap, dem = 0, {}
+    try:
+        tap, dem = gan_so_tap(meta)
+    except Exception as e:
+        print("Không gán được số tập:", str(e)[:200])
+    if tap:
+        meta["mo_ta"] = (meta.get("mo_ta") or "").replace("{TAP}", str(tap))
+        video = in_so_tap(video, tap)
+        ket_qua["_tap"], ket_qua["_dem"] = tap, dem
+        if meta.get("yt_apps_script") and "youtube" in nen_tang:
+            try:
+                ket_qua["_file_tap"] = tai_len_drive(video)
+            except Exception as e:
+                print("Không tải bản đã đánh số lên Drive:", str(e)[:200])
+    else:
+        meta["mo_ta"] = (meta.get("mo_ta") or "").replace(" – Tập {TAP}", "").replace("{TAP}", "")
     for n in nen_tang:
+        if n == "youtube" and meta.get("yt_apps_script"):
+            # YouTube do Apps Script đăng (dịch vụ YouTube của tài khoản), bằng bản ĐÃ ĐÁNH SỐ vừa tải lên Drive
+            ket_qua[n] = {"ok": False, "cho_apps_script": True, "loi": "chờ Apps Script đăng bản đã đánh số tập"}
+            continue
         try:
             ket_qua[n] = DANG[n](video, meta)
         except BoQua as e:

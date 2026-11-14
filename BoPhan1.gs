@@ -963,10 +963,10 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       if (r.dap_an_hien) kb.dap_an_hien = String(r.dap_an_hien);
       if (laUuTien_(r)) kb.uu_tien = 1;
       if (spham) kb.san_pham = spham;   // bộ dựng video tự gắn nhãn có sản phẩm do kênh bán
-      if (r._series) { kb.series = { ten: r._series.ten, tap: r._series.tap }; if (typeof ghiTapCuoiSeries_ === 'function') ghiTapCuoiSeries_(r._series, kb.tieu_de); }
+      if (r._series) kb.series = { ten: r._series.ten, tap: 0 };   // số tập đánh lúc đăng (DangVideo.gs)
       if (typeof phanLoaiCauHoi_ === 'function') kb.loai_cau_hoi = phanLoaiCauHoi_(r);   // loại câu hỏi: màu nhãn trên ảnh bìa + danh sách phát
       var tep = thuMucKichBan_().createFile(r.id + '.json', JSON.stringify(kb, null, 2), MimeType.PLAIN_TEXT);
-      ghi_(sh, r._row, { trang_thai: 'CO_KICH_BAN', file_kich_ban: tep.getId(), ghi_chu: '', so_lan_loi: 0, series: kb.series ? kb.series.ten + ' #' + kb.series.tap : '' });
+      ghi_(sh, r._row, { trang_thai: 'CO_KICH_BAN', file_kich_ban: tep.getId(), ghi_chu: '', so_lan_loi: 0, series: kb.series ? kb.series.ten : '' });
       nhatKy_('KICH_BAN', r.id + ' -> đã lưu file ' + tep.getId());
       if (laUuTien_(r)) baoZaloDe_(r, '🎬 Kịch bản xong (' + kb.canh.length + ' cảnh, khoảng ' + kb.tong_giay + ' giây). Đang dựng video, thường mất 10-20 phút...', 'thap');
       capNhatTb_('TB_KICHBAN_MS', Date.now() - t0);

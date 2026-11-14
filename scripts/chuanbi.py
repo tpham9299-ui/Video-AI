@@ -901,7 +901,8 @@ def main():
         "chuDe": str(kb.get("chu_de_ngan") or kb.get("chu_de") or "")[:40],
         "baiHoc": bai_hoc,
         "bia": tao_bia(kb, canh, canh_props),
-        "series": {"ten": str(kb["series"].get("ten") or "")[:40], "tap": int(kb["series"].get("tap") or 0)} if isinstance(kb.get("series"), dict) and kb["series"].get("tap") else None,
+        # số tập KHÔNG in lúc dựng nữa (kể cả kịch bản cũ còn mang số): số tập đánh lúc đăng, theo số bài đã có trên kênh (dang_video.py)
+        "series": None,
         "quangCao": {"ten": str((kb.get("san_pham") or {}).get("ten") or "")[:60]} if isinstance(kb.get("san_pham"), dict) and (kb.get("san_pham") or {}).get("ten") else None,
         "duKien": [str(x).strip()[:30] for x in (kb.get("du_kien") or []) if str(x).strip()][:4],
         "deBai": de_bai_the,

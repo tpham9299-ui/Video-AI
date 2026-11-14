@@ -474,6 +474,7 @@ jobs:
       - name: Cài công cụ
         run: |
           pip install requests
+          command -v ffmpeg >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)   # in số tập vào video lúc đăng
           curl -fsSL https://rclone.org/install.sh | sudo bash
           mkdir -p ~/.config/rclone
           printf '%s' "$RCLONE_CONF" > ~/.config/rclone/rclone.conf
