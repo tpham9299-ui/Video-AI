@@ -38,6 +38,37 @@ var TU_VAT_THUC_ = [
 ];
 // vật 3D cũ cũng chấp nhận được cho một số tên
 var THAY_VAT_THUC_ = { toa_nha: ['toa_nha'], nha: ['toa_nha'], cay: ['cay'], cay_thong: ['cay'], xe_hoi: ['xe'], thang: ['thang'], nguoi: ['nguoi'] };
+// Sửa canh_that tại chỗ (thay vì vứt cả cảnh): vật lạ -> công trình có biển tên; thiếu mã/số đo -> tự điền; phép đo trỏ điểm không có -> bỏ phép đo đó.
+function suaCanhThat_(v, sua, so) {
+  var cao0 = typeof CAO_MAC_DINH_ !== 'undefined' ? CAO_MAC_DINH_ : {};
+  var vat = Array.isArray(v.vat) ? v.vat.filter(laDT_) : [];
+  var x = 0, daMa = {};
+  vat.forEach(function (o, i) {
+    if (TEN_VAT_THUC_.indexOf(String(o.ten)) < 0) { o.bien = o.bien || String(o.ten || o.nhan || '').replace(/_/g, ' ').slice(0, 20); o.ten = 'cong_trinh'; sua.push('canh_that cảnh ' + so + ': vật lạ -> công trình có biển "' + o.bien + '"'); }
+    if (o.ten === 'mat_troi' && o.x === undefined) return;
+    if (!laChuoi_(o.ma) || daMa[o.ma]) o.ma = String.fromCharCode(65 + i);
+    daMa[o.ma] = 1;
+    if (o.ten !== 'thang' || o.dinh_x === undefined) {
+      if (!(Number(o.cao) > 0)) o.cao = cao0[o.ten] || 3;
+      if (!laSo_(Number(o.x))) o.x = x;
+      o.cao = Number(o.cao); o.x = Number(o.x);
+      x = Math.max(x, o.x) + Math.max(3, o.cao * 0.8);
+    }
+  });
+  v.vat = vat;
+  var neo = {};
+  vat.forEach(function (o) { if (o.ma) ['', '.chan', '.dinh', '.mat', '.giua'].forEach(function (h) { neo[o.ma + h] = 1; }); });
+  (Array.isArray(v.diem) ? v.diem : []).forEach(function (d) { if (d && d.ma) neo[d.ma] = 1; });
+  (Array.isArray(v.vung) ? v.vung : []).forEach(function (z) { if (z && z.ma) ['', '.tl', '.tr', '.bl', '.br', '.giua', '.tren', '.duoi', '.trai', '.phai'].forEach(function (h) { neo[z.ma + h] = 1; }); });
+  var truoc = Array.isArray(v.do) ? v.do.length : 0;
+  v.do = (Array.isArray(v.do) ? v.do : []).filter(function (d) {
+    if (!laDT_(d)) return false;
+    var can = [d.tu, d.den, d.vat, d.tai].concat(Array.isArray(d.dinh) ? d.dinh : []).filter(function (a) { return a !== undefined && a !== ''; });
+    return can.every(function (a) { return neo[String(a)]; });
+  });
+  if (v.do.length < truoc) sua.push('canh_that cảnh ' + so + ': bỏ ' + (truoc - v.do.length) + ' phép đo trỏ tới điểm không có');
+}
+
 // CẢNH THỰC TẾ TỰ DỰNG (canh_that): kiểm tra tên vật, mã, số đo và mọi điểm neo của phép đo đều trỏ tới vật/điểm có thật.
 function kiemTraCanhThat_(v, ev) {
   var nhin = v.nhin === 'tren' ? 'tren' : 'ngang';
@@ -859,6 +890,7 @@ function tuSuaSau_(kb, ctx) {
       du.vat = du.vat.filter(function (v, k) {
         if (!laDT_(v) || LOAI_VAT_.indexOf(v.loai) < 0) { if (laDT_(v)) sua.push('bỏ vật không biết vẽ "' + v.loai + '" ở cảnh ' + (i + 1)); return false; }
         if (!laChuoi_(v.id) || ids[v.id]) v.id = (laChuoi_(v.id) ? v.id : 'v') + '_' + (i + 1) + '_' + k;
+        if (v.loai === 'canh_that') suaCanhThat_(v, sua, i + 1);
         if (v.loai !== 'mui_ten') {
           v.x = laSo_(Number(v.x)) ? Math.min(98, Math.max(2, Number(v.x))) : 50;
           v.y = laSo_(Number(v.y)) ? Math.min(98, Math.max(2, Number(v.y))) : 50;
