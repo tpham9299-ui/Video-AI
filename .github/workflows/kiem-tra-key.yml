@@ -1,0 +1,37 @@
+name: Kiểm tra key Gemini
+
+# Chạy tay (Actions > Kiểm tra key Gemini > Run workflow): thử từng key trong GEMINI_KEYS / GEMINI_API_KEY bằng một câu rất ngắn,
+# báo key nào dùng được, key nào hết hạn mức ngày (giữ lại, chờ reset), key nào LỖI THẬT (nên xóa). Không in key ra nhật ký.
+on:
+  workflow_dispatch:
+    inputs:
+      models:
+        description: 'Các model thử, cách nhau dấu phẩy (để trống = model chính + dự phòng)'
+        type: string
+        default: ''
+
+jobs:
+  kiem_tra:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GEMINI_KEYS: ${{ secrets.GEMINI_KEYS }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
+      DUNG_VIDEO_SECRET: ${{ secrets.DUNG_VIDEO_SECRET }}
+      MODELS: ${{ github.event.inputs.models }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Thử từng key
+        run: |
+          [ -n "$MODELS" ] || unset MODELS
+          node scripts/kiem_tra_key.mjs
+      - name: Báo key lỗi thật về Apps Script (Zalo)
+        if: ${{ env.APPS_SCRIPT_URL != '' }}
+        run: |
+          [ -s /tmp/gemini_key_hong.json ] || { echo "Không có key lỗi thật"; exit 0; }
+          python3 -c "import json,os;json.dump({'token':os.environ['DUNG_VIDEO_SECRET'],'loai':'key_hong','key_hong':json.load(open('/tmp/gemini_key_hong.json'))},open('bao.json','w'))"
+          curl -sS -L -H 'Content-Type: application/json' --data @bao.json "$APPS_SCRIPT_URL" || true
