@@ -14,7 +14,8 @@ import {DuLieuSanKhau, hopLeSanKhau, noiTiepSanKhau} from './sankhau/dulieu';
 import {SanKhau, SK_H, SK_W, taoMocBuoc, taoMocBuocLoi} from './sankhau/SanKhau';
 import {ChuBaTang, nhipBaTang, tachBaTang} from './dong/ChuBaTang';
 import {cuaTron, DauBay, DiaCuaTron, LoeSang, mayQuay, QuyDao, SuKienMay, VienCuaTron} from './dong/DiemNhan';
-import {BanKinh3D, chieuNam, CoChuSan, gocMayDung, gocMayNam, HinhDung3D, KhongGian3D, phanLoai3D, The3D, VAT_DUNG} from './dong/KhongGian';
+import {BanKinh3D, chieuDung, chieuNam, CoChuSan, gocMayDung, gocMayNam, HinhDung3D, KhongGian3D, phanLoai3D, The3D, VAT_DUNG} from './dong/KhongGian';
+import {LopHinh} from './sankhau/hinhtudo';
 import {tinhGoc3D} from './sankhau/trangthai';
 import {nhanCanh, TieuDeCanh} from './TieuDeCanh';
 import {phaCua, ThanhBuoc} from './ThanhBuoc';
@@ -153,7 +154,34 @@ export const Canh: React.FC<{
   const mocDoi3D = (kieu3D === 'nam' || kieu3D === 'dung') && sanKhau && tbCanh ? Array.from({length: Math.max(0, sanKhau.soBuoc - 1)}, (_, k) => Math.round(tbCanh(k + 2) * fps) + canh.leadFrame) : [];
   const gm = kieu3D === 'nam' ? gocMayNam(frame, canh.so, !giuTruoc, coHook || khungCuoi, mocDoi3D, canh.gocNhin || []) : null;
   const gd = kieu3D === 'dung' ? gocMayDung(frame, canh.so, !giuTruoc, mocDoi3D) : null;
-  const vatDung = gm && sanKhau ? sanKhau.vat.filter((v) => VAT_DUNG.includes(v.loai)).slice(0, 3) : [];
+  const vatDung = (gm || gd) && sanKhau ? sanKhau.vat.filter((v) => VAT_DUNG.includes(v.loai)).slice(0, 4) : [];
+  // điểm sân khấu -> điểm sân khấu sau khi chiếu 3D: đặt CHÚ THÍCH (nhãn, số, ngoặc) phẳng đúng chỗ trên hình 3D
+  const chieuSan = (sx: number, sy: number): [number, number] => {
+    const p = gm ? chieuNam(sx - SK_W / 2, sy - SK_H / 2, SK_W, SK_H, gm.nghieng, gm.xoay, gm.lat) : gd ? chieuDung(sx - SK_W / 2, sy - SK_H / 2, gd.ry, gd.rx) : {x: sx - SK_W / 2, y: sy - SK_H / 2};
+    return [SK_W / 2 + p.x, SK_H / 2 + p.y];
+  };
+  const idHinh = sanKhau ? sanKhau.vat.filter((v) => v.loai === 'hinh_tu_do').map((v) => v.id) : [];
+  // lớp chú thích phẳng phủ lên hình 3D + các vật cần đọc rõ dựng đứng tại điểm chiếu
+  const lopPhang = sanKhau && (gm || gd) ? (
+    <>
+      {idHinh.length ? (
+        <LopHinh.Provider value={{chiChu: true, chieu: chieuSan, skW: SK_W, skH: SK_H}}>
+          <div style={{position: 'absolute', inset: 0}}>
+            <SanKhau du={sanKhau} giayAm={giayAm} cau={canh.cau} chiVat={idHinh} amThanh={false} />
+          </div>
+        </LopHinh.Provider>
+      ) : null}
+      {vatDung.map((v) => {
+        const sx = (v.x / 100) * SK_W, sy = (v.y / 100) * SK_H;
+        const [px, py] = chieuSan(sx, sy);
+        return (
+          <div key={v.id} style={{position: 'absolute', inset: 0, transform: `translate(${px - sx}px, ${py - sy}px)`}}>
+            <SanKhau du={sanKhau} giayAm={giayAm} cau={canh.cau} chiVat={[v.id]} amThanh={false} />
+          </div>
+        );
+      })}
+    </>
+  ) : null;
 
   // ===== BỘ HIỆU ỨNG MỚI: chữ 3 tầng, đập zoom, con dấu BẪY, lóe sáng đáp án =====
   const baTang = coHook ? tachBaTang(hook.chu, hook.nhanManh) : tachBaTang(tieuDeCanh || (laMoDau ? tieuDe : ''), canh.tuKhoa);
@@ -200,25 +228,21 @@ export const Canh: React.FC<{
           <div style={{width: SK_W, height: SK_H, transform: `scale(${tiLe})`, flexShrink: 0}}>
             {sanKhau && gm ? (
               <KhongGian3D.Provider value={{nam: true, doDay: 1, xoay: gm.xoay}}>
-                <BanKinh3D w={SK_W} h={SK_H} mau={mauNhan} nghieng={gm.nghieng} xoay={gm.xoay} lat={gm.lat} nen={<QuyDao cx={SK_W / 2} cy={SK_H / 2} R={Math.min(SK_W, SK_H) * 0.47} mau={mauNhan} mo={giuTruoc ? 1 : kep((frame - 3) / 14)} />}>
-                  <SanKhau du={sanKhau} giayAm={giayAm} cau={canh.cau} boVat={vatDung.map((v) => v.id)} />
-                </BanKinh3D>
-                {vatDung.map((v) => {
-                  const dx = (v.x / 100) * SK_W - SK_W / 2;
-                  const dy = (v.y / 100) * SK_H - SK_H / 2;
-                  const p = chieuNam(dx, dy, SK_W, SK_H, gm.nghieng, gm.xoay, gm.lat);
-                  return (
-                    <div key={v.id} style={{position: 'absolute', inset: 0, transform: `translate(${p.x - dx}px, ${p.y - dy}px)`}}>
-                      <SanKhau du={sanKhau} giayAm={giayAm} cau={canh.cau} chiVat={[v.id]} amThanh={false} />
-                    </div>
-                  );
-                })}
+                <LopHinh.Provider value={{boChu: true}}>
+                  <BanKinh3D w={SK_W} h={SK_H} mau={mauNhan} nghieng={gm.nghieng} xoay={gm.xoay} lat={gm.lat} nen={<QuyDao cx={SK_W / 2} cy={SK_H / 2} R={Math.min(SK_W, SK_H) * 0.47} mau={mauNhan} mo={giuTruoc ? 1 : kep((frame - 3) / 14)} />}>
+                    <SanKhau du={sanKhau} giayAm={giayAm} cau={canh.cau} boVat={vatDung.map((v) => v.id)} />
+                  </BanKinh3D>
+                </LopHinh.Provider>
+                {lopPhang}
               </KhongGian3D.Provider>
             ) : sanKhau && gd ? (
               <KhongGian3D.Provider value={{nam: true, doDay: 1, xoay: 0, huong: gd.huong}}>
-                <HinhDung3D ry={gd.ry} rx={gd.rx} h={SK_H}>
-                  <SanKhau du={sanKhau} giayAm={giayAm} cau={canh.cau} />
-                </HinhDung3D>
+                <LopHinh.Provider value={{boChu: true}}>
+                  <HinhDung3D ry={gd.ry} rx={gd.rx} h={SK_H}>
+                    <SanKhau du={sanKhau} giayAm={giayAm} cau={canh.cau} boVat={vatDung.map((v) => v.id)} />
+                  </HinhDung3D>
+                </LopHinh.Provider>
+                {lopPhang}
               </KhongGian3D.Provider>
             ) : sanKhau && kieu3D === 'the' ? (
               <The3D f={frame} vaoMoi={!giuTruoc} h={SK_H}>

@@ -15,7 +15,8 @@ const VAT_NAM = ['hinh_tu_do', 'hinh_hoc', 'luoi_o'];
 const VAT_THE = ['danh_sach', 'bieu_do_cot', 'do_thi', 'so_dem', 'nhan', 'chu', 'thanh', 'dong_ho_do', 'mui_ten'];
 const VAT_3D_RIENG = ['khoi_hop', 'tru', 'non', 'cau', 'toa_nha', 'xe', 'cay', 'thang'];
 // vật cần đọc rõ: trên bàn 3D vẫn ĐỨNG THẲNG (dựng riêng, đặt đúng chỗ chiếu của nó trên bàn)
-export const VAT_DUNG = ['so_dem', 'danh_sach', 'bieu_do_cot', 'do_thi'];
+// (nhãn, chữ cũng là CHÚ THÍCH: luôn phẳng, quay về người xem, không nghiêng theo khối 3D)
+export const VAT_DUNG = ['so_dem', 'danh_sach', 'bieu_do_cot', 'do_thi', 'nhan', 'chu'];
 
 export function phanLoai3D(du: DuLieuSanKhau | null): Kieu3D {
   if (!du || !du.vat.length) return 'khong';
@@ -110,6 +111,15 @@ export const HinhDung3D: React.FC<{ry: number; rx: number; h: number; children: 
 );
 
 // vị trí trên màn hình (so với tâm sân khấu) của một điểm nằm trên mặt phẳng hình 3D: dùng để đặt lóe sáng / vật đứng đúng chỗ
+// điểm trên mặt hình dựng đứng (HinhDung3D: rotateY(ry) rotateX(rx) scale(0.95), phối cảnh 1700 ở giữa) -> vị trí trên màn hình (so với tâm)
+export function chieuDung(dx: number, dy: number, ry: number, rx: number) {
+  const a = (rx * Math.PI) / 180, b = (ry * Math.PI) / 180;
+  const x0 = dx * 0.95, y0 = dy * 0.95;
+  const y1 = y0 * Math.cos(a), z1 = y0 * Math.sin(a);
+  const x2 = x0 * Math.cos(b) + z1 * Math.sin(b), z2 = -x0 * Math.sin(b) + z1 * Math.cos(b);
+  const k = 1700 / (1700 - z2);
+  return {x: x2 * k, y: y1 * k};
+}
 export function chieuNam(dx: number, dy: number, w: number, h: number, nghieng: number, xoay: number, lat = 0) {
   const s = 0.93;
   const a = (xoay * Math.PI) / 180;

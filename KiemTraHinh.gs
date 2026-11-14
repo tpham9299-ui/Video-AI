@@ -409,6 +409,7 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham) {
   kiemTraPhepTinh_(kb).forEach(function (x) { nang.push(x); });
   kiemTraHinhDungYen_(kb).forEach(function (x) { nhe.push(x); });
   kiemTraNhanDai_(kb).forEach(function (x) { nhe.push(x); });
+  kiemTraBaCham_(kb).forEach(function (x) { nang.push(x); });
   them(nhe, kiemTraCachDay_(kb));
   them(nhe, kiemTraTrinhBay_(kb));
   them(nhe, kiemTraChuThich_(kb));
@@ -983,6 +984,33 @@ function kiemTraNhanDai_(kb) {
         var dai = x.replace(/\\[a-zA-Z]+|[{}_^$]/g, '').length;
         if (dai > 24) loi.push('NHAN_QUA_DAI_CANH_' + (j + 1) + ': "' + x.slice(0, 40) + '" (' + dai + ' ký tự): nhãn/chữ trên hình tối đa ~22 ký tự (vd "u_1 = 3", "Tầng 1"); ý dài đưa vào lời thoại hoặc noi_dung_man_hinh.');
       });
+    });
+  });
+  return loi;
+}
+
+
+// Dấu ba chấm của hình đề bị VẼ LẠI nguyên xi (chữ "⋮"/"…" hay mấy chấm tròn nhỏ) thay vì dựng phần bị lược bằng nét có quy luật.
+function kiemTraBaCham_(kb) {
+  var loi = [];
+  var laBaCham = function (x) { return /^[\s$]*(⋮|…|⋯|\.\s*\.\s*\.|\\[vcl]?dots|\\ddots)[\s$]*$/.test(String(x || '')); };
+  (kb.canh || []).forEach(function (c, j) {
+    var du = c && c.minh_hoa && c.minh_hoa.du_lieu;
+    if (!du || !Array.isArray(du.vat)) return;
+    du.vat.forEach(function (v) {
+      if (!v) return;
+      var bi = (v.loai === 'nhan' || v.loai === 'chu') && laBaCham(v.noi_dung);
+      if (v.loai === 'hinh_tu_do' && Array.isArray(v.hinh)) {
+        var cham = 0;
+        v.hinh.forEach(function (h) {
+          if (!h) return;
+          if (h.kieu === 'chu' && laBaCham(h.noi_dung)) bi = true;
+          if (h.nhan && laBaCham(h.nhan)) bi = true;
+          if (h.kieu === 'tron' && Number(h.r) > 0 && Number(h.r) <= 1.5) cham++;
+        });
+        if (cham >= 3) bi = true;
+      }
+      if (bi) loi.push('VE_LAI_BA_CHAM_CANH_' + (j + 1) + ' (vật "' + (v.id || v.loai) + '"): dấu ba chấm trong hình đề nghĩa là "còn nhiều phần bị lược", không được vẽ lại thành chấm/chữ. Đọc xem nó thay cho bao nhiêu tầng/hàng/số hạng rồi dựng bằng nét có quy luật: xep_chong với đủ hang (máy tự làm khoảng rút gọn sinh động), lap với so_lan thật, hoặc danh_sach/so_dem chạy số; lời thoại nói rõ phần bị lược.');
     });
   });
   return loi;

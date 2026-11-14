@@ -10,6 +10,7 @@ import {MuiTen, VE_VAT} from './vat';
 import {expoOut, NhoeHuong} from './chuyendong';
 import {Cam3D, chieu, Goc3D} from './chieu3d';
 import {laMoi} from '../theme';
+import {LopHinh} from './hinhtudo';
 
 export const SK_W = 960;
 export const SK_H = 760;
@@ -112,6 +113,7 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
   const lopPhang: {z: number; el: React.ReactNode}[] = [];
   const muiTen: React.ReactNode[] = [];
   const thuTu = (v: Vat) => (v.loai === 'nhan' || v.loai === 'mui_ten' ? 2 : v.loai === 'chu' || v.loai === 'so_dem' ? 1 : 0);
+  const lopHinh = React.useContext(LopHinh);   // lớp chú thích phẳng: chỉ vẽ chữ, không vẽ lại tia sáng / mũi tên
   const duocVe = (v: Vat) => (!chiVat || chiVat.includes(v.id)) && !(boVat && boVat.includes(v.id));
   const dsVat = [...vatXep].filter(duocVe).sort((a, b) => thuTu(a) - thuTu(b));
 
@@ -182,7 +184,7 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
   // Manim "Flash": tia sáng ngắn bắn ra từ tâm vật lúc vật vừa xuất hiện (chỉ vật thật, không áp cho chữ/nhãn)
   const tia: React.ReactNode[] = [];
   for (const v of vatXep) {
-    if (v.buoc <= 0 || ['mui_ten', 'chu', 'nhan', 'bieu_tuong'].includes(v.loai) || !duocVe(v)) continue;
+    if (v.buoc <= 0 || ['mui_ten', 'chu', 'nhan', 'bieu_tuong'].includes(v.loai) || !duocVe(v) || lopHinh.chiChu) continue;
     const ta = tb(v.buoc);
     const p = (t - ta - 0.12) / 0.55;
     if (p <= 0 || p >= 1) continue;
@@ -205,7 +207,7 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
   }
 
   for (const v of vatXep) {
-    if (v.loai !== 'mui_ten' || !duocVe(v)) continue;
+    if (v.loai !== 'mui_ten' || !duocVe(v) || lopHinh.chiChu) continue;
     const ta = tb(v.buoc);
     if (t < ta && v.buoc > 0) continue;
     const a = viTri.get(v.tu);

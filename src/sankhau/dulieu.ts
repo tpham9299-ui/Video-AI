@@ -45,6 +45,7 @@ export type PhanHinh = {
   con: PhanHinh | null; soLan: number; dich: [number, number]; tiLe: number; tamXoay: [number, number]; // nhân bản
   noiDung: string; // chữ
   hang: number[]; // xep_chong: số vật từng tầng từ trên xuống
+  tenTang: string; // xep_chong: gọi tầng là gì (tầng, hàng, lớp)
   mau: string; to: string; doTo: number; net: number; dut: boolean; moNet: number;
   nhan: string; viTriNhan: [number, number] | null; coChu: number;
   buoc: number;
@@ -268,6 +269,7 @@ function netHinh(raw: Record<string, unknown>, khung: [number, number], dem: {di
       if (tren >= 1 && duoi >= tren) { const ds: number[] = []; for (let k = tren; k <= duoi && ds.length < 60; k += b) ds.push(k); return ds; }
       return kieu === 'xep_chong' ? [3, 4, 5, 6] : [];
     })(),
+    tenTang: chu(raw.ten_tang, 10) || 'tầng',
     buoc: Math.round(so(raw.buoc, 0, 0, 8)),
   };
   if (kieu === 'xep_chong' && !h.to) h.to = 'co'; // chồng vật luôn tô kín
