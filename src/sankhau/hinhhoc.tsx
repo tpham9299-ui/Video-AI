@@ -72,6 +72,14 @@ export const HinhHoc: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
               {...veDan(p)} style={{filter: c ? `drop-shadow(0 0 10px ${mau})` : `drop-shadow(0 0 4px ${mau}88)`}} />
           );
         })}
+        {/* cạnh khuất của hình không gian: nét đứt mảnh, vẽ dần cùng các cạnh */}
+        {v.khuat.map(([a, b], i) => {
+          const A = P(a), B = P(b);
+          const p = kep((t - tCanh(Math.min(nCanh, i))) / 0.5);
+          if (p <= 0) return null;
+          return <line key={`kh${i}`} x1={A.x} y1={A.y} x2={A.x + (B.x - A.x) * easeOut(p)} y2={A.y + (B.y - A.y) * easeOut(p)} stroke={mauChinh} strokeOpacity={0.75}
+            strokeWidth={4 * Math.max(0.7, v.co)} strokeDasharray="14 11" strokeLinecap="round" />;
+        })}
         {/* đường tròn: [tâm, điểm trên đường tròn] hoặc qua 3 điểm; vẽ dần sau các cạnh */}
         {v.tron.map((ds, i) => {
           let cx = 0, cy = 0, r = 0;

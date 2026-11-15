@@ -1,0 +1,383 @@
+{
+ "tieu_de": "BD vuông góc (SAC)",
+ "chu_de_ngan": "Hình không gian 11",
+ "hook": "x",
+ "de_cho": [
+  "Đáy ABCD là hình vuông",
+  "SA ⊥ (ABCD)"
+ ],
+ "can_tim": "Chứng minh BD ⊥ (SAC)",
+ "du_kien": [],
+ "dap_an_cuoi": "CM",
+ "dap_an": "CM",
+ "id": "THU-khonggian1",
+ "lop": "11",
+ "mon": "HINH_HOC",
+ "giong": "Charon",
+ "gioi_tinh_giong": "nam",
+ "de_bai": "Cho hình chóp S.ABCD có đáy là hình vuông, SA vuông góc với (ABCD). Chứng minh BD vuông góc với mặt phẳng (SAC).",
+ "canh": [
+  {
+   "so": 1,
+   "loai": "de_bai",
+   "tieu_de_canh": "Đề bài",
+   "tu_khoa": "Đề",
+   "nhan": "",
+   "giu_san_khau": false,
+   "giong_doc": "rõ ràng",
+   "loi_thoai": "Cho hình chóp S.ABCD có đáy là hình vuông, SA vuông góc với đáy. Chứng minh BD vuông góc với mặt phẳng SAC.",
+   "noi_dung_man_hinh": [],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Hình chóp S.ABCD",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "hh",
+       "loai": "hinh_hoc",
+       "x": 50,
+       "y": 48,
+       "co": 1.25,
+       "buoc": 1,
+       "diem": {
+        "S": [
+         21.2,
+         10
+        ],
+        "A": [
+         21.2,
+         90
+        ],
+        "B": [
+         62.1,
+         90
+        ],
+        "C": [
+         78.8,
+         72.6
+        ],
+        "D": [
+         37.9,
+         72.6
+        ],
+        "O": [
+         50,
+         81.3
+        ]
+       },
+       "canh": [
+        [
+         "S",
+         "A",
+         ""
+        ],
+        [
+         "S",
+         "B",
+         ""
+        ],
+        [
+         "S",
+         "C",
+         ""
+        ],
+        [
+         "A",
+         "B",
+         ""
+        ],
+        [
+         "B",
+         "C",
+         ""
+        ]
+       ],
+       "khuat": [
+        [
+         "S",
+         "D"
+        ],
+        [
+         "C",
+         "D"
+        ],
+        [
+         "D",
+         "A"
+        ],
+        [
+         "A",
+         "C"
+        ],
+        [
+         "B",
+         "D"
+        ]
+       ],
+       "vuong": [
+        [
+         "S",
+         "A",
+         "B"
+        ]
+       ]
+      }
+     ],
+     "hanh_dong": []
+    }
+   },
+   "thoi_luong_giay": 7
+  },
+  {
+   "so": 2,
+   "loai": "y_do",
+   "tieu_de_canh": "Ý tưởng",
+   "tu_khoa": "Ý",
+   "nhan": "",
+   "giu_san_khau": false,
+   "giong_doc": "rõ ràng",
+   "loi_thoai": "Muốn đường thẳng vuông góc mặt phẳng, chỉ cần nó vuông góc hai đường cắt nhau trong mặt phẳng đó.",
+   "noi_dung_man_hinh": [
+    "BD \\perp AC,\\; BD \\perp SA"
+   ],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Hình chóp S.ABCD",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "hh",
+       "loai": "hinh_hoc",
+       "x": 50,
+       "y": 48,
+       "co": 1.25,
+       "buoc": 1,
+       "diem": {
+        "S": [
+         21.2,
+         10
+        ],
+        "A": [
+         21.2,
+         90
+        ],
+        "B": [
+         62.1,
+         90
+        ],
+        "C": [
+         78.8,
+         72.6
+        ],
+        "D": [
+         37.9,
+         72.6
+        ],
+        "O": [
+         50,
+         81.3
+        ]
+       },
+       "canh": [
+        [
+         "S",
+         "A",
+         ""
+        ],
+        [
+         "S",
+         "B",
+         ""
+        ],
+        [
+         "S",
+         "C",
+         ""
+        ],
+        [
+         "A",
+         "B",
+         ""
+        ],
+        [
+         "B",
+         "C",
+         ""
+        ]
+       ],
+       "khuat": [
+        [
+         "S",
+         "D"
+        ],
+        [
+         "C",
+         "D"
+        ],
+        [
+         "D",
+         "A"
+        ],
+        [
+         "A",
+         "C"
+        ],
+        [
+         "B",
+         "D"
+        ]
+       ],
+       "to": [
+        [
+         "S",
+         "A",
+         "C"
+        ]
+       ],
+       "vuong": [
+        [
+         "S",
+         "A",
+         "B"
+        ]
+       ]
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "hh",
+       "kieu": "sang"
+      }
+     ]
+    }
+   },
+   "thoi_luong_giay": 7
+  },
+  {
+   "so": 3,
+   "loai": "dap_an",
+   "tieu_de_canh": "Kết luận",
+   "tu_khoa": "Kết",
+   "nhan": "",
+   "giu_san_khau": false,
+   "giong_doc": "rõ ràng",
+   "loi_thoai": "AC và SA cắt nhau tại A, nên BD vuông góc với mặt phẳng SAC. Vậy ta đã chứng minh xong.",
+   "noi_dung_man_hinh": [
+    "\\text{BD} \\perp (SAC)\\;\\blacksquare"
+   ],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Hình chóp S.ABCD",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "hh",
+       "loai": "hinh_hoc",
+       "x": 50,
+       "y": 48,
+       "co": 1.25,
+       "buoc": 1,
+       "diem": {
+        "S": [
+         21.2,
+         10
+        ],
+        "A": [
+         21.2,
+         90
+        ],
+        "B": [
+         62.1,
+         90
+        ],
+        "C": [
+         78.8,
+         72.6
+        ],
+        "D": [
+         37.9,
+         72.6
+        ],
+        "O": [
+         50,
+         81.3
+        ]
+       },
+       "canh": [
+        [
+         "S",
+         "A",
+         ""
+        ],
+        [
+         "S",
+         "B",
+         ""
+        ],
+        [
+         "S",
+         "C",
+         ""
+        ],
+        [
+         "A",
+         "B",
+         ""
+        ],
+        [
+         "B",
+         "C",
+         ""
+        ]
+       ],
+       "khuat": [
+        [
+         "S",
+         "D"
+        ],
+        [
+         "C",
+         "D"
+        ],
+        [
+         "D",
+         "A"
+        ],
+        [
+         "A",
+         "C"
+        ],
+        [
+         "B",
+         "D"
+        ]
+       ],
+       "to": [
+        [
+         "S",
+         "A",
+         "C"
+        ]
+       ],
+       "phu": [
+        [
+         "B",
+         "D"
+        ]
+       ]
+      }
+     ],
+     "hanh_dong": []
+    }
+   },
+   "thoi_luong_giay": 7
+  }
+ ]
+}

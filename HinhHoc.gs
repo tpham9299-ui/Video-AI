@@ -20,47 +20,65 @@
 function laMonHinhHoc_(r) { return String((r && r.mon) || '').toUpperCase() === 'HINH_HOC'; }
 function batHinhHoc_() { return String(cauHinh_('HINH_HOC_KHO') || 'BAT').toUpperCase() !== 'TAT'; }
 var CHUONG_TRINH_HINH_HOC = {
-  '10': 'hình học phẳng THCS nâng cao + lớp 10: tam giác đồng dạng, hệ thức lượng trong tam giác vuông và tam giác thường (định lý sin, cos), đường tròn (góc nội tiếp, tiếp tuyến, tứ giác nội tiếp, phương tích), véc tơ, diện tích',
-  '11': 'hình học phẳng nâng cao: tứ giác nội tiếp, phương tích, trục đẳng phương, đường thẳng Euler/Simson, hệ thức lượng, phép biến hình (tịnh tiến, quay, vị tự), tọa độ trong mặt phẳng',
-  '12': 'hình học phẳng nâng cao + tọa độ phẳng: đường tròn, tứ giác nội tiếp, tiếp tuyến, phép vị tự, cực trị hình học, tọa độ - véc tơ'
+  '10': 'hình học phẳng THCS nâng cao + lớp 10: tam giác đồng dạng, hệ thức lượng (định lý sin, cos), đường tròn (góc nội tiếp, tiếp tuyến, tứ giác nội tiếp, phương tích), véc tơ, diện tích',
+  '11': 'hình học phẳng nâng cao (phương tích, trục đẳng phương, phép biến hình) VÀ hình học KHÔNG GIAN lớp 11: quan hệ song song, quan hệ vuông góc, góc giữa đường thẳng và mặt phẳng, góc giữa hai mặt phẳng, khoảng cách (điểm - mặt, hai đường chéo nhau), thiết diện',
+  '12': 'hình học KHÔNG GIAN: thể tích khối chóp, khối lăng trụ, khối hộp; khoảng cách, góc trong không gian; mặt cầu ngoại tiếp; tọa độ Oxyz; và hình học phẳng nâng cao'
 };
+// mỗi lần sinh đề hình học xen kẽ PHẲNG / KHÔNG GIAN (lớp 10 chủ yếu phẳng)
+function chonKieuHinh_(lop) {
+  var p = PropertiesService.getScriptProperties();
+  var k = Number(p.getProperty('HH_KE') || 0);
+  p.setProperty('HH_KE', String(k + 1));
+  if (String(lop) === '10') return k % 3 === 2 ? 'KHONG_GIAN' : 'PHANG';
+  return k % 2 ? 'KHONG_GIAN' : 'PHANG';
+}
 function chuongTrinhHinh_(lop) { return CHUONG_TRINH_HINH_HOC[String(lop)] || CHUONG_TRINH_HINH_HOC['10']; }
 
-var YEU_CAU_DE_HINH_ = '- CHỈ hình học PHẲNG, dựng được bằng tọa độ (không hình không gian). Đề tự đủ bằng chữ: nêu rõ cách dựng từng điểm (giao của..., trung điểm của..., chân đường vuông góc từ ... xuống ...).\n' +
-  '- "loai" = "tinh": hỏi đúng MỘT đại lượng, đáp số là MỘT con số (độ dài, số đo góc theo độ, diện tích, tỉ số), dữ kiện bằng số cụ thể.\n' +
-  '- "loai" = "chung_minh": đúng MỘT mệnh đề cần chứng minh, kiểm được bằng tọa độ (bằng nhau, vuông góc, song song, thẳng hàng, đồng quy, 4 điểm cùng thuộc một đường tròn, ' +
-  'tiếp tuyến, đẳng thức độ dài/tỉ số). Ghi mệnh đề vào "menh_de" (vd "AM = AN", "MN ⊥ BC", "B, C, E, F cùng thuộc một đường tròn"). Không hỏi nhiều ý a), b), c).\n' +
-  '- Có một Ý TƯỞNG THEN CHỐT đẹp (kẻ thêm đường phụ, góc nội tiếp cùng chắn cung, tam giác đồng dạng, phương tích...) để video có khoảnh khắc "à ra thế".\n' +
+var YEU_CAU_DE_HINH_ = '- Dựng được bằng TỌA ĐỘ (phẳng: Oxy; không gian: Oxyz). Đề tự đủ bằng chữ: nêu rõ cách dựng từng điểm (giao của..., trung điểm của..., chân đường vuông góc từ ... xuống ..., hình chiếu của ... lên mặt phẳng ...), độ dài/góc cụ thể khi cần.\n' +
+  '- "loai" = "tinh": hỏi đúng MỘT đại lượng, đáp số là MỘT con số (độ dài, khoảng cách, số đo góc theo độ, diện tích, thể tích, tỉ số).\n' +
+  '- "loai" = "chung_minh": đúng MỘT mệnh đề cần chứng minh, kiểm được bằng tọa độ (bằng nhau, vuông góc, song song, thẳng hàng, đồng quy, đồng phẳng, 4 điểm cùng thuộc một đường tròn / mặt cầu, ' +
+  'tiếp tuyến, đẳng thức độ dài/tỉ số, đường thẳng vuông góc mặt phẳng, hai mặt phẳng vuông góc). Ghi mệnh đề vào "menh_de". Không hỏi nhiều ý a), b), c).\n' +
+  '- ĐỘ KHÓ: bài mà học sinh khá cũng thấy khó - cần một Ý TƯỞNG THEN CHỐT (kẻ đường phụ, dựng hình chiếu, góc nội tiếp cùng chắn cung, tam giác đồng dạng khéo, phương tích, đổi đỉnh tính thể tích, quy về hình chiếu...) để có khoảnh khắc "à ra thế".\n' +
   '- Hình vẽ không quá rối: tối đa khoảng 10 điểm có tên, tối đa 2 đường tròn.\n';
-var DANG_HINH_ = 'tam_giac_dong_dang, he_thuc_luong, goc_noi_tiep, tu_giac_noi_tiep, tiep_tuyen_duong_tron, phuong_tich, thang_hang_dong_quy, vuong_goc_song_song, dien_tich_ti_so, cuc_tri_hinh_hoc';
+var YEU_CAU_KHONG_GIAN_ = '- Đề HÌNH HỌC KHÔNG GIAN: hình chóp (đáy tam giác / vuông / chữ nhật / thoi), lăng trụ đứng / xiên, hình hộp, tứ diện; cho các độ dài, góc, quan hệ vuông góc đủ để dựng tọa độ Oxyz.\n';
+var YEU_CAU_PHANG_ = '- Đề HÌNH HỌC PHẲNG thuần túy (không phải hình không gian).\n';
+var DANG_HINH_ = 'tam_giac_dong_dang, he_thuc_luong, goc_noi_tiep, tu_giac_noi_tiep, tiep_tuyen_duong_tron, phuong_tich, thang_hang_dong_quy, vuong_goc_song_song, dien_tich_ti_so, cuc_tri_hinh_hoc, ' +
+  'kg_the_tich, kg_khoang_cach, kg_goc, kg_vuong_goc, kg_song_song, kg_thiet_dien, kg_mat_cau';
 
-function promptSangTacHinhHoc_(lop, n, daCo) {
-  return 'Bạn là giáo viên chuyên Toán, ra đề HÌNH HỌC PHẲNG DẠNG KHÓ (đề thi vào lớp 10 chuyên, học sinh giỏi, câu vận dụng cao) cho học sinh lớp ' + lop + ' (Việt Nam).\n' +
+function promptSangTacHinhHoc_(lop, n, daCo, kieuEp) {
+  var kieu = kieuEp || chonKieuHinh_(lop);
+  return 'Bạn là giáo viên chuyên Toán, ra đề ' + (kieu === 'KHONG_GIAN' ? 'HÌNH HỌC KHÔNG GIAN' : 'HÌNH HỌC PHẲNG') + ' DẠNG KHÓ (đề thi vào lớp 10 chuyên, học sinh giỏi, câu vận dụng cao, bài chứng minh làm khó học sinh) cho học sinh lớp ' + lop + ' (Việt Nam).\n' +
     'Phạm vi: ' + chuongTrinhHinh_(lop) + '.\n' +
-    'Hãy SÁNG TÁC ' + n + ' bài hình học phẳng mới (ưu tiên xen kẽ bài tính và bài chứng minh).\n' +
+    'Hãy SÁNG TÁC ' + n + ' bài mới (ưu tiên bài CHỨNG MINH khó, xen kẽ bài tính).\n' + (kieu === 'KHONG_GIAN' ? YEU_CAU_KHONG_GIAN_ : YEU_CAU_PHANG_) +
     'THANG ĐIỂM "diem_tu_duy": 10 = cần một ý tưởng then chốt đẹp (đường phụ, góc nội tiếp, đồng dạng khéo...); 8-9 = nhiều bước suy luận, có bẫy; dưới 8 = áp dụng công thức. CHỈ ra đề từ 8 điểm.\n' +
     'YÊU CẦU:\n' + YEU_CAU_DE_HINH_ + (typeof yeuCauDapAnChinhXac_ === 'function' ? yeuCauDapAnChinhXac_('THUC_TE') : '') +
     '- "dang" là một trong: ' + DANG_HINH_ + '.\n- Không trùng các đề đã có:\n' + (daCo || '(chưa có)') + '\n\n' +
     'Trả về MỘT mảng JSON, mỗi phần tử: {"dang":"","loai":"tinh|chung_minh","chu_de":"","de_bai":"","menh_de":"","dap_an":"(bài tính) con số","diem_tu_duy":1-10,"y_tuong_then_chot":"","yeu_to_tu_duy":"","bay_thuong_gap":""}. Có thể dùng LaTeX trong $...$.';
 }
 function promptTimHinhHoc_(lop, n, daCo) {
-  return 'Hãy dùng Google Search để TÌM TRÊN INTERNET ' + (n + 2) + ' bài HÌNH HỌC PHẲNG DẠNG KHÓ CÓ THẬT (đề thi vào lớp 10 chuyên, đề học sinh giỏi, câu hình cuối đề thi) cho học sinh lớp ' + lop + ' (Việt Nam). ' +
+  var kieu = chonKieuHinh_(lop);
+  return 'Hãy dùng Google Search để TÌM TRÊN INTERNET ' + (n + 2) + ' bài ' + (kieu === 'KHONG_GIAN' ? 'HÌNH HỌC KHÔNG GIAN' : 'HÌNH HỌC PHẲNG') + ' DẠNG KHÓ CÓ THẬT (đề thi vào lớp 10 chuyên, đề học sinh giỏi, câu hình cuối đề thi THPT, bài chứng minh khó) cho học sinh lớp ' + lop + ' (Việt Nam). ' +
+    (kieu === 'KHONG_GIAN' ? YEU_CAU_KHONG_GIAN_ : YEU_CAU_PHANG_) +
     'Nguồn: toanmath.com, thuvienhoclieu.com, vietjack.com, loigiaihay.vn, đề của các sở/trường chuyên.\n' +
     'Đề có nhiều ý a), b), c) thì CHỈ giữ MỘT ý hay nhất (thường là ý cuối) và viết lại thành đề tự đủ (nêu đủ cách dựng các điểm cần cho ý đó).\n' +
     'YÊU CẦU:\n' + YEU_CAU_DE_HINH_ + '- "dang" là một trong: ' + DANG_HINH_ + '.\n- Mỗi đề kèm "nguon_url" là trang bạn thực sự tìm thấy. Không chắc thì bỏ; không có đề phù hợp thì trả [].\n' +
     '- Không trùng các đề đã có:\n' + (daCo || '(chưa có)') + '\n\n' +
     'Chỉ trả về MỘT mảng JSON: {"dang":"","loai":"tinh|chung_minh","chu_de":"","de_bai":"","menh_de":"","dap_an":"","diem_tu_duy":1-10,"yeu_to_tu_duy":"","bay_thuong_gap":"","nguon_url":""}';
 }
-function dangHinhDungDuoc_(dang) { return DANG_HINH_.split(', ').indexOf(String(dang || '').trim().toLowerCase()) >= 0; }
+// mọi dạng hình (phẳng / không gian) đều dựng được bằng tọa độ -> chỉ loại khi thiếu hẳn "dang"
+function dangHinhDungDuoc_(dang) { return String(dang || '').trim().length > 0; }
 function loaiDeHinh_(r) { return /chứng minh|cmr\b|chứng tỏ|hãy chỉ ra rằng/i.test(String(r.de_bai || '')) ? 'chung_minh' : 'tinh'; }
 
 // Mã dựng hình bằng tọa độ: dùng cho cả kiểm chứng và lấy tọa độ vẽ hình.
-var HUONG_DAN_MA_HINH_ = 'Viết MỘT hàm JavaScript thuần tên kiemChung() (không thư viện, không gọi mạng), DỰNG HÌNH BẰNG TỌA ĐỘ trực tiếp từ ĐỀ BÀI (không dựa vào lời giải): ' +
-  'tự viết các hàm nhỏ: giao 2 đường thẳng, giao đường thẳng - đường tròn, giao 2 đường tròn, trung điểm, chân đường vuông góc, tâm/bán kính đường tròn ngoại tiếp, phân giác, quay điểm. ' +
-  'Đề có dữ kiện tự do (tam giác bất kỳ, điểm M bất kỳ trên cung...) thì sinh tham số NGẪU NHIÊN hợp lệ (đúng mọi điều kiện của đề: nhọn, AB < AC, M nằm trên cung nhỏ...; dùng Math.random). ' +
+var HUONG_DAN_MA_HINH_ = 'Viết MỘT hàm JavaScript thuần tên kiemChung() (không thư viện, không gọi mạng), DỰNG HÌNH BẰNG TỌA ĐỘ trực tiếp từ ĐỀ BÀI (không dựa vào lời giải). ' +
+  'Hình PHẲNG: điểm [x,y]; tự viết hàm giao 2 đường thẳng, giao đường thẳng - đường tròn, giao 2 đường tròn, trung điểm, chân đường vuông góc, tâm đường tròn ngoại tiếp, phân giác, quay điểm. ' +
+  'Hình KHÔNG GIAN: điểm [x,y,z] (đặt đáy trên mặt z = 0, chiều cao theo trục z); tự viết hàm tích vô hướng, tích có hướng, phương trình mặt phẳng, hình chiếu điểm lên mặt phẳng / đường thẳng, ' +
+  'khoảng cách điểm - mặt phẳng, khoảng cách hai đường chéo nhau, góc đường thẳng - mặt phẳng, góc hai mặt phẳng, thể tích (|tích hỗn tạp|/6). ' +
+  'Đề có dữ kiện tự do (tam giác bất kỳ, điểm M bất kỳ, hình chóp bất kỳ...) thì sinh tham số NGẪU NHIÊN hợp lệ (đúng mọi điều kiện của đề; dùng Math.random). ' +
   'Mọi vòng lặp phải dừng, tổng không quá 200000 phép tính. ';
-var DANG_TRA_HINH_ = '"hinh": {"diem":{"A":[x,y],...} tọa độ CÁC điểm có tên trong đề của MỘT cấu hình đẹp, dễ nhìn (không quá dẹt, các điểm không sát nhau), ' +
-  '"canh":[["A","B"],...] các đoạn thẳng của hình, "tron":[["O","A"]] đường tròn (tâm, một điểm trên đường tròn) hoặc [["A","B","C"]] (đường tròn qua 3 điểm), "phu":[["A","H"]] các đường kẻ thêm của lời giải}';
+var DANG_TRA_HINH_ = '"hinh": {"diem":{"A":[x,y] hoặc [x,y,z],...} tọa độ CÁC điểm có tên trong đề của MỘT cấu hình đẹp, dễ nhìn (không quá dẹt, các điểm không sát nhau), ' +
+  '"canh":[["A","B"],...] các đoạn thẳng của hình, "khuat":[["A","D"]] (CHỈ hình không gian) các cạnh BỊ KHUẤT khi nhìn từ phía trước-trên-bên phải (vẽ nét đứt như sách giáo khoa), ' +
+  '"tron":[["O","A"]] đường tròn (tâm, một điểm trên đường tròn) hoặc [["A","B","C"]] (đường tròn qua 3 điểm) - chỉ hình phẳng, "phu":[["A","H"]] các đường kẻ thêm của lời giải}';
 
 function giaiHinhHoc_(r) {
   var t0 = Date.now();
@@ -72,7 +90,7 @@ function giaiHinhHoc_(r) {
   var kq3 = goiGeminiSong_([
     { nhiet: 0.2, prompt: 'Bạn là giáo viên chuyên Toán. Chứng minh bài hình học sau bằng phương pháp HÌNH HỌC TỔNG HỢP (góc, tam giác đồng dạng/bằng nhau, đường tròn, đường phụ khéo). ' + dinhDang + de },
     { nhiet: 0.3, prompt: 'Bạn là giáo viên chuyên Toán. Chứng minh bài hình học sau bằng một PHƯƠNG PHÁP KHÁC HẲN hình học tổng hợp: tọa độ, véc tơ, số phức hoặc lượng giác (tính toán đại số chặt chẽ). ' + dinhDang + de },
-    { nhiet: 0.1, prompt: HUONG_DAN_MA_HINH_ + 'Thử mệnh đề cần chứng minh ở ÍT NHẤT 6 cấu hình ngẫu nhiên khác nhau; với mỗi cấu hình tính "phần dư" (ví dụ |AM - AN|, |tích vô hướng| của hai véc tơ cần vuông góc, |định thức| khi cần thẳng hàng) chia cho kích thước hình. ' +
+    { nhiet: 0.1, prompt: HUONG_DAN_MA_HINH_ + 'Thử mệnh đề cần chứng minh ở ÍT NHẤT 6 cấu hình ngẫu nhiên khác nhau; với mỗi cấu hình tính "phần dư" (ví dụ |AM - AN|, |tích vô hướng| của hai véc tơ cần vuông góc, |định thức| khi cần thẳng hàng / đồng phẳng, khoảng cách từ điểm tới mặt phẳng khi cần điểm thuộc mặt phẳng) chia cho kích thước hình. ' +
       'Hàm trả về {"kieu":"chung_minh","so_cau_hinh":số cấu hình đã thử,"du_max":phần dư lớn nhất (số thực),' + DANG_TRA_HINH_ + '}. Trả JSON: {"ma":"function kiemChung(){...}"}\n\n' + de }
   ]);
   var c1 = kq3[0] || {}, c2 = kq3[1] || {}, kc = kq3[2];
@@ -137,8 +155,22 @@ function chayMaHinh_(r, kc) {
 }
 
 // Đổi tọa độ thật -> % khung hình học (0-100, y hướng XUỐNG), giữ tỉ lệ, chừa lề 10%. Tính cả đường tròn vào khung.
+// Hình KHÔNG GIAN: chiếu song song kiểu sách giáo khoa (trục sâu y vẽ chéo 35°, thu nhỏ 0,5): X = x + 0,41y; Y = z + 0,29y.
+function chieuHinhKhongGian_(h) {
+  var co3D = Object.keys(h.diem).some(function (k) { var p = h.diem[k]; return Array.isArray(p) && p.length >= 3 && isFinite(Number(p[2])); });
+  if (!co3D) return h;
+  var d = {};
+  Object.keys(h.diem).forEach(function (k) {
+    var p = h.diem[k];
+    if (!Array.isArray(p)) return;
+    var x = Number(p[0]) || 0, y = Number(p[1]) || 0, z = Number(p[2]) || 0;
+    d[k] = [x + 0.41 * y, z + 0.29 * y];
+  });
+  return { diem: d, canh: h.canh, khuat: h.khuat, phu: h.phu, tron: [], _kg: true };
+}
 function chuanHinhToaDo_(h) {
   if (!h || typeof h !== 'object' || !h.diem || typeof h.diem !== 'object') return null;
+  h = chieuHinhKhongGian_(h);
   var ten = Object.keys(h.diem).filter(function (k) { var p = h.diem[k]; return Array.isArray(p) && isFinite(Number(p[0])) && isFinite(Number(p[1])); }).slice(0, 20);
   if (ten.length < 2) return null;
   var xs = [], ys = [];
@@ -168,7 +200,10 @@ function chuanHinhToaDo_(h) {
     diem[n] = [Math.round(x / 880 * 1000) / 10, Math.round(y / 600 * 1000) / 10];
   });
   var loc = function (ds, n) { return (Array.isArray(ds) ? ds : []).filter(function (c) { return Array.isArray(c) && c.length >= n && c.slice(0, n).every(function (x) { return diem[x]; }); }).slice(0, 16); };
-  return { diem: diem, canh: loc(h.canh, 2).map(function (c) { return [c[0], c[1]]; }), tron: tron, phu: loc(h.phu, 2).map(function (c) { return [c[0], c[1]]; }) };
+  var khuat = loc(h.khuat, 2).map(function (c) { return [c[0], c[1]]; });
+  var laKhuat = function (c) { return khuat.some(function (k) { return (k[0] === c[0] && k[1] === c[1]) || (k[0] === c[1] && k[1] === c[0]); }); };
+  return { diem: diem, canh: loc(h.canh, 2).map(function (c) { return [c[0], c[1]]; }).filter(function (c) { return !laKhuat(c); }), khuat: khuat, tron: tron,
+    phu: loc(h.phu, 2).map(function (c) { return [c[0], c[1]]; }), khong_gian: !!h._kg };
 }
 
 // Kịch bản hình học: mọi hinh_hoc dùng TỌA ĐỘ ĐÚNG từ mã dựng hình (giữ cạnh/góc/nhãn kịch bản viết; thêm cạnh, đường tròn còn thiếu ở cảnh đầu).
@@ -186,6 +221,10 @@ function chenToaDoHinh_(kb, hinh) {
       Object.keys(hinh.diem).forEach(function (n) { if (!v.diem[n]) v.diem[n] = hinh.diem[n].slice(); });
       if (!Array.isArray(v.canh) || !v.canh.length) v.canh = hinh.canh.map(function (x) { return [x[0], x[1], '']; });
       if (!Array.isArray(v.tron) && hinh.tron.length) v.tron = hinh.tron.map(function (x) { return x.slice(); });
+      if (hinh.khuat && hinh.khuat.length) {   // hình không gian: cạnh khuất vẽ nét đứt, không vẽ thành cạnh liền
+        v.khuat = hinh.khuat.map(function (x) { return x.slice(); });
+        v.canh = (v.canh || []).filter(function (c) { return !hinh.khuat.some(function (k) { return (k[0] === c[0] && k[1] === c[1]) || (k[0] === c[1] && k[1] === c[0]); }); });
+      }
       sua.push('cảnh ' + (i + 1) + ': hình học dùng tọa độ dựng hình đúng (' + doi + ' điểm)');
     });
   });
@@ -216,11 +255,37 @@ function huongDanKichBanHinh_(r) {
   var hinh = c1.hinh_toa_do;
   var cm = String(r.dap_an) === 'CM';
   return 'VIDEO HÌNH HỌC ' + (cm ? 'CHỨNG MINH' : 'TÍNH TOÁN') + ' (dạng khó):\n' +
-    '- Hình chính vẽ bằng hinh_hoc (diem, canh, goc, vuong, to, "tron": đường tròn [tâm, điểm] hoặc [A,B,C], "phu": đường kẻ thêm (nét đứt vàng, hiện sau), "bang": vạch cạnh bằng nhau [A,B,số vạch]).' +
+    '- Hình chính vẽ bằng hinh_hoc (diem, canh, goc, vuong, to, "tron": đường tròn [tâm, điểm] hoặc [A,B,C], "phu": đường kẻ thêm (nét đứt vàng, hiện sau), "bang": vạch cạnh bằng nhau [A,B,số vạch], "khuat": cạnh khuất của hình không gian (nét đứt)).' +
+    (hinh && hinh.khong_gian ? ' ĐÂY LÀ HÌNH KHÔNG GIAN: máy đã chiếu sẵn hình như sách giáo khoa, cạnh khuất nét đứt; dùng to (tô mặt) để làm nổi mặt phẳng đang xét, phu cho đường cao / hình chiếu.' : '') +
     (hinh ? ' DÙNG ĐÚNG TÊN ĐIỂM sau (máy sẽ tự thay tọa độ đúng tỉ lệ từ mô hình dựng hình): ' + Object.keys(hinh.diem).join(', ') + (hinh.tron.length ? '; đường tròn: ' + JSON.stringify(hinh.tron) : '') + (hinh.phu.length ? '; đường phụ: ' + JSON.stringify(hinh.phu) : '') + '.' : '') + '\n' +
     '- MỘT hình xuyên suốt (giu_san_khau): cảnh đề bài dựng hình từng bước theo đúng thứ tự đề nêu; cảnh ý tưởng kẻ đường phụ ("phu"); mỗi cảnh giải tô sáng (chon theo chỉ số cạnh) đúng các cạnh/góc đang nói và ghi lý do (định lý) trên màn hình.\n' +
     (cm ? '- Bài CHỨNG MINH: mỗi bước một khẳng định + "vì ..." (định lý/tính chất); cảnh đáp án chốt mệnh đề + "(đpcm)". Cảnh THỬ LẠI: đo bằng số trên một cấu hình cụ thể (vd "AM ≈ 3{,}42,\\; AN ≈ 3{,}42 \\checkmark") để người xem thấy mệnh đề đúng.\n'
       : '- Bài TÍNH: cảnh thử lại kiểm bằng cách thứ hai (tọa độ/hệ thức khác) với số cụ thể.\n') +
     (c1.y_tuong ? '- Ý tưởng then chốt đã kiểm chứng: ' + String(c1.y_tuong).slice(0, 300) + '\n' : '') +
     (Array.isArray(c1.cac_buoc) && c1.cac_buoc.length ? '- Lời giải đã kiểm chứng (bám sát, không thêm bước sai): ' + JSON.stringify(c1.cac_buoc).slice(0, 2500) + '\n' : '');
+}
+
+// Lệnh Zalo /hinhhoc [phang|khonggian] [10|11|12] [chungminh|tinh]: sáng tác NGAY một đề hình học khó (ưu tiên làm video trước).
+function taoDeHinhNgay_(chat, chu) {
+  var l = String(chu || '').toLowerCase();
+  var kieu = /kh[oô]ng\s*gian|kg\b|khonggian/.test(l) ? 'KHONG_GIAN' : /ph[aă]ng/.test(l) ? 'PHANG' : null;
+  var lop = (/\b(10|11|12)\b/.exec(l) || [])[1] || (kieu === 'KHONG_GIAN' ? '11' : '10');
+  if (!kieu) kieu = chonKieuHinh_(lop);
+  var ycThem = /ch[uứ]ng\s*minh|chungminh/.test(l) ? '\nBẮT BUỘC: "loai" = "chung_minh".' : /\btinh\b|tính/.test(l) ? '\nBẮT BUỘC: "loai" = "tinh".' : '';
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
+  var hang = docHang_(sh);
+  var daCo = hang.slice(-30).map(function (r) { return '- ' + String(r.de_bai).slice(0, 90); }).join('\n');
+  var kq = goiGemini_(promptSangTacHinhHoc_(lop, 1, daCo, kieu) + ycThem, 0.9, { suyNghi: 'medium' });
+  if (kq && !Array.isArray(kq) && Array.isArray(kq.de)) kq = kq.de;
+  var d = Array.isArray(kq) ? kq.filter(function (x) { return x && x.de_bai && String(x.de_bai).length > 30; })[0] : null;
+  if (!d) return '⚠️ Chưa sáng tác được đề hình học (Gemini không trả đề hợp lệ), thử lại sau ít phút nhé.';
+  var id = 'HH' + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd-HHmmss') + '-0';
+  themHang_(sh, {
+    id: id, trang_thai: 'MOI', lop: lop, chu_de: String(d.chu_de || 'Hình học khó').slice(0, 60), de_bai: d.de_bai, nguon: 'AI_SANG_TAC|HINH_' + kieu, mon: 'HINH_HOC',
+    diem_tu_duy: d.diem_tu_duy || '', yeu_to_tu_duy: d.yeu_to_tu_duy || d.y_tuong_then_chot || '', bay_thuong_gap: d.bay_thuong_gap || '',
+    uu_tien: 1, zalo_chat: chat, so_lan_loi: 0, cap_nhat: new Date(), ma_bam: bam_(d.de_bai), kiem_chung: d.dap_an && d.loai !== 'chung_minh' ? 'DU_KIEN: ' + String(d.dap_an).slice(0, 40) : ''
+  });
+  if (typeof henUuTien_ === 'function') henUuTien_(20);
+  return '📐 Đã sáng tác đề ' + (kieu === 'KHONG_GIAN' ? 'HÌNH KHÔNG GIAN' : 'HÌNH PHẲNG') + ' lớp ' + lop + ' (' + id + ', ' + (d.loai === 'chung_minh' ? 'chứng minh' : 'tính') + '):\n' +
+    (typeof latexDoc_ === 'function' ? latexDoc_(String(d.de_bai)) : String(d.de_bai)).slice(0, 400) + '\nĐang giải 2 cách + kiểm chứng bằng tọa độ, rồi viết kịch bản và dựng video (ưu tiên).';
 }

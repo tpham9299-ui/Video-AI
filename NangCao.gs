@@ -551,6 +551,7 @@ function baoCaoHangNgay() {
   if (hs.ty_le !== null) tyLe += '🛡 3 ngày qua ' + hs.ty_le + '% video qua kiểm duyệt 10/10' + (hs.he_so > 1.05 ? ' -> hệ thống tự tăng lượng đề x' + hs.he_so.toFixed(1) + ' để đủ video' : '') + '\n';
   var ldBo = typeof thongKeLyDoBo_ === 'function' ? thongKeLyDoBo_() : '';
   if (ldBo) tyLe += '📉 ' + ldBo + '\n';
+  if (typeof batHinhHoc_ !== 'function') tyLe += '⚠️ Chưa có tệp HinhHoc.gs trong Apps Script nên hệ thống KHÔNG sinh đề hình học khó (phẳng / không gian). Thêm tệp mới HinhHoc.gs rồi Triển khai phiên bản mới.\n';
   tin += '\n' + tyLe + (moiDD ? moiDD + '\n' : '');
   guiZalo_(tin, 'cao', 'BAO_CAO_' + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd'));
 }
@@ -782,7 +783,7 @@ function docQuyTacHoc_() {
 function ghiGopYDeHoc_(ma, loai, gopY, chat) {
   try {
     if (!String(gopY || '').trim() || String(gopY).trim().length < 4) return;
-    shHGY_().appendRow([new Date(), ma || '', loai, String(gopY).slice(0, 1500), 'CHO', '', '']);
+    shHGY_().appendRow([new Date(), ma || '', loai, String(gopY).slice(0, 3000), 'CHO', '', '']);
     if (chat) PropertiesService.getScriptProperties().setProperty('HOC_GOP_Y_CHAT', String(chat));
     ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'xuLyHocGopY') ScriptApp.deleteTrigger(t); });
     ScriptApp.newTrigger('xuLyHocGopY').timeBased().after(30 * 1000).create();

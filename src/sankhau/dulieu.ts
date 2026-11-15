@@ -99,6 +99,7 @@ export type Vat = {
   tron: string[][]; // hinh_hoc: đường tròn [tâm, điểm trên đường tròn] hoặc [A, B, C] (đường tròn qua 3 điểm)
   phu: string[][]; // hinh_hoc: đường phụ kẻ thêm (nét đứt, hiện SAU hình chính) [A, B]
   bang: [string, string, number][]; // hinh_hoc: vạch đánh dấu cạnh bằng nhau [A, B, số vạch 1-3]
+  khuat: string[][]; // hinh_hoc (hình không gian): cạnh bị khuất, vẽ nét đứt như sách giáo khoa [A, B]
   ham: string; // do_thi: biểu thức theo x, ví dụ "3/sin(x)+3/cos(x)"
   xTu: number; xDen: number; yTu: number; yDen: number; // do_thi: khoảng vẽ (yTu = yDen = 0 thì tự tính)
   danhDau: number[]; // do_thi: các giá trị x cần đánh dấu (cực tiểu, nghiệm...)
@@ -190,6 +191,7 @@ function vat(raw: Record<string, unknown>, i: number): Vat | null {
     tron: [],
     phu: [],
     bang: [],
+    khuat: [],
     ham: chu(raw.ham, 80),
     xTu: so(raw.x_tu, 0, -1e4, 1e4),
     xDen: so(raw.x_den, 10, -1e4, 1e4),
@@ -225,6 +227,7 @@ function vat(raw: Record<string, unknown>, i: number): Vat | null {
     if (laMang(raw.vuong)) raw.vuong.slice(0, 6).forEach((c) => { if (laMang(c) && coDiem(c[0]) && coDiem(c[1]) && coDiem(c[2])) v.vuong.push([c[0] as string, c[1] as string, c[2] as string]); });
     if (laMang(raw.to)) raw.to.slice(0, 4).forEach((c) => { if (laMang(c) && c.length >= 3 && c.every(coDiem)) v.to.push(c as string[]); });
     if (laMang(raw.tron)) raw.tron.slice(0, 4).forEach((c) => { if (laMang(c) && (c.length === 2 || c.length === 3) && c.every(coDiem)) v.tron.push(c as string[]); });
+    if (laMang(raw.khuat)) raw.khuat.slice(0, 12).forEach((c) => { if (laMang(c) && coDiem(c[0]) && coDiem(c[1])) v.khuat.push([c[0] as string, c[1] as string]); });
     if (laMang(raw.phu)) raw.phu.slice(0, 8).forEach((c) => { if (laMang(c) && coDiem(c[0]) && coDiem(c[1])) v.phu.push([c[0] as string, c[1] as string]); });
     if (laMang(raw.bang)) raw.bang.slice(0, 8).forEach((c) => { if (laMang(c) && coDiem(c[0]) && coDiem(c[1])) v.bang.push([c[0] as string, c[1] as string, Math.round(so(c[2], 1, 1, 3))]); });
     if (!Object.keys(v.diem).length) return null;

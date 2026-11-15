@@ -983,7 +983,7 @@ function kiemTraVatThucTe_(v, ev) {
       if (!Array.isArray(xy) || xy.length < 2 || !laSo_(Number(xy[0])) || !laSo_(Number(xy[1])) || xy[0] < -10 || xy[0] > 110 || xy[1] < -10 || xy[1] > 110) return 'HINH_' + ev + ': điểm "' + ten[i] + '" của hinh_hoc cần [x, y] là số 0-100.';
     }
     var co = function (k) { return typeof k === 'string' && !!v.diem[k]; };
-    var ds = [['canh', 2], ['goc', 3], ['vuong', 3], ['to', 3], ['tron', 2], ['phu', 2], ['bang', 2]];
+    var ds = [['canh', 2], ['goc', 3], ['vuong', 3], ['to', 3], ['tron', 2], ['phu', 2], ['bang', 2], ['khuat', 2]];
     for (var d = 0; d < ds.length; d++) {
       var mang = v[ds[d][0]];
       if (mang === undefined) continue;

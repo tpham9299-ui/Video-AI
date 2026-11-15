@@ -93,6 +93,7 @@ function traLoiLenh_(chat, chu, anh) {
   if (/^\/gopy\b/.test(l) && typeof nhanGopYChung_ === 'function') return nhanGopYChung_(chat, chu);
   if (/^\/(tt|trangthai)\b/.test(l) && typeof tinhTrangUuTien_ === 'function') return tinhTrangUuTien_();
   if (/^\/(token|hantoken)\b/.test(l) && typeof thongTinTokenGitHub_ === 'function') return thongTinTokenGitHub_();
+  if (/^\/hinhhoc\b/.test(l)) return typeof taoDeHinhNgay_ === 'function' ? taoDeHinhNgay_(chat, chu) : '⚠️ Chưa có tệp HinhHoc.gs trong Apps Script: thêm tệp mới HinhHoc.gs (bản bàn giao) rồi Triển khai phiên bản mới.';
   if (/^\/phongcach\b/.test(l) && typeof bangPhongCach_ === 'function') return bangPhongCach_() + (thongKeLyDoBo_() ? '\n📉 ' + thongKeLyDoBo_() : '');
   return null;
 }
@@ -202,28 +203,59 @@ function duyetVideo_(chu) {
   } finally { khoa.releaseLock(); }
 }
 
+// /bo = BỎ HẲN: không đăng, xóa dòng khỏi sheet (lưu mã băm để không sinh lại đề đó), xóa tệp trên Drive
+// (video, bản đã in số tập, ảnh bìa, ảnh kiểm tra, kịch bản). Bỏ được cả video đã duyệt nhưng CHƯA đăng.
 function boVideo_(chu) {
   var khoa = LockService.getScriptLock();
   if (!khoa.tryLock(20000)) return '⏳ Hệ thống đang bận, thử lại sau 1 phút nhé.';
   try {
     var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
-    var cho = videoChoDuyet_(docHang_(sh));
+    var cho = docHang_(sh).filter(function (r) { return r.trang_thai === 'CO_VIDEO' && r.file_video; })
+      .sort(function (a, b) { return new Date(b.cap_nhat).getTime() - new Date(a.cap_nhat).getTime(); });
     var t = tachLenh_(chu, cho.map(function (r) { return r.id; }));
     if (!t.ma && cho.length > 1) return 'Đang có ' + cho.length + ' video chờ duyệt, hãy ghi rõ mã, ví dụ /bo ' + cho[0].id + '\n\n' + danhSachChoDuyet_();
     var r = t.ma ? cho.filter(function (x) { return x.id === t.ma; })[0] : cho[0];
-    if (!r) return 'Không có video nào đang chờ duyệt để bỏ.';
-    ghi_(sh, r._row, { trang_thai: 'LOAI', duyet: 'BO', ghi_chu: 'Người duyệt bỏ qua Zalo' + (t.con ? ': ' + t.con : '') });
+    if (!r) return 'Không có video nào (chưa đăng) để bỏ.';
     nhatKy_('BO_VIDEO', r.id + (t.con ? ': ' + t.con.slice(0, 150) : ''));
     if (typeof ghiKetQuaPhongCach_ === 'function') ghiKetQuaPhongCach_(r.id, false);   // phong cách này bị bỏ
+    // học TRƯỚC khi xóa (bộ học đọc kịch bản của video này để hiểu ý bạn)
     if (t.con) {
-      if (typeof ghiGopYDeHoc_ === 'function') ghiGopYDeHoc_(r.id, 'bo', t.con, '');
+      var ngB = luuNgonKichBan_(r);   // video sắp bị xóa: gửi kèm bối cảnh để bộ học vẫn đọc được
+      if (typeof ghiGopYDeHoc_ === 'function') ghiGopYDeHoc_(r.id, 'bo', t.con + ' || BỐI CẢNH VIDEO ĐÃ BỎ - đề: ' + ngB.de + (ngB.kb ? ' | kịch bản: ' + ngB.kb.slice(0, 1200) : ''), '');
       ghiLyDoBo_(maLyDo_(t.con).ma, t.con);
-      return '🗑 Đã bỏ video ' + r.id + ', sẽ không đăng.';
     }
-    // bỏ mà KHÔNG ghi lý do: nhớ lại để hỏi một câu chọn nhanh (trả lời bằng số) -> hệ thống học được vì sao bị bỏ
-    themChoLyDo_(r.id);
-    return '🗑 Đã bỏ video ' + r.id + ', sẽ không đăng.' + (_dang_chay_nhieu_ ? '' : '\n' + cauHoiLyDo_());
+    else themChoLyDo_(r.id, luuNgonKichBan_(r));   // bỏ mà KHÔNG ghi lý do: hỏi một câu chọn nhanh
+    var xoa = xoaHanVideo_(sh, r, t.con);
+    var tin = '🗑 Đã bỏ video ' + r.id + ': không đăng, đã xóa khỏi sheet' + (xoa.tep ? ' và ' + xoa.tep + ' tệp trên Drive (thùng rác Drive giữ 30 ngày nếu cần lấy lại)' : '') + '.';
+    return tin + (t.con || _dang_chay_nhieu_ ? '' : '\n' + cauHoiLyDo_());
   } finally { khoa.releaseLock(); }
+}
+
+// Xóa hẳn một video: tệp trên Drive (video gốc, bản đã in số tập, ảnh bìa đăng, ảnh bìa, ảnh kiểm tra, kịch bản) + khối kịch bản ở
+// DOC_KICH_BAN + dòng HANG_DOI; mã băm đề được lưu ở LUU_TRU để hệ thống không sinh/tìm lại đúng đề đó.
+function xoaHanVideo_(sh, r, lyDo) {
+  var ids = [r.file_video, r.anh_bia, r.anh_kt, r.file_kich_ban];
+  try { var kq = JSON.parse(String(r.link_dang || '{}')) || {}; ids.push(kq._file_tap, kq._file_bia); } catch (e) {}
+  var tep = 0;
+  ids.filter(function (x, i, a) { return x && a.indexOf(x) === i; }).forEach(function (id) {
+    try { DriveApp.getFileById(String(id)).setTrashed(true); tep++; } catch (e) {}
+  });
+  try { if (typeof xoaKichBanKhoiSheet_ === 'function') xoaKichBanKhoiSheet_(r.id); } catch (e) {}
+  try { if (typeof xoaNhapKichBan_ === 'function') xoaNhapKichBan_(r.id); } catch (e) {}
+  try {
+    var lt = luuTruSheet_();
+    lt.appendRow([r.ma_bam || bam_(r.de_bai), r.id, r.lop, String(r.de_bai || '').slice(0, 120), r.dap_an || '', 'BO_QUA_ZALO' + (lyDo ? ': ' + String(lyDo).slice(0, 80) : ''), new Date()]);
+  } catch (e) {}
+  // tìm lại dòng theo mã (số dòng có thể đã đổi nếu vừa xóa dòng khác trong cùng lượt)
+  var dong = docHang_(sh).filter(function (x) { return x.id === r.id; })[0];
+  if (dong) sh.deleteRow(dong._row);
+  try { if (typeof dongBoBangDoc === 'function') dongBoBangDoc(); } catch (e) {}
+  return { tep: tep };
+}
+// tóm tắt kịch bản trước khi xóa, để câu trả lời "Vì sao bạn bỏ?" sau đó vẫn học được đúng video
+function luuNgonKichBan_(r) {
+  try { var kb = JSON.parse(DriveApp.getFileById(String(r.file_kich_ban)).getBlob().getDataAsString()); return { de: String(r.de_bai || '').slice(0, 400), kb: typeof moTaKichBanChoDuyet_ === 'function' ? moTaKichBanChoDuyet_(kb).slice(0, 3000) : '' }; }
+  catch (e) { return { de: String(r.de_bai || '').slice(0, 400), kb: '' }; }
 }
 
 /* ---------- HỎI LÝ DO BỎ VIDEO (để hệ thống học, không bắt buộc) ---------- */
@@ -241,11 +273,14 @@ function cauHoiLyDo_() {
   return '❓ Vì sao bạn bỏ? Trả lời nhanh bằng số (có thể nhiều số, thêm chữ nếu muốn): ' +
     LY_DO_BO_.map(function (x) { return x[0] + ' ' + x[1]; }).join(' | ') + '. Ví dụ: "1 3" hoặc "2 chữ đáp án bị che". Bỏ qua cũng được.';
 }
-function themChoLyDo_(id) {
+function themChoLyDo_(id, ngon) {
   var p = PropertiesService.getScriptProperties(), o = {};
   try { o = JSON.parse(p.getProperty('CHO_LY_DO_BO') || '{}'); } catch (e) { o = {}; }
   if (!o.luc || Date.now() - o.luc > 3 * 3600000) o = { ids: [] };
-  if ((o.ids || []).indexOf(id) < 0) o.ids = (o.ids || []).concat([id]).slice(-40);
+  if ((o.ids || []).indexOf(id) < 0) o.ids = (o.ids || []).concat([id]).slice(-10);
+  o.ngon = o.ngon || {};
+  if (ngon) o.ngon[id] = ngon;
+  Object.keys(o.ngon).forEach(function (k) { if (o.ids.indexOf(k) < 0) delete o.ngon[k]; });
   o.luc = Date.now();
   p.setProperty('CHO_LY_DO_BO', JSON.stringify(o));
 }
@@ -291,7 +326,12 @@ function traLoiLyDoBo_(chat, chu) {
   var noiDung = moTa.join('; ') + (ld.chu ? (moTa.length ? '. Ghi chú: ' : '') + ld.chu : '');
   if (!noiDung) return null;
   ghiLyDoBo_(ld.ma, noiDung);
-  o.ids.forEach(function (id) { if (typeof ghiGopYDeHoc_ === 'function') ghiGopYDeHoc_(id, 'bo', noiDung, chat); });
+  // video đã bị xóa: kèm đề + tóm tắt kịch bản đã lưu lúc bỏ để bộ học vẫn hiểu đúng bối cảnh
+  o.ids.forEach(function (id) {
+    var ng = (o.ngon || {})[id];
+    var kemTheo = ng ? ' || BỐI CẢNH VIDEO ĐÃ BỎ - đề: ' + ng.de + (ng.kb ? ' | kịch bản: ' + ng.kb.slice(0, 1200) : '') : '';
+    if (typeof ghiGopYDeHoc_ === 'function') ghiGopYDeHoc_(id, 'bo', noiDung + kemTheo, chat);
+  });
   p.deleteProperty('CHO_LY_DO_BO');
   return '🙏 Đã ghi lý do cho ' + o.ids.length + ' video vừa bỏ: ' + noiDung.slice(0, 200) + '\n🧠 Hệ thống sẽ học để các video sau tránh lỗi này.';
 }
