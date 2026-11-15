@@ -292,7 +292,7 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
   }) : [];
   const z = cam.z;
   return (
-    <div ref={gocRef} style={{position: 'relative', width: SK_W, height: SK_H, overflow: z > 1.01 && !co3d ? 'hidden' : 'visible'}}>
+    <div ref={gocRef} data-kd-sankhau="1" style={{position: 'relative', width: SK_W, height: SK_H, overflow: z > 1.01 && !co3d ? 'hidden' : 'visible'}}>
       <div style={{position: 'absolute', left: 0, top: 0, width: SK_W, height: SK_H, transformOrigin: '0 0', transform: `translate(${SK_W / 2}px, ${SK_H / 2}px) scale(${z}) translate(${-cam.cx}px, ${-cam.cy}px)`}}>
         <Goc3D.Provider value={{n: g3.nghieng, r: g3.xoay}}>
           {co3d ? <San3D cam={cam3} mo={sinN} /> : null}

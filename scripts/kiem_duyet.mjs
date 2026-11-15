@@ -107,12 +107,13 @@ const moTa = (l) => {
     case 'CAT_CHU': return `${ten(l.canh)}: chữ ${c} bị khung CẮT MẤT một phần -> rút ngắn chữ`;
     case 'CHU_NHO': return `${ten(l.canh)}: chữ ${c} quá nhỏ (${l.co}px) -> bớt vật trong cảnh để hình to hơn, hoặc rút ngắn chữ`;
     case 'VAT_DE': return `${ten(l.canh)}: hai vật ĐÈ LÊN NHAU (${l.chu} và ${l.chu2}) -> đặt hai vật xa nhau (x, y), bớt số lượng hoặc tách sang cảnh khác`;
+    case 'HINH_NHO': return `${ten(l.canh)}: hình minh họa QUÁ NHỎ (chỉ chiếm ${l.co}% vùng sân khấu) -> bớt vật phụ, tăng "co" của hình chính, dùng một hình lớn rõ ràng`;
     default: return `${ten(l.canh)}: ${l.kieu} ${c}`;
   }
 };
 const ds = [...gop.values()];
 // vật đè vật chỉ tính nặng khi lặp lại ở >= 2 khung mẫu (1 khung có thể là lúc vật đang bay vào)
-const laNang = (l) => NANG.has(l.kieu) || (l.kieu === 'VAT_DE' && l.so >= 2);
+const laNang = (l) => NANG.has(l.kieu) || ((l.kieu === 'VAT_DE' || l.kieu === 'HINH_NHO') && l.so >= 2);   // hình nhỏ ở >= 2 khung mẫu cũng là lỗi nặng
 const nang = ds.filter(laNang).map(moTa).concat(aiLoi, loiDapAn);
 const nhe = ds.filter((l) => !laNang(l)).map(moTa);
 if (!aiKq.chay) nhe.push('AI_NHIN_HINH_KHONG_CHAY: ' + (aiKq.ly_do || 'không gọi được Gemini') + ' - hình chưa được AI đối chiếu với đề');

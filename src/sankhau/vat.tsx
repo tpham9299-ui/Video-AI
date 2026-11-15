@@ -774,11 +774,12 @@ const Banh: Ve = (v, st) => {
 export const laToanNhan = (s: string) => /[_^\\]|\d\s*[=+×·*/]\s*\d|^\s*[A-Za-z](_\{?\w+\}?)?\s*=/.test(s);
 // chữ thường trong nhãn toán (KaTeX bỏ dấu cách): bọc từng từ có chữ cái tiếng Việt / từ dài vào \text{}
 const texNhan = (s: string) => s.split(/\s+/).filter(Boolean).map((w) => (/[À-ỹà-ỹ]/.test(w) || /^[A-Za-z]{3,}[,.:]?$/.test(w) ? `\\text{${w}}` : w)).join('\\ ');
-export const NhanNeon: React.FC<{chu: string; tuKhoa: string; mau: string; mauNhan: string; co?: number; xoay?: number}> = ({chu, tuKhoa, mau, mauNhan, co = 44, xoay = -3}) => {
+export const NhanNeon: React.FC<{chu: string; tuKhoa: string; mau: string; mauNhan: string; co?: number; xoay?: number}> = ({chu, tuKhoa, mau, mauNhan, co = 44, xoay = 0}) => {
   const toan = laToanNhan(chu);
   const dai = chu.replace(/\\[a-zA-Z]+|[{}_^]/g, '').length > 18;
   return (
-    <div style={{transform: `rotate(${xoay}deg)`, border: `4px solid ${mau}`, borderRadius: 14, background: 'rgba(6,18,16,0.92)', boxShadow: `0 0 16px ${mau}, inset 0 0 12px ${mau}44`, padding: `${co * 0.18}px ${co * 0.45}px`,
+    <div style={{transform: xoay ? `rotate(${xoay}deg)` : undefined, border: `2.5px solid ${mau}cc`, borderRadius: 16, background: 'rgba(8,16,22,0.86)', backdropFilter: 'blur(6px)',
+      boxShadow: `0 6px 18px rgba(0,0,0,0.45), 0 0 10px ${mau}55`, padding: `${co * 0.2}px ${co * 0.5}px`,
       fontFamily: FONT_DAM, fontWeight: 900, fontSize: co, color: '#fff', textTransform: toan ? 'none' : 'uppercase', whiteSpace: dai ? 'normal' : 'nowrap', maxWidth: dai ? 760 : undefined, textAlign: 'center', lineHeight: 1.15, letterSpacing: 0.5}}>
       {toan ? <Toan tex={texNhan(chu)} size={co * 1.05} color="#ffffff" maxWidth={720} /> : <ChuNhanMau chu={chu} tuKhoa={tuKhoa} mau={mauNhan} />}
     </div>
@@ -789,7 +790,7 @@ const NhanSan: React.FC<{v: Parameters<Ve>[0]; chu: string}> = ({v, chu}) => {
   const k = React.useContext(CoChuSan);
   const dai = chu.replace(/\\[a-zA-Z]+|[{}_^]/g, '').length;
   const co = Math.max(34, 46 * kepCo(v.co) * (dai > 18 ? 0.86 : 1)) * k;
-  return <NhanNeon chu={chu} tuKhoa={v.tuKhoa} mau={neon(v.mau, neon('xanh_la'))} mauNhan={neon('cam')} co={co} xoay={v.xoay || -3} />;
+  return <NhanNeon chu={chu} tuKhoa={v.tuKhoa} mau={neon(v.mau, neon('xanh_la'))} mauNhan={neon('cam')} co={co} xoay={v.xoay || 0} />;
 };
 const NhanVat: Ve = (v, st) => <NhanSan v={v} chu={st.noiDung} />;
 
@@ -812,10 +813,11 @@ const CotSo: React.FC<{g: number; k: number; h: number}> = ({g, k, h}) => {
   if (k === 0) vt = (g % 10);
   else if (du > p10 - 1) vt = (nguyen % 10) + (du - (p10 - 1));
   return (
-    <span style={{display: 'inline-block', height: h, overflow: 'hidden', verticalAlign: 'top'}}>
+    // cột hẹp theo chữ số đang hiện khi đã dừng (chữ số "1" hẹp không để lại khoảng trống như "1 2.000")
+    <span style={{display: 'inline-block', height: h, overflow: 'hidden', verticalAlign: 'top', width: Math.abs(vt - Math.round(vt)) < 0.02 && Math.round(vt) % 10 === 1 ? '0.62em' : undefined}}>
       <span style={{display: 'flex', flexDirection: 'column', transform: `translateY(${-vt * h}px)`}}>
         {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((d, i) => (
-          <span key={i} style={{height: h, lineHeight: `${h}px`}}>{d}</span>
+          <span key={i} style={{height: h, lineHeight: `${h}px`, textAlign: 'center'}}>{d}</span>
         ))}
       </span>
     </span>

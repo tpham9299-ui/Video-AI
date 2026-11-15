@@ -188,7 +188,7 @@ function dsNguoiGuiDe_() {
 function huongDanZalo_() {
   return '🤖 Gửi cho mình ẢNH CHỤP một đề toán (xác suất hoặc toán thực tế) hoặc GÕ đề, mình sẽ ưu tiên làm video hướng dẫn ngay.\n' +
     'Mẹo: chụp thẳng, rõ số; ảnh có nhiều câu thì ghi chú kèm ảnh, ví dụ "câu 3, lớp 12".\n' +
-    'Lệnh: /tt tiến độ | /huy hủy đề vừa gửi | /id mã chat | /token hạn token GitHub\n' +
+    'Lệnh: /tt tiến độ | /huy hủy đề vừa gửi | /id mã chat | /token hạn token GitHub | /phongcach tỉ lệ duyệt theo phong cách\n' +
     'Duyệt video: /cho xem video chờ duyệt | /duyet [mã] | /sua [mã] <góp ý> | /bo [mã]\n' +
     'Duyệt HÀNG LOẠT: mỗi dòng một lệnh trong cùng một tin, hoặc /duyet <mã1> <mã2> <mã3>, hoặc /duyet tatca\n' +
     'Sản phẩm: /sanpham <tên hoặc link> | /xacnhan [mã] <giá bạn bán> | /huysp [mã]';

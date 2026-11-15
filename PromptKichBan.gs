@@ -163,6 +163,8 @@ function taoPromptKichBan_(r, c1, c2) {
     '- ĐÚNG VẬT trong MỌI cảnh (không chỉ cảnh đầu): đề nói gì vẽ đúng vật đó - ngọn hải đăng = hai_dang (KHÔNG dùng toa_nha), cái bàn = ban (KHÔNG dùng khoi_hop), tháp thép = thap, cột cờ = cot_co, ' +
     'lời thoại nhắc vật nào thì hình cảnh đó có vật ấy; không vẽ công trình nào mà đề không có.\n' +
     '- ĐÚNG SỐ LƯỢNG VÀ NHÃN: 6 nam 6 nữ thì đủ 12 người ghi đúng Nam/Nữ; 10 thẻ đánh số 1-10 thì đủ 10 thẻ đúng số.\n' +
+    '- CHỮ TRÊN HÌNH TINH TẾ: mỗi cảnh TỐI ĐA 3 nhãn (nhan/chu), mỗi nhãn ≤ 5 chữ, đặt ở VÙNG TRỐNG quanh hình (không đè lên giữa hình), hiện LẦN LƯỢT theo lời thoại (buoc tăng dần); ' +
+    'câu dài, công thức để ở "noi_dung_man_hinh" (khung công thức). HÌNH CHÍNH TO, RÕ: một hình lớn chiếm phần lớn sân khấu ("co" 1.1-1.4) thay vì nhiều vật nhỏ rời rạc.\n' +
     '- MỖI ĐIỀU KIỆN CỦA ĐỀ PHẢI THẤY TRÊN HÌNH (vd "không 2 nữ ngồi cạnh nhau": chon các ghế xen kẽ, loai_bo cách xếp sai) - không chỉ nói bằng lời.\n' +
     '- "mo_ta" ghi CHI TIẾT như kịch bản quay phim: có những vật nào, mỗi vật ở đâu, bao nhiêu cái, nhãn gì, lần lượt chuyển động gì theo lời thoại.\n' +
     '- KHAI THÁC NHIỀU CẢNH: dùng MỘT hình chính xuyên suốt (giu_san_khau) để mỗi cảnh làm rõ thêm MỘT ý của lời giải ngay trên hình đó ' +

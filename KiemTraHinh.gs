@@ -887,6 +887,23 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc) {
   if (coHinh < can) nhe.push('IT_HINH_MINH_HOA: chỉ có ' + coHinh + ' cảnh có hình, nên có ít nhất ' + can + '.');
   var canSK = Math.min(3, kb.canh.length - 2);
   if (soSanKhau < canSK) nhe.push('IT_SAN_KHAU: chỉ có ' + soSanKhau + ' cảnh dùng "san_khau", nên có ít nhất ' + canSK + '.');
+  // CHỮ TRÊN HÌNH GỌN GÀNG: một cảnh tối đa 3 nhãn chữ trên sân khấu (chữ dài, công thức để ở khung công thức bên dưới);
+  // hình tự do không chồng quá 5 dòng chữ; nhãn không được dài như câu văn.
+  kb.canh.forEach(function (c, i) {
+    var du = c && c.minh_hoa && c.minh_hoa.du_lieu;
+    var vs = du && Array.isArray(du.vat) ? du.vat : [];
+    var nhan = vs.filter(function (v) { return v && (v.loai === 'nhan' || v.loai === 'chu'); });
+    var coHinh = vs.some(function (v) { return v && VAT_PHU_.indexOf(v.loai) < 0 && v.loai !== 'danh_sach'; });
+    if (nhan.length > 3) nang.push('QUA_NHIEU_CHU_CANH_' + (i + 1) + ': cảnh ' + (i + 1) + ' có ' + nhan.length + ' nhãn chữ trên sân khấu (tối đa 3). Giữ 1-3 nhãn ngắn quan trọng nhất, phần còn lại đưa vào "noi_dung_man_hinh" hoặc lời thoại.');
+    var dai = nhan.filter(function (v) { return String(v.noi_dung || '').replace(/\\[a-zA-Z]+|[{}_^$]/g, '').length > 32; });
+    if (dai.length) nhe.push('NHAN_QUA_DAI_CANH_' + (i + 1) + ': nhãn "' + String(dai[0].noi_dung).slice(0, 40) + '..." dài như câu văn; nhãn trên hình tối đa ~5 chữ, câu dài để ở khung công thức.');
+    vs.forEach(function (v) {
+      if (!v || v.loai !== 'hinh_tu_do' || !Array.isArray(v.hinh)) return;
+      var soChu = v.hinh.filter(function (h) { return h && (h.kieu === 'chu' || h.nhan); }).length;
+      if (soChu > 6) nhe.push('HINH_NHIEU_CHU_CANH_' + (i + 1) + ': hình tự do có ' + soChu + ' dòng chữ/nhãn chồng lên hình, rối mắt. Giữ tối đa 4-5 nhãn ngắn, hiện dần theo bước (buoc).');
+    });
+    if (coHinh && nhan.length >= 3) nhe.push('CHU_DE_LEN_HINH_CANH_' + (i + 1) + ': cảnh có hình chính kèm ' + nhan.length + ' nhãn; đặt nhãn ở vùng trống quanh hình (không đặt giữa hình), hiện lần lượt theo lời thoại.');
+  });
   // CÂU NỐI ĐA DẠNG: không lặp cùng một câu mở đầu cảnh trong video, không dùng lại y nguyên các câu mở của video gần đây
   if (typeof moDauCau_ === 'function') {
     var demMo = {}, dem2 = {}, trungCu = [], ganDay = typeof cauNoiGanDay_ === 'function' ? cauNoiGanDay_(kb.id) || [] : [];

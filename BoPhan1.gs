@@ -1001,7 +1001,7 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       if (laUuTien_(r)) kb.uu_tien = 1;
       if (spham) kb.san_pham = spham;   // bộ dựng video tự gắn nhãn có sản phẩm do kênh bán
       if (r._series) kb.series = { ten: r._series.ten, tap: 0 };   // số tập đánh lúc đăng (DangVideo.gs)
-      if (typeof layPhongCachVideo_ === 'function') { var pcv = layPhongCachVideo_(r); if (pcv) { kb.phong_cach_loi = pcv.loi_id; kb.phong_cach_edit = pcv.edit; } }
+      if (typeof layPhongCachVideo_ === 'function') { var pcv = layPhongCachVideo_(r); if (pcv) { kb.phong_cach_loi = pcv.loi_id; kb.phong_cach_dan = pcv.dan_id || ''; kb.phong_cach_edit = pcv.edit; } }
       if (typeof ghiCauNoi_ === 'function') ghiCauNoi_(kb);
       if (typeof phanLoaiCauHoi_ === 'function') kb.loai_cau_hoi = phanLoaiCauHoi_(r);   // loại câu hỏi: màu nhãn trên ảnh bìa + danh sách phát
       var tep = thuMucKichBan_().createFile(r.id + '.json', JSON.stringify(kb, null, 2), MimeType.PLAIN_TEXT);

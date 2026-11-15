@@ -93,6 +93,7 @@ function traLoiLenh_(chat, chu, anh) {
   if (/^\/gopy\b/.test(l) && typeof nhanGopYChung_ === 'function') return nhanGopYChung_(chat, chu);
   if (/^\/(tt|trangthai)\b/.test(l) && typeof tinhTrangUuTien_ === 'function') return tinhTrangUuTien_();
   if (/^\/(token|hantoken)\b/.test(l) && typeof thongTinTokenGitHub_ === 'function') return thongTinTokenGitHub_();
+  if (/^\/phongcach\b/.test(l) && typeof bangPhongCach_ === 'function') return bangPhongCach_();
   return null;
 }
 var MA_DE_RE_ = /^[A-Za-z]{2}\d{6}-\d{6}(-\d+)?$/;
@@ -186,6 +187,8 @@ function duyetVideo_(chu) {
     try { kqD = JSON.parse(String(r.link_dang || '{}')) || {}; } catch (eD) { kqD = {}; }
     kqD._duyet_luc = Date.now();
     ghi_(sh, r._row, { duyet: 'DA_DUYET', link_dang: JSON.stringify(kqD) });
+    nhatKy_('DUYET_VIDEO', r.id);
+    if (typeof ghiKetQuaPhongCach_ === 'function') ghiKetQuaPhongCach_(r.id, true);   // đạo diễn sáng tạo học: phong cách này được duyệt
     r.duyet = 'DA_DUYET'; r.link_dang = JSON.stringify(kqD);
     var bat = String(cauHinh_('DANG_TU_DONG') || 'TAT').toUpperCase() === 'BAT';
     var tapDuKien = typeof duKienTap_ === 'function' ? duKienTap_(hang, r) : 0;
@@ -206,6 +209,8 @@ function boVideo_(chu) {
     var r = t.ma ? cho.filter(function (x) { return x.id === t.ma; })[0] : cho[0];
     if (!r) return 'Không có video nào đang chờ duyệt để bỏ.';
     ghi_(sh, r._row, { trang_thai: 'LOAI', duyet: 'BO', ghi_chu: 'Người duyệt bỏ qua Zalo' + (t.con ? ': ' + t.con : '') });
+    nhatKy_('BO_VIDEO', r.id + (t.con ? ': ' + t.con.slice(0, 150) : ''));
+    if (typeof ghiKetQuaPhongCach_ === 'function') ghiKetQuaPhongCach_(r.id, false);   // phong cách này bị bỏ
     if (t.con && typeof ghiGopYDeHoc_ === 'function') ghiGopYDeHoc_(r.id, 'bo', t.con, '');
     return '🗑 Đã bỏ video ' + r.id + ', sẽ không đăng.';
   } finally { khoa.releaseLock(); }

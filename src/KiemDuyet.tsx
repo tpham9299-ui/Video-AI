@@ -107,7 +107,7 @@ function doKhungHinh(goc: HTMLElement): {loi: LoiKD[]; chu: string[]; so: string
       const gi = giao(a.hop, b.hop);
       if (!gi) continue;
       const nho = Math.min(dt(a.hop), dt(b.hop));
-      if (dt(gi) < nho * 0.22 || gi.h < 8 || gi.w < 8) continue;
+      if (dt(gi) < nho * 0.12 || gi.h < 6 || gi.w < 6) continue;   // chồng một phần cũng làm rối mắt (trước 22%)
       if (a.chu === b.chu && dt(gi) > nho * 0.85) continue;
       loi.push({kieu: 'CHU_DE', chu: a.chu, chu2: b.chu, hop: gi});
     }
@@ -122,6 +122,21 @@ function doKhungHinh(goc: HTMLElement): {loi: LoiKD[]; chu: string[]; so: string
       if (!gi) continue;
       if (dt(gi) > 0.15 * Math.min(dt(vat[i].hop), dt(vat[j].hop))) loi.push({kieu: 'VAT_DE', chu: vat[i].loai + ' ' + vat[i].id, chu2: vat[j].loai + ' ' + vat[j].id, hop: gi});
     }
+  }
+  // HÌNH TRÀN / BỊ CẮT Ở MÉP MÀN HÌNH (ảnh, vật hình - không chỉ chữ)
+  vat.forEach((x) => {
+    const lech = Math.max(-x.hop.x, x.hop.x + x.hop.w - 1080);
+    if (lech > 12 && ['mui_ten'].indexOf(x.loai) < 0) loi.push({kieu: 'TRAN_MEP', chu: x.loai + ' ' + x.id, lech: Math.round(lech), hop: x.hop});
+  });
+  // HÌNH MINH HỌA QUÁ NHỎ: các vật hình (không tính nhãn chữ / số) gộp lại chiếm chưa tới 22% VÙNG SÂN KHẤU
+  // (vùng giữa tiêu đề và khung công thức, không phải cả màn hình)
+  const hinh = vat.filter((x) => ['nhan', 'chu', 'so_dem', 'mui_ten'].indexOf(x.loai) < 0);
+  const skEl = Array.from(goc.querySelectorAll('[data-kd-sankhau]')).filter((e) => doMo(e) > 0.55).map((e) => quy(e.getBoundingClientRect())).sort((a, b) => dt(b) - dt(a))[0];
+  if (hinh.length && skEl && dt(skEl) > 1000) {
+    let ax = 1e9, ay = 1e9, bx = -1e9, by = -1e9;
+    hinh.forEach((x) => { ax = Math.min(ax, x.hop.x); ay = Math.min(ay, x.hop.y); bx = Math.max(bx, x.hop.x + x.hop.w); by = Math.max(by, x.hop.y + x.hop.h); });
+    const tl = ((bx - ax) * (by - ay)) / dt(skEl);
+    if (tl < 0.22) loi.push({kieu: 'HINH_NHO', chu: hinh.map((x) => x.loai).slice(0, 4).join(', '), co: Math.round(tl * 100), hop: {x: ax, y: ay, w: bx - ax, h: by - ay}});
   }
   // CHỮ NHÌN THẤY trên khung (để máy đối chiếu đáp án) + số hiển thị của huy hiệu số lăn (data-kd-so: số các bánh số đang chỉ)
   const so: string[] = [];

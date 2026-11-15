@@ -330,7 +330,9 @@ export function tuXepSanKhau(dsVat: Vat[], W: number, H: number, k = 1, doThat?:
   const AN_TOAN: Record<string, [number, number]> = {danh_sach: [1.06, 1.22], nguoi: [1.08, 1.2], the: [1.06, 1.14]};
   // THẺ CHỮ giữ nguyên cỡ (chữ phải đọc được); chỉ VẬT HÌNH (người, đồ vật...) được thu nhỏ khi sân khấu chật
   const CO_DINH = new Set(['nhan', 'chu']);
-  const heSo = (loai: string, f: number) => (CO_DINH.has(loai) ? 1 : loai === 'danh_sach' ? Math.max(0.8, f) : f);
+  // khi PHÓNG TO (f > 1): chỉ vật hình được to lên; số đếm, thẻ, danh sách, biểu đồ giữ cỡ (chữ số đã đủ to, phóng thêm dễ lấn vật bên cạnh)
+  const KHONG_PHONG = new Set(['so_dem', 'the', 'danh_sach', 'bieu_do_cot', 'luoi_o', 'dong_ho_do', 'thanh']);
+  const heSo = (loai: string, f: number) => (CO_DINH.has(loai) ? 1 : f > 1 && KHONG_PHONG.has(loai) ? 1 : loai === 'danh_sach' ? Math.max(0.8, f) : f);
   const goc = xs.map((v) => {
     const m = doThat && doThat.get(v.id);
     if (m && m.w > 4 && m.h > 4) { const r = v.co / (m.co || 1); return {v, w: m.w * r * 1.03, h: m.h * r * 1.03, coDinh: CO_DINH.has(v.loai)}; }
@@ -338,6 +340,7 @@ export function tuXepSanKhau(dsVat: Vat[], W: number, H: number, k = 1, doThat?:
     return {v, w: kt.w * aw, h: kt.h * ah, coDinh: CO_DINH.has(v.loai)};
   });
   const PAD = 26;
+  const LE_X = 40, LE_Y = 18;
   const tach = (f: number) => {
     const hop = goc.map((g) => ({v: g.v, x: (g.v.x / 100) * W, y: (g.v.y / 100) * H, w: g.w * heSo(g.v.loai, f), h: g.h * heSo(g.v.loai, f)}));
     for (let lan = 0; lan < 60; lan++) {
@@ -370,7 +373,8 @@ export function tuXepSanKhau(dsVat: Vat[], W: number, H: number, k = 1, doThat?:
     }
     let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
     hop.forEach((b) => { x0 = Math.min(x0, b.x - b.w / 2); x1 = Math.max(x1, b.x + b.w / 2); y0 = Math.min(y0, b.y - b.h / 2); y1 = Math.max(y1, b.y + b.h / 2); });
-    return {hop, x0, y0, x1, y1, tiLe: Math.min(W / Math.max(1, x1 - x0), H / Math.max(1, y1 - y0))};
+    // chừa LỀ quanh sân khấu (mép sân khấu thường trùng mép màn hình): vật không bao giờ dính sát / bị cắt ở mép
+    return {hop, x0, y0, x1, y1, tiLe: Math.min((W - 2 * LE_X) / Math.max(1, x1 - x0), (H - 2 * LE_Y) / Math.max(1, y1 - y0))};
   };
   // thu nhỏ dần CHỈ các vật hình cho tới khi cả cụm (đã tách rời, không đè nhau) vừa khung
   let f = 1;
@@ -379,14 +383,23 @@ export function tuXepSanKhau(dsVat: Vat[], W: number, H: number, k = 1, doThat?:
     f = Math.max(0.6, f * kq.tiLe * 0.97);   // vật hình nhỏ hơn 60% thì khó nhìn: phần còn lại thu đều cả cụm (kể cả thẻ chữ)
     kq = tach(f);
   }
+  // HÌNH QUÁ NHỎ so với sân khấu (cụm vật chiếm chưa tới ~65% khung): PHÓNG TO các vật hình (chữ giữ cỡ) cho tới khi gần kín khung,
+  // tối đa 1,45 lần; phóng xong vẫn phải tách rời, không đè nhau và vừa khung (không thì giữ cỡ cũ).
+  if (f === 1 && kq.tiLe > 1.12 && goc.some((g) => !g.coDinh && !KHONG_PHONG.has(g.v.loai))) {
+    // cho phép phóng hình tới 1,6 lần; nếu cụm hơi tràn thì cả cụm thu lại đều tối đa 7% (chữ vẫn đủ to)
+    for (let g = Math.min(1.6, kq.tiLe * 1.15); g > 1.05; g -= 0.08) {
+      const kq2 = tach(g);
+      if (kq2.tiLe >= 0.93) { f = g; kq = kq2; break; }
+    }
+  }
   const {hop, x0, y0, x1, y1} = kq;
   // vẫn tràn (thẻ chữ quá to): thu đều cả cụm quanh tâm; vừa rồi thì chỉ dời cả cụm vào trong khung
   const s = Math.min(1, kq.tiLe);
   const cx = (x0 + x1) / 2;
   const cy = (y0 + y1) / 2;
   const thuNho = s < 0.999;
-  const dx = thuNho ? 0 : x0 < 0 ? -x0 : x1 > W ? W - x1 : 0;
-  const dy = thuNho ? 0 : y0 < 0 ? -y0 : y1 > H ? H - y1 : 0;
+  const dx = thuNho ? 0 : x0 < LE_X ? LE_X - x0 : x1 > W - LE_X ? W - LE_X - x1 : 0;
+  const dy = thuNho ? 0 : y0 < LE_Y ? LE_Y - y0 : y1 > H - LE_Y ? H - LE_Y - y1 : 0;
   const moi = new Map(hop.map((b, i) => [b.v.id, {
     x: ((thuNho ? W / 2 + (b.x - cx) * s : b.x + dx) / W) * 100,
     y: ((thuNho ? H / 2 + (b.y - cy) * s : b.y + dy) / H) * 100,

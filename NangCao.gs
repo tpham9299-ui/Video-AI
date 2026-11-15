@@ -277,6 +277,7 @@ function boDeKhongDat_(sh, r, lyDo, giaiDoan) {
   r.trang_thai = 'XOA'; r.ghi_chu = ghiChu;
   try { xoaNhapKichBan_(r.id); } catch (e2) {}
   nhatKy_('BO_DE_KHONG_DAT', r.id + ' (' + giaiDoan + '): ' + String(lyDo).slice(0, 250));
+  if (giaiDoan === 'video' && typeof ghiKetQuaPhongCach_ === 'function') ghiKetQuaPhongCach_(r.id, false);
   try { PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1'); } catch (e3) {}
 }
 // gọi từ donDaXong_ trước khi xóa dòng: đề sản phẩm bị bỏ -> sản phẩm sáng tác đề mới
@@ -533,6 +534,18 @@ function baoCaoHangNgay() {
     '🔑 Token GitHub: ' + tokenTin + '\n' +
     (loi.length ? '⚠️ ' + loi.length + ' lỗi hôm nay: ' + Object.keys(dongLoi).slice(0, 3).map(function (k) { return k + (dongLoi[k] > 1 ? ' (x' + dongLoi[k] + ')' : ''); }).join(' | ') + '\n' : '✨ Không có lỗi nào hôm nay\n') +
     (tk.length ? '🏆 Video nổi bật 7 ngày: ' + tk[0].chu_de + ' (' + tk[0].luot_xem + ' lượt xem' + (Number(tk[0].ty_le_xem) > 0 ? ', xem trung bình ' + tk[0].ty_le_xem + '%' : '') + ')' : '');
+  // đổi mới liên tục: mỗi tuần sáng tác thêm một cách dàn cảnh để thử
+  var moiDD = '';
+  try { moiDD = sangTacDanCanhMoi_(); } catch (eDD) { nhatKy_('DAO_DIEN_LOI', String(eDD.message).slice(0, 150)); }
+  // tỉ lệ duyệt 7 ngày (để thấy hệ thống có tiến bộ không)
+  var tyLe = '';
+  try {
+    var tuan = Date.now() - 7 * 86400000;
+    var nk7 = (ss.getSheetByName('NHAT_KY') ? ss.getSheetByName('NHAT_KY').getDataRange().getValues().slice(1) : []).filter(function (v) { return v[0] instanceof Date && v[0].getTime() > tuan; });
+    var duyet7 = nk7.filter(function (v) { return v[1] === 'DUYET_VIDEO'; }).length, bo7 = nk7.filter(function (v) { return v[1] === 'BO_VIDEO'; }).length;
+    if (duyet7 + bo7) tyLe = '📈 7 ngày qua bạn duyệt ' + duyet7 + '/' + (duyet7 + bo7) + ' video (' + Math.round(duyet7 / (duyet7 + bo7) * 100) + '%). Xem phong cách nào được duyệt nhiều: /phongcach\n';
+  } catch (eTL) {}
+  tin += '\n' + tyLe + (moiDD ? moiDD + '\n' : '');
   guiZalo_(tin, 'cao', 'BAO_CAO_' + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd'));
 }
 
@@ -892,15 +905,52 @@ var PHONG_CACH_LOI_ = [
   { id: 'thay_vui', ten: 'THẦY GIÁO VUI TÍNH', chu: 'giải thích kỹ nhưng dí dỏm, ví von đời thường (so sánh với đi chợ, xếp hàng, chơi game...), câu nối thân mật.' }
 ];
 var GOI_EDIT_ = ['nang_dong', 'toi_gian', 'dien_anh', 'so_tay'];
+// CÁCH DÀN CẢNH (cấu trúc hình ảnh của cả video) - thư viện gốc; hệ thống tự sáng tác thêm cách mới theo thời gian (DAO_DIEN_MOI)
+var DAN_CANH_GOC_ = [
+  { id: 'mot_hinh_bien_doi', ten: 'MỘT HÌNH BIẾN ĐỔI', chu: 'một hình chính xuyên suốt (giu_san_khau), mỗi cảnh thêm/biến đổi đúng MỘT lớp trên hình đó (số đo hiện ra, phần tô màu, đường phụ...).' },
+  { id: 'so_sanh_song_song', ten: 'SO SÁNH SONG SONG', chu: 'đặt hai phương án / cách sai và cách đúng cạnh nhau (trái - phải) rồi loại dần phương án sai; người xem tự so sánh bằng mắt.' },
+  { id: 'phong_to_chi_tiet', ten: 'TOÀN CẢNH - CẬN CẢNH', chu: 'mở bằng toàn cảnh đời thật, phóng to (phong_to) vào đúng chi tiết then chốt khi giải, cuối cùng thu về toàn cảnh với đáp số gắn đúng chỗ.' },
+  { id: 'hanh_trinh', ten: 'HÀNH TRÌNH', chu: 'một nhân vật đi qua các "chặng" (mỗi bước giải là một chặng, có thẻ/biểu tượng đánh dấu chặng), về đích là đáp án.' },
+  { id: 'dem_nguoc', ten: 'THỬ THÁCH ĐẾM NGƯỢC', chu: 'trước mỗi bước quan trọng đặt câu hỏi + đồng hồ (dong_ho) đếm ngược 3 giây cho người xem tự đoán, rồi mới lật kết quả.' },
+  { id: 'lat_the', ten: 'LẬT THẺ MANH MỐI', chu: 'các dữ kiện / bước giải là những thẻ (the) úp, lần lượt lật từng thẻ để mở manh mối; thẻ cuối là đáp án.' },
+  { id: 'thu_va_sai', ten: 'THỬ VÀ SAI', chu: 'thử vài giá trị/cách làm (bảng, biểu đồ cột, đồ thị) để thấy quy luật, chỉ ra vì sao các lần thử đầu chưa đúng rồi mới tìm ra cách đúng.' },
+  { id: 'dao_nguoc', ten: 'BẮT ĐẦU TỪ KẾT QUẢ', chu: 'hé lộ đáp số gây bất ngờ ngay đầu (hook), rồi lần ngược lại từng bước để chứng minh vì sao lại ra như vậy.' }
+];
+// thống kê duyệt/bỏ theo từng phong cách (lời / dàn cảnh / edit) -> chọn phong cách bằng UCB: hay được duyệt thì dùng nhiều hơn,
+// vẫn chừa chỗ thử phong cách ít dùng; không lặp lại đúng phong cách của video liền trước.
+function docThongKeDD_() { try { return JSON.parse(PropertiesService.getScriptProperties().getProperty('DAO_DIEN_THONG_KE') || '{}'); } catch (e) { return {}; } }
+function dsDanCanh_() {
+  var moi = [];
+  try { moi = JSON.parse(PropertiesService.getScriptProperties().getProperty('DAO_DIEN_MOI') || '[]'); } catch (e) { moi = []; }
+  var bo = {};
+  try { bo = JSON.parse(PropertiesService.getScriptProperties().getProperty('DAO_DIEN_LOAI') || '{}'); } catch (e2) { bo = {}; }
+  return DAN_CANH_GOC_.concat(moi).filter(function (x) { return x && x.id && !bo[x.id]; });
+}
+function chonUCB_(chieu, ds, truoc) {
+  var tk = (docThongKeDD_()[chieu]) || {};
+  var tong = ds.reduce(function (s0, x) { var o = tk[x.id || x] || {}; return s0 + (o.ok || 0) + (o.bo || 0); }, 0);
+  var tot = null, diemTot = -1e9;
+  ds.forEach(function (x, i) {
+    var id = x.id || x;
+    if (ds.length > 1 && id === truoc) return;   // không lặp phong cách của video liền trước
+    var o = tk[id] || {}, n = (o.ok || 0) + (o.bo || 0);
+    var d = ((o.ok || 0) + 1) / (n + 2) + 0.7 * Math.sqrt(Math.log(tong + 2) / (n + 1)) + i * 1e-6;
+    if (d > diemTot) { diemTot = d; tot = x; }
+  });
+  return tot || ds[0];
+}
 function chonPhongCachVideo_(r) {
   var p = PropertiesService.getScriptProperties();
   var nho = {};
   try { nho = JSON.parse(p.getProperty('PHONG_CACH_THEO_VIDEO') || '{}'); } catch (e) { nho = {}; }
   if (r && r.id && nho[r.id]) return nho[r.id];            // cùng một video dựng lại: giữ nguyên phong cách đã chọn
-  var dem = Number(p.getProperty('PHONG_CACH_DEM') || 0);
-  var loi = PHONG_CACH_LOI_[dem % PHONG_CACH_LOI_.length];
-  var kq = { loi_id: loi.id, loi_ten: loi.ten, loi_chu: loi.chu, edit: GOI_EDIT_[dem % GOI_EDIT_.length] };
-  p.setProperty('PHONG_CACH_DEM', String(dem + 1));
+  var truoc = {};
+  try { truoc = JSON.parse(p.getProperty('PHONG_CACH_TRUOC') || '{}'); } catch (e1) { truoc = {}; }
+  var loi = chonUCB_('loi', PHONG_CACH_LOI_, truoc.loi);
+  var dc = chonUCB_('dan', dsDanCanh_(), truoc.dan);
+  var ed = chonUCB_('edit', GOI_EDIT_, truoc.edit);
+  var kq = { loi_id: loi.id, loi_ten: loi.ten, loi_chu: loi.chu, dan_id: dc.id, dan_ten: dc.ten, dan_chu: dc.chu, edit: ed };
+  p.setProperty('PHONG_CACH_TRUOC', JSON.stringify({ loi: loi.id, dan: dc.id, edit: ed }));
   if (r && r.id) {
     nho[r.id] = kq;
     var ids = Object.keys(nho);
@@ -908,6 +958,70 @@ function chonPhongCachVideo_(r) {
     p.setProperty('PHONG_CACH_THEO_VIDEO', JSON.stringify(nho));
   }
   return kq;
+}
+// kết quả của một video (bạn duyệt = tốt; bạn bỏ / không đạt kiểm duyệt = chưa tốt) -> cộng vào thống kê phong cách của video đó
+function ghiKetQuaPhongCach_(id, tot) {
+  try {
+    var p = PropertiesService.getScriptProperties();
+    var nho = JSON.parse(p.getProperty('PHONG_CACH_THEO_VIDEO') || '{}');
+    var pc = nho[id];
+    if (!pc || pc._da_ghi) return;
+    var tk = docThongKeDD_();
+    [['loi', pc.loi_id], ['dan', pc.dan_id], ['edit', pc.edit]].forEach(function (c) {
+      if (!c[1]) return;
+      tk[c[0]] = tk[c[0]] || {};
+      var o = tk[c[0]][c[1]] = tk[c[0]][c[1]] || { ok: 0, bo: 0 };
+      if (tot) o.ok++; else o.bo++;
+    });
+    p.setProperty('DAO_DIEN_THONG_KE', JSON.stringify(tk));
+    pc._da_ghi = true; nho[id] = pc;
+    p.setProperty('PHONG_CACH_THEO_VIDEO', JSON.stringify(nho));
+    loaiDanCanhKem_(tk);
+  } catch (e) { nhatKy_('DAO_DIEN_LOI', String(e.message).slice(0, 150)); }
+}
+// cách dàn cảnh dùng >= 6 lần mà tỉ lệ được duyệt < 25% -> ngừng dùng (giữ ít nhất 4 cách)
+function loaiDanCanhKem_(tk) {
+  var p = PropertiesService.getScriptProperties();
+  var bo = {};
+  try { bo = JSON.parse(p.getProperty('DAO_DIEN_LOAI') || '{}'); } catch (e) { bo = {}; }
+  var con = dsDanCanh_();
+  Object.keys(tk.dan || {}).forEach(function (id) {
+    var o = tk.dan[id], n = o.ok + o.bo;
+    if (n >= 6 && o.ok / n < 0.25 && con.length > 4 && !bo[id]) { bo[id] = true; con = con.filter(function (x) { return x.id !== id; }); nhatKy_('DAO_DIEN', 'Ngừng dùng cách dàn cảnh "' + id + '" (được duyệt ' + o.ok + '/' + n + ')'); }
+  });
+  p.setProperty('DAO_DIEN_LOAI', JSON.stringify(bo));
+}
+// ĐỔI MỚI LIÊN TỤC: mỗi tuần (trigger hằng ngày tự kiểm) Gemini sáng tác 1 cách dàn cảnh mới dựa trên thống kê duyệt/bỏ,
+// các quy tắc bạn đã dạy và bài học edit từ video nổi bật; cách mới vào vòng thử, tốt thì ở lại, kém thì tự bị loại.
+function sangTacDanCanhMoi_() {
+  var p = PropertiesService.getScriptProperties();
+  var lan = Number(p.getProperty('DAO_DIEN_LAN_SANG_TAC') || 0);
+  if (Date.now() - lan < 6.5 * 86400000) return '';
+  var tk = docThongKeDD_().dan || {};
+  var ds = dsDanCanh_();
+  var bang = ds.map(function (x) { var o = tk[x.id] || { ok: 0, bo: 0 }; return '- ' + x.ten + ': ' + x.chu + ' (duyệt ' + o.ok + ', bỏ ' + o.bo + ')'; }).join('\n');
+  var j = goiGemini_('Bạn là ĐẠO DIỄN SÁNG TẠO của kênh video dạy toán ngắn (dọc 9:16, TikTok/YouTube Shorts). Các CÁCH DÀN CẢNH đang dùng và số lần chủ kênh duyệt/bỏ:\n' + bang + '\n' +
+    (typeof quyTacHocChoPrompt_ === 'function' ? quyTacHocChoPrompt_() : '') + (typeof hocEditChoPrompt_ === 'function' ? hocEditChoPrompt_() : '') +
+    'Hãy sáng tác MỘT cách dàn cảnh MỚI, khác hẳn các cách trên, phù hợp video dạy toán 60-100 giây, tận dụng điểm mạnh của các cách được duyệt nhiều và tránh điểm yếu của các cách bị bỏ nhiều. ' +
+    'Chỉ dùng được các loại hình bộ dựng có sẵn: người, thẻ, xúc xắc, đồng xu, hộp bi, vòng quay, đồng hồ, biểu đồ cột, thanh, số đếm, lưới ô, danh sách, bàn tròn, cảnh thực tế (vật thật + số đo), hình học, đồ thị, hình tự do; hành động: xuất hiện, chọn, loại bỏ, quay, mở, lấy ra, phóng to, thu nhỏ, di chuyển, biến hình. ' +
+    'Trả JSON {"id":"chu_thuong_khong_dau","ten":"TÊN NGẮN IN HOA","chu":"mô tả cụ thể 1-2 câu: hình chính là gì, các cảnh nối nhau thế nào"}', 0.9, { suyNghi: 'low' });
+  p.setProperty('DAO_DIEN_LAN_SANG_TAC', String(Date.now()));
+  if (!j || !j.id || !j.chu || ds.some(function (x) { return x.id === j.id; })) return '';
+  var moi = [];
+  try { moi = JSON.parse(p.getProperty('DAO_DIEN_MOI') || '[]'); } catch (e) { moi = []; }
+  moi.push({ id: String(j.id).replace(/[^a-z0-9_]/g, '').slice(0, 30) || ('moi_' + Date.now()), ten: String(j.ten || 'CÁCH MỚI').slice(0, 30), chu: String(j.chu).slice(0, 300), luc: new Date().toISOString() });
+  p.setProperty('DAO_DIEN_MOI', JSON.stringify(moi.slice(-12)));
+  nhatKy_('DAO_DIEN', 'Sáng tác cách dàn cảnh mới: ' + j.ten + ' - ' + String(j.chu).slice(0, 150));
+  return '🎬 Cách dàn cảnh mới đưa vào thử: ' + j.ten + ' - ' + String(j.chu).slice(0, 200);
+}
+// lệnh Zalo /phongcach: tỉ lệ được duyệt của từng phong cách
+function bangPhongCach_() {
+  var tk = docThongKeDD_();
+  var dong = function (ten, ds, chieu) {
+    return ten + ':\n' + ds.map(function (x) { var id = x.id || x, o = (tk[chieu] || {})[id] || { ok: 0, bo: 0 }, n = o.ok + o.bo; return '• ' + (x.ten || id) + ': ' + (n ? Math.round(o.ok / n * 100) + '% duyệt (' + o.ok + '/' + n + ')' : 'chưa có dữ liệu'); }).join('\n');
+  };
+  return '🎬 Hệ thống tự chọn phong cách theo tỉ lệ bạn duyệt (hay duyệt -> dùng nhiều hơn, hay bỏ -> ít dần, kém hẳn -> loại):\n' +
+    dong('Cách dàn cảnh', dsDanCanh_(), 'dan') + '\n' + dong('Phong cách lời', PHONG_CACH_LOI_, 'loi') + '\n' + dong('Gói edit', GOI_EDIT_, 'edit');
 }
 function layPhongCachVideo_(r) {
   if (r && r._phongCach) return r._phongCach;
@@ -939,6 +1053,7 @@ function phongCachLoiChoPrompt_(r) {
   var pc = layPhongCachVideo_(r);
   var gan = cauNoiGanDay_(r && r.id).slice(-40);
   return (pc ? 'PHONG CÁCH LỜI CỦA VIDEO NÀY: ' + pc.loi_ten + ' - ' + pc.loi_chu + ' Giữ phong cách này xuyên suốt nhưng KHÔNG làm sai/loãng nội dung toán.\n' : '') +
+    (pc && pc.dan_chu ? 'CÁCH DÀN CẢNH CỦA VIDEO NÀY: ' + pc.dan_ten + ' - ' + pc.dan_chu + ' Áp dụng sáng tạo cho đúng đề này (hình vẫn phải bám sát đề, không đè chữ, không vẽ vật lạ); nếu thật sự không hợp với đề thì chọn cách dàn cảnh hợp hơn.\n' : '') +
     'CÂU NỐI ĐA DẠNG: mỗi cảnh mở đầu bằng một cách nói KHÁC nhau (không lặp "Tiếp theo", "Bây giờ", "Vậy là" nhiều lần trong một video)' +
     (gan.length ? '; TRÁNH dùng lại các câu mở đầu cảnh đã dùng ở các video gần đây: "' + gan.join('", "') + '"' : '') + '.\n';
 }
