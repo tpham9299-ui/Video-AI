@@ -155,6 +155,8 @@ function nhanZalo_(e) {
     // lệnh (một hoặc NHIỀU dòng: /duyet /sua /bo /cho /sanpham /xacnhan /huysp...; "duyệt <mã>" không dấu gạch cũng hiểu) (SanPham.gs)
     if ((/^\//.test(lenh) || (typeof laTinLenh_ === 'function' && laTinLenh_(chu))) && typeof xuLyLenhZaloMoi_ === 'function' && xuLyLenhZaloMoi_(chat, chu, anh)) return tra;
 
+    // trả lời câu hỏi "Vì sao bạn bỏ?" (trong 3 giờ sau khi /bo không kèm lý do) -> học lý do, không coi là đề mới (SanPham.gs)
+    if (!anh && typeof traLoiLyDoBo_ === 'function') { var tlLD = traLoiLyDoBo_(chat, chu); if (tlLD) { guiZaloToi_(chat, tlLD); return tra; } }
     var laDeChu = !anh && chu.length >= 25 && /\d/.test(chu);
     if (!anh && !laDeChu) { guiZaloToi_(chat, huongDanZalo_()); return tra; }
 

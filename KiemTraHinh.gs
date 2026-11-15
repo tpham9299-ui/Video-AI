@@ -43,12 +43,47 @@ var TU_VAT_THUC_ = [
 // vật 3D cũ cũng chấp nhận được cho một số tên
 var THAY_VAT_THUC_ = { toa_nha: ['toa_nha'], nha: ['toa_nha'], cay: ['cay'], cay_thong: ['cay'], xe_hoi: ['xe'], thang: ['thang'], nguoi: ['nguoi'] };
 // Sửa canh_that tại chỗ (thay vì vứt cả cảnh): vật lạ -> công trình có biển tên; thiếu mã/số đo -> tự điền; phép đo trỏ điểm không có -> bỏ phép đo đó.
+// VẬT NGOÀI THƯ VIỆN VẼ SẴN: vẽ bằng BIỂU TƯỢNG (emoji) ĐÚNG vật đó (hàng nghìn loại) thay vì đổi thành vật khác.
+// Khóa: tên không dấu (ten trong kịch bản) hoặc từ tiếng Việt. Không tìm được thì mới dùng "công trình có biển tên" (chỉ hợp với tòa nhà).
+var TU_DIEN_EMOJI_ = [
+  [/tau_hoa|tàu hỏa|tàu hoả|đoàn tàu|xe lửa|tau_lua/, '🚆'], [/xe_tai|xe tải/, '🚚'], [/xe_cuu_thuong|xe cứu thương/, '🚑'], [/xe_cuu_hoa|cứu hỏa|cứu hoả/, '🚒'], [/taxi/, '🚕'],
+  [/tau_thuy|tàu thủy|tàu thuỷ|du thuyền|tau_bien/, '🚢'], [/tau_ngam|tàu ngầm/, '🚤'], [/truc_thang|trực thăng/, '🚁'], [/ten_lua|tên lửa|rocket/, '🚀'], [/ve_tinh|vệ tinh/, '🛰'],
+  [/bon_xang|cây xăng|tram_xang/, '⛽'], [/den_giao_thong|đèn giao thông|đèn tín hiệu/, '🚦'], [/bien_bao|biển báo/, '🚧'], [/cau_thang_cuon|thang cuốn/, '🛗'],
+  [/benh_vien|bệnh viện/, '🏥'], [/nha_may|nhà máy|xí nghiệp/, '🏭'], [/khach_san|khách sạn/, '🏨'], [/sieu_thi/, '🏬'], [/buu_dien|bưu điện/, '🏤'], [/san_van_dong|sân vận động/, '🏟'],
+  [/nha_tho|nhà thờ/, '⛪'], [/lau_dai|lâu đài/, '🏰'], [/leu|cái lều|lều trại/, '⛺'], [/den_tho|chùa|đền/, '🛕'], [/thap_eiffel/, '🗼'], [/cau_vong|cầu vồng/, '🌈'],
+  [/bo_bien|bãi biển|biển/, '🏖'], [/dao|hòn đảo/, '🏝'], [/sa_mac|sa mạc/, '🏜'], [/nui_lua|núi lửa/, '🌋'], [/thac|thác nước/, '🏞'], [/rung|khu rừng/, '🌲'],
+  [/hoa|bông hoa|bó hoa/, '🌸'], [/hoa_huong_duong|hướng dương/, '🌻'], [/cay_xuong_rong|xương rồng/, '🌵'], [/cay_dua|cây dừa/, '🌴'], [/la_cay|chiếc lá/, '🍃'], [/hat_giong|hạt giống/, '🌱'],
+  [/meo|con mèo/, '🐈'], [/cho|con chó/, '🐕'], [/ga|con gà/, '🐓'], [/vit|con vịt/, '🦆'], [/bo|con bò/, '🐄'], [/lon|con lợn|con heo/, '🐖'], [/de|con dê/, '🐐'], [/cuu|con cừu/, '🐑'],
+  [/ca|con cá|đàn cá/, '🐟'], [/chim|con chim/, '🐦'], [/ong|con ong|tổ ong/, '🐝'], [/kien|con kiến/, '🐜'], [/tho|con thỏ/, '🐇'], [/ngua|con ngựa/, '🐎'], [/vi_khuan|vi khuẩn/, '🦠'],
+  [/tao|quả táo/, '🍎'], [/cam|quả cam/, '🍊'], [/chuoi|quả chuối/, '🍌'], [/dua_hau|dưa hấu/, '🍉'], [/nho|chùm nho/, '🍇'], [/trung|quả trứng/, '🥚'], [/banh_mi|bánh mì/, '🥖'],
+  [/pizza/, '🍕'], [/banh_sinh_nhat|bánh sinh nhật|bánh kem/, '🎂'], [/keo|viên kẹo/, '🍬'], [/kem|cây kem/, '🍦'], [/sua|hộp sữa/, '🥛'], [/ca_phe|cà phê/, '☕'], [/tra_sua|trà sữa/, '🧋'],
+  [/chai|chai nước|cái chai/, '🍾'], [/coc|cái cốc|ly nước/, '🥤'], [/noi|cái nồi/, '🍲'], [/gao|bao gạo/, '🌾'], [/thung_rac|thùng rác/, '🗑'], [/vali/, '🧳'], [/balo|ba lô/, '🎒'],
+  [/sach|quyển sách|cuốn sách/, '📚'], [/vo|quyển vở/, '📓'], [/but|cây bút/, '✏️'], [/thuoc_ke|thước kẻ/, '📏'], [/may_tinh|máy tính/, '💻'], [/dien_thoai|điện thoại/, '📱'],
+  [/dong_ho|đồng hồ/, '⏰'], [/lich|tờ lịch/, '📅'], [/qua|hộp quà|món quà/, '🎁'], [/bong_bay|bóng bay/, '🎈'], [/nen|ngọn nến/, '🕯'], [/bong_den|bóng đèn/, '💡'], [/pin|cục pin/, '🔋'],
+  [/quat|cái quạt/, '🪭'], [/may_giat|máy giặt/, '🧺'], [/tu_lanh|tủ lạnh/, '🧊'], [/giuong|cái giường/, '🛏'], [/sofa|ghế sofa/, '🛋'], [/cua_so|cửa sổ/, '🪟'], [/guong|cái gương/, '🪞'],
+  [/ve|vé|tấm vé/, '🎫'], [/the_ngan_hang|thẻ ngân hàng|thẻ tín dụng/, '💳'], [/vang|thỏi vàng/, '🪙'], [/kim_cuong|kim cương/, '💎'], [/hop_qua/, '🎁'], [/giai_thuong|cúp|huy chương/, '🏆'],
+  [/bong_da|quả bóng đá/, '⚽'], [/bong_chuyen|bóng chuyền/, '🏐'], [/cau_long|cầu lông/, '🏸'], [/ho_boi|bể bơi/, '🏊'], [/xuc_xac/, '🎲'], [/la_bai|lá bài/, '🃏'], [/may_bay_giay|máy bay giấy/, '🛩'],
+  [/nhiet_ke|nhiệt kế/, '🌡'], [/kinh_lup|kính lúp/, '🔍'], [/nam_cham|nam châm/, '🧲'], [/can|cân đĩa|cái cân/, '⚖'], [/ong_nghiem|ống nghiệm/, '🧪'], [/vong_tay|nhẫn/, '💍'],
+  [/mua|cơn mưa|giọt mưa/, '🌧'], [/tuyet|bông tuyết/, '❄️'], [/set|tia sét/, '⚡'], [/gio|cơn gió/, '🌬'], [/mat_trang|mặt trăng/, '🌙'], [/ngoi_sao|ngôi sao/, '⭐'], [/trai_dat|trái đất/, '🌍']
+];
+function timEmoji_(chu) {
+  var s = String(chu || '').toLowerCase();
+  for (var i = 0; i < TU_DIEN_EMOJI_.length; i++) if (TU_DIEN_EMOJI_[i][0].test(s)) return TU_DIEN_EMOJI_[i][1];
+  return '';
+}
+var LA_CONG_TRINH_ = /benh_vien|nha_may|uy_ban|khach_san|truong|cong_ty|toa|nha_|tru_so|buu_dien|thu_vien|cong_trinh/;
 function suaCanhThat_(v, sua, so) {
   var cao0 = typeof CAO_MAC_DINH_ !== 'undefined' ? CAO_MAC_DINH_ : {};
   var vat = Array.isArray(v.vat) ? v.vat.filter(laDT_) : [];
   var x = 0, daMa = {};
   vat.forEach(function (o, i) {
-    if (TEN_VAT_THUC_.indexOf(String(o.ten)) < 0) { o.bien = o.bien || String(o.ten || o.nhan || '').replace(/_/g, ' ').slice(0, 20); o.ten = 'cong_trinh'; sua.push('canh_that cảnh ' + so + ': vật lạ -> công trình có biển "' + o.bien + '"'); }
+    if (TEN_VAT_THUC_.indexOf(String(o.ten)) < 0) {
+      // vật chưa có hình vẽ sẵn: biểu tượng đúng vật (emoji) + nhãn tên; chỉ tòa nhà/cơ quan mới thành "công trình có biển tên"
+      var em = o.emoji || timEmoji_(String(o.ten || '') + ' ' + String(o.nhan || '') + ' ' + String(o.bien || ''));
+      var tenGoc = String(o.ten || o.nhan || '').replace(/_/g, ' ').slice(0, 20);
+      if (em && !LA_CONG_TRINH_.test(String(o.ten || ''))) { o.emoji = em; if (!o.nhan) o.nhan = tenGoc; o.ten = 'bieu_tuong'; sua.push('canh_that cảnh ' + so + ': vật "' + tenGoc + '" chưa có hình vẽ sẵn -> biểu tượng ' + em); }
+      else { o.bien = o.bien || tenGoc; o.ten = 'cong_trinh'; sua.push('canh_that cảnh ' + so + ': vật lạ -> công trình có biển "' + o.bien + '"'); }
+    }
     if (o.ten === 'mat_troi' && o.x === undefined) return;
     if (!laChuoi_(o.ma) || daMa[o.ma]) o.ma = String.fromCharCode(65 + i);
     daMa[o.ma] = 1;
@@ -1237,6 +1272,12 @@ function tuSuaSau_(kb, ctx) {
         if (!laDT_(v) || LOAI_VAT_.indexOf(v.loai) < 0) { if (laDT_(v)) sua.push('bỏ vật không biết vẽ "' + v.loai + '" ở cảnh ' + (i + 1)); return false; }
         if (!laChuoi_(v.id) || ids[v.id]) v.id = (laChuoi_(v.id) ? v.id : 'v') + '_' + (i + 1) + '_' + k;
         if (v.loai === 'canh_that') suaCanhThat_(v, sua, i + 1);
+        // hình tự do: nét "vat" chưa có hình vẽ sẵn -> biểu tượng đúng vật (thay vì bị loại cả hình)
+        if (v.loai === 'hinh_tu_do' && Array.isArray(v.hinh)) v.hinh.forEach(function (h) {
+          if (!h || h.kieu !== 'vat' || TEN_VAT_THUC_.indexOf(String(h.ten)) >= 0) return;
+          var em = h.emoji || timEmoji_(String(h.ten || '') + ' ' + String(h.nhan || ''));
+          if (em) { if (!h.nhan) h.nhan = String(h.ten || '').replace(/_/g, ' ').slice(0, 20); h.emoji = em; h.ten = 'bieu_tuong'; sua.push('hình tự do cảnh ' + (i + 1) + ': vật chưa có hình vẽ sẵn -> biểu tượng ' + em); }
+        });
         if (v.loai !== 'mui_ten') {
           v.x = laSo_(Number(v.x)) ? Math.min(98, Math.max(2, Number(v.x))) : 50;
           v.y = laSo_(Number(v.y)) ? Math.min(98, Math.max(2, Number(v.y))) : 50;

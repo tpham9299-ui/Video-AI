@@ -51,3 +51,19 @@
 ## Cần dán lại
 `NangCao.gs`, `SanPham.gs`, `KiemTraHinh.gs`, `PromptKichBan.gs`, `BoPhan1.gs`, `ZaloDeBai.gs`, rồi Triển khai > Quản lý > Phiên bản mới.
 Phần dựng video (GitHub) tự cập nhật.
+
+## 4. Sửa các hạn chế còn lại
+- **Thư viện hình có hạn**:
+  - Trước: vật không có hình vẽ sẵn bị đổi thành "công trình có biển tên", một nguồn lớn của lỗi hình không khớp đề.
+  - Nay: vẽ bằng **biểu tượng đúng vật đó** (từ điển hơn 130 vật: tàu hỏa 🚆, con mèo 🐈, quả táo 🍎, bánh sinh nhật 🎂, quyển sách 📚, xe tải 🚚...) kèm nhãn tên. Chỉ tòa nhà / cơ quan mới thành công trình có biển.
+  - Áp dụng cho cả cảnh thực tế lẫn hình tự do.
+  - Lời nhắc cấm thay vật lạ bằng vật khác.
+- **Không biết vì sao bạn bỏ video**:
+  - `/bo` không kèm lý do thì bot hỏi một câu chọn nhanh: 1 Hình không khớp đề | 2 Chữ đè / rối | 3 Hình nhỏ / trống | 4 Lời giải / đáp án | 5 Giọng / nhịp | 6 Nhàm chán, máy móc | 7 Đề không hay.
+  - Trả lời "1 3" hoặc "2 chữ đáp án bị che" (trong 3 giờ) thì lý do được học thành quy tắc cho các video sau.
+  - Bỏ hàng loạt thì chỉ hỏi một lần.
+  - Thống kê lý do hiện trong `/phongcach` và báo cáo ngày.
+- **Ngưỡng 10/10 làm ít video**: hệ thống đếm tỉ lệ qua kiểm duyệt 3 ngày gần nhất.
+  - Tỉ lệ thấp: tự giữ nhiều đề chờ hơn (tới 2,5 lần, tối đa 10) và giải thêm 1 đề song song trên GitHub.
+  - Tỉ lệ tốt lên: tự giảm lại.
+  - Báo cáo ngày ghi rõ tỉ lệ và hệ số.

@@ -93,7 +93,7 @@ function traLoiLenh_(chat, chu, anh) {
   if (/^\/gopy\b/.test(l) && typeof nhanGopYChung_ === 'function') return nhanGopYChung_(chat, chu);
   if (/^\/(tt|trangthai)\b/.test(l) && typeof tinhTrangUuTien_ === 'function') return tinhTrangUuTien_();
   if (/^\/(token|hantoken)\b/.test(l) && typeof thongTinTokenGitHub_ === 'function') return thongTinTokenGitHub_();
-  if (/^\/phongcach\b/.test(l) && typeof bangPhongCach_ === 'function') return bangPhongCach_();
+  if (/^\/phongcach\b/.test(l) && typeof bangPhongCach_ === 'function') return bangPhongCach_() + (thongKeLyDoBo_() ? '\n📉 ' + thongKeLyDoBo_() : '');
   return null;
 }
 var MA_DE_RE_ = /^[A-Za-z]{2}\d{6}-\d{6}(-\d+)?$/;
@@ -141,6 +141,8 @@ function tachNhieuLenh_(chu) {
 }
 function chayNhieuLenh_(chat, ds, anh) {
   var kq = [], ok = 0;
+  _dang_chay_nhieu_ = true;
+  var coBoKhongLyDo = false;
   ds.slice(0, 40).forEach(function (c, i) {
     var tl;
     if (/__KHONG_CO__/.test(c)) tl = 'Không có video nào đã đạt kiểm duyệt đang chờ duyệt.';
@@ -151,8 +153,10 @@ function chayNhieuLenh_(chat, ds, anh) {
     if (/^(✅|🗑|✍️|📷|🔎|🧠|📚)/.test(String(tl))) ok++;
     kq.push((i + 1) + '. ' + c.replace(/__KHONG_CO__/, '').slice(0, 60) + '\n   → ' + String(tl).split('\n')[0].slice(0, ds.length > 12 ? 110 : 200));
   });
+  _dang_chay_nhieu_ = false;
+  coBoKhongLyDo = ds.some(function (c) { return /^\/bo\s+[A-Za-z]{2}\d{6}-\d{6}(-\d+)?\s*$/.test(c); });
   nhatKy_('ZALO_NHIEU_LENH', ds.length + ' lệnh, ' + ok + ' thành công');
-  return '📋 Đã thực hiện ' + Math.min(ds.length, 40) + ' lệnh (' + ok + ' thành công)' + (ds.length > 40 ? ', mỗi tin tối đa 40 lệnh' : '') + ':\n' + kq.join('\n');
+  return '📋 Đã thực hiện ' + Math.min(ds.length, 40) + ' lệnh (' + ok + ' thành công)' + (ds.length > 40 ? ', mỗi tin tối đa 40 lệnh' : '') + ':\n' + kq.join('\n') + (coBoKhongLyDo ? '\n' + cauHoiLyDo_() : '');
 }
 // nhanZalo_ dùng để nhận ra tin nhắn là (các) lệnh dù dòng đầu không có dấu "/"
 function laTinLenh_(chu) { var d = String(chu || '').split(/\r?\n/).map(function (x) { return x.trim(); }).filter(Boolean)[0]; return !!d && !!chuanDongLenh_(d); }
@@ -211,9 +215,85 @@ function boVideo_(chu) {
     ghi_(sh, r._row, { trang_thai: 'LOAI', duyet: 'BO', ghi_chu: 'Người duyệt bỏ qua Zalo' + (t.con ? ': ' + t.con : '') });
     nhatKy_('BO_VIDEO', r.id + (t.con ? ': ' + t.con.slice(0, 150) : ''));
     if (typeof ghiKetQuaPhongCach_ === 'function') ghiKetQuaPhongCach_(r.id, false);   // phong cách này bị bỏ
-    if (t.con && typeof ghiGopYDeHoc_ === 'function') ghiGopYDeHoc_(r.id, 'bo', t.con, '');
-    return '🗑 Đã bỏ video ' + r.id + ', sẽ không đăng.';
+    if (t.con) {
+      if (typeof ghiGopYDeHoc_ === 'function') ghiGopYDeHoc_(r.id, 'bo', t.con, '');
+      ghiLyDoBo_(maLyDo_(t.con).ma, t.con);
+      return '🗑 Đã bỏ video ' + r.id + ', sẽ không đăng.';
+    }
+    // bỏ mà KHÔNG ghi lý do: nhớ lại để hỏi một câu chọn nhanh (trả lời bằng số) -> hệ thống học được vì sao bị bỏ
+    themChoLyDo_(r.id);
+    return '🗑 Đã bỏ video ' + r.id + ', sẽ không đăng.' + (_dang_chay_nhieu_ ? '' : '\n' + cauHoiLyDo_());
   } finally { khoa.releaseLock(); }
+}
+
+/* ---------- HỎI LÝ DO BỎ VIDEO (để hệ thống học, không bắt buộc) ---------- */
+var _dang_chay_nhieu_ = false;
+var LY_DO_BO_ = [
+  ['1', 'Hình không khớp đề', 'hình minh họa không khớp đề (vẽ sai vật, sai cách sắp xếp, sai số đo)'],
+  ['2', 'Chữ đè / rối mắt', 'chữ đè lên hình hoặc chồng nhiều lớp chữ, rối mắt'],
+  ['3', 'Hình nhỏ / trống', 'hình minh họa quá nhỏ, sân khấu trống trải'],
+  ['4', 'Lời giải / đáp án', 'lời giải hoặc đáp án sai / khó hiểu'],
+  ['5', 'Giọng / nhịp', 'giọng đọc, nhịp video chưa hay (nhanh, chậm, đều đều)'],
+  ['6', 'Nhàm chán, máy móc', 'cách giảng, cách dàn cảnh nhàm chán, máy móc, thiếu sáng tạo'],
+  ['7', 'Đề không hay', 'đề bài không hay / không hợp kênh']
+];
+function cauHoiLyDo_() {
+  return '❓ Vì sao bạn bỏ? Trả lời nhanh bằng số (có thể nhiều số, thêm chữ nếu muốn): ' +
+    LY_DO_BO_.map(function (x) { return x[0] + ' ' + x[1]; }).join(' | ') + '. Ví dụ: "1 3" hoặc "2 chữ đáp án bị che". Bỏ qua cũng được.';
+}
+function themChoLyDo_(id) {
+  var p = PropertiesService.getScriptProperties(), o = {};
+  try { o = JSON.parse(p.getProperty('CHO_LY_DO_BO') || '{}'); } catch (e) { o = {}; }
+  if (!o.luc || Date.now() - o.luc > 3 * 3600000) o = { ids: [] };
+  if ((o.ids || []).indexOf(id) < 0) o.ids = (o.ids || []).concat([id]).slice(-40);
+  o.luc = Date.now();
+  p.setProperty('CHO_LY_DO_BO', JSON.stringify(o));
+}
+// "1 3 chữ bị che" -> {ma:['1','3'], chu:'chữ bị che'}; chữ tự do không có số thì đoán mã theo từ khóa
+function maLyDo_(chu) {
+  var s = String(chu || '').trim(), m = /^([1-7](?:[\s,;]+[1-7])*)\b\s*(.*)$/.exec(s);
+  var ma = m ? m[1].split(/[\s,;]+/) : [], con = m ? m[2] : s, l = con.toLowerCase();
+  if (!ma.length) {
+    if (/không khớp|sai vật|sai hình|vẽ sai|không liên quan/.test(l)) ma.push('1');
+    if (/đè|chồng|rối|che/.test(l)) ma.push('2');
+    if (/nhỏ|trống/.test(l)) ma.push('3');
+    if (/sai đáp|đáp án|lời giải|tính sai/.test(l)) ma.push('4');
+    if (/giọng|nhịp|nhanh quá|chậm/.test(l)) ma.push('5');
+    if (/nhàm|chán|máy móc|lặp|giống nhau/.test(l)) ma.push('6');
+    if (/đề (dở|chán|không hay)|đề bài/.test(l)) ma.push('7');
+  }
+  return { ma: ma, chu: con };
+}
+function ghiLyDoBo_(ma, chu) {
+  try {
+    var p = PropertiesService.getScriptProperties(), tk = {};
+    try { tk = JSON.parse(p.getProperty('LY_DO_BO_THONG_KE') || '{}'); } catch (e) { tk = {}; }
+    (ma || []).forEach(function (k) { tk[k] = (tk[k] || 0) + 1; });
+    p.setProperty('LY_DO_BO_THONG_KE', JSON.stringify(tk));
+  } catch (e2) {}
+}
+function thongKeLyDoBo_() {
+  var tk = {};
+  try { tk = JSON.parse(PropertiesService.getScriptProperties().getProperty('LY_DO_BO_THONG_KE') || '{}'); } catch (e) { tk = {}; }
+  var ds = LY_DO_BO_.filter(function (x) { return tk[x[0]]; }).sort(function (a, b) { return tk[b[0]] - tk[a[0]]; });
+  return ds.length ? 'Lý do bạn bỏ video nhiều nhất: ' + ds.slice(0, 4).map(function (x) { return x[1] + ' (' + tk[x[0]] + ')'; }).join(', ') : '';
+}
+// nhanZalo_ gọi: tin trả lời câu hỏi lý do (trong 3 giờ sau khi bỏ). Trả câu trả lời của bot, hoặc null nếu tin không phải lý do.
+function traLoiLyDoBo_(chat, chu) {
+  var p = PropertiesService.getScriptProperties(), o = {};
+  try { o = JSON.parse(p.getProperty('CHO_LY_DO_BO') || '{}'); } catch (e) { return null; }
+  if (!o.ids || !o.ids.length || Date.now() - (o.luc || 0) > 3 * 3600000) return null;
+  var s = String(chu || '').trim();
+  if (!s || s.length > 160 || /^\//.test(s)) return null;
+  var ld = maLyDo_(s);
+  if (!ld.ma.length && (s.length > 80 || /\d{2,}/.test(s))) return null;   // giống một đề toán hơn là lý do -> để xử lý như đề
+  var moTa = ld.ma.map(function (k) { var x = LY_DO_BO_.filter(function (y) { return y[0] === k; })[0]; return x ? x[2] : ''; }).filter(Boolean);
+  var noiDung = moTa.join('; ') + (ld.chu ? (moTa.length ? '. Ghi chú: ' : '') + ld.chu : '');
+  if (!noiDung) return null;
+  ghiLyDoBo_(ld.ma, noiDung);
+  o.ids.forEach(function (id) { if (typeof ghiGopYDeHoc_ === 'function') ghiGopYDeHoc_(id, 'bo', noiDung, chat); });
+  p.deleteProperty('CHO_LY_DO_BO');
+  return '🙏 Đã ghi lý do cho ' + o.ids.length + ' video vừa bỏ: ' + noiDung.slice(0, 200) + '\n🧠 Hệ thống sẽ học để các video sau tránh lỗi này.';
 }
 
 function danhSachChoDuyet_() {

@@ -222,7 +222,9 @@ function sinhDeNeuCan_(sh, bc) {
   if (che === 'KHO_DE') return;
   var hang = docHang_(sh);
   var dangCho = hang.filter(function (r) { return r.trang_thai === 'MOI' || r.trang_thai === 'DA_GIAI' || r.trang_thai === 'GITHUB'; }).length;
-  if (dangCho >= Number(cauHinh_('NGUONG_HANG_DOI'))) return;
+  // tỉ lệ qua kiểm duyệt 10/10 thấp -> giữ nhiều đề chờ hơn để số video đạt mỗi ngày vẫn đủ (NangCao.gs > heSoSanXuat_)
+  var hsSX = typeof heSoSanXuat_ === 'function' ? heSoSanXuat_() : { he_so: 1 };
+  if (dangCho >= Math.min(10, Math.round(Number(cauHinh_('NGUONG_HANG_DOI')) * hsSX.he_so))) return;
   var choDung = hang.filter(function (r) { return r.trang_thai === 'CO_KICH_BAN' || r.trang_thai === 'DANG_DUNG' || r.trang_thai === 'CO_VIDEO'; }).length;
   var toiDaCho = Number(cauHinh_('TOI_DA_CHO_DUNG_VIDEO'));
   if (toiDaCho > 0 && choDung >= toiDaCho) {
@@ -1284,7 +1286,7 @@ function giaoBoPhan1ChoGitHub_(sh, chiUuTien) {
       nhatKy_('GITHUB_BP1', r.id + ': GitHub quá hạn, chuyển về làm tại Apps Script');
     } else dangChay++;
   });
-  var toiDa = Number(cauHinh_('SO_DE_GITHUB_CUNG_LUC')) || 3;
+  var toiDa = (Number(cauHinh_('SO_DE_GITHUB_CUNG_LUC')) || 3) + (typeof heSoSanXuat_ === 'function' ? heSoSanXuat_().them_song_song : 0);
   var ds = docHang_(sh).filter(function (r) {
     return ((r.trang_thai === 'MOI' && r.de_bai) || r.trang_thai === 'DA_GIAI') && !/^TAI_CHO/.test(String(r.ghi_chu)) && (!chiUuTien || laUuTien_(r));
   }).sort(function (a, b) {

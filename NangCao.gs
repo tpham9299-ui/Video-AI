@@ -129,6 +129,7 @@ function xuLyAiXem_(sh, r) {
   var pt = kq.phan_tram, nguongPT = nguongDapUng_();
   nhatKy_('AI_XEM', r.id + ': đáp ứng ' + pt + '% (cần ≥ ' + nguongPT + '%) | ' + tomTatTieuChi_(kq) + (kq.van_de.length ? ' | ' + kq.van_de.join('; ').slice(0, 300) : ''));
   if (kq.dat) {
+    ghiQuaKiemDuyet_(true);
     ghiAiKT_(sh, r, { diem: kq.diem, phan_tram: pt, chi_tiet: kq.chi_tiet, van_de: kq.van_de }, { duyet: canDuyet_() ? 'CHO' : '' });
     if (canDuyet_()) guiDuyet_(r, '✅ Đạt kiểm duyệt yêu cầu: ' + (pt >= 100 ? '10/10 mọi tiêu chí' : pt + '%') + (lan ? ' (đã tự sửa ' + lan + ' lần)' : ''));
     else guiZalo_('✅ Video ' + (r.chu_de || r.id) + ' đạt kiểm duyệt yêu cầu (' + pt + '%), xếp lịch đăng.', 'vua');
@@ -278,6 +279,7 @@ function boDeKhongDat_(sh, r, lyDo, giaiDoan) {
   try { xoaNhapKichBan_(r.id); } catch (e2) {}
   nhatKy_('BO_DE_KHONG_DAT', r.id + ' (' + giaiDoan + '): ' + String(lyDo).slice(0, 250));
   if (giaiDoan === 'video' && typeof ghiKetQuaPhongCach_ === 'function') ghiKetQuaPhongCach_(r.id, false);
+  ghiQuaKiemDuyet_(false);
   try { PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1'); } catch (e3) {}
 }
 // gọi từ donDaXong_ trước khi xóa dòng: đề sản phẩm bị bỏ -> sản phẩm sáng tác đề mới
@@ -545,6 +547,10 @@ function baoCaoHangNgay() {
     var duyet7 = nk7.filter(function (v) { return v[1] === 'DUYET_VIDEO'; }).length, bo7 = nk7.filter(function (v) { return v[1] === 'BO_VIDEO'; }).length;
     if (duyet7 + bo7) tyLe = '📈 7 ngày qua bạn duyệt ' + duyet7 + '/' + (duyet7 + bo7) + ' video (' + Math.round(duyet7 / (duyet7 + bo7) * 100) + '%). Xem phong cách nào được duyệt nhiều: /phongcach\n';
   } catch (eTL) {}
+  var hs = heSoSanXuat_();
+  if (hs.ty_le !== null) tyLe += '🛡 3 ngày qua ' + hs.ty_le + '% video qua kiểm duyệt 10/10' + (hs.he_so > 1.05 ? ' -> hệ thống tự tăng lượng đề x' + hs.he_so.toFixed(1) + ' để đủ video' : '') + '\n';
+  var ldBo = typeof thongKeLyDoBo_ === 'function' ? thongKeLyDoBo_() : '';
+  if (ldBo) tyLe += '📉 ' + ldBo + '\n';
   tin += '\n' + tyLe + (moiDD ? moiDD + '\n' : '');
   guiZalo_(tin, 'cao', 'BAO_CAO_' + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd'));
 }
@@ -1056,4 +1062,30 @@ function phongCachLoiChoPrompt_(r) {
     (pc && pc.dan_chu ? 'CÁCH DÀN CẢNH CỦA VIDEO NÀY: ' + pc.dan_ten + ' - ' + pc.dan_chu + ' Áp dụng sáng tạo cho đúng đề này (hình vẫn phải bám sát đề, không đè chữ, không vẽ vật lạ); nếu thật sự không hợp với đề thì chọn cách dàn cảnh hợp hơn.\n' : '') +
     'CÂU NỐI ĐA DẠNG: mỗi cảnh mở đầu bằng một cách nói KHÁC nhau (không lặp "Tiếp theo", "Bây giờ", "Vậy là" nhiều lần trong một video)' +
     (gan.length ? '; TRÁNH dùng lại các câu mở đầu cảnh đã dùng ở các video gần đây: "' + gan.join('", "') + '"' : '') + '.\n';
+}
+
+/* ===================== TỰ TĂNG SẢN LƯỢNG KHI TỈ LỆ QUA KIỂM DUYỆT THẤP =====================
+ * Ngưỡng 10/10 loại nhiều đề -> số video ra mỗi ngày giảm. Hệ thống đếm tỉ lệ video qua kiểm duyệt 3 ngày gần nhất;
+ * tỉ lệ thấp thì tự giữ nhiều đề chờ hơn (NGUONG_HANG_DOI × hệ số, tối đa 2,5 lần, không quá 10) và giải thêm 1 đề song song trên GitHub,
+ * để số video ĐẠT mỗi ngày vẫn đủ. Tỉ lệ tốt lên thì tự giảm lại (tiết kiệm hạn mức Gemini).
+ */
+function ghiQuaKiemDuyet_(qua) {
+  try {
+    var p = PropertiesService.getScriptProperties(), o = {};
+    try { o = JSON.parse(p.getProperty('KD_THEO_NGAY') || '{}'); } catch (e) { o = {}; }
+    var ngay = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyMMdd');
+    o[ngay] = o[ngay] || { qua: 0, bo: 0 };
+    o[ngay][qua ? 'qua' : 'bo']++;
+    Object.keys(o).sort().slice(0, -10).forEach(function (k) { delete o[k]; });
+    p.setProperty('KD_THEO_NGAY', JSON.stringify(o));
+  } catch (e2) {}
+}
+function heSoSanXuat_() {
+  var o = {};
+  try { o = JSON.parse(PropertiesService.getScriptProperties().getProperty('KD_THEO_NGAY') || '{}'); } catch (e) { o = {}; }
+  var qua = 0, bo = 0, han = Utilities.formatDate(new Date(Date.now() - 3 * 86400000), 'Asia/Ho_Chi_Minh', 'yyMMdd');
+  Object.keys(o).forEach(function (k) { if (k >= han) { qua += o[k].qua || 0; bo += o[k].bo || 0; } });
+  if (qua + bo < 4) return { ty_le: null, he_so: 1, them_song_song: 0 };
+  var tl = qua / (qua + bo);
+  return { ty_le: Math.round(tl * 100), he_so: Math.max(1, Math.min(2.5, 0.6 / Math.max(0.24, tl))), them_song_song: tl < 0.5 ? 1 : 0 };
 }
