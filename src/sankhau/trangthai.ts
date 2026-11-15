@@ -293,6 +293,7 @@ export function kichThuocVat(v: Vat, k = 1): {w: number; h: number} {
     case 'luoi_o': { const c = v.soCot || Math.min(12, Math.ceil(Math.sqrt(n * 1.6))); const r = Math.ceil(n / c); const o = Math.min(860 / c, 560 / r); w = o * c; h = o * r + (v.nhan ? 50 : 0); break; }
     case 'danh_sach': { const b = boCucDanhSach(v, k); w = b.W; h = b.h; break; }
     case 'ban_tron': { const b = kichBanTron(Math.max(3, Math.min(16, n || v.ds.length || 6)), v.co); w = h = (b.Rg + b.o) * 2 + 30 + (v.nhan ? 60 : 0); break; }
+    case 'anh_that': w = 440; h = 440 + (v.nhan ? 64 : 0); break;
     case 'mui_ten': w = 0; h = 0; break;
     case 'khoi_hop': { const k = v.kichThuoc.length ? v.kichThuoc : [3, 2, 1.5]; const m = Math.max(...k); w = (330 * (k[0] / m) + 330 * ((k[1] || k[0]) / m) * 0.9 + 80); h = 330 * ((k[2] || k[0]) / m) + 200; break; }
     case 'tru': case 'non': w = 420; h = 420; break;

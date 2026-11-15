@@ -15,7 +15,7 @@
  * ============================================================
  */
 
-var MAC_DINH_NC_ = { TU_KIEM_TRA_VIDEO: 'BAT', DIEM_HINH_TOI_THIEU: '8', THU_HOOK: 'BAT', SERIES: 'BAT', BAO_CAO_GIO: '21', PLAYLIST_THEO: 'lop,lop_loai',
+var MAC_DINH_NC_ = { TU_KIEM_TRA_VIDEO: 'BAT', DIEM_HINH_TOI_THIEU: '8', MUC_DAP_UNG_TOI_THIEU: '85', AI_DUYET_KICH_BAN: 'BAT', SO_LAN_SUA_YEU_CAU: '2', THU_HOOK: 'BAT', SERIES: 'BAT', BAO_CAO_GIO: '21', PLAYLIST_THEO: 'lop,lop_loai',
   HOC_EDIT: 'BAT', HOC_EDIT_GIO: '2', HOC_EDIT_SO_VIDEO: '3', HOC_EDIT_TU_KHOA: 'math shorts animation|giải toán shorts|motion graphics math|toán học thú vị shorts|3d math animation' };
 function chNC_(k) { var v = cauHinh_(k); return v === undefined || v === null || String(v).trim() === '' ? MAC_DINH_NC_[k] : String(v).trim(); }
 var TEN_THONG_KE = 'THONG_KE';
@@ -74,9 +74,9 @@ function chayKiemTraVideo() {
   try { if (typeof sauUuTien_ === 'function') sauUuTien_(); } catch (e2) {}
 }
 
-// AI KIỂM DUYỆT video vừa dựng (bước cuối, sau kiểm duyệt bố cục tự động trên GitHub). Chỉ video ĐẠT mới được gửi bạn / đăng.
-// Chưa đạt: tự viết lại kịch bản theo nhận xét rồi dựng lại, tối đa SO_LAN_TU_SUA_VIDEO lần (mặc định 2). Vẫn chưa đạt thì giữ lại
-// (duyet = KHONG_DAT), không gửi, không đăng; báo bạn một tin ngắn kèm lý do (nhắn /xem <mã> nếu vẫn muốn xem).
+// BỘ PHẬN KIỂM DUYỆT YÊU CẦU - cửa 2: chấm VIDEO vừa dựng (sau kiểm duyệt bố cục tự động trên GitHub) theo bảng tiêu chí của chủ kênh.
+// Đạt (≥ MUC_DAP_UNG_TOI_THIEU %, mặc định 85%, và mọi tiêu chí bắt buộc ≥ 7) mới gửi bạn duyệt / đăng.
+// Chưa đạt: tự viết lại kịch bản theo nhận xét rồi dựng lại, tối đa SO_LAN_SUA_YEU_CAU lần (mặc định 2). Vẫn chưa đạt -> BỎ video + XÓA đề, làm đề mới.
 function docAiKT_(r) { try { return JSON.parse(String(r.ai_kiem_tra || '{}')) || {}; } catch (e) { return {}; } }
 function ghiAiKT_(sh, r, them, cot) {
   var o = docAiKT_(r);
@@ -116,8 +116,7 @@ function xuLyAiXem_(sh, r) {
   }
   var cu = docAiKT_(r);
   var lan = Number(cu.lan_sua) || 0;
-  var toiDa = Number(cauHinh_('SO_LAN_TU_SUA_VIDEO')) || 2;
-  var nguong = Number(chNC_('DIEM_HINH_TOI_THIEU')) || 8;
+  var toiDa = soLanSuaYeuCau_();
   if (!kq) {
     // AI CHƯA CHẤM ĐƯỢC (hết key, mạng...): KHÔNG BAO GIỜ coi là đạt. Giữ trạng thái AI_XEM để lượt sau chấm lại;
     // quá 6 lượt vẫn không chấm được thì giữ video lại (không gửi duyệt, không đăng) và báo người dùng.
@@ -127,23 +126,25 @@ function xuLyAiXem_(sh, r) {
     guiZalo_('⏸ Video "' + (r.chu_de || r.id) + '" đã dựng xong nhưng AI kiểm duyệt chưa chấm được (hết key/lỗi mạng) nên CHƯA gửi, CHƯA đăng.\nXem tay: /xem ' + r.id, 'cao', 'AI_KHONG_CHAM_' + r.id);
     return;
   }
-  nhatKy_('AI_XEM', r.id + ': ' + kq.diem + '/10' + (kq.van_de.length ? ' | ' + kq.van_de.join('; ').slice(0, 300) : ''));
-  if (kq.diem >= nguong && !kq.loi_nang) {
-    ghiAiKT_(sh, r, { diem: kq.diem, van_de: kq.van_de }, { duyet: canDuyet_() ? 'CHO' : '' });
-    if (canDuyet_()) guiDuyet_(r, '✅ Đạt kiểm duyệt: ' + kq.diem + '/10' + (lan ? ' (đã tự sửa ' + lan + ' lần)' : ''));
-    else guiZalo_('✅ Video ' + (r.chu_de || r.id) + ' đạt kiểm duyệt (' + kq.diem + '/10), xếp lịch đăng.', 'vua');
+  var pt = kq.phan_tram, nguongPT = nguongDapUng_();
+  nhatKy_('AI_XEM', r.id + ': đáp ứng ' + pt + '% (cần ≥ ' + nguongPT + '%) | ' + tomTatTieuChi_(kq) + (kq.van_de.length ? ' | ' + kq.van_de.join('; ').slice(0, 300) : ''));
+  if (kq.dat) {
+    ghiAiKT_(sh, r, { diem: kq.diem, phan_tram: pt, chi_tiet: kq.chi_tiet, van_de: kq.van_de }, { duyet: canDuyet_() ? 'CHO' : '' });
+    if (canDuyet_()) guiDuyet_(r, '✅ Đạt kiểm duyệt yêu cầu: ' + pt + '%' + (lan ? ' (đã tự sửa ' + lan + ' lần)' : ''));
+    else guiZalo_('✅ Video ' + (r.chu_de || r.id) + ' đạt kiểm duyệt yêu cầu (' + pt + '%), xếp lịch đăng.', 'vua');
     return;
   }
   if (lan >= toiDa || !r.file_kich_ban) {
-    ghiAiKT_(sh, r, { diem: kq.diem, van_de: kq.van_de }, { duyet: 'KHONG_DAT', ghi_chu: ('KHÔNG ĐẠT kiểm duyệt (' + kq.diem + '/10): ' + kq.van_de.join('; ')).slice(0, 300) });
-    guiZalo_('⛔ Video "' + (r.chu_de || r.id) + '" chưa đạt kiểm duyệt sau ' + lan + ' lần tự sửa nên KHÔNG gửi, KHÔNG đăng (' + kq.diem + '/10).\n' +
-      'Lý do: ' + kq.van_de.slice(0, 3).join('; ').slice(0, 300) + '\nVẫn muốn xem: /xem ' + r.id, 'cao', 'KHONG_DAT_' + r.id);
+    // đã tự sửa đủ số lần mà vẫn chưa đạt: BỎ VIDEO + XÓA ĐỀ, hệ thống tự làm đề mới (không gửi bạn, không đăng)
+    var lyDo = 'đáp ứng ' + pt + '% sau ' + lan + ' lần tự sửa' + (kq.nang.length ? ', tiêu chí bắt buộc chưa đạt: ' + kq.nang.join(', ') : '') + '. ' + kq.van_de.slice(0, 3).join('; ');
+    ghiAiKT_(sh, r, { diem: kq.diem, phan_tram: pt, chi_tiet: kq.chi_tiet, van_de: kq.van_de }, {});
+    boDeKhongDat_(sh, r, lyDo, 'video');
+    if (laUuTien_(r)) baoZaloDe_(r, '❌ Video cho đề ' + r.id + ' không đạt kiểm duyệt yêu cầu (' + pt + '%) sau ' + lan + ' lần tự sửa nên hệ thống đã BỎ video và xóa đề.\nLý do: ' + kq.van_de.slice(0, 2).join('; ').slice(0, 250), 'cao');
     return;
   }
   traVeSuaKichBan_(sh, r,
-    'AI KIỂM DUYỆT VIDEO CHẤM ' + kq.diem + '/10 (cần ≥ ' + nguong + '). Vấn đề: ' + kq.van_de.join('; ') + '. Cách sửa: ' + kq.gop_y,
-    'AI kiểm duyệt ' + kq.diem + '/10: tự sửa lần ' + (lan + 1), { diem: kq.diem, van_de: kq.van_de, lan_sua: lan + 1 });
-  baoZaloDe_(r, '🤖 Kiểm duyệt video ' + r.id + ' chưa đạt (' + kq.diem + '/10): ' + kq.van_de.slice(0, 3).join('; ').slice(0, 300) + '\n🔧 Đang tự sửa và dựng lại.', 'thap');
+    'BỘ PHẬN KIỂM DUYỆT YÊU CẦU: video mới đáp ứng ' + pt + '% (cần ≥ ' + nguongPT + '%' + (kq.nang.length ? ', tiêu chí bắt buộc chưa đạt: ' + kq.nang.join(', ') : '') + '). Vấn đề: ' + kq.van_de.join('; ') + '. Cách sửa: ' + kq.gop_y,
+    'Kiểm duyệt yêu cầu ' + pt + '%: tự sửa lần ' + (lan + 1), { diem: kq.diem, phan_tram: pt, chi_tiet: kq.chi_tiet, van_de: kq.van_de, lan_sua: lan + 1 });
 }
 
 // /xem <mã>: lấy link video bị giữ lại vì chưa đạt kiểm duyệt
@@ -167,25 +168,121 @@ function aiChamVideo_(r) {
   if (anhDe) anhs.push(anhDe);
   var kb = {};
   try { kb = JSON.parse(DriveApp.getFileById(r.file_kich_ban).getBlob().getDataAsString()); } catch (e) {}
+  var ds = tieuChiYeuCau_(!!kb.san_pham, 'video');
+  if (kb.san_pham && typeof anhSanPhamChoGemini_ === 'function') anhSanPhamChoGemini_(kb.san_pham, 2).forEach(function (a) { anhs.push(a); });
   var canh = (kb.canh || []);
   var moTa = canh.map(function (c, i) { return 'Cảnh ' + (i + 1) + ' (' + c.loai + '): ' + (c.tieu_de_canh || '') + ' | hình: ' + String((c.minh_hoa || {}).mo_ta || '').slice(0, 140); }).join('\n');
   var prompt = 'Bạn là người KIỂM DUYỆT KHẮT KHE video dạy toán TikTok trước khi gửi cho chủ kênh. ẢNH 1 là lưới khung hình của video: MỖI CẢNH MỘT KHUNG theo đúng thứ tự cảnh của kịch bản bên dưới (đọc từ trái sang phải, trên xuống dưới).' + (anhDe ? ' ẢNH 2 là ảnh chụp đề gốc.' : '') +
     '\nĐỀ BÀI: ' + r.de_bai + (r.mo_ta_hinh ? '\nMÔ TẢ HÌNH CỦA ĐỀ: ' + r.mo_ta_hinh : '') + '\nĐÁP ÁN ĐÚNG: ' + (r.dap_an_hien || r.dap_an) + '\nKỊCH BẢN:\n' + moTa + '\n' +
-    'TIÊU CHÍ BẮT BUỘC của chủ kênh (vi phạm bất kỳ điều nào = loi_nang true, tối đa 5 điểm):\n' +
-    '(1) Khung đầu phải nêu RÕ ĐỀ BÀI: đề cho gì, dữ kiện, cần tìm gì (thẻ ĐỀ CHO / CẦN TÌM đọc được); không được nhảy thẳng vào mô phỏng.\n' +
-    '(2) Không có chữ đè lên chữ, không có chữ tràn/bị cắt ở mép màn hình, không có chữ quá nhỏ khó đọc trên điện thoại.\n' +
-    '(3) Không có mã LaTeX thô (\\frac, ^{}, $...$, dấu gạch chéo) hiện trên màn hình; công thức phải hiện đẹp.\n' +
-    '(4) Hình minh họa đúng đối tượng/hình dạng/số liệu của đề (vẽ vật khác đề là sai nặng); đáp án hiện đúng ' + (r.dap_an_hien || r.dap_an) + '.\n' +
-    '(5) Không có vật bị vẽ LẶP hoặc vật thừa sót lại từ cảnh trước (2 tòa nhà, 2 người khi đề chỉ có 1).\n' +
-    '(5b) Cách sắp xếp đúng điều kiện đề (ngồi quanh bàn tròn phải vẽ vòng tròn quanh bàn, không phải hàng ngang); không có hình/người/chữ nào đè lên nhau.\n' +
-    '(6) LỜI GIẢI ĐÚNG: mọi phép tính, số trung gian, công thức hiện trên màn hình phải đúng toán học và dẫn đúng tới đáp án; số đo trên hình khớp đề.\n' +
-    '(7) Huy hiệu/con số đáp án đọc được rõ ràng (không bị lăn dở, không mất chữ số); dòng công thức cuối hiện đầy đủ.\n' +
-    'TIÊU CHÍ CHẤT LƯỢNG (trừ điểm): hình hấp dẫn, có chiều sâu, không trống trải; bố cục cân đối; màu sắc thống nhất; đủ 6 phần đúng thứ tự.\n' +
-    'Trả JSON: {"diem":0-10,"loi_nang":true|false,"van_de":["mỗi vấn đề một câu ngắn, nói rõ khung/cảnh nào"],"gop_y":"chỉ dẫn sửa cụ thể theo từng cảnh của kịch bản"}';
+    (kb.khong_thu_lai ? 'KỊCH BẢN GHI KHÔNG THỂ THỬ LẠI VÌ: ' + kb.khong_thu_lai + '\n' : '') +
+    (kb.san_pham ? 'SẢN PHẨM QUẢNG BÁ: ' + kb.san_pham.ten + ' (giá kênh bán ' + kb.san_pham.gia_ban + 'đ). Các ảnh sau ảnh lưới là ẢNH THẬT của sản phẩm để đối chiếu.\n' : '') +
+    'TIÊU CHÍ CỦA CHỦ KÊNH (chấm mỗi tiêu chí 0-10; có một lỗi rõ ràng thì ≤ 6; không chắc thì chấm thấp):\n' + moTaTieuChi_(ds) + '\n' +
+    'Tự kiểm lại từng phép tính nhìn thấy. "van_de": mỗi vấn đề một câu, nói rõ khung/cảnh nào. "gop_y": chỉ dẫn sửa cụ thể theo từng cảnh của kịch bản.\n' +
+    'Trả JSON: {"diem":{' + ds.map(function (t) { return '"' + t.id + '":0'; }).join(',') + '},"van_de":[],"gop_y":""}';
   var j = goiGemini_(prompt, 0.1, { suyNghi: 'low', anhs: anhs });
-  var diem = Math.max(0, Math.min(10, Number(j && j.diem)));
-  if (!isFinite(diem)) throw new Error('AI không trả điểm');
-  return { diem: diem, loi_nang: j.loi_nang === true, van_de: (Array.isArray(j.van_de) ? j.van_de : []).map(String).slice(0, 6), gop_y: String(j.gop_y || '').slice(0, 800) };
+  if (!j || !j.diem || typeof j.diem !== 'object') throw new Error('AI không trả điểm');
+  var kq = tinhDapUng_(j, ds);
+  kq.diem = Math.round(kq.phan_tram) / 10;
+  return kq;
+}
+
+
+/* ===================== BỘ PHẬN KIỂM DUYỆT YÊU CẦU ===================== */
+// Mọi yêu cầu chủ kênh đã đặt ra được gom thành MỘT bảng tiêu chí có trọng số. AI chấm từng tiêu chí 0-10, máy tự tính
+// MỨC ĐÁP ỨNG (%) = trung bình có trọng số. Tiêu chí "bắt buộc" dưới 7 điểm = lỗi nặng (không bao giờ gửi bạn).
+// Hai cửa: (1) KỊCH BẢN trước khi dựng (đọc chữ, rẻ, chặn sớm hình không bám đề); (2) VIDEO sau khi dựng (nhìn mọi cảnh).
+// Chưa đạt -> tự sửa theo nhận xét (tối đa SO_LAN_SUA_YEU_CAU lần mỗi cửa); sửa rồi vẫn thấp -> BỎ VIDEO + XÓA ĐỀ, hệ thống làm đề mới.
+var TIEU_CHI_YEU_CAU_ = [
+  { id: 'de_bai', w: 1.5, bb: true, kb: true, chu: 'Mở đầu nêu RÕ ĐỀ BÀI: đề cho gì (đủ dữ kiện, đúng số), cần tìm gì; không nhảy thẳng vào lời giải.' },
+  { id: 'bam_de', w: 3, bb: true, kb: true, chu: 'Hình minh họa BÁM SÁT NGỮ CẢNH ĐỀ: đúng đối tượng (người, vật, công trình...), đúng số lượng, đúng cách sắp xếp/vị trí (ngồi bàn tròn phải vẽ vòng quanh bàn, bờ sông - đường ống phải vẽ sông và ống...), số đo trên hình khớp đề; không vẽ vật không liên quan, không lặp vật.' },
+  { id: 'loi_giai', w: 3, bb: true, kb: true, chu: 'LỜI GIẢI ĐÚNG: mọi phép tính, số trung gian, công thức trên màn hình đúng toán học, dẫn đúng tới đáp án; giải thích công thức có từ đâu.' },
+  { id: 'dap_an', w: 2, bb: true, kb: true, chu: 'ĐÁP ÁN đúng (khớp đáp án đã kiểm chứng), hiện rõ, đọc được đầy đủ chữ số và đơn vị.' },
+  { id: 'thu_lai', w: 1.5, bb: true, kb: true, chu: 'THỬ LẠI THẬT: cảnh thử lại có phép thử bằng số cụ thể (thế đáp án vào đề / cách thứ hai / so giá trị khác) cả trên màn hình lẫn lời thoại; chỉ một khung chữ "thử lại" là không đạt. Kịch bản ghi rõ "khong_thu_lai" kèm lý do hợp lý thì tiêu chí này đạt.' },
+  { id: 'nhieu_canh', w: 1.5, bb: false, kb: true, chu: 'KHAI THÁC NHIỀU CẢNH: mỗi bước của lời giải có hình riêng bám đề (bản vẽ, số đo, mô phỏng); không có cảnh trống trải chỉ có chữ; hình đi theo từng bước lời giải.' },
+  { id: 'bo_cuc', w: 2, bb: true, kb: false, chu: 'BỐ CỤC SẠCH: không chữ/hình/người đè lên nhau, không tràn hay bị cắt ở mép, không mã LaTeX thô, chữ đủ to đọc trên điện thoại.' },
+  { id: 'tham_my', w: 1, bb: false, kb: false, chu: 'THẨM MỸ: hình hấp dẫn, có chiều sâu, cân đối, màu sắc thống nhất.' },
+  { id: 'san_pham', w: 2, bb: true, kb: true, sp: true, chu: 'SẢN PHẨM: đề bài xoay quanh đúng sản phẩm (dùng giá/thông số thật của nó) một cách hợp lý; ẢNH THẬT của sản phẩm xuất hiện rõ (mở đầu + ít nhất một cảnh khác + thẻ cuối); lời quảng cáo tự nhiên, trung thực, không quá đà, không chê đối thủ; vẫn là một bài toán có ích.' }
+];
+function tieuChiYeuCau_(coSP, giaiDoan) {
+  return TIEU_CHI_YEU_CAU_.filter(function (t) { return (!t.sp || coSP) && (giaiDoan !== 'kb' || t.kb); });
+}
+function nguongDapUng_() { return Number(chNC_('MUC_DAP_UNG_TOI_THIEU')) || 85; }
+function soLanSuaYeuCau_() { var n = Number(chNC_('SO_LAN_SUA_YEU_CAU')); return isFinite(n) && n >= 0 ? n : 2; }
+function moTaTieuChi_(ds) { return ds.map(function (t) { return '- ' + t.id + (t.bb ? ' (BẮT BUỘC)' : '') + ': ' + t.chu; }).join('\n'); }
+// AI trả {"diem":{"id":0-10,...},"van_de":[...],"gop_y":""} -> máy tự tính % đáp ứng (không tin con số tổng của AI)
+function tinhDapUng_(j, ds) {
+  var d = (j && j.diem && typeof j.diem === 'object') ? j.diem : {};
+  var tong = 0, w = 0, nang = [], chiTiet = {};
+  ds.forEach(function (t) {
+    var x = Number(d[t.id]);
+    if (!isFinite(x)) x = 0;   // AI bỏ sót tiêu chí = coi như chưa đạt (không cho qua vì thiếu chấm)
+    x = Math.max(0, Math.min(10, x));
+    chiTiet[t.id] = x; tong += x * t.w; w += t.w;
+    if (t.bb && x < 7) nang.push(t.id + '=' + x);
+  });
+  var pt = w ? Math.round(tong / w * 10) : 0;
+  return { phan_tram: pt, loi_nang: nang.length > 0, nang: nang, chi_tiet: chiTiet, dat: pt >= nguongDapUng_() && !nang.length,
+    van_de: (Array.isArray(j && j.van_de) ? j.van_de : []).map(String).slice(0, 8), gop_y: String((j && j.gop_y) || '').slice(0, 1200) };
+}
+function tomTatTieuChi_(kq) { return Object.keys(kq.chi_tiet || {}).map(function (k) { return k + ' ' + kq.chi_tiet[k]; }).join(', '); }
+
+// CỬA 1: duyệt KỊCH BẢN trước khi dựng (chỉ đọc chữ). Trả null nếu AI không chấm được (cửa 2 vẫn chặn sau).
+function moTaKichBanChoDuyet_(kb) {
+  var vatCua = function (c) {
+    var du = c && c.minh_hoa && c.minh_hoa.du_lieu;
+    var vs = du && Array.isArray(du.vat) ? du.vat : [];
+    return vs.slice(0, 14).map(function (v) {
+      if (!v) return '';
+      var nd = v.noi_dung || v.nhan || v.chu || v.ten || (Array.isArray(v.ds) ? v.ds.join('/') : '') || (v.so !== undefined ? v.so : '');
+      return v.loai + (nd !== '' ? '(' + String(nd).slice(0, 40) + ')' : '') + (v.anh !== undefined && v.loai === 'anh_that' ? '[ảnh SP ' + v.anh + ']' : '');
+    }).join(', ') + (c.giu_san_khau ? ' [giữ hình cảnh trước]' : '');
+  };
+  return (kb.canh || []).map(function (c, i) {
+    return 'Cảnh ' + (i + 1) + ' [' + c.loai + '] ' + String(c.tieu_de_canh || '') +
+      '\n  lời: ' + String(c.loi_thoai || '').slice(0, 260) +
+      '\n  màn hình: ' + (c.noi_dung_man_hinh || []).map(String).join(' | ').slice(0, 260) +
+      '\n  hình: ' + String((c.minh_hoa || {}).mo_ta || '').slice(0, 200) + ' || vật: ' + vatCua(c);
+  }).join('\n').slice(0, 16000);
+}
+function aiDuyetKichBan_(kb, r, spham) {
+  var ds = tieuChiYeuCau_(!!spham, 'kb');
+  var prompt = 'Bạn là BỘ PHẬN KIỂM DUYỆT YÊU CẦU của một kênh video dạy toán (TikTok/YouTube/Facebook). Chấm KỊCH BẢN dưới đây TRƯỚC KHI DỰNG, thật khắt khe, theo đúng các yêu cầu của chủ kênh.\n' +
+    'ĐỀ BÀI: ' + r.de_bai + (r.mo_ta_hinh ? '\nMÔ TẢ HÌNH CỦA ĐỀ: ' + r.mo_ta_hinh : '') + '\nĐÁP ÁN ĐÃ KIỂM CHỨNG: ' + (r.dap_an_hien || r.dap_an) +
+    (kb.khong_thu_lai ? '\nKỊCH BẢN GHI KHÔNG THỂ THỬ LẠI VÌ: ' + kb.khong_thu_lai : '') +
+    (spham ? '\nSẢN PHẨM QUẢNG BÁ: ' + spham.ten + ' | giá kênh bán ' + spham.gia_ban + 'đ | thông số đã xác minh: ' + (spham.thong_so || []).join('; ') + ' | số ảnh thật: ' + ((spham.anh || []).length) : '') +
+    '\nKỊCH BẢN (' + (kb.canh || []).length + ' cảnh):\n' + moTaKichBanChoDuyet_(kb) + '\n' +
+    'TIÊU CHÍ (chấm mỗi tiêu chí 0-10; 10 = hoàn hảo; có một lỗi rõ ràng thì ≤ 6):\n' + moTaTieuChi_(ds) + '\n' +
+    'Tự kiểm lại từng phép tính trên màn hình. "van_de": mỗi vấn đề một câu, ghi rõ cảnh số mấy. "gop_y": chỉ dẫn sửa CỤ THỂ theo từng cảnh (vẽ vật gì, đặt ở đâu, số nào sai sửa thành gì).\n' +
+    'Trả JSON: {"diem":{' + ds.map(function (t) { return '"' + t.id + '":0'; }).join(',') + '},"van_de":[],"gop_y":""}';
+  var j = goiGemini_(prompt, 0.1, { suyNghi: 'medium' });
+  if (!j || !j.diem) return null;
+  return tinhDapUng_(j, ds);
+}
+
+// Bỏ video + xóa đề (không đạt yêu cầu sau khi đã tự sửa). Đề được dọn khỏi sheet ở lần chạy tới (mã băm lưu lại để không sinh lại).
+// Đề sản phẩm: sản phẩm quay về DA_XAC_NHAN để sáng tác đề mới (tối đa 3 lượt). Đề bạn gửi: báo bạn một tin.
+function boDeKhongDat_(sh, r, lyDo, giaiDoan) {
+  var ghiChu = ('BO_KHONG_DAT (' + giaiDoan + '): ' + lyDo).slice(0, 300);
+  if (r.file_video) { try { DriveApp.getFileById(String(r.file_video)).setTrashed(true); } catch (e) {} }
+  ghi_(sh, r._row, { trang_thai: 'XOA', duyet: 'BO', ghi_chu: ghiChu });
+  r.trang_thai = 'XOA'; r.ghi_chu = ghiChu;
+  try { xoaNhapKichBan_(r.id); } catch (e2) {}
+  nhatKy_('BO_DE_KHONG_DAT', r.id + ' (' + giaiDoan + '): ' + String(lyDo).slice(0, 250));
+  try { PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1'); } catch (e3) {}
+}
+// gọi từ donDaXong_ trước khi xóa dòng: đề sản phẩm bị bỏ -> sản phẩm sáng tác đề mới
+function deMoiChoSanPhamBiBo_(r) {
+  if (!/^BO_KHONG_DAT/.test(String(r.ghi_chu || '')) || !r.san_pham) return;
+  var sp = null;
+  try { sp = JSON.parse(String(r.san_pham)); } catch (e) { return; }
+  var shS = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(typeof TEN_SAN_PHAM !== 'undefined' ? TEN_SAN_PHAM : 'SAN_PHAM');
+  if (!shS || !sp || !sp.id) return;
+  var dong = docSP_(shS).filter(function (x) { return x.id === sp.id; })[0];
+  if (!dong || dong.trang_thai === 'BO') return;
+  var lan = (Number(dong.so_de) || 0);
+  if (lan >= 6) { guiZaloToi_(dong.zalo_chat, '⚠️ Sản phẩm ' + dong.id + ': các bài toán sáng tác vẫn chưa đạt kiểm duyệt nên hệ thống dừng. Bạn gửi thêm ảnh/thông số rõ hơn rồi /sanpham lại nhé.'); return; }
+  ghiSP_(shS, dong._row, { trang_thai: 'DA_XAC_NHAN', ghi_chu: 'Đề cũ không đạt kiểm duyệt, sáng tác đề mới' });
+  try { henUuTien_(30); } catch (e2) {}
 }
 
 // Gửi tin xin duyệt (dùng chung cho mọi đường).

@@ -14,7 +14,7 @@ on:
       mau:
         description: 'Kịch bản mẫu để dựng thử (khi không có kich_ban)'
         type: choice
-        options: [kich_ban_thuc_te, kich_ban_koch, kich_ban_koch_moi, kich_ban_ong_thep, kich_ban_cot_co, kich_ban_rao_vuon, kich_ban_toa_nha, kich_ban_mau]
+        options: [kich_ban_thuc_te, kich_ban_koch, kich_ban_koch_moi, kich_ban_ong_thep, kich_ban_cot_co, kich_ban_rao_vuon, kich_ban_toa_nha, kich_ban_san_pham, kich_ban_mau]
         default: kich_ban_thuc_te
       viec:
         description: 'dung = dựng video | dang = đăng video lên mạng xã hội'
@@ -132,6 +132,20 @@ jobs:
             cp "mau/${{ github.event.inputs.mau || 'kich_ban_mau' }}.json" kich_ban.json
           else
             printf '%s' "$KICH_BAN" > kich_ban.json
+          fi
+
+      # Video giới thiệu sản phẩm: lấy ẢNH THẬT của sản phẩm (Apps Script lưu ở Drive VIDEO_XACSUAT/san_pham/<mã>/)
+      - name: Lấy ảnh thật của sản phẩm
+        if: ${{ env.RCLONE_CONF != '' }}
+        run: |
+          MA=$(python3 -c "import json,re;k=json.load(open('kich_ban.json',encoding='utf8'));s=k.get('san_pham') if isinstance(k.get('san_pham'),dict) else {};print(re.sub(r'[^A-Za-z0-9_-]','',str((s or {}).get('id') or '')))")
+          if [ -n "$MA" ]; then
+            mkdir -p ~/.config/rclone "public/sp/$MA"
+            printf '%s' "$RCLONE_CONF" > ~/.config/rclone/rclone.conf
+            rclone copy "gdrive:${DRIVE_SAN_PHAM:-VIDEO_XACSUAT/san_pham}/$MA" "public/sp/$MA" --max-size 12M --include "*.{jpg,jpeg,png,webp,JPG,JPEG,PNG,WEBP}" || echo "Không lấy được ảnh sản phẩm $MA"
+            ls -la "public/sp/$MA" || true
+          else
+            echo "Video không có sản phẩm"
           fi
 
       - name: Tạo giọng đọc và mốc thời gian

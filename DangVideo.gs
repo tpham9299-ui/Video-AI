@@ -165,7 +165,8 @@ function noiDungDang_(r, tap, td) {
   if (sp && the.indexOf('quangcao') < 0) the.push('quangcao');
   if (kb.loai_cau_hoi) { var tl = kb.loai_cau_hoi.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]/g, ''); if (tl && the.indexOf(tl) < 0) the.push(tl); }
   var moTa = [
-    sp ? '📢 Video có giới thiệu sản phẩm do kênh bán: ' + sp.ten + '. Thông tin giá và thông số lấy ngày ' + (sp.ngay || '') + '.\n' : '',
+    sp ? '🛒 Sản phẩm trong video: ' + sp.ten + (Number(sp.gia_ban) > 0 ? ' – giá ' + Number(sp.gia_ban).toLocaleString('vi-VN') + 'đ' : '') + (sp.link ? '\n👉 Link sản phẩm: ' + sp.link : '') +
+      '\n📢 Video có giới thiệu sản phẩm do kênh bán. Giá và thông số lấy ngày ' + (sp.ngay || '') + '.\n' : '',
     String(kb.hook || tieuDe),
     '',
     '📌 Đề bài: ' + de.slice(0, 1500),
@@ -183,7 +184,7 @@ function noiDungDang_(r, tap, td) {
     tieu_de: tieuDe,
     yt_tieu_de: (ytTieuDe + ' #shorts').slice(0, 100),
     // TikTok: chú thích = câu mở đầu gây tò mò + kêu gọi THEO DÕI (thẻ # do GitHub nối thêm)
-    tt_tieu_de: (String(td.tiktok || tieuDe) + nhanTap + '\n👉 Theo dõi để không bỏ lỡ tập sau!').slice(0, 1500),
+    tt_tieu_de: (String(td.tiktok || tieuDe) + nhanTap + (sp ? '\n🛒 ' + sp.ten + ' có tại kênh (giỏ hàng / link ở bio)' : '') + '\n👉 Theo dõi để không bỏ lỡ tập sau!').slice(0, 1500),
     mo_ta: moTa,
     yt_mo_ta: (String(td.youtube_mo_dau || td.youtube || tieuDe) + '\n\n' + moTa + '\n\n🔔 ĐĂNG KÝ KÊNH và bật chuông để xem tập tiếp theo!').slice(0, 4900),
     fb_mo_ta: (String(td.facebook || tieuDe) + '\n\n' + moTa + '\n\n👉 Nhấn THEO DÕI trang để xem tập tiếp theo mỗi ngày!').slice(0, 4900),

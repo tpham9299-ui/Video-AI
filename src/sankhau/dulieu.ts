@@ -21,6 +21,8 @@ export const LOAI_VAT = [
   'nguoi', 'the', 'the_bai', 'xuc_xac', 'dong_xu', 'hop_bi', 'tui', 'hop_qua', 'dong_ho', 'dien_thoai', 'bong_bay',
   'dong_ho_do', 'bieu_do_cot', 'thanh', 'vong_quay', 'cua', 'banh', 'nhan', 'chu', 'so_dem', 'mui_ten', 'bieu_tuong',
   'luoi_o', 'danh_sach', 'ban_tron',
+  // ảnh THẬT của sản phẩm (video giới thiệu sản phẩm): src = sp/<mã>/anh_k.jpg do chuanbi.py điền
+  'anh_that',
   // toán thực tế: vật 3D + hình học + đồ thị
   'khoi_hop', 'tru', 'non', 'cau', 'toa_nha', 'xe', 'cay', 'thang', 'hinh_hoc', 'do_thi',
   // hình tự do: vẽ đúng hình của đề bằng các nét (đa giác, đường, tròn, cung, SVG, fractal, đường cong tham số, nhân bản)
@@ -102,6 +104,7 @@ export type Vat = {
   soTang: number; // toa_nha: số tầng
   khung: [number, number]; // hinh_tu_do: khung tọa độ [rộng, cao]
   hinh: PhanHinh[]; // hinh_tu_do: các nét
+  anhSrc: string; // anh_that: đường dẫn ảnh trong public (sp/<mã>/anh_k.jpg)
 };
 
 export type HanhDong = {
@@ -192,6 +195,7 @@ function vat(raw: Record<string, unknown>, i: number): Vat | null {
     soTang: Math.round(so(raw.so_tang, 6, 1, 30)),
     khung: [100, 100],
     hinh: [],
+    anhSrc: loai === 'anh_that' && typeof raw.src === 'string' && /^sp\/[\w.-]+\/[\w.-]+\.(jpe?g|png|webp)$/i.test(raw.src) ? raw.src : '',
   };
   if (loai === 'hinh_tu_do') {
     const k = laMang(raw.khung) ? raw.khung : [];

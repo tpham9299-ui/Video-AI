@@ -1,6 +1,7 @@
 // Thư viện VẬT THẬT cho sân khấu, phong cách neon như video mẫu: viền phát sáng trên nền tối, bật lên có độ nảy,
 // mỗi vật có chuyển động riêng (xúc xắc lăn, đồng xu lật, vòng quay quay, hộp quà mở, kim đồng hồ đo xác suất chạy...).
 import React from 'react';
+import {Img, staticFile} from 'remotion';
 import {FONT, FONT_DAM, BONG_CHU, vienChu, laMoi, GIAO_DIEN} from '../theme';
 import {GachTay} from '../dong/DiemNhan';
 import {CoChuSan} from '../dong/KhongGian';
@@ -831,6 +832,8 @@ const SoLan: React.FC<{g: number; co: number; dich?: number}> = ({g, co, dich}) 
   for (let k = n - 1; k >= 0; k--) {
     cot.push(<CotSo key={k} g={tp ? Math.round(G * 1000) / 1000 : G} k={k} h={h} />);
     if (tp && k === tp) cot.push(<span key={`p${k}`} style={{lineHeight: `${h}px`}}>,</span>);
+    // số từ 10.000 trở lên: chấm ngăn hàng nghìn kiểu Việt ("12.000" thay vì "12000" dễ đọc nhầm)
+    else if (n - tp >= 5 && k > tp && (k - tp) % 3 === 0) cot.push(<span key={`n${k}`} style={{lineHeight: `${h}px`}}>.</span>);
   }
   // số các bánh số ĐANG chỉ (máy kiểm duyệt đọc để đối chiếu với đáp án đã kiểm chứng)
   const hien = tp ? (Math.round(G) / Math.pow(10, tp)).toFixed(tp).replace('.', ',') : String(Math.round(G));
@@ -944,8 +947,39 @@ const BieuTuong: Ve = (v, st, frame) => (
   </div>
 );
 
+/* ---------------- ẢNH THẬT CỦA SẢN PHẨM: khung bo góc nền sáng, viền phát sáng màu nhấn, nổi nhẹ, vệt sáng lướt qua ----------------
+   anh: số thứ tự ảnh (chuanbi.py đổi thành src). gia_tri_chu: nhãn giá dán góc ("249.000đ"). nhan: dòng chữ dưới ảnh. */
+const AnhThat: Ve = (v, st, frame) => {
+  const goc = neon(v.mau, GIAO_DIEN.nhan || neon('vang'));
+  const S = 420;
+  const t = frame / 30;
+  const noi = Math.sin(t * 1.6) * 5;
+  const vet = ((t - st.ta) * 0.55) % 1.6;
+  const chon = Math.max(st.chonCa, st.coChon);
+  return (
+    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+      <div style={{position: 'relative', width: S, height: S, transform: `translateY(${noi}px)`}}>
+        <div style={{position: 'absolute', inset: 0, borderRadius: 36, overflow: 'hidden', background: 'radial-gradient(circle at 50% 38%, #ffffff 0%, #eef2f5 62%, #d9e0e6 100%)',
+          boxShadow: `0 0 0 ${4 + chon * 3}px ${goc}, 0 0 ${34 + chon * 26}px ${goc}99, 0 26px 54px rgba(0,0,0,0.55)`}}>
+          {v.anhSrc ? (
+            <Img src={staticFile(v.anhSrc)} style={{position: 'absolute', inset: 14, width: S - 28, height: S - 28, objectFit: 'contain', transform: `scale(${1 + 0.025 * Math.sin(t * 0.9)})`}} />
+          ) : (
+            <div style={{position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 30, fontFamily: FONT_DAM, fontWeight: 900, fontSize: 40, color: '#1b2a33'}}>🛍 {tc(v.noiDung || v.nhan || 'Sản phẩm')}</div>
+          )}
+          {vet < 1 ? <div style={{position: 'absolute', top: -40, bottom: -40, width: 90, left: lerp(-140, S + 60, vet), transform: 'rotate(18deg)', background: 'linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.55), rgba(255,255,255,0))'}} /> : null}
+        </div>
+        {v.giaTriChu ? (
+          <div style={{position: 'absolute', right: -26, top: -22, transform: `rotate(10deg) scale(${popOut(kep((st.t - st.ta - 0.35) / 0.4), 2)})`, background: goc, color: '#0b1418', fontFamily: FONT_DAM, fontWeight: 900,
+            fontSize: 38 * KC, padding: '8px 20px', borderRadius: 18, boxShadow: `0 0 22px ${goc}`, whiteSpace: 'nowrap'}}>{tc(v.giaTriChu)}</div>
+        ) : null}
+      </div>
+      <Nhan chu={v.nhan} />
+    </div>
+  );
+};
+
 export const VE_VAT: Partial<Record<Vat['loai'], Ve>> = {
-  nguoi: Nguoi, ban_tron: BanTron, the: The, the_bai: LaBai, xuc_xac: XucXac, dong_xu: DongXu, hop_bi: HopBi, tui: HopBi, hop_qua: HopQua,
+  nguoi: Nguoi, ban_tron: BanTron, anh_that: AnhThat, the: The, the_bai: LaBai, xuc_xac: XucXac, dong_xu: DongXu, hop_bi: HopBi, tui: HopBi, hop_qua: HopQua,
   dong_ho: DongHo, dien_thoai: DienThoai, bong_bay: BongBay, dong_ho_do: DongHoDo, bieu_do_cot: BieuDoCot, thanh: Thanh,
   vong_quay: VongQuay, cua: Cua, banh: Banh, nhan: NhanVat, chu: Chu, so_dem: SoDem, bieu_tuong: BieuTuong, luoi_o: LuoiO, danh_sach: DanhSach,
   khoi_hop: (v, st) => <KhoiHop v={v} st={st} />, tru: (v, st) => <Tru v={v} st={st} />, non: (v, st) => <Tru v={v} st={st} />,

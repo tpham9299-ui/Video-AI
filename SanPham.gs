@@ -9,14 +9,19 @@
  *      /bo [mã]             bỏ video, không đăng
  *      /cho                 xem các video đang chờ duyệt
  *
- * B) SẢN PHẨM TRONG BÀI TOÁN (minh bạch, không quảng cáo trá hình)
- *      /sanpham <tên sản phẩm hoặc link> [ghi chú]   (có thể gửi kèm ảnh sản phẩm, ghi lệnh ở phần chú thích ảnh)
+ * B) VIDEO GIỚI THIỆU SẢN PHẨM BẰNG BÀI TOÁN (minh bạch, hợp lý, dùng ẢNH THẬT của sản phẩm)
+ *      /sanpham <tên sản phẩm hoặc link> [ghi chú]   (gửi kèm ảnh sản phẩm, ghi lệnh ở phần chú thích ảnh)
+ *      /anhsp [mã]   gửi THÊM ảnh thật của sản phẩm (ghi lệnh ở chú thích ảnh), tối đa 6 ảnh/sản phẩm
+ *    Ảnh lưu ngay vào Drive VIDEO_XACSUAT/san_pham/<mã>/ (link ảnh Zalo có hạn dùng). Có link mà không có ảnh: hệ thống thử lấy ảnh
+ *    đại diện của trang bán. AI xem từng ảnh (góc chụp, chữ trên bao bì, kích thước nhìn thấy) để viết đề và chọn ảnh cho từng cảnh.
  *    1. Hệ thống dùng Gemini + Google Search tìm: giá ở nhiều nơi bán (có nguồn, ngày), thông số, cách các nơi bán/đối thủ giới
  *       thiệu (chỉ rút ý), đánh giá chung, các lời quảng cáo không kiểm chứng được. Thông số chỉ được coi là ĐÃ XÁC MINH khi có
  *       từ 2 nguồn trở lên (hoặc nguồn chính hãng).
  *    2. Bot gửi tóm tắt hồ sơ. Bạn kiểm tra rồi trả lời:  /xacnhan [mã] <giá bạn bán>   (ví dụ /xacnhan 249000)   hoặc /huysp [mã]
- *    3. Hệ thống sáng tác bài toán HỮU ÍCH lấy sản phẩm làm bối cảnh (chi tiêu thông minh, so sánh giá, tối ưu, xác suất khuyến mãi...)
- *       chỉ dùng thông tin đã xác minh, rồi giải - kiểm chứng - viết kịch bản - dựng video như đề ưu tiên.
+ *    3. Hệ thống sáng tác bài toán XOAY QUANH sản phẩm (công dụng thật, giá, thông số đã xác minh -> phép tính có ích: chi phí mỗi lần dùng,
+ *       tiết kiệm sau N tháng, dung tích/kích thước, mua combo...), rồi giải - kiểm chứng - viết kịch bản - dựng video như đề ưu tiên.
+ *       Video: ảnh thật xuất hiện ở mở đầu + các cảnh dữ kiện/lời giải (vật anh_that), cuối video có thẻ sản phẩm (ảnh + tên + giá + "link ở mô tả").
+ *       Đề / video không đạt BỘ PHẬN KIỂM DUYỆT YÊU CẦU (NangCao.gs) -> bỏ và tự sáng tác đề mới cho sản phẩm (tối đa 6 đề).
  *    4. Minh bạch: video luôn có nhãn nhỏ "Có sản phẩm do kênh bán" và dòng tên sản phẩm ở cuối; mô tả bài đăng ghi rõ; TikTok bật nhãn
  *       nội dung thương mại (quảng bá doanh nghiệp của bạn). Kịch bản không được dùng lời quảng cáo quá đà ("tốt nhất", "rẻ nhất",
  *       "số 1"...) hay nhắc tên đối thủ; vi phạm là lỗi nặng, AI phải sửa.
@@ -24,12 +29,13 @@
  */
 
 var TEN_SAN_PHAM = 'SAN_PHAM';
-var COT_SP = ['id', 'trang_thai', 'ten', 'link', 'ghi_chu', 'anh', 'ho_so', 'gia_ban', 'zalo_chat', 'cap_nhat', 'so_de'];
+var COT_SP = ['id', 'trang_thai', 'ten', 'link', 'ghi_chu', 'anh', 'ho_so', 'gia_ban', 'zalo_chat', 'cap_nhat', 'so_de', 'anh_ds'];
 
 function shSanPham_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(TEN_SAN_PHAM);
   if (!sh) { sh = ss.insertSheet(TEN_SAN_PHAM); sh.appendRow(COT_SP); sh.setFrozenRows(1); }
+  else if (sh.getLastColumn() < COT_SP.length) sh.getRange(1, 1, 1, COT_SP.length).setValues([COT_SP]);   // sheet cũ: thêm cột mới
   return sh;
 }
 function docSP_(sh) {
@@ -65,6 +71,7 @@ function xuLyLenhZaloMoi_(chat, chu, anh) {
   if (/^\/cho\b/.test(l)) { guiZaloToi_(chat, danhSachChoDuyet_()); return true; }
   if (/^\/xem\b/.test(l) && typeof xemVideoKhongDat_ === 'function') { guiZaloToi_(chat, xemVideoKhongDat_(chu)); return true; }
   if (/^\/sanpham\b/.test(l)) { guiZaloToi_(chat, nhanSanPham_(chat, chu, anh)); return true; }
+  if (/^\/anhsp\b/.test(l)) { guiZaloToi_(chat, themAnhSanPham_(chu, anh)); return true; }
   if (/^\/xacnhan\b/.test(l)) { guiZaloToi_(chat, xacNhanSanPham_(chu)); return true; }
   if (/^\/huysp\b/.test(l)) { guiZaloToi_(chat, huySanPham_(chu)); return true; }
   if (/^\/hoc\b/.test(l) && typeof nhanLenhHoc_ === 'function') { guiZaloToi_(chat, nhanLenhHoc_(chu)); return true; }
@@ -158,6 +165,79 @@ function yeuCauSuaVideo_(chat, chu) {
 
 /* ===================== SẢN PHẨM ===================== */
 
+/* ---------- ẢNH THẬT CỦA SẢN PHẨM ---------- */
+function dsAnhSP_(r) { try { var a = JSON.parse(String(r.anh_ds || '[]')); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+function thuMucAnhSP_(id) {
+  var goc = thuMucKichBan_().getParents().next();
+  var it = goc.getFoldersByName('san_pham');
+  var sp = it.hasNext() ? it.next() : goc.createFolder('san_pham');
+  var it2 = sp.getFoldersByName(id);
+  return it2.hasNext() ? it2.next() : sp.createFolder(id);
+}
+// tải ảnh (URL Zalo / ảnh trang bán) về Drive: VIDEO_XACSUAT/san_pham/<mã>/anh_<k>.jpg; trả số ảnh hiện có
+function luuAnhSanPham_(sh, r, url) {
+  var ds = dsAnhSP_(r);
+  if (ds.length >= 6) return ds.length;
+  var res = UrlFetchApp.fetch(String(url), { muteHttpExceptions: true, followRedirects: true });
+  if (res.getResponseCode() !== 200) throw new Error('Tải ảnh lỗi ' + res.getResponseCode());
+  var b = res.getBlob();
+  var loai = String(b.getContentType() || '');
+  if (!/^image\//.test(loai)) { if (b.getBytes().length < 5000) throw new Error('Không phải ảnh'); b.setContentType('image/jpeg'); }
+  if (b.getBytes().length > 12 * 1024 * 1024) throw new Error('Ảnh quá lớn (> 12MB)');
+  var ext = /png/.test(loai) ? 'png' : /webp/.test(loai) ? 'webp' : 'jpg';
+  var ten = 'anh_' + (ds.length + 1) + '.' + ext;
+  b.setName(ten);
+  var tep = thuMucAnhSP_(r.id).createFile(b);
+  ds.push({ tep: ten, id: tep.getId() });
+  ghiSP_(sh, r._row, { anh_ds: JSON.stringify(ds) });
+  r.anh_ds = JSON.stringify(ds);
+  return ds.length;
+}
+function themAnhSanPham_(chu, anh) {
+  if (!anh) return 'Gửi ẢNH sản phẩm và ghi chú thích /anhsp [mã], ví dụ /anhsp SP261114-101500';
+  var sh = shSanPham_();
+  var ds = docSP_(sh);
+  var t = tachLenh_(chu, ds.map(function (r) { return r.id; }));
+  var r = t.ma ? ds.filter(function (x) { return x.id === t.ma; })[0]
+    : ds.filter(function (x) { return x.trang_thai !== 'BO'; }).sort(function (a, b) { return new Date(b.cap_nhat) - new Date(a.cap_nhat); })[0];
+  if (!r) return 'Chưa có sản phẩm nào, gửi /sanpham <tên> kèm ảnh trước nhé.';
+  if (dsAnhSP_(r).length >= 6) return 'Sản phẩm ' + r.id + ' đã đủ 6 ảnh.';
+  try {
+    var n = luuAnhSanPham_(sh, r, anh);
+    return '📷 Đã lưu ảnh ' + n + '/6 cho ' + (r.ten || r.id) + '. Ảnh thật sẽ xuất hiện trong video (mở đầu, dữ kiện, thẻ sản phẩm cuối video).';
+  } catch (e) { return '⚠️ Không lưu được ảnh: ' + e.message; }
+}
+// có link trang bán mà chưa có ảnh: lấy ảnh đại diện (og:image) của trang
+function layAnhTuLink_(sh, r) {
+  if (!r.link || dsAnhSP_(r).length) return;
+  try {
+    var html = UrlFetchApp.fetch(String(r.link), { muteHttpExceptions: true, followRedirects: true, headers: { 'User-Agent': 'Mozilla/5.0' } }).getContentText().slice(0, 400000);
+    var m = /<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]+content=["']([^"']+)["']/i.exec(html) || /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i.exec(html);
+    if (m && /^https?:\/\//.test(m[1])) { luuAnhSanPham_(sh, r, m[1].replace(/&amp;/g, '&')); nhatKy_('SAN_PHAM_ANH', r.id + ': lấy ảnh đại diện từ trang bán'); }
+  } catch (e) { nhatKy_('SAN_PHAM_ANH', r.id + ': không lấy được ảnh từ link (' + String(e.message).slice(0, 100) + ')'); }
+}
+// ảnh cho Gemini nhìn (tối đa n ảnh)
+function anhSanPhamChoGemini_(sp, n) {
+  var out = [];
+  ((sp && sp.anh_id) || []).slice(0, n || 3).forEach(function (id) {
+    try { var b = DriveApp.getFileById(id).getBlob(); if (b.getBytes().length < 10 * 1024 * 1024) out.push({ mime: b.getContentType() || 'image/jpeg', data: Utilities.base64Encode(b.getBytes()) }); } catch (e) {}
+  });
+  return out;
+}
+// AI xem từng ảnh: góc chụp, thấy gì, chữ trên bao bì, có hợp làm ảnh lớn mở đầu không -> dùng để viết đề + chọn ảnh cho cảnh
+function moTaAnhSanPham_(r, ten) {
+  var ds = dsAnhSP_(r);
+  if (!ds.length) return [];
+  var anhs = anhSanPhamChoGemini_({ anh_id: ds.map(function (x) { return x.id; }) }, 6);
+  if (!anhs.length) return [];
+  var j = goiGemini_('Đây là ' + anhs.length + ' ảnh THẬT của sản phẩm "' + ten + '" (theo thứ tự ảnh 0, 1, 2...). Với MỖI ảnh, mô tả ngắn gọn, chỉ điều NHÌN THẤY (không đoán công dụng): ' +
+    'góc chụp (chính diện / nghiêng / cận chi tiết / đang sử dụng / bao bì / bảng thông số), sản phẩm chiếm bao nhiêu khung, nền (trơn/rối), chữ/số đọc được trên ảnh (dung tích, kích thước...), ' +
+    'ảnh này hợp dùng làm ảnh lớn mở đầu không. Trả JSON {"anh":[{"so":0,"goc":"","mo_ta":"","chu_tren_anh":"","nen_tron":true,"hop_mo_dau":true}]}', 0.1, { suyNghi: 'low', anhs: anhs });
+  var a = (j && Array.isArray(j.anh)) ? j.anh : [];
+  return a.slice(0, ds.length).map(function (x, k) { return { so: k, goc: String(x.goc || '').slice(0, 40), mo_ta: String(x.mo_ta || '').slice(0, 160), chu: String(x.chu_tren_anh || '').slice(0, 100), hop_mo_dau: x.hop_mo_dau === true }; });
+}
+
+
 function nhanSanPham_(chat, chu, anh) {
   var con = String(chu || '').replace(/^\s*\/sanpham\s*/i, '').trim();
   if (!con && !anh) return 'Gửi theo mẫu: /sanpham <tên sản phẩm hoặc link> [ghi chú]. Có thể gửi ảnh sản phẩm kèm chú thích /sanpham.';
@@ -169,8 +249,9 @@ function nhanSanPham_(chat, chu, anh) {
     return { id: id, trang_thai: 'CHO_TIM', ten: ten.slice(0, 200), link: link, anh: anh || '', zalo_chat: chat, cap_nhat: new Date(), so_de: 0 }[k] || '';
   }));
   nhatKy_('SAN_PHAM', id + ': nhận "' + (ten || link || 'ảnh') + '"');
+  if (anh) { try { var dongMoi = docSP_(sh).filter(function (x) { return x.id === id; })[0]; luuAnhSanPham_(sh, dongMoi, anh); } catch (eA) { nhatKy_('SAN_PHAM_ANH', id + ': ' + eA.message); } }
   henUuTien_(20);
-  return '🔎 Đã nhận sản phẩm (' + id + '). Hệ thống đang tìm giá ở nhiều nơi bán, thông số, cách các nơi bán giới thiệu và kiểm tra độ chính xác (khoảng 1-3 phút), xong sẽ gửi tóm tắt để bạn xác nhận.';
+  return '🔎 Đã nhận sản phẩm (' + id + ')' + (anh ? ' kèm 1 ảnh' : '') + '. Hệ thống đang tìm giá ở nhiều nơi bán, thông số, cách các nơi bán giới thiệu và kiểm tra độ chính xác (khoảng 1-3 phút), xong sẽ gửi tóm tắt để bạn xác nhận.\n📷 Video sẽ dùng ẢNH THẬT của sản phẩm: gửi thêm ảnh (chính diện, cận cảnh, đang dùng...) với chú thích /anhsp ' + id + ' (tối đa 6 ảnh).';
 }
 
 function xacNhanSanPham_(chu) {
@@ -241,6 +322,7 @@ function timHieuSanPham_(sh, r) {
     if (!ten) throw new Error('Không nhận diện được sản phẩm từ ảnh, hãy gửi kèm tên sản phẩm');
     ghiSP_(sh, r._row, { ten: ten });
   }
+  layAnhTuLink_(sh, r);
   var prompt = 'Dùng Google Search tìm thông tin CHÍNH XÁC, CÓ NGUỒN về sản phẩm sau (thị trường Việt Nam, giá bằng đồng):\n' +
     'Sản phẩm: ' + ten + (r.link ? '\nLink người dùng gửi: ' + r.link : '') + (r.ghi_chu ? '\nGhi chú: ' + r.ghi_chu : '') + '\n' +
     'YÊU CẦU:\n- Chỉ ghi điều thực sự tìm thấy trên các trang web; mỗi thông số và mỗi mức giá phải kèm URL nguồn. Không chắc thì bỏ, không bịa.\n' +
@@ -270,6 +352,7 @@ function timHieuSanPham_(sh, r) {
   hs.gia_cao = dsGia[dsGia.length - 1] || 0;
   hs.ngay_tim = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy');
   hs.mien_tim_kiem = kq.mien || [];
+  try { hs.anh_mo_ta = moTaAnhSanPham_(r, hs.ten_chuan || ten); } catch (eMA) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(eMA.message))) throw eMA; hs.anh_mo_ta = []; }
   var chuoi = JSON.stringify(hs);
   if (chuoi.length > 45000) { hs.diem_noi_bat_noi_ban = (hs.diem_noi_bat_noi_ban || []).slice(0, 5); chuoi = JSON.stringify(hs).slice(0, 45000); }
   ghiSP_(sh, r._row, { trang_thai: 'CHO_XAC_NHAN', ho_so: chuoi, ten: hs.ten_chuan || ten });
@@ -281,6 +364,8 @@ function timHieuSanPham_(sh, r) {
     (hs.thong_so.length - dat.length > 0 ? '❔ ' + (hs.thong_so.length - dat.length) + ' thông số chỉ có 1 nguồn: sẽ KHÔNG dùng trong video\n' : '') +
     ((hs.diem_noi_bat_noi_ban || []).length ? '📣 Nơi bán thường nhấn mạnh: ' + hs.diem_noi_bat_noi_ban.slice(0, 3).map(function (x) { return x.noi_dung || x; }).join('; ') + '\n' : '') +
     ((hs.loi_quang_cao_chua_kiem_chung || []).length ? '🚫 Lời quảng cáo chưa kiểm chứng (sẽ tránh): ' + hs.loi_quang_cao_chua_kiem_chung.slice(0, 3).join('; ') + '\n' : '') +
+    (dsAnhSP_(r).length ? '📷 ' + dsAnhSP_(r).length + ' ảnh thật sẽ dùng trong video' + (hs.anh_mo_ta.length ? ': ' + hs.anh_mo_ta.map(function (x) { return 'ảnh ' + (x.so + 1) + ' ' + x.goc; }).join(', ') : '') + '\n'
+      : '📷 CHƯA CÓ ẢNH sản phẩm: gửi ảnh thật kèm chú thích /anhsp ' + r.id + ' trước khi xác nhận để video dùng ảnh thật\n') +
     '👉 Đúng thì trả lời: /xacnhan ' + r.id + ' <giá bạn bán>, ví dụ /xacnhan ' + r.id + ' ' + (hs.gia_thap || 199000) + '\nKhông dùng: /huysp ' + r.id);
 }
 
@@ -289,49 +374,87 @@ function taoDeTuSanPham_(sh, r, bc) {
   try { hs = JSON.parse(String(r.ho_so || '{}')); } catch (e) {}
   var dat = (hs.thong_so || []).filter(function (x) { return x.xac_minh; }).map(function (x) { return x.ten + ': ' + x.gia_tri; });
   var ten = hs.ten_chuan || r.ten;
-  var prompt = 'Bạn là giáo viên Toán giỏi, làm video TikTok dạy toán thực tế có ích cho người xem (học sinh THPT và người lớn đi mua sắm).\n' +
-    'Hãy SÁNG TÁC 2 bài toán mà một sản phẩm có thật là BỐI CẢNH tự nhiên. Bài toán phải dạy một kỹ năng toán hữu ích (tính phần trăm giảm giá thật, so sánh phương án mua, chi phí dùng lâu dài, tối ưu kích thước/vật liệu, cấp số nhân khi tiết kiệm, xác suất trong chương trình khuyến mãi...), có giá trị ngay cả khi người xem không mua.\n' +
-    'SẢN PHẨM: ' + ten + (hs.thuong_hieu ? ' (' + hs.thuong_hieu + ')' : '') + '\nGiá kênh bán: ' + r.gia_ban + ' đồng' +
+  var anhDs = dsAnhSP_(r), moTaAnh = hs.anh_mo_ta || [];
+  var daCo = Number(r.so_de) || 0;              // đã sáng tác bao nhiêu đề (đề trước không đạt kiểm duyệt thì sáng tác lại)
+  var soDe = daCo ? 1 : 2;
+  var prompt = 'Bạn là giáo viên Toán giỏi kiêm người làm nội dung bán hàng có tâm, làm video ngắn (TikTok/YouTube/Facebook) GIỚI THIỆU SẢN PHẨM BẰNG MỘT BÀI TOÁN THỰC TẾ.\n' +
+    'Hãy SÁNG TÁC ' + soDe + ' bài toán mà SẢN PHẨM là TRUNG TÂM một cách HỢP LÝ: bài toán sinh ra từ chính cách người ta mua và dùng sản phẩm này ' +
+    '(chi phí cho mỗi lần/mỗi ngày dùng, tiết kiệm sau N tháng so với cách làm cũ, dung tích - kích thước - số lần dùng, mua lẻ hay mua combo, thời gian dùng hết, tối ưu cách dùng...). ' +
+    'Người xem phải thấy: bài toán có ích thật (học được kỹ năng tính), và kết quả bài toán cho họ một LÝ DO HỢP LÝ để quan tâm sản phẩm (nhưng không phóng đại).\n' +
+    'SẢN PHẨM: ' + ten + (hs.thuong_hieu ? ' (' + hs.thuong_hieu + ')' : '') + (hs.loai ? ' - loại: ' + hs.loai : '') + (hs.mo_ta_ngan ? ' - ' + hs.mo_ta_ngan : '') +
+    '\nGiá kênh bán: ' + r.gia_ban + ' đồng' +
     (hs.gia_thap ? '\nGiá trên thị trường (ngày ' + hs.ngay_tim + '): ' + hs.gia_thap + (hs.gia_cao > hs.gia_thap ? ' đến ' + hs.gia_cao : '') + ' đồng' : '') +
-    '\nThông số ĐÃ XÁC MINH (chỉ được dùng các thông số này): ' + (dat.length ? dat.join('; ') : '(không có, chỉ dùng giá)') + '\n' +
-    'QUY TẮC (bắt buộc):\n- Chỉ dùng số liệu ở trên; số liệu giả định thêm (ví dụ số ngày dùng, số người) phải hợp lý và nói rõ là giả định trong đề.\n' +
-    '- KHÔNG khen sản phẩm, KHÔNG dùng "tốt nhất", "rẻ nhất", "số 1", "duy nhất", "cam kết", KHÔNG nhắc tên thương hiệu/sản phẩm cạnh tranh, KHÔNG kêu gọi mua.\n' +
-    '- Đề hỏi đúng MỘT đại lượng; đáp số là một con số (toán thực tế) hoặc một xác suất dạng phân số; đủ dữ kiện bằng chữ; kiểm chứng được bằng máy.\n' +
-    yeuCauDang_('THUC_TE') + '- Có thể dùng dạng xác suất (' + MO_TA_DANG_.XAC_SUAT + ') nếu thật tự nhiên, khi đó "mon" là "XAC_SUAT".\n' +
-    'Trả về MỘT mảng JSON, mỗi phần tử: {"mon":"THUC_TE|XAC_SUAT","dang":"","lop":"10|11|12","chu_de":"","de_bai":"","cach_dua_san_pham":"sản phẩm xuất hiện trong bài thế nào","diem_tu_duy":1-10,"yeu_to_tu_duy":"","bay_thuong_gap":""}';
-  var kq = goiGemini_(prompt, 0.7, { suyNghi: cauHinh_('MUC_SUY_NGHI_KICH_BAN') });
+    '\nThông số ĐÃ XÁC MINH (chỉ được dùng các thông số này): ' + (dat.length ? dat.join('; ') : '(không có, chỉ dùng giá)') +
+    (moTaAnh.length ? '\nẢNH THẬT CỦA SẢN PHẨM (sẽ hiện trong video, đề nên nhắc tới đặc điểm nhìn thấy được): ' + moTaAnh.map(function (x) { return 'ảnh ' + x.so + ': ' + x.goc + ' - ' + x.mo_ta + (x.chu ? ' (chữ trên ảnh: ' + x.chu + ')' : ''); }).join(' | ') : '') +
+    (r.ghi_chu ? '\nGhi chú của chủ kênh: ' + r.ghi_chu : '') + '\n' +
+    'QUY TẮC (bắt buộc):\n' +
+    '- Đề nêu TÊN sản phẩm và dùng giá / thông số thật ở trên làm dữ kiện chính. Số liệu giả định thêm (số lần dùng mỗi ngày, giá cách làm cũ...) phải hợp lý, phổ biến ngoài đời và nói rõ là giả định trong đề.\n' +
+    '- Trung thực: KHÔNG thêm công dụng chưa xác minh, KHÔNG dùng "tốt nhất", "rẻ nhất", "số 1", "duy nhất", "cam kết", "100%", KHÔNG nhắc tên thương hiệu/sản phẩm cạnh tranh, KHÔNG chê sản phẩm khác.\n' +
+    '- Đề hỏi đúng MỘT đại lượng, đáp số DUY NHẤT là một con số (có đơn vị) hoặc một xác suất dạng phân số; đủ dữ kiện bằng chữ; kiểm chứng được bằng máy.\n' +
+    '- "cach_dua_san_pham": sản phẩm xuất hiện thế nào trong video (ảnh thật nào ở cảnh nào, thông số nào được chỉ ra trên ảnh). "loi_ket_hop_ly": MỘT câu kết nối kết quả bài toán với giá trị sản phẩm, chỉ dùng con số của bài, trung thực (vd "tính ra mỗi ngày chỉ khoảng 1.400 đồng").\n' +
+    yeuCauDang_('THUC_TE') + '- Có thể dùng dạng xác suất (' + MO_TA_DANG_.XAC_SUAT + ') nếu thật tự nhiên (vd chương trình bốc thăm khi mua), khi đó "mon" là "XAC_SUAT".\n' +
+    (typeof yeuCauDapAnChinhXac_ === 'function' ? yeuCauDapAnChinhXac_() : '') +
+    'Trả về MỘT mảng JSON, mỗi phần tử: {"mon":"THUC_TE|XAC_SUAT","dang":"","lop":"10|11|12","chu_de":"","de_bai":"","dap_an":"","cach_dua_san_pham":"","loi_ket_hop_ly":"","diem_tu_duy":1-10,"yeu_to_tu_duy":"","bay_thuong_gap":""}';
+  var kq = goiGemini_(prompt, 0.7, { suyNghi: cauHinh_('MUC_SUY_NGHI_KICH_BAN'), anhs: anhSanPhamChoGemini_({ anh_id: anhDs.map(function (x) { return x.id; }) }, 3) });
   if (kq && !Array.isArray(kq) && Array.isArray(kq.de)) kq = kq.de;
   if (!Array.isArray(kq) || !kq.length) throw new Error('Không sáng tác được bài toán cho sản phẩm');
   var shH = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
-  var sp = JSON.stringify({ id: r.id, ten: ten, thuong_hieu: hs.thuong_hieu || '', gia_ban: Number(r.gia_ban) || 0, gia_thap: hs.gia_thap || 0, gia_cao: hs.gia_cao || 0, ngay: hs.ngay_tim || '', thong_so: dat.slice(0, 8), doi_thu: (hs.doi_thu || []).slice(0, 10) });
-  var them = 0;
-  kq.slice(0, 2).forEach(function (d, i) {
+  var them = 0, dsDe = [];
+  kq.slice(0, soDe).forEach(function (d, i) {
     if (!d || !d.de_bai) return;
     var mon = String(d.mon || '').toUpperCase() === 'XAC_SUAT' ? 'XAC_SUAT' : 'THUC_TE';
+    var sp = JSON.stringify({ id: r.id, ten: ten, thuong_hieu: hs.thuong_hieu || '', gia_ban: Number(r.gia_ban) || 0, gia_thap: hs.gia_thap || 0, gia_cao: hs.gia_cao || 0, ngay: hs.ngay_tim || '',
+      thong_so: dat.slice(0, 8), doi_thu: (hs.doi_thu || []).slice(0, 10), link: String(r.link || '').slice(0, 300),
+      anh: anhDs.map(function (x) { return x.tep; }), anh_id: anhDs.map(function (x) { return x.id; }), anh_mo_ta: moTaAnh.slice(0, 6),
+      cach_dua: String(d.cach_dua_san_pham || '').slice(0, 300), loi_ket: String(d.loi_ket_hop_ly || '').slice(0, 200) });
     themHang_(shH, {
       id: 'SD' + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd-HHmmss') + '-' + i, trang_thai: 'MOI', mon: mon, lop: /^(10|11|12)$/.test(String(d.lop)) ? String(d.lop) : '10',
       chu_de: String(d.chu_de || ten).slice(0, 60), de_bai: d.de_bai, nguon: 'SAN_PHAM|' + String(ten).slice(0, 40), diem_tu_duy: d.diem_tu_duy || '',
-      yeu_to_tu_duy: d.yeu_to_tu_duy || '', bay_thuong_gap: d.bay_thuong_gap || '', uu_tien: 1, zalo_chat: r.zalo_chat, san_pham: sp, so_lan_loi: 0, cap_nhat: new Date(), ma_bam: bam_(d.de_bai)
+      yeu_to_tu_duy: d.yeu_to_tu_duy || '', bay_thuong_gap: d.bay_thuong_gap || '', uu_tien: 1, zalo_chat: r.zalo_chat, san_pham: sp, so_lan_loi: 0, cap_nhat: new Date(), ma_bam: bam_(d.de_bai),
+      kiem_chung: d.dap_an ? 'DU_KIEN: ' + String(d.dap_an).slice(0, 40) : ''
     });
+    dsDe.push(d);
     them++;
   });
   if (bc) bc.moi += them;
-  ghiSP_(sh, r._row, { trang_thai: 'DA_DUNG', so_de: them });
-  guiZaloToi_(r.zalo_chat, '🧮 Đã sáng tác ' + them + ' bài toán có ' + ten + ' làm bối cảnh:\n' + kq.slice(0, 2).map(function (d, i) { return (i + 1) + '. ' + latexDoc_(String(d.de_bai || '')).slice(0, 220); }).join('\n') +
-    '\nĐang giải, kiểm chứng, viết kịch bản và dựng video (ưu tiên). Video xong sẽ gửi để bạn duyệt.');
+  ghiSP_(sh, r._row, { trang_thai: 'DA_DUNG', so_de: daCo + them });
+  guiZaloToi_(r.zalo_chat, (daCo ? '🔁 Đề trước chưa đạt kiểm duyệt, đã sáng tác đề mới' : '🧮 Đã sáng tác ' + them + ' bài toán') + ' xoay quanh ' + ten + (anhDs.length ? ' (dùng ' + anhDs.length + ' ảnh thật)' : ' (CHƯA có ảnh thật, gửi /anhsp ' + r.id + ' kèm ảnh)') + ':\n' +
+    dsDe.map(function (d, i) { return (i + 1) + '. ' + latexDoc_(String(d.de_bai || '')).slice(0, 220); }).join('\n') +
+    '\nĐang giải, kiểm chứng, viết kịch bản và dựng video (ưu tiên). Chỉ video đạt kiểm duyệt yêu cầu mới được gửi để bạn duyệt.');
 }
 
-// Các lời quảng cáo quá đà không được xuất hiện trong video có sản phẩm.
-var LOI_QUA_DA_ = /tốt nhất|rẻ nhất|số 1|số một thị trường|hàng đầu|duy nhất|cam kết|100\s*%|tuyệt đối|thần kỳ|mua ngay|chốt đơn|săn ngay/i;
+// Các lời quảng cáo quá đà / thúc ép không được xuất hiện trong video có sản phẩm (được phép: "có tại kênh", "link ở mô tả", "giỏ hàng").
+var LOI_QUA_DA_ = /tốt nhất|rẻ nhất|số 1|số một thị trường|hàng đầu|duy nhất|cam kết|100\s*%|tuyệt đối|thần kỳ|mua ngay|chốt đơn|săn ngay|nhanh tay|kẻo hết/i;
 function kiemTraSanPhamTrongKichBan_(kb, sp) {
   if (!sp) return [];
   var loi = [];
   var chu = JSON.stringify([kb.hook, kb.hook_chu, kb.tieu_de, (kb.canh || []).map(function (c) { return [c.loi_thoai, c.tieu_de_canh, c.noi_dung_man_hinh, c.chu_thich]; })]);
   var m = LOI_QUA_DA_.exec(chu);
-  if (m) loi.push('QUANG_CAO_QUA_DA: kịch bản có cụm "' + m[0] + '". Video có sản phẩm phải trung thực, không dùng lời quảng cáo quá đà, không kêu gọi mua; hãy viết lại câu đó trung tính.');
+  if (m) loi.push('QUANG_CAO_QUA_DA: kịch bản có cụm "' + m[0] + '". Giới thiệu sản phẩm phải trung thực, không phóng đại, không thúc ép mua; hãy viết lại câu đó tự nhiên (vd "sản phẩm có tại kênh, link ở mô tả").');
   (sp.doi_thu || []).forEach(function (t) {
     t = String(t || '').trim();
     if (t.length >= 3 && chu.toLowerCase().indexOf(t.toLowerCase()) >= 0) loi.push('NHAC_DOI_THU: kịch bản nhắc tới "' + t + '" (sản phẩm cạnh tranh). Không nêu tên đối thủ.');
   });
+  // ẢNH THẬT: có ảnh thì phải dùng (mở đầu + ít nhất một cảnh khác), chỉ số ảnh phải có thật
+  var soAnh = (sp.anh || []).length;
+  if (soAnh) {
+    var canhCoAnh = [], saiSo = [];
+    (kb.canh || []).forEach(function (c, i) {
+      var du = c && c.minh_hoa && c.minh_hoa.du_lieu;
+      (du && Array.isArray(du.vat) ? du.vat : []).forEach(function (v) {
+        if (!v || v.loai !== 'anh_that') return;
+        var k = Number(v.anh);
+        if (!(k >= 0 && k < soAnh && Math.floor(k) === k)) saiSo.push('cảnh ' + (i + 1) + ' anh=' + v.anh);
+        else if (canhCoAnh.indexOf(i) < 0) canhCoAnh.push(i);
+      });
+    });
+    if (saiSo.length) loi.push('ANH_SAN_PHAM_SAI_SO: ' + saiSo.slice(0, 3).join(', ') + '. Sản phẩm chỉ có ' + soAnh + ' ảnh, "anh" là số thứ tự từ 0 đến ' + (soAnh - 1) + '.');
+    if (!canhCoAnh.length) loi.push('THIEU_ANH_SAN_PHAM: video giới thiệu sản phẩm nhưng không dùng ẢNH THẬT nào. Thêm vật {"loai":"anh_that","anh":0,...} ở cảnh mở đầu (ảnh lớn) và ở cảnh đề bài/dữ kiện (ảnh nhỏ hơn + nhãn chỉ thông số).');
+    else if (canhCoAnh.length < 2 || canhCoAnh[0] > 1) loi.push('IT_ANH_SAN_PHAM (nhẹ): ảnh thật nên xuất hiện ở cảnh mở đầu VÀ ít nhất một cảnh dữ kiện/lời giải.');
+  }
+  // đề phải xoay quanh đúng sản phẩm
+  var tuKhoa = String(sp.ten || '').toLowerCase().split(/\s+/).filter(function (w) { return w.length >= 3; }).slice(0, 3);
+  var deChu = String(kb.de_bai || '') + ' ' + chu;
+  if (tuKhoa.length && !tuKhoa.some(function (w) { return deChu.toLowerCase().indexOf(w) >= 0; })) loi.push('SAN_PHAM_KHONG_XUAT_HIEN: kịch bản không nhắc tới sản phẩm "' + sp.ten + '". Bài toán phải xoay quanh sản phẩm này.');
   return loi;
 }

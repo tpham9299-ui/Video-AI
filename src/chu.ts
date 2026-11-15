@@ -30,7 +30,8 @@ const LENH: Record<string, string> = {
 // SỐ THẬP PHÂN KIỂU VIỆT: "3.46m" -> "3,46m" (công thức và nhãn trên hình cùng dùng dấu phẩy như "10,8").
 // Chỉ đổi số có ĐÚNG MỘT dấu chấm (không đụng "1.000.000", "v1.2.3"); trong TeX viết {,} để KaTeX không chèn khoảng trắng.
 export function thapPhanViet(s: string, tex = false): string {
-  return s.replace(/(^|[^\d.\w])(\d+)\.(\d+)(?![\d.])/g, (_, a, b, c) => `${a}${b}${tex ? '{,}' : ','}${c}`);
+  // tiền "249.000đ", "6.000 đồng": dấu chấm là dấu NGHÌN, giữ nguyên
+  return s.replace(/(^|[^\d.\w])(\d+)\.(\d+)(?![\d.])(?!\s*(?:đ|Đ|đồng|VND|vnđ|k\b|nghìn|triệu))/g, (_, a, b, c) => `${a}${b}${tex ? '{,}' : ','}${c}`);
 }
 
 export function texSangChu(s: unknown): string {

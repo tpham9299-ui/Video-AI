@@ -86,12 +86,18 @@ function taoPromptKichBan_(r, c1, c2) {
   var sp = null;
   try { sp = r.san_pham ? JSON.parse(String(r.san_pham)) : null; } catch (e) { sp = null; }
   var sanPham = sp ? [
-    'BÀI CÓ SẢN PHẨM DO KÊNH BÁN (phải MINH BẠCH, không phải quảng cáo trá hình): sản phẩm "' + sp.ten + '"' + (sp.thuong_hieu ? ' (' + sp.thuong_hieu + ')' : '') + ', giá kênh bán ' + sp.gia_ban + ' đồng' +
-      (sp.gia_thap ? ', giá thị trường ngày ' + sp.ngay + ': ' + sp.gia_thap + (sp.gia_cao > sp.gia_thap ? ' đến ' + sp.gia_cao : '') + ' đồng' : '') + '. Thông số đã xác minh: ' + ((sp.thong_so || []).join('; ') || '(chỉ dùng giá)') + '.\n',
-    '(a) Bài giảng toán là chính: người xem không mua vẫn học được kỹ năng hữu ích. Sản phẩm chỉ là bối cảnh đời thật của bài, xuất hiện tự nhiên (vật trên sân khấu, con số trong đề), không quảng cáo. ',
-    '(b) Chỉ dùng số liệu và thông số ở trên; không thêm công dụng, không so sánh với sản phẩm khác, KHÔNG nêu tên thương hiệu/sản phẩm cạnh tranh. ',
-    '(c) CẤM lời quảng cáo quá đà: "tốt nhất", "rẻ nhất", "số 1", "hàng đầu", "duy nhất", "cam kết", "100%", "mua ngay", "chốt đơn". Không kêu gọi mua giữa video. ',
-    '(d) Chỉ được nhắc một câu ngắn, trung thực ở cảnh bài học cuối, ví dụ: "Sản phẩm trong bài là ' + sp.ten + ', kênh có bán, thông tin ở giỏ hàng." Máy tự gắn nhãn "Có sản phẩm do kênh bán" lên video, bạn không cần viết nhãn.\n\n'
+    'VIDEO GIỚI THIỆU SẢN PHẨM BẰNG BÀI TOÁN (kênh tự bán, phải hợp lý và trung thực): sản phẩm "' + sp.ten + '"' + (sp.thuong_hieu ? ' (' + sp.thuong_hieu + ')' : '') + ', giá kênh bán ' + sp.gia_ban + ' đồng' +
+      (sp.gia_thap ? ', giá thị trường ngày ' + sp.ngay + ': ' + sp.gia_thap + (sp.gia_cao > sp.gia_thap ? ' đến ' + sp.gia_cao : '') + ' đồng' : '') + '. Thông số đã xác minh: ' + ((sp.thong_so || []).join('; ') || '(chỉ dùng giá)') + '.\n' +
+      (sp.cach_dua ? 'Ý tưởng đưa sản phẩm vào video: ' + sp.cach_dua + '\n' : ''),
+    (sp.anh && sp.anh.length ? 'ẢNH THẬT CỦA SẢN PHẨM (' + sp.anh.length + ' ảnh, chỉ số từ 0): ' + (sp.anh_mo_ta || []).map(function (x) { return 'ảnh ' + x.so + ' = ' + x.goc + ': ' + x.mo_ta + (x.chu ? ' (chữ trên ảnh: ' + x.chu + ')' : '') + (x.hop_mo_dau ? ' [hợp làm ảnh lớn mở đầu]' : ''); }).join(' | ') + '\n' +
+      '(a) DÙNG ẢNH THẬT bằng vật {"loai":"anh_that","anh":<chỉ số>,"x":..,"y":..,"co":..,"nhan":"chữ ngắn","gia":true|false} trên san_khau: ' +
+      'cảnh MỞ ĐẦU có ảnh lớn (co 1.1-1.4, gia: true để dán nhãn giá) đi cùng câu móc; cảnh ĐỀ BÀI/DỮ KIỆN có ảnh nhỏ hơn (co 0.7-0.9) kèm nhan/mui_ten chỉ đúng thông số dùng trong đề; ' +
+      'ít nhất một cảnh lời giải giữ ảnh nhỏ ở góc làm bối cảnh. KHÔNG đặt chữ/vật đè lên ảnh, không dùng ảnh ở cảnh không liên quan.\n'
+      : 'Sản phẩm CHƯA có ảnh thật: vẽ sản phẩm bằng vật gần đúng nhất (hinh_tu_do / vật 3D) với nhãn tên sản phẩm.\n'),
+    '(b) Bài toán là chính, xoay quanh sản phẩm: mọi con số lấy từ giá / thông số ở trên (giả định thêm phải nói rõ). Người xem không mua vẫn học được cách tính. ',
+    '(c) YẾU TỐ QUẢNG CÁO HỢP LÝ: ở cảnh kết luận có MỘT câu nối kết quả bài toán với giá trị sản phẩm, chỉ dùng con số đã tính' + (sp.loi_ket ? ' (gợi ý: "' + sp.loi_ket + '")' : '') + '; ' +
+      'cảnh bài học cuối nói một câu ngắn: "' + sp.ten + ' có tại kênh, link ở mô tả nhé." Máy tự gắn nhãn "Có sản phẩm do kênh bán" và THẺ SẢN PHẨM (ảnh + tên + giá) ở cuối video, không cần vẽ thẻ đó.\n',
+    '(d) CẤM: "tốt nhất", "rẻ nhất", "số 1", "hàng đầu", "duy nhất", "cam kết", "100%", "mua ngay", "chốt đơn", "nhanh tay", công dụng chưa xác minh, so sánh/nhắc tên sản phẩm cạnh tranh, chê sản phẩm khác.\n\n'
   ] : [];
   var nangCao = [
     r._series ? 'SERIES: video thuộc chuỗi "' + r._series.ten + '". TUYỆT ĐỐI KHÔNG nói hay ghi SỐ TẬP (số tập do hệ thống đánh lúc đăng); "video_tiep_theo" hẹn một bài cùng lớp.\n' : '',
@@ -219,6 +225,7 @@ function taoPromptKichBan_(r, c1, c2) {
     'dong_ho {nhan}: đồng hồ, kim quay. | dien_thoai {noi_dung: tiêu đề màn hình, ds: các dòng/tin nhắn/lựa chọn, gia_tri_chu: nút}: ứng dụng, tin nhắn, mật khẩu. | bong_bay {gia_tri 0-1: độ phồng, gia_tri_chu}. | ',
     'dong_ho_do {gia_tri: xác suất 0-1, gia_tri_chu:"13/28", nhan}: đồng hồ đo xác suất, kim quét tới giá trị (DÙNG ở cảnh đáp án). | bieu_do_cot {ds: nhãn cột, ds_so: số liệu}: so sánh số cách/xác suất. | thanh {gia_tri 0-1, gia_tri_chu, nhan}: thanh xác suất. | ',
     'vong_quay {ds: nhãn các ô (2-12), ket_qua: số thứ tự ô dừng}: vòng quay may mắn. | cua {so_luong 2-4, ds: thứ sau mỗi cửa}: các cánh cửa. | banh {so_luong 2-12: số phần bằng nhau, ds}: chiếc bánh/pizza chia phần (tỉ lệ, phần bù). | ',
+    'anh_that {anh: chỉ số ảnh thật của sản phẩm, nhan, gia: true|false}: ẢNH THẬT của sản phẩm (CHỈ dùng trong video có sản phẩm); chon = viền sáng lên. | ' +
     'ban_tron {ds: 3-16 nhãn ghế theo chiều kim đồng hồ từ ghế trên cùng ("Nam","Nữ", tên; "_" = ghế trống), noi_dung: chữ giữa bàn}: BÀN TRÒN có người ngồi quanh - BẮT BUỘC cho đề "ngồi quanh bàn tròn / xếp vòng tròn" (KHÔNG vẽ người xếp hàng ngang); chon/loai_bo theo số ghế, quay = cả vòng xoay 1 ghế (minh họa xoay vòng vẫn là một cách xếp), doi_chu đổi nhãn ghế. | ' +
     'luoi_o {so_luong 4-64, so_cot, ds: chữ trong từng ô (tùy chọn), nhan}: lưới ô lấp đầy lần lượt, rất hợp với KHÔNG GIAN MẪU (36 kết quả tung 2 xúc xắc, 30 lượt chơi...) rồi "chon" các ô thuận lợi. | ',
     'danh_sach {noi_dung: tiêu đề thẻ, ds: 2-5 dòng ngắn}: thẻ sáng nổi có các dòng đánh số trượt vào; "chon" tô vàng quét ngang dòng quan trọng, "loai_bo" gạch dòng sai (liệt kê trường hợp, điều kiện, luật chơi). | ',

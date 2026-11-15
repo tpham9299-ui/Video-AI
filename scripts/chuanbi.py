@@ -794,6 +794,57 @@ def tach_cong_thuc(tex, toi_da=24):
     return dong if len(dong) <= 4 else [tex]
 
 
+def gia_viet(n):
+    try:
+        n = int(float(n))
+    except (TypeError, ValueError):
+        return ""
+    return ("{:,}".format(n)).replace(",", ".") + "đ" if n > 0 else ""
+
+
+def chuan_anh_san_pham(kb, public):
+    """Video sản phẩm: ảnh thật đã được workflow tải về public/sp/<mã>/ (từ Drive VIDEO_XACSUAT/san_pham/<mã>/).
+    Đổi vật anh_that {"anh": k} thành {"src": "sp/<mã>/anh_k.jpg"}; ảnh không có thì vật hiện thẻ tên sản phẩm (không vỡ video).
+    Trả danh sách đường dẫn ảnh có thật (ảnh 0 dùng cho thẻ sản phẩm cuối video)."""
+    sp = kb.get("san_pham") if isinstance(kb.get("san_pham"), dict) else None
+    if not sp:
+        return []
+    ma = re.sub(r"[^A-Za-z0-9_-]", "", str(sp.get("id") or ""))
+    ds = []
+    for ten in sp.get("anh") or []:
+        ten = re.sub(r"[^A-Za-z0-9_.-]", "", str(ten))
+        duong = "sp/%s/%s" % (ma, ten)
+        ds.append(duong if ma and ten and os.path.isfile(os.path.join(public, duong)) else "")
+    co = [x for x in ds if x]
+    print("Ảnh thật sản phẩm %s: %d/%d ảnh có trên máy dựng" % (ma, len(co), len(ds)))
+    gia = gia_viet(sp.get("gia_ban"))
+    for c in kb.get("canh") or []:
+        du = (c.get("minh_hoa") or {}).get("du_lieu") if isinstance(c.get("minh_hoa"), dict) else None
+        for v in (du.get("vat") or []) if isinstance(du, dict) else []:
+            if not isinstance(v, dict) or v.get("loai") != "anh_that":
+                continue
+            try:
+                k = int(v.get("anh") or 0)
+            except (TypeError, ValueError):
+                k = 0
+            src = ds[k] if 0 <= k < len(ds) and ds[k] else (co[0] if co else "")
+            if src:
+                v["src"] = src
+            if not v.get("noi_dung"):
+                v["noi_dung"] = str(sp.get("ten") or "")[:40]
+            if v.get("gia") and not v.get("gia_tri_chu"):
+                v["gia_tri_chu"] = gia
+    return co
+
+
+def the_san_pham(kb, anh_sp):
+    sp = kb.get("san_pham") if isinstance(kb.get("san_pham"), dict) else None
+    if not sp or not sp.get("ten"):
+        return None
+    return {"ten": str(sp.get("ten"))[:60], "gia": gia_viet(sp.get("gia_ban")), "anh": anh_sp[0] if anh_sp else "",
+            "cta": "🛒 Có tại kênh · link ở mô tả" if sp.get("link") else "🛒 Có tại kênh · xem giỏ hàng / mô tả"}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("kich_ban")
@@ -833,6 +884,7 @@ def main():
                 for k in ("vat", "diem", "vung", "nhin"):
                     if k in bv and k not in v:
                         v[k] = bv[k]
+    anh_sp = chuan_anh_san_pham(kb, args.public)
     de_bai_the = the_de_bai(kb)
     canh = kb.get("canh") or []
     if not canh:
@@ -995,7 +1047,7 @@ def main():
         "bia": tao_bia(kb, canh, canh_props),
         # số tập KHÔNG in lúc dựng nữa (kể cả kịch bản cũ còn mang số): số tập đánh lúc đăng, theo số bài đã có trên kênh (dang_video.py)
         "series": None,
-        "quangCao": {"ten": str((kb.get("san_pham") or {}).get("ten") or "")[:60]} if isinstance(kb.get("san_pham"), dict) and (kb.get("san_pham") or {}).get("ten") else None,
+        "quangCao": the_san_pham(kb, anh_sp),
         "duKien": [str(x).strip()[:30] for x in (kb.get("du_kien") or []) if str(x).strip()][:4],
         "deBai": de_bai_the,
         "tiepTheo": str(kb.get("video_tiep_theo") or "")[:70],

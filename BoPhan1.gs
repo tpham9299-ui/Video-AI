@@ -957,6 +957,37 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
           }
         } catch (eGT) { kb = JSON.parse(kbLuu); if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(eGT.message))) { luuNhapKichBan_(r.id, kb); throw eGT; } }
       }
+      // BỘ PHẬN KIỂM DUYỆT YÊU CẦU - cửa 1 (NangCao.gs): AI chấm kịch bản theo bảng yêu cầu của chủ kênh TRƯỚC khi dựng.
+      // Chưa đạt -> sửa theo nhận xét (tối đa SO_LAN_SUA_YEU_CAU lần); vẫn thấp -> xóa đề (hệ thống tự làm đề mới).
+      if (typeof aiDuyetKichBan_ === 'function' && String(chNC_('AI_DUYET_KICH_BAN')).toUpperCase() !== 'TAT') {
+        var lanYC = 0, toiDaYC = soLanSuaYeuCau_(), boDe = null, dy = null;
+        while (conDuGoiGemini_()) {
+          try { dy = aiDuyetKichBan_(kb, r, spham); }
+          catch (eYC) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(eYC.message))) { luuNhapKichBan_(r.id, kb); throw eYC; } dy = null; }
+          if (!dy) { nhatKy_('KIEM_DUYET_YC', r.id + ': AI chưa chấm được kịch bản, để cửa kiểm duyệt video chặn sau'); break; }
+          nhatKy_('KIEM_DUYET_YC', r.id + ' kịch bản lần ' + (lanYC + 1) + ': đáp ứng ' + dy.phan_tram + '% | ' + tomTatTieuChi_(dy) + (dy.dat ? ' -> ĐẠT' : ' | ' + dy.van_de.slice(0, 3).join('; ').slice(0, 250)));
+          if (dy.dat) break;
+          if (lanYC >= toiDaYC) { boDe = 'kịch bản chỉ đáp ứng ' + dy.phan_tram + '% sau ' + lanYC + ' lần sửa' + (dy.nang.length ? ' (bắt buộc chưa đạt: ' + dy.nang.join(', ') + ')' : '') + '. ' + dy.van_de.slice(0, 2).join('; '); break; }
+          var kbTruoc = JSON.stringify(kb), kbYC = null;
+          try { kbYC = suaKichBanBangGemini_(kb, ['KIEM_DUYET_YEU_CAU (bắt buộc sửa hết; kịch bản mới đáp ứng ' + dy.phan_tram + '%, tiêu chí: ' + tomTatTieuChi_(dy) + '). Vấn đề: ' + dy.van_de.join(' || ') + '. Cách sửa: ' + dy.gop_y], prompt, sn); }
+          catch (eYS) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(eYS.message))) { luuNhapKichBan_(r.id, kb); throw eYS; } }
+          lanYC++;
+          if (kbYC && Array.isArray(kbYC.canh) && kbYC.canh.length) {
+            kb = kbYC;
+            chuanBiKichBan_(kb, r, ctxSua);
+            var dgYC = danhGiaKichBan_(kb, r.dap_an, r.mon, hinhDe, spham, r.de_bai);
+            if (dgYC.nang.length) { kb = JSON.parse(kbTruoc); nhatKy_('KIEM_DUYET_YC', r.id + ': bản sửa sinh lỗi nặng (' + dgYC.nang.map(function (x) { return String(x).split(':')[0]; }).join(', ') + '), giữ bản trước'); }
+            else dg = dgYC;
+          }
+        }
+        if (boDe) {
+          if (typeof boDeKhongDat_ === 'function') boDeKhongDat_(sh, r, boDe, 'kịch bản');
+          else ghi_(sh, r._row, { trang_thai: 'XOA', ghi_chu: ('BO_KHONG_DAT (kịch bản): ' + boDe).slice(0, 300) });
+          bc.loai++;
+          if (laUuTien_(r)) baoZaloDe_(r, '❌ Đề ' + r.id + ': kịch bản không đạt kiểm duyệt yêu cầu sau ' + lanYC + ' lần sửa nên hệ thống bỏ đề này (không dựng video).\nLý do: ' + boDe.slice(0, 250), 'cao');
+          continue;
+        }
+      }
       if (dg.nhe.length) nhatKy_('KICH_BAN_LUU_Y', r.id + ': dùng được, còn ' + dg.nhe.length + ' lưu ý nhẹ: ' + dg.nhe.map(function (x) { return String(x).split(':')[0]; }).join(', '));
       xoaNhapKichBan_(r.id);
       chuanHoaThoiLuong_(kb);
@@ -1292,7 +1323,8 @@ function nhanKetQuaBoPhan1_(sh, d) {
   (d.zalo || []).forEach(function (z) { try { if (z.id) baoZaloDe_(r, z.noi_dung, z.muc); else guiZalo_(z.noi_dung, z.muc, z.khoa); } catch (e) {} });
   nhatKy_('GITHUB_BP1', r.id + ' -> ' + f.trang_thai + (d.kich_ban ? ' (đã lưu kịch bản)' : '') + (d.loi ? ' | ' + d.loi : ''));
   // đề máy tự sinh bị loại/lỗi: hệ thống tự thay đề khác, không làm phiền (vẫn có trong báo cáo ngày); đề bạn gửi thì báo
-  if ((f.trang_thai === 'LOAI' || f.trang_thai === 'XOA' || f.trang_thai === 'LOI') && laUuTien_(r)) baoZaloDe_(r, (f.trang_thai !== 'LOI' ? '❌ Không làm video cho đề ' : '⚠️ Đề ') + r.id + (f.trang_thai !== 'LOI' ? ' (không có đáp án chắc chắn, đã xóa khỏi danh sách): ' : ' tạm dừng vì lỗi: ') + String(f.ghi_chu || '').slice(0, 200), 'cao');
+  if (f.trang_thai === 'XOA' && /^BO_KHONG_DAT/.test(String(f.ghi_chu || '')) && laUuTien_(r)) baoZaloDe_(r, '❌ Đề ' + r.id + ' không đạt kiểm duyệt yêu cầu nên hệ thống đã bỏ (không dựng video): ' + String(f.ghi_chu).slice(0, 220), 'cao');
+  else if ((f.trang_thai === 'LOAI' || f.trang_thai === 'XOA' || f.trang_thai === 'LOI') && laUuTien_(r)) baoZaloDe_(r, (f.trang_thai !== 'LOI' ? '❌ Không làm video cho đề ' : '⚠️ Đề ') + r.id + (f.trang_thai !== 'LOI' ? ' (không có đáp án chắc chắn, đã xóa khỏi danh sách): ' : ' tạm dừng vì lỗi: ') + String(f.ghi_chu || '').slice(0, 200), 'cao');
   if (f.trang_thai === 'XOA' || f.trang_thai === 'LOAI') PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1');   // dọn khỏi sheet ở lần chạy tới
   // chạy tiếp ngay: có kịch bản -> gửi dựng; còn đề chờ -> gửi GitHub
   if (f.trang_thai === 'CO_KICH_BAN' && typeof chonVaGuiDung_ === 'function') { try { chonVaGuiDung_(sh); } catch (e) { nhatKy_('DUNG_LOI', e.message); } }
@@ -1354,9 +1386,14 @@ function xuLyLoiHang_(sh, r, e, bc) {
   nhatKy_('LOI_DONG', r.id + ': ' + e.message);
   var n = Number(r.so_lan_loi) || 1;   // đã được tăng ở batDauViec_
   var f = { so_lan_loi: n, ghi_chu: String(e.message).slice(0, 300) };
-  if (n >= Number(cauHinh_('MAX_LAN_LOI'))) f.trang_thai = 'LOI';
+  if (n >= Number(cauHinh_('MAX_LAN_LOI'))) {
+    f.trang_thai = 'LOI';
+    // kịch bản sửa nhiều lần vẫn không hợp lệ: không để đề nằm chờ mãi -> xóa đề, hệ thống làm đề mới
+    if (/^KICH_BAN_KHONG_HOP_LE/.test(msg)) { f.trang_thai = 'XOA'; f.ghi_chu = ('BO_KHONG_DAT (kịch bản): sửa ' + n + ' lần vẫn lỗi - ' + msg).slice(0, 300); PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1'); }
+  }
   ghi_(sh, r._row, f);
   bc.loi++;
+  if (f.trang_thai === 'XOA' && laUuTien_(r)) baoZaloDe_(r, '❌ Đề ' + r.id + ': kịch bản sửa ' + n + ' lần vẫn chưa đạt nên hệ thống bỏ đề này. Bạn có thể gửi lại đề rõ hơn.', 'cao');
   if (f.trang_thai === 'LOI' && laUuTien_(r)) baoZaloDe_(r, '⚠️ Đề ' + r.id + ' gặp lỗi ' + n + ' lần nên tạm dừng: ' + String(e.message).slice(0, 160) + '\nCác đề khác chạy tiếp. Bạn có thể gửi lại đề.', 'cao');
 }
 
@@ -1935,6 +1972,8 @@ function donDaXong_() {
   });
   if (!xoa.length) return 0;
 
+  // đề sản phẩm bị bỏ vì không đạt kiểm duyệt: sản phẩm sáng tác đề mới (NangCao.gs)
+  xoa.forEach(function (r) { if (r.trang_thai === 'XOA' && typeof deMoiChoSanPhamBiBo_ === 'function') { try { deMoiChoSanPhamBiBo_(r); } catch (eSP) {} } });
   var lt = luuTruSheet_();
   var dong = xoa.map(function (r) {
     return [r.ma_bam || bam_(r.de_bai), r.id, r.lop, String(r.de_bai).slice(0, 120), r.dap_an || '',

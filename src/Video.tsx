@@ -165,7 +165,7 @@ const NoiDungVideo: React.FC<Props> = (props) => {
           <Audio src={staticFile('sfx/sting.wav')} volume={0.55} />
         </Sequence>
       ) : null}
-      {props.quangCao && props.quangCao.ten ? <NhanQuangCao ten={props.quangCao.ten} tongFrame={ketThuc} /> : null}
+      {props.quangCao && props.quangCao.ten ? <NhanQuangCao qc={props.quangCao} tongFrame={ketThuc} /> : null}
       {/* thẻ dữ kiện: từ sau phần đề bài đến trước cảnh bài học */}
       {props.duKien && props.duKien.length && canh.length > 3 ? (() => {
         const iTu = canh.findIndex((c, i) => i > 0 && !/mo_dau|hook|de_bai/i.test(c.loai));
