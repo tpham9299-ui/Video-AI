@@ -22,3 +22,17 @@
 - Dán lại `DangVideo.gs` vào Apps Script, rồi Triển khai > Quản lý > Phiên bản mới.
 - Phần GitHub đã tự cập nhật.
 - Nếu kênh YouTube chưa xác minh số điện thoại: vào youtube.com/verify.
+
+## Duyệt hàng loạt qua bot Zalo (SanPham.gs, ZaloDeBai.gs)
+- **Mỗi dòng một lệnh** trong cùng một tin, ví dụ:
+  ```
+  duyệt TT261115-100000-0
+  /sua VD261115-110000-0 cảnh 2 vẽ to hơn
+  thêm: giọng chậm lại ở đáp số        <- dòng không phải lệnh được nối vào lệnh ngay trên
+  - bỏ HH261115-120000-0 hình sai đề
+  ```
+- **Một lệnh nhiều mã**: `/duyet A B C` hoặc `/bo A, B <lý do chung>`.
+- `/duyet tatca` duyệt mọi video đã đạt kiểm duyệt đang chờ (video cũ trước, nên số tập theo đúng thứ tự).
+- Viết "duyệt / sửa / bỏ" không có dấu "/" cũng hiểu, gạch đầu dòng hay số thứ tự "1." đều được.
+  Chỉ nhận là lệnh khi theo sau là mã video, nên đề toán gửi bình thường không bị nhầm.
+- Làm **lần lượt đúng thứ tự** các dòng (thứ tự duyệt = thứ tự số tập), tối đa 40 lệnh/tin, rồi trả **một tin tổng hợp** kết quả từng dòng.

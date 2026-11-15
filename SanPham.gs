@@ -62,24 +62,98 @@ function daDuyet_(r) { var dv = String(r.duyet || ''); if (dv === 'AI_XEM' || dv
 
 /* ===================== LỆNH ZALO MỚI (gọi từ nhanZalo_) ===================== */
 
-// Trả true nếu tin nhắn là một lệnh của tệp này (đã trả lời người gửi).
+// Trả true nếu tin nhắn là lệnh của tệp này (đã trả lời người gửi).
+// NHIỀU LỆNH TRONG MỘT TIN: mỗi dòng một lệnh (/duyet, /sua, /bo, /xacnhan...; viết "duyệt", "sửa", "bỏ" không dấu gạch cũng hiểu),
+// một lệnh nhiều mã ("/duyet A B C", "/bo A, B lý do"), "/duyet tatca" = duyệt mọi video đã đạt kiểm duyệt đang chờ.
+// Dòng không phải lệnh nằm ngay dưới một lệnh được nối vào lệnh đó (góp ý /sua viết nhiều dòng). Làm LẦN LƯỢT đúng thứ tự
+// (thứ tự duyệt = thứ tự số tập), rồi trả MỘT tin tổng hợp kết quả từng dòng.
 function xuLyLenhZaloMoi_(chat, chu, anh) {
-  var l = String(chu || '').trim().toLowerCase();
-  if (/^\/duyet\b/.test(l)) { guiZaloToi_(chat, duyetVideo_(chu)); return true; }
-  if (/^\/sua\b/.test(l)) { guiZaloToi_(chat, yeuCauSuaVideo_(chat, chu)); return true; }
-  if (/^\/bo\b/.test(l)) { guiZaloToi_(chat, boVideo_(chu)); return true; }
-  if (/^\/cho\b/.test(l)) { guiZaloToi_(chat, danhSachChoDuyet_()); return true; }
-  if (/^\/xem\b/.test(l) && typeof xemVideoKhongDat_ === 'function') { guiZaloToi_(chat, xemVideoKhongDat_(chu)); return true; }
-  if (/^\/sanpham\b/.test(l)) { guiZaloToi_(chat, nhanSanPham_(chat, chu, anh)); return true; }
-  if (/^\/anhsp\b/.test(l)) { guiZaloToi_(chat, themAnhSanPham_(chu, anh)); return true; }
-  if (/^\/xacnhan\b/.test(l)) { guiZaloToi_(chat, xacNhanSanPham_(chu)); return true; }
-  if (/^\/huysp\b/.test(l)) { guiZaloToi_(chat, huySanPham_(chu)); return true; }
-  if (/^\/hoc\b/.test(l) && typeof nhanLenhHoc_ === 'function') { guiZaloToi_(chat, nhanLenhHoc_(chu)); return true; }
-  if (/^\/quytac\b/.test(l) && typeof danhSachQuyTac_ === 'function') { guiZaloToi_(chat, danhSachQuyTac_()); return true; }
-  if (/^\/xoaquytac\b/.test(l) && typeof xoaQuyTac_ === 'function') { guiZaloToi_(chat, xoaQuyTac_(chu)); return true; }
-  if (/^\/gopy\b/.test(l) && typeof nhanGopYChung_ === 'function') { guiZaloToi_(chat, nhanGopYChung_(chat, chu)); return true; }
-  return false;
+  var ds = tachNhieuLenh_(chu);
+  if (ds.length >= 2) { guiZaloToi_(chat, chayNhieuLenh_(chat, ds, anh)); return true; }
+  var tl = traLoiLenh_(chat, ds.length ? ds[0] : chu, anh);
+  if (tl === null) return false;
+  guiZaloToi_(chat, tl);
+  return true;
 }
+// một lệnh -> câu trả lời (null nếu không phải lệnh của tệp này)
+function traLoiLenh_(chat, chu, anh) {
+  var l = String(chu || '').trim().toLowerCase();
+  if (/^\/duyet\b/.test(l)) return duyetVideo_(chu);
+  if (/^\/sua\b/.test(l)) return yeuCauSuaVideo_(chat, chu);
+  if (/^\/bo\b/.test(l)) return boVideo_(chu);
+  if (/^\/cho\b/.test(l)) return danhSachChoDuyet_();
+  if (/^\/xem\b/.test(l) && typeof xemVideoKhongDat_ === 'function') return xemVideoKhongDat_(chu);
+  if (/^\/sanpham\b/.test(l)) return nhanSanPham_(chat, chu, anh);
+  if (/^\/anhsp\b/.test(l)) return themAnhSanPham_(chu, anh);
+  if (/^\/xacnhan\b/.test(l)) return xacNhanSanPham_(chu);
+  if (/^\/huysp\b/.test(l)) return huySanPham_(chu);
+  if (/^\/hoc\b/.test(l) && typeof nhanLenhHoc_ === 'function') return nhanLenhHoc_(chu);
+  if (/^\/quytac\b/.test(l) && typeof danhSachQuyTac_ === 'function') return danhSachQuyTac_();
+  if (/^\/xoaquytac\b/.test(l) && typeof xoaQuyTac_ === 'function') return xoaQuyTac_(chu);
+  if (/^\/gopy\b/.test(l) && typeof nhanGopYChung_ === 'function') return nhanGopYChung_(chat, chu);
+  if (/^\/(tt|trangthai)\b/.test(l) && typeof tinhTrangUuTien_ === 'function') return tinhTrangUuTien_();
+  return null;
+}
+var MA_DE_RE_ = /^[A-Za-z]{2}\d{6}-\d{6}(-\d+)?$/;
+var LENH_CHU_ = { 'duyet': '/duyet', 'duyệt': '/duyet', 'sua': '/sua', 'sửa': '/sua', 'bo': '/bo', 'bỏ': '/bo', 'xem': '/xem', 'xacnhan': '/xacnhan', 'xác nhận': '/xacnhan' };
+var TAT_CA_RE_ = /^(tatca|tất cả|tat ca|het|hết|all|toanbo|toàn bộ)$/i;
+// một dòng -> lệnh chuẩn ("/duyet ...") hoặc '' nếu không phải lệnh
+function chuanDongLenh_(dong) {
+  var x = String(dong || '').trim().replace(/^([-•*+]|\d+[.)])\s*/, '');   // bỏ gạch đầu dòng / số thứ tự
+  if (/^\//.test(x)) return x;
+  var m = /^(duyệt|duyet|sửa|sua|bỏ|bo|xem|xác nhận|xacnhan)\s+(.+)$/i.exec(x);
+  if (!m) return '';
+  var dau = m[2].trim().split(/[\s,;]+/)[0];
+  if (!MA_DE_RE_.test(dau) && !TAT_CA_RE_.test(dau) && !/^(tất|tat)\b/i.test(m[2].trim())) return '';   // tránh nhầm câu thường / đề toán
+  return LENH_CHU_[m[1].toLowerCase()] + ' ' + m[2].trim();
+}
+function tachNhieuLenh_(chu) {
+  var dong = String(chu || '').split(/\r?\n/).map(function (x) { return x.trim(); }).filter(Boolean);
+  var ds = [];
+  dong.forEach(function (d) {
+    var c = chuanDongLenh_(d);
+    if (c) ds.push(c);
+    else if (ds.length) ds[ds.length - 1] += ' ' + d;   // dòng nối tiếp lệnh trên (góp ý nhiều dòng)
+  });
+  // lệnh nhiều mã: /duyet A B C | /bo A, B lý do | /duyet tatca
+  var ra = [];
+  ds.forEach(function (c) {
+    var m = /^\/(duyet|bo)\s+(.+)$/i.exec(c);
+    if (!m) { ra.push(c); return; }
+    var phan = m[2].replace(/,/g, ' ').trim().split(/\s+/);
+    if (TAT_CA_RE_.test(phan[0]) || (/^(tất|tat)$/i.test(phan[0]) && /^(cả|ca)$/i.test(phan[1] || ''))) {
+      var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
+      var cho = docHang_(sh).filter(function (r) { return r.trang_thai === 'CO_VIDEO' && r.file_video && String(r.duyet || '') === 'CHO'; })
+        .sort(function (a, b) { return new Date(a.cap_nhat).getTime() - new Date(b.cap_nhat).getTime(); });   // video cũ trước -> tập nhỏ trước
+      var lyDo = phan.slice(/^(tất|tat)$/i.test(phan[0]) ? 2 : 1).join(' ');
+      if (!cho.length) ra.push('/' + m[1] + ' __KHONG_CO__');
+      cho.forEach(function (r) { ra.push('/' + m[1] + ' ' + r.id + (lyDo ? ' ' + lyDo : '')); });
+      return;
+    }
+    var ma = [];
+    while (phan.length && MA_DE_RE_.test(phan[0])) ma.push(phan.shift());
+    if (ma.length <= 1) { ra.push(c); return; }
+    ma.forEach(function (id) { ra.push('/' + m[1] + ' ' + id + (phan.length ? ' ' + phan.join(' ') : '')); });
+  });
+  return ra;
+}
+function chayNhieuLenh_(chat, ds, anh) {
+  var kq = [], ok = 0;
+  ds.slice(0, 40).forEach(function (c, i) {
+    var tl;
+    if (/__KHONG_CO__/.test(c)) tl = 'Không có video nào đã đạt kiểm duyệt đang chờ duyệt.';
+    else {
+      try { tl = traLoiLenh_(chat, c, i === 0 ? anh : ''); } catch (e) { tl = '⚠️ Lỗi: ' + String(e.message).slice(0, 120); }
+      if (tl === null) tl = '❓ Không hiểu lệnh này';
+    }
+    if (/^(✅|🗑|✍️|📷|🔎|🧠|📚)/.test(String(tl))) ok++;
+    kq.push((i + 1) + '. ' + c.replace(/__KHONG_CO__/, '').slice(0, 60) + '\n   → ' + String(tl).split('\n')[0].slice(0, ds.length > 12 ? 110 : 200));
+  });
+  nhatKy_('ZALO_NHIEU_LENH', ds.length + ' lệnh, ' + ok + ' thành công');
+  return '📋 Đã thực hiện ' + Math.min(ds.length, 40) + ' lệnh (' + ok + ' thành công)' + (ds.length > 40 ? ', mỗi tin tối đa 40 lệnh' : '') + ':\n' + kq.join('\n');
+}
+// nhanZalo_ dùng để nhận ra tin nhắn là (các) lệnh dù dòng đầu không có dấu "/"
+function laTinLenh_(chu) { var d = String(chu || '').split(/\r?\n/).map(function (x) { return x.trim(); }).filter(Boolean)[0]; return !!d && !!chuanDongLenh_(d); }
 
 // Lấy mã (nếu có) ngay sau lệnh và phần chữ còn lại.
 function tachLenh_(chu, dsMa) {

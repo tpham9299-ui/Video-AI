@@ -152,7 +152,8 @@ function nhanZalo_(e) {
     if (/^\/(giup|help)\b/.test(lenh)) { guiZaloToi_(chat, huongDanZalo_()); return tra; }
     if (/^\/(tt|trangthai|trạng thái)\b/.test(lenh) || lenh === 'tt') { guiZaloToi_(chat, tinhTrangUuTien_()); return tra; }
     if (/^\/huy\b/.test(lenh)) { guiZaloToi_(chat, huyUuTien_(chat)); return tra; }
-    if (/^\//.test(lenh) && typeof xuLyLenhZaloMoi_ === 'function' && xuLyLenhZaloMoi_(chat, chu, anh)) return tra;   // /duyet /sua /bo /cho /sanpham /xacnhan /huysp (SanPham.gs)
+    // lệnh (một hoặc NHIỀU dòng: /duyet /sua /bo /cho /sanpham /xacnhan /huysp...; "duyệt <mã>" không dấu gạch cũng hiểu) (SanPham.gs)
+    if ((/^\//.test(lenh) || (typeof laTinLenh_ === 'function' && laTinLenh_(chu))) && typeof xuLyLenhZaloMoi_ === 'function' && xuLyLenhZaloMoi_(chat, chu, anh)) return tra;
 
     var laDeChu = !anh && chu.length >= 25 && /\d/.test(chu);
     if (!anh && !laDeChu) { guiZaloToi_(chat, huongDanZalo_()); return tra; }
@@ -189,6 +190,7 @@ function huongDanZalo_() {
     'Mẹo: chụp thẳng, rõ số; ảnh có nhiều câu thì ghi chú kèm ảnh, ví dụ "câu 3, lớp 12".\n' +
     'Lệnh: /tt tiến độ | /huy hủy đề vừa gửi | /id mã chat\n' +
     'Duyệt video: /cho xem video chờ duyệt | /duyet [mã] | /sua [mã] <góp ý> | /bo [mã]\n' +
+    'Duyệt HÀNG LOẠT: mỗi dòng một lệnh trong cùng một tin, hoặc /duyet <mã1> <mã2> <mã3>, hoặc /duyet tatca\n' +
     'Sản phẩm: /sanpham <tên hoặc link> | /xacnhan [mã] <giá bạn bán> | /huysp [mã]';
 }
 
