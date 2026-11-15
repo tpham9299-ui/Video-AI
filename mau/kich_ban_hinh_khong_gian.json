@@ -1,7 +1,7 @@
 {
  "tieu_de": "BD vuông góc (SAC)",
  "chu_de_ngan": "Hình không gian 11",
- "hook": "x",
+ "hook": "Vì sao BD lại vuông góc với cả mặt phẳng SAC?",
  "de_cho": [
   "Đáy ABCD là hình vuông",
   "SA ⊥ (ABCD)"
@@ -379,5 +379,6 @@
    },
    "thoi_luong_giay": 7
   }
- ]
+ ],
+ "hook_chu": "BD vuông góc (SAC)?"
 }

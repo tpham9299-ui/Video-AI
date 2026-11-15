@@ -42,14 +42,95 @@ def do_thoi_luong(tep):
 
 
 # ---------- Chuẩn hóa văn bản để giọng đọc không đọc sai ----------
+# ĐỌC KÝ HIỆU HÌNH HỌC thành lời (trước đây "⊥", "(SAC)", "BD"... để nguyên -> giọng Gemini đọc lạc, sinh tiếng RÈ)
+TEN_CHU_CAI = {"A": "a", "B": "bê", "C": "xê", "D": "đê", "E": "e", "F": "ép", "G": "gờ", "H": "hát", "I": "i", "J": "giây", "K": "ca", "L": "lờ",
+               "M": "mờ", "N": "nờ", "O": "o", "P": "pê", "Q": "quy", "R": "rờ", "S": "ét", "T": "tê", "U": "u", "V": "vê", "W": "vê kép", "X": "ích",
+               "Y": "i dài", "Z": "dét"}
+DOC_CHU_CAI = {"bat": False}   # bật cho video HÌNH HỌC (main đặt theo kb.mon / đề): đánh vần tên điểm "BD" -> "bê đê"
+KY_HIEU_DOC = [("⊥", " vuông góc với "), ("∥", " song song với "), ("//", " song song với "), ("∠", " góc "), ("△", " tam giác "), ("Δ", " tam giác "),
+               ("°", " độ"), ("≈", " xấp xỉ "), ("≤", " nhỏ hơn hoặc bằng "), ("≥", " lớn hơn hoặc bằng "), ("≠", " khác "), ("√", " căn "),
+               ("²", " bình phương"), ("³", " lập phương"), ("π", " pi"), ("∈", " thuộc "), ("∉", " không thuộc "), ("⇒", ", suy ra "), ("⇔", ", tương đương "),
+               ("→", " suy ra "), ("∩", " giao "), ("∪", " hợp "), ("≡", " trùng "), ("∼", " đồng dạng với "), ("~", " đồng dạng với "), ("…", ", "), ("·", " nhân "),
+               ("±", " cộng trừ "), ("−", " trừ "), ("∞", " vô cùng ")]
+
+
+def _danh_van(m):
+    chu = m.group(0)
+    phay = chu.count("'")
+    ten = " ".join(TEN_CHU_CAI.get(c, c) for c in chu.replace("'", ""))
+    return " " + ten + (" phẩy" * phay) + " "
+
+
 def chuan_hoa_doc(text):
     s = str(text)
+    s = re.sub(r"\\[a-zA-Z]+|[{}$]", " ", s)                  # mã TeX lọt vào lời thoại
+    s = re.sub(r"\(\s*([A-Z]{3,4})\s*\)", r" mặt phẳng \1 ", s)    # (SAC) -> mặt phẳng SAC
+    s = re.sub(r"\(\s*([A-Z])\s*\)", r" \1 ", s)                  # đường tròn (O) -> đường tròn O
+    for k, v in KY_HIEU_DOC:
+        s = s.replace(k, v)
     s = re.sub(r"(\d+)\s*/\s*(\d+)", r"\1 phần \2", s)       # 3/5 -> "3 phần 5"
     s = re.sub(r"(\d)\s*%", r"\1 phần trăm", s)
+    s = re.sub(r"\s*/\s*(năm|tháng|ngày|giờ|giây|phút|kỳ|quý|tuần|người|chai|cái|kg|km|m)\b", r" mỗi \1", s)   # 6%/năm -> 6 phần trăm mỗi năm
     s = s.replace("×", " nhân ").replace("÷", " chia ").replace("=", " bằng ")
     s = re.sub(r"(?<=\s)\+(?=\s)", "cộng", s)
-    s = re.sub(r"\s+", " ", s).strip()
+    s = re.sub(r"(?<=\s)-(?=\s)", "trừ", s)
+    if DOC_CHU_CAI["bat"]:
+        # tên điểm / đoạn / mặt: 1-4 chữ in hoa đứng riêng (có thể kèm dấu phẩy trên A') -> đọc từng chữ cái kiểu Việt
+        s = re.sub(r"(?<![A-Za-zÀ-ỹ])[A-Z]{1,4}'*(?![A-Za-zÀ-ỹ])", _danh_van, s)
+    s = re.sub(r"\s+([,.!?])", r"\1", re.sub(r"\s+", " ", s)).strip()
     return s
+
+
+# ---------- PHÁT HIỆN GIỌNG RÈ / TẠP ÂM (giọng Gemini đôi khi "đọc lạc" ra tiếng rè, ồ, xì) ----------
+def do_tap_am(wav):
+    """Tỉ lệ khung 0,25 giây bị TẠP ÂM (to mà lại "xì" như nhiễu: tỉ lệ qua điểm 0 rất cao) + tỉ lệ mẫu bị VỠ TIẾNG (chạm trần).
+    Trả (ti_le_tap_am, ti_le_vo, ti_le_lien_tuc): giọng sạch thường ~0; tiếng rè / nhiễu > 0,03."""
+    import wave
+    import array
+    try:
+        with wave.open(wav, "rb") as w:
+            sr, n, kenh, rong = w.getframerate(), w.getnframes(), w.getnchannels(), w.getsampwidth()
+            if rong != 2:
+                return 0.0, 0.0, 0.0
+            a = array.array("h", w.readframes(n))
+    except Exception as e:
+        print("Không đo được tạp âm:", e)
+        return 0.0, 0.0, 0.0
+    if kenh > 1:
+        a = a[::kenh]
+    import math
+    buoc = max(1, int(sr * 0.25))
+    to = 0
+    vo = sum(1 for x in a if x > 32000 or x < -32000)
+    co_xi = []   # từng khung: to + "xì" (tỉ lệ qua điểm 0 cao)
+    for i in range(0, len(a) - buoc, buoc):
+        k = a[i:i + buoc]
+        nl = sum(x * x for x in k[::4]) / max(1, len(k[::4]))
+        db = 10 * math.log10(nl / (32768.0 ** 2) + 1e-12)
+        xi = False
+        if db > -32:
+            to += 1
+            zcr = sum(1 for j in range(1, len(k), 2) if (k[j - 1] >= 0) != (k[j] >= 0)) / (len(k) / 2.0)
+            xi = zcr > 0.32
+        co_xi.append(xi)
+    # chỉ tính tiếng xì kéo dài LIÊN TỤC >= 0,5 giây (2 khung): âm "x", "s" của giọng thật chỉ ~0,1-0,2 giây, không bị tính nhầm
+    xau, chuoi = 0, 0
+    for xi in co_xi + [False]:
+        if xi:
+            chuoi += 1
+        else:
+            if chuoi >= 2:
+                xau += chuoi
+            chuoi = 0
+    tong = max(1, len(co_xi))
+    return xau / float(max(1, to)), vo / float(max(1, len(a))), to / float(tong)
+
+
+def giong_bi_re(wav, ten=""):
+    tap, vo, lien = do_tap_am(wav)
+    re_ = tap > 0.03 or vo > 0.004
+    print("Đo giọng %s: tạp âm %.1f%%, vỡ tiếng %.2f%%, có tiếng %.0f%% thời lượng%s" % (ten, tap * 100, vo * 100, lien * 100, " -> RÈ/NHIỄU" if re_ else " -> sạch"))
+    return re_
 
 
 def tach_cau(text):
@@ -286,6 +367,10 @@ def tao_giong_gemini(canh, thu_muc, args):
         phong_cach = args.phong_cach_giong + " Giữ NGUYÊN một chất giọng, cao độ và tốc độ như các đoạn khác của cùng video.\nĐoạn cần đọc:"
         try:
             gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach)
+            if giong_bi_re(wav, "cảnh %d" % (i + 1)):
+                gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach)   # đọc lại một lần
+                if giong_bi_re(wav, "cảnh %d (đọc lại)" % (i + 1)):
+                    raise RuntimeError("giọng Gemini cảnh %d vẫn rè sau khi đọc lại" % (i + 1))
         except Exception as e:
             print("Cảnh báo: %s -> cả video chuyển sang edge-tts" % str(e)[:200])
             THONG_KE_GIONG["gemini"] = 0   # bỏ hết phần Gemini đã tạo: cả video một giọng
@@ -338,6 +423,12 @@ def tao_giong_gemini_mot_lan(canh, thu_muc, args):
         # đọc thiếu / bị cắt cụt: Việt ~13-17 ký tự mỗi giây
         if D < sum(ky_tu) / 30.0:
             print("Gemini đọc cả bài quá ngắn (%.1f giây cho %d ký tự), đọc lại" % (D, sum(ky_tu)))
+            continue
+        # đọc DÀI bất thường (mô hình "lạc" sinh tiếng ồ, rè ở cuối) hoặc đo thấy tạp âm -> đọc lại
+        if D > sum(ky_tu) / 7.0:
+            print("Gemini đọc cả bài dài bất thường (%.1f giây cho %d ký tự) - nghi lạc giọng/rè, đọc lại" % (D, sum(ky_tu)))
+            continue
+        if giong_bi_re(wav, "cả bài (lần %d)" % (lan + 1)):
             continue
         lang = tim_khoang_lang(wav)
         cat, truoc, ok = [], 0.0, True
@@ -907,6 +998,8 @@ def main():
         if f.endswith(".mp3"):
             os.remove(os.path.join(thu_muc_giong, f))
 
+    # video HÌNH HỌC: đánh vần tên điểm (BD -> "bê đê", (SAC) -> "mặt phẳng ét a xê") để giọng đọc không lạc
+    DOC_CHU_CAI["bat"] = str(kb.get("mon") or "").upper() == "HINH_HOC" or bool(re.search(r"tam giác|hình chóp|lăng trụ|tứ diện|đường tròn|chứng minh|mặt phẳng", str(kb.get("de_bai") or ""), re.I))
     canh_props = []
     bat_dau = 0
     tam_gem = tempfile.mkdtemp()
@@ -917,6 +1010,10 @@ def main():
             giong_gem = tao_giong_gemini(canh, tam_gem, args)
         else:
             giong_gem = tao_giong_gemini_mot_lan(canh, tam_gem, args)
+            if not giong_gem:
+                # đọc cả bài một lần bị rè / cắt không khớp -> thử đọc TỪNG CẢNH (đoạn ngắn ít bị lạc giọng), vẫn kiểm tạp âm từng cảnh
+                print("Đọc cả bài một lần không đạt -> thử Gemini đọc từng cảnh (có kiểm tra rè)")
+                giong_gem = tao_giong_gemini(canh, tam_gem, args)
         if not giong_gem:
             print("Gemini không đọc được cả video -> CẢ video dùng một giọng edge-tts (không trộn giọng)")
     for i, c in enumerate(canh):
