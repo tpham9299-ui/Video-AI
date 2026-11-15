@@ -11,6 +11,7 @@ export const TEN_VAT_THUC = [
   'cot_co', 'nguoi', 'toa_nha', 'ngan_hang', 'nha', 'truong_hoc', 'cay', 'cay_thong', 'hai_dang', 'thap_nuoc', 'cot_dien', 'den_duong',
   'nui', 'mat_troi', 'xe_hoi', 'thuyen', 'may_bay', 'khinh_khi_cau', 'cau', 'song', 'thang', 'tien', 'heo_dat', 'dieu', 'tuong', 'ho_nuoc',
   'hang_rao', 'cong_trinh', 'cua_hang', 'xe_may', 'xe_dap', 'xe_buyt', 'con_duong', 'qua_bong', 'ro_bong_ro', 'gieng', 'cong', 'bieu_tuong',
+  'ban', 'ghe', 'ti_vi', 'kim_tu_thap', 'thap',
 ] as const;
 export type TenVatThuc = (typeof TEN_VAT_THUC)[number];
 
@@ -20,6 +21,7 @@ export const TI_LE_RONG: Record<string, number> = {
   cot_dien: 0.5, den_duong: 0.45, nui: 1.8, mat_troi: 1, xe_hoi: 2.4, thuyen: 1.6, may_bay: 2.2, khinh_khi_cau: 0.75, cau: 3, song: 3, thang: 0.5,
   tien: 1.3, heo_dat: 1.35, dieu: 0.7, tuong: 1, ho_nuoc: 3,
   hang_rao: 3, cong_trinh: 0.9, cua_hang: 1.1, xe_may: 1.9, xe_dap: 1.7, xe_buyt: 3, con_duong: 4, qua_bong: 1, ro_bong_ro: 0.45, gieng: 0.9, cong: 1.2, bieu_tuong: 1,
+  ban: 1.7, ghe: 0.55, ti_vi: 1.6, kim_tu_thap: 1.6, thap: 0.42,
 };
 
 type P = {mau: string; t: number; rong: number; nen: string; bien: string; emoji: string; dongTac?: string; gocChi?: number};
@@ -422,6 +424,61 @@ const VE: Record<TenVatThuc, (p: P) => React.ReactNode> = {
     </g>
   ),
   // BIỂU TƯỢNG DỰ PHÒNG: vật chưa có trong thư viện -> emoji màu đúng vật (🏥 bệnh viện, 🚜 máy cày, 🐄 bò...), chân ở đáy
+  // BÀN (nhìn ngang): mặt bàn gỗ dày + 4 chân (2 chân sau mờ hơn), chân = mặt sàn, cao = chiều cao mặt bàn
+  ban: ({mau, rong}) => {
+    const L = Math.max(60, rong) / 2;
+    return (
+      <g>
+        <rect x={-L + 10} y={-92} width={7} height={92} fill={`${NAU}88`} />
+        <rect x={L - 17} y={-92} width={7} height={92} fill={`${NAU}88`} />
+        <rect x={-L + 2} y={-92} width={9} height={92} rx={2} fill={NAU} stroke={mau} strokeWidth={0.8} />
+        <rect x={L - 11} y={-92} width={9} height={92} rx={2} fill={NAU} stroke={mau} strokeWidth={0.8} />
+        <rect x={-L + 6} y={-90} width={2 * L - 12} height={6} fill={`${NAU}aa`} />
+        <rect x={-L - 6} y={-100} width={2 * L + 12} height={10} rx={3} fill="#d9a066" stroke={mau} strokeWidth={1.4} />
+        <rect x={-L - 6} y={-100} width={2 * L + 12} height={3} rx={2} fill="#f1c890" />
+      </g>
+    );
+  },
+  // GHẾ (nhìn ngang): tựa lưng cao, mặt ghế ở nửa chiều cao
+  ghe: ({mau}) => (
+    <g>
+      <rect x={-24} y={-100} width={8} height={100} rx={2} fill={NAU} stroke={mau} strokeWidth={0.8} />
+      <rect x={-20} y={-96} width={4} height={40} fill="#d9a066" />
+      <rect x={-26} y={-54} width={54} height={8} rx={2} fill="#d9a066" stroke={mau} strokeWidth={1.2} />
+      <rect x={20} y={-48} width={7} height={48} rx={2} fill={NAU} />
+      <rect x={-20} y={-48} width={6} height={48} fill={`${NAU}88`} />
+    </g>
+  ),
+  // TI VI: màn hình 16:9 trên chân đế, màn hình có ánh sáng chạy nhẹ
+  ti_vi: ({mau, t}) => (
+    <g>
+      <rect x={-80} y={-100} width={160} height={90} rx={6} fill="#10181c" stroke={mau} strokeWidth={2.4} />
+      <rect x={-74} y={-94} width={148} height={78} rx={3} fill={`${XANH}44`} />
+      <rect x={-74 + ((t * 40) % 148)} y={-94} width={18} height={78} fill="#ffffff22" />
+      <rect x={-6} y={-10} width={12} height={6} fill={XAM} />
+      <rect x={-34} y={-4} width={68} height={4} rx={2} fill={XAM} />
+    </g>
+  ),
+  // KIM TỰ THÁP: tam giác cân có các bậc đá
+  kim_tu_thap: ({mau}) => (
+    <g>
+      <polygon points="-80,0 80,0 0,-100" fill="#e2b866" stroke={mau} strokeWidth={1.6} />
+      <polygon points="0,-100 80,0 22,0" fill="#b88a3e" opacity={0.7} />
+      {[1, 2, 3, 4, 5, 6, 7].map((k) => <line key={k} x1={-80 + k * 11.4} y1={-k * 14.2} x2={80 - k * 11.4} y2={-k * 14.2} stroke="#8a6326" strokeWidth={0.8} opacity={0.6} />)}
+    </g>
+  ),
+  // THÁP (tháp truyền hình / tháp thép dạng lưới, khác tòa nhà): thân thon dần + các thanh chéo + đèn đỏ ở đỉnh
+  thap: ({mau, t}) => (
+    <g stroke={mau || XAM} strokeWidth={1.4} fill="none">
+      <polyline points="-22,0 -4,-92 4,-92 22,0" strokeWidth={2.4} />
+      {[0, 1, 2, 3, 4, 5].map((k) => {
+        const y1 = -k * 15, y2 = -(k + 1) * 15, w1 = 22 - k * 3, w2 = 22 - (k + 1) * 3;
+        return <g key={k}><line x1={-w1} y1={y1} x2={w2} y2={y2} /><line x1={w1} y1={y1} x2={-w2} y2={y2} /><line x1={-w2} y1={y2} x2={w2} y2={y2} /></g>;
+      })}
+      <line x1={0} y1={-92} x2={0} y2={-100} strokeWidth={2} />
+      <circle cx={0} cy={-100} r={2.6} fill={DO} stroke="none" opacity={0.5 + 0.5 * Math.abs(Math.sin(t * 3))} />
+    </g>
+  ),
   bieu_tuong: ({emoji}) => (
     <text x={0} y={-8} textAnchor="middle" fontSize={92} fontFamily="Noto Color Emoji, Apple Color Emoji, Segoe UI Emoji, sans-serif">{emoji || '❓'}</text>
   ),

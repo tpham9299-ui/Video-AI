@@ -6,7 +6,8 @@
  */
 
 function taoPromptKichBan_(r, c1, c2) {
-  var tt = typeof laMonThucTe_ === 'function' && laMonThucTe_(r);
+  var hh = typeof laMonHinhHoc_ === 'function' && laMonHinhHoc_(r);
+  var tt = (typeof laMonThucTe_ === 'function' && laMonThucTe_(r)) || hh;   // bài hình học dùng khung "đáp số / thử lại" của toán thực tế + hướng dẫn hình học riêng
   var buocC1 = (c1.cac_buoc || []).map(function (b, i) { return (i + 1) + '. ' + b; }).join('\n');
   var buocC2 = (c2.cac_buoc || []).map(function (b, i) { return (i + 1) + '. ' + b; }).join('\n');
   var chao = String(cauHinh_('KIEU_MO_DAU') || 'hook') === 'chao_hook';
@@ -103,6 +104,9 @@ function taoPromptKichBan_(r, c1, c2) {
     r._series ? 'SERIES: video thuộc chuỗi "' + r._series.ten + '". TUYỆT ĐỐI KHÔNG nói hay ghi SỐ TẬP (số tập do hệ thống đánh lúc đăng); "video_tiep_theo" hẹn một bài cùng lớp.\n' : '',
     r._hook ? 'KIỂU MỞ ĐẦU CẦN THỬ Ở VIDEO NÀY: "' + r._hook + '" (đặt "hook_kieu" = "' + r._hook + '" và viết câu móc đúng kiểu đó, thật mạnh). Hệ thống đang đo kiểu mở đầu nào giữ chân người xem tốt nhất.\n' : '',
     typeof goiYTuSoLieu_ === 'function' ? goiYTuSoLieu_() : '',
+    hh && typeof huongDanKichBanHinh_ === 'function' ? huongDanKichBanHinh_(r) + 'ĐÂY LÀ BÀI HÌNH HỌC THUẦN TÚY: BỎ QUA mọi yêu cầu "dựng cảnh thật 3D / canh_that / vật thật" ở trên; hình chính là hinh_hoc.\n' : '',
+    typeof quyTacHocChoPrompt_ === 'function' ? quyTacHocChoPrompt_() : '',
+    typeof phongCachLoiChoPrompt_ === 'function' ? phongCachLoiChoPrompt_(r) : '',
     typeof hocEditChoPrompt_ === 'function' ? hocEditChoPrompt_() : '',
     'GÓC NHÌN 3D (tùy chọn): cảnh có hình học/hình tự do được dựng nổi khối 3D; có thể thêm "goc_nhin": ["..."] (1-3 góc, máy đổi góc ở các bước của cảnh) chọn trong: cheo_trai, tren_xuong (nhìn thẳng từ trên khi cần đọc số đo chính xác), cheo_phai, thap_chinh_dien (góc thấp hùng vĩ, hợp hook/đáp án), cao_toan_canh, nghieng_nhe. Hai cảnh liền nhau nên khác góc; không cần thì bỏ trống.\n'
   ];
@@ -143,7 +147,7 @@ function taoPromptKichBan_(r, c1, c2) {
     'Điểm neo: "A" chân vật, "A.dinh" đỉnh, "A.mat" mắt người, "A.giua", hoặc mã trong "diem" (x, cao). ' +
     'do: khoang_cach {tu, den, nhan} | chieu_cao {vat, nhan} | tia {tu, den, goc} (tia nhìn + góc nâng/hạ) | doan {tu, den, nhan, dut} (dây, đoạn cần tính) | bong {vat, dai, nhan} (bóng nắng dài dai mét) | tam_giac {dinh:[3 điểm]} | vuong {tai} | chu {tai, nhan}. Mỗi phép đo có "buoc" để HIỆN DẦN theo lời giảng. ' +
     'NHÌN TỪ TRÊN (mảnh vườn, hàng rào quanh đất, ruộng, sân, hồ bơi, khoảng cách trên mặt đất): {"loai":"canh_that","nhin":"tren","vung":[{"ma":"V","ten":"vuon|ruong|san|san_bong|ho_boi|dat|song|duong","x":0,"y":0,"rong":20,"dai":12,"hang_rao":true,"tuong":"trai","canh":["20 m","12 m"],"nhan":"Vườn rau"}],"vat":[{"ma":"N","ten":"nha","x":-7,"y":6,"cao":6}],"do":[{"kieu":"doan","tu":"V.tl","den":"V.br","nhan":"d = ?"}]} (góc vùng V.tl V.tr V.bl V.br, V.giua, trung điểm V.tren V.duoi V.trai V.phai). hang_rao: true = rào cả 4 cạnh, hoặc mảng cạnh cần rào ["tren","phai","duoi"]; tuong: cạnh sát BỨC TƯỜNG có sẵn ("trai"...) - vẽ tường gạch, không rào cạnh đó. ' +
-    'THƯ VIỆN VẬT (vẽ sẵn đúng hình, có chuyển động nhẹ): cot_co, nguoi, toa_nha, ngan_hang, nha, truong_hoc, cay, cay_thong, hai_dang, thap_nuoc, cot_dien, den_duong, nui, mat_troi, xe_hoi, thuyen, may_bay, khinh_khi_cau, cau, song, thang, tien, heo_dat, dieu, tuong, ho_nuoc, ' +
+    'THƯ VIỆN VẬT (vẽ sẵn đúng hình, có chuyển động nhẹ): ban (cái bàn: mặt bàn + chân), ghe, ti_vi, kim_tu_thap, thap (tháp thép/truyền hình, KHÁC tòa nhà), cot_co, nguoi, toa_nha, ngan_hang, nha, truong_hoc, cay, cay_thong, hai_dang, thap_nuoc, cot_dien, den_duong, nui, mat_troi, xe_hoi, thuyen, may_bay, khinh_khi_cau, cau, song, thang, tien, heo_dat, dieu, tuong, ho_nuoc, ' +
     'hang_rao, cong_trinh (+ bien: bưu điện, bệnh viện, nhà máy, ủy ban...), cua_hang (+ bien: chợ, siêu thị, tiệm...), xe_may, xe_dap, xe_buyt, con_duong, qua_bong, ro_bong_ro, gieng, cong, bieu_tuong (+ emoji cho vật chưa có: 🐄 🚜 🏊 ⛽...). ' +
     'TUYỆT ĐỐI không thay vật thật bằng khối hộp/khối trụ/thẻ chữ; vật chưa có thì cong_trinh + bien hoặc bieu_tuong + emoji. ' +
     'Có thể dùng lại CÙNG canh_that (giữ nguyên ma, x, cao) ở nhiều cảnh, mỗi cảnh thêm/bớt phép đo cho đúng ý đang giảng (de_bai: số đo của đề; mo_hinh_hoa: tam_giac + vuong; dap_an: chieu_cao ghi đáp số). ' +
@@ -151,6 +155,8 @@ function taoPromptKichBan_(r, c1, c2) {
     'HÌNH BÁM SÁT ĐỀ (bắt buộc, máy kiểm tra và AI soi từng cảnh):\n' +
     '- BỐ CỤC ĐÚNG CẤU TRÚC ĐỀ: ngồi quanh bàn tròn / xếp vòng tròn -> ban_tron (KHÔNG xếp hàng ngang); xếp hàng / dãy ghế -> nguoi thành hàng; ' +
     'qua sông, đường ống, hai bờ -> canh_that nhìn từ trên có dải sông và các điểm A, B, P...; không gian mẫu -> luoi_o; chia trường hợp -> so đồ / danh_sach.\n' +
+    '- ĐÚNG VẬT trong MỌI cảnh (không chỉ cảnh đầu): đề nói gì vẽ đúng vật đó - ngọn hải đăng = hai_dang (KHÔNG dùng toa_nha), cái bàn = ban (KHÔNG dùng khoi_hop), tháp thép = thap, cột cờ = cot_co, ' +
+    'lời thoại nhắc vật nào thì hình cảnh đó có vật ấy; không vẽ công trình nào mà đề không có.\n' +
     '- ĐÚNG SỐ LƯỢNG VÀ NHÃN: 6 nam 6 nữ thì đủ 12 người ghi đúng Nam/Nữ; 10 thẻ đánh số 1-10 thì đủ 10 thẻ đúng số.\n' +
     '- MỖI ĐIỀU KIỆN CỦA ĐỀ PHẢI THẤY TRÊN HÌNH (vd "không 2 nữ ngồi cạnh nhau": chon các ghế xen kẽ, loai_bo cách xếp sai) - không chỉ nói bằng lời.\n' +
     '- "mo_ta" ghi CHI TIẾT như kịch bản quay phim: có những vật nào, mỗi vật ở đâu, bao nhiêu cái, nhãn gì, lần lượt chuyển động gì theo lời thoại.\n' +
@@ -357,7 +363,7 @@ function lapBanVe_(r, anhDe) {
 // đặt cách đều trên mặt đất). Không có số đo, nhưng ĐÚNG VẬT của đề - không bao giờ để khối hộp thay cột cờ.
 var CAO_MAC_DINH_ = { cot_co: 12, nguoi: 1.6, toa_nha: 30, ngan_hang: 12, nha: 7, truong_hoc: 10, cay: 6, cay_thong: 8, hai_dang: 25, thap_nuoc: 15, cot_dien: 9, den_duong: 6,
   nui: 200, xe_hoi: 1.5, thuyen: 4, cau: 8, song: 2, thang: 4, tien: 0.6, heo_dat: 0.5, dieu: 6, tuong: 3, ho_nuoc: 1, hang_rao: 1.5, cong_trinh: 12, cua_hang: 5,
-  xe_may: 1.1, xe_dap: 1, xe_buyt: 3, con_duong: 0.5, qua_bong: 0.3, ro_bong_ro: 3, gieng: 1.2, cong: 2.5, bieu_tuong: 2 };
+  xe_may: 1.1, xe_dap: 1, xe_buyt: 3, con_duong: 0.5, qua_bong: 0.3, ro_bong_ro: 3, gieng: 1.2, cong: 2.5, bieu_tuong: 2, ban: 0.75, ghe: 0.9, ti_vi: 0.8, kim_tu_thap: 140, thap: 60 };
 function banVeMacDinh_(r) {
   var de = (String(r.de_bai || '') + ' ' + String(r.mo_ta_hinh || '')).toLowerCase();
   var ten = [];

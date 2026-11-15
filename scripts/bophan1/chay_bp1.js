@@ -25,6 +25,15 @@ const GIA_LAP = process.env.BP1_GIA_LAP === '1';
 const out = {id: de.hang && de.hang.id, ok: false, hang: {}, kich_ban: null, nhat_ky: [], zalo: [], series_ghi: null, loi: ''};
 
 // thiếu key: báo ngay để Apps Script tự làm đề này tại chỗ (không tính là lỗi của đề)
+// KEY HẾT HẠN MỨC NGÀY đã biết từ các lần chạy trước (Apps Script nhớ, theo ngày giờ Thái Bình Dương): bỏ qua ngay, khỏi dò lại
+const TEP_HET_NGAY = path.join(os.tmpdir(), 'gemini_key_het_ngay.txt');
+const maKeyBp1 = (k) => k.slice(0, 6) + '_' + k.slice(-4);
+try {
+  const biet = new Set((de.het_ngay || []).map(String));
+  const dong = [];
+  for (const k of keys) for (const x of biet) { const [md, ma] = x.split('|'); if (ma === maKeyBp1(k)) dong.push(md + '|' + k); }
+  if (dong.length) { fs.writeFileSync(TEP_HET_NGAY, dong.join('\n') + '\n'); console.log(`Đã biết ${dong.length} cặp model-key hết hạn mức hôm nay, bỏ qua ngay`); }
+} catch (e) { /* bỏ */ }
 if (!GIA_LAP && !keys.length) {
   out.loi = 'THIEU_GEMINI_API_KEY';
   out.hang = null;
@@ -69,7 +78,11 @@ let vongKey = 0;
 function goiTho(model, bodies) {
   if (GIA_LAP) return bodies.map(giaLapGemini);
   const t = path.join(os.tmpdir(), `bp1_${process.pid}_${Date.now()}.json`);
-  fs.writeFileSync(t, JSON.stringify({model, bodies, keys, batDauKey: vongKey}));
+  // model chính chậm (quá tải) -> sau GIAY_GOI_DU_PHONG giây gọi song song model dự phòng, lấy kết quả về trước
+  const ch = de.cau_hinh || {};
+  const chinh = ch.MODEL_CHINH || 'gemini-3.8-flash';
+  const duPhong = model === chinh && String(ch.GOI_DU_PHONG_SONG_SONG || 'BAT').toUpperCase() !== 'TAT' ? [ch.MODEL_DU_PHONG || 'gemini-3.6-flash'] : [];
+  fs.writeFileSync(t, JSON.stringify({model, bodies, keys, batDauKey: vongKey, duPhong, hedgeGiay: Number(ch.GIAY_GOI_DU_PHONG) || 80}));
   vongKey = (vongKey + bodies.length) % Math.max(1, keys.length);
   try {
     return JSON.parse(execFileSync(process.execPath, [path.join(__dirname, 'goi_gemini.js'), t], {maxBuffer: 64 * 1024 * 1024, timeout: 330000}).toString());
@@ -118,7 +131,7 @@ const ctx = {
 
 const sheets = {};
 vm.createContext(ctx);
-for (const f of ['BoPhan1.gs', 'PromptKichBan.gs', 'KiemTraHinh.gs', 'NangCao.gs', 'SanPham.gs']) {
+for (const f of ['BoPhan1.gs', 'PromptKichBan.gs', 'KiemTraHinh.gs', 'NangCao.gs', 'SanPham.gs', 'HinhHoc.gs']) {
   const p = path.join(GOC, f);
   if (fs.existsSync(p)) vm.runInContext(fs.readFileSync(p, 'utf8'), ctx, {filename: f});
 }
@@ -131,7 +144,7 @@ if (de.nhap && hang.id) tep['nhap_' + hang.id + '.json'] = String(de.nhap); // b
 
 ctx.__out = out;
 ctx.__thuMuc = thuMuc;
-ctx.__pre = {series: de.series || null, hook: de.hook || '', goi_y: de.goi_y || '', hoc_edit: de.hoc_edit || ''};
+ctx.__pre = {series: de.series || null, hook: de.hook || '', goi_y: de.goi_y || '', hoc_edit: de.hoc_edit || '', quy_tac_hoc: de.quy_tac_hoc || '', quy_tac_kd: de.quy_tac_kd || [], phong_cach: de.phong_cach || null, cau_noi: de.cau_noi || []};
 ctx.__anh = process.env.BP1_ANH && fs.existsSync(process.env.BP1_ANH) ? {mime: /\.png$/i.test(process.env.BP1_ANH) ? 'image/png' : 'image/jpeg', data: fs.readFileSync(process.env.BP1_ANH).toString('base64')} : null;
 vm.runInContext(`
   THOI_GIAN_TOI_DA_MS = 22 * 60 * 1000;      // GitHub: 22 phút cho một đề (Apps Script chỉ 4,6 phút)
@@ -144,6 +157,10 @@ vm.runInContext(`
   chonKieuHook_ = function () { return __pre.hook; };
   goiYTuSoLieu_ = function () { return __pre.goi_y; };
   hocEditChoPrompt_ = function () { return __pre.hoc_edit; };
+  quyTacHocChoPrompt_ = function () { return __pre.quy_tac_hoc; };
+  quyTacHocChoKiemDuyet_ = function () { return __pre.quy_tac_kd; };
+  chonPhongCachVideo_ = function () { return __pre.phong_cach; };
+  cauNoiGanDay_ = function () { return __pre.cau_noi; };
   ghiTapCuoiSeries_ = function (se, tieuDe) { __out.series_ghi = {se: se, tieu_de: tieuDe}; };
   anhDeChoGemini_ = function () { return __anh; };
   thuMucKichBan_ = function () { return __thuMuc; };
@@ -195,6 +212,7 @@ const nhap = tep['nhap_' + out.id + '.json'];
 if (nhap && !out.kich_ban) out.nhap = nhap; // bản nháp (nếu dừng giữa chừng) để Apps Script giữ lại
 out.thong_ke = Object.fromEntries(Object.entries(props).filter(([k]) => /^TB_/.test(k)));
 out.bao_cao = bc;
+try { out.het_ngay = (fs.existsSync(TEP_HET_NGAY) ? fs.readFileSync(TEP_HET_NGAY, 'utf8') : '').split('\n').filter(Boolean).map((x) => { const i = x.indexOf('|'); return x.slice(0, i) + '|' + maKeyBp1(x.slice(i + 1)); }); } catch (e) { /* bỏ */ }
 fs.writeFileSync(RA, JSON.stringify(out));
 console.log(`Xong: ${out.id} -> ${out.hang.trang_thai || trangThai()} | ${JSON.stringify(bc)} | ${out.loi || 'không lỗi'}`);
 

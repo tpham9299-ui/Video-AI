@@ -460,7 +460,11 @@
    "tieu_de_canh": "Kiểm tra: thử x = 2, 4, 6",
    "tu_khoa": "Kiểm tra",
    "loi_thoai": "Chưa chốt vội, thử vài con số xem sao. x bằng hai thì S là sáu mươi tám, x bằng sáu khoảng năm mươi bảy, còn x bằng bốn chỉ bốn mươi tám.",
-   "noi_dung_man_hinh": [],
+   "noi_dung_man_hinh": [
+    "S(2) = 4 + 64 = 68",
+    "S(6) \\approx 36 + 21{,}3 = 57{,}3",
+    "S(4) = 16 + 32 = 48 \\;\\checkmark"
+   ],
    "minh_hoa": {
     "loai": "san_khau",
     "mo_ta": "Biểu đồ ba cột S tại x = 2, 4, 6 lần lượt 68, 48, 57,3; cột x = 4 thấp nhất sáng xanh lá.",

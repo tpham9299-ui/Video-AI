@@ -250,8 +250,8 @@ function sinhDeNeuCan_(sh, bc) {
     if (che === 'CHI_INTERNET') { nhatKy_('TIM_INTERNET', 'Không tìm được đề phù hợp trên internet (chế độ chỉ internet nên không nhờ AI sáng tác)'); return; }
     nhatKy_('TIM_INTERNET', 'Không tìm được đề phù hợp trên internet, chuyển sang AI sáng tác (' + mon + ', lớp ' + lop + ')');
   }
-  var prompt = mon === 'THUC_TE' ? promptSangTacThucTe_(lop, n, daCo) : promptSangTacXacSuat_(lop, n, daCo);
-  var kq = goiGemini_(prompt, 0.9, { suyNghi: cauHinh_('MUC_SUY_NGHI_KICH_BAN') });
+  var prompt = mon === 'HINH_HOC' ? promptSangTacHinhHoc_(lop, n, daCo) : mon === 'THUC_TE' ? promptSangTacThucTe_(lop, n, daCo) : promptSangTacXacSuat_(lop, n, daCo);
+  var kq = goiGemini_(prompt, 0.9, { suyNghi: mon === 'HINH_HOC' ? 'medium' : cauHinh_('MUC_SUY_NGHI_KICH_BAN') });
   capNhatTb_('TB_SINH_DE_MS', Date.now() - tSinh);
   if (kq && !Array.isArray(kq) && Array.isArray(kq.de)) kq = kq.de;
   if (!Array.isArray(kq)) throw new Error('SINH_DE_JSON_SAI_DANG');
@@ -265,7 +265,7 @@ function sinhDeNeuCan_(sh, bc) {
     var b = bam_(d.de_bai);
     if (daBam[b]) return;
     daBam[b] = true;
-    var id = (mon === 'THUC_TE' ? 'TT' : 'VD') + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd-HHmmss') + '-' + i;
+    var id = (mon === 'HINH_HOC' ? 'HH' : mon === 'THUC_TE' ? 'TT' : 'VD') + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd-HHmmss') + '-' + i;
     themHang_(sh, {
       id: id, trang_thai: 'MOI', lop: lop, chu_de: d.chu_de, de_bai: d.de_bai, nguon: 'AI_SANG_TAC', mon: mon,
       diem_tu_duy: d.diem_tu_duy, yeu_to_tu_duy: d.yeu_to_tu_duy, bay_thuong_gap: d.bay_thuong_gap,
@@ -280,14 +280,16 @@ function sinhDeNeuCan_(sh, bc) {
 // Chọn chủ đề cho lần sinh đề này: theo CHU_DE_VIDEO; XEN_KE thì luân phiên XAC_SUAT, THUC_TE.
 function chonMon_() {
   var cd = String(cauHinh_('CHU_DE_VIDEO') || 'XEN_KE').toUpperCase();
-  if (cd === 'XAC_SUAT' || cd === 'THUC_TE') return cd;
+  if (cd === 'XAC_SUAT' || cd === 'THUC_TE' || cd === 'HINH_HOC') return cd;
   var p = PropertiesService.getScriptProperties();
+  var vong = typeof batHinhHoc_ === 'function' && batHinhHoc_() ? ['XAC_SUAT', 'THUC_TE', 'HINH_HOC'] : ['XAC_SUAT', 'THUC_TE'];   // xen kẽ, có hình học khó (HinhHoc.gs)
   var k = Number(p.getProperty('MON_KE') || 0);
-  p.setProperty('MON_KE', String((k + 1) % 2));
-  return k % 2 ? 'THUC_TE' : 'XAC_SUAT';
+  p.setProperty('MON_KE', String((k + 1) % 6));
+  return vong[k % vong.length];
 }
 // Dạng bài có nằm trong danh sách bộ dựng video làm được không (đề cũ chưa có "dang" thì cho qua).
 function dangDungDuoc_(mon, dang) {
+  if (mon === 'HINH_HOC') return typeof dangHinhDungDuoc_ === 'function' && dangHinhDungDuoc_(dang);
   var ds = DANG_DUNG_DUOC[mon === 'THUC_TE' ? 'THUC_TE' : 'XAC_SUAT'];
   if (dang === undefined || dang === null || dang === '') return false;
   return ds.indexOf(String(dang).trim().toLowerCase()) >= 0;
@@ -470,7 +472,7 @@ function catDapAnHien_(s, max) {
 function timDeInternet_(sh, hang, lop, n, bc, mon) {
   mon = mon || 'XAC_SUAT';
   var daCo = hang.slice(-60).map(function (r) { return '- ' + String(r.de_bai).slice(0, 90); }).join('\n');
-  var prompt = mon === 'THUC_TE' ? promptTimThucTe_(lop, n, daCo) : promptTimXacSuat_(lop, n, daCo);
+  var prompt = mon === 'HINH_HOC' ? promptTimHinhHoc_(lop, n, daCo) : mon === 'THUC_TE' ? promptTimThucTe_(lop, n, daCo) : promptTimXacSuat_(lop, n, daCo);
 
   var kq = goiGeminiTimKiem_(prompt);
   if (!kq) return 0;
@@ -495,7 +497,7 @@ function timDeInternet_(sh, hang, lop, n, bc, mon) {
     var host = url.replace(/^https?:\/\/(www\.)?/i, '').split('/')[0].toLowerCase();
     // Đối chiếu tên miền với các trang mà Google Search thực sự trả về
     var khop = kq.mien.some(function (m) { m = String(m).toLowerCase(); return m.indexOf(host) >= 0 || host.indexOf(m) >= 0; });
-    var id = (mon === 'THUC_TE' ? 'TI' : 'VT') + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd-HHmmss') + '-' + i;
+    var id = (mon === 'HINH_HOC' ? 'HI' : mon === 'THUC_TE' ? 'TI' : 'VT') + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd-HHmmss') + '-' + i;
     themHang_(sh, {
       id: id, trang_thai: 'MOI', lop: lop, chu_de: d.chu_de, de_bai: d.de_bai, mon: mon,
       nguon: 'INTERNET|' + host + (khop ? '' : ' (chưa đối chiếu)') + '|' + url,
@@ -672,6 +674,7 @@ function baoDongBiNgat_(sh) {
 }
 
 function giaiVaKiemChung_(r) {
+  if (typeof laMonHinhHoc_ === 'function' && laMonHinhHoc_(r)) return giaiHinhHoc_(r);   // hình học khó: tính hoặc chứng minh (HinhHoc.gs)
   return laMonThucTe_(r) ? giaiThucTe_(r) : giaiXacSuat_(r);
 }
 
@@ -960,7 +963,7 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       // BỘ PHẬN KIỂM DUYỆT YÊU CẦU - cửa 1 (NangCao.gs): AI chấm kịch bản theo bảng yêu cầu của chủ kênh TRƯỚC khi dựng.
       // Chưa đạt -> sửa theo nhận xét (tối đa SO_LAN_SUA_YEU_CAU lần); vẫn thấp -> xóa đề (hệ thống tự làm đề mới).
       if (typeof aiDuyetKichBan_ === 'function' && String(chNC_('AI_DUYET_KICH_BAN')).toUpperCase() !== 'TAT') {
-        var lanYC = 0, toiDaYC = soLanSuaYeuCau_(), boDe = null, dy = null;
+        var lanYC = 0, toiDaYC = typeof soLanSuaKichBanYC_ === 'function' ? soLanSuaKichBanYC_() : soLanSuaYeuCau_(), boDe = null, dy = null;
         while (conDuGoiGemini_()) {
           try { dy = aiDuyetKichBan_(kb, r, spham); }
           catch (eYC) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(eYC.message))) { luuNhapKichBan_(r.id, kb); throw eYC; } dy = null; }
@@ -993,11 +996,13 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       chuanHoaThoiLuong_(kb);
       kb.id = r.id; kb.lop = r.lop; kb.chu_de = r.chu_de; kb.de_bai = r.de_bai;
       kb.dap_an = r.dap_an; kb.cach_giai = c1;
-      kb.mon = laMonThucTe_(r) ? 'THUC_TE' : 'XAC_SUAT';
+      kb.mon = typeof laMonHinhHoc_ === 'function' && laMonHinhHoc_(r) ? 'HINH_HOC' : laMonThucTe_(r) ? 'THUC_TE' : 'XAC_SUAT';
       if (r.dap_an_hien) kb.dap_an_hien = String(r.dap_an_hien);
       if (laUuTien_(r)) kb.uu_tien = 1;
       if (spham) kb.san_pham = spham;   // bộ dựng video tự gắn nhãn có sản phẩm do kênh bán
       if (r._series) kb.series = { ten: r._series.ten, tap: 0 };   // số tập đánh lúc đăng (DangVideo.gs)
+      if (typeof layPhongCachVideo_ === 'function') { var pcv = layPhongCachVideo_(r); if (pcv) { kb.phong_cach_loi = pcv.loi_id; kb.phong_cach_edit = pcv.edit; } }
+      if (typeof ghiCauNoi_ === 'function') ghiCauNoi_(kb);
       if (typeof phanLoaiCauHoi_ === 'function') kb.loai_cau_hoi = phanLoaiCauHoi_(r);   // loại câu hỏi: màu nhãn trên ảnh bìa + danh sách phát
       var tep = thuMucKichBan_().createFile(r.id + '.json', JSON.stringify(kb, null, 2), MimeType.PLAIN_TEXT);
       ghi_(sh, r._row, { trang_thai: 'CO_KICH_BAN', file_kich_ban: tep.getId(), ghi_chu: '', so_lan_loi: 0, series: kb.series ? kb.series.ten : '' });
@@ -1027,8 +1032,13 @@ function chuanBiKichBan_(kb, r, ctxSua) {
   if (!kb || !Array.isArray(kb.canh)) return;
   if (cauHinh_('KIEU_MO_DAU') !== 'chao_hook') xoaLoiChao_(kb);
   if (r.dap_an_hien && !kb.dap_an_hien) kb.dap_an_hien = String(r.dap_an_hien);
+  if (r._banVe && !kb.ban_ve) kb.ban_ve = r._banVe;   // có sẵn bản vẽ của đề: cảnh nào mất hết vật thì dùng bản vẽ thay vì để trống
   var sua = typeof tuSuaKichBan_ === 'function' ? tuSuaKichBan_(kb, ctxSua) || [] : [];
   if (typeof tuSuaQuyTrinh_ === 'function') sua = sua.concat(tuSuaQuyTrinh_(kb, r.de_bai) || []);
+  if (typeof laMonHinhHoc_ === 'function' && laMonHinhHoc_(r)) {   // hình học: tọa độ ĐÚNG từ mã dựng hình đã kiểm chứng
+    try { var c1H = JSON.parse(String(r.cach_1 || '{}')); if (c1H && c1H.hinh_toa_do) sua = sua.concat(chenToaDoHinh_(kb, c1H.hinh_toa_do)); } catch (eH) {}
+  }
+  if (typeof tuSuaVatLa_ === 'function') sua = sua.concat(tuSuaVatLa_(kb, r.de_bai) || []);   // đề hải đăng mà vẽ tòa nhà -> đổi đúng vật, giữ số đo
   if (typeof tuSuaBoCucDe_ === 'function') sua = sua.concat(tuSuaBoCucDe_(kb, r.de_bai) || []);   // đề bàn tròn -> người ngồi quanh bàn tròn
   // câu KÊU GỌI cuối video (dùng chung cho mọi nền tảng: YouTube "đăng ký", TikTok/Facebook "theo dõi"; dải chữ riêng từng nền tảng in lúc đăng)
   var cuoi = kb.canh[kb.canh.length - 1];
@@ -1216,6 +1226,18 @@ function lamBoPhan1_(sh, bc, bat, chiUuTien) {
 }
 
 // Dữ liệu gửi kèm: dòng đề + CAU_HINH (bỏ mục bí mật) + series/kiểu hook/bài học số liệu đã tính sẵn + bản nháp kịch bản (nếu có).
+// KEY HẾT HẠN MỨC NGÀY mà GitHub đã phát hiện ("model|6 ký tự đầu_4 cuối", không lưu key đầy đủ): nhớ đến hết ngày
+// giờ Thái Bình Dương (lúc Google reset hạn mức) để lần chạy sau bỏ qua ngay, không mất thời gian dò lại.
+function ngayPT_() { return Utilities.formatDate(new Date(), 'America/Los_Angeles', 'yyyy-MM-dd'); }
+function docKeyHetNgay_() {
+  try { var o = JSON.parse(PropertiesService.getScriptProperties().getProperty('KEY_HET_NGAY_GH') || '{}'); return o.ngay === ngayPT_() ? (o.ds || []) : []; } catch (e) { return []; }
+}
+function ghiKeyHetNgay_(ds) {
+  if (!Array.isArray(ds) || !ds.length) return;
+  var cu = docKeyHetNgay_();
+  ds.forEach(function (x) { x = String(x).slice(0, 80); if (cu.indexOf(x) < 0) cu.push(x); });
+  PropertiesService.getScriptProperties().setProperty('KEY_HET_NGAY_GH', JSON.stringify({ ngay: ngayPT_(), ds: cu.slice(-200) }));
+}
 function goiDeChoGitHub_(r) {
   var hang = {};
   COT.forEach(function (k) { var v = r[k]; hang[k] = v instanceof Date ? v.toISOString() : (v === undefined || v === null ? '' : v); });
@@ -1237,6 +1259,9 @@ function goiDeChoGitHub_(r) {
   try { if (typeof chonKieuHook_ === 'function') goi.hook = chonKieuHook_(); } catch (e) {}
   try { if (typeof goiYTuSoLieu_ === 'function') goi.goi_y = goiYTuSoLieu_(); } catch (e) {}
   try { if (typeof hocEditChoPrompt_ === 'function') goi.hoc_edit = hocEditChoPrompt_(); } catch (e) {}
+  try { if (typeof quyTacHocChoPrompt_ === 'function') { goi.quy_tac_hoc = quyTacHocChoPrompt_(); goi.quy_tac_kd = quyTacHocChoKiemDuyet_(); } } catch (e) {}
+  try { if (typeof chonPhongCachVideo_ === 'function') { goi.phong_cach = chonPhongCachVideo_(r); goi.cau_noi = cauNoiGanDay_(r.id).slice(-40); } } catch (e) {}
+  goi.het_ngay = docKeyHetNgay_();
   var nhap = docNhapKichBan_(r.id);
   if (nhap) goi.nhap = JSON.stringify(nhap);
   var s = JSON.stringify(goi);
@@ -1296,6 +1321,7 @@ function nhanKetQuaBoPhan1_(sh, d) {
   var m = /^GITHUB\|\d+\|(\w+)/.exec(String(r.ghi_chu));
   var cu = m ? m[1] : 'MOI';
   (d.nhat_ky || []).slice(-30).forEach(function (x) { nhatKy_(x[1], '[GitHub] ' + x[2]); });
+  try { ghiKeyHetNgay_(d.het_ngay); } catch (eHN) {}
   if (!d.hang || (!d.ok && !Object.keys(d.hang).length)) {
     var lyDo = String(d.loi || 'GitHub báo lỗi');
     var tamNghi = /^(QUA_TAI|HET_HAN_MUC)$/.test(lyDo);
@@ -1311,6 +1337,7 @@ function nhanKetQuaBoPhan1_(sh, d) {
   if (!f.trang_thai) f.trang_thai = cu;
   if (f.ghi_chu === undefined) f.ghi_chu = '';
   if (d.kich_ban) {
+    try { if (typeof ghiCauNoi_ === 'function') ghiCauNoi_(JSON.parse(String(d.kich_ban))); } catch (eCN) {}   // nhớ câu mở đầu cảnh để video sau không lặp
     var tep = thuMucKichBan_().createFile(r.id + '.json', String(d.kich_ban), MimeType.PLAIN_TEXT);
     f.file_kich_ban = tep.getId();
     xoaNhapKichBan_(r.id);

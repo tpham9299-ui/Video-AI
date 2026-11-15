@@ -14,6 +14,10 @@ const os = require('os');
 const path = require('path');
 const cauHinh = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 const {model, bodies, batDauKey = 0, gioiHanGiay = 300} = cauHinh;
+// GỌI DỰ PHÒNG SONG SONG: model chính chưa trả lời sau "hedgeGiay" giây (thường do quá tải) -> gọi thêm model dự phòng bằng key khác,
+// lấy kết quả nào về trước. Không tốn thêm khi model chính trả lời nhanh.
+const duPhong = (cauHinh.duPhong || []).filter((m) => m && m !== model);
+const hedgeGiay = Number(cauHinh.hedgeGiay) || 80;
 const TEP_KEY_HONG = path.join(os.tmpdir(), 'gemini_key_hong.txt');
 const TEP_KEY_HONG_JSON = path.join(os.tmpdir(), 'gemini_key_hong.json');
 const TEP_HET_NGAY = path.join(os.tmpdir(), 'gemini_key_het_ngay.txt');
@@ -26,7 +30,8 @@ const tuChoi = new Set(docDong(TEP_TU_CHOI));
 const tot = new Set(docDong(TEP_TOT));
 const hetNgay = new Set(docDong(TEP_HET_NGAY));   // dạng "model|key"
 const tatCa = cauHinh.keys || [];
-const url = (k) => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(k)}`;
+const GOC_API = process.env.GEMINI_GOC || 'https://generativelanguage.googleapis.com';   // chỉ đổi khi chạy thử với máy chủ giả
+const url = (k, md = model) => `${GOC_API}/v1beta/models/${encodeURIComponent(md)}:generateContent?key=${encodeURIComponent(k)}`;
 const ngu = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // phân loại lỗi của MỘT key
@@ -40,7 +45,7 @@ function lyDoHong(code, raw) {
   const m = /"message":\s*"([^"]{0,160})/.exec(raw);
   return `HTTP ${code}: ${(m ? m[1] : raw).replace(/\s+/g, ' ').slice(0, 160)}`;
 }
-function ghiTuChoi(k, code, raw) {
+function ghiTuChoi(k, code, raw, model) {
   const khoa = model + '|' + k;
   if (!tuChoi.has(khoa)) { tuChoi.add(khoa); try { fs.appendFileSync(TEP_TU_CHOI, khoa + '\n'); } catch (e) { /* bỏ */ } }
   process.stderr.write(`KEY_TU_CHOI: key thứ ${tatCa.indexOf(k) + 1} (${maKey(k)}) bị ${model} từ chối (HTTP ${code}) -> bỏ key này cho model này\n`);
@@ -61,7 +66,7 @@ function ghiKeyHong(k, code, raw) {
   } catch (e) { /* bỏ */ }
   process.stderr.write(`KEY_HONG: key thứ ${so} trong GEMINI_KEYS (${maKey(k)}) lỗi thật: ${ly} -> bỏ qua, sẽ báo Zalo\n`);
 }
-function ghiHetNgay(k) {
+function ghiHetNgay(k, model) {
   const khoa = model + '|' + k;
   if (hetNgay.has(khoa)) return;
   hetNgay.add(khoa);
@@ -69,26 +74,28 @@ function ghiHetNgay(k) {
   process.stderr.write(`KEY_HET_NGAY: key thứ ${tatCa.indexOf(k) + 1} hết hạn mức ngày cho ${model} -> chuyển key khác\n`);
 }
 
-async function mot(body, i) {
+async function motModel(model, body, i, huy) {
   let cuoi = {ok: false, code: 0, raw: 'KHONG_CO_KEY', het: false};
   for (let vong = 0; vong < 4; vong++) {
     const dung = tatCa.filter((k) => !hong.has(k) && !hetNgay.has(model + '|' + k) && !tuChoi.has(model + '|' + k));
     if (!dung.length) break;
     let choMs = 0;   // >0: có key chỉ bị giới hạn theo phút -> chờ rồi thử vòng mới
     for (let lan = 0; lan < dung.length; lan++) {
+      if (huy && huy.xong) return {ok: false, code: 0, raw: 'DA_CO_KET_QUA', het: false};
       const k = dung[(batDauKey + i + lan) % dung.length];
       if (hong.has(k) || hetNgay.has(model + '|' + k) || tuChoi.has(model + '|' + k)) continue;
       try {
         const ac = new AbortController();
         const hen = setTimeout(() => ac.abort(), gioiHanGiay * 1000);
-        const res = await fetch(url(k), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body), signal: ac.signal});
+        if (huy) huy.ds.push(ac);
+        const res = await fetch(url(k, model), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body), signal: ac.signal});
         clearTimeout(hen);
         const raw = await res.text();
         if (res.ok) { ghiTot(k); return {ok: true, code: res.status, raw}; }
         cuoi = {ok: false, code: res.status, raw, het: false};
         const loai = phanLoai(res.status, raw);
-        if (loai === 'het_ngay') { ghiHetNgay(k); continue; }
-        if (loai === 'hong') { ghiTuChoi(k, res.status, raw); continue; }
+        if (loai === 'het_ngay') { ghiHetNgay(k, model); continue; }
+        if (loai === 'hong') { ghiTuChoi(k, res.status, raw, model); continue; }
         if (loai === 'phut') {
           const m = /"retryDelay":\s*"(\d+)/.exec(raw);
           const cho = Math.min(60, (m ? Number(m[1]) : 15) + 1) * 1000;
@@ -110,4 +117,34 @@ async function mot(body, i) {
   if (!conKey.length) cuoi = {ok: false, code: 401, raw: 'MOI_KEY_DEU_HONG', het: false};
   return cuoi;
 }
-Promise.all(bodies.map(mot)).then((kq) => process.stdout.write(JSON.stringify(kq)));
+// một yêu cầu: model chính; quá hedgeGiay giây chưa xong thì chạy song song model dự phòng (key lệch đi để không trùng key).
+// Lấy kết quả THÀNH CÔNG về trước. Model chính lỗi nhanh (trước hedgeGiay) thì trả lỗi đó ngay cho mã .gs xử lý như cũ.
+function mot(body, i) {
+  if (!duPhong.length) return motModel(model, body, i, null);
+  const huy = {xong: false, ds: []};
+  return new Promise((giai) => {
+    let kqChinh = null, chinhXong = false, phuChay = false, phuXong = false, hen = null;
+    const ket = (r) => {
+      if (huy.xong) return;
+      huy.xong = true;
+      clearTimeout(hen);
+      huy.ds.forEach((ac) => { try { ac.abort(); } catch (e) { /* bỏ */ } });
+      giai(r);
+    };
+    hen = setTimeout(() => {
+      if (huy.xong) return;
+      phuChay = true;
+      process.stderr.write(`GOI_DU_PHONG: ${model} chưa trả lời sau ${hedgeGiay} giây -> gọi song song ${duPhong[0]}\n`);
+      motModel(duPhong[0], body, i + 5, huy).then((r) => {
+        phuXong = true;
+        if (r && r.ok) { r.model = duPhong[0]; process.stderr.write(`GOI_DU_PHONG: dùng kết quả của ${duPhong[0]} (về trước)\n`); ket(r); }
+        else if (chinhXong) ket(kqChinh);
+      }, () => { phuXong = true; if (chinhXong) ket(kqChinh); });
+    }, hedgeGiay * 1000);
+    motModel(model, body, i, huy).then((r) => {
+      chinhXong = true; kqChinh = r;
+      if ((r && r.ok) || !phuChay || phuXong) ket(r);
+    }, (e) => { chinhXong = true; kqChinh = {ok: false, code: 0, raw: String((e && e.message) || e), het: false}; if (!phuChay || phuXong) ket(kqChinh); });
+  });
+}
+Promise.all(bodies.map(mot)).then((kq) => { process.stdout.write(JSON.stringify(kq)); process.exit(0); });

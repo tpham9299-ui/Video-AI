@@ -75,6 +75,9 @@ function xuLyLenhZaloMoi_(chat, chu, anh) {
   if (/^\/xacnhan\b/.test(l)) { guiZaloToi_(chat, xacNhanSanPham_(chu)); return true; }
   if (/^\/huysp\b/.test(l)) { guiZaloToi_(chat, huySanPham_(chu)); return true; }
   if (/^\/hoc\b/.test(l) && typeof nhanLenhHoc_ === 'function') { guiZaloToi_(chat, nhanLenhHoc_(chu)); return true; }
+  if (/^\/quytac\b/.test(l) && typeof danhSachQuyTac_ === 'function') { guiZaloToi_(chat, danhSachQuyTac_()); return true; }
+  if (/^\/xoaquytac\b/.test(l) && typeof xoaQuyTac_ === 'function') { guiZaloToi_(chat, xoaQuyTac_(chu)); return true; }
+  if (/^\/gopy\b/.test(l) && typeof nhanGopYChung_ === 'function') { guiZaloToi_(chat, nhanGopYChung_(chat, chu)); return true; }
   return false;
 }
 
@@ -128,6 +131,7 @@ function boVideo_(chu) {
     var r = t.ma ? cho.filter(function (x) { return x.id === t.ma; })[0] : cho[0];
     if (!r) return 'Không có video nào đang chờ duyệt để bỏ.';
     ghi_(sh, r._row, { trang_thai: 'LOAI', duyet: 'BO', ghi_chu: 'Người duyệt bỏ qua Zalo' + (t.con ? ': ' + t.con : '') });
+    if (t.con && typeof ghiGopYDeHoc_ === 'function') ghiGopYDeHoc_(r.id, 'bo', t.con, '');
     return '🗑 Đã bỏ video ' + r.id + ', sẽ không đăng.';
   } finally { khoa.releaseLock(); }
 }
@@ -158,8 +162,9 @@ function yeuCauSuaVideo_(chat, chu) {
     var kb = JSON.parse(DriveApp.getFileById(r.file_kich_ban).getBlob().getDataAsString());
     luuNhapKichBan_(r.id, kb);
     ghi_(sh, r._row, { trang_thai: 'DA_GIAI', gop_y: t.con.slice(0, 1000), uu_tien: 1, zalo_chat: chat, duyet: '', so_lan_loi: 0, ghi_chu: 'Sửa theo góp ý: ' + t.con.slice(0, 200) });
+    if (typeof ghiGopYDeHoc_ === 'function') ghiGopYDeHoc_(r.id, 'sua', t.con, chat);   // học góp ý -> quy tắc cho mọi video sau
     henUuTien_(20);
-    return '✍️ Đã nhận góp ý cho ' + r.id + '. Hệ thống ưu tiên sửa kịch bản theo góp ý rồi dựng lại, xong sẽ gửi video mới để bạn duyệt.';
+    return '✍️ Đã nhận góp ý cho ' + r.id + '. Hệ thống ưu tiên sửa kịch bản theo góp ý rồi dựng lại, xong sẽ gửi video mới để bạn duyệt.\n🧠 Góp ý này cũng được học thành quy tắc cho các video sau (bot sẽ nhắn lại điều đã hiểu).';
   } finally { khoa.releaseLock(); }
 }
 

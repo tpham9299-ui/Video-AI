@@ -794,6 +794,15 @@ def tach_cong_thuc(tex, toi_da=24):
     return dong if len(dong) <= 4 else [tex]
 
 
+# các gói phong cách edit an toàn (xem phong_cach_edit trong kịch bản)
+GOI_EDIT = {
+    "nang_dong": {"nen": ["tia", "hat_sang"], "lopQuet": "luon", "kieuPhuDe": "hop"},
+    "toi_gian": {"nen": ["luoi", "song"], "lopQuet": False, "kieuPhuDe": "mau"},
+    "dien_anh": {"nen": ["cuc_quang", "luc_giac"], "lopQuet": True, "kieuPhuDe": "hop"},
+    "so_tay": {"nen": ["ky_hieu", "luoi"], "lopQuet": True, "kieuPhuDe": "mau", "kieuToan": "dong_nhat"},
+}
+
+
 def gia_viet(n):
     try:
         n = int(float(n))
@@ -1021,6 +1030,16 @@ def main():
     bam = int(hashlib.sha1(id_.encode("utf8")).hexdigest()[:8], 16)
     kieu_nen = ["cuc_quang", "hat_sang", "song", "luc_giac", "tia", "ky_hieu", "luoi"]
     nen_tu_tao = None if ds_nen else {"kieu": kieu_nen[bam % len(kieu_nen)], "hue": (bam >> 8) % 360, "hat": bam}
+    # GÓI PHONG CÁCH EDIT (Apps Script luân phiên theo quy tắc, ghi vào kb.phong_cach_edit): chỉ đổi phần "trang phục"
+    # (nền, chuyển cảnh, kiểu phụ đề, phông công thức) - KHÔNG đổi bố cục/cỡ chữ/vị trí nên không sinh lại lỗi tràn, đè.
+    goi = GOI_EDIT.get(str(kb.get("phong_cach_edit") or "").strip())
+    if goi:
+        if nen_tu_tao and goi.get("nen"):
+            nen_tu_tao["kieu"] = goi["nen"][bam % len(goi["nen"])]
+        for k in ("lopQuet", "kieuPhuDe", "kieuToan"):
+            if k in goi:
+                pc[k] = goi[k]
+        print("Gói phong cách edit: %s" % kb.get("phong_cach_edit"))
     thuong_hieu, outro = tim_thuong_hieu(args.public, th)
     bai_hoc = [str(x).strip()[:90] for x in (kb.get("bai_hoc_rut_ra") or []) if str(x).strip()][:3]
     # Mặc định KHÔNG chèn màn kết/outro vào cuối video (video dừng ngay sau cảnh bài học).

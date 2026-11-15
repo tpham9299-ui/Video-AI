@@ -156,7 +156,7 @@ function noiDungDang_(r, tap, td) {
   var kb = {};
   try { kb = JSON.parse(DriveApp.getFileById(r.file_kich_ban).getBlob().getDataAsString()); } catch (e) {}
   var the = (kb.hashtag || []).map(function (h) { return String(h).replace(/^#+/, '').replace(/\s+/g, ''); }).filter(Boolean);
-  (laMonThucTe_(r) ? ['toanthucte', 'toanhoc', 'hoctoan'] : ['xacsuat', 'toanhoc', 'hoctoan']).concat(r.lop ? ['toan' + r.lop] : []).forEach(function (t) { if (the.indexOf(t) < 0) the.push(t); });
+  (String(r.mon).toUpperCase() === 'HINH_HOC' ? ['hinhhoc', 'toanhoc', 'hoctoan'] : laMonThucTe_(r) ? ['toanthucte', 'toanhoc', 'hoctoan'] : ['xacsuat', 'toanhoc', 'hoctoan']).concat(r.lop ? ['toan' + r.lop] : []).forEach(function (t) { if (the.indexOf(t) < 0) the.push(t); });
   the = the.slice(0, 10);
   var tieuDe = String(kb.tieu_de || r.chu_de || 'Bài toán hay').replace(/\s+/g, ' ').trim().slice(0, 90);
   var de = latexDoc_(String(kb.de_bai || r.de_bai || '')).replace(/\s+/g, ' ').trim();

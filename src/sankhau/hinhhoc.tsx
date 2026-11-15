@@ -72,6 +72,48 @@ export const HinhHoc: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
               {...veDan(p)} style={{filter: c ? `drop-shadow(0 0 10px ${mau})` : `drop-shadow(0 0 4px ${mau}88)`}} />
           );
         })}
+        {/* đường tròn: [tâm, điểm trên đường tròn] hoặc qua 3 điểm; vẽ dần sau các cạnh */}
+        {v.tron.map((ds, i) => {
+          let cx = 0, cy = 0, r = 0;
+          if (ds.length === 2) { const O = P(ds[0]); const M = P(ds[1]); cx = O.x; cy = O.y; r = Math.hypot(M.x - O.x, M.y - O.y); }
+          else {
+            const [A, B, C] = ds.map(P);
+            const d = 2 * (A.x * (B.y - C.y) + B.x * (C.y - A.y) + C.x * (A.y - B.y));
+            if (Math.abs(d) < 1e-6) return null;
+            const a2 = A.x * A.x + A.y * A.y, b2 = B.x * B.x + B.y * B.y, c2 = C.x * C.x + C.y * C.y;
+            cx = (a2 * (B.y - C.y) + b2 * (C.y - A.y) + c2 * (A.y - B.y)) / d;
+            cy = (a2 * (C.x - B.x) + b2 * (A.x - C.x) + c2 * (B.x - A.x)) / d;
+            r = Math.hypot(A.x - cx, A.y - cy);
+          }
+          const mau = neon(['tim', 'xanh_duong', 'xanh_la', 'cam'][i % 4]);
+          return <circle key={`tr${i}`} cx={cx} cy={cy} r={r} fill="none" stroke={mau} strokeWidth={5 * Math.max(0.7, v.co)} opacity={0.9} {...veDan((t - tCanh(nCanh) + 0.1 - i * 0.3) / 0.9)} style={{filter: `drop-shadow(0 0 6px ${mau}99)`}} />;
+        })}
+        {/* đường phụ (kẻ thêm): nét đứt màu vàng, hiện SAU hình chính - khoảnh khắc "ý tưởng then chốt" */}
+        {v.phu.map(([a, b], i) => {
+          const A = P(a), B = P(b);
+          const p = (t - tSau - 0.5 - i * 0.35) / 0.6;
+          if (p <= 0) return null;
+          const L = Math.hypot(B.x - A.x, B.y - A.y);
+          const k = easeOut(kep(p));
+          return <line key={`ph${i}`} x1={A.x} y1={A.y} x2={A.x + (B.x - A.x) * k} y2={A.y + (B.y - A.y) * k} stroke="#FFD54A" strokeWidth={4.5 * Math.max(0.7, v.co)} strokeDasharray={`${Math.max(10, L / 30)} ${Math.max(8, L / 40)}`} strokeLinecap="round" style={{filter: 'drop-shadow(0 0 6px #FFD54A88)'}} />;
+        })}
+        {/* vạch đánh dấu cạnh bằng nhau */}
+        {v.bang.map(([a, b, n], i) => {
+          const A = P(a), B = P(b);
+          const L = Math.hypot(B.x - A.x, B.y - A.y) || 1;
+          const ux = (B.x - A.x) / L, uy = (B.y - A.y) / L, nx = -uy, ny = ux;
+          const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2;
+          const p = kep((t - tSau - 0.2) / 0.4);
+          return (
+            <g key={`b${i}`} opacity={p}>
+              {Array.from({length: n}, (_, k) => {
+                const o = (k - (n - 1) / 2) * 12;
+                const cx = mx + ux * o, cy = my + uy * o;
+                return <line key={k} x1={cx - nx * 14} y1={cy - ny * 14} x2={cx + nx * 14} y2={cy + ny * 14} stroke={CAM} strokeWidth={4} strokeLinecap="round" />;
+              })}
+            </g>
+          );
+        })}
         {/* ký hiệu góc vuông */}
         {v.vuong.map(([a, o, b], i) => {
           const O = P(o);
