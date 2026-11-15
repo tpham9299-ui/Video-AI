@@ -367,6 +367,10 @@ def tao_giong_gemini(canh, thu_muc, args):
         phong_cach = args.phong_cach_giong + " Giữ NGUYÊN một chất giọng, cao độ và tốc độ như các đoạn khác của cùng video.\nĐoạn cần đọc:"
         try:
             gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach)
+            tu = max(1, len(van.split()))
+            if tu >= 8 and tu / max(0.1, do_thoi_luong(wav) - 0.4) > 4.6:
+                print("Gemini đọc thiếu chữ ở cảnh %d, đọc lại" % (i + 1))
+                gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach)
             if giong_bi_re(wav, "cảnh %d" % (i + 1)):
                 gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach)   # đọc lại một lần
                 if giong_bi_re(wav, "cảnh %d (đọc lại)" % (i + 1)):
@@ -456,11 +460,25 @@ def tao_giong_gemini_mot_lan(canh, thu_muc, args):
         kq = {}
         tempo = float(args.toc_do_gemini or 1.0)
         loc = ("atempo=%.3f," % tempo if abs(tempo - 1) > 0.01 else "") + "aresample=44100"
+        thieu_chu = []
         for k in range(len(van)):
             ra = os.path.join(thu_muc, "gem_%d.mp3" % k)
             chay(["ffmpeg", "-y", "-loglevel", "error", "-ss", "%.3f" % moc[k], "-to", "%.3f" % moc[k + 1], "-i", wav, "-af", loc,
                   "-c:a", "libmp3lame", "-b:a", "128k", ra])
             kq[k] = ra
+            # ĐỌC THIẾU CHỮ: Gemini đôi khi bỏ sót cả cụm từ (đoạn ngắn bất thường so với số chữ) -> lời không khớp phụ đề
+            gon = ra + ".gon.mp3"
+            try:
+                cat_lang(ra, gon)
+                giay = do_thoi_luong(gon)
+                tu = max(1, len(van[k].split()))
+                if tu >= 8 and tu / max(0.1, giay) > 4.6:
+                    thieu_chu.append("cảnh %d: %d từ trong %.1f giây" % (k + 1, tu, giay))
+            except Exception:
+                pass
+        if thieu_chu:
+            print("Gemini đọc THIẾU CHỮ (nhanh bất thường) %s -> đọc lại" % "; ".join(thieu_chu))
+            continue
         THONG_KE_GIONG["gemini"] = len(van)
         print("Gemini đọc cả video MỘT lần (%.1f giây), cắt thành %d cảnh" % (D, len(van)))
         return kq
