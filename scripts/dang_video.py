@@ -85,13 +85,15 @@ def dang_facebook(video, meta):
             kiem_tra(requests.post(url_tai, data=f, headers={"Authorization": "OAuth " + token, "offset": "0", "file_size": str(n)}, timeout=900), "FB tải lên")
         kiem_tra(requests.post("%s/%s/video_reels" % (GRAPH, page), data={
             "upload_phase": "finish", "video_id": vid, "video_state": "PUBLISHED", "description": mo_ta, "access_token": token}, timeout=120), "FB đăng")
-        return {"ok": True, "url": "https://www.facebook.com/reel/%s" % vid, "id": vid}
+        return {"ok": True, "url": "https://www.facebook.com/reel/%s" % vid, "id": vid, "ghi_chu": dat_bia_facebook(vid, token, meta.get("_anh_bia"))}
     # video dài hơn 90 giây: đăng thành video thường của Trang
-    with open(video, "rb") as f:
-        d = kiem_tra(requests.post("https://graph-video.facebook.com/v21.0/%s/videos" % page,
-                                   data={"description": mo_ta, "title": meta.get("tieu_de", "")[:250], "access_token": token},
-                                   files={"source": (os.path.basename(video), f, "video/mp4")}, timeout=1200), "FB video")
-    return {"ok": True, "url": "https://www.facebook.com/%s/videos/%s" % (page, d.get("id")), "id": d.get("id"), "ghi_chu": "video thường (dài hơn 90 giây nên không đăng dạng Reels)"}
+    tep = {"source": (os.path.basename(video), open(video, "rb"), "video/mp4")}
+    if meta.get("_anh_bia"):
+        tep["thumb"] = (os.path.basename(meta["_anh_bia"]), open(meta["_anh_bia"], "rb"), "image/jpeg")   # ảnh bìa gửi kèm lúc đăng
+    d = kiem_tra(requests.post("https://graph-video.facebook.com/v21.0/%s/videos" % page,
+                               data={"description": mo_ta, "title": meta.get("tieu_de", "")[:250], "access_token": token}, files=tep, timeout=1200), "FB video")
+    return {"ok": True, "url": "https://www.facebook.com/%s/videos/%s" % (page, d.get("id")), "id": d.get("id"),
+            "ghi_chu": "video thường (dài hơn 90 giây nên không đăng dạng Reels)" + ("; đã gửi kèm ảnh bìa thiết kế" if meta.get("_anh_bia") else "")}
 
 
 # ---------------- TIKTOK ----------------
@@ -202,7 +204,7 @@ def dang_tiktok(video, meta):
         if trang_thai in ("PUBLISH_COMPLETE", "SEND_TO_USER_INBOX"):
             break
     if trang_thai == "SEND_TO_USER_INBOX":
-        ghi_chu = "đã vào hộp thư nháp TikTok, mở ứng dụng TikTok để bấm đăng"
+        ghi_chu = "đã vào hộp thư nháp TikTok, mở ứng dụng TikTok để bấm đăng (khi đăng chọn ảnh bìa là KHUNG ĐẦU TIÊN - chính là ảnh bìa thiết kế)"
     elif trang_thai != "PUBLISH_COMPLETE":
         ghi_chu = (ghi_chu + "; " if ghi_chu else "") + "TikTok vẫn đang xử lý (%s)" % trang_thai
     return {"ok": True, "url": "https://www.tiktok.com/", "id": pid, "ghi_chu": ghi_chu}
@@ -224,7 +226,8 @@ def dang_youtube(video, meta):
     kiem_tra(res, "YouTube bắt đầu")
     with open(video, "rb") as f:
         d = kiem_tra(requests.put(res.headers["Location"], data=f, headers=dict(h, **{"Content-Type": "video/mp4"}), timeout=1800), "YouTube tải lên")
-    return {"ok": True, "url": "https://youtube.com/shorts/%s" % d.get("id"), "id": d.get("id"), "che_do": d.get("status", {}).get("privacyStatus")}
+    bia = dat_bia_youtube(h, d.get("id"), meta.get("_anh_bia_yt"))
+    return {"ok": True, "url": "https://youtube.com/shorts/%s" % d.get("id"), "id": d.get("id"), "che_do": d.get("status", {}).get("privacyStatus"), "ghi_chu": bia}
 
 
 # ---------------- SỐ TẬP THEO LỚP (đánh lúc đăng, theo số bài đã có trên kênh) ----------------
@@ -334,7 +337,10 @@ def tao_ban_dang(video, n, kieu):
     dai = thoi_luong_mp4(video) or 0
     loc = []
     if n:
-        loc.append("drawtext=fontfile='%s':text='TẬP %d':fontsize=44:fontcolor=0x1a0d02:box=1:boxcolor=0xFF8A3D@1:boxborderw=16:x=w-tw-64:y=58" % (phong, n))
+        # khung 0 là ẢNH BÌA THIẾT KẾ (hàng nhãn LỚP/LOẠI chiếm góc trên): in TẬP to hơn, thấp xuống khoảng trống giữa hàng nhãn và tiêu đề;
+        # các khung còn lại: góc phải trên như cũ
+        loc.append("drawtext=fontfile='%s':text='TẬP %d':fontsize=44:fontcolor=0x1a0d02:box=1:boxcolor=0xFF8A3D@1:boxborderw=16:x=w-tw-64:y=58:enable='gte(n,1)'" % (phong, n))
+        loc.append("drawtext=fontfile='%s':text='TẬP %d':fontsize=46:fontcolor=0x1a0d02:box=1:boxcolor=0xFF8A3D@1:boxborderw=14:x=w-tw-70:y=214:enable='eq(n,0)'" % (phong, n))
     chu, mau_chu, mau_nen = KEU_GOI[kieu]
     if dai > 6:
         loc.append("drawtext=fontfile='%s':text='%s':fontsize=50:fontcolor=%s:box=1:boxcolor=%s@0.96:boxborderw=24:"
@@ -349,6 +355,47 @@ def tao_ban_dang(video, n, kieu):
         return video
     print("Đã tạo bản đăng %s%s" % (kieu, " (TẬP %d)" % n if n else ""))
     return ra
+
+
+def tao_anh_bia_dang(video_ban, meta):
+    """ẢNH BÌA ĐĂNG = khung hình ĐẦU TIÊN của bản đăng: đó chính là ảnh bìa thiết kế (loại câu hỏi, lớp, tiêu đề, hình của đề)
+    và đã in "TẬP N" giống video. JPEG <= 2 MB (giới hạn YouTube). Video không có ảnh bìa thiết kế thì trả None."""
+    import shutil
+    if not meta.get("co_bia") or not shutil.which("ffmpeg"):
+        return None
+    ra = os.path.splitext(video_ban)[0] + "_bia.jpg"
+    for q in (2, 4, 7):
+        r = subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", video_ban, "-frames:v", "1", "-q:v", str(q), ra], capture_output=True, text=True)
+        if r.returncode == 0 and os.path.exists(ra) and os.path.getsize(ra) <= 2 * 1024 * 1024:
+            print("Ảnh bìa đăng: %s (%.0f KB)" % (ra, os.path.getsize(ra) / 1024))
+            return ra
+    print("Không tách được ảnh bìa từ khung đầu:", r.stderr[-200:])
+    return None
+
+
+def dat_bia_youtube(h, vid, anh):
+    if not anh:
+        return "video không có ảnh bìa thiết kế"
+    with open(anh, "rb") as f:
+        res = requests.post("https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=%s&uploadType=media" % vid, data=f.read(),
+                            headers=dict(h, **{"Content-Type": "image/jpeg"}), timeout=120)
+    if res.status_code < 300:
+        return "đã đặt ảnh bìa thiết kế"
+    if res.status_code == 403:
+        return "CHƯA đặt được ảnh bìa: kênh YouTube cần xác minh số điện thoại (youtube.com/verify) mới được đặt ảnh bìa riêng"
+    return "chưa đặt được ảnh bìa (HTTP %d: %s)" % (res.status_code, res.text[:120])
+
+
+def dat_bia_facebook(vid, token, anh):
+    if not anh:
+        return "video không có ảnh bìa thiết kế"
+    try:
+        with open(anh, "rb") as f:
+            res = requests.post("%s/%s/thumbnails" % (GRAPH, vid), data={"is_preferred": "true", "access_token": token},
+                                files={"source": (os.path.basename(anh), f, "image/jpeg")}, timeout=120)
+        return "đã đặt ảnh bìa thiết kế" if res.status_code < 300 else "chưa đặt được ảnh bìa (HTTP %d: %s)" % (res.status_code, res.text[:120])
+    except Exception as e:
+        return "chưa đặt được ảnh bìa (%s)" % str(e)[:100]
 
 
 def in_so_tap(video, n):
@@ -425,6 +472,16 @@ def main():
                 print("Không tải bản YouTube đã đánh số lên Drive:", str(e)[:200])
     if any(n in nen_tang for n in ("tiktok", "facebook")):
         ban["theo_doi"] = tao_ban_dang(video, tap, "theo_doi")
+    # ẢNH BÌA THIẾT KẾ cho từng bản đăng (khung đầu = ảnh bìa + TẬP N): YouTube, Facebook đặt bằng API; TikTok chọn khung 0
+    if ban.get("youtube"):
+        meta["_anh_bia_yt"] = tao_anh_bia_dang(ban["youtube"], meta)
+        if meta.get("yt_apps_script") and meta["_anh_bia_yt"]:
+            try:
+                ket_qua["_file_bia"] = tai_len_drive(meta["_anh_bia_yt"])
+            except Exception as e:
+                print("Không tải ảnh bìa đã đánh số lên Drive:", str(e)[:200])
+    if ban.get("theo_doi"):
+        meta["_anh_bia"] = tao_anh_bia_dang(ban["theo_doi"], meta)
     for n in nen_tang:
         if n == "youtube" and meta.get("yt_apps_script"):
             # YouTube do Apps Script đăng (dịch vụ YouTube của tài khoản), bằng bản ĐÃ ĐÁNH SỐ vừa tải lên Drive

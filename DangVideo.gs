@@ -227,7 +227,7 @@ function dangVideo_(sh, r) {
   var ytApps = can.indexOf('youtube') >= 0 && chDang_('YOUTUBE_CACH') !== 'github';
   // lần thử lại: đã có bản video ĐÃ ĐÁNH SỐ trên Drive -> Apps Script đăng YouTube ngay bằng bản đó
   if (ytApps && tapDaGan && kq._file_tap) {
-    kq.youtube = dangYouTube_(r, meta, kq._file_tap);
+    kq.youtube = dangYouTube_(r, meta, kq._file_tap, kq._file_bia);
     can = can.filter(function (n) { return n !== 'youtube'; });
     ytApps = false;
   }
@@ -248,7 +248,7 @@ function dangVideo_(sh, r) {
 }
 
 // YouTube: đăng thẳng từ Apps Script bằng dịch vụ nâng cao YouTube Data API v3 (dưới quyền tài khoản Google của bạn).
-function dangYouTube_(r, meta, fileId) {
+function dangYouTube_(r, meta, fileId, fileBia) {
   if (typeof YouTube === 'undefined') return { ok: false, loi: 'Chưa bật dịch vụ YouTube Data API v3 trong Apps Script (Dịch vụ + > YouTube Data API v3)' };
   try {
     var f = DriveApp.getFileById(String(fileId || r.file_video));   // fileId: bản đã in số tập (GitHub tạo lúc đăng)
@@ -266,11 +266,18 @@ function dangYouTube_(r, meta, fileId) {
     }
     if (!v) v = YouTube.Videos.insert(tn, 'snippet,status', f.getBlob());
     var ghiChuYT = [];
-    // ảnh bìa: khung hình lúc câu móc hiện đầy đủ (YouTube chỉ cho đặt khi kênh đã xác minh số điện thoại)
-    if (r.anh_bia) {
-      try { YouTube.Thumbnails.set(v.id, DriveApp.getFileById(String(r.anh_bia)).getBlob()); ghiChuYT.push('đã đặt ảnh bìa'); }
-      catch (eB) { ghiChuYT.push('chưa đặt được ảnh bìa (kênh cần xác minh số điện thoại)'); }
-    }
+    // ẢNH BÌA THIẾT KẾ (loại câu hỏi, lớp, tiêu đề, hình của đề + TẬP N do GitHub in lúc đăng); không có bản đánh số thì dùng ảnh bìa gốc.
+    // YouTube chỉ cho đặt ảnh bìa riêng khi kênh đã xác minh số điện thoại: lỗi thì BÁO bạn (không im lặng để YouTube tự lấy khung bất kỳ).
+    var biaId = fileBia || r.anh_bia;
+    if (biaId) {
+      try { YouTube.Thumbnails.set(v.id, DriveApp.getFileById(String(biaId)).getBlob()); ghiChuYT.push('đã đặt ảnh bìa thiết kế' + (fileBia ? ' (có TẬP)' : '')); }
+      catch (eB) {
+        var lyB = String(eB.message || eB).slice(0, 160);
+        ghiChuYT.push('CHƯA đặt được ảnh bìa: ' + lyB);
+        guiZaloMotLan_('YT_BIA_' + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd'), '⚠️ YouTube không cho đặt ảnh bìa thiết kế cho video ' + r.id + ' (' + lyB + ').\n' +
+          'Thường do kênh CHƯA XÁC MINH số điện thoại: vào youtube.com/verify xác minh một lần, các video sau sẽ tự có ảnh bìa đúng.', 'cao');
+      }
+    } else ghiChuYT.push('video không có ảnh bìa thiết kế');
     var kbYT = {};
     try { kbYT = JSON.parse(DriveApp.getFileById(r.file_kich_ban).getBlob().getDataAsString()); } catch (eK) {}
     if (typeof themVaoPlaylist_ === 'function') { var pl = themVaoPlaylist_(kbYT, v.id, r); if (pl) ghiChuYT.push(pl); }
@@ -352,9 +359,10 @@ function xuLyKetQuaDang_(sh, d) {
   Object.keys(moi).forEach(function (n) { if (NEN_TANG_HOP_LE_.indexOf(n) >= 0) kq[n] = moi[n]; });
   if (moi._tap) { kq._tap = Number(moi._tap); kq._dem = moi._dem || kq._dem; }
   if (moi._file_tap) kq._file_tap = String(moi._file_tap);
+  if (moi._file_bia) kq._file_bia = String(moi._file_bia);   // ảnh bìa thiết kế đã in TẬP N (khung đầu của bản đăng YouTube)
   // YouTube đăng bằng dịch vụ YouTube của Apps Script, dùng đúng bản video GitHub vừa in số tập
   if (kq.youtube && kq.youtube.cho_apps_script) {
-    kq.youtube = kq._file_tap ? dangYouTube_(r, noiDungDang_(r, kq._tap, kq._td), kq._file_tap) : { ok: false, loi: 'GitHub chưa tạo được bản video đã đánh số tập' };
+    kq.youtube = kq._file_tap ? dangYouTube_(r, noiDungDang_(r, kq._tap, kq._td), kq._file_tap, kq._file_bia) : { ok: false, loi: 'GitHub chưa tạo được bản video đã đánh số tập' };
   }
   ketThucDang_(sh, r, kq);
   return { ok: true };
