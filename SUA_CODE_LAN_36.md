@@ -36,3 +36,13 @@
 - Viết "duyệt / sửa / bỏ" không có dấu "/" cũng hiểu, gạch đầu dòng hay số thứ tự "1." đều được.
   Chỉ nhận là lệnh khi theo sau là mã video, nên đề toán gửi bình thường không bị nhầm.
 - Làm **lần lượt đúng thứ tự** các dòng (thứ tự duyệt = thứ tự số tập), tối đa 40 lệnh/tin, rồi trả **một tin tổng hợp** kết quả từng dòng.
+
+## Lệnh Zalo /token: xem hạn token GitHub (BoPhan2.gs, SanPham.gs, ZaloDeBai.gs)
+- Nhắn `/token` cho bot.
+- Bot trả về:
+  - token còn dùng được không;
+  - ngày hết hạn và số ngày còn lại, hoặc "KHÔNG HẾT HẠN (vĩnh viễn)";
+  - có đủ quyền Actions chưa;
+  - lần gửi việc sang GitHub gần nhất có bị lỗi không.
+- Không bao giờ in mã token.
+- Hệ thống vẫn tự nhắc qua Zalo khi token còn ≤ 7 ngày, và báo ngay khi token hết hạn.

@@ -102,6 +102,35 @@ function kiemTraKetNoiGitHub() {
   Logger.log(res.getResponseCode() === 200 ? 'Kết nối GitHub OK' : 'Lỗi ' + res.getResponseCode() + ': ' + res.getContentText().slice(0, 200));
 }
 
+// Lệnh Zalo /token: tình trạng token GitHub đang dùng (KHÔNG bao giờ in mã token): còn dùng được không, hạn, số ngày còn lại,
+// và đủ quyền chưa (Contents: đọc repo; Actions: gọi được các workflow dựng video / giải đề / đăng bài).
+function thongTinTokenGitHub_() {
+  var p = PropertiesService.getScriptProperties();
+  var token = p.getProperty('GITHUB_TOKEN'), repo = p.getProperty('GITHUB_REPO');
+  if (!token || !repo) return '❌ Chưa có token GitHub (GITHUB_TOKEN) hoặc tên repo (GITHUB_REPO) trong Script Properties.';
+  var h = { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json' };
+  var res = UrlFetchApp.fetch('https://api.github.com/repos/' + repo, { headers: h, muteHttpExceptions: true });
+  var ma = res.getResponseCode();
+  if (ma === 401) return '❌ Token GitHub HẾT HẠN hoặc đã bị xóa/thu hồi: hệ thống không gọi được GitHub (không giải đề, không dựng video).\n' +
+    'Cách sửa: tạo token mới, dán vào sheet CAU_HINH dòng GITHUB_TOKEN_MOI rồi chạy capNhatTokenGitHub.';
+  if (ma === 404) return '❌ Token còn hiệu lực nhưng KHÔNG thấy repo ' + repo + ': token chưa được cấp quyền repo này (Repository access) hoặc tên repo sai.';
+  if (ma !== 200) return '⚠️ GitHub trả lỗi HTTP ' + ma + ' khi kiểm tra token, thử lại sau ít phút.';
+  var han = hanToken_(res);
+  var dong = ['🔑 Token GitHub: ✅ ĐANG DÙNG ĐƯỢC (repo ' + repo + ')'];
+  if (!han) dong.push('⏳ Thời hạn: KHÔNG HẾT HẠN (vĩnh viễn)');
+  else {
+    var con = Math.ceil((han.getTime() - Date.now()) / 86400000);
+    dong.push('⏳ Hết hạn ngày ' + Utilities.formatDate(han, 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy') + ' (còn ' + con + ' ngày)' + (con <= 7 ? ' ⚠️ SẮP HẾT, nên gia hạn ngay' : ''));
+  }
+  // quyền Actions (đọc danh sách workflow; quyền ghi được thử thật mỗi lần hệ thống gửi việc sang GitHub)
+  var wf = UrlFetchApp.fetch('https://api.github.com/repos/' + repo + '/actions/workflows', { headers: h, muteHttpExceptions: true });
+  dong.push(wf.getResponseCode() === 200 ? '✅ Quyền Actions: có (gọi được dựng video, giải đề, đăng bài)'
+    : '❌ Quyền Actions: THIẾU (HTTP ' + wf.getResponseCode() + ') - sửa token, cấp "Actions: Read and write"');
+  var cuoi = CacheService.getScriptCache().get('GH_GUI_LOI_GAN');
+  if (cuoi) dong.push('⚠️ Lần gửi việc sang GitHub gần đây bị lỗi: ' + cuoi);
+  return dong.join('\n');
+}
+
 /* ===================== VÒNG CHẠY (trigger 10 phút) ===================== */
 
 function chayBoPhan2() {
@@ -260,6 +289,7 @@ function guiWorkflowGitHub_(inputs, tepWorkflow) {
   var ma = res.getResponseCode();
   if (ma === 204) return { ok: true, ma: ma };
   var noi = String(res.getContentText()).replace(/\s+/g, ' ');
+  try { CacheService.getScriptCache().put('GH_GUI_LOI_GAN', Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'HH:mm dd/MM') + ' ' + tepWorkflow + ' HTTP ' + ma, 21600); } catch (eC) {}   // cho lệnh /token
   if (ma === 403 && /not accessible by personal access token/i.test(noi)) {
     return { ok: false, ma: ma, loi: 'Token GitHub CHƯA có quyền "Actions: Read and write" (GitHub > Settings > Developer settings > Fine-grained tokens > Edit > Add permissions > Actions)' };
   }

@@ -92,6 +92,7 @@ function traLoiLenh_(chat, chu, anh) {
   if (/^\/xoaquytac\b/.test(l) && typeof xoaQuyTac_ === 'function') return xoaQuyTac_(chu);
   if (/^\/gopy\b/.test(l) && typeof nhanGopYChung_ === 'function') return nhanGopYChung_(chat, chu);
   if (/^\/(tt|trangthai)\b/.test(l) && typeof tinhTrangUuTien_ === 'function') return tinhTrangUuTien_();
+  if (/^\/(token|hantoken)\b/.test(l) && typeof thongTinTokenGitHub_ === 'function') return thongTinTokenGitHub_();
   return null;
 }
 var MA_DE_RE_ = /^[A-Za-z]{2}\d{6}-\d{6}(-\d+)?$/;
