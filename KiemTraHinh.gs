@@ -308,6 +308,75 @@ function tuSuaVatLa_(kb, deGoc) {
   if (kb.ban_ve && Array.isArray(kb.ban_ve.vat)) kb.ban_ve.vat.forEach(function (x) { if (x && x.ten && x.ten !== dung && VAT_LON_.indexOf(x.ten) >= 0 && !choPhep[x.ten]) { x.ten = dung; sua.push('BAN_VE->' + dung); } });
   return sua;
 }
+// BÀI TÀI CHÍNH (lãi suất, lãi kép, gửi tiết kiệm, vay, trả góp, tăng trưởng dân số...): KHÔNG có vật hình khối nào trong đề,
+// nên hình phải là ngân hàng / tiền / heo đất / người, biểu đồ cột số tiền qua từng kỳ, đồ thị hàm mũ, dòng thời gian các kỳ.
+// Khối hộp, trụ, nón, cầu, hình hình học, vật 3D... mà đề không nhắc = hình KHÔNG LIÊN QUAN -> lỗi nặng, máy tự gỡ.
+var TAI_CHINH_RE_ = /lãi suất|lãi kép|lãi đơn|lãi hàng (tháng|năm|quý)|gửi tiết kiệm|tiết kiệm|gửi (tiền|vào) ngân hàng|sổ tiết kiệm|tiền gửi|tiền lãi|vay (vốn|tiền|ngân hàng)?|khoản vay|trả góp|kỳ hạn|tăng trưởng|dân số tăng|tăng dân số|lạm phát|khấu hao|chiết khấu/i;
+var HINH_KHOI_ = ['khoi_hop', 'tru', 'non', 'cau', 'hinh_hoc', 'xuc_xac', 'hop_qua', 'hop_bi', 'cua', 'thang', 'xe', 'cay', 'toa_nha', 'banh', 'vong_quay'];
+var VAT_TAI_CHINH_ = ['ngan_hang', 'tien', 'heo_dat', 'nguoi', 'cua_hang', 'bieu_tuong', 'nha', 'xe_hoi', 'xe_may', 'xe_dap', 'cong_trinh', 'truong_hoc'];
+function laDeTaiChinh_(de) { return TAI_CHINH_RE_.test(String(de || '').toLowerCase()); }
+// vật này có được đề nhắc tới không (ví dụ đề lãi suất mua xe thì vẽ xe được)
+function deNhacVat_(loai, de) {
+  var tu = TU_VAT_3D_[loai];
+  if (tu && tu.test(de)) return true;
+  return TU_VAT_THUC_.some(function (m) { return m[1].indexOf(loai) >= 0 && m[0].test(de); });
+}
+function vatLaTaiChinh_(v, de) {
+  if (!v) return false;
+  if (HINH_KHOI_.indexOf(v.loai) >= 0) return !deNhacVat_(v.loai === 'xe' ? 'xe_hoi' : v.loai, de);
+  return false;
+}
+function kiemTraTaiChinh_(kb, deGoc) {
+  var de = String(deGoc || '').toLowerCase(), nang = [], nhe = [];
+  if (!laDeTaiChinh_(de)) return { nang: nang, nhe: nhe };
+  var coBieuDo = false;
+  (kb.canh || []).forEach(function (c, i) {
+    var du = c && c.minh_hoa && c.minh_hoa.du_lieu;
+    var la = [];
+    (du && Array.isArray(du.vat) ? du.vat : []).forEach(function (v) {
+      if (!v) return;
+      if (v.loai === 'bieu_do_cot' || v.loai === 'do_thi') coBieuDo = true;
+      if (vatLaTaiChinh_(v, de)) la.push(v.loai);
+      if (Array.isArray(v.hinh)) v.hinh.forEach(function (h) { if (h && h.kieu === 'vat' && h.ten && VAT_TAI_CHINH_.indexOf(h.ten) < 0 && !deNhacVat_(h.ten, de)) la.push(h.ten); });
+      if (v.loai === 'canh_that') (v.vat || []).forEach(function (x) { if (x && x.ten && VAT_TAI_CHINH_.indexOf(x.ten) < 0 && !deNhacVat_(x.ten, de)) la.push(x.ten); });
+    });
+    if (la.length) nang.push('HINH_KHONG_LIEN_QUAN_CANH_' + (i + 1) + ': bài lãi suất / tiền bạc nhưng cảnh ' + (i + 1) + ' vẽ ' + la.join(', ') +
+      ' (đề không có vật đó). Chỉ dùng: canh_that với ngan_hang, tien, heo_dat, nguoi; bieu_do_cot số tiền sau từng kỳ; do_thi hàm mũ; danh_sach / luoi_o làm dòng thời gian các kỳ; so_dem số tiền.');
+  });
+  if (!coBieuDo) nhe.push('TAI_CHINH_THIEU_BIEU_DO: bài lãi suất nên có bieu_do_cot (số tiền sau mỗi kỳ, cột cao dần) hoặc do_thi hàm mũ để người xem THẤY tiền tăng thế nào.');
+  return { nang: nang, nhe: nhe };
+}
+// MÁY TỰ SỬA bài tài chính: gỡ hình khối / vật không liên quan; cảnh mất hết hình thì thay bằng cảnh ngân hàng + người + heo đất.
+function tuSuaTaiChinh_(kb, deGoc) {
+  var de = String(deGoc || '').toLowerCase(), sua = [];
+  if (!laDeTaiChinh_(de) || !kb || !Array.isArray(kb.canh)) return sua;
+  kb.canh.forEach(function (c, i) {
+    var du = c && c.minh_hoa && c.minh_hoa.du_lieu;
+    if (!du || !Array.isArray(du.vat)) return;
+    var bo = {}, truoc = JSON.stringify(du.vat);
+    du.vat = du.vat.filter(function (v) {
+      if (!v) return false;
+      if (vatLaTaiChinh_(v, de)) { bo[v.id] = true; return false; }
+      if (v.loai === 'canh_that' && Array.isArray(v.vat)) {
+        v.vat = v.vat.filter(function (x) { return x && (VAT_TAI_CHINH_.indexOf(x.ten) >= 0 || deNhacVat_(x.ten, de)); });
+        if (!v.vat.length) { bo[v.id] = true; return false; }
+      }
+      if (Array.isArray(v.hinh)) v.hinh = v.hinh.filter(function (h) { return !(h && h.kieu === 'vat' && h.ten && VAT_TAI_CHINH_.indexOf(h.ten) < 0 && !deNhacVat_(h.ten, de)); });
+      return true;
+    });
+    if (JSON.stringify(du.vat) === truoc) return;
+    du.vat = du.vat.filter(function (v) { return v.loai !== 'mui_ten' || (!bo[v.tu] && !bo[v.den]); });
+    if (Array.isArray(du.hanh_dong)) du.hanh_dong = du.hanh_dong.filter(function (h) { return h && !bo[h.vat]; });
+    if (!du.vat.some(function (v) { return v && VAT_PHU_.indexOf(v.loai) < 0; })) {
+      du.vat.unshift({ id: 'tc_' + (i + 1), loai: 'canh_that', nhin: 'ngang', x: 50, y: 46, buoc: 1,
+        vat: [{ ma: 'A', ten: 'nguoi', cao: 1.7, x: 0 }, { ma: 'B', ten: 'ngan_hang', cao: 6, x: 6 }, { ma: 'C', ten: 'heo_dat', cao: 1.2, x: 12 }] });
+      if (!Array.isArray(du.hanh_dong)) du.hanh_dong = [];
+      du.hanh_dong.push({ buoc: 2, vat: 'tc_' + (i + 1), kieu: 'sang' });
+    }
+    sua.push('gỡ hình không liên quan (bài lãi suất) ở cảnh ' + (i + 1));
+  });
+  return sua;
+}
 var KIEU_HANH_DONG_ = ['chon', 'loai_bo', 'sang', 'rung', 'quay', 'mo', 'lay_ra', 'dat_gia_tri', 'bung_ra', 'di_chuyen', 'phong_to', 'thu_nho', 'an', 'doi_chu', 'goc_3d', 'bien_hinh', 'tach', 'ghep', 'dem_tang'];
 var VAT_PHU_ = ['nhan', 'chu', 'mui_ten', 'bieu_tuong', 'so_dem'];   // vật phụ trợ (chữ, nhãn): không tính là "vật thật"
 
@@ -804,7 +873,9 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc) {
     if (!veHinh && xepChong) nang.push('THIEU_HINH_DE: đề XẾP CHỒNG vật thành tầng/hàng. 3 cảnh đầu phải vẽ đúng chồng vật bằng hinh_tu_do với nét {"kieu":"xep_chong","tam":[50,55],"r":44,"hang":[số vật từng tầng từ trên xuống]} (hoặc "tren"/"duoi"), KHÔNG dùng một khối trụ/hộp thay cho cả chồng.');
     else if (!veHinh) nang.push('THIEU_HINH_DE: đề có hình (ảnh kèm hoặc hình dạng cụ thể) nhưng 3 cảnh đầu không vẽ lại hình đó. Hãy vẽ ĐÚNG hình của đề ở cảnh mo_dau hoặc de_bai: cảnh thực tế dùng canh_that (vật thật + số đo), hình học dùng hinh_hoc/hinh_tu_do; không thay bằng vật khác.');
   }
-  if (thucTe && so3D < 2 && !coHinhDe) nhe.push('THIEU_CANH_3D: video toán thực tế nên có ít nhất 2 cảnh có vật 3D thật dựng lại tình huống của đề.');
+  var taiChinh = laDeTaiChinh_(deGoc);
+  if (taiChinh) { var tcK = kiemTraTaiChinh_(kb, deGoc); tcK.nang.forEach(function (x) { nang.push(x); }); tcK.nhe.forEach(function (x) { nhe.push(x); }); }
+  if (thucTe && !taiChinh && so3D < 2 && !coHinhDe) nhe.push('THIEU_CANH_3D: video toán thực tế nên có ít nhất 2 cảnh có vật 3D thật dựng lại tình huống của đề.');
   if (thucTe && soMoHinh < 1) nhe.push('THIEU_MO_HINH: video toán thực tế nên có ít nhất 1 cảnh hinh_hoc, do_thi hoặc hinh_tu_do để mô hình hóa.');
   var canDA = kb.canh[timCanhDapAn_(kb)];
   var dsDA = (canDA && canDA.noi_dung_man_hinh) || [];

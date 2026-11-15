@@ -1038,6 +1038,7 @@ function chuanBiKichBan_(kb, r, ctxSua) {
   if (typeof laMonHinhHoc_ === 'function' && laMonHinhHoc_(r)) {   // hình học: tọa độ ĐÚNG từ mã dựng hình đã kiểm chứng
     try { var c1H = JSON.parse(String(r.cach_1 || '{}')); if (c1H && c1H.hinh_toa_do) sua = sua.concat(chenToaDoHinh_(kb, c1H.hinh_toa_do)); } catch (eH) {}
   }
+  if (typeof tuSuaTaiChinh_ === 'function') sua = sua.concat(tuSuaTaiChinh_(kb, r.de_bai) || []);   // bài lãi suất: gỡ hình khối không liên quan
   if (typeof tuSuaVatLa_ === 'function') sua = sua.concat(tuSuaVatLa_(kb, r.de_bai) || []);   // đề hải đăng mà vẽ tòa nhà -> đổi đúng vật, giữ số đo
   if (typeof tuSuaBoCucDe_ === 'function') sua = sua.concat(tuSuaBoCucDe_(kb, r.de_bai) || []);   // đề bàn tròn -> người ngồi quanh bàn tròn
   // câu KÊU GỌI cuối video (dùng chung cho mọi nền tảng: YouTube "đăng ký", TikTok/Facebook "theo dõi"; dải chữ riêng từng nền tảng in lúc đăng)

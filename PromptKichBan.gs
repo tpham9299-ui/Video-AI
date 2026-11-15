@@ -104,6 +104,11 @@ function taoPromptKichBan_(r, c1, c2) {
     r._series ? 'SERIES: video thuộc chuỗi "' + r._series.ten + '". TUYỆT ĐỐI KHÔNG nói hay ghi SỐ TẬP (số tập do hệ thống đánh lúc đăng); "video_tiep_theo" hẹn một bài cùng lớp.\n' : '',
     r._hook ? 'KIỂU MỞ ĐẦU CẦN THỬ Ở VIDEO NÀY: "' + r._hook + '" (đặt "hook_kieu" = "' + r._hook + '" và viết câu móc đúng kiểu đó, thật mạnh). Hệ thống đang đo kiểu mở đầu nào giữ chân người xem tốt nhất.\n' : '',
     typeof goiYTuSoLieu_ === 'function' ? goiYTuSoLieu_() : '',
+    typeof laDeTaiChinh_ === 'function' && laDeTaiChinh_(r.de_bai) ? 'BÀI TÀI CHÍNH (lãi suất / tiết kiệm / vay / trả góp / tăng trưởng) - THAY cho yêu cầu "dựng cảnh thật 3D" ở trên: ' +
+      'đề KHÔNG có vật hình khối nào, nên TUYỆT ĐỐI không vẽ khoi_hop, tru, non, cau, hinh_hoc, xúc xắc, hộp quà hay bất kỳ hình khối nào đề không nhắc. ' +
+      'Hình minh họa đúng: (1) cảnh thật canh_that với ngan_hang, nguoi, tien, heo_dat (người mang tiền đến ngân hàng, heo đất đầy dần); ' +
+      '(2) bieu_do_cot số tiền SAU TỪNG KỲ (cột cao dần, dat_gia_tri/chon cột kỳ cuối) - đây là hình chính để MÔ HÌNH HÓA; (3) do_thi hàm mũ (vd "100*(1.06)^x") khi cần thấy tốc độ tăng; ' +
+      '(4) danh_sach hoặc luoi_o làm dòng thời gian các kỳ (Kỳ 1, Kỳ 2...); (5) so_dem số tiền / số kỳ. Phần mô phỏng = bảng/biểu đồ số tiền qua từng kỳ, không phải hình học.\n' : '',
     hh && typeof huongDanKichBanHinh_ === 'function' ? huongDanKichBanHinh_(r) + 'ĐÂY LÀ BÀI HÌNH HỌC THUẦN TÚY: BỎ QUA mọi yêu cầu "dựng cảnh thật 3D / canh_that / vật thật" ở trên; hình chính là hinh_hoc.\n' : '',
     typeof quyTacHocChoPrompt_ === 'function' ? quyTacHocChoPrompt_() : '',
     typeof phongCachLoiChoPrompt_ === 'function' ? phongCachLoiChoPrompt_(r) : '',
