@@ -46,7 +46,7 @@ export const AnhBia: React.FC<Props> = (props) => {
         boxShadow: `0 0 60px ${mau}88, 0 0 0 10px rgba(255,255,255,0.05), 0 30px 80px rgba(0,0,0,0.7)`, background: '#071113'}}>
         <div style={{position: 'absolute', left: -60, top: -540, width: 1080, height: 1920}}>{video}</div>
         {/* bài hình học dựng bằng Manim: hình đầy đủ (tô màu đại lượng) do Manim vẽ, đặt đúng vùng nội dung */}
-        {props.manimLop && props.anhManimBia ? <Img src={staticFile(props.anhManimBia)} style={{position: 'absolute', left: -60, top: -540, width: 1080, height: 1920}} /> : null}
+        {props.manimLop && props.anhManimBia ? <Img src={staticFile(props.anhManimBia)} style={{position: 'absolute', left: -60, top: -330, width: 1080, height: 1920}} /> : null}
         <div style={{position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(7,17,19,0) 75%, rgba(7,17,19,0.85) 100%)'}} />
       </div>
       {b.loai === 'Xác suất' ? <TrangTriXacSuat mau={mau} /> : null}

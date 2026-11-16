@@ -29,7 +29,7 @@ import shutil
 import sys
 
 import numpy as np
-from manim import (DOWN, LEFT, RIGHT, UP, Arc, Circle, Circumscribe, Create, DashedLine, Dot, FadeIn, FadeOut,
+from manim import (DOWN, RIGHT, UP, Arc, Circle, Circumscribe, Create, DashedLine, Dot, FadeIn, FadeOut,
                    GrowFromCenter, Line, MathTex, MoveToTarget, Polygon, RoundedRectangle, Scene, ShowPassingFlash,
                    SurroundingRectangle, TexTemplate, Text, TransformMatchingShapes, VGroup, VMobject, Write, tempconfig)
 
@@ -845,22 +845,25 @@ class VideoHinh(Scene):
                 cu.add(the_kt)
                 y_ct -= the_kt.height + 0.12
             if len(ds_tg) >= 2:
-                tach = self.tach_tam_giac(ds_tg)
-                # chừa đủ chỗ cho các dòng công thức bên dưới (mỗi dòng ~0,6 đơn vị) rồi mới chia cho hai tam giác
-                cao_t = max(1.1, min(2.0, (y_ct - CT_DUOI) - 0.65 * max(1, len(dong)) - 0.75))
-                for j, gt in enumerate(tach):
+                # hai tam giác được nhấc ra khỏi hình, phóng to đặt cạnh nhau ngay trên vùng hình (hình gốc mờ phía sau)
+                tg2 = self.tach_tam_giac(ds_tg)
+                man = RoundedRectangle(width=HINH_RONG + 0.2, height=HINH_TREN - HINH_DUOI + 0.2, corner_radius=0.25, stroke_width=0,
+                                       fill_color=NEN_THE, fill_opacity=0.9).move_to([0, (HINH_TREN + HINH_DUOI) / 2, 0])
+                for j, gt in enumerate(tg2):
                     gt.generate_target()
-                    f_t = min(3.6 / max(0.01, gt.width), cao_t / max(0.01, gt.height))
+                    f_t = min(3.7 / max(0.01, gt.width), (HINH_TREN - HINH_DUOI - 0.6) / max(0.01, gt.height))
                     gt.target.scale(f_t)
                     for nh_t in gt.target[1]:
                         nh_t.scale(1 / f_t)     # nhãn đỉnh giữ cỡ chữ dễ đọc
-                    gt.target.move_to([(-2.2 if j == 0 else 2.2), y_ct - 0.15 - cao_t / 2, 0])
-                self.choi(*[MoveToTarget(gt) for gt in tach], run_time=0.9)
-                y_ct -= cao_t + 0.3
+                    gt.target.move_to([(-2.15 if j == 0 else 2.15), (HINH_TREN + HINH_DUOI) / 2, 0])
+                self.add(man, *tg2)          # màn mờ dưới, hai tam giác trên
+                self.choi(FadeIn(man), *[MoveToTarget(gt) for gt in tg2], run_time=1.0)
+                self.bring_to_front(*tg2)
+                tach = VGroup(man, *tg2)
             mob = [vua_rong(tao_cong_thuc(self.dong_tex(s_), CO_CT), CT_RONG - 0.4) for s_ in dong]
             if mob:
                 g = VGroup(*mob).arrange(DOWN, buff=0.3)
-                cao = y_ct - CT_DUOI - 0.5
+                cao = max(0.4, y_ct - CT_DUOI - 0.5)   # luôn dương (cao âm sẽ lật ngược công thức)
                 if g.height > cao:
                     g.scale_to_fit_height(cao)
                 nen_ct = RoundedRectangle(width=CT_RONG + 0.3, height=g.height + 0.5, corner_radius=0.22, stroke_color=NHAN,
