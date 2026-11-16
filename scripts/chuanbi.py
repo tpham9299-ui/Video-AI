@@ -260,6 +260,10 @@ def nghi_canh(canh, i):
 # /tmp/gemini_key_hong.json để báo Zalo người dùng gỡ key.
 KEY_HET_NGAY = set()
 KEY_HONG = set()
+# NGÂN SÁCH THỜI GIAN cho giọng Gemini (cả video): Gemini chậm / treo thì không được ăn hết 30 phút của máy dựng.
+# Quá hạn -> báo lỗi -> cả video dùng giọng dự phòng (edge-tts), video vẫn ra đúng hạn.
+GIAY_TOI_DA_GEMINI = float(os.environ.get("GIAY_TOI_DA_GEMINI") or 480)
+_BAT_DAU_GEMINI = []
 TEP_KEY_HONG_JSON = os.path.join(tempfile.gettempdir(), "gemini_key_hong.json")
 
 
@@ -308,6 +312,11 @@ def gemini_tts(text, tep_wav, giong, model, phong_cach):
     }
     url = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent" % model
     loi = None
+    if not _BAT_DAU_GEMINI:
+        _BAT_DAU_GEMINI.append(time.time())
+
+    def con_lai():
+        return GIAY_TOI_DA_GEMINI - (time.time() - _BAT_DAU_GEMINI[0])
     for vong in range(4):
         dung = [k for k in keys if k not in KEY_HONG and k not in KEY_HET_NGAY]
         if not dung:
@@ -316,8 +325,10 @@ def gemini_tts(text, tep_wav, giong, model, phong_cach):
         for key in dung:
             req = urllib.request.Request(url, data=json.dumps(than).encode("utf8"), method="POST",
                                          headers={"Content-Type": "application/json", "x-goog-api-key": key})
+            if con_lai() < 15:
+                raise RuntimeError("Gemini TTS quá %d giây (chậm/treo) -> dùng giọng dự phòng" % GIAY_TOI_DA_GEMINI)
             try:
-                with urllib.request.urlopen(req, timeout=120) as r:
+                with urllib.request.urlopen(req, timeout=max(15, min(120, con_lai()))) as r:
                     d = json.loads(r.read().decode("utf8"))
                 phan = d["candidates"][0]["content"]["parts"]
                 b64 = next(p["inlineData"]["data"] for p in phan if "inlineData" in p)
@@ -348,6 +359,8 @@ def gemini_tts(text, tep_wav, giong, model, phong_cach):
             except Exception as e:
                 loi = str(e)
         if not cho_min:
+            break
+        if con_lai() < cho_min + 20:
             break
         print("Gemini TTS: mọi key đang bận/giới hạn theo phút, chờ %d giây rồi thử lại" % cho_min)
         time.sleep(cho_min)

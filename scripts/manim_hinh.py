@@ -56,8 +56,8 @@ W, H = 9.0, 16.0
 Y_TIEU_DE = 7.25
 Y_BUOC = 6.35
 # vùng của Manim = vùng nội dung của video Remotion (dưới tiêu đề bước y=470px, trên phụ đề y=1448px)
-HINH_TREN, HINH_DUOI, HINH_RONG = 3.95, -0.3, 8.6
-CT_TREN, CT_DUOI, CT_RONG = -0.45, -4.05, 8.4
+HINH_TREN, HINH_DUOI, HINH_RONG = 4.0, -0.95, 8.7
+CT_TREN, CT_DUOI, CT_RONG = -1.1, -4.05, 8.4
 CO_CT = 48
 
 # ---------- NHẬN DIỆN ĐẠI LƯỢNG trong chữ / công thức ----------
@@ -530,7 +530,7 @@ class VideoHinh(Scene):
                     xs += [c[0] - r, c[0] + r]
                     ys += [c[1] - r, c[1] + r]
         x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
-        k = min(HINH_RONG * 0.86 / max(1e-6, x1 - x0), (HINH_TREN - HINH_DUOI) * 0.82 / max(1e-6, y1 - y0))
+        k = min(HINH_RONG * 0.9 / max(1e-6, x1 - x0), (HINH_TREN - HINH_DUOI) * 0.88 / max(1e-6, y1 - y0))
         cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
         ty = (HINH_TREN + HINH_DUOI) / 2
         self.P = {n: np.array([(x * 8.8 - cx) * k, (-y * 6.0 - cy) * k + ty, 0.0]) for n, (x, y) in mo.diem.items()}
@@ -580,6 +580,38 @@ class VideoHinh(Scene):
             v = UP
         return v / np.linalg.norm(v)
 
+    def vi_tri_nhan(self, n, da_dat):
+        """Chỗ đặt nhãn điểm: thử 16 hướng quanh điểm, chọn chỗ XA NHẤT các nét (đoạn, đường tròn), các điểm và các nhãn đã
+        đặt (ưu tiên hướng tự nhiên ngược các cạnh) -> tên điểm không bao giờ đè lên nét vẽ."""
+        p = self.P[n][:2]
+        goc = self.huong_nhan(n)[:2]
+        doan = [(self.P[q["khoa"][0]][:2], self.P[q["khoa"][1]][:2]) for q in self.mo.pt if q["kieu"] == "doan" and q.get("kieu_net") != "con"]
+        tron = []
+        for q in self.mo.pt:
+            if q["kieu"] == "tron":
+                o, r = self.tam_ban_kinh(q["khoa"])
+                if o is not None:
+                    tron.append((o[:2], r))
+        diem = [self.P[m][:2] for m in self.P if m != n]
+
+        def kc_doan(c, a, b):
+            ab = b - a
+            t = 0.0 if not ab.any() else max(0.0, min(1.0, float(np.dot(c - a, ab) / np.dot(ab, ab))))
+            return float(np.linalg.norm(c - (a + t * ab)))
+        tot, chon = -1e9, p + goc * 0.36
+        lech = [0.0] + [d * j * math.pi / 8 for j in range(1, 9) for d in (1, -1)][:15]
+        for dg in lech:
+            g = math.atan2(goc[1], goc[0]) + dg
+            u = np.array([math.cos(g), math.sin(g)])
+            for r in (0.36, 0.46):
+                c = p + u * r
+                kc = min([kc_doan(c, a, b) for a, b in doan] + [abs(float(np.linalg.norm(c - o)) - rr) for o, rr in tron] +
+                         [float(np.linalg.norm(c - d)) for d in diem] + [float(np.linalg.norm(c - d)) * 0.8 for d in da_dat] + [9.0])
+                diem_so = min(kc, 0.34) * 10 - 0.6 * (1 - float(np.dot(u, goc))) - (r - 0.36) * 2
+                if diem_so > tot:
+                    tot, chon = diem_so, c
+        return np.array([chon[0], chon[1], 0.0])
+
     def dung_phan_tu(self):
         mo = self.mo
         self.hinh = {}       # (kieu, khoa) -> mobject
@@ -625,9 +657,12 @@ class VideoHinh(Scene):
                 m = self.vach_bang(a, b, p["so"])
             if m is not None:
                 self.hinh[k] = m
+        da_dat = []
         for n, p in self.P.items():
             self.cham[n] = Dot(p, radius=0.06, color=TRANG)
-            self.nhan_diem[n] = MathTex(tex_ten(n), tex_template=TEX, font_size=36, color=TRANG).move_to(p + self.huong_nhan(n) * 0.36)
+            vt = self.vi_tri_nhan(n, da_dat)
+            da_dat.append(vt[:2])
+            self.nhan_diem[n] = MathTex(tex_ten(n), tex_template=TEX, font_size=36, color=TRANG).move_to(vt)
 
     def cung_goc(self, ba, mau, nhan=""):
         a, o, b = (self.P[x] for x in ba)
@@ -655,18 +690,28 @@ class VideoHinh(Scene):
         return g
 
     # ---------- thời gian ----------
+    # Đồng hồ chuẩn = số khung hình đã ghi (renderer.time). Mọi động tác của một cảnh bị ép nằm trong đúng khoảng thời gian
+    # giọng đọc của cảnh đó (t0 .. t0 + D): cảnh ngắn mà nhiều thứ phải vẽ thì động tác chạy nhanh lại, KHÔNG BAO GIỜ tràn
+    # sang cảnh sau -> lớp Manim luôn khớp từng khung với phụ đề / giọng của phần vỏ Remotion.
+    def _bay_gio(self):
+        return self.renderer.time - self.t0
+
     def choi(self, *anim, run_time=1.0):
         anim = [a for a in anim if a is not None]
         if not anim:
             return
-        run_time = max(0.15, run_time)
-        self.play(*anim, run_time=run_time)
-        self.da += run_time
+        con = self.D - 1.0 / self.mo.fps - self._bay_gio()
+        rt = max(1.05 / self.mo.fps, min(max(0.15, run_time), con))
+        if rt < run_time * 0.6:
+            self.canh_bao.add("Cảnh %d chật thời gian: động tác bị nén" % (self.i_canh + 1))
+        self.play(*anim, run_time=rt)
+        self.da = self._bay_gio()
 
     def doi_toi(self, t):
-        if t - self.da > 0.02:
-            self.wait(t - self.da)
-            self.da = t
+        w = t - self._bay_gio()
+        if w > 0.5 / self.mo.fps:
+            self.wait(w)
+        self.da = self._bay_gio()
 
     # ---------- màu / làm nổi ----------
     def net_chinh(self, m):
@@ -740,6 +785,23 @@ class VideoHinh(Scene):
     def dong_tex(self, s):
         return self.mo.to_mau_tex(chuan_tex(s))
 
+    def tao_dong(self, s):
+        """Một dòng công thức. Dài quá (phải thu nhỏ dưới ~80%) thì tách phần lý do / hệ quả xuống dòng thứ hai
+        (tại "\\;\\text{(vì ...)}", "\\Rightarrow", "\\quad"), giữ chữ to dễ đọc."""
+        rong = CT_RONG - 0.4
+        m = tao_cong_thuc(self.dong_tex(s), CO_CT)
+        if m.width <= rong * 1.25:
+            return vua_rong(m, rong)
+        for mau_tach in (r"\\[;,]?\s*\\text\{\s*\(", r"\s*\\Rightarrow\s*", r"\s*\\quad\s*", r"\s*\\text\{\s*(?:vì|do|nên)\b"):
+            k = re.search(mau_tach, s)
+            if k and 3 < k.start() < len(s) - 3:
+                dau, sau = s[:k.start()], s[k.start():].lstrip()
+                sau = re.sub(r"^\\[;,]\s*", "", sau)
+                m1 = vua_rong(tao_cong_thuc(self.dong_tex(dau), CO_CT), rong)
+                m2 = vua_rong(tao_cong_thuc(self.dong_tex(sau), CO_CT * 0.86), rong)
+                return VGroup(m1, m2).arrange(DOWN, buff=0.12)
+        return vua_rong(m, rong)
+
     def tach_tam_giac(self, ds):
         """Hai tam giác được so sánh: sao chép, tô màu, đặt cạnh nhau phía trên vùng công thức."""
         g = VGroup()
@@ -784,7 +846,9 @@ class VideoHinh(Scene):
         self.da_to = set()
         if self.bia:
             return self.dung_bia()
+        self.t0, self.D, self.i_canh = 0.0, 1e9, 0
         self.da = 0.0
+        self.canh_bao = set()
         self.su_kien = []
         tong = 0.0
         cu = VGroup()     # thẻ / công thức đang trên màn
@@ -793,7 +857,9 @@ class VideoHinh(Scene):
         for i, cp in enumerate(mo.canh_p):
             D = cp["soFrame"] / fps
             self.t0 = cp["batDau"] / fps
-            self.da = 0.0
+            self.D = D
+            self.i_canh = i
+            self.da = self._bay_gio()
             ck = mo.canh_k[i]
             # 1) dọn bước trước (tiêu đề bước, thanh bước, phụ đề do phần vỏ chung của Remotion lo)
             ra = [FadeOut(cu, shift=UP * 0.25)] if len(cu) else []
@@ -897,7 +963,7 @@ class VideoHinh(Scene):
                 self.choi(FadeIn(man), *[MoveToTarget(gt) for gt in tg2], run_time=1.0)
                 self.bring_to_front(*tg2)
                 tach = VGroup(man, *tg2)
-            mob = [vua_rong(tao_cong_thuc(self.dong_tex(s_), CO_CT), CT_RONG - 0.4) for s_ in dong]
+            mob = [self.tao_dong(s_) for s_ in dong]
             if mob:
                 g = VGroup(*mob).arrange(DOWN, buff=0.3)
                 cao = max(0.4, y_ct - CT_DUOI - 0.5)   # luôn dương (cao âm sẽ lật ngược công thức)
@@ -956,10 +1022,10 @@ class VideoHinh(Scene):
                 self.choi(Create(khung), run_time=0.7)
                 self.choi(Circumscribe(mob[-1], color=VANG, buff=0.2), run_time=0.7)
                 cu.add(khung)
-            self.doi_toi(D - 0.02)
+            self.doi_toi(D)
             tong += D
-        du = mo.props.get("tongFrame", 0) / fps - tong
-        if du > 0.05:
+        du = mo.props.get("tongFrame", 0) / fps - self.renderer.time
+        if du > 0.5 / fps:
             self.wait(du)
 
     def so_do_tren_hinh(self, dong_goc):
@@ -1098,6 +1164,9 @@ def main():
     props["manimLop"] = True
     props["anhManimBia"] = "manim/bia.png"
     props["suKienManim"] = sc.su_kien
+    props["manimCanhBao"] = sorted(sc.canh_bao)
+    for cb in sorted(sc.canh_bao):
+        print("Cảnh báo Manim:", cb)
     json.dump(props, open(a.props, "w", encoding="utf8"), ensure_ascii=False)
     print("Xong:", ra, "| %d mốc tiếng" % len(sc.su_kien))
 

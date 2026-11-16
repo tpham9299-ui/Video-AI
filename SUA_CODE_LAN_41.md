@@ -99,3 +99,32 @@ Dựng thử tay: Actions → Dựng video → chọn mẫu:
   - 1080x1920, 30 khung/giây, khớp đúng độ dài giọng đọc;
   - 28-38 giây video dựng mất 15-33 giây.
 - Kiểm bằng ảnh chụp từng giây: màu khớp giữa hình và công thức, phần đang xét sáng, phần khác mờ, khung vàng ở kết luận, tam giác tách đôi có nhãn.
+
+## Lần 42: rà soát điểm yếu và sửa luôn
+
+### Video hình học (Manim)
+1. **Khớp từng khung hình với giọng đọc.**
+   - Trước: mỗi động tác làm tròn thời gian nên lớp Manim có thể lệch vài khung, cảnh ngắn mà nhiều thứ phải vẽ thì trôi sang cảnh sau (hình lệch phụ đề).
+   - Nay: đồng hồ chuẩn là số khung hình đã ghi; mọi động tác của một cảnh bị ép nằm trong đúng thời lượng giọng đọc của cảnh đó (cảnh chật thì động tác chạy nhanh lại, ghi cảnh báo).
+   - Đã đo: lớp Manim 1526/1526 khung và 936/936 khung, khớp tuyệt đối với video.
+2. **Tên điểm không đè lên nét vẽ.** Máy thử 16 hướng quanh mỗi điểm, chọn chỗ xa nhất các đoạn thẳng, đường tròn, điểm và tên điểm khác.
+3. **Dòng công thức dài tự xuống dòng.** Thay vì thu nhỏ cả dòng đến khó đọc, phần lý do / hệ quả được tách xuống dòng thứ hai, tại "(vì ...)", "⇒" hoặc "\quad".
+4. **Hình to hơn khoảng 30%.**
+   - Vùng hình cao 4,95 đơn vị, trước là 4,25.
+   - Lề quanh hình hẹp lại.
+   - Vùng công thức vẫn đủ cho 3 dòng.
+5. **Thử kịch bản "khó"**: dòng dài, nhiều số đo, cảnh ngắn, và hình không gian (hình chóp, cạnh khuất, mặt phẳng tô màu). Tất cả dựng đúng, không tràn, không lệch.
+
+### Giọng đọc (mọi video)
+6. **Gemini TTS chậm / treo không còn làm hỏng video.**
+   - Trước: mỗi lần gọi có thể chờ 120 giây × số key × 4 vòng, nên bước giọng đọc có lúc chạy hơn 27 phút, hết giờ máy dựng và video thất bại (đã gặp thật khi chạy thử).
+   - Nay: giọng Gemini có ngân sách 8 phút cho cả video (Variable `GIAY_TOI_DA_GEMINI`). Quá hạn thì cả video dùng giọng dự phòng (edge-tts), video vẫn ra đúng hạn.
+
+### Việc bạn cần tự làm (máy không làm thay được)
+7. **Google Drive: rclone sắp ngừng dùng "client_id dùng chung".**
+   - Nhật ký GitHub báo: "rclone's shared Google Drive client_id … will stop working during 2026". Khi đó bước tải video lên Drive sẽ hỏng.
+   - Cách sửa (khoảng 10 phút):
+     1. Vào Google Cloud Console, tạo project, bật "Google Drive API".
+     2. Tạo OAuth Client ID loại "Desktop app", lấy client_id + client_secret.
+     3. Trên máy tính: chạy `rclone config`, sửa remote `gdrive`, nhập client_id / client_secret, đăng nhập lại.
+     4. Mở tệp rclone.conf (lệnh `rclone config file` cho biết nằm ở đâu), chép toàn bộ nội dung vào GitHub Secret `RCLONE_CONF` (thay nội dung cũ).
