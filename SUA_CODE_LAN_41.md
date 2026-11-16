@@ -126,5 +126,11 @@ Dựng thử tay: Actions → Dựng video → chọn mẫu:
    - Cách sửa (khoảng 10 phút):
      1. Vào Google Cloud Console, tạo project, bật "Google Drive API".
      2. Tạo OAuth Client ID loại "Desktop app", lấy client_id + client_secret.
+        - **QUAN TRỌNG để dùng vĩnh viễn**: vào mục "OAuth consent screen" (Màn hình đồng ý OAuth / Audience), bấm **"Publish app"**, chuyển trạng thái từ "Testing" sang **"In production"**. Không cần gửi Google xét duyệt (chỉ mình bạn dùng; lúc đăng nhập sẽ hiện cảnh báo "ứng dụng chưa được xác minh", bấm "Nâng cao" → "Tiếp tục").
+        - Nếu để "Testing", quyền truy cập tự hết hạn sau 7 ngày.
      3. Trên máy tính: chạy `rclone config`, sửa remote `gdrive`, nhập client_id / client_secret, đăng nhập lại.
      4. Mở tệp rclone.conf (lệnh `rclone config file` cho biết nằm ở đâu), chép toàn bộ nội dung vào GitHub Secret `RCLONE_CONF` (thay nội dung cũ).
+   - Làm xong là dùng vĩnh viễn. Quyền chỉ mất khi:
+     - bạn tự thu hồi quyền trong tài khoản Google;
+     - xóa project Google Cloud;
+     - không dùng liên tục 6 tháng (hệ thống tải video lên mỗi ngày nên không xảy ra).
