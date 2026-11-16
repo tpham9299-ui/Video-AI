@@ -86,7 +86,7 @@ Mỗi video hình học gồm hai lớp:
 Tắt Manim: GitHub → Settings → Variables → `MANIM_HINH = TAT`.
 
 Dựng thử tay: Actions → Dựng video → chọn mẫu:
-- `kich_ban_hinh_manim`: bài "AE·AC = AF·AB", 8 bước, có thẻ kiến thức;
+- `kich_ban_hinh_manim`: bài "AE·AC = AF·AB", 8 bước;
 - `kich_ban_hinh_hoc`;
 - `kich_ban_hinh_khong_gian`.
 
