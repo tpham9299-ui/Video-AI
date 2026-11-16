@@ -56,7 +56,7 @@ W, H = 9.0, 16.0
 Y_TIEU_DE = 7.25
 Y_BUOC = 6.35
 # vùng của Manim = vùng nội dung của video Remotion (dưới tiêu đề bước y=470px, trên phụ đề y=1448px)
-HINH_TREN, HINH_DUOI, HINH_RONG = 4.0, -0.95, 8.7
+HINH_TREN, HINH_DUOI, HINH_RONG = 3.72, -0.98, 8.7
 CT_TREN, CT_DUOI, CT_RONG = -1.1, -4.05, 8.4
 CO_CT = 48
 

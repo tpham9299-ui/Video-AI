@@ -110,7 +110,7 @@ Dựng thử tay: Actions → Dựng video → chọn mẫu:
 2. **Tên điểm không đè lên nét vẽ.** Máy thử 16 hướng quanh mỗi điểm, chọn chỗ xa nhất các đoạn thẳng, đường tròn, điểm và tên điểm khác.
 3. **Dòng công thức dài tự xuống dòng.** Thay vì thu nhỏ cả dòng đến khó đọc, phần lý do / hệ quả được tách xuống dòng thứ hai, tại "(vì ...)", "⇒" hoặc "\quad".
 4. **Hình to hơn khoảng 30%.**
-   - Vùng hình cao 4,95 đơn vị, trước là 4,25.
+   - Vùng hình cao 4,7 đơn vị, trước là 4,25, chừa khoảng cách với tiêu đề bước.
    - Lề quanh hình hẹp lại.
    - Vùng công thức vẫn đủ cho 3 dòng.
 5. **Thử kịch bản "khó"**: dòng dài, nhiều số đo, cảnh ngắn, và hình không gian (hình chóp, cạnh khuất, mặt phẳng tô màu). Tất cả dựng đúng, không tràn, không lệch.
