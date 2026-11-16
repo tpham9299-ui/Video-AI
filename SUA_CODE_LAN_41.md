@@ -134,3 +134,23 @@ Dựng thử tay: Actions → Dựng video → chọn mẫu:
      - bạn tự thu hồi quyền trong tài khoản Google;
      - xóa project Google Cloud;
      - không dùng liên tục 6 tháng (hệ thống tải video lên mỗi ngày nên không xảy ra).
+
+## Lần 43: vì sao chưa có video hình học nào đến tay (đã sửa)
+Soi nhật ký GitHub hôm nay: hệ thống có sinh 3 đề hình học (HH...), nhưng cả 3 đều kẹt ở Bộ phận 1.
+
+1. **Đề chứng minh luôn bị loại.**
+   - Trước: phải đủ cả máy thử tọa độ đúng lẫn HAI lời chứng minh đều thành công. Đề sai hoặc mơ hồ thì bị viết lại thành bài tính.
+   - Nay:
+     - máy xác nhận mệnh đề đúng (≥ 4 cấu hình ngẫu nhiên, sai số ~0) + MỘT lời chứng minh chặt chẽ là đủ; video trình bày đúng lời chứng minh đã thành công;
+     - hai lời chứng minh đều được mà máy thử thấy sai thì máy viết lại mã dựng hình một lần (thường do mã dựng sai điểm) trước khi kết luận;
+     - đề chứng minh sai thì viết lại thành **đề chứng minh đúng**, giữ hình vẽ và ưu tiên các kết quả kinh điển; không còn biến thành bài tính.
+2. **Kịch bản tốt bị xóa oan.**
+   - Ví dụ đề HH261116-130617-0: lần 2 đạt 99%, sửa tiếp xuống 84%, rồi 90%, cuối cùng bị xóa.
+   - Nay kiểm duyệt luôn **giữ bản tốt nhất**: bản sửa nào chấm thấp hơn thì quay lại bản tốt nhất, sửa tiếp từ đó.
+3. **Quy tắc của video Remotion áp sai lên bài hình học.**
+   - Trước: bắt "hình phải có hành động sân khấu", thêm cảnh liên hệ thực tế (vẽ cả… ti vi), cảnh nhắc lại công thức, đề bài phải có vật thật. Người kiểm duyệt lại chê các cảnh này lan man.
+   - Nay bài hình học bỏ các yêu cầu đó: Manim tự làm chuyển động, giọng đọc giảng kiến thức.
+4. **Bước "Kiểm duyệt bố cục" có lúc treo 25 phút** (lượt TT261116-012116-0), làm máy dựng hết giờ và hủy video.
+   - Nay tối đa 7 phút; quá thì bỏ qua (AI xem video sau vẫn chặn lỗi). Giới hạn máy dựng nâng lên 40 phút.
+
+Bộ phận 1 chạy trên GitHub bằng chính các tệp .gs trong repo, nên các sửa 1–3 có hiệu lực ngay. Vẫn nên dán lại BoPhan1.gs, HinhHoc.gs, KiemTraHinh.gs lên Apps Script cho đồng bộ.

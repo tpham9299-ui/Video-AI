@@ -958,6 +958,15 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc) {
     if (trungCu.length >= 3) nhe.push('CAU_NOI_CU: ' + trungCu.slice(0, 4).join(', ') + ' dùng lại y nguyên câu mở của video trước. Viết lại cho mới.');
   }
   if (sanPham && typeof kiemTraSanPhamTrongKichBan_ === 'function') kiemTraSanPhamTrongKichBan_(kb, sanPham).forEach(function (x) { (/\(nhẹ\)/.test(x) ? nhe : nang).push(x); });
+  // BÀI HÌNH HỌC (dựng bằng Manim): bỏ các yêu cầu chỉ dành cho video Remotion (hình phải có hành động sân khấu, cảnh liên hệ
+  // thực tế vẽ vật thật, cảnh nhắc lại công thức, đề bài phải có vật thật...). Manim tự làm chuyển động theo lời giảng, giọng đọc giảng
+  // kiến thức; giữ các yêu cầu này chỉ làm kịch bản lan man (người kiểm duyệt chê "rườm rà") và bị xóa oan.
+  if (String(mon || '').toUpperCase() === 'HINH_HOC') {
+    var boQuaHH = /^(HINH_DUNG_YEN|HINH_IT_CHUYEN_DONG|THIEU_CANH_3D|THIEU_LIEN_HE_THUC_TE|THIEU_GIAI_THICH_CONG_THUC|GIAI_THICH_CONG_THUC_SO_SAI|DE_BAI_CHI_CO_CHU|HINH_QUA_DON_GIAN|MO_TA_HINH_QUA_NGAN|IT_CANH|SO_CANH_NGOAI)/;
+    nang = nang.filter(function (x) { return !boQuaHH.test(String(x)); });
+    nhe = nhe.filter(function (x) { return !boQuaHH.test(String(x)); });
+    if (kb.canh.length < 6) nang.push('IT_CANH_HINH_HOC: bài hình học cần ít nhất 6 cảnh (mở đầu, đề bài, ý tưởng, các bước giải, kết luận).');
+  }
   return { nang: nang, nhe: nhe };
 }
 

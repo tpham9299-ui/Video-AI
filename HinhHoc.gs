@@ -104,8 +104,20 @@ function giaiHinhHoc_(r) {
     dung = may && may.kieu === 'chung_minh' && Number(may.so_cau_hinh) >= 4 && Number(may.du_max) < 1e-6;
   }
   var cm1 = c1.chung_minh_duoc === true, cm2 = c2.chung_minh_duoc === true;
+  // hai lời chứng minh đều nói ĐƯỢC mà máy thử lại thấy sai: nhiều khả năng mã dựng hình viết sai (không phải đề sai)
+  // -> viết lại mã một lần (suy nghĩ kỹ) rồi thử lại, tránh loại oan đề đúng.
+  if (!dung && cm1 && cm2) {
+    try {
+      var may2 = chayMaHinh_(r, goiGemini_(HUONG_DAN_MA_HINH_ + 'Mã thử trước đó cho phần dư lớn (có thể đã dựng sai một điểm). Dựng lại CẨN THẬN từng điểm đúng như đề, tự kiểm từng bước dựng. ' +
+        'Thử mệnh đề ở ÍT NHẤT 6 cấu hình ngẫu nhiên, trả {"kieu":"chung_minh","so_cau_hinh":n,"du_max":số,' + DANG_TRA_HINH_ + '}. Trả JSON: {"ma":"function kiemChung(){...}"}\n\n' + de, 0.2, { suyNghi: 'high' }));
+      if (may2 && may2.kieu === 'chung_minh' && Number(may2.so_cau_hinh) >= 4 && Number(may2.du_max) < 1e-6) { may = may2; dung = true; }
+    } catch (e2) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(e2.message))) throw e2; }
+  }
   var tom = 'máy thử ' + (may ? (may.so_cau_hinh || 0) + ' cấu hình, phần dư lớn nhất ' + Number(may.du_max).toExponential(1) : 'không chạy được') + ' | tổng hợp: ' + (cm1 ? 'chứng minh được' : 'không') + ' | cách 2: ' + (cm2 ? 'chứng minh được' : 'không');
-  if (!dung || !(cm1 && cm2)) return { dat: false, c1: c1, c2: c2, ly_do: 'Chứng minh chưa được xác nhận (' + tom + ')' };
+  // MÁY ĐÃ XÁC NHẬN mệnh đề đúng (≥ 4 cấu hình ngẫu nhiên, sai số ~0) là bằng chứng mạnh nhất: chỉ cần MỘT lời chứng minh
+  // chặt chẽ là đủ dựng video (trước đây bắt cả hai -> đề đúng vẫn bị loại khi một cách chứng minh bế tắc).
+  if (!dung || !(cm1 || cm2)) return { dat: false, c1: c1, c2: c2, ly_do: 'Chứng minh chưa được xác nhận (' + tom + ')' + (!dung && !cm1 && !cm2 ? ' MENH_DE_SAI' : '') };
+  if (!cm1 && cm2) { var tg = c1; c1 = c2; c2 = tg; }   // lời giải trình bày trong video = lời chứng minh đã thành công
   c1.hinh_toa_do = chuanHinhToaDo_(may.hinh);
   var menh = String(c1.menh_de || c2.menh_de || '').trim() || 'điều phải chứng minh';
   var vanDe = String(c1.de_co_van_de || c2.de_co_van_de || '').trim();
@@ -245,6 +257,25 @@ function suaDapAnChungMinh_(kb, dapAnHien) {
   }
   if (!/chứng minh|đpcm/i.test(String(c.loi_thoai || ''))) c.loi_thoai = String(c.loi_thoai || '').replace(/\s+$/, '') + ' Vậy ta đã chứng minh xong.';
   kb.dap_an_cuoi = 'CM';
+}
+
+// Đề hình học CHỨNG MINH bị máy bác bỏ (mệnh đề sai / đề mơ hồ): viết lại nhưng GIỮ dạng chứng minh (trước đây bị viết lại
+// thành bài tính một con số -> hệ thống gần như không bao giờ ra được video chứng minh). BoPhan1.suaDeChoChinhXac_ gọi hàm này.
+function suaDeHinhChungMinh_(r, lyDo) {
+  var prompt = 'Bạn là giáo viên chuyên Toán ra đề hình học rất cẩn thận. Đề CHỨNG MINH dưới đây KHÔNG DÙNG ĐƯỢC vì: ' + lyDo + '\n' +
+    '(máy dựng hình bằng tọa độ ở nhiều cấu hình ngẫu nhiên thấy mệnh đề KHÔNG đúng, hoặc đề mơ hồ).\n' +
+    'ĐỀ CŨ (lớp ' + r.lop + '): ' + r.de_bai + '\n' +
+    'Hãy VIẾT LẠI thành một đề CHỨNG MINH ĐÚNG, giữ cùng hình vẽ (cùng cách dựng các điểm) và độ khó:\n' +
+    '- Chọn một kết luận CHẮC CHẮN ĐÚNG của hình đó, ưu tiên các kết quả kinh điển đã biết (tứ giác nội tiếp tạo bởi các đường cao, đường thẳng Simson, ' +
+    'đường tròn Euler, trực tâm đối xứng qua cạnh nằm trên đường tròn ngoại tiếp, phương tích, tiếp tuyến vuông góc bán kính, hai tam giác đồng dạng cho hệ thức tích, ' +
+    'đường thẳng vuông góc mặt phẳng trong hình chóp có cạnh bên vuông góc đáy...).\n' +
+    '- Hoặc sửa GIẢ THIẾT (thêm điều kiện còn thiếu) để mệnh đề cũ trở thành đúng.\n' +
+    '- Đề tự đủ, nêu rõ cách dựng từng điểm; đúng MỘT mệnh đề cần chứng minh, bắt đầu phần hỏi bằng "Chứng minh".\n' +
+    '- Tự kiểm bằng tọa độ ở một cấu hình cụ thể trước khi trả lời. Không chắc chắn đúng thì "chac_chan": false.\n' +
+    'Trả JSON: {"de_bai":"đề mới đầy đủ","menh_de":"mệnh đề cần chứng minh","kiem_tra":"thử bằng tọa độ ở một cấu hình","chac_chan":true|false}';
+  var j = goiGemini_(prompt, 0.3, { suyNghi: 'high' });
+  if (!j || j.chac_chan !== true || String(j.de_bai || '').trim().length < 30 || !/chứng minh/i.test(String(j.de_bai))) return null;
+  return { de_bai: String(j.de_bai).trim(), dap_an: 'CM' };
 }
 
 // Lời nhắc riêng khi viết kịch bản bài hình học (chèn vào prompt kịch bản)

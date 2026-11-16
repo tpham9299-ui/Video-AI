@@ -576,6 +576,8 @@ function dapAnBang_(a, b) {
 }
 // Nhờ Gemini VIẾT LẠI đề (giữ bối cảnh, dạng bài, độ khó) để có đúng một đáp án chính xác. Trả {de_bai, dap_an} hoặc null.
 function suaDeChoChinhXac_(r, lyDo) {
+  // đề hình học CHỨNG MINH: sửa thành đề chứng minh đúng (HinhHoc.gs), không biến thành bài tính
+  if (typeof laMonHinhHoc_ === 'function' && laMonHinhHoc_(r) && typeof loaiDeHinh_ === 'function' && loaiDeHinh_(r) === 'chung_minh' && typeof suaDeHinhChungMinh_ === 'function') return suaDeHinhChungMinh_(r, lyDo);
   var mon = laMonThucTe_(r) ? 'THUC_TE' : 'XAC_SUAT';
   var prompt = 'Bạn là giáo viên Toán ra đề rất cẩn thận. Đề dưới đây KHÔNG DÙNG ĐƯỢC vì: ' + lyDo + '\n' +
     'ĐỀ CŨ (lớp ' + r.lop + '): ' + r.de_bai + '\n' +
@@ -949,7 +951,7 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
         throw new Error('KICH_BAN_KHONG_HOP_LE: ' + dg.nang[0]);
       }
       // thiếu cảnh giải thích công thức (từ đâu ra, ý nghĩa đại lượng, khi nào dùng) -> bước riêng viết bổ sung; lỗi nặng mới thì bỏ
-      if (typeof boSungGiaiThichCongThuc_ === 'function' && canBoSungGiaiThich_(kb) && conDuGoiGemini_()) {
+      if (typeof boSungGiaiThichCongThuc_ === 'function' && !(typeof laMonHinhHoc_ === 'function' && laMonHinhHoc_(r)) && canBoSungGiaiThich_(kb) && conDuGoiGemini_()) {
         var kbLuu = JSON.stringify(kb);
         try {
           var canhGT = boSungGiaiThichCongThuc_(kb, r, sn);
@@ -965,13 +967,20 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       // BỘ PHẬN KIỂM DUYỆT YÊU CẦU - cửa 1 (NangCao.gs): AI chấm kịch bản theo bảng yêu cầu của chủ kênh TRƯỚC khi dựng.
       // Chưa đạt -> sửa theo nhận xét (tối đa SO_LAN_SUA_YEU_CAU lần); vẫn thấp -> xóa đề (hệ thống tự làm đề mới).
       if (typeof aiDuyetKichBan_ === 'function' && String(chNC_('AI_DUYET_KICH_BAN')).toUpperCase() !== 'TAT') {
-        var lanYC = 0, toiDaYC = typeof soLanSuaKichBanYC_ === 'function' ? soLanSuaKichBanYC_() : soLanSuaYeuCau_(), boDe = null, dy = null;
+        var lanYC = 0, toiDaYC = typeof soLanSuaKichBanYC_ === 'function' ? soLanSuaKichBanYC_() : soLanSuaYeuCau_(), boDe = null, dy = null, totNhatYC = null;
         while (conDuGoiGemini_()) {
           try { dy = aiDuyetKichBan_(kb, r, spham); }
           catch (eYC) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(eYC.message))) { luuNhapKichBan_(r.id, kb); throw eYC; } dy = null; }
           if (!dy) { nhatKy_('KIEM_DUYET_YC', r.id + ': AI chưa chấm được kịch bản, để cửa kiểm duyệt video chặn sau'); break; }
           nhatKy_('KIEM_DUYET_YC', r.id + ' kịch bản lần ' + (lanYC + 1) + ': đáp ứng ' + dy.phan_tram + '% | ' + tomTatTieuChi_(dy) + (dy.dat ? ' -> ĐẠT' : ' | ' + dy.van_de.slice(0, 3).join('; ').slice(0, 250)));
           if (dy.dat) break;
+          // GIỮ BẢN TỐT NHẤT: bản sửa chấm THẤP hơn bản tốt nhất trước đó -> quay lại bản tốt nhất rồi sửa tiếp từ đó
+          // (trước đây bản 99% bị bản sửa 84% đè mất, cuối cùng đề bị xóa oan).
+          if (!totNhatYC || Number(dy.phan_tram) > Number(totNhatYC.dy.phan_tram)) totNhatYC = { kb: JSON.stringify(kb), dy: dy, dg: dg };
+          else if (Number(dy.phan_tram) < Number(totNhatYC.dy.phan_tram)) {
+            nhatKy_('KIEM_DUYET_YC', r.id + ': bản sửa kém hơn (' + dy.phan_tram + '% < ' + totNhatYC.dy.phan_tram + '%) -> quay lại bản tốt nhất, sửa tiếp từ đó');
+            kb = JSON.parse(totNhatYC.kb); dy = totNhatYC.dy; dg = totNhatYC.dg;
+          }
           if (lanYC >= toiDaYC) { boDe = 'kịch bản chỉ đáp ứng ' + dy.phan_tram + '% sau ' + lanYC + ' lần sửa' + (dy.nang.length ? ' (bắt buộc chưa đạt: ' + dy.nang.join(', ') + ')' : '') + '. ' + dy.van_de.slice(0, 2).join('; '); break; }
           var kbTruoc = JSON.stringify(kb), kbYC = null;
           try { kbYC = suaKichBanBangGemini_(kb, ['KIEM_DUYET_YEU_CAU (bắt buộc sửa hết; kịch bản mới đáp ứng ' + dy.phan_tram + '%, tiêu chí: ' + tomTatTieuChi_(dy) + '). Vấn đề: ' + dy.van_de.join(' || ') + '. Cách sửa: ' + dy.gop_y], prompt, sn); }
