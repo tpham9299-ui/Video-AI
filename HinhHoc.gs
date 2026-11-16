@@ -259,10 +259,36 @@ function huongDanKichBanHinh_(r) {
     (hinh && hinh.khong_gian ? ' ĐÂY LÀ HÌNH KHÔNG GIAN: máy đã chiếu sẵn hình như sách giáo khoa, cạnh khuất nét đứt; dùng to (tô mặt) để làm nổi mặt phẳng đang xét, phu cho đường cao / hình chiếu.' : '') +
     (hinh ? ' DÙNG ĐÚNG TÊN ĐIỂM sau (máy sẽ tự thay tọa độ đúng tỉ lệ từ mô hình dựng hình): ' + Object.keys(hinh.diem).join(', ') + (hinh.tron.length ? '; đường tròn: ' + JSON.stringify(hinh.tron) : '') + (hinh.phu.length ? '; đường phụ: ' + JSON.stringify(hinh.phu) : '') + '.' : '') + '\n' +
     '- MỘT hình xuyên suốt (giu_san_khau): cảnh đề bài dựng hình từng bước theo đúng thứ tự đề nêu; cảnh ý tưởng kẻ đường phụ ("phu"); mỗi cảnh giải tô sáng (chon theo chỉ số cạnh) đúng các cạnh/góc đang nói và ghi lý do (định lý) trên màn hình.\n' +
-    (cm ? '- Bài CHỨNG MINH: mỗi bước một khẳng định + "vì ..." (định lý/tính chất); cảnh đáp án chốt mệnh đề + "(đpcm)". Cảnh THỬ LẠI: đo bằng số trên một cấu hình cụ thể (vd "AM ≈ 3{,}42,\\; AN ≈ 3{,}42 \\checkmark") để người xem thấy mệnh đề đúng.\n'
+    '- VIDEO NÀY DỰNG BẰNG MANIM (kiểu video hình học trên mạng: nền đen, mỗi đại lượng một màu, công thức tô cùng màu với cạnh/góc trên hình, phần đang xét sáng lên, phần khác mờ đi). Để máy tô màu và làm nổi ĐÚNG chỗ, viết công thức theo quy ước:\n' +
+    '  + đoạn thẳng viết liền tên 2 điểm (ME, BC), góc viết \\angle ABC hoặc \\widehat{ABC}, tam giác viết \\triangle ABC, mặt phẳng viết (SAC), đường tròn viết (O). KHÔNG viết "góc" / "tam giác" bằng chữ trong công thức.\n' +
+    '  + \\hl{...} = khung vàng quanh phần ĐANG XÉT của dòng (vd "\\hl{\\angle BEC} = 90^\\circ"), mỗi dòng tối đa 1 \\hl. Dòng kết luận cuối dùng \\dpcm hoặc \\blacksquare.\n' +
+    '  + mỗi cảnh có thể thêm "nhan_manh_hinh": danh sách phần hình cần làm nổi trong cảnh đó (vd ["\\triangle BEC","EM","\\angle BEC"]); hai tam giác được so sánh (bằng nhau / đồng dạng) thêm "tach": ["ABC","DEF"] để máy tách hai tam giác ra đặt cạnh nhau.\n' +
+    '  + "trinh_bay": "bien_doi" khi các dòng là MỘT đẳng thức biến đổi dần (dòng sau biến hình từ dòng trước), "cong_don" khi là các ý nối tiếp.\n' +
+    '- HƯỚNG DẪN CHI TIẾT, MỖI CẢNH MỘT Ý: không dồn nhiều bước vào một cảnh. Mỗi bước giải = 1 cảnh gồm: tieu_de_canh nêu đúng điều đang chứng minh/tính ở bước đó (vd "Bước 2: EM là trung tuyến"), 1-3 dòng công thức (khẳng định + lý do \\text{(vì ...)} ngắn), lời thoại chỉ thẳng vào hình ("nhìn tam giác BEC màu xanh...") và nói rõ VÌ SAO (định lý / tính chất nào).\n' +
+    (cm ? '- Bài CHỨNG MINH: tối thiểu 4 cảnh giải; mỗi bước một khẳng định + "vì ..." (định lý/tính chất); cảnh đáp án chốt mệnh đề + \\dpcm. Cảnh THỬ LẠI: đo bằng số trên một cấu hình cụ thể (vd "AM \\approx 3{,}42,\\; AN \\approx 3{,}42 \\checkmark") để người xem thấy mệnh đề đúng.\n'
       : '- Bài TÍNH: cảnh thử lại kiểm bằng cách thứ hai (tọa độ/hệ thức khác) với số cụ thể.\n') +
     (c1.y_tuong ? '- Ý tưởng then chốt đã kiểm chứng: ' + String(c1.y_tuong).slice(0, 300) + '\n' : '') +
     (Array.isArray(c1.cac_buoc) && c1.cac_buoc.length ? '- Lời giải đã kiểm chứng (bám sát, không thêm bước sai): ' + JSON.stringify(c1.cac_buoc).slice(0, 2500) + '\n' : '');
+}
+
+// Kiểm tra kịch bản hình học (dựng bằng Manim): bước nào cũng phải có công thức + lý do, chứng minh không quá gọn.
+// Trả {nang:[], nhe:[]}; KiemTraHinh.gs gọi khi kb.mon = HINH_HOC.
+function kiemTraKichBanManim_(kb) {
+  var nang = [], nhe = [];
+  if (!kb || !Array.isArray(kb.canh)) return { nang: nang, nhe: nhe };
+  var laBuoc = function (c) { return /tinh|giai|chung_minh|buoc|lap_luan|suy_luan/.test(String(c && c.loai)); };
+  var buoc = kb.canh.filter(laBuoc);
+  if (String(kb.dap_an_cuoi || kb.dap_an) === 'CM' && buoc.length < 3) nhe.push('CHUNG_MINH_QUA_GON: chỉ có ' + buoc.length + ' cảnh giải. Tách lời chứng minh thành ít nhất 4 cảnh, mỗi cảnh MỘT bước (khẳng định + lý do) để người xem theo kịp.');
+  kb.canh.forEach(function (c, j) {
+    if (!laBuoc(c)) return;
+    var ds = (c.noi_dung_man_hinh || []).map(String);
+    if (!ds.length) nhe.push('BUOC_THIEU_CONG_THUC_CANH_' + (j + 1) + ': cảnh giải phải có 1-3 dòng công thức (khẳng định của bước này).');
+    var chu = ds.join(' ') + ' ' + String(c.loi_thoai || '');
+    if (!/vì|do |theo |nên|suy ra|\\Rightarrow|định lý|tính chất/i.test(chu)) nhe.push('BUOC_THIEU_LY_DO_CANH_' + (j + 1) + ': nêu rõ VÌ SAO (định lý / tính chất) ngay trong bước này.');
+    if (ds.length && !ds.some(function (d) { return /[A-Z]'?[A-Z]|\\angle|\\widehat|\\triangle|\([A-Z]{3,4}\)/.test(d); })) nhe.push('BUOC_KHONG_CHI_HINH_CANH_' + (j + 1) + ': công thức không nhắc cạnh / góc / tam giác nào trên hình -> máy không làm nổi được chỗ đang xét. Viết bằng tên điểm (ME, \\angle BEC, \\triangle BEC).');
+    if (ds.some(function (d) { return /(góc|tam giác)\s*[A-Z]/.test(d.replace(/\\text\{[^}]*\}/g, '')); })) nhe.push('BUOC_GOC_BANG_CHU_CANH_' + (j + 1) + ': trong công thức viết \\angle ABC / \\triangle ABC thay cho chữ "góc" / "tam giác".');
+  });
+  return { nang: nang, nhe: nhe };
 }
 
 // Lệnh Zalo /hinhhoc [phang|khonggian] [10|11|12] [chungminh|tinh]: sáng tác NGAY một đề hình học khó (ưu tiên làm video trước).

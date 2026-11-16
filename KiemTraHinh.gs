@@ -850,6 +850,11 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc) {
   kiemTraNhanDai_(kb).forEach(function (x) { nhe.push(x); });
   kiemTraBaCham_(kb).forEach(function (x) { nang.push(x); });
   kiemTraCuPhapTex_(kb).forEach(function (x) { nang.push(x); });
+  if (String(kb.mon || '').toUpperCase() === 'HINH_HOC' && typeof kiemTraKichBanManim_ === 'function') {   // hình học dựng bằng Manim (HinhHoc.gs)
+    var kM = kiemTraKichBanManim_(kb);
+    kM.nang.forEach(function (x) { nang.push(x); });
+    kM.nhe.forEach(function (x) { nhe.push(x); });
+  }
   kiemTraVatThucDe_(kb, deGoc).forEach(function (x) { nang.push(x); });
   kiemTraBoCucDe_(kb, deGoc).forEach(function (x) { nang.push(x); });
   // CÔNG THỨC: phải có cảnh giải thích công thức (từ đâu ra, ý nghĩa đại lượng, áp dụng); mỗi cảnh ≤ 3 dòng công thức

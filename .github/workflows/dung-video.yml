@@ -14,7 +14,7 @@ on:
       mau:
         description: 'Kịch bản mẫu để dựng thử (khi không có kich_ban)'
         type: choice
-        options: [kich_ban_thuc_te, kich_ban_koch, kich_ban_koch_moi, kich_ban_ong_thep, kich_ban_cot_co, kich_ban_rao_vuon, kich_ban_toa_nha, kich_ban_san_pham, kich_ban_hinh_hoc, kich_ban_hinh_khong_gian, kich_ban_mau]
+        options: [kich_ban_thuc_te, kich_ban_koch, kich_ban_koch_moi, kich_ban_ong_thep, kich_ban_cot_co, kich_ban_rao_vuon, kich_ban_toa_nha, kich_ban_san_pham, kich_ban_hinh_hoc, kich_ban_hinh_khong_gian, kich_ban_hinh_manim, kich_ban_mau]
         default: kich_ban_thuc_te
       viec:
         description: 'dung = dựng video | dang = đăng video lên mạng xã hội'
@@ -55,6 +55,7 @@ jobs:
       giay: ${{ steps.chia.outputs.giay }}
       so_khuc: ${{ steps.chia.outputs.so_khuc }}
       khuc: ${{ steps.chia.outputs.khuc }}
+      manim: ${{ steps.chia.outputs.manim }}
     env:
       RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
       DRIVE_NEN: ${{ vars.DRIVE_NEN }}
@@ -151,7 +152,33 @@ jobs:
       - name: Tạo giọng đọc và mốc thời gian
         run: python3 scripts/chuanbi.py kich_ban.json
 
+      # BÀI HÌNH HỌC: dựng 100% bằng MANIM (scripts/manim_hinh.py, phong cách video hình học mẫu), không qua Remotion.
+      # Manim lỗi -> tự quay về đường Remotion cũ (video vẫn ra). Tắt: GitHub Variable MANIM_HINH = TAT.
+      # MANIM_GIONG = 0 -> chỉ nhạc nền như video mẫu (mặc định: giọng đọc + nhạc nền nhỏ).
+      - name: Dựng video hình học bằng Manim
+        id: manim
+        if: ${{ vars.MANIM_HINH != 'TAT' }}
+        continue-on-error: true
+        env:
+          MANIM_GIONG: ${{ vars.MANIM_GIONG }}
+        run: |
+          MON=$(python3 -c "import json;print(str(json.load(open('kich_ban.json',encoding='utf8')).get('mon') or '').upper())")
+          if [ "$MON" != "HINH_HOC" ]; then echo "Không phải bài hình học -> dựng bằng Remotion"; exit 0; fi
+          ( sudo apt-get install -y -qq --no-install-recommends texlive-xetex texlive-latex-extra texlive-fonts-recommended \
+              dvisvgm libpango1.0-dev libcairo2-dev pkg-config fonts-noto-core ) > /tmp/apt_manim.log 2>&1 &
+          APT=$!
+          python3 -m venv /tmp/mv
+          /tmp/mv/bin/pip install -q "manim==0.22.1" > /tmp/pip_manim.log 2>&1 || { wait $APT; /tmp/mv/bin/pip install -q "manim==0.22.1" || { tail -30 /tmp/pip_manim.log; exit 1; }; }
+          wait $APT || { tail -40 /tmp/apt_manim.log; exit 1; }
+          mkdir -p out
+          /tmp/mv/bin/python scripts/manim_hinh.py public/props.json kich_ban.json out --public public
+          ID=$(python3 -c "import json;print(json.load(open('public/props.json',encoding='utf8'))['id'])")
+          [ -s "out/$ID.mp4" ] || { echo "Manim không ra video"; exit 1; }
+          ls -la out
+          echo "ok=1" >> "$GITHUB_OUTPUT"
+
       - name: Đóng gói Remotion + ảnh bìa
+        if: ${{ steps.manim.outputs.ok != '1' }}
         run: |
           ID=$(python3 -c "import json;print(json.load(open('public/props.json',encoding='utf8'))['id'])")
           # đóng gói SAU khi có giọng đọc/nhạc (thư mục public được chép vào gói)
@@ -174,6 +201,7 @@ jobs:
       # Dựng thử tay (không có mã đề) hoặc _kiem_duyet = bao: chỉ ghi báo cáo, vẫn dựng.
       - name: Kiểm duyệt bố cục
         id: kd
+        if: ${{ steps.manim.outputs.ok != '1' }}
         run: |
           node scripts/kiem_duyet.mjs build public/props.json out/kiem_duyet.json kich_ban.json 2>&1 | grep -v "character metrics\|memory\|Memory\|docker\|lower amount" || true
           [ -s out/kiem_duyet.json ] || echo '{"nang":[],"nhe":[],"hong":true}' > out/kiem_duyet.json
@@ -222,6 +250,8 @@ jobs:
 
       - name: Chia khúc
         id: chia
+        env:
+          MANIM_OK: ${{ steps.manim.outputs.ok }}
         run: |
           python3 - <<'PY'
           import json, os
@@ -235,6 +265,7 @@ jobs:
               f.write('giay=%d\n' % round(tong / p['fps']))
               f.write('so_khuc=%d\n' % n)
               f.write('khuc=%s\n' % json.dumps(list(range(n))))
+              f.write('manim=%s\n' % ('1' if os.environ.get('MANIM_OK') == '1' else '0'))
           print('Video %s: %d khung (%.1f giây) -> %d khúc' % (p['id'], tong, tong / p['fps'], n))
           PY
 
@@ -255,12 +286,14 @@ jobs:
           path: |
             public/props.json
             out/*_bia.jpg
+            out/*.mp4
             out/kiem_duyet.json
           retention-days: 1
           if-no-files-found: ignore
 
   dung_khuc:
     needs: chuan_bi
+    if: ${{ needs.chuan_bi.outputs.manim != '1' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
@@ -326,7 +359,8 @@ jobs:
       APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
       DUNG_VIDEO_SECRET: ${{ secrets.DUNG_VIDEO_SECRET }}
       DRIVE_THU_MUC: ${{ vars.DRIVE_THU_MUC }}
-      DA_DUNG: ${{ needs.chuan_bi.result == 'success' && needs.dung_khuc.result == 'success' }}
+      DA_DUNG: ${{ needs.chuan_bi.result == 'success' && (needs.dung_khuc.result == 'success' || (needs.dung_khuc.result == 'skipped' && needs.chuan_bi.outputs.manim == '1')) }}
+      MANIM: ${{ needs.chuan_bi.outputs.manim }}
     steps:
       - uses: actions/checkout@v4
         if: ${{ env.DA_DUNG == 'true' }}
@@ -365,7 +399,7 @@ jobs:
           name: thong-tin
 
       - uses: actions/download-artifact@v4
-        if: ${{ env.DA_DUNG == 'true' }}
+        if: ${{ env.DA_DUNG == 'true' && env.MANIM != '1' }}
         with:
           pattern: khuc-*
           path: khuc
@@ -377,7 +411,12 @@ jobs:
         run: |
           ID="${{ needs.chuan_bi.outputs.id }}"
           mkdir -p out
-          node scripts/ghep_khuc.mjs khuc "out/$ID.mp4"
+          if [ "$MANIM" = "1" ]; then
+            [ -s "out/$ID.mp4" ] || { echo "Thiếu video Manim"; exit 1; }
+            echo "Video hình học đã dựng xong bằng Manim, không cần ghép"
+          else
+            node scripts/ghep_khuc.mjs khuc "out/$ID.mp4"
+          fi
           ls -la out
           echo "id=$ID" >> "$GITHUB_OUTPUT"
           # ảnh kiểm tra (4 khung hình để AI so với đề); dùng ffmpeg đi kèm Remotion, lỗi ở đây không làm hỏng việc dựng

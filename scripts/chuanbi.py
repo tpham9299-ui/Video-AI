@@ -866,6 +866,8 @@ QUAN_HE = re.compile(r"(=|\\approx|\\Rightarrow|\\Leftrightarrow|\\le(?![a-z])|\
 
 def chuan_don_vi(tex):
     """Đơn vị sau số trong công thức ("30\\,m", "37{,}4\\,m^2") viết chữ đứng \\text{m}: KaTeX mặc định coi m là biến, vẽ nghiêng như chữ "п"."""
+    # \hl{...} (khung vàng phần đang xét) và \dpcm chỉ bản Manim hiểu -> bản Remotion (KaTeX) đổi về dạng thường
+    tex = re.sub(r"\\hl\{", "{", str(tex)).replace("\\dpcm", "\\text{(đpcm)}")
     return re.sub(r"(\d|\})\s*\\[,;: ]\s*(km|cm|mm|m|kg|g|ha|l)(?=\^|[^a-zA-Z]|$)", lambda m: m.group(1) + "\\,\\text{" + m.group(2) + "}", tex)
 
 
