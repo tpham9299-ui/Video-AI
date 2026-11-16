@@ -45,20 +45,42 @@ Kiểm tra mới (kiemTraKichBanManim_), lỗi nhẹ, AI tự sửa:
 - công thức không nhắc cạnh / góc nào trên hình;
 - viết "góc" / "tam giác" bằng chữ trong công thức.
 
+## Thống nhất phong cách với video xác suất / thực tế (yêu cầu bổ sung)
+Mỗi video hình học gồm hai lớp:
+- **Lớp vỏ chung (Remotion)**, giống hệt mọi video khác:
+  - nền tự tạo, thanh tiêu đề (LỚP, tên bài), thanh các bước (ĐỀ BÀI → GIẢI → ...), tiêu đề bước chữ to;
+  - phụ đề karaoke, giọng đọc, nhạc nền tự giảm khi có giọng, tiếng hiệu ứng (chuyển bước, "tách" khi hiện dòng, "ting" khi đóng khung kết quả);
+  - ảnh bìa cùng kiểu.
+- **Lớp toán (Manim, nền trong suốt)**, nằm đúng vùng nội dung giữa tiêu đề bước và phụ đề:
+  - hình, công thức, mọi chuyển động và hiệu ứng thị giác;
+  - thẻ ĐỀ BÀI, thẻ KIẾN THỨC, khung công thức cùng kiểu thẻ của các video khác (nền tối trong mờ, viền màu nhấn của loại "Hình học").
+- Chữ (cả chữ tiếng Việt trong công thức) dùng phông **Be Vietnam Pro**, cùng phông với phụ đề của các video khác.
+- Có **giọng đọc giảng giải**:
+  - mỗi bước có trường `kien_thuc` (định lý / tính chất dùng ở bước đó), hiện thành thẻ KIẾN THỨC;
+  - lời thoại phải nói rõ dùng kiến thức gì, vì sao áp dụng được, rồi mới nêu kết quả;
+  - thiếu `kien_thuc` hoặc thiếu lý do thì kiểm tra kịch bản bắt sửa.
+- Tiêu đề bước không ghi "Bước 1:" (thanh bước đã có); `tu_khoa` là cụm được phóng to.
+
 ## Chạy ở đâu (GitHub, workflow dung-video.yml)
-- Sau bước tạo giọng đọc, nếu kịch bản là `HINH_HOC`:
-  - cài LaTeX (xelatex, để chữ Việt trong công thức hiển thị đúng) và Manim;
-  - chạy `scripts/manim_hinh.py` → ra video + ảnh bìa (ảnh bìa cũng vẽ bằng Manim, đồng thời là khung hình đầu cho TikTok);
-  - bỏ qua Remotion (không đóng gói, không chia khúc);
-  - đi thẳng tới bước tải lên Drive và báo về Apps Script như cũ.
-- Manim lỗi → tự quay về Remotion, video vẫn ra.
-- Tùy chọn (GitHub → Settings → Variables):
-  - `MANIM_HINH = TAT`: tắt Manim;
-  - `MANIM_GIONG = 0`: chỉ nhạc nền như video mẫu (mặc định có giọng đọc + nhạc nền nhỏ tự giảm khi có giọng).
-- Dựng thử tay: Actions → Dựng video → chọn mẫu `kich_ban_hinh_manim` (bài "AE·AC = AF·AB", 8 bước), `kich_ban_hinh_hoc` hoặc `kich_ban_hinh_khong_gian`.
+1. Sau bước tạo giọng đọc, nếu kịch bản là `HINH_HOC`:
+   - cài LaTeX (xelatex) + Manim;
+   - chạy `scripts/manim_hinh.py`, ra:
+     - `out/<ID>_manim.mov` (lớp trong suốt);
+     - `public/manim/bia.png` (hình cho ảnh bìa);
+     - đánh dấu `manimLop` trong props.
+2. Remotion dựng phần vỏ như mọi video (chia khúc dựng song song), bỏ qua bước kiểm duyệt bố cục của Remotion vì phần hình không còn do Remotion vẽ.
+3. Máy ghép đè lớp Manim lên video (lùi 1 khung vì khung 0 là ảnh bìa), tải lên Drive và báo về Apps Script như cũ.
+4. Manim lỗi → video dựng hoàn toàn bằng Remotion như cũ (video vẫn ra).
+
+Tắt Manim: GitHub → Settings → Variables → `MANIM_HINH = TAT`.
+
+Dựng thử tay: Actions → Dựng video → chọn mẫu:
+- `kich_ban_hinh_manim`: bài "AE·AC = AF·AB", 8 bước, có thẻ kiến thức;
+- `kich_ban_hinh_hoc`;
+- `kich_ban_hinh_khong_gian`.
 
 ## Cần dán lại trên Apps Script
-- **HinhHoc.gs** (lời nhắc Manim + kiểm tra mới). Nếu chưa có tệp này thì tạo mới: bài hình học chỉ được sinh khi có tệp này.
+- **HinhHoc.gs** (lời nhắc Manim, trường kien_thuc, kiểm tra mới). Nếu chưa có tệp này thì tạo mới: bài hình học chỉ được sinh khi có tệp này.
 - **KiemTraHinh.gs** (gọi kiểm tra mới).
 
 ## Đã thử

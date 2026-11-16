@@ -27,7 +27,7 @@
    "so": 1,
    "loai": "mo_dau",
    "tieu_de_canh": "Một hệ thức đẹp",
-   "tu_khoa": "Một",
+   "tu_khoa": "hệ thức",
    "nhan": "",
    "giu_san_khau": false,
    "giong_doc": "rõ ràng",
@@ -101,7 +101,7 @@
    "so": 2,
    "loai": "de_bai",
    "tieu_de_canh": "Đề bài",
-   "tu_khoa": "Đề",
+   "tu_khoa": "Đề bài",
    "nhan": "",
    "giu_san_khau": true,
    "giong_doc": "rõ ràng",
@@ -197,7 +197,7 @@
    "so": 3,
    "loai": "y_do",
    "tieu_de_canh": "Ý tưởng: đổi tích thành tỉ số",
-   "tu_khoa": "Ý",
+   "tu_khoa": "tỉ số",
    "nhan": "",
    "giu_san_khau": true,
    "giong_doc": "rõ ràng",
@@ -290,17 +290,18 @@
      "hanh_dong": []
     }
    },
-   "thoi_luong_giay": 7
+   "thoi_luong_giay": 7,
+   "kien_thuc": "Tích bằng nhau ⇔ tỉ lệ thức: a·d = b·c ⇔ a/b = c/d"
   },
   {
    "so": 4,
    "loai": "giai",
-   "tieu_de_canh": "Bước 1: hai góc vuông",
-   "tu_khoa": "Bước",
+   "tieu_de_canh": "Hai góc vuông",
+   "tu_khoa": "góc vuông",
    "nhan": "",
    "giu_san_khau": true,
    "giong_doc": "rõ ràng",
-   "loi_thoai": "Vì BE là đường cao nên góc AEB vuông. Tương tự CF là đường cao nên góc AFC vuông.",
+   "loi_thoai": "Nhìn đường cao BE đang sáng lên. Theo định nghĩa, đường cao vuông góc với cạnh đối diện, nên góc AEB là góc vuông. Tương tự, CF là đường cao nên góc AFC cũng vuông.",
    "noi_dung_man_hinh": [
     "\\hl{\\angle AEB} = 90^\\circ \\;\\text{(vì BE là đường cao)}",
     "\\hl{\\angle AFC} = 90^\\circ \\;\\text{(vì CF là đường cao)}"
@@ -389,17 +390,18 @@
      "hanh_dong": []
     }
    },
-   "thoi_luong_giay": 7
+   "thoi_luong_giay": 7,
+   "kien_thuc": "Đường cao vuông góc với cạnh đối diện → tạo góc 90°"
   },
   {
    "so": 5,
    "loai": "giai",
-   "tieu_de_canh": "Bước 2: góc A chung",
-   "tu_khoa": "Bước",
+   "tieu_de_canh": "Góc A chung",
+   "tu_khoa": "góc A",
    "nhan": "",
    "giu_san_khau": true,
    "giong_doc": "rõ ràng",
-   "loi_thoai": "Hai tam giác AEB và AFC còn có chung góc A.",
+   "loi_thoai": "Bây giờ xét hai tam giác AEB và AFC đang được tô màu. Cả hai đều có đỉnh A, và hai cạnh của góc nằm trên cùng hai tia AB và AC, nên chúng có chung góc A.",
    "noi_dung_man_hinh": [
     "\\angle EAB = \\angle FAC \\;\\text{(góc chung)}"
    ],
@@ -491,17 +493,18 @@
    "nhan_manh_hinh": [
     "\\triangle AEB",
     "\\triangle AFC"
-   ]
+   ],
+   "kien_thuc": "Góc chung: hai tam giác có cùng một đỉnh và hai cạnh nằm trên cùng hai tia"
   },
   {
    "so": 6,
    "loai": "giai",
-   "tieu_de_canh": "Bước 3: hai tam giác đồng dạng",
-   "tu_khoa": "Bước",
+   "tieu_de_canh": "Hai tam giác đồng dạng",
+   "tu_khoa": "đồng dạng",
    "nhan": "",
    "giu_san_khau": true,
    "giong_doc": "rõ ràng",
-   "loi_thoai": "Hai tam giác vuông có một góc nhọn bằng nhau thì đồng dạng, theo trường hợp góc góc.",
+   "loi_thoai": "Hai tam giác vuông này đã có một góc nhọn bằng nhau là góc A. Theo trường hợp đồng dạng góc góc, hai tam giác AEB và AFC đồng dạng.",
    "noi_dung_man_hinh": [
     "\\triangle AEB \\sim \\triangle AFC \\;\\text{(g.g)}"
    ],
@@ -593,17 +596,18 @@
    "tach": [
     "AEB",
     "AFC"
-   ]
+   ],
+   "kien_thuc": "Trường hợp đồng dạng góc – góc (g.g): hai góc bằng nhau từng đôi một"
   },
   {
    "so": 7,
    "loai": "giai",
-   "tieu_de_canh": "Bước 4: lập tỉ số",
-   "tu_khoa": "Bước",
+   "tieu_de_canh": "Lập tỉ số rồi nhân chéo",
+   "tu_khoa": "tỉ số",
    "nhan": "",
    "giu_san_khau": true,
    "giong_doc": "rõ ràng",
-   "loi_thoai": "Từ hai tam giác đồng dạng, ta lập tỉ số các cạnh tương ứng rồi nhân chéo.",
+   "loi_thoai": "Vì hai tam giác đồng dạng nên các cạnh tương ứng tỉ lệ: AE trên AF bằng AB trên AC. Nhân chéo tỉ lệ thức, ta được AE nhân AC bằng AF nhân AB.",
    "noi_dung_man_hinh": [
     "\\frac{AE}{AF} = \\frac{AB}{AC}",
     "AE\\cdot AC = AF\\cdot AB"
@@ -692,13 +696,14 @@
      "hanh_dong": []
     }
    },
-   "thoi_luong_giay": 7
+   "thoi_luong_giay": 7,
+   "kien_thuc": "Tam giác đồng dạng ⇒ các cạnh tương ứng tỉ lệ; nhân chéo tỉ lệ thức"
   },
   {
    "so": 8,
    "loai": "dap_an",
    "tieu_de_canh": "Kết luận",
-   "tu_khoa": "Kết",
+   "tu_khoa": "Kết luận",
    "nhan": "",
    "giu_san_khau": true,
    "giong_doc": "rõ ràng",

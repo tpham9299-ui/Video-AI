@@ -99,7 +99,9 @@ export const Canh: React.FC<{
   const nhoeVao = (1 - vao) * 12 + (1 - ra) * 10;
 
   const giayAm = canh.cau.length ? canh.cau[canh.cau.length - 1].ket : 3;
-  const kieu = sanKhau ? 'sankhau' : phanLoaiHinh(canh.minhHoa.loai, canh.minhHoa.moTa, canh.minhHoa.duLieu);
+  // bài hình học dựng bằng Manim: cảnh chỉ còn phần vỏ chung (tiêu đề, thanh bước, phụ đề, âm thanh); hình + công thức do Manim ghép đè
+  const lopManim = GIAO_DIEN.manimLop;
+  const kieu = lopManim ? null : sanKhau ? 'sankhau' : phanLoaiHinh(canh.minhHoa.loai, canh.minhHoa.moTa, canh.minhHoa.duLieu);
   const laMoDau = canh.so === 1;
   const laCuoi = canh.so === tongCanh;
   const coHinh = kieu !== null;
@@ -110,8 +112,8 @@ export const Canh: React.FC<{
   const nDong = canh.noiDung.length;
   const batDong = canh.noiDung.map((_, i) => (nCau ? canh.cau[Math.min(nCau - 1, Math.floor((i * nCau) / nDong))].bat + 0.05 : 0.4 + i * 0.8));
   // cảnh ĐỀ BÀI: thẻ "ĐỀ CHO / CẦN TÌM" thay cho dòng công thức (đề phải được nêu đủ trước khi vào mô phỏng)
-  const theDe = canh.loai === 'de_bai' && coTheDe(deBai) ? deBai! : null;
-  const hienCongThuc = !theDe && nDong > 0 && !(coHook && coHinh && nDong > 1);
+  const theDe = !lopManim && canh.loai === 'de_bai' && coTheDe(deBai) ? deBai! : null;
+  const hienCongThuc = !lopManim && !theDe && nDong > 0 && !(coHook && coHinh && nDong > 1);
   const kieuTB = canh.trinhBay;
   const dungBienDoi = kieuTB === 'bien_doi' && coTheBienDoi(canh.noiDung);
   const dungCongDon = (kieuTB === 'cong_don' || kieuTB === 'bien_doi') && !dungBienDoi && coTheCongDon(canh.noiDung);
@@ -289,6 +291,7 @@ export const Canh: React.FC<{
       ) : null}
 
       {/* Chú thích + công thức */}
+      {lopManim ? null : (
       <NhoeHuong nx={ccCT.nx} ny={ccCT.ny} style={{position: 'absolute', left: 50, right: 50, top: coHinh ? yNoiDung + caoSan + 16 : Y_SAN, bottom: 1920 - dayVung, display: 'flex', flexDirection: 'column', justifyContent: coHinh ? 'flex-start' : 'center', alignItems: 'center', gap: 16, opacity: frame < 4 ? 0 : ccCT.mo, transform: `perspective(1600px) translate(${ccCT.x}px, ${ccCT.y}px) rotateX(${ccCT.rx}deg) rotateY(${ccCT.ry}deg) rotateZ(${ccCT.rz}deg) scale(${ccCT.s})`, clipPath: ccCT.clip}}>
         <VuaKhung maxW={980} maxH={dayVung - (coHinh ? yNoiDung + caoSan + 16 : Y_SAN)} goc="center top">
         {theDe ? (
@@ -326,6 +329,7 @@ export const Canh: React.FC<{
         ) : null}
         </VuaKhung>
       </NhoeHuong>
+      )}
 
       {/* Đầu cảnh: nhãn + tiêu đề (hoặc câu hook ở cảnh 1) */}
       <div style={{position: 'absolute', left: 40, right: 40, top: moi ? (coHook ? 200 : 250) : Y_DAU, height: Y_SAN - (moi ? (coHook ? 200 : 250) : Y_DAU) - (moi ? 4 : 10), display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: moi ? 'center' : undefined, opacity: ra, filter: nhoeVao > 0.3 ? `blur(${nhoeVao}px)` : undefined}}>
@@ -384,7 +388,7 @@ export const Canh: React.FC<{
         </Sequence>
       ) : null}
       {/* con dấu BẪY! đóng lên sân khấu (rung theo máy quay) */}
-      {fDau >= 0 && frame >= fDau ? (
+      {!lopManim && fDau >= 0 && frame >= fDau ? (
         <div style={{position: 'absolute', left: 540 + 150, top: yNoiDung + Math.min(caoSan * 0.26, 220), opacity: ra}}>
           <DauBay f={frame - fDau} />
         </div>

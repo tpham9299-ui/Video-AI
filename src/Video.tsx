@@ -110,6 +110,7 @@ const NoiDungVideo: React.FC<Props> = (props) => {
   // bộ hiệu ứng mới: một màu nhấn cho cả video = màu loại câu hỏi (đúng màu trên ảnh bìa)
   GIAO_DIEN.chuyenDong = phongCach.chuyenDong === 'moi' ? 'moi' : 'cu';
   GIAO_DIEN.nhan = MAU_LOAI[(props.bia && props.bia.loai) || ''] || '#3BF2D0';
+  GIAO_DIEN.manimLop = !!props.manimLop;   // bài hình học: phần hình + công thức do Manim dựng, ghép đè sau
   const moi = GIAO_DIEN.chuyenDong === 'moi';
   const amNhac = taoAmLuongNhac(props);
   const ketThuc = outro ? outro.batDau : tongFrame;
@@ -145,6 +146,14 @@ const NoiDungVideo: React.FC<Props> = (props) => {
               </Sequence>
             ) : null
           )
+        : null}
+      {/* bài hình học dựng bằng Manim: tiếng "tách" khi Manim hiện dòng công thức, "ting" khi đóng khung kết quả */}
+      {props.manimLop && props.suKienManim
+        ? props.suKienManim.slice(0, 80).map((e, i) => (
+            <Sequence key={`sfxm${i}`} from={Math.max(0, e.f)} durationInFrames={e.kieu === 'khung' ? 70 : 20} layout="none">
+              <Audio src={staticFile(e.kieu === 'khung' ? 'sfx/ting.wav' : 'sfx/click.wav')} volume={e.kieu === 'khung' ? 0.4 : 0.1} />
+            </Sequence>
+          ))
         : null}
       {/* tiếng "vút lên" dồn nén ngay trước cảnh đáp án */}
       {canh.map((c) =>

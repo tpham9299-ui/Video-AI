@@ -1,47 +1,49 @@
 #!/usr/bin/env python3
 """
-manim_hinh.py - DỰNG VIDEO HÌNH HỌC 100% BẰNG MANIM (theo phong cách các video hình học mẫu).
+manim_hinh.py - PHẦN TOÁN CỦA VIDEO HÌNH HỌC DỰNG 100% BẰNG MANIM (hình, công thức, chuyển động, hiệu ứng thị giác).
 
 Cách dùng (sau scripts/chuanbi.py, đã có public/props.json + giọng đọc):
     python manim_hinh.py public/props.json kich_ban.json out/ [--public public]
-Ra: out/<ID>.mp4 (video + giọng + nhạc), out/<ID>_bia.jpg (ảnh bìa, đồng thời là khung hình đầu).
+Ra:
+- out/<ID>_manim.mov : lớp trong suốt (hình + công thức + thẻ kiến thức) đúng vùng nội dung của khung video;
+- public/manim/bia.png : hình đầy đủ cho ảnh bìa;
+- public/props.json thêm manimLop / anhManimBia / suKienManim.
+Remotion dựng PHẦN VỎ CHUNG của mọi video (nền tự tạo, tiêu đề, thanh bước, phụ đề, giọng đọc, nhạc nền, tiếng hiệu ứng)
+rồi máy ghép đè lớp Manim lên -> video hình học thống nhất phong cách với video xác suất / thực tế.
 
-Phong cách (bám video mẫu):
-- nền #111, tiêu đề vàng chữ có chân ở trên cùng, hình ở nửa trên, công thức ở dưới;
-- MỖI ĐẠI LƯỢNG MỘT MÀU: đoạn thẳng / góc / tam giác / mặt phẳng được nhắc tới mang màu riêng, và trong công thức
-  đúng đại lượng đó cũng được tô cùng màu (nhìn công thức là biết nó nằm ở đâu trên hình);
-- vẽ dần (Create) cạnh, điểm, nhãn theo thứ tự đề bài; đường kẻ thêm nét đứt;
-- MỖI BƯỚC CHỈ LÀM NỔI phần đang xét: cạnh/góc/tam giác được nhắc trong bước sáng và dày lên, phần còn lại mờ đi;
-  mỗi dòng công thức hiện ra thì các cạnh trong dòng đó lóe sáng chạy dọc theo cạnh;
-- công thức biến đổi từng bước (TransformMatchingShapes), dòng cũ mờ đi; \\hl{...} trong công thức = khung vàng quanh
-  phần đang xét; dòng kết luận đóng khung vàng;
-- tam giác được so sánh (\\triangle ABC \\sim / = \\triangle DEF) được tách ra đặt cạnh nhau, tô màu;
-- thời lượng mỗi bước = đúng thời lượng giọng đọc của cảnh (props.json), dòng công thức hiện theo từng câu nói.
-Biến môi trường: MANIM_GIONG=0 -> chỉ nhạc (như video mẫu), mặc định có giọng đọc + nhạc nền nhỏ.
-                 MANIM_CHAT_LUONG=thap -> 540x960 (chạy thử nhanh).
+Hiệu ứng (theo video hình học mẫu):
+- MỖI ĐẠI LƯỢNG MỘT MÀU: đoạn thẳng / góc / tam giác / mặt phẳng được nhắc tới mang màu riêng, công thức tô cùng màu;
+- vẽ dần (Create) cạnh, điểm, nhãn; đường kẻ thêm nét đứt;
+- MỖI BƯỚC CHỈ LÀM NỔI phần đang xét (sáng, dày, tô màu), phần còn lại mờ đi; dòng công thức hiện ra thì cạnh trong
+  dòng lóe sáng chạy dọc theo cạnh;
+- thẻ KIẾN THỨC (định lý / tính chất dùng ở bước đó); công thức biến đổi từng bước; \\hl{...} khung vàng phần đang xét;
+  dòng kết luận đóng khung vàng; hai tam giác so sánh được tách ra đặt cạnh nhau;
+- thời lượng mỗi bước = đúng giọng đọc của cảnh, dòng công thức hiện theo từng câu nói.
+MANIM_CHAT_LUONG=thap -> 540x960 (chạy thử nhanh).
 """
 import json
 import math
 import os
 import re
 import shutil
-import subprocess
 import sys
 
 import numpy as np
-from manim import (DOWN, LEFT, ORIGIN, RIGHT, UP, Arc, Circle, Circumscribe, Create, DashedLine, Dot, FadeIn, FadeOut,
-                   Flash, GrowFromCenter, Line, MathTex, Polygon, Scene, ShowPassingFlash, SurroundingRectangle, TexTemplate,
-                   Text, TransformMatchingShapes, VGroup, VMobject, Write, config, tempconfig)
+from manim import (DOWN, LEFT, RIGHT, UP, Arc, Circle, Circumscribe, Create, DashedLine, Dot, FadeIn, FadeOut,
+                   GrowFromCenter, Line, MathTex, MoveToTarget, Polygon, RoundedRectangle, Scene, ShowPassingFlash,
+                   SurroundingRectangle, TexTemplate, Text, TransformMatchingShapes, VGroup, VMobject, Write, tempconfig)
 
 NEN = "#111111"
 VANG = "#FFD43B"
-TRANG = "#E8E8E8"
+TRANG = "#EAF2F4"
+NHAN = "#4FC3F7"      # màu nhấn của loại "Hình học" (MAU_LOAI trong src/theme.ts), như viền thẻ ở các video khác
+NEN_THE = "#06141B"
 XAM = "#9AA0A6"
 NET_DUT = "#FFE066"
 TRON = "#74C0FC"
 BANG_MAU = ["#FF6B6B", "#4ECDC4", "#FFA94D", "#B197FC", "#69DB7C", "#74C0FC", "#F783AC", "#E599F7", "#63E6BE", "#FF8787"]
 MAU_MIEN = ["#4ECDC4", "#FFA94D", "#B197FC", "#69DB7C", "#F783AC", "#74C0FC"]
-PHONG = "Noto Serif"
+PHONG = "Be Vietnam Pro"
 
 TEX = TexTemplate(
     tex_compiler="xelatex", output_format=".xdv",
@@ -53,9 +55,10 @@ TEX = TexTemplate(
 W, H = 9.0, 16.0
 Y_TIEU_DE = 7.25
 Y_BUOC = 6.35
-HINH_TREN, HINH_DUOI, HINH_RONG = 5.8, -1.3, 8.4
-CT_TREN, CT_DUOI, CT_RONG = -1.75, -7.2, 8.4
-CO_CT = 54
+# vùng của Manim = vùng nội dung của video Remotion (dưới tiêu đề bước y=470px, trên phụ đề y=1448px)
+HINH_TREN, HINH_DUOI, HINH_RONG = 3.95, -0.3, 8.6
+CT_TREN, CT_DUOI, CT_RONG = -0.45, -4.05, 8.4
+CO_CT = 48
 
 # ---------- NHẬN DIỆN ĐẠI LƯỢNG trong chữ / công thức ----------
 CHU_VIET = "A-Za-zÀ-ỹđĐ"
@@ -469,9 +472,6 @@ class VideoHinh(Scene):
     mo = None          # MoHinh
     bia = False        # True: chỉ dựng ảnh bìa
 
-    def setup(self):
-        self.camera.background_color = NEN
-
     # ---------- tọa độ ----------
     def chuan_bi_toa_do(self):
         mo = self.mo
@@ -706,6 +706,30 @@ class VideoHinh(Scene):
             g.add(VGroup(tg, nh))
         return g
 
+    # ---------- thẻ (khung chữ) cùng kiểu thẻ của video xác suất / thực tế ----------
+    def the_khung(self, noi_dung, nhan="", rong=CT_RONG + 0.3, dem=0.24):
+        """Khung bo góc nền tối trong mờ, viền màu nhấn; nhãn viên thuốc (vd ĐỀ BÀI, KIẾN THỨC) ở góc trên trái,
+        nội dung nằm NGAY DƯỚI nhãn (không đè)."""
+        pill = None
+        if nhan:
+            chu = Text(nhan, font=PHONG, weight="BOLD", font_size=22, color=NEN_THE)
+            vien = RoundedRectangle(width=chu.width + 0.34, height=chu.height + 0.18, corner_radius=0.13, stroke_width=0,
+                                    fill_color=NHAN, fill_opacity=1)
+            chu.move_to(vien)
+            pill = VGroup(vien, chu)
+        cao = noi_dung.height + 2 * dem + (pill.height + 0.1 if pill else 0)
+        khung = RoundedRectangle(width=rong, height=cao, corner_radius=0.22, stroke_color=NHAN, stroke_width=2.2,
+                                 stroke_opacity=0.55, fill_color=NEN_THE, fill_opacity=0.72)
+        g = VGroup(khung)
+        tren = khung.get_top()[1] - dem * 0.7
+        if pill:
+            pill.move_to([khung.get_left()[0] + 0.25 + pill.width / 2, tren - pill.height / 2, 0])
+            g.add(pill)
+            tren -= pill.height + 0.1
+        noi_dung.move_to([0, tren - noi_dung.height / 2, 0])
+        g.add(noi_dung)
+        return g
+
     # ---------- dựng cả video ----------
     def construct(self):
         mo = self.mo
@@ -713,52 +737,35 @@ class VideoHinh(Scene):
         self.dung_phan_tu()
         self.tren_man = set()
         self.da_to = set()
-        tieu_de = Text(str(mo.props.get("tieuDe") or "").upper()[:48], font=PHONG, weight="BOLD", color=VANG, font_size=40)
-        vua_rong(tieu_de, 8.3).move_to([0, Y_TIEU_DE, 0])
-        th = mo.props.get("thuongHieu") or {}
-        ky = str(th.get("ten") or th.get("handle") or "").strip()
         if self.bia:
-            return self.dung_bia(tieu_de)
+            return self.dung_bia()
         self.da = 0.0
+        self.su_kien = []
         tong = 0.0
-        self.add(tieu_de)
-        if ky:
-            self.add(Text("Video by: " + ky, font=PHONG, font_size=24, color="#FFFFFF").set_opacity(0.18).move_to([0, HINH_DUOI - 0.15, 0]))
-        buoc = None
-        cu = VGroup()     # công thức đang trên màn
+        cu = VGroup()     # thẻ / công thức đang trên màn
         tach = None
         fps = mo.fps
         for i, cp in enumerate(mo.canh_p):
             D = cp["soFrame"] / fps
+            self.t0 = cp["batDau"] / fps
             self.da = 0.0
             ck = mo.canh_k[i]
-            # 1) dọn bước trước, tiêu đề bước mới
-            ra = [FadeOut(cu, shift=UP * 0.3)] if len(cu) else []
+            # 1) dọn bước trước (tiêu đề bước, thanh bước, phụ đề do phần vỏ chung của Remotion lo)
+            ra = [FadeOut(cu, shift=UP * 0.25)] if len(cu) else []
             if tach is not None:
                 ra.append(FadeOut(tach))
                 tach = None
-            tdb = str(cp.get("tieuDeCanh") or ck.get("tieu_de_canh") or "").strip()
-            moi_buoc = None
-            if tdb:
-                moi_buoc = vua_rong(Text(tdb[:60], font=PHONG, slant="ITALIC", color="#CFD8DC", font_size=30), 8.4).move_to([0, Y_BUOC, 0])
-                ra.append(FadeOut(buoc) if buoc is not None else None)
-                ra.append(FadeIn(moi_buoc, shift=DOWN * 0.15))
-            self.choi(*ra, run_time=0.45 if i else 0.3)
-            if moi_buoc is not None:
-                buoc = moi_buoc
+            if ra:
+                self.choi(*ra, run_time=0.4)
             cu = VGroup()
-            if not mo.cong_thuc(i):
-                # cảnh không có công thức: mở đầu -> câu hỏi lớn; đề bài -> chữ đề bài (để người xem đọc theo)
-                chu = ""
-                if i == 0 or str(cp.get("loai")) in ("mo_dau", "hook"):
-                    chu, co_chu = str(mo.props.get("hookChu") or mo.props.get("hook") or "").strip(), 50
-                if str(cp.get("loai")) == "de_bai" or (not chu and i <= 1):
-                    chu, co_chu = str(mo.de_bai or "").strip(), 36
-                if chu:
-                    the = khoi_chu(chu, co_chu, 8.2, CT_TREN - CT_DUOI - 0.6)
-                    the.move_to([0, CT_TREN - 0.35 - the.height / 2, 0])
-                    self.choi(Write(the) if co_chu > 40 else FadeIn(the, shift=UP * 0.2), run_time=min(1.0, D * 0.2))
-                    cu.add(the)
+            loai = str(cp.get("loai") or "")
+            if loai == "de_bai" and not mo.cong_thuc(i) and mo.de_bai:
+                # cảnh đề bài: thẻ ĐỀ BÀI (cùng kiểu thẻ đề của các video khác), hình dựng theo lời đọc
+                chu = khoi_chu(mo.de_bai.strip(), 34, CT_RONG - 0.3, CT_TREN - CT_DUOI - 0.9)
+                the = self.the_khung(chu, "ĐỀ BÀI")
+                the.move_to([0, CT_TREN - the.height / 2, 0])
+                self.choi(FadeIn(the, shift=UP * 0.2), run_time=min(0.8, D * 0.2))
+                cu.add(the)
             # 2) vẽ phần hình mới của cảnh này (theo thứ tự trong kịch bản: cạnh -> đường tròn -> góc -> vùng tô)
             moi = [p for p in mo.pt if p["canh"] == i and (p["kieu"], p["khoa"]) in self.hinh]
             moi_doan = [p for p in moi if p["kieu"] == "doan"]
@@ -787,16 +794,12 @@ class VideoHinh(Scene):
                 if p["kieu"] == "doan":
                     continue
                 m = self.hinh[(p["kieu"], p["khoa"])]
-                if p["kieu"] == "mien":
-                    buoc_ve.append([FadeIn(m)])
-                else:
-                    buoc_ve.append([Create(m)])
+                buoc_ve.append([FadeIn(m)] if p["kieu"] == "mien" else [Create(m)])
                 self.tren_man.add(m)
             if buoc_ve:
                 rt = max(0.35, min(0.9, ngan_sach / len(buoc_ve)))
                 for g in buoc_ve:
                     self.choi(*g, run_time=rt)
-            # vùng tô/miền phải nằm dưới cạnh
             for p in moi:
                 if p["kieu"] == "mien":
                     self.bring_to_back(self.hinh[(p["kieu"], p["khoa"])])
@@ -817,15 +820,15 @@ class VideoHinh(Scene):
                 for k in sang:
                     if k[0] == "mien" and k in self.hinh:
                         self.bring_to_back(self.hinh[k])
-            # 4) công thức: mỗi dòng hiện theo câu nói tương ứng; cạnh trong dòng lóe sáng
+            # 4) KIẾN THỨC dùng ở bước này + công thức: mỗi dòng hiện theo câu nói tương ứng; cạnh trong dòng lóe sáng
             dong = mo.cong_thuc(i)
             cau = cp.get("cau") or []
             dap_an = la_dap_an(cp)
             bien_doi = str(cp.get("trinhBay") or "") == "bien_doi" and len(dong) >= 2
             ds_tg = []
-            for s in dong:
-                if re.search(r"\\sim|\\cong|=", s):
-                    tg = mo.nhac_toi(s)["tam_giac"]
+            for s_ in dong:
+                if re.search(r"\\sim|\\cong|=", s_):
+                    tg = mo.nhac_toi(s_)["tam_giac"]
                     if len(tg) >= 2:
                         ds_tg = tg
                         break
@@ -833,27 +836,39 @@ class VideoHinh(Scene):
                 ds_tg = [tuple(ten_chuan(x) for x in re.findall(TEN_DIEM, str(t)))[:3] for t in ck.get("tach")][:2]
                 ds_tg = [t for t in ds_tg if len(t) == 3 and all(x in self.P for x in t)]
             y_ct = CT_TREN
+            kt = str(ck.get("kien_thuc") or "").strip()
+            if kt and dong:
+                chu_kt = khoi_chu(kt[:110], 28, CT_RONG - 0.4, 1.0, mau="#DDF6FF")
+                the_kt = self.the_khung(chu_kt, "KIẾN THỨC", dem=0.18)
+                the_kt.move_to([0, y_ct - the_kt.height / 2, 0])
+                self.choi(FadeIn(the_kt, shift=RIGHT * 0.3), run_time=0.5)
+                cu.add(the_kt)
+                y_ct -= the_kt.height + 0.12
             if len(ds_tg) >= 2:
                 tach = self.tach_tam_giac(ds_tg)
+                # chừa đủ chỗ cho các dòng công thức bên dưới (mỗi dòng ~0,6 đơn vị) rồi mới chia cho hai tam giác
+                cao_t = max(1.1, min(2.0, (y_ct - CT_DUOI) - 0.65 * max(1, len(dong)) - 0.75))
                 for j, gt in enumerate(tach):
                     gt.generate_target()
-                    f_t = min(3.8 / max(0.01, gt.width), 2.5 / max(0.01, gt.height))
+                    f_t = min(3.6 / max(0.01, gt.width), cao_t / max(0.01, gt.height))
                     gt.target.scale(f_t)
                     for nh_t in gt.target[1]:
                         nh_t.scale(1 / f_t)     # nhãn đỉnh giữ cỡ chữ dễ đọc
-                    gt.target.move_to([(-2.2 if j == 0 else 2.2), CT_TREN - 1.35, 0])
-                from manim import MoveToTarget
+                    gt.target.move_to([(-2.2 if j == 0 else 2.2), y_ct - 0.15 - cao_t / 2, 0])
                 self.choi(*[MoveToTarget(gt) for gt in tach], run_time=0.9)
-                y_ct = CT_TREN - 2.75
-            mob = [vua_rong(tao_cong_thuc(self.dong_tex(s), CO_CT), CT_RONG) for s in dong]
+                y_ct -= cao_t + 0.3
+            mob = [vua_rong(tao_cong_thuc(self.dong_tex(s_), CO_CT), CT_RONG - 0.4) for s_ in dong]
             if mob:
-                if True:
-                    g = VGroup(*mob).arrange(DOWN, buff=0.38)
-                    cao = y_ct - CT_DUOI - 0.2
-                    if g.height > cao:
-                        g.scale_to_fit_height(cao)
-                    g.next_to([0, y_ct, 0], DOWN, buff=0.25)
-                    g.set_x(0)
+                g = VGroup(*mob).arrange(DOWN, buff=0.3)
+                cao = y_ct - CT_DUOI - 0.5
+                if g.height > cao:
+                    g.scale_to_fit_height(cao)
+                nen_ct = RoundedRectangle(width=CT_RONG + 0.3, height=g.height + 0.5, corner_radius=0.22, stroke_color=NHAN,
+                                          stroke_width=2.2, stroke_opacity=0.55, fill_color=NEN_THE, fill_opacity=0.72)
+                nen_ct.move_to([0, y_ct - 0.05 - nen_ct.height / 2, 0])
+                g.move_to(nen_ct)
+                self.choi(FadeIn(nen_ct), run_time=0.3)
+                cu.add(nen_ct)
             t_con = D - self.da - (1.4 if dap_an else 0.4)
             nc = len(cau)
             for j, m in enumerate(mob):
@@ -877,36 +892,28 @@ class VideoHinh(Scene):
                         loe.append(self.hinh[("vuong", gk)].animate.set_stroke(color=mo.mau.get(("goc", gk), VANG), width=4, opacity=1))
                         continue
                     if ("goc", gk) not in self.hinh:
-                        mau = mo.mau.get(("goc", gk), VANG)
                         a, o, b = mo.goc_ba.get(gk, list(gk))
-                        cg = self.cung_goc([a, o, b], mau)
-                        self.hinh[("goc", gk)] = cg
+                        self.hinh[("goc", gk)] = self.cung_goc([a, o, b], mo.mau.get(("goc", gk), VANG))
                     if self.hinh[("goc", gk)] not in self.tren_man:
                         loe.append(Create(self.hinh[("goc", gk)]))
                         self.tren_man.add(self.hinh[("goc", gk)])
+                self.ghi_su_kien("dong")
                 if bien_doi and j > 0:
-                    truoc = mob[j - 1]
-                    # dòng trước thu nhỏ, mờ, đẩy lên; dòng mới biến hình ra từ bản sao dòng trước
                     # dòng mới biến hình ra từ bản sao dòng trước (thấy rõ từng phần đi đâu), các dòng cũ mờ đi
-                    self.choi(TransformMatchingShapes(truoc.copy(), m), *[x.animate.set_opacity(0.4) for x in mob[:j]], *loe, run_time=rt)
-                    cu.add(m)
+                    self.choi(TransformMatchingShapes(mob[j - 1].copy(), m), *[x.animate.set_opacity(0.4) for x in mob[:j]], *loe, run_time=rt)
                 else:
-                    trc = [x.animate.set_opacity(0.5) for x in mob[:j] if not bien_doi]
+                    trc = [x.animate.set_opacity(0.5) for x in mob[:j]]
                     self.choi(Write(m), *trc, *loe, run_time=rt)
-                    cu.add(m)
-            if bien_doi and mob:
-                # dọn các dòng cũ của biến đổi khỏi danh sách để FadeOut cùng lúc ở cảnh sau
-                for m in mob[:-1]:
-                    if m not in cu:
-                        cu.add(m)
-            if mob and not bien_doi and len(mob) > 1:
+                cu.add(m)
+            if mob and len(mob) > 1:
                 self.choi(*[x.animate.set_opacity(1) for x in mob], run_time=0.3)
             # 5) đáp án: khung vàng quanh dòng kết luận
             if dap_an and mob:
-                khung = SurroundingRectangle(mob[-1], color=VANG, buff=0.18, stroke_width=3.5)
+                khung = SurroundingRectangle(mob[-1], color=VANG, buff=0.14, stroke_width=4, corner_radius=0.1)
                 self.doi_toi(max(self.da, min(D - 1.4, D * 0.6)))
+                self.ghi_su_kien("khung")
                 self.choi(Create(khung), run_time=0.7)
-                self.choi(Circumscribe(mob[-1], color=VANG, buff=0.22), run_time=0.7)
+                self.choi(Circumscribe(mob[-1], color=VANG, buff=0.2), run_time=0.7)
                 cu.add(khung)
             self.doi_toi(D - 0.02)
             tong += D
@@ -914,12 +921,13 @@ class VideoHinh(Scene):
         if du > 0.05:
             self.wait(du)
 
-    def dung_bia(self, tieu_de):
-        """Ảnh bìa: tiêu đề to + hình đầy đủ (đại lượng tô màu) + câu hỏi / kết luận đóng khung."""
+    def ghi_su_kien(self, kieu):
+        self.su_kien.append({"f": int(round((self.t0 + self.da) * self.mo.fps)), "kieu": kieu})
+
+    def dung_bia(self):
+        """Hình cho ảnh bìa (nền trong suốt): hình đầy đủ, đại lượng tô màu. Phần còn lại của ảnh bìa do Remotion (AnhBia)
+        làm như mọi video khác."""
         mo = self.mo
-        tieu_de.scale(1.25).move_to([0, Y_TIEU_DE - 0.2, 0])
-        vua_rong(tieu_de, 8.6)
-        self.add(tieu_de)
         for k, m in self.hinh.items():
             if k[0] == "goc" and k not in mo.mau:
                 continue
@@ -931,69 +939,29 @@ class VideoHinh(Scene):
             self.add(m)
         for n in self.P:
             self.add(self.cham[n], self.nhan_diem[n])
-        cau = str(mo.props.get("hookChu") or mo.props.get("hook") or "").strip()
-        if cau:
-            t = vua_rong(Text(cau[:70], font=PHONG, weight="BOLD", color=TRANG, font_size=50), 7.8)
-            t.move_to([0, -3.2, 0])
-            k = SurroundingRectangle(t, color=VANG, buff=0.3, stroke_width=5)
-            self.add(t, k)
 
 
 # ============================================================
-# 4) RÁP TIẾNG (giọng + nhạc) VÀ ẢNH BÌA
+# 4) CHẠY: phông chung + video lớp trong suốt + ảnh hình cho bìa + mốc tiếng
 # ============================================================
-def ffmpeg():
-    return shutil.which("ffmpeg") or "ffmpeg"
-
-
-def ghep_am_thanh(props, public, vid, ra):
-    fps = props.get("fps", 30)
-    tong = props.get("tongFrame", 0) / fps
-    co_giong = os.environ.get("MANIM_GIONG", "1") != "0"
-    vao = ["-i", vid]
-    loc = []
-    nhan = []
-    k = 1
-    if co_giong:
-        for c in props["canh"]:
-            a = os.path.join(public, c.get("audio") or "")
-            if c.get("audio") and os.path.exists(a):
-                vao += ["-i", a]
-                tre = int(round((c["batDau"] + c.get("leadFrame", 0)) / fps * 1000))
-                loc.append("[%d:a]aresample=48000,adelay=%d|%d[g%d]" % (k, tre, tre, k))
-                nhan.append("[g%d]" % k)
-                k += 1
-    nhac = props.get("nhac")
-    co_nhac = bool(nhac) and os.path.exists(os.path.join(public, nhac))
-    if co_nhac:
-        vao += ["-stream_loop", "-1", "-i", os.path.join(public, nhac)]
-        km = k
-        k += 1
-    am = float(props.get("amLuongNhac") or 0.16)
-    if nhan and co_nhac:
-        loc.append("%samix=inputs=%d:normalize=0:dropout_transition=0,asplit=2[giong][sc]" % ("".join(nhan), len(nhan)))
-        loc.append("[%d:a]aresample=48000,volume=%.3f,afade=t=in:d=0.8,afade=t=out:st=%.2f:d=1.5[nh]" % (km, am * 2.2, max(0, tong - 1.5)))
-        loc.append("[nh][sc]sidechaincompress=threshold=0.02:ratio=5:attack=30:release=500[nhd]")
-        loc.append("[giong][nhd]amix=inputs=2:normalize=0:duration=longest,atrim=0:%.3f[a]" % tong)
-    elif nhan:
-        loc.append("%samix=inputs=%d:normalize=0,atrim=0:%.3f[a]" % ("".join(nhan), len(nhan), tong))
-    elif co_nhac:
-        loc.append("[%d:a]aresample=48000,volume=%.3f,afade=t=in:d=1,afade=t=out:st=%.2f:d=2,atrim=0:%.3f[a]" % (km, 0.85, max(0, tong - 2), tong))
-    else:
-        shutil.copy(vid, ra)
-        return
-    lenh = [ffmpeg(), "-y", "-loglevel", "error"] + vao + ["-filter_complex", ";".join(loc), "-map", "0:v", "-map", "[a]",
-                                                         "-c:v", "copy", "-c:a", "aac", "-b:a", "160k", "-t", "%.3f" % tong, ra]
-    subprocess.run(lenh, check=True)
-
-
-def chen_bia_khung_dau(vid, bia, ra, rong, cao):
-    """Khung hình đầu = ảnh bìa (nền tảng lấy khung đầu làm ảnh đại diện), 1/30 giây nên mắt không thấy."""
-    lenh = [ffmpeg(), "-y", "-loglevel", "error", "-i", vid, "-i", bia, "-filter_complex",
-            "[1:v]scale=%d:%d[b];[0:v][b]overlay=0:0:enable='eq(n,0)'[v]" % (rong, cao),
-            "-map", "[v]", "-map", "0:a?", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
-            "-c:a", "copy", "-movflags", "+faststart", ra]
-    subprocess.run(lenh, check=True)
+def nap_phong(public):
+    """Dùng ĐÚNG phông của các video khác (Be Vietnam Pro trong public/fonts) cho chữ thường lẫn chữ trong công thức."""
+    global TEX
+    thu_muc = os.path.abspath(os.path.join(public, "fonts"))
+    try:
+        import manimpango
+        for f in sorted(os.listdir(thu_muc)):
+            if f.startswith("BeVietnamPro") and f.endswith(".ttf"):
+                manimpango.register_font(os.path.join(thu_muc, f))
+    except Exception as e:  # noqa: BLE001
+        print("Không nạp được phông Be Vietnam Pro:", e)
+    if os.path.exists(os.path.join(thu_muc, "BeVietnamPro-Medium.ttf")):
+        TEX = TexTemplate(
+            tex_compiler="xelatex", output_format=".xdv",
+            preamble=r"\usepackage{amsmath}\usepackage{amssymb}\usepackage{xcolor}\usepackage{fontspec}"
+                     r"\setmainfont{BeVietnamPro-Medium.ttf}[Path=" + thu_muc + r"/, BoldFont=BeVietnamPro-Bold.ttf]"
+                     r"\newcommand{\hl}[1]{\fcolorbox[HTML]{FFD43B}{0B1A22}{$\displaystyle #1$}}"
+                     r"\newcommand{\dpcm}{\text{(đpcm)}}")
 
 
 def main():
@@ -1006,6 +974,7 @@ def main():
     a = ap.parse_args()
     props = json.load(open(a.props, encoding="utf8"))
     kb = json.load(open(a.kich_ban, encoding="utf8"))
+    nap_phong(a.public)
     mo = MoHinh(props, kb)
     if len(mo.diem) < 2:
         print("Kịch bản không có hình hinh_hoc -> không dựng bằng Manim")
@@ -1016,28 +985,31 @@ def main():
     rong, cao = (540, 960) if thap else (1080, 1920)
     tam = os.path.abspath(os.path.join(a.ra, "_manim"))
     cfg = {"pixel_width": rong, "pixel_height": cao, "frame_width": W, "frame_height": H, "frame_rate": props.get("fps", 30),
-           "media_dir": tam, "disable_caching": True, "verbosity": "WARNING", "progress_bar": "none"}
+           "media_dir": tam, "disable_caching": True, "verbosity": "WARNING", "progress_bar": "none", "transparent": True}
     print("Màu đại lượng:", {"%s %s" % (k[0], "".join(map(str, k[1]))): v for k, v in mo.mau.items()})
-    # ảnh bìa
+    # hình cho ảnh bìa (PNG trong suốt) -> public/manim/bia.png, AnhBia của Remotion đặt vào ô hình
     with tempconfig(dict(cfg, save_last_frame=True, write_to_movie=False, output_file="bia")):
         VideoHinh.mo, VideoHinh.bia = mo, True
         sc = VideoHinh()
         sc.render()
-        anh = sc.renderer.file_writer.image_file_path
-    bia = os.path.join(a.ra, "%s_bia.jpg" % id_)
-    subprocess.run([ffmpeg(), "-y", "-loglevel", "error", "-i", str(anh), "-q:v", "3", bia], check=True)
-    # video
-    with tempconfig(dict(cfg, output_file="hinh")):
+        anh = str(sc.renderer.file_writer.image_file_path)
+    os.makedirs(os.path.join(a.public, "manim"), exist_ok=True)
+    shutil.copy(anh, os.path.join(a.public, "manim", "bia.png"))
+    # video lớp hình + công thức, nền trong suốt (.mov qtrle có kênh alpha) -> ghép đè lên video Remotion
+    with tempconfig(dict(cfg, output_file="lop", movie_file_extension=".mov")):
         VideoHinh.mo, VideoHinh.bia = mo, False
         sc = VideoHinh()
         sc.render()
         vid = str(sc.renderer.file_writer.movie_file_path)
-    co_tieng = os.path.join(tam, "co_tieng.mp4")
-    ghep_am_thanh(props, a.public, vid, co_tieng)
-    ra = os.path.join(a.ra, "%s.mp4" % id_)
-    chen_bia_khung_dau(co_tieng, bia, ra, rong, cao)
+    ra = os.path.join(a.ra, "%s_manim.mov" % id_)
+    shutil.move(vid, ra)
     shutil.rmtree(tam, ignore_errors=True)
-    print("Xong:", ra, bia)
+    # báo cho Remotion: chỉ dựng phần vỏ chung + tiếng "tách"/"ting" đúng lúc Manim hiện dòng / đóng khung
+    props["manimLop"] = True
+    props["anhManimBia"] = "manim/bia.png"
+    props["suKienManim"] = sc.su_kien
+    json.dump(props, open(a.props, "w", encoding="utf8"), ensure_ascii=False)
+    print("Xong:", ra, "| %d mốc tiếng" % len(sc.su_kien))
 
 
 if __name__ == "__main__":

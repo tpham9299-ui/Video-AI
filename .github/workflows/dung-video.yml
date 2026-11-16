@@ -152,15 +152,13 @@ jobs:
       - name: Tạo giọng đọc và mốc thời gian
         run: python3 scripts/chuanbi.py kich_ban.json
 
-      # BÀI HÌNH HỌC: dựng 100% bằng MANIM (scripts/manim_hinh.py, phong cách video hình học mẫu), không qua Remotion.
-      # Manim lỗi -> tự quay về đường Remotion cũ (video vẫn ra). Tắt: GitHub Variable MANIM_HINH = TAT.
-      # MANIM_GIONG = 0 -> chỉ nhạc nền như video mẫu (mặc định: giọng đọc + nhạc nền nhỏ).
+      # BÀI HÌNH HỌC: phần toán (hình, công thức, chuyển động, hiệu ứng) dựng 100% bằng MANIM (scripts/manim_hinh.py) thành
+      # một lớp trong suốt; Remotion vẫn dựng PHẦN VỎ CHUNG như mọi video (nền, tiêu đề, thanh bước, phụ đề, giọng, nhạc, tiếng
+      # hiệu ứng) rồi máy ghép đè lớp Manim lên. Manim lỗi -> video dựng bằng Remotion như cũ. Tắt: Variable MANIM_HINH = TAT.
       - name: Dựng video hình học bằng Manim
         id: manim
         if: ${{ vars.MANIM_HINH != 'TAT' }}
         continue-on-error: true
-        env:
-          MANIM_GIONG: ${{ vars.MANIM_GIONG }}
         run: |
           MON=$(python3 -c "import json;print(str(json.load(open('kich_ban.json',encoding='utf8')).get('mon') or '').upper())")
           if [ "$MON" != "HINH_HOC" ]; then echo "Không phải bài hình học -> dựng bằng Remotion"; exit 0; fi
@@ -173,12 +171,11 @@ jobs:
           mkdir -p out
           /tmp/mv/bin/python scripts/manim_hinh.py public/props.json kich_ban.json out --public public
           ID=$(python3 -c "import json;print(json.load(open('public/props.json',encoding='utf8'))['id'])")
-          [ -s "out/$ID.mp4" ] || { echo "Manim không ra video"; exit 1; }
+          [ -s "out/${ID}_manim.mov" ] || { echo "Manim không ra video"; exit 1; }
           ls -la out
           echo "ok=1" >> "$GITHUB_OUTPUT"
 
       - name: Đóng gói Remotion + ảnh bìa
-        if: ${{ steps.manim.outputs.ok != '1' }}
         run: |
           ID=$(python3 -c "import json;print(json.load(open('public/props.json',encoding='utf8'))['id'])")
           # đóng gói SAU khi có giọng đọc/nhạc (thư mục public được chép vào gói)
@@ -286,14 +283,13 @@ jobs:
           path: |
             public/props.json
             out/*_bia.jpg
-            out/*.mp4
+            out/*_manim.mov
             out/kiem_duyet.json
           retention-days: 1
           if-no-files-found: ignore
 
   dung_khuc:
     needs: chuan_bi
-    if: ${{ needs.chuan_bi.outputs.manim != '1' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
@@ -359,7 +355,7 @@ jobs:
       APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
       DUNG_VIDEO_SECRET: ${{ secrets.DUNG_VIDEO_SECRET }}
       DRIVE_THU_MUC: ${{ vars.DRIVE_THU_MUC }}
-      DA_DUNG: ${{ needs.chuan_bi.result == 'success' && (needs.dung_khuc.result == 'success' || (needs.dung_khuc.result == 'skipped' && needs.chuan_bi.outputs.manim == '1')) }}
+      DA_DUNG: ${{ needs.chuan_bi.result == 'success' && needs.dung_khuc.result == 'success' }}
       MANIM: ${{ needs.chuan_bi.outputs.manim }}
     steps:
       - uses: actions/checkout@v4
@@ -399,7 +395,7 @@ jobs:
           name: thong-tin
 
       - uses: actions/download-artifact@v4
-        if: ${{ env.DA_DUNG == 'true' && env.MANIM != '1' }}
+        if: ${{ env.DA_DUNG == 'true' }}
         with:
           pattern: khuc-*
           path: khuc
@@ -411,11 +407,19 @@ jobs:
         run: |
           ID="${{ needs.chuan_bi.outputs.id }}"
           mkdir -p out
+          node scripts/ghep_khuc.mjs khuc "out/$ID.mp4"
           if [ "$MANIM" = "1" ]; then
-            [ -s "out/$ID.mp4" ] || { echo "Thiếu video Manim"; exit 1; }
-            echo "Video hình học đã dựng xong bằng Manim, không cần ghép"
-          else
-            node scripts/ghep_khuc.mjs khuc "out/$ID.mp4"
+            # bài hình học: ghép đè lớp Manim (hình + công thức, nền trong suốt) lên phần vỏ chung do Remotion dựng.
+            # Khung 0 là ảnh bìa (anhBiaDau) -> lớp Manim lùi đúng 1 khung.
+            [ -s "out/${ID}_manim.mov" ] || { echo "Thiếu lớp Manim"; exit 1; }
+            command -v ffmpeg >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /tmp/apt_ff.log 2>&1; }
+            LUI=$(python3 -c "import json;print(1 if json.load(open('public/props.json',encoding='utf8')).get('anhBiaDau') else 0)")
+            ffmpeg -y -loglevel error -i "out/$ID.mp4" -i "out/${ID}_manim.mov" -filter_complex \
+              "[1:v]format=rgba,tpad=start=${LUI}:color=0x00000000[m];[0:v][m]overlay=0:0:eof_action=pass:format=auto[v]" \
+              -map "[v]" -map 0:a -c:v libx264 -preset veryfast -crf 19 -pix_fmt yuv420p -c:a copy -movflags +faststart "out/${ID}_ghep.mp4"
+            mv "out/${ID}_ghep.mp4" "out/$ID.mp4"
+            rm -f "out/${ID}_manim.mov"
+            echo "Đã ghép lớp Manim"
           fi
           ls -la out
           echo "id=$ID" >> "$GITHUB_OUTPUT"

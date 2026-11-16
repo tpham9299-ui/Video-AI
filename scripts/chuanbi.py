@@ -747,7 +747,8 @@ def tao_bia(kb, canh_kb, canh_props):
         se = kb.get("series") if isinstance(kb.get("series"), dict) else {}
         loai = LOAI_THEO_SERIES.get(str(se.get("ten") or ""), "")
     if not loai:
-        loai = "Toán đi chợ" if kb.get("san_pham") else ("Xác suất" if str(kb.get("mon") or "").upper() == "XAC_SUAT" else "Toán thực tế")
+        mon = str(kb.get("mon") or "").upper()
+        loai = "Toán đi chợ" if kb.get("san_pham") else ("Xác suất" if mon == "XAC_SUAT" else "Hình học" if mon == "HINH_HOC" else "Toán thực tế")
     tieu_de = str(kb.get("tieu_de_bia") or kb.get("hook_chu") or kb.get("tieu_de") or "").strip()
     chon = 1 if len(canh_props) > 1 else 0
     for i in range(min(3, len(canh_props))):

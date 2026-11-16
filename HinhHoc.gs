@@ -264,7 +264,11 @@ function huongDanKichBanHinh_(r) {
     '  + \\hl{...} = khung vàng quanh phần ĐANG XÉT của dòng (vd "\\hl{\\angle BEC} = 90^\\circ"), mỗi dòng tối đa 1 \\hl. Dòng kết luận cuối dùng \\dpcm hoặc \\blacksquare.\n' +
     '  + mỗi cảnh có thể thêm "nhan_manh_hinh": danh sách phần hình cần làm nổi trong cảnh đó (vd ["\\triangle BEC","EM","\\angle BEC"]); hai tam giác được so sánh (bằng nhau / đồng dạng) thêm "tach": ["ABC","DEF"] để máy tách hai tam giác ra đặt cạnh nhau.\n' +
     '  + "trinh_bay": "bien_doi" khi các dòng là MỘT đẳng thức biến đổi dần (dòng sau biến hình từ dòng trước), "cong_don" khi là các ý nối tiếp.\n' +
-    '- HƯỚNG DẪN CHI TIẾT, MỖI CẢNH MỘT Ý: không dồn nhiều bước vào một cảnh. Mỗi bước giải = 1 cảnh gồm: tieu_de_canh nêu đúng điều đang chứng minh/tính ở bước đó (vd "Bước 2: EM là trung tuyến"), 1-3 dòng công thức (khẳng định + lý do \\text{(vì ...)} ngắn), lời thoại chỉ thẳng vào hình ("nhìn tam giác BEC màu xanh...") và nói rõ VÌ SAO (định lý / tính chất nào).\n' +
+    '- HƯỚNG DẪN CHI TIẾT, MỖI CẢNH MỘT Ý: không dồn nhiều bước vào một cảnh. Mỗi bước giải = 1 cảnh gồm:\n' +
+    '  + tieu_de_canh nêu đúng điều đang chứng minh/tính ở bước đó, KHÔNG ghi "Bước 1:" (thanh bước đã có), vd "EM là trung tuyến"; tu_khoa = cụm chính trong tiêu đề, vd "trung tuyến";\n' +
+    '  + "kien_thuc": định lý / tính chất / định nghĩa dùng ở bước này, viết như sách giáo khoa, ≤ 90 ký tự (vd "Trong tam giác vuông, trung tuyến ứng với cạnh huyền bằng nửa cạnh huyền") - hiện thành thẻ KIẾN THỨC trên video;\n' +
+    '  + 1-3 dòng công thức (khẳng định + lý do \\text{(vì ...)} ngắn);\n' +
+    '  + lời thoại GIẢNG như thầy cô: chỉ thẳng vào hình ("nhìn tam giác BEC đang tô màu..."), nói rõ ta dùng kiến thức gì, vì sao áp dụng được ở đây (điều kiện của định lý đã thỏa ra sao), rồi mới nêu kết quả.\n' +
     (cm ? '- Bài CHỨNG MINH: tối thiểu 4 cảnh giải; mỗi bước một khẳng định + "vì ..." (định lý/tính chất); cảnh đáp án chốt mệnh đề + \\dpcm. Cảnh THỬ LẠI: đo bằng số trên một cấu hình cụ thể (vd "AM \\approx 3{,}42,\\; AN \\approx 3{,}42 \\checkmark") để người xem thấy mệnh đề đúng.\n'
       : '- Bài TÍNH: cảnh thử lại kiểm bằng cách thứ hai (tọa độ/hệ thức khác) với số cụ thể.\n') +
     (c1.y_tuong ? '- Ý tưởng then chốt đã kiểm chứng: ' + String(c1.y_tuong).slice(0, 300) + '\n' : '') +
@@ -283,7 +287,9 @@ function kiemTraKichBanManim_(kb) {
     if (!laBuoc(c)) return;
     var ds = (c.noi_dung_man_hinh || []).map(String);
     if (!ds.length) nhe.push('BUOC_THIEU_CONG_THUC_CANH_' + (j + 1) + ': cảnh giải phải có 1-3 dòng công thức (khẳng định của bước này).');
-    var chu = ds.join(' ') + ' ' + String(c.loi_thoai || '');
+    var chu = ds.join(' ') + ' ' + String(c.loi_thoai || '') + ' ' + String(c.kien_thuc || '');
+    if (String(c.kien_thuc || '').trim().length < 12) nhe.push('BUOC_THIEU_KIEN_THUC_CANH_' + (j + 1) + ': thêm "kien_thuc": định lý / tính chất dùng ở bước này (hiện thành thẻ KIẾN THỨC), lời thoại giải thích vì sao áp dụng được.');
+    if (/^\s*bước\s*\d/i.test(String(c.tieu_de_canh || ''))) nhe.push('TIEU_DE_CO_SO_BUOC_CANH_' + (j + 1) + ': bỏ "Bước N:" khỏi tieu_de_canh (thanh bước đã hiện), tiêu đề chỉ nêu điều đang chứng minh.');
     if (!/vì|do |theo |nên|suy ra|\\Rightarrow|định lý|tính chất/i.test(chu)) nhe.push('BUOC_THIEU_LY_DO_CANH_' + (j + 1) + ': nêu rõ VÌ SAO (định lý / tính chất) ngay trong bước này.');
     if (ds.length && !ds.some(function (d) { return /[A-Z]'?[A-Z]|\\angle|\\widehat|\\triangle|\([A-Z]{3,4}\)/.test(d); })) nhe.push('BUOC_KHONG_CHI_HINH_CANH_' + (j + 1) + ': công thức không nhắc cạnh / góc / tam giác nào trên hình -> máy không làm nổi được chỗ đang xét. Viết bằng tên điểm (ME, \\angle BEC, \\triangle BEC).');
     if (ds.some(function (d) { return /(góc|tam giác)\s*[A-Z]/.test(d.replace(/\\text\{[^}]*\}/g, '')); })) nhe.push('BUOC_GOC_BANG_CHU_CANH_' + (j + 1) + ': trong công thức viết \\angle ABC / \\triangle ABC thay cho chữ "góc" / "tam giác".');

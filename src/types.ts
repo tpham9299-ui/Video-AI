@@ -69,6 +69,11 @@ export type Props = {
   baiHoc?: string[]; // 2-3 bài học rút ra (hiện ở màn kết)
   bia?: {loai: string; tieuDe: string; khung: number} | null;
   kiemDuyet?: boolean; // chế độ kiểm duyệt bố cục (máy dựng chụp khung mẫu, đo chữ tràn/đè/TeX thô)
+  // BÀI HÌNH HỌC DỰNG BẰNG MANIM: Remotion chỉ dựng phần "vỏ" chung (nền, tiêu đề, thanh bước, phụ đề, nhạc, hiệu ứng âm thanh);
+  // hình + công thức do Manim dựng (scripts/manim_hinh.py) rồi ghép đè lên. suKienManim: lúc Manim hiện dòng / đóng khung (tiếng "tách", "ting").
+  manimLop?: boolean;
+  suKienManim?: {f: number; kieu: string}[];
+  anhManimBia?: string | null; // public/manim/bia.png: hình Manim cho ô hình của ảnh bìa
   anhBiaDau?: string | null; // ảnh bìa đặt ở khung hình đầu tiên (1/30 giây) để TikTok lấy làm ảnh bìa; cả video lùi 1 khung // ảnh bìa: loại câu hỏi, tiêu đề ngắn, khung hình lấy hình minh họa
   series?: {ten: string; tap: number} | null; // series video (hiện "TẬP n" trên thanh đầu)
   quangCao?: {ten: string; gia?: string; anh?: string; cta?: string} | null; // video có sản phẩm do kênh bán: nhãn minh bạch + thẻ sản phẩm cuối video
