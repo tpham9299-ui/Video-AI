@@ -29,7 +29,7 @@ import shutil
 import sys
 
 import numpy as np
-from manim import (DOWN, RIGHT, UP, Arc, Circle, Circumscribe, Create, DashedLine, Dot, FadeIn, FadeOut,
+from manim import (DOWN, UP, Arc, Circle, Circumscribe, Create, DashedLine, Dot, FadeIn, FadeOut,
                    GrowFromCenter, Line, MathTex, MoveToTarget, Polygon, RoundedRectangle, Scene, ShowPassingFlash,
                    SurroundingRectangle, TexTemplate, Text, TransformMatchingShapes, VGroup, VMobject, Write, tempconfig)
 
@@ -43,7 +43,7 @@ NET_DUT = "#FFE066"
 TRON = "#74C0FC"
 BANG_MAU = ["#FF6B6B", "#4ECDC4", "#FFA94D", "#B197FC", "#69DB7C", "#74C0FC", "#F783AC", "#E599F7", "#63E6BE", "#FF8787"]
 MAU_MIEN = ["#4ECDC4", "#FFA94D", "#B197FC", "#69DB7C", "#F783AC", "#74C0FC"]
-PHONG = "Be Vietnam Pro"
+PHONG = "Montserrat"   # Montserrat ExtraBold: phông chữ đậm của mọi video (tiêu đề, phụ đề, thẻ đề, công thức)
 
 TEX = TexTemplate(
     tex_compiler="xelatex", output_format=".xdv",
@@ -67,6 +67,10 @@ RE_GOC = re.compile(r"(?:\\angle|\\widehat\{|(?i:góc)\s+)\s*(" + TEN_DIEM + r")
 RE_TAM_GIAC = re.compile(r"(?:\\triangle|\\Delta|(?i:tam giác))\s*(" + TEN_DIEM + r")(" + TEN_DIEM + r")(" + TEN_DIEM + r")(?![A-Za-z])")
 RE_MAT = re.compile(r"(?:mp\s*|(?i:mặt phẳng)\s*)?\((" + TEN_DIEM + r")(" + TEN_DIEM + r")(" + TEN_DIEM + r")(" + TEN_DIEM + r")?\)")
 RE_DOAN = re.compile(r"(?<![" + CHU_VIET + r"\\'_])(" + TEN_DIEM + r")(" + TEN_DIEM + r")(?![" + CHU_VIET + r"'])")
+# số đo trong công thức -> ghi ngay trên hình (như video mẫu ghi a, b, c, α, β cạnh hình): "\\angle ABC = 60^\\circ", "AB = 5"
+GIA_TRI = r"(\d+(?:\{,\}\d+|[.,]\d+)?(?:\s*\\sqrt\{[^{}]+\})?|\\sqrt\{[^{}]+\}|\\frac\{[^{}]+\}\{[^{}]+\})"
+RE_SO_GOC = re.compile(r"(?:\\angle|\\widehat\{)\s*(" + TEN_DIEM + r")(" + TEN_DIEM + r")(" + TEN_DIEM + r")\}?\s*=\s*" + GIA_TRI + r"\s*(?:\^\s*\{?\\circ\}?|°)")
+RE_SO_DOAN = re.compile(r"(?<![A-Za-z\\'_{])(" + TEN_DIEM + r")(" + TEN_DIEM + r")\s*=\s*" + GIA_TRI + r"\s*(?:\\,?\s*\\text\{\s*(?:cm|m|dm|mm)\s*\})?\s*(?=$|[,;)]|\\[;,!]|\\quad|\\text|\\Rightarrow)")
 RE_DIEM_DON = re.compile(r"(?<![" + CHU_VIET + r"\\'_])([A-Z](?:'|_\{?\d\}?)?)(?![" + CHU_VIET + r"'_])")
 
 
@@ -426,21 +430,62 @@ def bo_tex(s):
     return re.sub(r"\s+", " ", t).strip()
 
 
+PHONG_CHU_SO = False   # True khi công thức dùng phông chữ của video (nap_phong): chữ số, dấu = + · ° cũng phải theo phông đó
+
+
+def phong_hoa(tex):
+    """mathastext chỉ đổi phông chữ cái; chữ số và dấu = + · ° vẫn là phông LaTeX có chân -> bọc chúng bằng phông chữ của
+    video (\\mathrm / \\text) để cả dòng công thức đồng nhất như video xác suất / thực tế. Bỏ qua mã màu, tên lệnh, \\text{}."""
+    out, i, n = [], 0, len(tex)
+    while i < n:
+        m = re.match(r"\\textcolor\[HTML\]\{[0-9A-Fa-f]{6}\}", tex[i:])
+        if m:
+            out.append(m.group(0)); i += m.end(); continue
+        m = re.match(r"\\(?:text|mathrm|textbf|textit)\{", tex[i:])
+        if m:
+            sau, mo, j = tex[i + m.end():], 1, 0
+            while j < len(sau) and mo:
+                mo += {"{": 1, "}": -1}.get(sau[j], 0)
+                j += 1
+            out.append(tex[i:i + m.end() + j]); i += m.end() + j; continue
+        m = re.match(r"\\cdot(?![a-zA-Z])", tex[i:])
+        if m:
+            out.append(r"\mathbin{\text{·}}"); i += m.end(); continue
+        m = re.match(r"\^\s*\{?\\circ\}?", tex[i:])
+        if m:
+            out.append(r"\text{°}"); i += m.end(); continue
+        m = re.match(r"\\[a-zA-Z]+", tex[i:])
+        if m:
+            out.append(m.group(0)); i += m.end(); continue
+        m = re.match(r"\d+(?:\{,\}\d+|[.,]\d+)?", tex[i:])
+        if m:
+            out.append(r"{\mathrm{%s}}" % m.group(0).replace("{,}", ",").replace(",", "{,}")); i += m.end(); continue
+        ch = tex[i]
+        if ch == "=":
+            out.append(r"\mathrel{\text{=}}")
+        elif ch == "+":
+            out.append(r"\mathbin{\text{+}}")
+        else:
+            out.append(ch)
+        i += 1
+    return "".join(out)
+
+
 def tao_cong_thuc(tex, co=40):
     try:
-        return MathTex(tex, tex_template=TEX, font_size=co)
+        return MathTex(phong_hoa(tex) if PHONG_CHU_SO else tex, tex_template=TEX, font_size=co)
     except Exception as e:  # noqa: BLE001
         print("  TeX lỗi (%s) -> dùng chữ thường: %s" % (str(e)[:80], tex[:80]))
         try:
             return MathTex(chuan_tex(bo_tex(tex)), tex_template=TEX, font_size=co)
         except Exception:  # noqa: BLE001
-            return Text(bo_tex(tex), font=PHONG, font_size=co * 0.8, color=TRANG)
+            return Text(bo_tex(tex), font=PHONG, weight="ULTRABOLD", font_size=co * 0.8, color=TRANG)
 
 
 def khoi_chu(chu, co, rong, cao, mau=TRANG):
     """Đoạn chữ tiếng Việt tự xuống dòng, vừa khung rộng x cao."""
     tu = chu.split()
-    mau_do = Text(chu[:60], font=PHONG, font_size=co)
+    mau_do = Text(chu[:60], font=PHONG, weight="ULTRABOLD", font_size=co)
     so_ky_tu = max(12, int(rong * 0.97 / (mau_do.width / max(1, len(chu[:60])))))
     dong, hien = [], ""
     for w in tu:
@@ -451,7 +496,7 @@ def khoi_chu(chu, co, rong, cao, mau=TRANG):
             hien = (hien + " " + w).strip()
     if hien:
         dong.append(hien)
-    t = VGroup(*[Text(d, font=PHONG, font_size=co, color=mau) for d in dong[:9]]).arrange(DOWN, buff=co * 0.006)
+    t = VGroup(*[Text(d, font=PHONG, weight="ULTRABOLD", font_size=co, color=mau) for d in dong[:9]]).arrange(DOWN, buff=co * 0.006)
     if t.width > rong:
         t.scale_to_fit_width(rong)
     if t.height > cao:
@@ -582,7 +627,7 @@ class VideoHinh(Scene):
                 self.hinh[k] = m
         for n, p in self.P.items():
             self.cham[n] = Dot(p, radius=0.06, color=TRANG)
-            self.nhan_diem[n] = MathTex(tex_ten(n), font_size=36, color=TRANG).move_to(p + self.huong_nhan(n) * 0.36)
+            self.nhan_diem[n] = MathTex(tex_ten(n), tex_template=TEX, font_size=36, color=TRANG).move_to(p + self.huong_nhan(n) * 0.36)
 
     def cung_goc(self, ba, mau, nhan=""):
         a, o, b = (self.P[x] for x in ba)
@@ -702,7 +747,7 @@ class VideoHinh(Scene):
             mau = self.mo.mau.get(("mien", khoa_da_giac(t)), MAU_MIEN[len(g)])
             pts = [self.P[x] for x in t]
             tg = Polygon(*pts, color=mau, stroke_width=4, fill_color=mau, fill_opacity=0.3)
-            nh = VGroup(*[MathTex(tex_ten(x), font_size=30, color=TRANG).move_to(self.P[x] + (self.P[x] - np.mean(pts, axis=0)) / max(1e-6, np.linalg.norm(self.P[x] - np.mean(pts, axis=0))) * 0.3) for x in t])
+            nh = VGroup(*[MathTex(tex_ten(x), tex_template=TEX, font_size=30, color=TRANG).move_to(self.P[x] + (self.P[x] - np.mean(pts, axis=0)) / max(1e-6, np.linalg.norm(self.P[x] - np.mean(pts, axis=0))) * 0.3) for x in t])
             g.add(VGroup(tg, nh))
         return g
 
@@ -712,7 +757,7 @@ class VideoHinh(Scene):
         nội dung nằm NGAY DƯỚI nhãn (không đè)."""
         pill = None
         if nhan:
-            chu = Text(nhan, font=PHONG, weight="BOLD", font_size=22, color=NEN_THE)
+            chu = Text(nhan, font="Montserrat", weight="ULTRABOLD", font_size=22, color=NEN_THE)
             vien = RoundedRectangle(width=chu.width + 0.34, height=chu.height + 0.18, corner_radius=0.13, stroke_width=0,
                                     fill_color=NHAN, fill_opacity=1)
             chu.move_to(vien)
@@ -836,14 +881,6 @@ class VideoHinh(Scene):
                 ds_tg = [tuple(ten_chuan(x) for x in re.findall(TEN_DIEM, str(t)))[:3] for t in ck.get("tach")][:2]
                 ds_tg = [t for t in ds_tg if len(t) == 3 and all(x in self.P for x in t)]
             y_ct = CT_TREN
-            kt = str(ck.get("kien_thuc") or "").strip()
-            if kt and dong:
-                chu_kt = khoi_chu(kt[:110], 28, CT_RONG - 0.4, 1.0, mau="#DDF6FF")
-                the_kt = self.the_khung(chu_kt, "KIẾN THỨC", dem=0.18)
-                the_kt.move_to([0, y_ct - the_kt.height / 2, 0])
-                self.choi(FadeIn(the_kt, shift=RIGHT * 0.3), run_time=0.5)
-                cu.add(the_kt)
-                y_ct -= the_kt.height + 0.12
             if len(ds_tg) >= 2:
                 # hai tam giác được nhấc ra khỏi hình, phóng to đặt cạnh nhau ngay trên vùng hình (hình gốc mờ phía sau)
                 tg2 = self.tach_tam_giac(ds_tg)
@@ -900,6 +937,7 @@ class VideoHinh(Scene):
                     if self.hinh[("goc", gk)] not in self.tren_man:
                         loe.append(Create(self.hinh[("goc", gk)]))
                         self.tren_man.add(self.hinh[("goc", gk)])
+                loe += self.so_do_tren_hinh(dong[j])
                 self.ghi_su_kien("dong")
                 if bien_doi and j > 0:
                     # dòng mới biến hình ra từ bản sao dòng trước (thấy rõ từng phần đi đâu), các dòng cũ mờ đi
@@ -924,6 +962,46 @@ class VideoHinh(Scene):
         if du > 0.05:
             self.wait(du)
 
+    def so_do_tren_hinh(self, dong_goc):
+        """Số đo nêu trong dòng công thức (góc, độ dài) -> nhãn nhỏ cùng màu đặt ngay cạnh góc / đoạn trên hình (giữ đến hết
+        video, như các video mẫu). Trả về các animation hiện nhãn mới."""
+        mo = self.mo
+        s = chuan_tex(dong_goc)
+        anim = []
+        for m in RE_SO_GOC.finditer(s):
+            a, o, b, v = m.groups()
+            if not all(ten_chuan(x) in self.P for x in (a, o, b)):
+                continue
+            gk = mo.kgoc(a, o, b)
+            khoa = ("so", ("goc",) + gk)
+            if khoa in self.hinh or (("vuong", gk) in self.hinh and v.strip() == "90"):
+                continue
+            A, O, B = (self.P[ten_chuan(x)] for x in (a, o, b))
+            u = (A - O) / max(1e-6, np.linalg.norm(A - O)) + (B - O) / max(1e-6, np.linalg.norm(B - O))
+            u = u / max(1e-6, np.linalg.norm(u))
+            nhan = tao_cong_thuc(v + r"^\circ", 30).set_color(mo.mau.get(("goc", gk), VANG)).move_to(O + u * 0.85)
+            self.hinh[khoa] = nhan
+            self.tren_man.add(nhan)
+            anim.append(FadeIn(nhan, scale=1.4))
+        for m in RE_SO_DOAN.finditer(s):
+            a, b, v = m.groups()
+            if not all(ten_chuan(x) in self.P for x in (a, b)) or ten_chuan(a) == ten_chuan(b):
+                continue
+            d = khoa_doan(a, b)
+            khoa = ("so", ("doan",) + d)
+            if khoa in self.hinh:
+                continue
+            A, B = self.P[d[0]], self.P[d[1]]
+            ph = np.array([-(B - A)[1], (B - A)[0], 0.0])
+            ph = ph / max(1e-6, np.linalg.norm(ph))
+            if np.dot((A + B) / 2 - self.tam, ph) < 0:
+                ph = -ph
+            nhan = tao_cong_thuc(v, 30).set_color(mo.mau.get(("doan", d), VANG)).move_to((A + B) / 2 + ph * 0.38)
+            self.hinh[khoa] = nhan
+            self.tren_man.add(nhan)
+            anim.append(FadeIn(nhan, scale=1.4))
+        return anim
+
     def ghi_su_kien(self, kieu):
         self.su_kien.append({"f": int(round((self.t0 + self.da) * self.mo.fps)), "kieu": kieu})
 
@@ -947,24 +1025,33 @@ class VideoHinh(Scene):
 # ============================================================
 # 4) CHẠY: phông chung + video lớp trong suốt + ảnh hình cho bìa + mốc tiếng
 # ============================================================
-def nap_phong(public):
-    """Dùng ĐÚNG phông của các video khác (Be Vietnam Pro trong public/fonts) cho chữ thường lẫn chữ trong công thức."""
+def nap_phong(public, kieu_toan="dam"):  # noqa: C901
+    """Dùng ĐÚNG phông của các video khác: công thức, tên điểm, số đo = Montserrat ExtraBold (kiểu công thức "dam",
+    mặc định của mọi video) hoặc Be Vietnam Pro Bold (gói edit "dong_nhat"); chữ trong thẻ = Be Vietnam Pro.
+    mathastext: chữ cái, chữ số, dấu = trong công thức cũng dùng phông đó (không còn phông LaTeX có chân)."""
     global TEX
     thu_muc = os.path.abspath(os.path.join(public, "fonts"))
     try:
         import manimpango
         for f in sorted(os.listdir(thu_muc)):
-            if f.startswith("BeVietnamPro") and f.endswith(".ttf"):
+            if (f.startswith("BeVietnamPro") or f.startswith("Montserrat-ExtraBold")) and f.endswith(".ttf"):
                 manimpango.register_font(os.path.join(thu_muc, f))
     except Exception as e:  # noqa: BLE001
-        print("Không nạp được phông Be Vietnam Pro:", e)
-    if os.path.exists(os.path.join(thu_muc, "BeVietnamPro-Medium.ttf")):
-        TEX = TexTemplate(
-            tex_compiler="xelatex", output_format=".xdv",
-            preamble=r"\usepackage{amsmath}\usepackage{amssymb}\usepackage{xcolor}\usepackage{fontspec}"
-                     r"\setmainfont{BeVietnamPro-Medium.ttf}[Path=" + thu_muc + r"/, BoldFont=BeVietnamPro-Bold.ttf]"
-                     r"\newcommand{\hl}[1]{\fcolorbox[HTML]{FFD43B}{0B1A22}{$\displaystyle #1$}}"
-                     r"\newcommand{\dpcm}{\text{(đpcm)}}")
+        print("Không nạp được phông:", e)
+    if kieu_toan == "dong_nhat" and os.path.exists(os.path.join(thu_muc, "BeVietnamPro-Bold.ttf")):
+        phong = "BeVietnamPro-Bold.ttf}[Path=" + thu_muc + "/, ItalicFont=BeVietnamPro-BoldItalic.ttf, BoldFont=BeVietnamPro-ExtraBold.ttf"
+    elif os.path.exists(os.path.join(thu_muc, "Montserrat-ExtraBold.ttf")):
+        phong = "Montserrat-ExtraBold.ttf}[Path=" + thu_muc + "/, ItalicFont=Montserrat-ExtraBoldItalic.ttf, BoldFont=Montserrat-ExtraBold.ttf"
+    else:
+        return
+    global PHONG_CHU_SO
+    PHONG_CHU_SO = True
+    TEX = TexTemplate(
+        tex_compiler="xelatex", output_format=".xdv",
+        preamble=r"\usepackage{amsmath}\usepackage{amssymb}\usepackage{xcolor}\usepackage{fontspec}"
+                 r"\setmainfont{" + phong + r"]\usepackage[italic]{mathastext}"
+                 r"\newcommand{\hl}[1]{\fcolorbox[HTML]{FFD43B}{0B1A22}{$\displaystyle #1$}}"
+                 r"\newcommand{\dpcm}{\text{(đpcm)}}")
 
 
 def main():
@@ -977,7 +1064,7 @@ def main():
     a = ap.parse_args()
     props = json.load(open(a.props, encoding="utf8"))
     kb = json.load(open(a.kich_ban, encoding="utf8"))
-    nap_phong(a.public)
+    nap_phong(a.public, str((props.get("phongCach") or {}).get("kieuToan") or "dam"))
     mo = MoHinh(props, kb)
     if len(mo.diem) < 2:
         print("Kịch bản không có hình hinh_hoc -> không dựng bằng Manim")

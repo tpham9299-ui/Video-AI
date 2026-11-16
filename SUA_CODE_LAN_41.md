@@ -49,16 +49,27 @@ Kiểm tra mới (kiemTraKichBanManim_), lỗi nhẹ, AI tự sửa:
 Mỗi video hình học gồm hai lớp:
 - **Lớp vỏ chung (Remotion)**, giống hệt mọi video khác:
   - nền tự tạo, thanh tiêu đề (LỚP, tên bài), thanh các bước (ĐỀ BÀI → GIẢI → ...), tiêu đề bước chữ to;
-  - phụ đề karaoke, giọng đọc, nhạc nền tự giảm khi có giọng, tiếng hiệu ứng (chuyển bước, "tách" khi hiện dòng, "ting" khi đóng khung kết quả);
+  - phụ đề karaoke, giọng đọc, nhạc nền tự giảm khi có giọng;
+  - tiếng hiệu ứng: chuyển bước, "tách" khi hiện dòng, "ting" khi đóng khung kết quả;
   - ảnh bìa cùng kiểu.
 - **Lớp toán (Manim, nền trong suốt)**, nằm đúng vùng nội dung giữa tiêu đề bước và phụ đề:
   - hình, công thức, mọi chuyển động và hiệu ứng thị giác;
-  - thẻ ĐỀ BÀI, thẻ KIẾN THỨC, khung công thức cùng kiểu thẻ của các video khác (nền tối trong mờ, viền màu nhấn của loại "Hình học").
-- Chữ (cả chữ tiếng Việt trong công thức) dùng phông **Be Vietnam Pro**, cùng phông với phụ đề của các video khác.
-- Có **giọng đọc giảng giải**:
-  - mỗi bước có trường `kien_thuc` (định lý / tính chất dùng ở bước đó), hiện thành thẻ KIẾN THỨC;
-  - lời thoại phải nói rõ dùng kiến thức gì, vì sao áp dụng được, rồi mới nêu kết quả;
-  - thiếu `kien_thuc` hoặc thiếu lý do thì kiểm tra kịch bản bắt sửa.
+  - thẻ ĐỀ BÀI và khung công thức cùng kiểu thẻ của các video khác.
+
+**Một phông chữ cho cả video**:
+- Montserrat ExtraBold (phông chữ đậm của mọi video) cho tiêu đề, thẻ đề, phụ đề, công thức (cả chữ số, dấu = + · °), tên điểm, số đo.
+- Dòng dẫn nhỏ trên tiêu đề bước trước là chữ nghiêng có chân, nay cũng đổi sang Montserrat (áp dụng cho mọi video).
+- Gói edit "dong_nhat" dùng Be Vietnam Pro Bold.
+
+**Ít ô chữ, giảng bằng giọng + thể hiện trên hình** (như video mẫu):
+- Không còn ô KIẾN THỨC.
+- Trường `kien_thuc` vẫn có trong kịch bản, nhưng để **giọng đọc giảng**: dùng định lý / tính chất gì, vì sao áp dụng được.
+- Màn hình thể hiện bằng hình:
+  - phần đang xét sáng lên, phần khác mờ;
+  - cạnh / góc / tam giác tô màu riêng;
+  - **số đo ghi ngay cạnh góc / đoạn** (vd công thức có "\angle ABC = 60^\circ" thì "60°" hiện cạnh góc B; "AB = 5" thì "5" hiện cạnh đoạn AB) và giữ lại trên hình;
+  - hai tam giác đồng dạng được nhấc ra phóng to, đặt cạnh nhau ngay trên vùng hình.
+- Thiếu `kien_thuc` hoặc lời thoại không nêu lý do thì kiểm tra kịch bản bắt sửa.
 - Tiêu đề bước không ghi "Bước 1:" (thanh bước đã có); `tu_khoa` là cụm được phóng to.
 
 ## Chạy ở đâu (GitHub, workflow dung-video.yml)

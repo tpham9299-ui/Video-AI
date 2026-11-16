@@ -2,7 +2,7 @@ import React from 'react';
 import {useCurrentFrame} from 'remotion';
 import {expoOut} from '../sankhau/chuyendong';
 import {kep} from '../sankhau/donghieu';
-import {FONT_DAM, FONT_SERIF} from '../theme';
+import {FONT_DAM} from '../theme';
 import {toiMau} from './KhongGian';
 
 // CHỮ 3 TẦNG (học từ các video motion typography): dòng dẫn nhỏ chữ nghiêng có chân -> TỪ CHỐT cực lớn màu nhấn -> dòng đuôi vừa.
@@ -66,7 +66,7 @@ export const ChuBaTang: React.FC<{dan: string; chot: string; duoi: string; mau: 
   return (
     <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 6, maxWidth: 1000}}>
       {dan ? (
-        <div style={{fontFamily: FONT_SERIF, fontStyle: 'italic', fontSize: 40, color: 'rgba(255,255,255,0.86)', textShadow: '0 3px 18px rgba(0,0,0,0.7)', lineHeight: 1.1}}>
+        <div style={{fontFamily: FONT_DAM, fontWeight: 700, fontStyle: 'italic', fontSize: 38, color: 'rgba(255,255,255,0.86)', textShadow: '0 3px 18px rgba(0,0,0,0.7)', lineHeight: 1.1}}>
           <DongChu chu={dan} f={f} tre={0} cham={0.7} dai={8} nhoe={8} dy={14} />
         </div>
       ) : null}
