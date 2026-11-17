@@ -54,49 +54,66 @@ const VE: Record<TenVatThuc, (p: P) => React.ReactNode> = {
   // NGƯỜI QUAN SÁT (nhìn nghiêng, mặt hướng phải): mắt ở 93% chiều cao
   // NGƯỜI có khớp tay chân, cử động theo động tác (đứng thở, đi bộ, chỉ tay theo tia nhìn, ngước nhìn, vẫy tay...)
   nguoi: ({mau, t, dongTac, gocChi}) => <NguoiCuDong dongTac={dongTac || 'dung'} t={t} mauAo={mau || '#FF8A3D'} gocChi={gocChi} />,
-  // TÒA NHÀ CAO TẦNG: lưới cửa sổ sáng tắt, ăng-ten đỉnh có đèn nhấp nháy
+  // TÒA NHÀ CAO TẦNG 3D: mặt chính + mặt bên 3D phối cảnh + mái 3D + lưới cửa sổ sáng đèn + ăng-ten đỉnh
   toa_nha: ({mau, t}) => {
     const cs: React.ReactNode[] = [];
     for (let r = 0; r < 9; r++) for (let c = 0; c < 4; c++) {
       const sang = ((r * 7 + c * 3) % 5) > 1;
-      cs.push(<rect key={`${r}_${c}`} x={-19 + c * 10} y={-88 + r * 9.4} width={6} height={5.6} rx={0.8} fill={sang ? VANG : '#29424a'} opacity={sang ? 0.85 : 0.9} />);
+      cs.push(<rect key={`${r}_${c}`} x={-21 + c * 9.5} y={-88 + r * 9.4} width={5.8} height={5.6} rx={0.8} fill={sang ? VANG : '#1e323b'} opacity={sang ? 0.92 : 0.85} />);
+    }
+    const csBen: React.ReactNode[] = [];
+    for (let r = 0; r < 9; r++) {
+      const sang = (r * 3) % 4 > 0;
+      csBen.push(<polygon key={`b_${r}`} points={`20,${-87 + r * 9.4} 31,${-92 + r * 9.4} 31,${-86.5 + r * 9.4} 20,${-81.5 + r * 9.4}`} fill={sang ? '#d4a82a' : '#132026'} opacity={0.85} />);
     }
     return (
       <g>
-        <rect x={-25} y={-94} width={50} height={94} rx={1.5} fill={`${mau}22`} stroke={mau} strokeWidth={1.6} />
+        {/* Mặt bên 3D (chiều sâu khối) */}
+        <polygon points="18,-94 34,-101 34,-7 18,0" fill="#162836" stroke={mau} strokeWidth={1.2} />
+        {/* Mái 3D */}
+        <polygon points="-24,-94 -8,-101 34,-101 18,-94" fill={`${mau}66`} stroke={mau} strokeWidth={1.2} />
+        {/* Mặt tiền chính */}
+        <rect x={-24} y={-94} width={42} height={94} rx={1} fill="url(#khoi3DTruoc)" stroke={mau} strokeWidth={1.8} />
         {cs}
-        <line x1={0} y1={-94} x2={0} y2={-100} stroke={mau} strokeWidth={1.4} />
-        <circle cx={0} cy={-100} r={1.6} fill={DO} opacity={0.4 + 0.6 * (Math.sin(t * 5) > 0 ? 1 : 0)} />
+        {csBen}
+        <line x1={3} y1={-97} x2={3} y2={-105} stroke={TRANG} strokeWidth={1.6} />
+        <circle cx={3} cy={-105} r={2} fill={DO} opacity={0.4 + 0.6 * (Math.sin(t * 5) > 0 ? 1 : 0)} />
       </g>
     );
   },
-  // NGÂN HÀNG: mặt tiền cổ điển (mái tam giác có biểu tượng tiền, 5 cột, bảng tên, bậc thềm)
+  // NGÂN HÀNG 3D: mặt tiền cổ điển + khối bên 3D + bậc thềm 3D + cột trụ nổi khối
   ngan_hang: ({mau}) => (
     <g>
-      <rect x={-52} y={-7} width={104} height={7} fill={`${mau}33`} stroke={mau} strokeWidth={1.2} />
-      <rect x={-48} y={-13} width={96} height={6} fill={`${mau}44`} stroke={mau} strokeWidth={1.2} />
+      <polygon points="48,-72 64,-80 64,-6 48,0" fill="#182a38" stroke={mau} strokeWidth={1.1} />
+      <polygon points="0,-100 16,-107 64,-80 48,-72" fill={`${mau}55`} stroke={mau} strokeWidth={1.2} />
+      <rect x={-52} y={-7} width={104} height={7} fill={`${mau}55`} stroke={mau} strokeWidth={1.2} />
+      <rect x={-48} y={-13} width={96} height={6} fill={`${mau}77`} stroke={mau} strokeWidth={1.2} />
+      <rect x={-46} y={-62} width={92} height={49} fill="#0f202c" opacity={0.85} />
       {[-38, -19, 0, 19, 38].map((x) => (
         <g key={x}>
-          <rect x={x - 4.5} y={-62} width={9} height={49} fill={`${TRANG}22`} stroke={TRANG} strokeWidth={1} />
-          <line x1={x - 1.5} y1={-60} x2={x - 1.5} y2={-15} stroke={TRANG} strokeWidth={0.5} opacity={0.6} />
-          <line x1={x + 1.5} y1={-60} x2={x + 1.5} y2={-15} stroke={TRANG} strokeWidth={0.5} opacity={0.6} />
+          <rect x={x - 4.5} y={-62} width={9} height={49} fill="url(#kimLoai)" stroke={TRANG} strokeWidth={0.9} />
+          <line x1={x - 1.5} y1={-60} x2={x - 1.5} y2={-15} stroke="#445" strokeWidth={0.6} opacity={0.6} />
         </g>
       ))}
-      <rect x={-54} y={-75} width={108} height={14} fill={mau} stroke={TRANG} strokeWidth={1} />
+      <rect x={-54} y={-75} width={108} height={14} fill={mau} stroke={TRANG} strokeWidth={1.2} />
       <text x={0} y={-64} textAnchor="middle" fontSize={11.5} fontWeight={900} fill="#0b0b18" fontFamily="Be Vietnam Pro, Liberation Sans, sans-serif" letterSpacing={0.5}>NGÂN HÀNG</text>
-      <polygon points="-54,-72 0,-100 54,-72" fill={`${mau}33`} stroke={mau} strokeWidth={1.6} />
-      <circle cx={0} cy={-82} r={7} fill={VANG} stroke="#a77b00" strokeWidth={1} />
-      <text x={0} y={-79} textAnchor="middle" fontSize={9} fontWeight={900} fill="#5a3d00" fontFamily="Liberation Sans, sans-serif">₫</text>
+      <polygon points="-54,-72 0,-100 54,-72" fill="url(#khoi3DTruoc)" stroke={mau} strokeWidth={1.6} />
+      <circle cx={0} cy={-84} r={7.5} fill={VANG} stroke="#a77b00" strokeWidth={1.2} />
+      <text x={0} y={-81} textAnchor="middle" fontSize={9.5} fontWeight={900} fill="#5a3d00" fontFamily="Liberation Sans, sans-serif">₫</text>
     </g>
   ),
   nha: ({mau}) => (
     <g>
-      <rect x={-40} y={-55} width={80} height={55} fill={`${mau}22`} stroke={mau} strokeWidth={1.6} />
-      <polygon points="-50,-55 0,-100 50,-55" fill={`${DO}55`} stroke={DO} strokeWidth={1.6} />
-      <rect x={-9} y={-30} width={18} height={30} fill={`${NAU}88`} stroke={NAU} strokeWidth={1.2} />
-      <rect x={-32} y={-44} width={15} height={13} fill={`${VANG}aa`} stroke={TRANG} strokeWidth={1} />
-      <rect x={17} y={-44} width={15} height={13} fill={`${VANG}aa`} stroke={TRANG} strokeWidth={1} />
-      <rect x={22} y={-92} width={9} height={18} fill={`${mau}33`} stroke={mau} strokeWidth={1.2} />
+      {/* Tường bên hông 3D */}
+      <polygon points="34,-55 54,-65 54,-8 34,0" fill="#1d2f3a" stroke={mau} strokeWidth={1.3} />
+      {/* Mái ngói nghiêng 3D */}
+      <polygon points="0,-100 22,-108 60,-63 42,-55" fill="#b83240" stroke={DO} strokeWidth={1.3} />
+      {/* Tường mặt tiền */}
+      <rect x={-38} y={-55} width={72} height={55} fill="url(#khoi3DTruoc)" stroke={mau} strokeWidth={1.6} />
+      <polygon points="-46,-55 0,-100 42,-55" fill={`${DO}cc`} stroke={DO} strokeWidth={1.6} />
+      <rect x={-10} y={-32} width={18} height={32} fill={`${NAU}cc`} stroke={TRANG} strokeWidth={1.1} />
+      <rect x={-31} y={-44} width={15} height={14} fill={`${VANG}dd`} stroke={TRANG} strokeWidth={1.1} />
+      <rect x={14} y={-44} width={15} height={14} fill={`${VANG}dd`} stroke={TRANG} strokeWidth={1.1} />
     </g>
   ),
   truong_hoc: ({mau, t}) => (
@@ -498,13 +515,18 @@ export const VatThuc: React.FC<{ten: string; x: number; y: number; cao: number; 
   const e = 1 - Math.pow(1 - Math.min(1, Math.max(0, p)), 3);
   const nay = p < 1 ? 1 + Math.sin(Math.min(1, p) * Math.PI) * 0.06 : 1;
   const rongDv = rong ? rong / k : 100 * (TI_LE_RONG[ten] || 1);
+  const coBongDat = !['mat_troi', 'may_bay', 'khinh_khi_cau', 'dieu', 'song', 'ho_nuoc'].includes(ten);
   return (
     <g transform={`translate(${x} ${y}) scale(${(lat ? -1 : 1) * k * nay} ${k * e})`} opacity={Math.min(1, p * 2.5)}>
       <defs>
-        <linearGradient id="kimLoai" x1="0" x2="1">
+        <linearGradient id="kimLoai" x1="0" y1="0" x2="1" y2="0">
           <stop offset="0%" stopColor="#7d8f93" /><stop offset="45%" stopColor="#f2f7f8" /><stop offset="100%" stopColor="#6b7b80" />
         </linearGradient>
+        <linearGradient id="khoi3DTruoc" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#264658" /><stop offset="50%" stopColor="#1b3444" /><stop offset="100%" stopColor="#11222d" />
+        </linearGradient>
       </defs>
+      {coBongDat ? <ellipse cx={4} cy={2} rx={Math.min(72, Math.max(18, rongDv * 0.52))} ry={6} fill="rgba(0,0,0,0.48)" /> : null}
       {ve({mau, t, rong: rongDv, nen: '', bien, emoji, dongTac, gocChi})}
     </g>
   );

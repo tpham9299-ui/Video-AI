@@ -31,7 +31,7 @@ import sys
 import numpy as np
 from manim import (DOWN, UP, Arc, Circle, Circumscribe, Create, DashedLine, Dot, FadeIn, FadeOut,
                    GrowFromCenter, Line, MathTex, MoveToTarget, Polygon, RoundedRectangle, Scene, ShowPassingFlash,
-                   SurroundingRectangle, TexTemplate, Text, TransformMatchingShapes, VGroup, VMobject, Write, tempconfig)
+                   SurroundingRectangle, TexTemplate, Text, TransformMatchingShapes, UpdateFromAlphaFunc, VGroup, VMobject, Write, tempconfig)
 
 NEN = "#111111"
 VANG = "#FFD43B"
@@ -114,6 +114,7 @@ class MoHinh:
         self.canh_k = [kb_canh[i] if i < len(kb_canh) else {} for i in range(len(self.canh_p))]
         self.de_bai = str(kb.get("de_bai") or "")
         self.diem = {}
+        self.diem_3d = {}
         self.pt = []   # phần tử: dict(kieu, khoa, canh, ...)
         self.chi_so = {}
         self._doc_hinh()
@@ -289,6 +290,13 @@ class MoHinh:
                         self.diem[ten_chuan(k)] = (float(p[0]), float(p[1]))
                     except (TypeError, ValueError):
                         pass
+            if isinstance(v.get("diem_3d"), dict):
+                for k, p3 in v["diem_3d"].items():
+                    if isinstance(p3, (list, tuple)) and len(p3) >= 3:
+                        try:
+                            self.diem_3d[ten_chuan(k)] = (float(p3[0]), float(p3[1]), float(p3[2]))
+                        except (TypeError, ValueError):
+                            pass
         self._bo_sung_diem_phu()
         co = lambda *ds: all(ten_chuan(x) in self.diem for x in ds)
         for i in range(len(self.canh_p)):
@@ -669,8 +677,74 @@ class VideoHinh(Scene):
         cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
         ty = (HINH_TREN + HINH_DUOI) / 2
         self.P = {n: np.array([(x * 8.8 - cx) * k, (-y * 6.0 - cy) * k + ty, 0.0]) for n, (x, y) in mo.diem.items()}
+        self.P0 = {n: p.copy() for n, p in self.P.items()}
         self.ti_le = k
         self.tam = np.mean(list(self.P.values()), axis=0)
+        self._chuan_bi_chieu_sau_3d()
+
+    def _chuan_bi_chieu_sau_3d(self):
+        """Khởi tạo độ sâu 3D (Z_sau) cho từng đỉnh của khối đa diện không gian để phục vụ xoay 3D trực quan,
+        đảm bảo các điểm thẳng hàng / trung điểm / chân đường cao luôn giữ nguyên tính thẳng hàng ở mọi góc xoay."""
+        mo = self.mo
+        self.Z_sau = {n: 0.0 for n in self.P0}
+        if not getattr(mo, "la_khong_gian", False) or len(self.P0) < 4:
+            return
+        xs0 = [float(p[0]) for p in self.P0.values()]
+        ys0 = [float(p[1]) for p in self.P0.values()]
+        rx = max(0.8, (max(xs0) - min(xs0)) * 0.42)
+        y_tb = sum(ys0) / len(ys0)
+        if mo.diem_3d and len(mo.diem_3d) >= 3:
+            ys_3d = [float(v[1]) for v in mo.diem_3d.values()]
+            y3_tb = sum(ys_3d) / len(ys_3d)
+            span_y3 = max(1e-4, max(ys_3d) - min(ys_3d))
+            for n in self.P0:
+                if n in mo.diem_3d:
+                    self.Z_sau[n] = ((float(mo.diem_3d[n][1]) - y3_tb) / span_y3) * rx * 1.15
+        else:
+            # Khôi phục độ sâu 3D từ cấu trúc cạnh khuất (nằm phía sau: Z_sau > 0) và cạnh nhìn thấy (phía trước: Z_sau < 0)
+            dinh_khuat = set()
+            dem_khuat = {n: 0 for n in self.P0}
+            dem_canh = {n: 0 for n in self.P0}
+            for p in mo.pt:
+                if p["kieu"] == "doan":
+                    a, b = p["khoa"]
+                    if p.get("kieu_net") == "khuat":
+                        dinh_khuat.update((a, b))
+                        dem_khuat[a] = dem_khuat.get(a, 0) + 1
+                        dem_khuat[b] = dem_khuat.get(b, 0) + 1
+                    elif p.get("kieu_net") == "canh":
+                        dem_canh[a] = dem_canh.get(a, 0) + 1
+                        dem_canh[b] = dem_canh.get(b, 0) + 1
+            y_max = max(ys0)
+            y_min = min(ys0)
+            span_y = max(1e-4, y_max - y_min)
+            for n, p0 in self.P0.items():
+                # Đỉnh chóp cao nhất ở gần trục tâm (Z_sau ~ 0); các đỉnh đáy phía sau có Z_sau > 0, phía trước Z_sau < 0
+                if p0[1] >= y_max - span_y * 0.15:
+                    self.Z_sau[n] = 0.05 * rx
+                elif dem_khuat.get(n, 0) >= 2 or (n in dinh_khuat and p0[1] > y_tb):
+                    self.Z_sau[n] = 0.55 * rx
+                elif p0[1] <= y_min + span_y * 0.22:
+                    self.Z_sau[n] = -0.52 * rx
+                else:
+                    self.Z_sau[n] = ((float(p0[1]) - y_tb) / span_y) * 0.45 * rx
+        # Nội suy tuyến tính Z_sau cho mọi điểm phụ nằm trên đoạn thẳng nối 2 đỉnh chính (giữ thẳng hàng 100% khi xoay 3D)
+        doan_chinh = [p["khoa"] for p in mo.pt if p["kieu"] == "doan" and p.get("kieu_net") in ("canh", "khuat")]
+        for n, p0 in self.P0.items():
+            for a, b in doan_chinh:
+                if n in (a, b):
+                    continue
+                pa, pb = self.P0[a][:2], self.P0[b][:2]
+                ab = pb - pa
+                d2 = float(np.dot(ab, ab))
+                if d2 < 1e-6:
+                    continue
+                t = float(np.dot(p0[:2] - pa, ab)) / d2
+                if 0.02 <= t <= 0.98:
+                    kc = float(np.linalg.norm(p0[:2] - (pa + t * ab)))
+                    if kc < 0.08:
+                        self.Z_sau[n] = (1.0 - t) * self.Z_sau[a] + t * self.Z_sau[b]
+                        break
 
     def tam_ban_kinh_tho(self, khoa):
         mo = self.mo
@@ -794,11 +868,88 @@ class VideoHinh(Scene):
             if m is not None:
                 self.hinh[k] = m
         da_dat = []
+        self.lech_nhan = {}
         for n, p in self.P.items():
             self.cham[n] = Dot(p, radius=0.06, color=TRANG)
             vt = self.vi_tri_nhan(n, da_dat)
             da_dat.append(vt[:2])
+            self.lech_nhan[n] = vt - p
             self.nhan_diem[n] = MathTex(tex_ten(n), tex_template=TEX, font_size=36, color=TRANG).move_to(vt)
+
+    def cap_nhat_goc_3d(self, goc_rad):
+        """Chiếu tọa độ 3D của khối đa diện tại góc xoay goc_rad (radian) quanh trục thẳng đứng đi qua tâm khối."""
+        cx, cy = float(self.tam[0]), float(self.tam[1])
+        c_th, s_th = math.cos(goc_rad), math.sin(goc_rad)
+        kappa = 0.25  # độ nghiêng phối cảnh trục đứng khi xoay 3D
+        for n, p0 in self.P0.items():
+            dx = float(p0[0]) - cx
+            dy = float(p0[1]) - cy
+            dz = float(self.Z_sau.get(n, 0.0))
+            nx = cx + dx * c_th + dz * s_th
+            ny = cy + dy + kappa * (dx * s_th + dz * (c_th - 1.0))
+            self.P[n] = np.array([nx, ny, 0.0])
+
+        for p in self.mo.pt:
+            k = (p["kieu"], p["khoa"])
+            m = self.hinh.get(k)
+            if m is None or m not in self.tren_man:
+                continue
+            if p["kieu"] == "doan":
+                a, b = (self.P[x] for x in p["khoa"])
+                if np.linalg.norm(b - a) < 1e-4:
+                    continue
+                net = self.net_chinh(m)
+                net.put_start_and_end_on(a, b)
+                if m is not net and len(m) > 1:
+                    huong = np.cross(b - a, [0, 0, 1])
+                    huong = huong / max(1e-6, np.linalg.norm(huong))
+                    if np.dot((a + b) / 2 + huong - self.tam, huong) < np.dot((a + b) / 2 - self.tam, huong):
+                        huong = -huong
+                    m[1].move_to((a + b) / 2 + huong * 0.32)
+            elif p["kieu"] == "mien":
+                pts = [self.P[x] for x in p["dinh"]]
+                if len(pts) >= 3:
+                    m.set_points_as_corners(pts + [pts[0]])
+            elif p["kieu"] == "vuong":
+                a, o, b = (self.P[x] for x in p["ba"])
+                s = 0.26
+                u = (a - o) / max(1e-6, np.linalg.norm(a - o)) * s
+                w = (b - o) / max(1e-6, np.linalg.norm(b - o)) * s
+                m.set_points_as_corners([o + u, o + u + w, o + w])
+
+        for k, m in list(self.hinh.items()):
+            if k[0] == "mien" and m in self.tren_man and k not in self.mo.chi_so:
+                pts = [self.P[x] for x in k[1] if x in self.P]
+                if len(pts) >= 3:
+                    m.set_points_as_corners(pts + [pts[0]])
+
+        for n in self.P:
+            if self.cham[n] in self.tren_man:
+                self.cham[n].move_to(self.P[n])
+            if self.nhan_diem[n] in self.tren_man:
+                self.nhan_diem[n].move_to(self.P[n] + self.lech_nhan.get(n, np.array([0.0, 0.36, 0.0])))
+
+    def xoay_3d(self, ds_goc_do, run_time=1.8):
+        """Xoay 3D mượt mà khối đa diện qua chuỗi các góc độ (độ) để học sinh quan sát trực quan hình không gian."""
+        if not getattr(self.mo, "la_khong_gian", False) or len(ds_goc_do) < 2:
+            return
+        moc_rad = [math.radians(float(g)) for g in ds_goc_do]
+        n_doan = len(moc_rad) - 1
+        khung_ao = Dot(self.tam, radius=0.001, fill_opacity=0, stroke_opacity=0)
+        self.add(khung_ao)
+
+        def _cap_nhat(_mob, alpha):
+            pos = max(0.0, min(float(n_doan), float(alpha) * n_doan))
+            idx = min(n_doan - 1, int(pos))
+            t_con = pos - idx
+            # Nội suy mượt cosine (smoothstep) giữa hai góc
+            t_muot = 0.5 - 0.5 * math.cos(t_con * math.pi)
+            goc = moc_rad[idx] + (moc_rad[idx + 1] - moc_rad[idx]) * t_muot
+            self.cap_nhat_goc_3d(goc)
+
+        self.choi(UpdateFromAlphaFunc(khung_ao, _cap_nhat), run_time=run_time)
+        self.cap_nhat_goc_3d(moc_rad[-1])
+        self.remove(khung_ao)
 
     def cung_goc(self, ba, mau, nhan=""):
         a, o, b = (self.P[x] for x in ba)
@@ -1068,6 +1219,16 @@ class VideoHinh(Scene):
                 for k in sang:
                     if k[0] == "mien" and k in self.hinh:
                         self.bring_to_back(self.hinh[k])
+            # 3.5) HÌNH HỌC KHÔNG GIAN 3D: xoay 3D trực quan khối đa diện để học sinh quan sát rõ cấu trúc không gian
+            if getattr(mo, "la_khong_gian", False) and len(self.tren_man) >= 4:
+                con_3d = D - self._bay_gio()
+                if i <= 1 and con_3d > 1.6:
+                    # Cảnh mở đầu / đề bài: xoay 3D hai phía (+36° rồi -30°) cho học sinh ngắm toàn cảnh khối chóp/lăng trụ
+                    self.xoay_3d([0, 36, -30, 0], run_time=min(2.4, con_3d * 0.55))
+                elif con_3d > 2.2:
+                    # Các cảnh phân tích mặt phẳng / đường cao / tính toán: nghiêng góc 3D để nhìn rõ mặt phẳng và đường phụ
+                    goc_lech = 26 if (i % 2 == 0) else -26
+                    self.xoay_3d([0, goc_lech, 0], run_time=min(1.5, con_3d * 0.32))
             # 4) KIẾN THỨC dùng ở bước này + công thức: mỗi dòng hiện theo câu nói tương ứng; cạnh trong dòng lóe sáng
             dong = mo.cong_thuc(i)
             cau = cp.get("cau") or []

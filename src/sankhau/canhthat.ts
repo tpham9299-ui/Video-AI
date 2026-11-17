@@ -93,7 +93,10 @@ function dungNgang(raw: R): R[] {
   diem.forEach((d) => neo.set(chuoi(d.ma), [X(so(d.x)), yDiem(so(d.cao))]));
   // vật được đo chiều cao: nhãn đặt trên đường đo, không đặt cạnh vật nữa
   const coDoCao = new Set(doRaw.filter((d) => chuoi(d.kieu) === 'chieu_cao').map((d) => chuoi(d.vat)));
-  const out: R[] = [{kieu: 'duong', diem: [[3, yDat], [97, yDat]], mau: 'xam', net: 3, buoc: 1}];
+  const out: R[] = [
+    {kieu: 'da_giac', diem: [[2, yDat], [98, yDat], [100, yDat + 9], [0, yDat + 9]], mau: 'xanh_la', to: 'xanh_la', do_to: 0.16, net: 1, buoc: 1},
+    {kieu: 'duong', diem: [[2, yDat], [98, yDat]], mau: 'xanh_la', net: 3.2, buoc: 1},
+  ];
   trangTri.forEach((v, i) => out.push({kieu: 'vat', ten: chuoi(v.ten), goc: [14 + i * 70, 13], cao: 12, buoc: v.buoc ?? 1, mau: v.mau}));
   chinh.forEach((v) => {
     const ma = chuoi(v.ma);

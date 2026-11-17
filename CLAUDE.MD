@@ -81,7 +81,7 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
 
 ---
 
-## III. CHI TIẾT CÁC CƠ CHẾ TRỌNG TÂM (PHIÊN BẢN HIỆN HÀNH — LẦN 44)
+## III. CHI TIẾT CÁC CƠ CHẾ TRỌNG TÂM (PHIÊN BẢN HIỆN HÀNH — LẦN 46)
 
 ### 1. Cơ chế chống nghẽn "Hệ thống đang bận" & Phản hồi tức thời lệnh `/bo`, `/sua`, `/duyet`, `/huy`
 - **Loại bỏ khóa cứng 5 phút**: Các hàm chạy ngầm định kỳ (`chayBoPhan1`, `chayKiemTraVideo`, `xuLyHocGopY`, `chayDangVideo`) **không còn giữ `LockService.getScriptLock()` suốt nhiều phút**. Thay vào đó, hệ thống dùng cờ nhẹ trong `CacheService` (`DANG_CHAY_BP1`, `DANG_CHAY_KT_VIDEO`, `DANG_CHAY_HOC_GOP_Y`, `DANG_CHAY_DANG_VIDEO`) để tránh hai tiến trình định kỳ chồng lên nhau mà hoàn toàn không khóa bảng tính.
@@ -432,3 +432,32 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
   - Nâng cấp `PHONG_CACH_GIONG_MAC_DINH`: xóa bỏ hoàn toàn mệnh lệnh làm phẳng cao độ ("giữ nguyên cao độ và tốc độ"), bổ sung kỹ năng nhấn nhá sư phạm 4 phần (lên giọng câu hỏi mở, nhấn số liệu mấu chốt, ngắt nghỉ kịch tính trước bẫy, rạng rỡ khi chốt đáp án).
   - Tinh chỉnh lời thoại trong `PromptKichBan.gs`: hướng dẫn AI viết kịch bản nhập vai thầy giáo trẻ vui tính, dùng thán từ tự nhiên ("Nào,", "Ồ,", "Để ý nhé,", "Khoan đã!"), câu hỏi gợi mở và câu ngắn tạo nhịp.
   - Cân chỉnh tốc độ đọc Edge-TTS dự phòng về mức `+6%` cho âm hưởng tự nhiên, rõ từng chữ.
+
+#### 9. Sửa lỗi dừng đột ngột workflow GitHub Actions, Nâng cấp đồ họa 3D chân thực, Xoay 3D hình học không gian, Trình bày xác suất 5 bước chi tiết & Xóa triệt để hình minh họa tĩnh
+- **Tệp chỉnh sửa**: [.github/workflows/dung-video.yml](file:///e:/Video-AI/.github/workflows/dung-video.yml), [HinhHoc.gs](file:///e:/Video-AI/HinhHoc.gs), [PromptKichBan.gs](file:///e:/Video-AI/PromptKichBan.gs), [BoPhan1.gs](file:///e:/Video-AI/BoPhan1.gs), [scripts/manim_hinh.py](file:///e:/Video-AI/scripts/manim_hinh.py), [src/sankhau/canhthat.ts](file:///e:/Video-AI/src/sankhau/canhthat.ts), [src/sankhau/dulieu.ts](file:///e:/Video-AI/src/sankhau/dulieu.ts), [src/sankhau/hinhhoc.tsx](file:///e:/Video-AI/src/sankhau/hinhhoc.tsx), [src/sankhau/vat3d.tsx](file:///e:/Video-AI/src/sankhau/vat3d.tsx), [src/sankhau/vatthuc.tsx](file:///e:/Video-AI/src/sankhau/vatthuc.tsx).
+- **Vấn đề đã xử lý**:
+  1. **Lỗi workflow GitHub Actions dừng đột ngột ở bước `Ghi kịch bản` (`dung-video.yml`)**:
+     - *Nguyên nhân*: Thẻ heredoc `python3 - <<'PY'` ở dòng 146 bị thụt lề bên trong khối `if [ -n "$F_KB" ]`, khiến ký tự kết thúc `PY` ở dòng 156 có khoảng trắng đầu dòng, bash không nhận diện được và báo lỗi cú pháp `syntax error: unexpected end of file (wanted 'PY')` với exit code 2.
+     - *Khắc phục*: Thay thế hoàn toàn đoạn heredoc bằng lệnh `python3 -c "..."` an toàn tuyệt đối, không phụ thuộc vào thụt lề cú pháp heredoc.
+  2. **Đồ họa 3D cho bài toán thực tế (`THUC_TE`) chân thực và sống động**:
+     - Nâng cấp [src/sankhau/vat3d.tsx](file:///e:/Video-AI/src/sankhau/vat3d.tsx): Thêm hiệu ứng chuyển động đung đưa 3D tinh tế theo trục yaw (`xoay3D = sin(t * 0.9) * 2.8°`) và pitch (`nghieng3D = cos(t * 0.7) * 1.6°`) giúp vật thể luôn có chiều sâu không gian chân thực; thêm mặt bóng đổ tiếp xúc sàn (`coBongDat`); áp dụng bảng độ sáng đa hướng `DO_SANG_MAT` và gradient kim loại/đá khối cho các mặt trước, trên, hông của đa diện.
+     - Nâng cấp [src/sankhau/vatthuc.tsx](file:///e:/Video-AI/src/sankhau/vatthuc.tsx): Bổ sung mặt tường hông 3D, mái ngói nghiêng 3D, cột trụ kim loại phản quang có dải gradient, và bóng đổ dưới mặt đất cho `toa_nha`, `ngan_hang`, `nha`, `truong_hoc`...
+     - Nâng cấp [src/sankhau/canhthat.ts](file:///e:/Video-AI/src/sankhau/canhthat.ts): Thêm dải mặt đất đa giác viền đổ bóng 3D thay vì chỉ một đường kẻ đơn điệu.
+  3. **Khắc phục tình trạng 1 hình minh họa dùng cho toàn bộ video / giữ hình cũ gây nhàm chán**:
+     - Cập nhật [PromptKichBan.gs](file:///e:/Video-AI/PromptKichBan.gs): Quy định rõ `giu_san_khau` mặc định là `false` để mỗi cảnh dựng một khung hình minh họa mới khớp đúng đoạn nội dung cảnh đó đang nói. Chỉ dùng `canh_that` ở cảnh mở đầu đề bài và chốt đáp án; các cảnh giữa bắt buộc chuyển sang sơ đồ toán học tương ứng (`hinh_hoc`, `do_thi`, `bieu_do_cot`, `so_do_cay`, `venn`, `the`, `danh_sach`).
+     - Cập nhật [src/sankhau/dulieu.ts](file:///e:/Video-AI/src/sankhau/dulieu.ts): Trong `noiTiepSanKhau()`, nếu cảnh mới có đối tượng chính mới (không phải chỉ nhãn chú thích), hệ thống ưu tiên dựng mới toàn bộ thay vì giữ lại hình cũ của cảnh trước đè lên suốt video.
+  4. **Bài toán Xác suất (`XAC_SUAT`) trình bày cực kỳ chi tiết, tường minh 5 bước sư phạm**:
+     - Nâng cấp quy chuẩn prompt viết kịch bản xác suất trong [PromptKichBan.gs](file:///e:/Video-AI/PromptKichBan.gs) bắt buộc tuân theo 5 bước rõ ràng, không nhảy cóc công thức:
+       - *Bước 1*: Phép thử & Tính Không gian mẫu $n(\Omega)$ với công thức rõ ràng, mô phỏng hộp bi/thẻ.
+       - *Bước 2*: Gọi biến cố $A$ & phân tích chiến lược đếm (biến cố đối hay chia trường hợp).
+       - *Bước 3*: Chỉ rõ bẫy học sinh hay mắc (nhầm tổ hợp/chỉnh hợp, đếm trùng).
+       - *Bước 4*: Tính số cách $n(A)$ cho **từng trường hợp cụ thể (mỗi trường hợp 1 cảnh riêng)**, giải thích từng thừa số.
+       - *Bước 5*: Ráp công thức xác suất $P(A) = \frac{n(A)}{n(\Omega)}$ và kiểm chứng chéo.
+  5. **Hình học không gian (`HINH_HOC`) có hiệu ứng xoay 3D quan sát đa chiều**:
+     - Cập nhật [HinhHoc.gs](file:///e:/Video-AI/HinhHoc.gs): Hàm `chieuHinhKhongGian_()` và `chenToaDoHinh_()` lưu trữ đầy đủ `diem_3d`, `mat` và cờ `khong_gian: true` để chuyển giao tọa độ thực 3 chiều sang Manim và Remotion.
+     - Cập nhật [scripts/manim_hinh.py](file:///e:/Video-AI/scripts/manim_hinh.py):
+       - Bổ sung `_chuan_bi_chieu_sau_3d()` khôi phục hoặc tính toán độ sâu $Z$ thật của từng đỉnh khối đa diện, bảo toàn tính thẳng hàng và tỷ lệ đoạn thẳng.
+       - Thêm hàm `cap_nhat_goc_3d(goc_rad)` và `xoay_3d(ds_goc_do, run_time)`.
+       - Tự động xoay 3D khối đa diện ở cảnh mở đầu đề bài ($0^\circ \rightarrow +36^\circ \rightarrow -30^\circ \rightarrow 0^\circ$) để học sinh chiêm ngưỡng toàn cảnh, và tự động nghiêng góc 3D trong các cảnh phân tích mặt phẳng/đường phụ.
+     - Cập nhật [src/sankhau/hinhhoc.tsx](file:///e:/Video-AI/src/sankhau/hinhhoc.tsx): Bổ sung dao động góc nhìn 3D trực quan (`xoayY` và `nghiengX`) cho các hình không gian có `laKhongGian3D`.
+  6. Nâng `PHIEN_BAN_EDIT = 46` trong [BoPhan1.gs](file:///e:/Video-AI/BoPhan1.gs) để tự động kích hoạt nâng cấp toàn bộ video cũ/đang chờ trên Drive và Sheet.

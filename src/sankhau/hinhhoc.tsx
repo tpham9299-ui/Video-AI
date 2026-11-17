@@ -28,10 +28,6 @@ const NhanHH: React.FC<{x: number; y: number; chu: string; mau?: string; co?: nu
 export const HinhHoc: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
   const W = 880 * v.co;
   const H = 600 * v.co;
-  const P = (k: string) => {
-    const d = v.diem[k];
-    return {x: (d[0] / 100) * W, y: (d[1] / 100) * H};
-  };
   const t = st.t - st.ta;
   const mauChinh = neon(v.mau, TRANG);
   const nhan: React.ReactNode[] = [];
@@ -41,10 +37,32 @@ export const HinhHoc: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
   const nCanh = canhLien.length;
   const tCanh = (i: number) => 0.15 + i * Math.min(0.4, 2.2 / Math.max(1, nCanh));
   const tSau = tCanh(nCanh) + 0.2;
+  const P0 = (k: string) => {
+    const d = v.diem[k];
+    return {x: (d[0] / 100) * W, y: (d[1] / 100) * H};
+  };
   const tamHinh = (() => {
-    const ds = Object.keys(v.diem).map(P);
-    return {x: ds.reduce((s0, p) => s0 + p.x, 0) / ds.length, y: ds.reduce((s0, p) => s0 + p.y, 0) / ds.length};
+    const ds = Object.keys(v.diem).map(P0);
+    return {x: ds.reduce((s0, p) => s0 + p.x, 0) / Math.max(1, ds.length), y: ds.reduce((s0, p) => s0 + p.y, 0) / Math.max(1, ds.length)};
   })();
+  // Hình học không gian (có cạnh khuất): tự động xoay 3D quanh trục đứng sau khi dựng xong nét chính để học sinh quan sát chiều sâu
+  const laKhongGian3D = v.khuat.length > 0;
+  const gocXoay3D = laKhongGian3D && t > tSau ? Math.sin((t - tSau) * 1.15) * 0.42 : 0;
+  const P = (k: string) => {
+    const p0 = P0(k);
+    if (!laKhongGian3D || Math.abs(gocXoay3D) < 1e-4) return p0;
+    const dinhKhuat = v.khuat.some(([ka, kb]) => ka === k || kb === k);
+    const dinhCaoNhat = Object.keys(v.diem).every((m) => P0(m).y >= p0.y - 8);
+    const zSau = dinhCaoNhat ? 0 : dinhKhuat ? W * 0.16 : -W * 0.14;
+    const dx = p0.x - tamHinh.x;
+    const dy = p0.y - tamHinh.y;
+    const cTh = Math.cos(gocXoay3D);
+    const sTh = Math.sin(gocXoay3D);
+    return {
+      x: tamHinh.x + dx * cTh + zSau * sTh,
+      y: tamHinh.y + dy + 0.22 * (dx * sTh + zSau * (cTh - 1)),
+    };
+  };
   return (
     <div style={{position: 'relative', width: W, height: H}}>
       <svg width={W} height={H} style={{position: 'absolute', left: 0, top: 0, overflow: 'visible'}}>

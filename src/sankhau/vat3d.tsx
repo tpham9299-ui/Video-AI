@@ -1,6 +1,7 @@
 // VẬT 3D CHO TOÁN THỰC TẾ: khối hộp (bể nước, thùng hàng, phòng), tòa nhà, ô tô (khối CSS 3D thật, xoay theo camera),
 // hình trụ, hình nón, hình cầu (vẽ 2.5D theo góc nhìn của camera), cây, thang. Kích thước ghi bằng nhãn trên cạnh.
 import React from 'react';
+import {useCurrentFrame, useVideoConfig} from 'remotion';
 import {FONT_DAM} from '../theme';
 import {Toan} from '../Toan';
 import {Goc3D} from './chieu3d';
@@ -11,10 +12,15 @@ import {TrangThai} from './trangthai';
 const TRANG = '#EAF2F4';
 const NHAT = '#9FE7FF';
 
-// góc nhìn của vật = góc mặc định (hơi chéo từ trên xuống để luôn thấy rõ khối) + góc camera của cảnh
+// góc nhìn của vật = góc mặc định + góc camera của cảnh + nhịp xoay 3D tự động mượt mà để thấy rõ chiều sâu khối 3D
 const useGocVat = () => {
   const g = React.useContext(Goc3D);
-  return {pitch: 20 + g.n * 0.65, yaw: -32 + g.r};
+  const frame = useCurrentFrame();
+  const {fps} = useVideoConfig();
+  const t = frame / (fps || 30);
+  const xoay3D = Math.sin(t * 0.92) * 16;
+  const nghieng3D = Math.cos(t * 0.64) * 4;
+  return {pitch: 22 + g.n * 0.65 + nghieng3D, yaw: -30 + g.r + xoay3D};
 };
 
 const NhanKT: React.FC<{chu: string; style?: React.CSSProperties; mau?: string}> = ({chu, style, mau = NHAT}) =>
@@ -25,12 +31,20 @@ const NhanKT: React.FC<{chu: string; style?: React.CSSProperties; mau?: string}>
   ) : null;
 
 type Mat = {nen: string; vien?: string; con?: React.ReactNode; anMatSau?: boolean};
-// Khối hộp CSS 3D: rộng w (trục x), sâu d (trục z), cao h (trục y). Mỗi mặt có thể chứa nội dung (cửa sổ, nhãn...).
+// Khối hộp CSS 3D: rộng w (trục x), sâu d (trục z), cao h (trục y). Mỗi mặt có độ sáng (shading) theo hướng nguồn sáng 3D.
+const DO_SANG_MAT: Record<string, string> = {
+  tren: 'brightness(1.18)',
+  truoc: 'brightness(1.04)',
+  trai: 'brightness(0.88)',
+  phai: 'brightness(0.76)',
+  sau: 'brightness(0.7)',
+  duoi: 'brightness(0.55)',
+};
 export const Khoi3D: React.FC<{w: number; d: number; h: number; mat: Partial<Record<'truoc' | 'sau' | 'trai' | 'phai' | 'tren' | 'duoi', Mat>>; macDinh: Mat; dichY?: number; dichX?: number; dichZ?: number}> = ({w, d, h, mat, macDinh, dichY = 0, dichX = 0, dichZ = 0}) => {
   const mt = (k: keyof typeof mat, fw: number, fh: number, tf: string) => {
     const m = {...macDinh, ...(mat[k] || {})};
     return (
-      <div key={k} style={{position: 'absolute', left: -fw / 2, top: -fh / 2, width: fw, height: fh, background: m.nen, border: m.vien ? `3px solid ${m.vien}` : undefined, boxSizing: 'border-box', transform: tf, backfaceVisibility: m.anMatSau === false ? 'visible' : 'hidden'}}>
+      <div key={k} style={{position: 'absolute', left: -fw / 2, top: -fh / 2, width: fw, height: fh, background: m.nen, border: m.vien ? `3px solid ${m.vien}` : undefined, boxSizing: 'border-box', transform: tf, filter: DO_SANG_MAT[k], boxShadow: 'inset 0 0 24px rgba(255,255,255,0.08)', backfaceVisibility: m.anMatSau === false ? 'visible' : 'hidden'}}>
         {m.con}
       </div>
     );
@@ -47,7 +61,7 @@ export const Khoi3D: React.FC<{w: number; d: number; h: number; mat: Partial<Rec
   );
 };
 
-// Sân khấu nhỏ cho một vật 3D: phối cảnh riêng + xoay theo góc nhìn
+// Sân khấu nhỏ cho một vật 3D: phối cảnh riêng + xoay theo góc nhìn + bóng đổ mặt sàn
 const PHOI_CANH = 1600;
 // Chiếu một điểm (x, y, z) trong hệ tọa độ của vật (y hướng xuống, z hướng về người xem) ra tọa độ khung, đúng như CSS làm.
 export const chieuVat = (x: number, y: number, z: number, pitch: number, yaw: number, rong: number, cao: number) => {
@@ -64,6 +78,7 @@ const Khung3D: React.FC<{rong: number; cao: number; children: React.ReactNode; p
   const {pitch, yaw} = useGocVat();
   return (
     <div style={{position: 'relative', width: rong, height: cao, perspective: PHOI_CANH}}>
+      <div style={{position: 'absolute', left: '14%', right: '14%', bottom: '6%', height: '18%', borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(0,0,0,0.58) 0%, rgba(56,189,248,0.12) 48%, rgba(0,0,0,0) 74%)', pointerEvents: 'none'}} />
       <div style={{position: 'absolute', left: '50%', top: '55%', transformStyle: 'preserve-3d', transform: `rotateX(${-pitch}deg) rotateY(${yaw}deg)`}}>{children}</div>
       {phu ? phu(pitch, yaw) : null}
     </div>

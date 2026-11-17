@@ -384,20 +384,28 @@ export function hopLeSanKhau(d: unknown): DuLieuSanKhau | null {
 
 // Nối tiếp sân khấu của cảnh trước (giu_san_khau): vật và hành động cũ coi như đã xong từ đầu cảnh (bước 0),
 // vật cùng id ở cảnh mới thay định nghĩa cũ nhưng vẫn đứng sẵn trên sân khấu (trừ khi cảnh mới đặt bước > 0 và vật chưa có).
+const VAT_PHU_SK = new Set(['nhan', 'chu', 'mui_ten', 'bieu_tuong', 'so_dem']);
 export function noiTiepSanKhau(truoc: DuLieuSanKhau | null, nay: DuLieuSanKhau): DuLieuSanKhau {
   if (!truoc) return nay;
   const moi = new Map(nay.vat.map((v) => [v.id, v]));
-  const vatCu = truoc.vat.map((v) => (moi.has(v.id) ? {...(moi.get(v.id) as Vat), buoc: 0} : {...v, buoc: 0}));
-  const idCu = new Set(truoc.vat.map((v) => v.id));
+  const coVatChinhMoi = nay.vat.some((v) => !VAT_PHU_SK.has(v.loai) && !truoc.vat.some((t) => t.id === v.id));
+  // Nếu cảnh mới đã tự dựng vật chính mới (hinh_hoc, do_thi, bieu_do_cot, luoi_o...) thì dùng thẳng hình mới của cảnh đó,
+  // tránh việc giữ lại hình cũ từ cảnh 1 đè chồng lên mọi cảnh suốt cả video.
+  if (coVatChinhMoi) return nay;
+  const idDuocNhac = new Set(nay.hanhDong.map((h) => h.vat));
+  const vatCu = truoc.vat
+    .filter((v) => moi.has(v.id) || idDuocNhac.has(v.id) || !nay.vat.some((nv) => !VAT_PHU_SK.has(nv.loai)))
+    .map((v) => (moi.has(v.id) ? {...(moi.get(v.id) as Vat)} : {...v, buoc: 0}));
+  const idCu = new Set(vatCu.map((v) => v.id));
   const vatMoi = nay.vat.filter((v) => !idCu.has(v.id));
-  const hdCu = truoc.hanhDong.filter((h) => !moi.has(h.vat) || h.kieu === 'chon' || h.kieu === 'loai_bo').map((h) => ({...h, buoc: 0}));
+  const hdCu = truoc.hanhDong.filter((h) => (!moi.has(h.vat) && idCu.has(h.vat)) || h.kieu === 'chon' || h.kieu === 'loai_bo').map((h) => ({...h, buoc: 0}));
   // camera: chỉ giữ lần phóng to cuối của cảnh trước
   const cam = hdCu.filter((h) => h.kieu === 'phong_to' || h.kieu === 'thu_nho').slice(-1);
   const khac = hdCu.filter((h) => h.kieu !== 'phong_to' && h.kieu !== 'thu_nho');
   // góc 3D: giữ góc cuối của cảnh trước làm góc đầu (camera không giật), trừ khi cảnh mới đặt góc riêng
   const goc3dCu = hdCu.filter((h) => h.kieu === 'goc_3d').slice(-1);
   const gocDau = nay.gocDau || (goc3dCu.length ? {nghieng: goc3dCu[0].nghieng, xoay: goc3dCu[0].xoay} : truoc.gocDau);
-  return {vat: [...vatCu, ...vatMoi], hanhDong: [...khac.filter((h) => h.kieu !== 'goc_3d'), ...cam, ...nay.hanhDong], soBuoc: nay.soBuoc, gocDau};
+  return {vat: [...vatCu, ...vatMoi], hanhDong: [...khac.filter((h) => h.kieu !== 'goc_3d'), ...cam, ...nay.hanhDong], soBuoc: Math.max(nay.soBuoc, ...vatCu.map((v) => v.buoc)), gocDau};
 }
 
 // Thời lượng tối thiểu (giây) để mọi bước kịp diễn ra.

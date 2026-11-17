@@ -382,12 +382,12 @@ function phanLoaiCanhKhongGian3D_(diem3D, diem2D, h) {
     else canhMoi.push([u, v]);
   });
 
-  return { canh: canhMoi, khuat: khuatMoi, phu: h.phu || [] };
+  return { canh: canhMoi, khuat: khuatMoi, phu: h.phu || [], mat: dsMat };
 }
 
 // Đổi tọa độ thật -> % khung hình học (0-100, y hướng XUỐNG), giữ tỉ lệ, chừa lề 10%. Tính cả đường tròn vào khung.
 // Hình KHÔNG GIAN: chiếu song song kiểu sách giáo khoa (trục sâu y vẽ chéo 35°, thu nhỏ 0,5): X = x + 0,41y; Y = z + 0,29y,
-// đồng thời tự động phân loại chính xác cạnh nhìn thấy (nét liền) và cạnh không nhìn thấy (nét đứt).
+// đồng thời tự động phân loại chính xác cạnh nhìn thấy (nét liền) và cạnh không nhìn thấy (nét đứt), giữ nguyên diem_3d để xoay 3D trực quan.
 function chieuHinhKhongGian_(h) {
   var co3D = Object.keys(h.diem).some(function (k) { var p = h.diem[k]; return Array.isArray(p) && p.length >= 3 && isFinite(Number(p[2])); });
   if (!co3D) return h;
@@ -396,11 +396,11 @@ function chieuHinhKhongGian_(h) {
     var p = h.diem[k];
     if (!Array.isArray(p)) return;
     var x = Number(p[0]) || 0, y = Number(p[1]) || 0, z = Number(p[2]) || 0;
-    d3[k] = [x, y, z];
+    d3[k] = [Math.round(x * 1000) / 1000, Math.round(y * 1000) / 1000, Math.round(z * 1000) / 1000];
     d2[k] = [x + 0.41 * y, z + 0.29 * y];
   });
   var pl = phanLoaiCanhKhongGian3D_(d3, d2, h);
-  return { diem: d2, canh: pl.canh, khuat: pl.khuat, phu: pl.phu, tron: [], _kg: true };
+  return { diem: d2, diem_3d: d3, mat: pl.mat || [], canh: pl.canh, khuat: pl.khuat, phu: pl.phu, tron: [], _kg: true };
 }
 function chuanHinhToaDo_(h) {
   if (!h || typeof h !== 'object' || !h.diem || typeof h.diem !== 'object') return null;
@@ -437,11 +437,11 @@ function chuanHinhToaDo_(h) {
   var khuat = loc(h.khuat, 2).map(function (c) { return [c[0], c[1]]; });
   var laKhuat = function (c) { return khuat.some(function (k) { return (k[0] === c[0] && k[1] === c[1]) || (k[0] === c[1] && k[1] === c[0]); }); };
   var phu = loc(h.phu, 2).map(function (c) { return [c[0], c[1]]; });
-  return { diem: diem, canh: loc(h.canh, 2).map(function (c) { return [c[0], c[1]]; }).filter(function (c) { return !laKhuat(c); }), khuat: khuat, tron: tron,
+  return { diem: diem, diem_3d: h.diem_3d || null, mat: h.mat || [], canh: loc(h.canh, 2).map(function (c) { return [c[0], c[1]]; }).filter(function (c) { return !laKhuat(c); }), khuat: khuat, tron: tron,
     phu: phu, khong_gian: !!h._kg };
 }
 
-// Kịch bản hình học: mọi hinh_hoc dùng TỌA ĐỘ ĐÚNG từ mã dựng hình (giữ cạnh/góc/nhãn kịch bản viết; đồng bộ đường thẳng phụ và cạnh khuất/nhìn thấy).
+// Kịch bản hình học: mọi hinh_hoc dùng TỌA ĐỘ ĐÚNG từ mã dựng hình (giữ cạnh/góc/nhãn kịch bản viết; đồng bộ đường thẳng phụ, cạnh khuất/nhìn thấy và tọa độ 3D).
 function chenToaDoHinh_(kb, hinh) {
   if (!hinh || !hinh.diem || !kb || !Array.isArray(kb.canh)) return [];
   var sua = [];
@@ -456,6 +456,9 @@ function chenToaDoHinh_(kb, hinh) {
       Object.keys(v.diem).forEach(function (n) { if (hinh.diem[n]) { v.diem[n] = hinh.diem[n].slice(); doi++; } });
       if (!doi && !Object.keys(hinh.diem).length) return;
       Object.keys(hinh.diem).forEach(function (n) { if (!v.diem[n]) v.diem[n] = hinh.diem[n].slice(); });
+      if (hinh.diem_3d) v.diem_3d = JSON.parse(JSON.stringify(hinh.diem_3d));
+      if (hinh.mat && hinh.mat.length) v.mat = JSON.parse(JSON.stringify(hinh.mat));
+      if (hinh.khong_gian) v.khong_gian = true;
       if (!Array.isArray(v.canh) || !v.canh.length) v.canh = hinh.canh.map(function (x) { return [x[0], x[1], '']; });
       if (!Array.isArray(v.tron) && hinh.tron.length) v.tron = hinh.tron.map(function (x) { return x.slice(); });
       if (hinh.khuat && hinh.khuat.length) {   // hình không gian: cạnh khuất vẽ nét đứt, tuyệt đối không vẽ thành cạnh liền
