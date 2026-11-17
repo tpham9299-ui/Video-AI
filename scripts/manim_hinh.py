@@ -1234,6 +1234,39 @@ class VideoHinh(Scene):
             cau = cp.get("cau") or []
             dap_an = la_dap_an(cp)
             bien_doi = str(cp.get("trinhBay") or "") == "bien_doi" and len(dong) >= 2
+
+            # Quét từng câu nói của giáo viên: Khi giọng đọc nhắc tới cạnh/góc/mặt nào (ví dụ AH, BC, SA, (SAC)...)
+            # thì Manim lập tức phóng tia sáng chói lọi (ShowPassingFlash) và tăng độ dày để hút mắt học sinh
+            if cau:
+                for c in cau:
+                    c_text = str(c.get("chu") or c.get("cau") or "")
+                    t_bat = float(c.get("bat", 0))
+                    if not c_text or t_bat <= self.da:
+                        continue
+                    c_nt = mo.nhac_toi(c_text)
+                    if any(c_nt[k] for k in ("doan", "goc", "tam_giac", "mat")):
+                        self.doi_toi(min(max(t_bat, self.da), D - 0.35))
+                        cau_loe = []
+                        for d in c_nt["doan"]:
+                            m_d = self.hinh.get(("doan", d))
+                            if m_d is not None and m_d in self.tren_man:
+                                net_d = self.net_chinh(m_d)
+                                tia_c = (
+                                    DashedLine(*(self.P[x] for x in d), dash_length=0.18, dashed_ratio=0.56).set_stroke(VANG, width=12)
+                                    if isinstance(net_d, DashedLine)
+                                    else Line(*(self.P[x] for x in d)).set_stroke(VANG, width=16)
+                                )
+                                cau_loe.append(ShowPassingFlash(tia_c, time_width=0.85))
+                                cau_loe.append(net_d.animate.set_stroke(color=VANG, width=(6.5 if isinstance(net_d, DashedLine) else 9.5)))
+                        for gk in c_nt["goc"]:
+                            if ("vuong", gk) in self.hinh:
+                                cau_loe.append(self.hinh[("vuong", gk)].animate.set_stroke(color=mo.mau.get(("goc", gk), VANG), width=4.5, opacity=1))
+                        for tg in c_nt["tam_giac"]:
+                            if ("mien", tg) in self.hinh and self.hinh[("mien", tg)] in self.tren_man:
+                                cau_loe.append(self.hinh[("mien", tg)].animate.set_fill(color=VANG, opacity=0.35))
+                        if cau_loe:
+                            self.choi(*cau_loe, run_time=min(0.85, max(0.4, D - self.da - 0.2)))
+
             ds_tg = []
             for s_ in dong:
                 if re.search(r"\\sim|\\cong|=", s_):

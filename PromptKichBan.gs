@@ -169,6 +169,10 @@ function taoPromptKichBan_(r, c1, c2) {
     'TUYỆT ĐỐI không thay vật thật bằng khối hộp/khối trụ/thẻ chữ; vật chưa có thì cong_trinh + bien hoặc bieu_tuong + emoji. ' +
     'CHỈ dùng canh_that ở cảnh giới thiệu tình huống (mo_dau, de_bai) và cảnh chốt đáp án thực tế (dap_an); các cảnh ở giữa (mo_hinh_hoa, y_do, bay, tinh_toan, kiem_tra) BẮT BUỘC chuyển sang sơ đồ toán học tương ứng (hinh_hoc, do_thi, bieu_do_cot, danh_sach, the, so_dem) để người xem không bị nhàm chán vì nhìn mãi 1 hình! ' +
     '"mo_ta" mỗi cảnh phải ghi rõ vẽ VẬT GÌ (tên thật trong đề), số đo nào, đo từ đâu tới đâu.\n' +
+    'HÌNH HỌC (PHẲNG & KHÔNG GIAN 3D — BẮT BUỘC XOAY 3D & NỔI BẬT CẠNH CHỨNG MINH):\n' +
+    '- KHI CHỨNG MINH HOẶC TÍNH TOÁN CẠNH NÀO, GÓC NÀO, MẶT NÀO: Lời thoại phải xướng tên rõ ràng đoạn thẳng đó (ví dụ "Kẻ đường cao AH vuông góc với SC...", "Chứng minh BD vuông góc với mặt phẳng (SAC)...", "Xét cạnh SA..."); máy dựng Manim và Remotion sẽ tự động phóng tia sáng quét dọc theo cạnh đó (ShowPassingFlash) và bật sáng hào quang neon rực rỡ đúng khoảnh khắc giọng đọc cất lên, giúp học sinh tập trung tuyệt đối vào đúng yếu tố đang chứng minh.\n' +
+    '- HÌNH HỌC KHÔNG GIAN CÓ XOAY 3D: Ở cảnh mở đầu đề bài, máy tự động xoay đa hướng khối chóp/lăng trụ để học sinh nhìn rõ toàn bộ các mặt bên và đáy; khi kẻ đường phụ hoặc phân tích mặt phẳng, góc máy tự động nghiêng 3D để quan sát rõ nhất góc vuông và đường phụ.\n' +
+    '- CẠNH THẤY LÀ NÉT LIỀN, CẠNH KHUẤT LÀ NÉT ĐỨT, ĐƯỜNG PHỤ LÀ NÉT ĐỨT MÀU VÀNG PHÁT SÁNG.\n' +
     'HÌNH BÁM SÁT ĐỀ (bắt buộc, máy kiểm tra và AI soi từng cảnh):\n' +
     '- BỐ CỤC ĐÚNG CẤU TRÚC ĐỀ: ngồi quanh bàn tròn / xếp vòng tròn -> ban_tron (KHÔNG xếp hàng ngang); xếp hàng / dãy ghế -> nguoi thành hàng; ' +
     'qua sông, đường ống, hai bờ -> canh_that nhìn từ trên có dải sông và các điểm A, B, P...; không gian mẫu -> luoi_o; chia trường hợp -> so đồ / danh_sach.\n' +

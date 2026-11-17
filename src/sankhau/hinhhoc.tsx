@@ -88,9 +88,11 @@ export const HinhHoc: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
           let ny = (B.x - A.x) / L;
           if ((mx + nx * 10 - tamHinh.x) * nx + (my + ny * 10 - tamHinh.y) * ny < 0) { nx = -nx; ny = -ny; }
           if (ten) nhan.push(<NhanHH key={`nc${i}`} x={mx + nx * 34} y={my + ny * 34} chu={ten} mau={c ? mau : '#9FE7FF'} mo={(t - tCanh(i) - 0.35) / 0.35} />);
+          // Khi cạnh đang được chứng minh/nhắc đến (c != null), nhấp nháy phát sáng vàng/cam nổi bật thu hút người xem
+          const nhipSang = c ? 1 + Math.sin(t * 7) * 0.18 : 1;
           return (
-            <line key={`c${i}`} x1={A.x} y1={A.y} x2={B.x} y2={B.y} stroke={mau} strokeWidth={(c ? 9 : 6) * Math.max(0.7, v.co)} strokeLinecap="round" opacity={1 - 0.6 * l}
-              {...veDan(p)} style={{filter: c ? `drop-shadow(0 0 10px ${mau})` : `drop-shadow(0 0 4px ${mau}88)`}} />
+            <line key={`c${i}`} x1={A.x} y1={A.y} x2={B.x} y2={B.y} stroke={mau} strokeWidth={(c ? 10 : 6) * Math.max(0.7, v.co) * nhipSang} strokeLinecap="round" opacity={1 - 0.6 * l}
+              {...veDan(p)} style={{filter: c ? `drop-shadow(0 0 16px ${mau}) drop-shadow(0 0 6px #FFFFFF)` : `drop-shadow(0 0 4px ${mau}88)`}} />
           );
         })}
         {/* cạnh khuất của hình không gian: nét đứt mảnh, vẽ dần cùng các cạnh */}
@@ -124,7 +126,8 @@ export const HinhHoc: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
           if (p <= 0) return null;
           const L = Math.hypot(B.x - A.x, B.y - A.y);
           const k = easeOut(kep(p));
-          return <line key={`ph${i}`} x1={A.x} y1={A.y} x2={A.x + (B.x - A.x) * k} y2={A.y + (B.y - A.y) * k} stroke="#FFD54A" strokeWidth={4.5 * Math.max(0.7, v.co)} strokeDasharray={`${Math.max(10, L / 30)} ${Math.max(8, L / 40)}`} strokeLinecap="round" style={{filter: 'drop-shadow(0 0 6px #FFD54A88)'}} />;
+          const loe = 0.9 + 0.25 * Math.sin(t * 6);
+          return <line key={`ph${i}`} x1={A.x} y1={A.y} x2={A.x + (B.x - A.x) * k} y2={A.y + (B.y - A.y) * k} stroke="#FFD54A" strokeWidth={5.2 * Math.max(0.7, v.co) * loe} strokeDasharray={`${Math.max(10, L / 30)} ${Math.max(8, L / 40)}`} strokeLinecap="round" style={{filter: 'drop-shadow(0 0 10px #FFD54A) drop-shadow(0 0 4px #FFFFFF)'}} />;
         })}
         {/* vạch đánh dấu cạnh bằng nhau */}
         {v.bang.map(([a, b, n], i) => {

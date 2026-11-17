@@ -453,11 +453,12 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
        - *Bước 3*: Chỉ rõ bẫy học sinh hay mắc (nhầm tổ hợp/chỉnh hợp, đếm trùng).
        - *Bước 4*: Tính số cách $n(A)$ cho **từng trường hợp cụ thể (mỗi trường hợp 1 cảnh riêng)**, giải thích từng thừa số.
        - *Bước 5*: Ráp công thức xác suất $P(A) = \frac{n(A)}{n(\Omega)}$ và kiểm chứng chéo.
-  5. **Hình học không gian (`HINH_HOC`) có hiệu ứng xoay 3D quan sát đa chiều**:
+  5. **Hình học không gian (`HINH_HOC`) có hiệu ứng xoay 3D quan sát đa chiều & Lóe sáng nổi bật cạnh đang chứng minh**:
      - Cập nhật [HinhHoc.gs](file:///e:/Video-AI/HinhHoc.gs): Hàm `chieuHinhKhongGian_()` và `chenToaDoHinh_()` lưu trữ đầy đủ `diem_3d`, `mat` và cờ `khong_gian: true` để chuyển giao tọa độ thực 3 chiều sang Manim và Remotion.
      - Cập nhật [scripts/manim_hinh.py](file:///e:/Video-AI/scripts/manim_hinh.py):
        - Bổ sung `_chuan_bi_chieu_sau_3d()` khôi phục hoặc tính toán độ sâu $Z$ thật của từng đỉnh khối đa diện, bảo toàn tính thẳng hàng và tỷ lệ đoạn thẳng.
        - Thêm hàm `cap_nhat_goc_3d(goc_rad)` và `xoay_3d(ds_goc_do, run_time)`.
        - Tự động xoay 3D khối đa diện ở cảnh mở đầu đề bài ($0^\circ \rightarrow +36^\circ \rightarrow -30^\circ \rightarrow 0^\circ$) để học sinh chiêm ngưỡng toàn cảnh, và tự động nghiêng góc 3D trong các cảnh phân tích mặt phẳng/đường phụ.
-     - Cập nhật [src/sankhau/hinhhoc.tsx](file:///e:/Video-AI/src/sankhau/hinhhoc.tsx): Bổ sung dao động góc nhìn 3D trực quan (`xoayY` và `nghiengX`) cho các hình không gian có `laKhongGian3D`.
+       - **Làm nổi bật tức thì cạnh đang chứng minh**: Quét từng câu nói trong kịch bản (`cau`); ngay khi giọng đọc xướng tên cạnh (ví dụ $AH$, $BC$, $SA$, $BD$...), góc vuông hay mặt phẳng $(SAC)$, Manim lập tức bắn tia sáng quét dọc theo cạnh (`ShowPassingFlash` với độ dày 16px) và làm cạnh phát sáng rực rỡ màu vàng kim, thu hút trọn vẹn sự chú ý của người xem.
+     - Cập nhật [src/sankhau/hinhhoc.tsx](file:///e:/Video-AI/src/sankhau/hinhhoc.tsx): Bổ sung dao động góc nhìn 3D trực quan (`xoayY` và `nghiengX`) cho các hình không gian có `laKhongGian3D`, nhấp nháy phát sáng neon kép (`drop-shadow` trắng + màu) cho cạnh đang chọn/chứng minh và đường phụ `v.phu`.
   6. Nâng `PHIEN_BAN_EDIT = 46` trong [BoPhan1.gs](file:///e:/Video-AI/BoPhan1.gs) để tự động kích hoạt nâng cấp toàn bộ video cũ/đang chờ trên Drive và Sheet.
