@@ -423,3 +423,12 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
   - Tạo tệp [appsscript.json](file:///e:/Video-AI/appsscript.json) chuẩn hóa với đầy đủ mảng `oauthScopes` gồm: `script.projects`, `script.external_request`, `spreadsheets`, `drive`, `script.scriptapp`, `script.storage`.
   - Bổ sung `Logger.log()` xuyên suốt 4 bước trong `capNhatMaAppsScriptTuGitHub()`: tải từng file, kiểm tra HTTP code, ghi đè file và thông báo thành công hoặc chi tiết lỗi.
   - Hướng dẫn người dùng thao tác: Mở `appsscript.json` trên màn hình dán cấu hình quyền, bấm F5 để tải lại mã mới.
+
+#### 8. Nâng cấp giọng lồng tiếng sư phạm truyền cảm & Hệ thống theo dõi tiến trình video
+- **Tệp chỉnh sửa**: [scripts/chuanbi.py](file:///e:/Video-AI/scripts/chuanbi.py), [PromptKichBan.gs](file:///e:/Video-AI/PromptKichBan.gs), [BoPhan1.gs](file:///e:/Video-AI/BoPhan1.gs), [BoPhan2.gs](file:///e:/Video-AI/BoPhan2.gs), [CLAUDE.MD](file:///e:/Video-AI/CLAUDE.MD).
+- **Vấn đề**: Giọng đọc cũ đều đều, cứng nhắc, thiếu ngữ điệu sư phạm và thiếu cảm xúc vui vẻ để lôi cuốn học sinh.
+- **Giải pháp kỹ thuật**:
+  - Chuyển giọng mặc định sang `Puck` (nam - năng động, tinh nghịch, giàu biểu cảm) và `Aoede` (nữ - tươi sáng, truyền cảm hứng) trong `BoPhan1.gs`, `BoPhan2.gs` và `scripts/chuanbi.py`.
+  - Nâng cấp `PHONG_CACH_GIONG_MAC_DINH`: xóa bỏ hoàn toàn mệnh lệnh làm phẳng cao độ ("giữ nguyên cao độ và tốc độ"), bổ sung kỹ năng nhấn nhá sư phạm 4 phần (lên giọng câu hỏi mở, nhấn số liệu mấu chốt, ngắt nghỉ kịch tính trước bẫy, rạng rỡ khi chốt đáp án).
+  - Tinh chỉnh lời thoại trong `PromptKichBan.gs`: hướng dẫn AI viết kịch bản nhập vai thầy giáo trẻ vui tính, dùng thán từ tự nhiên ("Nào,", "Ồ,", "Để ý nhé,", "Khoan đã!"), câu hỏi gợi mở và câu ngắn tạo nhịp.
+  - Cân chỉnh tốc độ đọc Edge-TTS dự phòng về mức `+6%` cho âm hưởng tự nhiên, rõ từng chữ.

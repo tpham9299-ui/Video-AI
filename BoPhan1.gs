@@ -51,8 +51,8 @@ var PHIEN_BAN_EDIT = 45;                    // phiên bản chuẩn edit mới n
 // Tên model nằm trong CAU_HINH vì Google đổi tên/ngừng model thường xuyên; hệ thống tự động đổi model dự phòng khi gặp lỗi.
 var MAC_DINH = {
   // GIỌNG ĐỌC (mỗi video MỘT giọng từ đầu đến cuối): QUY_TAC_GIONG = CHU_KY (mặc định: cứ CHU_KY_GIONG video giọng nam thì 1 video giọng nữ)
-  // | THEO_MON (toán thực tế = nam, xác suất = nữ) | CHI_NAM | CHI_NU. Tên giọng Gemini: GIONG_NAM, GIONG_NU.
-  QUY_TAC_GIONG: 'CHU_KY', CHU_KY_GIONG: '3', GIONG_NAM: 'Charon', GIONG_NU: 'Kore',
+  // | THEO_MON (toán thực tế = nam, xác suất = nữ) | CHI_NAM | CHI_NU. Tên giọng Gemini: GIONG_NAM (Puck/Charon/Fenrir), GIONG_NU (Aoede/Kore).
+  QUY_TAC_GIONG: 'CHU_KY', CHU_KY_GIONG: '3', GIONG_NAM: 'Puck', GIONG_NU: 'Aoede',
   DANH_SACH_MODEL: 'gemini-2.5-flash,gemini-flash-latest,gemini-2.5-pro,gemini-2.0-flash,gemini-flash-lite-latest,gemini-3.8-flash,gemini-3.6-flash',
   MODEL_CHINH: 'gemini-2.5-flash',
   MODEL_DU_PHONG: 'gemini-flash-latest',

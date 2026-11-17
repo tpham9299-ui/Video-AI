@@ -117,6 +117,12 @@ function taoPromptKichBan_(r, c1, c2) {
   ];
   var noiCanh = [
     'MẠCH NỐI GIỮA CÁC CẢNH (rất quan trọng, người nghe ghét cảm giác "chuyển slide"): cả video phải nghe như MỘT bài nói liền mạch của một người thật, không phải các đoạn rời ghép lại. ',
+    'PHONG CÁCH LỜI THOẠI GIẢNG DẠY (BẮT BUỘC ĐỂ GIỌNG ĐỌC VUI VẺ, CÓ NHẤN NHÁ SƯ PHẠM): ' +
+      'Nhập vai người thầy giáo trẻ dạy toán siêu vui tính, nhiệt huyết, hóm hỉnh và truyền cảm hứng. ' +
+      'Thường xuyên dùng thán từ tạo nhịp cảm xúc tự nhiên: "Nào,", "Ồ,", "Để ý kỹ nhé,", "Thấy điều kỳ diệu chưa?", "Khoan đã!", "Tuyệt vời!". ' +
+      'Đặt câu hỏi gợi mở kích thích trí tò mò của học sinh ("Tại sao lại thế nhỉ?", "Bí quyết nằm ở đâu?"). ' +
+      'Ngắt các câu văn ngắn gọn, dứt khoát ở điểm nhấn; so sánh thực tế gần gũi, hài hước để học sinh thấy toán học cực kỳ thú vị và dễ hiểu. ' +
+      'CẤM viết lời thoại khô khan, đều đều như đọc sách giáo khoa hay báo cáo khoa học. ',
     'Câu ĐẦU của mỗi cảnh (từ cảnh 2) là một CÂU NỐI tự nhiên, bắt từ ý cuối của cảnh trước rồi dẫn sang ý mới, ví dụ: ',
     'sang kiến thức: "Muốn gỡ được, mình chỉ cần nhớ một điều nhỏ thôi."; sang cái bẫy: "Nhưng khoan, chính chỗ này nhiều bạn trượt chân."; sang mấu chốt: "Vậy mẹo nằm ở đâu? Để ý kỹ nhé."; ',
     'sang tính: "Hiểu rồi thì phần tính nhẹ tênh."; nối hai cảnh tính: "Có cái đó rồi, giờ ráp tiếp."; sang kiểm tra: "Khoan chốt vội, thử soát lại xem."; sang đáp án: "Và kết quả là..."; sang bài học: "Vậy rút ra được gì?". ',

@@ -194,7 +194,7 @@ function chonVaGuiDung_(sh) {
 //  CHI_NAM / CHI_NU: luôn một giọng.
 // Video đã được chọn giọng thì dựng lại vẫn giữ nguyên giọng đó (lưu theo mã video).
 function chonGiongDoc_(r) {
-  var nam = String(cauHinh_('GIONG_NAM') || 'Charon').trim(), nu = String(cauHinh_('GIONG_NU') || 'Kore').trim();
+  var nam = String(cauHinh_('GIONG_NAM') || 'Puck').trim(), nu = String(cauHinh_('GIONG_NU') || 'Aoede').trim();
   var p = PropertiesService.getScriptProperties();
   var daChon = {};
   try { daChon = JSON.parse(p.getProperty('GIONG_THEO_VIDEO') || '{}'); } catch (e) {}

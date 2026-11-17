@@ -198,10 +198,17 @@ def _gtts(text, tep, toc):
 
 THONG_KE_GIONG = {"edge": 0, "gtts": 0, "gemini": 0}
 
-PHONG_CACH_GIONG_MAC_DINH = ("Đọc đoạn sau bằng tiếng Việt chuẩn, giọng miền Bắc, như một thầy giáo trẻ đang nói chuyện trực tiếp với một bạn học sinh "
-                             "trong video TikTok dạy toán: tự nhiên như trò chuyện chứ không đọc văn bản, giọng ấm, có nụ cười trong giọng nói, "
-                             "lên xuống giọng rõ ràng, ngừng rất ngắn trước con số hoặc ý quan trọng rồi nhấn vào nó, câu hỏi thì lên giọng cuối câu, "
-                             "tốc độ hơi nhanh nhưng mọi chữ đều rõ. Chỉ đọc đúng nội dung, không thêm bớt chữ nào.")
+PHONG_CACH_GIONG_MAC_DINH = (
+    "Đọc bằng tiếng Việt chuẩn, nhập vai một người thầy dạy toán trẻ trung, vui vẻ, năng lượng, cực kỳ truyền cảm hứng. "
+    "Phong cách nói chuyện tự nhiên, gần gũi, hóm hỉnh như đang livestream hay đứng lớp trò chuyện trực tiếp với học sinh, không đọc văn bản khô khan. "
+    "Luôn có nụ cười ấm áp trong giọng nói. "
+    "KỸ NĂNG NHẤN NHÁ SƯ PHẠM: "
+    "1) Lên giọng hào hứng ở câu hỏi mở và từ gợi ý; "
+    "2) Nhấn mạnh, rõ ràng từng con số, số đo, công thức then chốt; "
+    "3) Ngắt nghỉ kịch tính 0,3-0,5 giây trước khi tiết lộ cái bẫy học sinh hay mắc hoặc bí quyết giải nhanh; "
+    "4) Giọng vui tươi, phấn khởi, rạng rỡ khi chốt đáp án đúng. "
+    "Tiết tấu nhịp nhàng, lôi cuốn, ngắt câu đúng chỗ. Tuyệt đối chỉ đọc đúng nội dung văn bản, không thêm bớt chữ nào."
+)
 
 # Sắc thái giọng theo loại cảnh (kịch bản có thể ghi đè bằng trường "giong_doc" của từng cảnh).
 SAC_THAI_THEO_LOAI = [
@@ -389,8 +396,11 @@ def tao_giong_gemini(canh, thu_muc, args):
         if not van:
             continue
         wav = os.path.join(thu_muc, "gem_%d.wav" % i)
-        # CÙNG MỘT chỉ dẫn giọng cho mọi cảnh: trước đây mỗi cảnh một sắc thái ("hào hứng", "cảnh báo"...) làm chất giọng đổi liên tục
-        phong_cach = args.phong_cach_giong + " Giữ NGUYÊN một chất giọng, cao độ và tốc độ như các đoạn khác của cùng video.\nĐoạn cần đọc:"
+        # Diễn xuất ngữ điệu giàu cảm xúc cho từng cảnh thay vì ép phẳng cao độ
+        sac = sac_thai_canh(c)
+        sac_prompt = (" Sắc thái của cảnh này: " + sac + ".") if sac else ""
+        phong_cach = (args.phong_cach_giong + sac_prompt +
+                      " Diễn xuất tự nhiên, nhấn nhá biểu cảm phong phú, tươi vui và lôi cuốn theo đúng tâm trạng người thầy dạy toán.\nĐoạn cần đọc:")
         try:
             gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach)
             tu = max(1, len(van.split()))
@@ -438,9 +448,11 @@ def tao_giong_gemini_mot_lan(canh, thu_muc, args):
     if not all(van):
         return None
     toan_bai = "\n\n".join(van)
-    phong_cach = (args.phong_cach_giong + " Đây là TOÀN BỘ lời giảng của một video: đọc liền mạch từ đầu đến cuối như MỘT người kể, "
-                  "giữ nguyên một chất giọng, cao độ và tốc độ. Giữa hai đoạn (cách nhau một dòng trống) NGỪNG HẲN khoảng 1,2 giây; "
-                  "trong một đoạn thì đọc liền, tự nhiên.\nLời giảng:")
+    phong_cach = (args.phong_cach_giong + " Đây là TOÀN BỘ bài giảng toán của video. "
+                  "Đọc liền mạch từ đầu đến cuối như một người thầy dạy toán đang say sưa truyền lửa cho học sinh, "
+                  "ngữ điệu biến hóa sinh động theo từng cung bậc cảm xúc của bài học: hào hứng mở đầu, "
+                  "tỉ mỉ giải thích, hồi hộp khi gặp bẫy và phấn khích rạng rỡ khi ra đáp án! "
+                  "Giữa hai đoạn (cách nhau một dòng trống) hãy ngắt nghỉ khoảng 1,2 giây để chuyển ý rõ ràng.\nLời giảng:")
     ky_tu = [max(1, len(v)) for v in van]
     for lan in range(2):
         wav = os.path.join(thu_muc, "ca_bai_%d.wav" % lan)
@@ -998,7 +1010,7 @@ def main():
     ap.add_argument("--public", default="public")
     ap.add_argument("--props-ra", default=None)
     ap.add_argument("--giong", default=os.environ.get("GIONG", "vi-VN-HoaiMyNeural"))
-    ap.add_argument("--toc-do", default=os.environ.get("TOC_DO") or "+15%")
+    ap.add_argument("--toc-do", default=os.environ.get("TOC_DO") or "+6%")
     ap.add_argument("--cao-do", default=os.environ.get("CAO_DO", "+0Hz"))
     ap.add_argument("--phong-cach", default="phong_cach.json")
     ap.add_argument("--gia-lap", action="store_true", help="dùng tiếng bíp thay giọng thật (để thử máy)")
@@ -1007,7 +1019,7 @@ def main():
     co_key = bool(os.environ.get("GEMINI_KEYS") or os.environ.get("GEMINI_API_KEY"))
     ap.add_argument("--may-giong", default=os.environ.get("MAY_GIONG") or ("gemini" if co_key else "edge"),
                     help="gemini (mặc định khi có key: đọc cả video một lần) | edge")
-    ap.add_argument("--giong-gemini", default=os.environ.get("GIONG_GEMINI") or "Charon")
+    ap.add_argument("--giong-gemini", default=os.environ.get("GIONG_GEMINI") or "Puck")
     ap.add_argument("--tts-model", default=os.environ.get("TTS_MODEL") or "gemini-2.5-flash-preview-tts")
     ap.add_argument("--toc-do-gemini", default=os.environ.get("TOC_DO_GEMINI") or "1.08")
     ap.add_argument("--phong-cach-giong", default=os.environ.get("PHONG_CACH_GIONG") or PHONG_CACH_GIONG_MAC_DINH)
