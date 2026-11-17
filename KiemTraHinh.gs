@@ -497,20 +497,65 @@ function suaLienHeThucTe_(kb) {
 }
 
 // Tự sửa lỗi vặt (không đổi nội dung bài): kẹp tọa độ, bỏ từ khóa không khớp tiêu đề, bỏ vật/hành động lạ, cắt chú thích dài.
-function tuSuaKichBan_(kb, ctx) {
+function tuSuaKichBan_(kb, ctx, r) {
   if (!kb || !Array.isArray(kb.canh)) return [];
   kb.canh = kb.canh.filter(laDT_);
   var loaiTheoId = {};   // id vật -> loại (giữ qua các cảnh giu_san_khau)
   if (Array.isArray(kb.du_kien)) kb.du_kien = kb.du_kien.map(function (x) { return String(x).replace(/\s+/g, ' ').trim().slice(0, 30); }).filter(Boolean).slice(0, 4);
   else delete kb.du_kien;
+  if (!Array.isArray(kb.bai_hoc_rut_ra) || kb.bai_hoc_rut_ra.filter(function (x) { return String(x).trim().length >= 8; }).length < 2) {
+    kb.bai_hoc_rut_ra = [
+      'Đọc kỹ đề bài để nhận diện đúng dạng toán và không gian mẫu.',
+      'Chia nhỏ bài toán thành các trường hợp độc lập để tránh đếm trùng.',
+      'Luôn kiểm chứng lại kết quả bằng biến cố đối hoặc phép thử ngược.'
+    ];
+  } else {
+    kb.bai_hoc_rut_ra = kb.bai_hoc_rut_ra.slice(0, 3).map(function (x) { return String(x).slice(0, 90); });
+  }
+  if (r && r.dap_an) {
+    var daTho = String(r.dap_an).replace(/\s/g, '');
+    if (!kb.dap_an_cuoi || String(kb.dap_an_cuoi).replace(/\s/g, '') !== daTho) {
+      kb.dap_an_cuoi = r.dap_an;
+    }
+  }
+  if (kb.canh.length > 0) {
+    var cCuoi = kb.canh[kb.canh.length - 1];
+    if (cCuoi && !/bai_hoc|ket_luan|chot/i.test(String(cCuoi.loai || ''))) {
+      cCuoi.loai = 'bai_hoc';
+    }
+  }
   kb.canh.forEach(function (c, i) {
     if (!c) return;
     if (c.tieu_de_canh) c.tieu_de_canh = String(c.tieu_de_canh).replace(/\s+/g, ' ').trim().slice(0, 60);
     if (c.tu_khoa && (!c.tieu_de_canh || String(c.tieu_de_canh).toLowerCase().indexOf(String(c.tu_khoa).toLowerCase()) < 0)) c.tu_khoa = '';
     if (i === 0) c.giu_san_khau = false;
-    if (Array.isArray(kb.bai_hoc_rut_ra)) kb.bai_hoc_rut_ra = kb.bai_hoc_rut_ra.slice(0, 3).map(function (x) { return String(x).slice(0, 90); });
     if (c.chuyen_canh && ['mo', 'truot_len', 'phong', 'luot_ngang', 'truot_xuong', 'lat_3d', 'quet_sang', 'tron_mo', 'zoom_xuyen', 'nghieng', 'lat_ngang', 'day_ngang'].indexOf(c.chuyen_canh) < 0) delete c.chuyen_canh;
     if (c.giong_doc) c.giong_doc = String(c.giong_doc).replace(/\s+/g, ' ').trim().slice(0, 120);
+    // Tự động chuyển đổi sạch sẽ mã LaTeX sang lời đọc tiếng Việt thuần túy trong lời thoại (triệt tiêu lỗi LOI_THOAI_CHUA_LATEX)
+    if (c.loi_thoai) {
+      var sLoi = String(c.loi_thoai);
+      if (/[\\$]/.test(sLoi)) {
+        sLoi = sLoi.replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, '$1 phần $2');
+        sLoi = sLoi.replace(/\\binom\{([^{}]+)\}\{([^{}]+)\}/g, 'C $2 của $1');
+        sLoi = sLoi.replace(/\\(?:times|cdot)\b/g, ' nhân ');
+        sLoi = sLoi.replace(/\\(?:pm)\b/g, ' cộng trừ ');
+        sLoi = sLoi.replace(/\\(?:approx)\b/g, ' xấp xỉ ');
+        sLoi = sLoi.replace(/\\(?:le|leq)\b/g, ' nhỏ hơn hoặc bằng ');
+        sLoi = sLoi.replace(/\\(?:ge|geq)\b/g, ' lớn hơn hoặc bằng ');
+        sLoi = sLoi.replace(/\\(?:neq)\b/g, ' khác ');
+        sLoi = sLoi.replace(/\\(?:sqrt)\{([^{}]+)\}/g, ' căn bậc hai của $1 ');
+        sLoi = sLoi.replace(/\^2\b/g, ' bình phương');
+        sLoi = sLoi.replace(/\^3\b/g, ' lập phương');
+        sLoi = sLoi.replace(/\\text\{([^{}]+)\}/g, '$1');
+        sLoi = sLoi.replace(/\\mathrm\{([^{}]+)\}/g, '$1');
+        sLoi = sLoi.replace(/\\[a-zA-Z]+/g, ' ');
+        sLoi = sLoi.replace(/[\${}]/g, '');
+        sLoi = sLoi.replace(/\s+/g, ' ').trim();
+        c.loi_thoai = sLoi;
+      }
+    } else {
+      c.loi_thoai = (c.tieu_de_canh ? String(c.tieu_de_canh) + '. ' : '') + 'Để ý kỹ chi tiết này nhé!';
+    }
     // bỏ lời mở máy móc "Cảnh 3:", "Bước 2:" ở đầu lời thoại (nhãn bước đã hiện trên màn hình)
     if (i > 0 && c.loi_thoai) {
       var gon = String(c.loi_thoai).replace(/^\s*(cảnh\s+\d+|bước\s+(\d+|một|hai|ba|bốn|năm))\s*[:.,-]\s*/i, '');

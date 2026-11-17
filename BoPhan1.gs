@@ -1111,7 +1111,7 @@ function chuanBiKichBan_(kb, r, ctxSua) {
   if (cauHinh_('KIEU_MO_DAU') !== 'chao_hook') xoaLoiChao_(kb);
   if (r.dap_an_hien && !kb.dap_an_hien) kb.dap_an_hien = String(r.dap_an_hien);
   if (r._banVe && !kb.ban_ve) kb.ban_ve = r._banVe;   // có sẵn bản vẽ của đề: cảnh nào mất hết vật thì dùng bản vẽ thay vì để trống
-  var sua = typeof tuSuaKichBan_ === 'function' ? tuSuaKichBan_(kb, ctxSua) || [] : [];
+  var sua = typeof tuSuaKichBan_ === 'function' ? tuSuaKichBan_(kb, ctxSua, r) || [] : [];
   if (typeof tuSuaQuyTrinh_ === 'function') sua = sua.concat(tuSuaQuyTrinh_(kb, r.de_bai) || []);
   if (typeof laMonHinhHoc_ === 'function' && laMonHinhHoc_(r)) {   // hình học: tọa độ ĐÚNG từ mã dựng hình đã kiểm chứng
     try { var c1H = JSON.parse(String(r.cach_1 || '{}')); if (c1H && c1H.hinh_toa_do) sua = sua.concat(chenToaDoHinh_(kb, c1H.hinh_toa_do)); } catch (eH) {}

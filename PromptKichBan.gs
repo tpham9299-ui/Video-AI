@@ -231,6 +231,12 @@ function taoPromptKichBan_(r, c1, c2) {
     '"hanh_dong":[{"buoc":1,"vat":"t1","kieu":"chon","mau":"xanh_la"},{"buoc":2,"vat":"t2","kieu":"rung"},{"buoc":2,"vat":"t2","kieu":"loai_bo"}]}}}\n\n'
   ];
   var traVe = [
+    '5 ĐIỀU SỐNG CÒN ĐỂ KỊCH BẢN ĐẠT CHUẨN 100% NGAY LẦN ĐẦU (KHÔNG BỊ TRẢ VỀ):\n' +
+    '1. LỜI THOẠI THUẦN TIẾNG VIỆT TỰ NHIÊN: TUYỆT ĐỐI CẤM ký hiệu $, \\, /, % trong "loi_thoai". Mọi công thức/số phải viết thành chữ đọc ("ba phần năm", "nhân", "C tám chập hai").\n' +
+    '2. ĐÁP ÁN CUỐI CHÍNH XÁC: "dap_an_cuoi" BẮT BUỘC bằng "' + r.dap_an + '", dòng cuối cùng của cảnh "dap_an" trong "noi_dung_man_hinh" phải kết luận đúng đáp án này.\n' +
+    '3. HÌNH VẼ CHÍNH XÁC: Chỉ dùng các vật có trong danh sách vật của hệ thống hoặc "hinh_tu_do", không tự bịa tên vật lạ.\n' +
+    '4. ĐỦ BƯỚC VÀ CẢNH: 15-20 cảnh chi tiết; cảnh cuối cùng bắt buộc là "bai_hoc"; mảng "bai_hoc_rut_ra" đủ 3 câu ngắn bổ ích.\n' +
+    '5. TRẢ VỀ JSON HỢP LỆ DUY NHẤT: Bắt đầu bằng { và kết thúc bằng }, không kèm lời giải thích bên ngoài.\n\n',
     'Trả về MỘT đối tượng JSON: {"tieu_de":"tiêu đề đăng video < 60 ký tự, gây tò mò","chu_de_ngan":"chủ đề 2-5 từ (hiện góc trên)","bai_hoc_rut_ra":["","",""],"video_tiep_theo":"","hook_ung_vien":["","",""],"hook":"(đúng lời thoại cảnh 1)","hook_chu":"","tieu_de_bia":"","hook_kieu":"","nhan_manh":[""],"y_tuong_chinh":"","de_cho":["",""],"can_tim":"","du_kien":["",""],"hashtag":["#toanhoc","' + (tt ? '#toanthucte' : '#xacsuat') + '"],"dap_an_cuoi":"' + r.dap_an + '",',
     '"canh":[{"so":1,"loai":"mo_dau|de_bai|mo_hinh_hoa|y_do|thu_nho|bay|nhac_lai|diem_chot|tinh_toan|dap_an|kiem_tra|lien_he_thuc_te|bai_hoc","tieu_de_canh":"","tu_khoa":"","nhan":"","giu_san_khau":false,"giong_doc":"","loi_thoai":"","noi_dung_man_hinh":[],"trinh_bay":"cong_don|bien_doi|xep","chu_thich":[],"minh_hoa":{"loai":"san_khau","mo_ta":"","du_lieu":{"goc_nhin":null,"vat":[],"hanh_dong":[]}}}]}'
   ];
