@@ -417,9 +417,9 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
 - **Nguyên nhân cốt lõi**:
   - Dù người dùng đã bật **"API Google Apps Script: Đang bật"** trong `script.google.com/home/usersettings`, khi gọi hàm `capNhatMaAppsScriptTuGitHub()` thì `ScriptApp.getOAuthToken()` bên trong Apps Script chỉ mang những quyền (OAuth Scopes) được khai báo cụ thể trong tệp kê khai `appsscript.json`.
   - Mặc định Apps Script không tự động cấp quyền `https://www.googleapis.com/auth/script.projects` cho các URL REST gọi qua `UrlFetchApp`, dẫn đến yêu cầu gọi API `https://script.googleapis.com/v1/projects/<scriptId>/content` bị trả về mã lỗi HTTP 401/403 (Insufficient Authentication Scopes).
-  - Hàm `capNhatMaAppsScriptTuGitHub()` trước đó bọc trong `try { ... } catch (eApi) {}` và chỉ kiểm tra `curRes.getResponseCode() === 200`, nên khi gặp 401/403 đã âm thầm bỏ qua, khiến người dùng không thấy mã trong dự án thay đổi.
-  - Ngoài ra, sau khi cập nhật bằng API thành công trên máy chủ Google, trình duyệt đang mở Apps Script editor cần được **F5 (Reload lại trang)** thì mới hiển thị nội dung mới.
+  - Hàm `capNhatMaAppsScriptTuGitHub()` trước đó không gọi `Logger.log()` và chỉ `return` chuỗi, mà trình xem "Nhật ký thực thi" của Apps Script không hiển thị giá trị trả về của `return` mà chỉ hiển thị `Logger.log()` / `console.log()`. Do đó màn hình chỉ hiện "Đã bắt đầu" và "Đã hoàn tất" mà không hiện nội dung gì ở giữa.
+  - Sau khi cập nhật bằng API thành công trên máy chủ Google, trình duyệt đang mở Apps Script editor cần được **F5 (Reload lại trang)** thì mới hiển thị nội dung mới.
 - **Giải pháp xử lý**:
   - Tạo tệp [appsscript.json](file:///e:/Video-AI/appsscript.json) chuẩn hóa với đầy đủ mảng `oauthScopes` gồm: `script.projects`, `script.external_request`, `spreadsheets`, `drive`, `script.scriptapp`, `script.storage`.
-  - Nâng cấp `capNhatMaAppsScriptTuGitHub()` trong [BoPhan1.gs](file:///e:/Video-AI/BoPhan1.gs): Tự động nạp luôn cả `appsscript.json` từ GitHub, bắt chi tiết mã lỗi HTTP 401/403 và thông báo rõ ràng kèm hướng dẫn cụ thể người dùng thao tác 1 lần duy nhất trong Apps Script editor (bật hiển thị `appsscript.json` trong Cài đặt dự án ⚙️ và dán `oauthScopes` vào).
-  - Nhắc nhở người dùng nhấn **F5** để tải lại trang trình duyệt sau khi đồng bộ thành công.
+  - Bổ sung `Logger.log()` xuyên suốt 4 bước trong `capNhatMaAppsScriptTuGitHub()`: tải từng file, kiểm tra HTTP code, ghi đè file và thông báo thành công hoặc chi tiết lỗi.
+  - Hướng dẫn người dùng thao tác: Mở `appsscript.json` trên màn hình dán cấu hình quyền, bấm F5 để tải lại mã mới.

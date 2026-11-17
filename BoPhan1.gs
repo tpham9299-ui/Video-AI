@@ -2570,6 +2570,7 @@ function taoDeVideoDai10Phut_(goiYChuDe, chat) {
 // Tự động đồng bộ toàn bộ 9 tệp .gs và tệp kê khai appsscript.json mới nhất từ nhánh master trên GitHub thẳng vào dự án Google Apps Script hiện tại
 var DANH_SACH_TEP_GS_ = ['BoPhan1', 'PromptKichBan', 'KiemTraHinh', 'HinhHoc', 'BoPhan2', 'NangCao', 'DangVideo', 'SanPham', 'ZaloDeBai'];
 function capNhatMaAppsScriptTuGitHub() {
+  Logger.log('🚀 [BƯỚC 1/4] Bắt đầu đồng bộ mã từ GitHub...');
   var p = PropertiesService.getScriptProperties();
   var repo = p.getProperty('GITHUB_REPO') || 'tpham9299-ui/Video-AI';
   var nhanh = String(cauHinh_('GITHUB_NHANH') || 'master').trim() || 'master';
@@ -2578,14 +2579,18 @@ function capNhatMaAppsScriptTuGitHub() {
   var filesMoi = [];
   
   // 1. Tải 9 tệp .gs từ GitHub
+  Logger.log('📥 [BƯỚC 2/4] Đang tải 9 tệp .gs từ GitHub (' + repo + '@' + nhanh + ')...');
   for (var i = 0; i < DANH_SACH_TEP_GS_.length; i++) {
     var ten = DANH_SACH_TEP_GS_[i];
     var urlRaw = 'https://raw.githubusercontent.com/' + repo + '/' + encodeURIComponent(nhanh) + '/' + ten + '.gs';
     var res = UrlFetchApp.fetch(urlRaw, { headers: headersGh, muteHttpExceptions: true });
     if (res.getResponseCode() !== 200) {
-      throw new Error('Không tải được ' + ten + '.gs từ GitHub (HTTP ' + res.getResponseCode() + ')');
+      var errTai = '❌ Không tải được ' + ten + '.gs từ GitHub (HTTP ' + res.getResponseCode() + ')';
+      Logger.log(errTai);
+      throw new Error(errTai);
     }
     filesMoi.push({ name: ten, type: 'SERVER_JS', source: res.getContentText() });
+    Logger.log('   ✓ Đã tải: ' + ten + '.gs (' + res.getContentText().length + ' ký tự)');
   }
 
   // 2. Tải tệp appsscript.json từ GitHub (nếu có)
@@ -2596,12 +2601,14 @@ function capNhatMaAppsScriptTuGitHub() {
   var manifestContent = null;
   if (rawManifestRes.getResponseCode() === 200) {
     manifestContent = rawManifestRes.getContentText();
+    Logger.log('   ✓ Đã tải: appsscript.json từ GitHub');
   }
 
   try {
     var scriptId = ScriptApp.getScriptId();
     var oauth = ScriptApp.getOAuthToken();
     var urlContent = 'https://script.googleapis.com/v1/projects/' + scriptId + '/content';
+    Logger.log('📡 [BƯỚC 3/4] Kết nối Google Apps Script API (Script ID: ' + scriptId + ')...');
     
     var curRes = UrlFetchApp.fetch(urlContent, {
       headers: { Authorization: 'Bearer ' + oauth },
@@ -2609,16 +2616,15 @@ function capNhatMaAppsScriptTuGitHub() {
     });
     
     var statusCode = curRes.getResponseCode();
+    Logger.log('   HTTP Status Code: ' + statusCode);
     if (statusCode === 401 || statusCode === 403) {
       var errText = curRes.getContentText();
-      Logger.log('Lỗi quyền Apps Script API: HTTP ' + statusCode + ' | ' + errText);
-      return '⚠️ LỖI CẤP QUYỀN APPS SCRIPT API (HTTP ' + statusCode + '):\n\n' +
+      var thongBaoLoiQuyen = '⚠️ LỖI CẤP QUYỀN APPS SCRIPT API (HTTP ' + statusCode + '):\n' +
+        'Chi tiết: ' + errText + '\n\n' +
         'Nguyên nhân: ScriptApp.getOAuthToken() chưa có quyền quản lý dự án (https://www.googleapis.com/auth/script.projects).\n\n' +
         '👉 BẠN CHỈ CẦN THAO TÁC 1 LẦN DUY NHẤT NHƯ SAU ĐỂ TỰ ĐỘNG HÓA MÃI MÃI:\n' +
-        '1. Ở thanh menu bên trái trình duyệt Apps Script, bấm vào biểu tượng bánh răng "Cài đặt dự án" (Project Settings).\n' +
-        '2. Tích chọn ô: "Hiển thị tệp kê khai appsscript.json trong trình chỉnh sửa" (Show appsscript.json manifest file in editor).\n' +
-        '3. Quay lại biểu tượng dấu ngoặc nhọn "<>" (Trình chỉnh sửa), mở tệp "appsscript.json".\n' +
-        '4. Dán nội dung sau vào tệp appsscript.json rồi bấm Lưu (Ctrl+S):\n' +
+        '1. Ở menu bên trái Apps Script, mở tệp "appsscript.json".\n' +
+        '2. Dán nội dung sau vào tệp appsscript.json rồi bấm Lưu (Ctrl+S):\n' +
         '{\n' +
         '  "timeZone": "Asia/Ho_Chi_Minh",\n' +
         '  "dependencies": {},\n' +
@@ -2633,12 +2639,16 @@ function capNhatMaAppsScriptTuGitHub() {
         '    "https://www.googleapis.com/auth/script.storage"\n' +
         '  ]\n' +
         '}\n\n' +
-        '5. Sau đó chọn lại hàm capNhatMaAppsScriptTuGitHub và bấm "Chạy". Google sẽ hiện cửa sổ yêu cầu cấp quyền (Authorization Required) -> Bấm Xem lại quyền -> Chọn tài khoản Google -> Nâng cao -> Chuyển đến (không an toàn) -> Cho phép.\n' +
-        '6. Ngay sau khi chạy xong, bấm F5 trên trình duyệt là toàn bộ 9 file .gs sẽ tự động cập nhật phiên bản mới nhất từ GitHub!';
+        '3. Sau đó chọn lại hàm capNhatMaAppsScriptTuGitHub và bấm "Chạy". Google sẽ hiện cửa sổ yêu cầu cấp quyền (Authorization Required) -> Bấm Xem lại quyền -> Chọn tài khoản Google -> Nâng cao -> Chuyển đến (không an toàn) -> Cho phép.\n' +
+        '4. Ngay sau khi chạy xong, bấm F5 trên trình duyệt là toàn bộ 9 file .gs sẽ tự động cập nhật phiên bản mới nhất!';
+      Logger.log(thongBaoLoiQuyen);
+      return thongBaoLoiQuyen;
     }
     
     if (statusCode !== 200) {
-      return '⚠️ Lỗi không xác định khi gọi Apps Script API (HTTP ' + statusCode + '): ' + curRes.getContentText();
+      var errKhac = '⚠️ Lỗi không xác định khi gọi Apps Script API (HTTP ' + statusCode + '): ' + curRes.getContentText();
+      Logger.log(errKhac);
+      return errKhac;
     }
 
     var curData = JSON.parse(curRes.getContentText());
@@ -2649,6 +2659,7 @@ function capNhatMaAppsScriptTuGitHub() {
       if (manifest) filesMoi.unshift(manifest);
     }
 
+    Logger.log('💾 [BƯỚC 4/4] Đang ghi đè ' + filesMoi.length + ' tệp vào dự án Apps Script...');
     var putRes = UrlFetchApp.fetch(urlContent, {
       method: 'put',
       contentType: 'application/json',
@@ -2661,13 +2672,18 @@ function capNhatMaAppsScriptTuGitHub() {
       var msgOk = '🎉 ĐÃ TỰ ĐỘNG ĐỒNG BỘ THÀNH CÔNG 100%!\n' +
         '☁️ Đã nạp toàn bộ ' + DANH_SACH_TEP_GS_.length + ' tệp .gs và tệp kê khai appsscript.json từ GitHub (' + repo + '@' + nhanh + ') thẳng vào Google Apps Script.\n\n' +
         '🔄 LƯU Ý BẮT BUỘC: Bạn hãy nhấn phím F5 (Tải lại trang trình duyệt) để trình soạn thảo Apps Script hiển thị toàn bộ mã nguồn vừa được cập nhật!';
+      Logger.log(msgOk);
       nhatKy_('CAP_NHAT_CODE', msgOk);
       return msgOk;
     } else {
-      return '⚠️ Lỗi khi ghi đè mã nguồn vào Apps Script (HTTP ' + putRes.getResponseCode() + '): ' + putRes.getContentText();
+      var errPut = '⚠️ Lỗi khi ghi đè mã nguồn vào Apps Script (HTTP ' + putRes.getResponseCode() + '): ' + putRes.getContentText();
+      Logger.log(errPut);
+      return errPut;
     }
   } catch (eApi) {
-    return '⚠️ Ngoại lệ xảy ra khi đồng bộ mã nguồn: ' + eApi.message + '\n' +
+    var errNgoaiLe = '⚠️ Ngoại lệ xảy ra khi đồng bộ mã nguồn: ' + eApi.message + '\n' +
       'Vui lòng dán thủ công các tệp .gs vừa sửa hoặc kiểm tra cấu hình Apps Script API.';
+    Logger.log(errNgoaiLe);
+    return errNgoaiLe;
   }
 }
