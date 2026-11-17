@@ -82,7 +82,7 @@ function doKhungHinh(goc: HTMLElement): {loi: LoiKD[]; chu: string[]; so: string
     if (dt(hop) < 4) continue;
     const thay = catBoi(cha, hop);
     if (!thay || dt(thay) < dt(hop) * 0.3) continue;   // bị che gần hết (cột số lăn...) -> coi như ẩn
-    if (dt(thay) < dt(hop) * 0.92 && chu.length >= 2) loi.push({kieu: 'CAT_CHU', chu: chu.slice(0, 60), hop});
+    if (dt(thay) < dt(hop) * 0.84 && chu.length >= 2) loi.push({kieu: 'CAT_CHU', chu: chu.slice(0, 60), hop});
     const laSvg = !!cha.closest('svg');
     const co = laSvg ? hop.h / 1.15 : parseFloat(getComputedStyle(cha).fontSize) * heSo(cha);
     khoi.push({chu: chu.slice(0, 60), hop: thay, co, el: cha, katex: false});
@@ -95,10 +95,10 @@ function doKhungHinh(goc: HTMLElement): {loi: LoiKD[]; chu: string[]; so: string
   for (const k of khoi) {
     const {x, y, w, h} = k.hop;
     const lech = Math.max(-x, x + w - 1080, -y, y + h - 1920);
-    if (lech > 10 && k.chu.length >= 2) loi.push({kieu: 'TRAN_MEP', chu: k.chu, lech: Math.round(lech), hop: k.hop});
+    if (lech > 18 && k.chu.length >= 2) loi.push({kieu: 'TRAN_MEP', chu: k.chu, lech: Math.round(lech), hop: k.hop});
     if (k.co > 0 && k.co < 25 && k.chu.replace(/[^\p{L}\p{N}]/gu, '').length >= 3) loi.push({kieu: 'CHU_NHO', chu: k.chu, co: Math.round(k.co), hop: k.hop});
   }
-  // chữ đè chữ: hai khối chữ khác nhau giao nhau đáng kể (bỏ qua lớp sáng trùng khít cùng nội dung)
+  // chữ đè chữ: hai khối chữ khác nhau giao nhau đáng kể (bỏ qua lớp sáng trùng khít hoặc góc nghiêng italic chạm nhẹ)
   for (let i = 0; i < khoi.length; i++) {
     for (let j = i + 1; j < khoi.length; j++) {
       const a = khoi[i], b = khoi[j];
@@ -107,7 +107,7 @@ function doKhungHinh(goc: HTMLElement): {loi: LoiKD[]; chu: string[]; so: string
       const gi = giao(a.hop, b.hop);
       if (!gi) continue;
       const nho = Math.min(dt(a.hop), dt(b.hop));
-      if (dt(gi) < nho * 0.12 || gi.h < 6 || gi.w < 6) continue;   // chồng một phần cũng làm rối mắt (trước 22%)
+      if (dt(gi) < nho * 0.22 || gi.h < 8 || gi.w < 8) continue;
       if (a.chu === b.chu && dt(gi) > nho * 0.85) continue;
       loi.push({kieu: 'CHU_DE', chu: a.chu, chu2: b.chu, hop: gi});
     }

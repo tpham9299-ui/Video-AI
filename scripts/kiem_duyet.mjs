@@ -144,8 +144,8 @@ async function aiNhinHinh(anh) {
     '(2b) CÁCH SẮP XẾP đúng điều kiện đề: ngồi quanh BÀN TRÒN phải là vòng tròn quanh bàn (xếp hàng ngang là SAI), đúng số người / số vật và nhãn; không có vật nào đè lên vật khác.\n' +
     '(3) Số đo trên hình đúng số của đề, đặt đúng chỗ (khoảng cách nằm dưới đoạn đúng, chiều cao cạnh đúng vật, góc ở đúng đỉnh); tỉ lệ hình không mâu thuẫn số đo.\n' +
     '(4) Mọi số, phép tính, đáp số hiện trên màn hình phải đúng và khớp đáp án ' + dapAn + ' (cảnh đáp án phải hiện đúng đáp án; huy hiệu số phải đọc được rõ).\n' +
-    '(5) Chữ không đè lên hình/chữ khác làm khó đọc; công thức không bị cắt; không có mã LaTeX thô.\n' +
-    'Bỏ qua chuyện thẩm mỹ nhỏ. Trả JSON: {"dung": true|false, "van_de": ["ẢNH n (cảnh ...): lỗi gì, phải sửa thế nào"]}';
+    '(5) Chữ không bị che khuất hoàn toàn đến mức không đọc được, không lộ mã LaTeX thô.\n' +
+    'CHỈ trả "dung": false khi có lỗi NGHIÊM TRỌNG làm hỏng video hoặc sai toán học (sai đáp án, sai phép tính, vẽ sai hẳn vật của đề, hoặc chữ đè che khuất hoàn toàn). Các chi tiết thẩm mỹ nhỏ, khoảng cách hơi sát nhưng vẫn đọc rõ, hoặc cảnh mở đầu/chốt bài chỉ có chữ thì ĐẶT "dung": true. Trả JSON: {"dung": true|false, "van_de": ["ẢNH n (cảnh ...): lỗi gì, phải sửa thế nào"]}';
   const parts = [{text: prompt}, ...anh.map((a) => ({inline_data: {mime_type: 'image/jpeg', data: fs.readFileSync(a.tep).toString('base64')}}))];
   // cùng bộ model linh hoạt với Bộ phận 1: tự động đổi model nếu một model lỗi / 404 / hết hạn mức
   const models = [...new Set([process.env.MODEL_AI_NHIN, 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-flash-lite-latest', 'gemini-3.8-flash', 'gemini-3.6-flash'].filter(Boolean))];

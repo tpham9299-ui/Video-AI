@@ -522,3 +522,22 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
   4. **Chống nhiễm độc bộ nhớ đệm âm thanh (`scripts/chuanbi.py`)**: Chỉ ghi âm thanh Gemini TTS vào cache sau khi kiểm tra không bị rè/tạp âm (`not giong_bi_re`), và tự động bỏ qua cache (`dung_cache=False`) khi thử lại nếu cắt khoảng lặng không khớp.
   5. **Tăng tốc bước kiểm duyệt bố cục lên 33% (`scripts/kiem_duyet.mjs`)**: Lấy mẫu 2 khung trọng yếu mỗi cảnh (`[0.55, 0.95]`) thay vì 3 khung, giúp `kiem_duyet.mjs` hoàn tất trong ~3–4 phút, tránh chạm ngưỡng timeout 7 phút (`timeout 420`).
   6. **Chống lỗi HTTP 422 thoáng qua khi đẩy mã GitHub (`BoPhan2.gs`)**: Bổ sung cơ chế tự thử lại 1 lần sau 3,5 giây trong `guiWorkflowGitHub_` khi gặp mã `422` (lúc GitHub vừa cập nhật workflow) hoặc `5xx`, loại bỏ hoàn toàn cảnh báo Zalo giả `Workflow does not have 'workflow_dispatch' trigger`.
+
+
+#### 14. Chống hủy chạy trùng lặp, Nới lỏng ngưỡng chấm cực đoan & Tăng cường độ tin cậy kịch bản tự sửa lỗi (v47)
+- **Tệp chỉnh sửa**: [BoPhan1.gs](file:///e:/Video-AI/BoPhan1.gs), [NangCao.gs](file:///e:/Video-AI/NangCao.gs), [KiemTraHinh.gs](file:///e:/Video-AI/KiemTraHinh.gs), [src/KiemDuyet.tsx](file:///e:/Video-AI/src/KiemDuyet.tsx), [scripts/kiem_duyet.mjs](file:///e:/Video-AI/scripts/kiem_duyet.mjs).
+- **Vấn đề đã xử lý**:
+  1. **Triệt tiêu tình trạng hủy job `bo-phan-1` do gửi trùng (`BoPhan1.gs`)**:
+     - Thêm khóa chống gửi trùng theo mã đề `CacheService.getScriptCache().get('GUI_BP1_' + r.id)` (180 giây) và cập nhật trạng thái `GITHUB` ngay trước khi gọi `guiWorkflowGitHub_`, ngăn chặn tuyệt đối việc 2 trigger song song đẩy cùng một mã đề khiến `concurrency: cancel-in-progress` tự hủy job vừa khởi chạy.
+  2. **Điều chỉnh ngưỡng chấm điểm kiểm duyệt hợp lý thay cho đòi hỏi 100% tuyệt đối (`NangCao.gs`, `BoPhan1.gs`)**:
+     - Trước đây `MUC_DAP_UNG_TOI_THIEU = 100` và `DIEM_MOI_TIEU_CHI = 10` khiến mọi kịch bản/video đạt 9/10 ở một tiêu chí nhỏ đều bị đánh rớt, kéo theo vòng lặp viết lại nhiều lần gây nghẽn và hủy video.
+     - Cập nhật ngưỡng chuẩn cao thực tế: `MUC_DAP_UNG_TOI_THIEU = 85`, `DIEM_MOI_TIEU_CHI = 8` (tự động hạ ngưỡng cũ `100`/`10` trên bảng tính qua `damBaoCauHinhTuDong_()` ở phiên bản `V47`), đồng thời hướng dẫn Gemini chấm khách quan công tâm (`8-10` khi chính xác, `<= 6` cho lỗi toán/hình ảnh thật sự).
+  3. **Mở rộng bộ Tự sửa lỗi thuật toán giúp tỷ lệ kịch bản đạt chuẩn ngay lần đầu vượt 95% (`KiemTraHinh.gs`)**:
+     - `suaCuPhapTex_()`: Tự động bóc dấu `$`, gộp dấu gạch chéo kép `\\frac` $\rightarrow$ `\frac`, đóng ngoặc nhọn `{}` bị thiếu trên mọi trường LaTeX màn hình/nhãn (`TEX_CO_DAU_DO_LA`, `TEX_GACH_CHEO_KEP`, `TEX_THIEU_NGOAC`).
+     - Tự động cắt giảm nhãn chữ thừa khi cảnh sân khấu có trên 3 nhãn (`QUA_NHIEU_CHU_CANH_`).
+     - Tự động ghép bản vẽ thực tế `kb.ban_ve` hoặc hộp bi xác suất vào cảnh `de_bai` nếu cảnh chỉ toàn chữ (`DE_BAI_CHI_CO_CHU`), đồng thời bổ sung dữ kiện `de_cho`/`can_tim` vào lời thoại đề bài khi bị quá ngắn (`DE_BAI_QUA_SO_SAI`).
+     - Tự động gắn nhãn `nhac_lai` cho cảnh giải thích công thức bị đặt tên khác (`THIEU_GIAI_THICH_CONG_THUC`) và tự chèn phép kiểm tra số học ở cảnh `kiem_tra` (`THU_LAI_HINH_THUC_CANH_`).
+     - Nới biên độ số cảnh video ngắn lên `8–26` cảnh để không vứt bỏ các kịch bản ngắn gọn mạch lạc.
+  4. **Giảm báo lỗi giả khi kiểm duyệt khung hình dựng video (`src/KiemDuyet.tsx`, `scripts/kiem_duyet.mjs`)**:
+     - Tinh chỉnh ngưỡng đo hộp bao DOM (`CAT_CHU < 0.84`, `TRAN_MEP > 18px`, `CHU_DE > 22%` và `8x8px`) để không bắt nhầm phần nhô ra của chữ in nghiêng hoặc viền bóng phát sáng.
+     - Hướng dẫn AI nhìn hình trong `kiem_duyet.mjs` chỉ trả `"dung": false` khi gặp lỗi toán/đáp án sai, vẽ sai hẳn vật của đề hoặc chữ bị che khuất hoàn toàn, tránh hủy oan video đang dựng.

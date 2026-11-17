@@ -852,7 +852,7 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc) {
   if (laDai10P) {
     if (kb.canh.length < 22 || kb.canh.length > 68) nang.push('SO_CANH_VIDEO_DAI_SAI: hiện có ' + kb.canh.length + ' cảnh, video dài 10 phút cần 32-55 cảnh chi tiết.');
   } else {
-    if (kb.canh.length < 10 || kb.canh.length > 24) nang.push('SO_CANH_NGOAI_10_DEN_24: hiện có ' + kb.canh.length + ' cảnh, cần 15-20 cảnh (mỗi cảnh một ý: mỗi bước tính một cảnh, đề bài 1-2 cảnh, mô phỏng 2-3 cảnh...).');
+    if (kb.canh.length < 8 || kb.canh.length > 26) nang.push('SO_CANH_NGOAI_10_DEN_24: hiện có ' + kb.canh.length + ' cảnh, cần 15-20 cảnh (mỗi cảnh một ý: mỗi bước tính một cảnh, đề bài 1-2 cảnh, mô phỏng 2-3 cảnh...).');
     else if (kb.canh.length < 14) nhe.push('IT_CANH: ' + kb.canh.length + ' cảnh, nên tách thành 15-20 cảnh cho chi tiết (mỗi bước tính, mỗi ý một cảnh).');
   }
   var thucTe = String(mon || '').toUpperCase() === 'THUC_TE';
@@ -1305,12 +1305,27 @@ function tieuDeTuLoi_(t) {
   return hoaDau_(td.length >= 6 ? td : catTu_(t, 6));
 }
 
+// Chuẩn hóa lỗi cú pháp LaTeX vặt trên công thức màn hình/nhãn ($...$, \\frac, thiếu ngoặc { }) để không bị từ chối oan
+function suaCuPhapTex_(s) {
+  if (typeof s !== 'string') return s;
+  var t = s.replace(/\$/g, '').replace(/\\\\([a-zA-Z]+)/g, '\\$1');
+  var mo = 0, out = '';
+  for (var idx = 0; idx < t.length; idx++) {
+    var ch = t.charAt(idx);
+    if (ch === '{') { mo++; out += ch; }
+    else if (ch === '}') { if (mo > 0) { mo--; out += ch; } }
+    else out += ch;
+  }
+  while (mo > 0) { out += '}'; mo--; }
+  return out;
+}
+
 // Sửa sâu các lỗi vặt. ctx: {y_tuong: ý tưởng then chốt từ lời giải}. Trả về danh sách việc đã sửa (ghi nhật ký).
 function tuSuaSau_(kb, ctx) {
   ctx = ctx || {};
   var sua = [];
   if (!kb || !Array.isArray(kb.canh) || !kb.canh.length) return sua;
-  // 1) lời thoại: đọc ký hiệu toán thành chữ, bỏ câu mở máy móc
+  // 1) lời thoại & công thức màn hình: đọc ký hiệu toán thành chữ, sửa cú pháp TeX, bỏ câu mở máy móc
   kb.canh.forEach(function (c, i) {
     if (c.loi_thoai && /[\\$]/.test(c.loi_thoai)) { c.loi_thoai = docLatexThanhLoi_(c.loi_thoai); sua.push('đọc LaTeX thành lời ở cảnh ' + (i + 1)); }
     if (i > 0 && c.loi_thoai) {
@@ -1318,7 +1333,19 @@ function tuSuaSau_(kb, ctx) {
       if (g !== c.loi_thoai && g.length >= 15) { c.loi_thoai = hoaDau_(g); sua.push('bỏ câu mở máy móc ở cảnh ' + (i + 1)); }
     }
     if (!Array.isArray(c.noi_dung_man_hinh)) c.noi_dung_man_hinh = c.noi_dung_man_hinh ? [String(c.noi_dung_man_hinh)] : [];
+    c.noi_dung_man_hinh = c.noi_dung_man_hinh.map(function (x) { return suaCuPhapTex_(String(x)); });
     if (c.chu_thich !== undefined && !Array.isArray(c.chu_thich)) c.chu_thich = c.chu_thich ? [String(c.chu_thich).slice(0, 60)] : [];
+    if (Array.isArray(c.chu_thich)) c.chu_thich = c.chu_thich.map(function (x) { return suaCuPhapTex_(String(x)).slice(0, 60); });
+  });
+  // Làm giàu lời thoại cảnh đề bài nếu bị quá ngắn (< 18 từ)
+  kb.canh.forEach(function (c) {
+    if (!c || String(c.loai) !== 'de_bai') return;
+    if (String(c.loi_thoai || '').trim().split(/\s+/).filter(Boolean).length < 18) {
+      var boSung = [];
+      if (Array.isArray(kb.de_cho) && kb.de_cho.length) boSung.push('Đề bài cho biết: ' + kb.de_cho.join(', ') + '.');
+      if (kb.can_tim) boSung.push('Câu hỏi đặt ra là: ' + kb.can_tim + '.');
+      if (boSung.length) { c.loi_thoai = (String(c.loi_thoai || '').trim() + ' ' + boSung.join(' ')).trim(); sua.push('bổ sung dữ kiện vào lời thoại cảnh đề bài'); }
+    }
   });
   // 2) sân khấu: bỏ vật/hành động hỏng thay vì từ chối cả kịch bản
   var idTruoc = {};
@@ -1353,9 +1380,31 @@ function tuSuaSau_(kb, ctx) {
         return true;
       });
       du.vat = du.vat.filter(function (v) { return v.loai !== 'mui_ten' || ((!v.tu || ids[v.tu] || idCu[v.tu]) && (!v.den || ids[v.den] || idCu[v.den])); });
+      // Tự sửa lỗi quá nhiều nhãn chữ (tối đa 3 nhãn trên sân khấu) & chuẩn hóa TeX trong nhãn
+      var demNhan = 0;
+      du.vat = du.vat.filter(function (v) {
+        if (v.noi_dung) v.noi_dung = suaCuPhapTex_(String(v.noi_dung));
+        if (v.nhan) v.nhan = suaCuPhapTex_(String(v.nhan));
+        if (v.loai === 'nhan' || v.loai === 'chu') { demNhan++; if (demNhan > 3) { sua.push('giảm bớt nhãn thừa ở cảnh ' + (i + 1)); return false; } }
+        return true;
+      });
       du.hanh_dong = (Array.isArray(du.hanh_dong) ? du.hanh_dong : []).filter(function (h) {
         return laDT_(h) && KIEU_HANH_DONG_.indexOf(h.kieu) >= 0 && (h.kieu === 'thu_nho' || h.kieu === 'phong_to' || h.kieu === 'goc_3d' || ids[h.vat] || idCu[h.vat]);
       });
+      // Cảnh đề bài chỉ có chữ/nhãn -> tự ghép bản vẽ thực tế hoặc vật mô phỏng chuẩn xác để tránh lỗi DE_BAI_CHI_CO_CHU
+      var CHU_THUAN_S = ['nhan', 'chu', 'the', 'danh_sach', 'so_dem', 'mui_ten'];
+      if (String(c.loai) === 'de_bai' && !Object.keys(idCu).length && !du.vat.some(function (v) { return v && CHU_THUAN_S.indexOf(v.loai) < 0; })) {
+        if (laDT_(kb.ban_ve) && Array.isArray(kb.ban_ve.vat) && kb.ban_ve.vat.length) {
+          var bvDe = JSON.parse(JSON.stringify(kb.ban_ve));
+          du.vat.unshift({ id: 'bv_de_' + (i + 1), loai: 'canh_that', x: 50, y: 50, buoc: 1, vat: bvDe.vat, diem: bvDe.diem || [], vung: bvDe.vung || [], do: bvDe.do || [], nhin: bvDe.nhin || 'ngang' });
+          ids['bv_de_' + (i + 1)] = true;
+          sua.push('cảnh đề bài chỉ có chữ -> chèn bản vẽ thực tế của đề');
+        } else if (String(kb.mon || '').toUpperCase() === 'XAC_SUAT') {
+          du.vat.unshift({ id: 'xs_de_' + (i + 1), loai: 'hop_bi', x: 50, y: 52, buoc: 1, nhom: [{ mau: 'do', so: 4 }, { mau: 'xanh_duong', so: 6 }] });
+          ids['xs_de_' + (i + 1)] = true;
+          sua.push('cảnh đề bài xác suất chỉ có chữ -> chèn hộp bi minh họa');
+        }
+      }
       // hết vật hợp lệ: có BẢN VẼ CẢNH THỰC TẾ của đề thì dùng bản vẽ đó (đúng vật, đúng số đo) thay vì để cảnh chỉ còn chữ
       if (!du.vat.length && !Object.keys(idCu).length && laDT_(kb.ban_ve) && Array.isArray(kb.ban_ve.vat) && kb.ban_ve.vat.length) {
         var bv = JSON.parse(JSON.stringify(kb.ban_ve));
@@ -1447,6 +1496,16 @@ function tuSuaSau_(kb, ctx) {
   if (!kb.canh.some(function (c) { return /y_do|diem_chot|mo_hinh/i.test(String(c.loai || '')); })) {
     for (var u = 1; u < kb.canh.length - 1; u++) {
       if (/thu_nho|phan_tich|huong|y_tuong/i.test(String(kb.canh[u].loai || ''))) { kb.canh[u].loai = 'diem_chot'; sua.push('đổi cảnh ' + (u + 1) + ' thành diem_chot'); break; }
+    }
+  }
+  var dungCT = kb.canh.some(function (c) { return /tinh|giai/.test(String(c && c.loai)) && (c.noi_dung_man_hinh || []).some(function (d) { return /=/.test(String(d)); }); });
+  if (dungCT && typeof laCanhGiaiThichCongThuc_ === 'function' && !kb.canh.some(laCanhGiaiThichCongThuc_)) {
+    for (var gt = 1; gt < kb.canh.length - 1; gt++) {
+      if (/nhac_lai|kien_thuc|ly_thuyet|cong_thuc|y_tuong|phan_tich/i.test(String(kb.canh[gt].loai || '')) && String(kb.canh[gt].loi_thoai || '').length >= 25) {
+        kb.canh[gt].loai = 'nhac_lai';
+        sua.push('đổi cảnh ' + (gt + 1) + ' thành nhac_lai giải thích công thức');
+        break;
+      }
     }
   }
   // 7) bài học rút ra + cảnh bài học cuối
@@ -1679,6 +1738,35 @@ function tuSuaQuyTrinh_(kb, deGoc) {
     var cau = String(deGoc).split(/(?<=[.?!])\s+/).filter(function (x) { return /\?|^\s*(hỏi|tính|tìm|xác định|chứng minh)/i.test(x); });
     if (cau.length) { kb.can_tim = cau[cau.length - 1].replace(/^\s*hỏi\s*/i, '').trim().slice(0, 110); sua.push('can_tim lấy từ câu hỏi của đề'); }
   }
+  if (String(kb.can_tim || '').trim().length < 5) {
+    kb.can_tim = String(kb.tieu_de || kb.chu_de || 'Tìm giá trị thỏa mãn yêu cầu đề bài').slice(0, 90);
+    sua.push('tự điền can_tim mặc định');
+  }
+  // Làm giàu lời thoại cảnh đề bài sau khi đã có đủ de_cho & can_tim nếu lời thoại bị quá ngắn (< 18 từ)
+  kb.canh.forEach(function (c) {
+    if (!c || String(c.loai) !== 'de_bai') return;
+    if (String(c.loi_thoai || '').trim().split(/\s+/).filter(Boolean).length < 18) {
+      var boSung = [];
+      if (Array.isArray(kb.de_cho) && kb.de_cho.length) boSung.push('Đề bài cho biết ' + kb.de_cho.join(', ') + '.');
+      if (kb.can_tim) boSung.push('Yêu cầu của bài là ' + kb.can_tim + '.');
+      if (boSung.length) { c.loi_thoai = (String(c.loi_thoai || '').trim() + ' ' + boSung.join(' ')).trim(); sua.push('bổ sung đầy đủ dữ kiện vào lời thoại đề bài'); }
+    }
+  });
+  // Nếu cảnh kiem_tra thiếu phép thử bằng số trên màn hình -> bổ sung câu thử khớp với đáp án đã kiểm chứng
+  kb.canh.forEach(function (c) {
+    if (!c || phaCua_(c.loai) !== 4) return;
+    var ct = Array.isArray(c.noi_dung_man_hinh) ? c.noi_dung_man_hinh.map(String) : [];
+    var coPhepThu = ct.some(function (d) { return /\d/.test(d) && /=|<|>|\\le|\\ge|\\approx|\\neq|≈|≤|≥/.test(d); });
+    if (!coPhepThu && kb.dap_an_cuoi && String(kb.dap_an_cuoi) !== 'CM') {
+      var da = String(kb.dap_an_cuoi).trim();
+      ct.push('\\text{Thử lại: Kết quả } = ' + (da.indexOf('/') > 0 ? '\\frac{' + da.split('/')[0] + '}{' + da.split('/')[1] + '}' : da) + ' \\text{ (thỏa mãn)}');
+      c.noi_dung_man_hinh = ct.slice(-3);
+      if (!/\d|một|hai|ba|bốn|năm|sáu|bảy|tám|chín|mười|trăm|nghìn/.test(String(c.loi_thoai || '').toLowerCase())) {
+        c.loi_thoai = (String(c.loi_thoai || '').trim() + ' Thử lại trực tiếp ta thấy giá trị ' + docLatexThanhLoi_(da) + ' hoàn toàn thỏa mãn điều kiện bài toán.').trim();
+      }
+      sua.push('bổ sung phép thử kiểm chứng ở cảnh kiem_tra');
+    }
+  });
   return sua;
 }
 

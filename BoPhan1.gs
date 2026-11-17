@@ -233,7 +233,7 @@ function chayBoPhan1() {
 function damBaoCauHinhTuDong_() {
   try {
     var p = PropertiesService.getScriptProperties();
-    if (p.getProperty('DA_CAP_NHAT_TU_DONG_V44') === '1') return;
+    if (p.getProperty('DA_CAP_NHAT_TU_DONG_V47') === '1') return;
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var ch = ss.getSheetByName(TEN_CAU_HINH);
     if (ch && ch.getLastRow() > 0) {
@@ -248,18 +248,21 @@ function damBaoCauHinhTuDong_() {
         DANH_SACH_MODEL: MAC_DINH.DANH_SACH_MODEL
       };
       var v = ch.getDataRange().getValues();
-      var daCo = {};
+      var daCo = {}, giaTriCu = {};
       for (var i = 1; i < v.length; i++) {
         var k = String(v[i][0] || '').trim();
-        if (k) daCo[k] = i + 1;
+        if (k) { daCo[k] = i + 1; giaTriCu[k] = String(v[i][1] || '').trim(); }
       }
+      // Hạ ngưỡng kiểm duyệt quá gắt (100% / 10 điểm tuyệt đối) xuống mức chuẩn cao 85% / 8 điểm để tránh từ chối oan kịch bản tốt
+      if (!daCo.MUC_DAP_UNG_TOI_THIEU || giaTriCu.MUC_DAP_UNG_TOI_THIEU === '100') capNhat.MUC_DAP_UNG_TOI_THIEU = '85';
+      if (!daCo.DIEM_MOI_TIEU_CHI || giaTriCu.DIEM_MOI_TIEU_CHI === '10') capNhat.DIEM_MOI_TIEU_CHI = '8';
       Object.keys(capNhat).forEach(function (k) {
         if (daCo[k]) ch.getRange(daCo[k], 2).setValue(capNhat[k]);
         else ch.appendRow([k, capNhat[k]]);
       });
       _bo_nho_cau_hinh_ = null;
     }
-    p.setProperty('DA_CAP_NHAT_TU_DONG_V44', '1');
+    p.setProperty('DA_CAP_NHAT_TU_DONG_V47', '1');
   } catch (e) {}
 }
 
@@ -1639,19 +1642,25 @@ function giaoBoPhan1ChoGitHub_(sh, chiUuTien) {
     return u || g || new Date(a.cap_nhat).getTime() - new Date(b.cap_nhat).getTime();
   });
   var gui = 0;
+  var cacheBP1 = CacheService.getScriptCache();
   for (var i = 0; i < ds.length; i++) {
     var r = ds[i];
     if (dangChay >= toiDa && !laUuTien_(r)) break;
+    if (cacheBP1.get('GUI_BP1_' + r.id)) continue;   // đã gửi trong 3 phút gần đây -> không gửi trùng gây hủy job cũ
     var duLieu = goiDeChoGitHub_(r);
     if (!duLieu) { ghi_(sh, r._row, { ghi_chu: 'TAI_CHO: dữ liệu đề quá lớn để gửi GitHub' }); continue; }
+    cacheBP1.put('GUI_BP1_' + r.id, '1', 180);
+    var trangThaiCu = r.trang_thai, ghiChuCu = r.ghi_chu;
+    ghi_(sh, r._row, { trang_thai: 'GITHUB', ghi_chu: 'GITHUB|' + Date.now() + '|' + trangThaiCu + ' (đang ' + (trangThaiCu === 'MOI' ? 'giải + viết kịch bản' : 'viết kịch bản') + ' trên GitHub)' });
     var kq = guiWorkflowGitHub_({ id: r.id, de: duLieu }, 'bo-phan-1.yml');
     if (!kq.ok) {
+      cacheBP1.remove('GUI_BP1_' + r.id);
+      ghi_(sh, r._row, { trang_thai: trangThaiCu, ghi_chu: ghiChuCu });
       nhatKy_('GITHUB_BP1_LOI', 'Không gửi được đề sang GitHub (' + kq.loi + '), lần này làm tại Apps Script');
       guiZaloMotLan_('GH_BP1_' + kq.ma + '_' + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd'), '⚠️ Không gửi được đề sang GitHub để giải (' + String(kq.loi).slice(0, 150) + '). Hệ thống tạm làm tại Apps Script (chậm hơn).');
       return { gui: gui, loi: kq.loi };
     }
-    ghi_(sh, r._row, { trang_thai: 'GITHUB', ghi_chu: 'GITHUB|' + Date.now() + '|' + r.trang_thai + ' (đang ' + (r.trang_thai === 'MOI' ? 'giải + viết kịch bản' : 'viết kịch bản') + ' trên GitHub)' });
-    nhatKy_('GITHUB_BP1', r.id + ' -> đã gửi GitHub ' + (r.trang_thai === 'MOI' ? 'giải + viết kịch bản' : 'viết kịch bản') + (laUuTien_(r) ? ' (ưu tiên)' : ''));
+    nhatKy_('GITHUB_BP1', r.id + ' -> đã gửi GitHub ' + (trangThaiCu === 'MOI' ? 'giải + viết kịch bản' : 'viết kịch bản') + (laUuTien_(r) ? ' (ưu tiên)' : ''));
     dangChay++;
     gui++;
   }

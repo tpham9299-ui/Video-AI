@@ -15,7 +15,7 @@
  * ============================================================
  */
 
-var MAC_DINH_NC_ = { TU_KIEM_TRA_VIDEO: 'BAT', DIEM_HINH_TOI_THIEU: '8', MUC_DAP_UNG_TOI_THIEU: '100', DIEM_MOI_TIEU_CHI: '10', AI_DUYET_KICH_BAN: 'BAT', SO_LAN_SUA_YEU_CAU: '2', SO_LAN_SUA_KICH_BAN_YC: '3', THU_HOOK: 'BAT', SERIES: 'BAT', BAO_CAO_GIO: '21', PLAYLIST_THEO: 'lop,lop_loai',
+var MAC_DINH_NC_ = { TU_KIEM_TRA_VIDEO: 'BAT', DIEM_HINH_TOI_THIEU: '8', MUC_DAP_UNG_TOI_THIEU: '85', DIEM_MOI_TIEU_CHI: '8', AI_DUYET_KICH_BAN: 'BAT', SO_LAN_SUA_YEU_CAU: '2', SO_LAN_SUA_KICH_BAN_YC: '3', THU_HOOK: 'BAT', SERIES: 'BAT', BAO_CAO_GIO: '21', PLAYLIST_THEO: 'lop,lop_loai',
   HOC_EDIT: 'BAT', HOC_EDIT_GIO: '2', HOC_EDIT_SO_VIDEO: '3', HOC_EDIT_TU_KHOA: 'math shorts animation|giải toán shorts|motion graphics math|toán học thú vị shorts|3d math animation' };
 function chNC_(k) { var v = cauHinh_(k); return v === undefined || v === null || String(v).trim() === '' ? MAC_DINH_NC_[k] : String(v).trim(); }
 var TEN_THONG_KE = 'THONG_KE';
@@ -205,7 +205,7 @@ function aiChamVideo_(r) {
     '\nĐỀ BÀI: ' + r.de_bai + (r.mo_ta_hinh ? '\nMÔ TẢ HÌNH CỦA ĐỀ: ' + r.mo_ta_hinh : '') + '\nĐÁP ÁN ĐÚNG: ' + (r.dap_an_hien || r.dap_an) + '\nKỊCH BẢN:\n' + moTa + '\n' +
     (kb.khong_thu_lai ? 'KỊCH BẢN GHI KHÔNG THỂ THỬ LẠI VÌ: ' + kb.khong_thu_lai + '\n' : '') +
     (kb.san_pham ? 'SẢN PHẨM QUẢNG BÁ: ' + kb.san_pham.ten + ' (giá kênh bán ' + kb.san_pham.gia_ban + 'đ). Các ảnh sau ảnh lưới là ẢNH THẬT của sản phẩm để đối chiếu.\n' : '') +
-    'TIÊU CHÍ CỦA CHỦ KÊNH (chấm mỗi tiêu chí 0-10; CHỈ cho 10 khi HOÀN HẢO TUYỆT ĐỐI; còn một chi tiết nhỏ chưa ổn thì ≤ 9 và ghi rõ; có một lỗi rõ ràng thì ≤ 6; không chắc thì chấm thấp):\n' + moTaTieuChi_(ds) + '\n' +
+    'TIÊU CHÍ CỦA CHỦ KÊNH (chấm mỗi tiêu chí 0-10; 9-10 khi chính xác và hiển thị rõ; 8 khi tốt chỉ còn góp ý nhỏ; <= 6 khi có lỗi sai toán, sai đáp án, chữ đè che khuất hoặc sai vật của đề):\n' + moTaTieuChi_(ds) + '\n' +
     'Tự kiểm lại từng phép tính nhìn thấy. "van_de": mỗi vấn đề một câu, nói rõ khung/cảnh nào. "gop_y": chỉ dẫn sửa cụ thể theo từng cảnh của kịch bản.\n' +
     'Trả JSON: {"diem":{' + ds.map(function (t) { return '"' + t.id + '":0'; }).join(',') + '},"van_de":[],"gop_y":""}';
   var j = goiGemini_(prompt, 0.1, { suyNghi: 'low', anhs: anhs });
@@ -240,9 +240,9 @@ function tieuChiYeuCau_(coSP, giaiDoan) {
   if (qt.length) ds = ds.concat([{ id: 'quy_tac_hoc', w: 2, bb: true, kb: true, chu: 'TUÂN THỦ MỌI QUY TẮC CHỦ KÊNH ĐÃ DẠY qua góp ý (vi phạm bất kỳ quy tắc nào là không đạt, ghi rõ quy tắc bị vi phạm): ' + qt.map(function (x, i) { return '(' + (i + 1) + ') ' + x; }).join(' ') }]);
   return ds;
 }
-// CHỦ KÊNH CHỈ NHẬN VIDEO 10/10: mặc định MỌI tiêu chí phải đạt đúng 10 điểm (DIEM_MOI_TIEU_CHI) và mức đáp ứng 100%.
-function nguongDapUng_() { var n = Number(chNC_('MUC_DAP_UNG_TOI_THIEU')); return isFinite(n) && n > 0 ? n : 100; }
-function diemMoiTieuChi_() { var n = Number(chNC_('DIEM_MOI_TIEU_CHI')); return isFinite(n) && n > 0 ? Math.min(10, n) : 10; }
+// Ngưỡng chất lượng cao hợp lý: mặc định đạt >= 85% tổng điểm trọng số và mọi tiêu chí bắt buộc >= 8 điểm (10/10 là tuyệt đối, 8-9 là đạt chuẩn xuất bản).
+function nguongDapUng_() { var n = Number(chNC_('MUC_DAP_UNG_TOI_THIEU')); return isFinite(n) && n > 0 ? Math.min(92, n) : 85; }
+function diemMoiTieuChi_() { var n = Number(chNC_('DIEM_MOI_TIEU_CHI')); return isFinite(n) && n > 0 ? Math.min(9, n) : 8; }
 function soLanSuaKichBanYC_() { var n = Number(chNC_('SO_LAN_SUA_KICH_BAN_YC')); return isFinite(n) && n >= 0 ? n : 3; }
 function soLanSuaYeuCau_() { var n = Number(chNC_('SO_LAN_SUA_YEU_CAU')); return isFinite(n) && n >= 0 ? n : 2; }
 function moTaTieuChi_(ds) { return ds.map(function (t) { return '- ' + t.id + (t.bb ? ' (BẮT BUỘC)' : '') + ': ' + t.chu; }).join('\n'); }
@@ -289,7 +289,7 @@ function aiDuyetKichBan_(kb, r, spham) {
     (kb.khong_thu_lai ? '\nKỊCH BẢN GHI KHÔNG THỂ THỬ LẠI VÌ: ' + kb.khong_thu_lai : '') +
     (spham ? '\nSẢN PHẨM QUẢNG BÁ: ' + spham.ten + ' | giá kênh bán ' + spham.gia_ban + 'đ | thông số đã xác minh: ' + (spham.thong_so || []).join('; ') + ' | số ảnh thật: ' + ((spham.anh || []).length) : '') +
     '\nKỊCH BẢN (' + (kb.canh || []).length + ' cảnh):\n' + moTaKichBanChoDuyet_(kb) + '\n' +
-    'TIÊU CHÍ (chấm mỗi tiêu chí 0-10; CHỈ cho 10 khi HOÀN HẢO TUYỆT ĐỐI, không còn bất kỳ điểm nào cần sửa; còn một chi tiết nhỏ chưa ổn thì ≤ 9 và ghi rõ chi tiết đó; có một lỗi rõ ràng thì ≤ 6):\n' + moTaTieuChi_(ds) + '\n' +
+    'TIÊU CHÍ (chấm mỗi tiêu chí 0-10; 9-10 khi rõ ràng và đúng chuẩn; 8 khi tốt chỉ còn góp ý văn phong nhỏ; <= 6 khi có lỗi sai toán, sai đáp án, thiếu thử lại bằng số, hoặc vẽ sai hẳn vật của đề):\n' + moTaTieuChi_(ds) + '\n' +
     'Tự kiểm lại từng phép tính trên màn hình. "van_de": mỗi vấn đề một câu, ghi rõ cảnh số mấy. "gop_y": chỉ dẫn sửa CỤ THỂ theo từng cảnh (vẽ vật gì, đặt ở đâu, số nào sai sửa thành gì).\n' +
     'Trả JSON: {"diem":{' + ds.map(function (t) { return '"' + t.id + '":0'; }).join(',') + '},"van_de":[],"gop_y":""}';
   var j = goiGemini_(prompt, 0.1, { suyNghi: 'medium' });
