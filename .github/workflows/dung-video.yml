@@ -109,6 +109,14 @@ jobs:
           path: node_modules/.remotion
           key: remotion-chrome-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
+      - name: Cache âm thanh giọng đọc TTS
+        uses: actions/cache@v4
+        with:
+          path: /tmp/video_ai_tts_cache
+          key: tts-cache-${{ runner.os }}-${{ hashFiles('kich_ban.json') }}
+          restore-keys: |
+            tts-cache-${{ runner.os }}-
+
       - name: Lấy ảnh/video nền từ Google Drive
         if: ${{ env.RCLONE_CONF != '' }}
         run: |

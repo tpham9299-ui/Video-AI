@@ -21,6 +21,12 @@ import sys
 import tempfile
 import hashlib
 
+CACHE_TTS_DIR = os.environ.get("CACHE_TTS_DIR") or os.path.join(tempfile.gettempdir(), "video_ai_tts_cache")
+try:
+    os.makedirs(CACHE_TTS_DIR, exist_ok=True)
+except Exception:
+    pass
+
 FPS = 30
 LEAD = 0.22      # giây im lặng đầu cảnh trước khi đọc
 TAIL = 0.35      # giây im lặng cuối cảnh
@@ -165,12 +171,21 @@ def chia_phu_de(cau, toi_da=TOI_DA_KY_TU):
 # ---------- Tạo giọng ----------
 async def _tts(text, tep, giong, toc_do, cao_do):
     import edge_tts
+    k_cache = hashlib.sha256(("edge_%s_%s_%s_%s" % (giong, toc_do, cao_do, text)).encode("utf8")).hexdigest()
+    f_cache = os.path.join(CACHE_TTS_DIR, "edge_%s.mp3" % k_cache)
+    if os.path.isfile(f_cache) and os.path.getsize(f_cache) > 800:
+        shutil.copyfile(f_cache, tep)
+        return
     loi = None
     for lan in range(4):
         try:
             c = edge_tts.Communicate(text, giong, rate=toc_do, pitch=cao_do)
             await c.save(tep)
             if os.path.exists(tep) and os.path.getsize(tep) > 800:
+                try:
+                    shutil.copyfile(tep, f_cache)
+                except Exception:
+                    pass
                 return
             loi = "tệp âm thanh rỗng"
         except Exception as e:  # mạng chập chờn, dịch vụ bận...
@@ -309,6 +324,12 @@ def gemini_tts(text, tep_wav, giong, model, phong_cach):
     import urllib.error
     import urllib.request
     import time
+    k_cache = hashlib.sha256(("gemini_%s_%s_%s_%s" % (giong, model, phong_cach, text)).encode("utf8")).hexdigest()
+    f_cache = os.path.join(CACHE_TTS_DIR, "gem_%s.wav" % k_cache)
+    if os.path.isfile(f_cache) and os.path.getsize(f_cache) > 2000:
+        shutil.copyfile(f_cache, tep_wav)
+        print("Gemini TTS: lấy từ cache (%s) cho %d ký tự" % (k_cache[:8], len(text)))
+        return
     keys = ds_key_gemini()
     if not keys:
         raise RuntimeError("chưa có GEMINI_API_KEY")
@@ -352,6 +373,10 @@ def gemini_tts(text, tep_wav, giong, model, phong_cach):
                         f.write(base64.b64decode(b64))
                     chay(["ffmpeg", "-y", "-loglevel", "error", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", pcm, tep_wav])
                     os.remove(pcm)
+                    try:
+                        shutil.copyfile(tep_wav, f_cache)
+                    except Exception:
+                        pass
                     return
                 except urllib.error.HTTPError as e:
                     noi = e.read().decode("utf8", "ignore")[:4000]
@@ -812,17 +837,25 @@ def tim_thuong_hieu(public, th):
     thu_muc = os.path.join(public, "thuong_hieu")
     logo = tim_tep(thu_muc, "logo", (".png", ".webp", ".jpg", ".jpeg"))
     out = tim_tep(thu_muc, "outro", (".mp4", ".mov", ".webm", ".png", ".jpg", ".jpeg", ".webp"))
-    hien = dict(th)
+    hien = dict(th or {})
     hien.pop("outroGiay", None)
     hien.pop("outroTuTao", None)
     hien.pop("dungOutroRieng", None)
     hien.pop("coManKet", None)
+    if not hien.get("ten"):
+        hien["ten"] = os.environ.get("KENH_TEN") or (th.get("ten") if th else "") or "Toán Thầy Trí"
+    if not hien.get("handle"):
+        hien["handle"] = os.environ.get("KENH_HANDLE") or (th.get("handle") if th else "") or "@toanthaytri"
+    if not hien.get("khauHieu"):
+        hien["khauHieu"] = os.environ.get("KENH_KHAU_HIEU") or (th.get("khauHieu") if th else "") or "Học toán tư duy mỗi ngày"
+    if not hien.get("loiMoi"):
+        hien["loiMoi"] = os.environ.get("KENH_LOI_MOI") or (th.get("loiMoi") if th else "") or "Bấm theo dõi để học mẹo toán mỗi ngày"
     hien["logo"] = "thuong_hieu/" + os.path.basename(logo) if logo else None
     outro = None
     if out:
         ten = os.path.basename(out)
         video = ten.lower().endswith((".mp4", ".mov", ".webm"))
-        giay = float(th.get("outroGiay") or 5)
+        giay = float((th or {}).get("outroGiay") or 5)
         if video:
             try:
                 giay = min(max(do_thoi_luong(out), 2.0), 12.0)
@@ -1179,6 +1212,8 @@ def main():
                 os.remove(os.path.join(args.public, "nhac", f))
         nhac = tron_nhac_theo_canh(args.public, id_an_toan, canh, canh_props) or nhac
     hook_chu = str(kb.get("hook_chu") or kb.get("hook") or "").strip()
+    if not hook_chu and canh:
+        hook_chu = str(canh[0].get("tieu_de") or kb.get("tieu_de") or "BÍ QUYẾT GIẢI TOÁN").strip()
     pc, nen_co_dinh, th = doc_phong_cach(args.phong_cach)
     # bộ hiệu ứng chuyển động: "moi" (chữ 3 tầng, máy quay sống, vòng sóng, dấu BẪY, lóe sáng đáp án) | "cu"
     # ưu tiên: biến môi trường KIEU_CHUYEN_DONG (chạy thử tay trên GitHub) > kịch bản "kieu_chuyen_dong" > phong_cach.json
@@ -1204,9 +1239,9 @@ def main():
         print("Gói phong cách edit: %s" % kb.get("phong_cach_edit"))
     thuong_hieu, outro = tim_thuong_hieu(args.public, th)
     bai_hoc = [str(x).strip()[:90] for x in (kb.get("bai_hoc_rut_ra") or []) if str(x).strip()][:3]
-    # Mặc định KHÔNG chèn màn kết/outro vào cuối video (video dừng ngay sau cảnh bài học).
-    # Muốn bật lại: phong_cach.json -> "thuongHieu": {"coManKet": true} (màn kết tự tạo; thêm "dungOutroRieng": true để dùng tệp outro).
-    outro = chon_man_ket(outro, dict(th, logo=thuong_hieu.get("logo")), bai_hoc) if th.get("coManKet") else None
+    # Tự động chèn màn kết/outro thương hiệu chuyên nghiệp vào cuối video (tóm tắt bài học + kênh + nút Thích / Theo dõi).
+    co_man_ket = bool(th.get("coManKet", True))
+    outro = chon_man_ket(outro, dict(th, logo=thuong_hieu.get("logo")), bai_hoc) if co_man_ket else None
     if outro:
         outro["batDau"] = bat_dau
         bat_dau += outro["soFrame"]

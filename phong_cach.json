@@ -15,14 +15,15 @@
   "kieuPhuDe": "hop",
   "mauPhuDe": "#FF6B2C",
   "thuongHieu": {
-    "ten": "",
-    "khauHieu": "",
-    "handle": "",
+    "ten": "Toán Thầy Trí",
+    "khauHieu": "Giải toán tư duy ngắn gọn",
+    "handle": "@toanthaytri",
     "markNuoc": true,
     "outroGiay": 5,
     "outroTuTao": true,
-    "loiMoi": "Theo dõi để học mẹo xác suất",
-    "coManKet": false
+    "loiMoi": "Theo dõi để học mẹo toán mỗi ngày",
+    "coManKet": true
   },
+  "loiMoiGiuaVideo": true,
   "chuyenDong": "moi"
 }
