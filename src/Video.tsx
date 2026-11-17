@@ -175,12 +175,12 @@ const NoiDungVideo: React.FC<Props> = (props) => {
         </Sequence>
       ) : null}
       {props.quangCao && props.quangCao.ten ? <NhanQuangCao qc={props.quangCao} tongFrame={ketThuc} /> : null}
-      {/* thẻ dữ kiện: từ sau phần đề bài đến trước cảnh bài học */}
+      {/* thẻ dữ kiện tóm tắt (kiểu chip thông số Anh Shiper Toán): chỉ hiện ở phần mô hình hóa / phân tích đầu bài, không lặp suốt cả video */}
       {props.duKien && props.duKien.length && canh.length > 3 ? (() => {
         const iTu = canh.findIndex((c, i) => i > 0 && !/mo_dau|hook|de_bai/i.test(c.loai));
-        const iDen = canh.findIndex((c, i) => i > iTu && /bai_hoc|ket_luan/i.test(c.loai));
         if (iTu < 0) return null;
-        return <DuKien ds={props.duKien} tu={canh[iTu].batDau + 6} den={iDen > 0 ? canh[iDen].batDau : ketThuc - 30} hud={moi ? GIAO_DIEN.nhan : undefined} />;
+        const iDen = Math.min(canh.length - 1, iTu + 3);
+        return <DuKien ds={props.duKien} tu={canh[iTu].batDau + 6} den={canh[iDen].batDau + canh[iDen].soFrame} hud={moi ? GIAO_DIEN.nhan : undefined} />;
       })() : null}
       {canh.length > 1 ? <DauTrang chu={props.chuDe || tieuDe} lop={lop} tu={canh[1].batDau} lui={coThuongHieu ? 1 : 0} den={ketThuc} th={thuongHieu} tap={props.series ? props.series.tap : 0} nhan={moi ? GIAO_DIEN.nhan : undefined} /> : null}
       {/* bộ hiệu ứng mới: đường tiến trình mảnh có chấm thay cho thanh các bước */}

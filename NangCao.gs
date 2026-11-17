@@ -54,22 +54,24 @@ function henKiemTraVideo_(giay) {
 
 function chayKiemTraVideo() {
   ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'chayKiemTraVideo') ScriptApp.deleteTrigger(t); });
-  var khoa = LockService.getScriptLock();
-  if (!khoa.tryLock(10000)) { henKiemTraVideo_(90); return; }
+  var cacheKT = CacheService.getScriptCache();
+  if (cacheKT.get('DANG_CHAY_KT_VIDEO')) { henKiemTraVideo_(90); return; }
+  cacheKT.put('DANG_CHAY_KT_VIDEO', '1', 240);
   var conViec = false;
   try {
     _bat_dau_chay_ = Date.now();
     _bo_nho_cau_hinh_ = null;
     var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
-    var ds = docHang_(sh).filter(function (r) { return r.trang_thai === 'CO_VIDEO' && String(r.duyet) === 'AI_XEM'; });
+    var ds = docHang_(sh).filter(function (r) { return r.trang_thai === 'CO_VIDEO' && String(r.duyet) === 'AI_XEM' && !cacheKT.get('DA_BO_' + r.id); });
     for (var i = 0; i < ds.length; i++) {
+      if (cacheKT.get('DA_BO_' + ds[i].id)) continue;
       if (!conDuGoiGemini_()) { conViec = true; break; }
       xuLyAiXem_(sh, ds[i]);
     }
   } catch (e) {
     nhatKy_('AI_XEM_LOI', String(e.message).slice(0, 300));
     conViec = true;
-  } finally { khoa.releaseLock(); }
+  } finally { try { cacheKT.remove('DANG_CHAY_KT_VIDEO'); } catch (eL) {} }
   if (conViec) henKiemTraVideo_(120);
   try { if (typeof sauUuTien_ === 'function') sauUuTien_(); } catch (e2) {}
 }
@@ -129,18 +131,44 @@ function xuLyAiXem_(sh, r) {
   var pt = kq.phan_tram, nguongPT = nguongDapUng_();
   nhatKy_('AI_XEM', r.id + ': đáp ứng ' + pt + '% (cần ≥ ' + nguongPT + '%) | ' + tomTatTieuChi_(kq) + (kq.van_de.length ? ' | ' + kq.van_de.join('; ').slice(0, 300) : ''));
   if (kq.dat) {
+    if (CacheService.getScriptCache().get('DA_BO_' + r.id)) return;
     ghiQuaKiemDuyet_(true);
-    ghiAiKT_(sh, r, { diem: kq.diem, phan_tram: pt, chi_tiet: kq.chi_tiet, van_de: kq.van_de }, { duyet: canDuyet_() ? 'CHO' : '' });
-    if (canDuyet_()) guiDuyet_(r, '✅ Đạt kiểm duyệt yêu cầu: ' + (pt >= 100 ? '10/10 mọi tiêu chí' : pt + '%') + (lan ? ' (đã tự sửa ' + lan + ' lần)' : ''));
-    else guiZalo_('✅ Video ' + (r.chu_de || r.id) + ' đạt kiểm duyệt yêu cầu (' + pt + '%), xếp lịch đăng.', 'vua');
+    var canDuyetTay = canDuyet_();
+    var kqD = {};
+    try { kqD = JSON.parse(String(r.link_dang || '{}')) || {}; } catch (eD) { kqD = {}; }
+    if (!canDuyetTay) kqD._duyet_luc = kqD._duyet_luc || Date.now();
+    ghiAiKT_(sh, r, { diem: kq.diem, phan_tram: pt, chi_tiet: kq.chi_tiet, van_de: kq.van_de, phien_ban: typeof PHIEN_BAN_EDIT !== 'undefined' ? PHIEN_BAN_EDIT : 44 },
+      { duyet: canDuyetTay ? 'CHO' : 'DA_DUYET', link_dang: JSON.stringify(kqD) });
+    if (typeof ghiKetQuaPhongCach_ === 'function' && !canDuyetTay) ghiKetQuaPhongCach_(r.id, true);
+    if (canDuyetTay) guiDuyet_(r, '✅ Đạt kiểm duyệt yêu cầu: ' + (pt >= 100 ? '10/10 mọi tiêu chí' : pt + '%') + (lan ? ' (đã tự sửa ' + lan + ' lần)' : ''));
+    else {
+      guiZalo_('✅ Video "' + (r.chu_de || r.id) + '" đã đạt kiểm duyệt yêu cầu (' + pt + '%), tự động xếp lịch đăng (2 video/ngày vào ' + (cauHinh_('GIO_DANG') || '11:30,19:30') + ').\nhttps://drive.google.com/file/d/' + r.file_video + '/view\n(Muốn sửa/bỏ trước giờ đăng: /sua ' + r.id + ' <góp ý> | /bo ' + r.id + ')', 'cao', 'TU_DUYET_' + r.id);
+      try { if (typeof chayDangVideo === 'function') chayDangVideo(); } catch (eDV) {}
+    }
     return;
   }
   if (lan >= toiDa || !r.file_kich_ban) {
-    // đã tự sửa đủ số lần mà vẫn chưa đạt: BỎ VIDEO + XÓA ĐỀ, hệ thống tự làm đề mới (không gửi bạn, không đăng)
+    // Nếu lời giải và đáp án toán học ĐÃ ĐÚNG (≥ 7 điểm) hoặc đây là video đang sửa theo góp ý của bạn:
+    // TUYỆT ĐỐI KHÔNG vứt bỏ video/đề bài, mà giữ lại bản đã sửa (hoặc tự duyệt nếu đạt ≥ 80% và không sai toán).
+    var ctDiem = kq.chi_tiet || {};
+    var toanDung = (Number(ctDiem.loi_giai) >= 7 || ctDiem.loi_giai === undefined) && (Number(ctDiem.dap_an) >= 7 || ctDiem.dap_an === undefined);
+    if (toanDung && r.file_video) {
+      var canDuyetTay2 = canDuyet_();
+      var kqD2 = {};
+      try { kqD2 = JSON.parse(String(r.link_dang || '{}')) || {}; } catch (eD2) { kqD2 = {}; }
+      if (!canDuyetTay2) kqD2._duyet_luc = kqD2._duyet_luc || Date.now();
+      ghiAiKT_(sh, r, { diem: kq.diem, phan_tram: pt, chi_tiet: kq.chi_tiet, van_de: kq.van_de, phien_ban: typeof PHIEN_BAN_EDIT !== 'undefined' ? PHIEN_BAN_EDIT : 45 },
+        { duyet: canDuyetTay2 ? 'CHO' : 'DA_DUYET', link_dang: JSON.stringify(kqD2), ghi_chu: 'Đã qua ' + lan + ' vòng AI chỉnh sửa kịch bản (' + pt + '%)' });
+      nhatKy_('AI_XEM', r.id + ': giữ bản tốt nhất sau ' + lan + ' lần AI sửa kịch bản (' + pt + '%, toán & đáp án đúng)');
+      if (!canDuyetTay2) {
+        try { if (typeof chayDangVideo === 'function') chayDangVideo(); } catch (eDV2) {}
+      }
+      return;
+    }
     var lyDo = 'đáp ứng ' + pt + '% sau ' + lan + ' lần tự sửa' + (kq.nang.length ? ', tiêu chí bắt buộc chưa đạt: ' + kq.nang.join(', ') : '') + '. ' + kq.van_de.slice(0, 3).join('; ');
     ghiAiKT_(sh, r, { diem: kq.diem, phan_tram: pt, chi_tiet: kq.chi_tiet, van_de: kq.van_de }, {});
     boDeKhongDat_(sh, r, lyDo, 'video');
-    if (laUuTien_(r)) baoZaloDe_(r, '❌ Video cho đề ' + r.id + ' không đạt kiểm duyệt yêu cầu (' + pt + '%) sau ' + lan + ' lần tự sửa nên hệ thống đã BỎ video và xóa đề.\nLý do: ' + kq.van_de.slice(0, 2).join('; ').slice(0, 250), 'cao');
+    if (laUuTien_(r)) baoZaloDe_(r, '❌ Video cho đề ' + r.id + ' bị sai toán/đáp án sau ' + lan + ' lần tự sửa nên hệ thống đã bỏ video.\nLý do: ' + kq.van_de.slice(0, 2).join('; ').slice(0, 250), 'cao');
     return;
   }
   traVeSuaKichBan_(sh, r,
@@ -195,11 +223,11 @@ function aiChamVideo_(r) {
 // Chưa đạt -> tự sửa theo nhận xét (tối đa SO_LAN_SUA_YEU_CAU lần mỗi cửa); sửa rồi vẫn thấp -> BỎ VIDEO + XÓA ĐỀ, hệ thống làm đề mới.
 var TIEU_CHI_YEU_CAU_ = [
   { id: 'de_bai', w: 1.5, bb: true, kb: true, chu: 'Mở đầu nêu RÕ ĐỀ BÀI: đề cho gì (đủ dữ kiện, đúng số), cần tìm gì; không nhảy thẳng vào lời giải.' },
-  { id: 'bam_de', w: 3, bb: true, kb: true, chu: 'Hình minh họa BÁM SÁT NGỮ CẢNH ĐỀ: đúng đối tượng (người, vật, công trình...), đúng số lượng, đúng cách sắp xếp/vị trí (ngồi bàn tròn phải vẽ vòng quanh bàn, bờ sông - đường ống phải vẽ sông và ống...), số đo trên hình khớp đề; không vẽ vật không liên quan, không lặp vật; bài lãi suất / tiền bạc không được có khối hộp, trụ, nón, cầu hay hình học mà đề không nhắc (chỉ ngân hàng, tiền, heo đất, biểu đồ, đồ thị).' },
+  { id: 'bam_de', w: 3, bb: true, kb: true, chu: 'Hình minh họa BÁM SÁT NGỮ CẢNH ĐỀ: đúng đối tượng (người, vật, công trình...), đúng số lượng, đúng cách sắp xếp/vị trí (ngồi bàn tròn phải vẽ vòng quanh bàn, bờ sông - đường ống phải vẽ sông và ống...), số đo trên hình khớp đề; không vẽ vật không liên quan, không lặp vật; bài lãi suất / tiền bạc không được có khối hộp, trụ, nón, cầu hay hình học mà đề không nhắc; bài hình học không gian cạnh nhìn thấy phải là nét liền, cạnh bị khuất là nét đứt, đường kẻ phụ vẽ rõ ràng.' },
   { id: 'loi_giai', w: 3, bb: true, kb: true, chu: 'LỜI GIẢI ĐÚNG: mọi phép tính, số trung gian, công thức trên màn hình đúng toán học, dẫn đúng tới đáp án; giải thích công thức có từ đâu.' },
   { id: 'dap_an', w: 2, bb: true, kb: true, chu: 'ĐÁP ÁN đúng (khớp đáp án đã kiểm chứng), hiện rõ, đọc được đầy đủ chữ số và đơn vị.' },
   { id: 'thu_lai', w: 1.5, bb: true, kb: true, chu: 'THỬ LẠI THẬT: cảnh thử lại có phép thử bằng số cụ thể (thế đáp án vào đề / cách thứ hai / so giá trị khác) cả trên màn hình lẫn lời thoại; chỉ một khung chữ "thử lại" là không đạt. Kịch bản ghi rõ "khong_thu_lai" kèm lý do hợp lý thì tiêu chí này đạt.' },
-  { id: 'nhieu_canh', w: 1.5, bb: false, kb: true, chu: 'KHAI THÁC NHIỀU CẢNH: mỗi bước của lời giải có hình riêng bám đề (bản vẽ, số đo, mô phỏng); không có cảnh trống trải chỉ có chữ; hình đi theo từng bước lời giải.' },
+  { id: 'nhieu_canh', w: 2, bb: true, kb: true, chu: 'MỖI CẢNH MỘT MINH HỌA LINH HOẠT KHỚP NỘI DUNG CẢNH ĐÓ: mỗi cảnh của bài toán thực tế phải thể hiện đúng đoạn nội dung mà cảnh đó đang nói (chia thành nhiều bước/khung hình con, phóng to phần đang xét, làm nổi đại lượng đang tính, mô phỏng sai lầm ở cảnh bẫy, biểu đồ/đồ thị/số đếm ở bước tính); tránh dùng duy nhất 1 hình minh họa tĩnh giống hệt nhau áp dụng cho toàn bộ video.' },
   { id: 'bo_cuc', w: 2, bb: true, kb: false, chu: 'BỐ CỤC SẠCH: không chữ/hình/người đè lên nhau, không tràn hay bị cắt ở mép, không mã LaTeX thô, chữ đủ to đọc trên điện thoại.' },
   { id: 'tham_my', w: 1, bb: false, kb: false, chu: 'THẨM MỸ: hình hấp dẫn, có chiều sâu, cân đối, màu sắc thống nhất.' },
   { id: 'san_pham', w: 2, bb: true, kb: true, sp: true, chu: 'SẢN PHẨM: đề bài xoay quanh đúng sản phẩm (dùng giá/thông số thật của nó) một cách hợp lý; ẢNH THẬT của sản phẩm xuất hiện rõ (mở đầu + ít nhất một cảnh khác + thẻ cuối); lời quảng cáo tự nhiên, trung thực, không quá đà, không chê đối thủ; vẫn là một bài toán có ích.' }
@@ -792,8 +820,9 @@ function ghiGopYDeHoc_(ma, loai, gopY, chat) {
 // chạy theo trigger: học từng góp ý đang chờ
 function xuLyHocGopY() {
   ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'xuLyHocGopY') ScriptApp.deleteTrigger(t); });
-  var khoa = LockService.getScriptLock();
-  if (!khoa.tryLock(20000)) { ScriptApp.newTrigger('xuLyHocGopY').timeBased().after(90 * 1000).create(); return; }
+  var cacheHGY = CacheService.getScriptCache();
+  if (cacheHGY.get('DANG_CHAY_HOC_GOP_Y')) { ScriptApp.newTrigger('xuLyHocGopY').timeBased().after(90 * 1000).create(); return; }
+  cacheHGY.put('DANG_CHAY_HOC_GOP_Y', '1', 180);
   try {
     _bo_nho_cau_hinh_ = null;
     var sh = shHGY_();
@@ -809,12 +838,14 @@ function xuLyHocGopY() {
       sh.getRange(i + 1, 5, 1, 3).setValues([[kq ? 'DA_HOC' : 'LOI', kq ? kq.y_do : '', kq ? kq.tom_tat : '']]);
       if (kq && kq.tom_tat) {
         var chat = PropertiesService.getScriptProperties().getProperty('HOC_GOP_Y_CHAT');
+        var soSua = kq.so_video_sua || 0;
         var tin = '🧠 Đã hiểu góp ý' + (v[i][1] ? ' (' + v[i][1] + ')' : '') + ': ' + kq.y_do + '\n📌 Quy tắc áp dụng cho MỌI video sau:\n' + kq.tom_tat +
+          (soSua > 0 ? '\n✍️ Đã giao AI CHỈNH SỬA LẠI KỊCH BẢN cho ' + soSua + ' video đang chờ theo đúng góp ý này (không bỏ video).' : '') +
           '\n(Hiểu sai thì nhắn /xoaquytac <số>, xem tất cả: /quytac)';
         if (chat) guiZaloToi_(chat, tin); else guiZalo_(tin, 'vua');
       }
     }
-  } finally { khoa.releaseLock(); }
+  } finally { try { cacheHGY.remove('DANG_CHAY_HOC_GOP_Y'); } catch (eL) {} }
 }
 // Gemini đọc góp ý + kịch bản video đó + các quy tắc đã có -> ý đồ thật sự + quy tắc chung (gộp quy tắc trùng ý)
 function hocMotGopY_(ma, loai, gopY) {
@@ -858,7 +889,62 @@ function hocMotGopY_(ma, loai, gopY) {
     }
   });
   nhatKy_('HOC_GOP_Y', (ma || 'chung') + ': ' + String(j.y_do || '').slice(0, 150) + ' | ' + tom.join(' | ').slice(0, 300));
-  return { y_do: String(j.y_do || '').slice(0, 300), tom_tat: tom.join('\n') };
+  var soSua = suaCacVideoDinhGopY_(ma, gopY, String(j.y_do || ''), tom);
+  return { y_do: String(j.y_do || '').slice(0, 300), tom_tat: tom.join('\n'), so_video_sua: soSua };
+}
+
+// Sau khi nhận được góp ý của chủ kênh: rà soát các video đang chờ trong HANG_DOI (hoặc vừa bị đánh dấu BO_KHONG_DAT),
+// nhờ AI chỉnh sửa lại kịch bản theo góp ý chứ KHÔNG đơn thuần bỏ các video dính với góp ý đó.
+function suaCacVideoDinhGopY_(maGoc, gopY, yDo, dsQuyTac) {
+  try {
+    var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
+    if (!sh) return 0;
+    var hang = docHang_(sh);
+    var chiDan = 'SỬA KỊCH BẢN THEO GÓP Ý MỚI CỦA CHỦ KÊNH: ' + String(gopY || '').split(' || ')[0].slice(0, 400) +
+      (yDo ? ' (Ý đồ: ' + yDo.slice(0, 200) + ')' : '') +
+      (dsQuyTac && dsQuyTac.length ? ' | Quy tắc: ' + dsQuyTac.join('; ').slice(0, 400) : '');
+    var dem = 0;
+    for (var i = 0; i < hang.length && dem < 6; i++) {
+      var r = hang[i];
+      if (!r || !r.id || r.id === maGoc) continue;
+      var tt = String(r.trang_thai || '');
+      var dv = String(r.duyet || '');
+      var laBiBoDoKiemDuyet = (tt === 'XOA' || dv === 'BO' || dv === 'KHONG_DAT') && /BO_KHONG_DAT|chưa đạt kiểm duyệt/i.test(String(r.ghi_chu || ''));
+      var laDangCho = (tt === 'CO_VIDEO' || tt === 'CO_KICH_BAN') && dv !== 'DA_DANG' && tt !== 'DA_DANG' && tt !== 'DA_XONG';
+      if (!laBiBoDoKiemDuyet && !laDangCho) continue;
+      if (!r.dap_an && !r.cach_1) continue;
+      if (r.file_kich_ban) {
+        try {
+          var kb = JSON.parse(DriveApp.getFileById(String(r.file_kich_ban)).getBlob().getDataAsString());
+          luuNhapKichBan_(r.id, kb);
+        } catch (eKb) {}
+      }
+      [r.file_video, r.anh_kt, r.anh_bia].forEach(function (fid) {
+        if (fid) { try { DriveApp.getFileById(String(fid)).setTrashed(true); } catch (eTr) {} }
+      });
+      try { CacheService.getScriptCache().remove('DA_BO_' + r.id); } catch (eC) {}
+      ghi_(sh, r._row, {
+        trang_thai: 'DA_GIAI',
+        file_video: '',
+        anh_kt: '',
+        anh_bia: '',
+        duyet: '',
+        so_lan_loi: 0,
+        gop_y: chiDan.slice(0, 1200),
+        ghi_chu: 'AI chỉnh sửa lại kịch bản theo góp ý mới: ' + String(yDo || gopY).slice(0, 140)
+      });
+      dem++;
+    }
+    if (dem > 0) {
+      SpreadsheetApp.flush();
+      nhatKy_('SUA_THEO_GOP_Y', 'Đã chuyển ' + dem + ' video đang chờ về DA_GIAI để AI sửa kịch bản theo góp ý mới');
+      try { henUuTien_(20); } catch (eH) {}
+    }
+    return dem;
+  } catch (e) {
+    nhatKy_('SUA_THEO_GOP_Y_LOI', String(e.message).slice(0, 200));
+    return 0;
+  }
 }
 // quy tắc đã học -> đưa vào lời nhắc viết kịch bản (ưu tiên quy tắc được nhắc nhiều lần và mới nhắc)
 function quyTacHocChoPrompt_() {

@@ -145,6 +145,139 @@ class MoHinh:
         self.pt.append(p)
         return p
 
+    def _bo_sung_diem_phu(self):
+        """Tự động tính tọa độ các điểm phụ (trung điểm, trọng tâm, chân đường vuông góc/đường cao, giao điểm)
+        được nhắc trong lời giải / công thức / đề bài mà kịch bản chưa khai báo tọa độ trong v['diem']."""
+        tat_ca_chu = self.de_bai + " ; " + " ; ".join(
+            self.chu_canh(i) + " ; " + str(self.canh_k[i].get("kien_thuc") or "")
+            for i in range(len(self.canh_p))
+        )
+        # 1) Trung điểm: "M là trung điểm (của) AB", "trung điểm M của BC"
+        for m in re.finditer(
+            r"(?:(" + TEN_DIEM + r")\s+là\s+trung\s+điểm\s+(?:của\s+)?(?:đoạn\s+|cạnh\s+)?(" + TEN_DIEM + r")(" + TEN_DIEM + r")"
+            r"|trung\s+điểm\s+(" + TEN_DIEM + r")\s+của\s+(?:đoạn\s+|cạnh\s+)?(" + TEN_DIEM + r")(" + TEN_DIEM + r"))",
+            tat_ca_chu
+        ):
+            p, a, b = (m.group(1), m.group(2), m.group(3)) if m.group(1) else (m.group(4), m.group(5), m.group(6))
+            p, a, b = ten_chuan(p), ten_chuan(a), ten_chuan(b)
+            if p not in self.diem and a in self.diem and b in self.diem:
+                pa, pb = self.diem[a], self.diem[b]
+                self.diem[p] = ((pa[0] + pb[0]) / 2.0, (pa[1] + pb[1]) / 2.0)
+
+        # 2) Trọng tâm: "G là trọng tâm tam giác ABC", "trọng tâm G của tam giác ABC"
+        for m in re.finditer(
+            r"(?:(" + TEN_DIEM + r")\s+là\s+trọng\s+tâm\s+(?:của\s+)?(?:\\triangle|tam\s+giác)\s*(" + TEN_DIEM + r")(" + TEN_DIEM + r")(" + TEN_DIEM + r")"
+            r"|trọng\s+tâm\s+(" + TEN_DIEM + r")\s+của\s+(?:\\triangle|tam\s+giác)\s*(" + TEN_DIEM + r")(" + TEN_DIEM + r")(" + TEN_DIEM + r"))",
+            tat_ca_chu
+        ):
+            g, a, b, c = (m.group(1), m.group(2), m.group(3), m.group(4)) if m.group(1) else (m.group(5), m.group(6), m.group(7), m.group(8))
+            g, a, b, c = ten_chuan(g), ten_chuan(a), ten_chuan(b), ten_chuan(c)
+            if g not in self.diem and all(x in self.diem for x in (a, b, c)):
+                pa, pb, pc = self.diem[a], self.diem[b], self.diem[c]
+                self.diem[g] = ((pa[0] + pb[0] + pc[0]) / 3.0, (pa[1] + pb[1] + pc[1]) / 3.0)
+
+        # 3) Chân đường cao / hình chiếu vuông góc: "kẻ AH vuông góc (với) BC tại H", "đường cao AH của tam giác ABC", "hình chiếu H của A lên BC"
+        def chieu_vuong_goc(a_pt, b_pt, c_pt):
+            ax, ay = a_pt
+            bx, by = b_pt
+            cx, cy = c_pt
+            dx, dy = cx - bx, cy - by
+            d2 = dx * dx + dy * dy
+            if d2 < 1e-9:
+                return ((bx + cx) / 2.0, (by + cy) / 2.0)
+            t = ((ax - bx) * dx + (ay - by) * dy) / d2
+            t = max(0.05, min(0.95, t))
+            return (bx + t * dx, by + t * dy)
+
+        for m in re.finditer(
+            r"(?:kẻ\s+|dựng\s+|đường\s+cao\s+)?(" + TEN_DIEM + r")(" + TEN_DIEM + r")\s*(?:\\perp|⊥|vuông\s+góc\s+(?:với\s+)?)\s*(" + TEN_DIEM + r")(" + TEN_DIEM + r")(?:\s+tại\s+(" + TEN_DIEM + r"))?",
+            tat_ca_chu
+        ):
+            u, h, b, c, tai = [ten_chuan(x) if x else "" for x in m.groups()]
+            if tai and tai in (u, h):
+                 dinh, chan = (u, h) if tai == h else (h, u)
+            else:
+                dinh, chan = (u, h) if u in self.diem and h not in self.diem else ((h, u) if h in self.diem and u not in self.diem else ("", ""))
+            if chan and chan not in self.diem and dinh in self.diem and b in self.diem and c in self.diem:
+                self.diem[chan] = chieu_vuong_goc(self.diem[dinh], self.diem[b], self.diem[c])
+
+        # 4) Giao điểm 2 đường thẳng: "I là giao điểm của AB và CD", "AB cắt CD tại I"
+        for m in re.finditer(
+            r"(?:(" + TEN_DIEM + r")\s+là\s+giao\s+điểm\s+của\s+(" + TEN_DIEM + r")(" + TEN_DIEM + r")\s+và\s+(" + TEN_DIEM + r")(" + TEN_DIEM + r")"
+            r"|(" + TEN_DIEM + r")(" + TEN_DIEM + r")\s+cắt\s+(" + TEN_DIEM + r")(" + TEN_DIEM + r")\s+tại\s+(" + TEN_DIEM + r"))",
+            tat_ca_chu
+        ):
+            if m.group(1):
+                pt_i, a, b, c, d = m.group(1), m.group(2), m.group(3), m.group(4), m.group(5)
+            else:
+                a, b, c, d, pt_i = m.group(6), m.group(7), m.group(8), m.group(9), m.group(10)
+            pt_i, a, b, c, d = ten_chuan(pt_i), ten_chuan(a), ten_chuan(b), ten_chuan(c), ten_chuan(d)
+            if pt_i not in self.diem and all(x in self.diem for x in (a, b, c, d)):
+                x1, y1 = self.diem[a]
+                x2, y2 = self.diem[b]
+                x3, y3 = self.diem[c]
+                x4, y4 = self.diem[d]
+                den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
+                if abs(den) > 1e-6:
+                    px = ((x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)) / den
+                    py = ((x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)) / den
+                    if 0.0 <= px <= 100.0 and 0.0 <= py <= 100.0:
+                        self.diem[pt_i] = (px, py)
+
+    def _chuan_hoa_khong_gian(self):
+        """Đảm bảo quy tắc cơ bản của hình học không gian:
+        - Mọi cạnh nằm trên đường bao lồi ngoài cùng (2D Convex Hull) của khối đa diện BẮT BUỘC là nét liền ('canh').
+        - Các cạnh bị khuất phía sau hoặc đi xuyên qua lòng khối đa diện BẮT BUỘC là nét đứt ('khuat' hoặc 'phu')."""
+        co_khuat = any(p["kieu"] == "doan" and p.get("kieu_net") == "khuat" for p in self.pt)
+        la_kg = co_khuat or bool(re.search(r"(?i:hình\s+chóp|lăng\s+trụ|tứ\s+diện|hình\s+hộp|mặt\s+phẳng|không\s+gian)", self.de_bai))
+        self.la_khong_gian = la_kg
+        if not la_kg:
+            return
+        doan_chinh = [p for p in self.pt if p["kieu"] == "doan" and p.get("kieu_net") in ("canh", "khuat")]
+        dinh_chinh = sorted({x for p in doan_chinh for x in p["khoa"] if x in self.diem})
+        if len(dinh_chinh) < 4:
+            return
+
+        def la_canh_bao_loi(a, b):
+            ax, ay = self.diem[a]
+            bx, by = self.diem[b]
+            dx, dy = bx - ax, by - ay
+            L = math.hypot(dx, dy)
+            if L < 1e-6:
+                return False
+            duong, am = 0, 0
+            for k in dinh_chinh:
+                if k in (a, b):
+                    continue
+                px, py = self.diem[k]
+                cr = (dx * (py - ay) - dy * (px - ax)) / L
+                if cr > 0.15:
+                    duong += 1
+                elif cr < -0.15:
+                    am += 1
+                if duong > 0 and am > 0:
+                    return False
+            return True
+
+        # 1) Cạnh nằm trên đường viền bao ngoài cùng của khối: bắt buộc là cạnh nhìn thấy (nét liền)
+        dinh_tren_bao = set()
+        for p in doan_chinh:
+            a, b = p["khoa"]
+            if la_canh_bao_loi(a, b):
+                dinh_tren_bao.update((a, b))
+                if p.get("kieu_net") == "khuat":
+                    p["kieu_net"] = "canh"
+
+        # 2) Nếu bài không gian chưa có cạnh khuất nào (do kịch bản cũ quên đánh dấu khuat):
+        # Đỉnh nằm hẳn bên trong bao lồi (góc khuất phía sau của đáy chóp/lăng trụ, thường có y nhỏ hơn = cao hơn trên màn hình) -> các cạnh nối tới nó là cạnh khuất!
+        if not any(p.get("kieu_net") == "khuat" for p in doan_chinh):
+            dinh_trong = [k for k in dinh_chinh if k not in dinh_tren_bao]
+            if dinh_trong:
+                for p in doan_chinh:
+                    a, b = p["khoa"]
+                    if (a in dinh_trong or b in dinh_trong) and not la_canh_bao_loi(a, b):
+                        p["kieu_net"] = "khuat"
+
     def _doc_hinh(self):
         for i in range(len(self.canh_p)):
             v = self.vat_hinh(i)
@@ -156,6 +289,7 @@ class MoHinh:
                         self.diem[ten_chuan(k)] = (float(p[0]), float(p[1]))
                     except (TypeError, ValueError):
                         pass
+        self._bo_sung_diem_phu()
         co = lambda *ds: all(ten_chuan(x) in self.diem for x in ds)
         for i in range(len(self.canh_p)):
             v = self.vat_hinh(i)
@@ -164,7 +298,7 @@ class MoHinh:
             for c in v.get("to") or []:
                 if isinstance(c, list) and len(c) >= 3 and co(*c):
                     self.them("mien", khoa_da_giac(c), i, dinh=[ten_chuan(x) for x in c])
-            for ds, kn in ((v.get("canh"), "canh"), (v.get("khuat"), "khuat"), (v.get("phu"), "phu")):
+            for ds, kn in ((v.get("canh"), "canh"), (v.get("khuat"), "khuat"), (v.get("phu"), "phu"), (v.get("duong_phu"), "phu")):
                 for c in ds or []:
                     if isinstance(c, list) and len(c) >= 2 and co(c[0], c[1]) and ten_chuan(c[0]) != ten_chuan(c[1]):
                         nhan = str(c[2]).strip() if kn == "canh" and len(c) > 2 and c[2] not in (None, "") else ""
@@ -185,6 +319,7 @@ class MoHinh:
                     except (TypeError, ValueError):
                         n = 1
                     self.them("bang", khoa_doan(c[0], c[1]), i, so=n)
+        self._chuan_hoa_khong_gian()
 
     # ---- chữ của cảnh i: công thức (TeX gốc từ kịch bản), lời thoại, tiêu đề cảnh, nhấn mạnh do kịch bản chỉ định ----
     def cong_thuc(self, i):
@@ -623,10 +758,11 @@ class VideoHinh(Scene):
             if p["kieu"] == "doan":
                 a, b = (self.P[x] for x in p["khoa"])
                 if p["kieu_net"] in ("khuat", "phu"):
-                    m = DashedLine(a, b, dash_length=0.12, dashed_ratio=0.55, stroke_width=3.2,
+                    # Cạnh khuất (không gian 3D) và đường thẳng phụ kẻ thêm: vẽ bằng nét đứt rõ ràng (dash_length=0.18, dashed_ratio=0.56)
+                    m = DashedLine(a, b, dash_length=0.18, dashed_ratio=0.56, stroke_width=3.5,
                                    color=NET_DUT if p["kieu_net"] == "phu" else XAM)
                 else:
-                    m = Line(a, b, stroke_width=4, color=TRANG)
+                    m = Line(a, b, stroke_width=4.2, color=TRANG)
                     if p["kieu_net"] == "con":
                         m.set_stroke(opacity=0)
                 if p.get("nhan"):
@@ -750,7 +886,8 @@ class VideoHinh(Scene):
                 mau = mo.mau.get(k, TRANG) if (k in self.da_to or duoc) else (NET_DUT if isinstance(net, DashedLine) and mo.pt[mo.chi_so[k]]["kieu_net"] == "phu" else (XAM if isinstance(net, DashedLine) else TRANG))
                 if duoc:
                     self.da_to.add(k)
-                rong = 7 if duoc and co_tap_trung else (3.2 if isinstance(net, DashedLine) else 4)
+                # Giữ nét đứt (DashedLine) của cạnh khuất / đường phụ không bị phình dính vào nhau khi làm nổi
+                rong = (5.0 if isinstance(net, DashedLine) else 7.0) if duoc and co_tap_trung else (3.5 if isinstance(net, DashedLine) else 4.2)
                 if mo.pt[mo.chi_so[k]]["kieu_net"] == "con":
                     if k not in self.da_to:
                         mo_do = 0
@@ -992,7 +1129,13 @@ class VideoHinh(Scene):
                 for d in dong_nt["doan"]:
                     m_d = self.hinh.get(("doan", d))
                     if m_d is not None and m_d in self.tren_man:
-                        loe.append(ShowPassingFlash(Line(*(self.P[x] for x in d)).set_stroke(VANG, width=12), time_width=0.6))
+                        net_d = self.net_chinh(m_d)
+                        tia_loe = (
+                            DashedLine(*(self.P[x] for x in d), dash_length=0.18, dashed_ratio=0.56).set_stroke(VANG, width=9)
+                            if isinstance(net_d, DashedLine)
+                            else Line(*(self.P[x] for x in d)).set_stroke(VANG, width=12)
+                        )
+                        loe.append(ShowPassingFlash(tia_loe, time_width=0.6))
                 for gk in dong_nt["goc"]:
                     if ("vuong", gk) in self.hinh:     # góc vuông đã có ký hiệu: tô màu ký hiệu, không vẽ thêm cung
                         loe.append(self.hinh[("vuong", gk)].animate.set_stroke(color=mo.mau.get(("goc", gk), VANG), width=4, opacity=1))

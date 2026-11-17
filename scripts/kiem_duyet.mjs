@@ -147,14 +147,16 @@ async function aiNhinHinh(anh) {
     '(5) Chữ không đè lên hình/chữ khác làm khó đọc; công thức không bị cắt; không có mã LaTeX thô.\n' +
     'Bỏ qua chuyện thẩm mỹ nhỏ. Trả JSON: {"dung": true|false, "van_de": ["ẢNH n (cảnh ...): lỗi gì, phải sửa thế nào"]}';
   const parts = [{text: prompt}, ...anh.map((a) => ({inline_data: {mime_type: 'image/jpeg', data: fs.readFileSync(a.tep).toString('base64')}}))];
-  // cùng bộ model với Bộ phận 1 (model chính + dự phòng); MODEL_AI_NHIN để ưu tiên model khác
-  const models = [...new Set([process.env.MODEL_AI_NHIN, 'gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-flash-latest', 'gemini-flash-lite-latest'].filter(Boolean))];
+  // cùng bộ model linh hoạt với Bộ phận 1: tự động đổi model nếu một model lỗi / 404 / hết hạn mức
+  const models = [...new Set([process.env.MODEL_AI_NHIN, 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-flash-lite-latest', 'gemini-3.8-flash', 'gemini-3.6-flash'].filter(Boolean))];
   const hetNgay = new Set();
+  const model404 = new Set();
   const loiModel = {};
   let lyDo = 'mọi lần gọi Gemini đều lỗi';
   for (let vong = 0; vong < 3; vong++) {
     let choMs = 0;
     for (const model of models) {
+      if (model404.has(model)) continue;
       for (const k of keys) {
         if (hetNgay.has(model + '|' + k)) continue;
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(k)}`, {
@@ -166,10 +168,10 @@ async function aiNhinHinh(anh) {
           const raw = await res.text().catch(() => '');
           loiModel[model] = `HTTP ${res.status}${res.status === 429 ? (/PerDay|per day|daily/i.test(raw) ? ' hết hạn mức ngày' : ' giới hạn phút') : ''}`;
           lyDo = Object.entries(loiModel).map(([m, l]) => `${m} ${l}`).join('; ');
+          if (res.status === 404) { model404.add(model); break; } // model không tồn tại -> đổi sang model kế ngay, không thử key khác
           if (res.status === 429 && /PerDay|per day|daily/i.test(raw)) { hetNgay.add(model + '|' + k); continue; }   // hết hạn mức ngày: key kế
           if (res.status === 429) { const m = /"retryDelay":\s*"(\d+)/.exec(raw); const c = Math.min(60, (m ? Number(m[1]) : 15) + 1) * 1000; choMs = choMs ? Math.min(choMs, c) : c; continue; }
-          // key LỖI THẬT (không phải hết hạn mức): ghi lại để báo Zalo người dùng gỡ key
-          // bị model này từ chối: bỏ key cho model này (key dạng "AQ." có thể chạy với model khác), không báo hỏng
+          if (res.status >= 500) break; // máy chủ model này đang lỗi -> thử ngay model kế tiếp
           if (res.status === 401 || ([400, 403].includes(res.status) && /API_KEY_INVALID|API key not valid|API key expired|SERVICE_DISABLED|has not been used|is disabled|suspended|PERMISSION_DENIED|billing/i.test(raw))) hetNgay.add(model + '|' + k);
           continue;
         }

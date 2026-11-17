@@ -124,9 +124,11 @@ function dungNgang(raw: R): R[] {
   });
   const lay = (s: unknown): D | null => neo.get(chuoi(s)) || null;
   const soDoCao = new Map<string, number>();   // nhiều đường đo cùng một bên vật -> lùi dần ra ngoài, không chồng nhãn
-  for (const d of doRaw) {
+  const cungBuocDo = doRaw.length >= 2 && doRaw.every((d) => d.buoc === undefined || so(d.buoc, 2) === so(doRaw[0].buoc, 2));
+  for (let idxDo = 0; idxDo < doRaw.length; idxDo++) {
+    const d = doRaw[idxDo];
     const kieu = chuoi(d.kieu);
-    const buoc = d.buoc ?? 2;
+    const buoc = d.buoc !== undefined && !cungBuocDo ? d.buoc : Math.min(4, 2 + Math.floor((idxDo * 3) / Math.max(1, doRaw.length)));
     const nhan = chuoi(d.nhan);
     const mau = d.mau || (kieu === 'tia' ? 'vang' : 'trang');
     if (kieu === 'khoang_cach') {
@@ -308,10 +310,13 @@ function dungTren(raw: R): R[] {
     const ten = chuoi(d.nhan) || ma;
     out.push({kieu: 'chu', tam: datNhan([[p[0] + hx * 3, p[1] + hy * 3.4], [p[0] - hx * 3, p[1] + hy * 3.4], [p[0] + hx * 3, p[1] - hy * 3.4]], ten), noi_dung: nhanTex(ten), buoc});
   });
-  for (const d of mang(raw.do).slice(0, 12)) {
+  const dsDoTren = mang(raw.do).slice(0, 12);
+  const cungBuocTren = dsDoTren.length >= 2 && dsDoTren.every((d) => d.buoc === undefined || so(d.buoc, 2) === so(dsDoTren[0].buoc, 2));
+  for (let idxTren = 0; idxTren < dsDoTren.length; idxTren++) {
+    const d = dsDoTren[idxTren];
     const a = lay(d.tu), b = lay(d.den);
     if (!a || !b) continue;
-    const buoc = d.buoc ?? 2;
+    const buoc = d.buoc !== undefined && !cungBuocTren ? d.buoc : Math.min(4, 2 + Math.floor((idxTren * 3) / Math.max(1, dsDoTren.length)));
     out.push({kieu: 'duong', diem: [a, b], mau: d.mau || 'vang', net: 2.5, dut: d.dut === true || chuoi(d.kieu) === 'tia', buoc});
     if (chuoi(d.nhan)) {
       const L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;

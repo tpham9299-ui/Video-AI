@@ -68,27 +68,31 @@ function promptTimHinhHoc_(lop, n, daCo) {
 // mọi dạng hình (phẳng / không gian) đều dựng được bằng tọa độ -> chỉ loại khi thiếu hẳn "dang"
 function dangHinhDungDuoc_(dang) { return String(dang || '').trim().length > 0; }
 function loaiDeHinh_(r) { return /chứng minh|cmr\b|chứng tỏ|hãy chỉ ra rằng/i.test(String(r.de_bai || '')) ? 'chung_minh' : 'tinh'; }
+function laHinhKhongGian_(de) { return /hình chóp|lăng trụ|tứ diện|hình hộp|mặt cầu|mặt phẳng|không gian|Oxyz|cạnh bên|mặt bên|đáy là|vuông góc với đáy|vuông góc với mặt/i.test(String(de || '')); }
 
-// Mã dựng hình bằng tọa độ: dùng cho cả kiểm chứng và lấy tọa độ vẽ hình.
-var HUONG_DAN_MA_HINH_ = 'Viết MỘT hàm JavaScript thuần tên kiemChung() (không thư viện, không gọi mạng), DỰNG HÌNH BẰNG TỌA ĐỘ trực tiếp từ ĐỀ BÀI (không dựa vào lời giải). ' +
+// Mã dựng hình bằng tọa độ: dùng cho cả kiểm chứng và lấy tọa độ vẽ hình (kể cả các điểm phụ và đường thẳng phụ).
+var HUONG_DAN_MA_HINH_ = 'Viết MỘT hàm JavaScript thuần tên kiemChung() (không thư viện, không gọi mạng), DỰNG HÌNH BẰNG TỌA ĐỘ trực tiếp từ ĐỀ BÀI và dựng thêm CÁC ĐIỂM PHỤ / ĐƯỜNG THẲNG PHỤ cần cho lời giải (chân đường cao, hình chiếu vuông góc, trung điểm, tâm đáy, giao điểm...). ' +
   'Hình PHẲNG: điểm [x,y]; tự viết hàm giao 2 đường thẳng, giao đường thẳng - đường tròn, giao 2 đường tròn, trung điểm, chân đường vuông góc, tâm đường tròn ngoại tiếp, phân giác, quay điểm. ' +
-  'Hình KHÔNG GIAN: điểm [x,y,z] (đặt đáy trên mặt z = 0, chiều cao theo trục z); tự viết hàm tích vô hướng, tích có hướng, phương trình mặt phẳng, hình chiếu điểm lên mặt phẳng / đường thẳng, ' +
-  'khoảng cách điểm - mặt phẳng, khoảng cách hai đường chéo nhau, góc đường thẳng - mặt phẳng, góc hai mặt phẳng, thể tích (|tích hỗn tạp|/6). ' +
+  'Hình KHÔNG GIAN: điểm [x,y,z] (đặt đáy trên mặt z = 0, chiều cao theo trục z; góc khuất phía sau-trái đặt ở y > 0 như A=[0,d,0], các đỉnh phía trước ở y = 0 để phép chiếu sách giáo khoa X = x + 0.41*y, Y = z + 0.29*y nhìn từ phía trước-trên-bên phải thấy rõ mặt trước và che khuất đúng cạnh sau); ' +
+  'tự viết hàm tích vô hướng, tích có hướng, phương trình mặt phẳng, hình chiếu điểm lên mặt phẳng / đường thẳng, khoảng cách điểm - mặt phẳng, khoảng cách hai đường chéo nhau, góc đường thẳng - mặt phẳng, góc hai mặt phẳng, thể tích (|tích hỗn tạp|/6). ' +
   'Đề có dữ kiện tự do (tam giác bất kỳ, điểm M bất kỳ, hình chóp bất kỳ...) thì sinh tham số NGẪU NHIÊN hợp lệ (đúng mọi điều kiện của đề; dùng Math.random). ' +
   'Mọi vòng lặp phải dừng, tổng không quá 200000 phép tính. ';
-var DANG_TRA_HINH_ = '"hinh": {"diem":{"A":[x,y] hoặc [x,y,z],...} tọa độ CÁC điểm có tên trong đề của MỘT cấu hình đẹp, dễ nhìn (không quá dẹt, các điểm không sát nhau), ' +
-  '"canh":[["A","B"],...] các đoạn thẳng của hình, "khuat":[["A","D"]] (CHỈ hình không gian) các cạnh BỊ KHUẤT khi nhìn từ phía trước-trên-bên phải (vẽ nét đứt như sách giáo khoa), ' +
-  '"tron":[["O","A"]] đường tròn (tâm, một điểm trên đường tròn) hoặc [["A","B","C"]] (đường tròn qua 3 điểm) - chỉ hình phẳng, "phu":[["A","H"]] các đường kẻ thêm của lời giải}';
+var DANG_TRA_HINH_ = '"hinh": {"diem":{"A":[x,y] hoặc [x,y,z],...} tọa độ TẤT CẢ các điểm có tên trong đề VÀ các điểm phụ (H, M, K, I, O...) của MỘT cấu hình đẹp, dễ nhìn (không quá dẹt, các điểm không sát nhau), ' +
+  '"canh":[["A","B"],...] các cạnh NHÌN THẤY của hình (vẽ nét liền), "khuat":[["A","D"],...] (CHỈ hình không gian) các cạnh BỊ CHE KHUẤT nằm phía sau hoặc bên trong khối khi nhìn từ phía trước (vẽ nét đứt chuẩn hình học không gian), ' +
+  '"mat":[["S","A","B"],["A","B","C","D"],...] (CHỈ hình không gian) danh sách các mặt của khối đa diện để máy kiểm tra che khuất 3D, ' +
+  '"tron":[["O","A"]] đường tròn (tâm, một điểm trên đường tròn) hoặc [["A","B","C"]] (đường tròn qua 3 điểm) - chỉ hình phẳng, ' +
+  '"phu":[["A","H"],...] các ĐƯỜNG THẲNG PHỤ kẻ thêm để phục vụ bài toán (đường cao, đường trung tuyến, hình chiếu, đoạn nối phụ...)}';
 
 function giaiHinhHoc_(r) {
   var t0 = Date.now();
   var loai = loaiDeHinh_(r);
-  var de = 'Bài hình học phẳng (lớp ' + r.lop + '):\n' + r.de_bai;
+  var kg = laHinhKhongGian_(r.de_bai);
+  var de = 'Bài hình học ' + (kg ? 'KHÔNG GIAN' : 'PHẲNG') + ' (lớp ' + r.lop + '):\n' + r.de_bai;
   if (loai === 'tinh') return giaiHinhTinh_(r, de, t0);
-  var dinhDang = 'Trình bày chứng minh CHẶT CHẼ: mỗi bước một khẳng định + lý do (định lý, tính chất, dữ kiện nào). Nếu mệnh đề SAI hoặc đề thiếu/mơ hồ (cấu hình khác nhau cho kết luận khác nhau) thì "chung_minh_duoc": false và ghi rõ vào "de_co_van_de". ' +
-    'Trả JSON: {"menh_de":"mệnh đề cần chứng minh (ngắn)","y_tuong":"ý then chốt (1-2 câu)","duong_phu":["đường kẻ thêm nếu có"],"cac_buoc":[{"khang_dinh":"","ly_do":""}],"chung_minh_duoc":true|false,"de_co_van_de":""}\n\n';
+  var dinhDang = 'Trình bày chứng minh CHẶT CHẼ: được phép và khuyến khích KẺ THÊM ĐƯỜNG THẲNG PHỤ (đường cao, hình chiếu, đường song song, trung tuyến...) nếu giúp lời giải sáng sủa; mỗi bước một khẳng định + lý do (định lý, tính chất, dữ kiện nào). Nếu mệnh đề SAI hoặc đề thiếu/mơ hồ (cấu hình khác nhau cho kết luận khác nhau) thì "chung_minh_duoc": false và ghi rõ vào "de_co_van_de". ' +
+    'Trả JSON: {"menh_de":"mệnh đề cần chứng minh (ngắn)","y_tuong":"ý then chốt (1-2 câu)","duong_phu":["mô tả đường kẻ thêm nếu có, vd Kẻ AH vuông góc BC tại H"],"cac_buoc":[{"khang_dinh":"","ly_do":""}],"chung_minh_duoc":true|false,"de_co_van_de":""}\n\n';
   var kq3 = goiGeminiSong_([
-    { nhiet: 0.2, prompt: 'Bạn là giáo viên chuyên Toán. Chứng minh bài hình học sau bằng phương pháp HÌNH HỌC TỔNG HỢP (góc, tam giác đồng dạng/bằng nhau, đường tròn, đường phụ khéo). ' + dinhDang + de },
+    { nhiet: 0.2, prompt: 'Bạn là giáo viên chuyên Toán. Chứng minh bài hình học sau bằng phương pháp HÌNH HỌC TỔNG HỢP (góc, tam giác đồng dạng/bằng nhau, đường tròn, quan hệ vuông góc/song song không gian, kẻ thêm đường phụ khéo). ' + dinhDang + de },
     { nhiet: 0.3, prompt: 'Bạn là giáo viên chuyên Toán. Chứng minh bài hình học sau bằng một PHƯƠNG PHÁP KHÁC HẲN hình học tổng hợp: tọa độ, véc tơ, số phức hoặc lượng giác (tính toán đại số chặt chẽ). ' + dinhDang + de },
     { nhiet: 0.1, prompt: HUONG_DAN_MA_HINH_ + 'Thử mệnh đề cần chứng minh ở ÍT NHẤT 6 cấu hình ngẫu nhiên khác nhau; với mỗi cấu hình tính "phần dư" (ví dụ |AM - AN|, |tích vô hướng| của hai véc tơ cần vuông góc, |định thức| khi cần thẳng hàng / đồng phẳng, khoảng cách từ điểm tới mặt phẳng khi cần điểm thuộc mặt phẳng) chia cho kích thước hình. ' +
       'Hàm trả về {"kieu":"chung_minh","so_cau_hinh":số cấu hình đã thử,"du_max":phần dư lớn nhất (số thực),' + DANG_TRA_HINH_ + '}. Trả JSON: {"ma":"function kiemChung(){...}"}\n\n' + de }
@@ -127,13 +131,13 @@ function giaiHinhHoc_(r) {
 
 // Bài tính: giải như toán thực tế (2 lời giải + mã tính số dựng hình bằng tọa độ, trọng tài khi lệch) và lấy tọa độ vẽ hình.
 function giaiHinhTinh_(r, de, t0) {
-  var dinhDang = 'Đáp số cuối là MỘT con số (độ dài / số đo góc theo độ / diện tích / tỉ số). Nếu đề yêu cầu làm tròn thì "gia_tri" là số ĐÃ làm tròn đúng yêu cầu; nếu không thì giữ ít nhất 4 chữ số có nghĩa. ' +
+  var dinhDang = 'Đáp số cuối là MỘT con số (độ dài / số đo góc theo độ / diện tích / thể tích / tỉ số). Được phép KẺ THÊM ĐƯỜNG THẲNG PHỤ (đường cao, hình chiếu, trung tuyến...) để tính toán. Nếu đề yêu cầu làm tròn thì "gia_tri" là số ĐÃ làm tròn đúng yêu cầu; nếu không thì giữ ít nhất 4 chữ số có nghĩa. ' +
     'Nếu đề thiếu dữ kiện hoặc mơ hồ (nhiều cấu hình cho đáp số khác nhau) thì ghi rõ vào "de_co_van_de". ' +
     'Trả JSON: {"y_tuong":"ý then chốt","duong_phu":["đường kẻ thêm nếu có"],"cac_buoc":["mỗi bước: khẳng định + lý do"],"gia_tri":0,"don_vi":"","dap_an_hien":"câu trả lời ngắn có đơn vị, ví dụ AB = 6 cm","de_co_van_de":""}\n\n';
   var maPrompt = HUONG_DAN_MA_HINH_ + 'Tính đại lượng đề hỏi từ tọa độ (nếu đề có tham số tự do mà đáp số không phụ thuộc tham số thì thử vài cấu hình và trả giá trị chung). ' +
     'Hàm trả về {"kieu":"gia_tri","gia_tri":số_thực,' + DANG_TRA_HINH_ + '}. Trả JSON: {"ma":"function kiemChung(){...}"}\n\n' + de;
   var kq3 = goiGeminiSong_([
-    { nhiet: 0.2, prompt: 'Bạn là giáo viên chuyên Toán. Giải bài hình học sau bằng HÌNH HỌC TỔNG HỢP thật chặt chẽ (đường phụ, đồng dạng, góc nội tiếp, hệ thức lượng...). ' + dinhDang + de },
+    { nhiet: 0.2, prompt: 'Bạn là giáo viên chuyên Toán. Giải bài hình học sau bằng HÌNH HỌC TỔNG HỢP thật chặt chẽ (kẻ thêm đường phụ, đồng dạng, góc nội tiếp, hệ thức lượng, hình chiếu không gian...). ' + dinhDang + de },
     { nhiet: 0.4, prompt: 'Bạn là giáo viên chuyên Toán. Giải bài hình học sau bằng phương pháp KHÁC: tọa độ, véc tơ hoặc lượng giác. ' + dinhDang + de },
     { nhiet: 0.1, prompt: maPrompt }
   ]);
@@ -152,7 +156,7 @@ function giaiHinhTinh_(r, de, t0) {
     promptMa: maPrompt
   });
   if (!tt.dat) return { dat: false, c1: c1, c2: c2, ly_do: tt.ly_do };
-  var may = chayMaHinh_(r, kc);
+  var may = chayMaHinh_(r, (tt && tt.kc) || kc);
   c1 = tt.c1; c2 = tt.c2;
   if (c1 && may && may.hinh) c1.hinh_toa_do = chuanHinhToaDo_(may.hinh);
   var dapAn = vietSo_(tt.v);
@@ -166,24 +170,242 @@ function chayMaHinh_(r, kc) {
   catch (e) { nhatKy_('GIAI', r.id + ': mã dựng hình lỗi (' + String(e.message).slice(0, 100) + ')'); return null; }
 }
 
+// ============================================================
+// PHÂN LOẠI CẠNH NHÌN THẤY (NÉT LIỀN) VÀ CẠNH BỊ KHUẤT (NÉT ĐỨT) TRONG HÌNH HỌC KHÔNG GIAN 3D
+// ============================================================
+// Phép chiếu song song sách giáo khoa: X = x + 0.41*y, Y = z + 0.29*y.
+// Cùng một điểm chiếu 2D (X, Y) trên màn hình ứng với tia nhìn 3D: (x, y, z) = (X - 0.41*y, y, Y - 0.29*y).
+// Giá trị y NHỎ HƠN nghĩa là GẦN NGƯỜI XEM HƠN (phía trước); giá trị y LỚN HƠN nghĩa là ở PHÍA SAU (bị che khuất).
+// Vector hướng từ vật về mắt người xem: v_cam = (+0.41, -1.0, +0.29).
+function phanLoaiCanhKhongGian3D_(diem3D, diem2D, h) {
+  var capCanh = function (a, b) { return a < b ? a + '|' + b : b + '|' + a; };
+  var dsCanhGoc = [], daCo = {};
+  var gomCanh = function (arr) {
+    (Array.isArray(arr) ? arr : []).forEach(function (c) {
+      if (!Array.isArray(c) || c.length < 2) return;
+      var a = String(c[0]), b = String(c[1]);
+      if (!diem3D[a] || !diem3D[b] || a === b) return;
+      var k = capCanh(a, b);
+      if (!daCo[k]) { daCo[k] = true; dsCanhGoc.push([a, b]); }
+    });
+  };
+  gomCanh(h.canh);
+  gomCanh(h.khuat);
+  if (!dsCanhGoc.length) return { canh: [], khuat: [], phu: h.phu || [] };
+
+  // Tập các đỉnh chính (thuộc các cạnh của khối đa diện)
+  var dinhChinh = {};
+  dsCanhGoc.forEach(function (c) { dinhChinh[c[0]] = true; dinhChinh[c[1]] = true; });
+  var tenDinh = Object.keys(dinhChinh);
+  if (tenDinh.length < 4) return { canh: h.canh || [], khuat: h.khuat || [], phu: h.phu || [] };
+
+  // 1) Quy tắc Bao Lồi 2D (2D Silhouette / Convex Hull):
+  // Mọi cạnh nằm trên đường viền bao ngoài cùng của hình chiếu 2D BẮT BUỘC là cạnh nhìn thấy (nét liền)!
+  var laCanhBien2D = function (a, b) {
+    var A = diem2D[a], B = diem2D[b];
+    if (!A || !B) return false;
+    var dx = B[0] - A[0], dy = B[1] - A[1], len = Math.hypot(dx, dy);
+    if (len < 1e-6) return false;
+    var duong = 0, am = 0;
+    for (var i = 0; i < tenDinh.length; i++) {
+      var k = tenDinh[i];
+      if (k === a || k === b) continue;
+      var P = diem2D[k];
+      var cross = (dx * (P[1] - A[1]) - dy * (P[0] - A[0])) / len;
+      if (cross > 1e-4) duong++;
+      else if (cross < -1e-4) am++;
+      if (duong > 0 && am > 0) return false;
+    }
+    return true;
+  };
+
+  // 2) Dựng danh sách các mặt phẳng của khối đa diện 3D (từ h.mat + tự nhận diện mặt đáy và các mặt tam giác/tứ giác)
+  var dsMat = [];
+  var daCoMat = {};
+  var themMat = function (ds) {
+    if (!Array.isArray(ds) || ds.length < 3) return;
+    var hop = ds.map(String).filter(function (k) { return !!diem3D[k]; });
+    if (hop.length < 3) return;
+    var khoa = hop.slice().sort().join('|');
+    if (daCoMat[khoa]) return;
+    daCoMat[khoa] = true;
+    dsMat.push(hop);
+  };
+  if (Array.isArray(h.mat)) h.mat.forEach(themMat);
+
+  // Tự động nhận diện mặt đáy (các đỉnh có cùng z_min) và các mặt bên (3-cycles hoặc nối đỉnh chóp với cạnh đáy)
+  var zMin = Infinity, zMax = -Infinity;
+  tenDinh.forEach(function (k) {
+    var z = diem3D[k][2];
+    if (z < zMin) zMin = z;
+    if (z > zMax) zMax = z;
+  });
+  var dinhDay = tenDinh.filter(function (k) { return Math.abs(diem3D[k][2] - zMin) <= Math.max(1e-3, (zMax - zMin) * 0.05); });
+  if (dinhDay.length >= 3) {
+    var cx = 0, cy = 0;
+    dinhDay.forEach(function (k) { cx += diem3D[k][0]; cy += diem3D[k][1]; });
+    cx /= dinhDay.length; cy /= dinhDay.length;
+    dinhDay.sort(function (u, v) {
+      return Math.atan2(diem3D[u][1] - cy, diem3D[u][0] - cx) - Math.atan2(diem3D[v][1] - cy, diem3D[v][0] - cx);
+    });
+    themMat(dinhDay);
+  }
+  // Tìm mọi chu trình 3 đỉnh (mặt tam giác) và 4 đỉnh đồng phẳng tạo bởi các cạnh của khối
+  for (var i0 = 0; i0 < tenDinh.length; i0++) {
+    for (var i1 = i0 + 1; i1 < tenDinh.length; i1++) {
+      var u0 = tenDinh[i0], u1 = tenDinh[i1];
+      if (!daCo[capCanh(u0, u1)]) continue;
+      for (var i2 = i1 + 1; i2 < tenDinh.length; i2++) {
+        var u2 = tenDinh[i2];
+        if (daCo[capCanh(u0, u2)] && daCo[capCanh(u1, u2)]) themMat([u0, u1, u2]);
+      }
+    }
+  }
+  // Với hình lăng trụ / hình hộp: tìm các mặt 4 đỉnh đồng phẳng có 4 cạnh nối thành chu trình
+  for (var a0 = 0; a0 < dsCanhGoc.length; a0++) {
+    for (var a1 = a0 + 1; a1 < dsCanhGoc.length; a1++) {
+      var cA = dsCanhGoc[a0], cB = dsCanhGoc[a1];
+      if (cA[0] === cB[0] || cA[0] === cB[1] || cA[1] === cB[0] || cA[1] === cB[1]) continue;
+      var q = null;
+      if (daCo[capCanh(cA[1], cB[0])] && daCo[capCanh(cB[1], cA[0])]) q = [cA[0], cA[1], cB[0], cB[1]];
+      else if (daCo[capCanh(cA[1], cB[1])] && daCo[capCanh(cB[0], cA[0])]) q = [cA[0], cA[1], cB[1], cB[0]];
+      if (q) {
+        var P0 = diem3D[q[0]], P1 = diem3D[q[1]], P2 = diem3D[q[2]], P3 = diem3D[q[3]];
+        var nx = (P1[1] - P0[1]) * (P2[2] - P0[2]) - (P1[2] - P0[2]) * (P2[1] - P0[1]);
+        var ny = (P1[2] - P0[2]) * (P2[0] - P0[0]) - (P1[0] - P0[0]) * (P2[2] - P0[2]);
+        var nz = (P1[0] - P0[0]) * (P2[1] - P0[1]) - (P1[1] - P0[1]) * (P2[0] - P0[0]);
+        var norm = Math.hypot(nx, ny, nz) || 1;
+        var dist = Math.abs(nx * (P3[0] - P0[0]) + ny * (P3[1] - P0[1]) + nz * (P3[2] - P0[2])) / norm;
+        if (dist < 1e-2) themMat(q);
+      }
+    }
+  }
+
+  // Tâm khối 3D
+  var tam3D = [0, 0, 0];
+  tenDinh.forEach(function (k) { tam3D[0] += diem3D[k][0]; tam3D[1] += diem3D[k][1]; tam3D[2] += diem3D[k][2]; });
+  tam3D[0] /= tenDinh.length; tam3D[1] /= tenDinh.length; tam3D[2] /= tenDinh.length;
+
+  // Vector hướng nhìn từ vật về camera: v_cam = (+0.41, -1.0, +0.29)
+  var vCam = [0.41, -1.0, 0.29];
+  var thongTinMat = dsMat.map(function (m) {
+    var A = diem3D[m[0]], B = diem3D[m[1]], C = diem3D[m[2]];
+    var ux = B[0] - A[0], uy = B[1] - A[1], uz = B[2] - A[2];
+    var vx = C[0] - A[0], vy = C[1] - A[1], vz = C[2] - A[2];
+    var nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    var L = Math.hypot(nx, ny, nz) || 1;
+    nx /= L; ny /= L; nz /= L;
+    // Pháp tuyến hướng ra ngoài khối (tính từ tâm tam3D)
+    var dotOut = nx * (A[0] - tam3D[0]) + ny * (A[1] - tam3D[1]) + nz * (A[2] - tam3D[2]);
+    if (dotOut < 0) { nx = -nx; ny = -ny; nz = -nz; }
+    var dotCam = nx * vCam[0] + ny * vCam[1] + nz * vCam[2];
+    // Sắp xếp đỉnh mặt trên 2D theo góc quanh tâm mặt để kiểm tra điểm nằm trong đa giác 2D
+    var cx2 = 0, cy2 = 0;
+    m.forEach(function (k) { cx2 += diem2D[k][0]; cy2 += diem2D[k][1]; });
+    cx2 /= m.length; cy2 /= m.length;
+    var dinh2D = m.slice().sort(function (p, q) {
+      return Math.atan2(diem2D[p][1] - cy2, diem2D[p][0] - cx2) - Math.atan2(diem2D[q][1] - cy2, diem2D[q][0] - cx2);
+    }).map(function (k) { return diem2D[k]; });
+    return { dinh: m, n: [nx, ny, nz], A: A, nhinThay: dotCam > 1e-5, dinh2D: dinh2D };
+  });
+
+  // Kiểm tra điểm 2D P có nằm trong đa giác lồi poly2D không (kể cả sát biên)
+  var trongDaGiac2D = function (P, poly) {
+    var duong = 0, am = 0;
+    for (var i = 0; i < poly.length; i++) {
+      var Q1 = poly[i], Q2 = poly[(i + 1) % poly.length];
+      var cr = (Q2[0] - Q1[0]) * (P[1] - Q1[1]) - (Q2[1] - Q1[1]) * (P[0] - Q1[0]);
+      if (cr > 1e-4) duong++;
+      else if (cr < -1e-4) am++;
+      if (duong > 0 && am > 0) return false;
+    }
+    return true;
+  };
+
+  // Kiểm tra một đoạn thẳng [u, v] có bị mặt phẳng nào phía trước che khuất không
+  var biMatTruocChe = function (u, v) {
+    var P1 = diem3D[u], P2 = diem3D[v];
+    if (!P1 || !P2) return false;
+    // Thử 3 điểm dọc theo đoạn (0.3, 0.5, 0.7)
+    var ts = [0.3, 0.5, 0.7];
+    for (var ti = 0; ti < ts.length; ti++) {
+      var t = ts[ti];
+      var M3 = [P1[0] + (P2[0] - P1[0]) * t, P1[1] + (P2[1] - P1[1]) * t, P1[2] + (P2[2] - P1[2]) * t];
+      var M2 = [M3[0] + 0.41 * M3[1], M3[2] + 0.29 * M3[1]];
+      for (var f = 0; f < thongTinMat.length; f++) {
+        var fm = thongTinMat[f];
+        if (fm.dinh.indexOf(u) >= 0 && fm.dinh.indexOf(v) >= 0) continue; // chính mặt chứa cạnh này
+        if (!trongDaGiac2D(M2, fm.dinh2D)) continue;
+        // Tìm độ sâu y_mat của mặt phẳng fm tại đúng tia nhìn 2D M2 = (X, Y):
+        // Điểm trên tia nhìn có tọa độ (M2[0] - 0.41*y, y, M2[1] - 0.29*y).
+        // Thay vào phương trình mặt phẳng n . (P(y) - A) = 0:
+        var n = fm.n, A = fm.A;
+        var heSoY = -0.41 * n[0] + 1.0 * n[1] - 0.29 * n[2]; // = - (n . vCam)
+        if (Math.abs(heSoY) < 1e-6) continue;
+        var hangSo = n[0] * (M2[0] - A[0]) + n[1] * (0 - A[1]) + n[2] * (M2[1] - A[2]);
+        var yMat = -hangSo / heSoY;
+        // Nếu mặt phẳng nằm phía trước điểm M3 (yMat < M3[1] - eps) -> đoạn bị mặt này che khuất!
+        if (yMat < M3[1] - 1e-3) return true;
+      }
+    }
+    return false;
+  };
+
+  var khuatGoc = {};
+  (Array.isArray(h.khuat) ? h.khuat : []).forEach(function (c) {
+    if (Array.isArray(c) && c.length >= 2) khuatGoc[capCanh(String(c[0]), String(c[1]))] = true;
+  });
+
+  var canhMoi = [], khuatMoi = [];
+  dsCanhGoc.forEach(function (c) {
+    var u = c[0], v = c[1], k = capCanh(u, v);
+    // 1. Cạnh nằm trên đường viền bao ngoài 2D: LUÔN NHÌN THẤY (nét liền)
+    if (laCanhBien2D(u, v)) {
+      canhMoi.push([u, v]);
+      return;
+    }
+    // 2. Nếu bị bất kỳ mặt nào phía trước che khuất theo tia nhìn 3D -> CẠNH KHUẤT (nét đứt)
+    if (biMatTruocChe(u, v)) {
+      khuatMoi.push([u, v]);
+      return;
+    }
+    // 3. Kiểm tra các mặt chứa cạnh (u, v): nếu thuộc ít nhất 1 mặt nhìn thấy -> nét liền; chỉ thuộc mặt khuất hoặc nằm trong lòng khối -> nét đứt
+    var matChua = thongTinMat.filter(function (fm) { return fm.dinh.indexOf(u) >= 0 && fm.dinh.indexOf(v) >= 0; });
+    if (matChua.length > 0) {
+      var coMatThay = matChua.some(function (fm) { return fm.nhinThay; });
+      if (coMatThay) canhMoi.push([u, v]);
+      else khuatMoi.push([u, v]);
+      return;
+    }
+    // 4. Đoạn nối bên trong khối (đường chéo đáy, đường cao SH...) hoặc được AI đánh dấu khuất -> nét đứt
+    if (khuatGoc[k]) khuatMoi.push([u, v]);
+    else canhMoi.push([u, v]);
+  });
+
+  return { canh: canhMoi, khuat: khuatMoi, phu: h.phu || [] };
+}
+
 // Đổi tọa độ thật -> % khung hình học (0-100, y hướng XUỐNG), giữ tỉ lệ, chừa lề 10%. Tính cả đường tròn vào khung.
-// Hình KHÔNG GIAN: chiếu song song kiểu sách giáo khoa (trục sâu y vẽ chéo 35°, thu nhỏ 0,5): X = x + 0,41y; Y = z + 0,29y.
+// Hình KHÔNG GIAN: chiếu song song kiểu sách giáo khoa (trục sâu y vẽ chéo 35°, thu nhỏ 0,5): X = x + 0,41y; Y = z + 0,29y,
+// đồng thời tự động phân loại chính xác cạnh nhìn thấy (nét liền) và cạnh không nhìn thấy (nét đứt).
 function chieuHinhKhongGian_(h) {
   var co3D = Object.keys(h.diem).some(function (k) { var p = h.diem[k]; return Array.isArray(p) && p.length >= 3 && isFinite(Number(p[2])); });
   if (!co3D) return h;
-  var d = {};
+  var d3 = {}, d2 = {};
   Object.keys(h.diem).forEach(function (k) {
     var p = h.diem[k];
     if (!Array.isArray(p)) return;
     var x = Number(p[0]) || 0, y = Number(p[1]) || 0, z = Number(p[2]) || 0;
-    d[k] = [x + 0.41 * y, z + 0.29 * y];
+    d3[k] = [x, y, z];
+    d2[k] = [x + 0.41 * y, z + 0.29 * y];
   });
-  return { diem: d, canh: h.canh, khuat: h.khuat, phu: h.phu, tron: [], _kg: true };
+  var pl = phanLoaiCanhKhongGian3D_(d3, d2, h);
+  return { diem: d2, canh: pl.canh, khuat: pl.khuat, phu: pl.phu, tron: [], _kg: true };
 }
 function chuanHinhToaDo_(h) {
   if (!h || typeof h !== 'object' || !h.diem || typeof h.diem !== 'object') return null;
   h = chieuHinhKhongGian_(h);
-  var ten = Object.keys(h.diem).filter(function (k) { var p = h.diem[k]; return Array.isArray(p) && isFinite(Number(p[0])) && isFinite(Number(p[1])); }).slice(0, 20);
+  var ten = Object.keys(h.diem).filter(function (k) { var p = h.diem[k]; return Array.isArray(p) && isFinite(Number(p[0])) && isFinite(Number(p[1])); }).slice(0, 24);
   if (ten.length < 2) return null;
   var xs = [], ys = [];
   ten.forEach(function (k) { xs.push(Number(h.diem[k][0])); ys.push(Number(h.diem[k][1])); });
@@ -211,33 +433,49 @@ function chuanHinhToaDo_(h) {
     var x = (Number(h.diem[n][0]) - minX) * k + ox, y = (maxY - Number(h.diem[n][1])) * k + oy;   // lật trục y
     diem[n] = [Math.round(x / 880 * 1000) / 10, Math.round(y / 600 * 1000) / 10];
   });
-  var loc = function (ds, n) { return (Array.isArray(ds) ? ds : []).filter(function (c) { return Array.isArray(c) && c.length >= n && c.slice(0, n).every(function (x) { return diem[x]; }); }).slice(0, 16); };
+  var loc = function (ds, n) { return (Array.isArray(ds) ? ds : []).filter(function (c) { return Array.isArray(c) && c.length >= n && c.slice(0, n).every(function (x) { return diem[x]; }); }).slice(0, 20); };
   var khuat = loc(h.khuat, 2).map(function (c) { return [c[0], c[1]]; });
   var laKhuat = function (c) { return khuat.some(function (k) { return (k[0] === c[0] && k[1] === c[1]) || (k[0] === c[1] && k[1] === c[0]); }); };
+  var phu = loc(h.phu, 2).map(function (c) { return [c[0], c[1]]; });
   return { diem: diem, canh: loc(h.canh, 2).map(function (c) { return [c[0], c[1]]; }).filter(function (c) { return !laKhuat(c); }), khuat: khuat, tron: tron,
-    phu: loc(h.phu, 2).map(function (c) { return [c[0], c[1]]; }), khong_gian: !!h._kg };
+    phu: phu, khong_gian: !!h._kg };
 }
 
-// Kịch bản hình học: mọi hinh_hoc dùng TỌA ĐỘ ĐÚNG từ mã dựng hình (giữ cạnh/góc/nhãn kịch bản viết; thêm cạnh, đường tròn còn thiếu ở cảnh đầu).
+// Kịch bản hình học: mọi hinh_hoc dùng TỌA ĐỘ ĐÚNG từ mã dựng hình (giữ cạnh/góc/nhãn kịch bản viết; đồng bộ đường thẳng phụ và cạnh khuất/nhìn thấy).
 function chenToaDoHinh_(kb, hinh) {
   if (!hinh || !hinh.diem || !kb || !Array.isArray(kb.canh)) return [];
   var sua = [];
+  var cungDoan = function (a, b) { return (a[0] === b[0] && a[1] === b[1]) || (a[0] === b[1] && a[1] === b[0]); };
   kb.canh.forEach(function (c, i) {
     var du = c && c.minh_hoa && c.minh_hoa.du_lieu;
+    var loaiCanh = String((c && c.loai) || '');
+    var laCanhDe = /^(mo_dau|de_bai)$/.test(loaiCanh);
     (du && Array.isArray(du.vat) ? du.vat : []).forEach(function (v) {
       if (!v || v.loai !== 'hinh_hoc' || !v.diem || typeof v.diem !== 'object') return;
       var doi = 0;
       Object.keys(v.diem).forEach(function (n) { if (hinh.diem[n]) { v.diem[n] = hinh.diem[n].slice(); doi++; } });
-      // điểm kịch bản tự đặt mà mã dựng hình không có: giữ nguyên (thường là điểm phụ)
-      if (!doi) return;
+      if (!doi && !Object.keys(hinh.diem).length) return;
       Object.keys(hinh.diem).forEach(function (n) { if (!v.diem[n]) v.diem[n] = hinh.diem[n].slice(); });
       if (!Array.isArray(v.canh) || !v.canh.length) v.canh = hinh.canh.map(function (x) { return [x[0], x[1], '']; });
       if (!Array.isArray(v.tron) && hinh.tron.length) v.tron = hinh.tron.map(function (x) { return x.slice(); });
-      if (hinh.khuat && hinh.khuat.length) {   // hình không gian: cạnh khuất vẽ nét đứt, không vẽ thành cạnh liền
+      if (hinh.khuat && hinh.khuat.length) {   // hình không gian: cạnh khuất vẽ nét đứt, tuyệt đối không vẽ thành cạnh liền
         v.khuat = hinh.khuat.map(function (x) { return x.slice(); });
-        v.canh = (v.canh || []).filter(function (c) { return !hinh.khuat.some(function (k) { return (k[0] === c[0] && k[1] === c[1]) || (k[0] === c[1] && k[1] === c[0]); }); });
+        v.canh = (v.canh || []).filter(function (ca) { return !hinh.khuat.some(function (k) { return cungDoan(ca, k); }); });
       }
-      sua.push('cảnh ' + (i + 1) + ': hình học dùng tọa độ dựng hình đúng (' + doi + ' điểm)');
+      // Đồng bộ các đường thẳng phụ (phu) cho Manim vẽ thêm khi vào phần mô hình / ý tưởng / giải
+      if (hinh.phu && hinh.phu.length) {
+        if (laCanhDe) {
+          // Ở cảnh đề bài: chưa vẽ đường kẻ phụ thành cạnh liền của đề
+          v.canh = (v.canh || []).filter(function (ca) { return !hinh.phu.some(function (p) { return cungDoan(ca, p); }); });
+        } else {
+          v.phu = Array.isArray(v.phu) ? v.phu : [];
+          hinh.phu.forEach(function (p) {
+            if (!v.phu.some(function (vp) { return cungDoan(vp, p); })) v.phu.push([p[0], p[1]]);
+          });
+          v.canh = (v.canh || []).filter(function (ca) { return !v.phu.some(function (p) { return cungDoan(ca, p); }); });
+        }
+      }
+      sua.push('cảnh ' + (i + 1) + ': hình học dùng tọa độ dựng hình chuẩn (' + Object.keys(v.diem).length + ' điểm)');
     });
   });
   return sua;
@@ -286,10 +524,11 @@ function huongDanKichBanHinh_(r) {
   var hinh = c1.hinh_toa_do;
   var cm = String(r.dap_an) === 'CM';
   return 'VIDEO HÌNH HỌC ' + (cm ? 'CHỨNG MINH' : 'TÍNH TOÁN') + ' (dạng khó):\n' +
-    '- Hình chính vẽ bằng hinh_hoc (diem, canh, goc, vuong, to, "tron": đường tròn [tâm, điểm] hoặc [A,B,C], "phu": đường kẻ thêm (nét đứt vàng, hiện sau), "bang": vạch cạnh bằng nhau [A,B,số vạch], "khuat": cạnh khuất của hình không gian (nét đứt)).' +
-    (hinh && hinh.khong_gian ? ' ĐÂY LÀ HÌNH KHÔNG GIAN: máy đã chiếu sẵn hình như sách giáo khoa, cạnh khuất nét đứt; dùng to (tô mặt) để làm nổi mặt phẳng đang xét, phu cho đường cao / hình chiếu.' : '') +
-    (hinh ? ' DÙNG ĐÚNG TÊN ĐIỂM sau (máy sẽ tự thay tọa độ đúng tỉ lệ từ mô hình dựng hình): ' + Object.keys(hinh.diem).join(', ') + (hinh.tron.length ? '; đường tròn: ' + JSON.stringify(hinh.tron) : '') + (hinh.phu.length ? '; đường phụ: ' + JSON.stringify(hinh.phu) : '') + '.' : '') + '\n' +
-    '- MỘT hình xuyên suốt (giu_san_khau): cảnh đề bài dựng hình từng bước theo đúng thứ tự đề nêu; cảnh ý tưởng kẻ đường phụ ("phu"); mỗi cảnh giải tô sáng (chon theo chỉ số cạnh) đúng các cạnh/góc đang nói và ghi lý do (định lý) trên màn hình.\n' +
+    '- Hình chính vẽ bằng hinh_hoc (diem, canh, goc, vuong, to, "tron": đường tròn [tâm, điểm] hoặc [A,B,C], "phu": đường thẳng phụ kẻ thêm để phục vụ bài toán (nét đứt vàng, Manim tự động vẽ dần đúng cảnh được nhắc), "bang": vạch cạnh bằng nhau [A,B,số vạch], "khuat": cạnh không nhìn thấy của hình không gian (nét đứt)).' +
+    (hinh && hinh.khong_gian ? ' ĐÂY LÀ HÌNH HỌC KHÔNG GIAN: BẮT BUỘC đảm bảo quy tắc cơ bản: cạnh NHÌN THẤY đặt trong "canh" (vẽ NÉT LIỀN), cạnh KHÔNG NHÌN THẤY (bị che khuất phía sau hoặc nằm trong lòng khối) đặt trong "khuat" (vẽ NÉT ĐỨT); dùng "to" (tô mặt) để làm nổi mặt phẳng đang xét, và "phu" cho đường thẳng phụ kẻ thêm (đường cao, hình chiếu, khoảng cách...).' : '') +
+    (hinh ? ' DÙNG ĐÚNG TÊN ĐIỂM sau (máy sẽ tự thay tọa độ đúng tỉ lệ từ mô hình dựng hình): ' + Object.keys(hinh.diem).join(', ') + (hinh.tron.length ? '; đường tròn: ' + JSON.stringify(hinh.tron) : '') + (hinh.khuat && hinh.khuat.length ? '; cạnh khuất (nét đứt): ' + JSON.stringify(hinh.khuat) : '') + (hinh.phu.length ? '; đường thẳng phụ kẻ thêm: ' + JSON.stringify(hinh.phu) : '') + '.' : '') + '\n' +
+    '- ĐƯỢC PHÉP VÀ KHUYẾN KHÍCH DÙNG MANIM VẼ THÊM CÁC ĐƯỜNG THẲNG PHỤ ("phu"): ở cảnh ý tưởng / mô hình hóa hoặc bước giải cần kẻ thêm đường phụ (kẻ đường cao, nối hai điểm, kẻ đường song song, dựng hình chiếu vuông góc...), hãy khai báo đoạn thẳng đó vào mảng "phu": [["A","H"],...] của hinh_hoc và nêu rõ trong lời thoại ("Ta kẻ thêm đường phụ AH vuông góc với BC tại H...") + ký hiệu góc vuông vào "vuong": [["A","H","C"]] nếu vuông góc. Manim sẽ tự động diễn hoạt vẽ nét đứt vàng cho đường phụ đúng lúc giọng đọc nhắc tới!\n' +
+    '- MỘT hình xuyên suốt (giu_san_khau): cảnh đề bài dựng hình từng bước theo đúng thứ tự đề nêu (chưa hiện đường phụ); cảnh ý tưởng kẻ thêm đường phụ ("phu"); mỗi cảnh giải tô sáng (chon theo chỉ số cạnh) đúng các cạnh/góc đang nói và ghi lý do (định lý) trên màn hình.\n' +
     '- PHẦN TOÁN CỦA VIDEO NÀY DỰNG BẰNG MANIM (kiểu video hình học trên mạng: mỗi đại lượng một màu, công thức tô cùng màu với cạnh/góc trên hình, phần đang xét sáng lên, phần khác mờ đi). Để máy tô màu và làm nổi ĐÚNG chỗ, viết công thức theo quy ước:\n' +
     '  + đoạn thẳng viết liền tên 2 điểm (ME, BC), góc viết \\angle ABC hoặc \\widehat{ABC}, tam giác viết \\triangle ABC, mặt phẳng viết (SAC), đường tròn viết (O). KHÔNG viết "góc" / "tam giác" bằng chữ trong công thức.\n' +
     '  + \\hl{...} = khung vàng quanh phần ĐANG XÉT của dòng (vd "\\hl{\\angle BEC} = 90^\\circ"), mỗi dòng tối đa 1 \\hl. Dòng kết luận cuối dùng \\dpcm hoặc \\blacksquare.\n' +

@@ -23,8 +23,8 @@
  */
 
 var MAC_DINH_DANG_ = {
-  DANG_TU_DONG: 'TAT', GIO_DANG: '11:30,19:30', NEN_TANG_DANG: 'youtube,facebook,tiktok',
-  YOUTUBE_CHE_DO: 'public', YOUTUBE_CACH: 'apps_script', SO_LAN_THU_DANG: '3', DUYET_TRUOC_KHI_DANG: 'BAT'
+  DANG_TU_DONG: 'BAT', GIO_DANG: '11:30,19:30', SO_VIDEO_MOI_NGAY: '2', NEN_TANG_DANG: 'youtube,facebook,tiktok',
+  YOUTUBE_CHE_DO: 'public', YOUTUBE_CACH: 'apps_script', SO_LAN_THU_DANG: '3', DUYET_TRUOC_KHI_DANG: 'TAT'
 };
 var NEN_TANG_HOP_LE_ = ['youtube', 'facebook', 'tiktok'];
 var TEN_NEN_TANG_ = { youtube: '▶️ YouTube', facebook: '📘 Facebook', tiktok: '🎵 TikTok' };
@@ -51,17 +51,19 @@ function caiDatDangVideo() {
   _bo_nho_cau_hinh_ = null;
   Logger.log('Đã đặt trigger chayDangVideo (15 phút/lần). Cấu hình hiện tại: DANG_TU_DONG=' + chDang_('DANG_TU_DONG') + ', GIO_DANG=' + chDang_('GIO_DANG') + ', NEN_TANG_DANG=' + dsNenTangDang_().join(','));
   Logger.log(typeof YouTube === 'undefined' ? '⚠️ Chưa bật dịch vụ YouTube Data API v3 (Dịch vụ + > YouTube Data API v3) nên chưa đăng được YouTube.' : '✅ Đã bật dịch vụ YouTube.');
-  Logger.log('Khi đã cài xong các tài khoản, đổi DANG_TU_DONG trong sheet CAU_HINH thành BAT. Muốn thử ngay: chạy dangNgay().');
+  Logger.log('Hệ thống tự động đăng mỗi ngày ' + chDang_('SO_VIDEO_MOI_NGAY') + ' video khi video đạt kiểm duyệt. Muốn thử ngay: chạy dangNgay().');
 }
 
 /* ===================== VÒNG CHẠY (trigger 15 phút) ===================== */
 
 function chayDangVideo() {
-  var khoa = LockService.getScriptLock();
-  if (!khoa.tryLock(20000)) return;
+  var cacheDV = CacheService.getScriptCache();
+  if (cacheDV.get('DANG_CHAY_DANG_VIDEO')) return;
+  cacheDV.put('DANG_CHAY_DANG_VIDEO', '1', 180);
   try {
     _bat_dau_chay_ = Date.now();
     _bo_nho_cau_hinh_ = null;
+    if (typeof damBaoCauHinhTuDong_ === 'function') damBaoCauHinhTuDong_();
     if (chDang_('DANG_TU_DONG').toUpperCase() !== 'BAT') return;
     var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
     var hang = docHang_(sh);
@@ -75,29 +77,29 @@ function chayDangVideo() {
       ketThucDang_(sh, r, kq);
     });
     var r = chonVideoDang_(docHang_(sh));
-    if (r) dangVideo_(sh, r);
+    if (r && !cacheDV.get('DA_BO_' + r.id)) dangVideo_(sh, r);
   } finally {
-    khoa.releaseLock();
+    try { cacheDV.remove('DANG_CHAY_DANG_VIDEO'); } catch (eL) {}
   }
 }
 
 // Menu / chạy tay: đăng ngay video "Có video" cũ nhất (bỏ qua khung giờ, kể cả khi DANG_TU_DONG = TAT).
 function dangNgay() {
   var khoa = LockService.getScriptLock();
-  if (!khoa.tryLock(30000)) { Logger.log('Hệ thống đang bận, thử lại sau.'); return; }
+  var coKhoa = khoa.tryLock(5000);
   try {
     _bat_dau_chay_ = Date.now();
     _bo_nho_cau_hinh_ = null;
     var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
     var ds = docHang_(sh).filter(function (r) { return r.trang_thai === 'CO_VIDEO' && r.file_video && (typeof daDuyet_ !== 'function' || daDuyet_(r)); })
       .sort(function (a, b) { return new Date(a.cap_nhat).getTime() - new Date(b.cap_nhat).getTime(); });
-    if (!ds.length) { Logger.log('Không có video "Có video" nào ĐÃ DUYỆT để đăng (duyệt bằng /duyet trên Zalo).'); return; }
+    if (!ds.length) { Logger.log('Không có video "Có video" nào ĐÃ ĐẠT KIỂM DUYỆT / ĐÃ DUYỆT để đăng.'); return; }
     dangVideo_(sh, ds[0]);
     Logger.log('Đã gửi đăng ' + ds[0].id + '. Xem cột link_dang và tin Zalo.');
-  } finally { khoa.releaseLock(); }
+  } finally { if (coKhoa) { try { khoa.releaseLock(); } catch (eL) {} } }
 }
 
-/* ===================== CHỌN VIDEO THEO LỊCH ===================== */
+/* ===================== CHỌN VIDEO THEO LỊCH (MẶC ĐỊNH 2 VIDEO / NGÀY) ===================== */
 
 function thoiDiem_(v) {
   if (v instanceof Date) return v;
@@ -108,40 +110,78 @@ function thoiDiem_(v) {
   return isNaN(d.getTime()) ? null : d;
 }
 
-// Khung giờ chung vừa tới (trong vòng 3 giờ), dạng "yyyyMMdd-HH:mm"; chưa tới khung nào thì null.
+// Lịch sử các khung giờ đã đăng trong ngày hôm nay (giờ Việt Nam): { ngay: 'yyyyMMdd', khung: ['11:30', ...], luc_cuoi: timestamp }
+function trangThaiDangHomNay_() {
+  var ngay = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyyMMdd');
+  var p = PropertiesService.getScriptProperties();
+  var o = {};
+  try { o = JSON.parse(p.getProperty('LICH_SU_DANG_NGAY') || '{}') || {}; } catch (e) { o = {}; }
+  if (o.ngay !== ngay) o = { ngay: ngay, khung: [], luc_cuoi: 0 };
+  if (!Array.isArray(o.khung)) o.khung = [];
+  // Tương thích ngược với DANG_KHUNG_CUOI cũ
+  var cu = String(p.getProperty('DANG_KHUNG_CUOI') || '');
+  if (cu.indexOf(ngay + '-') === 0) {
+    var kCu = cu.slice(ngay.length + 1);
+    if (kCu && o.khung.indexOf(kCu) < 0) o.khung.push(kCu);
+  }
+  return o;
+}
+
+// Tìm khung giờ đăng khả dụng hôm nay: đảm bảo đăng đủ SO_VIDEO_MOI_NGAY (mặc định 2 video/ngày vào 11:30 và 19:30).
+// Nếu video đạt kiểm duyệt muộn hơn 11:30 (ví dụ 14:30 mới xong video đầu tiên trong ngày), khung 11:30 chưa dùng vẫn được kích hoạt bù!
 function khungDangHienTai_() {
   var bay = new Date();
   var ngay = Utilities.formatDate(bay, 'Asia/Ho_Chi_Minh', 'yyyyMMdd');
   var hm = Utilities.formatDate(bay, 'Asia/Ho_Chi_Minh', 'HH:mm').split(':');
   var phutNay = +hm[0] * 60 + +hm[1];
-  var tot = null, phutTot = -1;
+  var toiDaNgay = Math.max(1, Number(chDang_('SO_VIDEO_MOI_NGAY')) || 2);
+  var tt = trangThaiDangHomNay_();
+  if (tt.khung.length >= toiDaNgay) return null;
+  // Giữ khoảng cách tối thiểu 90 phút giữa 2 lần đăng tự động trong cùng một ngày
+  if (tt.luc_cuoi && (Date.now() - Number(tt.luc_cuoi)) < 90 * 60000) return null;
+
+  var dsKhung = [];
   chDang_('GIO_DANG').split(/[,;\s]+/).forEach(function (g) {
     var m = /^(\d{1,2})[:hH](\d{2})?$/.exec(g.trim());
     if (!m) return;
+    var tenK = ('0' + m[1]).slice(-2) + ':' + ('0' + (+m[2] || 0)).slice(-2);
     var p = +m[1] * 60 + (+m[2] || 0);
-    if (p <= phutNay && phutNay - p <= 180 && p > phutTot) { phutTot = p; tot = ngay + '-' + ('0' + m[1]).slice(-2) + ':' + ('0' + (+m[2] || 0)).slice(-2); }
+    dsKhung.push({ ten: tenK, phut: p });
   });
-  return tot;
+  dsKhung.sort(function (a, b) { return a.phut - b.phut; });
+  for (var i = 0; i < dsKhung.length; i++) {
+    var k = dsKhung[i];
+    if (phutNay >= k.phut && tt.khung.indexOf(k.ten) < 0) {
+      return { ma: ngay + '-' + k.ten, ten: k.ten, ngay: ngay };
+    }
+  }
+  return null;
 }
 
 function chonVideoDang_(hang) {
-  // chỉ video ĐÃ DUYỆT qua Zalo (/duyet) mới được đăng (trừ khi CAU_HINH DUYET_TRUOC_KHI_DANG = TAT)
-  var cho = hang.filter(function (r) { return r.trang_thai === 'CO_VIDEO' && r.file_video && (typeof daDuyet_ !== 'function' || daDuyet_(r)); });
+  // Chỉ video đã đạt kiểm duyệt yêu cầu (daDuyet_ = true) mới được đăng
+  var cho = hang.filter(function (r) {
+    return r.trang_thai === 'CO_VIDEO' && r.file_video && !CacheService.getScriptCache().get('DA_BO_' + r.id) && (typeof daDuyet_ !== 'function' || daDuyet_(r));
+  });
   if (!cho.length) return null;
   var bay = Date.now();
   // 1) video có hẹn giờ riêng (cột lich_dang) đã tới giờ
   var den = cho.filter(function (r) { var t = thoiDiem_(r.lich_dang); return t && t.getTime() <= bay; })
     .sort(function (a, b) { return thoiDiem_(a.lich_dang).getTime() - thoiDiem_(b.lich_dang).getTime(); });
   if (den.length) return den[0];
-  // 2) khung giờ chung: mỗi khung đăng một video (đề ưu tiên gửi qua Zalo trước, rồi tới video cũ nhất)
+  // 2) khung giờ chung mỗi ngày (mặc định 2 video/ngày vào 11:30 và 19:30)
   var khung = khungDangHienTai_();
   var p = PropertiesService.getScriptProperties();
-  if (!khung || p.getProperty('DANG_KHUNG_CUOI') === khung) return null;
-  // ĐĂNG THEO THỨ TỰ DUYỆT (số tập đánh lúc đăng -> tập tăng dần đúng theo thứ tự bạn bấm /duyet)
+  if (!khung || p.getProperty('DANG_KHUNG_CUOI') === khung.ma) return null;
+  // ĐĂNG THEO THỨ TỰ ĐẠT KIỂM DUYỆT / DUYỆT (số tập đánh lúc đăng -> tập tăng dần đúng thứ tự)
   var ds = cho.filter(function (r) { return !thoiDiem_(r.lich_dang); })
     .sort(function (a, b) { return lucDuyet_(a) - lucDuyet_(b); });
   if (!ds.length) return null;
-  p.setProperty('DANG_KHUNG_CUOI', khung);
+  var tt = trangThaiDangHomNay_();
+  tt.khung.push(khung.ten);
+  tt.luc_cuoi = Date.now();
+  p.setProperty('LICH_SU_DANG_NGAY', JSON.stringify(tt));
+  p.setProperty('DANG_KHUNG_CUOI', khung.ma);
   return ds[0];
 }
 
@@ -164,14 +204,33 @@ function noiDungDang_(r, tap, td) {
   var sp = kb.san_pham || null;
   if (sp && the.indexOf('quangcao') < 0) the.push('quangcao');
   if (kb.loai_cau_hoi) { var tl = kb.loai_cau_hoi.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]/g, ''); if (tl && the.indexOf(tl) < 0) the.push(tl); }
+  var laDai = kb.kieu_video === 'DAI_10_PHUT' || Number(kb.tong_giay) >= 240;
+  var mucLucYT = '';
+  if (laDai && Array.isArray(kb.canh) && kb.canh.length) {
+    var giayTichLuy = 0, dsMuc = ['00:00 Mở đầu & Phân tích đề bài'], daGhiPha = { 'mo_dau': true, 'de_bai': true };
+    var p2s = function (n) { var s = String(Math.floor(n)); return s.length < 2 ? '0' + s : s; };
+    kb.canh.forEach(function (c) {
+      var l = String((c && c.loai) || '');
+      var nh = String((c && c.nhan) || '');
+      var tdC = String((c && c.tieu_de_canh) || '').trim();
+      var khoaMuc = nh || l;
+      if (giayTichLuy >= 25 && tdC && !daGhiPha[khoaMuc] && dsMuc.length < 8) {
+        daGhiPha[khoaMuc] = true;
+        var ph = Math.floor(giayTichLuy / 60), gy = Math.floor(giayTichLuy % 60);
+        dsMuc.push(p2s(ph) + ':' + p2s(gy) + ' ' + (nh ? nh + ' – ' : '') + tdC);
+      }
+      giayTichLuy += Number(c && c.thoi_luong_giay) || 8;
+    });
+    mucLucYT = '\n⏱ MỤC LỤC BÀI GIẢNG (Bấm vào mốc thời gian để xem từng phần):\n' + dsMuc.join('\n') + '\n';
+  }
   var moTa = [
     sp ? '🛒 Sản phẩm trong video: ' + sp.ten + (Number(sp.gia_ban) > 0 ? ' – giá ' + Number(sp.gia_ban).toLocaleString('vi-VN') + 'đ' : '') + (sp.link ? '\n👉 Link sản phẩm: ' + sp.link : '') +
       '\n📢 Video có giới thiệu sản phẩm do kênh bán. Giá và thông số lấy ngày ' + (sp.ngay || '') + '.\n' : '',
     String(kb.hook || tieuDe),
-    '',
-    '📌 Đề bài: ' + de.slice(0, 1500),
-    '🎯 Đáp án và cách giải thông minh có trong video, thử tự giải trước nhé!',
-    baiHoc ? '\n💡 Ghi nhớ:\n' + baiHoc : '',
+    mucLucYT,
+    '📌 Đề bài trọng tâm: ' + de.slice(0, 1500),
+    '🎯 Đáp án và phương pháp giải chi tiết có trong video, hãy lấy giấy nháp làm cùng nhé!',
+    baiHoc ? '\n💡 Tổng kết kiến thức bỏ túi:\n' + baiHoc : '',
     r.lop ? '\n📚 Toán lớp ' + String(r.lop).replace(/[^0-9]/g, '') + ' – Tập ' + (tap || '{TAP}') : '',
     kb.video_tiep_theo ? '\n👉 Video sau: ' + kb.video_tiep_theo : '',
     '',
@@ -182,7 +241,7 @@ function noiDungDang_(r, tap, td) {
   var ytTieuDe = String(td.youtube || tieuDe).slice(0, 88);
   return {
     tieu_de: tieuDe,
-    yt_tieu_de: (ytTieuDe + ' #shorts').slice(0, 100),
+    yt_tieu_de: (laDai ? ytTieuDe + nhanTap : ytTieuDe + ' #shorts').slice(0, 100),
     // TikTok: chú thích = câu mở đầu gây tò mò + kêu gọi THEO DÕI (thẻ # do GitHub nối thêm)
     tt_tieu_de: (String(td.tiktok || tieuDe) + nhanTap + (sp ? '\n🛒 ' + sp.ten + ' có tại kênh (giỏ hàng / link ở bio)' : '') + '\n👉 Theo dõi để không bỏ lỡ tập sau!').slice(0, 1500),
     mo_ta: moTa,

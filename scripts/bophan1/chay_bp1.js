@@ -78,11 +78,12 @@ let vongKey = 0;
 function goiTho(model, bodies) {
   if (GIA_LAP) return bodies.map(giaLapGemini);
   const t = path.join(os.tmpdir(), `bp1_${process.pid}_${Date.now()}.json`);
-  // model chính chậm (quá tải) -> sau GIAY_GOI_DU_PHONG giây gọi song song model dự phòng, lấy kết quả về trước
+  // Danh sách model linh hoạt: tự động đổi model ngay trong tiến trình gọi khi gặp lỗi (404, 400, 429 hết ngày, 500, 503, mạng)
   const ch = de.cau_hinh || {};
-  const chinh = ch.MODEL_CHINH || 'gemini-3.8-flash';
-  const duPhong = model === chinh && String(ch.GOI_DU_PHONG_SONG_SONG || 'BAT').toUpperCase() !== 'TAT' ? [ch.MODEL_DU_PHONG || 'gemini-3.6-flash'] : [];
-  fs.writeFileSync(t, JSON.stringify({model, bodies, keys, batDauKey: vongKey, duPhong, hedgeGiay: Number(ch.GIAY_GOI_DU_PHONG) || 80}));
+  const dsCauHinh = typeof ctx.danhSachModel_ === 'function' ? ctx.danhSachModel_() : [];
+  const models = [...new Set([model, ...dsCauHinh, ch.MODEL_CHINH, ch.MODEL_DU_PHONG, 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-flash-lite-latest', 'gemini-3.8-flash', 'gemini-3.6-flash'].map((x) => String(x || '').trim()).filter(Boolean))];
+  const duPhong = String(ch.GOI_DU_PHONG_SONG_SONG || 'BAT').toUpperCase() !== 'TAT' ? models.filter((m) => m !== model) : [];
+  fs.writeFileSync(t, JSON.stringify({model, models, bodies, keys, batDauKey: vongKey, duPhong, hedgeGiay: Number(ch.GIAY_GOI_DU_PHONG) || 75}));
   vongKey = (vongKey + bodies.length) % Math.max(1, keys.length);
   try {
     return JSON.parse(execFileSync(process.execPath, [path.join(__dirname, 'goi_gemini.js'), t], {maxBuffer: 64 * 1024 * 1024, timeout: 330000}).toString());

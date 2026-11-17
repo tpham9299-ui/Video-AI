@@ -114,6 +114,30 @@ const quyDoi = (kt: number[], so: number, goc: number) => {
 };
 
 /* ---------------- KHỐI HỘP: bể nước / thùng / hộp, có mực nước dâng ---------------- */
+// Quy tắc hình học không gian: các mặt phía trước vẽ cạnh nhìn thấy bằng NÉT LIỀN (anMatSau: true ẩn 3 mặt khuất phía sau),
+// còn 3 cạnh khuất giao tại đỉnh xa nhất phía sau được vẽ bằng NÉT ĐỨT (strokeDasharray="10 8").
+const canhKhuatHop = (w: number, d: number, h: number, pitch: number, yaw: number, rong: number, cao: number, mau: string, vao: number) => {
+  if (vao <= 0.05) return null;
+  const hh = h * vao;
+  const P = (sx: number, sy: number, sz: number) => chieuVat((sx * w) / 2, (sy * hh) / 2, (sz * d) / 2, pitch, yaw, rong, cao);
+  const dinh: {sx: number; sy: number; sz: number; x: number; y: number; z: number}[] = [];
+  for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) dinh.push({sx, sy, sz, ...P(sx, sy, sz)});
+  // Đỉnh xa người xem nhất (z nhỏ nhất trong hệ tọa độ sau xoay) là đỉnh bị khuất hoàn toàn phía sau khối hộp
+  const xaNhat = dinh.slice().sort((a, b) => a.z - b.z)[0];
+  const lcm = [
+    P(-xaNhat.sx, xaNhat.sy, xaNhat.sz),
+    P(xaNhat.sx, -xaNhat.sy, xaNhat.sz),
+    P(xaNhat.sx, xaNhat.sy, -xaNhat.sz),
+  ];
+  return (
+    <svg width={rong} height={cao} style={{position: 'absolute', left: 0, top: 0, pointerEvents: 'none', overflow: 'visible'}}>
+      {lcm.map((q, idx) => (
+        <line key={idx} x1={xaNhat.x} y1={xaNhat.y} x2={q.x} y2={q.y} stroke={mau} strokeWidth={2.8} strokeDasharray="10 8" strokeOpacity={0.68 * vao} strokeLinecap="round" />
+      ))}
+    </svg>
+  );
+};
+
 export const KhoiHop: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
   const [w, d, h] = quyDoi(v.kichThuoc.length ? v.kichThuoc : [3, 2, 1.5], 3, 330 * v.co);
   const mau = neon(v.mau, '#4FC3F7');
@@ -121,12 +145,24 @@ export const KhoiHop: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
   const muc = kep(st.giaTri);
   const hn = h * muc;
   const vao = easeOut(kep((st.t - st.ta) / 0.8));
-  const mat: Mat = kinh ? {nen: `${mau}14`, vien: mau, anMatSau: false} : {nen: `${mau}cc`, vien: '#0b1418'};
+  const rong = w + d * 0.9 + 80;
+  const cao = h + d * 0.6 + 120;
+  // anMatSau: true để 3 mặt khuất phía sau không vẽ viền nét liền; 3 cạnh khuất phía sau được vẽ nét đứt bằng canhKhuatHop
+  const mat: Mat = kinh ? {nen: `${mau}14`, vien: mau, anMatSau: true} : {nen: `${mau}cc`, vien: '#0b1418', anMatSau: true};
   return (
-    <Khung3D rong={w + d * 0.9 + 80} cao={h + d * 0.6 + 120} phu={(pitch, yaw) => nhanKhoi(w, d, h, v.nhanKT, pitch, yaw, w + d * 0.9 + 80, h + d * 0.6 + 120, kep((st.t - st.ta - 0.6) / 0.4))}>
+    <Khung3D
+      rong={rong}
+      cao={cao}
+      phu={(pitch, yaw) => (
+        <>
+          {kinh ? canhKhuatHop(w, d, h, pitch, yaw, rong, cao, mau, vao) : null}
+          {nhanKhoi(w, d, h, v.nhanKT, pitch, yaw, rong, cao, kep((st.t - st.ta - 0.6) / 0.4))}
+        </>
+      )}
+    >
       <div style={{transformStyle: 'preserve-3d', transform: `scaleY(${vao})`}}>
         {hn > 1 ? (
-          <Khoi3D w={w - 6} d={d - 6} h={hn} dichY={(h - hn) / 2} macDinh={{nen: 'rgba(79,195,247,0.42)', vien: 'rgba(160,230,255,0.6)', anMatSau: false}} mat={{tren: {nen: 'rgba(140,220,255,0.55)', vien: '#bff0ff', anMatSau: false}}} />
+          <Khoi3D w={w - 6} d={d - 6} h={hn} dichY={(h - hn) / 2} macDinh={{nen: 'rgba(79,195,247,0.42)', vien: 'rgba(160,230,255,0.6)', anMatSau: true}} mat={{tren: {nen: 'rgba(140,220,255,0.55)', vien: '#bff0ff', anMatSau: false}}} />
         ) : null}
         <Khoi3D w={w} d={d} h={h} macDinh={mat} mat={{}} />
       </div>

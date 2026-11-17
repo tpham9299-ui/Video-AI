@@ -7,7 +7,7 @@
 // Dùng: node scripts/kiem_tra_key.mjs   (đọc GEMINI_KEYS, GEMINI_API_KEY từ biến môi trường)
 import fs from 'node:fs';
 
-const MODELS = (process.env.MODELS || 'gemini-3.8-flash,gemini-3.6-flash,gemini-flash-latest,gemini-flash-lite-latest').split(',').map((x) => x.trim()).filter(Boolean);
+const MODELS = (process.env.MODELS || 'gemini-2.5-flash,gemini-flash-latest,gemini-2.5-pro,gemini-2.0-flash,gemini-flash-lite-latest,gemini-3.8-flash,gemini-3.6-flash').split(',').map((x) => x.trim()).filter(Boolean);
 const tach = (s) => String(s || '').split(/[\s,;]+/).filter(Boolean);
 const dsKey = tach(process.env.GEMINI_KEYS).map((k, i) => ({k, ten: `GEMINI_KEYS #${i + 1}`}));
 for (const k of tach(process.env.GEMINI_API_KEY)) if (!dsKey.some((x) => x.k === k)) dsKey.push({k, ten: 'GEMINI_API_KEY'});

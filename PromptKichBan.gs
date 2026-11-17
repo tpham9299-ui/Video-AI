@@ -168,8 +168,17 @@ function taoPromptKichBan_(r, c1, c2) {
     'câu dài, công thức để ở "noi_dung_man_hinh" (khung công thức). HÌNH CHÍNH TO, RÕ: một hình lớn chiếm phần lớn sân khấu ("co" 1.1-1.4) thay vì nhiều vật nhỏ rời rạc.\n' +
     '- MỖI ĐIỀU KIỆN CỦA ĐỀ PHẢI THẤY TRÊN HÌNH (vd "không 2 nữ ngồi cạnh nhau": chon các ghế xen kẽ, loai_bo cách xếp sai) - không chỉ nói bằng lời.\n' +
     '- "mo_ta" ghi CHI TIẾT như kịch bản quay phim: có những vật nào, mỗi vật ở đâu, bao nhiêu cái, nhãn gì, lần lượt chuyển động gì theo lời thoại.\n' +
-    '- KHAI THÁC NHIỀU CẢNH: dùng MỘT hình chính xuyên suốt (giu_san_khau) để mỗi cảnh làm rõ thêm MỘT ý của lời giải ngay trên hình đó ' +
-    '(cảnh này chọn ghế nam, cảnh sau xếp nữ vào khe, cảnh sau loại cách sai...), không đổi sang hình khác vô cớ; không bao giờ để hai vật đè lên nhau.\n',
+    '- MỖI CẢNH PHẢI CÓ HÌNH MINH HỌA THỂ HIỆN ĐÚNG ĐOẠN NỘI DUNG CẢNH ĐÓ ĐANG NÓI (TUYỆT ĐỐI CẤM dùng duy nhất 1 hình minh họa tĩnh giống hệt nhau áp dụng cho toàn bộ video):\n' +
+    '  + Chia kịch bản thành nhiều khung hình / cảnh nhỏ hơn (16-22 cảnh, mỗi cảnh 4-8 giây nói đúng 1 ý) và trong MỖI CẢNH chia thành 3-4 bước khung hình con (buoc: 1, 2, 3, 4) để hình minh họa biến đổi linh hoạt theo từng câu thoại.\n' +
+    '  + Nếu dùng lại bối cảnh canh_that ở nhiều cảnh thì MỖI CẢNH bắt buộc thay đổi linh hoạt phần "do" (đường đo), "nhan", động tác nhân vật ("dong_tac"), góc máy ("phong_to"/"thu_nho") hoặc kết hợp thêm vật phụ (so_dem, nhan, bieu_do_cot, do_thi, hinh_hoc) cho khớp 100% với câu thoại của cảnh đó:\n' +
+    '    • Cảnh mo_dau: chỉ hiện vật thật chính + người đang ngước nhìn/suy nghĩ + dấu chấm hỏi lớn gây tò mò + camera phong_to vào chi tiết đắt giá (chưa hiện hết các đường đo kỹ thuật).\n' +
+    '    • Cảnh de_bai (chia 1-2 cảnh): dựng dần từng lớp theo lời đọc: buoc 1 hiện vật A, buoc 2 hiện vật B, buoc 3 hiện đường đo khoảng cách, buoc 4 hiện góc/chiều cao cần tìm.\n' +
+    '    • Cảnh mo_hinh_hoa / y_do (2-3 cảnh): chuyển từ vật thật sang mô hình toán học (vẽ đè tam giác vuông tam_giac + dấu góc vuông vuong + gắn ẩn x, h; hoặc chuyển sang hinh_hoc / do_thi / hinh_tu_do cắt ghép).\n' +
+    '    • Cảnh bay (lỗi sai): vẽ trực tiếp cái bẫy lên hình (ví dụ quên cộng chiều cao mắt người 1,6 m hoặc rào luôn cả cạnh tường gạch -> cho phần sai rung + loai_bo màu đỏ kèm nhãn cảnh báo).\n' +
+    '    • Các cảnh tinh_toan (mỗi bước tính 1 cảnh riêng): cảnh đang tính đại lượng nào thì CHỈ làm sáng (mau: "vang"/"cam") đúng đoạn/góc đang tính đó, thêm camera phong_to vào đúng khu vực đang tính, hoặc kết hợp do_thi / bieu_do_cot / so_dem nhảy số trung gian.\n' +
+    '    • Cảnh dap_an: toàn cảnh thực tế hoàn chỉnh, đổi nhãn "?" thành con số đáp án + huy hiệu so_dem (kieu: "vien") + nhân vật dong_tac: "vui".\n' +
+    '    • Cảnh kiem_tra: hình thể hiện phép thử ngược bằng số cụ thể (so sánh 2 phương án hoặc thế số đo thật lên cạnh).\n' +
+    '    • Cảnh lien_he_thuc_te: vẽ các vật thực tế mới ngoài đời được nhắc tới trong lời thoại (cầu, tháp, ngân hàng, sân vận động...).\n',
     'DẤU BA CHẤM ("…", "⋮", "⋯") TRONG HÌNH ĐỀ KHÔNG PHẢI HÌNH VẼ: nó nghĩa là "còn nhiều phần giống quy luật bị lược đi". TUYỆT ĐỐI không vẽ lại ba chấm bằng tron/chu. Phải đọc ra nó thay cho cái gì (bao nhiêu tầng/hàng/số hạng, quy luật gì) rồi dựng bằng nét có quy luật: chồng tầng -> xep_chong với ĐỦ hang (máy tự làm khoảng rút gọn: các hàng mờ trôi qua + ngoặc "+n tầng" + số đếm chạy khi dem_tang); dãy hình lặp -> lap với so_lan thật; dãy số -> danh_sach hoặc so_dem dat_gia_tri chạy số. Lời thoại nói rõ phần bị lược ("ở giữa còn mười lăm tầng nữa, tầng nào cũng hơn tầng trên một ống"). ',
     'PHÂN BIỆT VẬT THẬT VÀ CHÚ THÍCH (đừng biến cả ảnh đề thành 3D): VẬT THẬT (ống, khối, bể, đất, mảnh hình tô màu) mới dựng 3D có bề dày, đổ bóng, xoay góc nhìn. CHÚ THÍCH (nhãn số đo, chữ "Tầng 1", đường kích thước, mũi tên chỉ dẫn, ngoặc gộp, ký hiệu ba chấm, công thức) luôn PHẲNG, quay mặt về người xem, đặt bám theo vật - máy tự tách hai lớp này. Vì vậy: vật thật thì cho to:true và net dày; chú thích thì dùng chu/nhan/mui_ten, không tô, không vẽ thành hình. ',
     'NHÃN VÀ CHỮ TRÊN HÌNH: ngắn (tối đa ~22 ký tự: "u_1 = 3", "Tầng 1", "200\\,m"), ký hiệu toán viết LaTeX; câu dài đưa vào lời thoại hoặc noi_dung_man_hinh. Máy tự giữ mọi chữ trên hình CÙNG MỘT CỠ, không cần chỉnh co_chu. ',
@@ -391,21 +400,91 @@ function banVeMacDinh_(r) {
 }
 function banVeChoPrompt_(r) {
   if (!r || !r._banVe) return '';
-  return 'BẢN VẼ CẢNH THỰC TẾ ĐÃ DUYỆT (BẮT BUỘC dùng nguyên vẹn vật này, cùng ma/ten/cao/x, cho các cảnh mo_dau, de_bai, mo_hinh_hoa, bay, dap_an, kiem_tra; ' +
-    'mỗi cảnh chỉ thêm/bớt phần "do" và đổi "buoc" cho khớp lời giảng; cảnh dap_an đổi nhãn "?" thành đáp số): ' + JSON.stringify(r._banVe) + '\n';
+  return 'BẢN VẼ CẢNH THỰC TẾ GỐC ĐÃ DUYỆT (dùng làm chuẩn về tên vật ma/ten/cao/x, NHƯNG TUYỆT ĐỐI KHÔNG chép y nguyên một hình tĩnh này cho mọi cảnh! ' +
+    'Mỗi cảnh phải biến đổi linh hoạt theo đúng nội dung cảnh đó đang nói: cảnh mo_dau chỉ hiện vật + dấu hỏi + zoom cận cảnh; cảnh de_bai cho từng số đo hiện dần theo buoc 1-2-3-4; ' +
+    'cảnh mo_hinh_hoa thêm tam_giac + vuong + ẩn số; cảnh bay làm rung/gạch đỏ chỗ sai; mỗi cảnh tinh_toan chỉ làm nổi + zoom vào đúng cạnh/đại lượng đang tính hoặc dùng do_thi/bieu_do_cot/so_dem; ' +
+    'cảnh dap_an đổi nhãn "?" thành đáp số ' + (r.dap_an_hien || r.dap_an || '') + '): ' + JSON.stringify(r._banVe) + '\n';
 }
-// Máy tự chèn bản vẽ: kịch bản không dùng canh_that ở các cảnh đầu (hoặc vẽ sai vật) -> cảnh de_bai và mo_hinh_hoa dùng bản vẽ đã duyệt.
+// Máy tự điều chỉnh bản vẽ theo từng loại cảnh để mỗi cảnh có hình minh họa riêng biệt, nhiều bước (buoc 1..4) và góc zoom khớp nội dung cảnh đó.
+function tuyChinhBanVeTheoCanh_(banVe, c, r) {
+  var bv = JSON.parse(JSON.stringify(banVe));
+  var loai = String((c && c.loai) || '');
+  var loi = String((c && c.loi_thoai) || '').toLowerCase();
+  var dsDo = Array.isArray(bv.do) ? bv.do : [];
+  var hd = [];
+  var vatPhu = [];
+  var idBv = bv.id || 'canh';
+
+  // Phân chia các vật và đường đo thành nhiều bước khung hình con (buoc 1 -> 4) trong cùng một cảnh
+  if (Array.isArray(bv.vat)) {
+    bv.vat.forEach(function (v, idx) {
+      v.buoc = idx === 0 ? 1 : Math.min(2, idx + 1);
+      if (v.ten === 'nguoi') {
+        if (loai === 'mo_dau' || loai === 'y_do') v.dong_tac = 'suy_nghi';
+        else if (loai === 'bay') v.dong_tac = 'chi';
+        else if (loai === 'dap_an' || loai === 'ket_qua') v.dong_tac = 'vui';
+        else if (/tinh|mo_hinh/.test(loai)) v.dong_tac = 'chi';
+      }
+    });
+  }
+
+  if (loai === 'mo_dau') {
+    // Cảnh mở đầu: chỉ giữ đường đo có dấu '?' (ẩn số gây tò mò), zoom cận cảnh vào vật chính
+    bv.do = dsDo.filter(function (d) { return /\?/.test(String(d && d.nhan || '')) || d.kieu === 'tia'; }).map(function (d) { d.buoc = 2; d.mau = 'vang'; return d; });
+    hd.push({ buoc: 2, vat: idBv, kieu: 'phong_to', x: 55, y: 42, muc: 1.28 });
+    hd.push({ buoc: 3, vat: idBv, kieu: 'sang' });
+  } else if (loai === 'de_bai') {
+    // Cảnh đề bài: chỉ hiện dữ kiện đề cho và câu hỏi theo từng bước 2, 3, 4 (chưa hiện tam giác phụ của lời giải)
+    var doDe = dsDo.filter(function (d) { return d && !/tam_giac|vuong/.test(String(d.kieu)); });
+    bv.do = doDe.map(function (d, idx) { d.buoc = Math.min(4, 2 + Math.floor(idx / 2)); return d; });
+    hd.push({ buoc: 2, vat: idBv, kieu: 'sang' });
+  } else if (loai === 'mo_hinh_hoa' || loai === 'y_do' || loai === 'diem_chot') {
+    // Cảnh mô hình hóa / điểm chốt: làm nổi bật tam giác, góc vuông và tia nhìn ở bước 2-3, kèm zoom vào mô hình
+    bv.do = dsDo.map(function (d) {
+      var laMH = /tam_giac|vuong|tia/.test(String(d.kieu));
+      d.buoc = laMH ? 3 : 2;
+      if (laMH) d.mau = 'cam';
+      return d;
+    });
+    hd.push({ buoc: 2, vat: idBv, kieu: 'sang' });
+    hd.push({ buoc: 3, vat: idBv, kieu: 'phong_to', x: 52, y: 46, muc: 1.22 });
+  } else if (loai === 'bay') {
+    // Cảnh lỗi sai: rung cảnh báo và gắn nhãn cảnh báo sai lầm
+    bv.do = dsDo.filter(function (d) { return !/tam_giac/.test(String(d.kieu)); }).map(function (d) { d.buoc = 2; d.mau = 'do'; return d; });
+    vatPhu.push({ id: 'nhan_bay_' + (c.so || 1), loai: 'nhan', x: 50, y: 16, noi_dung: 'Cẩn thận bẫy!', tu_khoa: 'bẫy', mau: 'do', buoc: 2 });
+    hd.push({ buoc: 2, vat: idBv, kieu: 'rung' });
+  } else if (/tinh|giai/.test(loai)) {
+    // Cảnh tính toán: tô sáng đường đo được nhắc trong lời thoại/công thức và thêm bộ đếm hoặc zoom vào phần đang tính
+    var chuCanh = (loi + ' ' + ((c && c.noi_dung_man_hinh) || []).join(' ')).toLowerCase();
+    bv.do = dsDo.map(function (d, idx) {
+      var nh = String(d.nhan || '').toLowerCase();
+      var duocNhac = (nh && chuCanh.indexOf(nh.replace(/\s+/g, '')) >= 0) || (/tan|sin|cos|góc|°/.test(chuCanh) && d.kieu === 'tia') || (/cao|h\s*=/.test(chuCanh) && d.kieu === 'chieu_cao');
+      d.buoc = duocNhac ? 2 : 1;
+      if (duocNhac) d.mau = 'vang';
+      return d;
+    });
+    var lechZoom = ((Number(c.so) || 1) % 2 === 0) ? { x: 58, y: 42, muc: 1.25 } : { x: 45, y: 48, muc: 1.2 };
+    hd.push({ buoc: 2, vat: idBv, kieu: 'phong_to', x: lechZoom.x, y: lechZoom.y, muc: lechZoom.muc });
+    hd.push({ buoc: 3, vat: idBv, kieu: 'sang' });
+  } else if (/dap_an|ket_qua/.test(loai)) {
+    // Cảnh đáp án: thay '?' bằng đáp số thật và thêm huy hiệu số đếm kết quả
+    var dapHien = String((r && (r.dap_an_hien || r.dap_an)) || '');
+    bv.do = dsDo.map(function (d) {
+      if (/\?/.test(String(d.nhan || '')) && dapHien) { d.nhan = dapHien; d.mau = 'xanh_la'; d.buoc = 2; }
+      else d.buoc = 1;
+      return d;
+    });
+    hd.push({ buoc: 2, vat: idBv, kieu: 'sang' });
+  } else {
+    bv.do = dsDo.map(function (d, idx) { d.buoc = Math.min(3, 1 + (idx % 3)); return d; });
+    hd.push({ buoc: 2, vat: idBv, kieu: 'sang' });
+  }
+  return { vat: [bv].concat(vatPhu), hanh_dong: hd };
+}
+
 function chenBanVe_(kb, banVe) {
   if (!banVe || !kb || !Array.isArray(kb.canh)) return [];
   var coCT = function (c) { var du = c && c.minh_hoa && c.minh_hoa.du_lieu; return !!(du && Array.isArray(du.vat) && du.vat.some(function (v) { return v && v.loai === 'canh_that'; })); };
-  var banSao = function (c, doCuaCanh) {
-    var bv = JSON.parse(JSON.stringify(banVe));
-    bv.do = doCuaCanh(bv.do || []);
-    (bv.do || []).forEach(function (d) { d.buoc = d.buoc || (/tam_giac|vuong/.test(String(d.kieu)) ? 3 : 2); });
-    c.minh_hoa = { loai: 'san_khau', mo_ta: (c.minh_hoa && c.minh_hoa.mo_ta) || 'Cảnh thực tế của đề theo bản vẽ đã duyệt', du_lieu: { vat: [bv], hanh_dong: [{ buoc: 2, vat: bv.id || 'canh', kieu: 'sang' }] } };
-    c.giu_san_khau = false;
-  };
-  // sân khấu chỉ có người + chữ/nhãn (không vẽ gì về bài): cảnh tính toán nên nhìn vào BẢN VẼ có số đo, tam giác
   var CHI_CHU_ = ['nguoi', 'chu', 'nhan', 'the', 'mui_ten', 'bieu_tuong'];
   var chiNguoiChu = function (c) {
     var du = c && c.minh_hoa && c.minh_hoa.du_lieu;
@@ -414,19 +493,42 @@ function chenBanVe_(kb, banVe) {
   };
   var coRoi = kb.canh.slice(0, 4).some(coCT);
   var sua = [];
+  var dauVanTruoc = '';
   kb.canh.forEach(function (c) {
     if (!c) return;
     var loai = String(c.loai || '');
-    if (coCT(c)) { if (c.giu_san_khau) { c.giu_san_khau = false; sua.push('cảnh ' + c.so + ': bản vẽ thực tế không giữ vật cảnh trước'); } return; }
-    if (loai === 'mo_dau') { banSao(c, function () { return []; }); sua.push('cảnh ' + c.so + ' (mở đầu) dùng bản vẽ thực tế'); return; }
+    if (coCT(c)) {
+      if (c.giu_san_khau) { c.giu_san_khau = false; sua.push('cảnh ' + c.so + ': bản vẽ thực tế không giữ vật cảnh trước'); }
+      var duHienTai = c.minh_hoa && c.minh_hoa.du_lieu;
+      var ctHienTai = duHienTai && Array.isArray(duHienTai.vat) ? duHienTai.vat.filter(function (v) { return v && v.loai === 'canh_that'; })[0] : null;
+      var dv = JSON.stringify(ctHienTai ? { do: ctHienTai.do, vat: ctHienTai.vat } : {});
+      if (ctHienTai && (dv === dauVanTruoc || (Array.isArray(ctHienTai.do) && ctHienTai.do.length >= 2 && ctHienTai.do.every(function (d) { return !d || (d.buoc || 2) === (ctHienTai.do[0].buoc || 2); })))) {
+        var tc = tuyChinhBanVeTheoCanh_(ctHienTai, c, kb);
+        c.minh_hoa.du_lieu = tc;
+        sua.push('cảnh ' + c.so + ': biến đổi khung hình canh_that khớp từng câu thoại');
+      }
+      dauVanTruoc = JSON.stringify(c.minh_hoa && c.minh_hoa.du_lieu && c.minh_hoa.du_lieu.vat || {});
+      return;
+    }
+    if (loai === 'mo_dau' && chiNguoiChu(c)) {
+      var tc0 = tuyChinhBanVeTheoCanh_(banVe, c, kb);
+      c.minh_hoa = { loai: 'san_khau', mo_ta: 'Cận cảnh tình huống thực tế của đề gây tò mò theo câu móc', du_lieu: tc0 };
+      c.giu_san_khau = false;
+      sua.push('cảnh ' + c.so + ' (mở đầu) dùng cận cảnh thực tế');
+      return;
+    }
     if (!coRoi && /^(de_bai|mo_hinh_hoa)$/.test(loai)) {
-      banSao(c, function (ds) { return loai === 'de_bai' ? ds.filter(function (d) { return d && !/tam_giac|vuong/.test(String(d.kieu)); }) : ds; });
-      sua.push('cảnh ' + c.so + ' dùng bản vẽ thực tế');
+      var tc1 = tuyChinhBanVeTheoCanh_(banVe, c, kb);
+      c.minh_hoa = { loai: 'san_khau', mo_ta: (c.minh_hoa && c.minh_hoa.mo_ta) || 'Dựng từng lớp cảnh thực tế và số đo theo lời đọc', du_lieu: tc1 };
+      c.giu_san_khau = false;
+      sua.push('cảnh ' + c.so + ' dùng bản vẽ thực tế theo từng bước');
       return;
     }
     if (/^(y_do|tinh_toan|kiem_tra|bay|dap_an|ket_qua)$/.test(loai) && chiNguoiChu(c)) {
-      banSao(c, function (ds) { return ds; });
-      sua.push('cảnh ' + c.so + ' (' + loai + ') nhìn vào bản vẽ có số đo thay cho người + chữ');
+      var tc2 = tuyChinhBanVeTheoCanh_(banVe, c, kb);
+      c.minh_hoa = { loai: 'san_khau', mo_ta: (c.minh_hoa && c.minh_hoa.mo_ta) || ('Minh họa trực quan cho bước ' + loai + ' khớp lời thoại'), du_lieu: tc2 };
+      c.giu_san_khau = false;
+      sua.push('cảnh ' + c.so + ' (' + loai + ') tùy biến hình minh họa theo nội dung cảnh');
     }
   });
   return sua;
@@ -502,7 +604,59 @@ function boSungGiaiThichCongThuc_(kb, r, sn) {
   var con = kb.canh.filter(function (c) { return cu.indexOf(c) < 0; });
   if (viTri < 0) { viTri = con.findIndex(function (c) { return /tinh_toan/.test(String(c.loai)); }); if (viTri < 0) viTri = Math.max(1, con.length - 4); }
   else viTri = con.filter(function (c, k) { return kb.canh.indexOf(c) < viTri; }).length;
-  var canh = con.slice(0, viTri).concat(moi, con.slice(viTri));
-  canh.forEach(function (c, k) { c.so = k + 1; });
-  return canh;
+  var can = con.slice(0, viTri).concat(moi, con.slice(viTri));
+  can.forEach(function (c, k) { c.so = k + 1; });
+  return can;
+}
+
+// ===================== THIẾT KẾ VIDEO BÀI GIẢNG CHUYÊN ĐỀ DÀI 10 PHÚT CHO YOUTUBE (540-660 GIÂY, 42-50 CẢNH) =====================
+// Cấu trúc sư phạm 5 chương thực chiến giúp học sinh thật sự hiểu sâu và áp dụng được trong phòng thi:
+//  - Chương 1 (Cảnh 1-6, ~60s)  : Đặt vấn đề thực tế & Phân tích đề bài từng lớp (hình minh họa hiện dần theo từng câu đọc như Anh Shiper Toán)
+//  - Chương 2 (Cảnh 7-15, ~110s): Phương pháp gốc, Sơ đồ nhận diện dạng bài & Mô hình hóa toán học (tách hình học / hệ trục / đặt ẩn)
+//  - Chương 3 (Cảnh 16-29, ~170s): Giải chi tiết Bài toán Trọng tâm & Phân tích Cái bẫy phòng thi + Kiểm chứng đáp số
+//  - Chương 4 (Cảnh 30-40, ~140s): Mở rộng & Giải nhanh Bài toán Biến thể Nâng cao 9+ / 10 điểm cùng dạng (đổi điều kiện thực tế)
+//  - Chương 5 (Cảnh 41-46, ~80s): Bảng tổng kết công thức "Bỏ túi phòng thi" + Bài tập tự luyện có đáp số để học sinh bình luận
+function lapKichBanDai10Phut_(r, c1, c2, sn) {
+  var kbGoc = goiGemini_(taoPromptKichBan_(r, c1, c2), 0.55, sn);
+  if (!kbGoc || !Array.isArray(kbGoc.canh) || !kbGoc.canh.length) throw new Error('KHONG_TAO_DUOC_KHUNG_10_PHUT');
+  kbGoc.kieu_video = 'DAI_10_PHUT';
+
+  // Mở rộng thêm 3 chương chuyên sâu (Sơ đồ nhận diện phương pháp + Bài toán biến thể 10 điểm + Tổng kết & Bài tập tự luyện)
+  var promptMoRong = 'Bạn là GIÁO VIÊN LUYỆN THI TOÁN THPT hàng đầu trên YouTube. Chúng ta đang làm VIDEO BÀI GIẢNG DÀI 10 PHÚT (có giá trị học tập thực chiến cao) từ bài toán gốc sau:\n' +
+    'ĐỀ GỐC (Lớp ' + r.lop + '): ' + r.de_bai + '\n' +
+    'ĐÁP ÁN ĐÃ KIỂM CHỨNG: ' + (r.dap_an_hien || r.dap_an) + '\n' +
+    'Ý TƯỞNG THEN CHỐT: ' + ((c2 && c2.y_tuong) || kbGoc.y_tuong_chinh || '') + '\n\n' +
+    'Hãy viết thêm 24 CẢNH CHUYÊN SÂU chia làm 3 phần để ghép vào bài giảng 10 phút (mỗi cảnh 10-14 giây, lời thoại 30-45 từ, giải thích cặn kẽ, mỗi cảnh có một hình minh họa san_khau RIÊNG BIỆT, không lặp lại chữ trên màn hình):\n' +
+    '1) PHẦN PHƯƠNG PHÁP GỐC & DẤU HIỆU NHẬN DIỆN (8 cảnh, loai="nhac_lai" hoặc "mo_hinh_hoa"):\n' +
+    '   - 3 dấu hiệu trong đề thi để nhận ra ngay dạng bài này trong 10 giây.\n' +
+    '   - Bản chất công thức nền tảng (từ đâu mà có, vẽ hinh_hoc / do_thi / danh_sach minh họa từng đại lượng).\n' +
+    '   - Quy trình 3 bước chuẩn để đặt ẩn và lập hàm không bao giờ nhầm đơn vị.\n' +
+    '2) PHẦN BÀI TOÁN BIẾN THỂ VẬN DỤNG CAO 10 ĐIỂM (11 cảnh, loai="y_do", "bay", "tinh_toan"):\n' +
+    '   - Đưa ra 1 bài toán biến thể nâng cao từ bài gốc (thay đổi số liệu/thêm điều kiện thực tế khó hơn, có đáp số tính đúng tuyệt đối).\n' +
+    '   - Phân tích điểm khác biệt, cái bẫy mới và giải từng bước bằng phương pháp vừa học (dùng hinh_hoc, do_thi, bieu_do_cot, so_dem).\n' +
+    '3) PHẦN TỔNG KẾT PHÒNG THI & BÀI TẬP TỰ LUYỆN (5 cảnh, loai="lien_he_thuc_te", "bai_hoc"):\n' +
+    '   - Bảng công thức đóng khung cần nhớ (danh_sach).\n' +
+    '   - Mẹo bấm máy tính Casio / kiểm tra nhanh đạo hàm, cực trị trong phòng thi.\n' +
+    '   - Giao 1 bài tập tự luyện cụ thể kèm gợi ý và đáp số để học sinh tự giải rồi bình luận.\n\n' +
+    'YÊU CẦU ĐỊNH DẠNG: mỗi cảnh đúng chuẩn {"loai":"...","tieu_de_canh":"...","tu_khoa":"...","nhan":"CHƯƠNG 2|BIẾN THỂ 10Đ|TỔNG KẾT","giu_san_khau":false,"giong_doc":"...","loi_thoai":"(không LaTeX, đọc số thành chữ)","noi_dung_man_hinh":["1-2 dòng LaTeX ngắn, mới hoàn toàn"],"trinh_bay":"xep","minh_hoa":{"loai":"san_khau","mo_ta":"...","du_lieu":{"vat":[...],"hanh_dong":[...]}}}.\n' +
+    'Trả về JSON: {"phuong_phap":[8 cảnh],"bien_the":[11 cảnh],"tong_ket":[5 cảnh]}';
+  var mr = null;
+  try { mr = goiGemini_(promptMoRong, 0.5, sn); } catch (eMr) { mr = null; }
+  if (mr) {
+    var pp = Array.isArray(mr.phuong_phap) ? mr.phuong_phap : [];
+    var bt = Array.isArray(mr.bien_the) ? mr.bien_the : [];
+    var tk = Array.isArray(mr.tong_ket) ? mr.tong_ket : [];
+    // Chèn phần Phương pháp ngay sau phần Đề bài / Mô phỏng của bài gốc; phần Biến thể + Tổng kết trước cảnh kết cuối
+    var idxSauDe = 3;
+    for (var i = 0; i < kbGoc.canh.length; i++) {
+      if (/bay|nhac_lai|diem_chot|tinh_toan/.test(String(kbGoc.canh[i].loai || ''))) { idxSauDe = i; break; }
+    }
+    var dau = kbGoc.canh.slice(0, idxSauDe);
+    var giua = kbGoc.canh.slice(idxSauDe, Math.max(idxSauDe + 1, kbGoc.canh.length - 1));
+    var cuoi = kbGoc.canh.slice(-1);
+    kbGoc.canh = dau.concat(pp, giua, bt, tk, cuoi);
+    kbGoc.canh.forEach(function (c, idx) { if (c) c.so = idx + 1; });
+  }
+  kbGoc.kieu_video = 'DAI_10_PHUT';
+  return kbGoc;
 }

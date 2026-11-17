@@ -802,9 +802,14 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc) {
   var nang = [], nhe = [];
   var them = function (ds, loi) { if (loi) ds.push(loi); };
   if (!kb || !Array.isArray(kb.canh) || !kb.canh.length) return { nang: ['KHONG_CO_CANH: kịch bản phải có mảng "canh" gồm 14-18 cảnh.'], nhe: [] };
-  // VIDEO NHIỀU CẢNH, CHI TIẾT: 14-18 cảnh (dưới 10 hoặc trên 22 phải viết lại; 10-13 vẫn dùng được nhưng nhắc tách thêm)
-  if (kb.canh.length < 10 || kb.canh.length > 24) nang.push('SO_CANH_NGOAI_10_DEN_24: hiện có ' + kb.canh.length + ' cảnh, cần 15-20 cảnh (mỗi cảnh một ý: mỗi bước tính một cảnh, đề bài 1-2 cảnh, mô phỏng 2-3 cảnh...).');
-  else if (kb.canh.length < 14) nhe.push('IT_CANH: ' + kb.canh.length + ' cảnh, nên tách thành 15-20 cảnh cho chi tiết (mỗi bước tính, mỗi ý một cảnh).');
+  var laDai10P = kb.kieu_video === 'DAI_10_PHUT';
+  // VIDEO NHIỀU CẢNH, CHI TIẾT: 14-18 cảnh cho video ngắn; 28-65 cảnh cho video bài giảng chuyên đề dài 10 phút
+  if (laDai10P) {
+    if (kb.canh.length < 22 || kb.canh.length > 68) nang.push('SO_CANH_VIDEO_DAI_SAI: hiện có ' + kb.canh.length + ' cảnh, video dài 10 phút cần 32-55 cảnh chi tiết.');
+  } else {
+    if (kb.canh.length < 10 || kb.canh.length > 24) nang.push('SO_CANH_NGOAI_10_DEN_24: hiện có ' + kb.canh.length + ' cảnh, cần 15-20 cảnh (mỗi cảnh một ý: mỗi bước tính một cảnh, đề bài 1-2 cảnh, mô phỏng 2-3 cảnh...).');
+    else if (kb.canh.length < 14) nhe.push('IT_CANH: ' + kb.canh.length + ' cảnh, nên tách thành 15-20 cảnh cho chi tiết (mỗi bước tính, mỗi ý một cảnh).');
+  }
   var thucTe = String(mon || '').toUpperCase() === 'THUC_TE';
   if (!Array.isArray(kb.bai_hoc_rut_ra) || kb.bai_hoc_rut_ra.filter(function (x) { return String(x).trim().length >= 8; }).length < 2) nhe.push('THIEU_BAI_HOC_RUT_RA: cần "bai_hoc_rut_ra" là mảng 3 câu ngắn (mỗi câu ≤ 12 từ).');
   if (!kb.canh.some(function (c) { return /tinh|giai/i.test(String(c.loai || '')); })) nhe.push('THIEU_CANH_TINH_TOAN: cần ít nhất một cảnh "tinh_toan".');
@@ -817,7 +822,7 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc) {
     tong += uocGiayDoc_(c.loi_thoai);
   }
   if (/^\s*(xin\s+)?chào/i.test(kb.canh[0].loi_thoai) && !(typeof cauHinh_ === 'function' && cauHinh_('KIEU_MO_DAU') === 'chao_hook')) nhe.push('MO_DAU_BANG_LOI_CHAO');
-  var gioiHan = Math.max(Number(cauHinh_('GIAY_TOI_DA')) || 190, 180);   // video nhiều cảnh: tối thiểu 180 giây dù CAU_HINH còn giá trị cũ
+  var gioiHan = laDai10P ? 760 : Math.max(Number(cauHinh_('GIAY_TOI_DA')) || 190, 180);   // video dài 10 phút: tối đa ~12,5 phút; video ngắn: tối thiểu 180s
   if (tong > gioiHan * 1.15) nang.push('QUA_DAI_' + tong + '_GIAY');
   else if (tong > gioiHan) nhe.push('QUA_DAI_' + tong + '_GIAY');
   if (String(kb.dap_an_cuoi).replace(/\s/g, '') !== dapAn) nang.push('DAP_AN_CUOI_SAI');
@@ -847,6 +852,7 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc) {
   them(nang, noiDungLa_(kb));
   kiemTraPhepTinh_(kb).forEach(function (x) { nang.push(x); });
   kiemTraHinhDungYen_(kb).forEach(function (x) { nhe.push(x); });
+  if (typeof kiemTraDaDangHinhThucTe_ === 'function') kiemTraDaDangHinhThucTe_(kb, mon).forEach(function (x) { nhe.push(x); });
   kiemTraNhanDai_(kb).forEach(function (x) { nhe.push(x); });
   kiemTraBaCham_(kb).forEach(function (x) { nang.push(x); });
   kiemTraCuPhapTex_(kb).forEach(function (x) { nang.push(x); });
@@ -1616,6 +1622,11 @@ function tuSuaQuyTrinh_(kb, deGoc) {
     if (mat.length) {
       var ve = String(deGoc).split(/(?<=[.;!])\s+|,\s+(?=[^\d])/).map(function (x) { return x.replace(/\s+/g, ' ').trim(); })
         .filter(function (x) { return /\d/.test(x) && !/\?\s*$|^\s*(hỏi|tính|tìm)\b/i.test(x); });
+      if (ve.length < 2) {
+        var veThem = String(deGoc).split(/(?<=[.;!])\s+|,\s+/).map(function (x) { return x.replace(/\s+/g, ' ').trim(); })
+          .filter(function (x) { return x.length >= 6 && !/\?\s*$|^\s*(hỏi|tính|tìm)\b/i.test(x); });
+        veThem.forEach(function (x) { if (ve.indexOf(x) < 0 && ve.length < 4) ve.push(x); });
+      }
       if (ve.length) { kb.de_cho = ve.slice(0, 5).map(function (x) { return x.replace(/[.;]$/, '').slice(0, 70); }); sua.push('de_cho dựng lại từ các dữ kiện của đề'); }
     }
   }
@@ -1718,5 +1729,115 @@ function kiemTraHinhDungYen_(kb) {
     var tuDong = du.vat.some(function (v) { return v && ((Array.isArray(v.hinh) && v.hinh.some(function (h) { return h && h.kieu === 'xep_chong'; })) || (v.loai === 'canh_that' && Array.isArray(v.do) && v.do.length)); }) ? 1 : 0;   // chồng vật tự xếp / cảnh thực tế tự vẽ dần các phép đo   // chồng vật tự xếp từng tầng
     if (soHD + vatSau + netSau + tuDong < 2) loi.push('HINH_DUNG_YEN_CANH_' + (j + 1) + ': hình gần như đứng yên suốt cảnh. Thêm ít nhất 2 hành động khớp lời thoại (bien_hinh dời/xoay mảnh, tach/ghep, dem_tang, dat_gia_tri, chon, di_chuyen...) và tả chuyển động trong "mo_ta".');
   });
+  return loi;
+}
+
+// BÀI TOÁN THỰC TẾ: MỖI CẢNH MỘT HÌNH / KHUNG HÌNH RIÊNG KHỚP ĐÚNG NỘI DUNG CẢNH ĐÓ (tránh 1 hình tĩnh dùng suốt cả video).
+// Tự động chia các vật/phép đo thành nhiều bước khung hình (buoc: 1..4) và thêm hành động zoom/sáng/chọn theo từng cảnh.
+function tuSuaDaDangHinh_(kb, r) {
+  var sua = [];
+  if (!kb || !Array.isArray(kb.canh) || !kb.canh.length) return sua;
+  var mon = String((r && r.mon) || kb.mon || '').toUpperCase();
+  if (mon === 'HINH_HOC') return sua;
+  var dauVanTruoc = '', demLap = 0;
+  kb.canh.forEach(function (c, i) {
+    var du = c && c.minh_hoa && c.minh_hoa.loai === 'san_khau' && c.minh_hoa.du_lieu;
+    if (!du || !Array.isArray(du.vat) || !du.vat.length) return;
+    if (!Array.isArray(du.hanh_dong)) du.hanh_dong = [];
+    // 1) Chia nhỏ khung hình (buoc: 1..4) cho các phép đo/vật trong canh_that hoặc san_khau nếu tất cả đang đổ ra cùng buoc=1
+    du.vat.forEach(function (v, vi) {
+      if (!v) return;
+      if (v.loai === 'canh_that') {
+        var dsDo = Array.isArray(v.do) ? v.do : [];
+        if (dsDo.length >= 2) {
+          var cungBuoc = dsDo.every(function (d) { return !d || (d.buoc || 2) === (dsDo[0] && (dsDo[0].buoc || 2)); });
+          if (cungBuoc) {
+            dsDo.forEach(function (d, di) { if (d) d.buoc = Math.min(4, 1 + Math.floor((di * 3) / Math.max(1, dsDo.length)) + (di > 0 ? 1 : 0)); });
+            sua.push('cảnh ' + (i + 1) + ': chia phép đo canh_that thành nhiều khung bước (buoc 1..4)');
+          }
+        }
+        var dsVat = Array.isArray(v.vat) ? v.vat : [];
+        if (dsVat.length >= 2 && dsVat.every(function (o) { return !o || (o.buoc || 1) === 1; }) && i === 0) {
+          dsVat.forEach(function (o, oi) { if (o && oi > 0) o.buoc = Math.min(3, 1 + oi); });
+        }
+      } else if (du.vat.length >= 3 && vi > 0 && (v.buoc === undefined || v.buoc === 1)) {
+        v.buoc = Math.min(4, 1 + Math.ceil((vi * 3) / du.vat.length));
+      }
+    });
+    // 2) Phát hiện hai cảnh liên tiếp dùng y hệt một cấu hình hình minh họa -> biến đổi cảnh sau khớp nội dung đang nói
+    var dauVan = JSON.stringify(du.vat.map(function (v) {
+      if (!v) return '';
+      return v.loai + ':' + (v.noi_dung || v.nhan || '') + ':' + JSON.stringify(v.do || v.ds || v.hinh || '');
+    }));
+    if (dauVan === dauVanTruoc) {
+      demLap++;
+      var ct0 = du.vat.filter(function (v) { return v && v.loai === 'canh_that'; })[0];
+      if (ct0 && typeof tuyChinhBanVeTheoCanh_ === 'function') {
+        var tcMoi = tuyChinhBanVeTheoCanh_(ct0, c, r || kb);
+        if (tcMoi && Array.isArray(tcMoi.vat) && tcMoi.vat.length) {
+          var vatKhac = du.vat.filter(function (v) { return v && v.loai !== 'canh_that'; });
+          du.vat = tcMoi.vat.concat(vatKhac).slice(0, 6);
+          du.hanh_dong = (tcMoi.hanh_dong || []).concat(du.hanh_dong || []).slice(0, 6);
+        }
+        sua.push('cảnh ' + (i + 1) + ': tùy biến canh_that theo nội dung cảnh');
+      } else {
+        var idChinh = (du.vat[0] && du.vat[0].id) || 'v0';
+        var kieuHD = ['phong_to', 'chon', 'sang', 'rung'][demLap % 4];
+        if (!du.hanh_dong.some(function (h) { return h && h.kieu === kieuHD; })) {
+          du.hanh_dong.push({ buoc: Math.min(4, 2 + (demLap % 2)), vat: idChinh, kieu: kieuHD });
+        }
+        // Trích biểu thức ngắn trong noi_dung_man_hinh hoặc tiêu đề cảnh để gắn nhãn trực quan ngay trên sân khấu
+        var ctNgan = (c.noi_dung_man_hinh || []).filter(function (d) { return String(d || '').length >= 3 && String(d || '').length <= 26; })[0];
+        if (ctNgan && du.vat.filter(function (v) { return v && (v.loai === 'nhan' || v.loai === 'chu'); }).length < 2) {
+          du.vat.push({ id: 'nh_c' + (i + 1), loai: 'nhan', x: 50, y: 14, buoc: 3, mau: ['vang', 'xanh_la', 'cam'][i % 3], noi_dung: ctNgan });
+          sua.push('cảnh ' + (i + 1) + ': thêm nhãn & hiệu ứng riêng khớp bước tính');
+        }
+      }
+    } else {
+      demLap = 0;
+    }
+    dauVanTruoc = JSON.stringify(du.vat.map(function (v) {
+      if (!v) return '';
+      return v.loai + ':' + (v.noi_dung || v.nhan || '') + ':' + JSON.stringify(v.do || v.ds || v.hinh || '');
+    }));
+  });
+  // 3) Loại bỏ các dòng chữ / công thức lặp lại y hệt nhau giữa hai cảnh liên tiếp (tránh chữ hiện lặp gây nhàm chán)
+  var ndTruoc = {}, tdTruoc = '';
+  kb.canh.forEach(function (c, i) {
+    if (!c) return;
+    var dsND = Array.isArray(c.noi_dung_man_hinh) ? c.noi_dung_man_hinh : [];
+    if (i > 0 && dsND.length > 1 && c.trinh_bay !== 'cong_don') {
+      var loc = dsND.filter(function (d) { return !ndTruoc[String(d || '').replace(/\s+/g, '')]; });
+      if (loc.length > 0 && loc.length < dsND.length) {
+        c.noi_dung_man_hinh = loc;
+        sua.push('cảnh ' + (i + 1) + ': bỏ ' + (dsND.length - loc.length) + ' dòng công thức lặp lại từ cảnh trước');
+      }
+    }
+    ndTruoc = {};
+    (c.noi_dung_man_hinh || []).forEach(function (d) { ndTruoc[String(d || '').replace(/\s+/g, '')] = true; });
+    var td = String(c.tieu_de_canh || '').trim();
+    if (i > 0 && td && td.toLowerCase() === tdTruoc.toLowerCase()) {
+      c.tieu_de_canh = tieuDeTuLoi_(c.loi_thoai);
+      sua.push('cảnh ' + (i + 1) + ': đổi tiêu đề cảnh bị trùng với cảnh trước');
+    }
+    tdTruoc = String(c.tieu_de_canh || '').trim();
+  });
+  return sua;
+}
+
+function kiemTraDaDangHinhThucTe_(kb, mon) {
+  var loi = [];
+  if (!kb || !Array.isArray(kb.canh) || String(mon || kb.mon || '').toUpperCase() === 'HINH_HOC') return loi;
+  var dauVanTruoc = '', chuoiLap = 1, maxLap = 1;
+  kb.canh.forEach(function (c) {
+    var du = c && c.minh_hoa && c.minh_hoa.loai === 'san_khau' && c.minh_hoa.du_lieu;
+    if (!du || !Array.isArray(du.vat) || !du.vat.length) return;
+    var dv = JSON.stringify({ v: du.vat, h: du.hanh_dong || [] });
+    if (dv === dauVanTruoc) { chuoiLap++; if (chuoiLap > maxLap) maxLap = chuoiLap; }
+    else { chuoiLap = 1; dauVanTruoc = dv; }
+  });
+  if (maxLap >= 3) {
+    loi.push('HINH_LAP_LAI_NHIEU_CANH: có ' + maxLap + ' cảnh liên tiếp dùng y hệt một hình minh họa tĩnh. Mỗi cảnh phải thể hiện đúng đoạn nội dung cảnh đó đang nói (ẩn/hiện các phép đo theo bước buoc: 1..4, đổi nhãn từ "?" sang số vừa tính được, phóng to hoặc tô sáng phần đang xét).');
+  }
   return loi;
 }

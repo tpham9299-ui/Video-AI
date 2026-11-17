@@ -23,34 +23,35 @@ export const taoMocBuoc = (soBuoc: number, giayAm: number) => {
   return (b: number) => (b <= 0 ? -100 : 0.12 + ((b - 1) * span) / S);
 };
 
-// Mốc bước KHỚP LỜI (bộ hiệu ứng mới): mỗi bước dời tới đầu cụm lời gần nhất (trong ±0,7 giây) để hình đổi đúng lúc giọng
-// đọc nhắc tới; các bước vẫn tăng dần và cách nhau ít nhất 0,35 giây.
+// Mốc bước KHỚP LỜI CHÍNH XÁC: mỗi bước buoc=1..S bám trực tiếp vào thời điểm bắt đầu câu/mệnh đề tương ứng trong giọng đọc (cau[k].bat)
+// giúp từng phần của hình minh họa (vật, đường đo, góc, nhãn) bật sáng đúng khoảnh khắc giọng đọc vừa nhắc tới (như video mẫu Anh Shiper Toán).
 export const taoMocBuocLoi = (soBuoc: number, giayAm: number, cau: {text: string; bat: number; ket: number}[]) => {
   const goc = taoMocBuoc(soBuoc, giayAm);
+  const S = Math.max(1, soBuoc);
+  if (!cau || !cau.length) return goc;
+  // Tạo danh sách các mốc mệnh đề từ các câu thoại
   const neo: number[] = [];
   cau.forEach((c) => {
+    neo.push(c.bat);
     const tu = c.text.split(/\s+/).filter(Boolean);
-    const tong = c.text.length || 1;
-    let t = c.bat;
-    let da = 0;
-    // đầu mỗi cụm ~4 từ trong câu (tính theo số ký tự, như phụ đề)
-    tu.forEach((w, i) => {
-      if (i % 4 === 0) neo.push(c.bat + (da / tong) * (c.ket - c.bat));
-      da += w.length + 1;
-    });
-    neo.push(t);
+    if (tu.length >= 7) {
+      neo.push(c.bat + (c.ket - c.bat) * 0.5);
+    }
   });
-  const S = Math.max(1, soBuoc);
   const moc: number[] = [];
   for (let b = 1; b <= S; b++) {
-    const g = goc(b);
-    let tot = g;
-    if (b > 1 && neo.length) {
-      let gan = 1e9;
-      for (const n of neo) if (Math.abs(n - g) < Math.abs(gan - g)) gan = n;
-      if (Math.abs(gan - g) <= 0.7) tot = gan + 0.05;
+    let tot = goc(b);
+    if (b === 1) {
+      tot = Math.min(0.12, cau[0].bat);
+    } else if (neo.length >= S) {
+      const idx = Math.min(neo.length - 1, Math.floor(((b - 1) * neo.length) / S));
+      tot = neo[idx];
+    } else {
+      let gan = neo[0];
+      for (const n of neo) if (Math.abs(n - tot) < Math.abs(gan - tot)) gan = n;
+      if (Math.abs(gan - tot) <= 0.9) tot = gan;
     }
-    if (moc.length) tot = Math.max(tot, moc[moc.length - 1] + 0.35);
+    if (moc.length) tot = Math.max(tot, moc[moc.length - 1] + 0.32);
     moc.push(tot);
   }
   return (b: number) => (b <= 0 ? -100 : b <= S ? moc[b - 1] : goc(b));

@@ -38,7 +38,7 @@ on:
 # cùng một đề gửi lặp thì chỉ dựng/đăng một lần.
 concurrency:
   group: dung-video-${{ github.event.inputs.viec || 'dung' }}-${{ github.event.client_payload.id || github.event.inputs.id || github.run_id }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event.inputs.viec != 'dang' }}
 
 jobs:
   # ============ DỰNG SONG SONG (3 tầng) ============
@@ -133,6 +133,28 @@ jobs:
             cp "mau/${{ github.event.inputs.mau || 'kich_ban_mau' }}.json" kich_ban.json
           else
             printf '%s' "$KICH_BAN" > kich_ban.json
+          fi
+          # Kịch bản nhiều cảnh (> 58KB) được Apps Script lưu trên Drive và gửi kèm _file_kich_ban_drive
+          FILE_KB=$(python3 -c "import json;k=json.load(open('kich_ban.json',encoding='utf8'));print(str(k.get('_file_kich_ban_drive') or ''))" 2>/dev/null || true)
+          if [ -n "$FILE_KB" ] && [ -n "$RCLONE_CONF" ]; then
+            echo "Tải kịch bản đầy đủ từ Drive ID: $FILE_KB"
+            mkdir -p ~/.config/rclone kb_drive
+            printf '%s' "$RCLONE_CONF" > ~/.config/rclone/rclone.conf
+            rclone backend copyid gdrive: "$FILE_KB" kb_drive/
+            F_KB=$(ls kb_drive | head -1)
+            if [ -n "$F_KB" ]; then
+              python3 - <<'PY'
+              import json, glob
+              meta = json.load(open('kich_ban.json', encoding='utf8'))
+              f_kb = glob.glob('kb_drive/*')[0]
+              kb = json.load(open(f_kb, encoding='utf8'))
+              for k in ('id', 'giong', 'gioi_tinh_giong', '_kiem_duyet'):
+                  if k in meta and meta[k]:
+                      kb[k] = meta[k]
+              json.dump(kb, open('kich_ban.json', 'w', encoding='utf8'), ensure_ascii=False)
+              print("Đã ghép kịch bản đầy đủ từ Drive:", len(kb.get("canh") or []), "cảnh")
+              PY
+            fi
           fi
 
       # Video giới thiệu sản phẩm: lấy ẢNH THẬT của sản phẩm (Apps Script lưu ở Drive VIDEO_XACSUAT/san_pham/<mã>/)

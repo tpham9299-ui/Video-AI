@@ -209,15 +209,17 @@ function tinhTrangUuTien_() {
 
 function huyUuTien_(chat) {
   var khoa = LockService.getScriptLock();
-  if (!khoa.tryLock(20000)) return '⏳ Hệ thống đang xử lý, thử /huy lại sau 1 phút nhé.';
+  var coKhoa = khoa.tryLock(4000);
   try {
     var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
-    var ds = docHang_(sh).filter(function (r) { return laUuTien_(r) && String(r.zalo_chat) === String(chat) && TRANG_THAI_DANG_LAM_.concat(['CO_KICH_BAN']).indexOf(r.trang_thai) >= 0; });
-    if (!ds.length) return 'Không có đề nào của bạn còn hủy được (đề đang dựng video thì không hủy được).';
+    var ds = docHang_(sh).filter(function (r) { return laUuTien_(r) && String(r.zalo_chat) === String(chat) && TRANG_THAI_DANG_LAM_.concat(['GITHUB', 'CO_KICH_BAN', 'DANG_DUNG']).indexOf(r.trang_thai) >= 0; });
+    if (!ds.length) return 'Không có đề nào của bạn còn hủy được.';
     var r = ds[ds.length - 1];
+    try { CacheService.getScriptCache().put('DA_BO_' + r.id, '1', 21600); } catch (eC) {}
     ghi_(sh, r._row, { trang_thai: 'LOAI', uu_tien: '', ghi_chu: 'Người gửi đã hủy qua Zalo' });
+    SpreadsheetApp.flush();
     return '🗑 Đã hủy đề ' + r.id + '. Hệ thống quay lại làm các đề khác.';
-  } finally { khoa.releaseLock(); }
+  } finally { if (coKhoa) { try { khoa.releaseLock(); } catch (eL) {} } }
 }
 
 /* ===================== CHẠY ĐỀ ƯU TIÊN ===================== */

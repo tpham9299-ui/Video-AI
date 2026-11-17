@@ -20,7 +20,7 @@ on:
 
 concurrency:
   group: bo-phan-1-${{ inputs.id || github.run_id }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   giai:

@@ -240,12 +240,15 @@ function kichHoatDungVideo_(r) {
       });
     });
   }
-  //  (2) vẫn dài: bỏ phần không dùng khi dựng, rút gọn mô tả cảnh
+  //  (2) vẫn dài: bỏ phần không dùng khi dựng, rút gọn mô tả cảnh; nếu kịch bản nhiều khung hình rất lớn (> 58KB)
+  //      thì lưu bản đầy đủ lên Drive và gửi ID file để GitHub tự tải bằng rclone (không bao giờ lỗi KICH_BAN_QUA_LON)
   ['hook_ung_vien', 'hashtag', 'y_tuong_chinh', 'tu_kiem_tra'].forEach(function (k) { if (JSON.stringify(kb).length > 50000) delete kb[k]; });
   if (JSON.stringify(kb).length > 52000) kb.canh.forEach(function (c) { if (c && c.minh_hoa && c.minh_hoa.mo_ta) c.minh_hoa.mo_ta = String(c.minh_hoa.mo_ta).slice(0, 90); });
-  if (JSON.stringify(kb).length > 52000) delete kb.de_bai;
   var chuoi = JSON.stringify(kb);
-  if (chuoi.length > 60000) throw new Error('KICH_BAN_QUA_LON_' + chuoi.length);
+  if (chuoi.length > 58000 && r.file_kich_ban) {
+    try { DriveApp.getFileById(String(r.file_kich_ban)).setContent(chuoi); } catch (eSave) {}
+    chuoi = JSON.stringify({ id: r.id, _file_kich_ban_drive: String(r.file_kich_ban), giong: kb.giong, gioi_tinh_giong: kb.gioi_tinh_giong, _kiem_duyet: kb._kiem_duyet, mon: kb.mon });
+  }
 
   var nhanh = nhanhGitHub_();
   if (nhanh) {
@@ -344,7 +347,7 @@ function doPost(e) {
   if (!bi || !d || d.token !== bi) return tra({ ok: false, loi: 'SAI_TOKEN' });
 
   var khoa = LockService.getScriptLock();
-  if (!khoa.tryLock(120000)) return tra({ ok: false, loi: 'BAN' });   // đang chạy Bộ phận 1: GitHub sẽ thử lại
+  if (!khoa.tryLock(30000)) return tra({ ok: false, loi: 'BAN' });   // đang ghi ngắn: GitHub sẽ thử lại
   try {
     var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
     // key Gemini lỗi thật (GitHub phát hiện): báo Zalo để người dùng gỡ key, mỗi key một lần mỗi ngày
@@ -358,9 +361,22 @@ function doPost(e) {
       PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1');
       return tra(kqDang);
     }
+    // Nếu người dùng vừa yêu cầu /bo video này trong lúc GitHub đang dựng: hủy tệp mới trên Drive và bỏ qua
+    if (d.id && CacheService.getScriptCache().get('DA_BO_' + d.id)) {
+      [d.file_id, d.anh_kt, d.anh_bia].forEach(function (fid) { if (fid) { try { DriveApp.getFileById(String(fid)).setTrashed(true); } catch (eTr) {} } });
+      return tra({ ok: true, lap: true });
+    }
     var r = null;
     docHang_(sh).forEach(function (x) { if (x.id === d.id) r = x; });
-    if (!r) return tra({ ok: false, loi: 'KHONG_TIM_THAY' });
+    if (!r) {
+      [d.file_id, d.anh_kt, d.anh_bia].forEach(function (fid) { if (fid) { try { DriveApp.getFileById(String(fid)).setTrashed(true); } catch (eTr) {} } });
+      return tra({ ok: false, loi: 'KHONG_TIM_THAY' });
+    }
+    // Nếu người dùng vừa nhắn /sua <mã> khiến dòng đã quay về MOI / DA_GIAI / GITHUB: bỏ kết quả dựng cũ
+    if (['MOI', 'DA_GIAI', 'GITHUB'].indexOf(String(r.trang_thai)) >= 0) {
+      [d.file_id, d.anh_kt, d.anh_bia].forEach(function (fid) { if (fid) { try { DriveApp.getFileById(String(fid)).setTrashed(true); } catch (eTr) {} } });
+      return tra({ ok: true, lap: true });
+    }
 
     // KIỂM DUYỆT BỐ CỤC không đạt (chữ tràn/đè, TeX thô...): chưa dựng, tự sửa kịch bản rồi dựng lại (NangCao.gs)
     if (d.kiem_duyet && !d.ok) {
@@ -372,17 +388,22 @@ function doPost(e) {
       if (r.trang_thai === 'CO_VIDEO' && String(r.file_video) === String(d.file_id)) return tra({ ok: true, lap: true });
       if (r.trang_thai === 'DA_XONG') return tra({ ok: true, lap: true });
       var canDuyetVideo = typeof canDuyet_ === 'function' && canDuyet_();
-      ghi_(sh, r._row, { trang_thai: 'CO_VIDEO', file_video: String(d.file_id), ghi_chu: '', so_lan_loi: 0, duyet: canDuyetVideo ? 'CHO' : '', anh_kt: d.anh_kt || '', anh_bia: d.anh_bia || '' });
-      // AI xem video trước (NangCao.gs): đạt mới gửi bạn duyệt, chưa đạt thì tự sửa rồi dựng lại
+      ghi_(sh, r._row, { trang_thai: 'CO_VIDEO', file_video: String(d.file_id), ghi_chu: '', so_lan_loi: 0, duyet: canDuyetVideo ? 'CHO' : 'AI_XEM', anh_kt: d.anh_kt || '', anh_bia: d.anh_bia || '' });
+      // AI xem video trước (NangCao.gs): đạt mới gửi bạn duyệt / tự động xếp lịch đăng 2 video/ngày, chưa đạt thì tự sửa rồi dựng lại
       r.file_video = String(d.file_id); r.anh_kt = d.anh_kt || ''; r.anh_bia = d.anh_bia || '';
-      // AI kiểm duyệt MỌI video (kể cả khi tắt duyệt tay): chưa đạt thì tự sửa, không gửi bạn / không đăng
       var aiXem = typeof giaoAiXemVideo_ === 'function' && giaoAiXemVideo_(sh, r, d);
+      if (!aiXem && !canDuyetVideo) {
+        var kqD = {};
+        try { kqD = JSON.parse(String(r.link_dang || '{}')) || {}; } catch (eD) { kqD = {}; }
+        kqD._duyet_luc = Date.now();
+        ghi_(sh, r._row, { duyet: 'DA_DUYET', link_dang: JSON.stringify(kqD) });
+      }
       nhatKy_('DUNG_VIDEO', r.id + ' -> xong, file ' + d.file_id);
       var tinVideo = '🎞 Video đã dựng xong: ' + (r.chu_de || r.id) + (d.giay ? ' (' + d.giay + ' giây)' : '') +
         '\nhttps://drive.google.com/file/d/' + d.file_id + '/view' +
-        (canDuyetVideo ? '\n👉 Xem rồi trả lời: /duyet ' + r.id + ' (cho đăng) | /sua ' + r.id + ' <góp ý> (sửa rồi dựng lại) | /bo ' + r.id + ' (không đăng)' : '');
+        (canDuyetVideo ? '\n👉 Xem rồi trả lời: /duyet ' + r.id + ' (cho đăng) | /sua ' + r.id + ' <góp ý> (sửa rồi dựng lại) | /bo ' + r.id + ' (không đăng)' : '\n✅ Đã xếp lịch tự động đăng (2 video/ngày). Nếu muốn sửa/bỏ: /sua ' + r.id + ' <góp ý> | /bo ' + r.id);
       if (aiXem) {
-        nhatKy_('AI_XEM', r.id + ': video xong, AI đang xem trước khi gửi bạn duyệt');
+        nhatKy_('AI_XEM', r.id + ': video xong, AI đang tự kiểm tra yêu cầu trước khi xếp lịch đăng');
       } else if (laUuTien_(r) && r.zalo_chat) {
         var cacheV = CacheService.getScriptCache();
         if (!cacheV.get('ZALO_VIDEO_' + r.id + '_' + d.file_id)) {
@@ -395,7 +416,8 @@ function doPost(e) {
       if (r.trang_thai !== 'DANG_DUNG') return tra({ ok: true, lap: true });   // lỗi đã được xử lý rồi
       baoLoiDung_(sh, r, d.loi || 'GITHUB_BAO_LOI');
     }
-    dongBoBangDoc();
+    // Đặt cờ để chayDonDep vẽ lại bảng DOC_DE / DOC_KICH_BAN ở nền thay vì giữ khóa 30-90 giây tại đây
+    PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1');
     return tra({ ok: true });
   } finally {
     khoa.releaseLock();

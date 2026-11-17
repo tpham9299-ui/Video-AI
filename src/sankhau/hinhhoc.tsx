@@ -35,7 +35,10 @@ export const HinhHoc: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
   const t = st.t - st.ta;
   const mauChinh = neon(v.mau, TRANG);
   const nhan: React.ReactNode[] = [];
-  const nCanh = v.canh.length;
+  const cungCanh = (u1: string, v1: string, u2: string, v2: string) => (u1 === u2 && v1 === v2) || (u1 === v2 && v1 === u2);
+  // Đảm bảo cạnh bị khuất (khuat) hoặc đường thẳng phụ (phu) không bao giờ bị vẽ đè thành nét liền trong canh
+  const canhLien = v.canh.filter(([a, b]) => !v.khuat.some(([ka, kb]) => cungCanh(a, b, ka, kb)) && !v.phu.some(([pa, pb]) => cungCanh(a, b, pa, pb)));
+  const nCanh = canhLien.length;
   const tCanh = (i: number) => 0.15 + i * Math.min(0.4, 2.2 / Math.max(1, nCanh));
   const tSau = tCanh(nCanh) + 0.2;
   const tamHinh = (() => {
@@ -51,8 +54,8 @@ export const HinhHoc: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
           const sang = st.chonCa > 0 || st.sang > 0;
           return <polygon key={`to${i}`} points={ds.map((k) => `${P(k).x},${P(k).y}`).join(' ')} fill={mau} fillOpacity={0.18 * kep((t - tSau) / 0.6) + (sang ? 0.12 * st.sang : 0)} stroke="none" />;
         })}
-        {/* cạnh: vẽ dần theo thứ tự; cạnh được chọn sáng cam và dày hơn */}
-        {v.canh.map(([a, b, ten], i) => {
+        {/* cạnh nhìn thấy (nét liền): vẽ dần theo thứ tự; cạnh được chọn sáng cam và dày hơn */}
+        {canhLien.map(([a, b, ten], i) => {
           const A = P(a);
           const B = P(b);
           const c = st.chon.get(i + 1);

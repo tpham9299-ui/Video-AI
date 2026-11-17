@@ -6,24 +6,26 @@ import {FONT_DAM} from './theme';
 import {Toan} from './Toan';
 import {texSangChu} from './chu';
 
-// THẺ DỮ KIỆN: 2-4 dữ kiện then chốt của đề ("V = 32 m³", "Không nắp"...) nằm thành hàng thẻ kính nhỏ ngay dưới thanh chủ đề
-// suốt phần giải, để người xem lướt vào giữa video vẫn biết đề đang hỏi gì. Thẻ bật lên lần lượt, thở nhẹ; ẩn ở cảnh bài học.
+const MAU_THE_DK = ['#38bdf8', '#fb7185', '#fbbf24', '#4ade80'];
+
+// THẺ DỮ KIỆN TÓM TẮT (phong cách chip thông số của Anh Shiper Toán):
+// Chỉ hiện ở phần mô hình / đầu phần giải để nhắc nhanh thông số chính với màu phân biệt từng đối tượng, không lặp lại suốt cuối video.
 export const DuKien: React.FC<{ds: string[]; tu: number; den: number; hud?: string}> = ({ds, tu, den, hud}) => {
   const f = useCurrentFrame();
   if (!ds.length || f < tu - 2 || f > den + 12) return null;
   const mo = kep((den + 12 - f) / 12);
   if (hud) {
-    // bộ hiệu ứng mới: một dòng HUD mảnh (không khung), các dữ kiện cách nhau bằng chấm màu nhấn, hiện từ mờ sang nét
     return (
-      <div style={{position: 'absolute', left: 40, right: 40, top: 212, display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', columnGap: 18, rowGap: 4, opacity: mo * 0.95, pointerEvents: 'none'}}>
-        {ds.map((d, i) => {
+      <div style={{position: 'absolute', left: 40, right: 40, top: 208, display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', columnGap: 14, rowGap: 6, opacity: mo * 0.96, pointerEvents: 'none'}}>
+        {ds.slice(0, 3).map((d, i) => {
           const e = expoOut(kep((f - tu - i * 5) / 12));
+          const mau = MAU_THE_DK[i % MAU_THE_DK.length];
           const laToan = /[\\^_=]/.test(d);
           const tex = laToan ? d.split(/\s+/).map((w) => (/[\\^_=0-9]/.test(w) || w.length <= 1 ? w : `\\text{${w}}`)).join('\\ ') : d;
           return (
-            <div key={i} style={{display: 'flex', alignItems: 'center', gap: 10, opacity: e, filter: e < 0.98 ? `blur(${(1 - e) * 6}px)` : undefined, whiteSpace: 'nowrap'}}>
-              {i ? <span style={{width: 6, height: 6, borderRadius: 3, background: hud, boxShadow: `0 0 8px ${hud}`, marginRight: 8}} /> : null}
-              {laToan ? <Toan tex={tex} size={31} color="rgba(240,246,248,0.95)" maxWidth={960} /> : <span style={{fontFamily: FONT_DAM, fontWeight: 800, fontSize: 29, letterSpacing: 1, color: 'rgba(240,246,248,0.95)', textTransform: 'uppercase'}}>{texSangChu(d)}</span>}
+            <div key={i} style={{display: 'flex', alignItems: 'center', gap: 8, padding: '4px 14px', borderRadius: 12, background: 'rgba(15,23,42,0.82)', border: `1.5px solid ${mau}66`, opacity: e, filter: e < 0.98 ? `blur(${(1 - e) * 5}px)` : undefined, whiteSpace: 'nowrap'}}>
+              <span style={{width: 7, height: 7, borderRadius: 4, background: mau, boxShadow: `0 0 8px ${mau}`}} />
+              {laToan ? <Toan tex={tex} size={27} color={mau} maxWidth={920} /> : <span style={{fontFamily: FONT_DAM, fontWeight: 800, fontSize: 25, color: mau}}>{texSangChu(d)}</span>}
             </div>
           );
         })}

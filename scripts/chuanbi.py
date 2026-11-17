@@ -297,7 +297,7 @@ def ghi_key_hong(k, code, noi):
 
 def gemini_tts(text, tep_wav, giong, model, phong_cach):
     """Giọng Gemini TTS (Google): một lần gọi cho cả lời thoại của cảnh. Trả về tệp WAV 24 kHz.
-    Dùng mọi key trong GEMINI_KEYS / GEMINI_API_KEY (GitHub Secret), xoay vòng khi key hết hạn mức ngày hoặc hỏng."""
+    Dùng mọi key trong GEMINI_KEYS / GEMINI_API_KEY (GitHub Secret), tự động đổi model TTS dự phòng và xoay vòng key khi gặp lỗi."""
     import base64
     import urllib.error
     import urllib.request
@@ -310,61 +310,74 @@ def gemini_tts(text, tep_wav, giong, model, phong_cach):
         "generationConfig": {"responseModalities": ["AUDIO"],
                              "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": giong}}}},
     }
-    url = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent" % model
+    ds_model = []
+    for m_ten in [model, os.environ.get("TTS_MODEL_DU_PHONG") or "", "gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"]:
+        for m_item in str(m_ten or "").split(","):
+            m_s = m_item.strip()
+            if m_s and m_s not in ds_model:
+                ds_model.append(m_s)
     loi = None
     if not _BAT_DAU_GEMINI:
         _BAT_DAU_GEMINI.append(time.time())
 
     def con_lai():
         return GIAY_TOI_DA_GEMINI - (time.time() - _BAT_DAU_GEMINI[0])
-    for vong in range(4):
-        dung = [k for k in keys if k not in KEY_HONG and k not in KEY_HET_NGAY]
-        if not dung:
-            break
-        cho_min = 0
-        for key in dung:
-            req = urllib.request.Request(url, data=json.dumps(than).encode("utf8"), method="POST",
-                                         headers={"Content-Type": "application/json", "x-goog-api-key": key})
-            if con_lai() < 15:
-                raise RuntimeError("Gemini TTS quá %d giây (chậm/treo) -> dùng giọng dự phòng" % GIAY_TOI_DA_GEMINI)
-            try:
-                with urllib.request.urlopen(req, timeout=max(15, min(120, con_lai()))) as r:
-                    d = json.loads(r.read().decode("utf8"))
-                phan = d["candidates"][0]["content"]["parts"]
-                b64 = next(p["inlineData"]["data"] for p in phan if "inlineData" in p)
-                pcm = tep_wav + ".pcm"
-                with open(pcm, "wb") as f:
-                    f.write(base64.b64decode(b64))
-                chay(["ffmpeg", "-y", "-loglevel", "error", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", pcm, tep_wav])
-                os.remove(pcm)
-                return
-            except urllib.error.HTTPError as e:
-                noi = e.read().decode("utf8", "ignore")[:4000]
-                loi = "HTTP %d %s" % (e.code, noi[:300])
-                if e.code == 429 and re.search(r"PerDay|per day|daily", noi, re.I):
-                    KEY_HET_NGAY.add(key)   # hết hạn mức NGÀY: sang key kế, không gọi lại key này
-                    print("Gemini TTS: key %s… hết hạn mức ngày, chuyển key khác" % key[:6])
-                    continue
-                if e.code == 401 or (e.code in (400, 403) and re.search(r"API_KEY_INVALID|API key not valid|API key expired|SERVICE_DISABLED|has not been used|is disabled|suspended|PERMISSION_DENIED|billing", noi, re.I)):
-                    # bị model giọng đọc từ chối: key có thể vẫn tốt với model chữ (key dạng "AQ.") -> chỉ bỏ key cho giọng đọc, không báo hỏng
-                    KEY_HONG.add(key)
-                    print("Gemini TTS: key %s bị model giọng từ chối (HTTP %d), bỏ key này cho giọng đọc" % (key[:6] + "_" + key[-4:], e.code))
-                    continue
-                if e.code in (429, 500, 503):
-                    m = re.search(r'"retryDelay":\s*"(\d+)', noi)
-                    cho = min(60, int(m.group(1)) + 2) if m else 10 * (vong + 1)
-                    cho_min = min(cho_min, cho) if cho_min else cho
-                    continue
-                raise RuntimeError("Gemini TTS lỗi: %s" % loi)
-            except Exception as e:
-                loi = str(e)
-        if not cho_min:
-            break
-        if con_lai() < cho_min + 20:
-            break
-        print("Gemini TTS: mọi key đang bận/giới hạn theo phút, chờ %d giây rồi thử lại" % cho_min)
-        time.sleep(cho_min)
-    raise RuntimeError("Gemini TTS lỗi: %s" % loi)
+    for md in ds_model:
+        url = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent" % md
+        chuyen_model = False
+        for vong in range(3):
+            dung = [k for k in keys if k not in KEY_HONG and (md + "|" + k) not in KEY_HET_NGAY and k not in KEY_HET_NGAY]
+            if not dung:
+                break
+            cho_min = 0
+            for key in dung:
+                req = urllib.request.Request(url, data=json.dumps(than).encode("utf8"), method="POST",
+                                             headers={"Content-Type": "application/json", "x-goog-api-key": key})
+                if con_lai() < 15:
+                    raise RuntimeError("Gemini TTS quá %d giây (chậm/treo) -> dùng giọng dự phòng" % GIAY_TOI_DA_GEMINI)
+                try:
+                    with urllib.request.urlopen(req, timeout=max(15, min(120, con_lai()))) as r:
+                        d = json.loads(r.read().decode("utf8"))
+                    phan = d["candidates"][0]["content"]["parts"]
+                    b64 = next(p["inlineData"]["data"] for p in phan if "inlineData" in p)
+                    pcm = tep_wav + ".pcm"
+                    with open(pcm, "wb") as f:
+                        f.write(base64.b64decode(b64))
+                    chay(["ffmpeg", "-y", "-loglevel", "error", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", pcm, tep_wav])
+                    os.remove(pcm)
+                    return
+                except urllib.error.HTTPError as e:
+                    noi = e.read().decode("utf8", "ignore")[:4000]
+                    loi = "HTTP %d (%s) %s" % (e.code, md, noi[:300])
+                    if e.code == 404:
+                        print("Gemini TTS: model %s không khả dụng (HTTP 404) -> tự động đổi model TTS khác" % md)
+                        chuyen_model = True
+                        break
+                    if e.code == 429 and re.search(r"PerDay|per day|daily", noi, re.I):
+                        KEY_HET_NGAY.add(md + "|" + key)   # hết hạn mức NGÀY cho model này: sang key kế
+                        print("Gemini TTS: key %s… hết hạn mức ngày cho %s, chuyển key/model khác" % (key[:6], md))
+                        continue
+                    if e.code == 401 or (e.code in (400, 403) and re.search(r"API_KEY_INVALID|API key not valid|API key expired|SERVICE_DISABLED|has not been used|is disabled|suspended|PERMISSION_DENIED|billing", noi, re.I)):
+                        KEY_HONG.add(key)
+                        print("Gemini TTS: key %s bị model giọng từ chối (HTTP %d), bỏ key này cho giọng đọc" % (key[:6] + "_" + key[-4:], e.code))
+                        continue
+                    if e.code in (429, 500, 503):
+                        m = re.search(r'"retryDelay":\s*"(\d+)', noi)
+                        cho = min(60, int(m.group(1)) + 2) if m else 10 * (vong + 1)
+                        cho_min = min(cho_min, cho) if cho_min else cho
+                        continue
+                    print("Gemini TTS: model %s trả lỗi HTTP %d -> thử đổi model TTS kế tiếp" % (md, e.code))
+                    chuyen_model = True
+                    break
+                except Exception as e:
+                    loi = str(e)
+            if chuyen_model or not cho_min:
+                break
+            if con_lai() < cho_min + 20:
+                break
+            print("Gemini TTS (%s): mọi key đang bận/giới hạn theo phút, chờ %d giây rồi thử lại" % (md, cho_min))
+            time.sleep(cho_min)
+    raise RuntimeError("Gemini TTS lỗi trên mọi model (%s): %s" % (", ".join(ds_model), loi))
 
 
 def tao_giong_gemini(canh, thu_muc, args):
@@ -1011,13 +1024,19 @@ def main():
     print("Giọng của video này: Gemini %s (dự phòng edge %s)" % (args.giong_gemini, args.giong))
     # cảnh ghi "dung_ban_ve": bung lại vật/điểm/vùng từ bản vẽ chung kb.ban_ve (Apps Script nén để kịch bản nhiều cảnh vừa giới hạn gửi)
     bv = kb.get("ban_ve") if isinstance(kb.get("ban_ve"), dict) else None
-    for c in kb.get("canh") or []:
+    for idx_c, c in enumerate(kb.get("canh") or []):
         du = (c.get("minh_hoa") or {}).get("du_lieu") if isinstance(c.get("minh_hoa"), dict) else None
         for v in (du.get("vat") or []) if isinstance(du, dict) else []:
             if isinstance(v, dict) and v.get("dung_ban_ve") and bv:
                 for k in ("vat", "diem", "vung", "nhin"):
                     if k in bv and k not in v:
-                        v[k] = bv[k]
+                        v[k] = json.loads(json.dumps(bv[k]))
+                if "do" not in v and "do" in bv and isinstance(bv["do"], list):
+                    ds_do = json.loads(json.dumps(bv["do"]))
+                    for idx_d, d_item in enumerate(ds_do):
+                        if isinstance(d_item, dict):
+                            d_item["buoc"] = min(4, 1 + ((idx_d + idx_c) % 4))
+                    v["do"] = ds_do
     anh_sp = chuan_anh_san_pham(kb, args.public)
     de_bai_the = the_de_bai(kb)
     canh = kb.get("canh") or []
