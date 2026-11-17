@@ -438,7 +438,7 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
 - **Vấn đề đã xử lý**:
   1. **Lỗi workflow GitHub Actions dừng đột ngột ở bước `Ghi kịch bản` (`dung-video.yml`)**:
      - *Nguyên nhân*: Thẻ heredoc `python3 - <<'PY'` ở dòng 146 bị thụt lề bên trong khối `if [ -n "$F_KB" ]`, khiến ký tự kết thúc `PY` ở dòng 156 có khoảng trắng đầu dòng, bash không nhận diện được và báo lỗi cú pháp `syntax error: unexpected end of file (wanted 'PY')` với exit code 2.
-     - *Khắc phục*: Thay thế hoàn toàn đoạn heredoc bằng lệnh `python3 -c "..."` an toàn tuyệt đối, không phụ thuộc vào thụt lề cú pháp heredoc.
+     - *Khắc phục*: Thay thế hoàn toàn đoạn heredoc bằng lệnh `python3 -c "..."` viết thành 1 dòng inline có thụt lề chuẩn, an toàn tuyệt đối, loại bỏ hoàn toàn lỗi cú pháp heredoc và lỗi cú pháp YAML block scalar.
   2. **Đồ họa 3D cho bài toán thực tế (`THUC_TE`) chân thực và sống động**:
      - Nâng cấp [src/sankhau/vat3d.tsx](file:///e:/Video-AI/src/sankhau/vat3d.tsx): Thêm hiệu ứng chuyển động đung đưa 3D tinh tế theo trục yaw (`xoay3D = sin(t * 0.9) * 2.8°`) và pitch (`nghieng3D = cos(t * 0.7) * 1.6°`) giúp vật thể luôn có chiều sâu không gian chân thực; thêm mặt bóng đổ tiếp xúc sàn (`coBongDat`); áp dụng bảng độ sáng đa hướng `DO_SANG_MAT` và gradient kim loại/đá khối cho các mặt trước, trên, hông của đa diện.
      - Nâng cấp [src/sankhau/vatthuc.tsx](file:///e:/Video-AI/src/sankhau/vatthuc.tsx): Bổ sung mặt tường hông 3D, mái ngói nghiêng 3D, cột trụ kim loại phản quang có dải gradient, và bóng đổ dưới mặt đất cho `toa_nha`, `ngan_hang`, `nha`, `truong_hoc`...
