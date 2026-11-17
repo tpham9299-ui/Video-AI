@@ -1,6 +1,7 @@
 import React, {useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import {continueRender, delayRender} from 'remotion';
 import katex from 'katex';
+import {texSangChu} from './chu';
 import {ghepTu, kep01, smooth, tachTu, Tu} from './manim';
 import {napPhong} from './phong';
 import {FONT} from './theme';
@@ -20,9 +21,10 @@ const htmlTu = (tex: string): string => {
   let v = cacheHtml.get(tex);
   if (v === undefined) {
     try {
-      v = katex.renderToString(tex, {throwOnError: false, strict: 'ignore', displayMode: false, output: 'html'});
+      v = katex.renderToString(tex.replace(/(^|[^\\])%/g, '$1\\%').replace(/\\frac(?=\s*\{)/g, '\\dfrac'), {throwOnError: true, strict: 'ignore', displayMode: false, output: 'html'});
     } catch (e) {
-      v = tex;
+      // TeX sai cú pháp: hiện dạng chữ đọc được, không bao giờ hiện mã đỏ thô
+      v = texSangChu(tex).replace(/[&<>]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'})[c] as string);
     }
     cacheHtml.set(tex, v);
   }
@@ -99,8 +101,11 @@ export const BienDoi: React.FC<{
   );
   if (!geo) return <div style={{position: 'relative', width: maxWidth, height: co * 2}}>{ban}</div>;
 
-  const le = can === 'trai' ? 50 : 0;
-  const sc = geo.map((g) => Math.min(1, (maxWidth - 2 * le) / g.w));
+  const le0 = can === 'trai' ? 30 : 0;
+  const sc = geo.map((g) => Math.min(1, (maxWidth - 2 * le0) / g.w));
+  // 'trai': cả khối được đặt giữa theo dòng rộng nhất (dòng cuối), phần đầu dòng vẫn đứng yên khi viết thêm -> cân đối hai bên
+  const rongNhat = Math.max(...geo.map((g, i) => g.w * sc[i]));
+  const le = can === 'trai' ? Math.max(le0, (maxWidth - rongNhat) / 2) : 0;
   const cao = Math.max(...geo.map((g, s) => g.h * sc[s])) + 64;
   const cx = maxWidth / 2;
   const cy = cao / 2;
@@ -190,7 +195,10 @@ export const BienDoi: React.FC<{
       const pad = 20;
       khung = (
         <svg width={maxWidth} height={cao} style={{position: 'absolute', left: 0, top: 0, overflow: 'visible'}}>
-          <rect x={x0 - pad} y={y0 - pad} width={x1 - x0 + 2 * pad} height={y1 - y0 + 2 * pad} rx={16} fill="none" stroke={mauKhung} strokeWidth={4} strokeLinecap="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - smooth(u)} />
+          {/* như video mẫu: khung neon xanh phát sáng, hơi nghiêng, nền xanh mờ đổ dần vào sau khi viền vẽ xong */}
+          <g transform={`rotate(${-2.5 * smooth(u)} ${(x0 + x1) / 2} ${(y0 + y1) / 2})`}>
+            <rect x={x0 - pad} y={y0 - pad} width={x1 - x0 + 2 * pad} height={y1 - y0 + 2 * pad} rx={18} fill={`rgba(59,242,154,${0.14 * kep01((u - 0.5) * 2)})`} stroke="#3BF29A" strokeWidth={6} strokeLinecap="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - smooth(u)} style={{filter: 'drop-shadow(0 0 10px #3BF29A) drop-shadow(0 0 22px rgba(59,242,154,0.6))'}} />
+          </g>
         </svg>
       );
     }

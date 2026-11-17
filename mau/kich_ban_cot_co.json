@@ -1,0 +1,783 @@
+{
+ "id": "ZL-mau-cot-co",
+ "mon": "THUC_TE",
+ "lop": "9",
+ "chu_de": "Đo chiều cao cột cờ",
+ "chu_de_ngan": "Đo cột cờ",
+ "de_bai": "Một bạn học sinh đứng cách chân cột cờ 20 m, nhìn lên đỉnh cột cờ với góc nâng 35°. Mắt bạn cách mặt đất 1,6 m. Tính chiều cao cột cờ (làm tròn đến 0,1 m).",
+ "dap_an": "15.6",
+ "dap_an_hien": "15,6 m",
+ "dap_an_cuoi": "15.6",
+ "tieu_de": "Đo cột cờ cao bao nhiêu mà không cần trèo lên?",
+ "hook": "Không trèo lên, chỉ cần một góc nhìn, bạn đo được cột cờ cao bao nhiêu?",
+ "hook_chu": "Đo CỘT CỜ không cần trèo",
+ "hook_kieu": "thach_thuc",
+ "nhan_manh": [
+  "CỘT CỜ"
+ ],
+ "tieu_de_bia": "Đo cột cờ chỉ bằng góc nhìn",
+ "y_tuong_chinh": "Tia nhìn, mặt đất và cột cờ tạo tam giác vuông: tan góc nâng = phần cột trên tầm mắt chia khoảng cách, rồi cộng chiều cao mắt.",
+ "de_cho": [
+  "Đứng cách chân cột cờ 20 m",
+  "Góc nâng nhìn đỉnh cột: 35°",
+  "Mắt cách mặt đất 1,6 m"
+ ],
+ "can_tim": "Chiều cao cột cờ (làm tròn 0,1 m)?",
+ "du_kien": [
+  "20 m",
+  "35°",
+  "Mắt 1,6 m"
+ ],
+ "bai_hoc_rut_ra": [
+  "Đo chiều cao: dựng tam giác vuông từ tia nhìn",
+  "Góc nâng và cạnh kề: dùng tan",
+  "Nhớ cộng chiều cao tầm mắt"
+ ],
+ "video_tiep_theo": "Đo bề rộng dòng sông không cần qua sông",
+ "canh": [
+  {
+   "so": 1,
+   "loai": "mo_dau",
+   "tieu_de_canh": "Đo cột cờ không cần trèo",
+   "tu_khoa": "cột cờ",
+   "loi_thoai": "Không trèo lên, chỉ cần một góc nhìn, bạn đo được cột cờ cao bao nhiêu?",
+   "noi_dung_man_hinh": [],
+   "trinh_bay": "xep",
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Sân trường: cột cờ đỏ sao vàng bay phấp phới, bạn học sinh đứng xa nhìn lên, mặt trời và cây phía sau.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "canh",
+       "loai": "canh_that",
+       "x": 50,
+       "y": 50,
+       "nhin": "ngang",
+       "buoc": 1,
+       "vat": [
+        {
+         "ten": "mat_troi"
+        },
+        {
+         "ma": "A",
+         "ten": "nguoi",
+         "cao": 1.6,
+         "x": 0
+        },
+        {
+         "ma": "T",
+         "ten": "cay",
+         "cao": 4,
+         "x": 9
+        },
+        {
+         "ma": "B",
+         "ten": "cot_co",
+         "cao": 15.6,
+         "x": 20,
+         "mau": "cam"
+        }
+       ],
+       "diem": [
+        {
+         "ma": "H",
+         "x": 20,
+         "cao": 1.6
+        }
+       ],
+       "do": []
+      }
+     ],
+     "hanh_dong": []
+    }
+   }
+  },
+  {
+   "so": 2,
+   "loai": "de_bai",
+   "tieu_de_canh": "Đề cho gì, hỏi gì?",
+   "tu_khoa": "hỏi gì",
+   "loi_thoai": "Một bạn đứng cách chân cột cờ hai mươi mét, nhìn lên đỉnh cột với góc nâng ba mươi lăm độ. Mắt bạn cách mặt đất một phẩy sáu mét. Hỏi cột cờ cao bao nhiêu mét?",
+   "noi_dung_man_hinh": [],
+   "trinh_bay": "xep",
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Hiện khoảng cách 20 m dưới đất, tia nhìn vàng từ mắt tới đỉnh cột, góc 35°, chiều cao mắt 1,6 m, nhãn h = ? cạnh cột.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "canh",
+       "loai": "canh_that",
+       "x": 50,
+       "y": 50,
+       "nhin": "ngang",
+       "buoc": 1,
+       "vat": [
+        {
+         "ten": "mat_troi"
+        },
+        {
+         "ma": "A",
+         "ten": "nguoi",
+         "cao": 1.6,
+         "x": 0
+        },
+        {
+         "ma": "T",
+         "ten": "cay",
+         "cao": 4,
+         "x": 9
+        },
+        {
+         "ma": "B",
+         "ten": "cot_co",
+         "cao": 15.6,
+         "x": 20,
+         "mau": "cam"
+        }
+       ],
+       "diem": [
+        {
+         "ma": "H",
+         "x": 20,
+         "cao": 1.6
+        }
+       ],
+       "do": [
+        {
+         "kieu": "khoang_cach",
+         "tu": "A",
+         "den": "B",
+         "nhan": "20 m",
+         "buoc": 2
+        },
+        {
+         "kieu": "chieu_cao",
+         "vat": "A",
+         "nhan": "1,6 m",
+         "ben": "trai",
+         "buoc": 2
+        },
+        {
+         "kieu": "tia",
+         "tu": "A.mat",
+         "den": "B.dinh",
+         "goc": "35°",
+         "buoc": 3
+        },
+        {
+         "kieu": "chieu_cao",
+         "vat": "B",
+         "nhan": "h = ?",
+         "buoc": 3
+        }
+       ]
+      }
+     ],
+     "hanh_dong": []
+    }
+   }
+  },
+  {
+   "so": 3,
+   "loai": "mo_hinh_hoa",
+   "tieu_de_canh": "Tia nhìn tạo tam giác vuông",
+   "tu_khoa": "tam giác vuông",
+   "loi_thoai": "Kẻ đường ngang từ mắt tới cột. Tia nhìn, đường ngang và phần cột phía trên tạo thành một tam giác vuông. Gọi phần cột trên tầm mắt là x.",
+   "noi_dung_man_hinh": [
+    "\\tan 35^\\circ = \\dfrac{x}{20}"
+   ],
+   "trinh_bay": "xep",
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Tam giác vuông tô cam mọc ra giữa mắt, chân đường ngang và đỉnh cột; nhãn x cạnh phần cột trên tầm mắt.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "canh",
+       "loai": "canh_that",
+       "x": 50,
+       "y": 50,
+       "nhin": "ngang",
+       "buoc": 1,
+       "vat": [
+        {
+         "ten": "mat_troi"
+        },
+        {
+         "ma": "A",
+         "ten": "nguoi",
+         "cao": 1.6,
+         "x": 0
+        },
+        {
+         "ma": "T",
+         "ten": "cay",
+         "cao": 4,
+         "x": 9
+        },
+        {
+         "ma": "B",
+         "ten": "cot_co",
+         "cao": 15.6,
+         "x": 20,
+         "mau": "cam"
+        }
+       ],
+       "diem": [
+        {
+         "ma": "H",
+         "x": 20,
+         "cao": 1.6
+        }
+       ],
+       "do": [
+        {
+         "kieu": "khoang_cach",
+         "tu": "A",
+         "den": "B",
+         "nhan": "20 m",
+         "buoc": 1
+        },
+        {
+         "kieu": "tia",
+         "tu": "A.mat",
+         "den": "B.dinh",
+         "goc": "35°",
+         "buoc": 1
+        },
+        {
+         "kieu": "tam_giac",
+         "dinh": [
+          "A.mat",
+          "H",
+          "B.dinh"
+         ],
+         "buoc": 2
+        },
+        {
+         "kieu": "vuong",
+         "tai": "H",
+         "buoc": 2
+        },
+        {
+         "kieu": "chieu_cao",
+         "vat": "B",
+         "tu": "H",
+         "den": "B.dinh",
+         "nhan": "x",
+         "buoc": 3
+        }
+       ]
+      }
+     ],
+     "hanh_dong": []
+    }
+   }
+  },
+  {
+   "so": 4,
+   "loai": "bay",
+   "tieu_de_canh": "Lỗi hay gặp: quên tầm mắt",
+   "tu_khoa": "quên",
+   "loi_thoai": "Lỗi hay gặp nhất: tính được x rồi chốt luôn là chiều cao cột cờ. Sai, vì x chỉ là phần cột phía trên tầm mắt, còn thiếu một phẩy sáu mét bên dưới.",
+   "noi_dung_man_hinh": [
+    "h = x \\;\\; \\text{(sai)}"
+   ],
+   "trinh_bay": "xep",
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Nhãn đỏ 'Quên 1,6 m' rung, phần cột dưới tầm mắt nhấp sáng.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "canh",
+       "loai": "canh_that",
+       "x": 50,
+       "y": 50,
+       "nhin": "ngang",
+       "buoc": 1,
+       "vat": [
+        {
+         "ten": "mat_troi"
+        },
+        {
+         "ma": "A",
+         "ten": "nguoi",
+         "cao": 1.6,
+         "x": 0
+        },
+        {
+         "ma": "T",
+         "ten": "cay",
+         "cao": 4,
+         "x": 9
+        },
+        {
+         "ma": "B",
+         "ten": "cot_co",
+         "cao": 15.6,
+         "x": 20,
+         "mau": "cam"
+        }
+       ],
+       "diem": [
+        {
+         "ma": "H",
+         "x": 20,
+         "cao": 1.6
+        }
+       ],
+       "do": [
+        {
+         "kieu": "khoang_cach",
+         "tu": "A",
+         "den": "B",
+         "nhan": "20 m",
+         "buoc": 1
+        },
+        {
+         "kieu": "tia",
+         "tu": "A.mat",
+         "den": "B.dinh",
+         "goc": "35°",
+         "buoc": 1
+        },
+        {
+         "kieu": "tam_giac",
+         "dinh": [
+          "A.mat",
+          "H",
+          "B.dinh"
+         ],
+         "buoc": 1
+        },
+        {
+         "kieu": "chieu_cao",
+         "vat": "B",
+         "tu": "H",
+         "den": "B.dinh",
+         "nhan": "x",
+         "buoc": 1
+        },
+        {
+         "kieu": "chieu_cao",
+         "vat": "A",
+         "nhan": "1,6 m",
+         "ben": "trai",
+         "buoc": 2
+        }
+       ]
+      },
+      {
+       "id": "sai",
+       "loai": "nhan",
+       "x": 50,
+       "y": 12,
+       "noi_dung": "Quên 1,6 m → sai",
+       "mau": "do",
+       "buoc": 2
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "sai",
+       "kieu": "rung"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "so": 5,
+   "loai": "diem_chot",
+   "tieu_de_canh": "Góc nâng và cạnh kề: dùng tan",
+   "tu_khoa": "tan",
+   "loi_thoai": "Trong tam giác vuông, tan góc nâng bằng cạnh đối chia cạnh kề. Cạnh đối là x, cạnh kề là hai mươi mét, nên x bằng hai mươi nhân tan ba mươi lăm độ.",
+   "noi_dung_man_hinh": [
+    "\\tan 35^\\circ = \\dfrac{x}{20}",
+    "x = 20\\tan 35^\\circ"
+   ],
+   "trinh_bay": "xep",
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Phóng vào tam giác vuông, cạnh x sáng lên.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "canh",
+       "loai": "canh_that",
+       "x": 50,
+       "y": 50,
+       "nhin": "ngang",
+       "buoc": 1,
+       "vat": [
+        {
+         "ten": "mat_troi"
+        },
+        {
+         "ma": "A",
+         "ten": "nguoi",
+         "cao": 1.6,
+         "x": 0
+        },
+        {
+         "ma": "T",
+         "ten": "cay",
+         "cao": 4,
+         "x": 9
+        },
+        {
+         "ma": "B",
+         "ten": "cot_co",
+         "cao": 15.6,
+         "x": 20,
+         "mau": "cam"
+        }
+       ],
+       "diem": [
+        {
+         "ma": "H",
+         "x": 20,
+         "cao": 1.6
+        }
+       ],
+       "do": [
+        {
+         "kieu": "tia",
+         "tu": "A.mat",
+         "den": "B.dinh",
+         "goc": "35°",
+         "buoc": 1
+        },
+        {
+         "kieu": "tam_giac",
+         "dinh": [
+          "A.mat",
+          "H",
+          "B.dinh"
+         ],
+         "buoc": 1
+        },
+        {
+         "kieu": "vuong",
+         "tai": "H",
+         "buoc": 1
+        },
+        {
+         "kieu": "chieu_cao",
+         "vat": "B",
+         "tu": "H",
+         "den": "B.dinh",
+         "nhan": "x",
+         "buoc": 2
+        }
+       ]
+      }
+     ],
+     "hanh_dong": []
+    }
+   }
+  },
+  {
+   "so": 6,
+   "loai": "tinh_toan",
+   "tieu_de_canh": "Tính x rồi cộng tầm mắt",
+   "tu_khoa": "cộng",
+   "loi_thoai": "Tan ba mươi lăm độ xấp xỉ không phẩy bảy. Vậy x xấp xỉ mười bốn mét. Cộng thêm tầm mắt một phẩy sáu mét.",
+   "noi_dung_man_hinh": [
+    "x = 20 \\cdot 0{,}7002 \\approx 14{,}0\\,m",
+    "h = x + 1{,}6"
+   ],
+   "trinh_bay": "xep",
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Phần cột trên tầm mắt sáng cam, phần dưới sáng xanh, hai phần ghép thành cả cột.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "canh",
+       "loai": "canh_that",
+       "x": 50,
+       "y": 50,
+       "nhin": "ngang",
+       "buoc": 1,
+       "vat": [
+        {
+         "ten": "mat_troi"
+        },
+        {
+         "ma": "A",
+         "ten": "nguoi",
+         "cao": 1.6,
+         "x": 0
+        },
+        {
+         "ma": "T",
+         "ten": "cay",
+         "cao": 4,
+         "x": 9
+        },
+        {
+         "ma": "B",
+         "ten": "cot_co",
+         "cao": 15.6,
+         "x": 20,
+         "mau": "cam"
+        }
+       ],
+       "diem": [
+        {
+         "ma": "H",
+         "x": 20,
+         "cao": 1.6
+        }
+       ],
+       "do": [
+        {
+         "kieu": "tam_giac",
+         "dinh": [
+          "A.mat",
+          "H",
+          "B.dinh"
+         ],
+         "buoc": 1
+        },
+        {
+         "kieu": "chieu_cao",
+         "vat": "B",
+         "tu": "H",
+         "den": "B.dinh",
+         "nhan": "x",
+         "buoc": 1
+        },
+        {
+         "kieu": "chieu_cao",
+         "vat": "A",
+         "nhan": "1,6 m",
+         "ben": "trai",
+         "buoc": 2
+        },
+        {
+         "kieu": "chieu_cao",
+         "vat": "B",
+         "nhan": "h = ?",
+         "buoc": 3
+        }
+       ]
+      }
+     ],
+     "hanh_dong": []
+    }
+   }
+  },
+  {
+   "so": 7,
+   "loai": "dap_an",
+   "tieu_de_canh": "Cột cờ cao 15,6 m",
+   "tu_khoa": "15,6 m",
+   "loi_thoai": "Vậy cột cờ cao khoảng mười lăm phẩy sáu mét.",
+   "noi_dung_man_hinh": [
+    "h \\approx 14{,}0 + 1{,}6 = 15{,}6\\,m"
+   ],
+   "trinh_bay": "xep",
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Cột cờ sáng lên, nhãn h ≈ 15,6 m bật ra cạnh cột.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "canh",
+       "loai": "canh_that",
+       "x": 50,
+       "y": 50,
+       "nhin": "ngang",
+       "buoc": 1,
+       "vat": [
+        {
+         "ten": "mat_troi"
+        },
+        {
+         "ma": "A",
+         "ten": "nguoi",
+         "cao": 1.6,
+         "x": 0
+        },
+        {
+         "ma": "T",
+         "ten": "cay",
+         "cao": 4,
+         "x": 9
+        },
+        {
+         "ma": "B",
+         "ten": "cot_co",
+         "cao": 15.6,
+         "x": 20,
+         "mau": "cam"
+        }
+       ],
+       "diem": [
+        {
+         "ma": "H",
+         "x": 20,
+         "cao": 1.6
+        }
+       ],
+       "do": [
+        {
+         "kieu": "khoang_cach",
+         "tu": "A",
+         "den": "B",
+         "nhan": "20 m",
+         "buoc": 1
+        },
+        {
+         "kieu": "chieu_cao",
+         "vat": "B",
+         "nhan": "h ≈ 15,6 m",
+         "buoc": 2
+        }
+       ]
+      }
+     ],
+     "hanh_dong": []
+    }
+   }
+  },
+  {
+   "so": 8,
+   "loai": "kiem_tra",
+   "tieu_de_canh": "Thử lại bằng góc nâng",
+   "tu_khoa": "thử lại",
+   "loi_thoai": "Thử lại: phần cột trên tầm mắt là mười lăm phẩy sáu trừ một phẩy sáu, bằng mười bốn mét. Mười bốn chia hai mươi bằng không phẩy bảy, đúng bằng tan ba mươi lăm độ.",
+   "noi_dung_man_hinh": [
+    "\\dfrac{15{,}6 - 1{,}6}{20} = 0{,}7 \\approx \\tan 35^\\circ"
+   ],
+   "trinh_bay": "xep",
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Tam giác vuông nhấp sáng, góc 35° sáng vàng khớp kết quả.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "canh",
+       "loai": "canh_that",
+       "x": 50,
+       "y": 50,
+       "nhin": "ngang",
+       "buoc": 1,
+       "vat": [
+        {
+         "ten": "mat_troi"
+        },
+        {
+         "ma": "A",
+         "ten": "nguoi",
+         "cao": 1.6,
+         "x": 0
+        },
+        {
+         "ma": "T",
+         "ten": "cay",
+         "cao": 4,
+         "x": 9
+        },
+        {
+         "ma": "B",
+         "ten": "cot_co",
+         "cao": 15.6,
+         "x": 20,
+         "mau": "cam"
+        }
+       ],
+       "diem": [
+        {
+         "ma": "H",
+         "x": 20,
+         "cao": 1.6
+        }
+       ],
+       "do": [
+        {
+         "kieu": "tia",
+         "tu": "A.mat",
+         "den": "B.dinh",
+         "goc": "35°",
+         "buoc": 1
+        },
+        {
+         "kieu": "tam_giac",
+         "dinh": [
+          "A.mat",
+          "H",
+          "B.dinh"
+         ],
+         "buoc": 1
+        },
+        {
+         "kieu": "chieu_cao",
+         "vat": "B",
+         "tu": "H",
+         "den": "B.dinh",
+         "nhan": "x",
+         "buoc": 2
+        },
+        {
+         "kieu": "khoang_cach",
+         "tu": "A",
+         "den": "B",
+         "nhan": "20 m",
+         "buoc": 2
+        }
+       ]
+      }
+     ],
+     "hanh_dong": []
+    }
+   }
+  },
+  {
+   "so": 9,
+   "loai": "bai_hoc",
+   "tieu_de_canh": "Ghi nhớ khi đo chiều cao",
+   "tu_khoa": "Ghi nhớ",
+   "loi_thoai": "Ghi nhớ: đo chiều cao thì dựng tam giác vuông từ tia nhìn, dùng tan góc nâng, và luôn cộng chiều cao tầm mắt. Thử đo cây trong sân trường bạn xem.",
+   "noi_dung_man_hinh": [],
+   "trinh_bay": "xep",
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Thẻ ghi nhớ ba dòng lần lượt sáng.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "ds",
+       "loai": "danh_sach",
+       "x": 50,
+       "y": 50,
+       "noi_dung": "Ghi nhớ",
+       "ds": [
+        "Dựng tam giác vuông từ tia nhìn",
+        "Góc nâng + cạnh kề → dùng tan",
+        "Luôn cộng chiều cao tầm mắt"
+       ],
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "ds",
+       "kieu": "chon",
+       "chi_so": [
+        3
+       ]
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

@@ -1,20 +1,28 @@
 {
-  "_ghi_chu": "Chỉnh giao diện tại đây. doMoNen: độ tối phủ lên nền của bạn (0-1). nen_co_dinh: tên tệp trong thư mục nền Drive nếu muốn luôn dùng một nền; để trống = tự xoay vòng. mau: ghi đè bảng màu, ví dụ {\"vang\":\"#ffd54a\"}. kieuNen: \"manim\" (nền tối có lưới tọa độ, mặc định) hoặc \"gradient\". Chỉ áp dụng khi không có ảnh/video nền của bạn. thuongHieu: ten/khauHieu hiện ở góc trên bên trái cạnh logo (tệp logo.png đặt trong thư mục Drive VIDEO_XACSUAT/thuong_hieu), markNuoc = logo mờ lớn sau nội dung, handle = tên kênh nhỏ ở góc dưới, outroGiay = thời lượng màn kết (tệp outro.png hoặc outro.mp4 cùng thư mục). kieuToan: \"latex\" (công thức phông LaTeX có chân như Manim, mặc định) hoặc \"dong_nhat\" (cùng phông không chân với chữ). kieuHinh: \"manim\" (nét phẳng, mặc định) hoặc \"that\" (vật 3D). thanhTienDo/phuDe: bật tắt thanh tiến độ và phụ đề.",
+  "_ghi_chu": "Chỉnh giao diện tại đây. doMoNen: độ tối phủ lên nền của bạn (0-1). nen_co_dinh: tên tệp trong thư mục nền Drive nếu muốn luôn dùng một nền; để trống = tự xoay vòng. mau: ghi đè bảng màu, ví dụ {\"vang\":\"#ffd54a\"}. kieuNen: \"toi\" (nền tối gọn, lưới rất mờ, mặc định), \"cuc_quang\" (cực quang nhiều màu), \"neon\" (xanh đen có lưới mờ và đốm sáng), \"luoi\" (lưới phối cảnh), \"luoi_phang\" hoặc \"gradient\". Chỉ áp dụng khi không có ảnh/video nền của bạn. thuongHieu: ten/khauHieu hiện ở góc trên bên trái cạnh logo (tệp logo.png đặt trong thư mục Drive VIDEO_XACSUAT/thuong_hieu), markNuoc = logo mờ lớn sau nội dung, handle = tên kênh nhỏ ở góc dưới, outroGiay = thời lượng màn kết (tệp outro.png hoặc outro.mp4 cùng thư mục). kieuToan: \"dam\" (công thức chữ đậm Montserrat có bóng, mặc định), \"latex\" (phông LaTeX có chân như Manim) hoặc \"dong_nhat\" (cùng phông không chân với chữ). kieuHinh: \"manim\" (nét phẳng, mặc định) hoặc \"that\" (vật 3D). thanhTienDo/phuDe: bật tắt thanh tiến độ và phụ đề. soNenToiDa: số nền của bạn dùng trong một video (đổi nền theo nhóm cảnh, mặc định 3). lopNeonTrenNen: phủ lưới mờ + đốm sáng neon lên nền của bạn. thuongHieu.outroTuTao: tự tạo màn kết động khi không có tệp outro. thuongHieu.loiMoi: câu mời theo dõi giữa video. kieuPhuDe: \"hop\" (ô màu sau từ đang đọc, chữ in hoa như video mẫu) hoặc \"mau\"; mauPhuDe: màu ô phụ đề. thuongHieu.coManKet: true để chèn màn kết vào cuối video (mặc định tắt). loiMoiGiuaVideo: true để hiện thẻ Theo dõi giữa video (mặc định tắt). chuyenDong: \"moi\" (bộ hiệu ứng mới: chữ 3 tầng, hình nổi khối 3D đổi góc theo lời giảng, vòng sóng, dấu BẪY, lóe sáng đáp án) hoặc \"cu\".",
   "doMoNen": 0.35,
   "kyHieuTroi": false,
   "quangSang": true,
   "nen_co_dinh": "",
+  "soNenToiDa": 3,
+  "lopNeonTrenNen": false,
   "mau": {},
-  "kieuNen": "luoi",
-  "kieuToan": "latex",
+  "kieuNen": "toi",
+  "kieuToan": "dam",
   "kieuHinh": "manim",
   "thanhTienDo": false,
   "phuDe": true,
+  "kieuPhuDe": "hop",
+  "mauPhuDe": "#FF6B2C",
   "thuongHieu": {
     "ten": "",
     "khauHieu": "",
     "handle": "",
     "markNuoc": true,
-    "outroGiay": 5
-  }
+    "outroGiay": 5,
+    "outroTuTao": true,
+    "loiMoi": "Theo dõi để học mẹo xác suất",
+    "coManKet": false
+  },
+  "chuyenDong": "moi"
 }

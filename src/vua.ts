@@ -7,7 +7,7 @@ export function khopVua(el: HTMLElement, maxWidth: number): void {
   el.classList.remove('toan-ngat');
   const w0 = Math.max(el.offsetWidth, el.scrollWidth);
   if (w0 <= maxWidth + 1) return;
-  if (w0 * 0.7 <= maxWidth) {
+  if (w0 * 0.6 <= maxWidth) {   // công thức: ưu tiên thu nhỏ (tới 60%) hơn là ngắt dòng giữa chừng
     el.style.transform = `scale(${maxWidth / w0})`;
     el.style.transformOrigin = 'center center';
     return;

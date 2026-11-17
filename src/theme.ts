@@ -1,9 +1,26 @@
 // Phông chữ ĐÓNG GÓI SẴN trong public/fonts (không tải từ Google Fonts nên không thể lỗi mạng/lỗi tên phông).
 // Thứ tự ưu tiên: phông riêng của bạn (tuy_chon-*.ttf, nếu có) > Liberation Sans (chữ, số, biến) > DejaVu Sans (ký hiệu toán) > phông hệ thống.
-export const FONT = '"VietTuyChon", "VietSans", "VietSym", "Liberation Sans", "DejaVu Sans", sans-serif';
+// Be Vietnam Pro (OFL): phông thiết kế riêng cho tiếng Việt, nét đậm mạnh, hợp tiêu đề và phụ đề TikTok.
+export const FONT = '"VietTuyChon", "VietNoi", "VietSans", "VietSym", "Liberation Sans", "DejaVu Sans", sans-serif';
+// Montserrat Black (OFL, có đủ dấu tiếng Việt): nét rất đậm, bè ngang cho TIÊU ĐỀ, phụ đề, nhãn, con số lớn.
+export const FONT_DAM = '"VietTuyChonDam", "VietDam", "VietNoi", "VietSans", "DejaVu Sans", sans-serif';
+// Chữ kiểu "sticker" TikTok: viền tối dày + bóng đổ khối 3D để chữ nổi trên nền nhiều hình ảnh.
+export const BONG_CHU = '0 3px 0 rgba(4,12,12,0.95), 0 6px 0 rgba(4,12,12,0.6), 0 10px 22px rgba(0,0,0,0.55)';
+export const vienChu = (co: number) => `${Math.max(2, co * 0.07).toFixed(1)}px rgba(4,12,12,0.95)`;
 
 export type KhaiBaoPhong = [family: string, tep: string, weight: string, style: string];
 export const KHAI_BAO_PHONG: KhaiBaoPhong[] = [
+  ['VietDam', 'Montserrat-VF.ttf', '100 900', 'normal'],
+  ['VietDam', 'Montserrat-Italic-VF.ttf', '100 900', 'italic'],
+  ['VietTuyChonDam', 'tuy_chon-dam.ttf', '900', 'normal'],
+  ['VietNoi', 'BeVietnamPro-Medium.ttf', '400', 'normal'],
+  ['VietNoi', 'BeVietnamPro-Medium.ttf', '500', 'normal'],
+  ['VietNoi', 'BeVietnamPro-Bold.ttf', '600', 'normal'],
+  ['VietNoi', 'BeVietnamPro-Bold.ttf', '700', 'normal'],
+  ['VietNoi', 'BeVietnamPro-ExtraBold.ttf', '800', 'normal'],
+  ['VietNoi', 'BeVietnamPro-Black.ttf', '900', 'normal'],
+  ['VietNoi', 'BeVietnamPro-BoldItalic.ttf', '700', 'italic'],
+  ['VietNoi', 'BeVietnamPro-BlackItalic.ttf', '900', 'italic'],
   ['VietSans', 'LiberationSans-Regular.ttf', '400', 'normal'],
   ['VietSans', 'LiberationSans-Bold.ttf', '700', 'normal'],
   ['VietSans', 'LiberationSans-Italic.ttf', '400', 'italic'],
@@ -26,7 +43,20 @@ export const KHAI_BAO_PHONG: KhaiBaoPhong[] = [
 export const FONT_SERIF = '"VietSerif", "Liberation Serif", "DejaVu Serif", serif';
 
 // Giao diện hiện hành (đặt từ phong_cach.json ở Video.tsx): kiểu công thức và kiểu hình.
-export const GIAO_DIEN = {kieuToan: 'latex', kieuHinh: 'manim'};
+export const GIAO_DIEN = {kieuToan: 'latex', kieuHinh: 'manim', chuyenDong: 'cu', nhan: '#3BF2D0', manimLop: false};
+// màu của từng LOẠI CÂU HỎI (ảnh bìa + màu nhấn duy nhất của video ở bộ hiệu ứng mới)
+export const MAU_LOAI: Record<string, string> = {
+  'Xác suất': '#B79CFF', 'Hình học': '#4FC3F7', 'Tối ưu': '#3BF29A', 'Toán tiền bạc': '#FFD24A', 'Đo đạc': '#FF7EB6', 'Toán đi chợ': '#FF8A3D', 'Toán thực tế': '#3BF2D0',
+};
+export const laMoi = () => GIAO_DIEN.chuyenDong === 'moi';
+// chữ trên nền màu nhấn: màu sáng -> chữ tối
+export const chuTrenMau = (hex: string) => {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+  if (!m) return '#fff';
+  const n = parseInt(m[1], 16);
+  const l = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+  return l > 0.55 ? '#06201C' : '#ffffff';
+};
 
 export const FPS = 30;
 export const RONG = 1080;

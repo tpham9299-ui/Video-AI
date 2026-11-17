@@ -1,3 +1,4 @@
+import {hopLeSanKhau} from './sankhau/dulieu';
 // Kiểm tra dữ liệu minh họa do AI sinh ra và tính bố cục hình. Không phụ thuộc React để dễ kiểm thử.
 // Nguyên tắc: dữ liệu sai dạng thì bỏ qua (trả null) chứ không làm hỏng cả video.
 
@@ -317,11 +318,12 @@ export function laChuThuong(t: string): boolean {
 
 /* ---------------- Chọn kiểu hình ---------------- */
 
-export type KieuHinh = 'cay' | 'bang' | 'venn' | 'bihop' | 'luoimau' | 'dientich' | 'thucnghiem' | 'hinhve' | 'khac';
+export type KieuHinh = 'sankhau' | 'cay' | 'bang' | 'venn' | 'bihop' | 'luoimau' | 'dientich' | 'thucnghiem' | 'hinhve' | 'khac';
 
 export function phanLoaiHinh(loai: string, moTa: string | undefined, du: unknown): KieuHinh | null {
   const l = (loai || '').trim();
   if (!l || l === 'khong') return null;
+  if (l === 'san_khau' && hopLeSanKhau(du)) return 'sankhau';
   if (l === 'so_do_cay' && hopLeCay(du)) return 'cay';
   if (l === 'bang' && hopLeBang(du)) return 'bang';
   if (l === 'venn' && hopLeVenn(du)) return 'venn';
@@ -347,6 +349,7 @@ export function nhanLoaiCanh(loai: string): string {
   if (/mo_dau|hook|cau_hoi/.test(l)) return '🔥 Câu hỏi';
   if (/de_bai|de$/.test(l)) return '📝 Đề bài';
   if (/y_do/.test(l)) return '🧭 Ý đồ bài toán';
+  if (/mo_hinh/.test(l)) return '📐 Mô hình hóa';
   if (/thu_nho/.test(l)) return '🔬 Thử nhỏ';
   if (/diem_chot/.test(l)) return '🔑 Điểm mấu chốt';
   if (/bay/.test(l)) return '⚠️ Cái bẫy';

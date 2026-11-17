@@ -1,1 +1,13 @@
 public/thuong_hieu/
+node_modules/
+out/
+public/giong/
+public/props.json
+public/nen/
+public/nen_chon.*
+public/nhac/tron_*
+__pycache__/
+ket_qua_bp1.json
+ban_giao_lan28/
+ban_giao_lan41/
+public/manim/

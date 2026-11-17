@@ -1,0 +1,801 @@
+{
+ "chu_de_ngan": "Hình học lớp 10",
+ "lop": "10",
+ "mon": "HINH_HOC",
+ "giong": "Charon",
+ "gioi_tinh_giong": "nam",
+ "phong_cach_edit": "dien_anh",
+ "id": "THU-manim1",
+ "tieu_de": "Hệ thức hai đường cao",
+ "hook": "Vì sao AE nhân AC luôn bằng AF nhân AB?",
+ "hook_chu": "AE·AC = AF·AB ?",
+ "de_cho": [
+  "Tam giác ABC nhọn",
+  "Đường cao BE, CF cắt nhau tại H"
+ ],
+ "can_tim": "Chứng minh AE·AC = AF·AB",
+ "du_kien": [],
+ "dap_an_cuoi": "CM",
+ "dap_an": "CM",
+ "bai_hoc_rut_ra": [
+  "Hai tam giác vuông chung một góc nhọn thì đồng dạng",
+  "Tích đoạn thẳng = tỉ số đồng dạng"
+ ],
+ "de_bai": "Cho tam giác ABC nhọn, hai đường cao BE và CF cắt nhau tại H. Chứng minh AE·AC = AF·AB.",
+ "canh": [
+  {
+   "so": 1,
+   "loai": "mo_dau",
+   "tieu_de_canh": "Một hệ thức đẹp",
+   "tu_khoa": "hệ thức",
+   "nhan": "",
+   "giu_san_khau": false,
+   "giong_doc": "rõ ràng",
+   "loi_thoai": "Trong mọi tam giác nhọn, tích AE nhân AC luôn bằng AF nhân AB. Vì sao lại như vậy?",
+   "noi_dung_man_hinh": [],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Tam giác ABC với hai đường cao BE, CF cắt nhau tại H",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "hh",
+       "loai": "hinh_hoc",
+       "x": 50,
+       "y": 48,
+       "co": 1.25,
+       "buoc": 1,
+       "diem": {
+        "A": [
+         51.9,
+         10
+        ],
+        "B": [
+         28.6,
+         58.6
+        ],
+        "C": [
+         71.4,
+         58.6
+        ],
+        "E": [
+         60.4,
+         31.1
+        ],
+        "F": [
+         42.8,
+         29
+        ],
+        "H": [
+         51.9,
+         38.4
+        ]
+       },
+       "canh": [
+        [
+         "A",
+         "B",
+         ""
+        ],
+        [
+         "B",
+         "C",
+         ""
+        ],
+        [
+         "C",
+         "A",
+         ""
+        ]
+       ]
+      }
+     ],
+     "hanh_dong": []
+    }
+   },
+   "thoi_luong_giay": 7
+  },
+  {
+   "so": 2,
+   "loai": "de_bai",
+   "tieu_de_canh": "Đề bài",
+   "tu_khoa": "Đề bài",
+   "nhan": "",
+   "giu_san_khau": true,
+   "giong_doc": "rõ ràng",
+   "loi_thoai": "Cho tam giác ABC nhọn, hai đường cao BE và CF cắt nhau tại H. Chứng minh AE nhân AC bằng AF nhân AB.",
+   "noi_dung_man_hinh": [],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Tam giác ABC với hai đường cao BE, CF cắt nhau tại H",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "hh",
+       "loai": "hinh_hoc",
+       "x": 50,
+       "y": 48,
+       "co": 1.25,
+       "buoc": 1,
+       "diem": {
+        "A": [
+         51.9,
+         10
+        ],
+        "B": [
+         28.6,
+         58.6
+        ],
+        "C": [
+         71.4,
+         58.6
+        ],
+        "E": [
+         60.4,
+         31.1
+        ],
+        "F": [
+         42.8,
+         29
+        ],
+        "H": [
+         51.9,
+         38.4
+        ]
+       },
+       "canh": [
+        [
+         "A",
+         "B",
+         ""
+        ],
+        [
+         "B",
+         "C",
+         ""
+        ],
+        [
+         "C",
+         "A",
+         ""
+        ],
+        [
+         "B",
+         "E",
+         ""
+        ],
+        [
+         "C",
+         "F",
+         ""
+        ]
+       ],
+       "vuong": [
+        [
+         "B",
+         "E",
+         "A"
+        ],
+        [
+         "C",
+         "F",
+         "A"
+        ]
+       ]
+      }
+     ],
+     "hanh_dong": []
+    }
+   },
+   "thoi_luong_giay": 7
+  },
+  {
+   "so": 3,
+   "loai": "y_do",
+   "tieu_de_canh": "Ý tưởng: đổi tích thành tỉ số",
+   "tu_khoa": "tỉ số",
+   "nhan": "",
+   "giu_san_khau": true,
+   "giong_doc": "rõ ràng",
+   "loi_thoai": "Đẳng thức tích tương đương với một tỉ lệ thức. Mà tỉ lệ thức thì thường đến từ hai tam giác đồng dạng.",
+   "noi_dung_man_hinh": [
+    "AE\\cdot AC = AF\\cdot AB",
+    "\\hl{\\frac{AE}{AF} = \\frac{AB}{AC}}"
+   ],
+   "trinh_bay": "bien_doi",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Tam giác ABC với hai đường cao BE, CF cắt nhau tại H",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "hh",
+       "loai": "hinh_hoc",
+       "x": 50,
+       "y": 48,
+       "co": 1.25,
+       "buoc": 1,
+       "diem": {
+        "A": [
+         51.9,
+         10
+        ],
+        "B": [
+         28.6,
+         58.6
+        ],
+        "C": [
+         71.4,
+         58.6
+        ],
+        "E": [
+         60.4,
+         31.1
+        ],
+        "F": [
+         42.8,
+         29
+        ],
+        "H": [
+         51.9,
+         38.4
+        ]
+       },
+       "canh": [
+        [
+         "A",
+         "B",
+         ""
+        ],
+        [
+         "B",
+         "C",
+         ""
+        ],
+        [
+         "C",
+         "A",
+         ""
+        ],
+        [
+         "B",
+         "E",
+         ""
+        ],
+        [
+         "C",
+         "F",
+         ""
+        ]
+       ],
+       "vuong": [
+        [
+         "B",
+         "E",
+         "A"
+        ],
+        [
+         "C",
+         "F",
+         "A"
+        ]
+       ]
+      }
+     ],
+     "hanh_dong": []
+    }
+   },
+   "thoi_luong_giay": 7,
+   "kien_thuc": "Tích bằng nhau ⇔ tỉ lệ thức: a·d = b·c ⇔ a/b = c/d"
+  },
+  {
+   "so": 4,
+   "loai": "giai",
+   "tieu_de_canh": "Hai góc vuông",
+   "tu_khoa": "góc vuông",
+   "nhan": "",
+   "giu_san_khau": true,
+   "giong_doc": "rõ ràng",
+   "loi_thoai": "Nhìn đường cao BE đang sáng lên. Theo định nghĩa, đường cao vuông góc với cạnh đối diện, nên góc AEB là góc vuông. Tương tự, CF là đường cao nên góc AFC cũng vuông.",
+   "noi_dung_man_hinh": [
+    "\\hl{\\angle AEB} = 90^\\circ \\;\\text{(vì BE là đường cao)}",
+    "\\hl{\\angle AFC} = 90^\\circ \\;\\text{(vì CF là đường cao)}"
+   ],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Tam giác ABC với hai đường cao BE, CF cắt nhau tại H",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "hh",
+       "loai": "hinh_hoc",
+       "x": 50,
+       "y": 48,
+       "co": 1.25,
+       "buoc": 1,
+       "diem": {
+        "A": [
+         51.9,
+         10
+        ],
+        "B": [
+         28.6,
+         58.6
+        ],
+        "C": [
+         71.4,
+         58.6
+        ],
+        "E": [
+         60.4,
+         31.1
+        ],
+        "F": [
+         42.8,
+         29
+        ],
+        "H": [
+         51.9,
+         38.4
+        ]
+       },
+       "canh": [
+        [
+         "A",
+         "B",
+         ""
+        ],
+        [
+         "B",
+         "C",
+         ""
+        ],
+        [
+         "C",
+         "A",
+         ""
+        ],
+        [
+         "B",
+         "E",
+         ""
+        ],
+        [
+         "C",
+         "F",
+         ""
+        ]
+       ],
+       "vuong": [
+        [
+         "B",
+         "E",
+         "A"
+        ],
+        [
+         "C",
+         "F",
+         "A"
+        ]
+       ]
+      }
+     ],
+     "hanh_dong": []
+    }
+   },
+   "thoi_luong_giay": 7,
+   "kien_thuc": "Đường cao vuông góc với cạnh đối diện → tạo góc 90°"
+  },
+  {
+   "so": 5,
+   "loai": "giai",
+   "tieu_de_canh": "Góc A chung",
+   "tu_khoa": "góc A",
+   "nhan": "",
+   "giu_san_khau": true,
+   "giong_doc": "rõ ràng",
+   "loi_thoai": "Bây giờ xét hai tam giác AEB và AFC đang được tô màu. Cả hai đều có đỉnh A, và hai cạnh của góc nằm trên cùng hai tia AB và AC, nên chúng có chung góc A.",
+   "noi_dung_man_hinh": [
+    "\\angle EAB = \\angle FAC \\;\\text{(góc chung)}"
+   ],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Tam giác ABC với hai đường cao BE, CF cắt nhau tại H",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "hh",
+       "loai": "hinh_hoc",
+       "x": 50,
+       "y": 48,
+       "co": 1.25,
+       "buoc": 1,
+       "diem": {
+        "A": [
+         51.9,
+         10
+        ],
+        "B": [
+         28.6,
+         58.6
+        ],
+        "C": [
+         71.4,
+         58.6
+        ],
+        "E": [
+         60.4,
+         31.1
+        ],
+        "F": [
+         42.8,
+         29
+        ],
+        "H": [
+         51.9,
+         38.4
+        ]
+       },
+       "canh": [
+        [
+         "A",
+         "B",
+         ""
+        ],
+        [
+         "B",
+         "C",
+         ""
+        ],
+        [
+         "C",
+         "A",
+         ""
+        ],
+        [
+         "B",
+         "E",
+         ""
+        ],
+        [
+         "C",
+         "F",
+         ""
+        ]
+       ],
+       "vuong": [
+        [
+         "B",
+         "E",
+         "A"
+        ],
+        [
+         "C",
+         "F",
+         "A"
+        ]
+       ]
+      }
+     ],
+     "hanh_dong": []
+    }
+   },
+   "thoi_luong_giay": 7,
+   "nhan_manh_hinh": [
+    "\\triangle AEB",
+    "\\triangle AFC"
+   ],
+   "kien_thuc": "Góc chung: hai tam giác có cùng một đỉnh và hai cạnh nằm trên cùng hai tia"
+  },
+  {
+   "so": 6,
+   "loai": "giai",
+   "tieu_de_canh": "Hai tam giác đồng dạng",
+   "tu_khoa": "đồng dạng",
+   "nhan": "",
+   "giu_san_khau": true,
+   "giong_doc": "rõ ràng",
+   "loi_thoai": "Hai tam giác vuông này đã có một góc nhọn bằng nhau là góc A. Theo trường hợp đồng dạng góc góc, hai tam giác AEB và AFC đồng dạng.",
+   "noi_dung_man_hinh": [
+    "\\triangle AEB \\sim \\triangle AFC \\;\\text{(g.g)}"
+   ],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Tam giác ABC với hai đường cao BE, CF cắt nhau tại H",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "hh",
+       "loai": "hinh_hoc",
+       "x": 50,
+       "y": 48,
+       "co": 1.25,
+       "buoc": 1,
+       "diem": {
+        "A": [
+         51.9,
+         10
+        ],
+        "B": [
+         28.6,
+         58.6
+        ],
+        "C": [
+         71.4,
+         58.6
+        ],
+        "E": [
+         60.4,
+         31.1
+        ],
+        "F": [
+         42.8,
+         29
+        ],
+        "H": [
+         51.9,
+         38.4
+        ]
+       },
+       "canh": [
+        [
+         "A",
+         "B",
+         ""
+        ],
+        [
+         "B",
+         "C",
+         ""
+        ],
+        [
+         "C",
+         "A",
+         ""
+        ],
+        [
+         "B",
+         "E",
+         ""
+        ],
+        [
+         "C",
+         "F",
+         ""
+        ]
+       ],
+       "vuong": [
+        [
+         "B",
+         "E",
+         "A"
+        ],
+        [
+         "C",
+         "F",
+         "A"
+        ]
+       ]
+      }
+     ],
+     "hanh_dong": []
+    }
+   },
+   "thoi_luong_giay": 7,
+   "tach": [
+    "AEB",
+    "AFC"
+   ],
+   "kien_thuc": "Trường hợp đồng dạng góc – góc (g.g): hai góc bằng nhau từng đôi một"
+  },
+  {
+   "so": 7,
+   "loai": "giai",
+   "tieu_de_canh": "Lập tỉ số rồi nhân chéo",
+   "tu_khoa": "tỉ số",
+   "nhan": "",
+   "giu_san_khau": true,
+   "giong_doc": "rõ ràng",
+   "loi_thoai": "Vì hai tam giác đồng dạng nên các cạnh tương ứng tỉ lệ: AE trên AF bằng AB trên AC. Nhân chéo tỉ lệ thức, ta được AE nhân AC bằng AF nhân AB.",
+   "noi_dung_man_hinh": [
+    "\\frac{AE}{AF} = \\frac{AB}{AC}",
+    "AE\\cdot AC = AF\\cdot AB"
+   ],
+   "trinh_bay": "bien_doi",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Tam giác ABC với hai đường cao BE, CF cắt nhau tại H",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "hh",
+       "loai": "hinh_hoc",
+       "x": 50,
+       "y": 48,
+       "co": 1.25,
+       "buoc": 1,
+       "diem": {
+        "A": [
+         51.9,
+         10
+        ],
+        "B": [
+         28.6,
+         58.6
+        ],
+        "C": [
+         71.4,
+         58.6
+        ],
+        "E": [
+         60.4,
+         31.1
+        ],
+        "F": [
+         42.8,
+         29
+        ],
+        "H": [
+         51.9,
+         38.4
+        ]
+       },
+       "canh": [
+        [
+         "A",
+         "B",
+         ""
+        ],
+        [
+         "B",
+         "C",
+         ""
+        ],
+        [
+         "C",
+         "A",
+         ""
+        ],
+        [
+         "B",
+         "E",
+         ""
+        ],
+        [
+         "C",
+         "F",
+         ""
+        ]
+       ],
+       "vuong": [
+        [
+         "B",
+         "E",
+         "A"
+        ],
+        [
+         "C",
+         "F",
+         "A"
+        ]
+       ]
+      }
+     ],
+     "hanh_dong": []
+    }
+   },
+   "thoi_luong_giay": 7,
+   "kien_thuc": "Tam giác đồng dạng ⇒ các cạnh tương ứng tỉ lệ; nhân chéo tỉ lệ thức"
+  },
+  {
+   "so": 8,
+   "loai": "dap_an",
+   "tieu_de_canh": "Kết luận",
+   "tu_khoa": "Kết luận",
+   "nhan": "",
+   "giu_san_khau": true,
+   "giong_doc": "rõ ràng",
+   "loi_thoai": "Vậy AE nhân AC bằng AF nhân AB. Ta đã chứng minh xong.",
+   "noi_dung_man_hinh": [
+    "AE\\cdot AC = AF\\cdot AB \\;\\dpcm"
+   ],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Tam giác ABC với hai đường cao BE, CF cắt nhau tại H",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "hh",
+       "loai": "hinh_hoc",
+       "x": 50,
+       "y": 48,
+       "co": 1.25,
+       "buoc": 1,
+       "diem": {
+        "A": [
+         51.9,
+         10
+        ],
+        "B": [
+         28.6,
+         58.6
+        ],
+        "C": [
+         71.4,
+         58.6
+        ],
+        "E": [
+         60.4,
+         31.1
+        ],
+        "F": [
+         42.8,
+         29
+        ],
+        "H": [
+         51.9,
+         38.4
+        ]
+       },
+       "canh": [
+        [
+         "A",
+         "B",
+         ""
+        ],
+        [
+         "B",
+         "C",
+         ""
+        ],
+        [
+         "C",
+         "A",
+         ""
+        ],
+        [
+         "B",
+         "E",
+         ""
+        ],
+        [
+         "C",
+         "F",
+         ""
+        ]
+       ],
+       "vuong": [
+        [
+         "B",
+         "E",
+         "A"
+        ],
+        [
+         "C",
+         "F",
+         "A"
+        ]
+       ]
+      }
+     ],
+     "hanh_dong": []
+    }
+   },
+   "thoi_luong_giay": 7
+  }
+ ]
+}

@@ -10,6 +10,10 @@ Apps Script (BoPhan2.gs)  ──repository_dispatch + kịch bản JSON──►
         └──── doPost(): CO_VIDEO + link Drive + báo Zalo ◄────────── 3. rclone             : tải MP4 lên Drive
 ```
 
+> **Mới (lần 9):** phông Be Vietnam Pro, phụ đề ô màu, chuyển cảnh lướt có nhòe chuyển động, lưới ô / thẻ danh sách / số lăn, giọng Gemini TTS, kịch bản mẫu Monty Hall. Xem **`SUA_CODE_LAN_9.md`**.
+>
+> **Lần 8:** sửa lỗi Bộ phận 1 "vượt quá thời gian chạy", video kiểu **sân khấu neon** với 21 vật thật chuyển động, phụ đề kiểu TikTok, nhạc nền tự tạo không bản quyền và 19 hiệu ứng âm thanh. Xem **`SUA_CODE_LAN_8.md`** để biết các bước cập nhật Apps Script (Code.gs ← `BoPhan1.gs`, thêm `PromptKichBan.gs`, thay `KiemTraHinh.gs`).
+
 ## Cài đặt (làm một lần, khoảng 30–45 phút)
 
 ### 1. Đưa mã lên GitHub
@@ -58,7 +62,8 @@ npx remotion render src/index.ts Video out/mau.mp4 --props=public/props.json
 | Màu, danh sách phông | `src/theme.ts` |
 | Bố cục một cảnh, cỡ chữ, vị trí phụ đề | `src/Canh.tsx` |
 | Nền động | `src/NenDong.tsx` |
-| Nhạc nền, tiếng chuyển cảnh | thay `public/nhac/nen.wav`, `public/sfx/*.wav` bằng tệp cùng tên (hoặc chạy lại `scripts/taoAmThanh.py`) |
+| Nhạc nền, tiếng chuyển cảnh | bỏ mp3 vào Drive `VIDEO_XACSUAT/nhac` (tự chọn xoay vòng), hoặc sửa và chạy lại `scripts/taoAmThanh.py`; âm lượng: biến `AM_LUONG_NHAC` |
+| Vật thật trên sân khấu | `src/sankhau/vat.tsx` (hình vẽ), `src/sankhau/trangthai.ts` (hành động), `src/sankhau/dulieu.ts` (dữ liệu hợp lệ) |
 | Tốc độ/giọng đọc | biến `TOC_DO`, `GIONG` trên GitHub, hoặc tham số `--toc-do`, `--giong` |
 
 ## Hook và vật thật chuyển động

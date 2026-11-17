@@ -1,53 +1,113 @@
 name: Dựng video
 
-# Kích hoạt: Apps Script gửi sự kiện "dung-video" (kèm kịch bản JSON) tới GitHub.
-# Chạy thử tay: Actions > Dựng video > Run workflow (sẽ dựng kịch bản mẫu, không báo kết quả về Apps Script).
+# Kích hoạt:
+#  - Apps Script (BoPhan2.gs) gửi "workflow_dispatch" kèm ref = nhánh trong CAU_HINH > GITHUB_NHANH: GitHub chạy ĐÚNG mã của
+#    nhánh đó (mặc định nhánh claude/... mới nhất), không còn dựng bằng mã cũ của nhánh master.
+#  - "repository_dispatch" (cách cũ) vẫn nhận, để không hỏng khi token chưa có quyền Actions; cách này luôn chạy mã nhánh mặc định.
+#  - viec = dang: đăng video đã dựng lên Facebook / TikTok / YouTube (DangVideo.gs hẹn giờ gọi).
+#  - Chạy thử tay: Actions > Dựng video > Run workflow (chọn nhánh, chọn kịch bản mẫu; không báo kết quả về Apps Script).
 on:
   repository_dispatch:
     types: [dung-video]
   workflow_dispatch:
+    inputs:
+      mau:
+        description: 'Kịch bản mẫu để dựng thử (khi không có kich_ban)'
+        type: choice
+        options: [kich_ban_thuc_te, kich_ban_koch, kich_ban_koch_moi, kich_ban_ong_thep, kich_ban_cot_co, kich_ban_rao_vuon, kich_ban_toa_nha, kich_ban_san_pham, kich_ban_hinh_hoc, kich_ban_hinh_khong_gian, kich_ban_hinh_manim, kich_ban_mau]
+        default: kich_ban_thuc_te
+      viec:
+        description: 'dung = dựng video | dang = đăng video lên mạng xã hội'
+        type: choice
+        options: [dung, dang]
+        default: dung
+      id:
+        description: 'Mã đề (Apps Script tự điền)'
+        type: string
+        default: ''
+      kich_ban:
+        description: 'Kịch bản JSON (Apps Script tự điền)'
+        type: string
+        default: ''
+      dang:
+        description: 'Thông tin đăng bài JSON (Apps Script tự điền)'
+        type: string
+        default: ''
 
+# Mỗi đề một nhóm: đề ưu tiên (gửi qua Zalo) được dựng SONG SONG với video đang dựng, không phải xếp hàng chờ;
+# cùng một đề gửi lặp thì chỉ dựng/đăng một lần.
 concurrency:
-  group: dung-video
+  group: dung-video-${{ github.event.inputs.viec || 'dung' }}-${{ github.event.client_payload.id || github.event.inputs.id || github.run_id }}
   cancel-in-progress: false
 
 jobs:
-  dung:
+  # ============ DỰNG SONG SONG (3 tầng) ============
+  # 1) chuan_bi : giọng đọc, đóng gói Remotion (bundle), ảnh bìa, chia video thành SO_MAY_DUNG khúc (mặc định 4)
+  # 2) dung_khuc: mỗi khúc một máy GitHub dựng cùng lúc (hình H.264 + tiếng AAC căn khung, cơ chế của Remotion Lambda)
+  # 3) ghep     : ghép các khúc (không mã hóa lại => vài giây), ảnh kiểm tra, tải lên Drive, báo kết quả về Apps Script
+  # Video ~12,5 phút trên 1 máy -> khoảng 6-7 phút. Đặt GitHub Variable SO_MAY_DUNG = 1 để quay về dựng trên 1 máy.
+  chuan_bi:
+    if: ${{ github.event.inputs.viec != 'dang' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 40
+    outputs:
+      id: ${{ steps.chia.outputs.id }}
+      giay: ${{ steps.chia.outputs.giay }}
+      so_khuc: ${{ steps.chia.outputs.so_khuc }}
+      khuc: ${{ steps.chia.outputs.khuc }}
+      manim: ${{ steps.chia.outputs.manim }}
     env:
       RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
-      APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
-      DUNG_VIDEO_SECRET: ${{ secrets.DUNG_VIDEO_SECRET }}
-      DRIVE_THU_MUC: ${{ vars.DRIVE_THU_MUC }}
       DRIVE_NEN: ${{ vars.DRIVE_NEN }}
       DRIVE_FONT: ${{ vars.DRIVE_FONT }}
       DRIVE_THUONG_HIEU: ${{ vars.DRIVE_THUONG_HIEU }}
+      DRIVE_NHAC: ${{ vars.DRIVE_NHAC }}
+      # Giọng Gemini TTS (tự nhiên hơn edge-tts): thêm Secret GEMINI_API_KEY là bật; MAY_GIONG=edge để tắt
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      MAY_GIONG: ${{ vars.MAY_GIONG }}
+      GIONG_GEMINI: ${{ vars.GIONG_GEMINI }}
+      TTS_MODEL: ${{ vars.TTS_MODEL }}
+      TOC_DO_GEMINI: ${{ vars.TOC_DO_GEMINI }}
+      AM_LUONG_NHAC: ${{ vars.AM_LUONG_NHAC }}
       GIONG: ${{ vars.GIONG }}
       TOC_DO: ${{ vars.TOC_DO }}
+      SO_MAY_DUNG: ${{ vars.SO_MAY_DUNG }}
+      APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
+      DUNG_VIDEO_SECRET: ${{ secrets.DUNG_VIDEO_SECRET }}
+      ID_VIDEO: ${{ github.event.client_payload.id || github.event.inputs.id }}
+      GEMINI_KEYS: ${{ secrets.GEMINI_KEYS }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Cài công cụ hệ thống
+      - name: Cài công cụ (chạy song song)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg fonts-noto-color-emoji \
-            libnss3 libdbus-1-3 libatk1.0-0 libasound2t64 libxrandr2 libxkbcommon-dev libxfixes3 \
-            libxcomposite1 libxdamage1 libgbm-dev libcups2 libatk-bridge2.0-0 libpango-1.0-0 libcairo2
-          pip install edge-tts
-          curl -fsSL https://rclone.org/install.sh | sudo bash
+          ( sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-noto-color-emoji \
+              libnss3 libdbus-1-3 libatk1.0-0 libasound2t64 libxrandr2 libxkbcommon-dev libxfixes3 \
+              libxcomposite1 libxdamage1 libgbm-dev libcups2 libatk-bridge2.0-0 libpango-1.0-0 libcairo2 ) > /tmp/apt.log 2>&1 &
+          APT=$!
+          ( pip install -q "edge-tts>=7.2" gTTS numpy ) > /tmp/pip.log 2>&1 &
+          PIP=$!
+          ( curl -fsSL https://rclone.org/install.sh | sudo bash ) > /tmp/rclone.log 2>&1 &
+          RC=$!
+          npm ci
+          wait $APT || { cat /tmp/apt.log; exit 1; }
+          wait $PIP || { cat /tmp/pip.log; exit 1; }
+          wait $RC || { cat /tmp/rclone.log; exit 1; }
 
-      - name: Cài thư viện Node
-        run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+      - name: Lưu sẵn trình duyệt dựng hình
+        uses: actions/cache@v4
+        with:
+          path: node_modules/.remotion
+          key: remotion-chrome-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
       - name: Lấy ảnh/video nền từ Google Drive
         if: ${{ env.RCLONE_CONF != '' }}
@@ -60,42 +120,327 @@ jobs:
           mkdir -p public/fonts public/thuong_hieu
           rclone copy "gdrive:${DRIVE_THUONG_HIEU:-VIDEO_XACSUAT/thuong_hieu}" public/thuong_hieu --include "{logo,outro}.*" || echo "Chưa có thư mục thương hiệu"
           rclone copy "gdrive:${DRIVE_FONT:-VIDEO_XACSUAT/font}" public/fonts --include "tuy_chon-*" || echo "Không có phông riêng, dùng phông đóng gói sẵn"
+          # Nhạc nền riêng (tùy chọn): mp3/m4a/wav trong VIDEO_XACSUAT/nhac; không có thì dùng nhạc tự tạo public/nhac/nen.wav
+          rclone copy "gdrive:${DRIVE_NHAC:-VIDEO_XACSUAT/nhac}" public/nhac --max-size 30M --include "*.{mp3,m4a,wav,ogg,MP3,M4A,WAV}" || echo "Không có thư mục nhạc riêng, dùng nhạc tự tạo"
 
       - name: Ghi kịch bản
         env:
-          KICH_BAN: ${{ toJson(github.event.client_payload.kich_ban) }}
+          KICH_BAN: ${{ github.event.inputs.kich_ban || toJson(github.event.client_payload.kich_ban) }}
         run: |
+          echo "Nhánh mã đang dựng: $GITHUB_REF_NAME ($GITHUB_SHA)"
           if [ -z "$KICH_BAN" ] || [ "$KICH_BAN" = "null" ]; then
             echo "Không có kịch bản gửi kèm -> dùng kịch bản mẫu"
-            cp mau/kich_ban_mau.json kich_ban.json
+            cp "mau/${{ github.event.inputs.mau || 'kich_ban_mau' }}.json" kich_ban.json
           else
             printf '%s' "$KICH_BAN" > kich_ban.json
+          fi
+
+      # Video giới thiệu sản phẩm: lấy ẢNH THẬT của sản phẩm (Apps Script lưu ở Drive VIDEO_XACSUAT/san_pham/<mã>/)
+      - name: Lấy ảnh thật của sản phẩm
+        if: ${{ env.RCLONE_CONF != '' }}
+        run: |
+          MA=$(python3 -c "import json,re;k=json.load(open('kich_ban.json',encoding='utf8'));s=k.get('san_pham') if isinstance(k.get('san_pham'),dict) else {};print(re.sub(r'[^A-Za-z0-9_-]','',str((s or {}).get('id') or '')))")
+          if [ -n "$MA" ]; then
+            mkdir -p ~/.config/rclone "public/sp/$MA"
+            printf '%s' "$RCLONE_CONF" > ~/.config/rclone/rclone.conf
+            rclone copy "gdrive:${DRIVE_SAN_PHAM:-VIDEO_XACSUAT/san_pham}/$MA" "public/sp/$MA" --max-size 12M --include "*.{jpg,jpeg,png,webp,JPG,JPEG,PNG,WEBP}" || echo "Không lấy được ảnh sản phẩm $MA"
+            ls -la "public/sp/$MA" || true
+          else
+            echo "Video không có sản phẩm"
           fi
 
       - name: Tạo giọng đọc và mốc thời gian
         run: python3 scripts/chuanbi.py kich_ban.json
 
-      - name: Dựng video
-        id: dung
+      # BÀI HÌNH HỌC: phần toán (hình, công thức, chuyển động, hiệu ứng) dựng 100% bằng MANIM (scripts/manim_hinh.py) thành
+      # một lớp trong suốt; Remotion vẫn dựng PHẦN VỎ CHUNG như mọi video (nền, tiêu đề, thanh bước, phụ đề, giọng, nhạc, tiếng
+      # hiệu ứng) rồi máy ghép đè lớp Manim lên. Manim lỗi -> video dựng bằng Remotion như cũ. Tắt: Variable MANIM_HINH = TAT.
+      - name: Dựng video hình học bằng Manim
+        id: manim
+        if: ${{ vars.MANIM_HINH != 'TAT' }}
+        continue-on-error: true
+        run: |
+          MON=$(python3 -c "import json;print(str(json.load(open('kich_ban.json',encoding='utf8')).get('mon') or '').upper())")
+          if [ "$MON" != "HINH_HOC" ]; then echo "Không phải bài hình học -> dựng bằng Remotion"; exit 0; fi
+          ( sudo apt-get install -y -qq --no-install-recommends texlive-xetex texlive-latex-extra texlive-fonts-recommended \
+              dvisvgm libpango1.0-dev libcairo2-dev pkg-config fonts-noto-core ) > /tmp/apt_manim.log 2>&1 &
+          APT=$!
+          python3 -m venv /tmp/mv
+          /tmp/mv/bin/pip install -q "manim==0.22.1" > /tmp/pip_manim.log 2>&1 || { wait $APT; /tmp/mv/bin/pip install -q "manim==0.22.1" || { tail -30 /tmp/pip_manim.log; exit 1; }; }
+          wait $APT || { tail -40 /tmp/apt_manim.log; exit 1; }
+          mkdir -p out
+          /tmp/mv/bin/python scripts/manim_hinh.py public/props.json kich_ban.json out --public public
+          ID=$(python3 -c "import json;print(json.load(open('public/props.json',encoding='utf8'))['id'])")
+          [ -s "out/${ID}_manim.mov" ] || { echo "Manim không ra video"; exit 1; }
+          ls -la out
+          echo "ok=1" >> "$GITHUB_OUTPUT"
+
+      - name: Đóng gói Remotion + ảnh bìa
         run: |
           ID=$(python3 -c "import json;print(json.load(open('public/props.json',encoding='utf8'))['id'])")
-          GIAY=$(python3 -c "import json;p=json.load(open('public/props.json',encoding='utf8'));print(round(p['tongFrame']/p['fps']))")
+          # đóng gói SAU khi có giọng đọc/nhạc (thư mục public được chép vào gói)
+          npx remotion bundle src/index.ts --out-dir build
+          mkdir -p out build/public/bia
+          # ẢNH BÌA thiết kế (loại câu hỏi, lớp, tập, tiêu đề, hình minh họa thật của đề) -> out/ID_bia.jpg
+          KHUNG=$(python3 -c "import json;print((json.load(open('public/props.json',encoding='utf8')).get('bia') or {}).get('khung',60))")
+          if npx remotion still build AnhBia "out/${ID}_bia.png" --props=public/props.json --frame=$KHUNG; then
+            ffmpeg -y -loglevel error -i "out/${ID}_bia.png" -q:v 3 "out/${ID}_bia.jpg"
+            cp "out/${ID}_bia.png" "build/public/bia/${ID}.png"
+            # khung hình đầu của video = ảnh bìa (TikTok lấy khung 0 làm ảnh bìa)
+            python3 -c "import json;f='public/props.json';p=json.load(open(f,encoding='utf8'));p['anhBiaDau']='bia/${ID}.png';p['tongFrame']+=1;json.dump(p,open(f,'w',encoding='utf8'),ensure_ascii=False)"
+          else
+            echo "Không dựng được ảnh bìa, video vẫn dựng bình thường"
+          fi
+          rm -f out/*.png
+
+      # KIỂM DUYỆT BỐ CỤC: chụp 3 khung mẫu mỗi cảnh, đo chữ tràn mép / đè nhau / bị cắt / mã TeX thô / công thức lỗi / chữ quá nhỏ.
+      # Kịch bản từ Apps Script (_kiem_duyet = chan): có lỗi nặng thì KHÔNG dựng, gửi báo cáo về để Gemini sửa kịch bản rồi dựng lại.
+      # Dựng thử tay (không có mã đề) hoặc _kiem_duyet = bao: chỉ ghi báo cáo, vẫn dựng.
+      - name: Kiểm duyệt bố cục
+        id: kd
+        if: ${{ steps.manim.outputs.ok != '1' }}
+        run: |
+          # tối đa 7 phút: trình duyệt chậm/treo thì bỏ qua kiểm duyệt (video vẫn dựng; AI xem video sau vẫn chặn lỗi) thay vì
+          # ăn hết 30 phút của máy dựng rồi hỏng cả video (đã gặp: 48 khung chụp mất 25 phút)
+          timeout 420 node scripts/kiem_duyet.mjs build public/props.json out/kiem_duyet.json kich_ban.json 2>&1 | grep -v "character metrics\|memory\|Memory\|docker\|lower amount" || echo "Kiểm duyệt bố cục quá 7 phút hoặc lỗi -> bỏ qua"
+          python3 -c "import json;json.load(open('out/kiem_duyet.json'))" 2>/dev/null || echo '{"nang":[],"nhe":[],"hong":true}' > out/kiem_duyet.json
+          python3 - <<'PY'
+          import json, os
+          b = json.load(open('out/kiem_duyet.json', encoding='utf8'))
+          kb = json.load(open('kich_ban.json', encoding='utf8'))
+          che_do = str(kb.get('_kiem_duyet') or ('chan' if os.environ.get('ID_VIDEO') else 'bao'))
+          chan = che_do == 'chan' and len(b.get('nang') or []) > 0 and bool(os.environ.get('ID_VIDEO'))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write('chan=%s\n' % ('true' if chan else 'false'))
+          print('Chế độ kiểm duyệt: %s | lỗi nặng: %d | %s' % (che_do, len(b.get('nang') or []), 'DỪNG, gửi về tự sửa' if chan else 'dựng tiếp'))
+          PY
+
+      # key Gemini LỖI THẬT phát hiện khi tạo giọng đọc / AI nhìn hình: báo Apps Script -> Zalo nhắc người dùng gỡ key
+      - name: Báo key Gemini hỏng
+        if: ${{ always() && env.APPS_SCRIPT_URL != '' }}
+        run: |
+          [ -s /tmp/gemini_key_hong.json ] || { echo "Không có key hỏng"; exit 0; }
+          python3 - <<'PY'
+          import json, os
+          d = {"token": os.environ["DUNG_VIDEO_SECRET"], "loai": "key_hong", "key_hong": json.load(open("/tmp/gemini_key_hong.json", encoding="utf8"))}
+          json.dump(d, open("bao_key_hong.json", "w", encoding="utf8"), ensure_ascii=False)
+          print("Key hỏng:", [(k.get("so"), k.get("ly_do")) for k in d["key_hong"]])
+          PY
+          curl -sS -L -H 'Content-Type: application/json' --data @bao_key_hong.json "$APPS_SCRIPT_URL" || true
+
+      - name: Kiểm duyệt không đạt - báo về Apps Script để tự sửa kịch bản
+        if: steps.kd.outputs.chan == 'true' && env.APPS_SCRIPT_URL != ''
+        run: |
+          python3 - <<'PY'
+          import json, os
+          b = json.load(open('out/kiem_duyet.json', encoding='utf8'))
+          d = {"token": os.environ["DUNG_VIDEO_SECRET"], "id": os.environ["ID_VIDEO"], "ok": False, "loi": "KIEM_DUYET_BO_CUC",
+               "kiem_duyet": {"nang": b.get("nang", [])[:15], "nhe": b.get("nhe", [])[:10]}}
+          json.dump(d, open("bao_kiem_duyet.json", "w", encoding="utf8"), ensure_ascii=False)
+          PY
+          for lan in 1 2 3 4 5 6; do
+            KQ=$(curl -sS -L -H 'Content-Type: application/json' --data @bao_kiem_duyet.json "$APPS_SCRIPT_URL" || true)
+            echo "Lần $lan: $KQ"
+            if echo "$KQ" | grep -Eq '"ok" *: *true'; then break; fi
+            if echo "$KQ" | grep -q 'BAN'; then sleep 60; continue; fi
+            sleep 20
+          done
+          echo "Bố cục chưa đạt: dừng dựng (Apps Script sẽ sửa kịch bản rồi gửi dựng lại)"; exit 1
+
+      - name: Chia khúc
+        id: chia
+        env:
+          MANIM_OK: ${{ steps.manim.outputs.ok }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          p = json.load(open('public/props.json', encoding='utf8'))
+          tong = p['tongFrame']
+          muon = int(os.environ.get('SO_MAY_DUNG') or 4)
+          # mỗi khúc ít nhất ~5 giây, tối đa 10 máy (video ngắn không chia nhỏ quá, tốn công khởi động máy)
+          n = max(1, min(muon, 10, tong // 150))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write('id=%s\n' % p['id'])
+              f.write('giay=%d\n' % round(tong / p['fps']))
+              f.write('so_khuc=%d\n' % n)
+              f.write('khuc=%s\n' % json.dumps(list(range(n))))
+              f.write('manim=%s\n' % ('1' if os.environ.get('MANIM_OK') == '1' else '0'))
+          print('Video %s: %d khung (%.1f giây) -> %d khúc' % (p['id'], tong, tong / p['fps'], n))
+          PY
+
+      - name: Gửi gói dựng cho các máy
+        uses: actions/upload-artifact@v4
+        with:
+          name: goi
+          path: |
+            build
+            public/props.json
+          retention-days: 1
+          compression-level: 1
+
+      - name: Gửi thông tin cho máy ghép
+        uses: actions/upload-artifact@v4
+        with:
+          name: thong-tin
+          path: |
+            public/props.json
+            out/*_bia.jpg
+            out/*_manim.mov
+            out/kiem_duyet.json
+          retention-days: 1
+          if-no-files-found: ignore
+
+  dung_khuc:
+    needs: chuan_bi
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: true
+      matrix:
+        khuc: ${{ fromJSON(needs.chuan_bi.outputs.khuc) }}
+    name: dựng khúc ${{ matrix.khuc }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts
+            package.json
+            package-lock.json
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Cài thư viện
+        run: |
+          # chỉ cài các gói hệ thống còn thiếu (máy GitHub đã có sẵn phần lớn thư viện của Chrome)
+          GOI="fonts-noto-color-emoji libnss3 libdbus-1-3 libatk1.0-0t64 libasound2t64 libxrandr2 libxkbcommon0 libxfixes3 libxcomposite1 libxdamage1 libgbm1 libcups2t64 libatk-bridge2.0-0t64 libpango-1.0-0 libcairo2"
+          THIEU=$(for g in $GOI; do dpkg -s "$g" >/dev/null 2>&1 || echo "$g"; done | tr '\n' ' ')
+          if [ -n "${THIEU// /}" ]; then
+            echo "Cài thêm: $THIEU"
+            ( sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends $THIEU ) > /tmp/apt.log 2>&1 &
+            APT=$!
+          fi
+          npm ci
+          if [ -n "${APT:-}" ]; then wait $APT || { cat /tmp/apt.log; exit 1; }; fi
+
+      - name: Lưu sẵn trình duyệt dựng hình
+        uses: actions/cache@v4
+        with:
+          path: node_modules/.remotion
+          key: remotion-chrome-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: goi
+
+      - name: Dựng khúc ${{ matrix.khuc }}
+        run: node scripts/dung_khuc.mjs build public/props.json ${{ matrix.khuc }} ${{ needs.chuan_bi.outputs.so_khuc }} khuc
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: khuc-${{ matrix.khuc }}
+          path: khuc
+          retention-days: 1
+          compression-level: 0
+
+  ghep:
+    needs: [chuan_bi, dung_khuc]
+    # luôn chạy (kể cả khi dựng lỗi) để báo kết quả về Apps Script; bỏ qua khi việc là "dang"
+    if: ${{ always() && needs.chuan_bi.result != 'skipped' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+      APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
+      DUNG_VIDEO_SECRET: ${{ secrets.DUNG_VIDEO_SECRET }}
+      DRIVE_THU_MUC: ${{ vars.DRIVE_THU_MUC }}
+      DA_DUNG: ${{ needs.chuan_bi.result == 'success' && needs.dung_khuc.result == 'success' }}
+      MANIM: ${{ needs.chuan_bi.outputs.manim }}
+    steps:
+      - uses: actions/checkout@v4
+        if: ${{ env.DA_DUNG == 'true' }}
+        with:
+          sparse-checkout: |
+            scripts
+            package.json
+            package-lock.json
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-node@v4
+        if: ${{ env.DA_DUNG == 'true' }}
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        if: ${{ env.DA_DUNG == 'true' }}
+        with:
+          python-version: '3.12'
+
+      - name: Cài thư viện
+        if: ${{ env.DA_DUNG == 'true' }}
+        run: |
+          ( pip install -q pillow ) > /tmp/pip.log 2>&1 &
+          PIP=$!
+          ( curl -fsSL https://rclone.org/install.sh | sudo bash ) > /tmp/rclone.log 2>&1 &
+          RC=$!
+          npm ci
+          wait $PIP || { cat /tmp/pip.log; exit 1; }
+          wait $RC || { cat /tmp/rclone.log; exit 1; }
+
+      - uses: actions/download-artifact@v4
+        if: ${{ env.DA_DUNG == 'true' }}
+        with:
+          name: thong-tin
+
+      - uses: actions/download-artifact@v4
+        if: ${{ env.DA_DUNG == 'true' }}
+        with:
+          pattern: khuc-*
+          path: khuc
+          merge-multiple: true
+
+      - name: Ghép video
+        id: dung
+        if: ${{ env.DA_DUNG == 'true' }}
+        run: |
+          ID="${{ needs.chuan_bi.outputs.id }}"
           mkdir -p out
-          npx remotion render src/index.ts Video "out/$ID.mp4" --props=public/props.json --concurrency=2
+          node scripts/ghep_khuc.mjs khuc "out/$ID.mp4"
+          if [ "$MANIM" = "1" ]; then
+            # bài hình học: ghép đè lớp Manim (hình + công thức, nền trong suốt) lên phần vỏ chung do Remotion dựng.
+            # Khung 0 là ảnh bìa (anhBiaDau) -> lớp Manim lùi đúng 1 khung.
+            [ -s "out/${ID}_manim.mov" ] || { echo "Thiếu lớp Manim"; exit 1; }
+            command -v ffmpeg >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /tmp/apt_ff.log 2>&1; }
+            LUI=$(python3 -c "import json;print(1 if json.load(open('public/props.json',encoding='utf8')).get('anhBiaDau') else 0)")
+            ffmpeg -y -loglevel error -i "out/$ID.mp4" -i "out/${ID}_manim.mov" -filter_complex \
+              "[1:v]format=rgba,tpad=start=${LUI}:color=0x00000000[m];[0:v][m]overlay=0:0:eof_action=pass:format=auto[v]" \
+              -map "[v]" -map 0:a -c:v libx264 -preset veryfast -crf 19 -pix_fmt yuv420p -c:a copy -movflags +faststart "out/${ID}_ghep.mp4"
+            mv "out/${ID}_ghep.mp4" "out/$ID.mp4"
+            rm -f "out/${ID}_manim.mov"
+            echo "Đã ghép lớp Manim"
+          fi
           ls -la out
           echo "id=$ID" >> "$GITHUB_OUTPUT"
-          echo "giay=$GIAY" >> "$GITHUB_OUTPUT"
+          # ảnh kiểm tra (4 khung hình để AI so với đề); dùng ffmpeg đi kèm Remotion, lỗi ở đây không làm hỏng việc dựng
+          export PATH="$PWD/node_modules/@remotion/compositor-linux-x64-gnu:$PATH"
+          python3 scripts/anh_kiem_tra.py public/props.json "out/$ID.mp4" out/ || echo "Không tạo được ảnh kiểm tra"
 
       - name: Lưu bản sao 3 ngày trên GitHub
+        if: ${{ steps.dung.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: video-${{ steps.dung.outputs.id }}
           path: out/*.mp4
           retention-days: 3
+          compression-level: 0
 
       - name: Tải video lên Google Drive
         id: drive
-        if: ${{ env.RCLONE_CONF != '' }}
+        if: ${{ steps.dung.outcome == 'success' && env.RCLONE_CONF != '' }}
         run: |
           mkdir -p ~/.config/rclone
           printf '%s' "$RCLONE_CONF" > ~/.config/rclone/rclone.conf
@@ -105,24 +450,35 @@ jobs:
           FILE_ID=$(rclone lsjson "gdrive:$THU_MUC" --files-only --include "$ID.mp4" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d[0]['ID'] if d else '')")
           if [ -z "$FILE_ID" ]; then echo "Không lấy được ID tệp trên Drive"; exit 1; fi
           echo "file_id=$FILE_ID" >> "$GITHUB_OUTPUT"
+          for LOAI in kt bia; do
+            if [ -f "out/${ID}_${LOAI}.jpg" ]; then
+              rclone copy "out/${ID}_${LOAI}.jpg" "gdrive:$THU_MUC/anh" || true
+              AID=$(rclone lsjson "gdrive:$THU_MUC/anh" --files-only --include "${ID}_${LOAI}.jpg" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d[0]['ID'] if d else '')" || true)
+              echo "anh_${LOAI}=$AID" >> "$GITHUB_OUTPUT"
+            fi
+          done
 
       - name: Báo kết quả về Apps Script
-        if: ${{ always() && github.event_name == 'repository_dispatch' && env.APPS_SCRIPT_URL != '' }}
+        if: ${{ always() && (github.event_name == 'repository_dispatch' || github.event.inputs.id != '') && env.APPS_SCRIPT_URL != '' }}
         env:
-          ID_VIDEO: ${{ github.event.client_payload.id }}
+          ID_VIDEO: ${{ github.event.client_payload.id || github.event.inputs.id }}
           FILE_ID: ${{ steps.drive.outputs.file_id }}
-          GIAY: ${{ steps.dung.outputs.giay }}
+          ANH_KT: ${{ steps.drive.outputs.anh_kt }}
+          ANH_BIA: ${{ steps.drive.outputs.anh_bia }}
+          GIAY: ${{ needs.chuan_bi.outputs.giay }}
           TRANG_THAI: ${{ job.status }}
         run: |
           python3 - <<'PY'
           import json, os
-          ok = os.environ.get("TRANG_THAI") == "success" and bool(os.environ.get("FILE_ID"))
+          ok = os.environ.get("TRANG_THAI") == "success" and os.environ.get("DA_DUNG") == "true" and bool(os.environ.get("FILE_ID"))
           d = {
               "token": os.environ["DUNG_VIDEO_SECRET"],
               "id": os.environ["ID_VIDEO"],
               "ok": ok,
               "file_id": os.environ.get("FILE_ID", ""),
               "giay": os.environ.get("GIAY", ""),
+              "anh_kt": os.environ.get("ANH_KT", ""),
+              "anh_bia": os.environ.get("ANH_BIA", ""),
               "loi": "" if ok else "Xem nhật ký: https://github.com/%s/actions/runs/%s" % (os.environ["GITHUB_REPOSITORY"], os.environ["GITHUB_RUN_ID"]),
           }
           json.dump(d, open("bao_ket_qua.json", "w"))
@@ -141,3 +497,45 @@ jobs:
             sleep 20
           done
           echo "Không báo được kết quả về Apps Script"; exit 1
+
+  # ĐĂNG VIDEO lên Facebook / TikTok / YouTube (DangVideo.gs trên Apps Script hẹn giờ rồi gọi việc này).
+  # Secrets cần (thêm cái nào thì nền tảng đó mới đăng; xem SUA_CODE_LAN_16.md):
+  #   Facebook: FB_PAGE_ID, FB_PAGE_TOKEN
+  #   TikTok:   TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET, TIKTOK_REFRESH_TOKEN (mã làm mới mới nhất được lưu vào Drive VIDEO_XACSUAT/bi_mat)
+  #   YouTube (chỉ khi CAU_HINH YOUTUBE_CACH = github): YT_CLIENT_ID, YT_CLIENT_SECRET, YT_REFRESH_TOKEN
+  dang:
+    if: ${{ github.event.inputs.viec == 'dang' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+      APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
+      DUNG_VIDEO_SECRET: ${{ secrets.DUNG_VIDEO_SECRET }}
+      DANG_JSON: ${{ github.event.inputs.dang }}
+      ID_VIDEO: ${{ github.event.inputs.id }}
+      DRIVE_BI_MAT: ${{ vars.DRIVE_BI_MAT }}
+      FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+      FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+      TIKTOK_CLIENT_KEY: ${{ secrets.TIKTOK_CLIENT_KEY }}
+      TIKTOK_CLIENT_SECRET: ${{ secrets.TIKTOK_CLIENT_SECRET }}
+      TIKTOK_REFRESH_TOKEN: ${{ secrets.TIKTOK_REFRESH_TOKEN }}
+      TIKTOK_CHE_DO: ${{ vars.TIKTOK_CHE_DO }}
+      TIKTOK_QUYEN: ${{ vars.TIKTOK_QUYEN }}
+      YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+      YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+      YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+      YT_CHE_DO: ${{ vars.YT_CHE_DO }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Cài công cụ
+        run: |
+          pip install requests
+          command -v ffmpeg >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)   # in số tập vào video lúc đăng
+          curl -fsSL https://rclone.org/install.sh | sudo bash
+          mkdir -p ~/.config/rclone
+          printf '%s' "$RCLONE_CONF" > ~/.config/rclone/rclone.conf
+      - name: Đăng video
+        run: python3 scripts/dang_video.py

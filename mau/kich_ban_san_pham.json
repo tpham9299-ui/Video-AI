@@ -1,0 +1,520 @@
+{
+ "tieu_de": "Bình giữ nhiệt 249 nghìn: bao lâu thì hoàn vốn?",
+ "chu_de_ngan": "Toán thực tế lớp 10",
+ "bai_hoc_rut_ra": [
+  "Tính khoản giữ lại mỗi ngày",
+  "Chia giá mua cho khoản đó",
+  "Số ngày phải làm tròn lên"
+ ],
+ "video_tiep_theo": "Mua combo hay mua lẻ thì lợi hơn?",
+ "hook": "Bình giữ nhiệt hai trăm bốn mươi chín nghìn, mua có đáng không?",
+ "hook_chu": "Bình 249 nghìn có đáng mua?",
+ "tieu_de_bia": "Bao lâu thì hoàn vốn?",
+ "hook_kieu": "cau_hoi",
+ "nhan_manh": [
+  "249 nghìn"
+ ],
+ "de_cho": [
+  "Bình giữ nhiệt: 249.000đ",
+  "2 chai nước mỗi ngày",
+  "Mỗi chai 6.000đ"
+ ],
+ "can_tim": "Số ngày ít nhất để tiền tiết kiệm bù tiền bình",
+ "du_kien": [
+  "249\\,000 \\text{ đ}",
+  "2 \\text{ chai/ngày}",
+  "6\\,000 \\text{ đ/chai}"
+ ],
+ "hashtag": [
+  "#toanthucte"
+ ],
+ "dap_an_cuoi": "21",
+ "dap_an_hien": "21 ngày",
+ "tong_giay": 70,
+ "id": "THU-sanpham1",
+ "lop": "10",
+ "chu_de": "Hoàn vốn bình giữ nhiệt",
+ "mon": "THUC_TE",
+ "loai_cau_hoi": "Toán thực tế",
+ "giong": "Kore",
+ "gioi_tinh_giong": "nu",
+ "de_bai": "Bình giữ nhiệt 750 ml giá 249.000 đồng. Minh mỗi ngày mua 2 chai nước, mỗi chai 6.000 đồng. Nếu dùng bình và lấy nước lọc ở nhà (coi như không tốn tiền), sau ít nhất bao nhiêu ngày thì số tiền tiết kiệm đủ bù tiền mua bình?",
+ "dap_an": "21",
+ "san_pham": {
+  "id": "SPMAU",
+  "ten": "Bình giữ nhiệt 750 ml",
+  "gia_ban": 249000,
+  "ngay": "14/11/2026",
+  "thong_so": [
+   "Dung tích: 750 ml"
+  ],
+  "doi_thu": [],
+  "link": "https://example.com/binh",
+  "anh": [
+   "anh_1.jpg",
+   "anh_2.jpg"
+  ],
+  "anh_id": [],
+  "anh_mo_ta": [
+   {
+    "so": 0,
+    "goc": "chính diện",
+    "mo_ta": "bình xanh nắp đen",
+    "chu": "750 ml",
+    "hop_mo_dau": true
+   },
+   {
+    "so": 1,
+    "goc": "nghiêng",
+    "mo_ta": "bình nghiêng nhẹ",
+    "chu": "750 ml",
+    "hop_mo_dau": false
+   }
+  ]
+ },
+ "canh": [
+  {
+   "so": 1,
+   "loai": "mo_dau",
+   "tieu_de_canh": "Bình 249 nghìn có đắt?",
+   "tu_khoa": "Bình",
+   "nhan": "MỞ ĐẦU",
+   "giu_san_khau": false,
+   "giong_doc": "tự nhiên, rõ ràng",
+   "loi_thoai": "Một chiếc bình giữ nhiệt hai trăm bốn mươi chín nghìn, mua có đáng không? Làm phép tính là biết ngay!",
+   "noi_dung_man_hinh": [],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Ảnh thật bình giữ nhiệt lớn ở giữa, nhãn giá 249.000đ",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "sp",
+       "loai": "anh_that",
+       "anh": 0,
+       "x": 50,
+       "y": 44,
+       "co": 1.3,
+       "gia": true,
+       "nhan": "Bình giữ nhiệt 750 ml",
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "sp",
+       "kieu": "sang"
+      }
+     ]
+    }
+   },
+   "thoi_luong_giay": 6
+  },
+  {
+   "so": 2,
+   "loai": "de_bai",
+   "tieu_de_canh": "Đề bài",
+   "tu_khoa": "Đề",
+   "nhan": "ĐỀ BÀI",
+   "giu_san_khau": false,
+   "giong_doc": "tự nhiên, rõ ràng",
+   "loi_thoai": "Minh mỗi ngày mua hai chai nước, mỗi chai sáu nghìn đồng. Nếu dùng bình và lấy nước lọc ở nhà, sau ít nhất bao nhiêu ngày thì tiền tiết kiệm đủ bù tiền mua bình?",
+   "noi_dung_man_hinh": [],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Ảnh bình bên trái, dữ kiện bên phải",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "sp",
+       "loai": "anh_that",
+       "anh": 0,
+       "x": 27,
+       "y": 45,
+       "co": 0.8,
+       "nhan": "249.000đ",
+       "buoc": 1
+      },
+      {
+       "id": "n1",
+       "loai": "nhan",
+       "noi_dung": "2 chai/ngày",
+       "x": 74,
+       "y": 30,
+       "buoc": 2
+      },
+      {
+       "id": "n2",
+       "loai": "nhan",
+       "noi_dung": "6.000đ/chai",
+       "x": 74,
+       "y": 52,
+       "buoc": 2
+      },
+      {
+       "id": "n3",
+       "loai": "nhan",
+       "noi_dung": "Ít nhất ? ngày",
+       "x": 74,
+       "y": 74,
+       "buoc": 3,
+       "mau": "vang"
+      }
+     ],
+     "hanh_dong": []
+    }
+   },
+   "thoi_luong_giay": 8
+  },
+  {
+   "so": 3,
+   "loai": "mo_phong",
+   "tieu_de_canh": "Mỗi ngày tốn bao nhiêu",
+   "tu_khoa": "Mỗi",
+   "nhan": "MÔ PHỎNG",
+   "giu_san_khau": false,
+   "giong_doc": "tự nhiên, rõ ràng",
+   "loi_thoai": "Mỗi ngày Minh trả tiền cho hai chai nước. Dùng bình thì khoản này được giữ lại.",
+   "noi_dung_man_hinh": [],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Hai chai nước và số tiền giữ lại mỗi ngày",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "chai",
+       "loai": "bieu_tuong",
+       "emoji": "🍶",
+       "so_luong": 2,
+       "x": 50,
+       "y": 30,
+       "nhan": "2 chai mỗi ngày",
+       "buoc": 1
+      },
+      {
+       "id": "tk",
+       "loai": "so_dem",
+       "gia_tri": 12000,
+       "x": 50,
+       "y": 70,
+       "nhan": "Giữ lại mỗi ngày (đồng)",
+       "buoc": 2
+      }
+     ],
+     "hanh_dong": []
+    }
+   },
+   "thoi_luong_giay": 6
+  },
+  {
+   "so": 4,
+   "loai": "bay",
+   "tieu_de_canh": "Bẫy: quên nhân 2",
+   "tu_khoa": "Bẫy:",
+   "nhan": "LỖI SAI",
+   "giu_san_khau": false,
+   "giong_doc": "tự nhiên, rõ ràng",
+   "loi_thoai": "Nhiều bạn lấy hai trăm bốn mươi chín nghìn chia sáu nghìn, ra gần bốn mươi hai ngày. Sai rồi, mỗi ngày Minh mua tới hai chai!",
+   "noi_dung_man_hinh": [
+    "249\\,000 : 6\\,000 \\approx 42 \\text{ ngày}"
+   ],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Nhãn cảnh báo lỗi sai",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "sai",
+       "loai": "nhan",
+       "noi_dung": "Quên: mỗi ngày 2 chai!",
+       "x": 50,
+       "y": 50,
+       "mau": "do",
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "sai",
+       "kieu": "rung"
+      }
+     ]
+    }
+   },
+   "thoi_luong_giay": 6
+  },
+  {
+   "so": 5,
+   "loai": "tinh_toan",
+   "tieu_de_canh": "Tiền giữ lại mỗi ngày",
+   "tu_khoa": "Tiền",
+   "nhan": "BƯỚC 1",
+   "giu_san_khau": false,
+   "giong_doc": "tự nhiên, rõ ràng",
+   "loi_thoai": "Mỗi ngày tiết kiệm được hai nhân sáu nghìn bằng mười hai nghìn đồng.",
+   "noi_dung_man_hinh": [
+    "2 \\cdot 6\\,000 = 12\\,000 \\text{ đ/ngày}"
+   ],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Ảnh bình nhỏ bên trái, số tiền mỗi ngày bên phải",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "sp",
+       "loai": "anh_that",
+       "anh": 1,
+       "x": 24,
+       "y": 45,
+       "co": 0.7,
+       "buoc": 1
+      },
+      {
+       "id": "tk",
+       "loai": "so_dem",
+       "gia_tri": 12000,
+       "x": 70,
+       "y": 45,
+       "nhan": "đồng mỗi ngày",
+       "buoc": 2
+      }
+     ],
+     "hanh_dong": []
+    }
+   },
+   "thoi_luong_giay": 6
+  },
+  {
+   "so": 6,
+   "loai": "tinh_toan",
+   "tieu_de_canh": "Số ngày bù tiền bình",
+   "tu_khoa": "Số",
+   "nhan": "BƯỚC 2",
+   "giu_san_khau": false,
+   "giong_doc": "tự nhiên, rõ ràng",
+   "loi_thoai": "Lấy giá bình chia cho mười hai nghìn, được hai mươi phẩy bảy mươi lăm. Số ngày phải là số nguyên và phải đủ bù, nên làm tròn lên hai mươi mốt ngày.",
+   "noi_dung_man_hinh": [
+    "249\\,000 : 12\\,000 = 20{,}75",
+    "\\Rightarrow n = 21 \\text{ ngày}"
+   ],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Lịch 21 ô, ô cuối sáng lên",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "lich",
+       "loai": "luoi_o",
+       "so_luong": 21,
+       "so_cot": 7,
+       "x": 50,
+       "y": 48,
+       "nhan": "21 ngày",
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "lich",
+       "kieu": "chon",
+       "chi_so": [
+        21
+       ],
+       "mau": "vang"
+      }
+     ]
+    }
+   },
+   "thoi_luong_giay": 8
+  },
+  {
+   "so": 7,
+   "loai": "dap_an",
+   "tieu_de_canh": "Đáp án",
+   "tu_khoa": "Đáp",
+   "nhan": "ĐÁP ÁN",
+   "giu_san_khau": false,
+   "giong_doc": "tự nhiên, rõ ràng",
+   "loi_thoai": "Vậy sau ít nhất hai mươi mốt ngày, tiền tiết kiệm đã đủ bù tiền mua bình.",
+   "noi_dung_man_hinh": [
+    "n = 21 \\text{ ngày}"
+   ],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Ảnh bình và huy hiệu đáp án 21 ngày",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "sp",
+       "loai": "anh_that",
+       "anh": 0,
+       "x": 27,
+       "y": 48,
+       "co": 0.75,
+       "buoc": 1
+      },
+      {
+       "id": "kq",
+       "loai": "so_dem",
+       "gia_tri": 21,
+       "kieu": "vien",
+       "x": 72,
+       "y": 48,
+       "nhan": "ngày",
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": []
+    }
+   },
+   "thoi_luong_giay": 6
+  },
+  {
+   "so": 8,
+   "loai": "kiem_tra",
+   "tieu_de_canh": "Thử lại",
+   "tu_khoa": "Thử",
+   "nhan": "THỬ LẠI",
+   "giu_san_khau": false,
+   "giong_doc": "tự nhiên, rõ ràng",
+   "loi_thoai": "Thử lại nhé: hai mươi ngày mới giữ được hai trăm bốn mươi nghìn, chưa đủ. Hai mươi mốt ngày được hai trăm năm mươi hai nghìn, đã vượt giá bình.",
+   "noi_dung_man_hinh": [
+    "20 \\cdot 12\\,000 = 240\\,000 < 249\\,000",
+    "21 \\cdot 12\\,000 = 252\\,000 \\ge 249\\,000 \\;\\checkmark"
+   ],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Biểu đồ cột so sánh tiền giữ lại và giá bình",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "cot",
+       "loai": "bieu_do_cot",
+       "ds": [
+        "20 ngày",
+        "21 ngày",
+        "Giá bình"
+       ],
+       "ds_so": [
+        240,
+        252,
+        249
+       ],
+       "x": 50,
+       "y": 50,
+       "nhan": "nghìn đồng",
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "cot",
+       "kieu": "chon",
+       "chi_so": [
+        2
+       ],
+       "mau": "xanh_la"
+      }
+     ]
+    }
+   },
+   "thoi_luong_giay": 8
+  },
+  {
+   "so": 9,
+   "loai": "lien_he_thuc_te",
+   "tieu_de_canh": "Tính ra thì sao",
+   "tu_khoa": "Tính",
+   "nhan": "CHỐT",
+   "giu_san_khau": false,
+   "giong_doc": "tự nhiên, rõ ràng",
+   "loi_thoai": "Tính ra chỉ sau ba tuần, chiếc bình đã tự trả đủ tiền. Từ ngày thứ hai mươi hai, mỗi ngày Minh giữ lại mười hai nghìn đồng.",
+   "noi_dung_man_hinh": [],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Ảnh bình lớn với nhãn kết luận",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "sp",
+       "loai": "anh_that",
+       "anh": 0,
+       "x": 50,
+       "y": 40,
+       "co": 0.95,
+       "nhan": "Sau 21 ngày: tự trả đủ tiền",
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "sp",
+       "kieu": "chon"
+      }
+     ]
+    }
+   },
+   "thoi_luong_giay": 7
+  },
+  {
+   "so": 10,
+   "loai": "bai_hoc",
+   "tieu_de_canh": "Bài học",
+   "tu_khoa": "Bài",
+   "nhan": "BÀI HỌC",
+   "giu_san_khau": false,
+   "giong_doc": "tự nhiên, rõ ràng",
+   "loi_thoai": "Nhớ nhé: tính tiền giữ lại mỗi ngày, chia giá mua, rồi làm tròn lên. Bình giữ nhiệt bảy trăm năm mươi mi li lít có tại kênh, link ở mô tả nhé.",
+   "noi_dung_man_hinh": [],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Danh sách bài học",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "ds",
+       "loai": "danh_sach",
+       "x": 50,
+       "y": 45,
+       "noi_dung": "Bài toán hoàn vốn",
+       "ds": [
+        "1. Tiền giữ lại mỗi ngày",
+        "2. Chia giá mua",
+        "3. Làm tròn LÊN"
+       ],
+       "mau": "tim",
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": []
+    }
+   },
+   "thoi_luong_giay": 9
+  }
+ ]
+}

@@ -42,14 +42,95 @@ def do_thoi_luong(tep):
 
 
 # ---------- Chuẩn hóa văn bản để giọng đọc không đọc sai ----------
+# ĐỌC KÝ HIỆU HÌNH HỌC thành lời (trước đây "⊥", "(SAC)", "BD"... để nguyên -> giọng Gemini đọc lạc, sinh tiếng RÈ)
+TEN_CHU_CAI = {"A": "a", "B": "bê", "C": "xê", "D": "đê", "E": "e", "F": "ép", "G": "gờ", "H": "hát", "I": "i", "J": "giây", "K": "ca", "L": "lờ",
+               "M": "mờ", "N": "nờ", "O": "o", "P": "pê", "Q": "quy", "R": "rờ", "S": "ét", "T": "tê", "U": "u", "V": "vê", "W": "vê kép", "X": "ích",
+               "Y": "i dài", "Z": "dét"}
+DOC_CHU_CAI = {"bat": False}   # bật cho video HÌNH HỌC (main đặt theo kb.mon / đề): đánh vần tên điểm "BD" -> "bê đê"
+KY_HIEU_DOC = [("⊥", " vuông góc với "), ("∥", " song song với "), ("//", " song song với "), ("∠", " góc "), ("△", " tam giác "), ("Δ", " tam giác "),
+               ("°", " độ"), ("≈", " xấp xỉ "), ("≤", " nhỏ hơn hoặc bằng "), ("≥", " lớn hơn hoặc bằng "), ("≠", " khác "), ("√", " căn "),
+               ("²", " bình phương"), ("³", " lập phương"), ("π", " pi"), ("∈", " thuộc "), ("∉", " không thuộc "), ("⇒", ", suy ra "), ("⇔", ", tương đương "),
+               ("→", " suy ra "), ("∩", " giao "), ("∪", " hợp "), ("≡", " trùng "), ("∼", " đồng dạng với "), ("~", " đồng dạng với "), ("…", ", "), ("·", " nhân "),
+               ("±", " cộng trừ "), ("−", " trừ "), ("∞", " vô cùng ")]
+
+
+def _danh_van(m):
+    chu = m.group(0)
+    phay = chu.count("'")
+    ten = " ".join(TEN_CHU_CAI.get(c, c) for c in chu.replace("'", ""))
+    return " " + ten + (" phẩy" * phay) + " "
+
+
 def chuan_hoa_doc(text):
     s = str(text)
+    s = re.sub(r"\\[a-zA-Z]+|[{}$]", " ", s)                  # mã TeX lọt vào lời thoại
+    s = re.sub(r"\(\s*([A-Z]{3,4})\s*\)", r" mặt phẳng \1 ", s)    # (SAC) -> mặt phẳng SAC
+    s = re.sub(r"\(\s*([A-Z])\s*\)", r" \1 ", s)                  # đường tròn (O) -> đường tròn O
+    for k, v in KY_HIEU_DOC:
+        s = s.replace(k, v)
     s = re.sub(r"(\d+)\s*/\s*(\d+)", r"\1 phần \2", s)       # 3/5 -> "3 phần 5"
     s = re.sub(r"(\d)\s*%", r"\1 phần trăm", s)
+    s = re.sub(r"\s*/\s*(năm|tháng|ngày|giờ|giây|phút|kỳ|quý|tuần|người|chai|cái|kg|km|m)\b", r" mỗi \1", s)   # 6%/năm -> 6 phần trăm mỗi năm
     s = s.replace("×", " nhân ").replace("÷", " chia ").replace("=", " bằng ")
     s = re.sub(r"(?<=\s)\+(?=\s)", "cộng", s)
-    s = re.sub(r"\s+", " ", s).strip()
+    s = re.sub(r"(?<=\s)-(?=\s)", "trừ", s)
+    if DOC_CHU_CAI["bat"]:
+        # tên điểm / đoạn / mặt: 1-4 chữ in hoa đứng riêng (có thể kèm dấu phẩy trên A') -> đọc từng chữ cái kiểu Việt
+        s = re.sub(r"(?<![A-Za-zÀ-ỹ])[A-Z]{1,4}'*(?![A-Za-zÀ-ỹ])", _danh_van, s)
+    s = re.sub(r"\s+([,.!?])", r"\1", re.sub(r"\s+", " ", s)).strip()
     return s
+
+
+# ---------- PHÁT HIỆN GIỌNG RÈ / TẠP ÂM (giọng Gemini đôi khi "đọc lạc" ra tiếng rè, ồ, xì) ----------
+def do_tap_am(wav):
+    """Tỉ lệ khung 0,25 giây bị TẠP ÂM (to mà lại "xì" như nhiễu: tỉ lệ qua điểm 0 rất cao) + tỉ lệ mẫu bị VỠ TIẾNG (chạm trần).
+    Trả (ti_le_tap_am, ti_le_vo, ti_le_lien_tuc): giọng sạch thường ~0; tiếng rè / nhiễu > 0,03."""
+    import wave
+    import array
+    try:
+        with wave.open(wav, "rb") as w:
+            sr, n, kenh, rong = w.getframerate(), w.getnframes(), w.getnchannels(), w.getsampwidth()
+            if rong != 2:
+                return 0.0, 0.0, 0.0
+            a = array.array("h", w.readframes(n))
+    except Exception as e:
+        print("Không đo được tạp âm:", e)
+        return 0.0, 0.0, 0.0
+    if kenh > 1:
+        a = a[::kenh]
+    import math
+    buoc = max(1, int(sr * 0.25))
+    to = 0
+    vo = sum(1 for x in a if x > 32000 or x < -32000)
+    co_xi = []   # từng khung: to + "xì" (tỉ lệ qua điểm 0 cao)
+    for i in range(0, len(a) - buoc, buoc):
+        k = a[i:i + buoc]
+        nl = sum(x * x for x in k[::4]) / max(1, len(k[::4]))
+        db = 10 * math.log10(nl / (32768.0 ** 2) + 1e-12)
+        xi = False
+        if db > -32:
+            to += 1
+            zcr = sum(1 for j in range(1, len(k), 2) if (k[j - 1] >= 0) != (k[j] >= 0)) / (len(k) / 2.0)
+            xi = zcr > 0.32
+        co_xi.append(xi)
+    # chỉ tính tiếng xì kéo dài LIÊN TỤC >= 0,5 giây (2 khung): âm "x", "s" của giọng thật chỉ ~0,1-0,2 giây, không bị tính nhầm
+    xau, chuoi = 0, 0
+    for xi in co_xi + [False]:
+        if xi:
+            chuoi += 1
+        else:
+            if chuoi >= 2:
+                xau += chuoi
+            chuoi = 0
+    tong = max(1, len(co_xi))
+    return xau / float(max(1, to)), vo / float(max(1, len(a))), to / float(tong)
+
+
+def giong_bi_re(wav, ten=""):
+    tap, vo, lien = do_tap_am(wav)
+    re_ = tap > 0.03 or vo > 0.004
+    print("Đo giọng %s: tạp âm %.1f%%, vỡ tiếng %.2f%%, có tiếng %.0f%% thời lượng%s" % (ten, tap * 100, vo * 100, lien * 100, " -> RÈ/NHIỄU" if re_ else " -> sạch"))
+    return re_
 
 
 def tach_cau(text):
@@ -106,6 +187,317 @@ def _gia_lap(text, tep):
           "-ac", "1", "-ar", "24000", "-c:a", "libmp3lame", "-b:a", "48k", tep])
 
 
+def _gtts(text, tep, toc):
+    """Giọng dự phòng: Google Translate TTS (miễn phí). Đọc chậm hơn nên tăng tốc bằng ffmpeg cho khớp nhịp."""
+    from gtts import gTTS
+    tho = tep + ".g.mp3"
+    gTTS(text, lang="vi").save(tho)
+    chay(["ffmpeg", "-y", "-loglevel", "error", "-i", tho, "-af", "atempo=%.2f" % toc, "-c:a", "libmp3lame", "-b:a", "96k", tep])
+    os.remove(tho)
+
+
+THONG_KE_GIONG = {"edge": 0, "gtts": 0, "gemini": 0}
+
+PHONG_CACH_GIONG_MAC_DINH = ("Đọc đoạn sau bằng tiếng Việt chuẩn, giọng miền Bắc, như một thầy giáo trẻ đang nói chuyện trực tiếp với một bạn học sinh "
+                             "trong video TikTok dạy toán: tự nhiên như trò chuyện chứ không đọc văn bản, giọng ấm, có nụ cười trong giọng nói, "
+                             "lên xuống giọng rõ ràng, ngừng rất ngắn trước con số hoặc ý quan trọng rồi nhấn vào nó, câu hỏi thì lên giọng cuối câu, "
+                             "tốc độ hơi nhanh nhưng mọi chữ đều rõ. Chỉ đọc đúng nội dung, không thêm bớt chữ nào.")
+
+# Sắc thái giọng theo loại cảnh (kịch bản có thể ghi đè bằng trường "giong_doc" của từng cảnh).
+SAC_THAI_THEO_LOAI = [
+    (r"mo_dau|hook|cau_hoi", "hào hứng, gây tò mò, như đang thách đố người nghe, nhấn mạnh từ khóa"),
+    (r"de_bai", "rõ ràng, nhịp vừa phải như kể một câu chuyện ngắn, đọc chậm và rõ từng con số của đề"),
+    (r"nhac_lai|kien_thuc", "ấm áp, giải thích nhẹ nhàng như nhắc lại cho bạn mình"),
+    (r"mo_hinh", "tập trung, mạch lạc, như đang vẽ phác thảo cho người nghe cùng nhìn"),
+    (r"y_do|thu_nho", "tò mò, suy ngẫm, như đang cùng người nghe đặt câu hỏi"),
+    (r"bay", "hạ giọng một chút, cảnh báo nghiêm túc, hơi bí ẩn như sắp tiết lộ sai lầm"),
+    (r"diem_chot|y_tuong", "sáng lên như vừa phát hiện ra điều thú vị, kiểu 'à, ra là thế'"),
+    (r"tinh|giai", "tự tin, nhịp đều và chắc, nhấn vào từng kết quả trung gian"),
+    (r"kiem_tra", "cẩn thận, chắc chắn, như đang soát lại cho yên tâm"),
+    (r"dap_an|ket_qua", "phấn khích, rõ ràng, đọc đáp số chậm lại một nhịp để người nghe nhớ"),
+    (r"bai_hoc|ket_luan|chot", "thân thiện, chậm lại, đọng lại, như lời dặn cuối buổi học"),
+]
+
+
+def sac_thai_canh(c):
+    rieng = str(c.get("giong_doc") or "").strip()
+    if rieng:
+        return rieng[:160]
+    loai = str(c.get("loai") or "").lower()
+    for re_, mo_ta in SAC_THAI_THEO_LOAI:
+        if re.search(re_, loai):
+            return mo_ta
+    return ""
+
+
+def nghi_canh(canh, i):
+    """Nhịp nghỉ tự nhiên quanh mỗi cảnh (giây): cảnh nối tiếp cùng sân khấu thì liền mạch, trước cái bẫy / đáp án thì
+    lặng thêm một nhịp để tạo kịch tính, cảnh cuối để đọng lại. Thay cho khoảng lặng cố định giữa mọi cảnh (nghe máy móc)."""
+    c = canh[i]
+    loai = str(c.get("loai") or "").lower()
+    sau = canh[i + 1] if i + 1 < len(canh) else None
+    if i == 0:
+        lead = LEAD
+    elif c.get("giu_san_khau"):
+        lead = 0.12
+    elif re.search(r"bay|dap_an|ket_qua", loai):
+        lead = 0.34
+    else:
+        lead = LEAD
+    if sau is None:
+        tail = 0.85
+    elif sau.get("giu_san_khau"):
+        tail = 0.16
+    elif re.search(r"bay|dap_an|ket_qua", str(sau.get("loai") or "").lower()):
+        tail = 0.5
+    else:
+        tail = TAIL
+    return lead, tail
+
+
+# ---------- Kho key Gemini (xoay vòng như Bộ phận 1) ----------
+# Hết hạn mức NGÀY -> bỏ key đó, sang key kế. Giới hạn THEO PHÚT -> chờ retryDelay rồi thử lại. Key LỖI THẬT -> ghi
+# /tmp/gemini_key_hong.json để báo Zalo người dùng gỡ key.
+KEY_HET_NGAY = set()
+KEY_HONG = set()
+# NGÂN SÁCH THỜI GIAN cho giọng Gemini (cả video): Gemini chậm / treo thì không được ăn hết 30 phút của máy dựng.
+# Quá hạn -> báo lỗi -> cả video dùng giọng dự phòng (edge-tts), video vẫn ra đúng hạn.
+GIAY_TOI_DA_GEMINI = float(os.environ.get("GIAY_TOI_DA_GEMINI") or 480)
+_BAT_DAU_GEMINI = []
+TEP_KEY_HONG_JSON = os.path.join(tempfile.gettempdir(), "gemini_key_hong.json")
+
+
+def ds_key_gemini():
+    ds = []
+    for nguon in (os.environ.get("GEMINI_KEYS", ""), os.environ.get("GEMINI_API_KEY", "")):
+        for k in re.split(r"[\s,;]+", nguon):
+            if k and k not in ds:
+                ds.append(k)
+    return ds
+
+
+def ghi_key_hong(k, code, noi):
+    if k in KEY_HONG:
+        return
+    KEY_HONG.add(k)
+    ds_goc = [x for x in re.split(r"[\s,;]+", os.environ.get("GEMINI_KEYS", "")) if x]
+    so = ds_goc.index(k) + 1 if k in ds_goc else 0
+    m = re.search(r'"message":\s*"([^"]{0,160})', noi)
+    ly = "HTTP %d: %s" % (code, re.sub(r"\s+", " ", m.group(1) if m else noi)[:160])
+    try:
+        ds = json.load(open(TEP_KEY_HONG_JSON, encoding="utf8")) if os.path.exists(TEP_KEY_HONG_JSON) else []
+        ma = k[:6] + "_" + k[-4:]
+        if not any(x.get("dau") == ma for x in ds):
+            ds.append({"so": so, "dau": ma, "ly_do": ly})
+        json.dump(ds, open(TEP_KEY_HONG_JSON, "w", encoding="utf8"))
+    except Exception:
+        pass
+    print("KEY_HONG: key thứ %s (%s) lỗi thật: %s -> bỏ qua, sẽ báo Zalo" % (so or "?", k[:6] + "_" + k[-4:], ly))
+
+
+def gemini_tts(text, tep_wav, giong, model, phong_cach):
+    """Giọng Gemini TTS (Google): một lần gọi cho cả lời thoại của cảnh. Trả về tệp WAV 24 kHz.
+    Dùng mọi key trong GEMINI_KEYS / GEMINI_API_KEY (GitHub Secret), xoay vòng khi key hết hạn mức ngày hoặc hỏng."""
+    import base64
+    import urllib.error
+    import urllib.request
+    import time
+    keys = ds_key_gemini()
+    if not keys:
+        raise RuntimeError("chưa có GEMINI_API_KEY")
+    than = {
+        "contents": [{"parts": [{"text": phong_cach + "\n" + text}]}],
+        "generationConfig": {"responseModalities": ["AUDIO"],
+                             "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": giong}}}},
+    }
+    url = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent" % model
+    loi = None
+    if not _BAT_DAU_GEMINI:
+        _BAT_DAU_GEMINI.append(time.time())
+
+    def con_lai():
+        return GIAY_TOI_DA_GEMINI - (time.time() - _BAT_DAU_GEMINI[0])
+    for vong in range(4):
+        dung = [k for k in keys if k not in KEY_HONG and k not in KEY_HET_NGAY]
+        if not dung:
+            break
+        cho_min = 0
+        for key in dung:
+            req = urllib.request.Request(url, data=json.dumps(than).encode("utf8"), method="POST",
+                                         headers={"Content-Type": "application/json", "x-goog-api-key": key})
+            if con_lai() < 15:
+                raise RuntimeError("Gemini TTS quá %d giây (chậm/treo) -> dùng giọng dự phòng" % GIAY_TOI_DA_GEMINI)
+            try:
+                with urllib.request.urlopen(req, timeout=max(15, min(120, con_lai()))) as r:
+                    d = json.loads(r.read().decode("utf8"))
+                phan = d["candidates"][0]["content"]["parts"]
+                b64 = next(p["inlineData"]["data"] for p in phan if "inlineData" in p)
+                pcm = tep_wav + ".pcm"
+                with open(pcm, "wb") as f:
+                    f.write(base64.b64decode(b64))
+                chay(["ffmpeg", "-y", "-loglevel", "error", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", pcm, tep_wav])
+                os.remove(pcm)
+                return
+            except urllib.error.HTTPError as e:
+                noi = e.read().decode("utf8", "ignore")[:4000]
+                loi = "HTTP %d %s" % (e.code, noi[:300])
+                if e.code == 429 and re.search(r"PerDay|per day|daily", noi, re.I):
+                    KEY_HET_NGAY.add(key)   # hết hạn mức NGÀY: sang key kế, không gọi lại key này
+                    print("Gemini TTS: key %s… hết hạn mức ngày, chuyển key khác" % key[:6])
+                    continue
+                if e.code == 401 or (e.code in (400, 403) and re.search(r"API_KEY_INVALID|API key not valid|API key expired|SERVICE_DISABLED|has not been used|is disabled|suspended|PERMISSION_DENIED|billing", noi, re.I)):
+                    # bị model giọng đọc từ chối: key có thể vẫn tốt với model chữ (key dạng "AQ.") -> chỉ bỏ key cho giọng đọc, không báo hỏng
+                    KEY_HONG.add(key)
+                    print("Gemini TTS: key %s bị model giọng từ chối (HTTP %d), bỏ key này cho giọng đọc" % (key[:6] + "_" + key[-4:], e.code))
+                    continue
+                if e.code in (429, 500, 503):
+                    m = re.search(r'"retryDelay":\s*"(\d+)', noi)
+                    cho = min(60, int(m.group(1)) + 2) if m else 10 * (vong + 1)
+                    cho_min = min(cho_min, cho) if cho_min else cho
+                    continue
+                raise RuntimeError("Gemini TTS lỗi: %s" % loi)
+            except Exception as e:
+                loi = str(e)
+        if not cho_min:
+            break
+        if con_lai() < cho_min + 20:
+            break
+        print("Gemini TTS: mọi key đang bận/giới hạn theo phút, chờ %d giây rồi thử lại" % cho_min)
+        time.sleep(cho_min)
+    raise RuntimeError("Gemini TTS lỗi: %s" % loi)
+
+
+def tao_giong_gemini(canh, thu_muc, args):
+    """Tạo trước giọng Gemini cho TẤT CẢ cảnh. Lỗi ở bất kỳ cảnh nào -> trả None để cả video dùng edge-tts
+    (không trộn hai giọng khác nhau trong một video)."""
+    kq = {}
+    for i, c in enumerate(canh):
+        van = chuan_hoa_doc(str(c.get("loi_thoai") or "").strip())
+        if not van:
+            continue
+        wav = os.path.join(thu_muc, "gem_%d.wav" % i)
+        # CÙNG MỘT chỉ dẫn giọng cho mọi cảnh: trước đây mỗi cảnh một sắc thái ("hào hứng", "cảnh báo"...) làm chất giọng đổi liên tục
+        phong_cach = args.phong_cach_giong + " Giữ NGUYÊN một chất giọng, cao độ và tốc độ như các đoạn khác của cùng video.\nĐoạn cần đọc:"
+        try:
+            gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach)
+            tu = max(1, len(van.split()))
+            if tu >= 8 and tu / max(0.1, do_thoi_luong(wav) - 0.4) > 4.6:
+                print("Gemini đọc thiếu chữ ở cảnh %d, đọc lại" % (i + 1))
+                gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach)
+            if giong_bi_re(wav, "cảnh %d" % (i + 1)):
+                gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach)   # đọc lại một lần
+                if giong_bi_re(wav, "cảnh %d (đọc lại)" % (i + 1)):
+                    raise RuntimeError("giọng Gemini cảnh %d vẫn rè sau khi đọc lại" % (i + 1))
+        except Exception as e:
+            print("Cảnh báo: %s -> cả video chuyển sang edge-tts" % str(e)[:200])
+            THONG_KE_GIONG["gemini"] = 0   # bỏ hết phần Gemini đã tạo: cả video một giọng
+            return None
+        nhanh = os.path.join(thu_muc, "gem_%d.mp3" % i)
+        tempo = float(args.toc_do_gemini or 1.0)
+        loc = ("atempo=%.3f," % tempo if abs(tempo - 1) > 0.01 else "") + "aresample=44100"
+        chay(["ffmpeg", "-y", "-loglevel", "error", "-i", wav, "-af", loc, "-c:a", "libmp3lame", "-b:a", "128k", nhanh])
+        kq[i] = nhanh
+        THONG_KE_GIONG["gemini"] += 1
+    return kq
+
+
+def tim_khoang_lang(wav, nguong_db=-38, toi_thieu=0.4):
+    """Các khoảng lặng trong tệp âm thanh: [(bắt đầu, kết thúc)] (giây), dùng bộ lọc silencedetect của ffmpeg."""
+    r = subprocess.run(["ffmpeg", "-hide_banner", "-i", wav, "-af", "silencedetect=noise=%ddB:d=%.2f" % (nguong_db, toi_thieu), "-f", "null", "-"],
+                       capture_output=True, text=True)
+    ds, bd = [], None
+    for dong in r.stderr.splitlines():
+        m = re.search(r"silence_start: ([\d.]+)", dong)
+        if m:
+            bd = float(m.group(1))
+        m = re.search(r"silence_end: ([\d.]+)", dong)
+        if m and bd is not None:
+            ds.append((bd, float(m.group(1))))
+            bd = None
+    return ds
+
+
+def tao_giong_gemini_mot_lan(canh, thu_muc, args):
+    """GIỌNG THỐNG NHẤT CẢ VIDEO: Gemini đọc TOÀN BỘ lời thoại trong MỘT lần gọi (một người, một mạch, một cảm xúc liền),
+    rồi máy cắt theo cảnh ở các khoảng ngừng giữa đoạn (chọn khoảng ngừng gần vị trí dự kiến theo số chữ của từng cảnh).
+    Trước đây mỗi cảnh gọi riêng một lần -> mỗi cảnh như một người đọc khác. Cắt không chắc chắn -> trả None (cả video dùng edge)."""
+    van = [chuan_hoa_doc(str(c.get("loi_thoai") or "").strip()) for c in canh]
+    if not all(van):
+        return None
+    toan_bai = "\n\n".join(van)
+    phong_cach = (args.phong_cach_giong + " Đây là TOÀN BỘ lời giảng của một video: đọc liền mạch từ đầu đến cuối như MỘT người kể, "
+                  "giữ nguyên một chất giọng, cao độ và tốc độ. Giữa hai đoạn (cách nhau một dòng trống) NGỪNG HẲN khoảng 1,2 giây; "
+                  "trong một đoạn thì đọc liền, tự nhiên.\nLời giảng:")
+    ky_tu = [max(1, len(v)) for v in van]
+    for lan in range(2):
+        wav = os.path.join(thu_muc, "ca_bai_%d.wav" % lan)
+        try:
+            gemini_tts(toan_bai, wav, args.giong_gemini, args.tts_model, phong_cach)
+        except Exception as e:
+            print("Cảnh báo: Gemini đọc cả bài lỗi: %s" % str(e)[:200])
+            return None
+        D = do_thoi_luong(wav)
+        # đọc thiếu / bị cắt cụt: Việt ~13-17 ký tự mỗi giây
+        if D < sum(ky_tu) / 30.0:
+            print("Gemini đọc cả bài quá ngắn (%.1f giây cho %d ký tự), đọc lại" % (D, sum(ky_tu)))
+            continue
+        # đọc DÀI bất thường (mô hình "lạc" sinh tiếng ồ, rè ở cuối) hoặc đo thấy tạp âm -> đọc lại
+        if D > sum(ky_tu) / 7.0:
+            print("Gemini đọc cả bài dài bất thường (%.1f giây cho %d ký tự) - nghi lạc giọng/rè, đọc lại" % (D, sum(ky_tu)))
+            continue
+        if giong_bi_re(wav, "cả bài (lần %d)" % (lan + 1)):
+            continue
+        lang = tim_khoang_lang(wav)
+        cat, truoc, ok = [], 0.0, True
+        tich = 0
+        for k in range(len(van) - 1):
+            tich += ky_tu[k]
+            du_kien = D * tich / sum(ky_tu)
+            cua_so = max(2.5, 0.35 * D * ky_tu[k] / sum(ky_tu))
+            ung = [(b, e) for b, e in lang if (b + e) / 2 > truoc + 0.6 and abs((b + e) / 2 - du_kien) <= cua_so]
+            if not ung:
+                ok = False
+                break
+            b, e = max(ung, key=lambda x: (x[1] - x[0]) - 0.12 * abs((x[0] + x[1]) / 2 - du_kien))
+            cat.append((b, e))
+            truoc = (b + e) / 2
+        if not ok:
+            print("Không tìm đủ khoảng ngừng giữa các cảnh (lần %d), đọc lại" % (lan + 1))
+            continue
+        # đoạn cắt ra phải hợp lý so với số chữ của cảnh
+        moc = [0.0] + [(b + e) / 2 for b, e in cat] + [D]
+        lech = [(moc[k + 1] - moc[k]) / (D * ky_tu[k] / sum(ky_tu)) for k in range(len(van))]
+        if min(lech) < 0.45 or max(lech) > 2.2:
+            print("Cắt cảnh không khớp độ dài chữ (tỉ lệ %.2f-%.2f), đọc lại" % (min(lech), max(lech)))
+            continue
+        kq = {}
+        tempo = float(args.toc_do_gemini or 1.0)
+        loc = ("atempo=%.3f," % tempo if abs(tempo - 1) > 0.01 else "") + "aresample=44100"
+        thieu_chu = []
+        for k in range(len(van)):
+            ra = os.path.join(thu_muc, "gem_%d.mp3" % k)
+            chay(["ffmpeg", "-y", "-loglevel", "error", "-ss", "%.3f" % moc[k], "-to", "%.3f" % moc[k + 1], "-i", wav, "-af", loc,
+                  "-c:a", "libmp3lame", "-b:a", "128k", ra])
+            kq[k] = ra
+            # ĐỌC THIẾU CHỮ: Gemini đôi khi bỏ sót cả cụm từ (đoạn ngắn bất thường so với số chữ) -> lời không khớp phụ đề
+            gon = ra + ".gon.mp3"
+            try:
+                cat_lang(ra, gon)
+                giay = do_thoi_luong(gon)
+                tu = max(1, len(van[k].split()))
+                if tu >= 8 and tu / max(0.1, giay) > 4.6:
+                    thieu_chu.append("cảnh %d: %d từ trong %.1f giây" % (k + 1, tu, giay))
+            except Exception:
+                pass
+        if thieu_chu:
+            print("Gemini đọc THIẾU CHỮ (nhanh bất thường) %s -> đọc lại" % "; ".join(thieu_chu))
+            continue
+        THONG_KE_GIONG["gemini"] = len(van)
+        print("Gemini đọc cả video MỘT lần (%.1f giây), cắt thành %d cảnh" % (D, len(van)))
+        return kq
+    return None
+
+
 async def tao_cac_doan(cac_doan, thu_muc, args):
     cac_tep = []
     sem = asyncio.Semaphore(3)
@@ -114,10 +506,36 @@ async def tao_cac_doan(cac_doan, thu_muc, args):
         tep = os.path.join(thu_muc, "d%03d.mp3" % i)
         if args.gia_lap:
             _gia_lap(d, tep)
-        else:
-            async with sem:
-                await _tts(chuan_hoa_doc(d), tep, args.giong, args.toc_do, args.cao_do)
-        return tep
+            return tep
+        van = chuan_hoa_doc(d)
+        async with sem:
+            # edge-tts đôi khi trả "No audio was received" với MỘT câu cụ thể (thường câu ngắn, không dấu kết):
+            # thử lại với chữ hơi khác (thêm dấu chấm / dấu phẩy mở đầu) để cả video giữ MỘT giọng (không bao giờ đổi sang giọng khác)
+            bien_the = [van, van.rstrip(" .,!?") + ".", "À, " + van[0].lower() + van[1:] if van else van]
+            for k, v in enumerate(bien_the):
+                try:
+                    await _tts(v, tep, args.giong, args.toc_do, args.cao_do)
+                    THONG_KE_GIONG["edge"] += 1
+                    if k:
+                        print("edge-tts đọc được sau khi chỉnh chữ (cách %d): %s" % (k, v[:60]))
+                    return tep
+                except Exception as e:
+                    print("Cảnh báo: edge-tts lỗi (%s)%s" % (str(e)[:120], ", thử chỉnh chữ" if k < len(bien_the) - 1 else ", chờ rồi thử lại"))
+        # KHÔNG dùng giọng Google dự phòng (giọng khác hẳn -> video lẫn giọng). Chờ rồi thử lại edge-tts thêm vài vòng;
+        # vẫn lỗi thì dừng dựng (GitHub báo lỗi, hệ thống tự dựng lại sau) thay vì ra video lẫn giọng.
+        loi = None
+        for lan in range(3):
+            await asyncio.sleep(15 * (lan + 1))
+            for v in bien_the:
+                try:
+                    async with sem:
+                        await _tts(v, tep, args.giong, args.toc_do, args.cao_do)
+                    THONG_KE_GIONG["edge"] += 1
+                    print("edge-tts đọc được sau khi chờ thử lại (vòng %d)" % (lan + 1))
+                    return tep
+                except Exception as e:
+                    loi = e
+        raise RuntimeError("edge-tts không đọc được đoạn này sau nhiều lần thử (không dùng giọng khác để tránh lẫn giọng): %s | đoạn: %s" % (loi, d[:60]))
 
     cac_tep = await asyncio.gather(*[mot(i, d) for i, d in enumerate(cac_doan)])
     return list(cac_tep)
@@ -145,9 +563,9 @@ def ghep(cac_tep, dich):
     chay(lenh)
 
 
-PHONG_CACH_MAC_DINH = {"doMoNen": 0.35, "kyHieuTroi": False, "quangSang": True, "kieuNen": "luoi", "kieuToan": "latex",
+PHONG_CACH_MAC_DINH = {"kieuPhuDe": "hop", "mauPhuDe": "#FF6B2C", "soNenToiDa": 3, "lopNeonTrenNen": False, "doMoNen": 0.35, "kyHieuTroi": False, "quangSang": True, "kieuNen": "toi", "kieuToan": "dam",
                        "kieuHinh": "manim", "thanhTienDo": False, "phuDe": True, "mau": {}}
-THUONG_HIEU_MAC_DINH = {"ten": "", "khauHieu": "", "handle": "", "markNuoc": True, "outroGiay": 5}
+THUONG_HIEU_MAC_DINH = {"ten": "", "khauHieu": "", "handle": "", "markNuoc": True, "outroGiay": 5, "outroTuTao": True, "loiMoi": "Theo dõi để học mẹo xác suất"}
 DUOI_ANH = (".jpg", ".jpeg", ".png", ".webp")
 DUOI_VIDEO = (".mp4", ".mov", ".webm", ".m4v")
 
@@ -163,6 +581,9 @@ def doc_phong_cach(tep):
                 if k in d:
                     pc[k] = d[k]
             co_dinh = str(d.get("nen_co_dinh") or "").strip()
+            for k in ("soNenToiDa", "lopNeonTrenNen", "kieuPhuDe", "mauPhuDe", "lopQuet", "butChi", "thanhBuoc", "tieuDeInHoa", "khungSanKhau", "loiMoiGiuaVideo", "chuyenDong"):
+                if k in d:
+                    pc[k] = d[k]
             if isinstance(d.get("thuongHieu"), dict):
                 th.update(d["thuongHieu"])
         except Exception as e:
@@ -170,37 +591,40 @@ def doc_phong_cach(tep):
     return pc, co_dinh, th
 
 
-def chon_nen(public, id_, co_dinh):
-    """Chọn một ảnh/video nền trong public/nen/ (do workflow chép từ Drive). Cùng mã video thì luôn ra cùng nền."""
+def chon_nen(public, id_, co_dinh, so_toi_da=3):
+    """Chọn tối đa so_toi_da ảnh/video nền trong public/nen/ (workflow chép từ Drive VIDEO_XACSUAT/nen) để đổi nền theo nhóm cảnh.
+    Thứ tự xáo theo mã video: cùng video luôn ra cùng bộ nền, các video khác nhau dùng bộ nền và thứ tự khác nhau.
+    nen_co_dinh (phong_cach.json) = luôn dùng đúng một nền đó."""
     for f in os.listdir(public):
-        if f.startswith("nen_chon."):
+        if f.startswith("nen_chon"):
             os.remove(os.path.join(public, f))
     thu_muc = os.path.join(public, "nen")
     if not os.path.isdir(thu_muc):
-        return None
+        return []
     ds = sorted(f for f in os.listdir(thu_muc) if f.lower().endswith(DUOI_ANH + DUOI_VIDEO))
     if not ds:
-        return None
+        return []
     if co_dinh and co_dinh in ds:
-        ten = co_dinh
+        chon = [co_dinh]
     else:
-        ten = ds[int(hashlib.md5(id_.encode("utf8")).hexdigest(), 16) % len(ds)]
-    duoi = os.path.splitext(ten)[1].lower()
-    dich = "nen_chon" + duoi
-    shutil.copyfile(os.path.join(thu_muc, ten), os.path.join(public, dich))
-    if duoi in DUOI_VIDEO:
-        try:
-            so_frame = max(30, int(round(do_thoi_luong(os.path.join(public, dich)) * FPS)))
-        except Exception:
-            so_frame = 30 * FPS
-        print("Nền: %s (video, %d khung hình)" % (ten, so_frame))
-        return {"tep": dich, "loai": "video", "soFrame": so_frame}
-    print("Nền: %s (ảnh)" % ten)
-    return {"tep": dich, "loai": "anh", "soFrame": 0}
-
-
-
-
+        hat = int(hashlib.md5(id_.encode("utf8")).hexdigest(), 16)
+        xao = sorted(ds, key=lambda f: hashlib.md5((str(hat) + f).encode("utf8")).hexdigest())
+        chon = xao[: max(1, int(so_toi_da))]
+    kq = []
+    for k, ten in enumerate(chon):
+        duoi = os.path.splitext(ten)[1].lower()
+        dich = "nen_chon_%d%s" % (k, duoi)
+        shutil.copyfile(os.path.join(thu_muc, ten), os.path.join(public, dich))
+        if duoi in DUOI_VIDEO:
+            try:
+                so_frame = max(30, int(round(do_thoi_luong(os.path.join(public, dich)) * FPS)))
+            except Exception:
+                so_frame = 30 * FPS
+            kq.append({"tep": dich, "loai": "video", "soFrame": so_frame})
+        else:
+            kq.append({"tep": dich, "loai": "anh", "soFrame": 0})
+        print("Nền %d: %s" % (k + 1, ten))
+    return kq
 
 
 def trinh_bay(c, noi_dung):
@@ -212,6 +636,142 @@ def trinh_bay(c, noi_dung):
     if len(noi_dung) >= 2 and re.search(r"tinh|dap_an|ket_qua|diem_chot|huong", loai):
         return "cong_don"
     return "xep"
+
+
+def so_buoc_san_khau(du):
+    """Số bước của sân khấu (để kéo dài cảnh cho kịp diễn hết)."""
+    if not isinstance(du, dict):
+        return 0, False
+    buoc = [1]
+    ds_vat = du.get("vat") if isinstance(du.get("vat"), list) else []
+    ds_hd = du.get("hanh_dong") if isinstance(du.get("hanh_dong"), list) else []
+    du = {"vat": ds_vat, "hanh_dong": ds_hd}
+    for x in ds_vat + ds_hd:
+        if isinstance(x, dict):
+            try:
+                buoc.append(int(float(x.get("buoc") or 1)))
+            except (TypeError, ValueError):
+                pass
+    vq = {str(v.get("id")) for v in (du.get("vat") or []) if isinstance(v, dict) and v.get("loai") == "vong_quay"}
+    co_quay = any(isinstance(h, dict) and h.get("kieu") == "quay" and str(h.get("vat")) in vq for h in (du.get("hanh_dong") or []))
+    return min(8, max(buoc)), co_quay
+
+
+def chon_nhac(public, id_):
+    """Nhạc nền: nếu thư mục public/nhac có tệp nhạc của bạn (workflow chép từ Drive VIDEO_XACSUAT/nhac) thì chọn một bài
+    theo mã video (xoay vòng giữa các video); không có thì dùng nhạc tự tạo nhac/nen.wav (không bản quyền vì do máy sinh ra)."""
+    thu_muc = os.path.join(public, "nhac")
+    if not os.path.isdir(thu_muc):
+        return None
+    rieng = sorted(f for f in os.listdir(thu_muc) if f.lower().endswith((".mp3", ".m4a", ".wav", ".ogg")) and not f.startswith("nen."))
+    if rieng:
+        ten = rieng[int(hashlib.md5(id_.encode("utf8")).hexdigest(), 16) % len(rieng)]
+        print("Nhạc nền: %s" % ten)
+        return "nhac/" + ten
+    return "nhac/nen.wav" if os.path.exists(os.path.join(thu_muc, "nen.wav")) else None
+
+
+TAM_TRANG_THEO_LOAI = [
+    (r"mo_dau|hook|cau_hoi", "chinh"), (r"de_bai|nhac_lai|kien_thuc|y_do|thu_nho", "nhe"), (r"bay", "cang"),
+    (r"dap_an|ket_qua", "bung"), (r"bai_hoc|ket_luan|chot", "nhe"), (r"mo_hinh|diem_chot|y_tuong|tinh|giai|kiem_tra", "chinh"),
+]
+
+
+def tam_trang_canh(c):
+    rieng = str(c.get("nhac") or "").strip().lower()
+    if rieng in ("nhe", "chinh", "cang", "bung"):
+        return rieng
+    loai = str(c.get("loai") or "").lower()
+    for re_, tt in TAM_TRANG_THEO_LOAI:
+        if re.search(re_, loai):
+            return tt
+    return "chinh"
+
+
+def tron_nhac_theo_canh(public, id_, canh_kb, canh_props):
+    """Ghép 4 bản nhạc tự tạo (nhe / chinh / cang / bung, cùng 120 BPM) theo diễn biến bài: mỗi cảnh một tâm trạng,
+    đổi bản đúng ranh giới ô nhịp gần đầu cảnh nhất và hòa chéo 0,6 giây, nên nghe như một bản nhạc có cao trào chứ
+    không phải một vòng lặp đều đều suốt video. Trả về đường dẫn tương đối trong public, hoặc None nếu thiếu tệp/thư viện."""
+    try:
+        import numpy as np
+        import wave
+    except Exception:
+        return None
+    tep = {"chinh": os.path.join(public, "nhac", "nen.wav")}
+    for k in ("nhe", "cang", "bung"):
+        tep[k] = os.path.join(public, "nhac", "tam_trang", k + ".wav")
+    if not all(os.path.exists(v) for v in tep.values()):
+        return None
+    du = {}
+    sr = None
+    for k, v in tep.items():
+        with wave.open(v, "rb") as w:
+            sr = w.getframerate()
+            du[k] = np.frombuffer(w.readframes(w.getnframes()), dtype="<i2").astype(np.float32) / 32768.0
+    gain = {"nhe": 0.85, "chinh": 1.0, "cang": 0.95, "bung": 1.0}
+    o = 2.0                                       # một ô nhịp = 2 giây (120 BPM, 4/4)
+    tong_giay = (canh_props[-1]["batDau"] + canh_props[-1]["soFrame"]) / FPS + 1.0
+    so_o = int(np.ceil(tong_giay / o))
+    # tâm trạng của từng ô nhịp: theo cảnh đang chạy ở giữa ô đó (đổi bản ở ranh giới ô gần đầu cảnh nhất)
+    moc = [(c["batDau"] / FPS, tam_trang_canh(ckb)) for c, ckb in zip(canh_props, canh_kb)]
+    def tam_trang_luc(t):
+        tt = moc[0][1]
+        for bd, k in moc:
+            if bd <= t + o / 2:
+                tt = k
+        return tt
+    n_o = int(sr * o)
+    dai_vong = len(du["chinh"])
+    ra = np.zeros(so_o * n_o + int(sr * 0.6), dtype=np.float32)
+    hoa = int(sr * 0.6)
+    for i in range(so_o):
+        k = tam_trang_luc(i * o)
+        a = (i * n_o) % dai_vong                 # giữ đúng vị trí trong vòng hợp âm dù đổi bản
+        doan = np.take(du[k], np.arange(a, a + n_o + hoa) % dai_vong) * gain[k]
+        env = np.ones(len(doan), dtype=np.float32)
+        truoc = tam_trang_luc((i - 1) * o) if i else k
+        sau = tam_trang_luc((i + 1) * o)
+        if i and truoc != k:
+            env[:hoa] = np.sin(np.linspace(0, np.pi / 2, hoa)) ** 2      # vào mềm khi vừa đổi tâm trạng
+        if sau != k:
+            env[n_o:] = np.cos(np.linspace(0, np.pi / 2, hoa)) ** 2      # phần dư hòa vào ô sau
+        else:
+            env[n_o:] = 0
+        ra[i * n_o : i * n_o + len(doan)] += doan * env
+    ra = np.clip(ra, -1, 1)
+    ten = "nhac/tron_%s.wav" % id_
+    with wave.open(os.path.join(public, ten), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(sr)
+        w.writeframes((ra * 32767).astype("<i2").tobytes())
+    print("Nhạc nền theo cảnh: " + " ".join("%d:%s" % (c["so"], tam_trang_canh(ckb)) for c, ckb in zip(canh_props, canh_kb)))
+    return ten
+
+
+LOAI_THEO_SERIES = {"Xác suất không như bạn nghĩ": "Xác suất", "Hình học kỳ diệu": "Hình học", "Toán và tiền bạc": "Toán tiền bạc",
+                    "Tối ưu đời thường": "Tối ưu", "Đo đạc thực tế": "Đo đạc", "Toán đi chợ": "Toán đi chợ", "Toán quanh ta": "Toán thực tế"}
+
+
+def tao_bia(kb, canh_kb, canh_props):
+    """Thông tin ảnh bìa: loại câu hỏi (màu riêng), tiêu đề ngắn, khung hình có hình minh họa rõ nhất (cảnh 1-3 có vật/hình)."""
+    loai = str(kb.get("loai_cau_hoi") or "").strip()
+    if not loai:
+        se = kb.get("series") if isinstance(kb.get("series"), dict) else {}
+        loai = LOAI_THEO_SERIES.get(str(se.get("ten") or ""), "")
+    if not loai:
+        mon = str(kb.get("mon") or "").upper()
+        loai = "Toán đi chợ" if kb.get("san_pham") else ("Xác suất" if mon == "XAC_SUAT" else "Hình học" if mon == "HINH_HOC" else "Toán thực tế")
+    tieu_de = str(kb.get("tieu_de_bia") or kb.get("hook_chu") or kb.get("tieu_de") or "").strip()
+    chon = 1 if len(canh_props) > 1 else 0
+    for i in range(min(3, len(canh_props))):
+        du = ((canh_kb[i].get("minh_hoa") or {}).get("du_lieu") or {}) if isinstance(canh_kb[i].get("minh_hoa"), dict) else {}
+        vat = du.get("vat") if isinstance(du, dict) else None
+        if isinstance(vat, list) and any(isinstance(v, dict) and v.get("loai") not in ("nhan", "chu", "so_dem", "danh_sach", "mui_ten") for v in vat):
+            chon = i
+            break
+    c = canh_props[chon]
+    return {"loai": loai, "tieuDe": tieu_de[:80], "khung": int(c["batDau"] + c["soFrame"] * 0.96)}   # lúc hình đã vẽ xong
 
 
 def tim_tep(thu_muc, ten, duoi):
@@ -229,6 +789,9 @@ def tim_thuong_hieu(public, th):
     out = tim_tep(thu_muc, "outro", (".mp4", ".mov", ".webm", ".png", ".jpg", ".jpeg", ".webp"))
     hien = dict(th)
     hien.pop("outroGiay", None)
+    hien.pop("outroTuTao", None)
+    hien.pop("dungOutroRieng", None)
+    hien.pop("coManKet", None)
     hien["logo"] = "thuong_hieu/" + os.path.basename(logo) if logo else None
     outro = None
     if out:
@@ -244,6 +807,178 @@ def tim_thuong_hieu(public, th):
     return hien, outro
 
 
+def chon_man_ket(outro_tep, th, bai_hoc):
+    """Màn kết: mặc định dùng màn kết tự tạo chuyên nghiệp (tóm tắt bài học + kênh + nút Theo dõi).
+    Chỉ dùng tệp outro của bạn khi phong_cach.json đặt "thuongHieu": {"dungOutroRieng": true}."""
+    if outro_tep and th.get("dungOutroRieng"):
+        return outro_tep
+    if not th.get("outroTuTao", True):
+        return outro_tep
+    if bai_hoc or th.get("ten") or th.get("handle") or th.get("logo"):
+        giay = 6.0 if bai_hoc else 3.5
+        return {"tep": "", "loai": "tu_tao", "soFrame": int(round(giay * FPS))}
+    return outro_tep
+
+
+LA_CHO = re.compile(r"^\s*(đề\s*cho|cho\s*biết|dữ\s*kiện|biết)\s*[:：-]\s*", re.I)
+LA_TIM = re.compile(r"^\s*(cần\s*tìm|đề\s*hỏi|hỏi|tìm|yêu\s*cầu)\s*[:：-]\s*", re.I)
+
+
+def the_de_bai(kb):
+    """Thẻ ĐỀ BÀI: {cho: [...], tim: "..."} lấy từ de_cho / can_tim của kịch bản; thiếu thì lấy từ danh_sach "Đề cho/Cần tìm"
+    ở cảnh de_bai, rồi tới du_kien. Đồng thời BỎ danh_sach trùng lặp đó khỏi sân khấu (thẻ đã nêu)."""
+    cho = [str(x).strip() for x in (kb.get("de_cho") or []) if str(x).strip()]
+    tim = str(kb.get("can_tim") or "").strip()
+    for c in kb.get("canh") or []:
+        if str(c.get("loai")) != "de_bai":
+            continue
+        du = (c.get("minh_hoa") or {}).get("du_lieu") or {}
+        vat = du.get("vat") if isinstance(du, dict) else None
+        if not isinstance(vat, list):
+            continue
+        giu = []
+        for v in vat:
+            ds = [str(x) for x in (v.get("ds") or [])] if isinstance(v, dict) and v.get("loai") == "danh_sach" else []
+            trung = [x for x in ds if LA_CHO.match(x) or LA_TIM.match(x)]
+            if ds and len(trung) * 2 >= len(ds):
+                for x in ds:
+                    if LA_TIM.match(x) and not tim:
+                        tim = LA_TIM.sub("", x).strip()
+                    elif LA_CHO.match(x) and len(cho) < 5 and not kb.get("de_cho"):   # đã có de_cho thì không thêm trùng
+                        cho.append(LA_CHO.sub("", x).strip())
+                    elif not LA_TIM.match(x) and not kb.get("de_cho") and len(cho) < 5:
+                        cho.append(x.strip())
+                continue   # bỏ danh_sách trùng với thẻ đề bài
+            giu.append(v)
+        if (cho or tim) and len(giu) < len(vat):
+            du["vat"] = giu
+            ids = {v.get("id") for v in giu if isinstance(v, dict)}
+            if isinstance(du.get("hanh_dong"), list):
+                du["hanh_dong"] = [h for h in du["hanh_dong"] if not isinstance(h, dict) or not h.get("vat") or h.get("vat") in ids]
+    if not cho:
+        cho = [str(x).strip() for x in (kb.get("du_kien") or []) if str(x).strip()][:4]
+    def cat(x, n):   # cắt ở ranh giới từ, có dấu … (không cụt chữ giữa chừng)
+        x = re.sub(r"\s+", " ", x).strip()
+        if len(x) <= n:
+            return x
+        c = x[:n - 1]
+        i = c.rfind(" ")
+        return (c[:i] if i > n * 0.6 else c).rstrip(" ,.;:") + "…"
+    return {"cho": [cat(x, 120) for x in cho[:5]], "tim": cat(tim, 140)} if (cho or tim) else None
+
+
+def do_dai_hien(tex):
+    """Số ký tự HIỆN RA của một công thức (bỏ lệnh TeX, ngoặc), để ước bề rộng."""
+    x = re.sub(r"\\(text|mathrm|textbf)\s*\{([^{}]*)\}", r"\2", tex)
+    x = re.sub(r"\\d?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}", lambda m: m.group(1) if len(m.group(1)) > len(m.group(2)) else m.group(2), x)
+    x = re.sub(r"\\[a-zA-Z]+", "x", x)
+    return len(re.sub(r"[{}_^\s]", "", x))
+
+
+QUAN_HE = re.compile(r"(=|\\approx|\\Rightarrow|\\Leftrightarrow|\\le(?![a-z])|\\ge(?![a-z])|\\leq|\\geq|\\ne(?![a-z])|<|>)")
+
+
+def chuan_don_vi(tex):
+    """Đơn vị sau số trong công thức ("30\\,m", "37{,}4\\,m^2") viết chữ đứng \\text{m}: KaTeX mặc định coi m là biến, vẽ nghiêng như chữ "п"."""
+    # \hl{...} (khung vàng phần đang xét) và \dpcm chỉ bản Manim hiểu -> bản Remotion (KaTeX) đổi về dạng thường
+    tex = re.sub(r"\\hl\{", "{", str(tex)).replace("\\dpcm", "\\text{(đpcm)}")
+    return re.sub(r"(\d|\})\s*\\[,;: ]\s*(km|cm|mm|m|kg|g|ha|l)(?=\^|[^a-zA-Z]|$)", lambda m: m.group(1) + "\\,\\text{" + m.group(2) + "}", tex)
+
+
+def tach_cong_thuc(tex, toi_da=24):
+    """Công thức dài: tách thành nhiều dòng TẠI dấu quan hệ ngoài cùng (=, ≈, ⇒...), dòng sau bắt đầu bằng dấu đó,
+    như viết bảng - thay vì để máy ngắt dòng bừa giữa công thức (khó đọc, chữ nhỏ)."""
+    if do_dai_hien(tex) <= toi_da or "\\text{" in tex and not QUAN_HE.search(tex):
+        return [tex]
+    manh, sau, sau_ngoac, i, bd = [], 0, 0, 0, 0
+    while i < len(tex):
+        ch = tex[i]
+        if ch == "{":
+            sau_ngoac += 1
+        elif ch == "}":
+            sau_ngoac -= 1
+        elif sau_ngoac == 0:
+            m = QUAN_HE.match(tex, i)
+            if m and i > bd:
+                manh.append(tex[bd:i].strip())
+                bd = i
+                i = m.end()
+                continue
+        i += 1
+    manh.append(tex[bd:].strip())
+    manh = [m for m in manh if m]
+    if len(manh) <= 1:
+        return [tex]
+    # gộp tham lam: mỗi dòng không quá toi_da ký tự hiện ra
+    dong = [manh[0]]
+    for m in manh[1:]:
+        if do_dai_hien(dong[-1] + m) <= toi_da:
+            dong[-1] = dong[-1] + " " + m
+        else:
+            dong.append(m)
+    return dong if len(dong) <= 4 else [tex]
+
+
+# các gói phong cách edit an toàn (xem phong_cach_edit trong kịch bản)
+GOI_EDIT = {
+    "nang_dong": {"nen": ["tia", "hat_sang"], "lopQuet": "luon", "kieuPhuDe": "hop"},
+    "toi_gian": {"nen": ["luoi", "song"], "lopQuet": False, "kieuPhuDe": "mau"},
+    "dien_anh": {"nen": ["cuc_quang", "luc_giac"], "lopQuet": True, "kieuPhuDe": "hop"},
+    "so_tay": {"nen": ["ky_hieu", "luoi"], "lopQuet": True, "kieuPhuDe": "mau", "kieuToan": "dong_nhat"},
+}
+
+
+def gia_viet(n):
+    try:
+        n = int(float(n))
+    except (TypeError, ValueError):
+        return ""
+    return ("{:,}".format(n)).replace(",", ".") + "đ" if n > 0 else ""
+
+
+def chuan_anh_san_pham(kb, public):
+    """Video sản phẩm: ảnh thật đã được workflow tải về public/sp/<mã>/ (từ Drive VIDEO_XACSUAT/san_pham/<mã>/).
+    Đổi vật anh_that {"anh": k} thành {"src": "sp/<mã>/anh_k.jpg"}; ảnh không có thì vật hiện thẻ tên sản phẩm (không vỡ video).
+    Trả danh sách đường dẫn ảnh có thật (ảnh 0 dùng cho thẻ sản phẩm cuối video)."""
+    sp = kb.get("san_pham") if isinstance(kb.get("san_pham"), dict) else None
+    if not sp:
+        return []
+    ma = re.sub(r"[^A-Za-z0-9_-]", "", str(sp.get("id") or ""))
+    ds = []
+    for ten in sp.get("anh") or []:
+        ten = re.sub(r"[^A-Za-z0-9_.-]", "", str(ten))
+        duong = "sp/%s/%s" % (ma, ten)
+        ds.append(duong if ma and ten and os.path.isfile(os.path.join(public, duong)) else "")
+    co = [x for x in ds if x]
+    print("Ảnh thật sản phẩm %s: %d/%d ảnh có trên máy dựng" % (ma, len(co), len(ds)))
+    gia = gia_viet(sp.get("gia_ban"))
+    for c in kb.get("canh") or []:
+        du = (c.get("minh_hoa") or {}).get("du_lieu") if isinstance(c.get("minh_hoa"), dict) else None
+        for v in (du.get("vat") or []) if isinstance(du, dict) else []:
+            if not isinstance(v, dict) or v.get("loai") != "anh_that":
+                continue
+            try:
+                k = int(v.get("anh") or 0)
+            except (TypeError, ValueError):
+                k = 0
+            src = ds[k] if 0 <= k < len(ds) and ds[k] else (co[0] if co else "")
+            if src:
+                v["src"] = src
+            if not v.get("noi_dung"):
+                v["noi_dung"] = str(sp.get("ten") or "")[:40]
+            if v.get("gia") and not v.get("gia_tri_chu"):
+                v["gia_tri_chu"] = gia
+    return co
+
+
+def the_san_pham(kb, anh_sp):
+    sp = kb.get("san_pham") if isinstance(kb.get("san_pham"), dict) else None
+    if not sp or not sp.get("ten"):
+        return None
+    return {"ten": str(sp.get("ten"))[:60], "gia": gia_viet(sp.get("gia_ban")), "anh": anh_sp[0] if anh_sp else "",
+            "cta": "🛒 Có tại kênh · link ở mô tả" if sp.get("link") else "🛒 Có tại kênh · xem giỏ hàng / mô tả"}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("kich_ban")
@@ -254,9 +989,37 @@ def main():
     ap.add_argument("--cao-do", default=os.environ.get("CAO_DO", "+0Hz"))
     ap.add_argument("--phong-cach", default="phong_cach.json")
     ap.add_argument("--gia-lap", action="store_true", help="dùng tiếng bíp thay giọng thật (để thử máy)")
+    # MỘT GIỌNG CHO CẢ VIDEO: mặc định Gemini đọc TOÀN BỘ lời thoại trong MỘT lần gọi (một người đọc xuyên suốt, giọng tự nhiên),
+    # rồi cắt theo cảnh. Không đọc được thì CẢ video dùng edge-tts (không bao giờ trộn hai giọng trong một video). MAY_GIONG=edge để luôn dùng edge.
+    co_key = bool(os.environ.get("GEMINI_KEYS") or os.environ.get("GEMINI_API_KEY"))
+    ap.add_argument("--may-giong", default=os.environ.get("MAY_GIONG") or ("gemini" if co_key else "edge"),
+                    help="gemini (mặc định khi có key: đọc cả video một lần) | edge")
+    ap.add_argument("--giong-gemini", default=os.environ.get("GIONG_GEMINI") or "Charon")
+    ap.add_argument("--tts-model", default=os.environ.get("TTS_MODEL") or "gemini-2.5-flash-preview-tts")
+    ap.add_argument("--toc-do-gemini", default=os.environ.get("TOC_DO_GEMINI") or "1.08")
+    ap.add_argument("--phong-cach-giong", default=os.environ.get("PHONG_CACH_GIONG") or PHONG_CACH_GIONG_MAC_DINH)
     args = ap.parse_args()
 
     kb = json.load(open(args.kich_ban, encoding="utf8"))
+    # giọng do Apps Script chọn theo quy tắc (Charon nam / Kore nữ...); dự phòng edge cùng giới tính để không đổi giọng nam <-> nữ
+    if str(kb.get("giong") or "").strip() and re.fullmatch(r"[A-Za-z]{3,20}", str(kb["giong"]).strip()):
+        args.giong_gemini = str(kb["giong"]).strip()
+    if str(kb.get("gioi_tinh_giong") or "") == "nu":
+        args.giong = "vi-VN-HoaiMyNeural"
+    elif str(kb.get("gioi_tinh_giong") or "") == "nam":
+        args.giong = "vi-VN-NamMinhNeural"
+    print("Giọng của video này: Gemini %s (dự phòng edge %s)" % (args.giong_gemini, args.giong))
+    # cảnh ghi "dung_ban_ve": bung lại vật/điểm/vùng từ bản vẽ chung kb.ban_ve (Apps Script nén để kịch bản nhiều cảnh vừa giới hạn gửi)
+    bv = kb.get("ban_ve") if isinstance(kb.get("ban_ve"), dict) else None
+    for c in kb.get("canh") or []:
+        du = (c.get("minh_hoa") or {}).get("du_lieu") if isinstance(c.get("minh_hoa"), dict) else None
+        for v in (du.get("vat") or []) if isinstance(du, dict) else []:
+            if isinstance(v, dict) and v.get("dung_ban_ve") and bv:
+                for k in ("vat", "diem", "vung", "nhin"):
+                    if k in bv and k not in v:
+                        v[k] = bv[k]
+    anh_sp = chuan_anh_san_pham(kb, args.public)
+    de_bai_the = the_de_bai(kb)
     canh = kb.get("canh") or []
     if not canh:
         sys.exit("Kịch bản không có cảnh nào.")
@@ -269,28 +1032,64 @@ def main():
         if f.endswith(".mp3"):
             os.remove(os.path.join(thu_muc_giong, f))
 
+    # video HÌNH HỌC: đánh vần tên điểm (BD -> "bê đê", (SAC) -> "mặt phẳng ét a xê") để giọng đọc không lạc
+    DOC_CHU_CAI["bat"] = str(kb.get("mon") or "").upper() == "HINH_HOC" or bool(re.search(r"tam giác|hình chóp|lăng trụ|tứ diện|đường tròn|chứng minh|mặt phẳng", str(kb.get("de_bai") or ""), re.I))
     canh_props = []
     bat_dau = 0
+    tam_gem = tempfile.mkdtemp()
+    giong_gem = None
+    if not args.gia_lap and args.may_giong == "gemini":
+        # mặc định: đọc cả video MỘT lần (một người đọc xuyên suốt). CACH_DOC_GEMINI=tung_canh để quay về kiểu cũ.
+        if (os.environ.get("CACH_DOC_GEMINI") or "mot_lan") == "tung_canh":
+            giong_gem = tao_giong_gemini(canh, tam_gem, args)
+        else:
+            giong_gem = tao_giong_gemini_mot_lan(canh, tam_gem, args)
+            if not giong_gem:
+                # đọc cả bài một lần bị rè / cắt không khớp -> thử đọc TỪNG CẢNH (đoạn ngắn ít bị lạc giọng), vẫn kiểm tạp âm từng cảnh
+                print("Đọc cả bài một lần không đạt -> thử Gemini đọc từng cảnh (có kiểm tra rè)")
+                giong_gem = tao_giong_gemini(canh, tam_gem, args)
+        if not giong_gem:
+            print("Gemini không đọc được cả video -> CẢ video dùng một giọng edge-tts (không trộn giọng)")
     for i, c in enumerate(canh):
         so = int(c.get("so") or i + 1)
         loi_thoai = str(c.get("loi_thoai") or "").strip()
         noi_dung_tam = [str(x) for x in (c.get("noi_dung_man_hinh") or []) if str(x).strip()]
+        # công thức dài -> nhiều dòng ngắt tại dấu "=" (giữ chữ to, không ngắt bừa); cảnh biến đổi (bien_doi) giữ nguyên từng bước
+        if str(c.get("trinh_bay") or "") != "bien_doi":
+            noi_dung_tam = [d for x in noi_dung_tam for d in tach_cong_thuc(x)]
         if not loi_thoai:
             sys.exit("Cảnh %d không có lời thoại." % so)
         cac_doan = tach_cau(loi_thoai)
+        gap = GAP
         with tempfile.TemporaryDirectory() as tam:
-            cac_tep_tho = asyncio.run(tao_cac_doan(cac_doan, tam, args))
-            cac_tep = []
-            for k, tho in enumerate(cac_tep_tho):
-                gon = os.path.join(tam, "g%03d.mp3" % k)
-                cat_lang(tho, gon)
-                cac_tep.append(gon)
-            do_dai = [do_thoi_luong(t) for t in cac_tep]
             ten = "%s_c%d.mp3" % (id_an_toan, so)
-            ghep(cac_tep, os.path.join(thu_muc_giong, ten))
+            if giong_gem and i in giong_gem:
+                # Gemini đọc cả cảnh một lần (ngữ điệu liền mạch); mốc từng câu chia theo số ký tự
+                gon = os.path.join(tam, "g.mp3")
+                cat_lang(giong_gem[i], gon)
+                tong = do_thoi_luong(gon)
+                ky_tu = [max(1, len(d)) for d in cac_doan]
+                do_dai = [tong * k / sum(ky_tu) for k in ky_tu]
+                shutil.copyfile(gon, os.path.join(thu_muc_giong, "tam_" + ten))
+                gap = 0
+            else:
+                cac_tep_tho = asyncio.run(tao_cac_doan(cac_doan, tam, args))
+                cac_tep = []
+                for k, tho in enumerate(cac_tep_tho):
+                    gon = os.path.join(tam, "g%03d.mp3" % k)
+                    cat_lang(tho, gon)
+                    cac_tep.append(gon)
+                do_dai = [do_thoi_luong(t) for t in cac_tep]
+                ghep(cac_tep, os.path.join(thu_muc_giong, "tam_" + ten))
+            # chuẩn hóa độ lớn giọng (kiểu podcast/TikTok, -15 LUFS) để lời giảng luôn rõ hơn nhạc nền
+            chay(["ffmpeg", "-y", "-loglevel", "error", "-i", os.path.join(thu_muc_giong, "tam_" + ten), "-af",
+                  "highpass=f=70,acompressor=threshold=-20dB:ratio=3:attack=5:release=80,loudnorm=I=-15:TP=-1.5:LRA=7",
+                  "-ar", "44100", "-c:a", "libmp3lame", "-b:a", "128k", os.path.join(thu_muc_giong, ten)])
+            os.remove(os.path.join(thu_muc_giong, "tam_" + ten))
         tong_am = do_thoi_luong(os.path.join(thu_muc_giong, ten))
 
-        cau, t = [], LEAD
+        lead_c, tail_c = nghi_canh(canh, i)
+        cau, t = [], lead_c
         for d, dd in zip(cac_doan, do_dai):
             doan = chia_phu_de(d)
             tong_ky_tu = float(sum(len(x) for x in doan))
@@ -299,19 +1098,22 @@ def main():
                 dai_x = dd * len(x) / tong_ky_tu
                 cau.append({"text": x, "bat": round(t_doan, 3), "ket": round(t_doan + dai_x, 3)})
                 t_doan += dai_x
-            t += dd + GAP
+            t += dd + gap
 
-        so_frame = max(int(round((LEAD + tong_am + TAIL) * FPS)), 2 * FPS)
+        so_frame = max(int(round((lead_c + tong_am + tail_c) * FPS)), 2 * FPS)
         loai_hinh = str((c.get("minh_hoa") or {}).get("loai") or "").lower()
         toi_thieu = {"venn": 4.6, "luoi_mau": 5.2, "dien_tich": 6.0, "thuc_nghiem": 5.6, "so_do_cay": 5.0, "bi_hop": 3.8}.get(loai_hinh, 0)
+        if loai_hinh == "san_khau":
+            sb, co_quay = so_buoc_san_khau((c.get("minh_hoa") or {}).get("du_lieu"))
+            toi_thieu = 1.0 + sb * 0.9 + (2.6 if co_quay else 0.8)
         so_frame = max(so_frame, int(round(toi_thieu * FPS)))
         tb = trinh_bay(c, noi_dung_tam)
         if tb in ("bien_doi", "cong_don") and len(noi_dung_tam) >= 1:
             # đủ thời gian cho mọi phép biến hình (mỗi dòng cách nhau 1,1 giây + 0,9 giây biến hình + khung đáp án)
-            can = 0.3 + (len(noi_dung_tam) - 1) * 1.1 + 0.9 + (1.5 if re.search(r"dap_an|ket_qua", str(c.get("loai") or "").lower()) else 0.6)
+            can = 1.25 + (len(noi_dung_tam) - 1) * 1.45 + 0.9 + (1.6 if re.search(r"dap_an|ket_qua", str(c.get("loai") or "").lower()) else 0.6)
             so_frame = max(so_frame, int(round(can * FPS)))
         mh = c.get("minh_hoa") or {}
-        noi_dung = [str(x) for x in (c.get("noi_dung_man_hinh") or []) if str(x).strip()]
+        noi_dung = [chuan_don_vi(str(x)) for x in (c.get("noi_dung_man_hinh") or []) if str(x).strip()]
         canh_props.append({
             "so": so,
             "loai": str(c.get("loai") or ""),
@@ -324,20 +1126,56 @@ def main():
             "audio": "giong/" + ten,
             "batDau": bat_dau,
             "soFrame": so_frame,
-            "leadFrame": int(round(LEAD * FPS)),
+            "leadFrame": int(round(lead_c * FPS)),
             "cau": cau,
             "trinhBay": trinh_bay(c, noi_dung),
             "chuThich": [str(x) for x in (c.get("chu_thich") or []) if str(x).strip()][:3],
+            "tieuDeCanh": str(c.get("tieu_de_canh") or "").strip()[:70],
+            "tuKhoa": str(c.get("tu_khoa") or "").strip()[:30],
+            "nhan": str(c.get("nhan") or "").strip()[:16],
+            "giuSanKhau": bool(c.get("giu_san_khau")) and i > 0,
+            "chuyenCanh": str(c.get("chuyen_canh") or ""),
+            "gocNhin": [str(x) for x in (c.get("goc_nhin") or [])][:4] if isinstance(c.get("goc_nhin"), list) else ([str(c.get("goc_nhin"))] if c.get("goc_nhin") else []),
         })
         bat_dau += so_frame
         so_tu = len(loi_thoai.split())
         print("Cảnh %d: %d câu, %d từ, giọng %.1fs (%.1f từ/giây), %d khung hình" % (so, len(cac_doan), so_tu, tong_am - GAP, so_tu / max(0.1, tong_am - GAP), so_frame))
 
-    nhac = "nhac/nen.wav" if os.path.exists(os.path.join(args.public, "nhac", "nen.wav")) else None
+    nhac = chon_nhac(args.public, id_an_toan)
+    if nhac == "nhac/nen.wav" and os.environ.get("NHAC_THEO_CANH", "1") != "0":
+        for f in os.listdir(os.path.join(args.public, "nhac")):
+            if f.startswith("tron_"):
+                os.remove(os.path.join(args.public, "nhac", f))
+        nhac = tron_nhac_theo_canh(args.public, id_an_toan, canh, canh_props) or nhac
     hook_chu = str(kb.get("hook_chu") or kb.get("hook") or "").strip()
     pc, nen_co_dinh, th = doc_phong_cach(args.phong_cach)
-    nen = chon_nen(args.public, id_an_toan, nen_co_dinh)
+    # bộ hiệu ứng chuyển động: "moi" (chữ 3 tầng, máy quay sống, vòng sóng, dấu BẪY, lóe sáng đáp án) | "cu"
+    # ưu tiên: biến môi trường KIEU_CHUYEN_DONG (chạy thử tay trên GitHub) > kịch bản "kieu_chuyen_dong" > phong_cach.json
+    kieu_cd = (os.environ.get("KIEU_CHUYEN_DONG") or str(kb.get("kieu_chuyen_dong") or "")).strip()
+    if kieu_cd in ("moi", "cu"):
+        pc["chuyenDong"] = kieu_cd
+    # NỀN: mặc định mỗi video TỰ TẠO một nền riêng (kiểu + tông màu sinh từ mã video); nền ảnh trên Drive chỉ dùng khi DUNG_NEN_DRIVE=1
+    dung_nen_drive = os.environ.get("DUNG_NEN_DRIVE") == "1" or pc.get("dungNenDrive") is True
+    ds_nen = chon_nen(args.public, id_an_toan, nen_co_dinh, pc.get("soNenToiDa", 3)) if dung_nen_drive else []
+    import hashlib
+    bam = int(hashlib.sha1(id_.encode("utf8")).hexdigest()[:8], 16)
+    kieu_nen = ["cuc_quang", "hat_sang", "song", "luc_giac", "tia", "ky_hieu", "luoi"]
+    nen_tu_tao = None if ds_nen else {"kieu": kieu_nen[bam % len(kieu_nen)], "hue": (bam >> 8) % 360, "hat": bam}
+    # GÓI PHONG CÁCH EDIT (Apps Script luân phiên theo quy tắc, ghi vào kb.phong_cach_edit): chỉ đổi phần "trang phục"
+    # (nền, chuyển cảnh, kiểu phụ đề, phông công thức) - KHÔNG đổi bố cục/cỡ chữ/vị trí nên không sinh lại lỗi tràn, đè.
+    goi = GOI_EDIT.get(str(kb.get("phong_cach_edit") or "").strip())
+    if goi:
+        if nen_tu_tao and goi.get("nen"):
+            nen_tu_tao["kieu"] = goi["nen"][bam % len(goi["nen"])]
+        for k in ("lopQuet", "kieuPhuDe", "kieuToan"):
+            if k in goi:
+                pc[k] = goi[k]
+        print("Gói phong cách edit: %s" % kb.get("phong_cach_edit"))
     thuong_hieu, outro = tim_thuong_hieu(args.public, th)
+    bai_hoc = [str(x).strip()[:90] for x in (kb.get("bai_hoc_rut_ra") or []) if str(x).strip()][:3]
+    # Mặc định KHÔNG chèn màn kết/outro vào cuối video (video dừng ngay sau cảnh bài học).
+    # Muốn bật lại: phong_cach.json -> "thuongHieu": {"coManKet": true} (màn kết tự tạo; thêm "dungOutroRieng": true để dùng tệp outro).
+    outro = chon_man_ket(outro, dict(th, logo=thuong_hieu.get("logo")), bai_hoc) if th.get("coManKet") else None
     if outro:
         outro["batDau"] = bat_dau
         bat_dau += outro["soFrame"]
@@ -353,12 +1191,27 @@ def main():
         "hookKieu": str(kb.get("hook_kieu") or ""),
         "nhanManh": [str(x) for x in (kb.get("nhan_manh") or [])][:5],
         "nhac": nhac,
-        "nen": nen,
+        "amLuongNhac": float(os.environ.get("AM_LUONG_NHAC") or (0.16 if nhac and (nhac.endswith("nen.wav") or "/tron_" in nhac) else 0.12)),
+        "chuDe": str(kb.get("chu_de_ngan") or kb.get("chu_de") or "")[:40],
+        "baiHoc": bai_hoc,
+        "bia": tao_bia(kb, canh, canh_props),
+        # số tập KHÔNG in lúc dựng nữa (kể cả kịch bản cũ còn mang số): số tập đánh lúc đăng, theo số bài đã có trên kênh (dang_video.py)
+        "series": None,
+        "quangCao": the_san_pham(kb, anh_sp),
+        "duKien": [str(x).strip()[:30] for x in (kb.get("du_kien") or []) if str(x).strip()][:4],
+        "deBai": de_bai_the,
+        "tiepTheo": str(kb.get("video_tiep_theo") or "")[:70],
+        "nen": ds_nen[0] if ds_nen else None,
+        "dsNen": ds_nen,
+        "nenTuTao": nen_tu_tao,
         "thuongHieu": thuong_hieu,
         "outro": outro,
         "phongCach": pc,
         "canh": canh_props,
     }
+    if not args.gia_lap:
+        print("Giọng đọc: %d cảnh bằng Gemini TTS (%s), %d đoạn bằng edge-tts (%s), %d đoạn bằng Google TTS dự phòng" % (
+            THONG_KE_GIONG["gemini"], args.giong_gemini, THONG_KE_GIONG["edge"], args.giong, THONG_KE_GIONG["gtts"]))
     dich = args.props_ra or os.path.join(args.public, "props.json")
     with open(dich, "w", encoding="utf8") as f:
         json.dump(props, f, ensure_ascii=False, indent=1)

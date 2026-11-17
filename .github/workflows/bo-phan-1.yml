@@ -1,0 +1,116 @@
+name: Bộ phận 1 - giải đề và viết kịch bản
+run-name: "Giải ${{ inputs.id }}"
+
+# Apps Script (BoPhan1.gs > giaoBoPhan1ChoGitHub_) gửi MỘT đề sang đây. GitHub chạy nguyên mã giải + kiểm chứng + viết kịch bản
+# + chấm + tự sửa của Apps Script (scripts/bophan1/chay_bp1.js), không giới hạn 6 phút, nhiều đề chạy song song,
+# rồi gửi kết quả về Apps Script (doPost, loai = bo_phan_1). Apps Script lưu kịch bản và gửi dựng video ngay.
+# Secret cần: GEMINI_KEYS (các key Gemini, mỗi dòng một key; thiếu thì dùng GEMINI_API_KEY), APPS_SCRIPT_URL, DUNG_VIDEO_SECRET,
+# RCLONE_CONF (để tải ảnh đề gửi qua Zalo).
+on:
+  workflow_dispatch:
+    inputs:
+      id:
+        description: 'Mã đề (Apps Script tự điền)'
+        type: string
+        default: ''
+      de:
+        description: 'Dữ liệu đề JSON (Apps Script tự điền)'
+        type: string
+        default: ''
+
+concurrency:
+  group: bo-phan-1-${{ inputs.id || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  giai:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      GEMINI_KEYS: ${{ secrets.GEMINI_KEYS }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+      APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
+      DUNG_VIDEO_SECRET: ${{ secrets.DUNG_VIDEO_SECRET }}
+      BP1_DE: ${{ inputs.de }}
+      ID_DE: ${{ inputs.id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            /*.gs
+            scripts/bophan1
+            mau
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Tải ảnh đề từ Drive (đề gửi qua Zalo)
+        if: ${{ env.RCLONE_CONF != '' }}
+        run: |
+          ANH=$(python3 -c "import json,os;h=(json.loads(os.environ.get('BP1_DE') or '{}').get('hang') or {});f=str(h.get('file_anh') or '');print('' if (not f or f.startswith('http')) else f)")
+          if [ -z "$ANH" ]; then echo "Đề không có ảnh"; exit 0; fi
+          curl -fsSL https://rclone.org/install.sh | sudo bash > /dev/null 2>&1
+          mkdir -p ~/.config/rclone anh_de
+          printf '%s' "$RCLONE_CONF" > ~/.config/rclone/rclone.conf
+          rclone backend copyid gdrive: "$ANH" anh_de/ || { echo "Không tải được ảnh đề, vẫn giải bằng chữ"; exit 0; }
+          F=$(ls anh_de | head -1)
+          if [ -n "$F" ]; then echo "BP1_ANH=$PWD/anh_de/$F" >> "$GITHUB_ENV"; echo "Đã tải ảnh đề: $F"; fi
+
+      - name: Giải + kiểm chứng + viết kịch bản
+        run: node scripts/bophan1/chay_bp1.js
+
+      # chạy tay (không có mã đề): in kết quả + kịch bản ra nhật ký để xem / đem đi dựng thử
+      - name: In kết quả chạy thử
+        if: ${{ always() && env.ID_DE == '' }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          if not os.path.exists("ket_qua_bp1.json"):
+              print("Không có ket_qua_bp1.json"); raise SystemExit
+          d = json.load(open("ket_qua_bp1.json", encoding="utf8"))
+          h = d.get("hang") or {}
+          print("TRANG_THAI:", h.get("trang_thai"), "| DAP_AN:", h.get("dap_an"), "|", h.get("dap_an_hien"), "| GHI_CHU:", str(h.get("ghi_chu"))[:400])
+          for x in (d.get("nhat_ky") or [])[-40:]:
+              print("NK", x[1], str(x[2])[:400])
+          kb = d.get("kich_ban")
+          if kb:
+              print("=====KICH_BAN_BAT_DAU=====")
+              print(kb if isinstance(kb, str) else json.dumps(kb, ensure_ascii=False))
+              print("=====KICH_BAN_KET_THUC=====")
+          PY
+
+      - name: Gửi kết quả về Apps Script
+        if: ${{ always() && env.APPS_SCRIPT_URL != '' && env.ID_DE != '' }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          d = {}
+          if os.path.exists("ket_qua_bp1.json"):
+              d = json.load(open("ket_qua_bp1.json", encoding="utf8"))
+          else:
+              d = {"id": os.environ["ID_DE"], "ok": False, "hang": None,
+                   "loi": "Xem nhật ký: https://github.com/%s/actions/runs/%s" % (os.environ["GITHUB_REPOSITORY"], os.environ["GITHUB_RUN_ID"])}
+          # key Gemini LỖI THẬT (không phải hết hạn mức): gửi kèm để Apps Script báo Zalo cho người dùng gỡ key
+          if os.path.exists("/tmp/gemini_key_hong.json"):
+              try: d["key_hong"] = json.load(open("/tmp/gemini_key_hong.json", encoding="utf8"))
+              except Exception: pass
+          d["token"] = os.environ["DUNG_VIDEO_SECRET"]
+          d["loai"] = "bo_phan_1"
+          d["id"] = d.get("id") or os.environ["ID_DE"]
+          json.dump(d, open("gui_bp1.json", "w", encoding="utf8"), ensure_ascii=False)
+          PY
+          # không dùng "-X POST" cùng "-L" (xem dung-video.yml): Apps Script trả 302 sau khi xử lý
+          for lan in 1 2 3 4 5 6 7; do
+            KQ=$(curl -sS -L -H 'Content-Type: application/json' --data @gui_bp1.json "$APPS_SCRIPT_URL" || true)
+            echo "Lần $lan: $KQ"
+            if echo "$KQ" | grep -Eq '"ok" *: *true'; then exit 0; fi
+            if echo "$KQ" | grep -q 'KHONG_TIM_THAY'; then exit 0; fi
+            if echo "$KQ" | grep -q 'SAI_TOKEN'; then exit 1; fi
+            if echo "$KQ" | grep -q 'BAN'; then sleep 45; continue; fi
+            if [ "$lan" -ge 3 ]; then break; fi
+            sleep 20
+          done
+          echo "Không báo được kết quả về Apps Script"; exit 1

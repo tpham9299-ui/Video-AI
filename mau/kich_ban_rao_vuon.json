@@ -1,0 +1,1009 @@
+{
+ "tieu_de": "Rào 120m lưới thép được vườn RỘNG NHẤT bao nhiêu?",
+ "chu_de_ngan": "Tối ưu diện tích vườn",
+ "bai_hoc_rut_ra": [
+  "Biến đổi biểu thức để đưa về tích hai đại lượng có tổng cố định.",
+  "Áp dụng bất đẳng thức Cô-si để tìm giá trị lớn nhất.",
+  "Mảnh vườn tựa tường chỉ rào 3 cạnh: x + 2y = L."
+ ],
+ "video_tiep_theo": "Tối ưu thể tích bể nước không nắp",
+ "hook_ung_vien": [
+  "Có 120 mét lưới, rào thế nào để diện tích vườn to nhất?",
+  "Một cạnh tựa tường, rào 3 cạnh sao cho rộng nhất?",
+  "Đừng rào bừa, mẹo này giúp mảnh vườn rộng gấp đôi!"
+ ],
+ "hook": "Có 120 mét lưới thép, rào thế nào để mảnh vườn tựa tường rộng nhất?",
+ "hook_chu": "120m lưới thép rào vườn RỘNG NHẤT?",
+ "tieu_de_bia": "120m LƯỚI RÀO VƯỜN RỘNG NHẤT",
+ "hook_kieu": "cau_hoi",
+ "nhan_manh": [
+  "120m lưới thép",
+  "RỘNG NHẤT"
+ ],
+ "y_tuong_chinh": "Viết S = 1/2 * (x * 2y) với tổng x + 2y = 120 không đổi để dùng Cô-si.",
+ "de_cho": [
+  "Lưới thép dài 120 m",
+  "Mảnh vườn hình chữ nhật",
+  "Một cạnh tựa vào tường gạch có sẵn"
+ ],
+ "can_tim": "Kích thước các cạnh và diện tích lớn nhất của mảnh vườn",
+ "du_kien": [
+  "Tổng lưới = 120 m",
+  "Một cạnh tựa tường",
+  "S max = ?"
+ ],
+ "hashtag": [
+  "#toanhoc",
+  "#toanthucte",
+  "#toan12",
+  "#cosi"
+ ],
+ "dap_an_cuoi": "1800",
+ "canh": [
+  {
+   "so": 1,
+   "loai": "mo_dau",
+   "tieu_de_canh": "Rào vườn tối ưu diện tích",
+   "tu_khoa": "tối ưu",
+   "nhan": "CÂU HỎI",
+   "giu_san_khau": false,
+   "giong_doc": "tò mò, hào hứng",
+   "loi_thoai": "Có 120 mét lưới thép, rào thế nào để mảnh vườn tựa tường rộng nhất?",
+   "noi_dung_man_hinh": [],
+   "trinh_bay": "xep",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Góc nhìn từ trên xuống mảnh vườn tựa tường gạch. Hàng rào lưới thép hiện ra xung quanh 3 cạnh.",
+    "du_lieu": {
+     "goc_nhin": {
+      "nghieng": 35,
+      "xoay": -15
+     },
+     "vat": [
+      {
+       "loai": "canh_that",
+       "nhin": "tren",
+       "vung": [
+        {
+         "ma": "V1",
+         "ten": "vuon",
+         "x": 0,
+         "y": 0,
+         "rong": 30,
+         "dai": 60,
+         "hang_rao": [
+          "tren",
+          "phai",
+          "duoi"
+         ],
+         "tuong": "trai",
+         "canh": [
+          "y = ?",
+          "x = ?"
+         ]
+        }
+       ],
+       "vat": [],
+       "do": [
+        {
+         "kieu": "chu",
+         "tai": "V1.giua",
+         "nhan": "Lưới thép: 120 m"
+        }
+       ],
+       "id": "canh",
+       "x": 50,
+       "y": 50,
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 1,
+       "kieu": "goc_3d",
+       "nghieng": 45,
+       "xoay": 10
+      }
+     ]
+    }
+   },
+   "thoi_luong_giay": 4
+  },
+  {
+   "so": 2,
+   "loai": "de_bai",
+   "tieu_de_canh": "Bài toán 120m lưới thép",
+   "tu_khoa": "120m lưới",
+   "nhan": "ĐỀ BÀI",
+   "giu_san_khau": true,
+   "giong_doc": "chậm rãi, rõ ràng",
+   "loi_thoai": "Bác Minh có 120 mét lưới thép rào vườn hình chữ nhật, một cạnh dựa vào tường gạch nên không cần rào.",
+   "noi_dung_man_hinh": [],
+   "trinh_bay": "xep",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Giữ nguyên sơ đồ mảnh vườn, nhấp sáng 3 cạnh hàng rào.",
+    "du_lieu": {
+     "vat": [],
+     "hanh_dong": [
+      {
+       "buoc": 1,
+       "vat": "canh",
+       "kieu": "sang"
+      }
+     ]
+    }
+   },
+   "thoi_luong_giay": 6
+  },
+  {
+   "so": 3,
+   "loai": "de_bai",
+   "tieu_de_canh": "Tìm kích thước để S max",
+   "tu_khoa": "S max",
+   "nhan": "YÊU CẦU",
+   "giu_san_khau": true,
+   "giong_doc": "nhấn mạnh",
+   "loi_thoai": "Hỏi các cạnh dài bao nhiêu mét để diện tích mảnh vườn thu được là lớn nhất?",
+   "noi_dung_man_hinh": [],
+   "trinh_bay": "xep",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Mảnh vườn sáng lên màu vàng nhạt thể hiện diện tích lớn nhất.",
+    "du_lieu": {
+     "vat": [],
+     "hanh_dong": [
+      {
+       "buoc": 1,
+       "vat": "canh",
+       "kieu": "chon",
+       "chi_so": [
+        1
+       ]
+      }
+     ]
+    }
+   },
+   "thoi_luong_giay": 5
+  },
+  {
+   "so": 4,
+   "loai": "mo_hinh_hoa",
+   "tieu_de_canh": "Đặt ẩn x và y",
+   "tu_khoa": "x và y",
+   "nhan": "MÔ HÌNH HÓA",
+   "giu_san_khau": true,
+   "giong_doc": "tập trung",
+   "loi_thoai": "Muốn giải toán thực tế, ta đặt ẩn. Gọi x là cạnh song song với tường, y là hai cạnh vuông góc tường.",
+   "noi_dung_man_hinh": [
+    "x > 0, y > 0"
+   ],
+   "trinh_bay": "xep",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Nhãn x và y hiện rõ trên các cạnh của mảnh vườn.",
+    "du_lieu": {
+     "vat": [],
+     "hanh_dong": [
+      {
+       "buoc": 1,
+       "vat": "canh",
+       "kieu": "doi_chu",
+       "noi_dung": "x, y, x"
+      }
+     ]
+    }
+   },
+   "thoi_luong_giay": 6
+  },
+  {
+   "so": 5,
+   "loai": "mo_hinh_hoa",
+   "tieu_de_canh": "Phương trình tổng lưới",
+   "tu_khoa": "",
+   "nhan": "ĐIỀU KIỆN",
+   "giu_san_khau": true,
+   "giong_doc": "mạch lạc",
+   "loi_thoai": "Vì chỉ rào ba cạnh nên tổng độ dài lưới là x cộng hai y bằng 120 mét.",
+   "noi_dung_man_hinh": [
+    "x + 2y = 120"
+   ],
+   "trinh_bay": "xep",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "3 cạnh hàng rào nhấp nháy lần lượt x, y, y ghép lại bằng 120m.",
+    "du_lieu": {
+     "vat": [],
+     "hanh_dong": [
+      {
+       "buoc": 1,
+       "vat": "canh",
+       "kieu": "sang"
+      }
+     ]
+    }
+   },
+   "thoi_luong_giay": 5
+  },
+  {
+   "so": 6,
+   "loai": "y_do",
+   "tieu_de_canh": "Ý tưởng tối ưu diện tích",
+   "tu_khoa": "",
+   "nhan": "MỤC TIÊU",
+   "giu_san_khau": false,
+   "giong_doc": "gợi mở",
+   "loi_thoai": "Diện tích vườn là S bằng x nhân y. Làm sao tìm giá trị lớn nhất khi biết tổng x cộng hai y bằng 120?",
+   "noi_dung_man_hinh": [
+    "S = x \\cdot y",
+    "x + 2y = 120"
+   ],
+   "trinh_bay": "xep",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Đồ thị thể hiện sự thay đổi của diện tích S theo x.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "dt",
+       "loai": "do_thi",
+       "x": 50,
+       "y": 50,
+       "ham": "x*(120-x)/2",
+       "x_tu": 0,
+       "x_den": 120,
+       "y_tu": 0,
+       "y_den": 2000,
+       "gia_tri": 20,
+       "nhan_truc": [
+        "x",
+        "S"
+       ],
+       "noi_dung": "Diện tích S(x)",
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 1,
+       "vat": "dt",
+       "kieu": "dat_gia_tri",
+       "gia_tri": 60
+      }
+     ]
+    }
+   },
+   "thoi_luong_giay": 6
+  },
+  {
+   "so": 7,
+   "loai": "bay",
+   "tieu_de_canh": "Cái bẫy chia đều 4 cạnh",
+   "tu_khoa": "",
+   "nhan": "CẢNH BÁO",
+   "giu_san_khau": false,
+   "giong_doc": "cảnh báo, nhanh",
+   "loi_thoai": "Nhiều bạn thói quen chia 120 cho 4 cạnh bằng 30m, nhưng quên mất một cạnh đã có tường!",
+   "noi_dung_man_hinh": [
+    "120 : 4 = 30 \\text{ (Sai!)}"
+   ],
+   "trinh_bay": "xep",
+   "chu_thich": [
+    "Chỉ rào 3 cạnh, không rào cạnh tường!"
+   ],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Hình minh họa bị gạch chéo đỏ và rung lắc báo sai.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "nhan_sai",
+       "loai": "nhan",
+       "x": 50,
+       "y": 50,
+       "noi_dung": "BẪY THƯỜNG GẶP",
+       "tu_khoa": "BẪY",
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 1,
+       "vat": "nhan_sai",
+       "kieu": "rung"
+      },
+      {
+       "buoc": 2,
+       "vat": "nhan_sai",
+       "kieu": "loai_bo",
+       "chi_so": [
+        1
+       ]
+      }
+     ]
+    }
+   },
+   "thoi_luong_giay": 5
+  },
+  {
+   "so": 8,
+   "loai": "diem_chot",
+   "tieu_de_canh": "Mẹo tách đại lượng x và 2y",
+   "tu_khoa": "",
+   "nhan": "MẤU CHỐT",
+   "giu_san_khau": false,
+   "giong_doc": "nhấn mạnh, hào hứng",
+   "loi_thoai": "Mẹo cực hay: viết S thành một phần hai nhân x nhân hai y. Ta xuất hiện tích hai số x và hai y!",
+   "noi_dung_man_hinh": [
+    "S = x \\cdot y",
+    "S = \\frac{1}{2}(x \\cdot 2y)"
+   ],
+   "trinh_bay": "bien_doi",
+   "chu_thich": [
+    "Tích x.(2y) có tổng x + 2y = 120 hằng số!"
+   ],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Biểu thức S biến đổi sáng lên các cụm x và 2y.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "the_y_tuong",
+       "loai": "danh_sach",
+       "x": 50,
+       "y": 50,
+       "noi_dung": "Ý tưởng then chốt",
+       "ds": [
+        "Tổng: x + 2y = 120 (không đổi)",
+        "Diện tích: S = 1/2 . (x . 2y)",
+        "Áp dụng BĐT Cô-si cho x và 2y"
+       ],
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 1,
+       "vat": "the_y_tuong",
+       "kieu": "chon",
+       "chi_so": [
+        2
+       ]
+      }
+     ]
+    }
+   },
+   "thoi_luong_giay": 6
+  },
+  {
+   "loai": "nhac_lai",
+   "tieu_de_canh": "Cô-si từ đâu ra?",
+   "nhan": "TỪ ĐÂU RA",
+   "tu_khoa": "",
+   "giu_san_khau": false,
+   "giong_doc": "chậm rãi, rõ ràng",
+   "loi_thoai": "Vì sao tích lớn nhất khi hai số bằng nhau? Thử tổng bằng 10: một nhân chín bằng chín, năm nhân năm bằng hai mươi lăm. Hai số càng gần nhau, tích càng lớn.",
+   "noi_dung_man_hinh": [
+    "(a-b)^2 \\ge 0",
+    "\\Rightarrow ab \\le \\left(\\frac{a+b}{2}\\right)^2"
+   ],
+   "trinh_bay": "xep",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Giải thích công thức - từ đâu ra: Cô-si từ đâu ra?. Hình: thẻ ghi nhớ, sáng lần lượt từng dòng",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "gt1",
+       "loai": "danh_sach",
+       "x": 50,
+       "y": 50,
+       "noi_dung": "Tổng 10, tích bao nhiêu?",
+       "ds": [
+        "1 × 9 = 9",
+        "3 × 7 = 21",
+        "5 × 5 = 25 (lớn nhất)"
+       ],
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 1,
+       "vat": "gt1",
+       "kieu": "chon",
+       "chi_so": [
+        0
+       ]
+      },
+      {
+       "buoc": 2,
+       "vat": "gt1",
+       "kieu": "chon",
+       "chi_so": [
+        1
+       ]
+      },
+      {
+       "buoc": 3,
+       "vat": "gt1",
+       "kieu": "chon",
+       "chi_so": [
+        2
+       ]
+      }
+     ]
+    }
+   },
+   "thoi_luong_giay": 7,
+   "so": 9
+  },
+  {
+   "loai": "nhac_lai",
+   "tieu_de_canh": "a, b trong bài là gì?",
+   "nhan": "Ý NGHĨA",
+   "tu_khoa": "",
+   "giu_san_khau": false,
+   "giong_doc": "chậm rãi, rõ ràng",
+   "loi_thoai": "Trong bài của mình, a chính là cạnh x song song tường, còn b là hai lần cạnh y. Tổng a cộng b chính là 120 mét lưới, luôn không đổi.",
+   "noi_dung_man_hinh": [
+    "a = x",
+    "b = 2y"
+   ],
+   "trinh_bay": "xep",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Giải thích công thức - ý nghĩa: a, b trong bài là gì?. Hình: vẽ lại cảnh thực tế của đề, gắn tên đại lượng lên cạnh",
+    "du_lieu": {
+     "vat": [
+      {
+       "loai": "canh_that",
+       "nhin": "tren",
+       "vung": [
+        {
+         "ma": "V1",
+         "ten": "vuon",
+         "x": 0,
+         "y": 0,
+         "rong": 30,
+         "dai": 60,
+         "hang_rao": [
+          "tren",
+          "phai",
+          "duoi"
+         ],
+         "tuong": "trai",
+         "canh": [
+          "y",
+          "x = a"
+         ]
+        }
+       ],
+       "vat": [],
+       "do": [
+        {
+         "kieu": "chu",
+         "tai": "V1.giua",
+         "nhan": "a + b = 120 m",
+         "buoc": 2
+        }
+       ],
+       "id": "gt2",
+       "x": 50,
+       "y": 50,
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "gt2",
+       "kieu": "sang"
+      }
+     ]
+    }
+   },
+   "thoi_luong_giay": 7,
+   "so": 10
+  },
+  {
+   "loai": "nhac_lai",
+   "tieu_de_canh": "Khi nào dùng Cô-si?",
+   "nhan": "KHI NÀO DÙNG",
+   "tu_khoa": "",
+   "giu_san_khau": false,
+   "giong_doc": "chậm rãi, rõ ràng",
+   "loi_thoai": "Cứ thấy tổng không đổi mà hỏi tích lớn nhất là nghĩ ngay tới Cô-si. Nhớ điều kiện hai số dương, và dấu bằng xảy ra khi hai số bằng nhau.",
+   "noi_dung_man_hinh": [
+    "a + b \\text{ không đổi}",
+    "ab \\max \\Leftrightarrow a = b"
+   ],
+   "trinh_bay": "xep",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Giải thích công thức - khi nào dùng: Khi nào dùng Cô-si?. Hình: đồ thị, chấm điểm cần chú ý",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "gt3",
+       "loai": "do_thi",
+       "x": 50,
+       "y": 50,
+       "ham": "x*(120-x)/2",
+       "x_tu": 0,
+       "x_den": 120,
+       "nhan_truc": [
+        "x",
+        "S"
+       ],
+       "noi_dung": "S lớn nhất tại x = 60",
+       "buoc": 1,
+       "gia_tri": 0
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "gt3",
+       "kieu": "dat_gia_tri",
+       "gia_tri": 60
+      }
+     ]
+    }
+   },
+   "thoi_luong_giay": 7,
+   "so": 11
+  },
+  {
+   "so": 12,
+   "loai": "tinh_toan",
+   "tieu_de_canh": "Cho x bằng 2y",
+   "tu_khoa": "",
+   "nhan": "BƯỚC 1",
+   "giu_san_khau": false,
+   "giong_doc": "tập trung",
+   "loi_thoai": "Hiểu rồi thì giải cực nhanh. Tích x nhân hai y lớn nhất khi x bằng hai y.",
+   "noi_dung_man_hinh": [
+    "S_{max} \\Leftrightarrow x = 2y"
+   ],
+   "trinh_bay": "xep",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Phép tính x = 2y hiện lên màn hình. Sân khấu gồm danh_sach \"Tính kích thước\", xuất hiện lần lượt theo lời thoại.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "ds_tinh",
+       "loai": "danh_sach",
+       "x": 50,
+       "y": 50,
+       "noi_dung": "Tính kích thước",
+       "ds": [
+        "1) Điểm rơi: x = 2y",
+        "2) Thay vào tổng: 2y + 2y = 120",
+        "3) Suy ra y = 30 m"
+       ],
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 1,
+       "vat": "ds_tinh",
+       "kieu": "chon",
+       "chi_so": [
+        1
+       ]
+      }
+     ]
+    }
+   },
+   "thoi_luong_giay": 5
+  },
+  {
+   "so": 13,
+   "loai": "tinh_toan",
+   "tieu_de_canh": "Tìm y và x",
+   "tu_khoa": "",
+   "nhan": "BƯỚC 2",
+   "giu_san_khau": true,
+   "giong_doc": "mạch lạc",
+   "loi_thoai": "Thay x bằng hai y vào tổng: hai y cộng hai y bằng 120. Suy ra bốn y bằng 120, nên y bằng 30 mét.",
+   "noi_dung_man_hinh": [
+    "2y + 2y = 120 \\Rightarrow 4y = 120",
+    "\\Rightarrow y = 30\\text{ (m)}"
+   ],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Dòng 2 và 3 trong danh sách sáng lên. Sân khấu gồm , xuất hiện lần lượt theo lời thoại.",
+    "du_lieu": {
+     "vat": [],
+     "hanh_dong": [
+      {
+       "buoc": 1,
+       "vat": "ds_tinh",
+       "kieu": "chon",
+       "chi_so": [
+        2,
+        3
+       ]
+      }
+     ]
+    }
+   },
+   "thoi_luong_giay": 6
+  },
+  {
+   "so": 14,
+   "loai": "tinh_toan",
+   "tieu_de_canh": "Tính cạnh x và S max",
+   "tu_khoa": "",
+   "nhan": "BƯỚC 3",
+   "giu_san_khau": false,
+   "giong_doc": "phấn khởi",
+   "loi_thoai": "Có y bằng 30, suy ra x bằng hai nhân 30 bằng 60 mét. Diện tích tối đa là 60 nhân 30 bằng 1800 mét vuông.",
+   "noi_dung_man_hinh": [
+    "x = 2 \\times 30 = 60\\text{ (m)}",
+    "S_{max} = 60 \\times 30 = 1800\\text{ (m}^2\\text{)}"
+   ],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Đồ thị đạt điểm đỉnh cực đại tại x = 60, S = 1800.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "dt2",
+       "loai": "do_thi",
+       "x": 50,
+       "y": 50,
+       "ham": "x*(120-x)/2",
+       "x_tu": 0,
+       "x_den": 120,
+       "y_tu": 0,
+       "y_den": 2000,
+       "gia_tri": 60,
+       "danh_dau": [
+        60
+       ],
+       "nhan_truc": [
+        "x",
+        "S"
+       ],
+       "noi_dung": "Cực đại S = 1800",
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 1,
+       "vat": "dt2",
+       "kieu": "sang"
+      }
+     ]
+    }
+   },
+   "thoi_luong_giay": 7
+  },
+  {
+   "so": 15,
+   "loai": "dap_an",
+   "tieu_de_canh": "Đáp số 1800 m²",
+   "tu_khoa": "1800 m²",
+   "nhan": "KẾT QUẢ",
+   "giu_san_khau": false,
+   "giong_doc": "dõng dạc, tự tin",
+   "loi_thoai": "Vậy cạnh song song tường dài 60m, hai cạnh vuông góc dài 30m, cho diện tích lớn nhất là 1800 mét vuông!",
+   "noi_dung_man_hinh": [
+    "x = 60\\text{ m}, y = 30\\text{ m}",
+    "S_{max} = 1800\\text{ m}^2"
+   ],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Quay lại cảnh thực tế mảnh vườn với các kích thước chuẩn 60m x 30m và huy hiệu số 1800.",
+    "du_lieu": {
+     "goc_nhin": {
+      "nghieng": 30,
+      "xoay": -10
+     },
+     "vat": [
+      {
+       "loai": "canh_that",
+       "nhin": "tren",
+       "vung": [
+        {
+         "ma": "V1",
+         "ten": "vuon",
+         "x": 0,
+         "y": 0,
+         "rong": 30,
+         "dai": 60,
+         "hang_rao": [
+          "tren",
+          "phai",
+          "duoi"
+         ],
+         "tuong": "trai",
+         "canh": [
+          "30 m",
+          "60 m"
+         ]
+        }
+       ],
+       "vat": [],
+       "do": [
+        {
+         "kieu": "chu",
+         "tai": "V1.giua",
+         "nhan": "S_max = 1800 m²"
+        }
+       ],
+       "id": "canh_da",
+       "x": 50,
+       "y": 50,
+       "buoc": 1
+      },
+      {
+       "id": "so_dap_an",
+       "loai": "so_dem",
+       "x": 50,
+       "y": 20,
+       "noi_dung": "Diện tích tối đa",
+       "gia_tri": 1800,
+       "nhan": "m²",
+       "kieu": "vien",
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 1,
+       "vat": "so_dap_an",
+       "kieu": "sang"
+      }
+     ]
+    }
+   },
+   "thoi_luong_giay": 6
+  },
+  {
+   "so": 16,
+   "loai": "kiem_tra",
+   "tieu_de_canh": "Thử lại với phương án khác",
+   "tu_khoa": "thử lại",
+   "nhan": "THỬ LẠI",
+   "giu_san_khau": false,
+   "giong_doc": "thuyết phục",
+   "loi_thoai": "Thử lại xem: nếu chọn x bằng 40m thì y bằng 40m, diện tích chỉ đạt 1600 mét vuông, nhỏ hơn 1800!",
+   "noi_dung_man_hinh": [
+    "x = 40 \\Rightarrow y = 40",
+    "S = 40 \\times 40 = 1600 < 1800"
+   ],
+   "trinh_bay": "bien_doi",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "So sánh biểu đồ cột diện tích của hai trường hợp x=60 và x=40.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "bd_ss",
+       "loai": "bieu_do_cot",
+       "x": 50,
+       "y": 50,
+       "ds": [
+        "x=40 (S=1600)",
+        "x=60 (S=1800)"
+       ],
+       "ds_so": [
+        1600,
+        1800
+       ],
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 1,
+       "vat": "bd_ss",
+       "kieu": "chon",
+       "chi_so": [
+        2
+       ]
+      }
+     ]
+    }
+   },
+   "thoi_luong_giay": 6
+  },
+  {
+   "so": 17,
+   "loai": "lien_he_thuc_te",
+   "tieu_de_canh": "Ứng dụng trong thực tế",
+   "tu_khoa": "ứng dụng",
+   "nhan": "THỰC TẾ",
+   "giu_san_khau": false,
+   "giong_doc": "nhẹ nhàng",
+   "loi_thoai": "Mẹo này áp dụng cực tốt khi làm chuồng trại, rào sân bóng hay tối ưu nguyên vật liệu thi công.",
+   "noi_dung_man_hinh": [],
+   "trinh_bay": "xep",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Liên hệ thực tế: người chỉ vào hang_rao, qua_bong, nha - những nơi dùng đúng cách nghĩ của bài.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "canh_lh",
+       "loai": "canh_that",
+       "nhin": "ngang",
+       "x": 50,
+       "y": 50,
+       "buoc": 1,
+       "vat": [
+        {
+         "ma": "A",
+         "ten": "nguoi",
+         "cao": 1.7,
+         "x": 0
+        },
+        {
+         "ma": "B",
+         "ten": "hang_rao",
+         "cao": 1.3,
+         "x": 3
+        },
+        {
+         "ma": "C",
+         "ten": "qua_bong",
+         "cao": 0.6,
+         "x": 5.6
+        },
+        {
+         "ma": "D",
+         "ten": "nha",
+         "cao": 3.4,
+         "x": 8.2
+        }
+       ],
+       "do": []
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "canh_lh",
+       "kieu": "sang"
+      }
+     ]
+    }
+   },
+   "thoi_luong_giay": 5
+  },
+  {
+   "so": 18,
+   "loai": "bai_hoc",
+   "tieu_de_canh": "Bài học rút ra",
+   "tu_khoa": "bài học",
+   "nhan": "TỔNG KẾT",
+   "giu_san_khau": false,
+   "giong_doc": "truyền cảm hứng",
+   "loi_thoai": "Nhớ nhé: Rào 3 cạnh thì cạnh song song tường gấp đôi cạnh vuông góc. Thử tự giải nếu lưới dài 200m nhé!",
+   "noi_dung_man_hinh": [],
+   "trinh_bay": "xep",
+   "chu_thich": [
+    "Thử sức: Lưới 200m -> S_max = ?"
+   ],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Danh sách các quy tắc rút ra hiện lên màn hình.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "ds_baihoc",
+       "loai": "danh_sach",
+       "x": 50,
+       "y": 50,
+       "noi_dung": "Ghi nhớ nhanh",
+       "ds": [
+        "1. Tựa tường 1 cạnh -> Rào 3 cạnh",
+        "2. Cạnh dài gấp đôi cạnh rộng (x = 2y)",
+        "3. Áp dụng BĐT Cô-si tìm S max"
+       ],
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 1,
+       "vat": "ds_baihoc",
+       "kieu": "chon",
+       "chi_so": [
+        2
+       ]
+      }
+     ]
+    }
+   },
+   "thoi_luong_giay": 6
+  }
+ ],
+ "dap_an_hien": "Cạnh song song tường: 60 m, hai cạnh vuông góc tường: 30 m (Diện tích tối đa: 1800 m²)",
+ "ban_ve": {
+  "loai": "canh_that",
+  "nhin": "tren",
+  "vung": [
+   {
+    "ma": "V1",
+    "ten": "vuon",
+    "x": 0,
+    "y": 0,
+    "rong": 30,
+    "dai": 60,
+    "hang_rao": [
+     "tren",
+     "phai",
+     "duoi"
+    ],
+    "tuong": "trai",
+    "canh": [
+     "y = ?",
+     "x = ?"
+    ]
+   }
+  ],
+  "vat": [],
+  "do": [
+   {
+    "kieu": "chu",
+    "tai": "V1.giua",
+    "nhan": "Lưới thép: 120 m"
+   }
+  ],
+  "id": "canh",
+  "x": 50,
+  "y": 50,
+  "buoc": 1
+ },
+ "tong_giay": 90,
+ "id": "THU-raovuon4",
+ "lop": "12",
+ "chu_de": "Rào vườn sát tường",
+ "de_bai": "Bác Minh có 120 m lưới thép muốn rào một mảnh vườn hình chữ nhật, một cạnh vườn tựa vào bức tường gạch có sẵn nên không cần rào cạnh đó. Hỏi các cạnh của vườn dài bao nhiêu để diện tích vườn lớn nhất?",
+ "dap_an": "1800",
+ "cach_giai": {
+  "y_tuong": "Biến đổi diện tích $S = x \\cdot y = \\frac{1}{2}(x \\cdot 2y)$ để đưa về tích hai số $x$ và $2y$ có tổng không đổi $x + 2y = 120$. Áp dụng bất đẳng thức Cô-si, tích lớn nhất khi hai đại lượng này bằng nhau ($x = 2y$).",
+  "mo_hinh": "Đặt cạnh song song với tường là $x$ (m), hai cạnh vuông góc với tường là $y$ (m). Điều kiện: $0 < x < 120$, $0 < y < 60$. Tổng lưới: $x + 2y = 120$. Biểu thức diện tích: $S = x \\cdot y$ ($m^2$).",
+  "cac_buoc": [
+   "Vì một cạnh tựa vào tường nên chỉ cần rào 3 cạnh với tổng độ dài: $x + 2y = 120$ (m).",
+   "Viết lại diện tích để xuất hiện dạng $x$ và $2y$: $S = x \\cdot y = \\frac{1}{2} \\cdot (x \\cdot 2y)$. Do $x + 2y = 120$ là hằng số, tích $x \\cdot 2y$ đạt giá trị lớn nhất khi $x = 2y$ (Bất đẳng thức Cô-si).",
+   "Từ $x = 2y$, thay vào phương trình tổng lưới: $2y + 2y = 120 \\Rightarrow 4y = 120 \\Rightarrow y = 30$ (m).",
+   "Suy ra cạnh song song với tường là $x = 2 \\times 30 = 60$ (m).",
+   "Diện tích cực đại thu được là: $S_{max} = 60 \\times 30 = 1800$ ($m^2$)."
+  ],
+  "gia_tri": 1800,
+  "don_vi": "m²",
+  "dap_an_hien": "Cạnh song song tường: 60 m, hai cạnh vuông góc tường: 30 m (Diện tích tối đa: 1800 m²)",
+  "thu_nguoc": "Thử lại với đáp số x = 60 m, y = 30 m: Tổng lượng lưới cần dùng = 60 + 2 * 30 = 120 m (khớp đúng 120 m của đề). Diện tích S = 60 * 30 = 1800 m². Thử trường hợp khác: nếu x = 40 m thì y = 40 m, S = 1600 m² < 1800 m²; nếu x = 80 m thì y = 20 m, S = 1600 m² < 1800 m². Vậy đáp số chính xác hoàn toàn.",
+  "de_co_van_de": ""
+ },
+ "mon": "THUC_TE",
+ "loai_cau_hoi": "Tối ưu",
+ "giong": "Kore",
+ "gioi_tinh_giong": "nu"
+}

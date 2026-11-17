@@ -1,0 +1,156 @@
+# SỬA CODE LẦN 41: Video hình học dựng 100% bằng Manim
+
+## Yêu cầu
+1. Video hình học dựng hoàn toàn bằng Manim, không dùng Remotion giả Manim.
+2. Làm giống các video hình học mẫu.
+3. Hướng dẫn chứng minh thật chi tiết, làm nổi đúng chỗ đang chứng minh để người xem chỉ chú ý vào đó.
+
+## Phong cách lấy từ 4 video mẫu
+- Nền đen #111, tiêu đề vàng chữ có chân ở trên cùng; hình ở nửa trên, công thức ở dưới.
+- **Mỗi đại lượng một màu**:
+  - đoạn thẳng, góc, tam giác, mặt phẳng được nhắc tới đều có màu riêng, giữ suốt video;
+  - trong công thức, đúng đại lượng đó cũng mang màu ấy (nhìn công thức là biết nó nằm ở đâu trên hình).
+- Vẽ dần cạnh → điểm → nhãn; đường kẻ thêm là nét đứt.
+- Công thức biến đổi từng bước (dòng sau biến hình ra từ dòng trước), dòng cũ mờ đi.
+- Kết quả cuối đóng khung vàng.
+- Hai tam giác so sánh được tách ra đặt cạnh nhau, tô màu.
+
+## Làm nổi chỗ đang chứng minh
+- Mỗi bước, máy tự đọc lời thoại + công thức để biết bước đó nói về **cạnh / góc / tam giác / mặt phẳng / đường tròn** nào:
+  - phần được nhắc tới sáng lên, dày hơn, mang màu riêng; tam giác được nhắc tới tô màu;
+  - phần còn lại của hình mờ đi.
+- Mỗi dòng công thức hiện ra **đúng lúc giọng đọc câu tương ứng**; khi dòng hiện, các cạnh trong dòng đó lóe sáng vàng chạy dọc theo cạnh.
+- `\hl{...}` trong công thức: khung vàng quanh đúng phần đang xét (vd `\hl{\angle AEB} = 90^\circ`).
+- Hai góc là một trên hình (vd ∠EAB và ∠FAC khi E thuộc AC, F thuộc AB): máy nhận ra là cùng một góc, cùng màu.
+- Góc vuông đã có ký hiệu thì tô màu ký hiệu, không vẽ thêm cung.
+- Đoạn nằm trên một cạnh (vd MB là nửa BC) hiện thành đoạn màu đè lên cạnh, không kẻ thêm nét đứt.
+
+## Kịch bản chi tiết hơn (HinhHoc.gs + KiemTraHinh.gs)
+Lời nhắc viết kịch bản bài hình học có thêm:
+- **Quy ước viết công thức** để máy tô màu đúng:
+  - đoạn: `ME`; góc: `\angle ABC`; tam giác: `\triangle ABC`; mặt phẳng: `(SAC)`;
+  - `\hl{...}` cho phần đang xét; `\dpcm` cho dòng kết luận.
+- Trường mới cho mỗi cảnh:
+  - `nhan_manh_hinh`: phần hình cần làm nổi;
+  - `tach`: hai tam giác cần tách ra đặt cạnh nhau.
+- **Mỗi cảnh một bước**:
+  - tiêu đề cảnh nêu đúng điều đang chứng minh;
+  - 1-3 dòng công thức (khẳng định + lý do);
+  - lời thoại chỉ thẳng vào hình và nói VÌ SAO;
+  - bài chứng minh tối thiểu 4 cảnh giải.
+
+Kiểm tra mới (kiemTraKichBanManim_), lỗi nhẹ, AI tự sửa:
+- chứng minh quá gọn;
+- bước thiếu công thức hoặc thiếu lý do;
+- công thức không nhắc cạnh / góc nào trên hình;
+- viết "góc" / "tam giác" bằng chữ trong công thức.
+
+## Thống nhất phong cách với video xác suất / thực tế (yêu cầu bổ sung)
+Mỗi video hình học gồm hai lớp:
+- **Lớp vỏ chung (Remotion)**, giống hệt mọi video khác:
+  - nền tự tạo, thanh tiêu đề (LỚP, tên bài), thanh các bước (ĐỀ BÀI → GIẢI → ...), tiêu đề bước chữ to;
+  - phụ đề karaoke, giọng đọc, nhạc nền tự giảm khi có giọng;
+  - tiếng hiệu ứng: chuyển bước, "tách" khi hiện dòng, "ting" khi đóng khung kết quả;
+  - ảnh bìa cùng kiểu.
+- **Lớp toán (Manim, nền trong suốt)**, nằm đúng vùng nội dung giữa tiêu đề bước và phụ đề:
+  - hình, công thức, mọi chuyển động và hiệu ứng thị giác;
+  - thẻ ĐỀ BÀI và khung công thức cùng kiểu thẻ của các video khác.
+
+**Một phông chữ cho cả video**:
+- Montserrat ExtraBold (phông chữ đậm của mọi video) cho tiêu đề, thẻ đề, phụ đề, công thức (cả chữ số, dấu = + · °), tên điểm, số đo.
+- Dòng dẫn nhỏ trên tiêu đề bước trước là chữ nghiêng có chân, nay cũng đổi sang Montserrat (áp dụng cho mọi video).
+- Gói edit "dong_nhat" dùng Be Vietnam Pro Bold.
+
+**Ít ô chữ, giảng bằng giọng + thể hiện trên hình** (như video mẫu):
+- Không còn ô KIẾN THỨC.
+- Trường `kien_thuc` vẫn có trong kịch bản, nhưng để **giọng đọc giảng**: dùng định lý / tính chất gì, vì sao áp dụng được.
+- Màn hình thể hiện bằng hình:
+  - phần đang xét sáng lên, phần khác mờ;
+  - cạnh / góc / tam giác tô màu riêng;
+  - **số đo ghi ngay cạnh góc / đoạn** (vd công thức có "\angle ABC = 60^\circ" thì "60°" hiện cạnh góc B; "AB = 5" thì "5" hiện cạnh đoạn AB) và giữ lại trên hình;
+  - hai tam giác đồng dạng được nhấc ra phóng to, đặt cạnh nhau ngay trên vùng hình.
+- Thiếu `kien_thuc` hoặc lời thoại không nêu lý do thì kiểm tra kịch bản bắt sửa.
+- Tiêu đề bước không ghi "Bước 1:" (thanh bước đã có); `tu_khoa` là cụm được phóng to.
+
+## Chạy ở đâu (GitHub, workflow dung-video.yml)
+1. Sau bước tạo giọng đọc, nếu kịch bản là `HINH_HOC`:
+   - cài LaTeX (xelatex) + Manim;
+   - chạy `scripts/manim_hinh.py`, ra:
+     - `out/<ID>_manim.mov` (lớp trong suốt);
+     - `public/manim/bia.png` (hình cho ảnh bìa);
+     - đánh dấu `manimLop` trong props.
+2. Remotion dựng phần vỏ như mọi video (chia khúc dựng song song), bỏ qua bước kiểm duyệt bố cục của Remotion vì phần hình không còn do Remotion vẽ.
+3. Máy ghép đè lớp Manim lên video (lùi 1 khung vì khung 0 là ảnh bìa), tải lên Drive và báo về Apps Script như cũ.
+4. Manim lỗi → video dựng hoàn toàn bằng Remotion như cũ (video vẫn ra).
+
+Tắt Manim: GitHub → Settings → Variables → `MANIM_HINH = TAT`.
+
+Dựng thử tay: Actions → Dựng video → chọn mẫu:
+- `kich_ban_hinh_manim`: bài "AE·AC = AF·AB", 8 bước;
+- `kich_ban_hinh_hoc`;
+- `kich_ban_hinh_khong_gian`.
+
+## Cần dán lại trên Apps Script
+- **HinhHoc.gs** (lời nhắc Manim, trường kien_thuc, kiểm tra mới). Nếu chưa có tệp này thì tạo mới: bài hình học chỉ được sinh khi có tệp này.
+- **KiemTraHinh.gs** (gọi kiểm tra mới).
+
+## Đã thử
+- Dựng trên máy 3 bài mẫu (hình phẳng, hình không gian, chứng minh 8 bước):
+  - 1080x1920, 30 khung/giây, khớp đúng độ dài giọng đọc;
+  - 28-38 giây video dựng mất 15-33 giây.
+- Kiểm bằng ảnh chụp từng giây: màu khớp giữa hình và công thức, phần đang xét sáng, phần khác mờ, khung vàng ở kết luận, tam giác tách đôi có nhãn.
+
+## Lần 42: rà soát điểm yếu và sửa luôn
+
+### Video hình học (Manim)
+1. **Khớp từng khung hình với giọng đọc.**
+   - Trước: mỗi động tác làm tròn thời gian nên lớp Manim có thể lệch vài khung, cảnh ngắn mà nhiều thứ phải vẽ thì trôi sang cảnh sau (hình lệch phụ đề).
+   - Nay: đồng hồ chuẩn là số khung hình đã ghi; mọi động tác của một cảnh bị ép nằm trong đúng thời lượng giọng đọc của cảnh đó (cảnh chật thì động tác chạy nhanh lại, ghi cảnh báo).
+   - Đã đo: lớp Manim 1526/1526 khung và 936/936 khung, khớp tuyệt đối với video.
+2. **Tên điểm không đè lên nét vẽ.** Máy thử 16 hướng quanh mỗi điểm, chọn chỗ xa nhất các đoạn thẳng, đường tròn, điểm và tên điểm khác.
+3. **Dòng công thức dài tự xuống dòng.** Thay vì thu nhỏ cả dòng đến khó đọc, phần lý do / hệ quả được tách xuống dòng thứ hai, tại "(vì ...)", "⇒" hoặc "\quad".
+4. **Hình to hơn khoảng 30%.**
+   - Vùng hình cao 4,7 đơn vị, trước là 4,25, chừa khoảng cách với tiêu đề bước.
+   - Lề quanh hình hẹp lại.
+   - Vùng công thức vẫn đủ cho 3 dòng.
+5. **Thử kịch bản "khó"**: dòng dài, nhiều số đo, cảnh ngắn, và hình không gian (hình chóp, cạnh khuất, mặt phẳng tô màu). Tất cả dựng đúng, không tràn, không lệch.
+
+### Giọng đọc (mọi video)
+6. **Gemini TTS chậm / treo không còn làm hỏng video.**
+   - Trước: mỗi lần gọi có thể chờ 120 giây × số key × 4 vòng, nên bước giọng đọc có lúc chạy hơn 27 phút, hết giờ máy dựng và video thất bại (đã gặp thật khi chạy thử).
+   - Nay: giọng Gemini có ngân sách 8 phút cho cả video (Variable `GIAY_TOI_DA_GEMINI`). Quá hạn thì cả video dùng giọng dự phòng (edge-tts), video vẫn ra đúng hạn.
+
+### Việc bạn cần tự làm (máy không làm thay được)
+7. **Google Drive: rclone sắp ngừng dùng "client_id dùng chung".**
+   - Nhật ký GitHub báo: "rclone's shared Google Drive client_id … will stop working during 2026". Khi đó bước tải video lên Drive sẽ hỏng.
+   - Cách sửa (khoảng 10 phút):
+     1. Vào Google Cloud Console, tạo project, bật "Google Drive API".
+     2. Tạo OAuth Client ID loại "Desktop app", lấy client_id + client_secret.
+        - **QUAN TRỌNG để dùng vĩnh viễn**: vào mục "OAuth consent screen" (Màn hình đồng ý OAuth / Audience), bấm **"Publish app"**, chuyển trạng thái từ "Testing" sang **"In production"**. Không cần gửi Google xét duyệt (chỉ mình bạn dùng; lúc đăng nhập sẽ hiện cảnh báo "ứng dụng chưa được xác minh", bấm "Nâng cao" → "Tiếp tục").
+        - Nếu để "Testing", quyền truy cập tự hết hạn sau 7 ngày.
+     3. Trên máy tính: chạy `rclone config`, sửa remote `gdrive`, nhập client_id / client_secret, đăng nhập lại.
+     4. Mở tệp rclone.conf (lệnh `rclone config file` cho biết nằm ở đâu), chép toàn bộ nội dung vào GitHub Secret `RCLONE_CONF` (thay nội dung cũ).
+   - Làm xong là dùng vĩnh viễn. Quyền chỉ mất khi:
+     - bạn tự thu hồi quyền trong tài khoản Google;
+     - xóa project Google Cloud;
+     - không dùng liên tục 6 tháng (hệ thống tải video lên mỗi ngày nên không xảy ra).
+
+## Lần 43: vì sao chưa có video hình học nào đến tay (đã sửa)
+Soi nhật ký GitHub hôm nay: hệ thống có sinh 3 đề hình học (HH...), nhưng cả 3 đều kẹt ở Bộ phận 1.
+
+1. **Đề chứng minh luôn bị loại.**
+   - Trước: phải đủ cả máy thử tọa độ đúng lẫn HAI lời chứng minh đều thành công. Đề sai hoặc mơ hồ thì bị viết lại thành bài tính.
+   - Nay:
+     - máy xác nhận mệnh đề đúng (≥ 4 cấu hình ngẫu nhiên, sai số ~0) + MỘT lời chứng minh chặt chẽ là đủ; video trình bày đúng lời chứng minh đã thành công;
+     - hai lời chứng minh đều được mà máy thử thấy sai thì máy viết lại mã dựng hình một lần (thường do mã dựng sai điểm) trước khi kết luận;
+     - đề chứng minh sai thì viết lại thành **đề chứng minh đúng**, giữ hình vẽ và ưu tiên các kết quả kinh điển; không còn biến thành bài tính.
+2. **Kịch bản tốt bị xóa oan.**
+   - Ví dụ đề HH261116-130617-0: lần 2 đạt 99%, sửa tiếp xuống 84%, rồi 90%, cuối cùng bị xóa.
+   - Nay kiểm duyệt luôn **giữ bản tốt nhất**: bản sửa nào chấm thấp hơn thì quay lại bản tốt nhất, sửa tiếp từ đó.
+3. **Quy tắc của video Remotion áp sai lên bài hình học.**
+   - Trước: bắt "hình phải có hành động sân khấu", thêm cảnh liên hệ thực tế (vẽ cả… ti vi), cảnh nhắc lại công thức, đề bài phải có vật thật. Người kiểm duyệt lại chê các cảnh này lan man.
+   - Nay bài hình học bỏ các yêu cầu đó: Manim tự làm chuyển động, giọng đọc giảng kiến thức.
+4. **Bước "Kiểm duyệt bố cục" có lúc treo 25 phút** (lượt TT261116-012116-0), làm máy dựng hết giờ và hủy video.
+   - Nay tối đa 7 phút; quá thì bỏ qua (AI xem video sau vẫn chặn lỗi). Giới hạn máy dựng nâng lên 40 phút.
+
+Bộ phận 1 chạy trên GitHub bằng chính các tệp .gs trong repo, nên các sửa 1–3 có hiệu lực ngay. Vẫn nên dán lại BoPhan1.gs, HinhHoc.gs, KiemTraHinh.gs lên Apps Script cho đồng bộ.

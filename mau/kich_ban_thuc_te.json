@@ -1,0 +1,633 @@
+{
+ "id": "VT-mau-be-nuoc",
+ "mon": "THUC_TE",
+ "lop": "12",
+ "chu_de": "Bể nước tốn ít vật liệu nhất",
+ "chu_de_ngan": "Bể nước tiết kiệm nhất",
+ "de_bai": "Người ta xây một bể nước hình hộp chữ nhật không nắp, đáy là hình vuông, thể tích 32 m³. Hỏi cạnh đáy và chiều cao bằng bao nhiêu để tốn ít vật liệu nhất (diện tích xây nhỏ nhất)?",
+ "dap_an": "48",
+ "dap_an_hien": "x = 4 m, h = 2 m, S = 48 m²",
+ "tieu_de": "Xây bể 32 khối sao cho tốn ít gạch nhất?",
+ "hook": "Xây bể nước ba mươi hai khối, làm sao cho tốn ít gạch nhất?",
+ "hook_chu": "Bể 32 khối: xây sao cho tốn ÍT GẠCH NHẤT?",
+ "hook_kieu": "cau_hoi",
+ "nhan_manh": [
+  "ÍT GẠCH NHẤT"
+ ],
+ "hook_ung_vien": [
+  "a",
+  "b",
+  "c"
+ ],
+ "y_tuong_chinh": "Biểu diễn chiều cao theo cạnh đáy nhờ thể tích cố định, đưa diện tích về hàm một biến rồi dùng đạo hàm tìm giá trị nhỏ nhất.",
+ "dap_an_cuoi": "48",
+ "bai_hoc_rut_ra": [
+  "Đại lượng cố định giúp khử bớt một ẩn",
+  "Đề không nắp: chỉ tính đáy và bốn mặt bên",
+  "Nhỏ nhất: đạo hàm bằng 0 rồi lập bảng"
+ ],
+ "video_tiep_theo": "Hộp sữa nào tốn ít giấy nhất?",
+ "hashtag": [
+  "#toanthucte",
+  "#daoham"
+ ],
+ "canh": [
+  {
+   "so": 1,
+   "loai": "mo_dau",
+   "loi_thoai": "Xây bể nước ba mươi hai khối, làm sao cho tốn ít gạch nhất?",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Góc nhìn 3D chéo xuống một khu nhà: tòa nhà cao bên trái, bể nước kính ở giữa, hai cây và ô tô; camera xoay vòng từ trái sang phải.",
+    "du_lieu": {
+     "goc_nhin": {
+      "nghieng": 48,
+      "xoay": -28
+     },
+     "vat": [
+      {
+       "id": "nha",
+       "loai": "toa_nha",
+       "x": 22,
+       "y": 40,
+       "so_tang": 8,
+       "buoc": 1
+      },
+      {
+       "id": "be",
+       "loai": "khoi_hop",
+       "x": 62,
+       "y": 48,
+       "kich_thuoc": [
+        3,
+        3,
+        2
+       ],
+       "muc_nuoc": 0.2,
+       "co": 0.8,
+       "buoc": 1
+      },
+      {
+       "id": "cay",
+       "loai": "cay",
+       "x": 82,
+       "y": 30,
+       "so_luong": 2,
+       "co": 0.7,
+       "buoc": 2
+      },
+      {
+       "id": "xe",
+       "loai": "xe",
+       "x": 40,
+       "y": 82,
+       "co": 0.6,
+       "tu_huong": "trai",
+       "buoc": 2
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "be",
+       "kieu": "dat_gia_tri",
+       "gia_tri": 0.75
+      },
+      {
+       "buoc": 3,
+       "kieu": "goc_3d",
+       "nghieng": 42,
+       "xoay": 26
+      }
+     ]
+    }
+   },
+   "giong_doc": "hào hứng, thách đố"
+  },
+  {
+   "so": 2,
+   "loai": "de_bai",
+   "tieu_de_canh": "Bể không nắp, thể tích 32 m³",
+   "tu_khoa": "không nắp",
+   "loi_thoai": "Hình dung thế này: bể hình hộp không nắp, đáy vuông cạnh x, cao h, chứa đúng ba mươi hai mét khối. Phải chọn x và h sao cho diện tích xây nhỏ nhất.",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Bể kính 3D lớn ở giữa, ba cạnh ghi x, x, h; nước dâng lên gần đầy; nhãn 'V = 32 m³' bật lên bên dưới.",
+    "du_lieu": {
+     "goc_nhin": {
+      "nghieng": 30,
+      "xoay": -15
+     },
+     "vat": [
+      {
+       "id": "be2",
+       "loai": "khoi_hop",
+       "x": 50,
+       "y": 45,
+       "kich_thuoc": [
+        3,
+        3,
+        2
+       ],
+       "nhan_kich_thuoc": [
+        "x",
+        "x",
+        "h"
+       ],
+       "muc_nuoc": 0,
+       "buoc": 1
+      },
+      {
+       "id": "v",
+       "loai": "nhan",
+       "x": 50,
+       "y": 90,
+       "noi_dung": "V = 32 m³",
+       "tu_khoa": "32 m³",
+       "mau": "xanh_duong",
+       "buoc": 3
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "be2",
+       "kieu": "dat_gia_tri",
+       "gia_tri": 0.9
+      },
+      {
+       "buoc": 3,
+       "kieu": "goc_3d",
+       "nghieng": 30,
+       "xoay": 20
+      }
+     ]
+    }
+   },
+   "giong_doc": "kể chuyện, rõ từng con số"
+  },
+  {
+   "so": 3,
+   "loai": "nhac_lai",
+   "tieu_de_canh": "Diện tích cần xây gồm những gì?",
+   "tu_khoa": "Diện tích",
+   "trinh_bay": "xep",
+   "loi_thoai": "Muốn tính gạch, chỉ cần nhớ bể có những mặt nào. Không nắp nên chỉ có một mặt đáy và bốn mặt bên. Đáy là x nhân x, mỗi mặt bên là x nhân h.",
+   "noi_dung_man_hinh": [
+    "S=x^2+4xh"
+   ],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Thẻ danh sách ba dòng: đáy x², bốn mặt bên 4xh, không có nắp (bị gạch); dòng 'không có nắp' được nhấn.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "ds",
+       "loai": "danh_sach",
+       "x": 50,
+       "y": 50,
+       "noi_dung": "Phần cần xây",
+       "ds": [
+        "Đáy: x · x = x²",
+        "4 mặt bên: 4 · x · h",
+        "Nắp: KHÔNG có"
+       ],
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "ds",
+       "kieu": "chon",
+       "chi_so": [
+        1,
+        2
+       ],
+       "mau": "xanh_la"
+      },
+      {
+       "buoc": 3,
+       "vat": "ds",
+       "kieu": "loai_bo",
+       "chi_so": [
+        3
+       ]
+      }
+     ]
+    }
+   },
+   "giong_doc": "ấm áp, giải thích nhẹ nhàng"
+  },
+  {
+   "so": 4,
+   "loai": "y_do",
+   "tieu_de_canh": "Đáy rộng thì bể thấp",
+   "tu_khoa": "thấp",
+   "trinh_bay": "xep",
+   "loi_thoai": "Nhưng x và h đâu có độc lập. Thể tích cố định, nên đáy càng rộng thì bể càng thấp. Từ x bình phương nhân h bằng ba mươi hai, suy ra h bằng ba mươi hai chia x bình phương.",
+   "noi_dung_man_hinh": [
+    "h=\\frac{32}{x^2}"
+   ],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Hai bể 3D cạnh nhau: bể hẹp cao (x = 2, cao 8 m) bên trái và bể rộng thấp (x = 8, cao 0,5 m) bên phải, cùng chứa 32 m³.",
+    "du_lieu": {
+     "goc_nhin": {
+      "nghieng": 25,
+      "xoay": -10
+     },
+     "vat": [
+      {
+       "id": "hep",
+       "loai": "khoi_hop",
+       "x": 27,
+       "y": 45,
+       "kich_thuoc": [
+        2,
+        2,
+        8
+       ],
+       "nhan_kich_thuoc": [
+        "2 m",
+        "",
+        "8 m"
+       ],
+       "muc_nuoc": 0.8,
+       "co": 0.85,
+       "buoc": 1
+      },
+      {
+       "id": "rong",
+       "loai": "khoi_hop",
+       "x": 73,
+       "y": 55,
+       "kich_thuoc": [
+        8,
+        8,
+        0.5
+       ],
+       "nhan_kich_thuoc": [
+        "8 m",
+        "",
+        "0,5 m"
+       ],
+       "muc_nuoc": 0.8,
+       "co": 0.75,
+       "buoc": 2
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 3,
+       "vat": "hep",
+       "kieu": "sang"
+      },
+      {
+       "buoc": 3,
+       "vat": "rong",
+       "kieu": "sang"
+      }
+     ]
+    }
+   },
+   "giong_doc": "tò mò, suy ngẫm"
+  },
+  {
+   "so": 5,
+   "loai": "bay",
+   "tieu_de_canh": "Bẫy: cộng thêm mặt nắp",
+   "tu_khoa": "mặt nắp",
+   "loi_thoai": "Khoan, chỗ này nhiều bạn trượt chân. Quen tay viết hai x bình phương là đã tính luôn cả nắp. Đề nói không nắp, nên chỉ có một x bình phương thôi.",
+   "noi_dung_man_hinh": [],
+   "chuyen_canh": "phong",
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Hai thẻ công thức: thẻ 'S = 2x² + 4xh' rung rồi bị gạch chéo đỏ, thẻ 'S = x² + 4xh' sáng xanh lá kèm dấu tích.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "the",
+       "loai": "the",
+       "x": 50,
+       "y": 50,
+       "so_luong": 2,
+       "ds": [
+        "S = 2x² + 4xh",
+        "S = x² + 4xh"
+       ],
+       "mau": "cam",
+       "co": 0.95,
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "the",
+       "kieu": "rung"
+      },
+      {
+       "buoc": 2,
+       "vat": "the",
+       "kieu": "loai_bo",
+       "chi_so": [
+        1
+       ]
+      },
+      {
+       "buoc": 3,
+       "vat": "the",
+       "kieu": "chon",
+       "chi_so": [
+        2
+       ],
+       "mau": "xanh_la"
+      }
+     ]
+    }
+   },
+   "giong_doc": "hạ giọng, cảnh báo"
+  },
+  {
+   "so": 6,
+   "loai": "tinh_toan",
+   "tieu_de_canh": "Bước 1: đưa về hàm một biến",
+   "tu_khoa": "Bước 1",
+   "trinh_bay": "cong_don",
+   "loi_thoai": "Gỡ được bẫy rồi thì ráp vào: S bằng x bình phương cộng một trăm hai mươi tám chia x. Đáy hẹp thì tốn, đáy rộng cũng tốn, vậy điểm ít nhất nằm đâu đó ở giữa.",
+   "noi_dung_man_hinh": [
+    "S=x^2+4x\\cdot\\frac{32}{x^2}",
+    "S=x^2+4x\\cdot\\frac{32}{x^2}=x^2+\\frac{128}{x}"
+   ],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Đồ thị S(x) = x² + 128/x trên đoạn 1 đến 10 vẽ dần; điểm chạy trên đường cong từ x = 2 sang x = 8 rồi về x = 4.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "dt",
+       "loai": "do_thi",
+       "x": 50,
+       "y": 50,
+       "ham": "x^2+128/x",
+       "x_tu": 1,
+       "x_den": 10,
+       "y_tu": 0,
+       "y_den": 140,
+       "gia_tri": 2,
+       "nhan_truc": [
+        "x",
+        "S"
+       ],
+       "noi_dung": "S(x)",
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "dt",
+       "kieu": "dat_gia_tri",
+       "gia_tri": 8
+      },
+      {
+       "buoc": 3,
+       "vat": "dt",
+       "kieu": "dat_gia_tri",
+       "gia_tri": 4
+      }
+     ]
+    }
+   },
+   "giong_doc": "tự tin, nhịp đều"
+  },
+  {
+   "so": 7,
+   "loai": "tinh_toan",
+   "tieu_de_canh": "Bước 2: đạo hàm bằng 0",
+   "tu_khoa": "đạo hàm",
+   "trinh_bay": "cong_don",
+   "loi_thoai": "Để tìm đúng điểm đó, đạo hàm lên: S phẩy bằng hai x trừ một trăm hai mươi tám chia x bình phương. Cho bằng không, x mũ ba bằng sáu mươi tư, vậy x bằng bốn.",
+   "noi_dung_man_hinh": [
+    "S'=2x-\\frac{128}{x^2}=0",
+    "x^3=64\\Rightarrow x=4"
+   ],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Đồ thị S(x) với điểm đáy x = 4 được khoanh xanh và ghi (4; 48).",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "dt2",
+       "loai": "do_thi",
+       "x": 50,
+       "y": 50,
+       "ham": "x^2+128/x",
+       "x_tu": 1,
+       "x_den": 10,
+       "y_tu": 0,
+       "y_den": 140,
+       "gia_tri": 4,
+       "danh_dau": [
+        4
+       ],
+       "nhan_truc": [
+        "x",
+        "S"
+       ],
+       "noi_dung": "S'(4)=0",
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "dt2",
+       "kieu": "chon",
+       "mau": "xanh_la"
+      }
+     ]
+    }
+   },
+   "giong_doc": "sáng lên, chắc chắn"
+  },
+  {
+   "so": 8,
+   "loai": "kiem_tra",
+   "tieu_de_canh": "Kiểm tra: thử x = 2, 4, 6",
+   "tu_khoa": "Kiểm tra",
+   "loi_thoai": "Chưa chốt vội, thử vài con số xem sao. x bằng hai thì S là sáu mươi tám, x bằng sáu khoảng năm mươi bảy, còn x bằng bốn chỉ bốn mươi tám.",
+   "noi_dung_man_hinh": [
+    "S(2) = 4 + 64 = 68",
+    "S(6) \\approx 36 + 21{,}3 = 57{,}3",
+    "S(4) = 16 + 32 = 48 \\;\\checkmark"
+   ],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Biểu đồ ba cột S tại x = 2, 4, 6 lần lượt 68, 48, 57,3; cột x = 4 thấp nhất sáng xanh lá.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "cot",
+       "loai": "bieu_do_cot",
+       "x": 50,
+       "y": 50,
+       "ds": [
+        "x = 2",
+        "x = 4",
+        "x = 6"
+       ],
+       "ds_so": [
+        68,
+        48,
+        57.3
+       ],
+       "nhan": "Diện tích S (m²)",
+       "mau": "xanh_duong",
+       "co": 0.85,
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "cot",
+       "kieu": "chon",
+       "chi_so": [
+        2
+       ],
+       "mau": "xanh_la"
+      }
+     ]
+    }
+   },
+   "giong_doc": "cẩn thận, chắc chắn"
+  },
+  {
+   "so": 9,
+   "loai": "dap_an",
+   "tieu_de_canh": "Đáy 4 m, cao 2 m, S = 48 m²",
+   "tu_khoa": "48 m²",
+   "trinh_bay": "cong_don",
+   "loi_thoai": "Và đây là chiếc bể tiết kiệm nhất: cạnh đáy bốn mét, cao hai mét, diện tích xây chỉ bốn mươi tám mét vuông.",
+   "noi_dung_man_hinh": [
+    "h=\\frac{32}{16}=2",
+    "S_{min}=16+32=48"
+   ],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Bể kính 3D đúng kích thước 4 × 4 × 2 ghi nhãn, nước dâng đầy, camera xoay nhẹ quanh bể.",
+    "du_lieu": {
+     "goc_nhin": {
+      "nghieng": 35,
+      "xoay": -25
+     },
+     "vat": [
+      {
+       "id": "be3",
+       "loai": "khoi_hop",
+       "x": 50,
+       "y": 50,
+       "kich_thuoc": [
+        4,
+        4,
+        2
+       ],
+       "nhan_kich_thuoc": [
+        "4 m",
+        "4 m",
+        "2 m"
+       ],
+       "muc_nuoc": 0,
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "be3",
+       "kieu": "dat_gia_tri",
+       "gia_tri": 0.95
+      },
+      {
+       "buoc": 2,
+       "kieu": "goc_3d",
+       "nghieng": 35,
+       "xoay": 25
+      }
+     ]
+    }
+   },
+   "giong_doc": "phấn khích, chậm lại ở đáp số"
+  },
+  {
+   "so": 10,
+   "loai": "bai_hoc",
+   "tieu_de_canh": "Ghi nhớ dạng bài tối ưu",
+   "tu_khoa": "tối ưu",
+   "loi_thoai": "Vậy rút ra được gì? Dùng đại lượng cố định để khử bớt ẩn, đọc kỹ có nắp hay không, rồi cho đạo hàm bằng không. Thử nhé: bể có nắp thì cạnh đáy bao nhiêu? Bình luận cho mình biết!",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Thẻ danh sách ba điều ghi nhớ được tô vàng lần lượt; nhãn 'Bể CÓ nắp thì sao?' bật lên cuối cảnh.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "gn",
+       "loai": "danh_sach",
+       "x": 50,
+       "y": 40,
+       "noi_dung": "Dạng bài tối ưu thực tế",
+       "ds": [
+        "Khử ẩn nhờ đại lượng cố định",
+        "Đọc kỹ: có nắp hay không",
+        "Đạo hàm bằng 0 rồi kiểm tra"
+       ],
+       "buoc": 1
+      },
+      {
+       "id": "hoi",
+       "loai": "nhan",
+       "x": 50,
+       "y": 88,
+       "noi_dung": "Bể CÓ nắp thì sao?",
+       "tu_khoa": "CÓ nắp",
+       "mau": "cam",
+       "buoc": 4
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "gn",
+       "kieu": "chon",
+       "chi_so": [
+        1
+       ],
+       "mau": "vang"
+      },
+      {
+       "buoc": 3,
+       "vat": "gn",
+       "kieu": "chon",
+       "chi_so": [
+        2,
+        3
+       ],
+       "mau": "vang"
+      }
+     ]
+    }
+   },
+   "giong_doc": "thân thiện, đọng lại"
+  }
+ ],
+ "du_kien": [
+  "V = 32\\,m^3",
+  "Không nắp",
+  "Đáy vuông"
+ ]
+}

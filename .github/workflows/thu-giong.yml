@@ -1,0 +1,37 @@
+name: Nghe thử giọng đọc
+
+# Chạy tay (Actions > Nghe thử giọng đọc > Run workflow): đọc cùng một đoạn bài giảng bằng nhiều giọng Gemini + edge-tts,
+# tải lên Drive thư mục VIDEO_XACSUAT/giong_mau để nghe và chọn giọng cho cả kênh.
+on:
+  workflow_dispatch:
+    inputs:
+      giong:
+        description: 'Chỉ thử các giọng Gemini này (cách nhau dấu phẩy, để trống = 13 giọng gợi ý)'
+        type: string
+        default: ''
+
+jobs:
+  thu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GEMINI_KEYS: ${{ secrets.GEMINI_KEYS }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+      TTS_MODEL: ${{ vars.TTS_MODEL }}
+      PHONG_CACH_GIONG: ${{ vars.PHONG_CACH_GIONG }}
+      GIONG_THU: ${{ github.event.inputs.giong }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Cài công cụ
+        run: |
+          pip install edge-tts gTTS
+          command -v ffmpeg >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
+          curl -fsSL https://rclone.org/install.sh | sudo bash > /dev/null
+          mkdir -p ~/.config/rclone
+          printf '%s' "$RCLONE_CONF" > ~/.config/rclone/rclone.conf
+      - name: Đọc thử và tải lên Drive
+        run: python3 scripts/thu_giong.py

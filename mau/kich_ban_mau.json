@@ -1,262 +1,737 @@
 {
- "id": "VT-manim",
- "lop": "11",
- "chu_de": "Hai bi cùng màu",
- "de_bai": "Một hộp có 5 bi đỏ và 3 bi xanh. Lấy ngẫu nhiên đồng thời 2 bi. Tính xác suất để hai bi cùng màu.",
- "dap_an": "13/28",
- "tieu_de": "Hai bi cùng màu: đừng quên một trường hợp!",
- "hook": "Rất nhiều bạn tính thiếu một trường hợp ở câu bốc bi này. Bạn có thấy không?",
- "hook_chu": "Câu bốc bi này, rất nhiều bạn tính thiếu 1 trường hợp!",
- "hook_kieu": "sai_lam",
+ "id": "VT-mau-monty",
+ "lop": "12",
+ "chu_de": "Ba cánh cửa: giữ hay đổi?",
+ "chu_de_ngan": "Giữ hay đổi cửa?",
+ "de_bai": "Một gameshow có 3 cánh cửa, sau 1 cửa là xe máy, sau 2 cửa còn lại là con dê. Bạn chọn cửa số 1. Người dẫn chương trình biết xe ở đâu, mở một trong hai cửa còn lại và luôn mở cửa có dê. Nếu bạn đổi sang cửa còn lại, xác suất thắng xe là bao nhiêu?",
+ "dap_an": "2/3",
+ "tieu_de": "Đổi cửa thì thắng gấp đôi? Toán nói CÓ",
+ "hook": "Ba cánh cửa, một xe máy. Đổi cửa thắng gấp đôi, bạn tin không?",
+ "hook_chu": "Đổi cửa, cơ hội thắng GẤP ĐÔI?",
+ "hook_kieu": "bat_ngo",
  "nhan_manh": [
-  "thiếu",
-  "1 trường hợp"
+  "GẤP ĐÔI"
  ],
  "hook_ung_vien": [
-  "a",
-  "b",
-  "c"
+  "Đổi cửa thắng gấp đôi?",
+  "Câu đố làm cả nhà toán học cãi nhau",
+  "Giữ hay đổi: 99% chọn sai?"
  ],
- "y_tuong_chinh": "Hai bi cùng màu chỉ có hai khả năng rời nhau là cùng đỏ hoặc cùng xanh, nên đếm từng nhóm rồi cộng lại.",
- "dap_an_cuoi": "13/28",
+ "y_tuong_chinh": "Cửa bạn chọn lúc đầu chỉ có một phần ba cơ hội; người dẫn biết đáp án nên khi mở cửa dê, toàn bộ hai phần ba còn lại dồn vào cửa kia.",
+ "dap_an_cuoi": "2/3",
  "hashtag": [
-  "#toanhoc"
+  "#toanhoc",
+  "#xacsuat",
+  "#montyhall"
  ],
  "canh": [
   {
    "so": 1,
    "loai": "mo_dau",
-   "loi_thoai": "Rất nhiều bạn tính thiếu một trường hợp ở câu bốc bi này. Bạn có thấy không?",
+   "loi_thoai": "Ba cánh cửa, một xe máy. Đổi cửa thắng gấp đôi, bạn tin không?",
    "noi_dung_man_hinh": [],
    "minh_hoa": {
-    "loai": "bi_hop",
-    "mo_ta": "Chiếc hộp trắng vẽ dần, năm bi đỏ rồi ba bi xanh lần lượt rơi vào, số lượng ghi bên trái từng hàng.",
+    "loai": "san_khau",
+    "mo_ta": "Ba cánh cửa cam đứng trên sàn 3D nhìn chéo, camera xoay từ trái sang phải; nhãn neon '50/50?' bật ra rồi rung.",
     "du_lieu": {
-     "nhom": [
+     "vat": [
       {
-       "ten": "đỏ",
-       "so": 5
+       "id": "cua",
+       "loai": "cua",
+       "x": 50,
+       "y": 40,
+       "so_luong": 3,
+       "ds": [
+        "🐐",
+        "🏍️",
+        "🐐"
+       ],
+       "buoc": 1
       },
       {
-       "ten": "xanh",
-       "so": 3
+       "id": "n5050",
+       "loai": "nhan",
+       "x": 50,
+       "y": 86,
+       "noi_dung": "50/50?",
+       "tu_khoa": "?",
+       "mau": "xanh_la",
+       "xoay": -5,
+       "buoc": 2
       }
-     ]
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 3,
+       "vat": "n5050",
+       "kieu": "rung"
+      },
+      {
+       "buoc": 2,
+       "kieu": "goc_3d",
+       "nghieng": 38,
+       "xoay": 18
+      }
+     ],
+     "goc_nhin": {
+      "nghieng": 42,
+      "xoay": -22
+     }
     }
-   }
+   },
+   "giong_doc": "hào hứng, thách đố"
   },
   {
    "so": 2,
    "loai": "de_bai",
-   "loi_thoai": "Lấy đồng thời hai bi. Mỗi cách chọn hai bi đỏ là một khả năng, và có tổng cộng mười cách như vậy.",
+   "tieu_de_canh": "Bạn chọn cửa số 1",
+   "tu_khoa": "cửa số 1",
+   "giu_san_khau": true,
+   "chuyen_canh": "luot_ngang",
+   "loi_thoai": "Bạn chọn cửa số một. Người dẫn biết xe ở đâu, mở một cửa có dê. Giờ bạn giữ hay đổi?",
    "noi_dung_man_hinh": [],
    "minh_hoa": {
-    "loai": "bi_hop",
-    "mo_ta": "Hai viên bi đỏ bay ra khay vạch đứt màu vàng bên dưới, sáng lên, kèm ghi chú số cách chọn hai bi đỏ.",
+    "loai": "san_khau",
+    "mo_ta": "Nhãn 50/50 ẩn đi; cửa 1 sáng viền xanh lá kèm dấu tích; cửa 3 mở ra lộ con dê; nhãn 'GIỮ HAY ĐỔI?' bật lên bên dưới.",
     "du_lieu": {
-     "nhom": [
+     "vat": [
       {
-       "ten": "đỏ",
-       "so": 5
+       "id": "hoi",
+       "loai": "nhan",
+       "x": 50,
+       "y": 86,
+       "noi_dung": "Giữ hay đổi?",
+       "tu_khoa": "đổi",
+       "mau": "cam",
+       "buoc": 3
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 1,
+       "vat": "n5050",
+       "kieu": "an"
       },
       {
-       "ten": "xanh",
-       "so": 3
-      }
-     ],
-     "chon": [
+       "buoc": 1,
+       "vat": "cua",
+       "kieu": "chon",
+       "chi_so": [
+        1
+       ],
+       "mau": "xanh_la"
+      },
       {
-       "ten": "đỏ",
-       "so": 2
+       "buoc": 2,
+       "vat": "cua",
+       "kieu": "mo",
+       "chi_so": [
+        3
+       ]
+      },
+      {
+       "buoc": 3,
+       "kieu": "goc_3d",
+       "nghieng": 0,
+       "xoay": 0
       }
-     ],
-     "ghi_chu": "\\binom{5}{2}=10"
+     ]
     }
-   }
+   },
+   "giong_doc": "kể chuyện, hồi hộp"
   },
   {
    "so": 3,
-   "loai": "y_do",
-   "loi_thoai": "Có hai mươi tám cách lấy hai bi. Mười cách cùng đỏ, ba cách cùng xanh, còn mười lăm cách khác màu.",
-   "noi_dung_man_hinh": [
-    "n(\\Omega)=\\binom{8}{2}=28"
-   ],
-   "trinh_bay": "cong_don",
+   "loai": "de_bai",
+   "tieu_de_canh": "Đề cho gì? Hỏi gì?",
+   "tu_khoa": "Hỏi gì",
+   "loi_thoai": "Gói gọn lại cho dễ nhớ: ba cửa, một xe, bạn chọn cửa một, người dẫn mở một cửa có dê. Câu hỏi là nếu đổi cửa, xác suất thắng bằng bao nhiêu?",
+   "noi_dung_man_hinh": [],
    "minh_hoa": {
-    "loai": "venn",
-    "mo_ta": "Mỗi chấm là một cách lấy hai bi, rơi lần lượt vào vùng cùng đỏ, vùng cùng xanh và vùng khác màu ngoài hai vòng tròn.",
+    "loai": "san_khau",
+    "mo_ta": "Thẻ danh sách trắng nổi lên: ba dòng 'Đề cho' trượt vào lần lượt, dòng cuối 'Cần tìm: P(thắng khi đổi)' được tô vàng quét ngang.",
     "du_lieu": {
-     "A": "Cùng đỏ",
-     "B": "Cùng xanh",
-     "mau_A": "do",
-     "mau_B": "xanh_duong",
-     "dem": {
-      "chiA": 10,
-      "giao": 0,
-      "chiB": 3,
-      "ngoai": 15
-     },
-     "to": [
-      "chiA",
-      "chiB"
+     "vat": [
+      {
+       "id": "de",
+       "loai": "danh_sach",
+       "x": 50,
+       "y": 50,
+       "noi_dung": "Tóm tắt đề",
+       "ds": [
+        "Đề cho: 3 cửa, 1 xe máy",
+        "Bạn chọn cửa 1",
+        "Người dẫn mở 1 cửa có dê",
+        "Cần tìm: P(thắng nếu đổi)"
+       ],
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 3,
+       "vat": "de",
+       "kieu": "chon",
+       "chi_so": [
+        4
+       ],
+       "mau": "vang"
+      }
      ]
     }
-   }
+   },
+   "giong_doc": "rõ ràng, chậm từng ý"
   },
   {
    "so": 4,
-   "loai": "diem_chot",
-   "loi_thoai": "Cùng màu chỉ có hai khả năng rời nhau: hoặc cùng đỏ, hoặc cùng xanh. Nên ta tính từng nhánh rồi cộng lại.",
-   "noi_dung_man_hinh": [
-    "P=P(\\textcolor{#FC6255}{ĐĐ})+P(\\textcolor{#58C4DD}{XX})",
-    "P=P(\\textcolor{#FC6255}{ĐĐ})+P(\\textcolor{#58C4DD}{XX})=\\frac{5}{14}+\\frac{3}{28}"
-   ],
-   "trinh_bay": "cong_don",
-   "chu_thich": [
-    "Hai trường hợp rời nhau",
-    "nên ta cộng xác suất"
-   ],
+   "loai": "y_do",
+   "tieu_de_canh": "Còn 2 cửa: 50/50 thật không?",
+   "tu_khoa": "50/50",
+   "loi_thoai": "Vậy thì trực giác sẽ bảo: còn hai cửa, mỗi cửa một nửa, giữ hay đổi như nhau. Nhưng thử nghĩ xem, người dẫn có mở cửa ngẫu nhiên không?",
+   "noi_dung_man_hinh": [],
    "minh_hoa": {
-    "loai": "so_do_cay",
-    "mo_ta": "Cây hai tầng: gốc lấy bi, tầng một đỏ hoặc xanh, tầng hai đỏ hoặc xanh; hai đường đi cùng màu sáng vàng và hiện tích xác suất ở lá.",
+    "loai": "san_khau",
+    "mo_ta": "Hai thanh xác suất 'Giữ' và 'Đổi' cùng đầy tới một nửa; rồi nhãn 'Thật không?' bật ra và rung.",
     "du_lieu": {
-     "goc": "Lấy 2 bi",
-     "nhanh": [
+     "vat": [
       {
-       "nhan": "Đỏ",
-       "xs": "\\frac{5}{8}",
-       "mau": "do",
-       "con": [
-        {
-         "nhan": "Đỏ",
-         "xs": "\\frac{4}{7}",
-         "kq": "\\frac{5}{14}",
-         "to": true
-        },
-        {
-         "nhan": "Xanh",
-         "xs": "\\frac{3}{7}",
-         "kq": "\\frac{15}{56}"
-        }
-       ]
+       "id": "giu",
+       "loai": "thanh",
+       "x": 50,
+       "y": 22,
+       "gia_tri": 0.5,
+       "gia_tri_chu": "50%?",
+       "nhan": "Giữ cửa 1",
+       "mau": "xanh_duong",
+       "buoc": 1
       },
       {
-       "nhan": "Xanh",
-       "xs": "\\frac{3}{8}",
-       "mau": "xanh_duong",
-       "con": [
-        {
-         "nhan": "Đỏ",
-         "xs": "\\frac{5}{7}",
-         "kq": "\\frac{15}{56}"
-        },
-        {
-         "nhan": "Xanh",
-         "xs": "\\frac{2}{7}",
-         "kq": "\\frac{3}{28}",
-         "to": true
-        }
-       ]
+       "id": "doi",
+       "loai": "thanh",
+       "x": 50,
+       "y": 50,
+       "gia_tri": 0.5,
+       "gia_tri_chu": "50%?",
+       "nhan": "Đổi cửa",
+       "mau": "cam",
+       "buoc": 2
+      },
+      {
+       "id": "nghi",
+       "loai": "nhan",
+       "x": 50,
+       "y": 82,
+       "noi_dung": "Thật không?",
+       "tu_khoa": "không",
+       "mau": "do",
+       "xoay": 4,
+       "buoc": 3
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 4,
+       "vat": "nghi",
+       "kieu": "rung"
       }
      ]
     }
-   }
+   },
+   "giong_doc": "tò mò, đặt câu hỏi"
   },
   {
    "so": 5,
-   "loai": "tinh_toan",
-   "loi_thoai": "Nhìn bằng diện tích: hình vuông đơn vị chia theo bi lần một, rồi chia theo bi lần hai. Diện tích mỗi ô chính là xác suất.",
+   "loai": "bay",
+   "tieu_de_canh": "Bẫy: người dẫn BIẾT đáp án",
+   "tu_khoa": "BIẾT",
+   "chuyen_canh": "phong",
+   "loi_thoai": "Không hề, và đó chính là chỗ đánh lừa. Người dẫn biết xe ở đâu, không bao giờ mở cửa bạn chọn và luôn mở đúng cửa có dê.",
    "noi_dung_man_hinh": [],
    "minh_hoa": {
-    "loai": "dien_tich",
-    "mo_ta": "Hình vuông đơn vị chia hai cột theo lần một rồi chia từng cột theo lần hai; hai ô cùng màu sáng vàng và cộng lại thành đáp án bên phải.",
+    "loai": "san_khau",
+    "mo_ta": "Thẻ danh sách trắng nổi lên với ba luật của người dẫn trượt vào lần lượt; dòng 'Biết xe ở đâu' và 'Luôn mở cửa có dê' được tô vàng quét ngang.",
     "du_lieu": {
-     "ten_cot": "Lần 1",
-     "ten_hang": "Lần 2",
-     "tong": "\\frac{5}{14}+\\frac{3}{28}",
-     "cot": [
+     "vat": [
       {
-       "nhan": "Đỏ",
-       "xs": "\\frac{5}{8}",
-       "gia_tri": 0.625,
-       "mau": "do",
-       "hang": [
-        {
-         "nhan": "Đỏ",
-         "xs": "\\frac{4}{7}",
-         "gia_tri": 0.5714,
-         "mau": "do",
-         "kq": "\\frac{5}{14}",
-         "to": true
-        },
-        {
-         "nhan": "Xanh",
-         "xs": "\\frac{3}{7}",
-         "gia_tri": 0.4286,
-         "mau": "xanh_duong",
-         "kq": "\\frac{15}{56}"
-        }
-       ]
+       "id": "luat",
+       "loai": "danh_sach",
+       "x": 50,
+       "y": 50,
+       "noi_dung": "Người dẫn luôn:",
+       "ds": [
+        "Biết xe ở đâu",
+        "Không mở cửa bạn chọn",
+        "Mở cửa có dê"
+       ],
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "luat",
+       "kieu": "chon",
+       "chi_so": [
+        1
+       ],
+       "mau": "vang"
       },
       {
-       "nhan": "Xanh",
-       "xs": "\\frac{3}{8}",
-       "gia_tri": 0.375,
-       "mau": "xanh_duong",
-       "hang": [
-        {
-         "nhan": "Đỏ",
-         "xs": "\\frac{5}{7}",
-         "gia_tri": 0.7143,
-         "mau": "do",
-         "kq": "\\frac{15}{56}"
-        },
-        {
-         "nhan": "Xanh",
-         "xs": "\\frac{2}{7}",
-         "gia_tri": 0.2857,
-         "mau": "xanh_duong",
-         "kq": "\\frac{3}{28}",
-         "to": true
-        }
-       ]
+       "buoc": 3,
+       "vat": "luat",
+       "kieu": "chon",
+       "chi_so": [
+        3
+       ],
+       "mau": "vang"
       }
      ]
     }
-   }
+   },
+   "giong_doc": "hạ giọng, bí ẩn"
   },
   {
    "so": 6,
-   "loai": "dap_an",
-   "loi_thoai": "Cộng lại, xác suất cần tìm là mười ba phần hai mươi tám.",
+   "loai": "nhac_lai",
+   "tieu_de_canh": "Nhắc lại: xác suất là gì?",
+   "tu_khoa": "xác suất",
+   "loi_thoai": "Trước khi trả lời, nhớ lại một điều cơ bản: xác suất bằng số khả năng thuận lợi chia cho tổng số khả năng như nhau. Lúc đầu xe nằm sau mỗi cửa như nhau, nên mỗi cửa một phần ba.",
    "noi_dung_man_hinh": [
-    "P=\\frac{5}{14}+\\frac{3}{28}",
-    "P=\\frac{5}{14}+\\frac{3}{28}=\\frac{13}{28}"
+    "P=\\frac{\\text{thuận lợi}}{\\text{tất cả}}",
+    "P(\\text{mỗi cửa})=\\frac{1}{3}"
    ],
-   "trinh_bay": "cong_don",
+   "trinh_bay": "xep",
    "minh_hoa": {
-    "loai": "khong",
-    "mo_ta": "",
-    "du_lieu": null
-   }
+    "loai": "san_khau",
+    "mo_ta": "Chiếc bánh chia 3 phần bằng nhau, mỗi phần ghi 1/3 và sáng lần lượt; công thức xác suất được viết tay bằng bút chì bên dưới.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "b3",
+       "loai": "banh",
+       "x": 50,
+       "y": 50,
+       "so_luong": 3,
+       "ds": [
+        "1/3",
+        "1/3",
+        "1/3"
+       ],
+       "co": 0.9,
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "b3",
+       "kieu": "chon",
+       "chi_so": [
+        1,
+        2,
+        3
+       ],
+       "mau": "xanh_duong"
+      }
+     ]
+    }
+   },
+   "giong_doc": "ấm áp, giải thích"
   },
   {
    "so": 7,
-   "loai": "bai_hoc",
-   "loi_thoai": "Làm thử nhiều lần, tần suất sẽ tiến dần về mười ba phần hai mươi tám. Bạn thấy còn cách nào nhanh hơn không?",
+   "loai": "diem_chot",
+   "tieu_de_canh": "Cửa của bạn chỉ có 1/3",
+   "tu_khoa": "1/3",
+   "chu_thich": [
+    "Cửa bạn chọn: 1/3",
+    "Hai cửa còn lại: 2/3"
+   ],
+   "loi_thoai": "Thế nên hãy nhìn theo nhóm. Lúc chọn, cửa của bạn chỉ có một phần ba. Hai cửa còn lại giữ hai phần ba. Người dẫn mở cửa dê, hai phần ba đó dồn hết vào cửa kia.",
    "noi_dung_man_hinh": [],
    "minh_hoa": {
-    "loai": "thuc_nghiem",
-    "mo_ta": "Đồ thị tần suất sau mỗi lần thử tiến dần về đường nét đứt màu vàng là xác suất lý thuyết.",
+    "loai": "san_khau",
+    "mo_ta": "Chiếc bánh chia 3 phần: 1 phần xanh dương là cửa của bạn, 2 phần cam là hai cửa còn lại; mũi tên cong chỉ từ phần cam sang thẻ 'CỬA 2: 2/3'.",
     "du_lieu": {
-     "p": 0.4643,
-     "p_xs": "\\frac{13}{28}",
-     "n": 300,
-     "ten": "Bốc hai bi, đếm lần cùng màu",
-     "mau": "xanh_duong",
-     "seed": 5
+     "vat": [
+      {
+       "id": "banh",
+       "loai": "banh",
+       "x": 30,
+       "y": 46,
+       "so_luong": 3,
+       "ds": [
+        "Bạn",
+        "",
+        ""
+       ],
+       "co": 0.85,
+       "buoc": 1
+      },
+      {
+       "id": "the2",
+       "loai": "the",
+       "x": 77,
+       "y": 46,
+       "noi_dung": "Cửa 2",
+       "gia_tri_chu": "2/3",
+       "mau": "cam",
+       "co": 0.8,
+       "tu_huong": "phai",
+       "buoc": 3
+      },
+      {
+       "id": "mt",
+       "loai": "mui_ten",
+       "tu": "banh",
+       "den": "the2",
+       "mau": "cam",
+       "buoc": 3
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 1,
+       "vat": "banh",
+       "kieu": "chon",
+       "chi_so": [
+        1
+       ],
+       "mau": "xanh_duong"
+      },
+      {
+       "buoc": 2,
+       "vat": "banh",
+       "kieu": "chon",
+       "chi_so": [
+        2,
+        3
+       ],
+       "mau": "cam"
+      },
+      {
+       "buoc": 4,
+       "vat": "the2",
+       "kieu": "sang"
+      }
+     ]
     }
-   }
+   },
+   "giong_doc": "sáng lên, à ra thế"
+  },
+  {
+   "so": 8,
+   "loai": "tinh_toan",
+   "tieu_de_canh": "Bước 1: xe nằm ở đâu?",
+   "tu_khoa": "Bước 1",
+   "chuyen_canh": "truot_len",
+   "loi_thoai": "Muốn chắc chắn hơn, ta xét hết vị trí của xe. Xe ở cửa một thì đổi là thua. Xe ở cửa hai hoặc ba, người dẫn buộc phải mở cửa dê còn lại, đổi là thắng.",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Thẻ danh sách ba trường hợp: 'Xe ở cửa 1 → đổi THUA' bị gạch đỏ; hai dòng 'Xe ở cửa 2', 'Xe ở cửa 3 → đổi THẮNG' được tô xanh quét ngang lần lượt.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "th",
+       "loai": "danh_sach",
+       "x": 50,
+       "y": 50,
+       "noi_dung": "Nếu bạn luôn ĐỔI cửa",
+       "ds": [
+        "Xe ở cửa 1 → đổi THUA",
+        "Xe ở cửa 2 → đổi THẮNG",
+        "Xe ở cửa 3 → đổi THẮNG"
+       ],
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "th",
+       "kieu": "loai_bo",
+       "chi_so": [
+        1
+       ]
+      },
+      {
+       "buoc": 3,
+       "vat": "th",
+       "kieu": "chon",
+       "chi_so": [
+        2
+       ],
+       "mau": "xanh_la"
+      },
+      {
+       "buoc": 4,
+       "vat": "th",
+       "kieu": "chon",
+       "chi_so": [
+        3
+       ],
+       "mau": "xanh_la"
+      }
+     ]
+    }
+   },
+   "giong_doc": "tự tin, nhịp đều"
+  },
+  {
+   "so": 9,
+   "loai": "tinh_toan",
+   "tieu_de_canh": "Bước 2: cộng các khả năng thắng",
+   "tu_khoa": "cộng",
+   "trinh_bay": "cong_don",
+   "loi_thoai": "Mỗi trường hợp đó có xác suất một phần ba. Đổi cửa thắng ở hai trường hợp, cộng lại được hai phần ba. Giữ cửa chỉ thắng đúng một trường hợp.",
+   "noi_dung_man_hinh": [
+    "P(\\text{đổi})=\\frac{1}{3}+\\frac{1}{3}",
+    "P(\\text{đổi})=\\frac{1}{3}+\\frac{1}{3}=\\frac{2}{3}"
+   ],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Biểu đồ hai cột: 'Giữ' cao 1 phần, 'Đổi' cao 2 phần mọc lên; cột 'Đổi' sáng cam.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "cot",
+       "loai": "bieu_do_cot",
+       "x": 50,
+       "y": 50,
+       "ds": [
+        "Giữ cửa",
+        "Đổi cửa"
+       ],
+       "ds_so": [
+        1,
+        2
+       ],
+       "nhan": "số trường hợp thắng",
+       "mau": "xanh_duong",
+       "co": 0.85,
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "cot",
+       "kieu": "chon",
+       "chi_so": [
+        2
+       ],
+       "mau": "cam"
+      }
+     ]
+    }
+   },
+   "giong_doc": "chắc chắn, nhấn số"
+  },
+  {
+   "so": 10,
+   "loai": "dap_an",
+   "tieu_de_canh": "Đổi cửa: thắng 2/3",
+   "tu_khoa": "2/3",
+   "trinh_bay": "cong_don",
+   "loi_thoai": "Kết luận: giữ cửa thắng một phần ba, đổi cửa thắng hai phần ba. Đổi cửa, cơ hội gấp đôi!",
+   "noi_dung_man_hinh": [
+    "P(\\text{giữ})=\\frac{1}{3}",
+    "P(\\text{đổi})=1-\\frac{1}{3}",
+    "P(\\text{đổi})=1-\\frac{1}{3}=\\frac{2}{3}"
+   ],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Đồng hồ đo xác suất kim quét lên dừng ở 2/3, cung chuyển sang xanh lá, số 2/3 phát sáng.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "do",
+       "loai": "dong_ho_do",
+       "x": 50,
+       "y": 50,
+       "gia_tri": 0.6667,
+       "gia_tri_chu": "2/3",
+       "nhan": "Thắng khi đổi",
+       "co": 1.0,
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "do",
+       "kieu": "sang"
+      }
+     ]
+    }
+   },
+   "giong_doc": "phấn khích, chiến thắng"
+  },
+  {
+   "so": 11,
+   "loai": "kiem_tra",
+   "tieu_de_canh": "Kiểm tra: chơi thử 30 lần",
+   "tu_khoa": "30 lần",
+   "chuyen_canh": "truot_len",
+   "loi_thoai": "Thử lại cho chắc: chơi ba mươi lần và luôn đổi cửa. Khoảng hai mươi lần bạn thắng, đúng gần hai phần ba như đáp án.",
+   "noi_dung_man_hinh": [
+    "\\frac{20}{30}\\approx\\frac{2}{3}"
+   ],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Lưới 30 ô lấp đầy lần lượt (mỗi ô là một lượt chơi); 20 ô thắng sáng cam; huy hiệu vàng đếm lăn số từ 0 lên 20 lần thắng.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "dem",
+       "loai": "so_dem",
+       "kieu": "vien",
+       "x": 50,
+       "y": 12,
+       "gia_tri": 20,
+       "nhan": "lần thắng",
+       "co": 0.85,
+       "buoc": 2
+      },
+      {
+       "id": "luoi",
+       "loai": "luoi_o",
+       "x": 50,
+       "y": 60,
+       "so_luong": 30,
+       "so_cot": 6,
+       "mau": "xanh_duong",
+       "nhan": "30 lượt chơi, luôn đổi",
+       "buoc": 1
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "luoi",
+       "kieu": "chon",
+       "chi_so": [
+        1,
+        2,
+        4,
+        5,
+        7,
+        8,
+        9,
+        11,
+        13,
+        14,
+        16,
+        17,
+        19,
+        20,
+        22,
+        24,
+        25,
+        27,
+        28,
+        30
+       ],
+       "mau": "cam"
+      }
+     ]
+    }
+   },
+   "trinh_bay": "xep",
+   "giong_doc": "cẩn thận, thuyết phục"
+  },
+  {
+   "so": 12,
+   "loai": "bai_hoc",
+   "tieu_de_canh": "Ghi nhớ 3 điều",
+   "tu_khoa": "3 điều",
+   "loi_thoai": "Vậy rút ra được gì? Xét hết trường hợp trước khi đoán năm mươi năm mươi. Ai biết trước mà cho thêm thông tin thì xác suất thay đổi. Thử nghĩ: một trăm cửa, mở chín mươi tám cửa dê, đổi thắng bao nhiêu? Bình luận nhé!",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Thẻ danh sách 'Dạng bài có người biết trước' với 3 điều cần nhớ trượt vào và được tô vàng lần lượt; nhãn neon '100 cửa?' bật lên cuối cảnh.",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "gn",
+       "loai": "danh_sach",
+       "x": 50,
+       "y": 42,
+       "noi_dung": "Dạng có người biết trước",
+       "ds": [
+        "Xét hết các trường hợp",
+        "Thông tin mới đổi xác suất",
+        "Kiểm tra bằng thử nhiều lần"
+       ],
+       "buoc": 1
+      },
+      {
+       "id": "hoi",
+       "loai": "nhan",
+       "x": 50,
+       "y": 88,
+       "noi_dung": "100 cửa thì sao?",
+       "tu_khoa": "100 cửa",
+       "mau": "cam",
+       "buoc": 4
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "gn",
+       "kieu": "chon",
+       "chi_so": [
+        1
+       ],
+       "mau": "vang"
+      },
+      {
+       "buoc": 3,
+       "vat": "gn",
+       "kieu": "chon",
+       "chi_so": [
+        2
+       ],
+       "mau": "vang"
+      },
+      {
+       "buoc": 3,
+       "vat": "gn",
+       "kieu": "chon",
+       "chi_so": [
+        3
+       ],
+       "mau": "vang"
+      },
+      {
+       "buoc": 5,
+       "vat": "hoi",
+       "kieu": "rung"
+      }
+     ]
+    }
+   },
+   "giong_doc": "thân thiện, đọng lại"
   }
- ]
+ ],
+ "bai_hoc_rut_ra": [
+  "Xét hết các trường hợp trước khi đoán 50/50",
+  "Người biết đáp án cho thêm tin: xác suất đổi",
+  "Không chắc? Kiểm tra bằng cách thử nhiều lần"
+ ],
+ "video_tiep_theo": "100 cánh cửa: đổi thì thắng bao nhiêu?",
+ "du_kien": [
+  "3 cửa, 1 xe",
+  "Bạn chọn cửa 1",
+  "MC mở cửa dê"
+ ],
+ "de_cho": [
+  "3 cửa: 1 cửa có xe máy, 2 cửa có dê",
+  "Bạn chọn cửa 1",
+  "Người dẫn biết xe ở đâu, mở 1 cửa có dê"
+ ],
+ "can_tim": "Đổi cửa thì xác suất thắng là bao nhiêu?",
+ "mon": "XAC_SUAT"
 }

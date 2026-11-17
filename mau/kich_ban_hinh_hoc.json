@@ -1,0 +1,619 @@
+{
+ "tieu_de": "4 điểm cùng nằm trên 1 đường tròn",
+ "chu_de_ngan": "Hình học lớp 10",
+ "bai_hoc_rut_ra": [
+  "Góc vuông chắn cạnh huyền",
+  "Trung tuyến bằng nửa cạnh huyền"
+ ],
+ "hook": "Vì sao bốn điểm này cùng nằm trên một đường tròn?",
+ "hook_chu": "4 điểm cùng 1 đường tròn?",
+ "de_cho": [
+  "Tam giác ABC nhọn",
+  "Đường cao BE, CF"
+ ],
+ "can_tim": "Chứng minh B, C, E, F cùng thuộc một đường tròn",
+ "du_kien": [],
+ "dap_an_cuoi": "CM",
+ "dap_an": "CM",
+ "id": "THU-hinhhoc1",
+ "lop": "10",
+ "mon": "HINH_HOC",
+ "giong": "Charon",
+ "gioi_tinh_giong": "nam",
+ "phong_cach_edit": "dien_anh",
+ "de_bai": "Cho tam giác ABC nhọn, các đường cao BE, CF cắt nhau tại H. Chứng minh bốn điểm B, C, E, F cùng thuộc một đường tròn.",
+ "canh": [
+  {
+   "so": 1,
+   "loai": "mo_dau",
+   "tieu_de_canh": "Bốn điểm có cùng nằm trên một đường tròn?",
+   "tu_khoa": "Bốn",
+   "nhan": "",
+   "giu_san_khau": false,
+   "giong_doc": "rõ ràng",
+   "loi_thoai": "Hai đường cao của tam giác cắt nhau, và bốn điểm B, C, E, F bỗng nằm trên cùng một đường tròn. Vì sao vậy?",
+   "noi_dung_man_hinh": [],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Hình tam giác ABC với hai đường cao BE, CF",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "hh",
+       "loai": "hinh_hoc",
+       "x": 50,
+       "y": 48,
+       "co": 1.25,
+       "buoc": 1,
+       "diem": {
+        "A": [
+         51.9,
+         10
+        ],
+        "B": [
+         28.6,
+         58.6
+        ],
+        "C": [
+         71.4,
+         58.6
+        ],
+        "E": [
+         60.4,
+         31.1
+        ],
+        "F": [
+         42.8,
+         29
+        ],
+        "H": [
+         51.9,
+         38.4
+        ],
+        "M": [
+         50,
+         58.6
+        ]
+       },
+       "canh": [
+        [
+         "A",
+         "B",
+         ""
+        ],
+        [
+         "B",
+         "C",
+         ""
+        ],
+        [
+         "C",
+         "A",
+         ""
+        ],
+        [
+         "B",
+         "E",
+         ""
+        ],
+        [
+         "C",
+         "F",
+         ""
+        ]
+       ]
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "hh",
+       "kieu": "sang"
+      }
+     ]
+    }
+   },
+   "thoi_luong_giay": 7
+  },
+  {
+   "so": 2,
+   "loai": "de_bai",
+   "tieu_de_canh": "Đề bài",
+   "tu_khoa": "Đề",
+   "nhan": "",
+   "giu_san_khau": false,
+   "giong_doc": "rõ ràng",
+   "loi_thoai": "Cho tam giác ABC nhọn, hai đường cao BE và CF cắt nhau tại H. Chứng minh bốn điểm B, C, E, F cùng thuộc một đường tròn.",
+   "noi_dung_man_hinh": [],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Hình tam giác ABC với hai đường cao BE, CF",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "hh",
+       "loai": "hinh_hoc",
+       "x": 50,
+       "y": 48,
+       "co": 1.25,
+       "buoc": 1,
+       "diem": {
+        "A": [
+         51.9,
+         10
+        ],
+        "B": [
+         28.6,
+         58.6
+        ],
+        "C": [
+         71.4,
+         58.6
+        ],
+        "E": [
+         60.4,
+         31.1
+        ],
+        "F": [
+         42.8,
+         29
+        ],
+        "H": [
+         51.9,
+         38.4
+        ],
+        "M": [
+         50,
+         58.6
+        ]
+       },
+       "canh": [
+        [
+         "A",
+         "B",
+         ""
+        ],
+        [
+         "B",
+         "C",
+         ""
+        ],
+        [
+         "C",
+         "A",
+         ""
+        ],
+        [
+         "B",
+         "E",
+         ""
+        ],
+        [
+         "C",
+         "F",
+         ""
+        ]
+       ],
+       "vuong": [
+        [
+         "B",
+         "E",
+         "C"
+        ],
+        [
+         "C",
+         "F",
+         "B"
+        ]
+       ]
+      }
+     ],
+     "hanh_dong": []
+    }
+   },
+   "thoi_luong_giay": 7
+  },
+  {
+   "so": 3,
+   "loai": "y_do",
+   "tieu_de_canh": "Ý tưởng: nhìn từ trung điểm M",
+   "tu_khoa": "Ý",
+   "nhan": "",
+   "giu_san_khau": false,
+   "giong_doc": "rõ ràng",
+   "loi_thoai": "Mấu chốt: lấy M là trung điểm BC, rồi nối M với E và F.",
+   "noi_dung_man_hinh": [
+    "ME = MF = MB = MC\\,?"
+   ],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Hình tam giác ABC với hai đường cao BE, CF",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "hh",
+       "loai": "hinh_hoc",
+       "x": 50,
+       "y": 48,
+       "co": 1.25,
+       "buoc": 1,
+       "diem": {
+        "A": [
+         51.9,
+         10
+        ],
+        "B": [
+         28.6,
+         58.6
+        ],
+        "C": [
+         71.4,
+         58.6
+        ],
+        "E": [
+         60.4,
+         31.1
+        ],
+        "F": [
+         42.8,
+         29
+        ],
+        "H": [
+         51.9,
+         38.4
+        ],
+        "M": [
+         50,
+         58.6
+        ]
+       },
+       "canh": [
+        [
+         "A",
+         "B",
+         ""
+        ],
+        [
+         "B",
+         "C",
+         ""
+        ],
+        [
+         "C",
+         "A",
+         ""
+        ],
+        [
+         "B",
+         "E",
+         ""
+        ],
+        [
+         "C",
+         "F",
+         ""
+        ]
+       ],
+       "vuong": [
+        [
+         "B",
+         "E",
+         "C"
+        ],
+        [
+         "C",
+         "F",
+         "B"
+        ]
+       ],
+       "phu": [
+        [
+         "M",
+         "E"
+        ],
+        [
+         "M",
+         "F"
+        ]
+       ]
+      }
+     ],
+     "hanh_dong": []
+    }
+   },
+   "thoi_luong_giay": 7
+  },
+  {
+   "so": 4,
+   "loai": "tinh_toan",
+   "tieu_de_canh": "Trung tuyến tam giác vuông",
+   "tu_khoa": "Trung",
+   "nhan": "",
+   "giu_san_khau": false,
+   "giong_doc": "rõ ràng",
+   "loi_thoai": "Tam giác BEC vuông tại E nên trung tuyến EM bằng nửa cạnh huyền BC. Tương tự với tam giác BFC.",
+   "noi_dung_man_hinh": [
+    "ME = \\tfrac{1}{2}BC = MB",
+    "MF = \\tfrac{1}{2}BC = MC"
+   ],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Hình tam giác ABC với hai đường cao BE, CF",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "hh",
+       "loai": "hinh_hoc",
+       "x": 50,
+       "y": 48,
+       "co": 1.25,
+       "buoc": 1,
+       "diem": {
+        "A": [
+         51.9,
+         10
+        ],
+        "B": [
+         28.6,
+         58.6
+        ],
+        "C": [
+         71.4,
+         58.6
+        ],
+        "E": [
+         60.4,
+         31.1
+        ],
+        "F": [
+         42.8,
+         29
+        ],
+        "H": [
+         51.9,
+         38.4
+        ],
+        "M": [
+         50,
+         58.6
+        ]
+       },
+       "canh": [
+        [
+         "A",
+         "B",
+         ""
+        ],
+        [
+         "B",
+         "C",
+         ""
+        ],
+        [
+         "C",
+         "A",
+         ""
+        ],
+        [
+         "B",
+         "E",
+         ""
+        ],
+        [
+         "C",
+         "F",
+         ""
+        ]
+       ],
+       "vuong": [
+        [
+         "B",
+         "E",
+         "C"
+        ],
+        [
+         "C",
+         "F",
+         "B"
+        ]
+       ],
+       "phu": [
+        [
+         "M",
+         "E"
+        ],
+        [
+         "M",
+         "F"
+        ]
+       ],
+       "bang": [
+        [
+         "M",
+         "E",
+         1
+        ],
+        [
+         "M",
+         "F",
+         1
+        ],
+        [
+         "M",
+         "B",
+         1
+        ],
+        [
+         "M",
+         "C",
+         1
+        ]
+       ]
+      }
+     ],
+     "hanh_dong": [
+      {
+       "buoc": 2,
+       "vat": "hh",
+       "kieu": "chon",
+       "chi_so": [
+        2
+       ]
+      }
+     ]
+    }
+   },
+   "thoi_luong_giay": 7
+  },
+  {
+   "so": 5,
+   "loai": "dap_an",
+   "tieu_de_canh": "Kết luận",
+   "tu_khoa": "Kết",
+   "nhan": "",
+   "giu_san_khau": false,
+   "giong_doc": "rõ ràng",
+   "loi_thoai": "Bốn điểm cách đều M nên cùng nằm trên đường tròn tâm M. Vậy ta đã chứng minh xong.",
+   "noi_dung_man_hinh": [
+    "MB = MC = ME = MF",
+    "\\text{B, C, E, F cùng thuộc (M)}\\;\\blacksquare"
+   ],
+   "trinh_bay": "cong_don",
+   "chu_thich": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "Hình tam giác ABC với hai đường cao BE, CF",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "hh",
+       "loai": "hinh_hoc",
+       "x": 50,
+       "y": 48,
+       "co": 1.25,
+       "buoc": 1,
+       "diem": {
+        "A": [
+         51.9,
+         10
+        ],
+        "B": [
+         28.6,
+         58.6
+        ],
+        "C": [
+         71.4,
+         58.6
+        ],
+        "E": [
+         60.4,
+         31.1
+        ],
+        "F": [
+         42.8,
+         29
+        ],
+        "H": [
+         51.9,
+         38.4
+        ],
+        "M": [
+         50,
+         58.6
+        ]
+       },
+       "canh": [
+        [
+         "A",
+         "B",
+         ""
+        ],
+        [
+         "B",
+         "C",
+         ""
+        ],
+        [
+         "C",
+         "A",
+         ""
+        ],
+        [
+         "B",
+         "E",
+         ""
+        ],
+        [
+         "C",
+         "F",
+         ""
+        ]
+       ],
+       "vuong": [
+        [
+         "B",
+         "E",
+         "C"
+        ],
+        [
+         "C",
+         "F",
+         "B"
+        ]
+       ],
+       "phu": [
+        [
+         "M",
+         "E"
+        ],
+        [
+         "M",
+         "F"
+        ]
+       ],
+       "bang": [
+        [
+         "M",
+         "E",
+         1
+        ],
+        [
+         "M",
+         "F",
+         1
+        ],
+        [
+         "M",
+         "B",
+         1
+        ],
+        [
+         "M",
+         "C",
+         1
+        ]
+       ],
+       "tron": [
+        [
+         "B",
+         "C",
+         "E"
+        ]
+       ]
+      }
+     ],
+     "hanh_dong": []
+    }
+   },
+   "thoi_luong_giay": 7
+  }
+ ]
+}

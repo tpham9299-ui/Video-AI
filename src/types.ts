@@ -16,10 +16,16 @@ export type CanhProps = {
   cau: Cau[]; // các câu/đoạn lời thoại kèm mốc thời gian
   chuThich: string[]; // khung chú thích viền vàng (ý tưởng then chốt)
   trinhBay: string; // 'bien_doi' = các dòng công thức biến hình nối tiếp kiểu Manim; 'xep' = xếp chồng
+  tieuDeCanh: string; // câu tiêu đề lớn của cảnh (chữ trắng đậm)
+  tuKhoa: string; // cụm từ trong tiêu đề được tô cam
+  nhan: string; // nhãn viên thuốc màu cam (để trống = tự đặt theo loại cảnh)
+  giuSanKhau: boolean;
+  gocNhin?: string[]; // 3D: các góc máy lần lượt (cheo_trai | tren_xuong | cheo_phai | thap_chinh_dien | cao_toan_canh | nghieng_nhe)
+  chuyenCanh?: string; // mo | truot_len | phong | luot_ngang | truot_xuong | lat_3d (để trống = tự chọn theo mạch bài) // giữ nguyên sân khấu của cảnh trước rồi diễn tiếp (liền mạch như video mẫu)
 };
 
-export type ThuongHieuProps = {ten: string; khauHieu: string; handle: string; markNuoc: boolean; logo: string | null};
-export type OutroProps = {tep: string; loai: 'video' | 'anh'; soFrame: number; batDau: number};
+export type ThuongHieuProps = {ten: string; khauHieu: string; handle: string; markNuoc: boolean; logo: string | null; loiMoi?: string};
+export type OutroProps = {tep: string; loai: 'video' | 'anh' | 'tu_tao'; soFrame: number; batDau: number};
 
 export type NenProps = {tep: string; loai: 'video' | 'anh'; soFrame: number};
 
@@ -28,11 +34,22 @@ export type PhongCach = {
   doMoNen: number; // 0-1: độ tối phủ lên nền của bạn để chữ dễ đọc
   kyHieuTroi: boolean; // ký hiệu xác suất trôi lên trên nền
   quangSang: boolean; // quầng sáng màu khi dùng nền gradient mặc định
-  kieuNen: string; // 'luoi' = lưới phối cảnh như video mẫu (mặc định); 'luoi_phang' = lưới phẳng; 'gradient' = nền chuyển màu
+  kieuNen: string; // 'neon' = nền xanh đen có lưới mờ và đốm sáng trôi như video mẫu (mặc định); 'luoi' = lưới phối cảnh như video mẫu (mặc định); 'luoi_phang' = lưới phẳng; 'gradient' = nền chuyển màu
   kieuToan: string; // 'latex' = công thức phông LaTeX có chân như Manim (mặc định); 'dong_nhat' = công thức cùng phông không chân với chữ
   kieuHinh: string; // 'manim' = hình nét phẳng như video mẫu (mặc định); 'that' = vật 3D (xúc xắc, xu, bài)
   thanhTienDo: boolean;
+  loiMoiGiuaVideo?: boolean; // thẻ "Theo dõi" trượt vào giữa video (mặc định tắt vì đè lên chữ mô tả của TikTok)
+  khungSanKhau?: boolean; // khung kính mờ + góc neon quanh sân khấu
+  butChi?: boolean; // bút chì chạy theo khi viết công thức (kiểu xep)
+  thanhBuoc?: boolean; // thanh các bước bài giải ở đầu cảnh (thay nhãn cam)
+  tieuDeInHoa?: boolean; // tiêu đề cảnh viết IN HOA như video mẫu
+  lopQuet?: boolean | 'luon'; // lớp quét chuyển cảnh: mặc định chỉ ở cái bẫy/đáp án; 'luon' = mọi chỗ nối; false = tắt
+  kieuPhuDe?: string; // 'hop' (ô màu sau từ đang đọc, mặc định) | 'mau'
+  mauPhuDe?: string; // màu ô phụ đề
+  soNenToiDa?: number; // số nền tối đa dùng trong một video (đổi theo nhóm cảnh)
+  lopNeonTrenNen?: boolean; // phủ lưới mờ + đốm sáng neon lên nền của bạn cho đồng bộ phong cách
   phuDe: boolean;
+  chuyenDong?: string; // 'moi' = bộ hiệu ứng mới (chữ 3 tầng, máy quay sống, vòng sóng, dấu BẪY, lóe sáng đáp án) | 'cu'
   mau: Record<string, string>; // ghi đè bảng màu (vang, lam, hong, xanh, nen1, nen2)
 };
 
@@ -48,7 +65,25 @@ export type Props = {
   hookKieu: string;
   nhanManh: string[]; // từ khóa trong hook được nhấn mạnh
   nhac: string | null;
+  amLuongNhac: number; // âm lượng nhạc nền khi không có giọng đọc (khi có giọng tự giảm còn ~40%)
+  baiHoc?: string[]; // 2-3 bài học rút ra (hiện ở màn kết)
+  bia?: {loai: string; tieuDe: string; khung: number} | null;
+  kiemDuyet?: boolean; // chế độ kiểm duyệt bố cục (máy dựng chụp khung mẫu, đo chữ tràn/đè/TeX thô)
+  // BÀI HÌNH HỌC DỰNG BẰNG MANIM: Remotion chỉ dựng phần "vỏ" chung (nền, tiêu đề, thanh bước, phụ đề, nhạc, hiệu ứng âm thanh);
+  // hình + công thức do Manim dựng (scripts/manim_hinh.py) rồi ghép đè lên. suKienManim: lúc Manim hiện dòng / đóng khung (tiếng "tách", "ting").
+  manimLop?: boolean;
+  suKienManim?: {f: number; kieu: string}[];
+  anhManimBia?: string | null; // public/manim/bia.png: hình Manim cho ô hình của ảnh bìa
+  anhBiaDau?: string | null; // ảnh bìa đặt ở khung hình đầu tiên (1/30 giây) để TikTok lấy làm ảnh bìa; cả video lùi 1 khung // ảnh bìa: loại câu hỏi, tiêu đề ngắn, khung hình lấy hình minh họa
+  series?: {ten: string; tap: number} | null; // series video (hiện "TẬP n" trên thanh đầu)
+  quangCao?: {ten: string; gia?: string; anh?: string; cta?: string} | null; // video có sản phẩm do kênh bán: nhãn minh bạch + thẻ sản phẩm cuối video
+  deBai?: {cho: string[]; tim: string} | null; // thẻ ĐỀ BÀI (đề cho gì, cần tìm gì) ở cảnh de_bai
+  duKien?: string[]; // 2-4 dữ kiện then chốt của đề (thẻ nhỏ trên đầu màn hình suốt phần giải)
+  tiepTheo?: string; // câu hẹn video sau (màn kết)
+  chuDe: string; // chủ đề ngắn hiện ở góc trên (ví dụ "Hai bi cùng màu")
   nen: NenProps | null;
+  nenTuTao?: {kieu: string; hue: number; hat: number} | null; // nền tự tạo riêng cho video này
+  dsNen?: NenProps[]; // nhiều nền của bạn: đổi nền theo nhóm cảnh
   thuongHieu: ThuongHieuProps;
   outro: OutroProps | null;
   phongCach: PhongCach;
