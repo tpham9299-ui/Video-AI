@@ -281,6 +281,11 @@ export const Tru: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
           <stop offset="40%" stopColor="#38bdf8" stopOpacity={0.52} />
           <stop offset="100%" stopColor="#0369a1" stopOpacity={0.75} />
         </linearGradient>
+        <radialGradient id={`matnuoc${v.id}`} cx="40%" cy="35%" r="70%">
+          <stop offset="0%" stopColor="#e0f2fe" stopOpacity={0.9} />
+          <stop offset="55%" stopColor="#38bdf8" stopOpacity={0.75} />
+          <stop offset="100%" stopColor="#0284c7" stopOpacity={0.85} />
+        </radialGradient>
       </defs>
       <g opacity={kep(vao * 1.5)}>
         {/* thân */}
@@ -298,7 +303,7 @@ export const Tru: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
           ) : (
             <>
               <path d={`M${cx - r} ${yNuoc} L${cx - r} ${yDuoi} A${r} ${ry} 0 0 0 ${cx + r} ${yDuoi} L${cx + r} ${yNuoc} Z`} fill={`url(#nuoc${v.id})`} />
-              <ellipse cx={cx} cy={yNuoc} rx={r} ry={ry} fill="radial-gradient(ellipse, #e0f2fe, #38bdf8)" stroke="#bff0ff" strokeWidth={2} />
+              <ellipse cx={cx} cy={yNuoc} rx={r} ry={ry} fill={`url(#matnuoc${v.id})`} stroke="#bff0ff" strokeWidth={2} />
             </>
           )
         ) : null}

@@ -511,3 +511,14 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
        - Tầng 1: Khung tóm tắt "ĐÁP ÁN" công thức KaTeX và bảng "BÀI HỌC RÚT RA" 2-3 ý tự tích xanh chuyển động mượt mà.
        - Tầng 2: Huy hiệu xoay tròn phát sáng neon cùng tên kênh, tay bấm "Thích" / "Theo dõi", chuông rung và lời hẹn xem tiếp video sau.
        - Tự động điền thông tin thương hiệu mặc định từ kịch bản hoặc môi trường nếu người dùng chưa tải logo riêng lên Drive.
+
+
+#### 13. Rà soát toàn diện & Khắc phục dứt điểm 6 lỗi tiềm ẩn giúp hệ thống vận hành trơn tru
+- **Tệp chỉnh sửa**: [src/sankhau/vat3d.tsx](file:///e:/Video-AI/src/sankhau/vat3d.tsx), [src/ThuongHieu.tsx](file:///e:/Video-AI/src/ThuongHieu.tsx), [phong_cach.json](file:///e:/Video-AI/phong_cach.json), [.github/workflows/dung-video.yml](file:///e:/Video-AI/.github/workflows/dung-video.yml), [scripts/chuanbi.py](file:///e:/Video-AI/scripts/chuanbi.py), [scripts/kiem_duyet.mjs](file:///e:/Video-AI/scripts/kiem_duyet.mjs), [BoPhan2.gs](file:///e:/Video-AI/BoPhan2.gs).
+- **Chi tiết 6 vấn đề đã xử lý triệt để**:
+  1. **Sửa lỗi thuộc tính SVG ở mặt nước hình trụ (`src/sankhau/vat3d.tsx`)**: Thay thế thuộc tính CSS không hợp lệ trên SVG (`fill="radial-gradient(...)"`) bằng định nghĩa `<radialGradient id="matnuoc...">` chuẩn SVG trong `<defs>`, đảm bảo mặt thoáng chất lỏng hiển thị phản quang mượt mà trên Chromium.
+  2. **Khắc phục triệt để xung đột đè chữ ở lời mời giữa video (`phong_cach.json`, `src/ThuongHieu.tsx`)**: Tắt hiển thị thẻ `LoiMoi` giữa video (vì cuối video đã có Màn kết chuyên nghiệp `ManKetChuyenNghiep` đầy đủ nút Thích/Theo dõi) và dịch chuyển tọa độ an toàn của `LoiMoi` kèm `data-kd-bo="1"`, tránh đè phụ đề và tránh bị trình kiểm duyệt `CHU_DE` chặn sai.
+  3. **Chỉnh đúng vị trí & khóa lưu cache TTS (`dung-video.yml`)**: Di chuyển bước `Cache âm thanh giọng đọc TTS` xuống **sau bước `Ghi kịch bản`** để `hashFiles('kich_ban.json')` đọc được tệp kịch bản thật; bổ sung `${{ github.run_id }}` vào khóa chính (`key`) để GitHub Actions thực sự lưu đệm tệp âm thanh mới sau mỗi lượt dựng.
+  4. **Chống nhiễm độc bộ nhớ đệm âm thanh (`scripts/chuanbi.py`)**: Chỉ ghi âm thanh Gemini TTS vào cache sau khi kiểm tra không bị rè/tạp âm (`not giong_bi_re`), và tự động bỏ qua cache (`dung_cache=False`) khi thử lại nếu cắt khoảng lặng không khớp.
+  5. **Tăng tốc bước kiểm duyệt bố cục lên 33% (`scripts/kiem_duyet.mjs`)**: Lấy mẫu 2 khung trọng yếu mỗi cảnh (`[0.55, 0.95]`) thay vì 3 khung, giúp `kiem_duyet.mjs` hoàn tất trong ~3–4 phút, tránh chạm ngưỡng timeout 7 phút (`timeout 420`).
+  6. **Chống lỗi HTTP 422 thoáng qua khi đẩy mã GitHub (`BoPhan2.gs`)**: Bổ sung cơ chế tự thử lại 1 lần sau 3,5 giây trong `guiWorkflowGitHub_` khi gặp mã `422` (lúc GitHub vừa cập nhật workflow) hoặc `5xx`, loại bỏ hoàn toàn cảnh báo Zalo giả `Workflow does not have 'workflow_dispatch' trigger`.

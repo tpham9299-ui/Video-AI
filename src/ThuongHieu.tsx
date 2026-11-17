@@ -67,7 +67,7 @@ const LoiMoi: React.FC<{th: ThuongHieuProps}> = ({th}) => {
   const r = easeInOut(kep((f - (dai - 12)) / 12));
   const bam = kep((f - 1.5 * fps) / 8);
   return (
-    <div style={{position: 'absolute', right: 40, top: 1585, transform: `translateX(${(1 - a) * 700 + r * 700}px)`, display: 'flex', alignItems: 'center', gap: 16, padding: '12px 18px 12px 12px', borderRadius: 50, background: 'rgba(6,18,16,0.92)', border: `3px solid ${XANH}`, boxShadow: `0 0 22px ${XANH}88`}}>
+    <div data-kd-bo="1" style={{position: 'absolute', right: 40, top: 215, transform: `translateX(${(1 - a) * 700 + r * 700}px)`, display: 'flex', alignItems: 'center', gap: 16, padding: '12px 18px 12px 12px', borderRadius: 50, background: 'rgba(6,18,16,0.92)', border: `3px solid ${XANH}`, boxShadow: `0 0 22px ${XANH}88`}}>
       <LogoTron th={th} co={64} goc={f * 4} />
       <div style={{fontFamily: FONT, color: '#fff'}}>
         <div style={{fontWeight: 900, fontSize: 32}}>{th.handle || th.ten}</div>

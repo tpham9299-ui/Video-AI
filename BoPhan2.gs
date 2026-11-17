@@ -284,13 +284,18 @@ function guiWorkflowGitHub_(inputs, tepWorkflow) {
   if (!token || !repo) return { ok: false, ma: 0, loi: 'THIEU_GITHUB_TOKEN_HOAC_REPO' };
   var nhanh = nhanhGitHub_();
   if (!nhanh) return { ok: false, ma: 0, loi: 'CHUA_DAT_GITHUB_NHANH' };
-  var res = UrlFetchApp.fetch('https://api.github.com/repos/' + repo + '/actions/workflows/' + tepWorkflow + '/dispatches', {
-    method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-    payload: JSON.stringify({ ref: nhanh, inputs: inputs }),
-    headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }
-  });
-  var ma = res.getResponseCode();
-  if (ma === 204) return { ok: true, ma: ma };
+  var res = null, ma = 0;
+  for (var thu = 0; thu < 2; thu++) {
+    res = UrlFetchApp.fetch('https://api.github.com/repos/' + repo + '/actions/workflows/' + tepWorkflow + '/dispatches', {
+      method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+      payload: JSON.stringify({ ref: nhanh, inputs: inputs }),
+      headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }
+    });
+    ma = res.getResponseCode();
+    if (ma === 204) return { ok: true, ma: ma };
+    if ((ma === 422 || ma >= 500) && thu === 0) { Utilities.sleep(3500); continue; }
+    break;
+  }
   var noi = String(res.getContentText()).replace(/\s+/g, ' ');
   try { CacheService.getScriptCache().put('GH_GUI_LOI_GAN', Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'HH:mm dd/MM') + ' ' + tepWorkflow + ' HTTP ' + ma, 21600); } catch (eC) {}   // cho lệnh /token
   if (ma === 403 && /not accessible by personal access token/i.test(noi)) {

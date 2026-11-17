@@ -109,14 +109,6 @@ jobs:
           path: node_modules/.remotion
           key: remotion-chrome-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
-      - name: Cache âm thanh giọng đọc TTS
-        uses: actions/cache@v4
-        with:
-          path: /tmp/video_ai_tts_cache
-          key: tts-cache-${{ runner.os }}-${{ hashFiles('kich_ban.json') }}
-          restore-keys: |
-            tts-cache-${{ runner.os }}-
-
       - name: Lấy ảnh/video nền từ Google Drive
         if: ${{ env.RCLONE_CONF != '' }}
         run: |
@@ -154,6 +146,15 @@ jobs:
               python3 -c "import json, glob; meta = json.load(open('kich_ban.json', encoding='utf8')); f_kb = glob.glob('kb_drive/*')[0]; kb = json.load(open(f_kb, encoding='utf8')); [kb.update({k: meta[k]}) for k in ('id', 'giong', 'gioi_tinh_giong', '_kiem_duyet') if k in meta and meta[k]]; json.dump(kb, open('kich_ban.json', 'w', encoding='utf8'), ensure_ascii=False); print('Đã ghép kịch bản đầy đủ từ Drive:', len(kb.get('canh') or []), 'cảnh')"
             fi
           fi
+
+      - name: Cache âm thanh giọng đọc TTS
+        uses: actions/cache@v4
+        with:
+          path: /tmp/video_ai_tts_cache
+          key: tts-cache-${{ runner.os }}-${{ hashFiles('kich_ban.json') }}-${{ github.run_id }}
+          restore-keys: |
+            tts-cache-${{ runner.os }}-${{ hashFiles('kich_ban.json') }}-
+            tts-cache-${{ runner.os }}-
 
       # Video giới thiệu sản phẩm: lấy ẢNH THẬT của sản phẩm (Apps Script lưu ở Drive VIDEO_XACSUAT/san_pham/<mã>/)
       - name: Lấy ảnh thật của sản phẩm

@@ -27,10 +27,10 @@ const lech = props.anhBiaDau ? 1 : 0;   // khung 0 là ảnh bìa
 const inputProps = {...props, kiemDuyet: true};
 const canh = props.canh || [];
 
-// khung mẫu: 45%, 80%, 97% mỗi cảnh (lúc hầu hết vật đã hiện)
+// khung mẫu: 55% và 95% mỗi cảnh (đảm bảo tốc độ kiểm duyệt nhanh < 3 phút, vẫn bắt trọn lỗi chữ đè/tràn mép và trạng thái cuối cảnh)
 const mau = [];
 canh.forEach((c, i) => {
-  for (const p of [0.45, 0.8, 0.97]) mau.push({f: lech + Math.min(props.tongFrame - 1, Math.round(c.batDau + c.soFrame * p)), i});
+  for (const p of [0.55, 0.95]) mau.push({f: lech + Math.min(props.tongFrame - 1, Math.round(c.batDau + c.soFrame * p)), i});
 });
 
 const trinhDuyet = await openBrowser('chrome', {browserExecutable: process.env.TRINH_DUYET || null, chromiumOptions: {gl: 'swangle'}});

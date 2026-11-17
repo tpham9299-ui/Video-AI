@@ -317,7 +317,7 @@ def ghi_key_hong(k, code, noi):
     print("KEY_HONG: key thứ %s (%s) lỗi thật: %s -> bỏ qua, sẽ báo Zalo" % (so or "?", k[:6] + "_" + k[-4:], ly))
 
 
-def gemini_tts(text, tep_wav, giong, model, phong_cach):
+def gemini_tts(text, tep_wav, giong, model, phong_cach, dung_cache=True):
     """Giọng Gemini TTS (Google): một lần gọi cho cả lời thoại của cảnh. Trả về tệp WAV 24 kHz.
     Dùng mọi key trong GEMINI_KEYS / GEMINI_API_KEY (GitHub Secret), tự động đổi model TTS dự phòng và xoay vòng key khi gặp lỗi."""
     import base64
@@ -326,7 +326,7 @@ def gemini_tts(text, tep_wav, giong, model, phong_cach):
     import time
     k_cache = hashlib.sha256(("gemini_%s_%s_%s_%s" % (giong, model, phong_cach, text)).encode("utf8")).hexdigest()
     f_cache = os.path.join(CACHE_TTS_DIR, "gem_%s.wav" % k_cache)
-    if os.path.isfile(f_cache) and os.path.getsize(f_cache) > 2000:
+    if dung_cache and os.path.isfile(f_cache) and os.path.getsize(f_cache) > 2000:
         shutil.copyfile(f_cache, tep_wav)
         print("Gemini TTS: lấy từ cache (%s) cho %d ký tự" % (k_cache[:8], len(text)))
         return
@@ -374,7 +374,8 @@ def gemini_tts(text, tep_wav, giong, model, phong_cach):
                     chay(["ffmpeg", "-y", "-loglevel", "error", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", pcm, tep_wav])
                     os.remove(pcm)
                     try:
-                        shutil.copyfile(tep_wav, f_cache)
+                        if not giong_bi_re(tep_wav, "cache_check"):
+                            shutil.copyfile(tep_wav, f_cache)
                     except Exception:
                         pass
                     return
@@ -431,9 +432,9 @@ def tao_giong_gemini(canh, thu_muc, args):
             tu = max(1, len(van.split()))
             if tu >= 8 and tu / max(0.1, do_thoi_luong(wav) - 0.4) > 4.6:
                 print("Gemini đọc thiếu chữ ở cảnh %d, đọc lại" % (i + 1))
-                gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach)
+                gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach, dung_cache=False)
             if giong_bi_re(wav, "cảnh %d" % (i + 1)):
-                gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach)   # đọc lại một lần
+                gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach, dung_cache=False)   # đọc lại một lần
                 if giong_bi_re(wav, "cảnh %d (đọc lại)" % (i + 1)):
                     raise RuntimeError("giọng Gemini cảnh %d vẫn rè sau khi đọc lại" % (i + 1))
         except Exception as e:
@@ -482,7 +483,7 @@ def tao_giong_gemini_mot_lan(canh, thu_muc, args):
     for lan in range(2):
         wav = os.path.join(thu_muc, "ca_bai_%d.wav" % lan)
         try:
-            gemini_tts(toan_bai, wav, args.giong_gemini, args.tts_model, phong_cach)
+            gemini_tts(toan_bai, wav, args.giong_gemini, args.tts_model, phong_cach, dung_cache=(lan == 0))
         except Exception as e:
             print("Cảnh báo: Gemini đọc cả bài lỗi: %s" % str(e)[:200])
             return None

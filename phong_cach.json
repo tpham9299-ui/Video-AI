@@ -24,6 +24,6 @@
     "loiMoi": "Theo dõi để học mẹo toán mỗi ngày",
     "coManKet": true
   },
-  "loiMoiGiuaVideo": true,
+  "loiMoiGiuaVideo": false,
   "chuyenDong": "moi"
 }
