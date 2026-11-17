@@ -181,7 +181,7 @@ export const HinhHoc: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
           return <path key={`g${i}`} d={d} fill={`${CAM}22`} stroke={CAM} strokeWidth={4} {...veDan(p)} />;
         })}
       </svg>
-      {/* điểm + tên điểm */}
+      {/* điểm + tên điểm dạng hạt ngọc 3D phát sáng */}
       {Object.keys(v.diem).map((k, i) => {
         const p = P(k);
         const a = (t - 0.05 - i * 0.08) / 0.3;
@@ -190,9 +190,38 @@ export const HinhHoc: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
         const L = Math.hypot(lx, ly) || 1;
         return (
           <React.Fragment key={`d${k}`}>
-            <div style={{position: 'absolute', left: p.x - 9, top: p.y - 9, width: 18, height: 18, borderRadius: 9, background: TRANG, transform: `scale(${popOut(kep(a), 2.2)})`, boxShadow: `0 0 10px ${mauChinh}`}} />
+            <div
+              style={{
+                position: 'absolute',
+                left: p.x - 9,
+                top: p.y - 9,
+                width: 18,
+                height: 18,
+                borderRadius: 9,
+                background: `radial-gradient(circle at 35% 35%, #ffffff 0%, #e0f2fe 45%, ${mauChinh} 95%)`,
+                border: '1.5px solid #ffffff',
+                transform: `scale(${popOut(kep(a), 2.2)})`,
+                boxShadow: `0 2px 8px rgba(0,0,0,0.65), 0 0 12px ${mauChinh}`,
+              }}
+            />
             {k.length <= 3 ? (
-              <div style={{position: 'absolute', left: p.x + (lx / L) * 34, top: p.y + (ly / L) * 34, transform: 'translate(-50%,-50%)', opacity: kep(a * 2), fontFamily: FONT_DAM, fontWeight: 900, fontStyle: 'italic', fontSize: 34 * Math.max(0.8, v.co), color: TRANG, textShadow: '0 2px 6px rgba(0,0,0,0.8)'}}>{k}</div>
+              <div
+                style={{
+                  position: 'absolute',
+                  left: p.x + (lx / L) * 34,
+                  top: p.y + (ly / L) * 34,
+                  transform: 'translate(-50%,-50%)',
+                  opacity: kep(a * 2),
+                  fontFamily: FONT_DAM,
+                  fontWeight: 900,
+                  fontStyle: 'italic',
+                  fontSize: 34 * Math.max(0.8, v.co),
+                  color: '#ffffff',
+                  textShadow: `0 0 12px rgba(0,0,0,0.95), 0 2px 5px #000000, 0 0 15px ${mauChinh}`,
+                }}
+              >
+                {k}
+              </div>
             ) : null}
           </React.Fragment>
         );

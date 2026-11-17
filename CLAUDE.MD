@@ -476,3 +476,23 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
   2. **Thắt chặt Lan can bảo vệ (Guardrails) trong Prompt** ([PromptKichBan.gs](file:///e:/Video-AI/PromptKichBan.gs)):
      - Bổ sung khối "5 ĐIỀU SỐNG CÒN ĐỂ KỊCH BẢN ĐẠT CHUẨN 100% NGAY LẦN ĐẦU" ngay trước định dạng JSON đầu ra, ép chặt mô hình tuân thủ tuyệt đối ngay từ lần tạo đầu tiên.
   3. **Tiết kiệm vòng gọi AI**: Nhờ cơ chế tự sửa thuật toán, 85% lỗi định dạng được sửa tức thời bằng mã JavaScript trong < 1ms, không cần gọi lại Gemini, giúp hệ thống chạy nhanh, ổn định và không bao giờ bị nghẽn kịch bản.
+
+
+#### 11. Nâng cấp đồ họa chân thực đỉnh cao cho Vật thể 3D và Hình học phẳng (Realism Shaders & Gemstone Geometry)
+- **Tệp chỉnh sửa**: [src/sankhau/vatthuc.tsx](file:///e:/Video-AI/src/sankhau/vatthuc.tsx), [src/sankhau/vat3d.tsx](file:///e:/Video-AI/src/sankhau/vat3d.tsx), [src/sankhau/hinhhoc.tsx](file:///e:/Video-AI/src/sankhau/hinhhoc.tsx).
+- **Các nâng cấp cụ thể**:
+  1. **Hệ thống Shader & Vật liệu chân thực trong SVG (`vatthuc.tsx`)**:
+     - Bổ sung bộ thẻ định nghĩa vật liệu (`<defs>`) bao gồm:
+       - `#goThan`: Gradient vân gỗ tự nhiên đa tầng cho thân cây, thân thuyền và chi tiết kiến trúc gỗ.
+       - `#tanLa3D`: Radial gradient 3 tầng mô phỏng chiều sâu khối tán lá xanh tự nhiên với bóng đổ quang học (`filter: drop-shadow`).
+       - `#kinhXe`: Gradient kính phản quang bầu trời cho kính chắn gió ô tô và cửa sổ trường học/tòa nhà.
+       - `#canhBuom`: Gradient vải dệt buồm đón gió chân thực kèm hiệu ứng sóng nước bọt trắng lăn tăn ở chân thuyền.
+       - `#thanHaiDang` & `#luongSang`: Cột hải đăng vân tròn phối màu sọc đỏ-trắng kết hợp luồng sáng quét hải đăng chân thực.
+       - `#maiNgoi`: Ngói đỏ truyền thống có độ dốc 3D và tháp đồng hồ trung tâm trường học chi tiết.
+  2. **Vật thể 3D thực tế (`vat3d.tsx`)**:
+     - `KhoiHop`: Nâng cấp mặt kính với gradient phản quang đa hướng (`linear-gradient(135deg, ...)`), khối nước bên trong có mặt thoáng nổi bật với radial gradient phản xạ ánh sáng, viền trắng tinh tế tạo cảm giác sóng nước tự nhiên.
+     - `HinhTru` & `HinhNon`: Bổ sung gradient vỏ trụ thủy tinh trong suốt (`#th...`) và gradient chất lỏng nước dâng (`#nuoc...`) đồng bộ nhịp chuyển động.
+     - `HinhCau`: Bổ sung điểm tụ sáng specular highlight lệch 30% góc trên bên trái, tạo khối cầu 3D phát sáng chân thực, phân tách rõ vùng sáng, vùng bán dạ và vùng tối.
+  3. **Hình học phẳng & Điểm nút hạt ngọc 3D (`hinhhoc.tsx`)**:
+     - Chuyển đổi toàn bộ đỉnh điểm hình học phẳng từ các chấm tròn bẹt 2D đơn điệu thành các **hạt ngọc 3D phát sáng** (`radial-gradient` điểm sáng ở 35% 35%, viền bo trắng 1.5px, đổ bóng kép kết hợp hào quang neon).
+     - Nhãn tên điểm ($A, B, C, D...$) được phủ bóng đen mờ đa lớp (`textShadow` 12px) kèm ánh sáng viền trùng màu đối tượng, đảm bảo hiển thị sắc nét nổi bật trên mọi nền sân khấu.

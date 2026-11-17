@@ -163,7 +163,9 @@ export const KhoiHop: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
   const rong = w + d * 0.9 + 80;
   const cao = h + d * 0.6 + 120;
   // anMatSau: true để 3 mặt khuất phía sau không vẽ viền nét liền; 3 cạnh khuất phía sau được vẽ nét đứt bằng canhKhuatHop
-  const mat: Mat = kinh ? {nen: `${mau}14`, vien: mau, anMatSau: true} : {nen: `${mau}cc`, vien: '#0b1418', anMatSau: true};
+  const mat: Mat = kinh
+    ? {nen: `linear-gradient(135deg, ${mau}24 0%, ${mau}0a 100%)`, vien: mau, anMatSau: true}
+    : {nen: `linear-gradient(135deg, ${mau}ee 0%, ${mau}aa 100%)`, vien: '#0b1418', anMatSau: true};
   return (
     <Khung3D
       rong={rong}
@@ -177,7 +179,14 @@ export const KhoiHop: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
     >
       <div style={{transformStyle: 'preserve-3d', transform: `scaleY(${vao})`}}>
         {hn > 1 ? (
-          <Khoi3D w={w - 6} d={d - 6} h={hn} dichY={(h - hn) / 2} macDinh={{nen: 'rgba(79,195,247,0.42)', vien: 'rgba(160,230,255,0.6)', anMatSau: true}} mat={{tren: {nen: 'rgba(140,220,255,0.55)', vien: '#bff0ff', anMatSau: false}}} />
+          <Khoi3D
+            w={w - 6}
+            d={d - 6}
+            h={hn}
+            dichY={(h - hn) / 2}
+            macDinh={{nen: 'linear-gradient(180deg, rgba(56,189,248,0.55) 0%, rgba(2,132,199,0.7) 100%)', vien: 'rgba(186,230,253,0.75)', anMatSau: true}}
+            mat={{tren: {nen: 'radial-gradient(ellipse at 40% 40%, #f0f9ff 0%, #38bdf8 65%, #0284c7 100%)', vien: '#ffffff', anMatSau: false}}}
+          />
         ) : null}
         <Khoi3D w={w} d={d} h={h} macDinh={mat} mat={{}} />
       </div>
@@ -262,9 +271,15 @@ export const Tru: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
     <svg width={W} height={H} style={{overflow: 'visible'}}>
       <defs>
         <linearGradient id={`th${v.id}`} x1="0" x2="1">
-          <stop offset="0" stopColor={mau} stopOpacity={0.35} />
-          <stop offset="0.45" stopColor={mau} stopOpacity={0.12} />
-          <stop offset="1" stopColor={mau} stopOpacity={0.4} />
+          <stop offset="0%" stopColor={mau} stopOpacity={0.42} />
+          <stop offset="28%" stopColor="#ffffff" stopOpacity={0.22} />
+          <stop offset="60%" stopColor={mau} stopOpacity={0.15} />
+          <stop offset="100%" stopColor={mau} stopOpacity={0.48} />
+        </linearGradient>
+        <linearGradient id={`nuoc${v.id}`} x1="0" x2="1">
+          <stop offset="0%" stopColor="#0284c7" stopOpacity={0.7} />
+          <stop offset="40%" stopColor="#38bdf8" stopOpacity={0.52} />
+          <stop offset="100%" stopColor="#0369a1" stopOpacity={0.75} />
         </linearGradient>
       </defs>
       <g opacity={kep(vao * 1.5)}>
@@ -279,11 +294,11 @@ export const Tru: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
         {/* nước */}
         {muc > 0.01 ? (
           non ? (
-            <path d={`M${cx - r} ${yDuoi} L${cx - rNuoc} ${yNuoc} A${rNuoc} ${ryN} 0 0 1 ${cx + rNuoc} ${yNuoc} L${cx + r} ${yDuoi} A${r} ${ry} 0 0 1 ${cx - r} ${yDuoi} Z`} fill="rgba(79,195,247,0.45)" />
+            <path d={`M${cx - r} ${yDuoi} L${cx - rNuoc} ${yNuoc} A${rNuoc} ${ryN} 0 0 1 ${cx + rNuoc} ${yNuoc} L${cx + r} ${yDuoi} A${r} ${ry} 0 0 1 ${cx - r} ${yDuoi} Z`} fill={`url(#nuoc${v.id})`} />
           ) : (
             <>
-              <path d={`M${cx - r} ${yNuoc} L${cx - r} ${yDuoi} A${r} ${ry} 0 0 0 ${cx + r} ${yDuoi} L${cx + r} ${yNuoc} Z`} fill="rgba(79,195,247,0.42)" />
-              <ellipse cx={cx} cy={yNuoc} rx={r} ry={ry} fill="rgba(140,220,255,0.6)" stroke="#bff0ff" strokeWidth={2} />
+              <path d={`M${cx - r} ${yNuoc} L${cx - r} ${yDuoi} A${r} ${ry} 0 0 0 ${cx + r} ${yDuoi} L${cx + r} ${yNuoc} Z`} fill={`url(#nuoc${v.id})`} />
+              <ellipse cx={cx} cy={yNuoc} rx={r} ry={ry} fill="radial-gradient(ellipse, #e0f2fe, #38bdf8)" stroke="#bff0ff" strokeWidth={2} />
             </>
           )
         ) : null}
@@ -315,10 +330,11 @@ export const Cau: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
   return (
     <svg width={r * 2 + 40} height={r * 2 + 40} viewBox={`${-r - 20} ${-r - 20} ${r * 2 + 40} ${r * 2 + 40}`} style={{overflow: 'visible', transform: `scale(${vao})`}}>
       <defs>
-        <radialGradient id={`ca${v.id}`} cx="35%" cy="30%" r="75%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity={0.7} />
-          <stop offset="35%" stopColor={mau} stopOpacity={0.55} />
-          <stop offset="100%" stopColor={mau} stopOpacity={0.15} />
+        <radialGradient id={`ca${v.id}`} cx="30%" cy="26%" r="76%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity={0.9} />
+          <stop offset="20%" stopColor="#e0f2fe" stopOpacity={0.75} />
+          <stop offset="55%" stopColor={mau} stopOpacity={0.55} />
+          <stop offset="100%" stopColor="#032b43" stopOpacity={0.8} />
         </radialGradient>
       </defs>
       <circle r={r} fill={`url(#ca${v.id})`} stroke={mau} strokeWidth={4} style={{filter: `drop-shadow(0 0 14px ${mau}88)`}} />
