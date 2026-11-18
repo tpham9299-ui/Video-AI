@@ -722,3 +722,14 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
 - **Khắc phục**:
   - Trong `doVaSuaVideoCuTrenDrive_()` (`BoPhan1.gs`): bỏ qua các dòng `LOI` chưa có cả `de_bai` lẫn `file_kich_ban`.
   - Trong `damBaoCauHinhTuDong_()` (tự động chạy một lần ở `DA_CAP_NHAT_TU_DONG_V59`): tự động phát hiện mọi đề bị kẹt ở `MOI` mà `de_bai` trống (nhưng có `file_anh`), chuyển ngay về `CHO_DOC` (`so_lan_loi: 0`, `ghi_chu: ''`) và kích hoạt `henUuTien_(10)` để đọc lại ảnh Zalo và giải tiếp.
+
+#### 27. Khắc phục tình trạng hàm sinh đề tự động ngừng chạy khi cạn đề (v60)
+- **Tệp chỉnh sửa**: [BoPhan1.gs](file:///e:/Video-AI/BoPhan1.gs), [CLAUDE.MD](file:///e:/Video-AI/CLAUDE.MD).
+- **Nguyên nhân gốc khiến hàm sinh đề không tự chạy khi đã hết đề**:
+  1. **Bị chặn bởi đề ưu tiên đang kẹt**: khi còn một đề ưu tiên (`uu_tien = 1`, như `ZL261118-095438-84`) nằm ở `CHO_DOC` / `MOI` / `DA_GIAI`, biến `uuTien` luôn bằng `true` nên `chayGiaiDe()` đi vào nhánh `if (uuTien)` và bỏ qua hoàn toàn nhánh `else` chứa `sinhDeNeuCan_()` / `sinhDeQuaGitHub_()`.
+  2. **Đếm nhầm video đã dựng xong (`CO_VIDEO`) vào giới hạn chờ dựng (`TOI_DA_CHO_DUNG_VIDEO = 12`)**: khi có 12 video đã dựng xong chờ tới khung giờ đăng trong nhiều ngày (`CO_VIDEO`), biến `choDung >= 12` tự động tạm dừng sinh đề mới dù hàng đợi `MOI` / `DA_GIAI` / `CO_KICH_BAN` đã trống sạch.
+  3. **Thiếu tự phục hồi trigger `chayBoPhan1`**: `damBaoCauHinhTuDong_()` trước đây chỉ kiểm tra trigger `chayVietKichBan` và `chayDangVideo` mà chưa kiểm tra `chayBoPhan1`.
+- **Khắc phục**:
+  - Trong `chayGiaiDe()` (`BoPhan1.gs`): ngay cả khi `uuTien = true`, vẫn gọi `sinhDeQuaGitHub_()` (< 1 giây) để Bộ phận 0 chạy song song trên GitHub nếu hàng đợi giải đề đang thiếu.
+  - Trong `sinhDeNeuCan_()` và `sinhDeQuaGitHub_()`: chỉ tính `CO_KICH_BAN` và `DANG_DUNG` vào `choDung` (bỏ `CO_VIDEO`), đồng thời chỉ tính các đề `MOI` thực sự có chữ `de_bai` vào `dangCho`.
+  - Trong `damBaoCauHinhTuDong_()` (`DA_CAP_NHAT_TU_DONG_V60`): tự động đảm bảo đủ 3 trigger `chayBoPhan1` (15 phút), `chayVietKichBan` (10 phút) và `chayDangVideo` (15 phút).

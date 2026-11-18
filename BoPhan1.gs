@@ -227,6 +227,7 @@ function chayGiaiDe(chiUuTien) {
         var ghU = giaoBoPhan1ChoGitHub_(sh, true, 'giai');
         var taiChoU = ghU.loi ? null : docHang_(sh).filter(function (r) { return /^TAI_CHO/.test(String(r.ghi_chu)) && r.trang_thai === 'MOI'; }).map(function (r) { return r.id; });
         if (ghU.loi || (taiChoU && taiChoU.length)) xuLyGiai_(sh, bc, bat, true, taiChoU);
+        sinhDeQuaGitHub_(sh, bc);
       } else {
         xuLyGiai_(sh, bc, bat, true);
       }
@@ -350,7 +351,7 @@ function chayBoPhan1() {
 function damBaoCauHinhTuDong_() {
   try {
     var p = PropertiesService.getScriptProperties();
-    if (p.getProperty('DA_CAP_NHAT_TU_DONG_V59') === '1') return;
+    if (p.getProperty('DA_CAP_NHAT_TU_DONG_V60') === '1') return;
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var ch = ss.getSheetByName(TEN_CAU_HINH);
     if (ch && ch.getLastRow() > 0) {
@@ -385,6 +386,9 @@ function damBaoCauHinhTuDong_() {
     // Đảm bảo luôn có trigger chayVietKichBan (10 phút) và chayDangVideo (15 phút)
     try {
       var trigs = ScriptApp.getProjectTriggers();
+      if (!trigs.some(function (t) { return t.getHandlerFunction() === 'chayBoPhan1'; })) {
+        ScriptApp.newTrigger('chayBoPhan1').timeBased().everyMinutes(15).create();
+      }
       if (!trigs.some(function (t) { return t.getHandlerFunction() === 'chayVietKichBan'; })) {
         ScriptApp.newTrigger('chayVietKichBan').timeBased().everyMinutes(10).create();
       }
@@ -426,7 +430,7 @@ function damBaoCauHinhTuDong_() {
     if (coDeZaloCuu && typeof henUuTien_ === 'function') {
       try { henUuTien_(10); } catch (eH) {}
     }
-    p.setProperty('DA_CAP_NHAT_TU_DONG_V59', '1');
+    p.setProperty('DA_CAP_NHAT_TU_DONG_V60', '1');
   } catch (e) {}
 }
 
@@ -438,11 +442,11 @@ function sinhDeNeuCan_(sh, bc) {
   var che = cauHinh_('CHE_DO_NGUON');
   if (che === 'KHO_DE') return;
   var hang = docHang_(sh);
-  var dangCho = hang.filter(function (r) { return r.trang_thai === 'MOI' || r.trang_thai === 'DA_GIAI' || r.trang_thai === 'GITHUB'; }).length;
+  var dangCho = hang.filter(function (r) { return (r.trang_thai === 'MOI' && !!String(r.de_bai || '').trim()) || r.trang_thai === 'DA_GIAI' || r.trang_thai === 'GITHUB'; }).length;
   // tỉ lệ qua kiểm duyệt 10/10 thấp -> giữ nhiều đề chờ hơn để số video đạt mỗi ngày vẫn đủ (NangCao.gs > heSoSanXuat_)
   var hsSX = typeof heSoSanXuat_ === 'function' ? heSoSanXuat_() : { he_so: 1 };
   if (dangCho >= Math.min(10, Math.round(Number(cauHinh_('NGUONG_HANG_DOI')) * hsSX.he_so))) return;
-  var choDung = hang.filter(function (r) { return r.trang_thai === 'CO_KICH_BAN' || r.trang_thai === 'DANG_DUNG' || r.trang_thai === 'CO_VIDEO'; }).length;
+  var choDung = hang.filter(function (r) { return r.trang_thai === 'CO_KICH_BAN' || r.trang_thai === 'DANG_DUNG'; }).length;
   var toiDaCho = Number(cauHinh_('TOI_DA_CHO_DUNG_VIDEO'));
   if (toiDaCho > 0 && choDung >= toiDaCho) {
     nhatKy_('TAM_DUNG_SINH_DE', 'Đang có ' + choDung + ' kịch bản chờ dựng video, tạm dừng sinh đề mới');
@@ -3077,11 +3081,11 @@ function sinhDeQuaGitHub_(sh, bc) {
   var homNay = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyyMMdd');
   var p = PropertiesService.getScriptProperties();
   var can10p = String(cauHinh_('VIDEO_10P_MOI_NGAY') || 'BAT').toUpperCase() !== 'TAT' && p.getProperty('DA_SINH_10P_NGAY') !== homNay;
-  var dangCho = hang.filter(function (r) { return r.trang_thai === 'MOI' || r.trang_thai === 'DA_GIAI' || r.trang_thai === 'GITHUB'; }).length;
+  var dangCho = hang.filter(function (r) { return (r.trang_thai === 'MOI' && !!String(r.de_bai || '').trim()) || r.trang_thai === 'DA_GIAI' || r.trang_thai === 'GITHUB'; }).length;
   var hsSX = typeof heSoSanXuat_ === 'function' ? heSoSanXuat_() : { he_so: 1 };
   var thieuCho = dangCho < Math.min(10, Math.round(Number(cauHinh_('NGUONG_HANG_DOI')) * hsSX.he_so));
   if (!can10p && !thieuCho) return false;
-  var choDung = hang.filter(function (r) { return r.trang_thai === 'CO_KICH_BAN' || r.trang_thai === 'DANG_DUNG' || r.trang_thai === 'CO_VIDEO'; }).length;
+  var choDung = hang.filter(function (r) { return r.trang_thai === 'CO_KICH_BAN' || r.trang_thai === 'DANG_DUNG'; }).length;
   var toiDaCho = Number(cauHinh_('TOI_DA_CHO_DUNG_VIDEO'));
   if (!can10p && toiDaCho > 0 && choDung >= toiDaCho) return false;
 
