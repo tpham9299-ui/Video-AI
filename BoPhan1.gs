@@ -350,7 +350,7 @@ function chayBoPhan1() {
 function damBaoCauHinhTuDong_() {
   try {
     var p = PropertiesService.getScriptProperties();
-    if (p.getProperty('DA_CAP_NHAT_TU_DONG_V55') === '1') return;
+    if (p.getProperty('DA_CAP_NHAT_TU_DONG_V59') === '1') return;
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var ch = ss.getSheetByName(TEN_CAU_HINH);
     if (ch && ch.getLastRow() > 0) {
@@ -415,7 +415,10 @@ function damBaoCauHinhTuDong_() {
             ghi_chu: ''
           });
           if (laUuTien_(r)) coDeZaloCuu = true;
-        } else if ((r.trang_thai === 'DA_GIAI' || r.trang_thai === 'MOI') && /^TAI_CHO|^Chờ|^DANG_/.test(String(r.ghi_chu || ''))) {
+        } else if (r.trang_thai === 'MOI' && !String(r.de_bai || '').trim() && (r.file_anh || /^ZL/i.test(String(r.id || '')))) {
+          if (r.file_anh) { ghi_(sh, r._row, { trang_thai: 'CHO_DOC', so_lan_loi: 0, ghi_chu: '' }); if (laUuTien_(r)) coDeZaloCuu = true; }
+          else ghi_(sh, r._row, { trang_thai: 'LOI', ghi_chu: 'Thiếu nội dung đề bài và ảnh đính kèm' });
+        } else if ((r.trang_thai === 'DA_GIAI' || r.trang_thai === 'MOI') && /^TAI_CHO|^Chờ|^DANG_|^Nâng cấp cách edit/i.test(String(r.ghi_chu || ''))) {
           ghi_(sh, r._row, { so_lan_loi: 0, ghi_chu: '' });
         }
       });
@@ -423,7 +426,7 @@ function damBaoCauHinhTuDong_() {
     if (coDeZaloCuu && typeof henUuTien_ === 'function') {
       try { henUuTien_(10); } catch (eH) {}
     }
-    p.setProperty('DA_CAP_NHAT_TU_DONG_V55', '1');
+    p.setProperty('DA_CAP_NHAT_TU_DONG_V59', '1');
   } catch (e) {}
 }
 
@@ -1619,6 +1622,7 @@ function doVaSuaVideoCuTrenDrive_(sh, toiDa, quetSauDrive) {
     if (!r || !r.id || daNangCapEditMoi_(r)) continue;
     var tt = String(r.trang_thai || '');
     if (['CO_VIDEO', 'CO_KICH_BAN', 'LOI'].indexOf(tt) < 0) continue;
+    if (!String(r.de_bai || '').trim() && !r.file_kich_ban) continue;
     // Kiểm tra xem kịch bản trên Drive đã có _phien_ban_edit >= PHIEN_BAN_EDIT chưa
     var kbCu = null;
     if (r.file_kich_ban) {

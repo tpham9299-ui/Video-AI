@@ -714,3 +714,11 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
 - **Tệp chỉnh sửa**: [.github/workflows/dung-video.yml](file:///e:/Video-AI/.github/workflows/dung-video.yml).
 - **Nguyên nhân lỗi ở commit `aaed0dc`**: Khi đổi tiêu đề `name: Dựng video` ở dòng 1, chuỗi tìm kiếm khớp cả vào dòng `- name: Dựng video hình học bằng Manim` (dòng 180) khiến tệp `dung-video.yml` bị gãy cấu trúc YAML; đồng thời chuẩn hóa `run-name` dòng 2 thành `"Dựng video ${{ inputs.id || inputs.mau || github.run_number }}"`.
 - **Khắc phục**: Khôi phục nguyên vẹn dòng `- name: Dựng video hình học bằng Manim` và kiểm tra sạch sẽ tất cả `run-name` trên toàn bộ 8 workflow.
+
+#### 26. Tự động giải cứu đề Zalo bị kẹt ở trạng thái `MOI` khi thiếu nội dung đề bài (v59)
+- **Tệp chỉnh sửa**: [BoPhan1.gs](file:///e:/Video-AI/BoPhan1.gs), [CLAUDE.MD](file:///e:/Video-AI/CLAUDE.MD).
+- **Nguyên nhân gây kẹt (như đề `ZL261118-095438-84`)**:
+  - Đề gửi bằng ảnh qua Zalo gặp lỗi lúc đọc ảnh (`CHO_DOC -> LOI`, chưa có `de_bai`), sau đó bị `doVaSuaVideoCuTrenDrive_()` ở bản cũ (v46) đưa nhầm từ `LOI` sang `MOI` kèm ghi chú `Nâng cấp cách edit sang phiên bản mới (v46)` trong khi `de_bai` vẫn trống. Vì `giaoBoPhan1ChoGitHub_()` yêu cầu `!!r.de_bai` còn `xuLyDocDe_()` chỉ quét `CHO_DOC`, đề bị đứng kẹt vĩnh viễn ở `MOI`.
+- **Khắc phục**:
+  - Trong `doVaSuaVideoCuTrenDrive_()` (`BoPhan1.gs`): bỏ qua các dòng `LOI` chưa có cả `de_bai` lẫn `file_kich_ban`.
+  - Trong `damBaoCauHinhTuDong_()` (tự động chạy một lần ở `DA_CAP_NHAT_TU_DONG_V59`): tự động phát hiện mọi đề bị kẹt ở `MOI` mà `de_bai` trống (nhưng có `file_anh`), chuyển ngay về `CHO_DOC` (`so_lan_loi: 0`, `ghi_chu: ''`) và kích hoạt `henUuTien_(10)` để đọc lại ảnh Zalo và giải tiếp.
