@@ -355,7 +355,7 @@ function dangVideo_(sh, r) {
   nhatKy_('DANG_VIDEO', r.id + ' -> đăng lên ' + can.join(', ') + (tapDaGan ? ' (tập ' + tapDaGan + ')' : ''));
   var ytApps = can.indexOf('youtube') >= 0 && chDang_('YOUTUBE_CACH') !== 'github';
   // lần thử lại: đã có bản video ĐÃ ĐÁNH SỐ trên Drive -> Apps Script đăng YouTube ngay bằng bản đó
-  if (ytApps && tapDaGan && kq._file_tap) {
+  if (ytApps && tapDaGan && kq._file_tap && !laVideoDai_(r)) {
     kq.youtube = dangYouTube_(r, meta, kq._file_tap, kq._file_bia);
     can = can.filter(function (n) { return n !== 'youtube'; });
     ytApps = false;
@@ -364,7 +364,7 @@ function dangVideo_(sh, r) {
     var lopSo = String(r.lop || '').replace(/[^0-9]/g, '');
     var demYT = -1;
     try { if (lopSo && !tapDaGan) demYT = demBaiLopYouTube_(lopSo); } catch (eDem) { demYT = -1; }
-    var dangPayload = JSON.stringify({ file_id: String(r.file_video), ten: r.id, tieu_de: meta.tieu_de, yt_tieu_de: meta.yt_tieu_de, mo_ta: meta.mo_ta, yt_dau: meta.yt_dau, fb_dau: meta.fb_dau, tt_tieu_de: meta.tt_tieu_de, the: meta.the, nen_tang: can, yt_che_do: chDang_('YOUTUBE_CHE_DO'), quang_cao: meta.quang_cao, co_bia: !!r.anh_bia,
+    var dangPayload = JSON.stringify({ file_id: String(r.file_video), ten: r.id, chuyen_de_10p: laVideoDai_(r), tieu_de: meta.tieu_de, yt_tieu_de: meta.yt_tieu_de, mo_ta: meta.mo_ta, yt_dau: meta.yt_dau, fb_dau: meta.fb_dau, tt_tieu_de: meta.tt_tieu_de, the: meta.the, nen_tang: can, yt_che_do: chDang_('YOUTUBE_CHE_DO'), quang_cao: meta.quang_cao, co_bia: !!r.anh_bia,
       lop: lopSo, tap_da_gan: tapDaGan, tap_he_thong: lopSo ? daDangLop_(lopSo) : 0, dem_youtube: demYT, yt_apps_script: ytApps });
     var gui = typeof guiWorkflowGitHub_ === 'function' ? guiWorkflowGitHub_({ viec: 'dang', id: r.id, dang: dangPayload }, 'dang-video.yml') : { ok: false, loi: 'Thiếu BoPhan2.gs bản mới (guiWorkflowGitHub_)' };
     if (gui && !gui.ok && gui.ma === 404 && typeof guiWorkflowGitHub_ === 'function') {
@@ -381,7 +381,10 @@ function dangVideo_(sh, r) {
 }
 
 // YouTube: đăng thẳng từ Apps Script bằng dịch vụ nâng cao YouTube Data API v3 (dưới quyền tài khoản Google của bạn).
-function dangYouTube_(r, meta, fileId, fileBia) {
+function dangYouTube_(r, meta, fileId, fileBia, file10pDaDo) {
+  if (laVideoDai_(r) && (!file10pDaDo || String(file10pDaDo) !== String(fileId || r.file_video))) {
+    return { ok: false, loi: 'Chuyên đề cần được GitHub đo thời lượng tệp trước khi đăng YouTube.' };
+  }
   if (typeof YouTube === 'undefined') return { ok: false, loi: 'Chưa bật dịch vụ YouTube Data API v3 trong Apps Script (Dịch vụ + > YouTube Data API v3)' };
   try {
     var f = DriveApp.getFileById(String(fileId || r.file_video));   // fileId: bản đã in số tập (GitHub tạo lúc đăng)
@@ -418,6 +421,8 @@ function dangYouTube_(r, meta, fileId, fileBia) {
     var laDaiYT = (typeof laVideoDai_ === 'function' && laVideoDai_(r)) || kbYT.kieu_video === 'DAI_10_PHUT' || Number(kbYT.tong_giay) >= 240;
     return { ok: true, url: (laDaiYT ? 'https://youtu.be/' : 'https://youtube.com/shorts/') + v.id, id: v.id, che_do: v.status && v.status.privacyStatus, ghi_chu: ghiChuYT.join(', ') };
   } catch (e) {
+    var biTat = /YouTube Data API v3 has not been used in project (\d+).*or it is disabled/i.exec(String(e.message || e));
+    if (biTat) return { ok: false, loi: 'Bật YouTube Data API v3 trong dự án ' + biTat[1] + ': https://console.cloud.google.com/apis/library/youtube.googleapis.com?project=' + biTat[1] };
     return { ok: false, loi: String(e.message || e).slice(0, 200) };
   }
 }
@@ -528,7 +533,7 @@ function chayDangYouTubeCho() {
       var r = ds[i];
       var kq = docKetQuaDang_(r);
       var fileYT = kq._file_tap || r.file_video;
-      var ytKq = fileYT ? dangYouTube_(r, noiDungDang_(r, kq._tap, kq._td), fileYT, kq._file_bia) : { ok: false, loi: 'Không tìm thấy file video để đăng YouTube' };
+      var ytKq = fileYT ? dangYouTube_(r, noiDungDang_(r, kq._tap, kq._td), fileYT, kq._file_bia, kq.youtube.file_10p_da_do) : { ok: false, loi: 'Không tìm thấy file video để đăng YouTube' };
       var luu = function () {
         var rowHien = docHang_(sh).filter(function (x) { return x.id === r.id; })[0];
         if (!rowHien || rowHien.trang_thai !== 'DANG_DANG') return;
@@ -559,6 +564,10 @@ function xuLyKetQuaDang_(sh, d) {
     });
   }
   if (moi._tap) { kq._tap = Number(moi._tap); kq._dem = moi._dem || kq._dem; }
+  if (laVideoDai_(r) && moi.youtube && moi.youtube.cho_apps_script) {
+    // Dùng đúng tệp của lượt vừa đo, kể cả khi đăng lại và Drive còn bản đánh số cũ.
+    kq._file_tap = String(moi._file_tap || r.file_video);
+  }
   if (moi._file_tap) kq._file_tap = String(moi._file_tap);
   if (moi._file_bia) kq._file_bia = String(moi._file_bia);   // ảnh bìa thiết kế đã in TẬP N (khung đầu của bản đăng YouTube)
   // YouTube đăng bằng Apps Script: lưu dữ liệu ngay, nhả khóa doPost tức thì rồi giao trigger nền 5s tải file lên YouTube
@@ -566,7 +575,7 @@ function xuLyKetQuaDang_(sh, d) {
     ghi_(sh, r._row, { link_dang: JSON.stringify(kq), ghi_chu: 'Đã nhận bản đánh số, đang chuẩn bị tải lên YouTube...' }, r.id);
     try { henDangYouTubeCho_(5); } catch (eYT) {
       var fileYT = kq._file_tap || r.file_video;
-      kq.youtube = fileYT ? dangYouTube_(r, noiDungDang_(r, kq._tap, kq._td), fileYT, kq._file_bia) : { ok: false, loi: 'Không tìm thấy file video để đăng YouTube' };
+      kq.youtube = fileYT ? dangYouTube_(r, noiDungDang_(r, kq._tap, kq._td), fileYT, kq._file_bia, kq.youtube.file_10p_da_do) : { ok: false, loi: 'Không tìm thấy file video để đăng YouTube' };
       ketThucDang_(sh, r, kq);
     }
     return { ok: true };

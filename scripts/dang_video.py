@@ -493,6 +493,10 @@ def main():
         giay_vid = thoi_luong_mp4(video)
         print("Video: %s (%.1f MB, %.1f giây)" % (video, os.path.getsize(video) / 1048576, giay_vid))
         # Video dài 10 phút: chỉ đăng lên YouTube (không đăng Facebook hay TikTok)
+        chuyen_de = meta.get("chuyen_de_10p") or str(id_video).upper().endswith("-10P")
+        if chuyen_de:
+            if not 540 <= giay_vid < 661:
+                raise ValueError(f"Chuyên đề chỉ nhận video 540–660 giây; tệp hiện tại {giay_vid:.1f}s. Hãy viết lại kịch bản và dựng lại.")
         if str(id_video).upper().endswith("-10P") or giay_vid >= 240:
             nen_tang = ["youtube"]
         tap, dem = 0, {}
@@ -519,6 +523,8 @@ def main():
         ban = {}
         if "youtube" in nen_tang:
             ban["youtube"] = tao_ban_dang(video, tap, "youtube", bool(meta.get("yt_apps_script")))
+            if chuyen_de and not 540 <= thoi_luong_mp4(ban["youtube"]) < 661:
+                raise ValueError("Bản MP4 chuẩn bị gửi YouTube sai thời lượng chuyên đề.")
             if meta.get("yt_apps_script"):
                 try:
                     ket_qua["_file_tap"] = tai_len_drive(ban["youtube"])
@@ -540,6 +546,8 @@ def main():
             if n == "youtube" and meta.get("yt_apps_script"):
                 # YouTube do Apps Script đăng (dịch vụ YouTube của tài khoản), bằng bản ĐÃ ĐÁNH SỐ vừa tải lên Drive
                 ket_qua[n] = {"ok": False, "cho_apps_script": True, "loi": "chờ Apps Script đăng bản đã đánh số tập"}
+                if chuyen_de:
+                    ket_qua[n]["file_10p_da_do"] = ket_qua.get("_file_tap") or meta["file_id"]
                 continue
             try:
                 ket_qua[n] = DANG[n](ban.get("youtube" if n == "youtube" else "theo_doi", video), meta)

@@ -1275,10 +1275,10 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       // Có bản nháp từ lần trước (đang sửa dở) thì sửa tiếp từ đó, không viết lại từ đầu.
       var kb = docNhapKichBan_(r.id);
       var laDai10P = typeof laVideoDai_ === 'function' && laVideoDai_(r);
-      if (kb) nhatKy_('KICH_BAN', r.id + ': sửa tiếp bản nháp lần trước');
+      if (kb && !(laDai10P && kb.canh.length < 22)) nhatKy_('KICH_BAN', r.id + ': sửa tiếp bản nháp lần trước');
       else if (laDai10P && typeof lapKichBanDai10Phut_ === 'function') {
         var tGoiDai = Date.now();
-        kb = lapKichBanDai10Phut_(r, c1, c2, sn);
+        kb = lapKichBanDai10Phut_(r, c1, c2, sn, kb);
         capNhatTb_('TB_GOI_KB_MS', Date.now() - tGoiDai);
       } else {
         var tGoi = Date.now();
@@ -1471,6 +1471,7 @@ function chonCauKeuGoi_(r) {
 // Chuẩn bị kịch bản trước khi đánh giá: bỏ lời chào, khóa đáp án đúng, máy tự sửa lỗi vặt.
 function chuanBiKichBan_(kb, r, ctxSua) {
   if (!kb || !Array.isArray(kb.canh)) return;
+  if (laVideoDai_(r)) kb.kieu_video = 'DAI_10_PHUT';
   if (cauHinh_('KIEU_MO_DAU') !== 'chao_hook') xoaLoiChao_(kb);
   if (r.dap_an_hien && !kb.dap_an_hien) kb.dap_an_hien = String(r.dap_an_hien);
   if (r._banVe && !kb.ban_ve) kb.ban_ve = r._banVe;   // có sẵn bản vẽ của đề: cảnh nào mất hết vật thì dùng bản vẽ thay vì để trống
@@ -1502,6 +1503,7 @@ function chuanBiKichBan_(kb, r, ctxSua) {
 
 // Nhờ Gemini sửa ĐÚNG các lỗi còn lại (gửi kèm toàn bộ quy tắc + kịch bản hiện tại), giữ nguyên phần đã đúng.
 function suaKichBanBangGemini_(kb, dsLoi, prompt, sn) {
+  if (kb.kieu_video === 'DAI_10_PHUT') prompt += '\nĐây là chuyên đề 540–660 giây. Giữ đủ các chương; quy định thời lượng và số cảnh video ngắn ở trên chỉ dùng cho bài ngắn.';
   var p = prompt + '\n\n=== NHIỆM VỤ BÂY GIỜ: SỬA KỊCH BẢN, KHÔNG VIẾT LẠI TỪ ĐẦU ===\n' +
     'Dưới đây là kịch bản bạn đã viết (máy đã tự sửa các lỗi vặt). Còn các lỗi sau, hãy sửa TẤT CẢ trong một lần:\n' +
     dsLoi.map(function (x, i) { return (i + 1) + '. ' + moTaLoiKichBan_(x); }).join('\n') +
@@ -2939,6 +2941,7 @@ function moTaLoiKichBan_(loi) {
   if (s.indexOf('QUA_DAI') === 0) return 'tổng thời lượng lời thoại ước tính ' + s.replace(/\D/g, '') + ' giây, vượt giới hạn ' + cauHinh_('GIAY_TOI_DA') +
     ' giây. Hãy rút gọn: cắt câu thừa, mỗi cảnh lời thoại tối đa 40 từ, nhưng vẫn giữ đủ các bước giảng.';
   if (s.indexOf('MO_DAU') === 0) return 'cảnh 1 mở đầu bằng lời chào. Hãy mở bằng một câu hỏi gây tò mò hoặc cảnh báo cái bẫy.';
+  if (s.indexOf('SO_CANH_VIDEO_DAI') === 0) return s;
   if (s.indexOf('SO_CANH') === 0) return 'số cảnh phải từ 14 đến 18 (mỗi ý một cảnh: đề bài 1-2, mô phỏng 2-3, lỗi sai 1-2, giải 5-7 với mỗi bước tính một cảnh, thử lại 1-2, chốt 1-2)';
   if (s.indexOf('LOI_THOAI_CHUA_LATEX') === 0) return 'lời thoại có ký hiệu \\ hoặc $ (' + s + '). Hãy đọc công thức thành lời, không dùng ký hiệu.';
   if (s.indexOf('THIEU_LOI_THOAI') === 0) return 'có cảnh thiếu lời thoại (' + s + '). Cảnh nào cũng phải có lời thoại.';

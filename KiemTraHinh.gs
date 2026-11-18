@@ -914,7 +914,8 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc, lop) {
   }
   if (/^\s*(xin\s+)?chào/i.test(kb.canh[0].loi_thoai) && !(typeof cauHinh_ === 'function' && cauHinh_('KIEU_MO_DAU') === 'chao_hook')) nhe.push('MO_DAU_BANG_LOI_CHAO');
   var gioiHan = laDai10P ? 760 : Math.max(Number(cauHinh_('GIAY_TOI_DA')) || 190, 180);   // video dài 10 phút: tối đa ~12,5 phút; video ngắn: tối thiểu 180s
-  if (tong > gioiHan * 1.15) nang.push('QUA_DAI_' + tong + '_GIAY');
+  if (laDai10P && (tong < 540 || tong > 660)) nang.push('THOI_LUONG_CHUYEN_DE: lời giảng ước tính ' + tong + ' giây, cần 540–660 giây. Điều chỉnh nội dung từng chương.');
+  if (!laDai10P && tong > gioiHan * 1.15) nang.push('QUA_DAI_' + tong + '_GIAY');
   else if (tong > gioiHan) nhe.push('QUA_DAI_' + tong + '_GIAY');
   if (String(kb.dap_an_cuoi).replace(/\s/g, '') !== dapAn) nang.push('DAP_AN_CUOI_SAI');
 

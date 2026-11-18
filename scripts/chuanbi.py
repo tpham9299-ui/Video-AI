@@ -1739,6 +1739,9 @@ def main():
     if outro:
         outro["batDau"] = bat_dau
         bat_dau += outro["soFrame"]
+    if kb.get("kieu_video") == "DAI_10_PHUT" or str(kb.get("id", "")).upper().endswith("-10P"):
+        if not 540 * FPS <= bat_dau <= 660 * FPS:
+            raise ValueError(f"Chuyên đề dài {bat_dau / FPS:.1f}s sau khi tạo giọng, cần 540–660s. Hãy sửa kịch bản trước khi dựng.")
     props = {
         "id": id_an_toan,
         "tieuDe": str(kb.get("tieu_de") or kb.get("chu_de") or ""),

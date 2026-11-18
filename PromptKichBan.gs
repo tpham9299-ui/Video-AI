@@ -661,8 +661,8 @@ function boSungGiaiThichCongThuc_(kb, r, sn) {
 //  - Chương 3 (Cảnh 16-29, ~170s): Giải chi tiết Bài toán Trọng tâm & Phân tích Cái bẫy phòng thi + Kiểm chứng đáp số
 //  - Chương 4 (Cảnh 30-40, ~140s): Mở rộng & Giải nhanh Bài toán Biến thể Nâng cao 9+ / 10 điểm cùng dạng (đổi điều kiện thực tế)
 //  - Chương 5 (Cảnh 41-46, ~80s): Bảng tổng kết công thức "Bỏ túi phòng thi" + Bài tập tự luyện có đáp số để học sinh bình luận
-function lapKichBanDai10Phut_(r, c1, c2, sn) {
-  var kbGoc = goiGemini_(taoPromptKichBan_(r, c1, c2), 0.55, sn);
+function lapKichBanDai10Phut_(r, c1, c2, sn, nhap) {
+  var kbGoc = nhap || goiGemini_(taoPromptKichBan_(r, c1, c2), 0.55, sn);
   if (!kbGoc || !Array.isArray(kbGoc.canh) || !kbGoc.canh.length) throw new Error('KHONG_TAO_DUOC_KHUNG_10_PHUT');
   kbGoc.kieu_video = 'DAI_10_PHUT';
 
@@ -684,24 +684,32 @@ function lapKichBanDai10Phut_(r, c1, c2, sn) {
     '   - Mẹo bấm máy tính Casio / kiểm tra nhanh đạo hàm, cực trị trong phòng thi.\n' +
     '   - Giao 1 bài tập tự luyện cụ thể kèm gợi ý và đáp số để học sinh tự giải rồi bình luận.\n\n' +
     'YÊU CẦU ĐỊNH DẠNG: mỗi cảnh đúng chuẩn {"loai":"...","tieu_de_canh":"...","tu_khoa":"...","nhan":"CHƯƠNG 2|BIẾN THỂ 10Đ|TỔNG KẾT","giu_san_khau":false,"giong_doc":"...","loi_thoai":"(không LaTeX, đọc số thành chữ)","noi_dung_man_hinh":["1-2 dòng LaTeX ngắn, mới hoàn toàn"],"trinh_bay":"xep","minh_hoa":{"loai":"san_khau","mo_ta":"...","du_lieu":{"vat":[...],"hanh_dong":[...]}}}.\n' +
-    'Trả về JSON: {"phuong_phap":[8 cảnh],"bien_the":[11 cảnh],"tong_ket":[5 cảnh]}';
-  var mr = null;
-  try { mr = goiGemini_(promptMoRong, 0.5, sn); } catch (eMr) { mr = null; }
-  if (mr) {
-    var pp = Array.isArray(mr.phuong_phap) ? mr.phuong_phap : [];
-    var bt = Array.isArray(mr.bien_the) ? mr.bien_the : [];
-    var tk = Array.isArray(mr.tong_ket) ? mr.tong_ket : [];
-    // Chèn phần Phương pháp ngay sau phần Đề bài / Mô phỏng của bài gốc; phần Biến thể + Tổng kết trước cảnh kết cuối
-    var idxSauDe = 3;
-    for (var i = 0; i < kbGoc.canh.length; i++) {
-      if (/bay|nhac_lai|diem_chot|tinh_toan/.test(String(kbGoc.canh[i].loai || ''))) { idxSauDe = i; break; }
-    }
-    var dau = kbGoc.canh.slice(0, idxSauDe);
-    var giua = idxSauDe < kbGoc.canh.length - 1 ? kbGoc.canh.slice(idxSauDe, kbGoc.canh.length - 1) : [];
-    var cuoi = kbGoc.canh.slice(-1);
-    kbGoc.canh = dau.concat(pp, giua, bt, tk, cuoi);
-    kbGoc.canh.forEach(function (c, idx) { if (c) c.so = idx + 1; });
+    'Giữ đúng chương trình lớp của đề. Mỗi cảnh phải giải thích một bước mới.';
+  var soCanhThem = 24;
+  var tuMoiCanh = Math.max(35, Math.ceil((600 - chuanHoaThoiLuong_(kbGoc)) * TOC_DO_DOC / soCanhThem));
+  function vietChuong(khoa, soCanh, truoc) {
+    var p = promptMoRong + '\nLượt này CHỈ viết phần ' + khoa + ', đúng ' + soCanh +
+      ' cảnh. Mục tiêu ' + tuMoiCanh + ' từ tiếng Việt mỗi cảnh (thay cho 30–45 từ ở trên). ' +
+      'Triển khai lý do, phép tính và kiểm tra cụ thể. Trả JSON {"canh":[...]}. ' + truoc;
+    var j = goiGemini_(p, 0.5, sn);
+    if (!j || !Array.isArray(j.canh) || j.canh.length !== soCanh || j.canh.some(function(c) {
+      return !c || !String(c.loi_thoai || '').trim();
+    })) throw new Error('CHUONG_10P_CHUA_DU: ' + khoa);
+    return j.canh;
   }
+  var pp = vietChuong('phuong_phap', 8, '');
+  var bt = vietChuong('bien_the', 11, '');
+  var tk = vietChuong('tong_ket', 5, 'Biến thể đã giảng: ' + bt.map(function(c) {return c.loi_thoai;}).join(' '));
+  // Chèn phần Phương pháp ngay sau phần Đề bài / Mô phỏng của bài gốc; phần Biến thể + Tổng kết trước cảnh kết cuối
+  var idxSauDe = 3;
+  for (var i = 0; i < kbGoc.canh.length; i++) {
+    if (/bay|nhac_lai|diem_chot|tinh_toan/.test(String(kbGoc.canh[i].loai || ''))) { idxSauDe = i; break; }
+  }
+  var dau = kbGoc.canh.slice(0, idxSauDe);
+  var giua = idxSauDe < kbGoc.canh.length - 1 ? kbGoc.canh.slice(idxSauDe, kbGoc.canh.length - 1) : [];
+  var cuoi = kbGoc.canh.slice(-1);
+  kbGoc.canh = dau.concat(pp, giua, bt, tk, cuoi);
+  kbGoc.canh.forEach(function (c, idx) { if (c) c.so = idx + 1; });
   kbGoc.kieu_video = 'DAI_10_PHUT';
   return kbGoc;
 }

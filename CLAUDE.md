@@ -832,3 +832,9 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
 - Apps Script vẫn giữ hàng đợi Sheets, trigger, lệnh Zalo và webhook nhận kết quả; tám workflow GitHub thực hiện các công việc được giao. Job ghép chờ đủ các khúc. Với bài hình học, phần chuẩn bị hiện vẫn chờ cả lớp Manim.
 - Kịch bản có thể dựng đường bao riêng bằng đường dẫn, đa giác, cung và đường đo trong một hệ tọa độ. Bước bổ sung cảnh giải thích nhận hình tự do qua bộ kiểm tra nét hiện có; bước chèn bản vẽ dự phòng giữ hình tự do hợp lệ. So sánh cảnh thực tế liên tiếp dùng cùng cấu trúc điểm, vùng, vật và phép đo.
 - Các job dựng ưu tiên cache npm; bước chuẩn bị và ghép chỉ cài rclone khi có cấu hình Drive. Khi kiểm duyệt chặn, bỏ gửi gói, bỏ ma trận dựng kể cả khi thiếu URL webhook.
+
+#### Lần 37 (v70) — Chặn chuyên đề 10 phút thiếu nội dung và chỉ rõ lỗi API YouTube
+
+- Viết riêng ba chương mở rộng; thiếu chương hoặc Gemini lỗi thì dừng. Bản nháp ngắn được đưa lại vào bước mở rộng. Chế độ dài được khôi phục khi chuẩn bị kịch bản sau sửa.
+- Kiểm tra ngân sách lời giảng 540–660 giây, sau đó kiểm tra timeline sau TTS và thời lượng MP4 ở bước đăng. Bản đã đánh số dùng cho Apps Script phải gắn với ID tệp được kiểm tra trong lượt đăng.
+- Khi YouTube báo API đang tắt, thông báo dẫn tới đúng dự án Google Cloud cần bật YouTube Data API v3.
