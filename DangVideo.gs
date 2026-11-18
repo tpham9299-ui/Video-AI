@@ -36,6 +36,11 @@ function chDang_(k) {
 function dsNenTangDang_() {
   return chDang_('NEN_TANG_DANG').toLowerCase().split(/[,;\s]+/).filter(function (x) { return NEN_TANG_HOP_LE_.indexOf(x) >= 0; });
 }
+// Video chuyên đề dài 10 phút: CHỈ đăng lên YouTube (không đăng lên Facebook hay TikTok theo đúng yêu cầu)
+function dsNenTangChoVideo_(r) {
+  if (r && typeof laVideoDai_ === 'function' && laVideoDai_(r)) return ['youtube'];
+  return dsNenTangDang_();
+}
 
 /* ===================== CÀI ĐẶT ===================== */
 
@@ -73,7 +78,7 @@ function chayDangVideo() {
       var phut = r.cap_nhat instanceof Date ? (Date.now() - r.cap_nhat.getTime()) / 60000 : 999;
       if (phut < 60) return;
       var kq = docKetQuaDang_(r);
-      dsNenTangDang_().forEach(function (n) { if (!(kq[n] && (kq[n].ok || kq[n].bo_qua))) kq[n] = { ok: false, loi: 'GitHub không báo kết quả sau 60 phút' }; });
+      dsNenTangChoVideo_(r).forEach(function (n) { if (!(kq[n] && (kq[n].ok || kq[n].bo_qua))) kq[n] = { ok: false, loi: 'GitHub không báo kết quả sau 60 phút' }; });
       ketThucDang_(sh, r, kq);
     });
     var r = chonVideoDang_(docHang_(sh));
@@ -169,15 +174,25 @@ function chonVideoDang_(hang) {
   var den = cho.filter(function (r) { var t = thoiDiem_(r.lich_dang); return t && t.getTime() <= bay; })
     .sort(function (a, b) { return thoiDiem_(a.lich_dang).getTime() - thoiDiem_(b.lich_dang).getTime(); });
   if (den.length) return den[0];
-  // 2) khung giờ chung mỗi ngày (mặc định 2 video/ngày vào 11:30 và 19:30)
-  var khung = khungDangHienTai_();
+  // 2) Mỗi ngày đảm bảo đăng riêng 1 Video Dài 10 Phút lên YouTube (độc lập với hạn ngạch video ngắn SO_VIDEO_MOI_NGAY)
   var p = PropertiesService.getScriptProperties();
+  var tt = trangThaiDangHomNay_();
+  var ds10p = cho.filter(function (r) { return !thoiDiem_(r.lich_dang) && typeof laVideoDai_ === 'function' && laVideoDai_(r); })
+    .sort(function (a, b) { return lucDuyet_(a) - lucDuyet_(b); });
+  if (ds10p.length && !tt.da_dang_10p) {
+    tt.da_dang_10p = true;
+    tt.luc_cuoi = Date.now();
+    p.setProperty('LICH_SU_DANG_NGAY', JSON.stringify(tt));
+    return ds10p[0];
+  }
+  // 3) khung giờ chung mỗi ngày cho các video ngắn (mặc định 2 video/ngày vào 11:30 và 19:30)
+  var khung = khungDangHienTai_();
   if (!khung || p.getProperty('DANG_KHUNG_CUOI') === khung.ma) return null;
   // ĐĂNG THEO THỨ TỰ ĐẠT KIỂM DUYỆT / DUYỆT (số tập đánh lúc đăng -> tập tăng dần đúng thứ tự)
-  var ds = cho.filter(function (r) { return !thoiDiem_(r.lich_dang); })
+  var ds = cho.filter(function (r) { return !thoiDiem_(r.lich_dang) && !(typeof laVideoDai_ === 'function' && laVideoDai_(r)); })
     .sort(function (a, b) { return lucDuyet_(a) - lucDuyet_(b); });
+  if (!ds.length) ds = cho.filter(function (r) { return !thoiDiem_(r.lich_dang); }).sort(function (a, b) { return lucDuyet_(a) - lucDuyet_(b); });
   if (!ds.length) return null;
-  var tt = trangThaiDangHomNay_();
   tt.khung.push(khung.ten);
   tt.luc_cuoi = Date.now();
   p.setProperty('LICH_SU_DANG_NGAY', JSON.stringify(tt));
@@ -274,7 +289,7 @@ function tieuDeHapDan_(r) {
 }
 
 function dangVideo_(sh, r) {
-  var ds = dsNenTangDang_();
+  var ds = dsNenTangChoVideo_(r);
   if (!ds.length) { nhatKy_('DANG_VIDEO', 'NEN_TANG_DANG trống, không có nền tảng nào để đăng'); return; }
   var kq = docKetQuaDang_(r);
   var can = ds.filter(function (n) { return !(kq[n] && (kq[n].ok || kq[n].bo_qua)); });
@@ -341,7 +356,8 @@ function dangYouTube_(r, meta, fileId, fileBia) {
     try { kbYT = JSON.parse(DriveApp.getFileById(r.file_kich_ban).getBlob().getDataAsString()); } catch (eK) {}
     if (typeof themVaoPlaylist_ === 'function') { var pl = themVaoPlaylist_(kbYT, v.id, r); if (pl) ghiChuYT.push(pl); }
     if (typeof dangKyThongKe_ === 'function') dangKyThongKe_(r, v.id);
-    return { ok: true, url: 'https://youtube.com/shorts/' + v.id, id: v.id, che_do: v.status && v.status.privacyStatus, ghi_chu: ghiChuYT.join(', ') };
+    var laDaiYT = (typeof laVideoDai_ === 'function' && laVideoDai_(r)) || kbYT.kieu_video === 'DAI_10_PHUT' || Number(kbYT.tong_giay) >= 240;
+    return { ok: true, url: (laDaiYT ? 'https://youtu.be/' : 'https://youtube.com/shorts/') + v.id, id: v.id, che_do: v.status && v.status.privacyStatus, ghi_chu: ghiChuYT.join(', ') };
   } catch (e) {
     return { ok: false, loi: String(e.message || e).slice(0, 200) };
   }
@@ -383,7 +399,7 @@ function demBaiLopYouTube_(lop) {
 
 // Gộp kết quả, cập nhật trạng thái, báo Zalo.
 function ketThucDang_(sh, r, kq) {
-  var ds = dsNenTangDang_();
+  var ds = dsNenTangChoVideo_(r);
   var dat = ds.filter(function (n) { return kq[n] && kq[n].ok; });
   var boQua = ds.filter(function (n) { return kq[n] && kq[n].bo_qua; });
   var loi = ds.filter(function (n) { return !(kq[n] && (kq[n].ok || kq[n].bo_qua)); });

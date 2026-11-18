@@ -264,75 +264,33 @@ async def _tts(text, tep, giong, toc_do, cao_do, am_luong="+0%"):
 
 
 def them_nhan_nha_doc(text, loai=""):
-    """Bổ sung dấu ngắt nhịp vi mô (...) và dấu câu biểu cảm (!, ?) vào văn bản gửi cho TTS
-    để máy đọc tự động tạo khoảng nghỉ lấy đà 0,25s trước từ khóa/con số quan trọng và lên/xuống giọng tự nhiên."""
+    """Bổ sung dấu ngắt nhịp nhấn nhá (...) và dấu câu biểu cảm (!, ?) ngay trong văn bản gửi cho TTS
+    để máy đọc tự động nhấn mạnh trọng âm vào từ khóa, con số quan trọng và lên/xuống ngữ điệu tự nhiên
+    TRONG CÙNG MỘT CHẤT GIỌNG ĐỒNG NHẤT (không cần dịch tần số mẫu hay đổi cao độ nền giữa các cảnh)."""
     s = str(text or "").strip()
     if not s:
         return s
     loai = str(loai or "").lower()
-    # Ngắt nhịp nhấn mạnh sau các cụm cảnh báo / chuyển折
-    s = re.sub(r"(?i)\b(nhưng\s+khoan|cẩn\s+thận|đừng\s+vội|chú\s+ý\s+nhé|nhưng\s+cẩn\s+thận|khoan\s+đã|bí\s+quyết\s+ở\s+đây\s+là|mấu\s+chốt\s+nằm\s+ở|mấu\s+chốt\s+là)\s*[,:]?", r"\1... ", s)
-    # Ngắt nhịp lấy đà nhẹ trước khi đọc đáp số / kết luận quan trọng
-    s = re.sub(r"(?i)\b(đáp\s+án\s+cuối\s+cùng\s+là|đáp\s+án\s+đúng\s+là|đáp\s+án\s+chính\s+là|kết\s+quả\s+chính\s+là|giá\s+trị\s+lớn\s+nhất\s+là|giá\s+trị\s+nhỏ\s+nhất\s+là)\s+", r"\1... ", s)
-    # Đảm bảo câu hỏi có dấu '?' để TTS tự động vút cao độ ở cuối câu
-    if re.search(r"(?i)\b(bao\s+nhiêu|như\s+thế\s+nào|vì\s+sao|tại\s+sao|đúng\s+không|phải\s+không|không\s+nhỉ|chưa\s+nhỉ)\b", s) and not s.endswith("?"):
+    # 1) Ngắt nhịp nhấn mạnh sau các cụm cảnh báo / chuyển ý / gọi sự chú ý
+    s = re.sub(r"(?i)\b(nhưng\s+khoan|cẩn\s+thận|đừng\s+vội|chú\s+ý\s+nhé|để\s+ý\s+kỹ\s+nhé|nhưng\s+cẩn\s+thận|khoan\s+đã|bí\s+quyết\s+ở\s+đây\s+là|mấu\s+chốt\s+nằm\s+ở|mấu\s+chốt\s+là|điều\s+kỳ\s+diệu\s+là)\s*[,:]?", r"\1, ... ", s)
+    # 2) Ngắt nhịp lấy đà trước khi đọc đáp số / kết luận quan trọng để TTS tự động nhấn trọng âm vào kết quả
+    s = re.sub(r"(?i)\b(đáp\s+án\s+cuối\s+cùng\s+là|đáp\s+án\s+đúng\s+là|đáp\s+án\s+chính\s+là|vậy\s+đáp\s+số\s+là|vậy\s+xác\s+suất\s+cần\s+tìm\s+là|kết\s+quả\s+chính\s+là|giá\s+trị\s+lớn\s+nhất\s+là|giá\s+trị\s+nhỏ\s+nhất\s+là|suy\s+ra\s+ngay)\s+", r"\1, ... ", s)
+    # 3) Nhấn nhẹ trước các từ khóa toán học quan trọng ("bằng đúng", "chỉ còn", "tổng cộng")
+    s = re.sub(r"(?i)\b(bằng\s+đúng|chỉ\s+còn\s+đúng|tổng\s+cộng\s+có)\s+", r"... \1 ", s)
+    # 4) Đảm bảo câu hỏi có dấu '?' để TTS tự động vút ngữ điệu ở cuối câu hỏi
+    if re.search(r"(?i)\b(bao\s+nhiêu|như\s+thế\s+nào|vì\s+sao|tại\s+sao|đúng\s+không|phải\s+không|không\s+nhỉ|chưa\s+nhỉ|ở\s+đâu\s+nhỉ)\b", s) and not s.endswith("?"):
         s = s.rstrip(".!…") + "?"
-    # Cảnh mở đầu, điểm chốt, đáp án: kết câu bằng '!' để giọng đọc vươn cao hào hứng, rạng rỡ
+    # 5) Cảnh mở đầu, điểm chốt, đáp án: kết câu bằng '!' để giọng đọc nhấn sáng, hào hứng tự nhiên
     elif re.search(r"mo_dau|hook|diem_chot|y_tuong|dap_an|ket_qua", loai) and not s.endswith(("?", "!")):
         s = s.rstrip(".…") + "!"
     return re.sub(r"\s+", " ", s).strip()
 
 
 def thong_so_cao_do_cau(cau_text, loai_canh="", idx_cau=0, toc_do_goc="+6%", cao_do_goc="+0Hz"):
-    """Tính toán động (tốc độ, cao độ Hz, âm lượng %) riêng cho TỪNG CÂU dựa trên loại cảnh và ngữ nghĩa câu nói,
-    giúp giọng đọc có cao độ trầm bổng, nhấn nhá rõ rệt và tuyệt đối không bị ngang đều."""
-    try:
-        r0 = int(re.sub(r"[^0-9+-]", "", str(toc_do_goc or "+6%")) or 6)
-    except ValueError:
-        r0 = 6
-    try:
-        p0 = int(re.sub(r"[^0-9+-]", "", str(cao_do_goc or "+0Hz")) or 0)
-    except ValueError:
-        p0 = 0
-    v0 = 2
-    loai = str(loai_canh or "").lower()
-    s = str(cau_text or "")
-
-    # 1) Nền cao độ & nhịp độ theo vai trò sư phạm của cảnh
-    if re.search(r"mo_dau|hook|cau_hoi", loai):
-        r0 += 5; p0 += 6; v0 += 8       # Mở đầu: cao độ sáng, nhanh, bắt tai
-    elif re.search(r"de_bai", loai):
-        r0 -= 1; p0 += 2; v0 += 3       # Đề bài: rõ ràng, đĩnh đạc, nhấn từng dữ kiện
-    elif re.search(r"bay", loai):
-        r0 -= 4; p0 -= 5; v0 += 6       # Cái bẫy: hạ trầm cao độ, chậm lại đầy kịch tính
-    elif re.search(r"diem_chot|y_tuong", loai):
-        r0 += 4; p0 += 7; v0 += 9       # Điểm mấu chốt: bật sáng cao độ ("À, ra là thế!")
-    elif re.search(r"dap_an|ket_qua", loai):
-        r0 -= 1; p0 += 6; v0 += 11      # Đáp án: vang, rạng rỡ, chậm lại một nhịp để khắc sâu kết quả
-    elif re.search(r"kiem_tra", loai):
-        r0 += 1; p0 += 3; v0 += 4       # Thử lại: chắc chắn, tự tin
-    elif re.search(r"bai_hoc|ket_luan|chot", loai):
-        r0 -= 2; p0 += 2; v0 += 5       # Bài học rút ra: ấm áp, đọng lại
-    else:
-        # Cảnh giải/tính toán: luân phiên cao độ giữa các câu liên tiếp để không bao giờ bị ngang giọng
-        dao_dong_p = (3, -1, 5, 1)[idx_cau % 4]
-        dao_dong_r = (2, 0, 3, -1)[idx_cau % 4]
-        p0 += dao_dong_p
-        r0 += dao_dong_r
-        v0 += 4
-
-    # 2) Điều chỉnh thêm theo ngữ điệu riêng của câu nói hiện tại
-    if "?" in s or re.search(r"(?i)\b(bao\s+nhiêu|vì\s+sao|tại\s+sao|thế\s+nào|đố\s+bạn|bạn\s+nghĩ\s+sao)\b", s):
-        p0 += 4; r0 += 2; v0 += 4       # Câu hỏi: vút cao độ kích thích tò mò
-    elif re.search(r"(?i)\b(nhưng\s+khoan|cẩn\s+thận|sai\s+lầm|quên\s+mất|nhầm\s+lẫn|bẫy|đừng\s+vội)\b", s):
-        p0 -= 5; r0 -= 3; v0 += 5       # Câu cảnh báo: trầm xuống, nhấn nặng
-    elif re.search(r"(?i)\b(vậy\s+đáp\s+án|kết\s+quả\s+là|chính\s+là|mấu\s+chốt|suy\s+ra\s+ngay|hoàn\s+toàn\s+chính\s+xác)\b", s):
-        p0 += 4; v0 += 6                # Câu chốt ý / kết luận: nâng cao độ và độ vang
-
-    r_final = max(-10, min(22, r0))
-    p_final = max(-10, min(14, p0))
-    v_final = max(0, min(18, v0))
-    return ("%+d%%" % r_final), ("%+dHz" % p_final), ("%+d%%" % v_final)
+    """Giữ ĐỒNG NHẤT 100% cao độ nền (pitch) và tốc độ nền (rate) giữa tất cả các câu/cảnh trong toàn bộ video
+    để âm sắc người đọc không bao giờ bị biến đổi giữa các cảnh. Sự nhấn nhá được tạo ra tự nhiên nhờ cấu trúc ngắt nhịp
+    trong them_nhan_nha_doc() và dải động âm thanh tự nhiên."""
+    return str(toc_do_goc or "+6%"), str(cao_do_goc or "+0Hz"), "+0%"
 
 
 def _gia_lap(text, tep):
@@ -552,27 +510,17 @@ def gemini_tts(text, tep_wav, giong, model, phong_cach, dung_cache=True):
     raise RuntimeError("Gemini TTS lỗi trên mọi model (%s): %s" % (", ".join(ds_model), loi))
 
 
-def _he_so_cao_do_canh(loai, i):
-    """Hệ số dịch cao độ vi mô (0.975 - 1.035) theo vai trò sư phạm của từng cảnh để tạo đường cong cao độ (F0 contour)
-    trầm bổng rõ rệt mà vẫn giữ nguyên màu giọng tự nhiên."""
-    loai = str(loai or "").lower()
-    if re.search(r"mo_dau|hook|cau_hoi", loai):
-        return 1.032
-    if re.search(r"bay", loai):
-        return 0.976
-    if re.search(r"diem_chot|y_tuong", loai):
-        return 1.035
-    if re.search(r"dap_an|ket_qua", loai):
-        return 1.028
-    if re.search(r"bai_hoc|ket_luan|chot", loai):
-        return 0.992
-    return (1.012, 0.996, 1.020, 1.004)[i % 4]
-
-
 def tao_giong_gemini(canh, thu_muc, args):
-    """Tạo giọng Gemini theo TỪNG CẢNH với chỉ đạo cao độ & nhấn nhá riêng biệt cho từng loại cảnh.
-    Lỗi ở bất kỳ cảnh nào -> trả None để cả video dùng edge-tts có biến thiên cao độ (không trộn hai giọng khác nhau)."""
+    """Dự phòng khi cần đọc từng cảnh bằng Gemini: GIỮ ĐỒNG NHẤT 100% MỘT CHỈ ĐẠO PHONG CÁCH VÀ MỘT TẦN SỐ MẪU
+    xuyên suốt mọi cảnh để không bao giờ bị lệch màu giọng giữa các cảnh; sự nhấn nhá nằm ở dấu ngắt nhịp them_nhan_nha_doc()."""
     kq = {}
+    phong_cach_chung = (
+        args.phong_cach_giong +
+        " Giữ cố định đúng một màu giọng, một tốc độ và một âm sắc người đọc xuyên suốt; "
+        "nhấn mạnh trọng âm rõ ràng vào các từ khóa sau dấu '...' và thể hiện ngữ điệu tự nhiên theo dấu '?', '!'.\nĐoạn cần đọc:"
+    )
+    tempo = float(args.toc_do_gemini or 1.0)
+    loc = ("atempo=%.3f," % tempo if abs(tempo - 1) > 0.01 else "") + "aresample=44100"
     for i, c in enumerate(canh):
         loai_c = str(c.get("loai") or "").lower()
         van_goc = chuan_hoa_doc(str(c.get("loi_thoai") or "").strip())
@@ -580,30 +528,21 @@ def tao_giong_gemini(canh, thu_muc, args):
             continue
         van = them_nhan_nha_doc(van_goc, loai_c)
         wav = os.path.join(thu_muc, "gem_%d.wav" % i)
-        # Diễn xuất ngữ điệu giàu cảm xúc và biến thiên cao độ cho từng cảnh
-        sac = sac_thai_canh(c)
-        sac_prompt = (" Chỉ đạo cao độ & nhấn nhá riêng cho cảnh này: " + sac + ".") if sac else ""
-        phong_cach = (args.phong_cach_giong + sac_prompt +
-                      " Bắt buộc thể hiện rõ sự thay đổi cao độ lên xuống giữa các vế câu và nhấn mạnh vào từ khóa, con số quan trọng.\nĐoạn cần đọc:")
         try:
-            gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach)
+            gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach_chung)
             tu = max(1, len(van.split()))
             if tu >= 8 and tu / max(0.1, do_thoi_luong(wav) - 0.4) > 4.6:
                 print("Gemini đọc thiếu chữ ở cảnh %d, đọc lại" % (i + 1))
-                gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach, dung_cache=False)
+                gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach_chung, dung_cache=False)
             if giong_bi_re(wav, "cảnh %d" % (i + 1)):
-                gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach, dung_cache=False)   # đọc lại một lần
+                gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach_chung, dung_cache=False)
                 if giong_bi_re(wav, "cảnh %d (đọc lại)" % (i + 1)):
                     raise RuntimeError("giọng Gemini cảnh %d vẫn rè sau khi đọc lại" % (i + 1))
         except Exception as e:
-            print("Cảnh báo: %s -> cả video chuyển sang edge-tts" % str(e)[:200])
-            THONG_KE_GIONG["gemini"] = 0   # bỏ hết phần Gemini đã tạo: cả video một giọng
+            print("Cảnh báo: %s -> cả video chuyển sang edge-tts đồng nhất" % str(e)[:200])
+            THONG_KE_GIONG["gemini"] = 0
             return None
         nhanh = os.path.join(thu_muc, "gem_%d.mp3" % i)
-        tempo = float(args.toc_do_gemini or 1.0)
-        hs_pitch = _he_so_cao_do_canh(loai_c, i)
-        tempo_bu = tempo / hs_pitch
-        loc = "asetrate=24000*%.4f,aresample=44100,atempo=%.4f" % (hs_pitch, max(0.5, min(2.0, tempo_bu)))
         chay(["ffmpeg", "-y", "-loglevel", "error", "-i", wav, "-af", loc, "-c:a", "libmp3lame", "-b:a", "128k", nhanh])
         kq[i] = nhanh
         THONG_KE_GIONG["gemini"] += 1
@@ -626,59 +565,62 @@ def tim_khoang_lang(wav, nguong_db=-38, toi_thieu=0.4):
     return ds
 
 
-def tao_giong_gemini_mot_lan(canh, thu_muc, args):
-    """GIỌNG THỐNG NHẤT CẢ VIDEO: Gemini đọc TOÀN BỘ lời thoại trong MỘT lần gọi (một người, một mạch, một cảm xúc liền),
-    rồi máy cắt theo cảnh ở các khoảng ngừng giữa đoạn (chọn khoảng ngừng gần vị trí dự kiến theo số chữ của từng cảnh).
-    Trước đây mỗi cảnh gọi riêng một lần -> mỗi cảnh như một người đọc khác. Cắt không chắc chắn -> trả None (cả video dùng edge)."""
-    van = [chuan_hoa_doc(str(c.get("loi_thoai") or "").strip()) for c in canh]
+def _doc_khuc_gemini_mot_lan(ds_canh, chi_so_bat_dau, thu_muc, args):
+    """Đọc liền mạch một nhóm cảnh (hoặc toàn bộ video) trong MỘT lần gọi Gemini TTS duy nhất:
+    đảm bảo giọng đọc ĐỒNG NHẤT 100% về âm sắc/người đọc, đồng thời có NHẤN NHÁ tự nhiên nhờ them_nhan_nha_doc()."""
+    van = [them_nhan_nha_doc(chuan_hoa_doc(str(c.get("loi_thoai") or "").strip()), str(c.get("loai") or "")) for c in ds_canh]
     if not all(van):
         return None
     toan_bai = "\n\n".join(van)
-    phong_cach = (args.phong_cach_giong + " Đây là TOÀN BỘ bài giảng toán của video. "
-                  "Đọc liền mạch từ đầu đến cuối như một người thầy dạy toán đang say sưa truyền lửa cho học sinh, "
-                  "ngữ điệu biến hóa sinh động theo từng cung bậc cảm xúc của bài học: hào hứng mở đầu, "
-                  "tỉ mỉ giải thích, hồi hộp khi gặp bẫy và phấn khích rạng rỡ khi ra đáp án! "
-                  "Giữa hai đoạn (cách nhau một dòng trống) hãy ngắt nghỉ khoảng 1,2 giây để chuyển ý rõ ràng.\nLời giảng:")
+    phong_cach = (
+        args.phong_cach_giong +
+        " Đây là toàn bộ lời giảng liền mạch của một người thầy duy nhất. "
+        "BẮT BUỘC giữ đồng nhất 100% một chất giọng, một âm sắc xuyên suốt từ đầu đến cuối; "
+        "thể hiện sự NHẤN NHÁ sống động vào các từ khóa, con số sau dấu '...' và lên xuống ngữ điệu tự nhiên ở các câu hỏi '?', câu cảm thán '!'. "
+        "Giữa hai đoạn (cách nhau một dòng trống) hãy ngắt nghỉ rõ khoảng 1,2 giây.\nLời giảng:"
+    )
     ky_tu = [max(1, len(v)) for v in van]
     for lan in range(2):
-        wav = os.path.join(thu_muc, "ca_bai_%d.wav" % lan)
+        wav = os.path.join(thu_muc, "ca_bai_%d_%d.wav" % (chi_so_bat_dau, lan))
         try:
             gemini_tts(toan_bai, wav, args.giong_gemini, args.tts_model, phong_cach, dung_cache=(lan == 0))
         except Exception as e:
-            print("Cảnh báo: Gemini đọc cả bài lỗi: %s" % str(e)[:200])
+            print("Cảnh báo: Gemini đọc liền mạch lỗi: %s" % str(e)[:200])
             return None
         D = do_thoi_luong(wav)
-        # đọc thiếu / bị cắt cụt: Việt ~13-17 ký tự mỗi giây
         if D < sum(ky_tu) / 30.0:
-            print("Gemini đọc cả bài quá ngắn (%.1f giây cho %d ký tự), đọc lại" % (D, sum(ky_tu)))
+            print("Gemini đọc liền mạch quá ngắn (%.1f giây cho %d ký tự), đọc lại" % (D, sum(ky_tu)))
             continue
-        # đọc DÀI bất thường (mô hình "lạc" sinh tiếng ồ, rè ở cuối) hoặc đo thấy tạp âm -> đọc lại
         if D > sum(ky_tu) / 7.0:
-            print("Gemini đọc cả bài dài bất thường (%.1f giây cho %d ký tự) - nghi lạc giọng/rè, đọc lại" % (D, sum(ky_tu)))
+            print("Gemini đọc liền mạch dài bất thường (%.1f giây cho %d ký tự), đọc lại" % (D, sum(ky_tu)))
             continue
         if giong_bi_re(wav, "cả bài (lần %d)" % (lan + 1)):
             continue
-        lang = tim_khoang_lang(wav)
-        cat, truoc, ok = [], 0.0, True
-        tich = 0
-        for k in range(len(van) - 1):
-            tich += ky_tu[k]
-            du_kien = D * tich / sum(ky_tu)
-            cua_so = max(2.5, 0.35 * D * ky_tu[k] / sum(ky_tu))
-            ung = [(b, e) for b, e in lang if (b + e) / 2 > truoc + 0.6 and abs((b + e) / 2 - du_kien) <= cua_so]
-            if not ung:
-                ok = False
+        # Thử dò khoảng ngừng giữa các cảnh với ngưỡng linh hoạt (0.38s -> 0.26s -> 0.18s)
+        cat, ok = [], False
+        for d_min in (0.38, 0.26, 0.18):
+            lang = tim_khoang_lang(wav, nguong_db=-38, toi_thieu=d_min)
+            cat_thu, truoc, ok_thu, tich = [], 0.0, True, 0
+            for k in range(len(van) - 1):
+                tich += ky_tu[k]
+                du_kien = D * tich / sum(ky_tu)
+                cua_so = max(2.8, 0.42 * D * ky_tu[k] / sum(ky_tu))
+                ung = [(b, e) for b, e in lang if (b + e) / 2 > truoc + 0.5 and abs((b + e) / 2 - du_kien) <= cua_so]
+                if not ung:
+                    ok_thu = False
+                    break
+                b, e = max(ung, key=lambda x: (x[1] - x[0]) - 0.12 * abs((x[0] + x[1]) / 2 - du_kien))
+                cat_thu.append((b, e))
+                truoc = (b + e) / 2
+            if ok_thu:
+                cat, ok = cat_thu, True
                 break
-            b, e = max(ung, key=lambda x: (x[1] - x[0]) - 0.12 * abs((x[0] + x[1]) / 2 - du_kien))
-            cat.append((b, e))
-            truoc = (b + e) / 2
         if not ok:
             print("Không tìm đủ khoảng ngừng giữa các cảnh (lần %d), đọc lại" % (lan + 1))
             continue
-        # đoạn cắt ra phải hợp lý so với số chữ của cảnh
         moc = [0.0] + [(b + e) / 2 for b, e in cat] + [D]
         lech = [(moc[k + 1] - moc[k]) / (D * ky_tu[k] / sum(ky_tu)) for k in range(len(van))]
-        if min(lech) < 0.45 or max(lech) > 2.2:
+        if min(lech) < 0.42 or max(lech) > 2.3:
             print("Cắt cảnh không khớp độ dài chữ (tỉ lệ %.2f-%.2f), đọc lại" % (min(lech), max(lech)))
             continue
         kq = {}
@@ -686,27 +628,45 @@ def tao_giong_gemini_mot_lan(canh, thu_muc, args):
         loc = ("atempo=%.3f," % tempo if abs(tempo - 1) > 0.01 else "") + "aresample=44100"
         thieu_chu = []
         for k in range(len(van)):
-            ra = os.path.join(thu_muc, "gem_%d.mp3" % k)
+            idx_thuc = chi_so_bat_dau + k
+            ra = os.path.join(thu_muc, "gem_%d.mp3" % idx_thuc)
             chay(["ffmpeg", "-y", "-loglevel", "error", "-ss", "%.3f" % moc[k], "-to", "%.3f" % moc[k + 1], "-i", wav, "-af", loc,
                   "-c:a", "libmp3lame", "-b:a", "128k", ra])
-            kq[k] = ra
-            # ĐỌC THIẾU CHỮ: Gemini đôi khi bỏ sót cả cụm từ (đoạn ngắn bất thường so với số chữ) -> lời không khớp phụ đề
+            kq[idx_thuc] = ra
             gon = ra + ".gon.mp3"
             try:
                 cat_lang(ra, gon)
                 giay = do_thoi_luong(gon)
                 tu = max(1, len(van[k].split()))
                 if tu >= 8 and tu / max(0.1, giay) > 4.6:
-                    thieu_chu.append("cảnh %d: %d từ trong %.1f giây" % (k + 1, tu, giay))
+                    thieu_chu.append("cảnh %d: %d từ trong %.1f giây" % (idx_thuc + 1, tu, giay))
             except Exception:
                 pass
         if thieu_chu:
             print("Gemini đọc THIẾU CHỮ (nhanh bất thường) %s -> đọc lại" % "; ".join(thieu_chu))
             continue
-        THONG_KE_GIONG["gemini"] = len(van)
-        print("Gemini đọc cả video MỘT lần (%.1f giây), cắt thành %d cảnh" % (D, len(van)))
+        THONG_KE_GIONG["gemini"] += len(van)
+        print("Gemini đọc liền mạch %d cảnh (từ cảnh %d, %.1f giây)" % (len(van), chi_so_bat_dau + 1, D))
         return kq
     return None
+
+
+def tao_giong_gemini_mot_lan(canh, thu_muc, args):
+    """GIỌNG THỐNG NHẤT CẢ VIDEO & CÓ NHẤN NHÁ:
+    - Với video ngắn (<= 18 cảnh): đọc TOÀN BỘ lời thoại trong 1 lần gọi duy nhất (1 người đọc xuyên suốt 100%, không lệch giọng giữa các cảnh).
+    - Với video dài 10 phút (> 18 cảnh): chia thành các chặng lớn 12 cảnh đọc liền mạch cùng một cấu hình giọng."""
+    if len(canh) <= 18:
+        return _doc_khuc_gemini_mot_lan(canh, 0, thu_muc, args)
+    kq_tong = {}
+    buoc = 12
+    for bd in range(0, len(canh), buoc):
+        khuc = canh[bd:bd + buoc]
+        kq_khuc = _doc_khuc_gemini_mot_lan(khuc, bd, thu_muc, args)
+        if not kq_khuc:
+            THONG_KE_GIONG["gemini"] = 0
+            return None
+        kq_tong.update(kq_khuc)
+    return kq_tong
 
 
 async def tao_cac_doan(cac_doan, thu_muc, args, loai_canh=""):
@@ -1484,9 +1444,9 @@ def main():
     tam_gem = tempfile.mkdtemp()
     giong_gem = None
     if not args.gia_lap and args.may_giong == "gemini":
-        # Mặc định đọc TỪNG CẢNH (tung_canh) để truyền chỉ đạo cao độ & nhấn nhá riêng cho từng loại cảnh (hook, bẫy, điểm chốt, đáp án)
-        # giúp giọng đọc trầm bổng giàu cảm xúc thay vì bị phẳng khi gộp chung 1 đoạn văn dài.
-        if (os.environ.get("CACH_DOC_GEMINI") or "tung_canh") == "mot_lan":
+        # Mặc định đọc LIỀN MẠCH MỘT LẦN (mot_lan) kết hợp them_nhan_nha_doc() để giọng đọc ĐỒNG NHẤT 100% xuyên suốt các cảnh
+        # mà vẫn có nhấn nhá trọng âm tự nhiên (không bị lệch giọng giữa các cảnh).
+        if (os.environ.get("CACH_DOC_GEMINI") or "mot_lan") != "tung_canh":
             giong_gem = tao_giong_gemini_mot_lan(canh, tam_gem, args)
             if not giong_gem:
                 giong_gem = tao_giong_gemini(canh, tam_gem, args)
@@ -1495,7 +1455,7 @@ def main():
             if not giong_gem:
                 giong_gem = tao_giong_gemini_mot_lan(canh, tam_gem, args)
         if not giong_gem:
-            print("Gemini không đọc được cả video -> CẢ video dùng một giọng edge-tts có biến thiên cao độ (không trộn giọng)")
+            print("Gemini không đọc được cả video -> CẢ video dùng một giọng edge-tts đồng nhất 100% có nhấn nhá (không trộn giọng)")
     for i, c in enumerate(canh):
         so = int(c.get("so") or i + 1)
         loi_thoai = sua_chinh_ta_tieng_viet(str(c.get("loi_thoai") or "").strip())

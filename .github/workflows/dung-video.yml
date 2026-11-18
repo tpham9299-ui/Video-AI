@@ -444,6 +444,14 @@ jobs:
             rm -f "out/${ID}_manim.mov"
             echo "Đã ghép lớp Manim"
           fi
+          # Nếu video dài (ví dụ video 10 phút) có dung lượng > 42 MB, tự động nén tối ưu dưới 42 MB để Apps Script YouTube API (giới hạn 48 MB) luôn đăng trực tiếp được
+          KICH_THUOC=$(stat -c%s "out/$ID.mp4" 2>/dev/null || echo 0)
+          if [ "$KICH_THUOC" -gt 44000000 ]; then
+            command -v ffmpeg >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /tmp/apt_ff.log 2>&1; }
+            ffmpeg -y -loglevel error -i "out/$ID.mp4" -c:v libx264 -preset veryfast -crf 23 -maxrate 850k -bufsize 1700k -pix_fmt yuv420p -c:a copy -movflags +faststart "out/${ID}_nen.mp4"
+            mv "out/${ID}_nen.mp4" "out/$ID.mp4"
+            echo "Đã tối ưu dung lượng video dài xuống dưới 42 MB"
+          fi
           ls -la out
           echo "id=$ID" >> "$GITHUB_OUTPUT"
           # ảnh kiểm tra (4 khung hình để AI so với đề); dùng ffmpeg đi kèm Remotion, lỗi ở đây không làm hỏng việc dựng

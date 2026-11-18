@@ -348,8 +348,10 @@ def tao_ban_dang(video, n, kieu):
     if not loc:
         return video
     ra = os.path.join(os.path.dirname(video), "%s_%d_%s" % (kieu, n, os.path.basename(video)))
-    r = subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", video, "-vf", ",".join(loc), "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
-                        "-pix_fmt", "yuv420p", "-c:a", "copy", "-movflags", "+faststart", ra], capture_output=True, text=True)
+    # Video dài 10 phút (>= 180 giây): giới hạn bitrate để dung lượng <= 42 MB, vượt qua giới hạn 48 MB của YouTube Apps Script
+    crf_opt = ["-crf", "23", "-maxrate", "850k", "-bufsize", "1700k"] if dai >= 180 else ["-crf", "18"]
+    r = subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", video, "-vf", ",".join(loc), "-c:v", "libx264", "-preset", "veryfast"] + crf_opt +
+                       ["-pix_fmt", "yuv420p", "-c:a", "copy", "-movflags", "+faststart", ra], capture_output=True, text=True)
     if r.returncode != 0 or not os.path.exists(ra):
         print("Tạo bản đăng (%s) lỗi, dùng video gốc: %s" % (kieu, r.stderr[-300:]))
         return video
@@ -441,7 +443,11 @@ def main():
     ket_qua = {}
     try:
         video = tai_video(meta["file_id"])
-        print("Video: %s (%.1f MB, %.1f giây)" % (video, os.path.getsize(video) / 1048576, thoi_luong_mp4(video)))
+        giay_vid = thoi_luong_mp4(video)
+        print("Video: %s (%.1f MB, %.1f giây)" % (video, os.path.getsize(video) / 1048576, giay_vid))
+        # Video dài 10 phút: chỉ đăng lên YouTube (không đăng Facebook hay TikTok)
+        if str(id_video).upper().endswith("-10P") or giay_vid >= 240:
+            nen_tang = ["youtube"]
     except Exception as e:
         for n in nen_tang:
             ket_qua[n] = {"ok": False, "loi": "Không tải được video từ Drive: %s" % str(e)[:150]}

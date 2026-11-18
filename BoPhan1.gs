@@ -47,12 +47,13 @@ var COT = ['id', 'trang_thai', 'lop', 'chu_de', 'de_bai', 'nguon', 'diem_tu_duy'
   'duyet', 'gop_y', 'san_pham', // lần 19: trạng thái duyệt video, góp ý khi duyệt, sản phẩm trong bài (JSON)
   'anh_kt', 'anh_bia', 'ai_kiem_tra', 'series'];   // lần 20: ảnh kiểm tra/ảnh bìa (Drive), kết quả AI xem video, series (hẹn giờ đăng, link đã đăng). Cột mới luôn nối vào CUỐI nên dữ liệu cũ không lệch
 
-var PHIEN_BAN_EDIT = 50;                    // phiên bản chuẩn edit mới nhất (tự động nâng cấp các video cũ/đang chờ dưới mức này)
+var PHIEN_BAN_EDIT = 51;                    // phiên bản chuẩn edit mới nhất (tự động nâng cấp các video cũ/đang chờ dưới mức này)
 // Tên model nằm trong CAU_HINH vì Google đổi tên/ngừng model thường xuyên; hệ thống tự động đổi model dự phòng khi gặp lỗi.
 var MAC_DINH = {
   // GIỌNG ĐỌC (mỗi video MỘT giọng từ đầu đến cuối): QUY_TAC_GIONG = CHU_KY (mặc định: cứ CHU_KY_GIONG video giọng nam thì 1 video giọng nữ)
   // | THEO_MON (toán thực tế = nam, xác suất = nữ) | CHI_NAM | CHI_NU. Tên giọng Gemini: GIONG_NAM (Puck/Charon/Fenrir), GIONG_NU (Aoede/Kore).
   QUY_TAC_GIONG: 'CHU_KY', CHU_KY_GIONG: '3', GIONG_NAM: 'Puck', GIONG_NU: 'Aoede',
+  VIDEO_10P_MOI_NGAY: 'BAT',
   DANH_SACH_MODEL: 'gemini-2.5-flash,gemini-flash-latest,gemini-2.5-pro,gemini-2.0-flash,gemini-flash-lite-latest,gemini-3.8-flash,gemini-3.6-flash',
   MODEL_CHINH: 'gemini-2.5-flash',
   MODEL_DU_PHONG: 'gemini-flash-latest',
@@ -303,6 +304,8 @@ function damBaoCauHinhTuDong_() {
 /* ===================== BƯỚC A: SINH ĐỀ ===================== */
 
 function sinhDeNeuCan_(sh, bc) {
+  // Tự động đảm bảo mỗi ngày luôn sinh 1 video chuyên đề dài 10 phút cho YouTube (dù hàng đợi video ngắn đã đầy)
+  try { tuDongSinhVideoDaiMoiNgay_(sh, bc); } catch (e10p) { nhatKy_('VIDEO_10P_LOI', String(e10p.message).slice(0, 180)); }
   var che = cauHinh_('CHE_DO_NGUON');
   if (che === 'KHO_DE') return;
   var hang = docHang_(sh);
@@ -702,6 +705,7 @@ function xuLyDeKhongChac_(sh, r, lyDo, bc, kq) {
 
 function xuLyGiai_(sh, bc, bat, chiUuTien, chiIds) {
   var ds = docHang_(sh).filter(function (r) { return r.trang_thai === 'MOI' && r.de_bai && (!chiUuTien || laUuTien_(r)) && (!chiIds || chiIds.indexOf(r.id) >= 0); })
+    .sort(function (a, b) { return (laVideoDai_(b) ? 1 : 0) - (laVideoDai_(a) ? 1 : 0); })
     .slice(0, Number(cauHinh_('SO_DE_TOI_DA_MOI_LAN')));
   for (var i = 0; i < ds.length; i++) {
     if (!duThoiGianViec_(bat, tbMs_('TB_GIAI_MS', 150000) * 1.15)) { nhatKy_('DUNG_SOM', 'Không đủ thời gian cho đề giải tiếp theo, để lần chạy sau'); return; }
@@ -723,9 +727,10 @@ function xuLyGiai_(sh, bc, bat, chiUuTien, chiIds) {
       } else {
         if (!r.ma_bam) ghi_(sh, r._row, { ma_bam: bam_(r.de_bai) });
         // tới đây: đáp án đã được nhiều nguồn độc lập thống nhất, đề rõ ràng, khớp đáp án người ra đề (nếu có)
+        var nhan10p = laVideoDai_(r) ? '[VIDEO_DAI_10P] | ' : '';
         ghi_(sh, r._row, {
           trang_thai: 'DA_GIAI', cach_1: JSON.stringify(kq.c1), cach_2: JSON.stringify(kq.c2),
-          dap_an: kq.dap_an, dap_an_hien: kq.dap_an_hien || '', kiem_chung: kq.mo_ta + (duKien ? ' | khớp đáp án người ra đề ' + duKien : ''), ghi_chu: '', so_lan_loi: 0
+          dap_an: kq.dap_an, dap_an_hien: kq.dap_an_hien || '', kiem_chung: nhan10p + kq.mo_ta + (duKien ? ' | khớp đáp án người ra đề ' + duKien : ''), ghi_chu: '', so_lan_loi: 0
         });
         bc.giai_ok++;
         if (laUuTien_(r)) baoZaloDe_(r, '✅ Đã giải và kiểm chứng: đáp án ' + (kq.dap_an_hien || kq.dap_an) + '\n✍ Đang viết kịch bản video...', 'thap');
@@ -960,6 +965,7 @@ function chenGacVongLap_(ma) {
 
 function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
   var ds = docHang_(sh).filter(function (r) { return r.trang_thai === 'DA_GIAI' && (!chiUuTien || laUuTien_(r)) && (!chiIds || chiIds.indexOf(r.id) >= 0); })
+    .sort(function (a, b) { return (laVideoDai_(b) ? 1 : 0) - (laVideoDai_(a) ? 1 : 0); })
     .slice(0, Number(cauHinh_('SO_DE_TOI_DA_MOI_LAN')));
   for (var i = 0; i < ds.length; i++) {
     if (!duThoiGianViec_(bat, tbMs_('TB_KICHBAN_MS', 100000) * 1.15)) { nhatKy_('DUNG_SOM', 'Không đủ thời gian cho kịch bản tiếp theo, để lần chạy sau'); return; }
@@ -2570,38 +2576,72 @@ function thuGoiGemini() {
 
 function laVideoDai_(r) {
   if (!r) return false;
-  return /\[VIDEO_DAI_10P\]|DAI_10_PHUT/i.test(String(r.kiem_chung || '') + ' ' + String(r.chu_de || '') + ' ' + String(r.nguon || ''));
+  return /\[VIDEO_DAI_10P\]|DAI_10_PHUT|CHUYEN_DE_10P|\[10\s*PHÚT\]|-10P$/i.test(
+    String(r.id || '') + ' ' + String(r.kiem_chung || '') + ' ' + String(r.chu_de || '') + ' ' + String(r.nguon || '')
+  );
+}
+
+// Tự động kiểm tra và sinh mỗi ngày đúng 1 đề Video Dài 10 Phút để dựng và đăng lên YouTube
+function tuDongSinhVideoDaiMoiNgay_(sh, bc) {
+  if (String(cauHinh_('VIDEO_10P_MOI_NGAY') || 'BAT').toUpperCase() === 'TAT') return;
+  if (!conDuGoiGemini_()) return;
+  var ngay = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyyMMdd');
+  var maNgay = ngay.slice(2); // yyMMdd
+  var p = PropertiesService.getScriptProperties();
+  if (p.getProperty('DA_SINH_10P_NGAY') === ngay) return;
+  var hang = docHang_(sh);
+  // Kiểm tra hôm nay đã sinh video 10 phút nào chưa, hoặc có video 10 phút nào đang nằm trong luồng sản xuất chưa
+  var daCoHomNay = hang.some(function (r) {
+    if (!laVideoDai_(r)) return false;
+    if (String(r.id || '').indexOf(maNgay) >= 0) return true;
+    return ['MOI', 'DA_GIAI', 'GITHUB', 'CO_KICH_BAN', 'DANG_DUNG'].indexOf(String(r.trang_thai || '')) >= 0;
+  });
+  if (daCoHomNay) {
+    p.setProperty('DA_SINH_10P_NGAY', ngay);
+    return;
+  }
+  taoDeVideoDai10Phut_('', '', true);
+  p.setProperty('DA_SINH_10P_NGAY', ngay);
+  if (bc) bc.moi = (bc.moi || 0) + 1;
+  nhatKy_('VIDEO_10P', 'Đã tự động khởi tạo 1 chuyên đề Video Dài 10 Phút của ngày ' + ngay + ' cho YouTube');
 }
 
 // Tạo đề bài & yêu cầu sản xuất video bài giảng chuyên đề dài 10 phút (~540-660 giây, 42-50 cảnh) cho YouTube
 function taoVideoDaiZalo_(chat, chu) {
   var yeuCau = String(chu || '').replace(/^\s*\/(videodai|10phut|youtube10p)\s*/i, '').trim();
-  var kq = taoDeVideoDai10Phut_(yeuCau, chat);
+  var kq = taoDeVideoDai10Phut_(yeuCau, chat, false);
   return kq;
 }
 
 function taoVideoDai10Phut() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var tb = taoDeVideoDai10Phut_('', '');
+  var tb = taoDeVideoDai10Phut_('', '', false);
   try { ss.toast(tb, 'Video AI 10 Phút', 8); } catch (e) {}
   Logger.log(tb);
   return tb;
 }
 
-function taoDeVideoDai10Phut_(goiYChuDe, chat) {
+function taoDeVideoDai10Phut_(goiYChuDe, chat, laTuDongNgay) {
   _bat_dau_chay_ = Date.now();
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(TEN_HANG_DOI);
-  var lop = ['12', '11', '10'][Math.floor(Math.random() * 3)];
+  var p = PropertiesService.getScriptProperties();
+  var dsLop = ['12', '11', '10'];
+  var idxLop = Number(p.getProperty('LOP_10P_KE') || 0) % 3;
+  var lop = dsLop[idxLop];
+  p.setProperty('LOP_10P_KE', String(idxLop + 1));
   if (/lớp\s*10|\b10\b/.test(goiYChuDe)) lop = '10';
   else if (/lớp\s*11|\b11\b/.test(goiYChuDe)) lop = '11';
   else if (/lớp\s*12|\b12\b/.test(goiYChuDe)) lop = '12';
+  var hang = docHang_(sh);
+  var daCo = hang.filter(laVideoDai_).slice(-20).map(function (r) { return '- ' + r.chu_de + ': ' + String(r.de_bai).slice(0, 90); }).join('\n');
   var prompt = 'Bạn là giáo viên luyện thi Toán THPT xuất sắc tại Việt Nam. Hãy thiết kế MỘT BÀI TOÁN TRỌNG TÂM THỰC CHIẾN mức 8,5 - 9,5 điểm (lớp ' + lop + ') ' +
-    (goiYChuDe ? 'theo chủ đề/yêu cầu: "' + goiYChuDe + '"' : 'thuộc dạng Toán thực tế tối ưu / chuyển động / hình học ghép / xác suất vận dụng cao thường gặp trong đề thi giữa kỳ, cuối kỳ và THPT Quốc gia') +
+    (goiYChuDe ? 'theo chủ đề/yêu cầu: "' + goiYChuDe + '"' : 'thuộc dạng Toán thực tế tối ưu / chuyển động / hình học / xác suất vận dụng cao thường gặp trong đề thi giữa kỳ, cuối kỳ và THPT Quốc gia') +
     ' để làm hạt nhân cho VIDEO BÀI GIẢNG CHUYÊN ĐỀ DÀI 10 PHÚT trên YouTube.\n' +
     'YÊU CẦU:\n' +
-    '- Đề bài rõ ràng, có bối cảnh thực tế hấp dẫn (như bài cầu vượt - sà lan - ô tô, mảnh vườn tròn ghép lục giác, tối ưu chi phí xây dựng, bài toán lãi suất/tối ưu...), số liệu khớp tuyệt đối và có ĐÚNG MỘT đáp số.\n' +
-    '- Trả JSON: {"lop":"' + lop + '","mon":"THUC_TE|XAC_SUAT|HINH_HOC","chu_de":"Chuyên đề 10 phút: <tên ngắn gọn>","de_bai":"toàn bộ đề bài gốc","dap_an":"con số hoặc phân số","yeu_to_tu_duy":"bản chất toán học và phương pháp nhận diện dạng bài","bay_thuong_gap":"sai lầm 90% học sinh mắc phải trong phòng thi"}';
+    '- Đề bài rõ ràng, có bối cảnh thực tế hấp dẫn, số liệu khớp tuyệt đối và có ĐÚNG MỘT đáp số.\n' +
+    (daCo ? '- Không trùng các chuyên đề đã làm:\n' + daCo + '\n' : '') +
+    '- Trả JSON: {"lop":"' + lop + '","mon":"THUC_TE|XAC_SUAT|HINH_HOC","chu_de":"Chuyên đề 10 phút: <tên ngắn gọn>","de_bai":"toàn bộ đề bài gốc","dap_an":"con số hoặc phân số","yeu_to_tu_duy":"bản chất toán học và phương pháp nhận diện dạng bài","bay_thuong_gap":"sai lầm học sinh hay mắc phải trong phòng thi"}';
   var d = goiGemini_(prompt, 0.35, { suyNghi: 'low' });
   if (!d || !d.de_bai) return '⚠️ Chưa sinh được đề chuyên đề 10 phút, hãy thử lại.';
   var mon = String(d.mon || 'THUC_TE').toUpperCase();
@@ -2620,15 +2660,17 @@ function taoDeVideoDai10Phut_(goiYChuDe, chat) {
     yeu_to_tu_duy: String(d.yeu_to_tu_duy || ''),
     bay_thuong_gap: String(d.bay_thuong_gap || ''),
     kiem_chung: '[VIDEO_DAI_10P]' + (d.dap_an ? ' | DU_KIEN: ' + String(d.dap_an).slice(0, 40) : ''),
-    uu_tien: 1,
+    uu_tien: laTuDongNgay ? '' : 1,
     zalo_chat: chat || '',
     cap_nhat: new Date(),
     ma_bam: bam_(d.de_bai)
   };
   sh.appendRow(COT.map(function (k) { return obj[k] !== undefined ? obj[k] : ''; }));
   SpreadsheetApp.flush();
-  try { if (typeof henUuTien_ === 'function') henUuTien_(15); } catch (eH) {}
-  return '🎓 Đã tạo chuyên đề Video Dài 10 Phút YouTube (' + id + ' - Lớp ' + obj.lop + '):\n📌 Chủ đề: ' + obj.chu_de + '\n📖 Đề trọng tâm: ' + obj.de_bai.slice(0, 220) + '...\n⏳ Hệ thống đang giải kiểm chứng và viết kịch bản 5 chương (~45 cảnh, ~10 phút) để dựng video học tập.';
+  if (!laTuDongNgay) {
+    try { if (typeof henUuTien_ === 'function') henUuTien_(15); } catch (eH) {}
+  }
+  return '🎓 Đã tạo chuyên đề Video Dài 10 Phút YouTube (' + id + ' - Lớp ' + obj.lop + '):\n📌 Chủ đề: ' + obj.chu_de + '\n📖 Đề trọng tâm: ' + obj.de_bai.slice(0, 220) + '...\n⏳ Hệ thống đang giải kiểm chứng và viết kịch bản 5 chương (~45 cảnh, ~10 phút) để dựng video học tập và chỉ đăng lên YouTube.';
 }
 
 // Tự động đồng bộ toàn bộ 10 tệp .gs (bao gồm KhoKey.gs) và tệp kê khai appsscript.json (giữ nguyên mọi Dịch vụ/Thư viện như YouTube, YouTubeAnalytics) từ nhánh master trên GitHub thẳng vào dự án Google Apps Script hiện tại

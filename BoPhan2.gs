@@ -160,12 +160,14 @@ function chonVaGuiDung_(sh) {
       if (phut > BP2_QUA_HAN_PHUT) { kiemTraGitHubBiChan_(); baoLoiDung_(sh, r, 'QUA_HAN: GitHub không báo kết quả sau ' + BP2_QUA_HAN_PHUT + ' phút'); }
       else dangDung++;
     });
-    // 2) Đề ưu tiên (Zalo) trước, rồi kịch bản chờ lâu nhất
+    // 2) Đề ưu tiên (Zalo) trước, tiếp đến là Video dài 10 phút trong ngày, rồi kịch bản chờ lâu nhất
     var conUuTien = hang.some(function (r) { return laUuTien_(r) && ['CHO_DOC', 'MOI', 'DA_GIAI', 'CO_KICH_BAN', 'DANG_DUNG'].indexOf(r.trang_thai) >= 0; });
     var ds = hang.filter(function (r) { return r.trang_thai === 'CO_KICH_BAN' && r.file_kich_ban && (laUuTien_(r) || !conUuTien); })
       .sort(function (a, b) {
         var u = (laUuTien_(b) ? 1 : 0) - (laUuTien_(a) ? 1 : 0);
-        return u || new Date(a.cap_nhat).getTime() - new Date(b.cap_nhat).getTime();
+        if (u) return u;
+        var d10 = (typeof laVideoDai_ === 'function' && laVideoDai_(b) ? 1 : 0) - (typeof laVideoDai_ === 'function' && laVideoDai_(a) ? 1 : 0);
+        return d10 || new Date(a.cap_nhat).getTime() - new Date(b.cap_nhat).getTime();
       });
     if (!ds.length) return;
     var r = ds[0];

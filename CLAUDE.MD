@@ -598,3 +598,19 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
      - Thêm `tuSuaDatAnTheoBuoc_()` tự động kiểm tra các cảnh `mo_dau` và `de_bai`: nếu vật 3D/2D (`khoi_hop`, `tru`, `non`, `canh_that`, `hinh_hoc`) gắn sẵn các biến đại số tự đặt (`2x`, `x`, `h`...) chưa có trong đề gốc, tự động đổi thành nhãn mô tả đề bài ở cảnh `de_bai` (ví dụ `["Dài = 2 Rộng", "Rộng ?", "Cao ?"]`) và ẩn ở `mo_dau`.
      - Tự động đưa nhãn ẩn số `["2x", "x", "h"]` vào cảnh bắt đầu giải (`mo_hinh_hoa` / `tinh_toan`) kèm dòng công thức và lời thoại đặt ẩn tường minh (`\text{Đặt rộng } = x\;(x>0) \Rightarrow \text{dài } = 2x,\; \text{cao } = h`), đồng thời cho từng nhãn cạnh trên khối 3D bật lên lần lượt theo nhịp đọc.
      - Tăng khoảng cách từ trong `PhuDeTikTok.tsx` khi từ đang đọc phóng to để không bao giờ dính chữ (như `"chiều rộng"`).
+
+
+
+#### 18. Tự động sinh mỗi ngày 1 Video Dài 10 Phút đăng riêng lên YouTube & Đồng nhất 100% Giọng đọc có Nhấn nhá (v51)
+- **Tệp chỉnh sửa**: [BoPhan1.gs](file:///e:/Video-AI/BoPhan1.gs), [BoPhan2.gs](file:///e:/Video-AI/BoPhan2.gs), [DangVideo.gs](file:///e:/Video-AI/DangVideo.gs), [scripts/chuanbi.py](file:///e:/Video-AI/scripts/chuanbi.py), [scripts/dang_video.py](file:///e:/Video-AI/scripts/dang_video.py), [.github/workflows/dung-video.yml](file:///e:/Video-AI/.github/workflows/dung-video.yml).
+- **Vấn đề đã xử lý**:
+  1. **Tự động sinh mỗi ngày 1 Video Dài 10 Phút và CHỈ đăng lên YouTube (không đăng Facebook hay TikTok) (`BoPhan1.gs`, `BoPhan2.gs`, `DangVideo.gs`, `scripts/dang_video.py`, `dung-video.yml`)**:
+     - Thêm hàm `tuDongSinhVideoDaiMoiNgay_(sh, bc)` trong `BoPhan1.gs` (cấu hình `VIDEO_10P_MOI_NGAY = BAT`): mỗi ngày hệ thống tự động kiểm tra và khởi tạo 1 đề chuyên đề 10 phút (`-10P`), luân phiên qua các khối lớp `12`, `11`, `10`, ưu tiên giải – viết kịch bản 5 chương – gửi dựng ngay sau đề ưu tiên Zalo.
+     - Thêm hàm `dsNenTangChoVideo_(r)` trong `DangVideo.gs` và kiểm tra trong `scripts/dang_video.py`: mọi video dài 10 phút (`laVideoDai_(r)` hoặc thời lượng $\ge 240\text{s}$) **chỉ đăng duy nhất lên `['youtube']`**, tuyệt đối không đăng lên Facebook hay TikTok.
+     - Trong `chonVideoDang_()` (`DangVideo.gs`), cấp riêng 1 suất đăng mỗi ngày (`tt.da_dang_10p`) cho video 10 phút độc lập với hạn ngạch `SO_VIDEO_MOI_NGAY` của video ngắn, đồng thời trả link chuẩn `https://youtu.be/<id>` và tự động giới hạn dung lượng tệp MP4 $< 42\text{ MB}$ (`-crf 23 -maxrate 850k`) để dịch vụ `YouTube.Videos.insert` của Apps Script luôn đăng trực tiếp thành công.
+  2. **Đồng nhất 100% Giọng đọc xuyên suốt các cảnh nhưng vẫn giữ trọn Nhấn nhá (`scripts/chuanbi.py`)**:
+     - Nguyên nhân các cảnh trước đây bị khác giọng: gọi Gemini TTS rời rạc từng cảnh kèm chỉ đạo sắc thái khác nhau và dịch tần số mẫu `asetrate` làm biến đổi âm sắc (formant) của người đọc giữa các cảnh; bên cạnh đó `edge-tts` nhảy cao độ nền (`-5Hz` sang `+7Hz`) giữa các câu.
+     - Khắc phục triệt để:
+       - Đặt mặc định `CACH_DOC_GEMINI = "mot_lan"` (`tao_giong_gemini_mot_lan` / `_doc_khuc_gemini_mot_lan`): đọc liền mạch toàn bộ kịch bản trong một lần gọi (hoặc theo chặng 12 cảnh với cùng một prompt cố định cho video 10 phút) để giữ **100% cùng một người đọc, cùng một âm sắc từ đầu đến cuối**.
+       - Loại bỏ hoàn toàn việc dịch tần số mẫu `asetrate` và giữ cố định cao độ nền (`+0Hz`), tốc độ nền (`+6%`) giữa mọi câu/cảnh trên cả Gemini TTS lẫn `edge-tts`.
+       - Tạo sự **nhấn nhá tự nhiên ngay trong cùng chất giọng** thông qua `them_nhan_nha_doc()` (chèn nhịp nghỉ lấy đà `, ... ` trước từ khóa, con số, đáp án, sau từ cảnh báo và chuẩn hóa dấu `?`, `!`) kết hợp bảo toàn dải động âm thanh (`LRA=13`).
