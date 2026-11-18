@@ -75,7 +75,7 @@ const ctx = {
     const danhSach = String(chMap.DANH_SACH_MODEL || '').split(/[\s,;]+/).filter(Boolean);
     const models = danhSach.length ? danhSach : [model, chMap.MODEL_CHINH, chMap.MODEL_DU_PHONG, chMap.MODEL_DU_PHONG_2, 'gemini-2.5-flash'].filter(Boolean);
     const t = path.join(os.tmpdir(), 'sd_gem_' + Date.now() + '.json');
-    fs.writeFileSync(t, JSON.stringify({model, models, bodies: [body], keys, hedgeGiay: 35}));
+    fs.writeFileSync(t, JSON.stringify({model, models, bodies: [body], keys}));
     try {
       const s = execFileSync(process.execPath, [path.join(__dirname, 'goi_gemini.js'), t], {encoding: 'utf8', maxBuffer: 50 * 1024 * 1024, timeout: 480000, stdio: ['ignore', 'pipe', 'inherit']});
       return JSON.parse(s)[0];

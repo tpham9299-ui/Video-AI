@@ -169,7 +169,7 @@ async function aiNhinHinh(anh) {
     'CHỈ trả "dung": false khi có lỗi NGHIÊM TRỌNG làm hỏng video hoặc sai toán học (sai đáp án, sai phép tính, vẽ sai hẳn vật của đề, hoặc chữ đè che khuất hoàn toàn). Các chi tiết thẩm mỹ nhỏ, khoảng cách hơi sát nhưng vẫn đọc rõ, hoặc cảnh mở đầu/chốt bài chỉ có chữ thì ĐẶT "dung": true. Trả JSON: {"dung": true|false, "van_de": ["ẢNH n (cảnh ...): lỗi gì, phải sửa thế nào"]}';
   const parts = [{text: prompt}, ...anh.map((a) => ({inline_data: {mime_type: 'image/jpeg', data: fs.readFileSync(a.tep).toString('base64')}}))];
   // cùng bộ model linh hoạt với Bộ phận 1: tự động đổi model nếu một model lỗi / 404 / hết hạn mức
-  const models = [...new Set([process.env.MODEL_AI_NHIN, 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-flash-lite-latest', 'gemini-3.8-flash', 'gemini-3.6-flash'].filter(Boolean))];
+  const models = [...new Set([process.env.MODEL_AI_NHIN, 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-flash-lite-latest'].filter(Boolean))];
   const hetNgay = new Set();
   const model404 = new Set();
   const loiModel = {};
@@ -196,7 +196,8 @@ async function aiNhinHinh(anh) {
           if (res.status === 429 && /PerDay|per day|daily/i.test(raw)) { hetNgay.add(model + '|' + k); continue; }   // hết hạn mức ngày: key kế
           if (res.status === 429) { const m = /"retryDelay":\s*"(\d+)/.exec(raw); const c = Math.min(60, (m ? Number(m[1]) : 15) + 1) * 1000; choMs = choMs ? Math.min(choMs, c) : c; continue; }
           if (res.status >= 500) break; // máy chủ model này đang lỗi -> thử ngay model kế tiếp
-          if (res.status === 401 || ([400, 403].includes(res.status) && /API_KEY_INVALID|API key not valid|API key expired|SERVICE_DISABLED|has not been used|is disabled|suspended|PERMISSION_DENIED|billing/i.test(raw))) { hetNgay.add(model + '|' + k); ghiKeyHong(k, res.status, raw); }
+          if (res.status === 401 || ([400, 403].includes(res.status) && /API_KEY_INVALID|API key not valid|API key expired|API_KEY_EXPIRED/i.test(raw))) { hetNgay.add(model + '|' + k); ghiKeyHong(k, res.status, raw); }
+          if (res.status === 403) hetNgay.add(model + '|' + k);
           continue;
         }
         const j = await res.json().catch(() => null);

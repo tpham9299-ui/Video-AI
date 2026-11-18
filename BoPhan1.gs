@@ -54,7 +54,7 @@ var MAC_DINH = {
   // | THEO_MON (toán thực tế = nam, xác suất = nữ) | CHI_NAM | CHI_NU. Tên giọng Gemini: GIONG_NAM (Puck/Charon/Fenrir), GIONG_NU (Aoede/Kore).
   QUY_TAC_GIONG: 'CHU_KY', CHU_KY_GIONG: '3', GIONG_NAM: 'Puck', GIONG_NU: 'Aoede',
   VIDEO_10P_MOI_NGAY: 'BAT',
-  DANH_SACH_MODEL: 'gemini-2.5-flash,gemini-flash-latest,gemini-2.5-pro,gemini-2.0-flash,gemini-flash-lite-latest,gemini-3.8-flash,gemini-3.6-flash',
+  DANH_SACH_MODEL: 'gemini-2.5-flash,gemini-flash-latest,gemini-2.5-pro,gemini-2.0-flash,gemini-flash-lite-latest',
   MODEL_CHINH: 'gemini-2.5-flash',
   MODEL_DU_PHONG: 'gemini-flash-latest',
   MODEL_DU_PHONG_2: 'gemini-2.5-pro', // model dự phòng thứ 3 (tùy chọn, có thể để trống)
@@ -1547,9 +1547,7 @@ var MODEL_CHUAN_DU_PHONG_ = [
   'gemini-2.5-pro',
   'gemini-2.0-flash',
   'gemini-flash-lite-latest',
-  'gemini-2.0-flash-lite',
-  'gemini-3.8-flash',
-  'gemini-3.6-flash'
+  'gemini-2.0-flash-lite'
 ];
 
 // Danh sách model động: không cố định vào một model duy nhất.

@@ -51,17 +51,18 @@ function khoXep_(he, tq) {
   else if (he === 'DIEMDANH') { bd = Math.floor(n / 2); }
   for (var i = 0; i < n; i++) thuTu.push(ds[(((bd + buoc * i) % n) + n) % n]);
   var tenCache = thuTu.map(function (k) { return 'kdn_' + khoId_(k) + '_' + tq; });
+  var quyenCache = thuTu.map(function (k) { return 'kdb_' + khoId_(k) + '_' + tq; });
   var nghiMap = {};
-  try { nghiMap = CacheService.getScriptCache().getAll(tenCache); } catch (e) { nghiMap = {}; }
-  var dung = [], nghi = [];
+  try { nghiMap = CacheService.getScriptCache().getAll(tenCache.concat(quyenCache)); } catch (e) { nghiMap = {}; }
+  var dung = [], nghi = [], coHetNgay = false;
   thuTu.forEach(function (k, i) {
     var id = khoId_(k);
     if (all['kd_' + id] === 'BAD') return;
-    if (all[khoTenKhoa_(id, tq)] === homNay) return;
-    if (all['kdb_' + id + '_' + tq] === 'BAD') return;
+    if (all[khoTenKhoa_(id, tq)] === homNay) { coHetNgay = true; return; }
+    if (nghiMap[quyenCache[i]]) return;
     (nghiMap[tenCache[i]] ? nghi : dung).push(k);
   });
-  return { dung: dung, nghi: nghi };
+  return { dung: dung, nghi: nghi, coHetNgay: coHetNgay };
 }
 
 function khoNghiNgan_(id, tq) {
@@ -71,7 +72,7 @@ function khoNghiNgan_(id, tq) {
 function khoDanhDau_(key, tq, loai) {   // loai: 'ngay' (hết hạn mức ngày) | 'bad' (key hỏng toàn phần) | 'bad_model' (lỗi quyền theo model)
   var p = khoProps_(), id = khoId_(key);
   if (loai === 'bad') { p.setProperty('kd_' + id, 'BAD'); return; }
-  if (loai === 'bad_model' && tq) { p.setProperty('kdb_' + id + '_' + tq, 'BAD'); return; }
+  if (loai === 'bad_model' && tq) { CacheService.getScriptCache().put('kdb_' + id + '_' + tq, 'BAD', 1800); return; }
   if (p.getProperty('kd_' + id) === 'BAD') return;
   p.setProperty(khoTenKhoa_(id, tq), khoNgayPT_());
 }
@@ -89,16 +90,16 @@ function khoBaoChu_(key, tq, loai) {
 // Trả true nếu lỗi đã được xử lý bằng cách đánh dấu key (để vòng gọi đổi sang key khác)
 function khoGhiNhanLoi_(key, tq, code, raw) {
   raw = String(raw || '');
+  if (code === 429 && /\blimit:\s*0\b|"quotaValue":\s*"?0\b/i.test(raw)) {
+    khoDanhDau_(key, tq, 'bad_model');
+    return true;
+  }
   if (code === 429) {
-    if (/PerDay/i.test(raw)) { khoDanhDau_(key, tq, 'ngay'); khoBaoChu_(key, tq, 'ngay'); }
+    if (/PerDay|per day|daily/i.test(raw)) { khoDanhDau_(key, tq, 'ngay'); khoBaoChu_(key, tq, 'ngay'); }
     else khoNghiNgan_(khoId_(key), tq);   // giới hạn theo phút: nghỉ 75 giây
     return true;
   }
-  if (code === 401 || /API_KEY_INVALID|API key not valid|API key expired/i.test(raw) || (code === 403 && /CONSUMER_SUSPENDED|PERMISSION_DENIED.*API key/i.test(raw))) {
-    khoDanhDau_(key, tq, 'bad'); khoBaoChu_(key, tq, 'bad');
-    return true;
-  }
-  if (code === 400 && /API key/i.test(raw)) {
+  if (code === 401 || ((code === 400 || code === 403) && /API_KEY_INVALID|API key not valid|API_KEY_EXPIRED|API key expired/i.test(raw))) {
     khoDanhDau_(key, tq, 'bad'); khoBaoChu_(key, tq, 'bad');
     return true;
   }
@@ -124,6 +125,7 @@ function khoGoi_(he, model, body, tuyChon) {
   for (var vong = 0; vong < 60; vong++) {
     var tt = khoXep_(he, tq);
     if (!tt.dung.length) {
+      if (!tt.nghi.length && !tt.coHetNgay) return { ok: false, code: 403, het: false, raw: 'KHONG_CO_KEY_CO_QUYEN' };
       if (!tt.nghi.length) return { ok: false, code: 429, het: true, raw: 'HET_HAN_MUC_NGAY' };
       if (Date.now() - bat + 8000 > hanCho) return { ok: false, code: 429, het: false, raw: 'GIOI_HAN_TOC_DO' };
       Utilities.sleep(8000);
@@ -167,7 +169,9 @@ function khoGoiSong_(he, model, bodies) {
   return kq.map(function (r, i) {
     var code = r.getResponseCode(), raw = r.getContentText(), key = keys[i % keys.length];
     if (code === 200) return { ok: true, code: 200, het: false, raw: raw, key: key };
-    khoGhiNhanLoi_(key, model, code, raw);
+    if (code === 400 || code === 404) {
+      if (!khoGhiNhanLoi_(key, model, code, raw)) return { ok: false, code: code, het: false, raw: raw };
+    } else khoGhiNhanLoi_(key, model, code, raw);
     return khoGoi_(he, model, bodies[i]);
   });
 }

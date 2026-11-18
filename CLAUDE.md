@@ -59,7 +59,7 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
 
 ### 3. Nhóm Scripts Python & Node.js (`/scripts/`)
 - [scripts/bophan1/chay_bp1.js](file:///e:/Video-AI/scripts/bophan1/chay_bp1.js): Giả lập các dịch vụ của Google Apps Script (`SpreadsheetApp`, `PropertiesService`, `CacheService`, `DriveApp`, `Utilities`) bằng Node `vm` để chạy toàn bộ mã `.gs` trên GitHub Actions.
-- [scripts/bophan1/goi_gemini.js](file:///e:/Video-AI/scripts/bophan1/goi_gemini.js): Tiến trình con gọi Gemini API song song với cơ chế **xoay vòng key** + **tự động đổi model theo chuỗi (`motChuoiModel`)** + **gọi dự phòng song song (hedged requests)** + **tự động dò model qua `/v1beta/models`** khi gặp lỗi 404.
+- [scripts/bophan1/goi_gemini.js](file:///e:/Video-AI/scripts/bophan1/goi_gemini.js): Tiến trình con gọi Gemini API song song với cơ chế **xoay vòng key** + **tự động đổi model theo chuỗi (`motChuoiModel`)** + **gọi dự phòng song song khi bật rõ bằng GIAY_GOI_DU_PHONG** + **tự động dò model qua `/v1beta/models`** khi gặp lỗi 404.
 - [scripts/chuanbi.py](file:///e:/Video-AI/scripts/chuanbi.py): Chuẩn hóa văn bản toán học sang tiếng Việt đọc tự nhiên, gọi Gemini TTS (có danh sách model TTS dự phòng tự động chuyển đổi) hoặc `edge-tts`, lọc tạp âm/rè, tính thời lượng từng cảnh, bung bản vẽ `dung_ban_ve` có phân tầng bước `buoc: 1..4`, chọn nhạc nền và xuất `public/props.json`.
 - [scripts/manim_hinh.py](file:///e:/Video-AI/scripts/manim_hinh.py): Dựng bài toán `HINH_HOC` bằng Manim Community (`v0.22.1`): tự động tính tọa độ các điểm phụ (`_bo_sung_diem_phu`), chuẩn hóa cạnh nhìn thấy nét liền / cạnh khuất nét đứt 3D (`_chuan_hoa_khong_gian`), vẽ đường phụ (`phu`), tô sáng đối tượng đồng bộ lời giảng và dựng bảng công thức LaTeX bên dưới.
 - [scripts/kiem_duyet.mjs](file:///e:/Video-AI/scripts/kiem_duyet.mjs): Chụp các khung hình mẫu của từng cảnh bằng `@remotion/renderer`, đo hộp chữ DOM tìm lỗi tràn mép/đè chữ/cắt chữ/lộ mã TeX, đối chiếu đáp số trên màn hình và gửi ảnh cho Gemini Vision kiểm duyệt trước khi render.
@@ -146,7 +146,7 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
 ### 6. Cơ chế Hệ thống Model Động — Tự động chuyển đổi Model khi gặp lỗi
 - **Không cố định một model duy nhất**:
   - Cấu hình `DANH_SACH_MODEL` trong [BoPhan1.gs](file:///e:/Video-AI/BoPhan1.gs) duy trì chuỗi model ưu tiên:
-    `gemini-2.5-flash, gemini-flash-latest, gemini-2.5-pro, gemini-2.0-flash, gemini-flash-lite-latest, gemini-3.8-flash, gemini-3.6-flash`.
+    `gemini-2.5-flash, gemini-flash-latest, gemini-2.5-pro, gemini-2.0-flash, gemini-flash-lite-latest`.
 - **Tự động chuyển model tức thì trên cả Apps Script và GitHub Actions**:
   - Trong `goiGemini_()` và `goiGeminiSong_()` ([BoPhan1.gs](file:///e:/Video-AI/BoPhan1.gs)) cũng như `motChuoiModel()` ([scripts/bophan1/goi_gemini.js](file:///e:/Video-AI/scripts/bophan1/goi_gemini.js)):
     1. **Gặp lỗi HTTP 404 (Model không tồn tại / đã ngừng hỗ trợ)**: Đánh dấu ngay model đó vào bộ nhớ tạm (`MODEL_404_<model>` trong `CacheService` hoặc `/tmp/gemini_model_khong_co.txt`), **không lãng phí thử các API key tiếp theo trên model 404 đó**, và lập tức chuyển sang model kế tiếp trong danh sách.
@@ -838,3 +838,9 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
 - Viết riêng ba chương mở rộng; thiếu chương hoặc Gemini lỗi thì dừng. Bản nháp ngắn được đưa lại vào bước mở rộng. Chế độ dài được khôi phục khi chuẩn bị kịch bản sau sửa.
 - Kiểm tra ngân sách lời giảng 540–660 giây, sau đó kiểm tra timeline sau TTS và thời lượng MP4 ở bước đăng. Bản đã đánh số dùng cho Apps Script phải gắn với ID tệp được kiểm tra trong lượt đăng.
 - Khi YouTube báo API đang tắt, thông báo dẫn tới đúng dự án Google Cloud cần bật YouTube Data API v3.
+
+#### Lần 38 (v71) — Giảm lượt gọi Gemini và phân biệt quota với quyền dùng model
+
+- Bộ phận 1 trên GitHub xử lý tối đa ba yêu cầu trong mỗi tiến trình, giới hạn thêm theo số key. Mặc định chỉ gọi dự phòng sau lỗi. Lỗi quyền được ghi theo cặp key/model. Khi model cấu hình không dùng được, bộ gọi có thể tra các trang ListModels để chọn model sinh văn bản.
+- Kiểm tra key mặc định tra danh mục rồi dừng ở lần sinh thành công đầu tiên. Khi nhập danh sách model thủ công, workflow vẫn kiểm tra từng model đã nhập.
+- Apps Script phân biệt kho bị chặn quyền với hết quota ngày. Bước kiểm duyệt hình, TTS và kiểm tra key giữ lại key gặp lỗi quyền hoặc billing để người vận hành kiểm tra cấu hình dự án.

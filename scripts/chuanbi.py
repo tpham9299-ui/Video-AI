@@ -542,9 +542,11 @@ def gemini_tts(text, tep_wav, giong, model, phong_cach, dung_cache=True):
                             KEY_HET_NGAY.add(md + "|" + key)   # hết hạn mức NGÀY cho model này: sang key kế
                         print("Gemini TTS: key %s… hết hạn mức ngày cho %s, chuyển key/model khác" % (key[:6], md))
                         continue
-                    if e.code == 401 or (e.code in (400, 403) and re.search(r"API_KEY_INVALID|API key not valid|API key expired|SERVICE_DISABLED|has not been used|is disabled|suspended|PERMISSION_DENIED|billing", noi, re.I)):
+                    if e.code == 401 or (e.code in (400, 403) and re.search(r"API_KEY_INVALID|API key not valid|API key expired|API_KEY_EXPIRED", noi, re.I)):
                         ghi_key_hong(key, e.code, noi)
                         continue
+                    if e.code == 403:
+                        continue   # quyền của key trên model này; thử key kế
                     if e.code in (429, 500, 503):
                         m = re.search(r'"retryDelay":\s*"(\d+)', noi)
                         cho = min(45, int(m.group(1)) + 2) if m else 8 * (vong + 1)

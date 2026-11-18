@@ -81,9 +81,9 @@ function goiTho(model, bodies) {
   // Danh sách model linh hoạt: tự động đổi model ngay trong tiến trình gọi khi gặp lỗi (404, 400, 429 hết ngày, 500, 503, mạng)
   const ch = de.cau_hinh || {};
   const dsCauHinh = typeof ctx.danhSachModel_ === 'function' ? ctx.danhSachModel_() : [];
-  const models = [...new Set([model, ...dsCauHinh, ch.MODEL_CHINH, ch.MODEL_DU_PHONG, 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-flash-lite-latest', 'gemini-3.8-flash', 'gemini-3.6-flash'].map((x) => String(x || '').trim()).filter(Boolean))];
-  const duPhong = String(ch.GOI_DU_PHONG_SONG_SONG || 'BAT').toUpperCase() !== 'TAT' ? models.filter((m) => m !== model) : [];
-  fs.writeFileSync(t, JSON.stringify({model, models, bodies, keys, batDauKey: vongKey, duPhong, hedgeGiay: Number(ch.GIAY_GOI_DU_PHONG) || 35}));
+  const models = [...new Set([model, ...dsCauHinh, ch.MODEL_CHINH, ch.MODEL_DU_PHONG, 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-flash-lite-latest'].map((x) => String(x || '').trim()).filter(Boolean))];
+  const hedgeGiay = String(ch.GOI_DU_PHONG_SONG_SONG).toUpperCase() === 'TAT' ? 0 : Number(ch.GIAY_GOI_DU_PHONG) || 0;
+  fs.writeFileSync(t, JSON.stringify({model, models, bodies, keys, batDauKey: vongKey, hedgeGiay}));
   vongKey = (vongKey + bodies.length) % Math.max(1, keys.length);
   try {
     return JSON.parse(execFileSync(process.execPath, [path.join(__dirname, 'goi_gemini.js'), t], {maxBuffer: 64 * 1024 * 1024, timeout: 330000}).toString());
