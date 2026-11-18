@@ -17,7 +17,7 @@ on:
         default: ''
 
 concurrency:
-  group: bo-phan-1-${{ inputs.id || github.run_id }}-${{ github.run_id }}
+  group: bo-phan-1-${{ inputs.id || github.run_id }}
   cancel-in-progress: false
 
 jobs:

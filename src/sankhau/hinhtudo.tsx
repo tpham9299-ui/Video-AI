@@ -304,7 +304,7 @@ export const HinhTuDo: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
     return {x0: x - rong / 2, x1: x + rong / 2, y0: h.tam[1] * s - coC * 0.7, y1: h.tam[1] * s + coC * 0.7};
   });
   const coVatThuc = v.hinh.some((h) => h.kieu === 'vat');   // cảnh thật (cột cờ, nhà...): hình học vẽ thêm là chú thích phẳng
-  const KHOI = 10; // số lớp đùn khối (hình tô màu nằm trên bàn 3D -> nổi thành khối có bề dày)
+  const KHOI = 6; // số lớp đùn khối (hình tô màu nằm trên bàn 3D -> nổi thành khối có bề dày)
   // bộ hiệu ứng mới: nhiều chữ rời cùng một bước thì bật LẦN LƯỢT (0,3 giây/chữ) kèm vòng sóng, như các ga tàu hiện dần
   const treChu = new Map<number, number>();
   if (moi) {

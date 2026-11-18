@@ -62,7 +62,7 @@ export const ChuBaTang: React.FC<{dan: string; chot: string; duoi: string; mau: 
   const co = coChuChot(chotHien, coToiDa);
   const gach = expoOut(kep((f - xongChot + 2) / 12));
   // chỉ có một tầng (không tìm được từ khóa): cả câu cỡ vừa-lớn
-  const coDuoi = chot ? 44 : Math.min(76, Math.floor(1700 / Math.max(10, duoi.length)));
+  const coDuoi = chot ? 44 : Math.max(30, Math.min(76, Math.floor(1700 / Math.max(10, duoi.length))));
   return (
     <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 6, maxWidth: 1000}}>
       {dan ? (

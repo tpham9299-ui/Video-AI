@@ -32,7 +32,7 @@ export type LoaiVat = (typeof LOAI_VAT)[number];
 
 export const KIEU_HANH_DONG = [
   'chon', 'loai_bo', 'sang', 'rung', 'quay', 'mo', 'lay_ra', 'dat_gia_tri', 'bung_ra', 'di_chuyen', 'phong_to', 'thu_nho', 'an', 'doi_chu', 'goc_3d',
-, 'bien_hinh', 'tach', 'ghep', 'dem_tang'] as const;
+  'bien_hinh', 'tach', 'ghep', 'dem_tang'] as const;
 export type KieuHanhDong = (typeof KIEU_HANH_DONG)[number];
 
 export type Nhom = {mau: string; so: number};

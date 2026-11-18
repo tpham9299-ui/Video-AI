@@ -68,11 +68,11 @@ export const SoDoCay: React.FC<{du: DuLieuCay; giayAm: number}> = ({du, giayAm})
         return (
           <React.Fragment key={`n${n.id}`}>
             <div style={{position: 'absolute', left: goc ? n.x - 26 : n.la ? n.x + 26 : n.x, top: goc || n.la ? n.y : n.y - 24, transform: goc ? 'translate(-100%, -50%)' : n.la ? 'translate(0, -50%)' : 'translate(-50%, -100%)', opacity: e}}>
-              <Toan tex={n.nhan} size={42} color={goc ? '#ffffff' : mauTen(n.mau)} maxWidth={goc ? 200 : 130} />
+              <Toan tex={n.nhan} size={42} color={goc ? '#ffffff' : mauTen(n.mau)} maxWidth={goc ? 220 : 150} />
             </div>
             {n.la && n.kq ? (
               <div style={{position: 'absolute', left: n.x + 150, top: n.y, transform: `translate(0, -50%) scale(${1 + 0.18 * Math.sin(Math.PI * hl)})`, transformOrigin: 'left center', opacity: tien(t, tb(n.sau) + 0.9, 0.5)}}>
-                <Toan tex={n.kq} size={42} color={hl > 0.4 ? MAU.vang : MAU.mo} maxWidth={170} />
+                <Toan tex={n.kq} size={42} color={hl > 0.4 ? MAU.vang : MAU.mo} maxWidth={190} />
               </div>
             ) : null}
           </React.Fragment>

@@ -33,7 +33,10 @@ const chonSet = new Set(
 );
 const mau = [];
 canh.forEach((c, i) => {
-  for (const p of [0.55, 0.95]) mau.push({f: lech + Math.min(props.tongFrame - 1, Math.round(c.batDau + c.soFrame * p)), i, isEnd: p === 0.95});
+  for (const p of [0.55, 0.95]) {
+    const off = p === 0.95 ? Math.min(Math.round(c.soFrame * p), Math.max(0, c.soFrame - 10)) : Math.round(c.soFrame * p);
+    mau.push({f: Math.min(props.tongFrame - 1, lech + c.batDau + off), i, isEnd: p === 0.95});
+  }
 });
 
 const trinhDuyet = await openBrowser('chrome', {browserExecutable: process.env.TRINH_DUYET || null, chromiumOptions: {gl: 'swangle'}});
@@ -162,7 +165,7 @@ async function aiNhinHinh(anh) {
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(k)}`, {
           method: 'POST', headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({contents: [{role: 'user', parts}], generationConfig: {temperature: 0.1, responseMimeType: 'application/json'}}),
-          signal: AbortSignal.timeout(45000),
+          signal: AbortSignal.timeout(90000),
         }).catch((e) => { lyDo = 'lỗi mạng: ' + String(e.message || e).slice(0, 80); return null; });
         if (!res) continue;
         if (!res.ok) {
@@ -173,7 +176,7 @@ async function aiNhinHinh(anh) {
           if (res.status === 429 && /PerDay|per day|daily/i.test(raw)) { hetNgay.add(model + '|' + k); continue; }   // hết hạn mức ngày: key kế
           if (res.status === 429) { const m = /"retryDelay":\s*"(\d+)/.exec(raw); const c = Math.min(60, (m ? Number(m[1]) : 15) + 1) * 1000; choMs = choMs ? Math.min(choMs, c) : c; continue; }
           if (res.status >= 500) break; // máy chủ model này đang lỗi -> thử ngay model kế tiếp
-          if (res.status === 401 || ([400, 403].includes(res.status) && /API_KEY_INVALID|API key not valid|API key expired|SERVICE_DISABLED|has not been used|is disabled|suspended|PERMISSION_DENIED|billing/i.test(raw))) hetNgay.add(model + '|' + k);
+          if (res.status === 401 || ([400, 403].includes(res.status) && /API_KEY_INVALID|API key not valid|API key expired|SERVICE_DISABLED|has not been used|is disabled|suspended|PERMISSION_DENIED|billing/i.test(raw))) { hetNgay.add(model + '|' + k); ghiKeyHong(k, res.status, raw); }
           continue;
         }
         const j = await res.json().catch(() => null);

@@ -16,7 +16,7 @@ on:
         default: ''
 
 concurrency:
-  group: viet-kich-ban-${{ inputs.id || github.run_id }}-${{ github.run_id }}
+  group: viet-kich-ban-${{ inputs.id || github.run_id }}
   cancel-in-progress: false
 
 jobs:

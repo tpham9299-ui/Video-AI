@@ -8,7 +8,7 @@ import {FONT_DAM} from './theme';
 // QUY TRÌNH CỐ ĐỊNH 6 PHẦN cho MỌI video: đề bài -> mô phỏng -> lỗi sai -> giải -> thử lại -> chốt kiến thức
 export const PHA: [RegExp, string][] = [
   [/mo_dau|hook|cau_hoi|de_bai/, 'ĐỀ BÀI'],
-  [/mo_hinh|mo_phong|y_do|thu_nho|phan_tich/, 'MÔ PHỎNG'],
+  [/mo_hinh|mo_phong|y_do|thu_nho|phan_tich|thuc_te|doi_song|van_dung/, 'MÔ PHỎNG'],
   [/bay|loi_sai/, 'LỖI SAI'],
   [/nhac_lai|kien_thuc|ly_thuyet|diem_chot|y_tuong|tinh|giai|dap_an|ket_qua/, 'GIẢI'],
   [/kiem_tra|thu_lai/, 'THỬ LẠI'],

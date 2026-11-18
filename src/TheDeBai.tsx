@@ -21,7 +21,7 @@ const BANG_MAU_NHAN = ['#fbbf24', '#38bdf8', '#fb7185', '#4ade80', '#c084fc'];
 function toMauCumTuDe(s: string, chiSoCau: number): React.ReactNode {
   const mauChinh = BANG_MAU_NHAN[chiSoCau % BANG_MAU_NHAN.length];
   const mauPhu = BANG_MAU_NHAN[(chiSoCau + 1) % BANG_MAU_NHAN.length];
-  const re = /(\d+h\d*|\d+(?:[.,\s]\d+)*\s*(?:km\/h|m\/s|đ\/m²|đồng\/m²|triệu|nghìn|đồng|đ|km|cm|mm|m³|m²|m|lít|°|%)|\b(?:lục giác đều|hình chữ nhật|hình vuông|hình tròn|đường tròn|tam giác đều|tam giác vuông|hình chóp|lăng trụ|sà lan|ô tô|bể cá|trồng hoa|trồng cỏ|gần nhau nhất|nhỏ nhất|lớn nhất|ngắn nhất|ít nhất)\b)/gi;
+  const re = /(\d+h\d*|\d+(?:[.,\s]\d+)*\s*(?:km\/h|m\/s|đ\/m²|đồng\/m²|triệu|nghìn|đồng|đ|km|cm|mm|m³|m²|m|lít|°|%)|(?<![\p{L}\p{N}])(?:lục giác đều|hình chữ nhật|hình vuông|hình tròn|đường tròn|tam giác đều|tam giác vuông|hình chóp|lăng trụ|sà lan|ô tô|bể cá|trồng hoa|trồng cỏ|gần nhau nhất|nhỏ nhất|lớn nhất|ngắn nhất|ít nhất)(?![\p{L}\p{N}]))/giu;
   const phan = s.split(re);
   let dem = 0;
   return phan.map((p, k) => {
@@ -66,7 +66,7 @@ export const TheDeBai: React.FC<{de: DeBai; moc: number[]; giuNguyen?: boolean; 
       transform: `translateY(${(1 - aThe) * 22}px) scale(${0.97 + 0.03 * aThe})`}}>
       <div style={{display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12}}>
         <span style={{width: 10, height: 10, borderRadius: 5, background: '#38bdf8', boxShadow: '0 0 10px #38bdf8'}} />
-        <span style={{fontSize: 25, fontWeight: 900, letterSpacing: 1.5, color: '#94a3b8'}}>DỮ KIỆN ĐỀ BÀI</span>
+        <span data-kd-bo="1" style={{fontSize: 25, fontWeight: 900, letterSpacing: 1.5, color: '#94a3b8'}}>DỮ KIỆN ĐỀ BÀI</span>
         <div style={{flex: 1, height: 1.5, background: 'linear-gradient(90deg, rgba(148,163,184,0.35), transparent)'}} />
       </div>
       <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>

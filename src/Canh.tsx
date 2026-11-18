@@ -88,7 +88,8 @@ export const Canh: React.FC<{
   keoDai?: number; // số khung hình cảnh này còn ở lại để HÒA vào cảnh sau (chuyển cảnh chồng mờ, không bị khoảng trống)
   deBai?: DeBai | null; // thẻ ĐỀ BÀI (cảnh de_bai)
   theDeGiu?: boolean; // đã có cảnh de_bai trước: thẻ hiện sẵn đủ, không chạy lại
-}> = ({canh, tieuDe, deBai, theDeGiu, tongCanh, hook, pc, sanKhau, giuTruoc, giuSau, cacBuoc = [], phaTruoc = '', keoDai = 0}) => {
+  coQuangCaoCuoi?: boolean; // cảnh trùng lúc thẻ sản phẩm hiện ở cuối video
+}> = ({canh, tieuDe, deBai, theDeGiu, coQuangCaoCuoi = false, tongCanh, hook, pc, sanKhau, giuTruoc, giuSau, cacBuoc = [], phaTruoc = '', keoDai = 0}) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
   const t = frame / fps;
@@ -128,7 +129,7 @@ export const Canh: React.FC<{
   const nHang = !hienCongThuc ? 0 : dungBienDoi ? 1 : dungCongDon ? hang.length : nDong;
 
   // ----- phân chia chiều cao -----
-  const dayVung = Y_PHU_DE - 30; // đáy vùng nội dung
+  const dayVung = coQuangCaoCuoi ? 1244 : Y_PHU_DE - 30; // đáy vùng nội dung (tránh đè thẻ sản phẩm 4.5s cuối)
   const coCTMax = coHinh ? 54 : 70;
   // cảnh ĐỀ BÀI có thẻ đề: bỏ dòng tiêu đề cảnh (thẻ đã nêu đề cho gì / cần tìm gì), hình được đẩy lên cao -> to hơn
   const anTieuDe = canh.loai === 'de_bai' && !!theDe && !coHook;
@@ -173,8 +174,8 @@ export const Canh: React.FC<{
   // phần ĐỀ BÀI (mở đầu + đọc đề): hình PHẲNG 2D, vật chuyển động trên mặt phẳng; không xoay máy 3D (chỉ hộp chữ có hiệu ứng)
   const phan2D = /mo_dau|de_bai|hook|cau_hoi/.test(canh.loai);
   const kieu3D = moi && !phan2D ? phanLoai3D(sanKhau) : 'khong';
-  // máy chỉ đổi góc ở mốc các bước của sân khấu (khớp lời giảng), góc do kịch bản chọn (goc_nhin) hoặc tự xoay vòng bộ góc
-  const mocDoi3D = (kieu3D === 'nam' || kieu3D === 'dung') && sanKhau && tbCanh ? Array.from({length: Math.max(0, sanKhau.soBuoc - 1)}, (_, k) => Math.round(tbCanh(k + 2) * fps) + canh.leadFrame) : [];
+  // máy chỉ đổi góc ở mốc các bước của sân khấu (khớp lời giảng - tbCanh đã tính từ leadFrame), góc do kịch bản chọn (goc_nhin) hoặc tự xoay vòng bộ góc
+  const mocDoi3D = (kieu3D === 'nam' || kieu3D === 'dung') && sanKhau && tbCanh ? Array.from({length: Math.max(0, sanKhau.soBuoc - 1)}, (_, k) => Math.round(tbCanh(k + 2) * fps)) : [];
   const gm = kieu3D === 'nam' ? gocMayNam(frame, canh.so, !giuTruoc, coHook || khungCuoi, mocDoi3D, canh.gocNhin || []) : null;
   const gd = kieu3D === 'dung' ? gocMayDung(frame, canh.so, !giuTruoc, mocDoi3D) : null;
   const vatDung = (gm || gd) && sanKhau ? sanKhau.vat.filter((v) => VAT_DUNG.includes(v.loai)).slice(0, 4) : [];
@@ -215,18 +216,18 @@ export const Canh: React.FC<{
     if (coHook && baTang.chot) suKien.push({f: canh.leadFrame + nhipBaTang(baTang.dan, baTang.chot).xongChot - 6, kieu: 'dap', manh: 1.1});
     if (/bay/i.test(canh.loai)) {
       const h = sanKhau && tbCanh ? sanKhau.hanhDong.find((x) => (x.kieu === 'loai_bo' || x.kieu === 'rung') && x.buoc > 0) : undefined;
-      fDau = Math.round((h && tbCanh ? tbCanh(h.buoc) : giayAm * 0.55) * fps) + canh.leadFrame;
+      fDau = Math.round((h && tbCanh ? tbCanh(h.buoc) : giayAm * 0.55) * fps);
       suKien.push({f: fDau + 2, kieu: 'rung'}, {f: fDau, kieu: 'dap', manh: 0.6});
     }
     if (khungCuoi) {
-      const sd = sanKhau ? sanKhau.vat.find((v) => v.loai === 'so_dem') : undefined;
+      const sd = sanKhau ? sanKhau.vat.find((v) => v.loai === 'so_dem' && v.buoc > 0) : undefined;
       if (sd && tbCanh) {
         const dx = (sd.x / 100) * SK_W - SK_W / 2;
         const dy = (sd.y / 100) * SK_H - SK_H / 2;
-        const p = gm ? chieuNam(dx, dy, SK_W, SK_H, gm.nghieng, gm.xoay, gm.lat) : {x: dx, y: dy};
+        const p = gm ? chieuNam(dx, dy, SK_W, SK_H, gm.nghieng, gm.xoay, gm.lat) : gd ? chieuDung(dx, dy, gd.ry, gd.rx) : {x: dx, y: dy};
         const x = 540 + p.x * tiLe;
         const y = yNoiDung + caoSan / 2 + p.y * tiLe;
-        loe = {f: Math.round((tbCanh(sd.buoc) + 1.25) * fps) + canh.leadFrame, x, y};
+        loe = {f: Math.round((tbCanh(sd.buoc) + 1.25) * fps), x, y};
       } else if (hienCongThuc && nDong) {
         loe = {f: Math.round((thoiDiemDong[nDong - 1] + 0.7) * fps), x: 540, y: coHinh ? yNoiDung + caoSan + 16 + caoCT / 2 : 960};
       }

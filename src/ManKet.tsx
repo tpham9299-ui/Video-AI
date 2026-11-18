@@ -64,9 +64,11 @@ export const ManKetChuyenNghiep: React.FC<{th: ThuongHieuProps; baiHoc: string[]
     <AbsoluteFill style={{opacity: kep(f / 6)}}>
       <NenToi />
       {/* đường kẻ trang trí vẽ dần (Manim Create) */}
-      <svg width={1080} height={1920} style={{position: 'absolute', inset: 0}}>
-        <path d="M80 1100 L1000 1100" stroke="rgba(255,255,255,0.12)" strokeWidth={2} pathLength={1} strokeDasharray={1} strokeDashoffset={1 - easeOut(kep((f - tuKenh + 6) / 18))} />
-      </svg>
+      {coBaiHoc ? (
+        <svg width={1080} height={1920} style={{position: 'absolute', inset: 0}}>
+          <path d="M80 1100 L1000 1100" stroke="rgba(255,255,255,0.12)" strokeWidth={2} pathLength={1} strokeDasharray={1} strokeDashoffset={1 - easeOut(kep((f - tuKenh + 6) / 18))} />
+        </svg>
+      ) : null}
 
       {coBaiHoc ? (
         <div style={{position: 'absolute', left: 60, right: 60, top: 230, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22}}>
@@ -74,7 +76,7 @@ export const ManKetChuyenNghiep: React.FC<{th: ThuongHieuProps; baiHoc: string[]
             <Vao tu={2}>
               <div style={{display: 'flex', alignItems: 'center', gap: 14, padding: '8px 24px', borderRadius: 30, border: `2.5px solid ${XANH}`, background: 'linear-gradient(135deg, rgba(59,242,154,0.18), rgba(16,185,129,0.08))', boxShadow: `0 0 22px ${XANH}44, inset 0 1px 0 rgba(255,255,255,0.2)`}}>
                 <span style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: 26, color: XANH, letterSpacing: 1.2}}>ĐÁP ÁN</span>
-                <Toan tex={dapAn.includes('/') ? `\\frac{${dapAn.split('/')[0]}}{${dapAn.split('/')[1]}}` : dapAn} size={40} color="#fff" />
+                <Toan tex={/^\s*-?\d+(?:\.\d+)?\s*\/\s*-?\d+(?:\.\d+)?\s*$/.test(dapAn) ? `\\frac{${dapAn.split('/')[0].trim()}}{${dapAn.split('/')[1].trim()}}` : dapAn} size={40} color="#fff" />
               </div>
             </Vao>
           ) : null}

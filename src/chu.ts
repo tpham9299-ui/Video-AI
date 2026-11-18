@@ -96,7 +96,7 @@ export function bocChuViet(tex: string): string {
   if (!/[A-Za-zÀ-ỹ]{2,}/.test(x)) return x;
   let ra = '';
   let i = 0;
-  const re = /\\(?:text|mathrm|textbf|operatorname|mbox)\s*\{[^{}]*\}|\\[a-zA-Z]+|[A-Za-zÀ-ỹ]+(?:[ ]+[A-Za-zÀ-ỹ]+)*/g;
+  const re = /\\(?:text|mathrm|textbf|operatorname|mbox|textcolor|color|begin|end)\s*\{[^{}]*\}|\\[a-zA-Z]+|[A-Za-zÀ-ỹ]+(?:[ ]+[A-Za-zÀ-ỹ]+)*/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(x))) {
     ra += x.slice(i, m.index);

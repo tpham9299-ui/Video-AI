@@ -57,6 +57,7 @@ jobs:
       so_khuc: ${{ steps.chia.outputs.so_khuc }}
       khuc: ${{ steps.chia.outputs.khuc }}
       manim: ${{ steps.chia.outputs.manim }}
+      chan: ${{ steps.kd.outputs.chan || 'false' }}
     env:
       RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
       DRIVE_NEN: ${{ vars.DRIVE_NEN }}
@@ -190,14 +191,21 @@ jobs:
       - name: Tạo giọng đọc và mốc thời gian
         run: python3 scripts/chuanbi.py kich_ban.json
 
-      - name: Cache Manim virtualenv + LaTeX SVG (chỉ bài hình học)
+      - name: Cache Manim virtualenv (chỉ bài hình học)
         if: ${{ vars.MANIM_HINH != 'TAT' && steps.kb.outputs.hh == '1' }}
         uses: actions/cache@v4
         with:
-          path: |
-            /tmp/mv
-            /tmp/manim_tex_cache
-          key: manim-0.22.1-${{ runner.os }}-v1
+          path: /tmp/mv
+          key: manim-venv-0.22.1-${{ runner.os }}-py312-v2
+
+      - name: Cache Manim LaTeX SVG (tích lũy liên video)
+        if: ${{ vars.MANIM_HINH != 'TAT' && steps.kb.outputs.hh == '1' }}
+        uses: actions/cache@v4
+        with:
+          path: /tmp/manim_tex_cache
+          key: manim-tex-${{ runner.os }}-v2-${{ hashFiles('kich_ban.json') }}-${{ github.run_id }}
+          restore-keys: |
+            manim-tex-${{ runner.os }}-v2-
 
       # BÀI HÌNH HỌC: phần toán (hình, công thức, chuyển động, hiệu ứng) dựng 100% bằng MANIM (scripts/manim_hinh.py) thành
       # một lớp trong suốt; Remotion vẫn dựng PHẦN VỎ CHUNG như mọi video (nền, tiêu đề, thanh bước, phụ đề, giọng, nhạc, tiếng
@@ -217,6 +225,7 @@ jobs:
             APT=$!
           fi
           if ! /tmp/mv/bin/python -c "import manim" >/dev/null 2>&1; then
+            rm -rf /tmp/mv
             python3 -m venv /tmp/mv
             /tmp/mv/bin/pip install -q "manim==0.22.1" > /tmp/pip_manim.log 2>&1 || {
               if [ -n "${APT:-}" ]; then wait $APT; fi
@@ -246,6 +255,16 @@ jobs:
                   giu.add(str(x['tep']).lstrip('/'))
           if isinstance(p.get('quangCao'), dict) and p['quangCao'].get('anh'):
               giu.add(str(p['quangCao']['anh']).lstrip('/'))
+          # Bảo toàn toàn bộ ảnh sản phẩm dùng trong các cảnh (anh_1, anh_2, ...)
+          for c in (p.get('canh') or []):
+              du = ((c or {}).get('minhHoa') or {}).get('duLieu') or {}
+              if isinstance(du, dict):
+                  for v in (du.get('vat') or []):
+                      if isinstance(v, dict):
+                          for vk in ('anhSrc', 'src', 'anh'):
+                              val = v.get(vk)
+                              if isinstance(val, str) and '/' in val and not val.startswith('http'):
+                                  giu.add(val.lstrip('/'))
           for sub in ('nen', 'nhac', 'sp'):
               goc = os.path.join('public', sub)
               if not os.path.isdir(goc):
@@ -282,7 +301,13 @@ jobs:
         run: |
           # tối đa 7 phút: trình duyệt chậm/treo thì bỏ qua kiểm duyệt (video vẫn dựng; AI xem video sau vẫn chặn lỗi) thay vì
           # ăn hết 30 phút của máy dựng rồi hỏng cả video (đã gặp: 48 khung chụp mất 25 phút)
-          timeout 420 node scripts/kiem_duyet.mjs build public/props.json out/kiem_duyet.json kich_ban.json 2>&1 | grep -v "character metrics\|memory\|Memory\|docker\|lower amount" || echo "Kiểm duyệt bố cục quá 7 phút hoặc lỗi -> bỏ qua"
+          set +e
+          timeout 420 node scripts/kiem_duyet.mjs build public/props.json out/kiem_duyet.json kich_ban.json 2>&1 | grep -v "character metrics\|memory\|Memory\|docker\|lower amount"
+          KD_RC=${PIPESTATUS[0]}
+          set -e
+          if [ "$KD_RC" -ne 0 ]; then
+            echo "Kiểm duyệt bố cục thoát mã $KD_RC (quá 7 phút hoặc lỗi trình duyệt) -> dùng dự phòng hong=true"
+          fi
           python3 -c "import json;json.load(open('out/kiem_duyet.json'))" 2>/dev/null || echo '{"nang":[],"nhe":[],"hong":true}' > out/kiem_duyet.json
           python3 - <<'PY'
           import json, os
@@ -306,7 +331,12 @@ jobs:
           json.dump(d, open("bao_key_hong.json", "w", encoding="utf8"), ensure_ascii=False)
           print("Key hỏng:", [(k.get("so"), k.get("ly_do")) for k in d["key_hong"]])
           PY
-          curl -sS -L -H 'Content-Type: application/json' --data @bao_key_hong.json "$APPS_SCRIPT_URL" || true
+          for lan in 1 2 3; do
+            KQ=$(curl -sS -L --max-time 45 -H 'Content-Type: application/json' --data @bao_key_hong.json "$APPS_SCRIPT_URL" || true)
+            if echo "$KQ" | grep -Eq '"ok" *: *true|SAI_TOKEN'; then break; fi
+            if echo "$KQ" | grep -q 'BAN'; then sleep 45; continue; fi
+            sleep 15
+          done
 
       - name: Kiểm duyệt không đạt - báo về Apps Script để tự sửa kịch bản
         if: steps.kd.outputs.chan == 'true' && env.APPS_SCRIPT_URL != ''
@@ -319,9 +349,10 @@ jobs:
           json.dump(d, open("bao_kiem_duyet.json", "w", encoding="utf8"), ensure_ascii=False)
           PY
           for lan in 1 2 3 4 5 6; do
-            KQ=$(curl -sS -L -H 'Content-Type: application/json' --data @bao_kiem_duyet.json "$APPS_SCRIPT_URL" || true)
+            KQ=$(curl -sS -L --max-time 45 -H 'Content-Type: application/json' --data @bao_kiem_duyet.json "$APPS_SCRIPT_URL" || true)
             echo "Lần $lan: $KQ"
-            if echo "$KQ" | grep -Eq '"ok" *: *true'; then break; fi
+            if echo "$KQ" | grep -Eq '"ok" *: *true|KHONG_TIM_THAY'; then break; fi
+            if echo "$KQ" | grep -q 'SAI_TOKEN'; then echo "SAI_TOKEN"; break; fi
             if echo "$KQ" | grep -q 'BAN'; then sleep 60; continue; fi
             sleep 20
           done
@@ -428,8 +459,8 @@ jobs:
 
   ghep:
     needs: [chuan_bi, dung_khuc]
-    # luôn chạy (kể cả khi dựng lỗi) để báo kết quả về Apps Script; bỏ qua khi việc là "dang"
-    if: ${{ always() && needs.chuan_bi.result != 'skipped' }}
+    # luôn chạy (kể cả khi dựng lỗi) để báo kết quả về Apps Script; bỏ qua khi việc là "dang" hoặc dừng do kiem_duyet chan=true
+    if: ${{ always() && needs.chuan_bi.result != 'skipped' && needs.chuan_bi.outputs.chan != 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:

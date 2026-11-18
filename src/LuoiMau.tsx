@@ -108,7 +108,7 @@ export const LuoiMau: React.FC<{du: DuLieuLuoiMau; giayAm: number}> = ({du, giay
       {du.cap
         ? du.hang.map((h, i) =>
             du.cot.map((c, j) => (
-              <div key={`t${i}-${j}`} style={{position: 'absolute', left: gx + (j + 0.5) * cs, top: gy + (i + 0.5) * cs, transform: 'translate(-50%, -50%)', opacity: 0.5 * tien(t, 1.2 + (i + j) * 0.03, 0.4)}}>
+              <div key={`t${i}-${j}`} data-kd-bo="1" style={{position: 'absolute', left: gx + (j + 0.5) * cs, top: gy + (i + 0.5) * cs, transform: 'translate(-50%, -50%)', opacity: 0.5 * tien(t, 1.2 + (i + j) * 0.03, 0.4)}}>
                 <Toan tex={`${h},${c}`} size={Math.max(18, cs * 0.3)} color="#ffffff" maxWidth={cs - 8} />
               </div>
             ))

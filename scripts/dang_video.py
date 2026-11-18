@@ -37,18 +37,52 @@ def env(k, mac_dinh=""):
 
 
 def thoi_luong_mp4(duong):
-    """Đọc thời lượng (giây) từ hộp 'mvhd' của tệp MP4, không cần ffprobe."""
-    with open(duong, "rb") as f:
-        du = f.read()
-    i = du.find(b"mvhd")
-    if i < 4:
-        return 0.0
-    ver = du[i + 4]
-    if ver == 1:
-        ts, dur = struct.unpack(">IQ", du[i + 24 : i + 36])
-    else:
-        ts, dur = struct.unpack(">II", du[i + 16 : i + 24])
-    return dur / ts if ts else 0.0
+    """Đọc thời lượng (giây) từ hộp 'moov'/'mvhd' của tệp MP4 bằng duyệt kích thước box (không nạp cả video vào RAM)."""
+    try:
+        co = os.path.getsize(duong)
+        with open(duong, "rb") as f:
+            def tim_mvhd(bd, kt):
+                pos = bd
+                while pos + 8 <= kt:
+                    f.seek(pos)
+                    hdr = f.read(8)
+                    if len(hdr) < 8:
+                        break
+                    sz, typ = struct.unpack(">I4s", hdr)
+                    hdr_len = 8
+                    if sz == 1:
+                        ext = f.read(8)
+                        if len(ext) < 8:
+                            break
+                        sz = struct.unpack(">Q", ext)[0]
+                        hdr_len = 16
+                    elif sz == 0:
+                        sz = kt - pos
+                    if sz < hdr_len or pos + sz > kt:
+                        break
+                    if typ == b"mvhd":
+                        b = f.read(32)
+                        if len(b) >= 20:
+                            ver = b[0]
+                            if ver == 1 and len(b) >= 32:
+                                ts, dur = struct.unpack(">IQ", b[20:32])
+                            else:
+                                ts, dur = struct.unpack(">II", b[12:20])
+                            return dur / ts if ts else 0.0
+                        return 0.0
+                    if typ == b"moov":
+                        res = tim_mvhd(pos + hdr_len, pos + sz)
+                        if res is not None:
+                            return res
+                    pos += sz
+                return None
+
+            res = tim_mvhd(0, co)
+            if res is not None:
+                return res
+    except Exception:
+        pass
+    return 0.0
 
 
 def tai_video(file_id):
@@ -357,8 +391,7 @@ def tao_ban_dang(video, n, kieu, gioi_han_48mb=False):
     if dai >= 180:
         if gioi_han_48mb:
             max_v = max(260, min(850, int((43 * 8192) / max(1.0, dai) - 140)))
-            if dai >= 420:
-                audio_opt = ["-c:a", "aac", "-b:a", "96k"]
+            audio_opt = ["-c:a", "aac", "-b:a", "96k"]
             crf_opt = ["-crf", "24", "-maxrate", "%dk" % max_v, "-bufsize", "%dk" % (max_v * 2)]
         else:
             crf_opt = ["-crf", "23", "-maxrate", "850k", "-bufsize", "1700k"]

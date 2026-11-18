@@ -141,14 +141,15 @@ export const ThuongHieu: React.FC<{th: ThuongHieuProps; canh: CanhProps[]; ketTh
   return (
     <>
       {th.markNuoc ? <WatermarkDong th={th} canh={canh} tu={tuDau} /> : null}
-      {/* huy hiệu canh giữa: mở ở đầu video và giữa video; khi thanh đầu trang (có logo) đã hiện thì ẩn huy hiệu */}
-      {/* chỉ hiện ở đầu video (trước khi thanh đầu trang hiện); bỏ lần hiện giữa video vì đè lên thanh chủ đề */}
-      <div data-kd-bo="1" style={{position: 'absolute', left: 0, right: 0, top: 112, display: 'flex', justifyContent: 'center', opacity: f < tuDau ? 1 : 0}}>
-        <div style={{position: 'relative'}}>
-        {song > 0 ? <div style={{position: 'absolute', left: 33 - 33 * (1 + song), top: 33 - 33 * (1 + song), width: 66 * (1 + song), height: 66 * (1 + song), borderRadius: '50%', border: `3px solid ${XANH}`, opacity: 1 - song}} /> : null}
-        <HuyHieu th={th} vao={vao} mo={mo} dong2={dong2} sang={Math.max(mo, song)} goc={t * 70 + r() * 360} />
+      {/* huy hiệu canh giữa: chỉ hiện ở đầu video (trước khi thanh đầu trang hiện); bỏ khỏi DOM sau tuDau */}
+      {f < tuDau ? (
+        <div data-kd-bo="1" style={{position: 'absolute', left: 0, right: 0, top: 112, display: 'flex', justifyContent: 'center'}}>
+          <div style={{position: 'relative'}}>
+          {song > 0 ? <div style={{position: 'absolute', left: 33 - 33 * (1 + song), top: 33 - 33 * (1 + song), width: 66 * (1 + song), height: 66 * (1 + song), borderRadius: '50%', border: `3px solid ${XANH}`, opacity: 1 - song}} /> : null}
+          <HuyHieu th={th} vao={vao} mo={mo} dong2={dong2} sang={Math.max(mo, song)} goc={t * 70 + r() * 360} />
+          </div>
         </div>
-      </div>
+      ) : null}
       {(th.handle || th.ten) && !boLoiMoi ? (
         <Sequence from={tuMoi} durationInFrames={Math.round(3.4 * fps)} layout="none">
           <LoiMoi th={th} />

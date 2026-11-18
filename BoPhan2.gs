@@ -136,12 +136,14 @@ function thongTinTokenGitHub_() {
 function chayBoPhan2() {
   var khoa = LockService.getScriptLock();
   if (!khoa.tryLock(10000)) return;
+  if (typeof _GIU_KHOA_ !== 'undefined') _GIU_KHOA_++;
   try {
     try { kiemTraHanToken_(); } catch (eh) { Logger.log('Kiểm tra hạn token: ' + eh.message); }
     var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
     if (!sh) return;
     chonVaGuiDung_(sh);
   } finally {
+    if (typeof _GIU_KHOA_ !== 'undefined' && _GIU_KHOA_ > 0) _GIU_KHOA_--;
     khoa.releaseLock();
   }
 }
@@ -161,7 +163,7 @@ function chonVaGuiDung_(sh) {
       else dangDung++;
     });
     // 2) Đề ưu tiên (Zalo) trước, tiếp đến là Video dài 10 phút trong ngày, rồi kịch bản chờ lâu nhất
-    var conUuTien = hang.some(function (r) { return laUuTien_(r) && ['CHO_DOC', 'MOI', 'DA_GIAI', 'CO_KICH_BAN', 'DANG_DUNG'].indexOf(r.trang_thai) >= 0; });
+    var conUuTien = hang.some(function (r) { return laUuTien_(r) && ['CHO_DOC', 'MOI', 'GITHUB', 'DA_GIAI', 'CO_KICH_BAN', 'DANG_DUNG'].indexOf(r.trang_thai) >= 0; });
     var ds = hang.filter(function (r) { return r.trang_thai === 'CO_KICH_BAN' && r.file_kich_ban && (laUuTien_(r) || !conUuTien); })
       .sort(function (a, b) {
         var u = (laUuTien_(b) ? 1 : 0) - (laUuTien_(a) ? 1 : 0);
@@ -244,13 +246,22 @@ function kichHoatDungVideo_(r) {
     });
   }
   //  (2) vẫn dài: bỏ phần không dùng khi dựng, rút gọn mô tả cảnh; nếu kịch bản nhiều khung hình rất lớn (> 58KB)
-  //      thì lưu bản đầy đủ lên Drive và gửi ID file để GitHub tự tải bằng rclone (không bao giờ lỗi KICH_BAN_QUA_LON)
+  //      thì lưu bản payload gọn lên tệp riêng trên Drive (KHÔNG ghi đè file_kich_ban gốc để giữ nguyên hashtag/thong_tin đăng)
   ['hook_ung_vien', 'hashtag', 'y_tuong_chinh', 'tu_kiem_tra'].forEach(function (k) { if (JSON.stringify(kb).length > 50000) delete kb[k]; });
   if (JSON.stringify(kb).length > 52000) kb.canh.forEach(function (c) { if (c && c.minh_hoa && c.minh_hoa.mo_ta) c.minh_hoa.mo_ta = String(c.minh_hoa.mo_ta).slice(0, 90); });
   var chuoi = JSON.stringify(kb);
+  var payloadFallback = kb;
   if (chuoi.length > 58000 && r.file_kich_ban) {
-    try { DriveApp.getFileById(String(r.file_kich_ban)).setContent(chuoi); } catch (eSave) {}
-    chuoi = JSON.stringify({ id: r.id, _file_kich_ban_drive: String(r.file_kich_ban), giong: kb.giong, gioi_tinh_giong: kb.gioi_tinh_giong, _kiem_duyet: kb._kiem_duyet, mon: kb.mon });
+    var tepIdGui = String(r.file_kich_ban);
+    try {
+      if (typeof thuMucKichBan_ === 'function') {
+        tepIdGui = thuMucKichBan_().createFile(r.id + '_payload.json', chuoi, MimeType.PLAIN_TEXT).getId();
+      } else {
+        DriveApp.getFileById(tepIdGui).setContent(chuoi);
+      }
+    } catch (eSave) { tepIdGui = String(r.file_kich_ban); }
+    payloadFallback = { id: r.id, _file_kich_ban_drive: tepIdGui, giong: kb.giong, gioi_tinh_giong: kb.gioi_tinh_giong, _kiem_duyet: kb._kiem_duyet, mon: kb.mon };
+    chuoi = JSON.stringify(payloadFallback);
   }
 
   var nhanh = nhanhGitHub_();
@@ -264,7 +275,7 @@ function kichHoatDungVideo_(r) {
   var p = PropertiesService.getScriptProperties();
   var token = p.getProperty('GITHUB_TOKEN'), repo = p.getProperty('GITHUB_REPO');
   if (!token || !repo) throw new Error('THIEU_GITHUB_TOKEN_HOAC_REPO');
-  var thanVan = JSON.stringify({ event_type: 'dung-video', client_payload: { id: r.id, kich_ban: kb } });
+  var thanVan = JSON.stringify({ event_type: 'dung-video', client_payload: { id: r.id, kich_ban: payloadFallback } });
   var res = UrlFetchApp.fetch('https://api.github.com/repos/' + repo + '/dispatches', {
     method: 'post', contentType: 'application/json', muteHttpExceptions: true, payload: thanVan,
     headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }
@@ -358,6 +369,7 @@ function doPost(e) {
 
   var khoa = LockService.getScriptLock();
   if (!khoa.tryLock(30000)) return tra({ ok: false, loi: 'BAN' });   // đang ghi ngắn: GitHub sẽ thử lại
+  if (typeof _GIU_KHOA_ !== 'undefined') _GIU_KHOA_++;
   try {
     var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
     // key Gemini lỗi thật (GitHub phát hiện): báo Zalo để người dùng gỡ key, mỗi key một lần mỗi ngày
@@ -399,8 +411,8 @@ function doPost(e) {
       [d.file_id, d.anh_kt, d.anh_bia].forEach(function (fid) { if (fid) { try { DriveApp.getFileById(String(fid)).setTrashed(true); } catch (eTr) {} } });
       return tra({ ok: false, loi: 'KHONG_TIM_THAY' });
     }
-    // Nếu người dùng vừa nhắn /sua <mã> khiến dòng đã quay về MOI / DA_GIAI / GITHUB: bỏ kết quả dựng cũ
-    if (['MOI', 'DA_GIAI', 'GITHUB'].indexOf(String(r.trang_thai)) >= 0) {
+    // Nếu người dùng vừa nhắn /sua <mã> khiến dòng đã quay về MOI / DA_GIAI / GITHUB hoặc vừa mới sửa xong (SUA_MOI_): bỏ kết quả dựng cũ
+    if (['MOI', 'DA_GIAI', 'GITHUB'].indexOf(String(r.trang_thai)) >= 0 || CacheService.getScriptCache().get('SUA_MOI_' + r.id)) {
       [d.file_id, d.anh_kt, d.anh_bia].forEach(function (fid) { if (fid) { try { DriveApp.getFileById(String(fid)).setTrashed(true); } catch (eTr) {} } });
       return tra({ ok: true, lap: true });
     }
@@ -447,6 +459,7 @@ function doPost(e) {
     PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1');
     return tra({ ok: true });
   } finally {
+    if (typeof _GIU_KHOA_ !== 'undefined' && _GIU_KHOA_ > 0) _GIU_KHOA_--;
     khoa.releaseLock();
   }
 }

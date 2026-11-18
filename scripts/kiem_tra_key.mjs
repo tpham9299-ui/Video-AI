@@ -17,9 +17,12 @@ async function thu(k, model) {
   try {
     const ac = new AbortController();
     const hen = setTimeout(() => ac.abort(), 45000);   // mỗi lần thử tối đa 45 giây (không treo cả bước)
+    const genCfg = {maxOutputTokens: 16, temperature: 0};
+    if (/^gemini-(2\.5-flash|3)/i.test(model)) genCfg.thinkingConfig = {thinkingBudget: 0};
+    else if (/2\.5-pro/i.test(model)) genCfg.thinkingConfig = {thinkingBudget: 128};
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(k)}`, {
       method: 'POST', headers: {'Content-Type': 'application/json'}, signal: ac.signal,
-      body: JSON.stringify({contents: [{parts: [{text: 'Trả lời đúng một chữ: ok'}]}], generationConfig: {maxOutputTokens: 16, temperature: 0, thinkingConfig: {thinkingBudget: 0}}}),
+      body: JSON.stringify({contents: [{parts: [{text: 'Trả lời đúng một chữ: ok'}]}], generationConfig: genCfg}),
     }).finally(() => clearTimeout(hen));
     const raw = await res.text();
     if (res.ok) return {loai: 'DUNG_DUOC'};

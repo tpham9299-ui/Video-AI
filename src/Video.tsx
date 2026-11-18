@@ -10,7 +10,7 @@ import {phaCua, SAU_PHA} from './ThanhBuoc';
 import {KiemDuyet} from './KiemDuyet';
 import {NenTuTao} from './NenTuTao';
 import {Nen} from './Nen';
-import {FONT, FONT_DAM, BONG_CHU, vienChu, GIAO_DIEN, MAU, MAU_LOAI, chuTrenMau} from './theme';
+import {FONT, FONT_DAM, BONG_CHU, vienChu, GIAO_DIEN, MAU, MAU_GOC, MAU_LOAI, chuTrenMau} from './theme';
 import {DuongTienTrinh} from './dong/DiemNhan';
 import {LuoiSan} from './dong/KhongGian';
 import {smooth} from './manim';
@@ -40,7 +40,7 @@ const ManKet: React.FC<{tep: string; loai: 'video' | 'anh'}> = ({tep, loai}) => 
 };
 
 // Dòng chủ đề nhỏ cố định ở góc trên (như "20 ĐÔ MUA AI NÀO?" của video mẫu): phần sau dấu ":" hoặc "?" tô cam.
-const DauTrang: React.FC<{chu: string; lop: string; tu: number; lui: number; den: number; th: ThuongHieuProps; tap?: number; nhan?: string}> = ({chu, lop, tu, lui, den, th, tap, nhan}) => {
+const DauTrang: React.FC<{chu: string; lop: string; tu: number; lui: number; den: number; th: ThuongHieuProps; tap?: number; nhan?: string; haXuong?: boolean}> = ({chu, lop, tu, lui, den, th, tap, nhan, haXuong}) => {
   const f = useCurrentFrame();
   const e = smooth((f - tu) / 12);
   if (!chu || e <= 0 || f >= den) return null;
@@ -51,7 +51,7 @@ const DauTrang: React.FC<{chu: string; lop: string; tu: number; lui: number; den
   const sau = cat > 0 ? s.slice(cat + 1) : '';
   // thanh đầu trang CANH GIỮA: [logo kênh] [LỚP] CHỦ ĐỀ — cân đối hai bên
   return (
-    <div style={{position: 'absolute', left: 40, right: 40, top: 118, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 14, fontFamily: FONT_DAM, fontWeight: 900, fontSize: 30, color: '#fff', opacity: 0.95 * e * (1 - an), transform: `translateY(${(1 - e) * -20}px)`, whiteSpace: 'nowrap', textShadow: '0 2px 8px rgba(0,0,0,0.6)'}}>
+    <div style={{position: 'absolute', left: 40, right: 40, top: haXuong ? 128 : 118, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 14, fontFamily: FONT_DAM, fontWeight: 900, fontSize: 30, color: '#fff', opacity: 0.95 * e * (1 - an), transform: `translateY(${(1 - e) * -20}px)`, whiteSpace: 'nowrap', textShadow: '0 2px 8px rgba(0,0,0,0.6)'}}>
       {lui ? <LogoTron th={th} co={52} goc={f * 2} sang={0.3} /> : null}
       {lop ? <span data-kd-bo="1" style={{background: nhan || '#3BF29A', color: nhan ? chuTrenMau(nhan) : '#062019', borderRadius: 8, padding: '1px 10px', fontSize: 24, textShadow: 'none'}}>LỚP {lop}</span> : null}
       {tap ? <span data-kd-bo="1" style={{background: '#FF8A3D', color: '#1a0d02', borderRadius: 8, padding: '1px 10px', fontSize: 24, textShadow: 'none'}}>TẬP {tap}</span> : null}
@@ -103,8 +103,8 @@ export const Video: React.FC<Props> = (props) => {
 };
 
 const NoiDungVideo: React.FC<Props> = (props) => {
-  const {canh, tongFrame, nhac, lop, tieuDe, nen, phongCach, hookChu, hookKieu, nhanManh, thuongHieu, outro} = props;
-  Object.assign(MAU, phongCach.mau || {}); // ghi đè bảng màu theo phong_cach.json
+  const {canh, tongFrame, fps, nhac, lop, tieuDe, nen, phongCach, hookChu, hookKieu, nhanManh, thuongHieu, outro} = props;
+  Object.assign(MAU, MAU_GOC, phongCach.mau || {}); // đặt lại bảng màu gốc rồi ghi đè theo phong_cach.json
   GIAO_DIEN.kieuToan = phongCach.kieuToan || 'dam';
   GIAO_DIEN.kieuHinh = phongCach.kieuHinh || 'manim';
   // bộ hiệu ứng mới: một màu nhấn cho cả video = màu loại câu hỏi (đúng màu trên ảnh bìa)
@@ -112,7 +112,8 @@ const NoiDungVideo: React.FC<Props> = (props) => {
   GIAO_DIEN.nhan = MAU_LOAI[(props.bia && props.bia.loai) || ''] || '#3BF2D0';
   GIAO_DIEN.manimLop = !!props.manimLop;   // bài hình học: phần hình + công thức do Manim dựng, ghép đè sau
   const moi = GIAO_DIEN.chuyenDong === 'moi';
-  const amNhac = taoAmLuongNhac(props);
+  const amNhac = React.useMemo(() => taoAmLuongNhac(props), [canh, tongFrame, fps, props.amLuongNhac]);
+  const dsSanKhau = React.useMemo(() => canh.map((_, i) => sanKhauCuaCanh(canh, i)), [canh]);
   const ketThuc = outro ? outro.batDau : tongFrame;
   // quy trình cố định: luôn đủ 6 phần theo đúng thứ tự (người xem biết bài đang ở bước nào)
   const dsPha = SAU_PHA;
@@ -131,8 +132,8 @@ const NoiDungVideo: React.FC<Props> = (props) => {
       {nhac ? <Audio src={staticFile(nhac)} loop volume={amNhac} /> : null}
       {canh.map((c, i) => (
         <Sequence key={c.so} from={c.batDau} durationInFrames={c.soFrame + keoDai(i)}>
-          <Canh canh={c} tieuDe={tieuDe} deBai={props.deBai || null} theDeGiu={canh.slice(0, i).some((x) => x.loai === 'de_bai')} tongCanh={canh.length} hook={{chu: hookChu, kieu: hookKieu, nhanManh}} pc={phongCach}
-            sanKhau={sanKhauCuaCanh(canh, i)} cacBuoc={dsPha} phaTruoc={i > 0 ? phaCua(canh[i - 1].loai) : ''} giuTruoc={i > 0 && c.giuSanKhau && !!sanKhauCuaCanh(canh, i - 1)} giuSau={!!canh[i + 1] && canh[i + 1].giuSanKhau && !!sanKhauCuaCanh(canh, i)} keoDai={keoDai(i)} />
+          <Canh canh={c} tieuDe={tieuDe} deBai={props.deBai || null} theDeGiu={canh.slice(0, i).some((x) => x.loai === 'de_bai')} coQuangCaoCuoi={!!(props.quangCao && props.quangCao.ten && c.batDau + c.soFrame > ketThuc - 135)} tongCanh={canh.length} hook={{chu: hookChu, kieu: hookKieu, nhanManh}} pc={phongCach}
+            sanKhau={dsSanKhau[i]} cacBuoc={dsPha} phaTruoc={i > 0 ? phaCua(canh[i - 1].loai) : ''} giuTruoc={i > 0 && c.giuSanKhau && !!dsSanKhau[i - 1]} giuSau={!!canh[i + 1] && canh[i + 1].giuSanKhau && !!dsSanKhau[i]} keoDai={keoDai(i)} />
         </Sequence>
       ))}
       {/* chuyển cảnh motion graphic ở chỗ nối các cảnh (trừ cảnh nối tiếp sân khấu) */}
@@ -182,7 +183,7 @@ const NoiDungVideo: React.FC<Props> = (props) => {
         const iDen = Math.min(canh.length - 1, iTu + 3);
         return <DuKien ds={props.duKien} tu={canh[iTu].batDau + 6} den={canh[iDen].batDau + canh[iDen].soFrame} hud={moi ? GIAO_DIEN.nhan : undefined} />;
       })() : null}
-      {canh.length > 1 ? <DauTrang chu={props.chuDe || tieuDe} lop={lop} tu={canh[1].batDau} lui={coThuongHieu ? 1 : 0} den={ketThuc} th={thuongHieu} tap={props.series ? props.series.tap : 0} nhan={moi ? GIAO_DIEN.nhan : undefined} /> : null}
+      {canh.length > 1 ? <DauTrang chu={props.chuDe || tieuDe} lop={lop} tu={canh[1].batDau} lui={coThuongHieu ? 1 : 0} den={ketThuc} th={thuongHieu} tap={props.series ? props.series.tap : 0} nhan={moi ? GIAO_DIEN.nhan : undefined} haXuong={!!phongCach.thanhTienDo} /> : null}
       {/* bộ hiệu ứng mới: đường tiến trình mảnh có chấm thay cho thanh các bước */}
       {moi && canh.length > 2 ? (() => {
         const moc: {pha: string; tu: number; den: number}[] = [];
@@ -196,7 +197,7 @@ const NoiDungVideo: React.FC<Props> = (props) => {
         return moc.length >= 2 ? <DuongTienTrinh cacPha={dsPha} mocPha={moc} mau={GIAO_DIEN.nhan} tu={canh[1].batDau} den={ketThuc - 6} /> : null;
       })() : null}
       <ThuongHieu th={thuongHieu} canh={canh} ketThuc={ketThuc} tuDau={canh.length > 1 ? canh[1].batDau : 1e9} boLoiMoi={phongCach.loiMoiGiuaVideo !== true} />
-      {phongCach.thanhTienDo ? <ThanhTienDo tongFrame={tongFrame} lop={lop} /> : null}
+      {phongCach.thanhTienDo ? <ThanhTienDo tongFrame={tongFrame} lop={lop} mon={props.bia && props.bia.loai} /> : null}
       {outro ? (
         <Sequence from={outro.batDau} durationInFrames={outro.soFrame}>
           {outro.loai === 'tu_tao' ? <ManKetChuyenNghiep th={thuongHieu} baiHoc={props.baiHoc || []} dapAn={props.dapAn} tiepTheo={props.tiepTheo || ''} /> : <ManKet tep={outro.tep} loai={outro.loai} />}

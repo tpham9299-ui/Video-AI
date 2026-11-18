@@ -84,12 +84,19 @@ jobs:
           d["token"] = os.environ["DUNG_VIDEO_SECRET"]
           d["loai"] = "ai_xem"
           d["id"] = d.get("id") or os.environ["ID_VIDEO"]
+          if os.path.exists("/tmp/gemini_key_hong.json"):
+              try:
+                  d["key_hong"] = json.load(open("/tmp/gemini_key_hong.json", encoding="utf8"))
+              except Exception:
+                  pass
           json.dump(d, open("gui_kt_video.json", "w", encoding="utf8"), ensure_ascii=False)
           PY
           for lan in 1 2 3 4 5; do
-            KQ=$(curl -sS -L -H 'Content-Type: application/json' --data @gui_kt_video.json "$APPS_SCRIPT_URL" || true)
+            KQ=$(curl -sS -L --max-time 45 -H 'Content-Type: application/json' --data @gui_kt_video.json "$APPS_SCRIPT_URL" || true)
             echo "Lần $lan: $KQ"
             if echo "$KQ" | grep -Eq '"ok" *: *true|KHONG_TIM_THAY'; then exit 0; fi
+            if echo "$KQ" | grep -q 'SAI_TOKEN'; then exit 1; fi
+            if echo "$KQ" | grep -q 'BAN'; then sleep 45; continue; fi
             sleep 20
           done
           echo "Không báo được kết quả kiểm duyệt về Apps Script"; exit 1

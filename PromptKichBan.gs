@@ -409,10 +409,10 @@ function banVeMacDinh_(r) {
   var de = (String(r.de_bai || '') + ' ' + String(r.mo_ta_hinh || '')).toLowerCase();
   var ten = [];
   TU_VAT_THUC_.forEach(function (m) { if (m[0].test(de)) { var t = m[1].filter(function (x) { return x[0] !== '@'; })[0]; if (t && ten.indexOf(t) < 0) ten.push(t); } });
-  if (!ten.length) return null;
   if (/vườn|ruộng|mảnh đất|sân bóng|hồ bơi|bể bơi/.test(de)) {
     return { id: 'canh', loai: 'canh_that', x: 50, y: 50, buoc: 1, nhin: 'tren', vung: [{ ma: 'V', ten: /ruộng/.test(de) ? 'ruong' : /sân bóng/.test(de) ? 'san_bong' : /hồ bơi|bể bơi/.test(de) ? 'ho_boi' : 'vuon', x: 0, y: 0, rong: 20, dai: 12, hang_rao: ten.indexOf('hang_rao') >= 0 }], vat: [], do: [] };
   }
+  if (!ten.length) return null;
   var x = 0, vat = [];
   ten.sort(function (a, b) { return (a === 'nguoi' ? -1 : 0) - (b === 'nguoi' ? -1 : 0); });
   ten.slice(0, 5).forEach(function (t, i) {
@@ -528,7 +528,8 @@ function chenBanVe_(kb, banVe) {
       var dv = JSON.stringify(ctHienTai ? { do: ctHienTai.do, vat: ctHienTai.vat } : {});
       if (ctHienTai && (dv === dauVanTruoc || (Array.isArray(ctHienTai.do) && ctHienTai.do.length >= 2 && ctHienTai.do.every(function (d) { return !d || (d.buoc || 2) === (ctHienTai.do[0].buoc || 2); })))) {
         var tc = tuyChinhBanVeTheoCanh_(ctHienTai, c, kb);
-        c.minh_hoa.du_lieu = tc;
+        var vatKhac = Array.isArray(duHienTai.vat) ? duHienTai.vat.filter(function (v) { return v && v.loai !== 'canh_that'; }) : [];
+        c.minh_hoa.du_lieu = Object.assign({}, duHienTai, tc, { vat: (tc.vat || []).concat(vatKhac) });
         sua.push('cảnh ' + c.so + ': biến đổi khung hình canh_that khớp từng câu thoại');
       }
       dauVanTruoc = JSON.stringify(c.minh_hoa && c.minh_hoa.du_lieu && c.minh_hoa.du_lieu.vat || {});
@@ -591,7 +592,7 @@ function hinhTuMau_(m, kb, id) {
   var ds = (Array.isArray(m.dong) ? m.dong : []).map(function (x) { return String(x).replace(/\s+/g, ' ').trim().slice(0, 46); }).filter(Boolean).slice(0, 4);
   if (!ds.length) ds = ['Công thức dùng trong bài'];
   return { vat: [{ id: id, loai: 'danh_sach', x: 50, y: 50, noi_dung: String(m.tieu_de || 'Ghi nhớ').slice(0, 34), ds: ds, buoc: 1 }],
-    hanh_dong: ds.map(function (_, i) { return { buoc: i + 1, vat: id, kieu: 'chon', chi_so: [i] }; }).slice(0, 3) };
+    hanh_dong: ds.map(function (_, i) { return { buoc: i + 1, vat: id, kieu: 'chon', chi_so: [i + 1] }; }).slice(0, 3) };
 }
 function boSungGiaiThichCongThuc_(kb, r, sn) {
   if (!canBoSungGiaiThich_(kb)) return null;
@@ -676,7 +677,7 @@ function lapKichBanDai10Phut_(r, c1, c2, sn) {
       if (/bay|nhac_lai|diem_chot|tinh_toan/.test(String(kbGoc.canh[i].loai || ''))) { idxSauDe = i; break; }
     }
     var dau = kbGoc.canh.slice(0, idxSauDe);
-    var giua = kbGoc.canh.slice(idxSauDe, Math.max(idxSauDe + 1, kbGoc.canh.length - 1));
+    var giua = idxSauDe < kbGoc.canh.length - 1 ? kbGoc.canh.slice(idxSauDe, kbGoc.canh.length - 1) : [];
     var cuoi = kbGoc.canh.slice(-1);
     kbGoc.canh = dau.concat(pp, giua, bt, tk, cuoi);
     kbGoc.canh.forEach(function (c, idx) { if (c) c.so = idx + 1; });

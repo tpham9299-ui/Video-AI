@@ -112,8 +112,8 @@ function nhoNguoiNhan_(chat) {
 }
 function dsNhanThongBao_() {
   var p = PropertiesService.getScriptProperties();
-  var ds = (String(p.getProperty('ZALO_NHAN_TB') || '') + ',' + String(cauHinh_('ZALO_NGUOI_GUI_DE') || '')).split(/[,;\s]+/).map(function (x) { return x.trim(); }).filter(Boolean);
-  if (!ds.length) ds = String(p.getProperty('ZALO_CHAT_IDS') || '').split(/[,;\s]+/).map(function (x) { return x.trim(); }).filter(Boolean);
+  var ds = (String(p.getProperty('ZALO_NHAN_TB') || '') + ',' + String(cauHinh_('ZALO_NGUOI_GUI_DE') || '') + ',' + String(p.getProperty('ZALO_CHAT_IDS') || ''))
+    .split(/[,;\s]+/).map(function (x) { return x.trim(); }).filter(Boolean);
   return ds.filter(function (x, i) { return ds.indexOf(x) === i; });
 }
 
@@ -140,6 +140,7 @@ function nhanZalo_(e) {
     var choPhep = dsNguoiGuiDe_();
     var chu = String(m.text || m.caption || '').trim();
     var anh = m.photo_url || m.photo || m.url || '';
+    if (Array.isArray(anh)) anh = anh.length ? anh[anh.length - 1] : '';
     if (typeof anh !== 'string') anh = (anh && (anh.url || anh.photo_url)) || '';
     var lenh = chu.toLowerCase();
 
@@ -200,6 +201,7 @@ function huongDanZalo_() {
 
 function tinhTrangUuTien_() {
   var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
+  if (!sh) return '✅ Hàng đợi chưa có dữ liệu.';
   var ds = docHang_(sh).filter(function (r) { return laUuTien_(r) && ['CHO_DOC', 'MOI', 'DA_GIAI', 'CO_KICH_BAN', 'DANG_DUNG'].indexOf(r.trang_thai) >= 0; });
   if (!ds.length) return '✅ Không còn đề ưu tiên nào đang làm. Hệ thống đang chạy các đề thường.';
   return '📋 Đề ưu tiên đang làm:\n' + ds.map(function (r) {
@@ -228,9 +230,13 @@ function huyUuTien_(chat) {
 // Trigger một lần do nhanZalo_ / sauUuTien_ đặt. Toàn bộ việc nằm trong chayBoPhan1 (tự vào chế độ ưu tiên).
 function chayUuTien() {
   xoaTriggerUuTien_();
+  henUuTien_(370);   // hẹn sẵn dự phòng nếu Apps Script bị ngắt ở 6 phút
   var kq = chayBoPhan1();
   if (kq === false) henUuTien_(90);          // đang có lần chạy khác giữ khóa: hẹn lại
-  else if (kq !== 'UU_TIEN') sauUuTien_();   // bị tạm nghỉ hoặc không vào chế độ ưu tiên: vẫn kiểm tra việc dựng và hẹn lại
+  else {
+    xoaTriggerUuTien_();
+    if (kq !== 'UU_TIEN') sauUuTien_();      // kiểm tra việc dựng và hẹn lại nếu còn
+  }
 }
 
 function xoaTriggerUuTien_() {
@@ -291,8 +297,9 @@ function xuLyDocDe_(sh, bc, bat) {
       baoZaloDe_(r, '📖 Đã đọc đề (' + (mon === 'XAC_SUAT' ? 'xác suất' : mon === 'HINH_HOC' ? 'hình học' : 'toán thực tế') + ', lớp ' + lop + (j.cau_da_chon ? ', ' + j.cau_da_chon : '') + '):\n' +
         latexDoc_(String(j.de_bai)).slice(0, 600) + (j.ghi_chu_doi ? '\n📝 ' + j.ghi_chu_doi : '') + '\n🧮 Đang giải bằng 2 cách và kiểm chứng bằng máy...', 'thap');
     } catch (e) {
+      var daLoiTruoc = Number(r.so_lan_loi) || 0;
       xuLyLoiHang_(sh, r, e, bc);
-      if (Number(r.so_lan_loi) >= Number(cauHinh_('MAX_LAN_LOI'))) baoZaloDe_(r, '⚠️ Đọc đề ' + r.id + ' bị lỗi: ' + String(e.message).slice(0, 150), 'cao');
+      if (daLoiTruoc >= Number(cauHinh_('MAX_LAN_LOI')) && !laUuTien_(r)) baoZaloDe_(r, '⚠️ Đọc đề ' + r.id + ' bị lỗi: ' + String(e.message).slice(0, 150), 'cao');
     }
   }
 }

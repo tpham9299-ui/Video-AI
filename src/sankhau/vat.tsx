@@ -202,8 +202,8 @@ const The: Ve = (v, st) => {
             {laTheSo && ve > 0.5 ? (
               <>
                 <div style={{position: 'absolute', inset: 8, borderRadius: 14, border: `1.5px solid ${s.mau}55`, pointerEvents: 'none'}} />
-                <div style={{position: 'absolute', left: 14, top: 10, fontFamily: FONT_DAM, fontWeight: 800, fontSize: Math.max(16, kt.co * 0.36), color: s.mau, opacity: 0.85, lineHeight: 1}}>{tc(tieuDe)}</div>
-                <div style={{position: 'absolute', right: 14, bottom: 10, fontFamily: FONT_DAM, fontWeight: 800, fontSize: Math.max(16, kt.co * 0.36), color: s.mau, opacity: 0.85, lineHeight: 1, transform: 'rotate(180deg)'}}>{tc(tieuDe)}</div>
+                <div data-kd-bo="1" style={{position: 'absolute', left: 14, top: 10, fontFamily: FONT_DAM, fontWeight: 800, fontSize: Math.max(16, kt.co * 0.36), color: s.mau, opacity: 0.85, lineHeight: 1}}>{tc(tieuDe)}</div>
+                <div data-kd-bo="1" style={{position: 'absolute', right: 14, bottom: 10, fontFamily: FONT_DAM, fontWeight: 800, fontSize: Math.max(16, kt.co * 0.36), color: s.mau, opacity: 0.85, lineHeight: 1, transform: 'rotate(180deg)'}}>{tc(tieuDe)}</div>
               </>
             ) : null}
             {tieuDe ? <div style={{opacity: kep((ve - 0.3) / 0.4), fontFamily: laTheSo ? FONT_DAM : FONT, fontWeight: 900, fontSize: laTheSo ? kt.co * 1.18 : kt.co, textAlign: 'center', padding: '0 18px', lineHeight: 1.15, color: s.pc > 0.01 ? '#fff' : '#f5f9ff', textShadow: `0 3px 12px rgba(0,0,0,0.75)${laTheSo ? `, 0 0 14px ${s.mau}66` : ''}`}}>{laToanNhan(tieuDe) ? <Toan tex={texNhan(tieuDe)} size={kt.co} color="#ffffff" maxWidth={w - 36} /> : tieuDe}</div> : null}
@@ -383,7 +383,7 @@ const DongXu: Ve = (v, st) => {
           );
         })}
       </div>
-      <Nhan chu={v.nhan || 'S = sấp · N = ngửa'} co={24} />
+      <Nhan chu={v.nhan || 'S = sấp · N = ngửa'} co={26} />
     </div>
   );
 };
@@ -417,7 +417,7 @@ const Bi: React.FC<{mau: string; r: number; sang?: number; so?: string}> = ({mau
       {/* Đốm phản quang pha lê góc trên trái (specular highlight) */}
       <ellipse cx={15.5} cy={13.5} rx={5.5} ry={3.2} transform="rotate(-28 15.5 13.5)" fill="#ffffff" fillOpacity={0.82} />
       <circle cx={11.8} cy={18.5} r={1.6} fill="#ffffff" fillOpacity={0.65} />
-      {so ? <text x={22} y={26} textAnchor="middle" fontFamily="Montserrat, sans-serif" fontWeight={900} fontSize={14} fill="#ffffff" stroke="rgba(0,0,0,0.65)" strokeWidth={2.5} paintOrder="stroke">{so}</text> : null}
+      {so ? <text data-kd-bo="1" x={22} y={26} textAnchor="middle" fontFamily="Montserrat, sans-serif" fontWeight={900} fontSize={14} fill="#ffffff" stroke="rgba(0,0,0,0.65)" strokeWidth={2.5} paintOrder="stroke">{so}</text> : null}
     </svg>
   );
 };
@@ -494,7 +494,7 @@ const HopBi: Ve = (v, st) => {
             <g opacity={easeOut(st.vao)}>
               <ellipse cx={W + 48 + r * 2.55} cy={H * 0.54 + 28} rx={r * 4.2} ry={r * 1.9} fill="rgba(0,0,0,0.45)" />
               <rect x={W + 14} y={H * 0.22} width={r * 7.8} height={r * 5.2} rx={20 * v.co} fill="rgba(12,28,38,0.88)" stroke={goc} strokeWidth={3} />
-              <text x={W + 14 + r * 3.9} y={H * 0.22 - 10} textAnchor="middle" fontFamily={FONT_DAM} fontWeight={800} fontSize={20 * v.co} fill={goc}>ĐÃ LẤY RA</text>
+              <text data-kd-bo="1" x={W + 14 + r * 3.9} y={H * 0.22 - 10} textAnchor="middle" fontFamily={FONT_DAM} fontWeight={800} fontSize={Math.max(25, 22 * v.co)} fill={goc}>ĐÃ LẤY RA</text>
             </g>
           ) : null}
         </svg>
@@ -867,8 +867,8 @@ const Banh: Ve = (v, st) => {
 // nhãn neon: ký hiệu toán (u_n, S_n = 260, \frac...) hiện bằng công thức thật (không còn "S_n" thô);
 // chữ dài thì XUỐNG DÒNG thay vì thu nhỏ đến mức không đọc được.
 export const laToanNhan = (s: string) => /[_^\\]|\d\s*[=+×·*/]\s*\d|^\s*[A-Za-z](_\{?\w+\}?)?\s*=/.test(s);
-// chữ thường trong nhãn toán (KaTeX bỏ dấu cách): bọc từng từ có chữ cái tiếng Việt / từ dài vào \text{}
-const texNhan = (s: string) => s.split(/\s+/).filter(Boolean).map((w) => (/[À-ỹà-ỹ]/.test(w) || /^[A-Za-z]{3,}[,.:]?$/.test(w) ? `\\text{${w}}` : w)).join('\\ ');
+// chữ thường trong nhãn toán (KaTeX bỏ dấu cách): bọc từng từ có chữ cái tiếng Việt / từ dài vào \text{} (tránh bọc lại nếu đã có \text{ hoặc ngoặc TeX)
+const texNhan = (s: string) => /\\(?:text|mathrm|textbf|operatorname|mbox)\s*\{|[{}]/.test(s) ? s : s.split(/\s+/).filter(Boolean).map((w) => (/[À-ỹà-ỹ]/.test(w) || /^[A-Za-z]{3,}[,.:]?$/.test(w) ? `\\text{${w}}` : w)).join('\\ ');
 export const NhanNeon: React.FC<{chu: string; tuKhoa: string; mau: string; mauNhan: string; co?: number; xoay?: number}> = ({chu, tuKhoa, mau, mauNhan, co = 44, xoay = 0}) => {
   const toan = laToanNhan(chu);
   const dai = chu.replace(/\\[a-zA-Z]+|[{}_^]/g, '').length > 18;
@@ -918,8 +918,8 @@ const CotSo: React.FC<{g: number; k: number; h: number}> = ({g, k, h}) => {
     </span>
   );
 };
-// số thập phân (37,4 m): lăn số đã nhân 10^tp rồi chèn dấu phẩy - trước đây chữ số cuối dừng lưng chừng giữa 7 và 8
-const soThapPhan = (x: number) => { const m = /\.(\d+)/.exec(String(Math.round(x * 100) / 100)); return m ? Math.min(2, m[1].length) : 0; };
+// số thập phân (37,4 m hoặc 0,125): lăn số đã nhân 10^tp rồi chèn dấu phẩy (hỗ trợ đến 4 chữ số thập phân)
+const soThapPhan = (x: number) => { const m = /\.(\d+)/.exec(String(Math.round(x * 10000) / 10000)); return m ? Math.min(4, m[1].length) : 0; };
 const SoLan: React.FC<{g: number; co: number; dich?: number}> = ({g, co, dich}) => {
   const tp = soThapPhan(dich ?? g);
   const G = Math.max(0, g) * Math.pow(10, tp);
@@ -927,7 +927,7 @@ const SoLan: React.FC<{g: number; co: number; dich?: number}> = ({g, co, dich}) 
   const h = co * 1.12;
   const cot = [];
   for (let k = n - 1; k >= 0; k--) {
-    cot.push(<CotSo key={k} g={tp ? Math.round(G * 1000) / 1000 : G} k={k} h={h} />);
+    cot.push(<CotSo key={k} g={tp ? Math.round(G * 10000) / 10000 : G} k={k} h={h} />);
     if (tp && k === tp) cot.push(<span key={`p${k}`} style={{lineHeight: `${h}px`}}>,</span>);
     // số từ 10.000 trở lên: chấm ngăn hàng nghìn kiểu Việt ("12.000" thay vì "12000" dễ đọc nhầm)
     else if (n - tp >= 5 && k > tp && (k - tp) % 3 === 0) cot.push(<span key={`n${k}`} style={{lineHeight: `${h}px`}}>.</span>);
@@ -988,7 +988,7 @@ const LuoiO: Ve = (v, st) => {
   return (
     <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10}}>
       {laOmega ? (
-        <div style={{display: 'flex', alignItems: 'center', gap: 14, padding: '8px 22px', borderRadius: 16, background: 'rgba(10,26,38,0.9)', border: `2px solid ${goc}88`, boxShadow: `0 6px 20px rgba(0,0,0,0.45), 0 0 12px ${goc}33`, fontFamily: FONT_DAM, fontWeight: 800, fontSize: Math.max(22, 26 * v.co * KC), color: '#d7f3ff', opacity: kep(st.vao * 2)}}>
+        <div style={{display: 'flex', alignItems: 'center', gap: 14, padding: '8px 22px', borderRadius: 16, background: 'rgba(10,26,38,0.9)', border: `2px solid ${goc}88`, boxShadow: `0 6px 20px rgba(0,0,0,0.45), 0 0 12px ${goc}33`, fontFamily: FONT_DAM, fontWeight: 800, fontSize: Math.max(25, 26 * v.co * KC), color: '#d7f3ff', opacity: kep(st.vao * 2)}}>
           <span style={{color: '#3BF29A'}}>● Biến cố thuận lợi A</span>
           <span style={{opacity: 0.45}}>|</span>
           <span style={{color: goc}}>■ Không gian mẫu Ω (mọi khả năng)</span>
@@ -1006,7 +1006,7 @@ const LuoiO: Ve = (v, st) => {
               background: sang ? `linear-gradient(145deg, ${s.mau}, ${s.mau}cc)` : `linear-gradient(160deg, ${goc}2e, rgba(8,18,28,0.85))`,
               border: `3px solid ${sang ? '#fff' : goc + 'aa'}`, boxShadow: sang ? `0 0 ${16 * s.pc}px ${s.mau}` : 'inset 0 1px 0 rgba(255,255,255,0.12)',
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: FONT_DAM, fontWeight: 900, fontSize: coChuO, color: sang ? '#061a12' : '#e8f6ff', textShadow: sang ? 'none' : '0 2px 6px rgba(0,0,0,0.65)'}}>
-              <span>{chuO}</span>
+              <span data-kd-bo={coChuO < 26 ? '1' : undefined}>{chuO}</span>
               {sang ? <DauTich p={s.pc} mau={s.mau} co={Math.max(22, o * 0.28)} style={{right: -6, top: -6}} /> : null}
             </div>
           );
@@ -1078,7 +1078,7 @@ const BieuTuong: Ve = (v, st, frame) => (
    anh: số thứ tự ảnh (chuanbi.py đổi thành src). gia_tri_chu: nhãn giá dán góc ("249.000đ"). nhan: dòng chữ dưới ảnh. */
 const AnhThat: Ve = (v, st, frame) => {
   const goc = neon(v.mau, GIAO_DIEN.nhan || neon('vang'));
-  const S = 420;
+  const S = Math.round(420 * kepCo(v.co));
   const t = frame / 30;
   const noi = Math.sin(t * 1.6) * 5;
   const vet = ((t - st.ta) * 0.55) % 1.6;
@@ -1097,7 +1097,7 @@ const AnhThat: Ve = (v, st, frame) => {
         </div>
         {v.giaTriChu ? (
           <div style={{position: 'absolute', right: -26, top: -22, transform: `rotate(10deg) scale(${popOut(kep((st.t - st.ta - 0.35) / 0.4), 2)})`, background: goc, color: '#0b1418', fontFamily: FONT_DAM, fontWeight: 900,
-            fontSize: 38 * KC, padding: '8px 20px', borderRadius: 18, boxShadow: `0 0 22px ${goc}`, whiteSpace: 'nowrap'}}>{tc(v.giaTriChu)}</div>
+            fontSize: Math.max(26, 38 * KC), padding: '8px 20px', borderRadius: 18, boxShadow: `0 0 22px ${goc}`, whiteSpace: 'nowrap'}}>{tc(v.giaTriChu)}</div>
         ) : null}
       </div>
       <Nhan chu={v.nhan} />

@@ -70,7 +70,7 @@ export const DienTich: React.FC<{du: DuLieuDienTich; giayAm: number}> = ({du, gi
       if (h.xs && w > 64 && hh > 46)
         chu.push(
           <div key={`hx${i}-${r}`} style={{position: 'absolute', left: X0 + cx0 + 10, top: Y0 + y + 8, opacity: e}}>
-            <Toan tex={h.xs} size={Math.min(34, Math.max(24, hh * 0.22))} color="#ffffff" maxWidth={w - 18} />
+            <Toan tex={h.xs} size={Math.min(34, Math.max(25, hh * 0.22))} color="#ffffff" maxWidth={w - 18} />
           </div>
         );
       if (h.kq && w > 64 && hh > 46)

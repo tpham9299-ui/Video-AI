@@ -13,7 +13,7 @@ export const VuaKhung: React.FC<{maxW: number; maxH: number; goc?: string; child
     if (Math.abs(k - s) > 0.005) setS(k);
   });
   return (
-    <div style={{transform: s < 0.999 ? `scale(${s})` : undefined, transformOrigin: goc, maxWidth: s < 0.999 ? undefined : maxW}}>
+    <div style={{transform: s < 0.999 ? `scale(${s})` : undefined, transformOrigin: goc, maxWidth: maxW}}>
       <div ref={ref} style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16}}>{children}</div>
     </div>
   );

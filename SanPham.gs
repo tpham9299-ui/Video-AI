@@ -108,7 +108,7 @@ function traLoiLenh_(chat, chu, anh) {
   if (/^\/phongcach\b/.test(l) && typeof bangPhongCach_ === 'function') return bangPhongCach_() + (thongKeLyDoBo_() ? '\n📉 ' + thongKeLyDoBo_() : '');
   return null;
 }
-var MA_DE_RE_ = /^[A-Za-z]{2}\d{6}-\d{6}(-\d+)?$/;
+var MA_DE_RE_ = /^[A-Za-z]{2}\d{6}-\d{6}(?:-(?:\d+|10P))?$/i;
 var LENH_CHU_ = { 'duyet': '/duyet', 'duyệt': '/duyet', 'sua': '/sua', 'sửa': '/sua', 'bo': '/bo', 'bỏ': '/bo', 'xem': '/xem', 'xacnhan': '/xacnhan', 'xác nhận': '/xacnhan' };
 var TAT_CA_RE_ = /^(tatca|tất cả|tat ca|het|hết|all|toanbo|toàn bộ)$/i;
 // một dòng -> lệnh chuẩn ("/duyet ...") hoặc '' nếu không phải lệnh
@@ -166,7 +166,7 @@ function chayNhieuLenh_(chat, ds, anh) {
     kq.push((i + 1) + '. ' + c.replace(/__KHONG_CO__/, '').slice(0, 60) + '\n   → ' + String(tl).split('\n')[0].slice(0, ds.length > 12 ? 110 : 200));
   });
   _dang_chay_nhieu_ = false;
-  coBoKhongLyDo = ds.some(function (c) { return /^\/bo\s+[A-Za-z]{2}\d{6}-\d{6}(-\d+)?\s*$/.test(c); });
+  coBoKhongLyDo = ds.some(function (c) { return /^\/bo\s+[A-Za-z]{2}\d{6}-\d{6}(?:-(?:\d+|10P))?\s*$/i.test(c); });
   nhatKy_('ZALO_NHIEU_LENH', ds.length + ' lệnh, ' + ok + ' thành công');
   return '📋 Đã thực hiện ' + Math.min(ds.length, 40) + ' lệnh (' + ok + ' thành công)' + (ds.length > 40 ? ', mỗi tin tối đa 40 lệnh' : '') + ':\n' + kq.join('\n') + (coBoKhongLyDo ? '\n' + cauHoiLyDo_() : '');
 }
@@ -295,7 +295,9 @@ function luuNgonKichBan_(r) {
     hang_backup: {
       id: r.id, lop: r.lop || '12', mon: r.mon || 'THUC_TE', chu_de: r.chu_de || '', de_bai: r.de_bai || '',
       dap_an: r.dap_an || '', dap_an_hien: r.dap_an_hien || '', cach_1: r.cach_1 || '', cach_2: r.cach_2 || '',
-      kiem_chung: r.kiem_chung || '', ma_bam: r.ma_bam || ''
+      kiem_chung: r.kiem_chung || '', ma_bam: r.ma_bam || '', san_pham: r.san_pham || '',
+      file_anh: r.file_anh || '', mo_ta_hinh: r.mo_ta_hinh || '', nguon: r.nguon || '',
+      diem_tu_duy: r.diem_tu_duy || '', yeu_to_tu_duy: r.yeu_to_tu_duy || '', bay_thuong_gap: r.bay_thuong_gap || ''
     }
   };
 }
@@ -606,13 +608,21 @@ function traDoiTuongJson_(txt) {
 
 function timHieuSanPham_(sh, r) {
   var ten = String(r.ten || '').trim();
-  // chỉ có ảnh: nhận diện sản phẩm từ ảnh trước
-  if (!ten && r.anh) {
-    var res = UrlFetchApp.fetch(String(r.anh), { muteHttpExceptions: true });
-    if (res.getResponseCode() === 200) {
-      var b = res.getBlob();
+  // chỉ có ảnh: ưu tiên đọc ảnh đã lưu trên Drive (r.anh_ds) trước rồi mới tải link tạm r.anh
+  if (!ten && (dsAnhSP_(r).length || r.anh)) {
+    var anhNhan = anhSanPhamChoGemini_({ anh_id: dsAnhSP_(r).map(function (x) { return x.id; }) }, 1)[0] || null;
+    if (!anhNhan && r.anh) {
+      try {
+        var res = UrlFetchApp.fetch(String(r.anh), { muteHttpExceptions: true });
+        if (res.getResponseCode() === 200) {
+          var b = res.getBlob();
+          anhNhan = { mime: /^image\//.test(b.getContentType()) ? b.getContentType() : 'image/jpeg', data: Utilities.base64Encode(b.getBytes()) };
+        }
+      } catch (eAnh) {}
+    }
+    if (anhNhan) {
       var nd = goiGemini_('Ảnh này là một sản phẩm đang bán trên mạng. Cho biết tên sản phẩm chính xác nhất có thể (thương hiệu, dòng, dung tích/kích thước nếu thấy). Trả JSON {"ten":""}', 0.1,
-        { suyNghi: 'low', anh: { mime: /^image\//.test(b.getContentType()) ? b.getContentType() : 'image/jpeg', data: Utilities.base64Encode(b.getBytes()) } });
+        { suyNghi: 'low', anh: anhNhan });
       ten = String((nd && nd.ten) || '').trim();
     }
     if (!ten) throw new Error('Không nhận diện được sản phẩm từ ảnh, hãy gửi kèm tên sản phẩm');
@@ -689,7 +699,8 @@ function taoDeTuSanPham_(sh, r, bc) {
     '- Đề hỏi đúng MỘT đại lượng, đáp số DUY NHẤT là một con số (có đơn vị) hoặc một xác suất dạng phân số; đủ dữ kiện bằng chữ; kiểm chứng được bằng máy.\n' +
     '- "cach_dua_san_pham": sản phẩm xuất hiện thế nào trong video (ảnh thật nào ở cảnh nào, thông số nào được chỉ ra trên ảnh). "loi_ket_hop_ly": MỘT câu kết nối kết quả bài toán với giá trị sản phẩm, chỉ dùng con số của bài, trung thực (vd "tính ra mỗi ngày chỉ khoảng 1.400 đồng").\n' +
     yeuCauDang_('THUC_TE') + '- Có thể dùng dạng xác suất (' + MO_TA_DANG_.XAC_SUAT + ') nếu thật tự nhiên (vd chương trình bốc thăm khi mua), khi đó "mon" là "XAC_SUAT".\n' +
-    (typeof yeuCauDapAnChinhXac_ === 'function' ? yeuCauDapAnChinhXac_() : '') +
+    (typeof yeuCauKienThucLop_ === 'function' ? '- Chương trình học: ' + yeuCauKienThucLop_('10', 'THUC_TE') + ' (hoặc đúng kiến thức lớp "lop" mà bạn chọn).\n' : '') +
+    (typeof yeuCauDapAnChinhXac_ === 'function' ? yeuCauDapAnChinhXac_('THUC_TE') : '') +
     'Trả về MỘT mảng JSON, mỗi phần tử: {"mon":"THUC_TE|XAC_SUAT","dang":"","lop":"10|11|12","chu_de":"","de_bai":"","dap_an":"","cach_dua_san_pham":"","loi_ket_hop_ly":"","diem_tu_duy":1-10,"yeu_to_tu_duy":"","bay_thuong_gap":""}';
   var kq = goiGemini_(prompt, 0.7, { suyNghi: cauHinh_('MUC_SUY_NGHI_KICH_BAN'), anhs: anhSanPhamChoGemini_({ anh_id: anhDs.map(function (x) { return x.id; }) }, 3) });
   if (kq && !Array.isArray(kq) && Array.isArray(kq.de)) kq = kq.de;

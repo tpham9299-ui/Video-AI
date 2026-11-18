@@ -68,7 +68,7 @@ async function tuTimModelTrenApi() {
   const k = tatCa.find((x) => !hong.has(x)) || tatCa[0];
   if (!k) return [];
   try {
-    const res = await fetch(`${GOC_API}/v1beta/models?key=${encodeURIComponent(k)}`);
+    const res = await fetch(`${GOC_API}/v1beta/models?key=${encodeURIComponent(k)}`, {signal: AbortSignal.timeout(15000)});
     if (!res.ok) return [];
     const d = await res.json();
     const ds = (d.models || []).filter((m) => m && m.name && Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
@@ -128,12 +128,12 @@ async function motModel(model, body, i, huy, soVong = 2) {
       if (huy && huy.xong) return {ok: false, code: 0, raw: 'DA_CO_KET_QUA', het: false};
       const k = dung[(batDauKey + i + lan) % dung.length];
       if (hong.has(k) || hetNgay.has(model + '|' + k) || tuChoi.has(model + '|' + k)) continue;
+      let hen = null;
       try {
         const ac = new AbortController();
-        const hen = setTimeout(() => ac.abort(), gioiHanGiay * 1000);
+        hen = setTimeout(() => ac.abort(), gioiHanGiay * 1000);
         if (huy) huy.ds.push(ac);
         const res = await fetch(url(k, model), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(bodyGui), signal: ac.signal});
-        clearTimeout(hen);
         const raw = await res.text();
         if (res.ok) { ghiTot(k); ghiModelTot(model); return {ok: true, code: res.status, raw, model}; }
         cuoi = {ok: false, code: res.status, raw, het: false, model};
@@ -156,7 +156,10 @@ async function motModel(model, body, i, huy, soVong = 2) {
         }
         return cuoi;   // 400/5xx không phải lỗi key: chuyển sang model tiếp theo
       } catch (e) {
+        if (huy && huy.xong) return {ok: false, code: 0, raw: 'DA_CO_KET_QUA', het: false};
         cuoi = {ok: false, code: 0, raw: String((e && e.message) || e), het: false, model};
+      } finally {
+        if (hen) clearTimeout(hen);
       }
     }
     if (!choMs) break;
@@ -174,7 +177,7 @@ async function motModel(model, body, i, huy, soVong = 2) {
 async function motChuoiModel(dsModel, body, i, huy) {
   let ds = dsModel.filter((m) => m && !model404.has(m));
   const modelTot = fs.existsSync(TEP_MODEL_TOT) ? fs.readFileSync(TEP_MODEL_TOT, 'utf8').trim() : '';
-  if (modelTot && !model404.has(modelTot) && ds.includes(modelTot) && ds[0] !== modelTot && model404.has(ds[0])) {
+  if (modelTot && !model404.has(modelTot) && ds.includes(modelTot) && ds[0] !== modelTot) {
     ds = [modelTot, ...ds.filter((m) => m !== modelTot)];
   }
   if (!ds.length) ds = await tuTimModelTrenApi();

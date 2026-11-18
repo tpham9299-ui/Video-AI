@@ -202,12 +202,12 @@ export const LuoiSan: React.FC<{mau: string; tu?: number}> = ({mau, tu = 0}) => 
         <mask id="mat_luoi">
           <rect x={0} y={Y0} width={1080} height={1920 - Y0} fill="url(#mo_luoi)" />
         </mask>
+        <radialGradient id="chan_troi" cx="50%" cy="50%" r="50%">
+          <stop offset="0" stopColor={mau} stopOpacity={0.35} />
+          <stop offset="1" stopColor={mau} stopOpacity={0} />
+        </radialGradient>
       </defs>
       <rect x={0} y={Y0 - 90} width={1080} height={180} fill={`url(#chan_troi)`} opacity={0.6} />
-      <radialGradient id="chan_troi" cx="50%" cy="50%" r="50%">
-        <stop offset="0" stopColor={mau} stopOpacity={0.35} />
-        <stop offset="1" stopColor={mau} stopOpacity={0} />
-      </radialGradient>
       <g mask="url(#mat_luoi)">
         {doc}
         {ngang}

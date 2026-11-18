@@ -85,7 +85,11 @@ function suaCanhThat_(v, sua, so) {
       else { o.bien = o.bien || tenGoc; o.ten = 'cong_trinh'; sua.push('canh_that cảnh ' + so + ': vật lạ -> công trình có biển "' + o.bien + '"'); }
     }
     if (o.ten === 'mat_troi' && o.x === undefined) return;
-    if (!laChuoi_(o.ma) || daMa[o.ma]) o.ma = String.fromCharCode(65 + i);
+    if (!laChuoi_(o.ma) || daMa[o.ma]) {
+      var codeMa = 65 + (i % 26);
+      while (daMa[String.fromCharCode(codeMa)] && codeMa < 91) codeMa++;
+      o.ma = !daMa[String.fromCharCode(codeMa)] ? String.fromCharCode(codeMa) : ('V' + (i + 1));
+    }
     daMa[o.ma] = 1;
     if (o.ten !== 'thang' || o.dinh_x === undefined) {
       if (!(Number(o.cao) > 0)) o.cao = cao0[o.ten] || 3;
@@ -120,7 +124,7 @@ function kiemTraCanhThat_(v, ev) {
     if (x.ten === 'mat_troi' && x.x === undefined) continue;
     if (!laChuoi_(x.ma)) return 'HINH_' + ev + ', vat[' + i + ']: mỗi vật cần "ma" (A, B, C...) để các phép đo trỏ tới.';
     if (x.ten === 'thang' && x.dinh_x !== undefined) { if (!laSo_(x.x) || !laSo_(x.dinh_cao)) return 'HINH_' + ev + ': thang dựa tường cần "x" (chân), "dinh_x", "dinh_cao" (mét).'; }
-    else if (!laSo_(x.cao) || x.cao <= 0 || !laSo_(x.x)) return 'HINH_' + ev + ', vật ' + x.ma + ': cần "cao" (mét, > 0) và "x" (vị trí ngang, mét)' + (nhin === 'tren' ? ' và "y"' : '') + '.';
+    else if (!laSo_(x.cao) || x.cao <= 0 || !laSo_(x.x) || (nhin === 'tren' && x.y !== undefined && !laSo_(x.y))) return 'HINH_' + ev + ', vật ' + x.ma + ': cần "cao" (mét, > 0) và "x" (vị trí ngang, mét)' + (nhin === 'tren' ? ' và "y"' : '') + '.';
     ['', '.chan', '.dinh', '.mat', '.giua'].forEach(function (h) { neo[x.ma + h] = 1; });
   }
   diem.forEach(function (d) { if (d && d.ma) neo[d.ma] = 1; });
@@ -437,7 +441,7 @@ function kiemTraSanKhau_(du, cn, idCu) {
     if (v.loai === 'vong_quay' && (!Array.isArray(v.ds) || v.ds.length < 2 || v.ds.length > 12)) return 'HINH_' + ev + ': vong_quay cần "ds" là 2-12 nhãn ô.';
     if ((v.loai === 'dong_ho_do' || v.loai === 'thanh') && v.gia_tri !== undefined && !(Number(v.gia_tri) >= 0 && Number(v.gia_tri) <= 1)) return 'HINH_' + ev + ': "gia_tri" của ' + v.loai + ' là xác suất 0-1 (ví dụ 0.4643); ghi phân số vào "gia_tri_chu".';
     if (v.loai === 'danh_sach' && (!Array.isArray(v.ds) || v.ds.length < 1 || v.ds.length > 6)) return 'HINH_' + ev + ': danh_sach cần "ds" là 1-6 dòng ngắn.';
-    if (v.loai === 'anh_that' && !(Number(v.anh) >= 0 && Math.floor(Number(v.anh)) === Number(v.anh))) return 'HINH_' + ev + ': anh_that cần "anh" là số thứ tự ảnh thật của sản phẩm (0, 1, 2...).';
+    if (v.loai === 'anh_that' && (v.anh === '' || v.anh === undefined || v.anh === null || !(Number(v.anh) >= 0 && Math.floor(Number(v.anh)) === Number(v.anh)))) return 'HINH_' + ev + ': anh_that cần "anh" là số thứ tự ảnh thật của sản phẩm (0, 1, 2...).';
     if (v.loai === 'ban_tron' && !((Array.isArray(v.ds) && v.ds.length >= 3 && v.ds.length <= 16) || (Number(v.so_luong) >= 3 && Number(v.so_luong) <= 16))) return 'HINH_' + ev + ': ban_tron cần "ds" là 3-16 nhãn ghế theo chiều kim đồng hồ ("Nam", "Nữ", tên; "_" = ghế trống).';
     if (v.loai === 'luoi_o' && v.so_luong !== undefined && !(Number(v.so_luong) >= 1 && Number(v.so_luong) <= 64)) return 'HINH_' + ev + ': luoi_o có tối đa 64 ô ("so_luong").';
     if ((v.loai === 'hop_bi' || v.loai === 'tui') && (!Array.isArray(v.nhom) || !v.nhom.length)) return 'HINH_' + ev + ': ' + v.loai + ' cần "nhom" là mảng {mau, so}.';
@@ -1986,7 +1990,7 @@ function texThanhSo_(s) {
   t = t.replace(/(lgsin|lgcos|lgtan|lgcot)\*\(/g, '$1(').replace(/(\d|\))\s*(lg(?:sin|cos|tan|cot))/g, '$1*$2');
   var bo = t.replace(/pow|lgsin|lgcos|lgtan|lgcot/g, '');
   if (/[A-Za-zÀ-ỹ\\]/.test(bo)) return null;   // còn chữ/biến -> không phải phép tính thuần số
-  if (!/\d/.test(t) || !/^[\d\s.+\-*/()e,]*$/.test(bo)) return null;
+  if (!/\d/.test(t) || !/^[\d\s.+\-*/()e]*$/.test(bo)) return null;
   try {
     var R = Math.PI / 180;
     var v = Function('pow', 'lgsin', 'lgcos', 'lgtan', 'lgcot', '"use strict"; return (' + t + ');')(Math.pow,
@@ -2005,6 +2009,7 @@ function kiemTraPhepTinh_(kb) {
       var ve = [], dau = [];
       for (var k = 0; k < phan.length; k += 2) { ve.push(phan[k]); if (k + 1 < phan.length) dau.push(phan[k + 1]); }
       for (var m = 0; m < ve.length - 1; m++) {
+        if (/\\text\s*\{\s*(m|cm|mm|km|dm|kg|g|l|ml|lít|giờ|phút|giây|đồng)\s*\}/i.test(ve[m]) && /\\text\s*\{\s*(m|cm|mm|km|dm|kg|g|l|ml|lít|giờ|phút|giây|đồng)\s*\}/i.test(ve[m + 1])) continue;
         var a = texThanhSo_(ve[m]), b = texThanhSo_(ve[m + 1]);
         if (a === null || b === null) continue;
         var xapXi = dau[m] !== '=';
@@ -2089,7 +2094,7 @@ function tuSuaQuyTrinh_(kb, deGoc) {
   var ds = kb.canh.map(function (c, i) { return {c: c, i: i, p: phaCua_(c && c.loai)}; });
   // pha của cảnh không nhận ra (loại lạ) = pha cảnh liền trước
   for (var k = 0; k < ds.length; k++) if (ds[k].p < 0) ds[k].p = k ? ds[k - 1].p : 0;
-  var lech = ds.some(function (x, k) { return k && x.p < ds[k - 1].p; });
+  var lech = kb.kieu_video !== 'DAI_10_PHUT' && ds.some(function (x, k) { return k && x.p < ds[k - 1].p; });
   if (lech) {
     // sân khấu thực tế của từng cảnh (cộng dồn theo chuỗi giu_san_khau) trước khi đổi chỗ
     var sanKhau = [], truoc = null;
@@ -2119,7 +2124,7 @@ function tuSuaQuyTrinh_(kb, deGoc) {
   if (cho.length < 2 && Array.isArray(kb.du_kien) && kb.du_kien.length >= 2) { kb.de_cho = kb.du_kien.map(String).slice(0, 5); sua.push('de_cho lấy từ du_kien'); }
   // thẻ ĐỀ CHO thiếu số của đề -> dựng lại từ chính các vế câu có số trong đề (không bao giờ thiếu dữ kiện)
   if (deGoc) {
-    var soDe = (String(deGoc).replace(/(câu|bài|lớp|ví dụ)\s*\d+/gi, ' ').match(/\d+(?:[.,]\d+)?/g) || []).map(function (x) { return x.replace(',', '.'); });
+    var soDe = (String(deGoc).replace(/(câu|bài|lớp|ví dụ)\s*\d+/gi, ' ').replace(/(\d)\{,\}(\d)/g, '$1,$2').match(/\d+(?:[.,]\d+)?/g) || []).map(function (x) { return x.replace(',', '.'); });
     var coChu = (Array.isArray(kb.de_cho) ? kb.de_cho.join(' ') : '').replace(/,/g, '.');
     var mat = soDe.filter(function (x, i) { return soDe.indexOf(x) === i && coChu.indexOf(x) < 0; });
     if (mat.length) {
@@ -2314,12 +2319,12 @@ function tuSuaDaDangHinh_(kb, r) {
         sua.push('cảnh ' + (i + 1) + ': tùy biến canh_that theo nội dung cảnh');
       } else {
         var idChinh = (du.vat[0] && du.vat[0].id) || 'v0';
-        var kieuHD = ['phong_to', 'chon', 'sang', 'rung'][demLap % 4];
+        var kieuHD = ['phong_to', 'chon', 'sang'][demLap % 3];
         if (!du.hanh_dong.some(function (h) { return h && h.kieu === kieuHD; })) {
           du.hanh_dong.push({ buoc: Math.min(4, 2 + (demLap % 2)), vat: idChinh, kieu: kieuHD });
         }
-        // Trích biểu thức ngắn trong noi_dung_man_hinh hoặc tiêu đề cảnh để gắn nhãn trực quan ngay trên sân khấu
-        var ctNgan = (c.noi_dung_man_hinh || []).filter(function (d) { return String(d || '').length >= 3 && String(d || '').length <= 26; })[0];
+        // Trích biểu thức ngắn (không chứa LaTeX thô) trong noi_dung_man_hinh để gắn nhãn trực quan
+        var ctNgan = (c.noi_dung_man_hinh || []).map(function (d) { return String(d || '').trim(); }).filter(function (d) { return d.length >= 3 && d.length <= 26 && !/\\|[{}_^]/.test(d); })[0];
         if (ctNgan && du.vat.filter(function (v) { return v && (v.loai === 'nhan' || v.loai === 'chu'); }).length < 2) {
           du.vat.push({ id: 'nh_c' + (i + 1), loai: 'nhan', x: 50, y: 14, buoc: 3, mau: ['vang', 'xanh_la', 'cam'][i % 3], noi_dung: ctNgan });
           sua.push('cảnh ' + (i + 1) + ': thêm nhãn & hiệu ứng riêng khớp bước tính');

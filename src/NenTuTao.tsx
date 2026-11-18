@@ -1,5 +1,23 @@
 import React from 'react';
 import {AbsoluteFill, useCurrentFrame} from 'remotion';
+import {FONT_DAM} from './theme';
+
+const HEX_O = (() => {
+  const R = 60, w = R * Math.sqrt(3);
+  const out: {row: number; col: number; pts: string}[] = [];
+  for (let row = 0; row < 24; row++) {
+    for (let col = 0; col < 11; col++) {
+      const cx = col * w + (row % 2 ? w / 2 : 0), cy = row * R * 1.5;
+      const pts = Array.from({length: 6}, (_, k) => `${(cx + R * 0.92 * Math.cos(Math.PI / 6 + (k * Math.PI) / 3)).toFixed(1)},${(cy + R * 0.92 * Math.sin(Math.PI / 6 + (k * Math.PI) / 3)).toFixed(1)}`).join(' ');
+      out.push({row, col, pts});
+    }
+  }
+  return out;
+})();
+const TIA_DUONG = Array.from({length: 18}, (_, i) => {
+  const a = (i / 18) * Math.PI * 2, b = a + 0.08;
+  return `M0 0 L${(Math.cos(a) * 2400).toFixed(1)} ${(Math.sin(a) * 2400).toFixed(1)} L${(Math.cos(b) * 2400).toFixed(1)} ${(Math.sin(b) * 2400).toFixed(1)} Z`;
+});
 
 // NỀN TỰ TẠO - MỖI VIDEO MỘT NỀN KHÁC: kiểu nền + tông màu + vị trí hoa văn đều sinh từ mã video (hạt giống),
 // nên hai video liền nhau gần như không bao giờ giống nhau. Nền tối, tương phản thấp, chuyển động chậm để chữ và hình luôn nổi.
@@ -55,29 +73,27 @@ export const NenTuTao: React.FC<{cfg: NenTuTaoProps; nhan: string}> = ({cfg, nha
       break;
     }
     case 'luc_giac': {
-      // lưới lục giác mảnh, vài ô nhấp sáng lần lượt
-      const R = 60, w = R * Math.sqrt(3);
-      const o: React.ReactNode[] = [];
-      for (let row = 0; row < 24; row++) for (let col = 0; col < 11; col++) {
-        const cx = col * w + (row % 2 ? w / 2 : 0), cy = row * R * 1.5;
-        const pha = (f / 40 + (row * 7 + col * 3) * 0.37) % 6;
-        const sang = pha < 0.6 ? Math.sin((pha / 0.6) * Math.PI) : 0;
-        const pts = Array.from({length: 6}, (_, k) => `${(cx + R * 0.92 * Math.cos(Math.PI / 6 + (k * Math.PI) / 3)).toFixed(1)},${(cy + R * 0.92 * Math.sin(Math.PI / 6 + (k * Math.PI) / 3)).toFixed(1)}`).join(' ');
-        o.push(<polygon key={`${row}_${col}`} points={pts} fill={hsl(h, 80, 55, 0.05 * sang)} stroke={hsl(h, 60, 55, 0.07 + 0.2 * sang)} strokeWidth={1.4} />);
-      }
-      lop = <svg width={1080} height={1920} style={{position: 'absolute', inset: 0}}>{o}</svg>;
+      // lưới lục giác mảnh (tọa độ tĩnh tính sẵn), vài ô nhấp sáng lần lượt
+      lop = (
+        <svg width={1080} height={1920} style={{position: 'absolute', inset: 0}}>
+          {HEX_O.map(({row, col, pts}) => {
+            const pha = (f / 40 + (row * 7 + col * 3) * 0.37) % 6;
+            const sang = pha < 0.6 ? Math.sin((pha / 0.6) * Math.PI) : 0;
+            return <polygon key={`${row}_${col}`} points={pts} fill={hsl(h, 80, 55, 0.05 * sang)} stroke={hsl(h, 60, 55, 0.07 + 0.2 * sang)} strokeWidth={1.4} />;
+          })}
+        </svg>
+      );
       break;
     }
     case 'tia': {
-      // chùm tia sáng xoay rất chậm từ một tâm
+      // chùm tia sáng xoay rất chậm từ một tâm (tia tính sẵn)
       const cx = 200 + r() * 680, cy = 300 + r() * 500;
       lop = (
         <svg width={1080} height={1920} style={{position: 'absolute', inset: 0}}>
           <g transform={`translate(${cx} ${cy}) rotate(${f * 0.05})`}>
-            {Array.from({length: 18}, (_, i) => {
-              const a = (i / 18) * Math.PI * 2, b = a + 0.08;
-              return <path key={i} d={`M0 0 L${Math.cos(a) * 2400} ${Math.sin(a) * 2400} L${Math.cos(b) * 2400} ${Math.sin(b) * 2400} Z`} fill={hsl(i % 2 ? h : h2, 70, 55, 0.045)} />;
-            })}
+            {TIA_DUONG.map((d, i) => (
+              <path key={i} d={d} fill={hsl(i % 2 ? h : h2, 70, 55, 0.045)} />
+            ))}
           </g>
         </svg>
       );
@@ -88,7 +104,7 @@ export const NenTuTao: React.FC<{cfg: NenTuTaoProps; nhan: string}> = ({cfg, nha
       const kh = ['π', '√', '∑', '∞', '%', '÷', '∫', 'Δ', 'θ', '≈', 'x²', '±', 'α', '∠'];
       lop = Array.from({length: 22}, (_, i) => {
         const x = r() * 1000, y0 = r() * 1920, s = 40 + r() * 70, v = 0.15 + r() * 0.35;
-        return <div key={i} style={{position: 'absolute', left: x, top: ((y0 - f * v) % 2000 + 2000) % 2000 - 80, fontSize: s, fontWeight: 800, fontFamily: 'Be Vietnam Pro, sans-serif',
+        return <div key={i} style={{position: 'absolute', left: x, top: ((y0 - f * v) % 2000 + 2000) % 2000 - 80, fontSize: s, fontWeight: 800, fontFamily: FONT_DAM,
           color: hsl(i % 2 ? h : h2, 60, 65, 0.07 + r() * 0.06), transform: `rotate(${Math.sin(f / 90 + i) * 15}deg)`}}>{kh[i % kh.length]}</div>;
       });
       break;

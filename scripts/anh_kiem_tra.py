@@ -27,7 +27,7 @@ def main():
         chon = [chon[int(k * buoc)] for k in range(24)]
     try:
         dai = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", video], capture_output=True, text=True).stdout.strip())
-    except ValueError:
+    except (ValueError, FileNotFoundError, OSError):
         dai = 1e9
     moc = [min((c["batDau"] + c["soFrame"] * ti) / fps + (1 / fps if p.get("anhBiaDau") else 0), max(0.0, dai - 0.3)) for c, ti in chon]
 

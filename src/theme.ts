@@ -63,7 +63,7 @@ export const RONG = 1080;
 export const CAO = 1920;
 
 // Bảng màu theo video mẫu (Manim): nền đen, nét trắng, nhấn màu cam vàng.
-export const MAU = {
+export const MAU_GOC = {
   nen1: '#111111',
   nen2: '#161616',
   vang: '#F5A623', // cam vàng: mũi tên, công thức, nhấn mạnh
@@ -78,3 +78,4 @@ export const MAU = {
   the: 'rgba(255,255,255,0.06)',
   vien: 'rgba(255,255,255,0.22)',
 };
+export const MAU = {...MAU_GOC};

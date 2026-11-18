@@ -320,11 +320,11 @@ export const Tru: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
         <line x1={cx + r + 34} y1={non ? yTren - ry : yTren} x2={cx + r + 34} y2={yDuoi} stroke={NHAT} strokeWidth={3} />
         <path d={`M${cx + r + 24} ${non ? yTren - ry : yTren} h20 M${cx + r + 24} ${yDuoi} h20`} stroke={NHAT} strokeWidth={3} />
       </g>
-      <foreignObject x={cx + r / 2 - 60} y={(non ? yDuoi : yTren) - 54} width={120} height={50}>
-        <div style={{display: 'flex', justifyContent: 'center'}}>{v.nhanKT[0] ? <div style={{background: 'rgba(6,14,18,0.85)', borderRadius: 10, padding: '0 8px'}}><Toan tex={v.nhanKT[0]} size={26} color={TRANG} /></div> : null}</div>
+      <foreignObject x={cx + r / 2 - 80} y={(non ? yDuoi : yTren) - 56} width={160} height={54}>
+        <div style={{display: 'flex', justifyContent: 'center'}}>{v.nhanKT[0] ? <div style={{background: 'rgba(6,14,18,0.85)', borderRadius: 10, padding: '0 8px'}}><Toan tex={v.nhanKT[0]} size={28} color={TRANG} /></div> : null}</div>
       </foreignObject>
-      <foreignObject x={cx + r + 44} y={(yTren + yDuoi) / 2 - 24} width={150} height={50}>
-        {v.nhanKT[1] ? <div style={{display: 'inline-block', background: 'rgba(6,14,18,0.85)', borderRadius: 10, padding: '0 8px'}}><Toan tex={v.nhanKT[1]} size={26} color={NHAT} /></div> : <div />}
+      <foreignObject x={cx + r + 40} y={(yTren + yDuoi) / 2 - 26} width={180} height={54}>
+        {v.nhanKT[1] ? <div style={{display: 'inline-block', background: 'rgba(6,14,18,0.85)', borderRadius: 10, padding: '0 8px'}}><Toan tex={v.nhanKT[1]} size={28} color={NHAT} /></div> : <div />}
       </foreignObject>
     </svg>
   );
@@ -352,8 +352,8 @@ export const Cau: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
       <line x1={0} y1={0} x2={r} y2={0} stroke={TRANG} strokeWidth={3} strokeDasharray="8 6" />
       <circle r={6} fill={TRANG} />
       {v.nhanKT[0] ? (
-        <foreignObject x={r / 2 - 60} y={-56} width={120} height={50}>
-          <div style={{display: 'flex', justifyContent: 'center'}}><div style={{background: 'rgba(6,14,18,0.85)', borderRadius: 10, padding: '0 8px'}}><Toan tex={v.nhanKT[0]} size={26} color={TRANG} /></div></div>
+        <foreignObject x={r / 2 - 80} y={-58} width={160} height={54}>
+          <div style={{display: 'flex', justifyContent: 'center'}}><div style={{background: 'rgba(6,14,18,0.85)', borderRadius: 10, padding: '0 8px'}}><Toan tex={v.nhanKT[0]} size={28} color={TRANG} /></div></div>
         </foreignObject>
       ) : null}
     </svg>

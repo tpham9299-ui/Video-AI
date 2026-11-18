@@ -61,6 +61,13 @@ export const BienDoi: React.FC<{
   const dom = useRef<(HTMLDivElement | null)[]>([]);
   const [geo, setGeo] = useState<Geo[] | null>(null);
   const [h] = useState(() => delayRender('Đo công thức'));
+  const xongRef = useRef(false);
+  const nhaCho = () => {
+    if (!xongRef.current) {
+      xongRef.current = true;
+      continueRender(h);
+    }
+  };
 
   useLayoutEffect(() => {
     let con = true;
@@ -74,13 +81,19 @@ export const BienDoi: React.FC<{
       if (con && g.every(Boolean)) setGeo(g as Geo[]);
     };
     napPhong().then(do_);
+    const du = setTimeout(() => {
+      if (con) do_();
+      nhaCho();
+    }, 3500);
     return () => {
       con = false;
+      clearTimeout(du);
     };
   }, [khoa, co]);
   useEffect(() => {
-    if (geo) continueRender(h);
+    if (geo) nhaCho();
   }, [geo]);
+  useEffect(() => () => nhaCho(), []);
 
   const ban = (
     <>
@@ -193,14 +206,16 @@ export const BienDoi: React.FC<{
         y1 = Math.max(y1, p.y + (p.h * p.s) / 2);
       });
       const pad = 20;
-      khung = (
+      const rw = Math.max(0, x1 - x0);
+      const rh = Math.max(0, y1 - y0);
+      khung = rw > 0 && rh > 0 ? (
         <svg width={maxWidth} height={cao} style={{position: 'absolute', left: 0, top: 0, overflow: 'visible'}}>
           {/* như video mẫu: khung neon xanh phát sáng, hơi nghiêng, nền xanh mờ đổ dần vào sau khi viền vẽ xong */}
           <g transform={`rotate(${-2.5 * smooth(u)} ${(x0 + x1) / 2} ${(y0 + y1) / 2})`}>
-            <rect x={x0 - pad} y={y0 - pad} width={x1 - x0 + 2 * pad} height={y1 - y0 + 2 * pad} rx={18} fill={`rgba(59,242,154,${0.14 * kep01((u - 0.5) * 2)})`} stroke="#3BF29A" strokeWidth={6} strokeLinecap="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - smooth(u)} style={{filter: 'drop-shadow(0 0 10px #3BF29A) drop-shadow(0 0 22px rgba(59,242,154,0.6))'}} />
+            <rect x={x0 - pad} y={y0 - pad} width={rw + 2 * pad} height={rh + 2 * pad} rx={18} fill={`rgba(59,242,154,${0.14 * kep01((u - 0.5) * 2)})`} stroke="#3BF29A" strokeWidth={6} strokeLinecap="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - smooth(u)} style={{filter: 'drop-shadow(0 0 10px #3BF29A) drop-shadow(0 0 22px rgba(59,242,154,0.6))'}} />
           </g>
         </svg>
-      );
+      ) : null;
     }
   }
 

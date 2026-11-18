@@ -78,7 +78,11 @@ function doKhungHinh(goc: HTMLElement): {loi: LoiKD[]; chu: string[]; so: string
       if (doMo(kx) < 0.55) continue;
       const hop = quy(kx.getBoundingClientRect());
       if (dt(hop) < 4) continue;
-      khoi.push({chu: (kx.closest('[data-tex]')?.getAttribute('data-tex') || kx.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60), hop, co: parseFloat(getComputedStyle(kx).fontSize) * heSo(kx), el: kx, katex: true});
+      const thayKx = catBoi(kx, hop);
+      if (!thayKx || dt(thayKx) < dt(hop) * 0.3) continue;
+      const texChu = (kx.closest('[data-tex]')?.getAttribute('data-tex') || kx.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+      if (dt(thayKx) < dt(hop) * 0.84 && texChu.length >= 2) loi.push({kieu: 'CAT_CHU', chu: texChu, hop});
+      khoi.push({chu: texChu, hop: thayKx, co: parseFloat(getComputedStyle(kx).fontSize) * heSo(kx), el: kx, katex: true});
       continue;
     }
     if (cha.closest('svg') && cha.tagName.toLowerCase() !== 'text' && cha.tagName.toLowerCase() !== 'tspan') continue;
@@ -126,6 +130,7 @@ function doKhungHinh(goc: HTMLElement): {loi: LoiKD[]; chu: string[]; so: string
     .filter((x) => dt(x.hop) > 900);
   for (let i = 0; i < vat.length; i++) {
     for (let j = i + 1; j < vat.length; j++) {
+      if (vat[i].id === vat[j].id) continue;
       const gi = giao(vat[i].hop, vat[j].hop);
       if (!gi) continue;
       if (dt(gi) > 0.15 * Math.min(dt(vat[i].hop), dt(vat[j].hop))) loi.push({kieu: 'VAT_DE', chu: vat[i].loai + ' ' + vat[i].id, chu2: vat[j].loai + ' ' + vat[j].id, hop: gi});
@@ -154,25 +159,32 @@ function doKhungHinh(goc: HTMLElement): {loi: LoiKD[]; chu: string[]; so: string
 
 export const KiemDuyet: React.FC = () => {
   const f = useCurrentFrame();
-  const [h] = useState(() => delayRender('Kiểm duyệt bố cục'));
   useEffect(() => {
+    const h = delayRender(`Kiểm duyệt bố cục ${f}`);
     let xong = false;
+    let huy = false;
     const chay = () => {
       if (xong) return;
       xong = true;
-      try {
-        const goc = document.getElementById('kd-goc');
-        const kq = goc && goc.parentElement ? doKhungHinh(goc.parentElement) : {loi: [], chu: [], so: []};
-        console.log('KD|' + JSON.stringify({frame: f, ...kq}));
-      } catch (e) {
-        console.log('KD|' + JSON.stringify({frame: f, loi: [], hong: String(e)}));
+      if (!huy) {
+        try {
+          const goc = document.getElementById('kd-goc');
+          const kq = goc && goc.parentElement ? doKhungHinh(goc.parentElement) : {loi: [], chu: [], so: []};
+          console.log('KD|' + JSON.stringify({frame: f, ...kq}));
+        } catch (e) {
+          console.log('KD|' + JSON.stringify({frame: f, loi: [], hong: String(e)}));
+        }
       }
       continueRender(h);
     };
     // chờ phông + các hiệu ứng "tự vừa khung" của công thức chạy xong rồi mới đo
     (document as Document & {fonts?: {ready: Promise<unknown>}}).fonts?.ready.then(() => requestAnimationFrame(() => setTimeout(chay, 20)));
     const du = setTimeout(chay, 4000);
-    return () => clearTimeout(du);
-  }, [f, h]);
+    return () => {
+      huy = true;
+      clearTimeout(du);
+      chay();
+    };
+  }, [f]);
   return <div id="kd-goc" data-kd-bo="1" style={{position: 'absolute', left: 0, top: 0, width: 1080, height: 1920, pointerEvents: 'none'}} />;
 };

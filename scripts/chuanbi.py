@@ -543,9 +543,7 @@ def gemini_tts(text, tep_wav, giong, model, phong_cach, dung_cache=True):
                         print("Gemini TTS: key %s… hết hạn mức ngày cho %s, chuyển key/model khác" % (key[:6], md))
                         continue
                     if e.code == 401 or (e.code in (400, 403) and re.search(r"API_KEY_INVALID|API key not valid|API key expired|SERVICE_DISABLED|has not been used|is disabled|suspended|PERMISSION_DENIED|billing", noi, re.I)):
-                        with _GEM_LOCK:
-                            KEY_HONG.add(key)
-                        print("Gemini TTS: key %s bị model giọng từ chối (HTTP %d), bỏ key này cho giọng đọc" % (key[:6] + "_" + key[-4:], e.code))
+                        ghi_key_hong(key, e.code, noi)
                         continue
                     if e.code in (429, 500, 503):
                         m = re.search(r'"retryDelay":\s*"(\d+)', noi)
@@ -718,8 +716,6 @@ def _doc_khuc_gemini_mot_lan(ds_canh, chi_so_bat_dau, thu_muc, args):
         if thieu_chu:
             print("Gemini đọc THIẾU CHỮ (nhanh bất thường) %s -> đọc lại" % "; ".join(thieu_chu))
             continue
-        with _GEM_LOCK:
-            THONG_KE_GIONG["gemini"] += len(van)
         print("Gemini đọc liền mạch %d cảnh (từ cảnh %d, %.1f giây)" % (len(van), chi_so_bat_dau + 1, D))
         return kq
     return None
@@ -730,17 +726,21 @@ def tao_giong_gemini_mot_lan(canh, thu_muc, args):
     - Với video ngắn (<= 18 cảnh): đọc TOÀN BỘ lời thoại trong 1 lần gọi duy nhất (1 người đọc xuyên suốt 100%, không lệch giọng giữa các cảnh).
     - Với video dài 10 phút (> 18 cảnh): chia thành các chặng lớn 12 cảnh đọc liền mạch cùng một cấu hình giọng."""
     if len(canh) <= 18:
-        return _doc_khuc_gemini_mot_lan(canh, 0, thu_muc, args)
+        kq = _doc_khuc_gemini_mot_lan(canh, 0, thu_muc, args)
+        if kq:
+            with _GEM_LOCK:
+                THONG_KE_GIONG["gemini"] += len(kq)
+        return kq
     kq_tong = {}
     buoc = 12
     doan = [(canh[bd:bd + buoc], bd) for bd in range(0, len(canh), buoc)]
     with ThreadPoolExecutor(max_workers=min(2, len(doan))) as ex:
         for kq_khuc in ex.map(lambda p: _doc_khuc_gemini_mot_lan(p[0], p[1], thu_muc, args), doan):
             if not kq_khuc:
-                with _GEM_LOCK:
-                    THONG_KE_GIONG["gemini"] = 0
                 return None
             kq_tong.update(kq_khuc)
+    with _GEM_LOCK:
+        THONG_KE_GIONG["gemini"] += len(kq_tong)
     return kq_tong
 
 

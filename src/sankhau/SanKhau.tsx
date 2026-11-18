@@ -59,6 +59,11 @@ export const taoMocBuocLoi = (soBuoc: number, giayAm: number, cau: {text: string
 
 const AM_QUAY: Record<string, string> = {xuc_xac: 'lac', dong_xu: 'xu', vong_quay: 'quay', dong_ho: 'tich', hop_qua: 'mo', cua: 'cua', the_bai: 'lat'};
 
+const TIA_GOC = Array.from({length: 12}, (_, i) => {
+  const g = (i / 12) * Math.PI * 2;
+  return [Math.cos(g), Math.sin(g)] as const;
+});
+
 // Sàn 3D: lưới chiếu phối cảnh trải rộng ra ngoài sân khấu (phủ toàn khung hình), mờ dần về phía xa; chỉ hiện khi camera nghiêng.
 const San3D: React.FC<{cam: Cam3D; mo: number}> = ({cam, mo}) => {
   const O = 90;
@@ -82,13 +87,13 @@ const San3D: React.FC<{cam: Cam3D; mo: number}> = ({cam, mo}) => {
   const tam = chieu(cam, cam.cx, cam.cy);
   return (
     <svg width={1} height={1} style={{position: 'absolute', left: 0, top: 0, overflow: 'visible', opacity: mo, pointerEvents: 'none'}}>
-      <ellipse cx={tam.sx} cy={tam.sy} rx={520 * tam.s} ry={520 * tam.s * Math.cos((cam.n * Math.PI) / 180)} fill="url(#quangSan)" />
       <defs>
         <radialGradient id="quangSan">
           <stop offset="0%" stopColor="rgba(59,242,154,0.16)" />
           <stop offset="100%" stopColor="rgba(59,242,154,0)" />
         </radialGradient>
       </defs>
+      <ellipse cx={tam.sx} cy={tam.sy} rx={520 * tam.s} ry={520 * tam.s * Math.cos((cam.n * Math.PI) / 180)} fill="url(#quangSan)" />
       {net}
     </svg>
   );
@@ -108,6 +113,13 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
   const gocRef = React.useRef<HTMLDivElement>(null);
   const [doThat, setDoThat] = React.useState<DoThat | null>(null);
   const [cho] = React.useState(() => delayRender('Đo kích thước vật trên sân khấu'));
+  const xongChoRef = React.useRef(false);
+  const nhaCho = () => {
+    if (!xongChoRef.current) {
+      xongChoRef.current = true;
+      continueRender(cho);
+    }
+  };
   const vatXep = React.useMemo(() => tuXepSanKhau(du.vat, SK_W, SK_H, Math.max(1, Math.min(1.6, kChu)), doThat), [du, kChu, doThat]);
   const coLucDo = React.useRef(new Map<string, number>());
   React.useLayoutEffect(() => {
@@ -124,11 +136,15 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
       setDoThat(m);
     };
     const fonts = (document as Document & {fonts?: {ready: Promise<unknown>}}).fonts;
-    if (fonts) fonts.ready.then(() => requestAnimationFrame(do_)); else do_();
+    if (fonts) fonts.ready.then(() => { if (!xong) requestAnimationFrame(do_); }); else do_();
     const du2 = setTimeout(do_, 3000);
-    return () => clearTimeout(du2);
+    return () => {
+      xong = true;
+      clearTimeout(du2);
+    };
   }, [doThat]);
-  React.useEffect(() => { if (doThat) continueRender(cho); }, [doThat, cho]);
+  React.useEffect(() => { if (doThat) nhaCho(); }, [doThat]);
+  React.useEffect(() => () => nhaCho(), []);
   vatXep.forEach((v) => { if (!doThat) coLucDo.current.set(v.id, v.co); });
   const cam = tinhCamera(du.hanhDong, vatXep, t, tb, SK_W, SK_H);
   // góc nhìn 3D: nghiêng sàn + xoay quanh trục đứng; vật luôn quay mặt về camera (billboard) và đứng trên sàn có bóng đổ
@@ -143,6 +159,7 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
   const lop: {z: number; el: React.ReactNode}[] = [];
   const lopPhang: {z: number; el: React.ReactNode}[] = [];
   const muiTen: React.ReactNode[] = [];
+  const daRenderDom = new Set<string>();
   const thuTu = (v: Vat) => (v.loai === 'nhan' || v.loai === 'mui_ten' ? 2 : v.loai === 'chu' || v.loai === 'so_dem' ? 1 : 0);
   const lopHinh = React.useContext(LopHinh);   // lớp chú thích phẳng: chỉ vẽ chữ, không vẽ lại tia sáng / mũi tên
   const duocVe = (v: Vat) => (!chiVat || chiVat.includes(v.id)) && !(boVat && boVat.includes(v.id));
@@ -168,6 +185,7 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
     if (t < st.ta && v.buoc > 0) continue;
     const ve = VE_VAT[v.loai];
     if (!ve) continue;
+    daRenderDom.add(v.id);
     const a = st.vao;
     const lech = v.tuHuong ? (1 - expoOut(a)) * 560 : 0;
     const ox = v.tuHuong === 'trai' ? -lech : v.tuHuong === 'phai' ? lech : 0;
@@ -226,11 +244,10 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
     const e = easeOut(p);
     tia.push(
       <svg key={`tia${v.id}`} style={{position: 'absolute', left: vt.x, top: vt.y, overflow: 'visible', pointerEvents: 'none'}} width={1} height={1}>
-        {Array.from({length: 12}, (_, i) => {
-          const g = (i / 12) * Math.PI * 2;
+        {TIA_GOC.map(([cx, sy], i) => {
           const r1 = R * (0.55 + 0.6 * e);
           const r2 = r1 + 34 * (1 - e) + 6;
-          return <line key={i} x1={Math.cos(g) * r1} y1={Math.sin(g) * r1} x2={Math.cos(g) * r2} y2={Math.sin(g) * r2} stroke={mau} strokeWidth={6 * (1 - e) + 1} strokeLinecap="round" opacity={1 - e} style={{filter: `drop-shadow(0 0 6px ${mau})`}} />;
+          return <line key={i} x1={cx * r1} y1={sy * r1} x2={cx * r2} y2={sy * r2} stroke={mau} strokeWidth={6 * (1 - e) + 1} strokeLinecap="round" opacity={1 - e} style={{filter: `drop-shadow(0 0 6px ${mau})`}} />;
         })}
         <circle r={R * (0.4 + 0.9 * e)} fill="none" stroke={mau} strokeWidth={4 * (1 - e)} opacity={0.6 * (1 - e)} />
       </svg>
@@ -284,8 +301,8 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
     return x.f >= 0;
   });
 
-  // lúc ĐO: dựng thêm (ẩn) các vật lớp này không vẽ, để mọi lớp sân khấu (3D tách lớp) đo ĐỦ vật -> cùng một bố cục
-  const doAn: React.ReactNode[] = !doThat ? vatXep.filter((v) => !duocVe(v) && v.loai !== 'mui_ten').map((v) => {
+  // lúc ĐO: dựng thêm (ẩn) các vật lớp này không vẽ (hoặc chưa tới bước xuất hiện), để mọi lớp sân khấu đo ĐỦ vật -> cùng một bố cục
+  const doAn: React.ReactNode[] = !doThat ? vatXep.filter((v) => v.loai !== 'mui_ten' && !daRenderDom.has(v.id)).map((v) => {
     const st = tinhTrangThai(v, du.hanhDong, t, tb, SK_W, SK_H);
     return <div key={`do${v.id}`} data-kd-vat={v.id} data-kd-bo="1" style={{position: 'absolute', left: -5000, top: 0, visibility: 'hidden', pointerEvents: 'none'}}>{(() => { const ve2 = VE_VAT[v.loai]; return ve2 ? ve2(v, st, frame, fps) : null; })()}</div>;
   }) : [];

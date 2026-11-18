@@ -35,7 +35,7 @@ export const AnhBia: React.FC<Props> = (props) => {
   } else doan.push({chu: tu, nhan: false});
   const coBrand = !!props.thuongHieu && !!(props.thuongHieu.ten || props.thuongHieu.logo);
   // ảnh bìa được chụp ĐÚNG khung hình b.khung (npx remotion still ... --frame=<khung>), nên video bên dưới tự ở đúng thời điểm
-  const video = <Video {...props} nhac={null} canh={props.canh.map((c) => ({...c, audio: ''}))} />;   // ảnh tĩnh: bỏ âm thanh
+  const video = <Video {...props} anhBiaDau={null} nhac={null} canh={props.canh.map((c) => ({...c, audio: ''}))} />;   // ảnh tĩnh: bỏ âm thanh và khung ảnh bìa đầu
   return (
     <AbsoluteFill style={{background: '#050b0d', fontFamily: FONT_DAM, overflow: 'hidden'}}>
       {/* nền studio nổi bật vùng giữa, không dựng lặp Video với blur toàn màn hình */}
@@ -44,7 +44,7 @@ export const AnhBia: React.FC<Props> = (props) => {
       {/* ô kính chứa hình minh họa thật của đề (vùng sân khấu của video) */}
       <div style={{position: 'absolute', left: 60, right: 60, top: 625, height: 860, borderRadius: 44, overflow: 'hidden', border: `5px solid ${mau}`,
         boxShadow: `0 0 60px ${mau}88, 0 0 0 10px rgba(255,255,255,0.06), 0 30px 80px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.25)`, background: '#071113'}}>
-        <div style={{position: 'absolute', left: -60, top: -540, width: 1080, height: 1920}}>{video}</div>
+        <div style={{position: 'absolute', left: -60, top: -470, width: 1080, height: 1920}}>{video}</div>
         {/* bài hình học dựng bằng Manim: hình đầy đủ (tô màu đại lượng) do Manim vẽ, đặt đúng vùng nội dung */}
         {props.manimLop && props.anhManimBia ? <Img src={staticFile(props.anhManimBia)} style={{position: 'absolute', left: -60, top: -330, width: 1080, height: 1920}} /> : null}
         <div style={{position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(7,17,19,0) 75%, rgba(7,17,19,0.85) 100%)'}} />

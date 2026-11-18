@@ -56,8 +56,9 @@ function khoXep_(he, tq) {
   var dung = [], nghi = [];
   thuTu.forEach(function (k, i) {
     var id = khoId_(k);
-    var tt = all['kd_' + id] === 'BAD' ? 'BAD' : (all[khoTenKhoa_(id, tq)] || '');
-    if (tt === 'BAD' || tt === homNay) return;
+    if (all['kd_' + id] === 'BAD') return;
+    if (all[khoTenKhoa_(id, tq)] === homNay) return;
+    if (all['kdb_' + id + '_' + tq] === 'BAD') return;
     (nghiMap[tenCache[i]] ? nghi : dung).push(k);
   });
   return { dung: dung, nghi: nghi };
@@ -67,9 +68,10 @@ function khoNghiNgan_(id, tq) {
   try { CacheService.getScriptCache().put('kdn_' + id + '_' + tq, '1', 75); } catch (e) { /* bỏ qua */ }
 }
 
-function khoDanhDau_(key, tq, loai) {   // loai: 'ngay' (hết hạn mức ngày) | 'bad' (key bị từ chối)
+function khoDanhDau_(key, tq, loai) {   // loai: 'ngay' (hết hạn mức ngày) | 'bad' (key hỏng toàn phần) | 'bad_model' (lỗi quyền theo model)
   var p = khoProps_(), id = khoId_(key);
   if (loai === 'bad') { p.setProperty('kd_' + id, 'BAD'); return; }
+  if (loai === 'bad_model' && tq) { p.setProperty('kdb_' + id + '_' + tq, 'BAD'); return; }
   if (p.getProperty('kd_' + id) === 'BAD') return;
   p.setProperty(khoTenKhoa_(id, tq), khoNgayPT_());
 }
@@ -92,11 +94,18 @@ function khoGhiNhanLoi_(key, tq, code, raw) {
     else khoNghiNgan_(khoId_(key), tq);   // giới hạn theo phút: nghỉ 75 giây
     return true;
   }
-  if (code === 401 || (code === 400 && /API key/i.test(raw)) || (code === 403 && /denied access|suspended|API key|CONSUMER/i.test(raw))) {
+  if (code === 401 || /API_KEY_INVALID|API key not valid|API key expired/i.test(raw) || (code === 403 && /CONSUMER_SUSPENDED|PERMISSION_DENIED.*API key/i.test(raw))) {
     khoDanhDau_(key, tq, 'bad'); khoBaoChu_(key, tq, 'bad');
     return true;
   }
-  if (code === 403) { khoDanhDau_(key, tq, 'ngay'); khoBaoChu_(key, tq, 'ngay'); return true; }   // 403 khác: chỉ ngưng dùng key này cho model này hôm nay
+  if (code === 400 && /API key/i.test(raw)) {
+    khoDanhDau_(key, tq, 'bad'); khoBaoChu_(key, tq, 'bad');
+    return true;
+  }
+  if (code === 403) {
+    khoDanhDau_(key, tq, 'bad_model');
+    return true;
+  }
   return false;
 }
 

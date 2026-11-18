@@ -24,12 +24,12 @@ var CHUONG_TRINH_HINH_HOC = {
   '11': 'hình học phẳng nâng cao (phương tích, trục đẳng phương, phép biến hình) VÀ hình học KHÔNG GIAN lớp 11: quan hệ song song, quan hệ vuông góc, góc giữa đường thẳng và mặt phẳng, góc giữa hai mặt phẳng, khoảng cách (điểm - mặt, hai đường chéo nhau), thiết diện',
   '12': 'hình học KHÔNG GIAN: thể tích khối chóp, khối lăng trụ, khối hộp; khoảng cách, góc trong không gian; mặt cầu ngoại tiếp; tọa độ Oxyz; và hình học phẳng nâng cao'
 };
-// mỗi lần sinh đề hình học xen kẽ PHẲNG / KHÔNG GIAN (lớp 10 chủ yếu phẳng)
+// mỗi lần sinh đề hình học xen kẽ PHẲNG / KHÔNG GIAN (lớp 10 chỉ học PHẲNG theo GDPT 2018)
 function chonKieuHinh_(lop) {
+  if (String(lop) === '10') return 'PHANG';
   var p = PropertiesService.getScriptProperties();
   var k = Number(p.getProperty('HH_KE') || 0);
   p.setProperty('HH_KE', String(k + 1));
-  if (String(lop) === '10') return k % 3 === 2 ? 'KHONG_GIAN' : 'PHANG';
   return k % 2 ? 'KHONG_GIAN' : 'PHANG';
 }
 function chuongTrinhHinh_(lop) { return CHUONG_TRINH_HINH_HOC[String(lop)] || CHUONG_TRINH_HINH_HOC['10']; }
@@ -274,7 +274,22 @@ function phanLoaiCanhKhongGian3D_(diem3D, diem2D, h) {
       if (!daCo[capCanh(u0, u1)]) continue;
       for (var i2 = i1 + 1; i2 < tenDinh.length; i2++) {
         var u2 = tenDinh[i2];
-        if (daCo[capCanh(u0, u2)] && daCo[capCanh(u1, u2)]) themMat([u0, u1, u2]);
+        if (!daCo[capCanh(u0, u2)] || !daCo[capCanh(u1, u2)]) continue;
+        // Bỏ qua tam giác đường chéo nằm bên trong khối (có đỉnh khác ở cả hai phía mặt phẳng)
+        var A0 = diem3D[u0], A1 = diem3D[u1], A2 = diem3D[u2];
+        var nx3 = (A1[1] - A0[1]) * (A2[2] - A0[2]) - (A1[2] - A0[2]) * (A2[1] - A0[1]);
+        var ny3 = (A1[2] - A0[2]) * (A2[0] - A0[0]) - (A1[0] - A0[0]) * (A2[2] - A0[2]);
+        var nz3 = (A1[0] - A0[0]) * (A2[1] - A0[1]) - (A1[1] - A0[1]) * (A2[0] - A0[0]);
+        var len3 = Math.hypot(nx3, ny3, nz3) || 1;
+        var pos3 = false, neg3 = false;
+        tenDinh.forEach(function (dk) {
+          if (dk === u0 || dk === u1 || dk === u2) return;
+          var Q = diem3D[dk];
+          var d3 = (nx3 * (Q[0] - A0[0]) + ny3 * (Q[1] - A0[1]) + nz3 * (Q[2] - A0[2])) / len3;
+          if (d3 > 1e-2) pos3 = true;
+          else if (d3 < -1e-2) neg3 = true;
+        });
+        if (!(pos3 && neg3)) themMat([u0, u1, u2]);
       }
     }
   }
@@ -506,7 +521,8 @@ function chenToaDoHinh_(kb, hinh) {
       // Đồng bộ các đường thẳng phụ (phu) cho Manim vẽ thêm khi vào phần mô hình / ý tưởng / giải
       if (hinh.phu && hinh.phu.length) {
         if (laCanhDe) {
-          // Ở cảnh đề bài: chưa vẽ đường kẻ phụ thành cạnh liền của đề
+          // Ở cảnh đề bài: chưa vẽ đường kẻ phụ thành cạnh liền hoặc nét phụ của đề
+          v.phu = [];
           v.canh = (v.canh || []).filter(function (ca) { return !hinh.phu.some(function (p) { return cungDoan(ca, p); }); });
         } else {
           v.phu = Array.isArray(v.phu) ? v.phu : [];

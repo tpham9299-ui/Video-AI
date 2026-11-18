@@ -61,7 +61,8 @@ function giaoAiXemVideo_(sh, r, d) {
         try { qt = quyTacHocChoKiemDuyet_() || []; } catch (eQt) { qt = []; }
         var goi = JSON.stringify({
           hang: {
-            id: r.id, de_bai: String(r.de_bai || '').slice(0, 2000), mo_ta_hinh: String(r.mo_ta_hinh || '').slice(0, 800),
+            id: r.id, lop: r.lop || '', mon: r.mon || '',
+            de_bai: String(r.de_bai || '').slice(0, 2000), mo_ta_hinh: String(r.mo_ta_hinh || '').slice(0, 800),
             dap_an: r.dap_an, dap_an_hien: r.dap_an_hien, anh_kt: String(d.anh_kt || ''), file_kich_ban: String(r.file_kich_ban || ''),
             file_anh: String(r.file_anh || '')
           },
@@ -74,6 +75,7 @@ function giaoAiXemVideo_(sh, r, d) {
           if (gh && gh.ok) {
             cacheKT.put('GUI_AI_XEM_' + r.id, '1', 300);
             nhatKy_('AI_XEM_GH', r.id + ': đã giao sang workflow kiem-tra-video.yml trên GitHub');
+            henKiemTraVideo_(660);
             return true;
           }
         }
@@ -87,6 +89,14 @@ function henKiemTraVideo_(giay) {
   ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'chayKiemTraVideo') ScriptApp.deleteTrigger(t); });
   ScriptApp.newTrigger('chayKiemTraVideo').timeBased().after(Math.max(10, giay) * 1000).create();
 }
+function henDangVideoS_(giay) {
+  try {
+    ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'chayDangVideo') ScriptApp.deleteTrigger(t); });
+    ScriptApp.newTrigger('chayDangVideo').timeBased().after(Math.max(5, giay) * 1000).create();
+  } catch (eT) {
+    try { if (typeof chayDangVideo === 'function') chayDangVideo(); } catch (eDV) {}
+  }
+}
 
 function chayKiemTraVideo() {
   ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'chayKiemTraVideo') ScriptApp.deleteTrigger(t); });
@@ -98,6 +108,7 @@ function chayKiemTraVideo() {
     _bat_dau_chay_ = Date.now();
     _bo_nho_cau_hinh_ = null;
     var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
+    if (!sh) return;
     var ds = docHang_(sh).filter(function (r) { return r.trang_thai === 'CO_VIDEO' && String(r.duyet) === 'AI_XEM' && !cacheKT.get('DA_BO_' + r.id); });
     for (var i = 0; i < ds.length; i++) {
       if (cacheKT.get('DA_BO_' + ds[i].id) || cacheKT.get('GUI_AI_XEM_' + ds[i].id)) continue;
@@ -178,6 +189,7 @@ function apDungKetQuaAiXem_(sh, r, kq) {
     if (loiAi < 2) {
       ghiAiKT_(sh, r, { lan_loi_ai: loiAi }, { duyet: 'AI_XEM' });
       nhatKy_('AI_XEM_LOI', r.id + ': tạm nghẽn key/mạng, sẽ chấm lại ở lượt kế tiếp (lần ' + loiAi + ')');
+      henKiemTraVideo_(60);
       return;
     }
     if (CacheService.getScriptCache().get('DA_BO_' + r.id)) return;
@@ -204,7 +216,7 @@ function apDungKetQuaAiXem_(sh, r, kq) {
     if (canDuyetTay) guiDuyet_(r, '✅ Đạt kiểm duyệt yêu cầu: ' + (pt >= 100 ? '10/10 mọi tiêu chí' : pt + '%') + (lan ? ' (đã tự sửa ' + lan + ' lần)' : ''));
     else {
       guiZalo_('✅ Video "' + (r.chu_de || r.id) + '" đã đạt kiểm duyệt yêu cầu (' + pt + '%), tự động xếp lịch đăng (2 video/ngày vào ' + (cauHinh_('GIO_DANG') || '11:30,19:30') + ').\nhttps://drive.google.com/file/d/' + r.file_video + '/view\n(Muốn sửa/bỏ trước giờ đăng: /sua ' + r.id + ' <góp ý> | /bo ' + r.id + ')', 'cao', 'TU_DUYET_' + r.id);
-      try { if (typeof chayDangVideo === 'function') chayDangVideo(); } catch (eDV) {}
+      henDangVideoS_(10);
     }
     return;
   }
@@ -228,7 +240,7 @@ function apDungKetQuaAiXem_(sh, r, kq) {
         { duyet: tuDuyet ? 'DA_DUYET' : 'CHO', link_dang: JSON.stringify(kqD2), ghi_chu: (tuDuyet ? 'Đạt chuẩn cốt lõi sau ' : 'Chờ duyệt tay (chưa đủ chuẩn tự đăng, ') + lan + ' vòng AI sửa (' + pt + '%)' });
       nhatKy_('AI_XEM', r.id + ': ' + (tuDuyet ? 'giữ bản đạt chuẩn cốt lõi (' + pt + '%)' : 'chuyển CHO để chủ kênh kiểm tra (' + pt + '%, ' + tomTatTieuChi_(kq) + ')'));
       if (tuDuyet) {
-        try { if (typeof chayDangVideo === 'function') chayDangVideo(); } catch (eDV2) {}
+        henDangVideoS_(10);
       } else {
         guiDuyet_(r, '⚠️ Đạt ' + pt + '% sau ' + lan + ' lần AI tự sửa (' + tomTatTieuChi_(kq) + '). Cần bạn xác nhận trước khi đăng');
       }
@@ -449,7 +461,7 @@ function capNhatThongKe() {
   if (typeof YouTubeAnalytics !== 'undefined' && ds.length) {
     try {
       var den = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd');
-      var bq = YouTubeAnalytics.Reports.query({ ids: 'channel==MINE', startDate: '2024-01-01', endDate: den, metrics: 'views,averageViewDuration,averageViewPercentage', dimensions: 'video', filters: 'video==' + ds.slice(0, 200).map(function (r) { return r.video_yt; }).join(','), maxResults: 200 });
+      var bq = YouTubeAnalytics.Reports.query({ ids: 'channel==MINE', startDate: '2024-01-01', endDate: den, metrics: 'views,averageViewDuration,averageViewPercentage', dimensions: 'video', sort: '-views', filters: 'video==' + ds.slice(0, 200).map(function (r) { return r.video_yt; }).join(','), maxResults: 200 });
       (bq.rows || []).forEach(function (row) {
         var r = ds.filter(function (x) { return x.video_yt === row[0]; })[0];
         if (r) sh.getRange(r._row, COT_TK.indexOf('ty_le_xem') + 1, 1, 2).setValues([[Math.round(Number(row[3]) * 10) / 10, Number(row[2]) || 0]]);
@@ -704,11 +716,18 @@ function hocEditHangNgay() {
       ds.push({ loai: 'drive', id: f.getId(), ten: f.getName() });
     }
   } catch (e) { nhatKy_('HOC_EDIT', 'Không đọc được thư mục hoc_edit: ' + e.message); }
-  // 2) link YouTube gửi qua Zalo
-  var hang = [];
+  // 2) link YouTube gửi qua Zalo (chỉ xóa khỏi hàng đợi khi đã xử lý xong hoặc hết lượt an toàn)
+  var hang = [], hangGoc = [];
   try { hang = JSON.parse(props.getProperty('HOC_EDIT_HANG') || '[]'); } catch (e) {}
-  while (hang.length && ds.length < toiDa) { var l = hang.shift(); if (!props.getProperty('HE_' + l.id)) ds.push(l); }
-  props.setProperty('HOC_EDIT_HANG', JSON.stringify(hang.slice(0, 30)));
+  if (Array.isArray(hang)) hangGoc = hang.slice();
+  var dsHang = [];
+  for (var hi = 0; hi < hangGoc.length && ds.length < toiDa; hi++) {
+    var l = hangGoc[hi];
+    if (l && !props.getProperty('HE_' + l.id)) {
+      ds.push(l);
+      dsHang.push(l.id);
+    }
+  }
   // 3) tự tìm YouTube Shorts nổi bật tuần này
   if (ds.length < toiDa && typeof YouTube !== 'undefined') {
     var tuKhoa = String(chNC_('HOC_EDIT_TU_KHOA')).split('|').map(function (x) { return x.trim(); }).filter(Boolean);
@@ -722,22 +741,35 @@ function hocEditHangNgay() {
       });
     } catch (e) { nhatKy_('HOC_EDIT', 'Tìm YouTube lỗi: ' + e.message); }
   }
-  if (!ds.length) { nhatKy_('HOC_EDIT', 'Hôm nay không có video mới để học'); return; }
-  var moi = [], canLapTrinh = [], soVideo = 0;
+  if (!ds.length) {
+    props.setProperty('HOC_EDIT_HANG', JSON.stringify(hangGoc.filter(function (x) { return x && !props.getProperty('HE_' + x.id); }).slice(0, 30)));
+    nhatKy_('HOC_EDIT', 'Hôm nay không có video mới để học');
+    return;
+  }
+  var moi = [], canLapTrinh = [], soVideo = 0, daXongIds = {};
   for (var i = 0; i < ds.length; i++) {
     if (Date.now() - bat > 4.3 * 60 * 1000) break;
     try {
       var p = xemVideoHocEdit_(ds[i]);
       props.setProperty('HE_' + ds[i].id, new Date().toISOString().slice(0, 10));
+      daXongIds[ds[i].id] = true;
       if (!p || !Array.isArray(p.ky_thuat)) continue;
       soVideo++;
       var r = ghiKyThuat_(p.ky_thuat, ds[i].ten || ds[i].url || ds[i].id);
       moi = moi.concat(r.moi);
       canLapTrinh = canLapTrinh.concat(r.canLapTrinh);
     } catch (e) {
-      nhatKy_('HOC_EDIT', 'Không xem được ' + (ds[i].ten || ds[i].id) + ': ' + String(e.message).slice(0, 200));
-      if (!/HET_GIO|QUA_TAI|HET_HAN_MUC/.test(String(e.message))) props.setProperty('HE_' + ds[i].id, 'loi');
+      var errMsg = String(e.message);
+      nhatKy_('HOC_EDIT', 'Không xem được ' + (ds[i].ten || ds[i].id) + ': ' + errMsg.slice(0, 200));
+      if (!/HET_GIO|QUA_TAI|HET_HAN_MUC|\b429\b|\b5\d\d\b|GIOI_HAN_TOC_DO/.test(errMsg)) {
+        props.setProperty('HE_' + ds[i].id, 'loi');
+        daXongIds[ds[i].id] = true;
+      }
     }
+  }
+  if (hangGoc.length) {
+    var conLai = hangGoc.filter(function (x) { return x && !daXongIds[x.id] && !props.getProperty('HE_' + x.id); });
+    props.setProperty('HOC_EDIT_HANG', JSON.stringify(conLai.slice(0, 30)));
   }
   var tin = '🎓 Học edit hôm nay: xem ' + soVideo + ' video, ' + moi.length + ' kỹ thuật mới.';
   if (moi.length) tin += '\n✅ Áp dụng ngay vào kịch bản:\n' + moi.slice(0, 6).map(function (k) { return '• ' + k; }).join('\n');
@@ -755,32 +787,54 @@ function loiNhacHocEdit_() {
     'Trả JSON: {"tom_tat":"1 câu","ky_thuat":[{"ten":"tên ngắn 3-7 chữ","nhom":"mo_dau|nhip|chuyen_canh|may_quay|chu|bo_cuc|mau|am_thanh|tuong_tac","mo_ta":"làm thế nào, thấy ở giây nào","cach_ap_dung":"áp dụng vào video toán ra sao (1-2 câu cụ thể)","kha_nang":"co_san|qua_kich_ban|can_lap_trinh","diem":8}]} (tối đa 6 kỹ thuật, ưu tiên cái đáng học nhất).';
 }
 
-// Gemini xem video: YouTube dùng thẳng URL; video Drive tải lên Gemini Files API (cùng key cho tải lên và hỏi).
+// Gemini xem video: YouTube dùng thẳng URL; video Drive tải lên Gemini Files API (xoay key nếu key đầu lỗi/hết hạn mức).
 function xemVideoHocEdit_(v) {
-  var key = khoDanhSachKey_()[0];
-  if (!key) throw new Error('THIEU_GEMINI_API_KEY');
-  var model = cauHinh_('MODEL_CHINH');
-  var phan;
-  if (v.loai === 'youtube') phan = [{ file_data: { file_uri: v.url, mime_type: 'video/mp4' } }];
-  else {
-    var blob = DriveApp.getFileById(v.id).getBlob();
-    var up = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/upload/v1beta/files?uploadType=media&key=' + encodeURIComponent(key), {
-      method: 'post', contentType: blob.getContentType() || 'video/mp4', payload: blob.getBytes(), muteHttpExceptions: true });
-    if (up.getResponseCode() !== 200) throw new Error('Tải video lên Gemini lỗi HTTP ' + up.getResponseCode() + ': ' + up.getContentText().slice(0, 150));
-    var tep = JSON.parse(up.getContentText()).file;
-    for (var k = 0; k < 20 && tep.state !== 'ACTIVE'; k++) {   // chờ Gemini xử lý video (tối đa ~100 giây)
-      if (tep.state === 'FAILED') throw new Error('Gemini không xử lý được video');
-      Utilities.sleep(5000);
-      tep = JSON.parse(UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/' + tep.name + '?key=' + encodeURIComponent(key), { muteHttpExceptions: true }).getContentText());
+  var model = cauHinh_('MODEL_CHINH') || 'gemini-2.5-flash';
+  var keys = typeof khoXep_ === 'function' ? khoXep_('VIDEO', model).dung : khoDanhSachKey_();
+  if (!keys.length) keys = khoDanhSachKey_();
+  if (!keys.length) throw new Error('THIEU_GEMINI_API_KEY');
+  var loiCuoi = '';
+  for (var ki = 0; ki < Math.min(keys.length, 4); ki++) {
+    var key = keys[ki];
+    try {
+      var phan;
+      if (v.loai === 'youtube') {
+        phan = [{ file_data: { file_uri: v.url, mime_type: 'video/mp4' } }];
+      } else {
+        var blob = DriveApp.getFileById(v.id).getBlob();
+        var up = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/upload/v1beta/files?uploadType=media', {
+          method: 'post', contentType: blob.getContentType() || 'video/mp4', headers: { 'x-goog-api-key': key },
+          payload: blob.getBytes(), muteHttpExceptions: true });
+        if (up.getResponseCode() !== 200) {
+          if (typeof khoGhiNhanLoi_ === 'function') khoGhiNhanLoi_(key, model, up.getResponseCode(), up.getContentText());
+          throw new Error('Tải video lên Gemini lỗi HTTP ' + up.getResponseCode() + ': ' + up.getContentText().slice(0, 150));
+        }
+        var tep = JSON.parse(up.getContentText()).file;
+        for (var k = 0; k < 20 && tep.state !== 'ACTIVE'; k++) {   // chờ Gemini xử lý video (tối đa ~100 giây)
+          if (tep.state === 'FAILED') throw new Error('Gemini không xử lý được video');
+          Utilities.sleep(5000);
+          tep = JSON.parse(UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/' + tep.name, { headers: { 'x-goog-api-key': key }, muteHttpExceptions: true }).getContentText());
+        }
+        if (tep.state !== 'ACTIVE') throw new Error('Gemini xử lý video quá lâu');
+        phan = [{ file_data: { file_uri: tep.uri, mime_type: tep.mimeType || 'video/mp4' } }];
+      }
+      var body = { contents: [{ parts: phan.concat([{ text: loiNhacHocEdit_() }]) }], generationConfig: { temperature: 0.4, responseMimeType: 'application/json' } };
+      var res = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent', {
+        method: 'post', contentType: 'application/json', headers: { 'x-goog-api-key': key },
+        payload: JSON.stringify(body), muteHttpExceptions: true });
+      var rc = res.getResponseCode(), raw = res.getContentText();
+      if (rc !== 200) {
+        if (typeof khoGhiNhanLoi_ === 'function' && khoGhiNhanLoi_(key, model, rc, raw)) { loiCuoi = 'Gemini HTTP ' + rc + ': ' + raw.slice(0, 150); continue; }
+        throw new Error('Gemini HTTP ' + rc + ': ' + raw.slice(0, 150));
+      }
+      return docKetQua_(raw);
+    } catch (eK) {
+      loiCuoi = String(eK.message || eK);
+      if (/HTTP (401|403|429)/.test(loiCuoi)) continue;
+      throw eK;
     }
-    if (tep.state !== 'ACTIVE') throw new Error('Gemini xử lý video quá lâu');
-    phan = [{ file_data: { file_uri: tep.uri, mime_type: tep.mimeType || 'video/mp4' } }];
   }
-  var body = { contents: [{ parts: phan.concat([{ text: loiNhacHocEdit_() }]) }], generationConfig: { temperature: 0.4, responseMimeType: 'application/json' } };
-  var res = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(key), {
-    method: 'post', contentType: 'application/json', payload: JSON.stringify(body), muteHttpExceptions: true });
-  if (res.getResponseCode() !== 200) throw new Error('Gemini HTTP ' + res.getResponseCode() + ': ' + res.getContentText().slice(0, 150));
-  return docKetQua_(res.getContentText());
+  throw new Error(loiCuoi || 'HET_HAN_MUC');
 }
 
 // Gộp kỹ thuật trùng tên (tích lũy số lần gặp); trả về danh sách kỹ thuật mới để báo cáo.
@@ -968,50 +1022,57 @@ function hocMotGopY_(ma, loai, gopY) {
 // nhờ AI chỉnh sửa lại kịch bản theo góp ý chứ KHÔNG đơn thuần bỏ các video dính với góp ý đó.
 function suaCacVideoDinhGopY_(maGoc, gopY, yDo, dsQuyTac) {
   try {
-    var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
-    if (!sh) return 0;
-    var hang = docHang_(sh);
-    var chiDan = 'SỬA KỊCH BẢN THEO GÓP Ý MỚI CỦA CHỦ KÊNH: ' + String(gopY || '').split(' || ')[0].slice(0, 400) +
-      (yDo ? ' (Ý đồ: ' + yDo.slice(0, 200) + ')' : '') +
-      (dsQuyTac && dsQuyTac.length ? ' | Quy tắc: ' + dsQuyTac.join('; ').slice(0, 400) : '');
-    var dem = 0;
-    for (var i = 0; i < hang.length && dem < 6; i++) {
-      var r = hang[i];
-      if (!r || !r.id || r.id === maGoc) continue;
-      var tt = String(r.trang_thai || '');
-      var dv = String(r.duyet || '');
-      var laBiBoDoKiemDuyet = (tt === 'XOA' || dv === 'BO' || dv === 'KHONG_DAT') && /BO_KHONG_DAT|chưa đạt kiểm duyệt/i.test(String(r.ghi_chu || ''));
-      var laDangCho = (tt === 'CO_VIDEO' || tt === 'CO_KICH_BAN') && dv !== 'DA_DANG' && tt !== 'DA_DANG' && tt !== 'DA_XONG';
-      if (!laBiBoDoKiemDuyet && !laDangCho) continue;
-      if (!r.dap_an && !r.cach_1) continue;
-      if (r.file_kich_ban) {
-        try {
-          var kb = JSON.parse(DriveApp.getFileById(String(r.file_kich_ban)).getBlob().getDataAsString());
-          luuNhapKichBan_(r.id, kb);
-        } catch (eKb) {}
+    return voiKhoa_(10000, function () {
+      var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
+      if (!sh) return 0;
+      var hang = docHang_(sh);
+      var chiDan = 'SỬA KỊCH BẢN THEO GÓP Ý MỚI CỦA CHỦ KÊNH: ' + String(gopY || '').split(' || ')[0].slice(0, 400) +
+        (yDo ? ' (Ý đồ: ' + yDo.slice(0, 200) + ')' : '') +
+        (dsQuyTac && dsQuyTac.length ? ' | Quy tắc: ' + dsQuyTac.join('; ').slice(0, 400) : '');
+      var dem = 0;
+      for (var i = 0; i < hang.length && dem < 6; i++) {
+        var r = hang[i];
+        if (!r || !r.id || r.id === maGoc) continue;
+        var tt = String(r.trang_thai || '');
+        var dv = String(r.duyet || '');
+        if (dv === 'DA_DUYET') continue;
+        var laBiBoDoKiemDuyet = (tt === 'XOA' || dv === 'BO' || dv === 'KHONG_DAT') && /BO_KHONG_DAT|chưa đạt kiểm duyệt/i.test(String(r.ghi_chu || ''));
+        var laDangCho = (tt === 'CO_VIDEO' || tt === 'CO_KICH_BAN') && dv !== 'DA_DANG' && tt !== 'DA_DANG' && tt !== 'DA_XONG';
+        if (!laBiBoDoKiemDuyet && !laDangCho) continue;
+        if (!r.dap_an && !r.cach_1) continue;
+        if (r.file_kich_ban) {
+          try {
+            var kb = JSON.parse(DriveApp.getFileById(String(r.file_kich_ban)).getBlob().getDataAsString());
+            luuNhapKichBan_(r.id, kb);
+          } catch (eKb) {}
+        }
+        [r.file_video, r.anh_kt, r.anh_bia].forEach(function (fid) {
+          if (fid) { try { DriveApp.getFileById(String(fid)).setTrashed(true); } catch (eTr) {} }
+        });
+        try { CacheService.getScriptCache().remove('DA_BO_' + r.id); } catch (eC) {}
+        var aiKtR = {};
+        try { aiKtR = JSON.parse(String(r.ai_kiem_tra || '{}')) || {}; } catch (eKt) { aiKtR = {}; }
+        aiKtR.lan_sua = 0;
+        ghi_(sh, r._row, {
+          trang_thai: 'DA_GIAI',
+          file_video: '',
+          anh_kt: '',
+          anh_bia: '',
+          duyet: '',
+          so_lan_loi: 0,
+          ai_kiem_tra: JSON.stringify(aiKtR).slice(0, 1800),
+          gop_y: chiDan.slice(0, 1200),
+          ghi_chu: 'AI chỉnh sửa lại kịch bản theo góp ý mới: ' + String(yDo || gopY).slice(0, 140)
+        }, r.id);
+        dem++;
       }
-      [r.file_video, r.anh_kt, r.anh_bia].forEach(function (fid) {
-        if (fid) { try { DriveApp.getFileById(String(fid)).setTrashed(true); } catch (eTr) {} }
-      });
-      try { CacheService.getScriptCache().remove('DA_BO_' + r.id); } catch (eC) {}
-      ghi_(sh, r._row, {
-        trang_thai: 'DA_GIAI',
-        file_video: '',
-        anh_kt: '',
-        anh_bia: '',
-        duyet: '',
-        so_lan_loi: 0,
-        gop_y: chiDan.slice(0, 1200),
-        ghi_chu: 'AI chỉnh sửa lại kịch bản theo góp ý mới: ' + String(yDo || gopY).slice(0, 140)
-      });
-      dem++;
-    }
-    if (dem > 0) {
-      SpreadsheetApp.flush();
-      nhatKy_('SUA_THEO_GOP_Y', 'Đã chuyển ' + dem + ' video đang chờ về DA_GIAI để AI sửa kịch bản theo góp ý mới');
-      try { henUuTien_(20); } catch (eH) {}
-    }
-    return dem;
+      if (dem > 0) {
+        SpreadsheetApp.flush();
+        nhatKy_('SUA_THEO_GOP_Y', 'Đã chuyển ' + dem + ' video đang chờ về DA_GIAI để AI sửa kịch bản theo góp ý mới');
+        try { henUuTien_(20); } catch (eH) {}
+      }
+      return dem;
+    }) || 0;
   } catch (e) {
     nhatKy_('SUA_THEO_GOP_Y_LOI', String(e.message).slice(0, 200));
     return 0;
