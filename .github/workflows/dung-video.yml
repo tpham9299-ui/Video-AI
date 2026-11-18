@@ -41,6 +41,11 @@ concurrency:
   group: dung-video-${{ github.event.inputs.viec || 'dung' }}-${{ github.event.client_payload.id || github.event.inputs.id || github.run_id }}
   cancel-in-progress: ${{ github.event.inputs.viec != 'dang' }}
 
+env:
+  RCLONE_STATS: 30s
+  RCLONE_STATS_ONE_LINE: "true"
+  RCLONE_STATS_LOG_LEVEL: NOTICE
+
 jobs:
   # ============ DỰNG SONG SONG (3 tầng) ============
   # 1) chuan_bi : giọng đọc, đóng gói Remotion (bundle), ảnh bìa, chia video thành SO_MAY_DUNG khúc (mặc định 4)
@@ -292,21 +297,21 @@ jobs:
           fi
           rm -f out/*.png
 
-      # KIỂM DUYỆT BỐ CỤC: chụp 3 khung mẫu mỗi cảnh, đo chữ tràn mép / đè nhau / bị cắt / mã TeX thô / công thức lỗi / chữ quá nhỏ.
+      # KIỂM DUYỆT BỐ CỤC: chụp 2 khung mẫu mỗi cảnh, đo chữ tràn mép / đè nhau / bị cắt / mã TeX thô / công thức lỗi / chữ quá nhỏ.
       # Kịch bản từ Apps Script (_kiem_duyet = chan): có lỗi nặng thì KHÔNG dựng, gửi báo cáo về để Gemini sửa kịch bản rồi dựng lại.
       # Dựng thử tay (không có mã đề) hoặc _kiem_duyet = bao: chỉ ghi báo cáo, vẫn dựng.
       - name: Kiểm duyệt bố cục
         id: kd
         if: ${{ steps.manim.outputs.ok != '1' }}
         run: |
-          # tối đa 7 phút: trình duyệt chậm/treo thì bỏ qua kiểm duyệt (video vẫn dựng; AI xem video sau vẫn chặn lỗi) thay vì
-          # ăn hết 30 phút của máy dựng rồi hỏng cả video (đã gặp: 48 khung chụp mất 25 phút)
+          # Giữ lỗi đã đo khi hết 7 phút; nếu chưa đo được khung nào thì dùng báo cáo dự phòng.
+          rm -f out/kiem_duyet.json
           set +e
-          timeout 420 node scripts/kiem_duyet.mjs build public/props.json out/kiem_duyet.json kich_ban.json 2>&1 | grep -v "character metrics\|memory\|Memory\|docker\|lower amount"
+          timeout --kill-after=5s 415s node scripts/kiem_duyet.mjs build public/props.json out/kiem_duyet.json kich_ban.json 2>&1 | grep -v "character metrics\|memory\|Memory\|docker\|lower amount"
           KD_RC=${PIPESTATUS[0]}
           set -e
           if [ "$KD_RC" -ne 0 ]; then
-            echo "Kiểm duyệt bố cục thoát mã $KD_RC (quá 7 phút hoặc lỗi trình duyệt) -> dùng dự phòng hong=true"
+            echo "Kiểm duyệt bố cục thoát mã $KD_RC (quá 7 phút hoặc lỗi trình duyệt) -> giữ kết quả đã đo nếu có"
           fi
           python3 -c "import json;json.load(open('out/kiem_duyet.json'))" 2>/dev/null || echo '{"nang":[],"nhe":[],"hong":true}' > out/kiem_duyet.json
           python3 - <<'PY'

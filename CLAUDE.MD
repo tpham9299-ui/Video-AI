@@ -51,7 +51,7 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
 ### 2. Nhóm Workflows GitHub Actions (`/.github/workflows/*.yml`)
 - [bo-phan-1.yml](file:///e:/Video-AI/.github/workflows/bo-phan-1.yml): Nhận đề từ Apps Script (`workflow_dispatch`), tải ảnh đề từ Drive (nếu có), chạy `node scripts/bophan1/chay_bp1.js`, gửi kết quả về `APPS_SCRIPT_URL` (`loai = "bo_phan_1"`). Có `cancel-in-progress: true` để hủy ngay lượt chạy cũ khi người dùng bấm `/sua`.
 - [dung-video.yml](file:///e:/Video-AI/.github/workflows/dung-video.yml): Gồm 4 job:
-  1. `chuan_bi`: Cài công cụ, tải tài nguyên từ Drive, tải kịch bản đầy đủ từ Drive nếu có `_file_kich_ban_drive`, chạy `scripts/chuanbi.py` tạo giọng đọc + `public/props.json`, dựng lớp Manim (`scripts/manim_hinh.py`) cho bài `HINH_HOC`, bundle Remotion, dựng ảnh bìa `AnhBia`, chạy `scripts/kiem_duyet.mjs` kiểm duyệt bố cục + AI nhìn hình, chia khúc video.
+  1. `chuan_bi`: Cài công cụ, tải tài nguyên từ Drive, tải kịch bản đầy đủ từ Drive nếu có `_file_kich_ban_drive`, chạy `scripts/chuanbi.py` tạo giọng đọc + `public/props.json`, dựng lớp Manim (`scripts/manim_hinh.py`) cho bài `HINH_HOC`, bundle Remotion, dựng ảnh bìa `AnhBia`, chạy `scripts/kiem_duyet.mjs` kiểm duyệt bố cục + AI nhìn hình, chia khúc video. Từ v64, mỗi khung có báo cáo tạm và toàn bộ tiến trình kiểm duyệt có trần 7 phút.
   2. `dung_khuc`: Dựng song song các khúc video trên ma trận máy ảo (`scripts/dung_khuc.mjs`).
   3. `ghep`: Ghép các khúc (`scripts/ghep_khuc.mjs`), ghép đè lớp `.mov` trong suốt của Manim (nếu là bài hình học), xuất ảnh kiểm tra (`scripts/anh_kiem_tra.py`), tải lên Drive và báo kết quả về Apps Script.
   4. `dang`: Khi `viec == 'dang'`, chạy `scripts/dang_video.py` đăng video lên Facebook, TikTok, YouTube.
@@ -797,3 +797,9 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
   - Sửa tính sai khung hình do cộng trùng `canh.leadFrame` ở `Canh.tsx`, bổ sung chặn `v.buoc > 0`, tọa độ chiếu `HinhDung3D` (`gd`) cho `loe` và chừa đáy `dayVung` khi `NhanQuangCao` hiện ở cuối video.
   - Đặt lại `MAU` từ `MAU_GOC`, memo hóa `dsSanKhau` và `amNhac` trong `Video.tsx`; tách chồng giữa `ThanhTienDo` (`mon` động) và `DauTrang`; gỡ `HuyHieu` khỏi DOM sau `tuDau` (`ThuongHieu.tsx`); giữ `maxWidth` ổn định trong `VuaKhung.tsx`; truyền `anhBiaDau={null}` và `top: -470` trong `AnhBia.tsx`.
   - Đưa `<defs>` lên trước phần tử sử dụng (`SanKhau.tsx`, `KhongGian.tsx`); tính sẵn đa giác/tia nền (`HEX_O`, `TIA_DUONG` ở `NenTuTao.tsx`, `TIA_GOC` ở `SanKhau.tsx`), giảm lớp đùn `KHOI = 6` (`hinhtudo.tsx`), đổi `'Be Vietnam Pro'` sang phông đóng gói (`FONT_DAM`/`VietDam`), hỗ trợ `\textcolor`/`\begin`/`\end` trong `chu.ts`, cân chỉnh kích thước chữ >= 25px / `data-kd-bo="1"`, chuẩn hóa phân số chỉ chuyển thuần số ở `ManKet.tsx` và hiển thị tới 4 chữ số thập phân ở `SoLan` (`vat.tsx`).
+
+#### Lần 31 (v64) — Theo dõi truyền Drive và giới hạn kiểm duyệt bố cục
+
+- Workflow dựng video yêu cầu rclone ghi thống kê truyền mỗi 30 giây vào log Actions. Bước tải video vẫn kiểm tra ID tệp trên Drive trước khi báo kết quả về Apps Script.
+- Kiểm duyệt chụp lượt cuối cảnh trước, rồi đến lượt giữa cảnh. Sau mỗi lần chụp, script thay báo cáo bằng thao tác đổi tên tệp nguyên tử để giữ lỗi đã phát hiện nếu Chrome hoặc Gemini treo.
+- Script dừng bắt đầu khung mới sau 355 giây và giới hạn các lần gọi lại Gemini theo thời gian còn lại tới giây 400. Workflow gửi TERM ở giây 415 và KILL sau 5 giây nếu cần. Báo cáo thiếu khung mang cờ `hong`; lỗi nặng đã đo vẫn đi qua điều kiện chặn hiện hành.
