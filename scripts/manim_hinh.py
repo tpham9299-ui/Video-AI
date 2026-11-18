@@ -55,17 +55,20 @@ TEX = TexTemplate(
 W, H = 9.0, 16.0
 Y_TIEU_DE = 7.25
 Y_BUOC = 6.35
-# vùng của Manim = vùng nội dung của video Remotion (dưới tiêu đề bước y=470px, trên phụ đề y=1448px)
-HINH_TREN, HINH_DUOI, HINH_RONG = 3.72, -0.98, 8.7
-CT_TREN, CT_DUOI, CT_RONG = -1.1, -4.05, 8.4
-CO_CT = 48
+# vùng của Manim = vùng nội dung của video Remotion (dưới tiêu đề bước, trên phụ đề)
+# Mở rộng tối đa vùng hình học ở chính giữa màn hình (không hiện thẻ ĐỀ BÀI chữ dài)
+HINH_TREN, HINH_DUOI, HINH_RONG = 4.45, -1.60, 8.85
+CT_TREN, CT_DUOI, CT_RONG = -1.75, -4.20, 8.4
+CO_CT = 46
 
 # ---------- NHẬN DIỆN ĐẠI LƯỢNG trong chữ / công thức ----------
-CHU_VIET = "A-Za-zÀ-ỹđĐ"
+CHU_VIET = r"A-Za-zÀ-ÖØ-öø-ɏḀ-ỹ"
 TEN_DIEM = r"[A-Z](?:'|_\{?\d\}?)?"
 RE_GOC = re.compile(r"(?:\\angle|\\widehat\{|(?i:góc)\s+)\s*(" + TEN_DIEM + r")(" + TEN_DIEM + r")(" + TEN_DIEM + r")\}?")
-RE_TAM_GIAC = re.compile(r"(?:\\triangle|\\Delta|(?i:tam giác))\s*(" + TEN_DIEM + r")(" + TEN_DIEM + r")(" + TEN_DIEM + r")(?![A-Za-z])")
-RE_MAT = re.compile(r"(?:mp\s*|(?i:mặt phẳng)\s*)?\((" + TEN_DIEM + r")(" + TEN_DIEM + r")(" + TEN_DIEM + r")(" + TEN_DIEM + r")?\)")
+RE_TAM_GIAC = re.compile(r"(?:\\triangle|\\Delta|(?i:tam\s+giác))\s*(" + TEN_DIEM + r")(" + TEN_DIEM + r")(" + TEN_DIEM + r")(?![A-Za-z])")
+RE_MAT = re.compile(r"(?:mp\s*|(?i:mặt\s+phẳng)\s*)?\((" + TEN_DIEM + r")(" + TEN_DIEM + r")(" + TEN_DIEM + r")(" + TEN_DIEM + r")?\)")
+RE_CHOP = re.compile(r"(?<![" + CHU_VIET + r"\\'_])(" + TEN_DIEM + r")\.(" + TEN_DIEM + r")(" + TEN_DIEM + r")(" + TEN_DIEM + r")(" + TEN_DIEM + r")?(?![" + CHU_VIET + r"'])")
+RE_DA_GIAC = re.compile(r"(?<![" + CHU_VIET + r"\\'_])(" + TEN_DIEM + r")(" + TEN_DIEM + r")(" + TEN_DIEM + r")(" + TEN_DIEM + r")?(?![" + CHU_VIET + r"'])")
 RE_DOAN = re.compile(r"(?<![" + CHU_VIET + r"\\'_])(" + TEN_DIEM + r")(" + TEN_DIEM + r")(?![" + CHU_VIET + r"'])")
 # số đo trong công thức -> ghi ngay trên hình (như video mẫu ghi a, b, c, α, β cạnh hình): "\\angle ABC = 60^\\circ", "AB = 5"
 GIA_TRI = r"(\d+(?:\{,\}\d+|[.,]\d+)?(?:\s*\\sqrt\{[^{}]+\})?|\\sqrt\{[^{}]+\}|\\frac\{[^{}]+\}\{[^{}]+\})"
@@ -279,6 +282,43 @@ class MoHinh:
                     if (a in dinh_trong or b in dinh_trong) and not la_canh_bao_loi(a, b):
                         p["kieu_net"] = "khuat"
 
+    def _tu_sinh_hinh_tu_de(self):
+        """Phương án dự phòng tự sinh hình chuẩn xác từ đề bài và lời giải khi kịch bản thiếu tọa độ v['diem'],
+        đảm bảo 100% bài Hình học luôn được dựng bằng Manim (tuyệt đối không rơi về Remotion)."""
+        vb = self.de_bai + " ; " + " ; ".join(
+            str(c.get("loi_thoai") or "") + " ; " + " ; ".join(str(x) for x in (c.get("noi_dung_man_hinh") or []))
+            for c in self.canh_k
+        )
+        canh, khuat, tron, vuong = [], [], [], []
+        if re.search(r"S\.ABCD\b", vb):
+            self.diem = {"S": (0.36, 0.14), "A": (0.32, 0.56), "B": (0.16, 0.82), "C": (0.66, 0.82), "D": (0.82, 0.56), "O": (0.49, 0.69)}
+            canh = [["S", "B"], ["S", "C"], ["S", "D"], ["B", "C"], ["C", "D"]]
+            khuat = [["S", "A"], ["A", "B"], ["A", "D"], ["A", "C"], ["B", "D"], ["S", "O"]]
+        elif re.search(r"S\.ABC\b", vb):
+            self.diem = {"S": (0.34, 0.14), "A": (0.20, 0.66), "B": (0.54, 0.86), "C": (0.84, 0.62)}
+            canh = [["S", "A"], ["S", "B"], ["S", "C"], ["A", "B"], ["B", "C"]]
+            khuat = [["A", "C"]]
+        elif re.search(r"ABC\.A'B'C'", vb):
+            self.diem = {"A'": (0.24, 0.20), "B'": (0.54, 0.34), "C'": (0.80, 0.20), "A": (0.20, 0.68), "B": (0.50, 0.82), "C": (0.76, 0.68)}
+            canh = [["A'", "B'"], ["B'", "C'"], ["A'", "C'"], ["A", "A'"], ["B", "B'"], ["C", "C'"], ["A", "B"], ["B", "C"]]
+            khuat = [["A", "C"]]
+        elif re.search(r"(?i:đường\s+tròn)", vb):
+            self.diem = {"O": (0.50, 0.54), "A": (0.50, 0.22), "B": (0.22, 0.70), "C": (0.78, 0.70)}
+            canh = [["A", "B"], ["B", "C"], ["C", "A"]]
+            tron = [["O", "A"]]
+        elif re.search(r"(?i:hình\s+vuông|hình\s+chữ\s+nhật|hình\s+bình\s+hành|hình\s+thang|tứ\s+giác)\s*ABCD", vb):
+            self.diem = {"A": (0.24, 0.26), "B": (0.76, 0.26), "C": (0.76, 0.76), "D": (0.24, 0.76), "O": (0.50, 0.51)}
+            canh = [["A", "B"], ["B", "C"], ["C", "D"], ["D", "A"]]
+        else:
+            vuong_a = bool(re.search(r"(?i:vuông\s+tại\s+A)", vb))
+            if vuong_a:
+                self.diem = {"A": (0.24, 0.76), "B": (0.24, 0.24), "C": (0.80, 0.76)}
+                vuong = [["B", "A", "C"]]
+            else:
+                self.diem = {"A": (0.44, 0.20), "B": (0.18, 0.78), "C": (0.82, 0.78)}
+            canh = [["A", "B"], ["B", "C"], ["C", "A"]]
+        return {"diem": self.diem, "canh": canh, "khuat": khuat, "tron": tron, "vuong": vuong}
+
     def _doc_hinh(self):
         for i in range(len(self.canh_p)):
             v = self.vat_hinh(i)
@@ -297,10 +337,13 @@ class MoHinh:
                             self.diem_3d[ten_chuan(k)] = (float(p3[0]), float(p3[1]), float(p3[2]))
                         except (TypeError, ValueError):
                             pass
+        v_du_phong = self._tu_sinh_hinh_tu_de() if len(self.diem) < 2 else None
         self._bo_sung_diem_phu()
         co = lambda *ds: all(ten_chuan(x) in self.diem for x in ds)
-        for i in range(len(self.canh_p)):
-            v = self.vat_hinh(i)
+        ds_nguon = [(i, self.vat_hinh(i)) for i in range(len(self.canh_p))]
+        if v_du_phong:
+            ds_nguon = [(0, v_du_phong)]
+        for i, v in ds_nguon:
             if not v:
                 continue
             for c in v.get("to") or []:
@@ -331,6 +374,11 @@ class MoHinh:
 
     # ---- chữ của cảnh i: công thức (TeX gốc từ kịch bản), lời thoại, tiêu đề cảnh, nhấn mạnh do kịch bản chỉ định ----
     def cong_thuc(self, i):
+        # Cảnh mở đầu / đề bài trong video Hình học: KHÔNG hiện chữ đề bài lên màn hình (đề bài do giọng đọc đảm nhận,
+        # dành toàn bộ chính giữa màn hình cho hình vẽ thật to và rõ nét)
+        loai = str(self.canh_p[i].get("loai") or self.canh_k[i].get("loai") or "").lower()
+        if re.search(r"mo_dau|de_bai|hook", loai):
+            return []
         ds = self.canh_k[i].get("noi_dung_man_hinh")
         if not isinstance(ds, list) or not ds:
             ds = self.canh_p[i].get("noiDung") or []
@@ -339,41 +387,85 @@ class MoHinh:
     def chu_canh(self, i):
         c = self.canh_k[i]
         nm = c.get("nhan_manh_hinh") or []
-        return " ; ".join([str(c.get("loi_thoai") or ""), str(c.get("tieu_de_canh") or "")] + self.cong_thuc(i) +
+        nd = c.get("noi_dung_man_hinh") or self.canh_p[i].get("noiDung") or []
+        return " ; ".join([str(c.get("loi_thoai") or ""), str(c.get("tieu_de_canh") or "")] +
+                          [str(x) for x in (nd if isinstance(nd, list) else [nd])] +
                           [str(x) for x in (nm if isinstance(nm, list) else [nm])])
 
     def nhac_toi(self, chu):
-        """Các đại lượng được nhắc tới trong một đoạn chữ / công thức."""
+        """Các đại lượng được nhắc tới trong một đoạn chữ / công thức (giữ nguyên thứ tự xuất hiện theo giọng đọc)."""
         co = lambda *ds: all(ten_chuan(x) in self.diem for x in ds)
         kq = {"goc": [], "tam_giac": [], "mat": [], "doan": [], "diem": [], "tron": False}
-        chu = re.sub(r"\\(?:text|mathrm)\{", " {", chu)
+        chu = re.sub(r"\\(?:text|mathrm)\{", " {", str(chu))
         bo = []
+        # 1) Hình chóp S.ABCD / S.ABC
+        for m in RE_CHOP.finditer(chu):
+            g = [ten_chuan(x) for x in m.groups() if x]
+            if len(g) >= 4 and co(*g):
+                s_dinh, day = g[0], g[1:]
+                kq["diem"].extend(g)
+                if len(day) == 3:
+                    kq["tam_giac"].append(tuple(day))
+                else:
+                    kq["mat"].append(tuple(day))
+                for j in range(len(day)):
+                    kq["doan"].append(khoa_doan(day[j], day[(j + 1) % len(day)]))
+                for d_x in day:
+                    kq["doan"].append(khoa_doan(s_dinh, d_x))
+                bo.append(m.span())
         for m in RE_GOC.finditer(chu):
             if co(*m.groups()):
                 kq["goc"].append(self.kgoc(*m.groups()))
+                kq["diem"].extend(ten_chuan(x) for x in m.groups())
                 bo.append(m.span())
         for m in RE_TAM_GIAC.finditer(chu):
             if co(*m.groups()):
-                kq["tam_giac"].append(tuple(ten_chuan(x) for x in m.groups()))
+                pts = tuple(ten_chuan(x) for x in m.groups())
+                kq["tam_giac"].append(pts)
+                kq["diem"].extend(pts)
+                for j in range(3):
+                    kq["doan"].append(khoa_doan(pts[j], pts[(j + 1) % 3]))
                 bo.append(m.span())
         for m in RE_MAT.finditer(chu):
-            g = [x for x in m.groups() if x]
+            g = [ten_chuan(x) for x in m.groups() if x]
             if co(*g):
-                kq["mat"].append(tuple(ten_chuan(x) for x in g))
+                kq["mat"].append(tuple(g))
+                kq["diem"].extend(g)
+                for j in range(len(g)):
+                    kq["doan"].append(khoa_doan(g[j], g[(j + 1) % len(g)]))
                 bo.append(m.span())
         sach = list(chu)
         for a, b in bo:
             for j in range(a, b):
                 sach[j] = " "
         sach = "".join(sach)
+        # 2) Đa giác 3-4 đỉnh viết liền không ngoặc (ví dụ: đáy ABCD, hình vuông ABCD, tam giác ABC)
+        bo_dg = []
+        for m in RE_DA_GIAC.finditer(sach):
+            g = [ten_chuan(x) for x in m.groups() if x]
+            if len(g) >= 3 and len(set(g)) == len(g) and co(*g):
+                if len(g) == 3:
+                    kq["tam_giac"].append(tuple(g))
+                else:
+                    kq["mat"].append(tuple(g))
+                kq["diem"].extend(g)
+                for j in range(len(g)):
+                    kq["doan"].append(khoa_doan(g[j], g[(j + 1) % len(g)]))
+                bo_dg.append(m.span())
+        sach_dg = list(sach)
+        for a, b in bo_dg:
+            for j in range(a, b):
+                sach_dg[j] = " "
+        sach = "".join(sach_dg)
         for m in RE_DOAN.finditer(sach):
             a, b = m.groups()
             if co(a, b) and ten_chuan(a) != ten_chuan(b):
                 kq["doan"].append(khoa_doan(a, b))
+                kq["diem"].extend((ten_chuan(a), ten_chuan(b)))
         for m in RE_DIEM_DON.finditer(re.sub(RE_DOAN, " ", sach)):
             if co(m.group(1)):
                 kq["diem"].append(ten_chuan(m.group(1)))
-        if re.search(r"(?i:đường tròn)|\\odot|nội tiếp|ngoại tiếp", chu):
+        if re.search(r"(?i:đường\s+tròn)|\\odot|nội\s+tiếp|ngoại\s+tiếp", chu):
             kq["tron"] = True
         for k in ("goc", "tam_giac", "mat", "doan", "diem"):
             kq[k] = list(dict.fromkeys(kq[k]))
@@ -387,8 +479,42 @@ class MoHinh:
                 if ("doan", d) not in self.chi_so:
                     # nằm trên một cạnh có sẵn (vd MB là một nửa BC) -> đoạn con, chỉ hiện khi được tô màu; còn lại kẻ thêm nét đứt
                     self.them("doan", d, i, kieu_net="con" if self.nam_tren_canh(d) else "phu", nhan="")
-        # điểm xuất hiện khi phần tử đầu tiên chứa nó xuất hiện, hoặc khi được nhắc tên
+        # Đồng bộ tiến độ xuất hiện của đường kẻ phụ / ký hiệu góc / điểm phụ theo đúng cảnh giọng đọc nhắc tới đầu tiên:
+        canh_dau_doan = {}
+        canh_dau_diem = {}
+        for i, nt in enumerate(self.nhac):
+            for d in nt["doan"]:
+                canh_dau_doan.setdefault(d, i)
+            for x in nt["diem"]:
+                canh_dau_diem.setdefault(x, i)
+        # Các đỉnh thuộc hình cơ bản (nét liền 'canh', nét khuất 'khuat', đường tròn 'tron')
+        dinh_co_ban = set()
+        for p in self.pt:
+            if p["kieu"] == "doan" and p.get("kieu_net") in ("canh", "khuat"):
+                dinh_co_ban.update(p["khoa"])
+            elif p["kieu"] == "tron":
+                dinh_co_ban.update(p["khoa"])
+        # Đường kẻ phụ ('phu') hoặc ký hiệu vuông góc/bằng nhau: nếu giọng đọc mới giới thiệu ở cảnh i_nhac > p["canh"],
+        # dời lịch vẽ sang đúng cảnh i_nhac để không vẽ đường phụ trước khi giọng đọc nhắc tới!
+        for p in self.pt:
+            if p["kieu"] == "doan" and p.get("kieu_net") == "phu":
+                d = p["khoa"]
+                if d in canh_dau_doan:
+                    p["canh"] = canh_dau_doan[d]
+                else:
+                    # Nếu đoạn phụ nối tới điểm phụ chỉ xuất hiện ở cảnh sau
+                    c_max = max((canh_dau_diem.get(x, p["canh"]) for x in d), default=p["canh"])
+                    p["canh"] = max(p["canh"], c_max)
+            elif p["kieu"] in ("vuong", "goc", "bang"):
+                ds_x = self.dinh_cua(p)
+                if any(x not in dinh_co_ban for x in ds_x):
+                    c_max = max((canh_dau_diem.get(x, p["canh"]) for x in ds_x), default=p["canh"])
+                    p["canh"] = max(p["canh"], c_max)
+        # Điểm xuất hiện khi phần tử đầu tiên chứa nó xuất hiện, hoặc khi được giọng đọc nhắc tên
         self.diem_canh = {}
+        for x in self.diem:
+            if x not in dinh_co_ban and x in canh_dau_diem:
+                self.diem_canh[x] = canh_dau_diem[x]
         for p in self.pt:
             for x in self.dinh_cua(p):
                 self.diem_canh[x] = min(self.diem_canh.get(x, 99), p["canh"])
@@ -513,6 +639,11 @@ THAY_UNICODE = {"≈": r"\approx ", "⊥": r"\perp ", "∠": r"\angle ", "·": r
                 "−": "-", "∞": r"\infty ", "∩": r"\cap ", "∪": r"\cup ", "■": r"\blacksquare ", "✓": r"\checkmark ",
                 "…": r"\ldots "}
 
+RE_CHU_VIET_CO_DAU = re.compile(r"(?:[A-Za-zÀ-ÖØ-öø-ɏḀ-ỹ]*[À-ÖØ-öø-ɏḀ-ỹ][A-Za-zÀ-ÖØ-öø-ɏḀ-ỹ]*)(?:[ ,]+[a-zà-öø-ɏḀ-ỹ]+)*")
+RE_TU_VIET_KHONG_DAU = re.compile(
+    r"(?i)\b(vì|do|nên|và|là|có|ta|suy\s+ra|suy|ra|cho|khi|theo|hay|cùng|tại|với|tương\s+tự|mà|thì|của|gọi|xét|vậy|từ|thay|trong|đặt|với\s+mọi)\b"
+)
+
 
 def chuan_tex(s):
     s = str(s)
@@ -520,7 +651,7 @@ def chuan_tex(s):
         s = s.replace(a, b)
     s = s.replace(r"\tfrac", r"\frac").replace(r"\dfrac", r"\frac")
     s = s.replace("{,}", "{,}")
-    # chữ Việt nằm ngoài \text{...} -> bọc vào \text{} (AI hay viết "ME = MB (vì cùng bằng nửa BC)")
+    # chữ Việt nằm ngoài \text{...} -> bọc vào \text{} (giữ nguyên khoảng trắng hai đầu để không dính chữ với biến toán học)
     ra, i = [], 0
     while i < len(s):
         m = re.match(r"\\(?:text|mathrm|textbf|textit)\{", s[i:])
@@ -540,12 +671,12 @@ def chuan_tex(s):
             ra.append(s[i:i + m.end() + sau_mo + 1])
             i += m.end() + sau_mo + 1
             continue
-        m = re.match(r"(?:[A-Za-zÀ-ỹđĐ]*[À-ỹđĐ][A-Za-zÀ-ỹđĐ]*)(?:[ ,]+[a-zà-ỹđ]+)*", s[i:])
+        m = RE_CHU_VIET_CO_DAU.match(s[i:])
         if m and m.group(0) and (i == 0 or s[i - 1] != "\\"):
             ra.append(r"\text{%s}" % m.group(0))
             i += m.end()
             continue
-        m = re.match(r"\b(vì|do|nên|và|là|có|ta|suy ra|hay|cùng|tại|với|tương tự|mà|thì|của)\b", s[i:])
+        m = RE_TU_VIET_KHONG_DAU.match(s[i:])
         if m and (i == 0 or not re.match(r"[A-Za-z\\]", s[i - 1])):
             ra.append(r"\text{%s}" % m.group(0))
             i += m.end()
@@ -553,7 +684,11 @@ def chuan_tex(s):
         ra.append(s[i])
         i += 1
     s = "".join(ra)
-    s = re.sub(r"\\text\{([^{}]*)\}\s*\\text\{([^{}]*)\}", r"\\text{\1 \2}", s)
+    # Gộp các \text{...} liền nhau và giữ khoảng trắng giữa \text{...} với ký hiệu toán liền trước/sau
+    while re.search(r"\\text\{([^{}]*)\}\s*\\text\{([^{}]*)\}", s):
+        s = re.sub(r"\\text\{([^{}]*)\}\s*\\text\{([^{}]*)\}", r"\\text{\1 \2}", s)
+    s = re.sub(r"([A-Za-z0-9)\]}])\s+\\text\{(?![\s])", r"\1\\text{ ", s)
+    s = re.sub(r"(?<![\s])\}\\s+([A-Za-z0-9(\\[\\{]|\\[a-zA-Z]+)", r" } \1", s)
     return s
 
 
@@ -673,7 +808,8 @@ class VideoHinh(Scene):
                     xs += [c[0] - r, c[0] + r]
                     ys += [c[1] - r, c[1] + r]
         x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
-        k = min(HINH_RONG * 0.9 / max(1e-6, x1 - x0), (HINH_TREN - HINH_DUOI) * 0.88 / max(1e-6, y1 - y0))
+        # Phóng to hình vẽ ở chính giữa màn hình, chừa biên vừa đủ (~0.62 đơn vị) cho nhãn đỉnh không chạm mép
+        k = min((HINH_RONG - 1.25) / max(1e-6, x1 - x0), (HINH_TREN - HINH_DUOI - 1.05) / max(1e-6, y1 - y0))
         cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
         ty = (HINH_TREN + HINH_DUOI) / 2
         self.P = {n: np.array([(x * 8.8 - cx) * k, (-y * 6.0 - cy) * k + ty, 0.0]) for n, (x, y) in mo.diem.items()}
@@ -790,11 +926,20 @@ class VideoHinh(Scene):
         return v / np.linalg.norm(v)
 
     def vi_tri_nhan(self, n, da_dat):
-        """Chỗ đặt nhãn điểm: thử 16 hướng quanh điểm, chọn chỗ XA NHẤT các nét (đoạn, đường tròn), các điểm và các nhãn đã
-        đặt (ưu tiên hướng tự nhiên ngược các cạnh) -> tên điểm không bao giờ đè lên nét vẽ."""
+        """Chỗ đặt nhãn điểm: thử 36 hướng x 4 bán kính quanh điểm, kiểm tra toàn bộ khung bao chữ (bounding box 4 góc + tâm)
+        với mọi đoạn thẳng, đường tròn, nhãn cạnh, các đỉnh khác và các nhãn đã đặt, đồng thời tránh khe góc nhọn ->
+        tên điểm tuyệt đối không chồng chéo lên nhau hoặc đè lên cạnh trừ khi bất khả kháng."""
         p = self.P[n][:2]
         goc = self.huong_nhan(n)[:2]
         doan = [(self.P[q["khoa"][0]][:2], self.P[q["khoa"][1]][:2]) for q in self.mo.pt if q["kieu"] == "doan" and q.get("kieu_net") != "con"]
+        tia_ke = []
+        for q in self.mo.pt:
+            if q["kieu"] == "doan" and q.get("kieu_net") != "con" and n in q["khoa"]:
+                m_ke = q["khoa"][1] if q["khoa"][0] == n else q["khoa"][0]
+                v_ke = self.P[m_ke][:2] - p
+                norm_ke = float(np.linalg.norm(v_ke))
+                if norm_ke > 1e-6:
+                    tia_ke.append(v_ke / norm_ke)
         tron = []
         for q in self.mo.pt:
             if q["kieu"] == "tron":
@@ -805,18 +950,51 @@ class VideoHinh(Scene):
 
         def kc_doan(c, a, b):
             ab = b - a
-            t = 0.0 if not ab.any() else max(0.0, min(1.0, float(np.dot(c - a, ab) / np.dot(ab, ab))))
+            d2 = float(np.dot(ab, ab))
+            t = 0.0 if d2 < 1e-9 else max(0.0, min(1.0, float(np.dot(c - a, ab) / d2)))
             return float(np.linalg.norm(c - (a + t * ab)))
-        tot, chon = -1e9, p + goc * 0.36
-        lech = [0.0] + [d * j * math.pi / 8 for j in range(1, 9) for d in (1, -1)][:15]
+
+        rx = 0.28 if ("'" in n or "_" in n) else 0.22
+        ry = 0.22
+        mau_kiem = [
+            np.array([0.0, 0.0]),
+            np.array([-rx, -ry]), np.array([rx, -ry]),
+            np.array([-rx, ry]), np.array([rx, ry]),
+            np.array([0.0, -ry]), np.array([0.0, ry]),
+            np.array([-rx, 0.0]), np.array([rx, 0.0]),
+        ]
+
+        def kc_hop_doan(c, a, b):
+            return min(kc_doan(c + dv, a, b) for dv in mau_kiem)
+
+        tot, chon = -1e9, p + goc * 0.44
+        lech = [0.0] + [d * j * math.pi / 18 for j in range(1, 19) for d in (1, -1)][:35]
         for dg in lech:
             g = math.atan2(goc[1], goc[0]) + dg
             u = np.array([math.cos(g), math.sin(g)])
-            for r in (0.36, 0.46):
+            cos_max = max((float(np.dot(u, tk)) for tk in tia_ke), default=-1.0)
+            phat_tia = 3.5 * max(0.0, cos_max - 0.80)
+            for r in (0.44, 0.54, 0.66, 0.78):
                 c = p + u * r
-                kc = min([kc_doan(c, a, b) for a, b in doan] + [abs(float(np.linalg.norm(c - o)) - rr) for o, rr in tron] +
-                         [float(np.linalg.norm(c - d)) for d in diem] + [float(np.linalg.norm(c - d)) * 0.8 for d in da_dat] + [9.0])
-                diem_so = min(kc, 0.34) * 10 - 0.6 * (1 - float(np.dot(u, goc))) - (r - 0.36) * 2
+                kc_canh = min([kc_hop_doan(c, a, b) for a, b in doan] + [abs(float(np.linalg.norm(c - o)) - rr) - rx * 0.6 for o, rr in tron] + [9.0])
+                kc_diem = min([float(np.linalg.norm(c - d)) - rx * 0.7 for d in diem] + [9.0])
+                kc_nhan = min([float(np.linalg.norm(c - d)) - rx * 1.45 for d in da_dat] + [9.0])
+                kc = min(kc_canh, kc_diem, kc_nhan)
+                phat_de = 0.0
+                if kc_canh < 0.08:
+                    phat_de += (0.08 - kc_canh) * 28.0
+                if kc_nhan < 0.10:
+                    phat_de += (0.10 - kc_nhan) * 35.0
+                if kc_diem < 0.12:
+                    phat_de += (0.12 - kc_diem) * 25.0
+                phat_bien = 0.0
+                if abs(c[0]) > HINH_RONG / 2 - 0.25:
+                    phat_bien += (abs(c[0]) - (HINH_RONG / 2 - 0.25)) * 12.0
+                if c[1] > HINH_TREN - 0.20:
+                    phat_bien += (c[1] - (HINH_TREN - 0.20)) * 12.0
+                if c[1] < HINH_DUOI + 0.20:
+                    phat_bien += ((HINH_DUOI + 0.20) - c[1]) * 12.0
+                diem_so = min(kc, 0.36) * 14.0 - 0.55 * (1.0 - float(np.dot(u, goc))) - (r - 0.44) * 2.2 - phat_tia - phat_de - phat_bien
                 if diem_so > tot:
                     tot, chon = diem_so, c
         return np.array([chon[0], chon[1], 0.0])
@@ -826,6 +1004,7 @@ class VideoHinh(Scene):
         self.hinh = {}       # (kieu, khoa) -> mobject
         self.nhan_diem = {}
         self.cham = {}
+        da_dat_canh = []
         for p in mo.pt:
             k = (p["kieu"], p["khoa"])
             m = None
@@ -844,7 +1023,9 @@ class VideoHinh(Scene):
                     huong = huong / max(1e-6, np.linalg.norm(huong))
                     if np.dot((a + b) / 2 + huong - self.tam, huong) < np.dot((a + b) / 2 - self.tam, huong):
                         huong = -huong
-                    t = tao_cong_thuc(chuan_tex(p["nhan"]), 30).move_to((a + b) / 2 + huong * 0.32)
+                    vt_nhan_c = (a + b) / 2 + huong * 0.34
+                    t = tao_cong_thuc(chuan_tex(p["nhan"]), 30).move_to(vt_nhan_c)
+                    da_dat_canh.append(vt_nhan_c[:2])
                     m = VGroup(m, t)
                     m.la_co_nhan = True
             elif p["kieu"] == "tron":
@@ -867,12 +1048,17 @@ class VideoHinh(Scene):
                 m = self.vach_bang(a, b, p["so"])
             if m is not None:
                 self.hinh[k] = m
-        da_dat = []
+        # Đặt nhãn đỉnh qua 2 lượt tối ưu (relaxation) để các nhãn đỉnh kế cận tự tránh nhau hoàn toàn
+        vt_tam = {}
+        ds_dinh = list(self.P.keys())
+        for luot in range(2):
+            for n in ds_dinh:
+                da_dat = list(da_dat_canh) + [vt_tam[m][:2] for m in ds_dinh if m != n and m in vt_tam]
+                vt_tam[n] = self.vi_tri_nhan(n, da_dat)
         self.lech_nhan = {}
         for n, p in self.P.items():
-            self.cham[n] = Dot(p, radius=0.06, color=TRANG)
-            vt = self.vi_tri_nhan(n, da_dat)
-            da_dat.append(vt[:2])
+            self.cham[n] = Dot(p, radius=0.065, color=TRANG)
+            vt = vt_tam[n]
             self.lech_nhan[n] = vt - p
             self.nhan_diem[n] = MathTex(tex_ten(n), tex_template=TEX, font_size=36, color=TRANG).move_to(vt)
 
@@ -1005,7 +1191,9 @@ class VideoHinh(Scene):
         return m[0] if isinstance(m, VGroup) and getattr(m, "la_co_nhan", False) else m
 
     def ap_trang_thai(self, i, dong=None):
-        """Trả về các animation đưa hình về trạng thái 'cảnh i': phần được nhắc sáng + màu riêng + dày, phần khác mờ."""
+        """Trả về các animation đưa hình về trạng thái 'cảnh i':
+        TUYỆT ĐỐI KHÔNG LÀM MỜ các cạnh/đỉnh xung quanh (giữ toàn bộ hình rõ nét 100%, mo_do = 1.0).
+        Làm nổi bật phần đang xét bằng màu sắc rực rỡ của Manim, tăng độ dày nét vẽ, tô miền trong suốt và nhấn sáng đỉnh."""
         mo = self.mo
         nt = mo.nhac[i] if dong is None else dong
         sang = set()
@@ -1017,7 +1205,7 @@ class VideoHinh(Scene):
             km = ("mien", khoa_da_giac(t))
             if km not in self.hinh:   # tam giác / mặt phẳng được nhắc tới: tạo vùng tô màu riêng của nó
                 mau_m = mo.mau.get(km, MAU_MIEN[0])
-                self.hinh[km] = Polygon(*[self.P[x] for x in t], stroke_width=0, fill_color=mau_m, fill_opacity=0.38)
+                self.hinh[km] = Polygon(*[self.P[x] for x in t], stroke_width=0, fill_color=mau_m, fill_opacity=0.34)
             sang.add(km)
             for j in range(len(t)):
                 sang.add(("doan", khoa_doan(t[j], t[(j + 1) % len(t)])))
@@ -1031,29 +1219,31 @@ class VideoHinh(Scene):
             if m not in self.tren_man:
                 continue
             duoc = k in sang
-            mo_do = 1.0 if (duoc or not co_tap_trung) else 0.28
+            mo_do = 1.0  # Không bao giờ làm mờ các nét xung quanh
             net = self.net_chinh(m)
             if k[0] == "doan":
-                mau = mo.mau.get(k, TRANG) if (k in self.da_to or duoc) else (NET_DUT if isinstance(net, DashedLine) and mo.pt[mo.chi_so[k]]["kieu_net"] == "phu" else (XAM if isinstance(net, DashedLine) else TRANG))
+                kieu_net = mo.pt[mo.chi_so[k]]["kieu_net"] if k in mo.chi_so else "canh"
+                mau_mac_dinh = NET_DUT if (isinstance(net, DashedLine) and kieu_net == "phu") else (XAM if isinstance(net, DashedLine) else TRANG)
+                mau = mo.mau.get(k, VANG) if duoc else (mo.mau.get(k, TRANG) if k in self.da_to else mau_mac_dinh)
                 if duoc:
                     self.da_to.add(k)
-                # Giữ nét đứt (DashedLine) của cạnh khuất / đường phụ không bị phình dính vào nhau khi làm nổi
-                rong = (5.0 if isinstance(net, DashedLine) else 7.0) if duoc and co_tap_trung else (3.5 if isinstance(net, DashedLine) else 4.2)
-                if mo.pt[mo.chi_so[k]]["kieu_net"] == "con":
-                    if k not in self.da_to:
-                        mo_do = 0
-                    rong += 1.5     # đoạn con nằm đè lên cạnh mẹ: dày hơn chút để thấy màu riêng
+                # Cạnh đang xét: dày nổi bật (8.5 cho nét liền, 5.8 cho nét đứt); cạnh không xét: giữ nguyên độ rõ 100% ở nét chuẩn
+                rong = (5.8 if isinstance(net, DashedLine) else 8.5) if (duoc and co_tap_trung) else (3.5 if isinstance(net, DashedLine) else 4.2)
+                if kieu_net == "con":
+                    if k not in self.da_to and not duoc:
+                        mo_do = 0.0
+                    rong += 1.8     # đoạn con nằm đè lên cạnh mẹ: dày hơn để nổi bật màu riêng
                 anim.append(net.animate.set_stroke(color=mau, width=rong, opacity=mo_do))
                 if net is not m:
-                    anim.append(m[1].animate.set_opacity(mo_do).set_color(mo.mau.get(k, TRANG) if k in self.da_to else TRANG))
+                    anim.append(m[1].animate.set_opacity(1.0).set_color(VANG if duoc else (mo.mau.get(k, TRANG) if k in self.da_to else TRANG)))
             elif k[0] == "mien":
-                anim.append(m.animate.set_fill(opacity=0.38 if duoc else (0.0 if co_tap_trung else 0.16)))
+                anim.append(m.animate.set_fill(opacity=0.36 if duoc else 0.12))
             elif k[0] == "tron":
-                anim.append(m.animate.set_stroke(opacity=mo_do, width=5 if duoc and co_tap_trung else 3))
+                anim.append(m.animate.set_stroke(color=VANG if duoc else TRON, opacity=1.0, width=5.5 if (duoc and co_tap_trung) else 3.2))
             elif k[0] == "vuong" and duoc:
-                anim.append(m.animate.set_stroke(color=mo.mau.get(("goc", k[1]), VANG), width=4, opacity=1))
+                anim.append(m.animate.set_stroke(color=mo.mau.get(("goc", k[1]), VANG), width=4.5, opacity=1.0))
             else:
-                anim.append(m.animate.set_opacity(mo_do))
+                anim.append(m.animate.set_opacity(1.0))
         dang_xet = set(nt["diem"])
         for k in sang:
             if k[0] in ("doan",):
@@ -1064,9 +1254,10 @@ class VideoHinh(Scene):
                 dang_xet.update(k[1])
         for n, nh in self.nhan_diem.items():
             if nh in self.tren_man:
-                op = 1.0 if (not co_tap_trung or n in dang_xet) else 0.35
-                anim.append(nh.animate.set_opacity(op))
-                anim.append(self.cham[n].animate.set_opacity(op))
+                # Nhãn điểm và chấm đỉnh luôn rõ nét 100% (op = 1.0); đỉnh đang xét rực sáng màu vàng và phóng nhẹ chấm đỉnh
+                la_dinh_xet = co_tap_trung and (n in dang_xet)
+                anim.append(nh.animate.set_opacity(1.0).set_color(VANG if la_dinh_xet else TRANG))
+                anim.append(self.cham[n].animate.set_opacity(1.0).set_color(VANG if la_dinh_xet else TRANG))
         return anim, sang
 
     # ---------- công thức ----------
@@ -1103,7 +1294,7 @@ class VideoHinh(Scene):
 
     # ---------- thẻ (khung chữ) cùng kiểu thẻ của video xác suất / thực tế ----------
     def the_khung(self, noi_dung, nhan="", rong=CT_RONG + 0.3, dem=0.24):
-        """Khung bo góc nền tối trong mờ, viền màu nhấn; nhãn viên thuốc (vd ĐỀ BÀI, KIẾN THỨC) ở góc trên trái,
+        """Khung bo góc nền tối trong mờ, viền màu nhấn; nhãn viên thuốc (vd KIẾN THỨC) ở góc trên trái,
         nội dung nằm NGAY DƯỚI nhãn (không đè)."""
         pill = None
         if nhan:
@@ -1149,65 +1340,101 @@ class VideoHinh(Scene):
             self.i_canh = i
             self.da = self._bay_gio()
             ck = mo.canh_k[i]
+            cau = cp.get("cau") or []
             # 1) dọn bước trước (tiêu đề bước, thanh bước, phụ đề do phần vỏ chung của Remotion lo)
+            # Lưu ý: KHÔNG hiện thẻ ĐỀ BÀI lên màn hình — đề bài do giọng đọc đảm nhận và hình vẽ hiển thị thật to ở giữa màn hình
             ra = [FadeOut(cu, shift=UP * 0.25)] if len(cu) else []
             if tach is not None:
                 ra.append(FadeOut(tach))
                 tach = None
             if ra:
-                self.choi(*ra, run_time=0.4)
+                self.choi(*ra, run_time=0.35)
             cu = VGroup()
-            loai = str(cp.get("loai") or "")
-            if loai == "de_bai" and not mo.cong_thuc(i) and mo.de_bai:
-                # cảnh đề bài: thẻ ĐỀ BÀI (cùng kiểu thẻ đề của các video khác), hình dựng theo lời đọc
-                chu = khoi_chu(mo.de_bai.strip(), 34, CT_RONG - 0.3, CT_TREN - CT_DUOI - 0.9)
-                the = self.the_khung(chu, "ĐỀ BÀI")
-                the.move_to([0, CT_TREN - the.height / 2, 0])
-                self.choi(FadeIn(the, shift=UP * 0.2), run_time=min(0.8, D * 0.2))
-                cu.add(the)
-            # 2) vẽ phần hình mới của cảnh này (theo thứ tự trong kịch bản: cạnh -> đường tròn -> góc -> vùng tô)
+
+            # 2) Vẽ các điểm và nét mới của cảnh này ĐỒNG BỘ THEO TIẾN ĐỘ GIỌNG NÓI (cau):
+            # Giọng đọc nhắc tới đỉnh/cạnh nào ở câu nào thì vẽ điểm và cạnh đó ngay đúng mốc thời gian câu nói đó!
             moi = [p for p in mo.pt if p["canh"] == i and (p["kieu"], p["khoa"]) in self.hinh]
             moi_doan = [p for p in moi if p["kieu"] == "doan"]
+            moi_khac = [p for p in moi if p["kieu"] != "doan"]
             diem_moi = [n for n, c in mo.diem_canh.items() if c == i and n in self.P]
-            ngan_sach = min(D * 0.45, 0.5 + 0.45 * (len(moi_doan) + len(moi)))
-            buoc_ve = []
-            for p in moi_doan:
+
+            # Ánh xạ từng điểm mới và đoạn mới vào mốc thời gian câu nói đầu tiên nhắc tới nó trong cảnh i
+            moc_diem = {}
+            moc_doan = {}
+            if cau:
+                for idx_c, c in enumerate(cau):
+                    c_text = str(c.get("text") or c.get("chu") or c.get("cau") or "")
+                    t_bat = float(c.get("bat", 0))
+                    c_nt = mo.nhac_toi(c_text)
+                    for x in c_nt["diem"]:
+                        if x in diem_moi and x not in moc_diem:
+                            moc_diem[x] = t_bat
+                    for d in c_nt["doan"]:
+                        if d not in moc_doan:
+                            moc_doan[d] = t_bat
+
+            # Sắp xếp thứ tự vẽ các đoạn và điểm mới theo tiến độ giọng nói (t_bat tăng dần)
+            def _moc_cua_doan(p):
+                d = p["khoa"]
+                if d in moc_doan:
+                    return moc_doan[d]
+                return min((moc_diem.get(x, 0.0) for x in d), default=0.0)
+
+            moi_doan_sx = sorted(moi_doan, key=_moc_cua_doan)
+            buoc_ve = []  # list of (t_bat_mong_muon, list_animations)
+            # Điểm lẻ được giọng đọc gọi tên sớm trước khi nối đoạn
+            for x in list(diem_moi):
+                t_x = moc_diem.get(x, 0.0)
+                co_doan_cung_cau = any(x in p["khoa"] and abs(_moc_cua_doan(p) - t_x) <= 0.35 for p in moi_doan_sx)
+                if not co_doan_cung_cau and x in moc_diem:
+                    buoc_ve.append((t_x, [GrowFromCenter(self.cham[x]), Write(self.nhan_diem[x])]))
+                    diem_moi.remove(x)
+                    self.tren_man.update([self.cham[x], self.nhan_diem[x]])
+
+            for p in moi_doan_sx:
+                t_p = _moc_cua_doan(p)
                 m = self.hinh[("doan", p["khoa"])]
                 pts = [x for x in p["khoa"] if x in diem_moi]
-                g = [Create(self.net_chinh(m))]
+                g = []
                 for x in pts:
                     g += [GrowFromCenter(self.cham[x]), Write(self.nhan_diem[x])]
                     diem_moi.remove(x)
                     self.tren_man.update([self.cham[x], self.nhan_diem[x]])
+                g.append(Create(self.net_chinh(m)))
                 if m is not self.net_chinh(m):
                     g.append(Write(m[1]))
-                buoc_ve.append(g)
+                buoc_ve.append((t_p, g))
                 self.tren_man.add(m)
-            le = []
-            for x in diem_moi:
-                le += [GrowFromCenter(self.cham[x]), Write(self.nhan_diem[x])]
-                self.tren_man.update([self.cham[x], self.nhan_diem[x]])
-            if le:
-                buoc_ve.insert(0, le)
-            for p in moi:
-                if p["kieu"] == "doan":
-                    continue
+
+            if diem_moi:
+                le = []
+                for x in list(diem_moi):
+                    le += [GrowFromCenter(self.cham[x]), Write(self.nhan_diem[x])]
+                    self.tren_man.update([self.cham[x], self.nhan_diem[x]])
+                buoc_ve.insert(0, (0.0, le))
+
+            for p in moi_khac:
                 m = self.hinh[(p["kieu"], p["khoa"])]
-                buoc_ve.append([FadeIn(m)] if p["kieu"] == "mien" else [Create(m)])
+                t_k = min((moc_diem.get(x, 0.0) for x in mo.dinh_cua(p)), default=0.0)
+                buoc_ve.append((t_k, [FadeIn(m)] if p["kieu"] == "mien" else [Create(m)]))
                 self.tren_man.add(m)
+
+            buoc_ve.sort(key=lambda item: item[0])
             if buoc_ve:
-                rt = max(0.35, min(0.9, ngan_sach / len(buoc_ve)))
-                for g in buoc_ve:
+                ngan_sach = min(D * 0.52, 0.55 + 0.42 * len(buoc_ve))
+                rt = max(0.30, min(0.80, ngan_sach / len(buoc_ve)))
+                for t_muc, g in buoc_ve:
+                    if t_muc > self.da + 0.08 and t_muc < D * 0.60:
+                        self.doi_toi(min(t_muc, D * 0.58))
                     self.choi(*g, run_time=rt)
             for p in moi:
                 if p["kieu"] == "mien":
                     self.bring_to_back(self.hinh[(p["kieu"], p["khoa"])])
-            # 3) làm nổi phần đang xét
+
+            # 3) Làm nổi bật phần đang xét bằng hiệu ứng Manim (KHÔNG làm mờ các phần xung quanh)
             anim, sang = self.ap_trang_thai(i)
             moi_hien = []
             for k in sang:
-                # chỉ hiện sớm phần do lời giảng tạo ra (góc, tam giác được nhắc); phần của hình (đường tròn, đường phụ...)
-                # vẫn chờ đúng cảnh kịch bản đưa vào
                 p_k = mo.pt[mo.chi_so[k]] if k in mo.chi_so else None
                 if p_k is not None and p_k["canh"] > i and k[0] != "mien":
                     continue
@@ -1215,124 +1442,107 @@ class VideoHinh(Scene):
                     moi_hien.append(FadeIn(self.hinh[k]) if k[0] == "mien" else Create(self.hinh[k]))
                     self.tren_man.add(self.hinh[k])
             if anim or moi_hien:
-                self.choi(*(anim + moi_hien), run_time=0.6)
+                self.choi(*(anim + moi_hien), run_time=0.55)
                 for k in sang:
                     if k[0] == "mien" and k in self.hinh:
                         self.bring_to_back(self.hinh[k])
+
             # 3.5) HÌNH HỌC KHÔNG GIAN 3D: xoay 3D trực quan khối đa diện để học sinh quan sát rõ cấu trúc không gian
             if getattr(mo, "la_khong_gian", False) and len(self.tren_man) >= 4:
                 con_3d = D - self._bay_gio()
                 if i <= 1 and con_3d > 1.6:
-                    # Cảnh mở đầu / đề bài: xoay 3D hai phía (+36° rồi -30°) cho học sinh ngắm toàn cảnh khối chóp/lăng trụ
-                    self.xoay_3d([0, 36, -30, 0], run_time=min(2.4, con_3d * 0.55))
+                    self.xoay_3d([0, 36, -30, 0], run_time=min(2.2, con_3d * 0.48))
                 elif con_3d > 2.2:
-                    # Các cảnh phân tích mặt phẳng / đường cao / tính toán: nghiêng góc 3D để nhìn rõ mặt phẳng và đường phụ
                     goc_lech = 26 if (i % 2 == 0) else -26
-                    self.xoay_3d([0, goc_lech, 0], run_time=min(1.5, con_3d * 0.32))
-            # 4) KIẾN THỨC dùng ở bước này + công thức: mỗi dòng hiện theo câu nói tương ứng; cạnh trong dòng lóe sáng
+                    self.xoay_3d([0, goc_lech, 0], run_time=min(1.4, con_3d * 0.30))
+
+            # 4) Đồng bộ giọng đọc từng câu (cau) & hiện công thức biến đổi bên dưới:
+            # Khi giọng đọc nhắc tới điểm/cạnh/góc/tam giác/mặt phẳng nào, Manim phóng tia sáng ShowPassingFlash
+            # dọc theo cạnh, tô sáng đỉnh và miền đa giác đúng tiến độ giọng nói (tuyệt đối không làm mờ phần khác)
             dong = mo.cong_thuc(i)
-            cau = cp.get("cau") or []
             dap_an = la_dap_an(cp)
             bien_doi = str(cp.get("trinhBay") or "") == "bien_doi" and len(dong) >= 2
 
-            # Quét từng câu nói của giáo viên: Khi giọng đọc nhắc tới cạnh/góc/mặt nào (ví dụ AH, BC, SA, (SAC)...)
-            # thì Manim lập tức phóng tia sáng chói lọi (ShowPassingFlash) và tăng độ dày để hút mắt học sinh
-            if cau:
+            if cau and not dong:
                 for c in cau:
-                    c_text = str(c.get("chu") or c.get("cau") or "")
+                    c_text = str(c.get("text") or c.get("chu") or c.get("cau") or "")
                     t_bat = float(c.get("bat", 0))
-                    if not c_text or t_bat <= self.da:
+                    if not c_text or t_bat <= self.da - 0.15:
                         continue
                     c_nt = mo.nhac_toi(c_text)
-                    if any(c_nt[k] for k in ("doan", "goc", "tam_giac", "mat")):
+                    if any(c_nt[k] for k in ("doan", "goc", "tam_giac", "mat", "diem")):
                         self.doi_toi(min(max(t_bat, self.da), D - 0.35))
                         cau_loe = []
                         for d in c_nt["doan"]:
                             m_d = self.hinh.get(("doan", d))
                             if m_d is not None and m_d in self.tren_man:
                                 net_d = self.net_chinh(m_d)
+                                mau_d = mo.mau.get(("doan", d), VANG)
                                 tia_c = (
-                                    DashedLine(*(self.P[x] for x in d), dash_length=0.18, dashed_ratio=0.56).set_stroke(VANG, width=12)
+                                    DashedLine(*(self.P[x] for x in d), dash_length=0.18, dashed_ratio=0.56).set_stroke(VANG, width=11)
                                     if isinstance(net_d, DashedLine)
-                                    else Line(*(self.P[x] for x in d)).set_stroke(VANG, width=16)
+                                    else Line(*(self.P[x] for x in d)).set_stroke(VANG, width=14)
                                 )
-                                cau_loe.append(ShowPassingFlash(tia_c, time_width=0.85))
-                                cau_loe.append(net_d.animate.set_stroke(color=VANG, width=(6.5 if isinstance(net_d, DashedLine) else 9.5)))
+                                cau_loe.append(ShowPassingFlash(tia_c, time_width=0.80))
+                                cau_loe.append(net_d.animate.set_stroke(color=mau_d, width=(6.0 if isinstance(net_d, DashedLine) else 9.0), opacity=1.0))
                         for gk in c_nt["goc"]:
-                            if ("vuong", gk) in self.hinh:
-                                cau_loe.append(self.hinh[("vuong", gk)].animate.set_stroke(color=mo.mau.get(("goc", gk), VANG), width=4.5, opacity=1))
-                        for tg in c_nt["tam_giac"]:
-                            if ("mien", tg) in self.hinh and self.hinh[("mien", tg)] in self.tren_man:
-                                cau_loe.append(self.hinh[("mien", tg)].animate.set_fill(color=VANG, opacity=0.35))
+                            if ("vuong", gk) in self.hinh and self.hinh[("vuong", gk)] in self.tren_man:
+                                cau_loe.append(self.hinh[("vuong", gk)].animate.set_stroke(color=mo.mau.get(("goc", gk), VANG), width=4.5, opacity=1.0))
+                        for tg in c_nt["tam_giac"] + c_nt["mat"]:
+                            km_t = ("mien", khoa_da_giac(tg))
+                            if km_t in self.hinh and self.hinh[km_t] in self.tren_man:
+                                cau_loe.append(self.hinh[km_t].animate.set_fill(color=mo.mau.get(km_t, VANG), opacity=0.36))
+                        for dx in c_nt["diem"]:
+                            if dx in self.nhan_diem and self.nhan_diem[dx] in self.tren_man:
+                                cau_loe.append(self.nhan_diem[dx].animate.set_color(VANG).set_opacity(1.0))
+                                cau_loe.append(self.cham[dx].animate.set_color(VANG).set_opacity(1.0))
                         if cau_loe:
-                            self.choi(*cau_loe, run_time=min(0.85, max(0.4, D - self.da - 0.2)))
+                            self.choi(*cau_loe, run_time=min(0.75, max(0.35, D - self.da - 0.2)))
 
-            ds_tg = []
-            for s_ in dong:
-                if re.search(r"\\sim|\\cong|=", s_):
-                    tg = mo.nhac_toi(s_)["tam_giac"]
-                    if len(tg) >= 2:
-                        ds_tg = tg
-                        break
-            if ck.get("tach"):
-                ds_tg = [tuple(ten_chuan(x) for x in re.findall(TEN_DIEM, str(t)))[:3] for t in ck.get("tach")][:2]
-                ds_tg = [t for t in ds_tg if len(t) == 3 and all(x in self.P for x in t)]
             y_ct = CT_TREN
-            if len(ds_tg) >= 2:
-                # hai tam giác được nhấc ra khỏi hình, phóng to đặt cạnh nhau ngay trên vùng hình (hình gốc mờ phía sau)
-                tg2 = self.tach_tam_giac(ds_tg)
-                man = RoundedRectangle(width=HINH_RONG + 0.2, height=HINH_TREN - HINH_DUOI + 0.2, corner_radius=0.25, stroke_width=0,
-                                       fill_color=NEN_THE, fill_opacity=0.9).move_to([0, (HINH_TREN + HINH_DUOI) / 2, 0])
-                for j, gt in enumerate(tg2):
-                    gt.generate_target()
-                    f_t = min(3.7 / max(0.01, gt.width), (HINH_TREN - HINH_DUOI - 0.6) / max(0.01, gt.height))
-                    gt.target.scale(f_t)
-                    for nh_t in gt.target[1]:
-                        nh_t.scale(1 / f_t)     # nhãn đỉnh giữ cỡ chữ dễ đọc
-                    gt.target.move_to([(-2.15 if j == 0 else 2.15), (HINH_TREN + HINH_DUOI) / 2, 0])
-                self.add(man, *tg2)          # màn mờ dưới, hai tam giác trên
-                self.choi(FadeIn(man), *[MoveToTarget(gt) for gt in tg2], run_time=1.0)
-                self.bring_to_front(*tg2)
-                tach = VGroup(man, *tg2)
             mob = [self.tao_dong(s_) for s_ in dong]
             if mob:
-                g = VGroup(*mob).arrange(DOWN, buff=0.3)
-                cao = max(0.4, y_ct - CT_DUOI - 0.5)   # luôn dương (cao âm sẽ lật ngược công thức)
+                g = VGroup(*mob).arrange(DOWN, buff=0.28)
+                cao = max(0.4, y_ct - CT_DUOI - 0.45)   # luôn dương (cao âm sẽ lật ngược công thức)
                 if g.height > cao:
                     g.scale_to_fit_height(cao)
-                nen_ct = RoundedRectangle(width=CT_RONG + 0.3, height=g.height + 0.5, corner_radius=0.22, stroke_color=NHAN,
+                nen_ct = RoundedRectangle(width=CT_RONG + 0.3, height=g.height + 0.46, corner_radius=0.22, stroke_color=NHAN,
                                           stroke_width=2.2, stroke_opacity=0.55, fill_color=NEN_THE, fill_opacity=0.72)
                 nen_ct.move_to([0, y_ct - 0.05 - nen_ct.height / 2, 0])
                 g.move_to(nen_ct)
-                self.choi(FadeIn(nen_ct), run_time=0.3)
+                self.choi(FadeIn(nen_ct), run_time=0.28)
                 cu.add(nen_ct)
             t_con = D - self.da - (1.4 if dap_an else 0.4)
             nc = len(cau)
             for j, m in enumerate(mob):
                 # mốc hiện dòng j: đầu câu tương ứng (giọng đọc), không sớm hơn lúc vẽ xong
+                c_text_j = ""
                 if nc:
                     jc = min(nc - 1, int(j * nc / len(mob)))
-                    moc = float(cau[jc].get("bat", 0)) + (0.15 if j else 0)
+                    moc = float(cau[jc].get("bat", 0)) + (0.12 if j else 0)
+                    c_text_j = str(cau[jc].get("text") or cau[jc].get("chu") or cau[jc].get("cau") or "")
                 else:
                     moc = self.da + j * max(0.8, t_con / max(1, len(mob)))
                 self.doi_toi(min(max(moc, self.da), D - 1.0))
                 con = D - self.da - 0.3
-                rt = max(0.4, min(1.3, con * 0.5))
-                dong_nt = mo.nhac_toi(dong[j])
+                rt = max(0.4, min(1.25, con * 0.5))
+                dong_nt = mo.nhac_toi(dong[j] + (" ; " + c_text_j if c_text_j else ""))
                 loe = []
                 for d in dong_nt["doan"]:
                     m_d = self.hinh.get(("doan", d))
                     if m_d is not None and m_d in self.tren_man:
                         net_d = self.net_chinh(m_d)
+                        mau_d = mo.mau.get(("doan", d), VANG)
                         tia_loe = (
-                            DashedLine(*(self.P[x] for x in d), dash_length=0.18, dashed_ratio=0.56).set_stroke(VANG, width=9)
+                            DashedLine(*(self.P[x] for x in d), dash_length=0.18, dashed_ratio=0.56).set_stroke(VANG, width=10)
                             if isinstance(net_d, DashedLine)
-                            else Line(*(self.P[x] for x in d)).set_stroke(VANG, width=12)
+                            else Line(*(self.P[x] for x in d)).set_stroke(VANG, width=13)
                         )
-                        loe.append(ShowPassingFlash(tia_loe, time_width=0.6))
+                        loe.append(ShowPassingFlash(tia_loe, time_width=0.65))
+                        loe.append(net_d.animate.set_stroke(color=mau_d, width=(6.0 if isinstance(net_d, DashedLine) else 8.8), opacity=1.0))
                 for gk in dong_nt["goc"]:
                     if ("vuong", gk) in self.hinh:     # góc vuông đã có ký hiệu: tô màu ký hiệu, không vẽ thêm cung
-                        loe.append(self.hinh[("vuong", gk)].animate.set_stroke(color=mo.mau.get(("goc", gk), VANG), width=4, opacity=1))
+                        loe.append(self.hinh[("vuong", gk)].animate.set_stroke(color=mo.mau.get(("goc", gk), VANG), width=4.2, opacity=1.0))
                         continue
                     if ("goc", gk) not in self.hinh:
                         a, o, b = mo.goc_ba.get(gk, list(gk))
@@ -1340,17 +1550,18 @@ class VideoHinh(Scene):
                     if self.hinh[("goc", gk)] not in self.tren_man:
                         loe.append(Create(self.hinh[("goc", gk)]))
                         self.tren_man.add(self.hinh[("goc", gk)])
+                for dx in dong_nt["diem"]:
+                    if dx in self.nhan_diem and self.nhan_diem[dx] in self.tren_man:
+                        loe.append(self.nhan_diem[dx].animate.set_color(VANG).set_opacity(1.0))
+                        loe.append(self.cham[dx].animate.set_color(VANG).set_opacity(1.0))
                 loe += self.so_do_tren_hinh(dong[j])
                 self.ghi_su_kien("dong")
                 if bien_doi and j > 0:
-                    # dòng mới biến hình ra từ bản sao dòng trước (thấy rõ từng phần đi đâu), các dòng cũ mờ đi
-                    self.choi(TransformMatchingShapes(mob[j - 1].copy(), m), *[x.animate.set_opacity(0.4) for x in mob[:j]], *loe, run_time=rt)
+                    # dòng mới biến hình ra từ bản sao dòng trước (giữ rõ các dòng công thức 100%)
+                    self.choi(TransformMatchingShapes(mob[j - 1].copy(), m), *loe, run_time=rt)
                 else:
-                    trc = [x.animate.set_opacity(0.5) for x in mob[:j]]
-                    self.choi(Write(m), *trc, *loe, run_time=rt)
+                    self.choi(Write(m), *loe, run_time=rt)
                 cu.add(m)
-            if mob and len(mob) > 1:
-                self.choi(*[x.animate.set_opacity(1) for x in mob], run_time=0.3)
             # 5) đáp án: khung vàng quanh dòng kết luận
             if dap_an and mob:
                 khung = SurroundingRectangle(mob[-1], color=VANG, buff=0.14, stroke_width=4, corner_radius=0.1)

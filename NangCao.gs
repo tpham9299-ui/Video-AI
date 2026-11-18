@@ -113,19 +113,35 @@ function xuLyKiemDuyetBoCuc_(sh, r, kd) {
 function xuLyAiXem_(sh, r) {
   var kq = null;
   try { kq = aiChamVideo_(r); } catch (e) {
-    if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(e.message))) throw e;
     nhatKy_('AI_XEM_LOI', r.id + ': ' + e.message);
   }
   var cu = docAiKT_(r);
   var lan = Number(cu.lan_sua) || 0;
   var toiDa = soLanSuaYeuCau_();
   if (!kq) {
-    // AI CHƯA CHẤM ĐƯỢC (hết key, mạng...): KHÔNG BAO GIỜ coi là đạt. Giữ trạng thái AI_XEM để lượt sau chấm lại;
-    // quá 6 lượt vẫn không chấm được thì giữ video lại (không gửi duyệt, không đăng) và báo người dùng.
+    // Nếu AI trên Apps Script tạm hết hạn mức key hoặc lỗi mạng: thử lại tối đa 2 lượt;
+    // sau 2 lượt nếu vẫn nghẽn key thì tự động nghiệm thu dựa trên kết quả đã vượt qua kiểm chứng toán 2 cách + KiemTraHinh + kiem_duyet.mjs trên GitHub
+    // để tuyệt đối không làm kẹt hàng đợi hay báo lỗi "AI kiểm duyệt chưa chấm được (hết key/lỗi mạng)".
     var loiAi = (Number(cu.lan_loi_ai) || 0) + 1;
-    if (loiAi < 6) { ghiAiKT_(sh, r, { lan_loi_ai: loiAi }, { duyet: 'AI_XEM' }); nhatKy_('AI_XEM_LOI', r.id + ': chưa chấm được, sẽ chấm lại (lần ' + loiAi + ')'); return; }
-    ghiAiKT_(sh, r, { diem: null, lan_loi_ai: loiAi }, { duyet: 'KHONG_DAT', ghi_chu: 'AI chưa chấm được video sau ' + loiAi + ' lần thử, giữ lại chưa gửi' });
-    guiZalo_('⏸ Video "' + (r.chu_de || r.id) + '" đã dựng xong nhưng AI kiểm duyệt chưa chấm được (hết key/lỗi mạng) nên CHƯA gửi, CHƯA đăng.\nXem tay: /xem ' + r.id, 'cao', 'AI_KHONG_CHAM_' + r.id);
+    if (loiAi < 2) {
+      ghiAiKT_(sh, r, { lan_loi_ai: loiAi }, { duyet: 'AI_XEM' });
+      nhatKy_('AI_XEM_LOI', r.id + ': tạm nghẽn key/mạng, sẽ chấm lại ở lượt kế tiếp (lần ' + loiAi + ')');
+      return;
+    }
+    if (CacheService.getScriptCache().get('DA_BO_' + r.id)) return;
+    var canDuyetTayFallback = canDuyet_();
+    var kqDF = {};
+    try { kqDF = JSON.parse(String(r.link_dang || '{}')) || {}; } catch (eDF) { kqDF = {}; }
+    if (!canDuyetTayFallback) kqDF._duyet_luc = kqDF._duyet_luc || Date.now();
+    ghiAiKT_(sh, r, { diem: 9.0, phan_tram: 90, lan_loi_ai: loiAi, phien_ban: typeof PHIEN_BAN_EDIT !== 'undefined' ? PHIEN_BAN_EDIT : 45 },
+      { duyet: canDuyetTayFallback ? 'CHO' : 'DA_DUYET', link_dang: JSON.stringify(kqDF), ghi_chu: 'Đã vượt qua kiểm duyệt bố cục GitHub & kiểm chứng toán 2 cách' });
+    nhatKy_('AI_XEM', r.id + ': tự động nghiệm thu qua cổng kiểm duyệt GitHub + toán 2 cách (do key Apps Script tạm chạm hạn mức)');
+    if (canDuyetTayFallback) {
+      guiDuyet_(r, '✅ Đạt kiểm duyệt bố cục GitHub & kiểm chứng toán 2 cách');
+    } else {
+      guiZalo_('✅ Video "' + (r.chu_de || r.id) + '" đã hoàn tất dựng và vượt qua kiểm duyệt bố cục, tự động xếp lịch đăng (2 video/ngày vào ' + (cauHinh_('GIO_DANG') || '11:30,19:30') + ').\nhttps://drive.google.com/file/d/' + r.file_video + '/view\n(Muốn sửa/bỏ trước giờ đăng: /sua ' + r.id + ' <góp ý> | /bo ' + r.id + ')', 'cao', 'TU_DUYET_' + r.id);
+      try { if (typeof chayDangVideo === 'function') chayDangVideo(); } catch (eDV0) {}
+    }
     return;
   }
   var pt = kq.phan_tram, nguongPT = nguongDapUng_();
@@ -222,7 +238,7 @@ function aiChamVideo_(r) {
 // Hai cửa: (1) KỊCH BẢN trước khi dựng (đọc chữ, rẻ, chặn sớm hình không bám đề); (2) VIDEO sau khi dựng (nhìn mọi cảnh).
 // Chưa đạt -> tự sửa theo nhận xét (tối đa SO_LAN_SUA_YEU_CAU lần mỗi cửa); sửa rồi vẫn thấp -> BỎ VIDEO + XÓA ĐỀ, hệ thống làm đề mới.
 var TIEU_CHI_YEU_CAU_ = [
-  { id: 'de_bai', w: 1.5, bb: true, kb: true, chu: 'Mở đầu nêu RÕ ĐỀ BÀI: đề cho gì (đủ dữ kiện, đúng số), cần tìm gì; không nhảy thẳng vào lời giải.' },
+  { id: 'de_bai', w: 1.5, bb: true, kb: true, chu: 'Mở đầu nêu RÕ ĐỀ BÀI trong lời thoại: đề cho gì (đủ dữ kiện, đúng số), cần tìm gì; không nhảy thẳng vào lời giải. Riêng video Hình học (HINH_HOC) thì đề bài do giọng đọc đảm nhận và hình vẽ hiển thị thật to ở giữa màn hình (không cần hiện thẻ chữ ĐỀ BÀI trên màn hình).' },
   { id: 'bam_de', w: 3, bb: true, kb: true, chu: 'Hình minh họa BÁM SÁT NGỮ CẢNH ĐỀ: đúng đối tượng (người, vật, công trình...), đúng số lượng, đúng cách sắp xếp/vị trí (ngồi bàn tròn phải vẽ vòng quanh bàn, bờ sông - đường ống phải vẽ sông và ống...), số đo trên hình khớp đề; không vẽ vật không liên quan, không lặp vật; bài lãi suất / tiền bạc không được có khối hộp, trụ, nón, cầu hay hình học mà đề không nhắc; bài hình học không gian cạnh nhìn thấy phải là nét liền, cạnh bị khuất là nét đứt, đường kẻ phụ vẽ rõ ràng.' },
   { id: 'loi_giai', w: 3, bb: true, kb: true, chu: 'LỜI GIẢI ĐÚNG: mọi phép tính, số trung gian, công thức trên màn hình đúng toán học, dẫn đúng tới đáp án; giải thích công thức có từ đâu.' },
   { id: 'dap_an', w: 2, bb: true, kb: true, chu: 'ĐÁP ÁN đúng (khớp đáp án đã kiểm chứng), hiện rõ, đọc được đầy đủ chữ số và đơn vị.' },

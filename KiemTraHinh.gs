@@ -531,28 +531,10 @@ function tuSuaKichBan_(kb, ctx, r) {
     if (i === 0) c.giu_san_khau = false;
     if (c.chuyen_canh && ['mo', 'truot_len', 'phong', 'luot_ngang', 'truot_xuong', 'lat_3d', 'quet_sang', 'tron_mo', 'zoom_xuyen', 'nghieng', 'lat_ngang', 'day_ngang'].indexOf(c.chuyen_canh) < 0) delete c.chuyen_canh;
     if (c.giong_doc) c.giong_doc = String(c.giong_doc).replace(/\s+/g, ' ').trim().slice(0, 120);
-    // Tự động chuyển đổi sạch sẽ mã LaTeX sang lời đọc tiếng Việt thuần túy trong lời thoại (triệt tiêu lỗi LOI_THOAI_CHUA_LATEX)
+    // Tự động chuyển đổi sạch sẽ mã LaTeX sang lời đọc tiếng Việt thuần túy và sửa lỗi chính tả trong lời thoại & tiêu đề cảnh
+    if (c.tieu_de_canh) c.tieu_de_canh = suaChinhTaTiengViet_(c.tieu_de_canh);
     if (c.loi_thoai) {
-      var sLoi = String(c.loi_thoai);
-      if (/[\\$]/.test(sLoi)) {
-        sLoi = sLoi.replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, '$1 phần $2');
-        sLoi = sLoi.replace(/\\binom\{([^{}]+)\}\{([^{}]+)\}/g, 'C $2 của $1');
-        sLoi = sLoi.replace(/\\(?:times|cdot)\b/g, ' nhân ');
-        sLoi = sLoi.replace(/\\(?:pm)\b/g, ' cộng trừ ');
-        sLoi = sLoi.replace(/\\(?:approx)\b/g, ' xấp xỉ ');
-        sLoi = sLoi.replace(/\\(?:le|leq)\b/g, ' nhỏ hơn hoặc bằng ');
-        sLoi = sLoi.replace(/\\(?:ge|geq)\b/g, ' lớn hơn hoặc bằng ');
-        sLoi = sLoi.replace(/\\(?:neq)\b/g, ' khác ');
-        sLoi = sLoi.replace(/\\(?:sqrt)\{([^{}]+)\}/g, ' căn bậc hai của $1 ');
-        sLoi = sLoi.replace(/\^2\b/g, ' bình phương');
-        sLoi = sLoi.replace(/\^3\b/g, ' lập phương');
-        sLoi = sLoi.replace(/\\text\{([^{}]+)\}/g, '$1');
-        sLoi = sLoi.replace(/\\mathrm\{([^{}]+)\}/g, '$1');
-        sLoi = sLoi.replace(/\\[a-zA-Z]+/g, ' ');
-        sLoi = sLoi.replace(/[\${}]/g, '');
-        sLoi = sLoi.replace(/\s+/g, ' ').trim();
-        c.loi_thoai = sLoi;
-      }
+      c.loi_thoai = suaChinhTaTiengViet_(docLatexThanhLoi_(c.loi_thoai));
     } else {
       c.loi_thoai = (c.tieu_de_canh ? String(c.tieu_de_canh) + '. ' : '') + 'Để ý kỹ chi tiết này nhé!';
     }
@@ -1281,6 +1263,22 @@ function rutGon_(t, n) {
   return dau.join(' ').replace(/[,;:]+$/, '') + '…';
 }
 
+function suaChinhTaTiengViet_(s) {
+  s = String(s || '');
+  if (!s) return s;
+  return s
+    .replace(/\bxác\s+xuất\b/gi, function (m) { return m.charAt(0) === 'X' ? 'Xác suất' : 'xác suất'; })
+    .replace(/\bgiả\s+thuyết\b/gi, function (m) { return m.charAt(0) === 'G' ? 'Giả thiết' : 'giả thiết'; })
+    .replace(/\bhình\s+chiêu\b/gi, function (m) { return m.charAt(0) === 'H' ? 'Hình chiếu' : 'hình chiếu'; })
+    .replace(/\bđường\s+thăng\b/gi, function (m) { return m.charAt(0) === 'Đ' ? 'Đường thẳng' : 'đường thẳng'; })
+    .replace(/\btỉ\s+xuất\b/gi, function (m) { return m.charAt(0) === 'T' ? 'Tỉ suất' : 'tỉ suất'; })
+    .replace(/\bnăng\s+xuất\b/gi, function (m) { return m.charAt(0) === 'N' ? 'Năng suất' : 'năng suất'; })
+    .replace(/\bkhối\s+chốp\b/gi, function (m) { return m.charAt(0) === 'K' ? 'Khối chóp' : 'khối chóp'; })
+    .replace(/\bhình\s+chốp\b/gi, function (m) { return m.charAt(0) === 'H' ? 'Hình chóp' : 'hình chóp'; })
+    .replace(/\bvuông\s+gốc\b/gi, function (m) { return m.charAt(0) === 'V' ? 'Vuông góc' : 'vuông góc'; })
+    .replace(/\s+/g, ' ').trim();
+}
+
 // Đọc ký hiệu toán trong LỜI THOẠI thành chữ (giọng đọc không đọc được LaTeX): \frac{1}{3} -> "1 phần 3", x^2 -> "x bình phương".
 function docLatexThanhLoi_(s) {
   s = String(s || '');
@@ -1289,12 +1287,27 @@ function docLatexThanhLoi_(s) {
   s = s.replace(/\$/g, '');
   do {
     cu = s;
-    s = s.replace(/\\[dt]?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, '$1 phần $2').replace(/\\sqrt\s*\{([^{}]*)\}/g, 'căn $1').replace(/\\text\s*\{([^{}]*)\}/g, '$1');
+    s = s.replace(/\\[dt]?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, ' $1 phần $2 ')
+      .replace(/\\binom\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, ' C $2 của $1 ')
+      .replace(/\\sqrt\s*\[([^\]]+)\]\s*\{([^{}]*)\}/g, ' căn bậc $1 của $2 ')
+      .replace(/\\sqrt\s*\{([^{}]*)\}/g, ' căn bậc hai của $1 ')
+      .replace(/\\(?:text|mathrm|textbf|textit|mathbf)\s*\{([^{}]*)\}/g, ' $1 ')
+      .replace(/\\widehat\s*\{([^{}]*)\}/g, ' góc $1 ');
   } while (s !== cu);
-  s = s.replace(/\\(cdot|times)/g, ' nhân ').replace(/\\(leq|le)\b/g, ' nhỏ hơn hoặc bằng ').replace(/\\(geq|ge)\b/g, ' lớn hơn hoặc bằng ')
-    .replace(/\\neq/g, ' khác ').replace(/\\approx/g, ' xấp xỉ ').replace(/\\pi/g, ' pi ').replace(/\\(Rightarrow|implies)/g, ' suy ra ')
-    .replace(/\^\s*\{?2\}?/g, ' bình phương').replace(/\^\s*\{?3\}?/g, ' lập phương').replace(/\^\s*\{([^{}]*)\}/g, ' mũ $1').replace(/\^\s*(\w)/g, ' mũ $1')
-    .replace(/_\s*\{([^{}]*)\}/g, ' $1').replace(/_\s*(\w)/g, ' $1').replace(/\\[a-zA-Z]+/g, ' ').replace(/[{}\\]/g, ' ');
+  s = s.replace(/\\(cdot|times)\b/g, ' nhân ').replace(/\\div\b/g, ' chia ').replace(/\\pm\b/g, ' cộng trừ ')
+    .replace(/\\(leq|le)\b/g, ' nhỏ hơn hoặc bằng ').replace(/\\(geq|ge)\b/g, ' lớn hơn hoặc bằng ')
+    .replace(/\\(neq|ne)\b/g, ' khác ').replace(/\\approx\b/g, ' xấp xỉ ').replace(/\\equiv\b/g, ' đồng dư ')
+    .replace(/\\perp\b/g, ' vuông góc với ').replace(/\\parallel\b/g, ' song song với ')
+    .replace(/\\angle\b/g, ' góc ').replace(/\\(triangle|Delta)\b/g, ' tam giác ')
+    .replace(/\^\s*\{?\\(circ|degree)\}?/g, ' độ ').replace(/\\(circ|degree)\b/g, ' độ ')
+    .replace(/\\pi\b/g, ' pi ').replace(/\\alpha\b/g, ' alpha ').replace(/\\beta\b/g, ' beta ').replace(/\\gamma\b/g, ' gamma ')
+    .replace(/\\(Omega|omega)\b/g, ' không gian mẫu ').replace(/\\infty\b/g, ' vô cùng ')
+    .replace(/\\(Rightarrow|implies|rightarrow|to)\b/g, ' suy ra ').replace(/\\(Leftrightarrow|iff)\b/g, ' tương đương ')
+    .replace(/\\(sim|cong)\b/g, ' đồng dạng với ').replace(/\\in\b/g, ' thuộc ')
+    .replace(/\^\s*\{?2\}?(?![0-9])/g, ' bình phương ').replace(/\^\s*\{?3\}?(?![0-9])/g, ' lập phương ')
+    .replace(/\^\s*\{([^{}]*)\}/g, ' mũ $1 ').replace(/\^\s*([A-Za-z0-9]+)/g, ' mũ $1 ')
+    .replace(/_\s*\{([^{}]*)\}/g, ' $1 ').replace(/_\s*([A-Za-z0-9]+)/g, ' $1 ')
+    .replace(/\\[a-zA-Z]+/g, ' ').replace(/[{}\\]/g, ' ');
   return s.replace(/\s+/g, ' ').replace(/\s+([,.!?])/g, '$1').trim();
 }
 
@@ -1308,7 +1321,7 @@ function tieuDeTuLoi_(t) {
 // Chuẩn hóa lỗi cú pháp LaTeX vặt trên công thức màn hình/nhãn ($...$, \\frac, thiếu ngoặc { }) để không bị từ chối oan
 function suaCuPhapTex_(s) {
   if (typeof s !== 'string') return s;
-  var t = s.replace(/\$/g, '').replace(/\\\\([a-zA-Z]+)/g, '\\$1');
+  var t = suaChinhTaTiengViet_(s.replace(/\$/g, '').replace(/\\\\([a-zA-Z]+)/g, '\\$1'));
   var mo = 0, out = '';
   for (var idx = 0; idx < t.length; idx++) {
     var ch = t.charAt(idx);
@@ -1325,9 +1338,17 @@ function tuSuaSau_(kb, ctx) {
   ctx = ctx || {};
   var sua = [];
   if (!kb || !Array.isArray(kb.canh) || !kb.canh.length) return sua;
+  if (kb.tieu_de) kb.tieu_de = suaChinhTaTiengViet_(kb.tieu_de);
+  if (kb.hook_chu) kb.hook_chu = suaChinhTaTiengViet_(kb.hook_chu);
+  if (kb.bai_hoc_rut_ra) kb.bai_hoc_rut_ra = suaChinhTaTiengViet_(kb.bai_hoc_rut_ra);
   // 1) lời thoại & công thức màn hình: đọc ký hiệu toán thành chữ, sửa cú pháp TeX, bỏ câu mở máy móc
   kb.canh.forEach(function (c, i) {
-    if (c.loi_thoai && /[\\$]/.test(c.loi_thoai)) { c.loi_thoai = docLatexThanhLoi_(c.loi_thoai); sua.push('đọc LaTeX thành lời ở cảnh ' + (i + 1)); }
+    if (c.tieu_de_canh) c.tieu_de_canh = suaChinhTaTiengViet_(c.tieu_de_canh);
+    if (c.loi_thoai) {
+      var l0 = c.loi_thoai;
+      c.loi_thoai = suaChinhTaTiengViet_(docLatexThanhLoi_(c.loi_thoai));
+      if (c.loi_thoai !== l0) sua.push('chuẩn hóa lời thoại & chính tả ở cảnh ' + (i + 1));
+    }
     if (i > 0 && c.loi_thoai) {
       var g = String(c.loi_thoai).replace(MO_MAY_MOC_PHAN_, '');
       if (g !== c.loi_thoai && g.length >= 15) { c.loi_thoai = hoaDau_(g); sua.push('bỏ câu mở máy móc ở cảnh ' + (i + 1)); }

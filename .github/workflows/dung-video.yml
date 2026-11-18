@@ -143,7 +143,7 @@ jobs:
             rclone backend copyid gdrive: "$FILE_KB" kb_drive/
             F_KB=$(ls kb_drive | head -1)
             if [ -n "$F_KB" ]; then
-              python3 -c "import json, glob; meta = json.load(open('kich_ban.json', encoding='utf8')); f_kb = glob.glob('kb_drive/*')[0]; kb = json.load(open(f_kb, encoding='utf8')); [kb.update({k: meta[k]}) for k in ('id', 'giong', 'gioi_tinh_giong', '_kiem_duyet') if k in meta and meta[k]]; json.dump(kb, open('kich_ban.json', 'w', encoding='utf8'), ensure_ascii=False); print('Đã ghép kịch bản đầy đủ từ Drive:', len(kb.get('canh') or []), 'cảnh')"
+              python3 -c "import json, glob; meta = json.load(open('kich_ban.json', encoding='utf8')); f_kb = glob.glob('kb_drive/*')[0]; kb = json.load(open(f_kb, encoding='utf8')); [kb.update({k: meta[k]}) for k in ('id', 'giong', 'gioi_tinh_giong', '_kiem_duyet', 'mon') if k in meta and meta[k]]; json.dump(kb, open('kich_ban.json', 'w', encoding='utf8'), ensure_ascii=False); print('Đã ghép kịch bản đầy đủ từ Drive:', len(kb.get('canh') or []), 'cảnh')"
             fi
           fi
 
@@ -181,7 +181,7 @@ jobs:
         if: ${{ vars.MANIM_HINH != 'TAT' }}
         continue-on-error: true
         run: |
-          MON=$(python3 -c "import json;print(str(json.load(open('kich_ban.json',encoding='utf8')).get('mon') or '').upper())")
+          MON=$(python3 -c "import json;kb=json.load(open('kich_ban.json',encoding='utf8'));m=str(kb.get('mon') or '').upper();i=str(kb.get('id') or '').upper();print('HINH_HOC' if (m=='HINH_HOC' or i.startswith('HH')) else m)")
           if [ "$MON" != "HINH_HOC" ]; then echo "Không phải bài hình học -> dựng bằng Remotion"; exit 0; fi
           ( sudo apt-get install -y -qq --no-install-recommends texlive-xetex texlive-latex-extra texlive-fonts-recommended \
               dvisvgm libpango1.0-dev libcairo2-dev pkg-config fonts-noto-core ) > /tmp/apt_manim.log 2>&1 &

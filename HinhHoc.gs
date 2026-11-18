@@ -446,10 +446,31 @@ function chenToaDoHinh_(kb, hinh) {
   if (!hinh || !hinh.diem || !kb || !Array.isArray(kb.canh)) return [];
   var sua = [];
   var cungDoan = function (a, b) { return (a[0] === b[0] && a[1] === b[1]) || (a[0] === b[1] && a[1] === b[0]); };
+  // Đảm bảo cảnh mở đầu / đề bài luôn có đối tượng hinh_hoc để Manim dựng hình 100% (tuyệt đối không để rơi về Remotion)
+  var coVatHinh = kb.canh.some(function (c) {
+    var vat = c && c.minh_hoa && c.minh_hoa.du_lieu && c.minh_hoa.du_lieu.vat;
+    return Array.isArray(vat) && vat.some(function (v) { return v && v.loai === 'hinh_hoc'; });
+  });
+  if (!coVatHinh && kb.canh[0]) {
+    var c0 = kb.canh[0];
+    c0.minh_hoa = c0.minh_hoa || { kieu: 'san_khau', du_lieu: { vat: [] } };
+    c0.minh_hoa.kieu = 'san_khau';
+    c0.minh_hoa.du_lieu = c0.minh_hoa.du_lieu || { vat: [] };
+    c0.minh_hoa.du_lieu.vat = [{
+      id: 'hh_chinh', loai: 'hinh_hoc', x: 50, y: 50, co: 1,
+      diem: JSON.parse(JSON.stringify(hinh.diem)),
+      canh: (hinh.canh || []).map(function (x) { return [x[0], x[1], '']; }),
+      khuat: (hinh.khuat || []).map(function (x) { return x.slice(); }),
+      phu: (hinh.phu || []).map(function (x) { return x.slice(); }),
+      tron: (hinh.tron || []).map(function (x) { return x.slice(); })
+    }];
+    sua.push('tự động gắn mô hình hinh_hoc chuẩn cho Manim ở cảnh 1');
+  }
   kb.canh.forEach(function (c, i) {
     var du = c && c.minh_hoa && c.minh_hoa.du_lieu;
     var loaiCanh = String((c && c.loai) || '');
-    var laCanhDe = /^(mo_dau|de_bai)$/.test(loaiCanh);
+    var laCanhDe = /^(mo_dau|de_bai|hook)$/.test(loaiCanh);
+    if (laCanhDe) c.noi_dung_man_hinh = []; // Video hình học không hiện chữ đề bài lên màn hình (đề bài do giọng đọc đảm nhận)
     (du && Array.isArray(du.vat) ? du.vat : []).forEach(function (v) {
       if (!v || v.loai !== 'hinh_hoc' || !v.diem || typeof v.diem !== 'object') return;
       var doi = 0;
@@ -531,8 +552,8 @@ function huongDanKichBanHinh_(r) {
     (hinh && hinh.khong_gian ? ' ĐÂY LÀ HÌNH HỌC KHÔNG GIAN: BẮT BUỘC đảm bảo quy tắc cơ bản: cạnh NHÌN THẤY đặt trong "canh" (vẽ NÉT LIỀN), cạnh KHÔNG NHÌN THẤY (bị che khuất phía sau hoặc nằm trong lòng khối) đặt trong "khuat" (vẽ NÉT ĐỨT); dùng "to" (tô mặt) để làm nổi mặt phẳng đang xét, và "phu" cho đường thẳng phụ kẻ thêm (đường cao, hình chiếu, khoảng cách...).' : '') +
     (hinh ? ' DÙNG ĐÚNG TÊN ĐIỂM sau (máy sẽ tự thay tọa độ đúng tỉ lệ từ mô hình dựng hình): ' + Object.keys(hinh.diem).join(', ') + (hinh.tron.length ? '; đường tròn: ' + JSON.stringify(hinh.tron) : '') + (hinh.khuat && hinh.khuat.length ? '; cạnh khuất (nét đứt): ' + JSON.stringify(hinh.khuat) : '') + (hinh.phu.length ? '; đường thẳng phụ kẻ thêm: ' + JSON.stringify(hinh.phu) : '') + '.' : '') + '\n' +
     '- ĐƯỢC PHÉP VÀ KHUYẾN KHÍCH DÙNG MANIM VẼ THÊM CÁC ĐƯỜNG THẲNG PHỤ ("phu"): ở cảnh ý tưởng / mô hình hóa hoặc bước giải cần kẻ thêm đường phụ (kẻ đường cao, nối hai điểm, kẻ đường song song, dựng hình chiếu vuông góc...), hãy khai báo đoạn thẳng đó vào mảng "phu": [["A","H"],...] của hinh_hoc và nêu rõ trong lời thoại ("Ta kẻ thêm đường phụ AH vuông góc với BC tại H...") + ký hiệu góc vuông vào "vuong": [["A","H","C"]] nếu vuông góc. Manim sẽ tự động diễn hoạt vẽ nét đứt vàng cho đường phụ đúng lúc giọng đọc nhắc tới!\n' +
-    '- MỘT hình xuyên suốt (giu_san_khau): cảnh đề bài dựng hình từng bước theo đúng thứ tự đề nêu (chưa hiện đường phụ); cảnh ý tưởng kẻ thêm đường phụ ("phu"); mỗi cảnh giải tô sáng (chon theo chỉ số cạnh) đúng các cạnh/góc đang nói và ghi lý do (định lý) trên màn hình.\n' +
-    '- PHẦN TOÁN CỦA VIDEO NÀY DỰNG BẰNG MANIM (kiểu video hình học trên mạng: mỗi đại lượng một màu, công thức tô cùng màu với cạnh/góc trên hình, phần đang xét sáng lên, phần khác mờ đi). Để máy tô màu và làm nổi ĐÚNG chỗ, viết công thức theo quy ước:\n' +
+    '- MỘT hình xuyên suốt (giu_san_khau): ở cảnh đề bài KHÔNG hiện chữ đề bài lên màn hình (noi_dung_man_hinh = []) vì đề bài do giọng đọc đảm nhận và hình vẽ phải hiển thị thật to ở chính giữa màn hình; các điểm và cạnh được Manim vẽ dần theo đúng tiến độ giọng nói; cảnh ý tưởng kẻ thêm đường phụ ("phu"); mỗi cảnh giải dùng Manim làm nổi bật (màu sắc rực rỡ, nét dày, tia sáng chạy dọc cạnh, KHÔNG làm mờ các nét xung quanh) đúng các cạnh/góc đang nói và ghi lý do (định lý) trên màn hình.\n' +
+    '- PHẦN TOÁN CỦA VIDEO NÀY BẮT BUỘC DỰNG 100% BẰNG MANIM (tuyệt đối không dùng Remotion để làm nổi bật hình; mỗi đại lượng một màu, công thức tô cùng màu với cạnh/góc trên hình, phần đang xét sáng rực lên mà không làm mờ cảnh xung quanh). Để máy tô màu và làm nổi ĐÚNG chỗ, viết công thức theo quy ước:\n' +
     '  + đoạn thẳng viết liền tên 2 điểm (ME, BC), góc viết \\angle ABC hoặc \\widehat{ABC}, tam giác viết \\triangle ABC, mặt phẳng viết (SAC), đường tròn viết (O). KHÔNG viết "góc" / "tam giác" bằng chữ trong công thức.\n' +
     '  + \\hl{...} = khung vàng quanh phần ĐANG XÉT của dòng (vd "\\hl{\\angle BEC} = 90^\\circ"), mỗi dòng tối đa 1 \\hl. Dòng kết luận cuối dùng \\dpcm hoặc \\blacksquare.\n' +
     '  + mỗi cảnh có thể thêm "nhan_manh_hinh": danh sách phần hình cần làm nổi trong cảnh đó (vd ["\\triangle BEC","EM","\\angle BEC"]); hai tam giác được so sánh (bằng nhau / đồng dạng) thêm "tach": ["ABC","DEF"] để máy tách hai tam giác ra đặt cạnh nhau.\n' +

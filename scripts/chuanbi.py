@@ -60,6 +60,76 @@ KY_HIEU_DOC = [("⊥", " vuông góc với "), ("∥", " song song với "), ("/
                ("±", " cộng trừ "), ("−", " trừ "), ("∞", " vô cùng ")]
 
 
+LOI_CHINH_TA_VIET = [
+    (r"(?i)\bxác\s+xuất\b", "xác suất"),
+    (r"(?i)\bsác\s+suất\b", "xác suất"),
+    (r"(?i)\bsác\s+xuất\b", "xác suất"),
+    (r"(?i)\bgiả\s+thuyết\b", "giả thiết"),
+    (r"(?i)\bhình\s+chiêu\b", "hình chiếu"),
+    (r"(?i)\bđường\s+trung\s+truc\b", "đường trung trực"),
+    (r"(?i)\btrung\s+diem\b", "trung điểm"),
+    (r"(?i)\btrọng\s+tam\b", "trọng tâm"),
+    (r"(?i)\btam\s+giac\b", "tam giác"),
+    (r"(?i)\bxac\s+suat\b", "xác suất"),
+    (r"(?i)\bvuông\s+goc\b", "vuông góc"),
+    (r"(?i)\blăng\s+tru\b", "lăng trụ"),
+    (r"(?i)\btứ\s+dien\b", "tứ diện"),
+    (r"(?i)\bhình\s+chop\b", "hình chóp"),
+    (r"(?i)\bmặt\s+phang\b", "mặt phẳng"),
+    (r"(?i)\bkhông\s+gian\s+mau\b", "không gian mẫu"),
+    (r"(?i)\bbiến\s+co\b", "biến cố"),
+    (r"(?i)\bchỉnh\s+hop\b", "chỉnh hợp"),
+    (r"(?i)\btổ\s+hop\b", "tổ hợp"),
+    (r"(?i)\bhoán\s+vi\b", "hoán vị"),
+    (r"(?i)\bbất\s+đẳng\s+thuc\b", "bất đẳng thức"),
+    (r"(?i)\bhệ\s+thức\s+luong\b", "hệ thức lượng"),
+    (r"(?i)\bđịnh\s+li\b", "định lý"),
+    (r"(?i)\bchứng\s+mình\b", "chứng minh"),
+    (r"(?i)\bdiện\s+tich\b", "diện tích"),
+    (r"(?i)\bthể\s+tich\b", "thể tích"),
+    (r"(?i)\bbán\s+kinh\b", "bán kính"),
+    (r"(?i)\bđường\s+kinh\b", "đường kính"),
+]
+
+
+def sua_chinh_ta_tieng_viet(text):
+    s = str(text or "")
+    # Đổi các lệnh LaTeX bị sót sang chữ đọc tự nhiên trước khi hiển thị phụ đề
+    for _ in range(3):
+        s_cu = s
+        s = re.sub(r"\\[dt]?frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}", r"\1 phần \2", s)
+        s = re.sub(r"\\binom\s*\{([^{}]+)\}\s*\{([^{}]+)\}", r"C \2 của \1", s)
+        s = re.sub(r"\\sqrt\s*\[3\]\s*\{([^{}]+)\}", r"căn bậc ba của \1", s)
+        s = re.sub(r"\\sqrt\s*\{([^{}]+)\}", r"căn \1", s)
+        s = re.sub(r"\\(?:text|mathrm|textbf|textit)\s*\{([^{}]*)\}", r"\1", s)
+        if s == s_cu:
+            break
+    for cmd, thay in ((r"\\perp\b", " vuông góc với "), (r"\\parallel\b", " song song với "),
+                      (r"\\(?:angle|widehat)\b", " góc "), (r"\\(?:triangle|Delta)\b", " tam giác "),
+                      (r"\^\s*\{?\\circ\}?", " độ "), (r"\\circ\b", " độ "),
+                      (r"\\(?:cdot|times)\b", " nhân "), (r"\\div\b", " chia "),
+                      (r"\\(?:approx)\b", " xấp xỉ "), (r"\\(?:le|leq)\b", " nhỏ hơn hoặc bằng "),
+                      (r"\\(?:ge|geq)\b", " lớn hơn hoặc bằng "), (r"\\(?:ne|neq)\b", " khác "),
+                      (r"\\(?:Rightarrow|implies|to)\b", " suy ra "), (r"\\(?:Leftrightarrow|iff)\b", " tương đương "),
+                      (r"\\(?:sim|backsim)\b", " đồng dạng với "), (r"\\pi\b", " pi "),
+                      (r"\\alpha\b", " an pha "), (r"\\beta\b", " bê ta "), (r"\\Omega\b", " ô mê ga "),
+                      (r"\^2\b", " bình phương"), (r"\^3\b", " lập phương")):
+        s = re.sub(cmd, thay, s)
+    s = re.sub(r"\\[a-zA-Z]+|[{}$]", " ", s)
+    for pat, rep in LOI_CHINH_TA_VIET:
+        def _giu_hoa(m, r=rep):
+            goc = m.group(0)
+            if goc.isupper():
+                return r.upper()
+            if goc[0].isupper():
+                return r[0].upper() + r[1:]
+            return r
+        s = re.sub(pat, _giu_hoa, s)
+    s = re.sub(r"\s+([,.;:!?])", r"\1", s)
+    s = re.sub(r"([,.;:!?])(?=[A-Za-zÀ-ỹđĐ])", r"\1 ", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
 def _danh_van(m):
     chu = m.group(0)
     phay = chu.count("'")
@@ -68,8 +138,7 @@ def _danh_van(m):
 
 
 def chuan_hoa_doc(text):
-    s = str(text)
-    s = re.sub(r"\\[a-zA-Z]+|[{}$]", " ", s)                  # mã TeX lọt vào lời thoại
+    s = sua_chinh_ta_tieng_viet(text)
     s = re.sub(r"\(\s*([A-Z]{3,4})\s*\)", r" mặt phẳng \1 ", s)    # (SAC) -> mặt phẳng SAC
     s = re.sub(r"\(\s*([A-Z])\s*\)", r" \1 ", s)                  # đường tròn (O) -> đường tròn O
     for k, v in KY_HIEU_DOC:
@@ -82,7 +151,7 @@ def chuan_hoa_doc(text):
     s = re.sub(r"(?<=\s)-(?=\s)", "trừ", s)
     if DOC_CHU_CAI["bat"]:
         # tên điểm / đoạn / mặt: 1-4 chữ in hoa đứng riêng (có thể kèm dấu phẩy trên A') -> đọc từng chữ cái kiểu Việt
-        s = re.sub(r"(?<![A-Za-zÀ-ỹ])[A-Z]{1,4}'*(?![A-Za-zÀ-ỹ])", _danh_van, s)
+        s = re.sub(r"(?<![A-Za-zÀ-ÖØ-öø-ɏḀ-ỹ])[A-Z]{1,4}'*(?![A-Za-zÀ-ÖØ-öø-ɏḀ-ỹ])", _danh_van, s)
     s = re.sub(r"\s+([,.!?])", r"\1", re.sub(r"\s+", " ", s)).strip()
     return s
 
@@ -843,10 +912,10 @@ def tim_thuong_hieu(public, th):
     hien.pop("outroTuTao", None)
     hien.pop("dungOutroRieng", None)
     hien.pop("coManKet", None)
-    if not hien.get("ten"):
-        hien["ten"] = os.environ.get("KENH_TEN") or (th.get("ten") if th else "") or "Toán Thầy Trí"
-    if not hien.get("handle"):
-        hien["handle"] = os.environ.get("KENH_HANDLE") or (th.get("handle") if th else "") or "@toanthaytri"
+    if not hien.get("ten") or "toán thầy trí" in str(hien.get("ten") or "").lower():
+        hien["ten"] = os.environ.get("KENH_TEN") or "Tư duy Xác suất"
+    if not hien.get("handle") or "toanthaytri" in str(hien.get("handle") or "").lower():
+        hien["handle"] = os.environ.get("KENH_HANDLE") or "@tuduyxacsuat"
     if not hien.get("khauHieu"):
         hien["khauHieu"] = os.environ.get("KENH_KHAU_HIEU") or (th.get("khauHieu") if th else "") or "Học toán tư duy mỗi ngày"
     if not hien.get("loiMoi"):
@@ -1117,7 +1186,10 @@ def main():
             print("Gemini không đọc được cả video -> CẢ video dùng một giọng edge-tts (không trộn giọng)")
     for i, c in enumerate(canh):
         so = int(c.get("so") or i + 1)
-        loi_thoai = str(c.get("loi_thoai") or "").strip()
+        loi_thoai = sua_chinh_ta_tieng_viet(str(c.get("loi_thoai") or "").strip())
+        c["loi_thoai"] = loi_thoai
+        if c.get("tieu_de_canh"):
+            c["tieu_de_canh"] = sua_chinh_ta_tieng_viet(c.get("tieu_de_canh"))
         noi_dung_tam = [str(x) for x in (c.get("noi_dung_man_hinh") or []) if str(x).strip()]
         # công thức dài -> nhiều dòng ngắt tại dấu "=" (giữ chữ to, không ngắt bừa); cảnh biến đổi (bien_doi) giữ nguyên từng bước
         if str(c.get("trinh_bay") or "") != "bien_doi":

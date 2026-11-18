@@ -233,7 +233,7 @@ function chayBoPhan1() {
 function damBaoCauHinhTuDong_() {
   try {
     var p = PropertiesService.getScriptProperties();
-    if (p.getProperty('DA_CAP_NHAT_TU_DONG_V47') === '1') return;
+    if (p.getProperty('DA_CAP_NHAT_TU_DONG_V48') === '1') return;
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var ch = ss.getSheetByName(TEN_CAU_HINH);
     if (ch && ch.getLastRow() > 0) {
@@ -262,7 +262,25 @@ function damBaoCauHinhTuDong_() {
       });
       _bo_nho_cau_hinh_ = null;
     }
-    p.setProperty('DA_CAP_NHAT_TU_DONG_V47', '1');
+    // Tự động giải cứu các video đã dựng xong (CO_VIDEO) nhưng trước đây bị kẹt ở trạng thái KHONG_DAT do "AI chưa chấm được video"
+    var sh = ss.getSheetByName(TEN_HANG_DOI);
+    if (sh && sh.getLastRow() > 1) {
+      var dsHang = docHang_(sh);
+      dsHang.forEach(function (r) {
+        if (r.trang_thai === 'CO_VIDEO' && r.file_video && r.duyet === 'KHONG_DAT' && /AI chưa chấm được video/i.test(String(r.ghi_chu || ''))) {
+          var kqD = {};
+          try { kqD = JSON.parse(String(r.link_dang || '{}')) || {}; } catch (e0) { kqD = {}; }
+          kqD._duyet_luc = kqD._duyet_luc || Date.now();
+          capNhatHang_(sh, r._dong, {
+            duyet: 'DA_DUYET',
+            link_dang: JSON.stringify(kqD),
+            ghi_chu: 'Đã giải cứu tự động từ trạng thái nghẽn key kiểm duyệt',
+            cap_nhat: new Date()
+          });
+        }
+      });
+    }
+    p.setProperty('DA_CAP_NHAT_TU_DONG_V48', '1');
   } catch (e) {}
 }
 

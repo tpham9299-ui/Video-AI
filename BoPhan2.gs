@@ -221,6 +221,7 @@ function kichHoatDungVideo_(r) {
   var kb = JSON.parse(DriveApp.getFileById(r.file_kich_ban).getBlob().getDataAsString());
   delete kb.cach_giai;                       // lời giải chi tiết không cần cho việc dựng, bớt dung lượng
   kb.id = r.id;
+  if (!kb.mon && (r.mon || /^HH/i.test(String(r.id || '')))) kb.mon = r.mon || 'HINH_HOC';
   // kiểm duyệt bố cục trên GitHub: 'chan' = lỗi nặng thì dừng, gửi về để tự sửa kịch bản; sau 2 lần sửa vẫn lỗi -> 'bao' (dựng rồi AI chấm)
   var kdCu = {};
   try { kdCu = JSON.parse(String(r.ai_kiem_tra || '{}')); } catch (e0) {}

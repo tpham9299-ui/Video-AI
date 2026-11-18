@@ -15,9 +15,9 @@
   "kieuPhuDe": "hop",
   "mauPhuDe": "#FF6B2C",
   "thuongHieu": {
-    "ten": "Toán Thầy Trí",
+    "ten": "Tư duy Xác suất",
     "khauHieu": "Giải toán tư duy ngắn gọn",
-    "handle": "@toanthaytri",
+    "handle": "@tuduyxacsuat",
     "markNuoc": true,
     "outroGiay": 5,
     "outroTuTao": true,

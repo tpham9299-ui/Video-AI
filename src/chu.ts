@@ -5,12 +5,26 @@
 //    đọc được: \frac{1}{3} -> 1/3, x^2 -> x², u_{1} -> u₁, \cdot -> ·, \le -> ≤, \overline{A} -> Ā, \binom{5}{2} -> C(5,2).
 //  - catChu: cắt chuỗi dài ở ranh giới từ (không cắt giữa lệnh TeX làm KaTeX báo lỗi đỏ).
 
+export function suaChinhTaTiengViet(s: string): string {
+  return s
+    .replace(/\bxác\s+xuất\b/gi, (m) => (m[0] === 'X' ? 'Xác suất' : 'xác suất'))
+    .replace(/\bgiả\s+thuyết\b/gi, (m) => (m[0] === 'G' ? 'Giả thiết' : 'giả thiết'))
+    .replace(/\bhình\s+chiêu\b/gi, (m) => (m[0] === 'H' ? 'Hình chiếu' : 'hình chiếu'))
+    .replace(/\bđường\s+thăng\b/gi, (m) => (m[0] === 'Đ' ? 'Đường thẳng' : 'đường thẳng'))
+    .replace(/\btỉ\s+xuất\b/gi, (m) => (m[0] === 'T' ? 'Tỉ suất' : 'tỉ suất'))
+    .replace(/\bnăng\s+xuất\b/gi, (m) => (m[0] === 'N' ? 'Năng suất' : 'năng suất'))
+    .replace(/\bkhối\s+chốp\b/gi, (m) => (m[0] === 'K' ? 'Khối chóp' : 'khối chóp'))
+    .replace(/\bhình\s+chốp\b/gi, (m) => (m[0] === 'H' ? 'Hình chóp' : 'hình chóp'))
+    .replace(/\bvuông\s+gốc\b/gi, (m) => (m[0] === 'V' ? 'Vuông góc' : 'vuông góc'))
+    .replace(/\btổng\s+số\s+kết\s+quả\b/gi, (m) => (m[0] === 'T' ? 'Tổng số kết quả' : 'tổng số kết quả'));
+}
+
 export function chuanTex(s: unknown): string {
   let x = typeof s === 'string' ? s : s === null || s === undefined ? '' : String(s);
   x = x.replace(/\\\\(?=[a-zA-Z])/g, '\\');            // "\\frac" (thừa một lớp escape) -> "\frac"
   x = x.replace(/\\\(|\\\)|\\\[|\\\]/g, ' ');           // \( ... \) \[ ... \]
   x = x.replace(/\$\$?/g, ' ');                         // $...$ / $$...$$
-  return x.replace(/\s+/g, ' ').trim();
+  return suaChinhTaTiengViet(x.replace(/\s+/g, ' ').trim());
 }
 
 export const coTex = (s: string) => /\\[a-zA-Z]+|[_^]\{|[A-Za-z0-9)][_^][A-Za-z0-9]/.test(s);
@@ -71,6 +85,7 @@ export function catChu(s: string, max: number): string {
 // Công thức trộn chữ tiếng Việt ("Cửa bạn chọn: \frac{1}{3}"): KaTeX coi chữ là biến (nghiêng, mất khoảng trắng) -> bọc các cụm
 // chữ thường vào \text{...}. Không đụng lệnh TeX, biến 1 chữ cái, tên hàm (sin, cos, log, max...) và phần đã nằm trong \text{}.
 const HAM = new Set(['sin', 'cos', 'tan', 'cot', 'log', 'ln', 'lg', 'max', 'min', 'lim', 'exp', 'det', 'mod', 'gcd']);
+const TU_VIET_NGAN = new Set(['bi', 'ca', 'xe', 'so', 'la', 'co', 'ta', 'ra', 'va', 'do', 'tu', 'de', 'cm', 'dm', 'mm', 'km', 'kg', 'ha']);
 export function bocChuViet(tex: string): string {
   // dấu % trong KaTeX là CHÚ THÍCH (mất cả phần sau: "Lãi 1,2%/tháng" thành "Lãi 1,2") -> phải viết \%
   // \frac thường thu tử/mẫu còn ~70% -> nhỏ hơn hẳn số bên cạnh: dùng \dfrac để tử/mẫu CÙNG CỠ với số thường
@@ -89,7 +104,7 @@ export function bocChuViet(tex: string): string {
     i = m.index + w.length;
     if (w[0] === '\\') { ra += w; continue; }
     const tu = w.split(/ +/);
-    const laChu = /[À-ỹ]/.test(w) || tu.length > 1 || (w.length >= 3 && !HAM.has(w));
+    const laChu = /[À-ỹ]/.test(w) || tu.length > 1 || TU_VIET_NGAN.has(w.toLowerCase()) || (w.length >= 3 && !HAM.has(w) && !/^[A-Z]{3,4}$/.test(w));
     if (!laChu) { ra += w; continue; }
     // giữ khoảng trắng hai bên cụm chữ (KaTeX bỏ khoảng trắng ngoài \text)
     const truoc = /\s$/.test(x.slice(0, m.index)) && ra.trim() ? ' ' : '';
