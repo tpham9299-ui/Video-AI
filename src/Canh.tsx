@@ -122,7 +122,7 @@ export const Canh: React.FC<{
   const giayCanh = (canh.soFrame - (canh.leadFrame || 0)) / fps;
   const nhipToiDa = nDong > 1 ? (giayCanh - treCT - 0.9 - 1.2) / (nDong - 1) : 1.8;
   const nhipDong = Math.max(0.6, Math.min(1.8, Math.max(1.1, (giayAm - 0.3) / Math.max(1, nDong)), nhipToiDa));
-  const thoiDiemDong = dungBienDoi || dungCongDon ? canh.noiDung.map((_, i) => treCT + i * nhipDong) : batDong.map((b) => Math.max(b, coHinh ? treCT : 0));
+  const thoiDiemDong = canh.mocCongThuc ?? (dungBienDoi || dungCongDon ? canh.noiDung.map((_, i) => treCT + i * nhipDong) : batDong.map((b) => Math.max(b, coHinh ? treCT : 0)));
   const hang = dungCongDon ? nhomHang(canh.noiDung) : [];
   const khungCuoi = /dap_an|ket_qua/i.test(canh.loai);
   const coNote = canh.chuThich.length > 0;
@@ -306,7 +306,7 @@ export const Canh: React.FC<{
             background: coHinh ? 'linear-gradient(165deg, rgba(10,24,26,0.84), rgba(6,14,18,0.9))' : khungCuoi ? 'radial-gradient(ellipse at 50% 50%, rgba(59,242,154,0.12), rgba(6,14,18,0.62) 76%)' : 'transparent',
             border: coHinh ? `2px solid ${khungCuoi ? 'rgba(59,242,154,0.55)' : `${mauNhan}48`}` : khungCuoi ? '2px solid rgba(59,242,154,0.42)' : 'none',
             boxShadow: coHinh || khungCuoi ? '0 14px 36px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.1)' : 'none',
-            opacity: kep((t - treCT + 0.3) * 3)}}>
+            opacity: kep((t - (canh.mocCongThuc?.[0] ?? treCT) + 0.3) * 3)}}>
             {dungBienDoi ? (
               <BienDoi dong={canh.noiDung} batDong={thoiDiemDong} t={t} co={coCT} maxWidth={920} khungCuoi={khungCuoi} mauGoc={MAU.vang} mauNhay="#FFD27A" />
             ) : dungCongDon ? (

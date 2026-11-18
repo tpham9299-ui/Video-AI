@@ -7,6 +7,7 @@ export type MinhHoa = {loai: string; moTa?: string; duLieu?: unknown};
 export type CanhProps = {
   so: number;
   loai: string;
+  mocCongThuc?: number[];
   noiDung: string[]; // các dòng LaTeX hiện trên màn hình
   minhHoa: MinhHoa;
   audio: string | null; // đường dẫn trong thư mục public/, ví dụ "giong/VT2610-xx_c1.mp3"

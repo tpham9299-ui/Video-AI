@@ -1465,6 +1465,32 @@ def chuan_hoa_hinh_kich_ban(kb):
                 break
 
 
+def moc_cong_thuc(cum, cau, so_dong):
+    """Ước lượng đầu cụm nói theo vị trí từ trong từng đoạn phụ đề đã định thời."""
+    if not isinstance(cum, list) or not cum or len(cum) != so_dong:
+        return None
+    tu, moc = [], []
+    for c in cau:
+        ds = re.findall(r"\w+", c["text"].casefold())
+        for i, w in enumerate(ds):
+            tu.append(w)
+            moc.append(c["bat"] + (c["ket"] - c["bat"]) * i / len(ds))
+    ket_qua = []
+    vi_tri = 0
+    for nhan in cum:
+        ds = re.findall(r"\w+", nhan.casefold()) if isinstance(nhan, str) else []
+        if not ds:
+            return None
+        for i in range(vi_tri, len(tu) - len(ds) + 1):
+            if tu[i:i + len(ds)] == ds:
+                ket_qua.append(round(moc[i], 3))
+                vi_tri = i + len(ds)
+                break
+        else:
+            return None
+    return ket_qua
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("kich_ban")
@@ -1642,10 +1668,14 @@ def main():
             so_frame = max(so_frame, int(round(can * FPS)))
         mh = c.get("minh_hoa") or {}
         noi_dung = [chuan_don_vi(str(x)) for x in (c.get("noi_dung_man_hinh") or []) if str(x).strip()]
+        moc_loi = moc_cong_thuc(c.get("moc_loi"), cau, len(noi_dung))
+        if moc_loi:
+            so_frame = max(so_frame, math.ceil((moc_loi[-1] + 1.5) * FPS))
         canh_props.append({
             "so": so,
             "loai": str(c.get("loai") or ""),
             "noiDung": noi_dung,
+            **({"mocCongThuc": moc_loi} if moc_loi else {}),
             "minhHoa": {
                 "loai": str(mh.get("loai") or "khong"),
                 "moTa": str(mh.get("mo_ta") or ""),

@@ -123,6 +123,8 @@ function taoPromptKichBan_(r, c1, c2) {
     'GÓC NHÌN 3D (tùy chọn): cảnh có hình học/hình tự do được dựng nổi khối 3D; có thể thêm "goc_nhin": ["..."] (1-3 góc, máy đổi góc ở các bước của cảnh) chọn trong: cheo_trai, tren_xuong (nhìn thẳng từ trên khi cần đọc số đo chính xác), cheo_phai, thap_chinh_dien (góc thấp hùng vĩ, hợp hook/đáp án), cao_toan_canh, nghieng_nhe. Hai cảnh liền nhau nên khác góc; không cần thì bỏ trống.\n'
   ];
   var noiCanh = [
+    'Dàn cảnh theo thao tác toán đang được đọc: giữ hình gốc ở vùng trên khi đưa phép tính xuống dưới. Với đối xứng, sáng từng cặp rồi mới lập bảng đếm; với xác suất, giữ bộ thẻ và đưa chính các phần tử đã chọn vào tập hợp; với thể tích, giữ cùng màu cho phần chất lỏng khi chuyển sang mặt cắt. Chỉ chọn cách diễn đạt phù hợp dữ kiện của đề. Mỗi nhịp chỉ nhấn một thay đổi. ',
+    'Với mỗi dòng noi_dung_man_hinh, ghi một phần tử của mảng moc_loi theo đúng thứ tự. Mỗi phần tử là cụm 3–6 từ liên tiếp chép nguyên văn từ loi_thoai ở chỗ bắt đầu giải thích dòng đó. Chọn cụm riêng biệt theo thứ tự đọc. Ví dụ lời “Lấy diện tích đáy nhân với chiều cao” có thể dùng mốc “Lấy diện tích đáy”. ',
     'MẠCH NỐI GIỮA CÁC CẢNH (rất quan trọng, người nghe ghét cảm giác "chuyển slide"): cả video phải nghe như MỘT bài nói liền mạch của một người thật, không phải các đoạn rời ghép lại. ',
     'PHONG CÁCH LỜI THOẠI GIẢNG DẠY (BẮT BUỘC ĐỂ GIỌNG ĐỌC VUI VẺ, CÓ NHẤN NHÁ SƯ PHẠM): ' +
       'Nhập vai người thầy giáo trẻ dạy toán siêu vui tính, nhiệt huyết, hóm hỉnh và truyền cảm hứng. ' +
@@ -241,7 +243,7 @@ function taoPromptKichBan_(r, c1, c2) {
     '4. ĐỦ BƯỚC VÀ CẢNH: 15-20 cảnh chi tiết; cảnh cuối cùng bắt buộc là "bai_hoc"; mảng "bai_hoc_rut_ra" đủ 3 câu ngắn bổ ích.\n' +
     '5. TRẢ VỀ JSON HỢP LỆ DUY NHẤT: Bắt đầu bằng { và kết thúc bằng }, không kèm lời giải thích bên ngoài.\n\n',
     'Trả về MỘT đối tượng JSON: {"tieu_de":"tiêu đề đăng video < 60 ký tự, gây tò mò","chu_de_ngan":"chủ đề 2-5 từ (hiện góc trên)","bai_hoc_rut_ra":["","",""],"video_tiep_theo":"","hook_ung_vien":["","",""],"hook":"(đúng lời thoại cảnh 1)","hook_chu":"","tieu_de_bia":"","hook_kieu":"","nhan_manh":[""],"y_tuong_chinh":"","de_cho":["",""],"can_tim":"","du_kien":["",""],"hashtag":["#toanhoc","' + (tt ? '#toanthucte' : '#xacsuat') + '"],"dap_an_cuoi":"' + r.dap_an + '",',
-    '"canh":[{"so":1,"loai":"mo_dau|de_bai|mo_hinh_hoa|y_do|thu_nho|bay|nhac_lai|diem_chot|tinh_toan|dap_an|kiem_tra|lien_he_thuc_te|bai_hoc","tieu_de_canh":"","tu_khoa":"","nhan":"","giu_san_khau":false,"giong_doc":"","loi_thoai":"","noi_dung_man_hinh":[],"trinh_bay":"cong_don|bien_doi|xep","chu_thich":[],"minh_hoa":{"loai":"san_khau","mo_ta":"","du_lieu":{"goc_nhin":null,"vat":[],"hanh_dong":[]}}}]}'
+    '"canh":[{"so":1,"loai":"mo_dau|de_bai|mo_hinh_hoa|y_do|thu_nho|bay|nhac_lai|diem_chot|tinh_toan|dap_an|kiem_tra|lien_he_thuc_te|bai_hoc","tieu_de_canh":"","tu_khoa":"","nhan":"","giu_san_khau":false,"giong_doc":"","loi_thoai":"","noi_dung_man_hinh":[],"moc_loi":[],"trinh_bay":"cong_don|bien_doi|xep","chu_thich":[],"minh_hoa":{"loai":"san_khau","mo_ta":"","du_lieu":{"goc_nhin":null,"vat":[],"hanh_dong":[]}}}]}'
   ];
 
   return [].concat(

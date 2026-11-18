@@ -1549,6 +1549,10 @@ class VideoHinh(Scene):
                 if nc:
                     jc = min(nc - 1, int(j * nc / len(mob)))
                     moc = float(cau[jc].get("bat", 0)) + (0.12 if j else 0)
+                    moc_loi = cp.get("mocCongThuc") or []
+                    if len(moc_loi) == len(mob):
+                        moc = moc_loi[j]
+                        jc = next((k for k, c in enumerate(cau) if c["bat"] <= moc < c["ket"]), jc)
                     c_text_j = str(cau[jc].get("text") or cau[jc].get("chu") or cau[jc].get("cau") or "")
                 else:
                     moc = self.da + j * max(0.8, t_con / max(1, len(mob)))

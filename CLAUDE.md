@@ -809,3 +809,9 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
 - Manim thử góc chính diện và các góc lệch ±6°, ±12° cho hình không gian. Điểm phạt tăng khi một đỉnh nằm sát cạnh khác hoặc một cạnh bị co ngắn. Góc được chọn dùng cho ảnh bìa và phần dựng hình. Cảnh thứ hai có thể xoay thêm 6° rồi trở về khi đủ thời gian.
 - Remotion giảm biên độ rung ngang của vật từ 16 xuống tối đa 3 pixel, làm mềm nhịp nhấn máy quay. Với cảnh thật có bước đo, vật minh họa hoặc lớp nền mặt bằng mờ dần trong 1,1 giây khi nét đo xuất hiện. Đường đo, nhãn và hình minh họa dùng chung hệ tọa độ.
 - Kiểm tra trên cảnh cột cờ bằng giọng giả lập và bài thử chiếu một đỉnh trùng cạnh khác. Mẫu cột cờ dùng minh họa dựng từ dữ liệu của đề.
+
+#### Lần 33 (v66) — Dàn hình theo dữ kiện và lời giảng
+
+- Bộ viết kịch bản chọn hành động gắn với phép toán, chẳng hạn ghép cặp đối xứng, chọn thẻ rồi gom nhóm, hoặc giữ màu của lượng nước khi chuyển sang mặt cắt. Hình gốc làm mốc khi công thức xuất hiện.
+- Mỗi dòng công thức có thể mang một cụm lời dẫn trong `moc_loi`. Sau bước tạo giọng, `chuanbi.py` tìm các cụm theo thứ tự trong phụ đề, ước lượng thời điểm theo vị trí từ và ghi `mocCongThuc` (giây từ đầu cảnh). Remotion và Manim dùng chung mốc. Kịch bản thiếu mốc hoặc có cụm không khớp dùng nhịp dựng cũ.
+- Mẫu cột cờ có mốc cho hai cảnh giải tam giác và cộng chiều cao tầm mắt.

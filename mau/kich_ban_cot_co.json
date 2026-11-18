@@ -396,6 +396,7 @@
    "tieu_de_canh": "Góc nâng và cạnh kề: dùng tan",
    "tu_khoa": "tan",
    "loi_thoai": "Trong tam giác vuông, tan góc nâng bằng cạnh đối chia cạnh kề. Cạnh đối là x, cạnh kề là hai mươi mét, nên x bằng hai mươi nhân tan ba mươi lăm độ.",
+   "moc_loi": ["tan góc nâng bằng", "hai mươi nhân tan"],
    "noi_dung_man_hinh": [
     "\\tan 35^\\circ = \\dfrac{x}{20}",
     "x = 20\\tan 35^\\circ"
@@ -487,6 +488,7 @@
    "tieu_de_canh": "Tính x rồi cộng tầm mắt",
    "tu_khoa": "cộng",
    "loi_thoai": "Tan ba mươi lăm độ xấp xỉ không phẩy bảy. Vậy x xấp xỉ mười bốn mét. Cộng thêm tầm mắt một phẩy sáu mét.",
+   "moc_loi": ["Tan ba mươi lăm độ", "Cộng thêm tầm mắt"],
    "noi_dung_man_hinh": [
     "x = 20 \\cdot 0{,}7002 \\approx 14{,}0\\,m",
     "h = x + 1{,}6"
