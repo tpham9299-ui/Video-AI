@@ -826,3 +826,9 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
 
 - Bộ viết kịch bản dùng ba mẫu tham khảo về vật thể quay, suy biểu thức từ hình và so sánh xác suất. Nhánh hình học nhấn quan hệ khối–mặt; nhánh thực tế dẫn từ đường biên và số đo sang biểu thức; nhánh xác suất so sánh trên cùng không gian mẫu.
 - Các chỉ dẫn dùng sân khấu, nhãn, công thức và mốc lời hiện có. Mỗi cách dàn chỉ áp dụng khi phù hợp với bài và lời giải đã kiểm chứng.
+
+#### Lần 36 (v69) — Giữ hình riêng của đề và giảm công việc dựng thừa
+
+- Apps Script vẫn giữ hàng đợi Sheets, trigger, lệnh Zalo và webhook nhận kết quả; tám workflow GitHub thực hiện các công việc được giao. Job ghép chờ đủ các khúc. Với bài hình học, phần chuẩn bị hiện vẫn chờ cả lớp Manim.
+- Kịch bản có thể dựng đường bao riêng bằng đường dẫn, đa giác, cung và đường đo trong một hệ tọa độ. Bước bổ sung cảnh giải thích nhận hình tự do qua bộ kiểm tra nét hiện có; bước chèn bản vẽ dự phòng giữ hình tự do hợp lệ. So sánh cảnh thực tế liên tiếp dùng cùng cấu trúc điểm, vùng, vật và phép đo.
+- Các job dựng ưu tiên cache npm; bước chuẩn bị và ghép chỉ cài rclone khi có cấu hình Drive. Khi kiểm duyệt chặn, bỏ gửi gói, bỏ ma trận dựng kể cả khi thiếu URL webhook.

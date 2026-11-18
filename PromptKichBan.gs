@@ -129,6 +129,7 @@ function taoPromptKichBan_(r, c1, c2) {
       : 'Khi đề so sánh hai biến cố, cho người xem thấy hai kết quả mẫu trên cùng một bộ vật. Đếm từng trường hợp bằng cùng bố cục, giữ màu của mỗi biến cố, rồi mới đặt hai kết quả cạnh nhau. Kiểm tra hai phép đếm dùng đúng không gian mẫu; nếu biến cố giao nhau, chỉ trừ phần đếm trùng khi lời giải yêu cầu.';
   var noiCanh = [
     danHinh,
+    'Nếu thư viện không có đúng vật trong đề, hãy tự dựng đường bao bằng hinh_tu_do: dùng nét svg (d là đường dẫn), da_giac, cung hoặc duong trong cùng khung tọa độ. Lớp đầu vẽ dáng nhận diện; lớp sau tô riêng miền đang xét, đặt đường đo và ký hiệu cùng vị trí qua các cảnh. Lấy tỉ lệ từ dữ kiện đã biết; chỉ ghi nhãn số khi đề hoặc lời giải cung cấp. ',
     'Để nối hình với kết quả, dùng nhãn ngắn ngay cạnh phần đang đo hoặc đếm; giữ nguyên ký hiệu đó trong noi_dung_man_hinh. Khi lời giảng chuyển sang kiểm tra, quay về hình gốc và thay dấu hỏi bằng kết quả có đơn vị nếu có. Dùng vật, hành động và moc_loi đã có. ',
     'Dàn cảnh theo thao tác toán đang được đọc: giữ hình gốc ở vùng trên khi đưa phép tính xuống dưới. Với đối xứng, sáng từng cặp rồi mới lập bảng đếm; với xác suất, giữ bộ thẻ và đưa chính các phần tử đã chọn vào tập hợp; với thể tích, giữ cùng màu cho phần chất lỏng khi chuyển sang mặt cắt. Chỉ chọn cách diễn đạt phù hợp dữ kiện của đề. Mỗi nhịp chỉ nhấn một thay đổi. ',
     'Với mỗi dòng noi_dung_man_hinh, ghi một phần tử của mảng moc_loi theo đúng thứ tự. Mỗi phần tử là cụm 3–6 từ liên tiếp chép nguyên văn từ loi_thoai ở chỗ bắt đầu giải thích dòng đó. Chọn cụm riêng biệt theo thứ tự đọc. Ví dụ lời “Lấy diện tích đáy nhân với chiều cao” có thể dùng mốc “Lấy diện tích đáy”. ',
@@ -534,16 +535,22 @@ function chenBanVe_(kb, banVe) {
       if (c.giu_san_khau) { c.giu_san_khau = false; sua.push('cảnh ' + c.so + ': bản vẽ thực tế không giữ vật cảnh trước'); }
       var duHienTai = c.minh_hoa && c.minh_hoa.du_lieu;
       var ctHienTai = duHienTai && Array.isArray(duHienTai.vat) ? duHienTai.vat.filter(function (v) { return v && v.loai === 'canh_that'; })[0] : null;
-      var dv = JSON.stringify(ctHienTai ? { do: ctHienTai.do, vat: ctHienTai.vat } : {});
+      var dv = JSON.stringify(ctHienTai ? { do: ctHienTai.do, vat: ctHienTai.vat, vung: ctHienTai.vung, diem: ctHienTai.diem, nhin: ctHienTai.nhin } : {});
       if (ctHienTai && (dv === dauVanTruoc || (Array.isArray(ctHienTai.do) && ctHienTai.do.length >= 2 && ctHienTai.do.every(function (d) { return !d || (d.buoc || 2) === (ctHienTai.do[0].buoc || 2); })))) {
         var tc = tuyChinhBanVeTheoCanh_(ctHienTai, c, kb);
         var vatKhac = Array.isArray(duHienTai.vat) ? duHienTai.vat.filter(function (v) { return v && v.loai !== 'canh_that'; }) : [];
         c.minh_hoa.du_lieu = Object.assign({}, duHienTai, tc, { vat: (tc.vat || []).concat(vatKhac) });
         sua.push('cảnh ' + c.so + ': biến đổi khung hình canh_that khớp từng câu thoại');
       }
-      dauVanTruoc = JSON.stringify(c.minh_hoa && c.minh_hoa.du_lieu && c.minh_hoa.du_lieu.vat || {});
+      dauVanTruoc = dv;
       return;
     }
+    dauVanTruoc = '';
+    var duCanh = c.minh_hoa && c.minh_hoa.du_lieu;
+    var coHinhRieng = duCanh && Array.isArray(duCanh.vat) && duCanh.vat.some(function (v) {
+      return v && v.loai === 'hinh_tu_do' && !kiemTraHinhTuDo_(v, 'bản vẽ theo đề');
+    });
+    if (coHinhRieng) return;
     if (loai === 'mo_dau' && chiNguoiChu(c)) {
       var tc0 = tuyChinhBanVeTheoCanh_(banVe, c, kb);
       c.minh_hoa = { loai: 'san_khau', mo_ta: 'Cận cảnh tình huống thực tế của đề gây tò mò theo câu móc', du_lieu: tc0 };
@@ -583,6 +590,10 @@ function canBoSungGiaiThich_(kb) {
 function hinhTuMau_(m, kb, id) {
   m = m || {};
   var kieu = String(m.kieu || 'the');
+  if (kieu === 'hinh_tu_do') {
+    var ve = { id: id, loai: kieu, x: 50, y: 50, buoc: 1, khung: m.khung || [100, 100], hinh: m.hinh };
+    if (!kiemTraHinhTuDo_(ve, id)) return { vat: [ve], hanh_dong: [] };
+  }
   if (kieu === 'ban_ve' && kb.ban_ve) {
     var bv = JSON.parse(JSON.stringify(kb.ban_ve));
     bv.id = id; bv.x = 50; bv.y = 50; bv.buoc = 1;
@@ -615,7 +626,7 @@ function boSungGiaiThichCongThuc_(kb, r, sn) {
     '2) "dai_luong" - Ý NGHĨA TỪNG ĐẠI LƯỢNG: mỗi chữ trong công thức ứng với cái gì TRONG BÀI NÀY (chỉ lên hình: cạnh nào, tổng nào), đơn vị gì.\n' +
     '3) "van_dung" - KHI NÀO DÙNG: dấu hiệu nhận ra bài dùng được công thức này, điều kiện (dấu "=" xảy ra khi nào), sau này gặp dạng nào thì dùng.\n' +
     'Mỗi cảnh: "tieu_de_canh" (≤ 6 từ), "loi_thoai" (lời giảng tự nhiên, 22-40 từ, xưng "mình"/"các bạn", không chào), "noi_dung_man_hinh": 1-2 dòng LaTeX, mỗi dòng ≤ 24 ký tự hiển thị (tách dài ở dấu =),\n' +
-    '"hinh": chọn MỘT mẫu: {"kieu":"the","tieu_de":"...","dong":["2-4 dòng chữ ngắn ≤ 40 ký tự, viết thường, không LaTeX"]}' +
+    '"hinh": tự dựng minh họa khi cần: {"kieu":"hinh_tu_do","khung":[100,100],"hinh":[...]} với 2–12 nét. Dùng duong/da_giac có diem:[[x,y],...], tron có tam và r, svg có d; dùng mau, to và buoc để lần lượt dựng vật, phần đang xét và đường đo. Có thể chọn dạng khác: {"kieu":"the","tieu_de":"...","dong":["2-4 dòng chữ ngắn ≤ 40 ký tự, viết thường, không LaTeX"]}' +
     (kb.ban_ve ? ' | {"kieu":"ban_ve","nhan_canh":["nhãn cạnh ngang","nhãn cạnh dọc"],"ghi_chu":["1 ghi chú ngắn"]} (vẽ lại cảnh thực tế của đề, gắn tên đại lượng lên đúng chỗ - nên dùng cho cảnh 2)' : '') +
     ' | {"kieu":"do_thi","ham":"biểu thức theo x kiểu máy tính","x_tu":0,"x_den":..,"diem_x":điểm cần chỉ,"truc_y":"S","tieu_de":"..."}.\n' +
     'Trả JSON: {"canh":[{"muc":"tu_dau","tieu_de_canh":"","loi_thoai":"","noi_dung_man_hinh":[],"hinh":{}},{"muc":"dai_luong",...},{"muc":"van_dung",...}]}';
@@ -629,7 +640,7 @@ function boSungGiaiThichCongThuc_(kb, r, sn) {
     var du = hinhTuMau_(c.hinh, kb, 'gt' + (i + 1));
     return { loai: 'nhac_lai', tieu_de_canh: String(c.tieu_de_canh || NHAN[muc]).slice(0, 40), nhan: NHAN[muc], tu_khoa: '', giu_san_khau: false, giong_doc: 'chậm rãi, rõ ràng',
       loi_thoai: String(c.loi_thoai).replace(/\s+/g, ' ').trim(), noi_dung_man_hinh: (Array.isArray(c.noi_dung_man_hinh) ? c.noi_dung_man_hinh : []).map(String).slice(0, 2), trinh_bay: 'xep', chu_thich: [],
-      minh_hoa: { loai: 'san_khau', mo_ta: 'Giải thích công thức - ' + NHAN[muc].toLowerCase() + ': ' + String(c.tieu_de_canh || '').slice(0, 60) + '. Hình: ' + (du.vat[0].loai === 'canh_that' ? 'vẽ lại cảnh thực tế của đề, gắn tên đại lượng lên cạnh' : du.vat[0].loai === 'do_thi' ? 'đồ thị, chấm điểm cần chú ý' : 'thẻ ghi nhớ, sáng lần lượt từng dòng'), du_lieu: du },
+      minh_hoa: { loai: 'san_khau', mo_ta: 'Giải thích công thức - ' + NHAN[muc].toLowerCase() + ': ' + String(c.tieu_de_canh || '').slice(0, 60) + '. Hình: ' + (du.vat[0].loai === 'canh_that' ? 'vẽ lại cảnh thực tế của đề, gắn tên đại lượng lên cạnh' : du.vat[0].loai === 'do_thi' ? 'đồ thị, chấm điểm cần chú ý' : du.vat[0].loai === 'hinh_tu_do' ? 'đường bao và các lớp hình dựng theo dữ kiện' : 'thẻ ghi nhớ, sáng lần lượt từng dòng'), du_lieu: du },
       thoi_luong_giay: 7 };
   });
   // chèn: thay cảnh giải thích cũ; nếu không có thì đặt ngay trước bước tính đầu tiên

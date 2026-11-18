@@ -111,11 +111,11 @@ jobs:
           fi
           ( pip install -q "edge-tts>=7.2" gTTS numpy ) > /tmp/pip.log 2>&1 &
           PIP=$!
-          if ! command -v rclone >/dev/null 2>&1; then
+          if [ -n "$RCLONE_CONF" ] && ! command -v rclone >/dev/null 2>&1; then
             ( curl -fsSL https://rclone.org/install.sh | sudo bash ) > /tmp/rclone.log 2>&1 &
             RC=$!
           fi
-          npm ci
+          npm ci --prefer-offline --no-audit --no-fund
           if [ -n "${APT:-}" ]; then wait $APT || { cat /tmp/apt.log; exit 1; }; fi
           wait $PIP || { cat /tmp/pip.log; exit 1; }
           if [ -n "${RC:-}" ]; then wait $RC || { cat /tmp/rclone.log; exit 1; }; fi
@@ -382,6 +382,7 @@ jobs:
           PY
 
       - name: Gửi gói dựng cho các máy
+        if: steps.kd.outputs.chan != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: goi
@@ -392,6 +393,7 @@ jobs:
           compression-level: 1
 
       - name: Gửi thông tin cho máy ghép
+        if: steps.kd.outputs.chan != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: thong-tin
@@ -404,6 +406,7 @@ jobs:
           if-no-files-found: ignore
 
   dung_khuc:
+    if: needs.chuan_bi.outputs.chan != 'true'
     needs: chuan_bi
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -436,7 +439,7 @@ jobs:
             ( sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends $THIEU ) > /tmp/apt.log 2>&1 &
             APT=$!
           fi
-          npm ci
+          npm ci --prefer-offline --no-audit --no-fund
           if [ -n "${APT:-}" ]; then wait $APT || { cat /tmp/apt.log; exit 1; }; fi
 
       - name: Lưu sẵn trình duyệt dựng hình
@@ -498,11 +501,11 @@ jobs:
         run: |
           ( pip install -q pillow ) > /tmp/pip.log 2>&1 &
           PIP=$!
-          if ! command -v rclone >/dev/null 2>&1; then
+          if [ -n "$RCLONE_CONF" ] && ! command -v rclone >/dev/null 2>&1; then
             ( curl -fsSL https://rclone.org/install.sh | sudo bash ) > /tmp/rclone.log 2>&1 &
             RC=$!
           fi
-          npm ci
+          npm ci --prefer-offline --no-audit --no-fund
           wait $PIP || { cat /tmp/pip.log; exit 1; }
           if [ -n "${RC:-}" ]; then wait $RC || { cat /tmp/rclone.log; exit 1; }; fi
 
