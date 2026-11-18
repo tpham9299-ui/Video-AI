@@ -64,7 +64,7 @@ export const NenCucQuang: React.FC<{nhom?: number; chuyen?: number; chiLop?: boo
   return (
     <AbsoluteFill style={{background: chiLop ? 'transparent' : 'linear-gradient(180deg, #071318 0%, #0a1620 50%, #070d12 100%)', overflow: 'hidden', opacity: chiLop ? 0.7 : 1}}>
       {blob.map((b, i) => (
-        <div key={i} style={{position: 'absolute', left: b.x * W - b.r, top: b.y * H - b.r, width: b.r * 2, height: b.r * 2, borderRadius: '50%', background: `radial-gradient(circle, ${mau[i]} 0%, rgba(0,0,0,0) 65%)`, opacity: chiLop ? 0.28 : 0.42, mixBlendMode: 'screen', filter: 'blur(40px)'}} />
+        <div key={i} style={{position: 'absolute', left: b.x * W - b.r, top: b.y * H - b.r, width: b.r * 2, height: b.r * 2, borderRadius: '50%', background: `radial-gradient(circle, ${mau[i]} 0%, rgba(0,0,0,0) 68%)`, opacity: chiLop ? 0.24 : 0.36, mixBlendMode: 'screen'}} />
       ))}
       <svg width={W} height={H} style={{position: 'absolute', inset: 0}}>
         <defs>
@@ -75,7 +75,8 @@ export const NenCucQuang: React.FC<{nhom?: number; chuyen?: number; chiLop?: boo
         </defs>
         {duongSan}
         <rect x={0} y={chanTroi - 2} width={W} height={160} fill="url(#sanMo)" opacity={0.6} />
-        <line x1={0} x2={W} y1={chanTroi} y2={chanTroi} stroke={mau[0]} strokeOpacity={0.22} strokeWidth={2} style={{filter: `drop-shadow(0 0 8px ${mau[0]})`}} />
+        <line x1={0} x2={W} y1={chanTroi} y2={chanTroi} stroke={mau[0]} strokeOpacity={0.1} strokeWidth={10} />
+        <line x1={0} x2={W} y1={chanTroi} y2={chanTroi} stroke={mau[0]} strokeOpacity={0.28} strokeWidth={2} />
       </svg>
       {GLYPH.map((g, i) => {
         const tocDo = [0.35, 0.7, 1.15][g.tang];
@@ -83,19 +84,12 @@ export const NenCucQuang: React.FC<{nhom?: number; chuyen?: number; chiLop?: boo
         const x = g.x + Math.sin(t * 0.3 + g.pha) * 30 + f * g.vx * 0.3;
         const co = [46, 70, 104][g.tang];
         return (
-          <div key={i} style={{position: 'absolute', left: ((x % W) + W) % W, top: y, fontFamily: '"VietDam", "DejaVu Sans", sans-serif', fontWeight: 900, fontSize: co, color: '#fff', opacity: [0.07, 0.11, 0.15][g.tang], transform: `rotate(${g.xoay + Math.sin(t * 0.4 + g.pha) * 10}deg)`, filter: `blur(${[3, 1.2, 0][g.tang]}px)`, textShadow: `0 0 20px ${mau[i % 4]}`}}>
+          <div key={i} style={{position: 'absolute', left: ((x % W) + W) % W, top: y, fontFamily: '"VietDam", "DejaVu Sans", sans-serif', fontWeight: 900, fontSize: co, color: mau[i % 4], opacity: [0.07, 0.11, 0.16][g.tang], transform: `rotate(${g.xoay + Math.sin(t * 0.4 + g.pha) * 10}deg)`}}>
             {g.k}
           </div>
         );
       })}
       <div style={{position: 'absolute', top: -400, bottom: -400, width: 260, left: `${quet * 100}%`, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)', transform: 'rotate(18deg)'}} />
-      {/* hạt mịn như phim */}
-      <svg width={W} height={H} style={{position: 'absolute', inset: 0, opacity: 0.06, mixBlendMode: 'overlay'}}>
-        <filter id="hat">
-          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves={2} seed={f % 8} />
-        </filter>
-        <rect width={W} height={H} filter="url(#hat)" />
-      </svg>
       <div style={{position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 90% 75% at 50% 45%, rgba(0,0,0,0) 50%, rgba(0,0,0,0.65) 100%)'}} />
     </AbsoluteFill>
   );

@@ -20,6 +20,8 @@ import subprocess
 import sys
 import tempfile
 import hashlib
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 CACHE_TTS_DIR = os.environ.get("CACHE_TTS_DIR") or os.path.join(tempfile.gettempdir(), "video_ai_tts_cache")
 try:
@@ -43,6 +45,15 @@ def chay(lenh):
 
 
 def do_thoi_luong(tep):
+    if str(tep).lower().endswith(".wav"):
+        try:
+            import wave
+            with wave.open(tep, "rb") as w:
+                sr = w.getframerate()
+                if sr > 0:
+                    return w.getnframes() / float(sr)
+        except Exception:
+            pass
     out = chay(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", tep])
     return float(out.strip())
 
@@ -165,29 +176,53 @@ def do_tap_am(wav):
     try:
         with wave.open(wav, "rb") as w:
             sr, n, kenh, rong = w.getframerate(), w.getnframes(), w.getnchannels(), w.getsampwidth()
-            if rong != 2:
+            if rong != 2 or n <= 0:
                 return 0.0, 0.0, 0.0
-            a = array.array("h", w.readframes(n))
+            raw = w.readframes(n)
     except Exception as e:
         print("Không đo được tạp âm:", e)
         return 0.0, 0.0, 0.0
-    if kenh > 1:
-        a = a[::kenh]
-    import math
     buoc = max(1, int(sr * 0.25))
-    to = 0
-    vo = sum(1 for x in a if x > 32000 or x < -32000)
-    co_xi = []   # từng khung: to + "xì" (tỉ lệ qua điểm 0 cao)
-    for i in range(0, len(a) - buoc, buoc):
-        k = a[i:i + buoc]
-        nl = sum(x * x for x in k[::4]) / max(1, len(k[::4]))
-        db = 10 * math.log10(nl / (32768.0 ** 2) + 1e-12)
-        xi = False
-        if db > -32:
-            to += 1
-            zcr = sum(1 for j in range(1, len(k), 2) if (k[j - 1] >= 0) != (k[j] >= 0)) / (len(k) / 2.0)
-            xi = zcr > 0.32
-        co_xi.append(xi)
+    try:
+        import numpy as np
+        arr = np.frombuffer(raw, dtype="<i2")
+        if kenh > 1:
+            arr = arr[::kenh]
+        n_mau = len(arr)
+        vo = int(np.count_nonzero((arr > 32000) | (arr < -32000)))
+        m = (n_mau - 1) // buoc if n_mau > buoc else 0
+        if m == 0:
+            return 0.0, vo / float(max(1, n_mau)), 0.0
+        kh = arr[:m * buoc].reshape(m, buoc)
+        k4 = kh[:, ::4].astype(np.float64)
+        nl = np.mean(k4 * k4, axis=1)
+        db = 10.0 * np.log10(nl / (32768.0 ** 2) + 1e-12)
+        sig = kh >= 0
+        zcr = np.count_nonzero(sig[:, :buoc - 1:2] != sig[:, 1:buoc:2], axis=1) / (buoc / 2.0)
+        to_mask = db > -32
+        to = int(np.count_nonzero(to_mask))
+        co_xi = (to_mask & (zcr > 0.32)).tolist()
+        tong = m
+    except ImportError:
+        a = array.array("h")
+        a.frombytes(raw)
+        if kenh > 1:
+            a = a[::kenh]
+        n_mau = len(a)
+        to = 0
+        vo = sum(1 for x in a if x > 32000 or x < -32000)
+        co_xi = []
+        for i in range(0, n_mau - buoc, buoc):
+            k = a[i:i + buoc]
+            nl = sum(x * x for x in k[::4]) / max(1, len(k[::4]))
+            db = 10 * math.log10(nl / (32768.0 ** 2) + 1e-12)
+            xi = False
+            if db > -32:
+                to += 1
+                zcr = sum(1 for j in range(1, len(k), 2) if (k[j - 1] >= 0) != (k[j] >= 0)) / (len(k) / 2.0)
+                xi = zcr > 0.32
+            co_xi.append(xi)
+        tong = max(1, len(co_xi))
     # chỉ tính tiếng xì kéo dài LIÊN TỤC >= 0,5 giây (2 khung): âm "x", "s" của giọng thật chỉ ~0,1-0,2 giây, không bị tính nhầm
     xau, chuoi = 0, 0
     for xi in co_xi + [False]:
@@ -197,8 +232,7 @@ def do_tap_am(wav):
             if chuoi >= 2:
                 xau += chuoi
             chuoi = 0
-    tong = max(1, len(co_xi))
-    return xau / float(max(1, to)), vo / float(max(1, len(a))), to / float(tong)
+    return xau / float(max(1, to)), vo / float(max(1, n_mau)), to / float(max(1, tong))
 
 
 def giong_bi_re(wav, ten=""):
@@ -252,7 +286,9 @@ async def _tts(text, tep, giong, toc_do, cao_do, am_luong="+0%"):
             await c.save(tep)
             if os.path.exists(tep) and os.path.getsize(tep) > 800:
                 try:
-                    shutil.copyfile(tep, f_cache)
+                    tmp_c = f_cache + ".tmp.%d" % os.getpid()
+                    shutil.copyfile(tep, tmp_c)
+                    os.replace(tmp_c, f_cache)
                 except Exception:
                     pass
                 return
@@ -379,9 +415,10 @@ def nghi_canh(canh, i):
 # /tmp/gemini_key_hong.json để báo Zalo người dùng gỡ key.
 KEY_HET_NGAY = set()
 KEY_HONG = set()
+_GEM_LOCK = threading.Lock()
 # NGÂN SÁCH THỜI GIAN cho giọng Gemini (cả video): Gemini chậm / treo thì không được ăn hết 30 phút của máy dựng.
 # Quá hạn -> báo lỗi -> cả video dùng giọng dự phòng (edge-tts), video vẫn ra đúng hạn.
-GIAY_TOI_DA_GEMINI = float(os.environ.get("GIAY_TOI_DA_GEMINI") or 480)
+GIAY_TOI_DA_GEMINI = float(os.environ.get("GIAY_TOI_DA_GEMINI") or 180)
 _BAT_DAU_GEMINI = []
 TEP_KEY_HONG_JSON = os.path.join(tempfile.gettempdir(), "gemini_key_hong.json")
 
@@ -396,21 +433,27 @@ def ds_key_gemini():
 
 
 def ghi_key_hong(k, code, noi):
-    if k in KEY_HONG:
-        return
-    KEY_HONG.add(k)
-    ds_goc = [x for x in re.split(r"[\s,;]+", os.environ.get("GEMINI_KEYS", "")) if x]
-    so = ds_goc.index(k) + 1 if k in ds_goc else 0
-    m = re.search(r'"message":\s*"([^"]{0,160})', noi)
-    ly = "HTTP %d: %s" % (code, re.sub(r"\s+", " ", m.group(1) if m else noi)[:160])
-    try:
-        ds = json.load(open(TEP_KEY_HONG_JSON, encoding="utf8")) if os.path.exists(TEP_KEY_HONG_JSON) else []
-        ma = k[:6] + "_" + k[-4:]
-        if not any(x.get("dau") == ma for x in ds):
-            ds.append({"so": so, "dau": ma, "ly_do": ly})
-        json.dump(ds, open(TEP_KEY_HONG_JSON, "w", encoding="utf8"))
-    except Exception:
-        pass
+    with _GEM_LOCK:
+        if k in KEY_HONG:
+            return
+        KEY_HONG.add(k)
+        ds_goc = [x for x in re.split(r"[\s,;]+", os.environ.get("GEMINI_KEYS", "")) if x]
+        so = ds_goc.index(k) + 1 if k in ds_goc else 0
+        m = re.search(r'"message":\s*"([^"]{0,160})', noi)
+        ly = "HTTP %d: %s" % (code, re.sub(r"\s+", " ", m.group(1) if m else noi)[:160])
+        try:
+            if os.path.exists(TEP_KEY_HONG_JSON):
+                with open(TEP_KEY_HONG_JSON, encoding="utf8") as f:
+                    ds = json.load(f)
+            else:
+                ds = []
+            ma = k[:6] + "_" + k[-4:]
+            if not any(x.get("dau") == ma for x in ds):
+                ds.append({"so": so, "dau": ma, "ly_do": ly})
+            with open(TEP_KEY_HONG_JSON, "w", encoding="utf8") as f:
+                json.dump(ds, f)
+        except Exception:
+            pass
     print("KEY_HONG: key thứ %s (%s) lỗi thật: %s -> bỏ qua, sẽ báo Zalo" % (so or "?", k[:6] + "_" + k[-4:], ly))
 
 
@@ -442,37 +485,48 @@ def gemini_tts(text, tep_wav, giong, model, phong_cach, dung_cache=True):
             if m_s and m_s not in ds_model:
                 ds_model.append(m_s)
     loi = None
-    if not _BAT_DAU_GEMINI:
-        _BAT_DAU_GEMINI.append(time.time())
+    with _GEM_LOCK:
+        if not _BAT_DAU_GEMINI:
+            _BAT_DAU_GEMINI.append(time.time())
+        t0 = _BAT_DAU_GEMINI[0]
 
     def con_lai():
-        return GIAY_TOI_DA_GEMINI - (time.time() - _BAT_DAU_GEMINI[0])
+        return GIAY_TOI_DA_GEMINI - (time.time() - t0)
+
+    rot = int(hashlib.md5(text.encode("utf8")).hexdigest()[:4], 16)
     for md in ds_model:
         url = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent" % md
         chuyen_model = False
         for vong in range(3):
-            dung = [k for k in keys if k not in KEY_HONG and (md + "|" + k) not in KEY_HET_NGAY and k not in KEY_HET_NGAY]
+            with _GEM_LOCK:
+                dung = [k for k in keys if k not in KEY_HONG and (md + "|" + k) not in KEY_HET_NGAY and k not in KEY_HET_NGAY]
             if not dung:
                 break
+            if len(dung) > 1:
+                r_idx = (rot + vong) % len(dung)
+                dung = dung[r_idx:] + dung[:r_idx]
             cho_min = 0
             for key in dung:
                 req = urllib.request.Request(url, data=json.dumps(than).encode("utf8"), method="POST",
                                              headers={"Content-Type": "application/json", "x-goog-api-key": key})
-                if con_lai() < 15:
+                if con_lai() < 12:
                     raise RuntimeError("Gemini TTS quá %d giây (chậm/treo) -> dùng giọng dự phòng" % GIAY_TOI_DA_GEMINI)
                 try:
-                    with urllib.request.urlopen(req, timeout=max(15, min(120, con_lai()))) as r:
+                    with urllib.request.urlopen(req, timeout=max(12, min(45, con_lai()))) as r:
                         d = json.loads(r.read().decode("utf8"))
                     phan = d["candidates"][0]["content"]["parts"]
                     b64 = next(p["inlineData"]["data"] for p in phan if "inlineData" in p)
-                    pcm = tep_wav + ".pcm"
+                    pcm = tep_wav + ".%d.pcm" % threading.get_ident()
                     with open(pcm, "wb") as f:
                         f.write(base64.b64decode(b64))
                     chay(["ffmpeg", "-y", "-loglevel", "error", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", pcm, tep_wav])
-                    os.remove(pcm)
+                    if os.path.exists(pcm):
+                        os.remove(pcm)
                     try:
                         if not giong_bi_re(tep_wav, "cache_check"):
-                            shutil.copyfile(tep_wav, f_cache)
+                            tmp_c = f_cache + ".tmp.%d" % threading.get_ident()
+                            shutil.copyfile(tep_wav, tmp_c)
+                            os.replace(tmp_c, f_cache)
                     except Exception:
                         pass
                     return
@@ -484,16 +538,18 @@ def gemini_tts(text, tep_wav, giong, model, phong_cach, dung_cache=True):
                         chuyen_model = True
                         break
                     if e.code == 429 and re.search(r"PerDay|per day|daily", noi, re.I):
-                        KEY_HET_NGAY.add(md + "|" + key)   # hết hạn mức NGÀY cho model này: sang key kế
+                        with _GEM_LOCK:
+                            KEY_HET_NGAY.add(md + "|" + key)   # hết hạn mức NGÀY cho model này: sang key kế
                         print("Gemini TTS: key %s… hết hạn mức ngày cho %s, chuyển key/model khác" % (key[:6], md))
                         continue
                     if e.code == 401 or (e.code in (400, 403) and re.search(r"API_KEY_INVALID|API key not valid|API key expired|SERVICE_DISABLED|has not been used|is disabled|suspended|PERMISSION_DENIED|billing", noi, re.I)):
-                        KEY_HONG.add(key)
+                        with _GEM_LOCK:
+                            KEY_HONG.add(key)
                         print("Gemini TTS: key %s bị model giọng từ chối (HTTP %d), bỏ key này cho giọng đọc" % (key[:6] + "_" + key[-4:], e.code))
                         continue
                     if e.code in (429, 500, 503):
                         m = re.search(r'"retryDelay":\s*"(\d+)', noi)
-                        cho = min(60, int(m.group(1)) + 2) if m else 10 * (vong + 1)
+                        cho = min(45, int(m.group(1)) + 2) if m else 8 * (vong + 1)
                         cho_min = min(cho_min, cho) if cho_min else cho
                         continue
                     print("Gemini TTS: model %s trả lỗi HTTP %d -> thử đổi model TTS kế tiếp" % (md, e.code))
@@ -503,7 +559,7 @@ def gemini_tts(text, tep_wav, giong, model, phong_cach, dung_cache=True):
                     loi = str(e)
             if chuyen_model or not cho_min:
                 break
-            if con_lai() < cho_min + 20:
+            if con_lai() < cho_min + 15:
                 break
             print("Gemini TTS (%s): mọi key đang bận/giới hạn theo phút, chờ %d giây rồi thử lại" % (md, cho_min))
             time.sleep(cho_min)
@@ -520,32 +576,41 @@ def tao_giong_gemini(canh, thu_muc, args):
         "nhấn mạnh trọng âm rõ ràng vào các từ khóa sau dấu '...' và thể hiện ngữ điệu tự nhiên theo dấu '?', '!'.\nĐoạn cần đọc:"
     )
     tempo = float(args.toc_do_gemini or 1.0)
-    loc = ("atempo=%.3f," % tempo if abs(tempo - 1) > 0.01 else "") + "aresample=44100"
+    loc = ("atempo=%.3f," % tempo if abs(tempo - 1) > 0.01 else "") + "aresample=44100,aformat=channel_layouts=mono"
+    nhiem_vu = []
     for i, c in enumerate(canh):
         loai_c = str(c.get("loai") or "").lower()
         van_goc = chuan_hoa_doc(str(c.get("loi_thoai") or "").strip())
-        if not van_goc:
-            continue
-        van = them_nhan_nha_doc(van_goc, loai_c)
+        if van_goc:
+            nhiem_vu.append((i, them_nhan_nha_doc(van_goc, loai_c)))
+
+    def doc_mot_canh(item):
+        i, van = item
         wav = os.path.join(thu_muc, "gem_%d.wav" % i)
-        try:
-            gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach_chung)
-            tu = max(1, len(van.split()))
-            if tu >= 8 and tu / max(0.1, do_thoi_luong(wav) - 0.4) > 4.6:
-                print("Gemini đọc thiếu chữ ở cảnh %d, đọc lại" % (i + 1))
-                gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach_chung, dung_cache=False)
-            if giong_bi_re(wav, "cảnh %d" % (i + 1)):
-                gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach_chung, dung_cache=False)
-                if giong_bi_re(wav, "cảnh %d (đọc lại)" % (i + 1)):
-                    raise RuntimeError("giọng Gemini cảnh %d vẫn rè sau khi đọc lại" % (i + 1))
-        except Exception as e:
-            print("Cảnh báo: %s -> cả video chuyển sang edge-tts đồng nhất" % str(e)[:200])
+        gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach_chung)
+        tu = max(1, len(van.split()))
+        if tu >= 8 and tu / max(0.1, do_thoi_luong(wav) - 0.4) > 4.6:
+            print("Gemini đọc thiếu chữ ở cảnh %d, đọc lại" % (i + 1))
+            gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach_chung, dung_cache=False)
+        if giong_bi_re(wav, "cảnh %d" % (i + 1)):
+            gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach_chung, dung_cache=False)
+            if giong_bi_re(wav, "cảnh %d (đọc lại)" % (i + 1)):
+                raise RuntimeError("giọng Gemini cảnh %d vẫn rè sau khi đọc lại" % (i + 1))
+        nhanh = os.path.join(thu_muc, "gem_%d.out.wav" % i)
+        chay(["ffmpeg", "-y", "-loglevel", "error", "-i", wav, "-af", loc, "-c:a", "pcm_s16le", nhanh])
+        return i, nhanh
+
+    try:
+        with ThreadPoolExecutor(max_workers=min(4, max(1, len(nhiem_vu)))) as ex:
+            for i, nhanh in ex.map(doc_mot_canh, nhiem_vu):
+                kq[i] = nhanh
+                with _GEM_LOCK:
+                    THONG_KE_GIONG["gemini"] += 1
+    except Exception as e:
+        print("Cảnh báo: %s -> cả video chuyển sang edge-tts đồng nhất" % str(e)[:200])
+        with _GEM_LOCK:
             THONG_KE_GIONG["gemini"] = 0
-            return None
-        nhanh = os.path.join(thu_muc, "gem_%d.mp3" % i)
-        chay(["ffmpeg", "-y", "-loglevel", "error", "-i", wav, "-af", loc, "-c:a", "libmp3lame", "-b:a", "128k", nhanh])
-        kq[i] = nhanh
-        THONG_KE_GIONG["gemini"] += 1
+        return None
     return kq
 
 
@@ -580,6 +645,7 @@ def _doc_khuc_gemini_mot_lan(ds_canh, chi_so_bat_dau, thu_muc, args):
         "Giữa hai đoạn (cách nhau một dòng trống) hãy ngắt nghỉ rõ khoảng 1,2 giây.\nLời giảng:"
     )
     ky_tu = [max(1, len(v)) for v in van]
+    tong_ky_tu = sum(ky_tu)
     for lan in range(2):
         wav = os.path.join(thu_muc, "ca_bai_%d_%d.wav" % (chi_so_bat_dau, lan))
         try:
@@ -588,23 +654,24 @@ def _doc_khuc_gemini_mot_lan(ds_canh, chi_so_bat_dau, thu_muc, args):
             print("Cảnh báo: Gemini đọc liền mạch lỗi: %s" % str(e)[:200])
             return None
         D = do_thoi_luong(wav)
-        if D < sum(ky_tu) / 30.0:
-            print("Gemini đọc liền mạch quá ngắn (%.1f giây cho %d ký tự), đọc lại" % (D, sum(ky_tu)))
+        if D < tong_ky_tu / 30.0:
+            print("Gemini đọc liền mạch quá ngắn (%.1f giây cho %d ký tự), đọc lại" % (D, tong_ky_tu))
             continue
-        if D > sum(ky_tu) / 7.0:
-            print("Gemini đọc liền mạch dài bất thường (%.1f giây cho %d ký tự), đọc lại" % (D, sum(ky_tu)))
+        if D > tong_ky_tu / 7.0:
+            print("Gemini đọc liền mạch dài bất thường (%.1f giây cho %d ký tự), đọc lại" % (D, tong_ky_tu))
             continue
         if giong_bi_re(wav, "cả bài (lần %d)" % (lan + 1)):
             continue
-        # Thử dò khoảng ngừng giữa các cảnh với ngưỡng linh hoạt (0.38s -> 0.26s -> 0.18s)
+        # Dò khoảng ngừng MỘT lần (d=0.14) rồi lọc các ngưỡng 0.38s -> 0.26s -> 0.18s trong Python
+        tat_ca_lang = tim_khoang_lang(wav, nguong_db=-38, toi_thieu=0.14)
         cat, ok = [], False
         for d_min in (0.38, 0.26, 0.18):
-            lang = tim_khoang_lang(wav, nguong_db=-38, toi_thieu=d_min)
+            lang = [(b, e) for b, e in tat_ca_lang if (e - b) >= d_min - 1e-6]
             cat_thu, truoc, ok_thu, tich = [], 0.0, True, 0
             for k in range(len(van) - 1):
                 tich += ky_tu[k]
-                du_kien = D * tich / sum(ky_tu)
-                cua_so = max(2.8, 0.42 * D * ky_tu[k] / sum(ky_tu))
+                du_kien = D * tich / tong_ky_tu
+                cua_so = max(2.8, 0.42 * D * ky_tu[k] / tong_ky_tu)
                 ung = [(b, e) for b, e in lang if (b + e) / 2 > truoc + 0.5 and abs((b + e) / 2 - du_kien) <= cua_so]
                 if not ung:
                     ok_thu = False
@@ -619,33 +686,40 @@ def _doc_khuc_gemini_mot_lan(ds_canh, chi_so_bat_dau, thu_muc, args):
             print("Không tìm đủ khoảng ngừng giữa các cảnh (lần %d), đọc lại" % (lan + 1))
             continue
         moc = [0.0] + [(b + e) / 2 for b, e in cat] + [D]
-        lech = [(moc[k + 1] - moc[k]) / (D * ky_tu[k] / sum(ky_tu)) for k in range(len(van))]
+        lech = [(moc[k + 1] - moc[k]) / (D * ky_tu[k] / tong_ky_tu) for k in range(len(van))]
         if min(lech) < 0.42 or max(lech) > 2.3:
             print("Cắt cảnh không khớp độ dài chữ (tỉ lệ %.2f-%.2f), đọc lại" % (min(lech), max(lech)))
             continue
         kq = {}
         tempo = float(args.toc_do_gemini or 1.0)
-        loc = ("atempo=%.3f," % tempo if abs(tempo - 1) > 0.01 else "") + "aresample=44100"
+        loc = ("atempo=%.3f," % tempo if abs(tempo - 1) > 0.01 else "") + "aresample=44100,aformat=channel_layouts=mono"
         thieu_chu = []
-        for k in range(len(van)):
+
+        def cat_mot_canh(k):
             idx_thuc = chi_so_bat_dau + k
-            ra = os.path.join(thu_muc, "gem_%d.mp3" % idx_thuc)
+            ra = os.path.join(thu_muc, "gem_%d.wav" % idx_thuc)
+            gon = os.path.join(thu_muc, "gem_%d.gon.wav" % idx_thuc)
             chay(["ffmpeg", "-y", "-loglevel", "error", "-ss", "%.3f" % moc[k], "-to", "%.3f" % moc[k + 1], "-i", wav, "-af", loc,
-                  "-c:a", "libmp3lame", "-b:a", "128k", ra])
-            kq[idx_thuc] = ra
-            gon = ra + ".gon.mp3"
+                  "-c:a", "pcm_s16le", ra])
             try:
                 cat_lang(ra, gon)
                 giay = do_thoi_luong(gon)
                 tu = max(1, len(van[k].split()))
-                if tu >= 8 and tu / max(0.1, giay) > 4.6:
-                    thieu_chu.append("cảnh %d: %d từ trong %.1f giây" % (idx_thuc + 1, tu, giay))
+                loi_tu = ("cảnh %d: %d từ trong %.1f giây" % (idx_thuc + 1, tu, giay)) if (tu >= 8 and tu / max(0.1, giay) > 4.6) else None
+                return idx_thuc, gon, loi_tu
             except Exception:
-                pass
+                return idx_thuc, ra, None
+
+        with ThreadPoolExecutor(max_workers=min(4, max(1, len(van)))) as ex:
+            for idx_thuc, tep_kq, loi_tu in ex.map(cat_mot_canh, range(len(van))):
+                kq[idx_thuc] = tep_kq
+                if loi_tu:
+                    thieu_chu.append(loi_tu)
         if thieu_chu:
             print("Gemini đọc THIẾU CHỮ (nhanh bất thường) %s -> đọc lại" % "; ".join(thieu_chu))
             continue
-        THONG_KE_GIONG["gemini"] += len(van)
+        with _GEM_LOCK:
+            THONG_KE_GIONG["gemini"] += len(van)
         print("Gemini đọc liền mạch %d cảnh (từ cảnh %d, %.1f giây)" % (len(van), chi_so_bat_dau + 1, D))
         return kq
     return None
@@ -659,42 +733,39 @@ def tao_giong_gemini_mot_lan(canh, thu_muc, args):
         return _doc_khuc_gemini_mot_lan(canh, 0, thu_muc, args)
     kq_tong = {}
     buoc = 12
-    for bd in range(0, len(canh), buoc):
-        khuc = canh[bd:bd + buoc]
-        kq_khuc = _doc_khuc_gemini_mot_lan(khuc, bd, thu_muc, args)
-        if not kq_khuc:
-            THONG_KE_GIONG["gemini"] = 0
-            return None
-        kq_tong.update(kq_khuc)
+    doan = [(canh[bd:bd + buoc], bd) for bd in range(0, len(canh), buoc)]
+    with ThreadPoolExecutor(max_workers=min(2, len(doan))) as ex:
+        for kq_khuc in ex.map(lambda p: _doc_khuc_gemini_mot_lan(p[0], p[1], thu_muc, args), doan):
+            if not kq_khuc:
+                with _GEM_LOCK:
+                    THONG_KE_GIONG["gemini"] = 0
+                return None
+            kq_tong.update(kq_khuc)
     return kq_tong
 
 
-async def tao_cac_doan(cac_doan, thu_muc, args, loai_canh=""):
-    cac_tep = []
-    sem = asyncio.Semaphore(3)
+async def tao_cac_doan(cac_doan, thu_muc, args, loai_canh="", sem=None):
+    sem = sem or asyncio.Semaphore(6)
 
     async def mot(i, d):
         tep = os.path.join(thu_muc, "d%03d.mp3" % i)
         if args.gia_lap:
-            _gia_lap(d, tep)
+            await asyncio.get_running_loop().run_in_executor(None, _gia_lap, d, tep)
             return tep
         van = them_nhan_nha_doc(chuan_hoa_doc(d), loai_canh)
         toc_do_cau, cao_do_cau, am_luong_cau = thong_so_cao_do_cau(van, loai_canh, i, args.toc_do, args.cao_do)
+        bien_the = [van, van.rstrip(" .,!?") + ".", "À, " + van[0].lower() + van[1:] if van else van]
         async with sem:
-            # edge-tts đôi khi trả "No audio was received" với MỘT câu cụ thể (thường câu ngắn, không dấu kết):
-            # thử lại với chữ hơi khác (thêm dấu chấm / dấu phẩy mở đầu) để cả video giữ MỘT giọng (không bao giờ đổi sang giọng khác)
-            bien_the = [van, van.rstrip(" .,!?") + ".", "À, " + van[0].lower() + van[1:] if van else van]
             for k, v in enumerate(bien_the):
                 try:
                     await _tts(v, tep, args.giong, toc_do_cau, cao_do_cau, am_luong_cau)
-                    THONG_KE_GIONG["edge"] += 1
+                    with _GEM_LOCK:
+                        THONG_KE_GIONG["edge"] += 1
                     if k:
                         print("edge-tts đọc được sau khi chỉnh chữ (cách %d): %s" % (k, v[:60]))
                     return tep
                 except Exception as e:
                     print("Cảnh báo: edge-tts lỗi (%s)%s" % (str(e)[:120], ", thử chỉnh chữ" if k < len(bien_the) - 1 else ", chờ rồi thử lại"))
-        # KHÔNG dùng giọng Google dự phòng (giọng khác hẳn -> video lẫn giọng). Chờ rồi thử lại edge-tts thêm vài vòng;
-        # vẫn lỗi thì dừng dựng (GitHub báo lỗi, hệ thống tự dựng lại sau) thay vì ra video lẫn giọng.
         loi = None
         for lan in range(3):
             await asyncio.sleep(15 * (lan + 1))
@@ -702,7 +773,8 @@ async def tao_cac_doan(cac_doan, thu_muc, args, loai_canh=""):
                 try:
                     async with sem:
                         await _tts(v, tep, args.giong, toc_do_cau, cao_do_cau, am_luong_cau)
-                    THONG_KE_GIONG["edge"] += 1
+                    with _GEM_LOCK:
+                        THONG_KE_GIONG["edge"] += 1
                     print("edge-tts đọc được sau khi chờ thử lại (vòng %d)" % (lan + 1))
                     return tep
                 except Exception as e:
@@ -713,12 +785,25 @@ async def tao_cac_doan(cac_doan, thu_muc, args, loai_canh=""):
     return list(cac_tep)
 
 
+async def tao_tat_ca_doan_edge(nhiem_vu, args):
+    """Tạo giọng edge-tts (hoặc giả lập) SONG SONG cho mọi cảnh trong cùng 1 event loop."""
+    sem = asyncio.Semaphore(6)
+
+    async def chay_canh(muc):
+        i, cac_doan, thu_muc, loai_canh = muc
+        return i, await tao_cac_doan(cac_doan, thu_muc, args, loai_canh, sem=sem)
+
+    kq = await asyncio.gather(*[chay_canh(m) for m in nhiem_vu])
+    return dict(kq)
+
+
 def cat_lang(tep_vao, tep_ra):
     """Cắt khoảng lặng đầu và cuối của một câu (giọng đọc thường chừa ~0.2-0.4 giây mỗi đầu), giữ lại 0.03 giây."""
     loc = ("aresample=44100,aformat=channel_layouts=mono,"
            "silenceremove=start_periods=1:start_threshold=-48dB:start_silence=0.03,areverse,"
            "silenceremove=start_periods=1:start_threshold=-48dB:start_silence=0.03,areverse")
-    chay(["ffmpeg", "-y", "-loglevel", "error", "-i", tep_vao, "-af", loc, "-c:a", "libmp3lame", "-b:a", "96k", tep_ra])
+    codec = ["-c:a", "pcm_s16le"] if str(tep_ra).lower().endswith(".wav") else ["-c:a", "libmp3lame", "-b:a", "96k"]
+    chay(["ffmpeg", "-y", "-loglevel", "error", "-i", tep_vao, "-af", loc] + codec + [tep_ra])
 
 
 def ghep(cac_tep, dich):
@@ -731,7 +816,8 @@ def ghep(cac_tep, dich):
         loc.append("[%d:a]aresample=44100,aformat=channel_layouts=mono,apad=pad_dur=%.3f[a%d]" % (i, GAP, i))
     ghep_ten = "".join("[a%d]" % i for i in range(len(cac_tep)))
     loc.append("%sconcat=n=%d:v=0:a=1[out]" % (ghep_ten, len(cac_tep)))
-    lenh += ["-filter_complex", ";".join(loc), "-map", "[out]", "-c:a", "libmp3lame", "-b:a", "96k", dich]
+    codec = ["-c:a", "pcm_s16le"] if str(dich).lower().endswith(".wav") else ["-c:a", "libmp3lame", "-b:a", "96k"]
+    lenh += ["-filter_complex", ";".join(loc), "-map", "[out]"] + codec + [dich]
     chay(lenh)
 
 
@@ -880,9 +966,11 @@ def tron_nhac_theo_canh(public, id_, canh_kb, canh_props):
         with wave.open(v, "rb") as w:
             sr = w.getframerate()
             du[k] = np.frombuffer(w.readframes(w.getnframes()), dtype="<i2").astype(np.float32) / 32768.0
+    if not canh_props:
+        return None
     gain = {"nhe": 0.85, "chinh": 1.0, "cang": 0.95, "bung": 1.0}
     o = 2.0                                       # một ô nhịp = 2 giây (120 BPM, 4/4)
-    tong_giay = (canh_props[-1]["batDau"] + canh_props[-1]["soFrame"]) / FPS + 1.0
+    tong_giay = (canh_props[-1]["batDau"] + canh_props[-1]["soFrame"]) / FPS + 8.0
     so_o = int(np.ceil(tong_giay / o))
     # tâm trạng của từng ô nhịp: theo cảnh đang chạy ở giữa ô đó (đổi bản ở ranh giới ô gần đầu cảnh nhất)
     moc = [(c["batDau"] / FPS, tam_trang_canh(ckb)) for c, ckb in zip(canh_props, canh_kb)]
@@ -1456,6 +1544,7 @@ def main():
                 giong_gem = tao_giong_gemini_mot_lan(canh, tam_gem, args)
         if not giong_gem:
             print("Gemini không đọc được cả video -> CẢ video dùng một giọng edge-tts đồng nhất 100% có nhấn nhá (không trộn giọng)")
+    chuan_hoa = []
     for i, c in enumerate(canh):
         so = int(c.get("so") or i + 1)
         loi_thoai = sua_chinh_ta_tieng_viet(str(c.get("loi_thoai") or "").strip())
@@ -1468,36 +1557,65 @@ def main():
             noi_dung_tam = [d for x in noi_dung_tam for d in tach_cong_thuc(x)]
         if not loi_thoai:
             sys.exit("Cảnh %d không có lời thoại." % so)
-        cac_doan = tach_cau(loi_thoai)
-        gap = GAP
-        with tempfile.TemporaryDirectory() as tam:
+        chuan_hoa.append((i, so, c, loi_thoai, noi_dung_tam, tach_cau(loi_thoai)))
+
+    am_thanh_kq = {}
+    with tempfile.TemporaryDirectory() as tam_chung:
+        nhiem_vu_edge = []
+        for i, so, c, loi_thoai, noi_dung_tam, cac_doan in chuan_hoa:
+            if not (giong_gem and i in giong_gem):
+                tam_i = os.path.join(tam_chung, "c_%d" % i)
+                os.makedirs(tam_i, exist_ok=True)
+                nhiem_vu_edge.append((i, cac_doan, tam_i, str(c.get("loai") or "")))
+        edge_tho = asyncio.run(tao_tat_ca_doan_edge(nhiem_vu_edge, args)) if nhiem_vu_edge else {}
+
+        def xu_ly_am_canh(muc):
+            i, so, c, loi_thoai, noi_dung_tam, cac_doan = muc
+            tam_i = os.path.join(tam_chung, "am_%d" % i)
+            os.makedirs(tam_i, exist_ok=True)
             ten = "%s_c%d.mp3" % (id_an_toan, so)
+            tam_wav = os.path.join(tam_i, "tam_%d.wav" % i)
+            dich_mp3 = os.path.join(thu_muc_giong, ten)
             if giong_gem and i in giong_gem:
                 # Gemini đọc cả cảnh một lần (ngữ điệu liền mạch); mốc từng câu chia theo số ký tự
-                gon = os.path.join(tam, "g.mp3")
-                cat_lang(giong_gem[i], gon)
+                nguon_gem = giong_gem[i]
+                if str(nguon_gem).endswith(".gon.wav"):
+                    gon = nguon_gem
+                else:
+                    gon = os.path.join(tam_i, "g.wav")
+                    cat_lang(nguon_gem, gon)
                 tong = do_thoi_luong(gon)
                 ky_tu = [max(1, len(d)) for d in cac_doan]
                 do_dai = [tong * k / sum(ky_tu) for k in ky_tu]
-                shutil.copyfile(gon, os.path.join(thu_muc_giong, "tam_" + ten))
-                gap = 0
+                gap_c = 0
+                vao_loc = gon
             else:
-                cac_tep_tho = asyncio.run(tao_cac_doan(cac_doan, tam, args, str(c.get("loai") or "")))
+                cac_tep_tho = edge_tho[i]
                 cac_tep = []
                 for k, tho in enumerate(cac_tep_tho):
-                    gon = os.path.join(tam, "g%03d.mp3" % k)
+                    gon = os.path.join(tam_i, "g%03d.wav" % k)
                     cat_lang(tho, gon)
                     cac_tep.append(gon)
                 do_dai = [do_thoi_luong(t) for t in cac_tep]
-                ghep(cac_tep, os.path.join(thu_muc_giong, "tam_" + ten))
+                ghep(cac_tep, tam_wav)
+                gap_c = GAP
+                vao_loc = tam_wav
             # Chuẩn hóa độ lớn giọng (-15 LUFS) nhưng giữ nguyên dải động tự nhiên (LRA=13, ratio=1.6, attack=25ms)
             # để bảo toàn trọng âm nhấn nhá của giọng đọc (tránh nén bẹp âm lượng làm giọng bị ngang)
-            chay(["ffmpeg", "-y", "-loglevel", "error", "-i", os.path.join(thu_muc_giong, "tam_" + ten), "-af",
+            chay(["ffmpeg", "-y", "-loglevel", "error", "-i", vao_loc, "-af",
                   "highpass=f=75,treble=g=1.8:f=3600,acompressor=threshold=-14dB:ratio=1.6:attack=25:release=180,loudnorm=I=-15:TP=-1.2:LRA=13",
-                  "-ar", "44100", "-c:a", "libmp3lame", "-b:a", "128k", os.path.join(thu_muc_giong, ten)])
-            os.remove(os.path.join(thu_muc_giong, "tam_" + ten))
-        tong_am = do_thoi_luong(os.path.join(thu_muc_giong, ten))
+                  "-ar", "44100", "-c:a", "libmp3lame", "-b:a", "128k", dich_mp3])
+            tong_am = do_thoi_luong(dich_mp3)
+            return ten, do_dai, tong_am, gap_c
 
+        with ThreadPoolExecutor(max_workers=min(4, max(1, len(chuan_hoa)))) as ex:
+            for item, kq_am in zip(chuan_hoa, ex.map(xu_ly_am_canh, chuan_hoa)):
+                am_thanh_kq[item[0]] = kq_am
+
+    shutil.rmtree(tam_gem, ignore_errors=True)
+
+    for i, so, c, loi_thoai, noi_dung_tam, cac_doan in chuan_hoa:
+        ten, do_dai, tong_am, gap = am_thanh_kq[i]
         lead_c, tail_c = nghi_canh(canh, i)
         cau, t = [], lead_c
         for d, dd in zip(cac_doan, do_dai):

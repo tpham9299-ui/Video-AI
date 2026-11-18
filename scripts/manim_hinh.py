@@ -27,6 +27,7 @@ import os
 import re
 import shutil
 import sys
+import tempfile
 
 import numpy as np
 from manim import (DOWN, UP, Arc, Circle, Circumscribe, Create, DashedLine, Dot, FadeIn, FadeOut,
@@ -1506,12 +1507,17 @@ class VideoHinh(Scene):
                 cao = max(0.4, y_ct - CT_DUOI - 0.45)   # luôn dương (cao âm sẽ lật ngược công thức)
                 if g.height > cao:
                     g.scale_to_fit_height(cao)
-                nen_ct = RoundedRectangle(width=CT_RONG + 0.3, height=g.height + 0.46, corner_radius=0.22, stroke_color=NHAN,
-                                          stroke_width=2.2, stroke_opacity=0.55, fill_color=NEN_THE, fill_opacity=0.72)
+                nen_ct = RoundedRectangle(width=CT_RONG + 0.3, height=g.height + 0.46, corner_radius=0.22, stroke_color=VANG if dap_an else NHAN,
+                                          stroke_width=2.5 if dap_an else 2.2, stroke_opacity=0.68, fill_color=NEN_THE, fill_opacity=0.80)
                 nen_ct.move_to([0, y_ct - 0.05 - nen_ct.height / 2, 0])
+                vien_sang = Line(
+                    nen_ct.get_top() + np.array([-(CT_RONG * 0.42), 0.0, 0.0]),
+                    nen_ct.get_top() + np.array([CT_RONG * 0.42, 0.0, 0.0]),
+                    stroke_color=VANG if dap_an else NHAN, stroke_width=3.2, stroke_opacity=0.85,
+                )
                 g.move_to(nen_ct)
-                self.choi(FadeIn(nen_ct), run_time=0.28)
-                cu.add(nen_ct)
+                self.choi(FadeIn(nen_ct), FadeIn(vien_sang), run_time=0.28)
+                cu.add(nen_ct, vien_sang)
             t_con = D - self.da - (1.4 if dap_an else 0.4)
             nc = len(cau)
             for j, m in enumerate(mob):
@@ -1582,6 +1588,15 @@ class VideoHinh(Scene):
         mo = self.mo
         s = chuan_tex(dong_goc)
         anim = []
+        da_dat = [m.get_center()[:2] for m in self.nhan_diem.values()] + [
+            m.get_center()[:2] for k, m in self.hinh.items() if isinstance(k, tuple) and k[0] == "so"
+        ]
+
+        def chon_vi_tri_thoang(cac_diem_3d):
+            if not da_dat:
+                return cac_diem_3d[0]
+            return max(cac_diem_3d, key=lambda p: min(float(np.linalg.norm(p[:2] - q)) for q in da_dat))
+
         for m in RE_SO_GOC.finditer(s):
             a, o, b, v = m.groups()
             if not all(ten_chuan(x) in self.P for x in (a, o, b)):
@@ -1593,9 +1608,11 @@ class VideoHinh(Scene):
             A, O, B = (self.P[ten_chuan(x)] for x in (a, o, b))
             u = (A - O) / max(1e-6, np.linalg.norm(A - O)) + (B - O) / max(1e-6, np.linalg.norm(B - O))
             u = u / max(1e-6, np.linalg.norm(u))
-            nhan = tao_cong_thuc(v + r"^\circ", 30).set_color(mo.mau.get(("goc", gk), VANG)).move_to(O + u * 0.85)
+            pos = chon_vi_tri_thoang([O + u * r_ for r_ in (0.85, 1.12, 0.65)])
+            nhan = tao_cong_thuc(v + r"^\circ", 30).set_color(mo.mau.get(("goc", gk), VANG)).move_to(pos)
             self.hinh[khoa] = nhan
             self.tren_man.add(nhan)
+            da_dat.append(pos[:2])
             anim.append(FadeIn(nhan, scale=1.4))
         for m in RE_SO_DOAN.finditer(s):
             a, b, v = m.groups()
@@ -1610,9 +1627,12 @@ class VideoHinh(Scene):
             ph = ph / max(1e-6, np.linalg.norm(ph))
             if np.dot((A + B) / 2 - self.tam, ph) < 0:
                 ph = -ph
-            nhan = tao_cong_thuc(v, 30).set_color(mo.mau.get(("doan", d), VANG)).move_to((A + B) / 2 + ph * 0.38)
+            giua = (A + B) / 2
+            pos = chon_vi_tri_thoang([giua + ph * 0.42, giua - ph * 0.42, giua + ph * 0.68])
+            nhan = tao_cong_thuc(v, 30).set_color(mo.mau.get(("doan", d), VANG)).move_to(pos)
             self.hinh[khoa] = nhan
             self.tren_man.add(nhan)
+            da_dat.append(pos[:2])
             anim.append(FadeIn(nhan, scale=1.4))
         return anim
 
@@ -1676,8 +1696,10 @@ def main():
     ap.add_argument("ra", nargs="?", default="out")
     ap.add_argument("--public", default="public")
     a = ap.parse_args()
-    props = json.load(open(a.props, encoding="utf8"))
-    kb = json.load(open(a.kich_ban, encoding="utf8"))
+    with open(a.props, encoding="utf8") as f:
+        props = json.load(f)
+    with open(a.kich_ban, encoding="utf8") as f:
+        kb = json.load(f)
     nap_phong(a.public, str((props.get("phongCach") or {}).get("kieuToan") or "dam"))
     mo = MoHinh(props, kb)
     if len(mo.diem) < 2:
@@ -1688,8 +1710,10 @@ def main():
     thap = os.environ.get("MANIM_CHAT_LUONG") == "thap"
     rong, cao = (540, 960) if thap else (1080, 1920)
     tam = os.path.abspath(os.path.join(a.ra, "_manim"))
+    tex_cache = os.path.abspath(os.environ.get("MANIM_TEX_DIR") or os.path.join(tempfile.gettempdir(), "manim_tex_cache"))
+    os.makedirs(tex_cache, exist_ok=True)
     cfg = {"pixel_width": rong, "pixel_height": cao, "frame_width": W, "frame_height": H, "frame_rate": props.get("fps", 30),
-           "media_dir": tam, "disable_caching": True, "verbosity": "WARNING", "progress_bar": "none", "transparent": True}
+           "media_dir": tam, "tex_dir": tex_cache, "disable_caching": True, "verbosity": "WARNING", "progress_bar": "none", "transparent": True}
     print("Màu đại lượng:", {"%s %s" % (k[0], "".join(map(str, k[1]))): v for k, v in mo.mau.items()})
     # hình cho ảnh bìa (PNG trong suốt) -> public/manim/bia.png, AnhBia của Remotion đặt vào ô hình
     with tempconfig(dict(cfg, save_last_frame=True, write_to_movie=False, output_file="bia")):
@@ -1715,7 +1739,8 @@ def main():
     props["manimCanhBao"] = sorted(sc.canh_bao)
     for cb in sorted(sc.canh_bao):
         print("Cảnh báo Manim:", cb)
-    json.dump(props, open(a.props, "w", encoding="utf8"), ensure_ascii=False)
+    with open(a.props, "w", encoding="utf8") as f:
+        json.dump(props, f, ensure_ascii=False)
     print("Xong:", ra, "| %d mốc tiếng" % len(sc.su_kien))
 
 

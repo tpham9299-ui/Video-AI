@@ -22,7 +22,7 @@ const chuCai = (th: ThuongHieuProps) => {
 
 export const LogoTron: React.FC<{th: ThuongHieuProps; co: number; goc?: number; sang?: number}> = ({th, co, goc = 0, sang = 0}) => (
   <div style={{position: 'relative', width: co, height: co, flexShrink: 0}}>
-    <div style={{position: 'absolute', inset: -co * 0.08, borderRadius: '50%', background: `conic-gradient(from ${goc}deg, ${XANH}, ${CAM}, ${XANH}, transparent 70%, ${XANH})`, filter: `blur(${1 + sang * 3}px)`, opacity: 0.95}} />
+    <div style={{position: 'absolute', inset: -co * 0.08, borderRadius: '50%', background: `conic-gradient(from ${goc}deg, ${XANH}, ${CAM}, ${XANH}, transparent 70%, ${XANH})`, opacity: 0.92}} />
     <div style={{position: 'absolute', inset: 0, borderRadius: '50%', background: '#071513', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 ${12 + 24 * sang}px ${XANH}`}}>
       {th.logo ? (
         <Img src={staticFile(th.logo)} style={{width: '86%', height: '86%', objectFit: 'contain'}} />

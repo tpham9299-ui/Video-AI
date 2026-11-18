@@ -26,13 +26,21 @@ function doKhungHinh(goc: HTMLElement): {loi: LoiKD[]; chu: string[]; so: string
   };
   const anCache = new Map<Element, boolean>();
   const boQua = (el: Element | null): boolean => {
-    if (!el) return false;
-    if (anCache.has(el)) return anCache.get(el)!;
+    const chuaRo: Element[] = [];
+    let cur = el;
     let kq = false;
-    const cs = getComputedStyle(el);
-    if (el.getAttribute('data-kd-bo') === '1' || cs.display === 'none' || cs.visibility === 'hidden') kq = true;
-    else kq = boQua(el.parentElement);
-    anCache.set(el, kq);
+    while (cur && cur !== goc.parentElement) {
+      if (anCache.has(cur)) { kq = anCache.get(cur)!; break; }
+      const cs = getComputedStyle(cur);
+      if (cur.getAttribute('data-kd-bo') === '1' || cs.display === 'none' || cs.visibility === 'hidden') {
+        kq = true;
+        anCache.set(cur, true);
+        break;
+      }
+      chuaRo.push(cur);
+      cur = cur.parentElement;
+    }
+    for (const c of chuaRo) anCache.set(c, kq);
     return kq;
   };
   const doMo = (el: Element | null): number => {
@@ -162,7 +170,7 @@ export const KiemDuyet: React.FC = () => {
       continueRender(h);
     };
     // chờ phông + các hiệu ứng "tự vừa khung" của công thức chạy xong rồi mới đo
-    (document as Document & {fonts?: {ready: Promise<unknown>}}).fonts?.ready.then(() => setTimeout(() => requestAnimationFrame(chay), 120));
+    (document as Document & {fonts?: {ready: Promise<unknown>}}).fonts?.ready.then(() => requestAnimationFrame(() => setTimeout(chay, 20)));
     const du = setTimeout(chay, 4000);
     return () => clearTimeout(du);
   }, [f, h]);

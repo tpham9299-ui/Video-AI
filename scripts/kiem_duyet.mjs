@@ -27,20 +27,27 @@ const lech = props.anhBiaDau ? 1 : 0;   // khung 0 là ảnh bìa
 const inputProps = {...props, kiemDuyet: true};
 const canh = props.canh || [];
 
-// khung mẫu: 55% và 95% mỗi cảnh (đảm bảo tốc độ kiểm duyệt nhanh < 3 phút, vẫn bắt trọn lỗi chữ đè/tràn mép và trạng thái cuối cảnh)
+// khung mẫu: 55% và 95% mỗi cảnh (tái dùng chính khung 95% của các cảnh được chọn cho AI nhìn hình -> giảm một nửa số lần renderStill)
+const chonSet = new Set(
+  canh.map((c, i) => i).filter((i, k, a) => a.length <= 18 || k % Math.ceil(a.length / 18) === 0 || /dap_an|ket_qua/.test(String(canh[i].loai)))
+);
 const mau = [];
 canh.forEach((c, i) => {
-  for (const p of [0.55, 0.95]) mau.push({f: lech + Math.min(props.tongFrame - 1, Math.round(c.batDau + c.soFrame * p)), i});
+  for (const p of [0.55, 0.95]) mau.push({f: lech + Math.min(props.tongFrame - 1, Math.round(c.batDau + c.soFrame * p)), i, isEnd: p === 0.95});
 });
 
 const trinhDuyet = await openBrowser('chrome', {browserExecutable: process.env.TRINH_DUYET || null, chromiumOptions: {gl: 'swangle'}});
 const comp = await selectComposition({serveUrl: path.resolve(bundle), id: 'Video', inputProps, puppeteerInstance: trinhDuyet});
 const tho = [];
+const anhAi = [];
 const tam = fs.mkdtempSync('/tmp/kd-');
 for (const m of mau) {
   let nhan = null;
+  const layAi = m.isEnd && chonSet.has(m.i);
+  const tep = path.join(tam, layAi ? `ai${m.i}.jpeg` : `k${m.f}.jpeg`);
   await renderStill({
-    serveUrl: path.resolve(bundle), composition: comp, inputProps, frame: m.f, output: path.join(tam, `k${m.f}.jpeg`), imageFormat: 'jpeg', jpegQuality: 40, scale: 0.25,
+    serveUrl: path.resolve(bundle), composition: comp, inputProps, frame: m.f, output: tep, imageFormat: 'jpeg',
+    jpegQuality: layAi ? 58 : 40, scale: layAi ? 0.3 : 0.25,
     puppeteerInstance: trinhDuyet,
     onBrowserLog: (l) => {
       const s = String(l.text || '');
@@ -48,18 +55,11 @@ for (const m of mau) {
     },
   });
   if (nhan) tho.push({...nhan, canh: m.i});
-}
-// ẢNH MỌI CẢNH cho AI nhìn (khung 90% mỗi cảnh, lúc hình + công thức đã hiện đủ): AI đối chiếu TỪNG cảnh với đề và đáp án
-const anhAi = [];
-const chonCanh = canh.map((c, i) => i).filter((i, k, a) => a.length <= 18 || k % Math.ceil(a.length / 18) === 0 || /dap_an|ket_qua/.test(String(canh[i].loai)));
-for (const i of chonCanh) {
-  const c = canh[i];
-  const tep = path.join(tam, `ai${i}.jpeg`);
-  await renderStill({serveUrl: path.resolve(bundle), composition: comp, inputProps: props, frame: lech + Math.round(c.batDau + c.soFrame * 0.9), output: tep, imageFormat: 'jpeg', jpegQuality: 62, scale: 0.3, puppeteerInstance: trinhDuyet});
-  anhAi.push({canh: i, ten: `${i + 1} (${c.loai})`, tep});
+  if (layAi) anhAi.push({canh: m.i, ten: `${m.i + 1} (${(canh[m.i] || {}).loai || '?'})`, tep});
 }
 await trinhDuyet.close({silent: true});
 const aiKq = await aiNhinHinh(anhAi).catch((e) => ({chay: false, ly_do: String(e.message || e).slice(0, 160), loi: []}));
+fs.rmSync(tam, {recursive: true, force: true});
 const aiLoi = aiKq.loi || [];
 if (!aiKq.chay) console.log('⚠️ AI NHÌN HÌNH KHÔNG CHẠY ĐƯỢC: ' + (aiKq.ly_do || 'không rõ') + ' -> hình CHƯA được AI đối chiếu với đề');
 
@@ -162,6 +162,7 @@ async function aiNhinHinh(anh) {
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(k)}`, {
           method: 'POST', headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({contents: [{role: 'user', parts}], generationConfig: {temperature: 0.1, responseMimeType: 'application/json'}}),
+          signal: AbortSignal.timeout(45000),
         }).catch((e) => { lyDo = 'lỗi mạng: ' + String(e.message || e).slice(0, 80); return null; });
         if (!res) continue;
         if (!res.ok) {

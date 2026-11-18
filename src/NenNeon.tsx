@@ -39,8 +39,10 @@ export const NenNeon: React.FC<{chiLop?: boolean}> = ({chiLop = false}) => {
         const x = d.x + Math.sin(frame / 60 + d.pha) * 18;
         const nhap = 0.6 + 0.4 * Math.sin(frame / 25 + d.pha);
         const mau = d.cam ? '255,122,47' : '59,242,154';
+        const dKinh = d.rr * (d.nhoe > 4 ? 2.6 : 1.7);
+        const a = d.mo * nhap;
         return (
-          <div key={i} style={{position: 'absolute', left: x, top: y, width: d.rr, height: d.rr, borderRadius: '50%', background: `rgba(${mau},${d.mo * nhap})`, boxShadow: `0 0 ${d.rr * 1.6}px rgba(${mau},${d.mo * nhap})`, filter: `blur(${d.nhoe}px)`}} />
+          <div key={i} style={{position: 'absolute', left: x, top: y, width: dKinh, height: dKinh, borderRadius: '50%', background: `radial-gradient(circle, rgba(${mau},${a}) 0%, rgba(${mau},${(a * 0.35).toFixed(3)}) 48%, transparent 74%)`}} />
         );
       })}
       <div style={{position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 85% 75% at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.6) 100%)'}} />

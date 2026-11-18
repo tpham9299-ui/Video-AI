@@ -873,8 +873,8 @@ export const NhanNeon: React.FC<{chu: string; tuKhoa: string; mau: string; mauNh
   const toan = laToanNhan(chu);
   const dai = chu.replace(/\\[a-zA-Z]+|[{}_^]/g, '').length > 18;
   return (
-    <div style={{transform: xoay ? `rotate(${xoay}deg)` : undefined, border: `2.5px solid ${mau}cc`, borderRadius: 16, background: 'rgba(8,16,22,0.86)', backdropFilter: 'blur(6px)',
-      boxShadow: `0 6px 18px rgba(0,0,0,0.45), 0 0 10px ${mau}55`, padding: `${co * 0.2}px ${co * 0.5}px`,
+    <div style={{transform: xoay ? `rotate(${xoay}deg)` : undefined, border: `2.5px solid ${mau}cc`, borderRadius: 16, background: 'linear-gradient(165deg, rgba(12,24,34,0.94), rgba(6,13,20,0.96))',
+      boxShadow: `0 6px 18px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.12), 0 0 10px ${mau}55`, padding: `${co * 0.2}px ${co * 0.5}px`,
       fontFamily: FONT_DAM, fontWeight: 900, fontSize: co, color: '#fff', textTransform: toan ? 'none' : 'uppercase', whiteSpace: dai ? 'normal' : 'nowrap', maxWidth: dai ? 760 : undefined, textAlign: 'center', lineHeight: 1.15, letterSpacing: 0.5}}>
       {toan ? <Toan tex={texNhan(chu)} size={co * 1.05} color="#ffffff" maxWidth={720} /> : <ChuNhanMau chu={chu} tuKhoa={tuKhoa} mau={mauNhan} />}
     </div>
@@ -1039,8 +1039,8 @@ const DanhSach: Ve = (v, st) => {
         const mauChon = c ? (c.mau === 'xanh_la' ? '#3BF29A' : c.mau === 'do' ? '#FF5C61' : '#FFD54A') : nhan;
         return (
           <div key={k} style={{position: 'relative', display: 'flex', alignItems: 'center', gap: 18, padding: '12px 14px', borderRadius: 16, marginTop: 8, overflow: 'hidden',
-            opacity: kep(a * 2) * (1 - 0.6 * l), transform: `translateX(${(1 - easeOut(a)) * -70}px)`, filter: a < 0.98 ? `blur(${(1 - a) * 6}px)` : undefined,
-            background: 'rgba(255,255,255,0.045)', border: '1px solid rgba(255,255,255,0.07)'}}>
+            opacity: kep(a * 2) * (1 - 0.6 * l), transform: `translateX(${(1 - easeOut(a)) * -70}px)`,
+            background: 'rgba(255,255,255,0.045)', border: '1px solid rgba(255,255,255,0.08)'}}>
             <div style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: `${quet * 100}%`, background: `linear-gradient(90deg, ${mauChon}55, ${mauChon}22)`, borderRadius: 16}} />
             {c ? <div style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, background: mauChon, boxShadow: `0 0 12px ${mauChon}`, opacity: quet}} /> : null}
             <div style={{position: 'relative', flexShrink: 0, width: b.huy, height: b.huy, borderRadius: '50%', border: `3px solid ${c ? mauChon : nhan}`, background: 'rgba(0,0,0,0.35)',

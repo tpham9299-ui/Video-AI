@@ -93,10 +93,8 @@ export const Canh: React.FC<{
   const {fps} = useVideoConfig();
   const t = frame / fps;
 
-  const vao = kep(frame / 9);
   const ketThuc = canh.soFrame + keoDai; // khung hình cuối cùng cảnh này còn hiện (gồm phần hòa vào cảnh sau)
   const ra = interpolate(frame, [ketThuc - 8, ketThuc], [1, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
-  const nhoeVao = (1 - vao) * 12 + (1 - ra) * 10;
 
   const giayAm = canh.cau.length ? canh.cau[canh.cau.length - 1].ket : 3;
   // bài hình học dựng bằng Manim: cảnh chỉ còn phần vỏ chung (tiêu đề, thanh bước, phụ đề, âm thanh); hình + công thức do Manim ghép đè
@@ -246,7 +244,7 @@ export const Canh: React.FC<{
     {/* chuyển cảnh "quét sáng": một vệt sáng màu nhấn chạy ngang khung đúng lúc nội dung lộ ra */}
     {kieuCC === 'quet_sang' && !giuTruoc && frame < 14 ? (
       <div style={{position: 'absolute', top: 0, bottom: 0, left: `${-15 + (frame / 12) * 120}%`, width: 90, transform: 'skewX(-14deg)', pointerEvents: 'none', zIndex: 5,
-        background: `linear-gradient(90deg, transparent, ${mauNhan}55, #ffffffaa, ${mauNhan}55, transparent)`, opacity: Math.min(1, (14 - frame) / 5), filter: 'blur(2px)'}} />
+        background: `linear-gradient(90deg, transparent, ${mauNhan}55, #ffffffaa, ${mauNhan}55, transparent)`, opacity: Math.min(1, (14 - frame) / 5)}} />
     ) : null}
     <div style={{position: 'absolute', inset: 0, fontFamily: FONT, transformOrigin: `540px ${goc_y}px`, transform: moi ? `translate(${may.x}px, ${may.y}px) scale(${may.s})` : undefined}}>
       {/* Sân khấu */}
@@ -303,7 +301,11 @@ export const Canh: React.FC<{
         ) : null}
         {coNote ? <ChuThich dong={canh.chuThich} bd={Math.max(0.6, giayAm * 0.45)} /> : null}
         {hienCongThuc ? (
-          <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: coHinh ? '14px 26px' : 0, borderRadius: 24, background: coHinh ? 'rgba(4,14,13,0.55)' : 'transparent', border: coHinh ? '2px solid rgba(59,242,154,0.25)' : 'none', opacity: kep((t - treCT + 0.3) * 3)}}>
+          <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: coHinh ? '16px 28px' : khungCuoi ? '14px 26px' : 0, borderRadius: 24,
+            background: coHinh ? 'linear-gradient(165deg, rgba(10,24,26,0.84), rgba(6,14,18,0.9))' : khungCuoi ? 'radial-gradient(ellipse at 50% 50%, rgba(59,242,154,0.12), rgba(6,14,18,0.62) 76%)' : 'transparent',
+            border: coHinh ? `2px solid ${khungCuoi ? 'rgba(59,242,154,0.55)' : `${mauNhan}48`}` : khungCuoi ? '2px solid rgba(59,242,154,0.42)' : 'none',
+            boxShadow: coHinh || khungCuoi ? '0 14px 36px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.1)' : 'none',
+            opacity: kep((t - treCT + 0.3) * 3)}}>
             {dungBienDoi ? (
               <BienDoi dong={canh.noiDung} batDong={thoiDiemDong} t={t} co={coCT} maxWidth={920} khungCuoi={khungCuoi} mauGoc={MAU.vang} mauNhay="#FFD27A" />
             ) : dungCongDon ? (
@@ -332,7 +334,7 @@ export const Canh: React.FC<{
       )}
 
       {/* Đầu cảnh: nhãn + tiêu đề (hoặc câu hook ở cảnh 1) */}
-      <div style={{position: 'absolute', left: 40, right: 40, top: moi ? (coHook ? 200 : 250) : Y_DAU, height: Y_SAN - (moi ? (coHook ? 200 : 250) : Y_DAU) - (moi ? 4 : 10), display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: moi ? 'center' : undefined, opacity: ra, filter: nhoeVao > 0.3 ? `blur(${nhoeVao}px)` : undefined}}>
+      <div style={{position: 'absolute', left: 40, right: 40, top: moi ? (coHook ? 200 : 250) : Y_DAU, height: Y_SAN - (moi ? (coHook ? 200 : 250) : Y_DAU) - (moi ? 4 : 10), display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: moi ? 'center' : undefined, opacity: ra}}>
         {moi ? (
           anTieuDe ? null : (
             <VuaKhung maxW={1000} maxH={Y_SAN - (coHook ? 200 : 250) - 8}>

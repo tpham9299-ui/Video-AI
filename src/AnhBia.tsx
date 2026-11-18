@@ -38,12 +38,12 @@ export const AnhBia: React.FC<Props> = (props) => {
   const video = <Video {...props} nhac={null} canh={props.canh.map((c) => ({...c, audio: ''}))} />;   // ảnh tĩnh: bỏ âm thanh
   return (
     <AbsoluteFill style={{background: '#050b0d', fontFamily: FONT_DAM, overflow: 'hidden'}}>
-      {/* nền: chính khung hình đó, phóng to, mờ, tối */}
-      <AbsoluteFill style={{transform: 'scale(1.35)', filter: 'blur(26px) brightness(0.45) saturate(1.3)'}}>{video}</AbsoluteFill>
-      <AbsoluteFill style={{background: `radial-gradient(ellipse at 50% 55%, ${mau}33 0%, transparent 55%), linear-gradient(180deg, rgba(3,8,10,0.92) 0%, rgba(3,8,10,0.35) 32%, rgba(3,8,10,0.35) 70%, rgba(3,8,10,0.95) 100%)`}} />
+      {/* nền studio nổi bật vùng giữa, không dựng lặp Video với blur toàn màn hình */}
+      <AbsoluteFill style={{background: `radial-gradient(ellipse 85% 58% at 50% 54%, ${mau}30 0%, #09171b 55%, #030709 100%)`}} />
+      <AbsoluteFill style={{background: `radial-gradient(circle at 20% 18%, rgba(255,138,61,0.16), transparent 42%), radial-gradient(circle at 82% 84%, ${mau}22, transparent 44%)`}} />
       {/* ô kính chứa hình minh họa thật của đề (vùng sân khấu của video) */}
       <div style={{position: 'absolute', left: 60, right: 60, top: 625, height: 860, borderRadius: 44, overflow: 'hidden', border: `5px solid ${mau}`,
-        boxShadow: `0 0 60px ${mau}88, 0 0 0 10px rgba(255,255,255,0.05), 0 30px 80px rgba(0,0,0,0.7)`, background: '#071113'}}>
+        boxShadow: `0 0 60px ${mau}88, 0 0 0 10px rgba(255,255,255,0.06), 0 30px 80px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.25)`, background: '#071113'}}>
         <div style={{position: 'absolute', left: -60, top: -540, width: 1080, height: 1920}}>{video}</div>
         {/* bài hình học dựng bằng Manim: hình đầy đủ (tô màu đại lượng) do Manim vẽ, đặt đúng vùng nội dung */}
         {props.manimLop && props.anhManimBia ? <Img src={staticFile(props.anhManimBia)} style={{position: 'absolute', left: -60, top: -330, width: 1080, height: 1920}} /> : null}

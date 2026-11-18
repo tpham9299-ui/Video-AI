@@ -23,7 +23,7 @@ export const DuKien: React.FC<{ds: string[]; tu: number; den: number; hud?: stri
           const laToan = /[\\^_=]/.test(d);
           const tex = laToan ? d.split(/\s+/).map((w) => (/[\\^_=0-9]/.test(w) || w.length <= 1 ? w : `\\text{${w}}`)).join('\\ ') : d;
           return (
-            <div key={i} style={{display: 'flex', alignItems: 'center', gap: 8, padding: '4px 14px', borderRadius: 12, background: 'rgba(15,23,42,0.82)', border: `1.5px solid ${mau}66`, opacity: e, filter: e < 0.98 ? `blur(${(1 - e) * 5}px)` : undefined, whiteSpace: 'nowrap'}}>
+            <div key={i} style={{display: 'flex', alignItems: 'center', gap: 8, padding: '5px 15px', borderRadius: 12, background: 'rgba(15,23,42,0.88)', border: `1.5px solid ${mau}70`, boxShadow: '0 4px 12px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08)', opacity: e, transform: `translateY(${(1 - e) * -8}px) scale(${0.92 + 0.08 * e})`, whiteSpace: 'nowrap'}}>
               <span style={{width: 7, height: 7, borderRadius: 4, background: mau, boxShadow: `0 0 8px ${mau}`}} />
               {laToan ? <Toan tex={tex} size={27} color={mau} maxWidth={920} /> : <span style={{fontFamily: FONT_DAM, fontWeight: 800, fontSize: 25, color: mau}}>{texSangChu(d)}</span>}
             </div>

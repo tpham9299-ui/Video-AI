@@ -49,10 +49,10 @@ export const ThanhBuoc: React.FC<{cacBuoc: string[]; hienTai: string; moi: boole
               fontFamily: FONT_DAM, fontWeight: 900, fontSize: tron ? 22 : 25, letterSpacing: 0.5, whiteSpace: 'nowrap',
               width: tron ? 42 : undefined, height: tron ? 42 : undefined, display: 'flex', alignItems: 'center', justifyContent: 'center',
               padding: tron ? 0 : '7px 16px', borderRadius: 30,
-              background: nay ? 'linear-gradient(180deg, #FF9A4D, #F0601A)' : xong ? '#3BF29A' : 'rgba(255,255,255,0.08)',
-              color: nay ? '#fff' : xong ? '#062019' : 'rgba(255,255,255,0.5)',
-              border: nay || xong ? 'none' : '2px solid rgba(255,255,255,0.16)',
-              boxShadow: nay ? '0 4px 0 #9a3a0c, 0 0 22px rgba(255,122,47,0.6)' : xong ? '0 3px 0 #0f7a52' : 'none',
+              background: nay ? 'linear-gradient(180deg, #FF9D52, #EA5B16)' : xong ? 'linear-gradient(180deg, #4AF7A5, #2ED983)' : 'rgba(255,255,255,0.08)',
+              color: nay ? '#fff' : xong ? '#062019' : 'rgba(255,255,255,0.55)',
+              border: nay ? '1.5px solid rgba(255,255,255,0.3)' : xong ? '1.5px solid rgba(255,255,255,0.22)' : '2px solid rgba(255,255,255,0.16)',
+              boxShadow: nay ? '0 4px 0 #9a3a0c, inset 0 1px 0 rgba(255,255,255,0.38), 0 0 22px rgba(255,122,47,0.55)' : xong ? '0 3px 0 #0f7a52, inset 0 1px 0 rgba(255,255,255,0.32)' : 'none',
               transform: nay ? `scale(${1.06 * popOut(a, 2.2)})` : 'none',
             }}>
               {xong ? <span style={{display: 'inline-block', transform: `scale(${popOut(tich, 2.5)})`, marginRight: tron ? 0 : 5}}>✓</span> : null}

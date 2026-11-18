@@ -9,11 +9,13 @@ import os
 import re
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 
 
 def main():
     props_tep, video, ra = sys.argv[1], sys.argv[2], sys.argv[3]
-    p = json.load(open(props_tep, encoding="utf8"))
+    with open(props_tep, encoding="utf8") as fp:
+        p = json.load(fp)
     fps = p.get("fps", 30)
     canh = p.get("canh") or []
     id_ = p.get("id") or os.path.splitext(os.path.basename(video))[0]
@@ -28,12 +30,15 @@ def main():
     except ValueError:
         dai = 1e9
     moc = [min((c["batDau"] + c["soFrame"] * ti) / fps + (1 / fps if p.get("anhBiaDau") else 0), max(0.0, dai - 0.3)) for c, ti in chon]
-    tam = []
-    for k, t in enumerate(moc):
+
+    def chup_mot_khung(item):
+        k, t = item
         f = os.path.join(ra, "_kt%d.jpg" % k)
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-ss", "%.2f" % t, "-i", video, "-frames:v", "1", "-vf", "scale=324:576", f])
-        if os.path.exists(f):
-            tam.append(f)
+        return f if os.path.exists(f) else None
+
+    with ThreadPoolExecutor(max_workers=min(4, max(1, len(moc)))) as ex:
+        tam = [f for f in ex.map(chup_mot_khung, enumerate(moc)) if f]
     if not tam:
         sys.exit("Không lấy được khung hình nào")
     kt = os.path.join(ra, "%s_kt.jpg" % id_)
@@ -52,7 +57,15 @@ def main():
         lenh = ["ffmpeg", "-y", "-loglevel", "error"]
         for f in tam:
             lenh += ["-i", f]
-        lenh += (["-filter_complex", "hstack=inputs=%d" % len(tam)] if len(tam) > 1 else []) + ["-q:v", "4", kt]
+        if len(tam) > 1:
+            cot = min(6, len(tam))
+            hang = (len(tam) + cot - 1) // cot
+            if hang > 1:
+                vi_tri = "|".join("%d_%d" % ((k % cot) * 324, (k // cot) * 576) for k in range(len(tam)))
+                lenh += ["-filter_complex", "xstack=inputs=%d:layout=%s:fill=0x080c0e" % (len(tam), vi_tri)]
+            else:
+                lenh += ["-filter_complex", "hstack=inputs=%d" % len(tam)]
+        lenh += ["-q:v", "4", kt]
         subprocess.run(lenh, check=True)
     for f in tam:
         os.remove(f)

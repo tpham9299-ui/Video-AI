@@ -173,10 +173,9 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
     const ox = v.tuHuong === 'trai' ? -lech : v.tuHuong === 'phai' ? lech : 0;
     const oy = v.tuHuong === 'tren' ? -lech : v.tuHuong === 'duoi' ? lech : 0;
     const nhom = v.soLuong > 1 && ['nguoi', 'the', 'cua', 'banh', 'the_bai', 'xuc_xac', 'dong_xu', 'bieu_tuong'].includes(v.loai);
-    // vật đơn: bật lên + mờ nhòe; vật nhóm: từng phần tử tự bật lần lượt nên khung chỉ hiện mờ dần
+    // vật đơn: bật lên; vật nhóm: từng phần tử tự bật lần lượt nên khung chỉ hiện mờ dần
     const sc = nhom ? 1 : popOut(a);
     const mo = (nhom ? kep(a * 3) : kep(a * 2.2)) * (1 - st.an);
-    const nhoe = (1 - kep(a * 1.6)) * 14 + st.an * 12;
     const sangNhip = st.sang > 0 ? 1 + 0.06 * st.sang : 1;
     const ngang = v.tuHuong === 'trai' || v.tuHuong === 'phai';
     const nhoeHuong = v.tuHuong ? (1 - expoOut(a)) * 34 : 0;
@@ -205,7 +204,6 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
             top: tamVat.sy,
             transform: `translate(-50%, -50%) translate(${ox + st.rung}px, ${oy + loLung}px)${bienVat}${st.nghiengDi ? ` rotate(${st.nghiengDi.toFixed(2)}deg)` : ''} scale(${sc * sangNhip * (1 - 0.3 * st.an) * tiLeSau})`,
             opacity: mo,
-            filter: !v.tuHuong && nhoe > 0.3 ? `blur(${nhoe}px)` : undefined,
           }}
         >
           {ve(v, st, frame, fps)}

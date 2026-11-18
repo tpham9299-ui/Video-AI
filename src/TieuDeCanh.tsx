@@ -37,7 +37,7 @@ export const VienThuoc: React.FC<{chu: string; f: number}> = ({chu, f}) => {
   const a = kep(f / 9);
   const quet = kep((f - 8) / 14);
   return (
-    <div style={{position: 'relative', overflow: 'hidden', transform: `scale(${popOut(a, 2.2)}) rotate(${(1 - a) * -6}deg)`, opacity: kep(a * 2), background: 'linear-gradient(180deg, #FF9A4D, #F0601A)', color: '#fff', fontFamily: FONT_DAM, fontWeight: 900, fontSize: 32, letterSpacing: 1.5, padding: '6px 24px', borderRadius: 30, boxShadow: '0 4px 0 #9a3a0c, 0 0 22px rgba(255,122,47,0.55)'}}>
+    <div style={{position: 'relative', overflow: 'hidden', transform: `scale(${popOut(a, 2.2)}) rotate(${(1 - a) * -6}deg)`, opacity: kep(a * 2), background: 'linear-gradient(180deg, #FF9D52, #EA5B16)', color: '#fff', fontFamily: FONT_DAM, fontWeight: 900, fontSize: 32, letterSpacing: 1.5, padding: '7px 26px', borderRadius: 30, border: '1.5px solid rgba(255,255,255,0.28)', boxShadow: '0 4px 0 #9a3a0c, inset 0 1px 0 rgba(255,255,255,0.4), 0 0 22px rgba(255,122,47,0.5)'}}>
       {chu}
       <span style={{position: 'absolute', top: 0, bottom: 0, width: 40, left: `${-20 + quet * 130}%`, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent)', transform: 'skewX(-20deg)', opacity: quet < 1 ? 1 : 0}} />
     </div>
@@ -69,11 +69,11 @@ export const TieuDeCanh: React.FC<{nhan: string; chu: string; tuKhoa: string; tr
             const p = expoOut(kep((f - 3 - k * 2) / 12));
             return (
               <span key={i} style={{position: 'relative', display: 'inline-block', color: x.khoa ? CAM : '#fff', WebkitTextStroke: vienChu(co), paintOrder: 'stroke fill', textShadow: BONG_CHU,
-                opacity: kep(p * 2), transform: `translateY(${(1 - p) * 70}px) scale(${0.85 + 0.15 * p})`, filter: p < 0.98 ? `blur(${(1 - p) * 8}px)` : undefined}}>
+                opacity: kep(p * 2), transform: `translateY(${(1 - p) * 56}px) scale(${0.86 + 0.14 * p})`}}>
                 {x.w}
                 {x.khoa ? (
                   <svg style={{position: 'absolute', left: -6, right: -6, bottom: -co * 0.2, width: 'calc(100% + 12px)', height: co * 0.32, overflow: 'visible'}} viewBox="0 0 100 20" preserveAspectRatio="none">
-                    <path d="M2 12 C 20 4, 35 18, 52 10 S 85 4, 98 11" stroke={CAM} strokeWidth={5} fill="none" strokeLinecap="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - easeOut(gach)} vectorEffect="non-scaling-stroke" style={{filter: `drop-shadow(0 0 6px ${CAM})`}} />
+                    <path d="M2 12 C 20 4, 35 18, 52 10 S 85 4, 98 11" stroke={CAM} strokeWidth={5} fill="none" strokeLinecap="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - easeOut(gach)} vectorEffect="non-scaling-stroke" />
                   </svg>
                 ) : null}
               </span>

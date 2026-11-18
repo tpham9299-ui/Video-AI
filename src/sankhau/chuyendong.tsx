@@ -7,20 +7,25 @@ import {kep} from './donghieu';
 export const expoOut = (p: number) => (p >= 1 ? 1 : 1 - Math.pow(2, -10 * kep(p)));
 export const expoIn = (p: number) => (p <= 0 ? 0 : Math.pow(2, 10 * kep(p) - 10));
 
-let dem = 0;
 // Bọc nội dung bằng bộ lọc nhòe theo trục x/y (px). Không nhòe thì không tạo bộ lọc.
 export const NhoeHuong: React.FC<{nx: number; ny: number; children: React.ReactNode; style?: React.CSSProperties; kdVat?: string; kdLoai?: string}> = ({nx, ny, children, style, kdVat, kdLoai}) => {
-  const id = React.useMemo(() => `nh${++dem}`, []);
-  const co = nx > 0.4 || ny > 0.4;
+  const uid = React.useId();
+  const id = `nh${uid.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+  const co = nx > 1.2 || ny > 1.2;
+  if (!co) {
+    return (
+      <div data-kd-vat={kdVat} data-kd-loai={kdLoai} style={style}>
+        {children}
+      </div>
+    );
+  }
   return (
-    <div data-kd-vat={kdVat} data-kd-loai={kdLoai} style={{...style, filter: co ? `url(#${id})` : style?.filter}}>
-      {co ? (
-        <svg width={0} height={0} style={{position: 'absolute'}}>
-          <filter id={id} x="-20%" y="-30%" width="140%" height="160%">
-            <feGaussianBlur stdDeviation={`${nx.toFixed(1)} ${ny.toFixed(1)}`} />
-          </filter>
-        </svg>
-      ) : null}
+    <div data-kd-vat={kdVat} data-kd-loai={kdLoai} style={{...style, filter: `url(#${id})`}}>
+      <svg width={0} height={0} style={{position: 'absolute'}}>
+        <filter id={id} x="-20%" y="-30%" width="140%" height="160%">
+          <feGaussianBlur stdDeviation={`${nx.toFixed(1)} ${ny.toFixed(1)}`} />
+        </filter>
+      </svg>
       {children}
     </div>
   );

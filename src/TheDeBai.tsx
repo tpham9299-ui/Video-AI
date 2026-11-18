@@ -42,7 +42,7 @@ function toMauCumTuDe(s: string, chiSoCau: number): React.ReactNode {
 // cỡ chữ + chiều cao ước tính (Canh dùng để chừa chỗ cho thẻ, sân khấu thu gọn tương ứng)
 export function boCucTheDe(d: DeBai, rong = 960, caoToiDa = 640) {
   const dong = (s: string, co: number) => Math.max(1, Math.ceil((texSangChu(s).length * 0.54 * co) / (rong - 110)));
-  const caoVoi = (co: number) => 36 + d.cho.reduce((a, s) => a + dong(s, co) * co * 1.32 + 8, 0) + (d.tim ? 28 + dong(d.tim, co) * co * 1.3 + 32 : 0) + 24;
+  const caoVoi = (co: number) => 78 + d.cho.reduce((a, s) => a + dong(s, co) * co * 1.32 + 8, 0) + (d.tim ? 28 + dong(d.tim, co) * co * 1.3 + 32 : 0) + 24;
   let co = 40;
   while (co > 28 && caoVoi(co) > caoToiDa) co -= 2;
   return {co, cao: Math.min(caoToiDa, caoVoi(co))};
@@ -61,30 +61,37 @@ export const TheDeBai: React.FC<{de: DeBai; moc: number[]; giuNguyen?: boolean; 
   const iTim = de.cho.length;
   const aTim = hien(iTim);
   return (
-    <div style={{width: rong, boxSizing: 'border-box', borderRadius: 26, padding: '22px 30px 24px', background: 'linear-gradient(165deg, rgba(17,24,39,0.92), rgba(10,15,26,0.95))',
-      border: '1.5px solid rgba(148,163,184,0.24)', boxShadow: '0 18px 46px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08)', fontFamily: FONT_DAM, fontWeight: 700, color: '#f1f5f9', opacity: aThe,
+    <div style={{width: rong, boxSizing: 'border-box', borderRadius: 26, padding: '20px 30px 24px', background: 'linear-gradient(165deg, rgba(16,24,39,0.94), rgba(8,13,24,0.97))',
+      border: '1.5px solid rgba(148,163,184,0.28)', boxShadow: '0 20px 50px rgba(0,0,0,0.58), inset 0 1px 0 rgba(255,255,255,0.1)', fontFamily: FONT_DAM, fontWeight: 700, color: '#f1f5f9', opacity: aThe,
       transform: `translateY(${(1 - aThe) * 22}px) scale(${0.97 + 0.03 * aThe})`}}>
+      <div style={{display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12}}>
+        <span style={{width: 10, height: 10, borderRadius: 5, background: '#38bdf8', boxShadow: '0 0 10px #38bdf8'}} />
+        <span style={{fontSize: 25, fontWeight: 900, letterSpacing: 1.5, color: '#94a3b8'}}>DỮ KIỆN ĐỀ BÀI</span>
+        <div style={{flex: 1, height: 1.5, background: 'linear-gradient(90deg, rgba(148,163,184,0.35), transparent)'}} />
+      </div>
       <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>
         {de.cho.map((s, i) => {
           const a = hien(i);
           if (a <= 0.01) return null;
           const dangDoc = !giuNguyen && t >= (moc[i] ?? 0) && t < (moc[i + 1] ?? 999);
+          const mauDot = BANG_MAU_NHAN[i % BANG_MAU_NHAN.length];
           return (
             <div key={i} style={{display: 'flex', alignItems: 'baseline', gap: 12, opacity: kep(a * 1.5), transform: `translateY(${(1 - a) * 14}px)`,
-              filter: a < 0.96 ? `blur(${(1 - a) * 4}px)` : undefined, lineHeight: 1.36, textAlign: 'left',
-              padding: '3px 8px', borderRadius: 12, background: dangDoc ? 'rgba(255,255,255,0.04)' : 'transparent'}}>
-              <span style={{flexShrink: 0, width: 10, height: 10, borderRadius: 5, background: BANG_MAU_NHAN[i % BANG_MAU_NHAN.length], boxShadow: `0 0 8px ${BANG_MAU_NHAN[i % BANG_MAU_NHAN.length]}`}} />
+              lineHeight: 1.36, textAlign: 'left', padding: '4px 10px', borderRadius: 12,
+              borderLeft: dangDoc ? `4px solid ${mauDot}` : '4px solid transparent',
+              background: dangDoc ? 'rgba(255,255,255,0.06)' : 'transparent'}}>
+              <span style={{flexShrink: 0, width: 10, height: 10, borderRadius: 5, background: mauDot, boxShadow: `0 0 8px ${mauDot}`}} />
               <div style={{flex: 1}}>
-                <Dong s={s} co={co} mau="#f1f5f9" mx={rong - 100} idx={i} />
+                <Dong s={s} co={co} mau="#f1f5f9" mx={rong - 106} idx={i} />
               </div>
             </div>
           );
         })}
       </div>
       {de.tim && aTim > 0.01 ? (
-        <div style={{marginTop: 14, borderRadius: 18, padding: '12px 20px', background: 'linear-gradient(90deg, rgba(251,191,36,0.14), rgba(245,158,11,0.08))',
-          border: '1.8px solid rgba(251,191,36,0.65)', opacity: kep(aTim * 1.6),
-          transform: `scale(${popOut(aTim, 1.35)})`, boxShadow: '0 8px 24px rgba(251,191,36,0.18)', textAlign: 'center'}}>
+        <div style={{marginTop: 14, borderRadius: 18, padding: '12px 20px', background: 'linear-gradient(90deg, rgba(251,191,36,0.16), rgba(245,158,11,0.08))',
+          border: '1.8px solid rgba(251,191,36,0.68)', opacity: kep(aTim * 1.6),
+          transform: `scale(${popOut(aTim, 1.35)})`, boxShadow: '0 8px 24px rgba(251,191,36,0.18), inset 0 1px 0 rgba(255,255,255,0.12)', textAlign: 'center'}}>
           <Dong s={de.tim} co={Math.round(co * 1.02)} mau="#fde68a" mx={rong - 90} idx={0} />
         </div>
       ) : null}

@@ -13,6 +13,7 @@ Biến môi trường:
   YouTube:  YT_CLIENT_ID, YT_CLIENT_SECRET, YT_REFRESH_TOKEN (chỉ khi Apps Script đặt YOUTUBE_CACH = github)
 Nền tảng thiếu thông tin đăng nhập được "bỏ qua" (không tính là lỗi, không thử lại).
 """
+import contextlib
 import glob
 import json
 import os
@@ -87,11 +88,12 @@ def dang_facebook(video, meta):
             "upload_phase": "finish", "video_id": vid, "video_state": "PUBLISHED", "description": mo_ta, "access_token": token}, timeout=120), "FB đăng")
         return {"ok": True, "url": "https://www.facebook.com/reel/%s" % vid, "id": vid, "ghi_chu": dat_bia_facebook(vid, token, meta.get("_anh_bia"))}
     # video dài hơn 90 giây: đăng thành video thường của Trang
-    tep = {"source": (os.path.basename(video), open(video, "rb"), "video/mp4")}
-    if meta.get("_anh_bia"):
-        tep["thumb"] = (os.path.basename(meta["_anh_bia"]), open(meta["_anh_bia"], "rb"), "image/jpeg")   # ảnh bìa gửi kèm lúc đăng
-    d = kiem_tra(requests.post("https://graph-video.facebook.com/v21.0/%s/videos" % page,
-                               data={"description": mo_ta, "title": meta.get("tieu_de", "")[:250], "access_token": token}, files=tep, timeout=1200), "FB video")
+    with contextlib.ExitStack() as stack:
+        tep = {"source": (os.path.basename(video), stack.enter_context(open(video, "rb")), "video/mp4")}
+        if meta.get("_anh_bia"):
+            tep["thumb"] = (os.path.basename(meta["_anh_bia"]), stack.enter_context(open(meta["_anh_bia"], "rb")), "image/jpeg")   # ảnh bìa gửi kèm lúc đăng
+        d = kiem_tra(requests.post("https://graph-video.facebook.com/v21.0/%s/videos" % page,
+                                   data={"description": mo_ta, "title": meta.get("tieu_de", "")[:250], "access_token": token}, files=tep, timeout=1200), "FB video")
     return {"ok": True, "url": "https://www.facebook.com/%s/videos/%s" % (page, d.get("id")), "id": d.get("id"),
             "ghi_chu": "video thường (dài hơn 90 giây nên không đăng dạng Reels)" + ("; đã gửi kèm ảnh bìa thiết kế" if meta.get("_anh_bia") else "")}
 

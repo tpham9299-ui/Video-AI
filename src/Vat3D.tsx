@@ -33,14 +33,13 @@ export const Xuc3D: React.FC<{L: number; mat: number; q: number}> = ({L, mat, q}
       <div
         style={{
           position: 'absolute',
-          left: L * 0.1,
-          top: L * 1.02,
-          width: L * 0.9 * (0.5 + 0.5 * bong),
-          height: L * 0.18,
+          left: L * 0.05,
+          top: L * 1.0,
+          width: L * (0.55 + 0.5 * bong),
+          height: L * 0.24,
           borderRadius: '50%',
-          background: 'rgba(0,0,0,0.45)',
-          filter: 'blur(8px)',
-          opacity: 0.4 + 0.5 * bong,
+          background: 'radial-gradient(ellipse, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 72%)',
+          opacity: 0.45 + 0.5 * bong,
         }}
       />
       <div style={{perspective: 1100, width: L, height: L, transform: `translate(${(1 - e) * -120}px, ${dy}px)`}}>
@@ -122,14 +121,13 @@ export const Xu3D: React.FC<{R: number; mat: 'S' | 'N'; q: number}> = ({R, mat, 
       <div
         style={{
           position: 'absolute',
-          left: R * 0.2,
-          top: R * 2.1,
-          width: R * 1.6 * (0.5 + 0.5 * bong),
-          height: R * 0.35,
+          left: R * 0.15,
+          top: R * 2.08,
+          width: R * 1.7 * (0.55 + 0.5 * bong),
+          height: R * 0.42,
           borderRadius: '50%',
-          background: 'rgba(0,0,0,0.45)',
-          filter: 'blur(8px)',
-          opacity: 0.3 + 0.6 * bong,
+          background: 'radial-gradient(ellipse, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 72%)',
+          opacity: 0.35 + 0.6 * bong,
         }}
       />
       <div style={{perspective: 900, width: R * 2, height: R * 2, transform: `translateY(${dy}px)`}}>

@@ -18,7 +18,7 @@ const CAM = '#FF8A3D';
 const Vao: React.FC<{tu: number; children: React.ReactNode; dy?: number; style?: React.CSSProperties}> = ({tu, children, dy = 40, style}) => {
   const f = useCurrentFrame();
   const p = expoOut(kep((f - tu) / 14));
-  return <div style={{...style, opacity: kep(p * 1.6), transform: `translateY(${(1 - p) * dy}px)`, filter: p < 0.97 ? `blur(${(1 - p) * 6}px)` : undefined}}>{children}</div>;
+  return <div style={{...style, opacity: kep(p * 1.6), transform: `translateY(${(1 - p) * dy}px)`}}>{children}</div>;
 };
 
 const NutCTA: React.FC<{icon: React.ReactNode; chu: string; tu: number; chinh?: boolean; bam?: number}> = ({icon, chu, tu, chinh, bam = 0}) => {
@@ -72,8 +72,8 @@ export const ManKetChuyenNghiep: React.FC<{th: ThuongHieuProps; baiHoc: string[]
         <div style={{position: 'absolute', left: 60, right: 60, top: 230, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22}}>
           {dapAn ? (
             <Vao tu={2}>
-              <div style={{display: 'flex', alignItems: 'center', gap: 14, padding: '8px 22px', borderRadius: 30, border: `3px solid ${XANH}`, background: 'rgba(59,242,154,0.1)', boxShadow: `0 0 18px ${XANH}55`}}>
-                <span style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: 26, color: XANH, letterSpacing: 1}}>ĐÁP ÁN</span>
+              <div style={{display: 'flex', alignItems: 'center', gap: 14, padding: '8px 24px', borderRadius: 30, border: `2.5px solid ${XANH}`, background: 'linear-gradient(135deg, rgba(59,242,154,0.18), rgba(16,185,129,0.08))', boxShadow: `0 0 22px ${XANH}44, inset 0 1px 0 rgba(255,255,255,0.2)`}}>
+                <span style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: 26, color: XANH, letterSpacing: 1.2}}>ĐÁP ÁN</span>
                 <Toan tex={dapAn.includes('/') ? `\\frac{${dapAn.split('/')[0]}}{${dapAn.split('/')[1]}}` : dapAn} size={40} color="#fff" />
               </div>
             </Vao>
@@ -83,7 +83,7 @@ export const ManKetChuyenNghiep: React.FC<{th: ThuongHieuProps; baiHoc: string[]
               BÀI HỌC <span style={{color: CAM}}>RÚT RA</span>
             </div>
           </Vao>
-          <div style={{width: '100%', marginTop: 8, borderRadius: 28, background: 'rgba(255,255,255,0.045)', border: '2px solid rgba(255,255,255,0.09)', padding: '26px 26px 14px'}}>
+          <div style={{width: '100%', marginTop: 8, borderRadius: 28, background: 'linear-gradient(165deg, rgba(17,28,36,0.88), rgba(9,16,22,0.94))', border: '1.5px solid rgba(148,163,184,0.24)', boxShadow: '0 22px 50px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08)', padding: '26px 26px 14px'}}>
             {baiHoc.slice(0, 3).map((b, i) => {
               const tu = Math.round(0.7 * fps + i * 0.45 * fps);
               const tich = kep((f - tu - 8) / 8);
@@ -125,7 +125,7 @@ export const ManKetChuyenNghiep: React.FC<{th: ThuongHieuProps; baiHoc: string[]
           <NutCTA icon={<IconChiaSe />} chu="Chia sẻ" tu={tuNut + 8} />
         </div>
         {tiepTheo ? (
-          <Vao tu={tuNut + 14} style={{marginTop: 26, maxWidth: 900, textAlign: 'center'}}>
+          <Vao tu={tuNut + 14} style={{marginTop: 26, maxWidth: 900, textAlign: 'center', padding: '10px 24px', borderRadius: 18, background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(255,138,61,0.34)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)'}}>
             <span style={{fontFamily: FONT_DAM, fontWeight: 800, fontSize: 28, color: CAM}}>VIDEO SAU: </span>
             <span style={{fontFamily: FONT, fontWeight: 700, fontSize: 30, color: '#fff'}}>{tiepTheo}</span>
           </Vao>

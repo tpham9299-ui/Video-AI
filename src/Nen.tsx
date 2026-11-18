@@ -29,7 +29,7 @@ const MotNen: React.FC<{nen: NenProps; dai: number; kieu: number; vao: boolean}>
   const a = vao ? interpolate(f, [0, CHUYEN], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'}) : 1;
   const may = KIEU_MAY[kieu % KIEU_MAY.length](p);
   return (
-    <AbsoluteFill style={{opacity: a, transform: vao ? `scale(${1.08 - 0.08 * a})` : undefined, filter: vao && a < 1 ? `blur(${(1 - a) * 10}px)` : undefined}}>
+    <AbsoluteFill style={{opacity: a, transform: vao ? `scale(${1.08 - 0.08 * a})` : undefined}}>
       {nen.loai === 'video' ? (
         <Loop durationInFrames={Math.max(1, nen.soFrame)}>
           <OffthreadVideo src={staticFile(nen.tep)} muted style={{width: '100%', height: '100%', objectFit: 'cover', transform: may}} />

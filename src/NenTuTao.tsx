@@ -21,11 +21,12 @@ export const NenTuTao: React.FC<{cfg: NenTuTaoProps; nhan: string}> = ({cfg, nha
   let lop: React.ReactNode = null;
   switch (cfg.kieu) {
     case 'cuc_quang': {
-      // các dải cực quang mềm trôi chậm
+      // các dải cực quang mềm trôi chậm (radial nhiều điểm dừng thay blur để dựng nhanh gấp nhiều lần)
       lop = Array.from({length: 4}, (_, i) => {
-        const x = 20 + r() * 60, y = 15 + r() * 70, w = 500 + r() * 500, sp = 0.004 + r() * 0.006;
+        const x = 20 + r() * 60, y = 15 + r() * 70, w = 580 + r() * 520, sp = 0.004 + r() * 0.006;
+        const c = hsl(i % 2 ? h2 : h, 80, 50, 0.22);
         return <div key={i} style={{position: 'absolute', left: `${x}%`, top: `${y}%`, width: w, height: w * 0.55, marginLeft: -w / 2, marginTop: -w * 0.27, borderRadius: '50%',
-          background: `radial-gradient(ellipse, ${hsl(i % 2 ? h2 : h, 80, 50, 0.22)} 0%, transparent 70%)`, filter: 'blur(40px)',
+          background: `radial-gradient(ellipse, ${c} 0%, ${hsl(i % 2 ? h2 : h, 80, 50, 0.08)} 42%, transparent 72%)`,
           transform: `translate(${Math.sin(f * sp + i) * 90}px, ${Math.cos(f * sp * 0.8 + i) * 60}px) rotate(${Math.sin(f * sp + i * 2) * 20}deg)`}} />;
       });
       break;
@@ -33,9 +34,10 @@ export const NenTuTao: React.FC<{cfg: NenTuTaoProps; nhan: string}> = ({cfg, nha
     case 'hat_sang': {
       // đốm sáng bokeh bay lên chậm
       lop = Array.from({length: 26}, (_, i) => {
-        const x = r() * 1080, y0 = r() * 1920, s = 6 + r() * 26, v = 0.3 + r() * 0.8, mo = 0.08 + r() * 0.22;
+        const x = r() * 1080, y0 = r() * 1920, s = 12 + r() * 34, v = 0.3 + r() * 0.8, mo = 0.1 + r() * 0.24;
         const y = ((y0 - f * v) % 2000 + 2000) % 2000 - 40;
-        return <div key={i} style={{position: 'absolute', left: x + Math.sin(f / 60 + i) * 20, top: y, width: s, height: s, borderRadius: '50%', background: hsl(i % 3 ? h : h2, 85, 65, mo), boxShadow: `0 0 ${s * 1.5}px ${hsl(h, 85, 60, mo)}`}} />;
+        const c = hsl(i % 3 ? h : h2, 85, 65, mo);
+        return <div key={i} style={{position: 'absolute', left: x + Math.sin(f / 60 + i) * 20, top: y, width: s, height: s, borderRadius: '50%', background: `radial-gradient(circle, ${c} 0%, ${hsl(i % 3 ? h : h2, 85, 60, mo * 0.35)} 45%, transparent 72%)`}} />;
       });
       break;
     }
