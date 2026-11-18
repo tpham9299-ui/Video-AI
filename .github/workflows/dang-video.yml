@@ -1,0 +1,91 @@
+name: Bộ phận 4 - Đăng video
+run-name: "Đăng ${{ inputs.id }}"
+
+# Workflow chuyên biệt cho Bộ phận 4: CHỈ lo việc đánh số tập, gắn CTA, đặt ảnh bìa và đăng video lên YouTube / Facebook / TikTok.
+# Tách riêng khỏi dung-video.yml để quá trình dựng video và đăng bài độc lập hoàn toàn.
+on:
+  workflow_dispatch:
+    inputs:
+      viec:
+        description: 'dang'
+        type: string
+        default: 'dang'
+      id:
+        description: 'Mã video (Apps Script tự điền)'
+        type: string
+        default: ''
+      dang:
+        description: 'Thông tin đăng bài JSON (Apps Script tự điền)'
+        type: string
+        default: ''
+
+concurrency:
+  group: dang-video-${{ inputs.id || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  dang:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+      APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
+      DUNG_VIDEO_SECRET: ${{ secrets.DUNG_VIDEO_SECRET }}
+      DANG_JSON: ${{ inputs.dang }}
+      ID_VIDEO: ${{ inputs.id }}
+      DRIVE_THU_MUC: ${{ vars.DRIVE_THU_MUC }}
+      DRIVE_BI_MAT: ${{ vars.DRIVE_BI_MAT }}
+      FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+      FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+      TIKTOK_CLIENT_KEY: ${{ secrets.TIKTOK_CLIENT_KEY }}
+      TIKTOK_CLIENT_SECRET: ${{ secrets.TIKTOK_CLIENT_SECRET }}
+      TIKTOK_REFRESH_TOKEN: ${{ secrets.TIKTOK_REFRESH_TOKEN }}
+      TIKTOK_CHE_DO: ${{ vars.TIKTOK_CHE_DO }}
+      TIKTOK_QUYEN: ${{ vars.TIKTOK_QUYEN }}
+      YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+      YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+      YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+      YT_CHE_DO: ${{ vars.YT_CHE_DO }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts/dang_video.py
+            public/fonts
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cài công cụ
+        run: |
+          pip install -q requests
+          command -v ffmpeg >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
+          command -v rclone >/dev/null || (curl -fsSL --retry 3 --retry-delay 5 https://rclone.org/install.sh | sudo bash || (sudo apt-get update -qq && sudo apt-get install -y -qq rclone))
+          mkdir -p ~/.config/rclone
+          printf '%s' "$RCLONE_CONF" > ~/.config/rclone/rclone.conf
+
+      - name: Đăng video
+        id: dang_py
+        run: python3 scripts/dang_video.py
+
+      - name: Báo lỗi đăng về Apps Script nếu workflow gặp sự cố
+        if: ${{ failure() && steps.dang_py.outcome != 'skipped' && env.APPS_SCRIPT_URL != '' && env.ID_VIDEO != '' }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          p = {
+              "token": os.environ["DUNG_VIDEO_SECRET"],
+              "loai": "dang",
+              "id": os.environ["ID_VIDEO"],
+              "ket_qua": {"_github_loi": "GitHub workflow dang-video gap loi: https://github.com/%s/actions/runs/%s" % (os.environ.get("GITHUB_REPOSITORY", ""), os.environ.get("GITHUB_RUN_ID", ""))},
+          }
+          json.dump(p, open("bao_loi_dang.json", "w"))
+          PY
+          for lan in 1 2 3 4; do
+            KQ=$(curl -sS -L -H 'Content-Type: application/json' --data @bao_loi_dang.json "$APPS_SCRIPT_URL" || true)
+            echo "Báo lỗi đăng lần $lan: $KQ"
+            if echo "$KQ" | grep -Eq '"ok" *: *true|KHONG_TIM_THAY'; then exit 0; fi
+            sleep 15
+          done

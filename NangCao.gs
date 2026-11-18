@@ -40,10 +40,46 @@ function caiDatNangCao() {
 
 /* ===================== 1. AI TỰ XEM VIDEO ===================== */
 
-// Gọi từ doPost khi GitHub báo dựng xong và có ảnh kiểm tra: trả true nếu đã giao cho AI xem (chưa gửi bạn duyệt).
+// Gọi từ doPost khi GitHub báo dựng xong và có ảnh kiểm tra: đẩy sang workflow kiem-tra-video.yml trên GitHub;
+// chỉ lùi về trigger Apps Script nếu GitHub chưa bật/lỗi. Trả true nếu đã giao cho AI xem (chưa gửi bạn duyệt).
 function giaoAiXemVideo_(sh, r, d) {
   if (chNC_('TU_KIEM_TRA_VIDEO').toUpperCase() === 'TAT' || !d.anh_kt) return false;
   ghi_(sh, r._row, { duyet: 'AI_XEM' });
+  try {
+    if (typeof guiWorkflowGitHub_ === 'function' && typeof giaiTrenGitHub_ === 'function' && giaiTrenGitHub_()) {
+      var cacheKT = CacheService.getScriptCache();
+      if (!cacheKT.get('GUI_AI_XEM_' + r.id)) {
+        var ch = {};
+        var chSh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_CAU_HINH);
+        if (chSh) chSh.getDataRange().getValues().slice(1).forEach(function (x) {
+          var k = String(x[0] || '').trim();
+          if (k && String(x[1]) !== '' && !/TOKEN|SECRET|KEY|MAT_KHAU|PASS|CLIENT/i.test(k)) ch[k] = String(x[1]).slice(0, 1000);
+        });
+        var sp = null;
+        try { sp = r.san_pham ? JSON.parse(String(r.san_pham)) : null; } catch (eSp) { sp = null; }
+        var qt = [];
+        try { qt = quyTacHocChoKiemDuyet_() || []; } catch (eQt) { qt = []; }
+        var goi = JSON.stringify({
+          hang: {
+            id: r.id, de_bai: String(r.de_bai || '').slice(0, 2000), mo_ta_hinh: String(r.mo_ta_hinh || '').slice(0, 800),
+            dap_an: r.dap_an, dap_an_hien: r.dap_an_hien, anh_kt: String(d.anh_kt || ''), file_kich_ban: String(r.file_kich_ban || ''),
+            file_anh: String(r.file_anh || '')
+          },
+          san_pham: sp ? { ten: sp.ten, gia_ban: sp.gia_ban, anh_id: (sp.anh_id || []).slice(0, 2) } : null,
+          quy_tac_kd: qt.slice(0, 15),
+          cau_hinh: ch
+        });
+        if (goi.length <= 60000) {
+          var gh = guiWorkflowGitHub_({ id: r.id, du_lieu: goi }, 'kiem-tra-video.yml');
+          if (gh && gh.ok) {
+            cacheKT.put('GUI_AI_XEM_' + r.id, '1', 300);
+            nhatKy_('AI_XEM_GH', r.id + ': đã giao sang workflow kiem-tra-video.yml trên GitHub');
+            return true;
+          }
+        }
+      }
+    }
+  } catch (eGh) {}
   henKiemTraVideo_(15);
   return true;
 }
@@ -64,7 +100,7 @@ function chayKiemTraVideo() {
     var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
     var ds = docHang_(sh).filter(function (r) { return r.trang_thai === 'CO_VIDEO' && String(r.duyet) === 'AI_XEM' && !cacheKT.get('DA_BO_' + r.id); });
     for (var i = 0; i < ds.length; i++) {
-      if (cacheKT.get('DA_BO_' + ds[i].id)) continue;
+      if (cacheKT.get('DA_BO_' + ds[i].id) || cacheKT.get('GUI_AI_XEM_' + ds[i].id)) continue;
       if (!conDuGoiGemini_()) { conViec = true; break; }
       xuLyAiXem_(sh, ds[i]);
     }
@@ -110,11 +146,27 @@ function xuLyKiemDuyetBoCuc_(sh, r, kd) {
   return { ok: true, sua: true };
 }
 
+function xuLyKetQuaAiXem_(sh, d) {
+  if (!d || !d.id) return { ok: false, loi: 'THIEU_ID' };
+  try { CacheService.getScriptCache().remove('GUI_AI_XEM_' + d.id); } catch (eC) {}
+  var r = docHang_(sh).filter(function (x) { return x.id === d.id; })[0];
+  if (!r) return { ok: false, loi: 'KHONG_TIM_THAY' };
+  if (r.trang_thai !== 'CO_VIDEO' || String(r.duyet) !== 'AI_XEM') return { ok: true, lap: true };
+  var kq = d.ok && d.kq && d.kq.chi_tiet ? d.kq : null;
+  if (!kq && d.loi) nhatKy_('AI_XEM_LOI', r.id + ' [GitHub]: ' + String(d.loi).slice(0, 200));
+  apDungKetQuaAiXem_(sh, r, kq);
+  return { ok: true };
+}
+
 function xuLyAiXem_(sh, r) {
   var kq = null;
   try { kq = aiChamVideo_(r); } catch (e) {
     nhatKy_('AI_XEM_LOI', r.id + ': ' + e.message);
   }
+  apDungKetQuaAiXem_(sh, r, kq);
+}
+
+function apDungKetQuaAiXem_(sh, r, kq) {
   var cu = docAiKT_(r);
   var lan = Number(cu.lan_sua) || 0;
   var toiDa = soLanSuaYeuCau_();

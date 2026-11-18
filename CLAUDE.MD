@@ -683,3 +683,18 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
      - Hạ `hedgeGiay` trong `chay_bp1.js` / `goi_gemini.js` từ `75` giây xuống **`35` giây** để gọi song song model dự phòng sớm khi model chính bị treo.
      - Đổi `aiDuyetKichBan_()` (`NangCao.gs`) từ `suyNghi: 'medium'` sang **`'low'`** (cắt giảm độ trễ suy nghĩ khi chấm bảng JSON tiêu chí).
      - Gộp cảnh báo nhẹ quan trọng từ `dg.nhe` vào thẳng lượt sửa của `aiDuyetKichBan_()` thay vì chạy thêm 1 vòng Gemini đánh bóng riêng; đề chữ thông thường dùng thẳng `banVeMacDinh_()` trong `taoPromptKichBan_()` (chỉ gọi `lapBanVe_()` khi có ảnh `anhDe` hoặc `deCoHinh_(r)`).
+
+#### 23. Phân bổ đều toàn bộ 6 công đoạn sang 6 Workflow GitHub độc lập & Tự động đồng bộ mã Apps Script (v56)
+- **Tệp tạo mới**: [.github/workflows/sinh-de.yml](file:///e:/Video-AI/.github/workflows/sinh-de.yml), [scripts/bophan1/sinh_de_gh.js](file:///e:/Video-AI/scripts/bophan1/sinh_de_gh.js), [.github/workflows/kiem-tra-video.yml](file:///e:/Video-AI/.github/workflows/kiem-tra-video.yml), [scripts/kiem_tra_video_gh.js](file:///e:/Video-AI/scripts/kiem_tra_video_gh.js), [.github/workflows/dang-video.yml](file:///e:/Video-AI/.github/workflows/dang-video.yml).
+- **Tệp chỉnh sửa**: [BoPhan1.gs](file:///e:/Video-AI/BoPhan1.gs), [PromptKichBan.gs](file:///e:/Video-AI/PromptKichBan.gs), [NangCao.gs](file:///e:/Video-AI/NangCao.gs), [BoPhan2.gs](file:///e:/Video-AI/BoPhan2.gs), [DangVideo.gs](file:///e:/Video-AI/DangVideo.gs), [CLAUDE.MD](file:///e:/Video-AI/CLAUDE.MD).
+- **Vì sao trước đó vẫn thấy chạy trên bản workflow cũ (`bo-phan-1.yml`)**:
+  1. Apps Script đang chạy mã cũ trên Google Cloud cho tới khi được đồng bộ từ GitHub (`capNhatMaAppsScriptTuGitHub()` / `/capnhatcode`).
+  2. Sheet `CAU_HINH > GITHUB_NHANH` nếu còn trỏ tới nhánh `claude/...` cũ sẽ khiến `giai-de.yml` / `viet-kich-ban.yml` nhận HTTP `404` và lùi về `bo-phan-1.yml`.
+- **Kiến trúc chia đều tải trên 6 Workflow độc lập (v56)**:
+  1. **`sinh-de.yml` (Bộ phận 0)**: Tìm đề Internet / sáng tác đề mới + đề 10 phút bằng `GEMINI_KEYS` trên GitHub (`sinhDeQuaGitHub_()` -> `doPost` `loai: 'them_de'` -> `nhanThemDeTuGitHub_()` đẩy thẳng sang `giai-de.yml`). Giải phóng hoàn toàn 1–3 phút gọi Gemini trên Apps Script.
+  2. **`giai-de.yml` (Bộ phận 1A)**: Giải đề & kiểm chứng 2 cách + mã kiểm chứng (`MOI -> DA_GIAI`).
+  3. **`viet-kich-ban.yml` (Bộ phận 1B)**: Xây dựng & duyệt kịch bản (`DA_GIAI -> CO_KICH_BAN`, 5 luồng song song). Rút gọn thêm tốc độ: `canBoSungGiaiThich_()` chỉ bổ sung khi `< 1` cảnh giải thích (thay vì `< 2`), và `toiDaYC = 1` khi kịch bản đạt `>= 72%` ngay lượt đầu.
+  4. **`dung-video.yml` (Bộ phận 2)**: Chuyên trách dựng video 3 tầng Remotion/Manim & kiểm duyệt bố cục.
+  5. **`kiem-tra-video.yml` (Bộ phận 3)**: Chuyển việc AI xem lưới khung hình (`giaoAiXemVideo_()` -> `aiChamVideo_()`) từ Apps Script 6 phút sang GitHub Actions song song bằng `GEMINI_KEYS`, trả kết quả về `xuLyKetQuaAiXem_()` (`doPost` `loai: 'ai_xem'`).
+  6. **`dang-video.yml` (Bộ phận 4)**: Tách riêng quy trình gắn số tập, ảnh bìa và đăng video YouTube/Facebook/TikTok thành workflow độc lập (vẫn dự phòng HTTP `404` về `dung-video.yml`).
+  7. **Tự động đồng bộ & khóa nhánh `master` (`BoPhan1.gs`)**: `damBaoCauHinhTuDong_()` tự đưa `GITHUB_NHANH` về `master` nếu trống hoặc còn nhánh `claude/...` cũ; thêm `tuDongDongBoCodeTuGitHub_()` tự kiểm tra commit mới mỗi 30 phút để kéo mã `.gs` từ GitHub về Apps Script hoàn toàn tự động.

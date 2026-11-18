@@ -566,7 +566,7 @@ function demCanhGiaiThich_(kb) {
 function canBoSungGiaiThich_(kb) {
   if (!kb || !Array.isArray(kb.canh)) return false;
   var dung = kb.canh.some(function (c) { return /tinh|giai/.test(String(c && c.loai)) && (c.noi_dung_man_hinh || []).some(function (d) { return /=/.test(String(d)); }); });
-  return dung && demCanhGiaiThich_(kb) < 2;
+  return dung && demCanhGiaiThich_(kb) < 1;
 }
 function hinhTuMau_(m, kb, id) {
   m = m || {};

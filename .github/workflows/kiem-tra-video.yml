@@ -1,0 +1,95 @@
+name: Bộ phận 3 - AI Kiểm duyệt video
+run-name: "Kiểm duyệt ${{ inputs.id }}"
+
+# Workflow chuyên biệt cho Bộ phận 3: chuyển tác vụ AI xem lưới khung hình (aiChamVideo_) từ Apps Script sang GitHub Actions
+# dùng cụm nhiều key GEMINI_KEYS, giải phóng Apps Script không bị nghẽn 6 phút hay kẹt key kiểm duyệt.
+on:
+  workflow_dispatch:
+    inputs:
+      id:
+        description: 'Mã video (Apps Script tự điền)'
+        type: string
+        default: ''
+      du_lieu:
+        description: 'Dữ liệu kiểm duyệt JSON (Apps Script tự điền)'
+        type: string
+        default: ''
+
+concurrency:
+  group: kiem-tra-video-${{ inputs.id || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  kiem_duyet:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GEMINI_KEYS: ${{ secrets.GEMINI_KEYS }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+      APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
+      DUNG_VIDEO_SECRET: ${{ secrets.DUNG_VIDEO_SECRET }}
+      KT_DU_LIEU: ${{ inputs.du_lieu }}
+      ID_VIDEO: ${{ inputs.id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            /*.gs
+            scripts/bophan1
+            scripts/kiem_tra_video_gh.js
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Tải ảnh kiểm tra & kịch bản từ Drive
+        if: ${{ env.RCLONE_CONF != '' }}
+        run: |
+          command -v rclone >/dev/null || (curl -fsSL --retry 3 --retry-delay 5 https://rclone.org/install.sh | sudo bash > /dev/null 2>&1 || (sudo apt-get update -qq && sudo apt-get install -y -qq rclone))
+          mkdir -p ~/.config/rclone /tmp/kt_files
+          printf '%s' "$RCLONE_CONF" > ~/.config/rclone/rclone.conf
+          python3 - <<'PY'
+          import json, os, subprocess
+          dl = json.loads(os.environ.get("KT_DU_LIEU") or "{}")
+          h = dl.get("hang") or {}
+          ids = []
+          for k in ("anh_kt", "file_kich_ban", "file_anh"):
+              v = str(h.get(k) or "").strip()
+              if v and not v.startswith("http"):
+                  ids.append(v)
+          sp = dl.get("san_pham") or {}
+          for aid in (sp.get("anh_id") or [])[:2]:
+              if aid:
+                  ids.append(str(aid))
+          for fid in dict.fromkeys(ids):
+              dst = os.path.join("/tmp/kt_files", fid)
+              os.makedirs(dst, exist_ok=True)
+              subprocess.run(["rclone", "backend", "copyid", "gdrive:", fid, dst + "/"], check=False)
+          PY
+
+      - name: AI chấm video theo tiêu chí chủ kênh
+        run: node scripts/kiem_tra_video_gh.js
+
+      - name: Gửi kết quả kiểm duyệt về Apps Script
+        if: ${{ always() && env.APPS_SCRIPT_URL != '' && env.ID_VIDEO != '' }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          if os.path.exists("ket_qua_kt_video.json"):
+              d = json.load(open("ket_qua_kt_video.json", encoding="utf8"))
+          else:
+              d = {"id": os.environ["ID_VIDEO"], "ok": False, "loi": "Workflow kiem-tra-video gap su co"}
+          d["token"] = os.environ["DUNG_VIDEO_SECRET"]
+          d["loai"] = "ai_xem"
+          d["id"] = d.get("id") or os.environ["ID_VIDEO"]
+          json.dump(d, open("gui_kt_video.json", "w", encoding="utf8"), ensure_ascii=False)
+          PY
+          for lan in 1 2 3 4 5; do
+            KQ=$(curl -sS -L -H 'Content-Type: application/json' --data @gui_kt_video.json "$APPS_SCRIPT_URL" || true)
+            echo "Lần $lan: $KQ"
+            if echo "$KQ" | grep -Eq '"ok" *: *true|KHONG_TIM_THAY'; then exit 0; fi
+            sleep 20
+          done
+          echo "Không báo được kết quả kiểm duyệt về Apps Script"; exit 1

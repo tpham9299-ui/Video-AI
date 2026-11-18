@@ -344,11 +344,12 @@ function dangVideo_(sh, r) {
     var lopSo = String(r.lop || '').replace(/[^0-9]/g, '');
     var demYT = -1;
     try { if (lopSo && !tapDaGan) demYT = demBaiLopYouTube_(lopSo); } catch (eDem) { demYT = -1; }
-    var gui = typeof guiWorkflowGitHub_ === 'function' ? guiWorkflowGitHub_({
-      viec: 'dang', id: r.id,
-      dang: JSON.stringify({ file_id: String(r.file_video), ten: r.id, tieu_de: meta.tieu_de, yt_tieu_de: meta.yt_tieu_de, mo_ta: meta.mo_ta, yt_dau: meta.yt_dau, fb_dau: meta.fb_dau, tt_tieu_de: meta.tt_tieu_de, the: meta.the, nen_tang: can, yt_che_do: chDang_('YOUTUBE_CHE_DO'), quang_cao: meta.quang_cao, co_bia: !!r.anh_bia,
-        lop: lopSo, tap_da_gan: tapDaGan, tap_he_thong: lopSo ? daDangLop_(lopSo) : 0, dem_youtube: demYT, yt_apps_script: ytApps })
-    }) : { ok: false, loi: 'Thiếu BoPhan2.gs bản mới (guiWorkflowGitHub_)' };
+    var dangPayload = JSON.stringify({ file_id: String(r.file_video), ten: r.id, tieu_de: meta.tieu_de, yt_tieu_de: meta.yt_tieu_de, mo_ta: meta.mo_ta, yt_dau: meta.yt_dau, fb_dau: meta.fb_dau, tt_tieu_de: meta.tt_tieu_de, the: meta.the, nen_tang: can, yt_che_do: chDang_('YOUTUBE_CHE_DO'), quang_cao: meta.quang_cao, co_bia: !!r.anh_bia,
+      lop: lopSo, tap_da_gan: tapDaGan, tap_he_thong: lopSo ? daDangLop_(lopSo) : 0, dem_youtube: demYT, yt_apps_script: ytApps });
+    var gui = typeof guiWorkflowGitHub_ === 'function' ? guiWorkflowGitHub_({ viec: 'dang', id: r.id, dang: dangPayload }, 'dang-video.yml') : { ok: false, loi: 'Thiếu BoPhan2.gs bản mới (guiWorkflowGitHub_)' };
+    if (gui && !gui.ok && gui.ma === 404 && typeof guiWorkflowGitHub_ === 'function') {
+      gui = guiWorkflowGitHub_({ viec: 'dang', id: r.id, dang: dangPayload }, 'dung-video.yml');
+    }
     if (gui.ok) {
       ghi_(sh, r._row, { trang_thai: 'DANG_DANG', link_dang: JSON.stringify(kq), ghi_chu: 'Đang đăng qua GitHub: ' + can.join(', ') });
       return true;

@@ -375,6 +375,14 @@ function doPost(e) {
     if (d.loai === 'bo_phan_1') {   // kết quả giải + kịch bản từ GitHub (BoPhan1.gs, lần 23)
       return tra(nhanKetQuaBoPhan1_(sh, d));
     }
+    if (d.loai === 'them_de' && typeof nhanThemDeTuGitHub_ === 'function') {   // đề mới từ sinh-de.yml
+      return tra(nhanThemDeTuGitHub_(sh, d));
+    }
+    if (d.loai === 'ai_xem' && typeof xuLyKetQuaAiXem_ === 'function') {   // kết quả AI chấm video từ kiem-tra-video.yml
+      var kqAX = xuLyKetQuaAiXem_(sh, d);
+      PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1');
+      return tra(kqAX);
+    }
     if (d.loai === 'dang') {   // kết quả đăng video lên mạng xã hội (DangVideo.gs)
       var kqDang = typeof xuLyKetQuaDang_ === 'function' ? xuLyKetQuaDang_(sh, d) : { ok: false, loi: 'THIEU_DangVideo.gs' };
       PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1');

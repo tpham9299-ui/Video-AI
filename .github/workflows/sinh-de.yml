@@ -1,0 +1,60 @@
+name: Bộ phận 0 - Sinh & tìm đề mới
+run-name: "Sinh đề ${{ inputs.mon || 'tu-dong' }}"
+
+# Workflow chuyên biệt cho Bộ phận 0: tìm đề có thật trên Internet / sáng tác đề mới + đề chuyên đề 10 phút trên GitHub
+# thay vì chạy đồng bộ 1-3 phút trên Apps Script. Kết quả trả về Apps Script (loai = them_de) và đẩy thẳng sang giai-de.yml!
+on:
+  workflow_dispatch:
+    inputs:
+      du_lieu:
+        description: 'Cấu hình và danh sách đề gần đây (JSON)'
+        type: string
+        default: '{}'
+
+concurrency:
+  group: sinh-de-tu-dong
+  cancel-in-progress: false
+
+jobs:
+  sinh_de:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GEMINI_KEYS: ${{ secrets.GEMINI_KEYS }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
+      DUNG_VIDEO_SECRET: ${{ secrets.DUNG_VIDEO_SECRET }}
+      SD_DU_LIEU: ${{ inputs.du_lieu }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            /*.gs
+            scripts/bophan1
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Tìm đề Internet / sáng tác đề mới
+        run: node scripts/bophan1/sinh_de_gh.js
+
+      - name: Gửi đề mới về Apps Script
+        if: ${{ always() && env.APPS_SCRIPT_URL != '' }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          d = json.load(open("ket_qua_sinh_de.json", encoding="utf8")) if os.path.exists("ket_qua_sinh_de.json") else {"ok": False, "de": [], "loi": "Khong tao duoc ket_qua_sinh_de.json"}
+          d["token"] = os.environ["DUNG_VIDEO_SECRET"]
+          d["loai"] = "them_de"
+          json.dump(d, open("gui_sinh_de.json", "w", encoding="utf8"), ensure_ascii=False)
+          PY
+          for lan in 1 2 3 4 5; do
+            KQ=$(curl -sS -L -H 'Content-Type: application/json' --data @gui_sinh_de.json "$APPS_SCRIPT_URL" || true)
+            echo "Lần $lan: $KQ"
+            if echo "$KQ" | grep -Eq '"ok" *: *true'; then exit 0; fi
+            if echo "$KQ" | grep -q 'BAN'; then sleep 45; continue; fi
+            sleep 15
+          done
+          echo "Không báo được đề mới về Apps Script"; exit 1
