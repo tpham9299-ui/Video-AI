@@ -614,3 +614,26 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
        - Đặt mặc định `CACH_DOC_GEMINI = "mot_lan"` (`tao_giong_gemini_mot_lan` / `_doc_khuc_gemini_mot_lan`): đọc liền mạch toàn bộ kịch bản trong một lần gọi (hoặc theo chặng 12 cảnh với cùng một prompt cố định cho video 10 phút) để giữ **100% cùng một người đọc, cùng một âm sắc từ đầu đến cuối**.
        - Loại bỏ hoàn toàn việc dịch tần số mẫu `asetrate` và giữ cố định cao độ nền (`+0Hz`), tốc độ nền (`+6%`) giữa mọi câu/cảnh trên cả Gemini TTS lẫn `edge-tts`.
        - Tạo sự **nhấn nhá tự nhiên ngay trong cùng chất giọng** thông qua `them_nhan_nha_doc()` (chèn nhịp nghỉ lấy đà `, ... ` trước từ khóa, con số, đáp án, sau từ cảnh báo và chuẩn hóa dấu `?`, `!`) kết hợp bảo toàn dải động âm thanh (`LRA=13`).
+
+
+
+#### 19. Tách rời hoàn toàn Luồng Giải đề (1A) và Luồng Xây kịch bản (1B) để sinh kịch bản siêu tốc, liên tục cấp cho bộ dựng video (v52)
+- **Tệp chỉnh sửa**: [BoPhan1.gs](file:///e:/Video-AI/BoPhan1.gs), [scripts/bophan1/chay_bp1.js](file:///e:/Video-AI/scripts/bophan1/chay_bp1.js), [.github/workflows/bo-phan-1.yml](file:///e:/Video-AI/.github/workflows/bo-phan-1.yml).
+- **Vấn đề đã xử lý**:
+  - Trước đây, hệ thống gộp chung việc **Giải đề (`MOI → DA_GIAI`)** và **Viết kịch bản (`DA_GIAI → CO_KICH_BAN`)** vào cùng một tiến trình nối tiếp (`chay_bp1.js` chạy `xuLyGiai_` xong chạy liền `xuLyKichBan_`), dùng chung hạn ngạch song song `SO_DE_GITHUB_CUNG_LUC = 3` và chung một khóa `DANG_CHAY_BP1`. Ngoài ra, mỗi lần viết kịch bản phải gọi tuần tự 8–14 lượt Gemini (`lapBanVe_` + viết kịch bản + sửa cả lỗi nhẹ `dg.nhe` + `boSungGiaiThichCongThuc_` + 3 vòng `aiDuyetKichBan_`), khiến việc sinh kịch bản rất chậm và làm bộ dựng video (`CO_KICH_BAN`) bị thiếu kịch bản.
+- **Giải pháp kiến trúc mới (Tách 2 luồng độc lập 1A & 1B)**:
+  1. **Tách `scripts/bophan1/chay_bp1.js` và `.github/workflows/bo-phan-1.yml` theo từng pha (`viec`)**:
+     - Khi `viec === 'giai'` (**Luồng 1A**): Chỉ giải đề + kiểm chứng (`MOI → DA_GIAI`, mất ~45–90 giây) rồi trả kết quả về Apps Script ngay lập tức để lưu đáp án vào Sheet.
+     - Khi `viec === 'kich_ban'` (**Luồng 1B**): Chỉ nhận đề `DA_GIAI` để xây kịch bản (`DA_GIAI → CO_KICH_BAN`) rồi trả ngay kịch bản về Apps Script để đẩy sang dựng video (`chonVaGuiDung_`).
+     - Đặt `cancel-in-progress: false` và nhóm `concurrency` theo `run_id` trong `bo-phan-1.yml` để luồng `kich_ban` được kích hoạt nối tiếp không bao giờ hủy bước gửi kết quả của luồng `giai`.
+  2. **Tách 2 hạn ngạch song song độc lập trên GitHub (`giaoBoPhan1ChoGitHub_`) & Chuyển tiếp tức thì (`nhanKetQuaBoPhan1_`)**:
+     - Tách riêng bộ đếm `dangChayKB` (`SO_KICH_BAN_CUNG_LUC = 3` kịch bản viết song song) và `dangChayGiai` (`SO_GIAI_DE_CUNG_LUC = 3` đề giải song song). Việc giải đề mới không bao giờ chiếm chỗ hay chặn việc xây kịch bản.
+     - Ngay tại giây `nhanKetQuaBoPhan1_` nhận được đề vừa giải xong (`DA_GIAI`), hệ thống tự động gọi `giaoBoPhan1ChoGitHub_(sh, false, 'kich_ban')` để bắt đầu xây kịch bản ngay mà không cần chờ chu kỳ trigger tiếp theo; khi nhận được `CO_KICH_BAN`, tự động gọi `chonVaGuiDung_(sh)` để dựng video ngay.
+  3. **Tách 2 hàm điều phối, khóa Cache và Trigger độc lập trên Apps Script (`BoPhan1.gs`)**:
+     - Tạo hàm **`chayVietKichBan()`** (khóa riêng `DANG_CHAY_KICH_BAN`, có trigger riêng chạy mỗi 10 phút): chuyên trách biến các đề `DA_GIAI` thành `CO_KICH_BAN` (vừa đẩy lên GitHub Luồng 1B, vừa tự viết thêm kịch bản ngay trên Apps Script nếu còn đề `DA_GIAI` chờ), xong đẩy dựng video ngay.
+     - Tạo hàm **`chayGiaiDe()`** (khóa riêng `DANG_CHAY_GIAI_DE`): chuyên trách đọc đề Zalo, sinh đề mới và giải đề `MOI → DA_GIAI`.
+     - Bổ sung 2 mục menu trực tiếp trong `🎬 Video AI`: **✍️ Chạy riêng Xây kịch bản (DA_GIAI -> CO_KICH_BAN)** và **🧮 Chạy riêng Giải đề (MOI -> DA_GIAI)**.
+  4. **Tăng tốc gấp 3 lần bên trong hàm `xuLyKichBan_` (`BoPhan1.gs`)**:
+     - Chỉ gọi thêm lượt Gemini `lapBanVe_` khi đề có đính kèm ảnh (`anhDe`) hoặc mô tả hình; các đề chữ thông thường dùng ngay bản vẽ chuẩn mặc định `banVeMacDinh_` (tiết kiệm 30–45 giây/kịch bản).
+     - Khi `chuanBiKichBan_` đã tự sửa hết lỗi nặng (`dg.nang.length === 0`), chốt kịch bản ngay lập tức (`if (!dg.nang.length) break;`), không tốn thêm lượt gọi Gemini chỉ vì các lưu ý nhẹ (`dg.nhe`).
+     - Giới hạn cửa kiểm duyệt kịch bản `toiDaYC = 1` vòng sửa nhanh và giữ bản tốt nhất `totNhatYC`.

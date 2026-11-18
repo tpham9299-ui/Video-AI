@@ -168,13 +168,13 @@ vm.runInContext(`
   dongBoBangDoc = function () {};
 `, ctx);
 
-/* ---------------- chạy: giải (nếu MOI) rồi viết kịch bản (nếu DA_GIAI), thử lại khi Gemini quá tải ---------------- */
+/* ---------------- chạy tách luồng: giải đề (viec=giai: MOI -> DA_GIAI) HOẶC xây kịch bản (viec=kich_ban: DA_GIAI -> CO_KICH_BAN) ---------------- */
 const sh = sheets.HANG_DOI;
 const truoc = sh.data[1].slice();
 const bc = {moi: 0, giai_ok: 0, loai: 0, kich_ban: 0, loi: 0};
 const trangThai = () => sh.data[1][COT.indexOf('trang_thai')];
-// Lỗi của đề (Gemini trả JSON hỏng, kịch bản còn lỗi nặng...) thì SỬA/LÀM LẠI NGAY trong lần chạy này (tối đa MAX_LAN_LOI lượt),
-// không trả về Apps Script để chờ lượt sau.
+const viec = String(de.viec || (hang.trang_thai === 'DA_GIAI' ? 'kich_ban' : 'giai')).toLowerCase();
+console.log(`Bắt đầu Bộ phận 1 [${viec.toUpperCase()}]: ${out.id} (trạng thái đầu vào: ${trangThai()})`);
 const cot = (k) => sh.data[1][COT.indexOf(k)];
 if (/^DANG_/.test(String(cot('ghi_chu')))) { sh.data[1][COT.indexOf('so_lan_loi')] = 0; sh.data[1][COT.indexOf('ghi_chu')] = ''; }
 let lan = 0, luot = 0;
@@ -182,22 +182,33 @@ for (;;) {
   try {
     const bat = Date.now();
     const ttTruoc = trangThai();
-    if (trangThai() === 'MOI') ctx.xuLyGiai_(sh, bc, bat, false);
-    if (trangThai() === 'DA_GIAI') ctx.xuLyKichBan_(sh, bc, bat, false);
+    if (viec === 'giai') {
+      if (trangThai() === 'MOI') ctx.xuLyGiai_(sh, bc, bat, false);
+    } else if (viec === 'kich_ban') {
+      if (trangThai() === 'DA_GIAI') ctx.xuLyKichBan_(sh, bc, bat, false);
+    } else {
+      if (trangThai() === 'MOI') ctx.xuLyGiai_(sh, bc, bat, false);
+      if (trangThai() === 'DA_GIAI') ctx.xuLyKichBan_(sh, bc, bat, false);
+    }
     const gc = String(cot('ghi_chu') || '');
-    const conLam = (trangThai() === 'MOI' || trangThai() === 'DA_GIAI') && gc && luot < 4;
+    const chuaXongViec = (viec === 'giai' && trangThai() === 'MOI') ||
+      (viec === 'kich_ban' && trangThai() === 'DA_GIAI') ||
+      (viec !== 'giai' && viec !== 'kich_ban' && (trangThai() === 'MOI' || trangThai() === 'DA_GIAI'));
+    const conLam = chuaXongViec && gc && luot < 3;
     if (conLam) {
       luot++;
-      console.log(`Chưa xong (${trangThai()}: ${gc.slice(0, 120)}) -> làm tiếp ngay, lượt ${luot + 1}`);
-      if (ttTruoc === trangThai() && !/^Đang sửa kịch bản/.test(gc)) ngu(5000);
+      console.log(`Chưa xong [${viec}] (${trangThai()}: ${gc.slice(0, 120)}) -> làm tiếp ngay, lượt ${luot + 1}`);
+      if (ttTruoc === trangThai() && !/^Đang sửa kịch bản/.test(gc)) ngu(4000);
       continue;
     }
     out.ok = true;
+    out.viec = viec;
     break;
   } catch (e) {
     const m = String(e && e.message);
-    if (m === 'QUA_TAI' && lan < 4) { lan++; console.log('Gemini quá tải, chờ ' + 40 * lan + ' giây rồi thử lại'); ngu(40000 * lan); continue; }
+    if (m === 'QUA_TAI' && lan < 3) { lan++; console.log('Gemini quá tải, chờ ' + 25 * lan + ' giây rồi thử lại'); ngu(25000 * lan); continue; }
     out.loi = m;
+    out.viec = viec;
     console.log('LỖI: ' + m + '\n' + String(e && e.stack || '').slice(0, 800));
     break;
   }
