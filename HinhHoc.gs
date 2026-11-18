@@ -48,7 +48,7 @@ var DANG_HINH_ = 'tam_giac_dong_dang, he_thuc_luong, goc_noi_tiep, tu_giac_noi_t
 function promptSangTacHinhHoc_(lop, n, daCo, kieuEp) {
   var kieu = kieuEp || chonKieuHinh_(lop);
   return 'Bạn là giáo viên chuyên Toán, ra đề ' + (kieu === 'KHONG_GIAN' ? 'HÌNH HỌC KHÔNG GIAN' : 'HÌNH HỌC PHẲNG') + ' DẠNG KHÓ (đề thi vào lớp 10 chuyên, học sinh giỏi, câu vận dụng cao, bài chứng minh làm khó học sinh) cho học sinh lớp ' + lop + ' (Việt Nam).\n' +
-    'Phạm vi: ' + chuongTrinhHinh_(lop) + '.\n' +
+    'Phạm vi: ' + chuongTrinhHinh_(lop) + '.\n' + (typeof yeuCauKienThucLop_ === 'function' ? yeuCauKienThucLop_(lop, 'HINH_HOC') + '\n' : '') +
     'Hãy SÁNG TÁC ' + n + ' bài mới (ưu tiên bài CHỨNG MINH khó, xen kẽ bài tính).\n' + (kieu === 'KHONG_GIAN' ? YEU_CAU_KHONG_GIAN_ : YEU_CAU_PHANG_) +
     'THANG ĐIỂM "diem_tu_duy": 10 = cần một ý tưởng then chốt đẹp (đường phụ, góc nội tiếp, đồng dạng khéo...); 8-9 = nhiều bước suy luận, có bẫy; dưới 8 = áp dụng công thức. CHỈ ra đề từ 8 điểm.\n' +
     'YÊU CẦU:\n' + YEU_CAU_DE_HINH_ + (typeof yeuCauDapAnChinhXac_ === 'function' ? yeuCauDapAnChinhXac_('THUC_TE') : '') +
@@ -57,7 +57,8 @@ function promptSangTacHinhHoc_(lop, n, daCo, kieuEp) {
 }
 function promptTimHinhHoc_(lop, n, daCo) {
   var kieu = chonKieuHinh_(lop);
-  return 'Hãy dùng Google Search để TÌM TRÊN INTERNET ' + (n + 2) + ' bài ' + (kieu === 'KHONG_GIAN' ? 'HÌNH HỌC KHÔNG GIAN' : 'HÌNH HỌC PHẲNG') + ' DẠNG KHÓ CÓ THẬT (đề thi vào lớp 10 chuyên, đề học sinh giỏi, câu hình cuối đề thi THPT, bài chứng minh khó) cho học sinh lớp ' + lop + ' (Việt Nam). ' +
+  return 'Hãy dùng Google Search để TÌM TRÊN INTERNET ' + (n + 2) + ' bài ' + (kieu === 'KHONG_GIAN' ? 'HÌNH HỌC KHÔNG GIAN' : 'HÌNH HỌC PHẲNG') + ' DẠNG KHÓ CÓ THẬT (đề thi vào lớp 10 chuyên, đề học sinh giỏi, câu hình cuối đề thi THPT, bài chứng minh khó) cho học sinh lớp ' + lop + ' (Việt Nam).\n' +
+    (typeof yeuCauKienThucLop_ === 'function' ? yeuCauKienThucLop_(lop, 'HINH_HOC') + '\n' : '') +
     (kieu === 'KHONG_GIAN' ? YEU_CAU_KHONG_GIAN_ : YEU_CAU_PHANG_) +
     'Nguồn: toanmath.com, thuvienhoclieu.com, vietjack.com, loigiaihay.vn, đề của các sở/trường chuyên.\n' +
     'Đề có nhiều ý a), b), c) thì CHỈ giữ MỘT ý hay nhất (thường là ý cuối) và viết lại thành đề tự đủ (nêu đủ cách dựng các điểm cần cho ý đó).\n' +
@@ -87,13 +88,17 @@ function giaiHinhHoc_(r) {
   var t0 = Date.now();
   var loai = loaiDeHinh_(r);
   var kg = laHinhKhongGian_(r.de_bai);
+  var lopC = typeof chuanLop_ === 'function' ? chuanLop_(r.lop) : String(r.lop || '');
+  var luuY = typeof yeuCauKienThucLop_ === 'function' ? yeuCauKienThucLop_(r.lop, 'HINH_HOC') : '';
   var de = 'Bài hình học ' + (kg ? 'KHÔNG GIAN' : 'PHẲNG') + ' (lớp ' + r.lop + '):\n' + r.de_bai;
-  if (loai === 'tinh') return giaiHinhTinh_(r, de, t0);
+  var deGiai = de + (luuY ? '\n\n' + luuY : '');
+  var phuongPhap2 = !kg ? 'tọa độ Oxy, véc tơ phẳng hoặc lượng giác' : (lopC === '12' ? 'tọa độ Oxyz, véc tơ không gian hoặc lượng giác' : 'véc tơ không gian, lượng giác hoặc hướng hình học tổng hợp khác (KHÔNG gắn hệ tọa độ Oxyz)');
+  if (loai === 'tinh') return giaiHinhTinh_(r, de, t0, deGiai, phuongPhap2);
   var dinhDang = 'Trình bày chứng minh CHẶT CHẼ: được phép và khuyến khích KẺ THÊM ĐƯỜNG THẲNG PHỤ (đường cao, hình chiếu, đường song song, trung tuyến...) nếu giúp lời giải sáng sủa; mỗi bước một khẳng định + lý do (định lý, tính chất, dữ kiện nào). Nếu mệnh đề SAI hoặc đề thiếu/mơ hồ (cấu hình khác nhau cho kết luận khác nhau) thì "chung_minh_duoc": false và ghi rõ vào "de_co_van_de". ' +
     'Trả JSON: {"menh_de":"mệnh đề cần chứng minh (ngắn)","y_tuong":"ý then chốt (1-2 câu)","duong_phu":["mô tả đường kẻ thêm nếu có, vd Kẻ AH vuông góc BC tại H"],"cac_buoc":[{"khang_dinh":"","ly_do":""}],"chung_minh_duoc":true|false,"de_co_van_de":""}\n\n';
   var kq3 = goiGeminiSong_([
-    { nhiet: 0.2, prompt: 'Bạn là giáo viên chuyên Toán. Chứng minh bài hình học sau bằng phương pháp HÌNH HỌC TỔNG HỢP (góc, tam giác đồng dạng/bằng nhau, đường tròn, quan hệ vuông góc/song song không gian, kẻ thêm đường phụ khéo). ' + dinhDang + de },
-    { nhiet: 0.3, prompt: 'Bạn là giáo viên chuyên Toán. Chứng minh bài hình học sau bằng một PHƯƠNG PHÁP KHÁC HẲN hình học tổng hợp: tọa độ, véc tơ, số phức hoặc lượng giác (tính toán đại số chặt chẽ). ' + dinhDang + de },
+    { nhiet: 0.2, prompt: 'Bạn là giáo viên chuyên Toán. Chứng minh bài hình học sau bằng phương pháp HÌNH HỌC TỔNG HỢP đúng chương trình lớp ' + (lopC || r.lop) + ' (góc, tam giác đồng dạng/bằng nhau, đường tròn, quan hệ vuông góc/song song không gian, kẻ thêm đường phụ khéo). ' + dinhDang + deGiai },
+    { nhiet: 0.3, prompt: 'Bạn là giáo viên chuyên Toán. Chứng minh bài hình học sau đúng chương trình lớp ' + (lopC || r.lop) + ' bằng một PHƯƠNG PHÁP KHÁC HẲN: ' + phuongPhap2 + ' (tính toán chặt chẽ, KHÔNG dùng kiến thức lớp trên hoặc số phức). ' + dinhDang + deGiai },
     { nhiet: 0.1, prompt: HUONG_DAN_MA_HINH_ + 'Thử mệnh đề cần chứng minh ở ÍT NHẤT 6 cấu hình ngẫu nhiên khác nhau; với mỗi cấu hình tính "phần dư" (ví dụ |AM - AN|, |tích vô hướng| của hai véc tơ cần vuông góc, |định thức| khi cần thẳng hàng / đồng phẳng, khoảng cách từ điểm tới mặt phẳng khi cần điểm thuộc mặt phẳng) chia cho kích thước hình. ' +
       'Hàm trả về {"kieu":"chung_minh","so_cau_hinh":số cấu hình đã thử,"du_max":phần dư lớn nhất (số thực),' + DANG_TRA_HINH_ + '}. Trả JSON: {"ma":"function kiemChung(){...}"}\n\n' + de }
   ]);
@@ -121,7 +126,16 @@ function giaiHinhHoc_(r) {
   // MÁY ĐÃ XÁC NHẬN mệnh đề đúng (≥ 4 cấu hình ngẫu nhiên, sai số ~0) là bằng chứng mạnh nhất: chỉ cần MỘT lời chứng minh
   // chặt chẽ là đủ dựng video (trước đây bắt cả hai -> đề đúng vẫn bị loại khi một cách chứng minh bế tắc).
   if (!dung || !(cm1 || cm2)) return { dat: false, c1: c1, c2: c2, ly_do: 'Chứng minh chưa được xác nhận (' + tom + ')' + (!dung && !cm1 && !cm2 ? ' MENH_DE_SAI' : '') };
-  if (!cm1 && cm2) { var tg = c1; c1 = c2; c2 = tg; }   // lời giải trình bày trong video = lời chứng minh đã thành công
+  var vp1 = cm1 && typeof kiemTraViPhamLop_ === 'function' ? kiemTraViPhamLop_(c1, r.lop, 'HINH_HOC', r.de_bai) : [];
+  var vp2 = cm2 && typeof kiemTraViPhamLop_ === 'function' ? kiemTraViPhamLop_(c2, r.lop, 'HINH_HOC', r.de_bai) : [];
+  if ((!cm1 || vp1.length) && cm2 && !vp2.length) { var tg = c1; c1 = c2; c2 = tg; vp1 = vp2; }
+  else if (cm1 && vp1.length && lopC && typeof goiGemini_ === 'function') {
+    nhatKy_('GIAI', r.id + ': chứng minh hình học vi phạm lớp ' + lopC + ' (' + vp1[0] + ') -> viết lại theo đúng chương trình lớp ' + lopC);
+    try {
+      var cSua = goiGemini_('Bạn là giáo viên Toán lớp ' + lopC + '. Chứng minh lại bài hình học sau CHỈ dùng kiến thức được phép của lớp ' + lopC + ' (KHÔNG dùng phương pháp lớp trên hay số phức; trước đó bị lỗi: ' + vp1.join('; ') + ').\n' + dinhDang + deGiai, 0.2, { suyNghi: 'high' });
+      if (cSua && cSua.chung_minh_duoc === true && !kiemTraViPhamLop_(cSua, r.lop, 'HINH_HOC', r.de_bai).length) c1 = cSua;
+    } catch (eSuaH) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(eSuaH.message))) throw eSuaH; }
+  }
   c1.hinh_toa_do = chuanHinhToaDo_(may.hinh);
   var menh = String(c1.menh_de || c2.menh_de || '').trim() || 'điều phải chứng minh';
   var vanDe = String(c1.de_co_van_de || c2.de_co_van_de || '').trim();
@@ -130,15 +144,18 @@ function giaiHinhHoc_(r) {
 }
 
 // Bài tính: giải như toán thực tế (2 lời giải + mã tính số dựng hình bằng tọa độ, trọng tài khi lệch) và lấy tọa độ vẽ hình.
-function giaiHinhTinh_(r, de, t0) {
+function giaiHinhTinh_(r, de, t0, deGiai, phuongPhap2) {
+  var lopC = typeof chuanLop_ === 'function' ? chuanLop_(r.lop) : String(r.lop || '');
+  var deDayDu = deGiai || (de + (typeof yeuCauKienThucLop_ === 'function' ? '\n\n' + yeuCauKienThucLop_(r.lop, 'HINH_HOC') : ''));
+  var pp2 = phuongPhap2 || ((!laHinhKhongGian_(r.de_bai) || lopC === '12') ? 'tọa độ, véc tơ hoặc lượng giác' : 'véc tơ không gian, lượng giác hoặc hướng tổng hợp khác (KHÔNG gắn hệ tọa độ Oxyz)');
   var dinhDang = 'Đáp số cuối là MỘT con số (độ dài / số đo góc theo độ / diện tích / thể tích / tỉ số). Được phép KẺ THÊM ĐƯỜNG THẲNG PHỤ (đường cao, hình chiếu, trung tuyến...) để tính toán. Nếu đề yêu cầu làm tròn thì "gia_tri" là số ĐÃ làm tròn đúng yêu cầu; nếu không thì giữ ít nhất 4 chữ số có nghĩa. ' +
     'Nếu đề thiếu dữ kiện hoặc mơ hồ (nhiều cấu hình cho đáp số khác nhau) thì ghi rõ vào "de_co_van_de". ' +
     'Trả JSON: {"y_tuong":"ý then chốt","duong_phu":["đường kẻ thêm nếu có"],"cac_buoc":["mỗi bước: khẳng định + lý do"],"gia_tri":0,"don_vi":"","dap_an_hien":"câu trả lời ngắn có đơn vị, ví dụ AB = 6 cm","de_co_van_de":""}\n\n';
   var maPrompt = HUONG_DAN_MA_HINH_ + 'Tính đại lượng đề hỏi từ tọa độ (nếu đề có tham số tự do mà đáp số không phụ thuộc tham số thì thử vài cấu hình và trả giá trị chung). ' +
     'Hàm trả về {"kieu":"gia_tri","gia_tri":số_thực,' + DANG_TRA_HINH_ + '}. Trả JSON: {"ma":"function kiemChung(){...}"}\n\n' + de;
   var kq3 = goiGeminiSong_([
-    { nhiet: 0.2, prompt: 'Bạn là giáo viên chuyên Toán. Giải bài hình học sau bằng HÌNH HỌC TỔNG HỢP thật chặt chẽ (kẻ thêm đường phụ, đồng dạng, góc nội tiếp, hệ thức lượng, hình chiếu không gian...). ' + dinhDang + de },
-    { nhiet: 0.4, prompt: 'Bạn là giáo viên chuyên Toán. Giải bài hình học sau bằng phương pháp KHÁC: tọa độ, véc tơ hoặc lượng giác. ' + dinhDang + de },
+    { nhiet: 0.2, prompt: 'Bạn là giáo viên chuyên Toán. Giải bài hình học sau bằng HÌNH HỌC TỔNG HỢP đúng chương trình lớp ' + (lopC || r.lop) + ' thật chặt chẽ (kẻ thêm đường phụ, đồng dạng, góc nội tiếp, hệ thức lượng, hình chiếu không gian...). ' + dinhDang + deDayDu },
+    { nhiet: 0.4, prompt: 'Bạn là giáo viên chuyên Toán. Giải bài hình học sau đúng chương trình lớp ' + (lopC || r.lop) + ' bằng phương pháp KHÁC: ' + pp2 + '. ' + dinhDang + deDayDu },
     { nhiet: 0.1, prompt: maPrompt }
   ]);
   var c1 = kq3[0], c2 = kq3[1], kc = kq3[2];
@@ -146,7 +163,7 @@ function giaiHinhTinh_(r, de, t0) {
   var docTT = function (c) { var x = docSo_(c && c.gia_tri); return isFinite(x) ? x : null; };
   if (docTT(c1) === null && docTT(c2) === null) throw new Error('DAP_AN_KHONG_HOP_LE');
   var tt = trongTai_(r, {
-    de: de, dinhDang: dinhDang, c1: c1, c2: c2, kc: kc,
+    de: deDayDu, dinhDang: dinhDang, c1: c1, c2: c2, kc: kc,
     doc: docTT, bang: function (a, b) { return a !== null && b !== null && khopSo_(a, b); }, chu: vietSo_,
     kiem: function (kq) {
       var gk = docSo_(kq && kq.gia_tri);
@@ -565,7 +582,7 @@ function huongDanKichBanHinh_(r) {
     '  + 1-3 dòng công thức (khẳng định + lý do \\text{(vì ...)} ngắn);\n' +
     '  + lời thoại GIẢNG như thầy cô: chỉ thẳng vào hình ("nhìn tam giác BEC đang tô màu..."), nói rõ ta dùng kiến thức gì, vì sao áp dụng được ở đây (điều kiện của định lý đã thỏa ra sao), rồi mới nêu kết quả.\n' +
     (cm ? '- Bài CHỨNG MINH: tối thiểu 4 cảnh giải; mỗi bước một khẳng định + "vì ..." (định lý/tính chất); cảnh đáp án chốt mệnh đề + \\dpcm. Cảnh THỬ LẠI: đo bằng số trên một cấu hình cụ thể (vd "AM \\approx 3{,}42,\\; AN \\approx 3{,}42 \\checkmark") để người xem thấy mệnh đề đúng.\n'
-      : '- Bài TÍNH: cảnh thử lại kiểm bằng cách thứ hai (tọa độ/hệ thức khác) với số cụ thể.\n') +
+      : '- Bài TÍNH: cảnh thử lại kiểm bằng cách thứ hai ' + ((laHinhKhongGian_(r.de_bai) && (typeof chuanLop_ !== 'function' || chuanLop_(r.lop) !== '12')) ? '(hệ thức hoặc cách tính tổng hợp khác, KHÔNG gắn Oxyz)' : '(tọa độ/hệ thức khác)') + ' với số cụ thể.\n') +
     (c1.y_tuong ? '- Ý tưởng then chốt đã kiểm chứng: ' + String(c1.y_tuong).slice(0, 300) + '\n' : '') +
     (Array.isArray(c1.cac_buoc) && c1.cac_buoc.length ? '- Lời giải đã kiểm chứng (bám sát, không thêm bước sai): ' + JSON.stringify(c1.cac_buoc).slice(0, 2500) + '\n' : '');
 }

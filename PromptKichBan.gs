@@ -19,7 +19,8 @@ function taoPromptKichBan_(r, c1, c2) {
     'ĐÁP SỐ (đã kiểm chứng bằng máy, KHÔNG được đổi): ' + r.dap_an + (r.dap_an_hien ? ' (trình bày: ' + r.dap_an_hien + ')' : '') + '\n',
     vanDeDe_(r),
     banVeChoPrompt_(r),
-    'Yếu tố cần suy nghĩ: ' + r.yeu_to_tu_duy + '\nBẫy học sinh hay sai: ' + r.bay_thuong_gap + '\n',
+    'Yếu tố cần suy nghĩ: ' + r.yeu_to_tu_duy + '\nBẫy học sinh hay sai: ' + r.bay_thuong_gap + '\n' +
+    (typeof yeuCauKienThucLop_ === 'function' && yeuCauKienThucLop_(r.lop, r.mon) ? yeuCauKienThucLop_(r.lop, r.mon) + '\n(BẮT BUỘC giảng đúng phương pháp của lớp ' + r.lop + '; KHÔNG dùng kiến thức lớp trên hoặc số phức).\n' : ''),
     'MÔ HÌNH HÓA: ' + (c1.mo_hinh || c2.mo_hinh || '(tự nêu từ lời giải)') + '\n',
     'LỜI GIẢI GỌN (ưu tiên dùng để dạy): ' + (c2.y_tuong ? 'Ý tưởng then chốt: ' + c2.y_tuong + '\n' : '\n') + buocC2 + '\n',
     'LỜI GIẢI CHI TIẾT (để đối chiếu số liệu): ' + buocC1 + '\n\n',
@@ -44,7 +45,8 @@ function taoPromptKichBan_(r, c1, c2) {
     'ĐỀ: ' + r.de_bai + '\n',
     'ĐÁP ÁN CUỐI CÙNG (đã kiểm chứng bằng máy, KHÔNG được đổi): ' + r.dap_an + '\n',
     vanDeDe_(r),
-    'Yếu tố cần suy nghĩ: ' + r.yeu_to_tu_duy + '\nBẫy học sinh hay sai: ' + r.bay_thuong_gap + '\n',
+    'Yếu tố cần suy nghĩ: ' + r.yeu_to_tu_duy + '\nBẫy học sinh hay sai: ' + r.bay_thuong_gap + '\n' +
+    (typeof yeuCauKienThucLop_ === 'function' && yeuCauKienThucLop_(r.lop, r.mon) ? yeuCauKienThucLop_(r.lop, r.mon) + '\n(BẮT BUỘC giảng đúng phương pháp của lớp ' + r.lop + '; KHÔNG dùng kiến thức lớp trên hoặc số phức).\n' : ''),
     'LỜI GIẢI BẰNG SUY LUẬN (ưu tiên dùng để dạy): ' + (c2.y_tuong ? 'Ý tưởng then chốt: ' + c2.y_tuong + '\n' : '\n') + buocC2 + '\n',
     'LỜI GIẢI TÍNH TOÁN (để đối chiếu số liệu): ' + buocC1 + '\n\n',
 

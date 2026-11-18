@@ -878,8 +878,15 @@ function kiemTraCachDay_(kb) {
 //  - nang: làm hỏng video hoặc sai nội dung (thiếu lời thoại, sai đáp án, không vẽ hình của đề, quá dài nhiều...) -> phải sửa.
 //  - nhe : chỉ chưa đẹp theo quy ước (tiêu đề, hook, số cảnh có hình...) -> thử sửa một lần, còn thì vẫn dùng được.
 // Gọi SAU tuSuaKichBan_ (máy đã tự sửa phần lớn lỗi vặt).
-function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc) {
+function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc, lop) {
   var nang = [], nhe = [];
+  var lopKT = lop || (kb && kb.lop) || '';
+  if (lopKT && typeof kiemTraViPhamLop_ === 'function') {
+    kiemTraViPhamLop_(kb, lopKT, mon, deGoc).forEach(function (vp) {
+      var lChuan = typeof chuanLop_ === 'function' ? chuanLop_(lopKT) : lopKT;
+      nang.push('VI_PHAM_CHUONG_TRINH_LOP: ' + vp + ' Viết lại toàn bộ công thức và lời thoại chỉ dùng đúng kiến thức lớp ' + lChuan + '.');
+    });
+  }
   var them = function (ds, loi) { if (loi) ds.push(loi); };
   if (!kb || !Array.isArray(kb.canh) || !kb.canh.length) return { nang: ['KHONG_CO_CANH: kịch bản phải có mảng "canh" gồm 14-18 cảnh.'], nhe: [] };
   var laDai10P = kb.kieu_video === 'DAI_10_PHUT';

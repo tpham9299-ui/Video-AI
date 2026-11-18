@@ -733,3 +733,21 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
   - Trong `chayGiaiDe()` (`BoPhan1.gs`): ngay cả khi `uuTien = true`, vẫn gọi `sinhDeQuaGitHub_()` (< 1 giây) để Bộ phận 0 chạy song song trên GitHub nếu hàng đợi giải đề đang thiếu.
   - Trong `sinhDeNeuCan_()` và `sinhDeQuaGitHub_()`: chỉ tính `CO_KICH_BAN` và `DANG_DUNG` vào `choDung` (bỏ `CO_VIDEO`), đồng thời chỉ tính các đề `MOI` thực sự có chữ `de_bai` vào `dangCho`.
   - Trong `damBaoCauHinhTuDong_()` (`DA_CAP_NHAT_TU_DONG_V60`): tự động đảm bảo đủ 3 trigger `chayBoPhan1` (15 phút), `chayVietKichBan` (10 phút) và `chayDangVideo` (15 phút).
+
+#### 28. Nâng cấp cốt lõi Chương trình theo từng Lớp (GDPT 2018) — Cấm tuyệt đối giải vượt lớp (v61)
+- **Tệp chỉnh sửa**: [BoPhan1.gs](file:///e:/Video-AI/BoPhan1.gs), [HinhHoc.gs](file:///e:/Video-AI/HinhHoc.gs), [PromptKichBan.gs](file:///e:/Video-AI/PromptKichBan.gs), [KiemTraHinh.gs](file:///e:/Video-AI/KiemTraHinh.gs), [NangCao.gs](file:///e:/Video-AI/NangCao.gs), [CLAUDE.MD](file:///e:/Video-AI/CLAUDE.MD).
+- **Nguyên nhân gốc khiến AI giải toán lớp 11 nhưng dùng kiến thức lớp 12**:
+  - Trước đây, các hàm giải đề (`giaiThucTe_`, `giaiXacSuat_`, `trongTai_` trong `BoPhan1.gs`; `giaiHinhHoc_`, `giaiHinhTinh_` trong `HinhHoc.gs`), viết kịch bản (`taoPromptKichBan_`), kiểm tra kịch bản (`danhGiaKichBan_`) và kiểm duyệt (`aiDuyetKichBan_`, `aiChamVideo_`, `TIEU_CHI_YEU_CAU_`) chỉ gắn nhãn thụ động `(lớp 11)` mà không có quy định kiến thức được phép/cấm theo GDPT 2018 và không có bộ kiểm tra từ chối lời giải vượt lớp (thậm chí `HinhHoc.gs` còn gợi ý dùng `"tọa độ, véc tơ, số phức"` cho mọi lớp).
+- **Khắc phục toàn diện 4 tầng trong v61**:
+  1. **Nguồn sự thật chương trình & Bộ kiểm tra tất định (`BoPhan1.gs`)**:
+     - Thêm `CHUONG_TRINH_CHI_TIET_`, `chuanLop_(lop)`, `yeuCauKienThucLop_(lop, mon)` định nghĩa rõ kiến thức **được phép** và **cấm tuyệt đối** theo GDPT 2018 cho Lớp `10`, `11`, `12` (lớp 11 chỉ tối ưu bằng tam thức bậc hai / Cauchy AM-GM / Bunhiacopxki / lượng giác, hình không gian tổng hợp, xác suất cộng-nhân độc lập; cấm bảng biến thiên / `y'=0` tìm cực đại-cực tiểu-GTLN-GTNN, nguyên hàm-tích phân, gắn $Oxyz$, xác suất có điều kiện/Bayes; mọi lớp cấm số phức).
+     - Thêm `kiemTraViPhamLop_(duLieu, lop, mon, deBai)` bắt lỗi vượt lớp ở cả lời giải JSON lẫn kịch bản 14–18 cảnh mà không bắt nhầm vận tốc tức thời lớp 11 ($v(t)=s'(t)$) hay mã JS `kiemChung()`.
+  2. **Ép chuẩn kiến thức khi Sinh đề & Giải đề + Trọng tài viết lại (`BoPhan1.gs`, `HinhHoc.gs`)**:
+     - Tiêm `yeuCauKienThucLop_()` vào tất cả prompt sáng tác/tìm đề (`promptSangTac*`, `promptTim*`) và tất cả prompt giải đề (`giaiThucTe_`, `giaiXacSuat_`, `giaiHinhHoc_`, `giaiHinhTinh_`, `giai_lai`, `cach_khac`).
+     - Loại bỏ hoàn toàn `"số phức"` và chỉ cho phép gợi ý `"tọa độ Oxyz"` khi bài không gian thuộc lớp `12` trong `HinhHoc.gs` (`giaiHinhHoc_`, `giaiHinhTinh_`, `huongDanKichBanHinh_`).
+     - Nâng cấp `trongTai_()` (`BoPhan1.gs`) và `giaiHinhHoc_()`: ưu tiên chọn lời giải đạt chuẩn kiến thức lớp (`khopSach`) thay cho lời giải vượt lớp; nếu **tất cả** lời giải khớp đáp án đều vi phạm lớp, tự động gọi Gemini viết lại lời giải hoàn chỉnh đúng chương trình lớp đó rồi kiểm tra lại bằng `kiemTraViPhamLop_()`.
+  3. **Chặn sớm tại Viết kịch bản & Kiểm tra tĩnh (`PromptKichBan.gs`, `KiemTraHinh.gs`)**:
+     - Tiêm `yeuCauKienThucLop_(r.lop, r.mon)` vào cả hai luồng prompt `THUC_TE`/`HINH_HOC` và `XAC_SUAT` trong `taoPromptKichBan_()`.
+     - Cập nhật `danhGiaKichBan_(..., lop)` gọi `kiemTraViPhamLop_()` và đẩy lỗi nặng `VI_PHAM_CHUONG_TRINH_LOP` vào `dg.nang` để `xuLyKichBan_()` ép sửa kịch bản trước khi dựng video.
+  4. **Chặn cuối tại 2 cửa AI Kiểm duyệt (`NangCao.gs`)**:
+     - Cập nhật tiêu chí bắt buộc `loi_giai` trong `TIEU_CHI_YEU_CAU_` (phạt `<= 4` điểm nếu giải vượt lớp hoặc dùng số phức) và đưa `yeuCauKienThucLop_(r.lop, r.mon)` vào cả `aiDuyetKichBan_()` lẫn `aiChamVideo_()`.

@@ -271,6 +271,7 @@ function aiChamVideo_(r) {
   var canh = (kb.canh || []);
   var moTa = canh.map(function (c, i) { return 'Cảnh ' + (i + 1) + ' (' + c.loai + '): ' + (c.tieu_de_canh || '') + ' | hình: ' + String((c.minh_hoa || {}).mo_ta || '').slice(0, 140); }).join('\n');
   var prompt = 'Bạn là người KIỂM DUYỆT KHẮT KHE video dạy toán TikTok trước khi gửi cho chủ kênh. ẢNH 1 là lưới khung hình của video: MỖI CẢNH MỘT KHUNG theo đúng thứ tự cảnh của kịch bản bên dưới (đọc từ trái sang phải, trên xuống dưới).' + (anhDe ? ' ẢNH 2 là ảnh chụp đề gốc.' : '') +
+    '\nLỚP HỌC CỦA ĐỀ: Lớp ' + r.lop + (typeof yeuCauKienThucLop_ === 'function' && yeuCauKienThucLop_(r.lop, r.mon) ? '\n' + yeuCauKienThucLop_(r.lop, r.mon) : '') +
     '\nĐỀ BÀI: ' + r.de_bai + (r.mo_ta_hinh ? '\nMÔ TẢ HÌNH CỦA ĐỀ: ' + r.mo_ta_hinh : '') + '\nĐÁP ÁN ĐÚNG: ' + (r.dap_an_hien || r.dap_an) + '\nKỊCH BẢN:\n' + moTa + '\n' +
     (kb.khong_thu_lai ? 'KỊCH BẢN GHI KHÔNG THỂ THỬ LẠI VÌ: ' + kb.khong_thu_lai + '\n' : '') +
     (kb.san_pham ? 'SẢN PHẨM QUẢNG BÁ: ' + kb.san_pham.ten + ' (giá kênh bán ' + kb.san_pham.gia_ban + 'đ). Các ảnh sau ảnh lưới là ẢNH THẬT của sản phẩm để đối chiếu.\n' : '') +
@@ -293,7 +294,7 @@ function aiChamVideo_(r) {
 var TIEU_CHI_YEU_CAU_ = [
   { id: 'de_bai', w: 1.5, bb: true, kb: true, chu: 'Mở đầu nêu RÕ ĐỀ BÀI trong lời thoại: đề cho gì (đủ dữ kiện, đúng số), cần tìm gì; không nhảy thẳng vào lời giải. Riêng video Hình học (HINH_HOC) thì đề bài do giọng đọc đảm nhận và hình vẽ hiển thị thật to ở giữa màn hình (không cần hiện thẻ chữ ĐỀ BÀI trên màn hình).' },
   { id: 'bam_de', w: 3, bb: true, kb: true, chu: 'Hình minh họa BÁM SÁT NGỮ CẢNH ĐỀ: đúng đối tượng (người, vật, công trình...), đúng số lượng, đúng cách sắp xếp/vị trí (ngồi bàn tròn phải vẽ vòng quanh bàn, bờ sông - đường ống phải vẽ sông và ống...), số đo trên hình khớp đề; không vẽ vật không liên quan, không lặp vật; bài lãi suất / tiền bạc không được có khối hộp, trụ, nón, cầu hay hình học mà đề không nhắc; bài hình học không gian cạnh nhìn thấy phải là nét liền, cạnh bị khuất là nét đứt, đường kẻ phụ vẽ rõ ràng.' },
-  { id: 'loi_giai', w: 3, bb: true, kb: true, chu: 'LỜI GIẢI ĐÚNG: mọi phép tính, số trung gian, công thức trên màn hình đúng toán học, dẫn đúng tới đáp án; giải thích công thức có từ đâu.' },
+  { id: 'loi_giai', w: 3, bb: true, kb: true, chu: 'LỜI GIẢI ĐÚNG TOÁN HỌC & ĐÚNG CHƯƠNG TRÌNH LỚP (GDPT 2018): mọi phép tính, số trung gian, công thức trên màn hình đúng toán học, dẫn đúng tới đáp án, giải thích công thức có từ đâu; VÀ BẮT BUỘC dùng đúng phương pháp của lớp ghi trên đề (lớp 10-11 TUYỆT ĐỐI KHÔNG dùng bảng biến thiên / đạo hàm y\'=0 tìm cực trị-GTLN-GTNN, nguyên hàm-tích phân, Oxyz, xác suất có điều kiện/Bayes của lớp 12; không dùng số phức). Nếu giải vượt lớp -> chấm <= 4 điểm.' },
   { id: 'dap_an', w: 2, bb: true, kb: true, chu: 'ĐÁP ÁN đúng (khớp đáp án đã kiểm chứng), hiện rõ, đọc được đầy đủ chữ số và đơn vị.' },
   { id: 'thu_lai', w: 1.5, bb: true, kb: true, chu: 'THỬ LẠI THẬT: cảnh thử lại có phép thử bằng số cụ thể (thế đáp án vào đề / cách thứ hai / so giá trị khác) cả trên màn hình lẫn lời thoại; chỉ một khung chữ "thử lại" là không đạt. Kịch bản ghi rõ "khong_thu_lai" kèm lý do hợp lý thì tiêu chí này đạt.' },
   { id: 'nhieu_canh', w: 2, bb: true, kb: true, chu: 'MỖI CẢNH MỘT MINH HỌA LINH HOẠT KHỚP NỘI DUNG CẢNH ĐÓ: mỗi cảnh của bài toán thực tế phải thể hiện đúng đoạn nội dung mà cảnh đó đang nói (chia thành nhiều bước/khung hình con, phóng to phần đang xét, làm nổi đại lượng đang tính, mô phỏng sai lầm ở cảnh bẫy, biểu đồ/đồ thị/số đếm ở bước tính); tránh dùng duy nhất 1 hình minh họa tĩnh giống hệt nhau áp dụng cho toàn bộ video.' },
@@ -354,6 +355,7 @@ function moTaKichBanChoDuyet_(kb) {
 function aiDuyetKichBan_(kb, r, spham) {
   var ds = tieuChiYeuCau_(!!spham, 'kb');
   var prompt = 'Bạn là BỘ PHẬN KIỂM DUYỆT YÊU CẦU của một kênh video dạy toán (TikTok/YouTube/Facebook). Chấm KỊCH BẢN dưới đây TRƯỚC KHI DỰNG, thật khắt khe, theo đúng các yêu cầu của chủ kênh.\n' +
+    'LỚP HỌC CỦA ĐỀ: Lớp ' + r.lop + (typeof yeuCauKienThucLop_ === 'function' && yeuCauKienThucLop_(r.lop, r.mon) ? '\n' + yeuCauKienThucLop_(r.lop, r.mon) + '\n' : '\n') +
     'ĐỀ BÀI: ' + r.de_bai + (r.mo_ta_hinh ? '\nMÔ TẢ HÌNH CỦA ĐỀ: ' + r.mo_ta_hinh : '') + '\nĐÁP ÁN ĐÃ KIỂM CHỨNG: ' + (r.dap_an_hien || r.dap_an) +
     (kb.khong_thu_lai ? '\nKỊCH BẢN GHI KHÔNG THỂ THỬ LẠI VÌ: ' + kb.khong_thu_lai : '') +
     (spham ? '\nSẢN PHẨM QUẢNG BÁ: ' + spham.ten + ' | giá kênh bán ' + spham.gia_ban + 'đ | thông số đã xác minh: ' + (spham.thong_so || []).join('; ') + ' | số ảnh thật: ' + ((spham.anh || []).length) : '') +

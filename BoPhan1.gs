@@ -122,6 +122,95 @@ var CHUONG_TRINH = {
   '12': 'Xác suất có điều kiện; công thức xác suất toàn phần; công thức Bayes'
 };
 
+var CHUONG_TRINH_CHI_TIET_ = {
+  '10': {
+    duoc_phep: 'Toán lớp 10 (GDPT 2018): (1) Đại số: mệnh đề, tập hợp, hàm số bậc nhất và bậc hai (parabol, đỉnh -b/(2a), tam thức bậc hai), BPT bậc nhất 2 ẩn, bất đẳng thức Cauchy (AM-GM), Bunhiacopxki; (2) Hình học phẳng & Oxy: hệ thức lượng tam giác (định lý Cosin, Sin, Heron), vectơ phẳng, tọa độ Oxy, đường tròn, conic; (3) Tổ hợp & Xác suất: quy tắc cộng/nhân đếm, hoán vị Pn, chỉnh hợp Ank, tổ hợp Cnk, nhị thức Newton (n<=5), xác suất cổ điển P(A)=n(A)/n(Omega).',
+    cam_tuyet_doi: 'KHÔNG dùng đạo hàm (f\'(x), y\'), KHÔNG bảng biến thiên / cực trị giải tích (cực đại, cực tiểu), KHÔNG nguyên hàm / tích phân, KHÔNG dãy số / cấp số cộng-nhân / giới hạn (lim), KHÔNG mũ / logarit (ln, log), KHÔNG hình học không gian (góc nhị diện, đường chéo nhau) hay tọa độ Oxyz, KHÔNG công thức cộng/nhân xác suất biến cố hợp-độc lập P(A∪B)/P(AB) (lớp 11), KHÔNG xác suất có điều kiện P(A|B) / toàn phần / Bayes (lớp 12), KHÔNG số phức.'
+  },
+  '11': {
+    duoc_phep: 'Toán lớp 11 (GDPT 2018): (1) Đại số & Giải tích cơ bản: hàm số và phương trình lượng giác (miền giá trị sin, cos trong [-1,1]), dãy số, cấp số cộng, cấp số nhân, giới hạn (lim), hàm liên tục, lũy thừa - logarit cơ bản, ĐẠO HÀM cơ bản (ý nghĩa tiếp tuyến, vận tốc tức thời v(t)=s\'(t), gia tốc); (2) Tìm GTLN/GTNN ở lớp 11 CHỈ dùng tam thức bậc hai (parabol), BĐT Cauchy (AM-GM), Bunhiacopxki hoặc đánh giá lượng giác/mũ cơ bản; (3) Hình học không gian tổng hợp (KHÔNG gắn Oxyz): song song, vuông góc, góc đường-mặt, góc nhị diện, khoảng cách điểm-mặt và hai đường chéo nhau, thể tích chóp/lăng trụ/chóp cụt; (4) Xác suất: mọi kiến thức lớp 10 + biến cố hợp/giao/xung khắc/độc lập, quy tắc cộng P(A∪B)=P(A)+P(B)-P(AB) và quy tắc nhân P(AB)=P(A)P(B).',
+    cam_tuyet_doi: 'TUYỆT ĐỐI KHÔNG dùng phương pháp lớp 12 để giải: KHÔNG lập bảng biến thiên bằng đạo hàm, KHÔNG cho f\'(x)=0 hay y\'=0 để tìm cực đại/cực tiểu/cực trị/GTLN/GTNN hay tiệm cận; KHÔNG nguyên hàm, tích phân; KHÔNG gắn hệ trục tọa độ Oxyz, tích có hướng, phương trình mặt phẳng/mặt cầu trong không gian; KHÔNG xác suất có điều kiện P(A|B), xác suất toàn phần, công thức Bayes; KHÔNG số phức.'
+  },
+  '12': {
+    duoc_phep: 'Toán lớp 12 (GDPT 2018): Toàn bộ chương trình THPT gồm ứng dụng đạo hàm (đơn điệu, cực trị, bảng biến thiên, GTLN/GTNN, tiệm cận), nguyên hàm - tích phân và ứng dụng, hình học không gian Oxyz (vectơ Oxyz, mặt phẳng, đường thẳng, mặt cầu), xác suất có điều kiện P(A|B), công thức xác suất toàn phần và công thức Bayes.',
+    cam_tuyet_doi: 'KHÔNG dùng số phức (đã bỏ khỏi chương trình GDPT 2018).'
+  }
+};
+
+function chuanLop_(lop) {
+  var m = /\b(10|11|12)\b/.exec(String(lop || ''));
+  return m ? m[1] : '';
+}
+
+function yeuCauKienThucLop_(lop, mon) {
+  var l = chuanLop_(lop);
+  if (!l || !CHUONG_TRINH_CHI_TIET_[l]) return '';
+  var ct = CHUONG_TRINH_CHI_TIET_[l];
+  var riengMon = '';
+  if (mon === 'XAC_SUAT') riengMon = CHUONG_TRINH[l] || '';
+  else if (mon === 'THUC_TE') riengMon = CHUONG_TRINH_THUC_TE[l] || '';
+  else if (mon === 'HINH_HOC' && typeof chuongTrinhHinh_ === 'function') riengMon = chuongTrinhHinh_(l);
+  return 'QUY ĐỊNH BẮT BUỘC KIẾN THỨC LỚP ' + l + ' (GDPT 2018 — VI PHẠM SẼ BỊ LOẠI NGAY):\n' +
+    (riengMon ? '- Trọng tâm môn lớp ' + l + ': ' + riengMon + '.\n' : '') +
+    '- Kiến thức ĐƯỢC PHÉP dùng: ' + ct.duoc_phep + '\n' +
+    '- Kiến thức CẤM TUYỆT ĐỐI (không dùng kiến thức lớp trên hoặc phần đã bỏ): ' + ct.cam_tuyet_doi;
+}
+
+// Kiểm tra tất định xem lời giải / kịch bản có dùng kiến thức vượt lớp (hoặc số phức) không.
+// Trả mảng lỗi (rỗng = hợp lệ). Không đọc trường mã JS kiểm chứng để tránh bắt nhầm code nội bộ.
+function kiemTraViPhamLop_(duLieu, lop, mon, deBai) {
+  var l = chuanLop_(lop);
+  if (!l) return [];
+  var gomChu = function (v) {
+    if (!v) return '';
+    if (typeof v === 'string') return v;
+    if (Array.isArray(v)) return v.map(gomChu).join('\n');
+    if (typeof v === 'object') {
+      if (Array.isArray(v.canh)) {
+        return v.canh.map(function (c) {
+          return [c.tieu_de_canh, c.kien_thuc, (c.noi_dung_man_hinh || []).join(' '), c.loi_thoai].join('\n');
+        }).join('\n');
+      }
+      return [v.y_tuong, v.mo_hinh, Array.isArray(v.cac_buoc) ? v.cac_buoc.join('\n') : v.cac_buoc, v.dap_an_hien, v.thu_nguoc].filter(Boolean).join('\n');
+    }
+    return String(v);
+  };
+  var txt = gomChu(duLieu);
+  if (!txt.trim()) return [];
+  var loi = [];
+  var them = function (mau, thongBao) { if (mau.test(txt)) loi.push(thongBao); };
+  them(/số phức|phần ảo|đơn vị ảo/i, 'Dùng số phức (đã bỏ khỏi chương trình GDPT 2018)');
+  if (l === '10' || l === '11') {
+    them(/bảng biến thiên|điểm cực đại|điểm cực tiểu|giá trị cực đại|giá trị cực tiểu|tiệm cận đứng|tiệm cận ngang|tiệm cận xiên/i,
+      'Lớp ' + l + ' không học bảng biến thiên / cực trị giải tích / tiệm cận (thuộc lớp 12)');
+    them(/xác suất có điều kiện|xác suất toàn phần|công thức\s+Bayes|\bBayes\b|P\(\s*[A-Z]\s*\|\s*[A-Z]\s*\)/i,
+      'Lớp ' + l + ' không học xác suất có điều kiện / toàn phần / Bayes (thuộc lớp 12)');
+    them(/nguyên hàm|tích phân|\\int(?:\b|_)/i,
+      'Lớp ' + l + ' không học nguyên hàm / tích phân (thuộc lớp 12)');
+    them(/\bOxyz\b|hệ (?:trục )?tọa độ không gian|gắn hệ tọa độ\s*(?:Oxyz|ba chiều)|tích có hướng|vectơ pháp tuyến của mặt phẳng|phương trình mặt phẳng|phương trình mặt cầu/i,
+      'Lớp ' + l + ' không học tọa độ không gian Oxyz (thuộc lớp 12)');
+  }
+  if (l === '11') {
+    them(/(?:tìm|xét|đạt)\s+(?:GTLN|GTNN|giá trị lớn nhất|giá trị nhỏ nhất|cực trị|tối đa|tối thiểu)[^.\n]{0,90}(?:đạo hàm|y'\s*=|f'\s*\(|V'\s*\(|S'\s*\()|(?:y'|f'\([^)]*\)|V'\([^)]*\)|S'\([^)]*\)|C'\([^)]*\)|A'\([^)]*\)|P'\([^)]*\)|L'\([^)]*\)|T'\([^)]*\))\s*=\s*0[^.\n]{0,110}(?:lớn nhất|nhỏ nhất|GTLN|GTNN|cực đại|cực tiểu|cực trị|đồng biến|nghịch biến|bảng biến thiên)/i,
+      'Lớp 11 không dùng y\'=0 / đạo hàm để tìm cực trị hoặc GTLN/GTNN (thuộc lớp 12; lớp 11 dùng tam thức bậc hai, Cauchy/AM-GM hoặc lượng giác)');
+    them(/đạo hàm[^.\n]{0,60}(?:hàm số đồng biến|hàm số nghịch biến)/i,
+      'Lớp 11 không dùng đạo hàm xét đồng biến/nghịch biến (thuộc lớp 12)');
+  }
+  if (l === '10') {
+    them(/đạo hàm|\bf'\s*\(|\by'\s*=|\\frac\{d[a-z]\}\{d|\\dfrac\{d[a-z]\}\{d/i,
+      'Lớp 10 không học đạo hàm (thuộc lớp 11-12)');
+    them(/(?:\\lim\b|\blim\s*[_\(\{])|giới hạn dãy|giới hạn hàm|cấp số cộng|cấp số nhân/i,
+      'Lớp 10 không học dãy số / cấp số / giới hạn (thuộc lớp 11)');
+    them(/\\ln\b|\bln\s*\(?[a-z0-9]|\\log\b|\blogarit\b|hàm số mũ/i,
+      'Lớp 10 không học lũy thừa thực / logarit (thuộc lớp 11-12)');
+    them(/(?:công thức|quy tắc)\s+nhân\s+xác suất|biến cố độc lập|biến cố hợp|P\(\s*[A-Z]\s*(?:\\cup|∪)\s*[A-Z]\s*\)/i,
+      'Lớp 10 chỉ dùng xác suất cổ điển, không dùng biến cố hợp/độc lập/quy tắc nhân xác suất (thuộc lớp 11)');
+    them(/góc nhị diện|hai đường thẳng chéo nhau|khoảng cách hai đường chéo nhau|vuông góc với mặt phẳng/i,
+      'Lớp 10 không học hình học không gian đường-mặt (thuộc lớp 11)');
+  }
+  return loi;
+}
+
 /* ===================== CÀI ĐẶT BAN ĐẦU ===================== */
 
 function khoiTao() {
@@ -549,7 +638,8 @@ function yeuCauDapAnChinhXac_(mon) {
 }
 function promptSangTacXacSuat_(lop, n, daCo) {
   return 'Bạn là giáo viên Toán giỏi, chuyên ra đề XÁC SUẤT ĐÒI HỎI TƯ DUY CAO cho học sinh lớp ' + lop + ' (Việt Nam).\n' +
-    'Phạm vi kiến thức: ' + CHUONG_TRINH[lop] + '.\n' +
+    'Phạm vi kiến thức: ' + CHUONG_TRINH[lop] + '.\n' + yeuCauKienThucLop_(lop, 'XAC_SUAT') + '\n' +
+    'TUYỆT ĐỐI KHÔNG chọn hay sáng tác bài phải dùng kiến thức lớp trên (vd lớp 10-11 không lấy bài xác suất có điều kiện / Bayes của lớp 12).\n' +
     'Hãy SÁNG TÁC ' + n + ' bài toán xác suất mới mà người giải phải NGHĨ chứ không chỉ áp dụng công thức.\n' +
     'THANG ĐIỂM "diem_tu_duy" (chấm khắt khe và thành thật): 10 = có một ý tưởng then chốt bất ngờ làm bài toán trở nên đơn giản (đối xứng, đếm bù, quy về bài nhỏ hơn, song ánh, đổi vai trò, nhìn từ góc khác); 8-9 = cần phân tích cấu trúc hoặc chia trường hợp khéo và có bẫy dễ nhầm; 6-7 = chỉ cần chọn đúng công thức; 1-5 = thay số vào công thức. CHỈ ra những đề đạt từ 8 điểm trở lên.\n' +
     'YÊU CẦU:\n' +
@@ -565,7 +655,8 @@ function promptSangTacXacSuat_(lop, n, daCo) {
 
 function promptSangTacThucTe_(lop, n, daCo) {
   return 'Bạn là giáo viên Toán giỏi, chuyên ra đề TOÁN THỰC TẾ (vận dụng toán vào đời sống) cho học sinh lớp ' + lop + ' (Việt Nam).\n' +
-    'Phạm vi kiến thức: ' + CHUONG_TRINH_THUC_TE[lop] + '.\n' +
+    'Phạm vi kiến thức: ' + CHUONG_TRINH_THUC_TE[lop] + '.\n' + yeuCauKienThucLop_(lop, 'THUC_TE') + '\n' +
+    'TUYỆT ĐỐI KHÔNG chọn hay sáng tác bài phải dùng kiến thức lớp trên (vd lớp 10-11 không lấy bài phải khảo sát hàm bậc 3 / bảng biến thiên / đạo hàm tìm GTLN-GTNN hay tích phân của lớp 12).\n' +
     'Hãy SÁNG TÁC ' + n + ' bài toán thực tế mới, có bối cảnh đời thường nhìn thấy được (xây bể, làm hộp, lon nước, đo tòa nhà, dựng thang, kéo dây điện, rào vườn, bán hàng, gửi tiết kiệm, xe chạy, đu quay...).\n' +
     'THANG ĐIỂM "diem_tu_duy" (chấm khắt khe): 10 = phải tự MÔ HÌNH HÓA (đặt ẩn, lập hàm) rồi có một ý then chốt làm bài gọn; 8-9 = mô hình hóa có bẫy dễ sai (quên điều kiện, nhầm mặt, nhầm đơn vị); 6-7 = thay vào công thức có sẵn; 1-5 = tính số đơn thuần. CHỈ ra đề từ 8 điểm.\n' +
     'YÊU CẦU:\n' +
@@ -580,7 +671,8 @@ function promptSangTacThucTe_(lop, n, daCo) {
 
 function promptTimXacSuat_(lop, n, daCo) {
   return 'Hãy dùng Google Search để TÌM TRÊN INTERNET ' + (n + 2) + ' bài toán XÁC SUẤT CÓ THẬT (đã được đăng ở nơi khác, KHÔNG tự sáng tác) dành cho học sinh lớp ' + lop + ' (Việt Nam).\n' +
-    'Phạm vi kiến thức: ' + CHUONG_TRINH[lop] + '.\n' +
+    'Phạm vi kiến thức: ' + CHUONG_TRINH[lop] + '.\n' + yeuCauKienThucLop_(lop, 'XAC_SUAT') + '\n' +
+    'TUYỆT ĐỐI KHÔNG chọn hay sáng tác bài phải dùng kiến thức lớp trên (vd lớp 10-11 không lấy bài xác suất có điều kiện / Bayes của lớp 12).\n' +
     'ƯU TIÊN bài VẬN DỤNG CAO, đề học sinh giỏi, câu cuối của đề thi thử; các bài có "mẹo" suy luận. Nguồn: sách giáo khoa/sách bài tập hiện hành, đề minh họa và đề thi tốt nghiệp THPT của Bộ GD&ĐT, đề thi thử của các sở/trường, đề học sinh giỏi, và các trang như toanmath.com, thuvienhoclieu.com, vietjack.com, loigiaihay.vn.\n' +
     'THANG ĐIỂM "diem_tu_duy" (chấm khắt khe, thành thật): 10 = có một ý tưởng then chốt làm bài trở nên đơn giản (đối xứng, đếm bù, quy về bài nhỏ hơn, song ánh, đổi vai trò, góc nhìn khác); 8-9 = cần phân tích cấu trúc hoặc chia trường hợp khéo, có bẫy dễ nhầm; 6-7 = chỉ cần chọn đúng công thức; 1-5 = thay số vào công thức. CHỈ lấy bài từ 8 điểm trở lên; bài chỉ áp dụng công thức máy móc thì BỎ.\n' +
     'YÊU CẦU:\n' +
@@ -596,7 +688,8 @@ function promptTimXacSuat_(lop, n, daCo) {
 
 function promptTimThucTe_(lop, n, daCo) {
   return 'Hãy dùng Google Search để TÌM TRÊN INTERNET ' + (n + 2) + ' bài TOÁN THỰC TẾ CÓ THẬT (đã được đăng ở nơi khác, KHÔNG tự sáng tác) dành cho học sinh lớp ' + lop + ' (Việt Nam).\n' +
-    'Phạm vi kiến thức: ' + CHUONG_TRINH_THUC_TE[lop] + '.\n' +
+    'Phạm vi kiến thức: ' + CHUONG_TRINH_THUC_TE[lop] + '.\n' + yeuCauKienThucLop_(lop, 'THUC_TE') + '\n' +
+    'TUYỆT ĐỐI KHÔNG chọn hay sáng tác bài phải dùng kiến thức lớp trên (vd lớp 10-11 không lấy bài phải khảo sát hàm bậc 3 / bảng biến thiên / đạo hàm tìm GTLN-GTNN hay tích phân của lớp 12).\n' +
     'Nguồn: sách giáo khoa mới (phần "Vận dụng", "Hoạt động thực tế"), đề minh họa/đề thi tốt nghiệp THPT (câu trả lời ngắn), đề thi thử của sở/trường, các trang toanmath.com, thuvienhoclieu.com, vietjack.com, loigiaihay.vn.\n' +
     'THANG ĐIỂM "diem_tu_duy" (chấm khắt khe): 10 = phải tự mô hình hóa rồi có ý then chốt làm bài gọn; 8-9 = mô hình hóa có bẫy dễ sai; 6-7 = thay công thức có sẵn; 1-5 = tính số đơn thuần. CHỈ lấy bài từ 8 điểm.\n' +
     'YÊU CẦU:\n' +
@@ -635,7 +728,8 @@ function vietSo_(x) {
 
 function giaiThucTe_(r) {
   var t0 = Date.now();
-  var de = 'Bài toán thực tế (lớp ' + r.lop + '):\n' + r.de_bai;
+  var luuY = yeuCauKienThucLop_(r.lop, 'THUC_TE');
+  var de = 'Bài toán thực tế (lớp ' + r.lop + '):\n' + r.de_bai + (luuY ? '\n\n' + luuY : '');
   var dinhDang = 'Đáp số cuối là MỘT con số (đại lượng đề hỏi). Nếu đề yêu cầu làm tròn thì "gia_tri" là số ĐÃ làm tròn đúng yêu cầu; nếu không thì giữ ít nhất 4 chữ số có nghĩa. ' +
     'BẮT BUỘC THỬ NGƯỢC: thay đáp số vào lại TẤT CẢ dữ kiện của đề và tính lại (ví dụ đề cho tổng 260 thì tính lại tổng với đáp số tìm được xem có đúng 260 không). ' +
     'Nếu đề KHÔNG có đáp số thỏa mãn chính xác mọi dữ kiện (cần số nguyên mà phương trình không có nghiệm nguyên, dữ kiện mâu thuẫn, thiếu dữ kiện) thì ghi rõ vào "de_co_van_de" ' +
@@ -907,7 +1001,8 @@ function giaiVaKiemChung_(r) {
 
 function giaiXacSuat_(r) {
   var t0 = Date.now();
-  var de = 'Bài toán (lớp ' + r.lop + '):\n' + r.de_bai;
+  var luuY = yeuCauKienThucLop_(r.lop, 'XAC_SUAT');
+  var de = 'Bài toán (lớp ' + r.lop + '):\n' + r.de_bai + (luuY ? '\n\n' + luuY : '');
   var dinhDang = 'Đáp án cuối là MỘT xác suất dạng phân số với tử và mẫu là số nguyên dương. Soát lại: đếm trùng/đếm sót, có hoàn lại không, có phân biệt thứ tự không. ' +
     'Nếu đề mơ hồ hoặc mâu thuẫn, ghi rõ vào "de_co_van_de" cách hiểu hợp lý nhất đã dùng (đề bình thường để rỗng). Trả JSON: {"cac_buoc":["..."],"tu":0,"mau":0,"de_co_van_de":""}\n\n';
   // Ba việc độc lập nhau (hai cách giải + mã kiểm chứng) nên gọi đồng thời.
@@ -958,7 +1053,13 @@ function giaiXacSuat_(r) {
 function trongTai_(r, o) {
   var ung = [];   // {v, c, nguon}
   var ma = [];    // {v, manh, mo, khop}
-  var themGiai = function (c, nguon) { var v = c ? o.doc(c) : null; if (v !== null && v !== undefined) ung.push({ v: v, c: c, nguon: nguon }); };
+  var themGiai = function (c, nguon) {
+    var v = c ? o.doc(c) : null;
+    if (v === null || v === undefined) return;
+    var vp = typeof kiemTraViPhamLop_ === 'function' ? kiemTraViPhamLop_(c, r.lop, r.mon, r.de_bai) : [];
+    if (vp.length) nhatKy_('GIAI', r.id + ' (' + nguon + '): vi phạm kiến thức lớp ' + r.lop + ': ' + vp[0]);
+    ung.push({ v: v, c: c, nguon: nguon, vp: vp });
+  };
   var chayMa = function (kc, ten) {
     if (!kc || !kc.ma) return;
     try { var k = o.kiem(chayKiemChung_(kc.ma)); if (k) ma.push(k); }
@@ -986,12 +1087,39 @@ function trongTai_(r, o) {
   };
   var ketQua = function (v, vong) {
     var khop = ung.filter(function (u) { return o.bang(u.v, v); });
-    var c1 = khop.length ? khop[0].c : o.c1;
-    var c2 = khop.filter(function (u) { return u.nguon === 'cach2'; }).length ? o.c2 : c1;   // giữ cách "thông minh" nếu nó đúng
+    var khopSach = khop.filter(function (u) { return !u.vp || !u.vp.length; });
+    var c1 = khopSach.length ? khopSach[0].c : (khop.length ? khop[0].c : o.c1);
+    var c2Sach = khopSach.filter(function (u) { return u.nguon === 'cach2'; });
+    var c2 = c2Sach.length ? c2Sach[0].c : (khopSach.length ? khopSach[0].c : (khop.filter(function (u) { return u.nguon === 'cach2'; }).length ? o.c2 : c1));
+    var vanDeLop = '';
+    if (khop.length && !khopSach.length && chuanLop_(r.lop) && typeof goiGemini_ === 'function') {
+      var lyDoVp = (khop[0].vp || []).join('; ');
+      nhatKy_('GIAI', r.id + ': đáp án ' + o.chu(v) + ' đúng nhưng mọi lời giải đều vi phạm lớp ' + r.lop + ' (' + lyDoVp + ') -> yêu cầu viết lại đúng chương trình lớp ' + r.lop);
+      try {
+        var promptSua = 'Bạn là giáo viên Toán lớp ' + r.lop + '. Đáp án đúng của bài là ' + o.chu(v) +
+          ', NHƯNG lời giải trước đã VI PHẠM chương trình lớp ' + r.lop + ': ' + lyDoVp + '.\n' +
+          'Hãy VIẾT LẠI lời giải hoàn chỉnh CHỈ dùng kiến thức được phép của lớp ' + r.lop + ' (giữ đúng đáp số ' + o.chu(v) + ').\n' +
+          yeuCauKienThucLop_(r.lop, r.mon) + '\n' + o.dinhDang + o.de;
+        var cMoi = goiGemini_(promptSua, 0.2, { suyNghi: 'high' });
+        var vMoi = cMoi ? o.doc(cMoi) : null;
+        var vpMoi = cMoi && typeof kiemTraViPhamLop_ === 'function' ? kiemTraViPhamLop_(cMoi, r.lop, r.mon, r.de_bai) : ['KHONG_DOC_DUOC'];
+        if (vMoi !== null && vMoi !== undefined && o.bang(vMoi, v) && !vpMoi.length) {
+          c1 = cMoi; c2 = cMoi;
+          nhatKy_('GIAI', r.id + ': đã viết lại lời giải sạch đúng kiến thức lớp ' + r.lop);
+        } else {
+          vanDeLop = 'Lời giải vượt chương trình lớp ' + r.lop + ' (' + (vpMoi.length ? vpMoi[0] : lyDoVp) + ')';
+        }
+      } catch (eSua) {
+        if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(eSua.message))) throw eSua;
+        vanDeLop = 'Lời giải vượt chương trình lớp ' + r.lop + ' (' + lyDoVp + ')';
+      }
+    }
+    // c2 đã được chọn theo khopSach ở trên
     var mo = ma.filter(function (k) { return k.khop(v); }).map(function (k) { return k.mo; }).join('; ') || 'các lời giải độc lập khớp nhau';
     if (vong) nhatKy_('GIAI', r.id + ': trọng tài vòng ' + vong + ' chốt ' + o.chu(v) + ' (' + tomTat() + ')');
     var vanDe = '';
     khop.concat(ung).some(function (u) { var x = String((u.c && u.c.de_co_van_de) || '').trim(); if (x.length > 8) { vanDe = x; return true; } return false; });
+    if (vanDeLop && !vanDe) vanDe = vanDeLop;
     return { dat: true, v: v, chu: o.chu(v), c1: c1, c2: c2, mo: mo + (vong ? ' | phân xử sau ' + vong + ' vòng' : ''), de_co_van_de: vanDe.slice(0, 300) };
   };
   themGiai(o.c1, 'cach1');
@@ -1010,7 +1138,7 @@ function trongTai_(r, o) {
   t = tot();
   if (t.v !== null && t.ro) return ketQua(t.v, 1);
   // vòng 2: giải bằng phương pháp khác hẳn (liệt kê trực tiếp / đặt lại mô hình)
-  try { themGiai(goiGemini_('Bạn là giáo viên Toán. Giải bài sau bằng một PHƯƠNG PHÁP KHÁC HẲN cách thông thường (ví dụ liệt kê trực tiếp các trường hợp nhỏ, đếm bằng bảng, đặt lại mô hình/tọa độ), ' +
+  try { themGiai(goiGemini_('Bạn là giáo viên Toán. Giải bài sau theo ĐÚNG kiến thức lớp ' + (chuanLop_(r.lop) || r.lop) + ' bằng một PHƯƠNG PHÁP KHÁC HẲN cách thông thường (ví dụ liệt kê trực tiếp các trường hợp nhỏ, đếm bằng bảng, đặt lại mô hình' + (chuanLop_(r.lop) === '12' ? '/tọa độ Oxyz' : (chuanLop_(r.lop) === '10' ? '/tọa độ Oxy' : '')) + '), ' +
     'kiểm tra lại kết quả bằng một cách thứ hai trước khi trả lời. ' + o.dinhDang + o.de, 0.3, { suyNghi: 'high' }), 'cach_khac'); }
   catch (e3) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(e3.message))) throw e3; }
   t = tot();
@@ -1152,11 +1280,12 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
         } catch (eGY) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(eGY.message))) { luuNhapKichBan_(r.id, kb); throw eGY; } }
       }
       var hinhDe = deCoHinh_(r) ? String(r.de_bai || '') + ' ' + String(r.mo_ta_hinh || '') : '';
+      if (kb && typeof kb === 'object') kb.lop = chuanLop_(r.lop) || String(r.lop || '');
       var dg = null, lanSua = 0, hetGio = false;
       var maxSua = Number(cauHinh_('SO_LAN_SUA_KICH_BAN')) || 2;
       for (;;) {
         chuanBiKichBan_(kb, r, ctxSua);
-        dg = danhGiaKichBan_(kb, r.dap_an, r.mon, hinhDe, spham, r.de_bai);
+        dg = danhGiaKichBan_(kb, r.dap_an, r.mon, hinhDe, spham, r.de_bai, r.lop);
         // Hết lỗi nặng thì đi tiếp ngay sang cửa AI chấm tiêu chí (gộp sửa các lưu ý nhẹ vào cùng 1 vòng nếu AI chấm cần sửa, tiết kiệm 1-2 lượt Gemini).
         if (!dg.nang.length) break;
         if (lanSua >= maxSua) break;
@@ -1190,7 +1319,7 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
           if (canhGT) {
             kb.canh = canhGT;
             chuanBiKichBan_(kb, r, ctxSua);
-            var dgGT = danhGiaKichBan_(kb, r.dap_an, r.mon, hinhDe, spham, r.de_bai);
+            var dgGT = danhGiaKichBan_(kb, r.dap_an, r.mon, hinhDe, spham, r.de_bai, r.lop);
             if (dgGT.nang.length) { kb = JSON.parse(kbLuu); nhatKy_('KICH_BAN_GIAI_THICH', r.id + ': bỏ cảnh giải thích bổ sung (' + dgGT.nang.map(function (x) { return String(x).split(':')[0]; }).join(', ') + ')'); }
             else { dg = dgGT; nhatKy_('KICH_BAN_GIAI_THICH', r.id + ': đã thêm cảnh giải thích công thức, nay ' + demCanhGiaiThich_(kb) + ' cảnh, tổng ' + kb.canh.length + ' cảnh'); }
           }
@@ -1226,7 +1355,7 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
           if (kbYC && Array.isArray(kbYC.canh) && kbYC.canh.length) {
             kb = kbYC;
             chuanBiKichBan_(kb, r, ctxSua);
-            var dgYC = danhGiaKichBan_(kb, r.dap_an, r.mon, hinhDe, spham, r.de_bai);
+            var dgYC = danhGiaKichBan_(kb, r.dap_an, r.mon, hinhDe, spham, r.de_bai, r.lop);
             if (dgYC.nang.length) { kb = JSON.parse(kbTruoc); nhatKy_('KIEM_DUYET_YC', r.id + ': bản sửa sinh lỗi nặng (' + dgYC.nang.map(function (x) { return String(x).split(':')[0]; }).join(', ') + '), giữ bản trước'); }
             else dg = dgYC;
           }
@@ -1237,7 +1366,7 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
             kb = JSON.parse(totNhatYC.kb);
             dy = totNhatYC.dy || dy;
             chuanBiKichBan_(kb, r, ctxSua);
-            dg = danhGiaKichBan_(kb, r.dap_an, r.mon, hinhDe, spham, r.de_bai);
+            dg = danhGiaKichBan_(kb, r.dap_an, r.mon, hinhDe, spham, r.de_bai, r.lop);
           }
           // Siết chuẩn tiêu chí cốt lõi của chủ kênh: KHÔNG cho qua nếu sai đề bài, sai hình bám đề, sai toán/đáp án, sai quy tắc đã dạy hoặc sai sản phẩm (< 7/10).
           var ctYC = (dy && dy.chi_tiet) || {};
