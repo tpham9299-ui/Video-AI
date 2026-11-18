@@ -1874,10 +1874,10 @@ function giaoBoPhan1ChoGitHub_(sh, chiUuTien, chiViec) {
     if (!duLieu) { ghi_(sh, r._row, { ghi_chu: 'TAI_CHO: dữ liệu đề quá lớn để gửi GitHub' }); continue; }
     cacheBP1.put(khoaCache, '1', 90);
     var trangThaiCu = r.trang_thai, ghiChuCu = r.ghi_chu;
-    ghi_(sh, r._row, { trang_thai: 'GITHUB', ghi_chu: 'GITHUB|' + Date.now() + '|' + trangThaiCu + ' (đang ' + (laKB ? 'xây kịch bản [Luồng 1B]' : 'giải đề [Luồng 1A]') + ' trên GitHub)' });
-    var wfRieng = laKB ? 'viet-kich-ban.yml' : 'giai-de.yml';
+    ghi_(sh, r._row, { trang_thai: 'GITHUB', ghi_chu: 'GITHUB|' + Date.now() + '|' + trangThaiCu + ' (đang ' + (laKB ? 'viết kịch bản [Bộ phận 2]' : 'giải đề [Bộ phận 1]') + ' trên GitHub)' });
+    var wfRieng = laKB ? 'viet-kich-ban.yml' : 'bo-phan-1.yml';
     var kq = guiWorkflowGitHub_({ id: r.id, de: duLieu }, wfRieng);
-    if (!kq.ok && kq.ma === 404) kq = guiWorkflowGitHub_({ id: r.id, de: duLieu }, 'bo-phan-1.yml');
+    if (laKB && !kq.ok && kq.ma === 404) kq = guiWorkflowGitHub_({ id: r.id, de: duLieu }, 'bo-phan-1.yml');
     if (!kq.ok) {
       cacheBP1.remove(khoaCache);
       ghi_(sh, r._row, { trang_thai: trangThaiCu, ghi_chu: ghiChuCu });
@@ -1885,7 +1885,7 @@ function giaoBoPhan1ChoGitHub_(sh, chiUuTien, chiViec) {
       guiZaloMotLan_('GH_BP1_' + kq.ma + '_' + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd'), '⚠️ Không gửi được đề sang GitHub (' + String(kq.loi).slice(0, 150) + '). Hệ thống tạm làm tại Apps Script.');
       return { gui: gui, loi: kq.loi };
     }
-    nhatKy_('GITHUB_BP1', r.id + ' -> đã gửi GitHub ' + (laKB ? 'xây kịch bản [Luồng 1B]' : 'giải đề [Luồng 1A]') + (laUuTien_(r) ? ' (ưu tiên)' : ''));
+    nhatKy_('GITHUB_BP1', r.id + ' -> đã gửi GitHub ' + (laKB ? 'Bộ phận 2 (viet-kich-ban.yml)' : 'Bộ phận 1 (bo-phan-1.yml)') + (laUuTien_(r) ? ' (ưu tiên)' : ''));
     if (laKB) dangChayKB++; else dangChayGiai++;
     gui++;
   }
@@ -2863,7 +2863,7 @@ function taoDeVideoDai10Phut_(goiYChuDe, chat, laTuDongNgay) {
     cap_nhat: new Date(),
     ma_bam: bam_(d.de_bai)
   };
-  sh.appendRow(COT.map(function (k) { return obj[k] !== undefined ? obj[k] : ''; }));
+  themHang_(sh, obj);
   SpreadsheetApp.flush();
   if (!laTuDongNgay) {
     try { if (typeof henUuTien_ === 'function') henUuTien_(15); } catch (eH) {}
@@ -3072,7 +3072,7 @@ function sinhDeQuaGitHub_(sh, bc) {
   var hang = docHang_(sh);
   var homNay = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyyMMdd');
   var p = PropertiesService.getScriptProperties();
-  var can10p = String(cauHinh_('VIDEO_10P_MOI_NGAY') || 'BAT').toUpperCase() !== 'TAT' && p.getProperty('NGAY_SINH_VIDEO_10P') !== homNay;
+  var can10p = String(cauHinh_('VIDEO_10P_MOI_NGAY') || 'BAT').toUpperCase() !== 'TAT' && p.getProperty('DA_SINH_10P_NGAY') !== homNay;
   var dangCho = hang.filter(function (r) { return r.trang_thai === 'MOI' || r.trang_thai === 'DA_GIAI' || r.trang_thai === 'GITHUB'; }).length;
   var hsSX = typeof heSoSanXuat_ === 'function' ? heSoSanXuat_() : { he_so: 1 };
   var thieuCho = dangCho < Math.min(10, Math.round(Number(cauHinh_('NGUONG_HANG_DOI')) * hsSX.he_so));
@@ -3090,8 +3090,8 @@ function sinhDeQuaGitHub_(sh, bc) {
   var propsGui = {
     LOP_KE: p.getProperty('LOP_KE') || '0',
     MON_KE: p.getProperty('MON_KE') || '0',
-    NGAY_SINH_VIDEO_10P: p.getProperty('NGAY_SINH_VIDEO_10P') || '',
-    LOP_VIDEO_10P_KE: p.getProperty('LOP_VIDEO_10P_KE') || '0'
+    DA_SINH_10P_NGAY: p.getProperty('DA_SINH_10P_NGAY') || '',
+    LOP_10P_KE: p.getProperty('LOP_10P_KE') || '0'
   };
   var duLieu = JSON.stringify({
     cau_hinh: ch,
@@ -3100,10 +3100,10 @@ function sinhDeQuaGitHub_(sh, bc) {
     ma_bam: hang.map(function (r) { return r.ma_bam; }).filter(Boolean).slice(-120)
   });
   if (duLieu.length <= 60000 && typeof guiWorkflowGitHub_ === 'function') {
-    var gh = guiWorkflowGitHub_({ du_lieu: duLieu }, 'sinh-de.yml');
+    var gh = guiWorkflowGitHub_({ mon: ch.CHU_DE_VIDEO || 'XEN_KE', du_lieu: duLieu }, 'sinh-de.yml');
     if (gh && gh.ok) {
       cacheSD.put('DANG_SINH_DE_GH', '1', 300);
-      nhatKy_('SINH_DE_GH', 'Đã giao workflow sinh-de.yml tìm/sáng tác đề mới trên GitHub');
+      nhatKy_('SINH_DE_GH', 'Đã giao Bộ phận 0 (sinh-de.yml) tìm/sáng tác đề mới trên GitHub');
       return true;
     }
   }
@@ -3112,15 +3112,15 @@ function sinhDeQuaGitHub_(sh, bc) {
   return false;
 }
 
-// Nhận đề mới từ sinh-de.yml (doPost loai = 'them_de'), lưu vào Sheet rồi đẩy ngay vào giai-de.yml
+// Nhận đề mới từ sinh-de.yml (doPost loai = 'them_de'), lưu vào Sheet rồi đẩy ngay vào Bộ phận 1 (bo-phan-1.yml)
 function nhanThemDeTuGitHub_(sh, d) {
   try { CacheService.getScriptCache().remove('DANG_SINH_DE_GH'); } catch (eC) {}
   (d.nhat_ky || []).slice(-20).forEach(function (x) { nhatKy_(x[1], '[GitHub] ' + x[2]); });
   var p = PropertiesService.getScriptProperties();
   if (d.lop_ke !== null && d.lop_ke !== undefined) p.setProperty('LOP_KE', String(d.lop_ke));
   if (d.mon_ke !== null && d.mon_ke !== undefined) p.setProperty('MON_KE', String(d.mon_ke));
-  if (d.ngay_10p) p.setProperty('NGAY_SINH_VIDEO_10P', String(d.ngay_10p));
-  if (d.lop_10p !== null && d.lop_10p !== undefined) p.setProperty('LOP_VIDEO_10P_KE', String(d.lop_10p));
+  if (d.ngay_10p) p.setProperty('DA_SINH_10P_NGAY', String(d.ngay_10p));
+  if (d.lop_10p !== null && d.lop_10p !== undefined) p.setProperty('LOP_10P_KE', String(d.lop_10p));
   var dsDe = Array.isArray(d.de) ? d.de : [];
   if (!dsDe.length) return { ok: true, them: 0 };
   var daBam = docMaBamLuuTru_();
@@ -3139,7 +3139,7 @@ function nhanThemDeTuGitHub_(sh, d) {
   });
   if (them > 0) {
     SpreadsheetApp.flush();
-    nhatKy_('SINH_DE_GH', 'Đã nhận ' + them + ' đề mới từ GitHub -> đẩy ngay sang giai-de.yml');
+    nhatKy_('SINH_DE_GH', 'Đã nhận ' + them + ' đề mới từ Bộ phận 0 -> đẩy ngay sang Bộ phận 1 (bo-phan-1.yml)');
     try { if (!dangNghi_()) giaoBoPhan1ChoGitHub_(sh, false, 'giai'); } catch (eG) {}
     p.setProperty('CAN_DONG_BO', '1');
   }

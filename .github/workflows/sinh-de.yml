@@ -1,11 +1,15 @@
 name: Bộ phận 0 - Sinh & tìm đề mới
-run-name: "Sinh đề ${{ inputs.mon || 'tu-dong' }}"
+run-name: "Sinh đề ${{ inputs.mon || 'tự động' }}"
 
 # Workflow chuyên biệt cho Bộ phận 0: tìm đề có thật trên Internet / sáng tác đề mới + đề chuyên đề 10 phút trên GitHub
-# thay vì chạy đồng bộ 1-3 phút trên Apps Script. Kết quả trả về Apps Script (loai = them_de) và đẩy thẳng sang giai-de.yml!
+# thay vì chạy đồng bộ 1-3 phút trên Apps Script. Kết quả trả về Apps Script (loai = them_de) và đẩy thẳng sang Bộ phận 1 - Giải đề (bo-phan-1.yml)!
 on:
   workflow_dispatch:
     inputs:
+      mon:
+        description: 'Môn (tu_dong | XEN_KE | XAC_SUAT | THUC_TE | HINH_HOC)'
+        type: string
+        default: ''
       du_lieu:
         description: 'Cấu hình và danh sách đề gần đây (JSON)'
         type: string
@@ -25,6 +29,7 @@ jobs:
       APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
       DUNG_VIDEO_SECRET: ${{ secrets.DUNG_VIDEO_SECRET }}
       SD_DU_LIEU: ${{ inputs.du_lieu }}
+      SD_MON: ${{ inputs.mon }}
     steps:
       - uses: actions/checkout@v4
         with:

@@ -1,11 +1,9 @@
-name: Bộ phận 1 - giải đề và viết kịch bản
-run-name: "Giải ${{ inputs.id }}"
+name: Bộ phận 1 - Giải đề
+run-name: "Giải đề ${{ inputs.id }}"
 
-# Apps Script (BoPhan1.gs > giaoBoPhan1ChoGitHub_) gửi MỘT đề sang đây. GitHub chạy nguyên mã giải + kiểm chứng + viết kịch bản
-# + chấm + tự sửa của Apps Script (scripts/bophan1/chay_bp1.js), không giới hạn 6 phút, nhiều đề chạy song song,
-# rồi gửi kết quả về Apps Script (doPost, loai = bo_phan_1). Apps Script lưu kịch bản và gửi dựng video ngay.
-# Secret cần: GEMINI_KEYS (các key Gemini, mỗi dòng một key; thiếu thì dùng GEMINI_API_KEY), APPS_SCRIPT_URL, DUNG_VIDEO_SECRET,
-# RCLONE_CONF (để tải ảnh đề gửi qua Zalo).
+# Workflow chuyên biệt cho Bộ phận 1: Giải đề & kiểm chứng 2 cách + mã kiểm chứng (MOI -> DA_GIAI).
+# Xong sẽ trả kết quả về Apps Script để chuyển ngay sang Bộ phận 2 - Viết kịch bản (viet-kich-ban.yml).
+# (Vẫn tương thích ngược nếu bản Apps Script cũ gửi kèm đề DA_GIAI sang đây).
 on:
   workflow_dispatch:
     inputs:
@@ -52,14 +50,14 @@ jobs:
         run: |
           ANH=$(python3 -c "import json,os;h=(json.loads(os.environ.get('BP1_DE') or '{}').get('hang') or {});f=str(h.get('file_anh') or '');print('' if (not f or f.startswith('http')) else f)")
           if [ -z "$ANH" ]; then echo "Đề không có ảnh"; exit 0; fi
-          curl -fsSL https://rclone.org/install.sh | sudo bash > /dev/null 2>&1
+          command -v rclone >/dev/null || (curl -fsSL --retry 3 --retry-delay 5 https://rclone.org/install.sh | sudo bash > /dev/null 2>&1 || (sudo apt-get update -qq && sudo apt-get install -y -qq rclone))
           mkdir -p ~/.config/rclone anh_de
           printf '%s' "$RCLONE_CONF" > ~/.config/rclone/rclone.conf
           rclone backend copyid gdrive: "$ANH" anh_de/ || { echo "Không tải được ảnh đề, vẫn giải bằng chữ"; exit 0; }
           F=$(ls anh_de | head -1)
           if [ -n "$F" ]; then echo "BP1_ANH=$PWD/anh_de/$F" >> "$GITHUB_ENV"; echo "Đã tải ảnh đề: $F"; fi
 
-      - name: Giải + kiểm chứng + viết kịch bản
+      - name: Giải đề & kiểm chứng 2 cách
         run: node scripts/bophan1/chay_bp1.js
 
       # chạy tay (không có mã đề): in kết quả + kịch bản ra nhật ký để xem / đem đi dựng thử

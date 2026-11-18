@@ -9,10 +9,11 @@ const {execFileSync} = require('child_process');
 const GOC = path.resolve(__dirname, '..', '..');
 const RA = process.env.SD_RA || path.join(GOC, 'ket_qua_sinh_de.json');
 const dl = process.env.SD_DU_LIEU ? JSON.parse(process.env.SD_DU_LIEU) : {};
+const GIA_LAP = process.env.BP0_GIA_LAP === '1';
 const keys = String(process.env.GEMINI_KEYS || process.env.GEMINI_API_KEY || '').split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean);
 const out = {ok: false, de: [], lop_ke: null, mon_ke: null, ngay_10p: '', lop_10p: null, nhat_ky: [], loi: ''};
 
-if (!keys.length) {
+if (!GIA_LAP && !keys.length) {
   out.loi = 'THIEU_GEMINI_KEYS';
   fs.writeFileSync(RA, JSON.stringify(out));
   process.exit(1);
@@ -20,11 +21,26 @@ if (!keys.length) {
 
 const addedRows = [];
 const props = Object.assign({}, dl.props || {});
-const chMap = dl.cau_hinh || {};
+const chMap = Object.assign({}, dl.cau_hinh || {});
+if (process.env.SD_MON && /^(XEN_KE|XAC_SUAT|THUC_TE|HINH_HOC)$/i.test(process.env.SD_MON.trim())) {
+  chMap.CHU_DE_VIDEO = process.env.SD_MON.trim().toUpperCase();
+}
 const fakeHang = (dl.gan_day || []).map((x) => ({chu_de: x.chu_de || '', de_bai: x.de_bai || '', ma_bam: x.ma_bam || '', trang_thai: x.trang_thai || 'MOI', id: x.id || ''}));
 
+const fakeSheet = {
+  getName: () => 'HANG_DOI',
+  getLastRow: () => fakeHang.length + 1,
+  appendRow: (arr) => {
+    const COT_LIST = ctx.COT || [];
+    const obj = {};
+    COT_LIST.forEach((k, idx) => { if (arr[idx] !== '' && arr[idx] !== undefined) obj[k] = arr[idx]; });
+    addedRows.push(obj);
+    fakeHang.push(obj);
+  },
+};
+
 const ctx = {
-  SpreadsheetApp: {getActiveSpreadsheet: () => ({getSheetByName: () => ({getName: () => 'HANG_DOI'})}), flush: () => {}},
+  SpreadsheetApp: {getActiveSpreadsheet: () => ({getSheetByName: () => fakeSheet}), flush: () => {}},
   PropertiesService: {
     getScriptProperties: () => ({
       getProperty: (k) => (k in props ? String(props[k]) : null),
@@ -47,8 +63,15 @@ const ctx = {
   DriveApp: {getFileById: () => { throw new Error('KHONG_CO_DRIVE'); }},
   ScriptApp: {getProjectTriggers: () => [], newTrigger: () => ({}), deleteTrigger: () => {}},
   UrlFetchApp: {fetch: () => { throw new Error('KHONG_DUNG_URLFETCH'); }},
-  khoDanhSachKey_: () => keys,
+  khoDanhSachKey_: () => (GIA_LAP ? ['gia_lap'] : keys),
   khoGoi_: (_nhom, model, body) => {
+    if (GIA_LAP) {
+      const p = ((body.contents && body.contents[0] && body.contents[0].parts && body.contents[0].parts[0] && body.contents[0].parts[0].text) || '');
+      const payload = /CHUYÊN ĐỀ DÀI 10 PHÚT/i.test(p)
+        ? {lop: '12', mon: 'THUC_TE', chu_de: 'Chuyên đề 10 phút: Tối ưu bể', de_bai: 'Xây bể chứa nước không nắp đáy vuông thể tích 32m3. Tìm diện tích nhỏ nhất.', dap_an: '48', yeu_to_tu_duy: 'Cô-si', bay_thuong_gap: 'Quên bỏ nắp'}
+        : [{dang: 'toi_uu_hop', chu_de: 'Hộp chữ nhật', de_bai: 'Cắt 4 góc hình vuông cạnh x từ tấm bìa vuông 60cm để gấp hộp không nắp thể tích lớn nhất.', dap_an: '10', diem_tu_duy: 9, yeu_to_tu_duy: 'Cực trị', bay_thuong_gap: 'Điều kiện 0<x<30'}];
+      return {ok: true, code: 200, raw: JSON.stringify({candidates: [{content: {parts: [{text: JSON.stringify(payload)}]}}]})};
+    }
     const danhSach = String(chMap.DANH_SACH_MODEL || '').split(/[\s,;]+/).filter(Boolean);
     const models = danhSach.length ? danhSach : [model, chMap.MODEL_CHINH, chMap.MODEL_DU_PHONG, chMap.MODEL_DU_PHONG_2, 'gemini-2.5-flash'].filter(Boolean);
     const t = path.join(os.tmpdir(), 'sd_gem_' + Date.now() + '.json');
@@ -89,8 +112,8 @@ try {
   });
   out.lop_ke = props.LOP_KE || null;
   out.mon_ke = props.MON_KE || null;
-  out.ngay_10p = props.NGAY_SINH_VIDEO_10P || '';
-  out.lop_10p = props.LOP_VIDEO_10P_KE || null;
+  out.ngay_10p = props.DA_SINH_10P_NGAY || '';
+  out.lop_10p = props.LOP_10P_KE || null;
   console.log(`SINH_DE xong: ${out.de.length} đề mới`);
 } catch (e) {
   out.loi = String(e && e.message || e).slice(0, 300);

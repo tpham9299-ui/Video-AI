@@ -1,8 +1,8 @@
-name: Bộ phận 3 - AI Kiểm duyệt video
+name: Bộ phận 4 - AI kiểm duyệt video
 run-name: "Kiểm duyệt ${{ inputs.id }}"
 
-# Workflow chuyên biệt cho Bộ phận 3: chuyển tác vụ AI xem lưới khung hình (aiChamVideo_) từ Apps Script sang GitHub Actions
-# dùng cụm nhiều key GEMINI_KEYS, giải phóng Apps Script không bị nghẽn 6 phút hay kẹt key kiểm duyệt.
+# Workflow chuyên biệt cho Bộ phận 4: AI chấm lưới khung hình video (aiChamVideo_) bằng cụm key GEMINI_KEYS trên GitHub,
+# xong trả kết quả về Apps Script (doPost loai = ai_xem) để chuyển sang Bộ phận 5 - Đăng video.
 on:
   workflow_dispatch:
     inputs:

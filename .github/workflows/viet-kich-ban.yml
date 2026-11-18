@@ -1,8 +1,8 @@
-name: Bộ phận 1B - Viết kịch bản
+name: Bộ phận 2 - Viết kịch bản
 run-name: "Kịch bản ${{ inputs.id }}"
 
-# Workflow chuyên biệt cho Luồng 1B: CHỈ xây dựng + kiểm duyệt + tối ưu kịch bản từ đề DA_GIAI -> CO_KICH_BAN.
-# Chạy song song độc lập với workflow Giải đề (giai-de.yml) để cấp kịch bản liên tục cho bộ dựng video.
+# Workflow chuyên biệt cho Bộ phận 2: CHỈ xây dựng + kiểm duyệt + tối ưu kịch bản từ đề DA_GIAI -> CO_KICH_BAN.
+# Chạy song song độc lập với Bộ phận 1 - Giải đề (bo-phan-1.yml) để cấp kịch bản liên tục cho Bộ phận 3 - Dựng video.
 on:
   workflow_dispatch:
     inputs:

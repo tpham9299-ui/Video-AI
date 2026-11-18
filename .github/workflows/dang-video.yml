@@ -1,8 +1,7 @@
-name: Bộ phận 4 - Đăng video
+name: Bộ phận 5 - Đăng video
 run-name: "Đăng ${{ inputs.id }}"
 
-# Workflow chuyên biệt cho Bộ phận 4: CHỈ lo việc đánh số tập, gắn CTA, đặt ảnh bìa và đăng video lên YouTube / Facebook / TikTok.
-# Tách riêng khỏi dung-video.yml để quá trình dựng video và đăng bài độc lập hoàn toàn.
+# Workflow chuyên biệt cho Bộ phận 5: đánh số tập, gắn CTA, đặt ảnh bìa và đăng video lên YouTube / Facebook / TikTok.
 on:
   workflow_dispatch:
     inputs:

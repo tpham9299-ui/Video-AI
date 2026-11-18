@@ -1,4 +1,5 @@
-name: Dựng video
+name: Bộ phận 3 - Dựng video
+run-name: "Dựng video ${{ github.event.client_payload.id || github.event.inputs.id || github.event.inputs.mau }}"
 
 # Kích hoạt:
 #  - Apps Script (BoPhan2.gs) gửi "workflow_dispatch" kèm ref = nhánh trong CAU_HINH > GITHUB_NHANH: GitHub chạy ĐÚNG mã của
@@ -176,7 +177,8 @@ jobs:
       # BÀI HÌNH HỌC: phần toán (hình, công thức, chuyển động, hiệu ứng) dựng 100% bằng MANIM (scripts/manim_hinh.py) thành
       # một lớp trong suốt; Remotion vẫn dựng PHẦN VỎ CHUNG như mọi video (nền, tiêu đề, thanh bước, phụ đề, giọng, nhạc, tiếng
       # hiệu ứng) rồi máy ghép đè lớp Manim lên. Manim lỗi -> video dựng bằng Remotion như cũ. Tắt: Variable MANIM_HINH = TAT.
-      - name: Dựng video hình học bằng Manim
+      - name: Bộ phận 3 - Dựng video
+run-name: "Dựng video ${{ github.event.client_payload.id || github.event.inputs.id || github.event.inputs.mau }}" hình học bằng Manim
         id: manim
         if: ${{ vars.MANIM_HINH != 'TAT' }}
         continue-on-error: true
