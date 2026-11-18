@@ -821,3 +821,8 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
 - Với bài hình học, runner cài các gói Manim/LaTeX trong lúc tạo giọng. Khi cả hai hoàn tất mới dựng lớp hình. Lỗi giọng vẫn dừng job; lỗi cài Manim chuyển sang Remotion.
 - Kiểm duyệt bố cục chụp tối đa hai khung đồng thời trong cùng Chromium, lưu kết quả từng khung và giữ thứ tự ảnh khi gửi Gemini. Máy chỉ có một CPU vẫn xử lý tuần tự.
 - Kiểm tra cục bộ trên mẫu cột cờ 9 cảnh (không gọi Gemini): 18/18 khung, báo cáo JSON giống hệt; thời gian bước kiểm duyệt từ 33,7 xuống 25,3 giây.
+
+#### Lần 35 (v68) — Chọn cách dàn hình theo lập luận
+
+- Bộ viết kịch bản dùng ba mẫu tham khảo về vật thể quay, suy biểu thức từ hình và so sánh xác suất. Nhánh hình học nhấn quan hệ khối–mặt; nhánh thực tế dẫn từ đường biên và số đo sang biểu thức; nhánh xác suất so sánh trên cùng không gian mẫu.
+- Các chỉ dẫn dùng sân khấu, nhãn, công thức và mốc lời hiện có. Mỗi cách dàn chỉ áp dụng khi phù hợp với bài và lời giải đã kiểm chứng.

@@ -122,7 +122,14 @@ function taoPromptKichBan_(r, c1, c2) {
     typeof hocEditChoPrompt_ === 'function' ? hocEditChoPrompt_() : '',
     'GÓC NHÌN 3D (tùy chọn): cảnh có hình học/hình tự do được dựng nổi khối 3D; có thể thêm "goc_nhin": ["..."] (1-3 góc, máy đổi góc ở các bước của cảnh) chọn trong: cheo_trai, tren_xuong (nhìn thẳng từ trên khi cần đọc số đo chính xác), cheo_phai, thap_chinh_dien (góc thấp hùng vĩ, hợp hook/đáp án), cao_toan_canh, nghieng_nhe. Hai cảnh liền nhau nên khác góc; không cần thì bỏ trống.\n'
   ];
+  var danHinh = hh
+    ? 'Khi lời giải hình học chuyển giữa khối và hình phẳng, giữ tên đỉnh, màu và hướng quan sát; tô riêng mặt đang xét rồi đưa mặt đó xuống cạnh công thức. Chỉ vẽ thiết diện nếu lời giải xác định được nó.'
+    : tt
+      ? 'Nếu lời giải suy ra công thức từ hình, mở bằng vật của đề và đánh dấu đúng đại lượng chưa biết. Giữ đường biên làm mốc; tô miền cần đo hoặc dựng mặt cắt, gắn kích thước ngay trên hình rồi mới thay số. Với vật thể quay, phân biệt miền quay và quỹ đạo bằng hai màu. Chỉ dùng định lý và dữ kiện có trong lời giải đã kiểm chứng.'
+      : 'Khi đề so sánh hai biến cố, cho người xem thấy hai kết quả mẫu trên cùng một bộ vật. Đếm từng trường hợp bằng cùng bố cục, giữ màu của mỗi biến cố, rồi mới đặt hai kết quả cạnh nhau. Kiểm tra hai phép đếm dùng đúng không gian mẫu; nếu biến cố giao nhau, chỉ trừ phần đếm trùng khi lời giải yêu cầu.';
   var noiCanh = [
+    danHinh,
+    'Để nối hình với kết quả, dùng nhãn ngắn ngay cạnh phần đang đo hoặc đếm; giữ nguyên ký hiệu đó trong noi_dung_man_hinh. Khi lời giảng chuyển sang kiểm tra, quay về hình gốc và thay dấu hỏi bằng kết quả có đơn vị nếu có. Dùng vật, hành động và moc_loi đã có. ',
     'Dàn cảnh theo thao tác toán đang được đọc: giữ hình gốc ở vùng trên khi đưa phép tính xuống dưới. Với đối xứng, sáng từng cặp rồi mới lập bảng đếm; với xác suất, giữ bộ thẻ và đưa chính các phần tử đã chọn vào tập hợp; với thể tích, giữ cùng màu cho phần chất lỏng khi chuyển sang mặt cắt. Chỉ chọn cách diễn đạt phù hợp dữ kiện của đề. Mỗi nhịp chỉ nhấn một thay đổi. ',
     'Với mỗi dòng noi_dung_man_hinh, ghi một phần tử của mảng moc_loi theo đúng thứ tự. Mỗi phần tử là cụm 3–6 từ liên tiếp chép nguyên văn từ loi_thoai ở chỗ bắt đầu giải thích dòng đó. Chọn cụm riêng biệt theo thứ tự đọc. Ví dụ lời “Lấy diện tích đáy nhân với chiều cao” có thể dùng mốc “Lấy diện tích đáy”. ',
     'MẠCH NỐI GIỮA CÁC CẢNH (rất quan trọng, người nghe ghét cảm giác "chuyển slide"): cả video phải nghe như MỘT bài nói liền mạch của một người thật, không phải các đoạn rời ghép lại. ',
