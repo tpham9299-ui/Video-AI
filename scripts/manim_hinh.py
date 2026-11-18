@@ -688,7 +688,7 @@ def chuan_tex(s):
     while re.search(r"\\text\{([^{}]*)\}\s*\\text\{([^{}]*)\}", s):
         s = re.sub(r"\\text\{([^{}]*)\}\s*\\text\{([^{}]*)\}", r"\\text{\1 \2}", s)
     s = re.sub(r"([A-Za-z0-9)\]}])\s+\\text\{(?![\s])", r"\1\\text{ ", s)
-    s = re.sub(r"(?<![\s])\}\\s+([A-Za-z0-9(\\[\\{]|\\[a-zA-Z]+)", r" } \1", s)
+    s = re.sub(r"(?<![\s])\}\s+([A-Za-z0-9(\\[\\{]|\\[a-zA-Z]+)", r" } \1", s)
     return s
 
 

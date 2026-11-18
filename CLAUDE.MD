@@ -637,3 +637,21 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
      - Chỉ gọi thêm lượt Gemini `lapBanVe_` khi đề có đính kèm ảnh (`anhDe`) hoặc mô tả hình; các đề chữ thông thường dùng ngay bản vẽ chuẩn mặc định `banVeMacDinh_` (tiết kiệm 30–45 giây/kịch bản).
      - Khi `chuanBiKichBan_` đã tự sửa hết lỗi nặng (`dg.nang.length === 0`), chốt kịch bản ngay lập tức (`if (!dg.nang.length) break;`), không tốn thêm lượt gọi Gemini chỉ vì các lưu ý nhẹ (`dg.nhe`).
      - Giới hạn cửa kiểm duyệt kịch bản `toiDaYC = 1` vòng sửa nhanh và giữ bản tốt nhất `totNhatYC`.
+
+
+#### 20. Kiểm toán toàn bộ hệ thống, vá lỗ hổng vận hành & siết chặt chuẩn Tiêu chí Chủ kênh (v53)
+- **Tệp chỉnh sửa**: [BoPhan1.gs](file:///e:/Video-AI/BoPhan1.gs), [NangCao.gs](file:///e:/Video-AI/NangCao.gs), [scripts/manim_hinh.py](file:///e:/Video-AI/scripts/manim_hinh.py), [CLAUDE.MD](file:///e:/Video-AI/CLAUDE.MD).
+- **Các lỗ hổng đã phát hiện & vá triệt để**:
+  1. **Chống chạy trùng / tranh chấp giữa Apps Script và GitHub (`BoPhan1.gs`)**:
+     - `chayVietKichBan()` chỉ chạy `xuLyKichBan_()` tại Apps Script khi GitHub báo lỗi/bị chặn hoặc khi có đề gắn nhãn `TAI_CHO` — không chạy song song đè lên hàng đợi `DA_GIAI` khi GitHub đang hoạt động bình thường.
+     - `giaoBoPhan1ChoGitHub_()` kiểm tra cả nhãn `^TAI_CHO` và `^DANG_` đang chạy (cập nhật trong vòng 8 phút, so sánh bằng `new Date(r.cap_nhat).getTime()` an toàn với mọi định dạng ngày), loại bỏ hoàn toàn tình trạng 2 luồng cướp cùng 1 đề.
+     - Tăng `GH_QUA_HAN_PHUT` từ `15` lên `28` phút (khớp với `timeout-minutes: 30` của `bo-phan-1.yml` và `22` phút của `chay_bp1.js`) để đề nặng/video 10 phút không bị đánh dấu quá hạn oan ở phút thứ 15 khi GitHub sắp xong.
+     - Gia cố `goiDeChoGitHub_()`: cắt giảm từng bước (`cau_noi`, `goi_y`, `hoc_edit`, `quy_tac_hoc`, `cach_2`, `nhap`, `cach_1`) khi vượt 60 KB thay vì trả `null` và đẩy đề nặng về Apps Script 6 phút.
+  2. **Nâng chất lượng kịch bản tối đa khi chạy trên GitHub & diệt vòng lặp lỗi vô tận (`BoPhan1.gs`)**:
+     - Trên GitHub (`THOI_GIAN_TOI_DA_MS > 600000`), `xuLyKichBan_()` tự động bật `lapBanVe_()` cho mọi đề thực tế cần vẽ vật (`canBanVe_(r)`), cho phép tối đa 1 lượt đánh bóng khi còn cảnh báo chất lượng quan trọng trong `dg.nhe` (`MO_PHONG_DON_DIEU`, `HINH_LAP_LAI_NHIEU_CANH`, `CHUNG_MINH_QUA_GON`, `CHU_DE_LEN_HINH`, `HINH_DUNG_YEN`, `CAI_BAY`, `CAU_NOI_LAP`, `GIOI_THIEU_AN_SOM`, `IT_ANH_SAN_PHAM`), và nâng vòng tinh chỉnh theo bảng tiêu chí `aiDuyetKichBan_` (`toiDaYC`) lên tối đa 2 vòng.
+     - Loại bỏ lỗi trừ ngược `so_lan_loi - 1` gây lặp vô tận khi kịch bản không đạt; thay bằng kiểm tra bộ tiêu chí cốt lõi (`de_bai`, `bam_de`, `loi_giai`, `dap_an`, `quy_tac_hoc`, `san_pham` phải `>= 7/10`) và loại bỏ sạch sẽ bằng `boDeKhongDat_()` nếu chạm ngưỡng thử lại.
+  3. **Siết cổng kiểm duyệt video `xuLyAiXem_()` bảo đảm đúng tiêu chí chủ kênh (`NangCao.gs`)**:
+     - Khi AI chấm video (`xuLyAiXem_`) hết lượt tự sửa: tuyệt đối không tự duyệt (`DA_DUYET`) nếu bất kỳ tiêu chí cốt lõi nào (`de_bai`, `bam_de`, `loi_giai`, `dap_an`, `bo_cuc`, `quy_tac_hoc`, `san_pham`) dưới 7 điểm; nếu có tiêu chí nghiêm trọng dưới 6 điểm (hoặc sai toán/đáp án `< 7`) thì loại bỏ bằng `boDeKhongDat_()`; nếu đạt toàn bộ từ 6 trở lên nhưng chưa đủ chuẩn tự đăng thì giữ trạng thái `'CHO'` và gửi Zalo xin duyệt tay thay vì tự cho đăng.
+     - Khi AI kiểm duyệt video tạm nghẽn key 2 lần liên tiếp: chuyển `'CHO'` kèm thông báo Zalo `/duyet | /sua | /bo` thay vì tự đặt `DA_DUYET` khi chưa kiểm tra hình ảnh.
+  4. **Sửa lỗi regex khoảng trắng TeX trong Manim (`scripts/manim_hinh.py`)**:
+     - Sửa `\\s+` thành `\s+` trong hàm `chuan_tex()` dòng 691 để giữ khoảng cách chuẩn giữa cụm `\text{...}` tiếng Việt và biến toán học đứng sau.

@@ -129,19 +129,12 @@ function xuLyAiXem_(sh, r) {
       return;
     }
     if (CacheService.getScriptCache().get('DA_BO_' + r.id)) return;
-    var canDuyetTayFallback = canDuyet_();
     var kqDF = {};
     try { kqDF = JSON.parse(String(r.link_dang || '{}')) || {}; } catch (eDF) { kqDF = {}; }
-    if (!canDuyetTayFallback) kqDF._duyet_luc = kqDF._duyet_luc || Date.now();
-    ghiAiKT_(sh, r, { diem: 9.0, phan_tram: 90, lan_loi_ai: loiAi, phien_ban: typeof PHIEN_BAN_EDIT !== 'undefined' ? PHIEN_BAN_EDIT : 45 },
-      { duyet: canDuyetTayFallback ? 'CHO' : 'DA_DUYET', link_dang: JSON.stringify(kqDF), ghi_chu: 'Đã vượt qua kiểm duyệt bố cục GitHub & kiểm chứng toán 2 cách' });
-    nhatKy_('AI_XEM', r.id + ': tự động nghiệm thu qua cổng kiểm duyệt GitHub + toán 2 cách (do key Apps Script tạm chạm hạn mức)');
-    if (canDuyetTayFallback) {
-      guiDuyet_(r, '✅ Đạt kiểm duyệt bố cục GitHub & kiểm chứng toán 2 cách');
-    } else {
-      guiZalo_('✅ Video "' + (r.chu_de || r.id) + '" đã hoàn tất dựng và vượt qua kiểm duyệt bố cục, tự động xếp lịch đăng (2 video/ngày vào ' + (cauHinh_('GIO_DANG') || '11:30,19:30') + ').\nhttps://drive.google.com/file/d/' + r.file_video + '/view\n(Muốn sửa/bỏ trước giờ đăng: /sua ' + r.id + ' <góp ý> | /bo ' + r.id + ')', 'cao', 'TU_DUYET_' + r.id);
-      try { if (typeof chayDangVideo === 'function') chayDangVideo(); } catch (eDV0) {}
-    }
+    ghiAiKT_(sh, r, { diem: null, phan_tram: null, lan_loi_ai: loiAi, phien_ban: typeof PHIEN_BAN_EDIT !== 'undefined' ? PHIEN_BAN_EDIT : 45 },
+      { duyet: 'CHO', link_dang: JSON.stringify(kqDF), ghi_chu: 'Chờ duyệt tay: AI kiểm duyệt tạm nghẽn key (' + loiAi + ' lần)' });
+    nhatKy_('AI_XEM', r.id + ': chưa chấm được video do nghẽn key -> chuyển CHO để chủ kênh kiểm tra trực tiếp');
+    guiDuyet_(r, '⚠️ AI chưa xem được video (tạm nghẽn key). Đã vượt qua kiểm duyệt bố cục GitHub & kiểm chứng toán 2 cách, nhờ bạn xem nhanh trước khi đăng');
     return;
   }
   var pt = kq.phan_tram, nguongPT = nguongDapUng_();
@@ -164,20 +157,28 @@ function xuLyAiXem_(sh, r) {
     return;
   }
   if (lan >= toiDa || !r.file_kich_ban) {
-    // Nếu lời giải và đáp án toán học ĐÃ ĐÚNG (≥ 7 điểm) hoặc đây là video đang sửa theo góp ý của bạn:
-    // TUYỆT ĐỐI KHÔNG vứt bỏ video/đề bài, mà giữ lại bản đã sửa (hoặc tự duyệt nếu đạt ≥ 80% và không sai toán).
+    // Kiểm tra nghiêm ngặt toàn bộ tiêu chí cốt lõi của chủ kênh (toán đúng + bám đề + bố cục + quy tắc đã dạy + đề bài + sản phẩm).
+    // Tuyệt đối KHÔNG tự duyệt (DA_DUYET) khi vi phạm bất kỳ tiêu chí bắt buộc nào (< 7).
     var ctDiem = kq.chi_tiet || {};
     var toanDung = (Number(ctDiem.loi_giai) >= 7 || ctDiem.loi_giai === undefined) && (Number(ctDiem.dap_an) >= 7 || ctDiem.dap_an === undefined);
-    if (toanDung && r.file_video) {
-      var canDuyetTay2 = canDuyet_();
+    var cotLoiDat = ['de_bai', 'bam_de', 'loi_giai', 'dap_an', 'bo_cuc', 'quy_tac_hoc', 'san_pham'].every(function (k) {
+      return ctDiem[k] === undefined || Number(ctDiem[k]) >= 7;
+    });
+    var khongLoiNghiemTrong = ['bam_de', 'bo_cuc', 'quy_tac_hoc', 'de_bai', 'san_pham'].every(function (k) {
+      return ctDiem[k] === undefined || Number(ctDiem[k]) >= 6;
+    });
+    if (toanDung && khongLoiNghiemTrong && r.file_video) {
+      var tuDuyet = !canDuyet_() && cotLoiDat && pt >= Math.max(80, nguongPT - 5);
       var kqD2 = {};
       try { kqD2 = JSON.parse(String(r.link_dang || '{}')) || {}; } catch (eD2) { kqD2 = {}; }
-      if (!canDuyetTay2) kqD2._duyet_luc = kqD2._duyet_luc || Date.now();
+      if (tuDuyet) kqD2._duyet_luc = kqD2._duyet_luc || Date.now();
       ghiAiKT_(sh, r, { diem: kq.diem, phan_tram: pt, chi_tiet: kq.chi_tiet, van_de: kq.van_de, phien_ban: typeof PHIEN_BAN_EDIT !== 'undefined' ? PHIEN_BAN_EDIT : 45 },
-        { duyet: canDuyetTay2 ? 'CHO' : 'DA_DUYET', link_dang: JSON.stringify(kqD2), ghi_chu: 'Đã qua ' + lan + ' vòng AI chỉnh sửa kịch bản (' + pt + '%)' });
-      nhatKy_('AI_XEM', r.id + ': giữ bản tốt nhất sau ' + lan + ' lần AI sửa kịch bản (' + pt + '%, toán & đáp án đúng)');
-      if (!canDuyetTay2) {
+        { duyet: tuDuyet ? 'DA_DUYET' : 'CHO', link_dang: JSON.stringify(kqD2), ghi_chu: (tuDuyet ? 'Đạt chuẩn cốt lõi sau ' : 'Chờ duyệt tay (chưa đủ chuẩn tự đăng, ') + lan + ' vòng AI sửa (' + pt + '%)' });
+      nhatKy_('AI_XEM', r.id + ': ' + (tuDuyet ? 'giữ bản đạt chuẩn cốt lõi (' + pt + '%)' : 'chuyển CHO để chủ kênh kiểm tra (' + pt + '%, ' + tomTatTieuChi_(kq) + ')'));
+      if (tuDuyet) {
         try { if (typeof chayDangVideo === 'function') chayDangVideo(); } catch (eDV2) {}
+      } else {
+        guiDuyet_(r, '⚠️ Đạt ' + pt + '% sau ' + lan + ' lần AI tự sửa (' + tomTatTieuChi_(kq) + '). Cần bạn xác nhận trước khi đăng');
       }
       return;
     }
