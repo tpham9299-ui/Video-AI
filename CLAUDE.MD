@@ -667,3 +667,19 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
   2. **Tách biệt hoàn toàn nhịp video 10 phút và khung giờ ngắn**: `10p` không ghi đè `tt.luc_cuoi` của khung `GIO_DANG`; giảm giãn cách giữa 2 khung giờ ngắn còn 45 phút (chỉ tính khi đã có khung trong ngày); sửa `laVideoDai_()` trong `BoPhan1.gs` thành `-10P(?=\b|$|\s)`.
   3. **Gia cố kết nối & dự phòng GitHub (`BoPhan2.gs`, `BoPhan1.gs`)**: `guiWorkflowGitHub_()` tự động thử lại nhánh `master` nếu nhánh `GITHUB_NHANH` trả HTTP `404`; `damBaoCauHinhTuDong_()` kiểm tra đảm bảo trigger `chayDangVideo` luôn tồn tại.
   4. **Gia cố job `dang` trên GitHub ([dung-video.yml](file:///e:/Video-AI/.github/workflows/dung-video.yml), [scripts/dang_video.py](file:///e:/Video-AI/scripts/dang_video.py))**: thêm biến `DRIVE_THU_MUC`, retry + fallback `apt-get` cho `rclone`, bước `failure()` tự báo lỗi về Apps Script để giải phóng khung giờ ngay, rút gọn ~65% kích thước payload `inputs.dang` bằng `yt_dau`/`fb_dau`, bọc toàn bộ `main()` để luôn báo kết quả về Apps Script, tính bitrate động giữ video 10 phút dưới 44 MB khi `yt_apps_script=true`, và trả link `https://youtu.be/<id>` cho video dài trên `dang_youtube()`.
+
+#### 22. Tách hẳn 2 file Workflow GitHub Actions (Giải đề & Viết kịch bản) và tăng tốc sinh kịch bản (v55)
+- **Tệp tạo mới & chỉnh sửa**: [.github/workflows/giai-de.yml](file:///e:/Video-AI/.github/workflows/giai-de.yml), [.github/workflows/viet-kich-ban.yml](file:///e:/Video-AI/.github/workflows/viet-kich-ban.yml), [BoPhan1.gs](file:///e:/Video-AI/BoPhan1.gs), [NangCao.gs](file:///e:/Video-AI/NangCao.gs), [scripts/bophan1/chay_bp1.js](file:///e:/Video-AI/scripts/bophan1/chay_bp1.js), [scripts/bophan1/goi_gemini.js](file:///e:/Video-AI/scripts/bophan1/goi_gemini.js), [CLAUDE.MD](file:///e:/Video-AI/CLAUDE.MD).
+- **Lý do trước đây bạn vẫn thấy cùng 1 workflow và tốc độ còn chậm**:
+  1. Ở v52, mới chỉ tách pha chạy (`viec === 'giai'` và `viec === 'kich_ban'`) bên trong `chay_bp1.js`, còn trên GitHub Actions cả 2 vẫn gọi chung một tệp workflow `bo-phan-1.yml` (`"Giải ${{ inputs.id }}"`).
+  2. Mỗi kịch bản bị chậm do tốn nhiều lượt gọi Gemini nối tiếp (`lapBanVe_` + viết + vòng đánh bóng `dg.nhe` riêng + `aiDuyetKichBan_` ở mức `suyNghi: 'medium'` + chờ dự phòng `hedgeGiay = 75` giây) và mặc định chỉ chạy song song `SO_KICH_BAN_CUNG_LUC = 3`.
+- **Thay đổi trong v55**:
+  1. **Tách 2 file Workflow GitHub Actions độc lập** (vẫn giữ `bo-phan-1.yml` dự phòng tự động khi gặp HTTP `404`):
+     - [.github/workflows/giai-de.yml](file:///e:/Video-AI/.github/workflows/giai-de.yml) (`Bộ phận 1A - Giải đề`, `BP1_VIEC: giai`).
+     - [.github/workflows/viet-kich-ban.yml](file:///e:/Video-AI/.github/workflows/viet-kich-ban.yml) (`Bộ phận 1B - Viết kịch bản`, `BP1_VIEC: kich_ban`).
+     - `giaoBoPhan1ChoGitHub_()` trong `BoPhan1.gs` tự định tuyến `giai -> giai-de.yml` và `kich_ban -> viet-kich-ban.yml` (nếu `404` tự lùi về `bo-phan-1.yml`).
+  2. **Tăng tốc sinh kịch bản gấp ~2 lần mà giữ nguyên chất lượng**:
+     - Tăng số kịch bản viết song song trên GitHub (`SO_KICH_BAN_CUNG_LUC`) từ `3` lên **`5`**.
+     - Hạ `hedgeGiay` trong `chay_bp1.js` / `goi_gemini.js` từ `75` giây xuống **`35` giây** để gọi song song model dự phòng sớm khi model chính bị treo.
+     - Đổi `aiDuyetKichBan_()` (`NangCao.gs`) từ `suyNghi: 'medium'` sang **`'low'`** (cắt giảm độ trễ suy nghĩ khi chấm bảng JSON tiêu chí).
+     - Gộp cảnh báo nhẹ quan trọng từ `dg.nhe` vào thẳng lượt sửa của `aiDuyetKichBan_()` thay vì chạy thêm 1 vòng Gemini đánh bóng riêng; đề chữ thông thường dùng thẳng `banVeMacDinh_()` trong `taoPromptKichBan_()` (chỉ gọi `lapBanVe_()` khi có ảnh `anhDe` hoặc `deCoHinh_(r)`).

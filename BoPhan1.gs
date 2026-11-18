@@ -78,7 +78,7 @@ var MAC_DINH = {
   GIAI_TREN_GITHUB: 'BAT',     // BAT = giải + viết kịch bản trên GitHub (nhanh, không giới hạn 6 phút) | TAT = làm tại Apps Script như cũ
   SO_DE_GITHUB_CUNG_LUC: '3',  // số đề GitHub xử lý song song mỗi luồng
   SO_GIAI_DE_CUNG_LUC: '3',    // luồng 1A (Giải đề MOI -> DA_GIAI): số đề giải song song trên GitHub
-  SO_KICH_BAN_CUNG_LUC: '3',   // luồng 1B (Xây kịch bản DA_GIAI -> CO_KICH_BAN): số kịch bản viết song song (độc lập với luồng giải đề)
+  SO_KICH_BAN_CUNG_LUC: '5',   // luồng 1B (Xây kịch bản DA_GIAI -> CO_KICH_BAN): tăng lên 5 luồng song song để cấp kịch bản nhanh cho bộ dựng video
   MUC_SUY_NGHI_KICH_BAN: 'low', // mức "suy nghĩ" của Gemini khi viết kịch bản/tìm đề: low (nhanh, khuyên dùng) | high | tat (không gửi tham số)
   MUC_SUY_NGHI_GIAI: 'mac_dinh', // khi GIẢI đề: mac_dinh (để Gemini tự quyết, chính xác hơn) | low | high
   UOC_GOI_GEMINI_GIAY: '75',   // ước lượng một lần gọi Gemini mất bao lâu; không đủ chừng này thời gian thì để lần chạy sau
@@ -343,7 +343,7 @@ function chayBoPhan1() {
 function damBaoCauHinhTuDong_() {
   try {
     var p = PropertiesService.getScriptProperties();
-    if (p.getProperty('DA_CAP_NHAT_TU_DONG_V53') === '1') return;
+    if (p.getProperty('DA_CAP_NHAT_TU_DONG_V54') === '1') return;
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var ch = ss.getSheetByName(TEN_CAU_HINH);
     if (ch && ch.getLastRow() > 0) {
@@ -356,7 +356,7 @@ function damBaoCauHinhTuDong_() {
         AI_DUYET_KICH_BAN: 'BAT',
         TU_SUA_VIDEO_CU_DRIVE: 'BAT',
         SO_GIAI_DE_CUNG_LUC: '3',
-        SO_KICH_BAN_CUNG_LUC: '3',
+        SO_KICH_BAN_CUNG_LUC: '5',
         SO_LAN_SUA_KICH_BAN: '2',
         DANH_SACH_MODEL: MAC_DINH.DANH_SACH_MODEL
       };
@@ -415,7 +415,7 @@ function damBaoCauHinhTuDong_() {
     if (coDeZaloCuu && typeof henUuTien_ === 'function') {
       try { henUuTien_(10); } catch (eH) {}
     }
-    p.setProperty('DA_CAP_NHAT_TU_DONG_V53', '1');
+    p.setProperty('DA_CAP_NHAT_TU_DONG_V54', '1');
   } catch (e) {}
 }
 
@@ -1104,11 +1104,10 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       var anhDe = anhDeChoGemini_(r);
       if (anhDe) sn.anh = anhDe;
       var trenGitHub = THOI_GIAN_TOI_DA_MS > 600000;
-      // BẢN VẼ cảnh thực tế: trên GitHub (không bị giới hạn 6 phút) lập bản vẽ riêng cho MỌI đề cần vẽ vật thật (canBanVe_);
-      // trên Apps Script chỉ gọi thêm lượt Gemini khi đề có ảnh chụp (anhDe) hoặc mô tả hình, đề chữ dùng banVeMacDinh_ để giữ tốc độ.
+      // BẢN VẼ cảnh thực tế: chỉ gọi thêm 1 lượt Gemini khi đề có ảnh chụp (anhDe) hoặc có mô tả hình;
+      // các đề chữ thông thường dùng ngay bản vẽ chuẩn mặc định (banVeMacDinh_) trong taoPromptKichBan_ để tiết kiệm 30-45 giây/kịch bản.
       r._banVe = null;
-      var canVeChiTiet = !!(anhDe || deCoHinh_(r) || (trenGitHub && typeof canBanVe_ === 'function' && canBanVe_(r)));
-      if (canVeChiTiet && typeof lapBanVe_ === 'function' && conDuGoiGemini_()) {
+      if ((anhDe || deCoHinh_(r)) && typeof lapBanVe_ === 'function' && conDuGoiGemini_()) {
         try { r._banVe = lapBanVe_(r, anhDe); if (r._banVe) nhatKy_('BAN_VE', r.id + ': đã lập bản vẽ ' + (r._banVe.vat || []).map(function (v) { return v.ten; }).join(', ')); }
         catch (eBv) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(eBv.message))) throw eBv; }
         prompt = taoPromptKichBan_(r, c1, c2);
@@ -1138,20 +1137,16 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
         } catch (eGY) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(eGY.message))) { luuNhapKichBan_(r.id, kb); throw eGY; } }
       }
       var hinhDe = deCoHinh_(r) ? String(r.de_bai || '') + ' ' + String(r.mo_ta_hinh || '') : '';
-      var dg = null, lanSua = 0, hetGio = false, daBongNhe = false;
+      var dg = null, lanSua = 0, hetGio = false;
       var maxSua = Number(cauHinh_('SO_LAN_SUA_KICH_BAN')) || 2;
       for (;;) {
         chuanBiKichBan_(kb, r, ctxSua);
         dg = danhGiaKichBan_(kb, r.dap_an, r.mon, hinhDe, spham, r.de_bai);
-        // Nếu không còn lỗi nặng: trên GitHub cho phép tối đa 1 lượt đánh bóng nếu còn cảnh báo chất lượng quan trọng trong dg.nhe.
-        var nheQuanTrong = trenGitHub && !daBongNhe ? dg.nhe.filter(function (x) {
-          return /^(MO_PHONG_DON_DIEU|HINH_LAP_LAI_NHIEU_CANH|CHUNG_MINH_QUA_GON|CHU_DE_LEN_HINH|HINH_DUNG_YEN|CAI_BAY|CAU_NOI_LAP|GIOI_THIEU_AN_SOM|IT_ANH_SAN_PHAM)\b/.test(String(x));
-        }) : [];
-        if (!dg.nang.length && !nheQuanTrong.length) break;
+        // Hết lỗi nặng thì đi tiếp ngay sang cửa AI chấm tiêu chí (gộp sửa các lưu ý nhẹ vào cùng 1 vòng nếu AI chấm cần sửa, tiết kiệm 1-2 lượt Gemini).
+        if (!dg.nang.length) break;
         if (lanSua >= maxSua) break;
         if (!conDuGoiGemini_()) { hetGio = true; break; }
-        if (!dg.nang.length) daBongNhe = true;
-        var dsLoi = dg.nang.length ? dg.nang.concat(dg.nhe) : nheQuanTrong;
+        var dsLoi = dg.nang.concat(dg.nhe);
         nhatKy_('KICH_BAN_SUA', r.id + ' sửa ngay lần ' + (lanSua + 1) + ' (' + dg.nang.length + ' lỗi nặng, ' + dg.nhe.length + ' lỗi nhẹ): ' + dsLoi.map(function (x) { return String(x).split(':')[0]; }).join(', '));
         var kbMoi = null;
         try { kbMoi = suaKichBanBangGemini_(kb, dsLoi, prompt, sn); }
@@ -1206,7 +1201,10 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
           }
           if (lanYC >= toiDaYC) { boDe = 'kịch bản chỉ đáp ứng ' + dy.phan_tram + '% sau ' + lanYC + ' lần sửa' + (dy.nang.length ? ' (bắt buộc chưa đạt: ' + dy.nang.join(', ') + ')' : '') + '. ' + dy.van_de.slice(0, 2).join('; '); break; }
           var kbTruoc = JSON.stringify(kb), kbYC = null;
-          try { kbYC = suaKichBanBangGemini_(kb, ['KIEM_DUYET_YEU_CAU (bắt buộc sửa hết; kịch bản mới đáp ứng ' + dy.phan_tram + '%, tiêu chí: ' + tomTatTieuChi_(dy) + '). Vấn đề: ' + dy.van_de.join(' || ') + '. Cách sửa: ' + dy.gop_y], prompt, sn); }
+          var goiYNhe = (dg && Array.isArray(dg.nhe)) ? dg.nhe.filter(function (x) {
+            return /^(MO_PHONG_DON_DIEU|HINH_LAP_LAI_NHIEU_CANH|CHUNG_MINH_QUA_GON|CHU_DE_LEN_HINH|HINH_DUNG_YEN|CAI_BAY|CAU_NOI_LAP|GIOI_THIEU_AN_SOM|IT_ANH_SAN_PHAM)\b/.test(String(x));
+          }).slice(0, 3) : [];
+          try { kbYC = suaKichBanBangGemini_(kb, ['KIEM_DUYET_YEU_CAU (bắt buộc sửa hết; kịch bản mới đáp ứng ' + dy.phan_tram + '%, tiêu chí: ' + tomTatTieuChi_(dy) + '). Vấn đề: ' + dy.van_de.join(' || ') + '. Cách sửa: ' + dy.gop_y].concat(goiYNhe), prompt, sn); }
           catch (eYS) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(eYS.message))) { luuNhapKichBan_(r.id, kb); throw eYS; } }
           lanYC++;
           if (kbYC && Array.isArray(kbYC.canh) && kbYC.canh.length) {
@@ -1836,7 +1834,7 @@ function giaoBoPhan1ChoGitHub_(sh, chiUuTien, chiViec) {
     }
   });
   var themSS = typeof heSoSanXuat_ === 'function' ? heSoSanXuat_().them_song_song : 0;
-  var toiDaKB = (Number(cauHinh_('SO_KICH_BAN_CUNG_LUC')) || Number(cauHinh_('SO_DE_GITHUB_CUNG_LUC')) || 3) + themSS;
+  var toiDaKB = (Number(cauHinh_('SO_KICH_BAN_CUNG_LUC')) || Number(cauHinh_('SO_DE_GITHUB_CUNG_LUC')) || 5) + themSS;
   var toiDaGiai = (Number(cauHinh_('SO_GIAI_DE_CUNG_LUC')) || Number(cauHinh_('SO_DE_GITHUB_CUNG_LUC')) || 3) + themSS;
   var ds = docHang_(sh).filter(function (r) {
     var ghiChu = String(r.ghi_chu || '');
@@ -1868,7 +1866,9 @@ function giaoBoPhan1ChoGitHub_(sh, chiUuTien, chiViec) {
     cacheBP1.put(khoaCache, '1', 90);
     var trangThaiCu = r.trang_thai, ghiChuCu = r.ghi_chu;
     ghi_(sh, r._row, { trang_thai: 'GITHUB', ghi_chu: 'GITHUB|' + Date.now() + '|' + trangThaiCu + ' (đang ' + (laKB ? 'xây kịch bản [Luồng 1B]' : 'giải đề [Luồng 1A]') + ' trên GitHub)' });
-    var kq = guiWorkflowGitHub_({ id: r.id, de: duLieu }, 'bo-phan-1.yml');
+    var wfRieng = laKB ? 'viet-kich-ban.yml' : 'giai-de.yml';
+    var kq = guiWorkflowGitHub_({ id: r.id, de: duLieu }, wfRieng);
+    if (!kq.ok && kq.ma === 404) kq = guiWorkflowGitHub_({ id: r.id, de: duLieu }, 'bo-phan-1.yml');
     if (!kq.ok) {
       cacheBP1.remove(khoaCache);
       ghi_(sh, r._row, { trang_thai: trangThaiCu, ghi_chu: ghiChuCu });

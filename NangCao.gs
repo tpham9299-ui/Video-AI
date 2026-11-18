@@ -309,7 +309,7 @@ function aiDuyetKichBan_(kb, r, spham) {
     'TIÊU CHÍ (chấm mỗi tiêu chí 0-10; 9-10 khi rõ ràng và đúng chuẩn; 8 khi tốt chỉ còn góp ý văn phong nhỏ; <= 6 khi có lỗi sai toán, sai đáp án, thiếu thử lại bằng số, hoặc vẽ sai hẳn vật của đề):\n' + moTaTieuChi_(ds) + '\n' +
     'Tự kiểm lại từng phép tính trên màn hình. "van_de": mỗi vấn đề một câu, ghi rõ cảnh số mấy. "gop_y": chỉ dẫn sửa CỤ THỂ theo từng cảnh (vẽ vật gì, đặt ở đâu, số nào sai sửa thành gì).\n' +
     'Trả JSON: {"diem":{' + ds.map(function (t) { return '"' + t.id + '":0'; }).join(',') + '},"van_de":[],"gop_y":""}';
-  var j = goiGemini_(prompt, 0.1, { suyNghi: 'medium' });
+  var j = goiGemini_(prompt, 0.1, { suyNghi: 'low' });
   if (!j || !j.diem) return null;
   return tinhDapUng_(j, ds);
 }

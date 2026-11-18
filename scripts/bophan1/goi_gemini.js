@@ -20,7 +20,7 @@ const {model, bodies, batDauKey = 0, gioiHanGiay = 300} = cauHinh;
 //  - Model chính chưa trả lời sau "hedgeGiay" giây -> gọi song song model dự phòng bằng key khác, lấy kết quả nào về trước.
 const duPhong = (cauHinh.duPhong || []).filter((m) => m && m !== model);
 const chuoiModel = [...new Set([model, ...(cauHinh.models || []), ...duPhong, 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-flash-lite-latest'].filter(Boolean))];
-const hedgeGiay = Number(cauHinh.hedgeGiay) || 75;
+const hedgeGiay = Number(cauHinh.hedgeGiay) || 35;
 const TEP_KEY_HONG = path.join(os.tmpdir(), 'gemini_key_hong.txt');
 const TEP_KEY_HONG_JSON = path.join(os.tmpdir(), 'gemini_key_hong.json');
 const TEP_HET_NGAY = path.join(os.tmpdir(), 'gemini_key_het_ngay.txt');

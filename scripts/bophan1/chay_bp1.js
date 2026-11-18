@@ -83,7 +83,7 @@ function goiTho(model, bodies) {
   const dsCauHinh = typeof ctx.danhSachModel_ === 'function' ? ctx.danhSachModel_() : [];
   const models = [...new Set([model, ...dsCauHinh, ch.MODEL_CHINH, ch.MODEL_DU_PHONG, 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-flash-lite-latest', 'gemini-3.8-flash', 'gemini-3.6-flash'].map((x) => String(x || '').trim()).filter(Boolean))];
   const duPhong = String(ch.GOI_DU_PHONG_SONG_SONG || 'BAT').toUpperCase() !== 'TAT' ? models.filter((m) => m !== model) : [];
-  fs.writeFileSync(t, JSON.stringify({model, models, bodies, keys, batDauKey: vongKey, duPhong, hedgeGiay: Number(ch.GIAY_GOI_DU_PHONG) || 75}));
+  fs.writeFileSync(t, JSON.stringify({model, models, bodies, keys, batDauKey: vongKey, duPhong, hedgeGiay: Number(ch.GIAY_GOI_DU_PHONG) || 35}));
   vongKey = (vongKey + bodies.length) % Math.max(1, keys.length);
   try {
     return JSON.parse(execFileSync(process.execPath, [path.join(__dirname, 'goi_gemini.js'), t], {maxBuffer: 64 * 1024 * 1024, timeout: 330000}).toString());
@@ -173,7 +173,7 @@ const sh = sheets.HANG_DOI;
 const truoc = sh.data[1].slice();
 const bc = {moi: 0, giai_ok: 0, loai: 0, kich_ban: 0, loi: 0};
 const trangThai = () => sh.data[1][COT.indexOf('trang_thai')];
-const viec = String(de.viec || (hang.trang_thai === 'DA_GIAI' ? 'kich_ban' : 'giai')).toLowerCase();
+const viec = String(de.viec || process.env.BP1_VIEC || (hang.trang_thai === 'DA_GIAI' ? 'kich_ban' : 'giai')).toLowerCase();
 console.log(`Bắt đầu Bộ phận 1 [${viec.toUpperCase()}]: ${out.id} (trạng thái đầu vào: ${trangThai()})`);
 const cot = (k) => sh.data[1][COT.indexOf(k)];
 if (/^DANG_/.test(String(cot('ghi_chu')))) { sh.data[1][COT.indexOf('so_lan_loi')] = 0; sh.data[1][COT.indexOf('ghi_chu')] = ''; }
