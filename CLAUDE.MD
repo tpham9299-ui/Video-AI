@@ -709,3 +709,8 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
   - **Bộ phận 3 — Dựng video**: [dung-video.yml](file:///e:/Video-AI/.github/workflows/dung-video.yml) (dựng 3 tầng Remotion/Manim & kiểm duyệt bố cục `CO_KICH_BAN -> CO_VIDEO`).
   - **Bộ phận 4 — AI kiểm duyệt video**: [kiem-tra-video.yml](file:///e:/Video-AI/.github/workflows/kiem-tra-video.yml) (AI chấm lưới khung hình theo tiêu chí chủ kênh `AI_XEM -> DA_DUYET`).
   - **Bộ phận 5 — Đăng video**: [dang-video.yml](file:///e:/Video-AI/.github/workflows/dang-video.yml) (gắn số tập, CTA, ảnh bìa & đăng YouTube/Facebook/TikTok `DA_DUYET -> DA_DANG`).
+
+#### 25. Sửa lỗi YAML dòng `Dựng video hình học bằng Manim` trong `dung-video.yml` (v58)
+- **Tệp chỉnh sửa**: [.github/workflows/dung-video.yml](file:///e:/Video-AI/.github/workflows/dung-video.yml).
+- **Nguyên nhân lỗi ở commit `aaed0dc`**: Khi đổi tiêu đề `name: Dựng video` ở dòng 1, chuỗi tìm kiếm khớp cả vào dòng `- name: Dựng video hình học bằng Manim` (dòng 180) khiến tệp `dung-video.yml` bị gãy cấu trúc YAML; đồng thời chuẩn hóa `run-name` dòng 2 thành `"Dựng video ${{ inputs.id || inputs.mau || github.run_number }}"`.
+- **Khắc phục**: Khôi phục nguyên vẹn dòng `- name: Dựng video hình học bằng Manim` và kiểm tra sạch sẽ tất cả `run-name` trên toàn bộ 8 workflow.
