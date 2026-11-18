@@ -227,7 +227,9 @@ def dang_youtube(video, meta):
     with open(video, "rb") as f:
         d = kiem_tra(requests.put(res.headers["Location"], data=f, headers=dict(h, **{"Content-Type": "video/mp4"}), timeout=1800), "YouTube tải lên")
     bia = dat_bia_youtube(h, d.get("id"), meta.get("_anh_bia_yt"))
-    return {"ok": True, "url": "https://youtube.com/shorts/%s" % d.get("id"), "id": d.get("id"), "che_do": d.get("status", {}).get("privacyStatus"), "ghi_chu": bia}
+    la_dai = str(meta.get("ten", "")).upper().endswith("-10P") or thoi_luong_mp4(video) >= 240
+    url_yt = ("https://youtu.be/%s" if la_dai else "https://youtube.com/shorts/%s") % d.get("id")
+    return {"ok": True, "url": url_yt, "id": d.get("id"), "che_do": d.get("status", {}).get("privacyStatus"), "ghi_chu": bia}
 
 
 # ---------------- SỐ TẬP THEO LỚP (đánh lúc đăng, theo số bài đã có trên kênh) ----------------
@@ -326,7 +328,7 @@ KEU_GOI = {
 }
 
 
-def tao_ban_dang(video, n, kieu):
+def tao_ban_dang(video, n, kieu, gioi_han_48mb=False):
     """Bản video để đăng: in "TẬP N" góc phải trên (mọi khung) + dải kêu gọi theo nền tảng ở 4 giây cuối.
     kieu = "youtube" (đăng ký kênh) | "theo_doi" (TikTok, Facebook). Lỗi thì dùng video gốc."""
     import shutil
@@ -348,10 +350,20 @@ def tao_ban_dang(video, n, kieu):
     if not loc:
         return video
     ra = os.path.join(os.path.dirname(video), "%s_%d_%s" % (kieu, n, os.path.basename(video)))
-    # Video dài 10 phút (>= 180 giây): giới hạn bitrate để dung lượng <= 42 MB, vượt qua giới hạn 48 MB của YouTube Apps Script
-    crf_opt = ["-crf", "23", "-maxrate", "850k", "-bufsize", "1700k"] if dai >= 180 else ["-crf", "18"]
+    # Video dài 10 phút (>= 180 giây): tự động tính bitrate tối đa theo thời lượng để luôn <= 44 MB, vượt qua giới hạn 48 MB của YouTube Apps Script
+    audio_opt = ["-c:a", "copy"]
+    if dai >= 180:
+        if gioi_han_48mb:
+            max_v = max(260, min(850, int((43 * 8192) / max(1.0, dai) - 140)))
+            if dai >= 420:
+                audio_opt = ["-c:a", "aac", "-b:a", "96k"]
+            crf_opt = ["-crf", "24", "-maxrate", "%dk" % max_v, "-bufsize", "%dk" % (max_v * 2)]
+        else:
+            crf_opt = ["-crf", "23", "-maxrate", "850k", "-bufsize", "1700k"]
+    else:
+        crf_opt = ["-crf", "18"]
     r = subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", video, "-vf", ",".join(loc), "-c:v", "libx264", "-preset", "veryfast"] + crf_opt +
-                       ["-pix_fmt", "yuv420p", "-c:a", "copy", "-movflags", "+faststart", ra], capture_output=True, text=True)
+                       ["-pix_fmt", "yuv420p"] + audio_opt + ["-movflags", "+faststart", ra], capture_output=True, text=True)
     if r.returncode != 0 or not os.path.exists(ra):
         print("Tạo bản đăng (%s) lỗi, dùng video gốc: %s" % (kieu, r.stderr[-300:]))
         return video
@@ -448,58 +460,64 @@ def main():
         # Video dài 10 phút: chỉ đăng lên YouTube (không đăng Facebook hay TikTok)
         if str(id_video).upper().endswith("-10P") or giay_vid >= 240:
             nen_tang = ["youtube"]
-    except Exception as e:
-        for n in nen_tang:
-            ket_qua[n] = {"ok": False, "loi": "Không tải được video từ Drive: %s" % str(e)[:150]}
-        bao_ve_apps_script(id_video, ket_qua)
-        return
-    tap, dem = 0, {}
-    try:
-        tap, dem = gan_so_tap(meta)
-    except Exception as e:
-        print("Không gán được số tập:", str(e)[:200])
-    if tap:
-        for k in ("mo_ta", "yt_mo_ta", "fb_mo_ta", "tt_tieu_de", "yt_tieu_de"):
-            if meta.get(k):
-                meta[k] = meta[k].replace("{TAP}", str(tap))
-        ket_qua["_tap"], ket_qua["_dem"] = tap, dem
-    else:
-        for k in ("mo_ta", "yt_mo_ta", "fb_mo_ta", "tt_tieu_de", "yt_tieu_de"):
-            if meta.get(k):
-                meta[k] = meta[k].replace(" – Tập {TAP}", "").replace("{TAP}", "")
-    # bản đăng riêng: YouTube (dải "ĐĂNG KÝ KÊNH") và TikTok/Facebook (dải "THEO DÕI"), cùng số tập
-    ban = {}
-    if "youtube" in nen_tang:
-        ban["youtube"] = tao_ban_dang(video, tap, "youtube")
-        if meta.get("yt_apps_script"):
-            try:
-                ket_qua["_file_tap"] = tai_len_drive(ban["youtube"])
-            except Exception as e:
-                print("Không tải bản YouTube đã đánh số lên Drive:", str(e)[:200])
-    if any(n in nen_tang for n in ("tiktok", "facebook")):
-        ban["theo_doi"] = tao_ban_dang(video, tap, "theo_doi")
-    # ẢNH BÌA THIẾT KẾ cho từng bản đăng (khung đầu = ảnh bìa + TẬP N): YouTube, Facebook đặt bằng API; TikTok chọn khung 0
-    if ban.get("youtube"):
-        meta["_anh_bia_yt"] = tao_anh_bia_dang(ban["youtube"], meta)
-        if meta.get("yt_apps_script") and meta["_anh_bia_yt"]:
-            try:
-                ket_qua["_file_bia"] = tai_len_drive(meta["_anh_bia_yt"])
-            except Exception as e:
-                print("Không tải ảnh bìa đã đánh số lên Drive:", str(e)[:200])
-    if ban.get("theo_doi"):
-        meta["_anh_bia"] = tao_anh_bia_dang(ban["theo_doi"], meta)
-    for n in nen_tang:
-        if n == "youtube" and meta.get("yt_apps_script"):
-            # YouTube do Apps Script đăng (dịch vụ YouTube của tài khoản), bằng bản ĐÃ ĐÁNH SỐ vừa tải lên Drive
-            ket_qua[n] = {"ok": False, "cho_apps_script": True, "loi": "chờ Apps Script đăng bản đã đánh số tập"}
-            continue
+        tap, dem = 0, {}
         try:
-            ket_qua[n] = DANG[n](ban.get("youtube" if n == "youtube" else "theo_doi", video), meta)
-        except BoQua as e:
-            ket_qua[n] = {"ok": False, "bo_qua": True, "loi": str(e)}
+            tap, dem = gan_so_tap(meta)
         except Exception as e:
-            ket_qua[n] = {"ok": False, "loi": str(e)[:300]}
-        print("%s: %s" % (n, json.dumps(ket_qua[n], ensure_ascii=False)))
+            print("Không gán được số tập:", str(e)[:200])
+        if tap:
+            for k in ("mo_ta", "yt_mo_ta", "fb_mo_ta", "tt_tieu_de", "yt_tieu_de", "yt_dau", "fb_dau"):
+                if meta.get(k):
+                    meta[k] = meta[k].replace("{TAP}", str(tap))
+            ket_qua["_tap"], ket_qua["_dem"] = tap, dem
+        else:
+            for k in ("mo_ta", "yt_mo_ta", "fb_mo_ta", "tt_tieu_de", "yt_tieu_de", "yt_dau", "fb_dau"):
+                if meta.get(k):
+                    meta[k] = meta[k].replace(" – Tập {TAP}", "").replace("{TAP}", "")
+        if not meta.get("yt_mo_ta") and meta.get("mo_ta"):
+            dau_yt = meta.get("yt_dau") or meta.get("tieu_de") or ""
+            meta["yt_mo_ta"] = (dau_yt + "\n\n" + meta["mo_ta"] + "\n\n🔔 ĐĂNG KÝ KÊNH và bật chuông để xem tập tiếp theo!")[:4900]
+        if not meta.get("fb_mo_ta") and meta.get("mo_ta"):
+            dau_fb = meta.get("fb_dau") or meta.get("tieu_de") or ""
+            meta["fb_mo_ta"] = (dau_fb + "\n\n" + meta["mo_ta"] + "\n\n👉 Nhấn THEO DÕI trang để xem tập tiếp theo mỗi ngày!")[:4900]
+        # bản đăng riêng: YouTube (dải "ĐĂNG KÝ KÊNH") và TikTok/Facebook (dải "THEO DÕI"), cùng số tập
+        ban = {}
+        if "youtube" in nen_tang:
+            ban["youtube"] = tao_ban_dang(video, tap, "youtube", bool(meta.get("yt_apps_script")))
+            if meta.get("yt_apps_script"):
+                try:
+                    ket_qua["_file_tap"] = tai_len_drive(ban["youtube"])
+                except Exception as e:
+                    print("Không tải bản YouTube đã đánh số lên Drive:", str(e)[:200])
+        if any(n in nen_tang for n in ("tiktok", "facebook")):
+            ban["theo_doi"] = tao_ban_dang(video, tap, "theo_doi")
+        # ẢNH BÌA THIẾT KẾ cho từng bản đăng (khung đầu = ảnh bìa + TẬP N): YouTube, Facebook đặt bằng API; TikTok chọn khung 0
+        if ban.get("youtube"):
+            meta["_anh_bia_yt"] = tao_anh_bia_dang(ban["youtube"], meta)
+            if meta.get("yt_apps_script") and meta["_anh_bia_yt"]:
+                try:
+                    ket_qua["_file_bia"] = tai_len_drive(meta["_anh_bia_yt"])
+                except Exception as e:
+                    print("Không tải ảnh bìa đã đánh số lên Drive:", str(e)[:200])
+        if ban.get("theo_doi"):
+            meta["_anh_bia"] = tao_anh_bia_dang(ban["theo_doi"], meta)
+        for n in nen_tang:
+            if n == "youtube" and meta.get("yt_apps_script"):
+                # YouTube do Apps Script đăng (dịch vụ YouTube của tài khoản), bằng bản ĐÃ ĐÁNH SỐ vừa tải lên Drive
+                ket_qua[n] = {"ok": False, "cho_apps_script": True, "loi": "chờ Apps Script đăng bản đã đánh số tập"}
+                continue
+            try:
+                ket_qua[n] = DANG[n](ban.get("youtube" if n == "youtube" else "theo_doi", video), meta)
+            except BoQua as e:
+                ket_qua[n] = {"ok": False, "bo_qua": True, "loi": str(e)}
+            except Exception as e:
+                ket_qua[n] = {"ok": False, "loi": str(e)[:300]}
+            print("%s: %s" % (n, json.dumps(ket_qua[n], ensure_ascii=False)))
+    except Exception as e:
+        print("Lỗi quy trình đăng video:", str(e)[:300])
+        for n in nen_tang:
+            if n not in ket_qua:
+                ket_qua[n] = {"ok": False, "loi": "Lỗi chuẩn bị/tải video trên GitHub: %s" % str(e)[:180]}
     bao_ve_apps_script(id_video, ket_qua)
 
 

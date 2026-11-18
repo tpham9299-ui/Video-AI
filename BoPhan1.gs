@@ -343,7 +343,7 @@ function chayBoPhan1() {
 function damBaoCauHinhTuDong_() {
   try {
     var p = PropertiesService.getScriptProperties();
-    if (p.getProperty('DA_CAP_NHAT_TU_DONG_V52') === '1') return;
+    if (p.getProperty('DA_CAP_NHAT_TU_DONG_V53') === '1') return;
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var ch = ss.getSheetByName(TEN_CAU_HINH);
     if (ch && ch.getLastRow() > 0) {
@@ -374,10 +374,15 @@ function damBaoCauHinhTuDong_() {
       });
       _bo_nho_cau_hinh_ = null;
     }
-    // Đảm bảo đã có trigger riêng chayVietKichBan chạy mỗi 10 phút
+    // Đảm bảo luôn có trigger chayVietKichBan (10 phút) và chayDangVideo (15 phút)
     try {
-      var coTrigKB = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'chayVietKichBan'; });
-      if (!coTrigKB) ScriptApp.newTrigger('chayVietKichBan').timeBased().everyMinutes(10).create();
+      var trigs = ScriptApp.getProjectTriggers();
+      if (!trigs.some(function (t) { return t.getHandlerFunction() === 'chayVietKichBan'; })) {
+        ScriptApp.newTrigger('chayVietKichBan').timeBased().everyMinutes(10).create();
+      }
+      if (typeof chayDangVideo === 'function' && !trigs.some(function (t) { return t.getHandlerFunction() === 'chayDangVideo'; })) {
+        ScriptApp.newTrigger('chayDangVideo').timeBased().everyMinutes(15).create();
+      }
     } catch (eTr) {}
     // Tự động giải cứu các dòng DA_GIAI hoặc GITHUB đang chờ để đưa vào luồng Xây kịch bản ngay
     var sh = ss.getSheetByName(TEN_HANG_DOI);
@@ -410,7 +415,7 @@ function damBaoCauHinhTuDong_() {
     if (coDeZaloCuu && typeof henUuTien_ === 'function') {
       try { henUuTien_(10); } catch (eH) {}
     }
-    p.setProperty('DA_CAP_NHAT_TU_DONG_V52', '1');
+    p.setProperty('DA_CAP_NHAT_TU_DONG_V53', '1');
   } catch (e) {}
 }
 
@@ -2760,7 +2765,7 @@ function thuGoiGemini() {
 
 function laVideoDai_(r) {
   if (!r) return false;
-  return /\[VIDEO_DAI_10P\]|DAI_10_PHUT|CHUYEN_DE_10P|\[10\s*PHÚT\]|-10P$/i.test(
+  return /\[VIDEO_DAI_10P\]|DAI_10_PHUT|CHUYEN_DE_10P|\[10\s*PHÚT\]|-10P(?=\b|$|\s)/i.test(
     String(r.id || '') + ' ' + String(r.kiem_chung || '') + ' ' + String(r.chu_de || '') + ' ' + String(r.nguon || '')
   );
 }
