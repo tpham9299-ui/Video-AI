@@ -135,13 +135,13 @@ export type DuLieuSanKhau = {vat: Vat[]; hanhDong: HanhDong[]; soBuoc: number; g
 const MAU_HOP_LE = ['do', 'xanh_duong', 'xanh_la', 'vang', 'tim', 'cam', 'hong', 'trang', 'xam', 'nau', 'ngoc', 'den'];
 const tenMau = (v: unknown): string => (typeof v === 'string' && MAU_HOP_LE.includes(v) ? v : '');
 const toiDaSoLuong: Partial<Record<LoaiVat, number>> = {
-  nguoi: 12, the: 8, the_bai: 6, xuc_xac: 3, dong_xu: 4, cua: 4, banh: 12, bieu_tuong: 10, luoi_o: 64, cay: 6, xe: 3,
+  nguoi: 12, the: 12, the_bai: 12, xuc_xac: 3, dong_xu: 4, cua: 4, banh: 12, bieu_tuong: 10, luoi_o: 64, cay: 6, xe: 3,
 };
 
 function vat(raw: Record<string, unknown>, i: number): Vat | null {
   const loai = LOAI_VAT.find((l) => l === raw.loai);
   if (!loai) return null;
-  const ds = laMang(raw.ds) ? raw.ds.slice(0, 12).map((x) => (raw.loai === 'danh_sach' ? chu(x, 60) : chuDon(x, raw.loai === 'dien_thoai' ? 52 : 24))) : [];
+  const ds = laMang(raw.ds) ? raw.ds.slice(0, 36).map((x) => (raw.loai === 'danh_sach' ? chu(x, 60) : chuDon(x, raw.loai === 'dien_thoai' ? 52 : 24))) : [];
   const dsSo = laMang(raw.ds_so) ? raw.ds_so.slice(0, 8).map((x) => so(x, 0, 0, 1e6)) : [];
   const ketQua = (laMang(raw.ket_qua) ? raw.ket_qua : raw.ket_qua !== undefined ? [raw.ket_qua] : [])
     .slice(0, 6)

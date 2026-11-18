@@ -158,9 +158,9 @@ const Nguoi: Ve = (v, st) => {
   );
 };
 
-/* ---------------- THẺ THÔNG TIN ---------------- */
+/* ---------------- THẺ THÔNG TIN / TẤM THẺ ĐÁNH SỐ 3D ---------------- */
 const The: Ve = (v, st) => {
-  const n = v.soLuong;
+  const n = Math.max(1, v.soLuong || v.ds.length || 1);
   const kt = kichThe(v, KC);
   const w = kt.w;
   const h = kt.h;
@@ -169,6 +169,7 @@ const The: Ve = (v, st) => {
   // nhiều hơn 6 thẻ: 2 hàng, thẻ không chồng lên nhau
   const cot = cotThe(n), hang = Math.ceil(n / cot);
   const khoang = w + 26;
+  const laTheSo = n >= 2 && Array.from({length: n}, (_, idx) => (v.ds[idx] || String(idx + 1)).trim()).every((s) => s.length <= 4);
   return (
     <div style={{position: 'relative', width: Math.max(w, khoang * cot), height: hang * (h + 26) + (v.nhan ? 60 : 10)}}>
       {Array.from({length: n}, (_, k) => {
@@ -183,18 +184,30 @@ const The: Ve = (v, st) => {
         const by = Math.sin(gocBung) * (150 + r() * 50) * Math.max(0.7, v.co);
         const xoayBung = (r() - 0.5) * 50;
         const x = lerp(goc0, bx, st.bung);
-        const y = lerp(y0, by, st.bung);
-        const tieuDe = v.ds[k] || (n === 1 ? st.noiDung : '');
+        const y = lerp(y0, by, st.bung) - s.pc * 14;
+        const tieuDe = v.ds[k] || (n === 1 ? st.noiDung : String(k + 1));
         // Manim DrawBorderThenFill: viền vẽ dần quanh thẻ trước, nền và chữ hiện sau
-        const ve = kep((st.t - st.ta - k * Math.min(0.12, 0.9 / Math.max(1, n))) / 0.5);
+        const ve = kep((st.t - st.ta - k * Math.min(0.1, 0.85 / Math.max(1, n))) / 0.45);
         return (
           <div key={k} style={{position: 'absolute', left: '50%', top: 0, width: w, height: h, marginLeft: -w / 2, opacity: kep(a * 2) * s.mo,
-            transform: `translate(${x}px, ${y + (1 - easeOut(a)) * 60}px) rotate(${lerp(n > 6 ? 0 : (k - (n - 1) / 2) * (n > 3 ? 2.5 : 0), xoayBung, st.bung)}deg) scale(${popOut(a) * (1 + 0.07 * s.pc)})`,
-            border: `5px solid ${ve > 0.85 ? s.mau : 'transparent'}`, borderRadius: 22, background: `linear-gradient(160deg, ${NEN_VAT_2}, ${NEN_VAT})`, backgroundClip: 'padding-box', boxShadow: ve > 0.85 ? `0 0 ${10 + 18 * s.pc}px ${s.mau}` : 'none',
+            transform: `translate(${x}px, ${y + (1 - easeOut(a)) * 60}px) rotate(${lerp(n > 6 ? 0 : (k - (n - 1) / 2) * (n > 3 ? 2.2 : 0), xoayBung, st.bung)}deg) scale(${popOut(a) * (1 + 0.09 * s.pc)})`,
+            border: `4.5px solid ${ve > 0.85 ? s.mau : 'transparent'}`, borderRadius: 22,
+            background: laTheSo
+              ? `linear-gradient(155deg, rgba(28,44,58,0.96) 0%, rgba(11,21,30,0.98) 65%, ${s.mau}28 100%)`
+              : `linear-gradient(160deg, ${NEN_VAT_2}, ${NEN_VAT})`,
+            backgroundClip: 'padding-box',
+            boxShadow: ve > 0.85 ? `0 10px 24px rgba(0,0,0,0.55), 0 0 ${12 + 22 * s.pc}px ${s.mau}, inset 0 1px 0 rgba(255,255,255,0.25)` : 'none',
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, fontFamily: FONT, color: '#fff', filter: s.xam ? 'grayscale(1)' : 'none'}}>
-            {tieuDe ? <div style={{opacity: kep((ve - 0.35) / 0.4), fontWeight: 900, fontSize: kt.co, textAlign: 'center', padding: '0 22px', lineHeight: 1.18, textShadow: '0 2px 10px rgba(0,0,0,0.6)'}}>{laToanNhan(tieuDe) ? <Toan tex={texNhan(tieuDe)} size={kt.co} color="#ffffff" maxWidth={w - 40} /> : tieuDe}</div> : null}
+            {/* Khung viền trang trí bên trong cho tấm thẻ đánh số */}
+            {laTheSo && ve > 0.5 ? (
+              <>
+                <div style={{position: 'absolute', inset: 8, borderRadius: 14, border: `1.5px solid ${s.mau}55`, pointerEvents: 'none'}} />
+                <div style={{position: 'absolute', left: 14, top: 10, fontFamily: FONT_DAM, fontWeight: 800, fontSize: Math.max(16, kt.co * 0.36), color: s.mau, opacity: 0.85, lineHeight: 1}}>{tc(tieuDe)}</div>
+                <div style={{position: 'absolute', right: 14, bottom: 10, fontFamily: FONT_DAM, fontWeight: 800, fontSize: Math.max(16, kt.co * 0.36), color: s.mau, opacity: 0.85, lineHeight: 1, transform: 'rotate(180deg)'}}>{tc(tieuDe)}</div>
+              </>
+            ) : null}
+            {tieuDe ? <div style={{opacity: kep((ve - 0.3) / 0.4), fontFamily: laTheSo ? FONT_DAM : FONT, fontWeight: 900, fontSize: laTheSo ? kt.co * 1.18 : kt.co, textAlign: 'center', padding: '0 18px', lineHeight: 1.15, color: s.pc > 0.01 ? '#fff' : '#f5f9ff', textShadow: `0 3px 12px rgba(0,0,0,0.75)${laTheSo ? `, 0 0 14px ${s.mau}66` : ''}`}}>{laToanNhan(tieuDe) ? <Toan tex={texNhan(tieuDe)} size={kt.co} color="#ffffff" maxWidth={w - 36} /> : tieuDe}</div> : null}
             {n === 1 && st.giaTriChu ? <div style={{fontWeight: 900, fontSize: 54 * v.co, color: s.mau}}>{tc(st.giaTriChu)}</div> : null}
-            {n > 1 && !tieuDe ? <svg width={w * 0.5} height={h * 0.3} viewBox="0 0 100 40"><circle cx={20} cy={20} r={14} fill="none" stroke={s.mau} strokeWidth={5} /><rect x={42} y={10} width={52} height={7} rx={3} fill={s.mau} opacity={0.7} /><rect x={42} y={24} width={36} height={7} rx={3} fill="#ffffff" opacity={0.35} /></svg> : null}
             {ve < 1 ? (
               <svg width={w} height={h} style={{position: 'absolute', left: -5, top: -5, overflow: 'visible'}}>
                 <rect x={2.5} y={2.5} width={w - 5} height={h - 5} rx={20} fill="none" stroke={s.mau} strokeWidth={5} pathLength={1} strokeDasharray={1} strokeDashoffset={1 - easeOut(ve / 0.85)} style={{filter: `drop-shadow(0 0 8px ${s.mau})`}} />
@@ -205,7 +218,7 @@ const The: Ve = (v, st) => {
           </div>
         );
       })}
-      {v.nhan ? <div style={{position: 'absolute', left: 0, right: 0, top: h + 4, display: 'flex', justifyContent: 'center'}}><Nhan chu={v.nhan} /></div> : null}
+      {v.nhan ? <div style={{position: 'absolute', left: 0, right: 0, top: hang * (h + 26) - 6, display: 'flex', justifyContent: 'center'}}><Nhan chu={v.nhan} /></div> : null}
     </div>
   );
 };
@@ -382,23 +395,36 @@ const laMauToi = (hex: string) => {
   const n = parseInt(m[1], 16);
   return 0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255) < 70;
 };
-const Bi: React.FC<{mau: string; r: number; sang?: number}> = ({mau, r, sang = 0}) => (
-  <svg width={r * 2} height={r * 2} viewBox="0 0 40 40" style={{overflow: 'visible', filter: sang ? phatSang(mau, 6 + 10 * sang) : 'none'}}>
-    <defs>
-      <radialGradient id={`bi${mau.replace('#', '')}`} cx="35%" cy="30%" r="70%">
-        <stop offset="0%" stopColor="#ffffff" stopOpacity={0.95} />
-        <stop offset="30%" stopColor={mau} />
-        <stop offset="100%" stopColor={mau} stopOpacity={0.55} />
-      </radialGradient>
-    </defs>
-    {/* bi màu tối (đen, xám đậm) có viền sáng để nhìn rõ trên nền tối - không bị nhầm thành bi đỏ hay mất hút */}
-    <circle cx={20} cy={20} r={18} fill={`url(#bi${mau.replace('#', '')})`} stroke={laMauToi(mau) ? '#d7e3e6' : 'rgba(0,0,0,0.35)'} strokeWidth={laMauToi(mau) ? 2.4 : 1.5} />
-  </svg>
-);
+const Bi: React.FC<{mau: string; r: number; sang?: number; so?: string}> = ({mau, r, sang = 0, so}) => {
+  const id = `bi_${mau.replace(/[^a-zA-Z0-9]/g, '')}_${Math.round(r)}`;
+  const toi = laMauToi(mau);
+  return (
+    <svg width={r * 2} height={r * 2} viewBox="0 0 44 44" style={{overflow: 'visible', filter: sang ? phatSang(mau, 6 + 10 * sang) : 'drop-shadow(0 5px 7px rgba(0,0,0,0.55))'}}>
+      <defs>
+        <radialGradient id={id} cx="32%" cy="26%" r="72%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity={0.98} />
+          <stop offset="22%" stopColor={mau} stopOpacity={1} />
+          <stop offset="72%" stopColor={mau} stopOpacity={0.92} />
+          <stop offset="100%" stopColor={toi ? '#3a4a52' : '#061018'} stopOpacity={0.95} />
+        </radialGradient>
+      </defs>
+      {/* Bóng tiếp xúc dưới đáy viên bi */}
+      <ellipse cx={22} cy={40} rx={13} ry={3.4} fill="rgba(0,0,0,0.42)" />
+      {/* Thân cầu pha lê 3D */}
+      <circle cx={22} cy={21} r={18.2} fill={`url(#${id})`} stroke={toi ? '#d7e3e6' : 'rgba(255,255,255,0.38)'} strokeWidth={toi ? 2.2 : 1.3} />
+      {/* Phản xạ ánh sáng vòm dưới đáy bi (rim bounce light) */}
+      <path d="M 10 30 A 15 14 0 0 0 34 30" stroke="#ffffff" strokeOpacity={0.35} strokeWidth={2.2} strokeLinecap="round" fill="none" />
+      {/* Đốm phản quang pha lê góc trên trái (specular highlight) */}
+      <ellipse cx={15.5} cy={13.5} rx={5.5} ry={3.2} transform="rotate(-28 15.5 13.5)" fill="#ffffff" fillOpacity={0.82} />
+      <circle cx={11.8} cy={18.5} r={1.6} fill="#ffffff" fillOpacity={0.65} />
+      {so ? <text x={22} y={26} textAnchor="middle" fontFamily="Montserrat, sans-serif" fontWeight={900} fontSize={14} fill="#ffffff" stroke="rgba(0,0,0,0.65)" strokeWidth={2.5} paintOrder="stroke">{so}</text> : null}
+    </svg>
+  );
+};
 const HopBi: Ve = (v, st) => {
   const tui = v.loai === 'tui';
-  const W = 400 * v.co;
-  const H = 320 * v.co;
+  const W = 420 * v.co;
+  const H = 336 * v.co;
   const r = 23 * v.co;
   const tat: string[] = [];
   v.nhom.forEach((g) => {
@@ -417,30 +443,70 @@ const HopBi: Ve = (v, st) => {
       daLay.push({idx, p: kep((l.p - k * 0.15) / 0.85), thu: l.thu, k: daLay.length});
     }
   });
-  const cot = Math.max(4, Math.floor((W - 40) / (r * 2.3)));
-  const viTri = (j: number) => ({x: 30 + (j % cot) * r * 2.3 + r, y: H - 26 - Math.floor(j / cot) * r * 2.1 - r});
-  const goc = neon(v.mau, neon('xanh_la'));
-  const khay = (k: number) => ({x: W + 40 + (k % 3) * r * 2.6, y: H * 0.25 + Math.floor(k / 3) * r * 2.6});
+  const cot = Math.max(4, Math.floor((W - 56) / (r * 2.25)));
+  const viTri = (j: number) => ({x: 36 + (j % cot) * r * 2.22 + r, y: H - 36 - Math.floor(j / cot) * r * 2.02 - r});
+  const goc = neon(v.mau, neon('xanh_duong'));
+  const khay = (k: number) => ({x: W + 48 + (k % 3) * r * 2.55, y: H * 0.36 + Math.floor(k / 3) * r * 2.55});
+  const idHop = `hop_${bamChuoi(v.id)}`;
+  const coKhay = daLay.length > 0 || st.layRa.length > 0;
   return (
     <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
-      <div style={{position: 'relative', width: W, height: H}}>
-        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{position: 'absolute', overflow: 'visible', filter: phatSang(goc, 8 + 10 * st.sang)}}>
+      <div style={{position: 'relative', width: W, height: H + 12}}>
+        {/* Lớp 1: Đế hộp 3D, thành kính phía sau và miệng hộp nửa sau */}
+        <svg width={W} height={H + 16} viewBox={`0 0 ${W} ${H + 16}`} style={{position: 'absolute', left: 0, top: 0, overflow: 'visible', filter: phatSang(goc, 6 + 8 * st.sang)}}>
+          <defs>
+            <linearGradient id={`${idHop}_glass`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={goc} stopOpacity={0.22} />
+              <stop offset="35%" stopColor="#0b1f2e" stopOpacity={0.55} />
+              <stop offset="70%" stopColor="#07131d" stopOpacity={0.62} />
+              <stop offset="100%" stopColor={goc} stopOpacity={0.26} />
+            </linearGradient>
+            <linearGradient id={`${idHop}_base`} x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#0d2230" />
+              <stop offset="50%" stopColor="#1b4358" />
+              <stop offset="100%" stopColor="#0d2230" />
+            </linearGradient>
+          </defs>
+          {/* Bóng đổ dưới mặt bàn */}
+          <ellipse cx={W * 0.5} cy={H + 6} rx={W * 0.46} ry={14 * v.co} fill="rgba(0,0,0,0.6)" />
           {tui ? (
-            <path d={`M${W * 0.28} ${H * 0.12} Q${W * 0.5} ${H * 0.2} ${W * 0.72} ${H * 0.12} L${W * 0.8} ${H * 0.3} Q${W * 1.02} ${H * 0.62} ${W * 0.86} ${H * 0.96} Q${W * 0.5} ${H * 1.04} ${W * 0.14} ${H * 0.96} Q${-W * 0.02} ${H * 0.62} ${W * 0.2} ${H * 0.3} Z`}
-              fill={NEN_VAT_2} stroke={goc} strokeWidth={6} strokeLinejoin="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - easeOut(st.vao)} />
+            <>
+              <path d={`M${W * 0.28} ${H * 0.12} Q${W * 0.5} ${H * 0.2} ${W * 0.72} ${H * 0.12} L${W * 0.8} ${H * 0.3} Q${W * 1.02} ${H * 0.62} ${W * 0.86} ${H * 0.96} Q${W * 0.5} ${H * 1.04} ${W * 0.14} ${H * 0.96} Q${-W * 0.02} ${H * 0.62} ${W * 0.2} ${H * 0.3} Z`}
+                fill={NEN_VAT_2} stroke={goc} strokeWidth={5.5} strokeLinejoin="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - easeOut(st.vao)} />
+              <path d={`M${W * 0.26} ${H * 0.2} Q${W * 0.5} ${H * 0.3} ${W * 0.74} ${H * 0.2}`} stroke={goc} strokeWidth={5} fill="none" strokeDasharray="6 8" />
+            </>
           ) : (
-            <path d={`M8 ${H * 0.08} L8 ${H - 18} Q8 ${H - 4} 24 ${H - 4} L${W - 24} ${H - 4} Q${W - 8} ${H - 4} ${W - 8} ${H - 18} L${W - 8} ${H * 0.08}`}
-              fill="rgba(79,195,247,0.07)" stroke={goc} strokeWidth={6} strokeLinecap="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - easeOut(st.vao)} />
+            <>
+              {/* Đế bệ 3D nâng hộp pha lê */}
+              <path d={`M 18 ${H - 22} L ${W - 18} ${H - 22} L ${W - 6} ${H - 4} Q ${W * 0.5} ${H + 8} 6 ${H - 4} Z`}
+                fill={`url(#${idHop}_base)`} stroke={goc} strokeWidth={2.5} opacity={easeOut(st.vao)} />
+              {/* Mặt sàn trong hộp */}
+              <ellipse cx={W * 0.5} cy={H - 22} rx={W * 0.45} ry={13 * v.co} fill="rgba(16,44,62,0.75)" stroke={`${goc}66`} strokeWidth={1.8} opacity={easeOut(st.vao)} />
+              {/* Thành bình pha lê 3D */}
+              <path d={`M 16 ${H * 0.11} L 16 ${H - 22} Q 16 ${H - 8} 38 ${H - 8} L ${W - 38} ${H - 8} Q ${W - 16} ${H - 8} ${W - 16} ${H - 22} L ${W - 16} ${H * 0.11} Z`}
+                fill={`url(#${idHop}_glass)`} stroke={goc} strokeWidth={4.5} strokeLinejoin="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - easeOut(st.vao)} />
+              {/* Vành miệng hộp phía sau (nét mảnh 3D) */}
+              <ellipse cx={W * 0.5} cy={H * 0.11} rx={W * 0.5 - 16} ry={14 * v.co} fill="rgba(79,195,247,0.08)" stroke={`${goc}88`} strokeWidth={2.2} strokeDasharray="8 6" opacity={easeOut(st.vao)} />
+            </>
           )}
-          {tui ? <path d={`M${W * 0.26} ${H * 0.2} Q${W * 0.5} ${H * 0.3} ${W * 0.74} ${H * 0.2}`} stroke={goc} strokeWidth={5} fill="none" strokeDasharray="6 8" /> : null}
+          {/* Khay nhung 3D bên phải khi có hành động lấy bi ra */}
+          {coKhay ? (
+            <g opacity={easeOut(st.vao)}>
+              <ellipse cx={W + 48 + r * 2.55} cy={H * 0.54 + 28} rx={r * 4.2} ry={r * 1.9} fill="rgba(0,0,0,0.45)" />
+              <rect x={W + 14} y={H * 0.22} width={r * 7.8} height={r * 5.2} rx={20 * v.co} fill="rgba(12,28,38,0.88)" stroke={goc} strokeWidth={3} />
+              <text x={W + 14 + r * 3.9} y={H * 0.22 - 10} textAnchor="middle" fontFamily={FONT_DAM} fontWeight={800} fontSize={20 * v.co} fill={goc}>ĐÃ LẤY RA</text>
+            </g>
+          ) : null}
         </svg>
+
+        {/* Lớp 2: Các viên bi pha lê 3D nằm trong hộp */}
         {!tui
           ? tat.map((m, j) => {
               if (!conLai[j]) return null;
-              const a = kep((st.t - st.ta - 0.25 - j * Math.min(0.06, 1 / tat.length)) / 0.45);
+              const a = kep((st.t - st.ta - 0.22 - j * Math.min(0.055, 0.9 / Math.max(1, tat.length))) / 0.42);
               const p = viTri(j);
               return (
-                <div key={j} style={{position: 'absolute', left: p.x - r, top: p.y - r - (1 - easeOut(a)) * 260 - nay(a, 2) * 18, opacity: kep(a * 3)}}>
+                <div key={j} style={{position: 'absolute', left: p.x - r, top: p.y - r - (1 - easeOut(a)) * 240 - nay(a, 2) * 16, opacity: kep(a * 3)}}>
                   <Bi mau={neon(m)} r={r} />
                 </div>
               );
@@ -454,13 +520,42 @@ const HopBi: Ve = (v, st) => {
               ))}
             </div>
           )}
+
+        {/* Lớp 3: Mặt kính phản quang phía trước đè lên bi + vành miệng trước + huy hiệu thống kê số bi */}
+        {!tui ? (
+          <svg width={W} height={H + 16} viewBox={`0 0 ${W} ${H + 16}`} style={{position: 'absolute', left: 0, top: 0, overflow: 'visible', pointerEvents: 'none', opacity: easeOut(st.vao)}}>
+            {/* Vệt lóa kính chéo (glass reflection sheen) */}
+            <polygon points={`28,${H * 0.15} 78,${H * 0.15} 46,${H - 26} 22,${H - 26}`} fill="rgba(255,255,255,0.08)" />
+            <polygon points={`${W - 64},${H * 0.15} ${W - 30},${H * 0.15} ${W - 24},${H - 26} ${W - 44},${H - 26}`} fill="rgba(255,255,255,0.06)" />
+            {/* Viền sáng khúc xạ dọc hai cạnh bình */}
+            <line x1={23} y1={H * 0.14} x2={23} y2={H - 24} stroke="rgba(255,255,255,0.35)" strokeWidth={3} strokeLinecap="round" />
+            <line x1={W - 23} y1={H * 0.14} x2={W - 23} y2={H - 24} stroke="rgba(255,255,255,0.22)" strokeWidth={2.5} strokeLinecap="round" />
+            {/* Vành miệng bình phía trước */}
+            <path d={`M 16 ${H * 0.11} A ${W * 0.5 - 16} ${14 * v.co} 0 0 0 ${W - 16} ${H * 0.11}`} fill="none" stroke="#ffffff" strokeOpacity={0.75} strokeWidth={3.5} strokeLinecap="round" />
+            <path d={`M 16 ${H * 0.11} A ${W * 0.5 - 16} ${14 * v.co} 0 0 0 ${W - 16} ${H * 0.11}`} fill="none" stroke={goc} strokeWidth={2} strokeLinecap="round" />
+          </svg>
+        ) : null}
+
+        {/* Thanh tóm tắt số lượng từng màu bi gắn nổi trên cổ bình */}
+        {!tui && v.nhom.length > 0 ? (
+          <div style={{position: 'absolute', left: '50%', top: -14 * v.co, transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 14, padding: `${4 * v.co}px ${16 * v.co}px`, borderRadius: 999, background: 'rgba(6,18,28,0.92)', border: `2px solid ${goc}aa`, boxShadow: `0 4px 14px rgba(0,0,0,0.55), 0 0 10px ${goc}44`, opacity: kep((st.vao - 0.2) * 2), whiteSpace: 'nowrap'}}>
+            {v.nhom.map((g, i) => (
+              <div key={i} style={{display: 'flex', alignItems: 'center', gap: 6, fontFamily: FONT_DAM, fontWeight: 900, fontSize: Math.max(20, 24 * v.co * KC), color: '#fff'}}>
+                <span style={{width: 14 * v.co, height: 14 * v.co, borderRadius: '50%', background: neon(g.mau), boxShadow: `0 0 8px ${neon(g.mau)}`, display: 'inline-block'}} />
+                <span>{g.so}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        {/* Lớp 4: Các viên bi bay ra khay theo đường vòng cung */}
         {daLay.map((d) => {
           const tu = tui ? {x: W / 2, y: H * 0.15} : viTri(d.idx);
           const den = khay(d.k);
           const p = easeInOut(d.p);
           if (d.p <= 0) return null;
           const x = lerp(tu.x, den.x, p);
-          const y = lerp(tu.y, den.y, p) - Math.sin(p * Math.PI) * 170;
+          const y = lerp(tu.y, den.y, p) - Math.sin(p * Math.PI) * 175;
           return (
             <div key={`l${d.k}`} style={{position: 'absolute', left: x - r * 1.15, top: y - r * 1.15, transform: `scale(${1 + 0.15 * p})`}}>
               <Bi mau={neon(tat[d.idx])} r={r * 1.15} sang={p} />
@@ -863,26 +958,56 @@ const SoDem: Ve = (v, st) => {
   );
 };
 
-/* ---------------- LƯỚI Ô (không gian mẫu): các ô lấp đầy lần lượt, ô thuận lợi sáng màu ---------------- */
+/* ---------------- LƯỚI Ô (không gian mẫu): các ô có nhãn kết quả tường minh, không bao giờ để 16 ô trống vô nghĩa ---------------- */
 const LuoiO: Ve = (v, st) => {
   const n = v.soLuong;
   const cot = v.soCot || Math.min(12, Math.ceil(Math.sqrt(n * 1.6)));
   const hang = Math.ceil(n / cot);
-  const o = Math.min(860 / cot, 560 / hang) * v.co - 8;
+  const o = Math.min(860 / cot, 520 / hang) * v.co - 8;
   const goc = neon(v.mau, neon('xanh_duong'));
   const tong = Math.min(1.4, 0.03 * n + 0.3);
+  const coDs = v.ds && v.ds.some((x) => String(x || '').trim() !== '');
+  const chuNhan = `${v.nhan || ''} ${st.giaTriChu || ''} ${st.noiDung || ''}`.trim();
+  const laOmega = !coDs && (n === 16 || /\\?omega|Ω|không gian mẫu/i.test(chuNhan));
+
+  // Tự động tạo nhãn tường minh cho từng ô khi kịch bản không truyền mảng ds (tránh 16 ô vuông trống vô nghĩa)
+  const nhanO = (k: number): string => {
+    if (coDs) return v.ds[k] || '';
+    if (n === 4) return ['SS', 'SN', 'NS', 'NN'][k] || `TH ${k + 1}`;
+    if (n === 8) return ['SSS', 'SSN', 'SNS', 'SNN', 'NSS', 'NSN', 'NNS', 'NNN'][k] || `TH ${k + 1}`;
+    if (n === 36 && cot === 6) return `(${Math.floor(k / 6) + 1},${(k % 6) + 1})`;
+    if (laOmega) {
+      if (k < n - 2) return `TH ${k + 1}`;
+      if (k === n - 2) return '⋯';
+      return 'Ω';
+    }
+    if (cot >= 2 && hang >= 2 && n <= 25) return `(${Math.floor(k / cot) + 1},${(k % cot) + 1})`;
+    return `#${k + 1}`;
+  };
+
   return (
-    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
-      <div style={{display: 'grid', gridTemplateColumns: `repeat(${cot}, ${o}px)`, gap: 8}}>
+    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10}}>
+      {laOmega ? (
+        <div style={{display: 'flex', alignItems: 'center', gap: 14, padding: '8px 22px', borderRadius: 16, background: 'rgba(10,26,38,0.9)', border: `2px solid ${goc}88`, boxShadow: `0 6px 20px rgba(0,0,0,0.45), 0 0 12px ${goc}33`, fontFamily: FONT_DAM, fontWeight: 800, fontSize: Math.max(22, 26 * v.co * KC), color: '#d7f3ff', opacity: kep(st.vao * 2)}}>
+          <span style={{color: '#3BF29A'}}>● Biến cố thuận lợi A</span>
+          <span style={{opacity: 0.45}}>|</span>
+          <span style={{color: goc}}>■ Không gian mẫu Ω (mọi khả năng)</span>
+        </div>
+      ) : null}
+      <div style={{display: 'grid', gridTemplateColumns: `repeat(${cot}, ${o}px)`, gap: 8, padding: laOmega ? 14 : 0, borderRadius: 24, background: laOmega ? 'rgba(6,16,24,0.68)' : 'transparent', border: laOmega ? `2px solid ${goc}44` : 'none'}}>
         {Array.from({length: n}, (_, k) => {
           const a = kep((st.t - st.ta - (k / n) * tong) / 0.25);
           const s = phanTu(st, k + 1, goc);
           const sang = s.pc > 0.01;
+          const chuO = nhanO(k);
+          const coChuO = chuO.length >= 5 ? o * 0.24 : chuO.length >= 4 ? o * 0.28 : o * 0.34;
           return (
-            <div key={k} style={{width: o, height: o, borderRadius: o * 0.2, opacity: kep(a * 2) * Math.max(0.35, s.mo), transform: `scale(${popOut(a, 2.2) * (1 + 0.1 * s.pc)})`,
-              background: sang ? s.mau : `${goc}2a`, border: `3px solid ${sang ? '#fff' : goc + 'aa'}`, boxShadow: sang ? `0 0 ${14 * s.pc}px ${s.mau}` : 'none',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT_DAM, fontWeight: 900, fontSize: o * 0.34, color: sang ? '#0b1a14' : '#fff'}}>
-              {v.ds[k] || ''}
+            <div key={k} style={{position: 'relative', width: o, height: o, borderRadius: o * 0.2, opacity: kep(a * 2) * Math.max(0.42, s.mo), transform: `scale(${popOut(a, 2.2) * (1 + 0.08 * s.pc)})`,
+              background: sang ? `linear-gradient(145deg, ${s.mau}, ${s.mau}cc)` : `linear-gradient(160deg, ${goc}2e, rgba(8,18,28,0.85))`,
+              border: `3px solid ${sang ? '#fff' : goc + 'aa'}`, boxShadow: sang ? `0 0 ${16 * s.pc}px ${s.mau}` : 'inset 0 1px 0 rgba(255,255,255,0.12)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: FONT_DAM, fontWeight: 900, fontSize: coChuO, color: sang ? '#061a12' : '#e8f6ff', textShadow: sang ? 'none' : '0 2px 6px rgba(0,0,0,0.65)'}}>
+              <span>{chuO}</span>
+              {sang ? <DauTich p={s.pc} mau={s.mau} co={Math.max(22, o * 0.28)} style={{right: -6, top: -6}} /> : null}
             </div>
           );
         })}

@@ -113,9 +113,13 @@ const nhanKhoi = (w: number, d: number, h: number, nhan: string[], pitch: number
   }
   return canh.map((c, i) => {
     if (!nhan[i]) return null;
+    const mi = kep((mo - i * 0.32) / 0.45);
+    if (mi <= 0.01) return null;
+    const laHoi = /\?/.test(nhan[i]);
+    const mauVien = laHoi ? '#FF8A3D' : i === 2 ? '#FFD54A' : NHAT;
     return (
-      <div key={i} style={{position: 'absolute', left: vt[i].x, top: vt[i].y, transform: `translate(-50%, -50%) scale(${0.6 + 0.4 * mo})`, opacity: mo, background: 'rgba(6,14,18,0.88)', border: `3px solid ${i === 2 ? '#FFD54A' : NHAT}`, borderRadius: 12, padding: '2px 12px', whiteSpace: 'nowrap', boxShadow: '0 4px 14px rgba(0,0,0,0.5)'}}>
-        <Toan tex={nhan[i]} size={34} color={i === 2 ? '#FFD54A' : NHAT} />
+      <div key={i} style={{position: 'absolute', left: vt[i].x, top: vt[i].y, transform: `translate(-50%, -50%) scale(${0.55 + 0.45 * easeOut(mi)})`, opacity: mi, background: 'rgba(6,14,18,0.9)', border: `3px solid ${mauVien}`, borderRadius: 12, padding: '2px 12px', whiteSpace: 'nowrap', boxShadow: `0 4px 14px rgba(0,0,0,0.5), 0 0 10px ${mauVien}44`}}>
+        <Toan tex={nhan[i]} size={34} color={mauVien} />
       </div>
     );
   });

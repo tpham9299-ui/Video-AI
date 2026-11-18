@@ -1199,6 +1199,224 @@ def the_san_pham(kb, anh_sp):
             "cta": "🛒 Có tại kênh · link ở mô tả" if sp.get("link") else "🛒 Có tại kênh · xem giỏ hàng / mô tả"}
 
 
+def _la_nhan_an_so_som(nhan, de_goc):
+    s = str(nhan or "").strip()
+    if not s or "?" in s:
+        return False
+    bo_dv = re.sub(r"\s*(m|cm|mm|km|dm|l|lít|kg|g|độ|°|\^\s*\{?\s*[23]\s*\}?|\\circ)\s*$", "", s, flags=re.I).strip()
+    if re.fullmatch(r"-?\d+(?:[.,]\d+)?", bo_dv):
+        return False
+    m_bien = re.search(r"(?:^|[^a-zA-ZÀ-ỹ])([xyhr])(?:[^a-zA-ZÀ-ỹ]|$)", bo_dv)
+    if not m_bien:
+        return False
+    bien = m_bien.group(1)
+    co_trong_de = bool(re.search(r"(?:^|[\s($,;])" + re.escape(bien) + r"(?:[\s)$.,;=<>+\-^]|$)", str(de_goc or "")))
+    return not co_trong_de
+
+
+def chuan_hoa_hinh_kich_ban(kb):
+    """Tự động chuẩn hóa 4 lỗi hình minh họa phổ biến ngay cả với các kịch bản cũ đang chờ dựng trên Drive:
+    1) Đề tấm thẻ đánh số nhưng vẽ hop_bi -> đổi sang các tấm thẻ đánh số (the).
+    2) Lưới 16 ô vuông trống vô nghĩa (luoi_o) cho Không gian mẫu lớn -> đổi sang thẻ các bước chọn + bộ đếm công-tơ-mét (so_dem).
+    3) Cảnh liên hệ thực tế (lien_he_thuc_te) lạm dụng hop_qua -> đổi sang vật thật khớp lời thoại (vong_quay, nguoi, dien_thoai, canh_that...).
+    4) Đặt ẩn sẵn (2x, x, h) ngay ở cảnh mo_dau / de_bai -> đổi thành nhãn đề bài ("Dài = 2 Rộng", "Rộng ?", "Cao ?") và đưa bước Đặt ẩn vào cảnh giải bài.
+    """
+    if not isinstance(kb, dict) or not isinstance(kb.get("canh"), list):
+        return
+    de_goc = str(kb.get("de_bai") or "")
+    de_all = (de_goc + " " + " ".join(str(x) for x in (kb.get("de_cho") or [])) + " " + str(kb.get("tieu_de") or "")).lower()
+
+    # 1) Đề tấm thẻ -> đổi hop_bi / tui thành các tấm thẻ đánh số
+    la_de_the = bool(re.search(r"(tấm\s+thẻ|chiếc\s+thẻ|thẻ\s+đánh\s+số|thẻ\s+mang\s+số|thẻ\s+số|rút\s+.*thẻ|chọn\s+.*thẻ|bốc\s+.*thẻ|tấm\s+phiếu|lá\s+phiếu)", de_all)) and not bool(re.search(r"(viên\s+bi|quả\s+cầu|hộp\s+bi|túi\s+bi|quả\s+bóng)", de_all))
+    if la_de_the:
+        m_tu_den = re.search(r"từ\s*(\d+)\s*đến\s*(\d+)", de_all)
+        if m_tu_den:
+            a, b = int(m_tu_den.group(1)), int(m_tu_den.group(2))
+            if 0 < b - a + 1 <= 12:
+                ds_the = [str(k) for k in range(a, b + 1)]
+                nhan_the = "%d tấm thẻ (%d → %d)" % (len(ds_the), a, b)
+            else:
+                ds_the = [str(a), str(a + 1), str(a + 2), "…", str(b - 1), str(b)]
+                nhan_the = "%d tấm thẻ (%d → %d)" % (max(1, b - a + 1), a, b)
+        else:
+            m_so = re.search(r"(\d+)\s*(?:tấm\s+|chiếc\s+)?thẻ", de_all)
+            n0 = min(12, max(3, int(m_so.group(1)))) if m_so else 9
+            ds_the = [str(k) for k in range(1, n0 + 1)]
+            nhan_the = "%d tấm thẻ (1 → %d)" % (n0, n0)
+        for c in kb["canh"]:
+            du = (c.get("minh_hoa") or {}).get("du_lieu") if isinstance(c.get("minh_hoa"), dict) else None
+            if not isinstance(du, dict) or not isinstance(du.get("vat"), list):
+                continue
+            id_doi = set()
+            for v in du["vat"]:
+                if isinstance(v, dict) and v.get("loai") in ("hop_bi", "tui"):
+                    id_doi.add(v.get("id"))
+                    v["loai"] = "the"
+                    v["so_luong"] = len(ds_the)
+                    v["ds"] = list(ds_the)
+                    v["mau"] = v.get("mau") or "cam"
+                    v["nhan"] = nhan_the
+                    if float(v.get("y") or 50) > 44:
+                        v["y"] = 34
+                    v["co"] = min(float(v.get("co") or 0.9), 0.92)
+                    v.pop("nhom", None)
+            if id_doi and isinstance(du.get("hanh_dong"), list):
+                for h in du["hanh_dong"]:
+                    if isinstance(h, dict) and h.get("vat") in id_doi and h.get("kieu") == "lay_ra":
+                        h["kieu"] = "chon"
+                        h["chi_so"] = [1, 2, 3]
+                        h["mau"] = h.get("mau") or "xanh_la"
+
+    # 2) Lưới 16 ô vuông trống (luoi_o không có ds) -> đổi sang thẻ giai đoạn Quy tắc nhân + bộ đếm Không gian mẫu
+    for i, c in enumerate(kb["canh"]):
+        du = (c.get("minh_hoa") or {}).get("du_lieu") if isinstance(c.get("minh_hoa"), dict) else None
+        if not isinstance(du, dict) or not isinstance(du.get("vat"), list):
+            continue
+        ct_chu = " ".join(str(x) for x in (c.get("noi_dung_man_hinh") or []))
+        loi = (str(c.get("loi_thoai") or "") + " " + str(c.get("tieu_de_canh") or "")).lower()
+        for k, v in enumerate(list(du["vat"])):
+            if not isinstance(v, dict) or v.get("loai") != "luoi_o":
+                continue
+            co_ds = isinstance(v.get("ds"), list) and any(str(x or "").strip() for x in v["ds"])
+            if co_ds:
+                continue
+            n = int(v.get("so_luong") or 16)
+            if n == 4 and re.search(r"xu|đồng tiền|sấp|ngửa", de_all + " " + loi):
+                v["ds"] = ["SS", "SN", "NS", "NN"]
+                continue
+            if n == 8 and re.search(r"xu|đồng tiền|sấp|ngửa", de_all + " " + loi):
+                v["ds"] = ["SSS", "SSN", "SNS", "SNN", "NSS", "NSN", "NNS", "NNN"]
+                continue
+            if n == 36 and re.search(r"xúc xắc|súc sắc", de_all + " " + loi):
+                v["ds"] = ["(%d,%d)" % (r0, c0) for r0 in range(1, 7) for c0 in range(1, 7)]
+                v["so_cot"] = 6
+                continue
+            cac_so = [int(x) for x in re.findall(r"\d+", re.sub(r"\\[a-zA-Z]+", " ", ct_chu)) if int(x) > 1]
+            dich_so = cac_so[-1] if cac_so else 0
+            m_tich = re.search(r"(\d+)\s*(?:\\times|\\cdot|×|\*)\s*(\d+)\s*=\s*(\d+)", ct_chu)
+            if m_tich:
+                ds_buoc = ["Bước 1: %s cách" % m_tich.group(1), "Bước 2: %s cách" % m_tich.group(2)]
+                dich_so = int(m_tich.group(3))
+            elif isinstance(kb.get("du_kien"), list) and len(kb["du_kien"]) >= 2:
+                ds_buoc = [str(x) for x in kb["du_kien"][:3]]
+            else:
+                ds_buoc = ["Giai đoạn 1", "Giai đoạn 2"]
+            id_goc = str(v.get("id") or ("kgm_%d" % (i + 1)))
+            du["vat"][k] = {
+                "id": id_goc, "loai": "the", "x": 50, "y": 34 if dich_so > 0 else 46, "co": 0.92, "buoc": 1,
+                "so_luong": len(ds_buoc), "ds": ds_buoc, "mau": "xanh_duong", "nhan": "Các giai đoạn tạo Không gian mẫu Ω"
+            }
+            if dich_so > 0 and not any(isinstance(o, dict) and o.get("loai") == "so_dem" for o in du["vat"]):
+                du["vat"].append({
+                    "id": id_goc + "_dem", "loai": "so_dem", "x": 50, "y": 72, "co": 0.88, "buoc": 2,
+                    "noi_dung": "Tổng số kết quả n(Ω)", "gia_tri": dich_so, "nhan": "cách chọn", "kieu": "vien", "mau": "vang"
+                })
+
+    # 3) Cảnh liên hệ thực tế (lien_he_thuc_te) dùng hop_qua chung chung -> thay bằng hình minh họa đa dạng khớp lời thoại
+    for i, c in enumerate(kb["canh"]):
+        if not re.search(r"lien_he", str(c.get("loai") or ""), re.I):
+            continue
+        du = (c.get("minh_hoa") or {}).get("du_lieu") if isinstance(c.get("minh_hoa"), dict) else None
+        if not isinstance(du, dict) or not isinstance(du.get("vat"), list):
+            continue
+        vat = du["vat"]
+        chu_the = " ".join(str(v.get("noi_dung") or "") + " " + " ".join(str(x) for x in (v.get("ds") or [])) for v in vat if isinstance(v, dict))
+        loi = (str(c.get("loi_thoai") or "") + " " + str(c.get("tieu_de_canh") or "") + " " + chu_the).lower()
+        if any(isinstance(v, dict) and v.get("loai") == "hop_qua" for v in vat) and not re.search(r"hộp quà|món quà|tặng quà|sinh nhật", loi):
+            vat_phu = []
+            for v in vat:
+                if isinstance(v, dict) and v.get("loai") != "hop_qua":
+                    vc = dict(v)
+                    if float(vc.get("y") or 50) < 68:
+                        vc["y"] = 76
+                    vc["co"] = min(float(vc.get("co") or 0.9), 0.88)
+                    vat_phu.append(vc)
+            id_chinh = "lh_%d" % (i + 1)
+            if re.search(r"mật khẩu|mã pin|bảo mật|điện thoại|tin nhắn|tài khoản", loi):
+                vat_moi = [
+                    {"id": id_chinh, "loai": "dien_thoai", "x": 34, "y": 40, "co": 0.9, "buoc": 1, "noi_dung": "Bảo mật & Xác thực", "ds": ["Mã PIN: ••••", "OTP ngẫu nhiên", "An toàn 99,9%"], "gia_tri_chu": "Đã khóa"},
+                    {"id": id_chinh + "_ng", "loai": "nguoi", "x": 72, "y": 42, "co": 0.92, "so_luong": 2, "ds": ["Người dùng", "Hệ thống"], "kieu": "chi", "buoc": 2}
+                ]
+                hd_moi = [{"buoc": 2, "vat": id_chinh, "kieu": "chon", "chi_so": [1, 2], "mau": "xanh_la"}]
+            elif re.search(r"bốc thăm|rút thăm|quay số|trúng thưởng|xổ số|chia bảng", loi):
+                vat_moi = [
+                    {"id": id_chinh, "loai": "vong_quay", "x": 30, "y": 38, "co": 0.84, "buoc": 1, "ds": ["Thăm 1", "Thăm 2", "Thăm 3", "Thăm 4", "Thăm 5", "Thăm 6"], "ket_qua": [2], "nhan": "Bốc thăm ngẫu nhiên"},
+                    {"id": id_chinh + "_ng", "loai": "nguoi", "x": 72, "y": 38, "co": 0.88, "so_luong": 4, "ds": ["Ca sáng", "Ca chiều", "Ca tối", "Dự phòng"], "kieu": "gio_tay", "nhan": "Phân bổ nhân sự", "buoc": 2}
+                ]
+                hd_moi = [{"buoc": 2, "vat": id_chinh, "kieu": "quay"}, {"buoc": 3, "vat": id_chinh + "_ng", "kieu": "chon", "chi_so": [1, 2], "mau": "xanh_la"}]
+            else:
+                vat_moi = [
+                    {"id": id_chinh, "loai": "bieu_do_cot", "x": 34, "y": 38, "co": 0.85, "buoc": 1, "ds": ["Phương án A", "Phương án B", "Phương án C"], "ds_so": [72, 48, 88], "nhan": "Ứng dụng thực tế"},
+                    {"id": id_chinh + "_ng", "loai": "nguoi", "x": 74, "y": 40, "co": 0.9, "so_luong": 3, "ds": ["Nhóm 1", "Nhóm 2", "Nhóm 3"], "kieu": "vui", "buoc": 2}
+                ]
+                hd_moi = [{"buoc": 2, "vat": id_chinh, "kieu": "chon", "chi_so": [3], "mau": "xanh_la"}]
+            du["vat"] = vat_moi + vat_phu[:2]
+            du["hanh_dong"] = hd_moi
+
+    # 4) Không đặt ẩn sẵn (2x, x, h) ở cảnh mo_dau / de_bai trước khi vào giải bài
+    mau_vat_an = None
+    nhan_an_goc = None
+    for i, c in enumerate(kb["canh"]):
+        loai_c = str(c.get("loai") or "").lower()
+        if loai_c not in ("mo_dau", "hook", "de_bai"):
+            continue
+        la_mo_dau = (loai_c in ("mo_dau", "hook") or i == 0)
+        du = (c.get("minh_hoa") or {}).get("du_lieu") if isinstance(c.get("minh_hoa"), dict) else None
+        if not isinstance(du, dict) or not isinstance(du.get("vat"), list):
+            continue
+        for v in du["vat"]:
+            if not isinstance(v, dict):
+                continue
+            nkt = v.get("nhan_kich_thuoc")
+            if isinstance(nkt, list) and any(_la_nhan_an_so_som(nh, de_goc) for nh in nkt):
+                if not mau_vat_an:
+                    mau_vat_an = json.loads(json.dumps(v))
+                    nhan_an_goc = list(nkt)
+                if la_mo_dau:
+                    v["nhan_kich_thuoc"] = ["" for _ in nkt]
+                elif v.get("loai") == "khoi_hop" and len(nkt) >= 3:
+                    a0, a1, a2 = str(nkt[0] or "").strip(), str(nkt[1] or "").strip(), str(nkt[2] or "").strip()
+                    m0, m1 = re.fullmatch(r"(\d+)\s*x", a0, re.I), re.fullmatch(r"(\d+)\s*x", a1, re.I)
+                    if m0 and re.fullmatch(r"x", a1, re.I):
+                        v["nhan_kich_thuoc"] = ["Dài = %s Rộng" % m0.group(1), "Rộng ?", "Cao ?" if _la_nhan_an_so_som(a2, de_goc) else a2]
+                    elif m1 and re.fullmatch(r"x", a0, re.I):
+                        v["nhan_kich_thuoc"] = ["Rộng ?", "Dài = %s Rộng" % m1.group(1), "Cao ?" if _la_nhan_an_so_som(a2, de_goc) else a2]
+                    elif re.fullmatch(r"x", a0, re.I) and re.fullmatch(r"x", a1, re.I):
+                        v["nhan_kich_thuoc"] = ["Cạnh đáy ?", "Cạnh đáy ?", "Cao ?" if _la_nhan_an_so_som(a2, de_goc) else a2]
+                    else:
+                        v["nhan_kich_thuoc"] = ["Dài ?" if _la_nhan_an_so_som(a0, de_goc) else a0, "Rộng ?" if _la_nhan_an_so_som(a1, de_goc) else a1, "Cao ?" if _la_nhan_an_so_som(a2, de_goc) else a2]
+                else:
+                    v["nhan_kich_thuoc"] = ["?" if _la_nhan_an_so_som(nh, de_goc) else nh for nh in nkt]
+    if nhan_an_goc:
+        for j, c_giai in enumerate(kb["canh"]):
+            if j > 0 and str(c_giai.get("loai") or "").lower() not in ("mo_dau", "hook", "de_bai"):
+                du_g = (c_giai.get("minh_hoa") or {}).get("du_lieu") if isinstance(c_giai.get("minh_hoa"), dict) else None
+                if isinstance(du_g, dict) and isinstance(du_g.get("vat"), list) and mau_vat_an:
+                    v_cung = [v for v in du_g["vat"] if isinstance(v, dict) and v.get("loai") == mau_vat_an.get("loai")]
+                    if v_cung:
+                        v_cung[0]["nhan_kich_thuoc"] = list(nhan_an_goc)
+                    elif c_giai.get("giu_san_khau"):
+                        c_giai["giu_san_khau"] = False
+                        v_clone = json.loads(json.dumps(mau_vat_an))
+                        v_clone["id"] = "vat_an_%d" % (j + 1)
+                        v_clone["buoc"] = 1
+                        du_g["vat"].insert(0, v_clone)
+                da_co_dat_an = any(re.search(r"(gọi|đặt)\s+.*(\blà\s+[xyhr]\b|=\s*[xyhr]\b)", str(cs.get("loi_thoai") or "") + " " + " ".join(str(x) for x in (cs.get("noi_dung_man_hinh") or [])), re.I) for cs in kb["canh"])
+                if not da_co_dat_an:
+                    l0 = str(nhan_an_goc[0] if len(nhan_an_goc) > 0 else "")
+                    w0 = str(nhan_an_goc[1] if len(nhan_an_goc) > 1 else "")
+                    h0 = str(nhan_an_goc[2] if len(nhan_an_goc) > 2 else "")
+                    if re.fullmatch(r"2x", l0, re.I) and re.fullmatch(r"x", w0, re.I):
+                        dong_dat = r"\text{Đặt rộng } = x\;(x>0) \Rightarrow \text{dài } = 2x" + (r",\; \text{cao } = " + h0 if h0 else "")
+                    elif re.fullmatch(r"x", l0, re.I) and re.fullmatch(r"x", w0, re.I):
+                        dong_dat = r"\text{Đặt cạnh đáy } = x\;(x>0)" + (r",\; \text{chiều cao } = " + h0 if h0 else "")
+                    else:
+                        dong_dat = r"\text{Đặt ẩn: } " + r",\; ".join(nhan_an_goc)
+                    nd_mh = list(c_giai.get("noi_dung_man_hinh") or [])
+                    c_giai["noi_dung_man_hinh"] = ([dong_dat] + nd_mh)[:3]
+                break
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("kich_ban")
@@ -1244,6 +1462,7 @@ def main():
                         if isinstance(d_item, dict):
                             d_item["buoc"] = min(4, 1 + ((idx_d + idx_c) % 4))
                     v["do"] = ds_do
+    chuan_hoa_hinh_kich_ban(kb)
     anh_sp = chuan_anh_san_pham(kb, args.public)
     de_bai_the = the_de_bai(kb)
     canh = kb.get("canh") or []

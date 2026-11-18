@@ -41,7 +41,7 @@ export const PhuDeTikTok: React.FC<{cau: Cau[]; t: number; co?: number; kieu?: s
   let da = 0;
   const coChu = hop ? co * 0.92 : co;
   return (
-    <div style={{display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: `${coChu * 0.12}px ${coChu * 0.18}px`, transform: `translateY(${(1 - easeOut(vao)) * 18}px) scale(${popOut(vao, 1.2)})`, opacity: kep(vao * 2), fontFamily: FONT_DAM, fontWeight: 900, fontSize: coChu, lineHeight: 1.2, textAlign: 'center', textTransform: hop ? 'uppercase' : 'none'}}>
+    <div style={{display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: `${coChu * 0.14}px ${coChu * (hop ? 0.2 : 0.28)}px`, transform: `translateY(${(1 - easeOut(vao)) * 18}px) scale(${popOut(vao, 1.2)})`, opacity: kep(vao * 2), fontFamily: FONT_DAM, fontWeight: 900, fontSize: coChu, lineHeight: 1.2, textAlign: 'center', textTransform: hop ? 'uppercase' : 'none'}}>
       {c.tu.map((w, i) => {
         const dau = da / tong;
         da += w.length + 1;
@@ -51,7 +51,7 @@ export const PhuDeTikTok: React.FC<{cau: Cau[]; t: number; co?: number; kieu?: s
         const oVao = kep((p - dau) / Math.max(0.01, (cuoi - dau) * 0.35));
         const o = dang ? oVao : 0;
         return (
-          <span key={i} style={{position: 'relative', display: 'inline-block', padding: hop ? `0 ${coChu * 0.14}px` : 0, color: !hop && dang ? '#3BF29A' : '#ffffff', transform: `scale(${dang ? (hop ? 1 + 0.06 * popOut(o, 2) - 0.06 : 1.12) + (hop ? 0.06 : 0) : 1})`}}>
+          <span key={i} style={{position: 'relative', display: 'inline-block', padding: hop ? `0 ${coChu * 0.14}px` : `0 ${coChu * 0.06}px`, margin: !hop && dang ? `0 ${coChu * 0.05}px` : 0, color: !hop && dang ? '#3BF29A' : '#ffffff', transform: `scale(${dang ? (hop ? 1 + 0.06 * popOut(o, 2) - 0.06 : 1.1) + (hop ? 0.06 : 0) : 1})`}}>
             {hop && o > 0 ? (
               <span style={{position: 'absolute', inset: `${coChu * 0.02}px 0`, borderRadius: coChu * 0.18, background: mauHop, transform: `scale(${0.6 + 0.4 * popOut(o, 2.2)})`, opacity: o, boxShadow: `0 6px 18px ${mauHop}66`}} />
             ) : null}
