@@ -45,11 +45,10 @@ const comp = await selectComposition({serveUrl: path.resolve(bundle), id: 'Video
 const tho = [];
 const anhAi = [];
 const tam = fs.mkdtempSync('/tmp/kd-');
-for (const m of mau) {
-  if (Date.now() >= hanKiemDuyet - 45_000) break;
+async function chup(m) {
   let nhan = null;
   const layAi = m.isEnd && chonSet.has(m.i);
-  const tep = path.join(tam, layAi ? `ai${m.i}.jpeg` : `k${m.f}.jpeg`);
+  const tep = path.join(tam, layAi ? `ai${m.i}.jpeg` : `k${m.i}-${m.f}.jpeg`);
   await renderStill({
     serveUrl: path.resolve(bundle), composition: comp, inputProps, frame: m.f, output: tep, imageFormat: 'jpeg',
     jpegQuality: layAi ? 58 : 40, scale: layAi ? 0.3 : 0.25,
@@ -59,16 +58,27 @@ for (const m of mau) {
       if (s.startsWith('KD|')) { try { nhan = JSON.parse(s.slice(3)); } catch (e) { /* bỏ */ } }
     },
   });
-  if (nhan) tho.push({...nhan, canh: m.i});
-  ghiBaoCao({chay: false, loi: [], ly_do: 'kiểm duyệt chưa hoàn tất'}, false);
-  if (layAi) anhAi.push({canh: m.i, ten: `${m.i + 1} (${(canh[m.i] || {}).loai || '?'})`, tep});
+  return {nhan, tep, layAi};
+}
+
+const songSong = Math.min(2, os.availableParallelism());
+for (let i = 0; i < mau.length; i += songSong) {
+  if (Date.now() >= hanKiemDuyet - 45_000) break;
+  // Ghi từng khung ngay khi xong; giữ thứ tự mẫu cho báo cáo và ảnh gửi Gemini.
+  await Promise.all(mau.slice(i, i + songSong).map(async (m, j) => {
+    const {nhan, tep, layAi} = await chup(m);
+    if (nhan) tho[i + j] = {...nhan, canh: m.i};
+    if (layAi) anhAi[m.i] = {canh: m.i, ten: `${m.i + 1} (${(canh[m.i] || {}).loai || '?'})`, tep};
+    ghiBaoCao({chay: false, loi: [], ly_do: 'kiểm duyệt chưa hoàn tất'}, false);
+  }));
 }
 await trinhDuyet.close({silent: true});
-const aiKq = await aiNhinHinh(anhAi).catch((e) => ({chay: false, ly_do: String(e.message || e).slice(0, 160), loi: []}));
+const aiKq = await aiNhinHinh(anhAi.filter(Boolean)).catch((e) => ({chay: false, ly_do: String(e.message || e).slice(0, 160), loi: []}));
 fs.rmSync(tam, {recursive: true, force: true});
 ghiBaoCao(aiKq, true);
 
 function ghiBaoCao(aiKq, hoanTat) {
+  const khung = tho.filter(Boolean);
   const aiLoi = aiKq.loi || [];
   if (hoanTat && !aiKq.chay) console.log('⚠️ AI NHÌN HÌNH KHÔNG CHẠY ĐƯỢC: ' + (aiKq.ly_do || 'không rõ') + ' -> hình CHƯA được AI đối chiếu với đề');
 
@@ -83,7 +93,7 @@ function ghiBaoCao(aiKq, hoanTat) {
       const bang = (x) => Math.abs(x - dapAn) <= Math.max(1e-9, Math.abs(dapAn) * 1e-9);
       canh.forEach((c, i) => {
         if (!/dap_an|ket_qua/.test(String(c.loai || ''))) return;
-        const cuoi = tho.filter((k) => k.canh === i).sort((a, b) => b.frame - a.frame)[0];
+        const cuoi = khung.filter((k) => k.canh === i).sort((a, b) => b.frame - a.frame)[0];
         if (!cuoi) return;
         const so = (cuoi.so || []).map((x) => Number(String(x).replace(',', '.')));
         const soChu = docSo((cuoi.chu || []).join(' | '));
@@ -97,7 +107,7 @@ function ghiBaoCao(aiKq, hoanTat) {
   // gộp theo cảnh + nội dung (một lỗi lặp ở nhiều khung chỉ báo một lần)
   const NANG = new Set(['TEX_THO', 'KATEX_LOI', 'TRAN_MEP', 'CHU_DE', 'CAT_CHU']);
   const gop = new Map();
-  for (const k of tho) {
+  for (const k of khung) {
     for (const l of k.loi || []) {
       const khoa = `${k.canh}|${l.kieu}|${l.chu}|${l.chu2 || ''}`;
       const cu = gop.get(khoa);
@@ -126,11 +136,11 @@ function ghiBaoCao(aiKq, hoanTat) {
   const nang = ds.filter(laNang).map(moTa).concat(aiLoi, loiDapAn);
   const nhe = ds.filter((l) => !laNang(l)).map(moTa);
   if (!aiKq.chay) nhe.push('AI_NHIN_HINH_KHONG_CHAY: ' + (aiKq.ly_do || 'không gọi được Gemini') + ' - hình chưa được AI đối chiếu với đề');
-  const bao = {hong: tho.length < mau.length || !hoanTat, so_khung: tho.length, so_khung_mau: mau.length, nang: [...new Set(nang)], nhe: [...new Set(nhe)], ai_nhin: aiKq.chay ? (aiLoi.length ? 'sai' : 'dung') : 'khong_chay', chi_tiet: ds.slice(0, 80)};
+  const bao = {hong: khung.length < mau.length || !hoanTat, so_khung: khung.length, so_khung_mau: mau.length, nang: [...new Set(nang)], nhe: [...new Set(nhe)], ai_nhin: aiKq.chay ? (aiLoi.length ? 'sai' : 'dung') : 'khong_chay', chi_tiet: ds.slice(0, 80)};
   fs.writeFileSync(tepRa + '.tmp', JSON.stringify(bao, null, 1));
   fs.renameSync(tepRa + '.tmp', tepRa);
   if (!hoanTat) return;
-  console.log(`Kiểm duyệt bố cục: ${tho.length}/${mau.length} khung, ${bao.nang.length} lỗi nặng, ${bao.nhe.length} lỗi nhẹ`);
+  console.log(`Kiểm duyệt bố cục: ${khung.length}/${mau.length} khung, ${bao.nang.length} lỗi nặng, ${bao.nhe.length} lỗi nhẹ`);
   bao.nang.slice(0, 20).forEach((x) => console.log('  [NẶNG] ' + x));
   bao.nhe.slice(0, 10).forEach((x) => console.log('  [nhẹ] ' + x));
 }

@@ -193,9 +193,6 @@ jobs:
             echo "Video không có sản phẩm"
           fi
 
-      - name: Tạo giọng đọc và mốc thời gian
-        run: python3 scripts/chuanbi.py kich_ban.json
-
       - name: Cache Manim virtualenv (chỉ bài hình học)
         if: ${{ vars.MANIM_HINH != 'TAT' && steps.kb.outputs.hh == '1' }}
         uses: actions/cache@v4
@@ -212,32 +209,32 @@ jobs:
           restore-keys: |
             manim-tex-${{ runner.os }}-v2-
 
+      - name: Tạo giọng đọc và chuẩn bị công cụ hình học song song
+        id: giong
+        env:
+          CAN_MANIM: ${{ vars.MANIM_HINH != 'TAT' && steps.kb.outputs.hh == '1' }}
+        run: |
+          if [ "$CAN_MANIM" = "true" ]; then
+            bash scripts/cai_manim.sh &
+            MANIM_PID=$!
+          fi
+          python3 scripts/chuanbi.py kich_ban.json
+          if [ -n "${MANIM_PID:-}" ]; then
+            if wait "$MANIM_PID"; then
+              echo "manim_ok=1" >> "$GITHUB_OUTPUT"
+            else
+              echo "::warning::Cài đặt Manim thất bại, dùng Remotion"
+            fi
+          fi
+
       # BÀI HÌNH HỌC: phần toán (hình, công thức, chuyển động, hiệu ứng) dựng 100% bằng MANIM (scripts/manim_hinh.py) thành
       # một lớp trong suốt; Remotion vẫn dựng PHẦN VỎ CHUNG như mọi video (nền, tiêu đề, thanh bước, phụ đề, giọng, nhạc, tiếng
       # hiệu ứng) rồi máy ghép đè lớp Manim lên. Manim lỗi -> video dựng bằng Remotion như cũ. Tắt: Variable MANIM_HINH = TAT.
       - name: Dựng video hình học bằng Manim
         id: manim
-        if: ${{ vars.MANIM_HINH != 'TAT' && steps.kb.outputs.hh == '1' }}
+        if: steps.giong.outputs.manim_ok == '1'
         continue-on-error: true
         run: |
-          TEX_PKGS="texlive-xetex texlive-latex-extra texlive-fonts-recommended dvisvgm fonts-noto-core"
-          if ! /tmp/mv/bin/python -c "import manim" >/dev/null 2>&1; then
-            TEX_PKGS="$TEX_PKGS libpango1.0-dev libcairo2-dev pkg-config"
-          fi
-          THIEU=$(for g in $TEX_PKGS; do dpkg -s "$g" >/dev/null 2>&1 || echo "$g"; done | tr '\n' ' ')
-          if [ -n "${THIEU// /}" ]; then
-            ( sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends $THIEU ) > /tmp/apt_manim.log 2>&1 &
-            APT=$!
-          fi
-          if ! /tmp/mv/bin/python -c "import manim" >/dev/null 2>&1; then
-            rm -rf /tmp/mv
-            python3 -m venv /tmp/mv
-            /tmp/mv/bin/pip install -q "manim==0.22.1" > /tmp/pip_manim.log 2>&1 || {
-              if [ -n "${APT:-}" ]; then wait $APT; fi
-              /tmp/mv/bin/pip install -q "manim==0.22.1" || { tail -30 /tmp/pip_manim.log; exit 1; }
-            }
-          fi
-          if [ -n "${APT:-}" ]; then wait $APT || { tail -40 /tmp/apt_manim.log; exit 1; }; fi
           mkdir -p out /tmp/manim_tex_cache
           /tmp/mv/bin/python scripts/manim_hinh.py public/props.json kich_ban.json out --public public
           ID=$(python3 -c "import json;print(json.load(open('public/props.json',encoding='utf8'))['id'])")

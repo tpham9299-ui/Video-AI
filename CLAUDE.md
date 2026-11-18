@@ -815,3 +815,9 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
 - Bộ viết kịch bản chọn hành động gắn với phép toán, chẳng hạn ghép cặp đối xứng, chọn thẻ rồi gom nhóm, hoặc giữ màu của lượng nước khi chuyển sang mặt cắt. Hình gốc làm mốc khi công thức xuất hiện.
 - Mỗi dòng công thức có thể mang một cụm lời dẫn trong `moc_loi`. Sau bước tạo giọng, `chuanbi.py` tìm các cụm theo thứ tự trong phụ đề, ước lượng thời điểm theo vị trí từ và ghi `mocCongThuc` (giây từ đầu cảnh). Remotion và Manim dùng chung mốc. Kịch bản thiếu mốc hoặc có cụm không khớp dùng nhịp dựng cũ.
 - Mẫu cột cờ có mốc cho hai cảnh giải tam giác và cộng chiều cao tầm mắt.
+
+#### Lần 34 (v67) — Rút ngắn bước chuẩn bị trước khi chia khúc
+
+- Với bài hình học, runner cài các gói Manim/LaTeX trong lúc tạo giọng. Khi cả hai hoàn tất mới dựng lớp hình. Lỗi giọng vẫn dừng job; lỗi cài Manim chuyển sang Remotion.
+- Kiểm duyệt bố cục chụp tối đa hai khung đồng thời trong cùng Chromium, lưu kết quả từng khung và giữ thứ tự ảnh khi gửi Gemini. Máy chỉ có một CPU vẫn xử lý tuần tự.
+- Kiểm tra cục bộ trên mẫu cột cờ 9 cảnh (không gọi Gemini): 18/18 khung, báo cáo JSON giống hệt; thời gian bước kiểm duyệt từ 33,7 xuống 25,3 giây.
