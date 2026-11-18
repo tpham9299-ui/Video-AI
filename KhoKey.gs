@@ -1,0 +1,270 @@
+/* =====================================================================
+   KHO KEY GEMINI DÙNG CHUNG (dán Y HỆT vào 3 project: A, điểm danh, video)
+   - Project KHÔNG có KHO_URL / NH_URL trong Script Properties = KHO CHỦ (hệ thống A): giữ danh sách key + trạng thái.
+   - Project CÓ KHO_URL (hoặc NH_URL) + KHO_SECRET (hoặc NH_SECRET) = MÁY KHÁCH: lấy key từ A, báo A khi key hết hạn mức.
+   ===================================================================== */
+var KHO_API_ = 'https://generativelanguage.googleapis.com/v1beta/models/';
+var KHO_MODEL_CU_ = 'gemini-flash-latest';   // hạn mức của model này nằm ở khóa kd_ cũ của hệ thống A (giữ tương thích)
+
+function khoProps_() { return PropertiesService.getScriptProperties(); }
+function khoMd5_(s) {
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, String(s), Utilities.Charset.UTF_8)
+    .map(function (b) { return ('0' + (b & 0xff).toString(16)).slice(-2); }).join('');
+}
+function khoId_(k) { return khoMd5_(k).slice(0, 8); }   // giống keyId_ của hệ thống A
+function khoNgayPT_() { return Utilities.formatDate(new Date(), 'America/Los_Angeles', 'yyyy-MM-dd'); }
+function khoParse_(raw) {
+  return String(raw || '').split(/[\s,;]+/).map(function (s) { return s.trim(); }).filter(Boolean)
+    .filter(function (k, i, a) { return a.indexOf(k) === i; });
+}
+// Tên khóa lưu trạng thái "hết hạn mức ngày" của (key, model)
+function khoTenKhoa_(id, tq) { return tq === KHO_MODEL_CU_ ? 'kd_' + id : 'kdm_' + id + '_' + tq; }
+
+function khoUrl_() {
+  var p = khoProps_();
+  var url = (p.getProperty('KHO_URL') || p.getProperty('NH_URL') || '').trim();
+  var secret = (p.getProperty('KHO_SECRET') || p.getProperty('NH_SECRET') || '').trim();
+  return (url && secret) ? { url: url, secret: secret } : null;
+}
+
+// Danh sách key đang dùng: máy khách lấy bản sao từ A; kho chủ dùng GEMINI_API_KEY của chính nó
+function khoDanhSachKey_() {
+  var p = khoProps_();
+  if (khoUrl_()) {
+    var ban = khoParse_(p.getProperty('KHO_BAN_SAO'));
+    if (!ban.length) {
+      var cache = CacheService.getScriptCache();
+      if (!cache.get('kho_thu')) { cache.put('kho_thu', '1', 300); khoDongBo_(); }   // không tải lại liên tục khi A đang không trả lời
+      ban = khoParse_(p.getProperty('KHO_BAN_SAO'));
+    }
+    if (ban.length) return ban;
+  }
+  return khoParse_(p.getProperty('GEMINI_API_KEY') || p.getProperty('GEMINI_KEYS'));
+}
+
+// Xếp các key dùng được cho (hệ thống, model): dung = sẵn sàng, nghi = đang nghỉ ngắn vì giới hạn theo phút
+function khoXep_(he, tq) {
+  var all = khoProps_().getProperties(), homNay = khoNgayPT_();
+  var ds = khoDanhSachKey_(), n = ds.length, thuTu = [];
+  var bd = 0, buoc = 1;
+  if (he === 'VIDEO') { bd = n - 1; buoc = -1; }
+  else if (he === 'DIEMDANH') { bd = Math.floor(n / 2); }
+  for (var i = 0; i < n; i++) thuTu.push(ds[(((bd + buoc * i) % n) + n) % n]);
+  var tenCache = thuTu.map(function (k) { return 'kdn_' + khoId_(k) + '_' + tq; });
+  var nghiMap = {};
+  try { nghiMap = CacheService.getScriptCache().getAll(tenCache); } catch (e) { nghiMap = {}; }
+  var dung = [], nghi = [];
+  thuTu.forEach(function (k, i) {
+    var id = khoId_(k);
+    var tt = all['kd_' + id] === 'BAD' ? 'BAD' : (all[khoTenKhoa_(id, tq)] || '');
+    if (tt === 'BAD' || tt === homNay) return;
+    (nghiMap[tenCache[i]] ? nghi : dung).push(k);
+  });
+  return { dung: dung, nghi: nghi };
+}
+
+function khoNghiNgan_(id, tq) {
+  try { CacheService.getScriptCache().put('kdn_' + id + '_' + tq, '1', 75); } catch (e) { /* bỏ qua */ }
+}
+
+function khoDanhDau_(key, tq, loai) {   // loai: 'ngay' (hết hạn mức ngày) | 'bad' (key bị từ chối)
+  var p = khoProps_(), id = khoId_(key);
+  if (loai === 'bad') { p.setProperty('kd_' + id, 'BAD'); return; }
+  if (p.getProperty('kd_' + id) === 'BAD') return;
+  p.setProperty(khoTenKhoa_(id, tq), khoNgayPT_());
+}
+
+// Máy khách báo cho A biết (không làm hỏng việc chính nếu A không trả lời)
+function khoBaoChu_(key, tq, loai) {
+  var u = khoUrl_();
+  if (!u) return;
+  try {
+    UrlFetchApp.fetch(u.url, { method: 'post', contentType: 'application/json', muteHttpExceptions: true, followRedirects: true,
+      payload: JSON.stringify({ secret: u.secret, action: 'khoBao', id: khoId_(key), model: tq, loai: loai }) });
+  } catch (e) { Logger.log('Kho key: không báo được cho A: ' + e.message); }
+}
+
+// Trả true nếu lỗi đã được xử lý bằng cách đánh dấu key (để vòng gọi đổi sang key khác)
+function khoGhiNhanLoi_(key, tq, code, raw) {
+  raw = String(raw || '');
+  if (code === 429) {
+    if (/PerDay/i.test(raw)) { khoDanhDau_(key, tq, 'ngay'); khoBaoChu_(key, tq, 'ngay'); }
+    else khoNghiNgan_(khoId_(key), tq);   // giới hạn theo phút: nghỉ 75 giây
+    return true;
+  }
+  if (code === 401 || (code === 400 && /API key/i.test(raw)) || (code === 403 && /denied access|suspended|API key|CONSUMER/i.test(raw))) {
+    khoDanhDau_(key, tq, 'bad'); khoBaoChu_(key, tq, 'bad');
+    return true;
+  }
+  if (code === 403) { khoDanhDau_(key, tq, 'ngay'); khoBaoChu_(key, tq, 'ngay'); return true; }   // 403 khác: chỉ ngưng dùng key này cho model này hôm nay
+  return false;
+}
+
+// GỌI GEMINI QUA KHO KEY. he: 'VIDEO' | 'DIEMDANH' | tên bất kỳ. body: đối tượng hoặc chuỗi JSON.
+// tuyChon: { hanChoMs: tổng thời gian chờ tối đa khi mọi key đang nghỉ ngắn (mặc định 45000; 0 = không chờ),
+//            tenQuota: tên để theo dõi hạn mức riêng, ví dụ model + '+tim' cho lệnh có Google Search }
+// Trả về { ok, code, het, raw, key }. het = true khi MỌI key đã hết hạn mức ngày cho model này.
+function khoGoi_(he, model, body, tuyChon) {
+  tuyChon = tuyChon || {};
+  var tq = tuyChon.tenQuota || model;
+  var hanCho = tuyChon.hanChoMs == null ? 45000 : tuyChon.hanChoMs;
+  var url = KHO_API_ + model + ':generateContent';
+  var payload = typeof body === 'string' ? body : JSON.stringify(body);
+  if (!khoDanhSachKey_().length) return { ok: false, code: 0, het: false, raw: 'THIEU_GEMINI_API_KEY' };
+  var bat = Date.now(), loiMang = 0, loi5xx = 0;
+  for (var vong = 0; vong < 60; vong++) {
+    var tt = khoXep_(he, tq);
+    if (!tt.dung.length) {
+      if (!tt.nghi.length) return { ok: false, code: 429, het: true, raw: 'HET_HAN_MUC_NGAY' };
+      if (Date.now() - bat + 8000 > hanCho) return { ok: false, code: 429, het: false, raw: 'GIOI_HAN_TOC_DO' };
+      Utilities.sleep(8000);
+      continue;
+    }
+    var key = tt.dung[0], res;
+    try {
+      res = UrlFetchApp.fetch(url, { method: 'post', contentType: 'application/json', headers: { 'x-goog-api-key': key },
+                                     payload: payload, muteHttpExceptions: true });
+    } catch (e) {
+      if (++loiMang > 3) return { ok: false, code: 0, het: false, raw: String(e) };
+      Utilities.sleep(2000 * loiMang);
+      continue;
+    }
+    var code = res.getResponseCode(), raw = res.getContentText();
+    if (code === 200) return { ok: true, code: 200, het: false, raw: raw, key: key };
+    if (khoGhiNhanLoi_(key, tq, code, raw)) continue;
+    if (code >= 500) {
+      if (++loi5xx > 4) return { ok: false, code: code, het: false, raw: raw };
+      Utilities.sleep(Math.min(3000 * loi5xx, 12000));
+      continue;
+    }
+    return { ok: false, code: code, het: false, raw: raw, key: key };   // 400 khác, 404...: để nơi gọi quyết định
+  }
+  return { ok: false, code: 0, het: false, raw: 'QUA_NHIEU_LAN_THU' };
+}
+
+// Gọi nhiều yêu cầu ĐỒNG THỜI, mỗi yêu cầu một key khác nhau (tránh dồn giới hạn theo phút vào một key).
+// Yêu cầu nào lỗi sẽ tự gọi lại bằng khoGoi_ (có xoay key). Trả về mảng kết quả cùng dạng khoGoi_.
+function khoGoiSong_(he, model, bodies) {
+  var keys = khoXep_(he, model).dung;
+  var tuan = function () { return bodies.map(function (b) { return khoGoi_(he, model, b); }); };
+  if (!keys.length) return tuan();
+  var url = KHO_API_ + model + ':generateContent';
+  var yc = bodies.map(function (b, i) {
+    return { url: url, method: 'post', contentType: 'application/json', headers: { 'x-goog-api-key': keys[i % keys.length] },
+             payload: typeof b === 'string' ? b : JSON.stringify(b), muteHttpExceptions: true };
+  });
+  var kq;
+  try { kq = UrlFetchApp.fetchAll(yc); } catch (e) { return tuan(); }
+  return kq.map(function (r, i) {
+    var code = r.getResponseCode(), raw = r.getContentText(), key = keys[i % keys.length];
+    if (code === 200) return { ok: true, code: 200, het: false, raw: raw, key: key };
+    khoGhiNhanLoi_(key, model, code, raw);
+    return khoGoi_(he, model, bodies[i]);
+  });
+}
+
+// Máy khách: lấy danh sách key + trạng thái hết hạn mức từ A
+function khoDongBo_() {
+  var u = khoUrl_();
+  if (!u) return false;
+  try {
+    var r = UrlFetchApp.fetch(u.url, { method: 'post', contentType: 'application/json', muteHttpExceptions: true, followRedirects: true,
+      payload: JSON.stringify({ secret: u.secret, action: 'khoLay' }) });
+    var j = JSON.parse(r.getContentText());
+    if (!j || !j.ok || !j.keys || !j.keys.length) { Logger.log('Kho key: A trả lời không hợp lệ: ' + String(r.getContentText()).slice(0, 150)); return false; }
+    var p = khoProps_(), all = p.getProperties(), dau = { KHO_BAN_SAO: j.keys.join(',') };
+    if (j.ngay === khoNgayPT_()) {
+      (j.het || []).forEach(function (h) { if (all['kd_' + h[0]] !== 'BAD') dau[khoTenKhoa_(h[0], h[1])] = j.ngay; });
+      (j.bad || []).forEach(function (id) { dau['kd_' + id] = 'BAD'; });
+    }
+    p.setProperties(dau, false);
+    return true;
+  } catch (e) { Logger.log('Kho key: không liên lạc được hệ thống A: ' + e.message); return false; }
+}
+function khoDongBoDinhKy() { khoDongBo_(); }
+
+// CHẠY 1 LẦN ở điểm danh và video: hẹn đồng bộ mỗi 30 phút. (Nếu sau này chạy lại hàm đặt lịch cũ xóa hết trigger thì chạy lại caiKho.)
+function caiKho() {
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'khoDongBoDinhKy') ScriptApp.deleteTrigger(t); });
+  if (!khoUrl_()) { Logger.log('Project này là KHO CHỦ (không có KHO_URL/NH_URL): không cần đồng bộ. Chạy khoXem() để xem trạng thái key.'); return; }
+  ScriptApp.newTrigger('khoDongBoDinhKy').timeBased().everyMinutes(30).create();
+  Logger.log(khoDongBo_() ? '✔ Đã đồng bộ với hệ thống A' : '✘ Chưa đồng bộ được với A: kiểm tra KHO_URL/KHO_SECRET và bản triển khai Web app của A');
+  khoXem();
+}
+
+// ---- Phía kho chủ (A): trả danh sách + nhận báo cáo từ các hệ thống khác ----
+function khoHubLay_() {
+  var all = khoProps_().getProperties(), homNay = khoNgayPT_(), het = [], bad = [];
+  Object.keys(all).forEach(function (k) {
+    var m = /^kd_([0-9a-f]{8})$/.exec(k);
+    if (m) { if (all[k] === 'BAD') bad.push(m[1]); else if (all[k] === homNay) het.push([m[1], KHO_MODEL_CU_]); return; }
+    m = /^kdm_([0-9a-f]{8})_(.+)$/.exec(k);
+    if (m && all[k] === homNay) het.push([m[1], m[2]]);
+  });
+  return { ok: true, keys: khoParse_(all.GEMINI_API_KEY), het: het, bad: bad, ngay: homNay };
+}
+function khoHubBao_(req) {
+  var id = String(req.id || ''), model = String(req.model || '');
+  if (!/^[0-9a-f]{8}$/.test(id) || !/^[A-Za-z0-9._+-]{1,70}$/.test(model)) return { ok: false, error: 'id/model không hợp lệ' };
+  var p = khoProps_();
+  var thuoc = khoParse_(p.getProperty('GEMINI_API_KEY')).some(function (k) { return khoId_(k) === id; });
+  if (!thuoc) return { ok: false, error: 'id không thuộc kho' };
+  if (req.loai === 'bad') p.setProperty('kd_' + id, 'BAD');
+  else if (p.getProperty('kd_' + id) !== 'BAD') p.setProperty(khoTenKhoa_(id, model), khoNgayPT_());
+  return { ok: true };
+}
+
+// ---- Xem và thử ----
+function khoXem() {
+  if (khoUrl_()) { try { khoDongBo_(); } catch (e) {} }
+  var all = khoProps_().getProperties(), homNay = khoNgayPT_(), ds = khoDanhSachKey_();
+  var dong = [];
+  var demTotHoanToan = 0, demHetMotPhan = 0, demBiTuChoi = 0;
+  dong.push('🔑 Chế độ: ' + (khoUrl_() ? 'MÁY KHÁCH (lấy key từ hệ thống A)' : 'KHO CHỦ / ĐỘC LẬP (dùng GEMINI_API_KEY của project này)') +
+            ' · Tổng ' + ds.length + ' key · Ngày PT: ' + homNay);
+  ds.forEach(function (k, i) {
+    var id = khoId_(k), tt = [];
+    if (all['kd_' + id] === 'BAD') {
+      tt.push('❌ BỊ TỪ CHỐI');
+      demBiTuChoi++;
+    } else {
+      if (all['kd_' + id] === homNay) tt.push(KHO_MODEL_CU_ + ': hết hạn mức ngày');
+      Object.keys(all).forEach(function (n) {
+        var tien = 'kdm_' + id + '_';
+        if (n.indexOf(tien) === 0 && all[n] === homNay) tt.push(n.slice(tien.length) + ': hết hạn mức ngày');
+      });
+      if (tt.length) demHetMotPhan++;
+      else demTotHoanToan++;
+    }
+    dong.push('• Key #' + (i + 1) + ' (…' + k.slice(-4) + '): ' + (tt.length ? tt.join('; ') : '✅ còn dùng được cho mọi model'));
+  });
+  var conXaiDuoc = demTotHoanToan + demHetMotPhan;
+  dong.splice(1, 0, '📊 TỔNG KẾT: Còn ' + conXaiDuoc + '/' + ds.length + ' key xài được (' + demTotHoanToan + ' key khỏe 100% mọi model, ' +
+    demHetMotPhan + ' key chạm hạn mức ở 1 vài model nhưng vẫn dùng được ở model khác, ' + demBiTuChoi + ' key hỏng/bị từ chối).');
+  var kqChuoi = dong.join('\n');
+  Logger.log(kqChuoi);
+  try { SpreadsheetApp.getActiveSpreadsheet().toast('Còn ' + conXaiDuoc + '/' + ds.length + ' key xài được (' + demTotHoanToan + ' khỏe 100%)', 'Kho Key Gemini', 8); } catch (eT) {}
+  return kqChuoi;
+}
+function khoThu() {
+  var model = khoProps_().getProperty('GEMINI_MODEL') || 'gemini-flash-lite-latest';
+  var kq = khoGoi_('DIEMDANH', model, { contents: [{ parts: [{ text: 'Trả lời đúng một từ: OK' }] }],
+                                        generationConfig: { maxOutputTokens: 20, temperature: 0 } }, { hanChoMs: 0 });
+  Logger.log(kq.ok ? '✔ Gọi Gemini được, dùng key …' + String(kq.key).slice(-4) + ' (model ' + model + ')'
+                   : '✘ Lỗi ' + kq.code + (kq.het ? ' (mọi key đã hết hạn mức ngày cho model này)' : '') + ': ' + String(kq.raw).slice(0, 200));
+}
+
+// Báo cáo chi tiết số lượng key còn xài được qua Zalo (lệnh /key hoặc /khokey) & kích hoạt kiểm tra trực tiếp trên GitHub Actions
+function thongTinKhoKeyZalo_(kichHoatGitHub) {
+  var s = khoXem();
+  var p = khoProps_();
+  var bcGh = p.getProperty('BAO_CAO_KEY_GH');
+  if (bcGh) s += '\n\n☁️ KẾT QUẢ KIỂM TRA TRÊN GITHUB GẦN NHẤT:\n' + bcGh;
+  if (kichHoatGitHub && typeof guiWorkflowGitHub_ === 'function') {
+    try {
+      var gh = guiWorkflowGitHub_({}, 'kiem-tra-key.yml');
+      if (gh && gh.ok) s += '\n\n⏳ Đã đồng thời kích hoạt GitHub Actions thử thực tế từng key trong GEMINI_KEYS — kết quả chi tiết trên GitHub sẽ gửi về Zalo sau ~1-2 phút.';
+    } catch (eG) {}
+  }
+  return s;
+}

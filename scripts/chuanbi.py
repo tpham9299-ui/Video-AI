@@ -237,18 +237,18 @@ def chia_phu_de(cau, toi_da=TOI_DA_KY_TU):
     return phan
 
 
-# ---------- Tạo giọng ----------
-async def _tts(text, tep, giong, toc_do, cao_do):
+# ---------- Tạo giọng (có nhấn nhá, biến thiên cao độ & nhịp điệu theo từng câu/cảnh) ----------
+async def _tts(text, tep, giong, toc_do, cao_do, am_luong="+0%"):
     import edge_tts
-    k_cache = hashlib.sha256(("edge_%s_%s_%s_%s" % (giong, toc_do, cao_do, text)).encode("utf8")).hexdigest()
-    f_cache = os.path.join(CACHE_TTS_DIR, "edge_%s.mp3" % k_cache)
+    k_cache = hashlib.sha256(("edge_v2_%s_%s_%s_%s_%s" % (giong, toc_do, cao_do, am_luong, text)).encode("utf8")).hexdigest()
+    f_cache = os.path.join(CACHE_TTS_DIR, "edge_v2_%s.mp3" % k_cache)
     if os.path.isfile(f_cache) and os.path.getsize(f_cache) > 800:
         shutil.copyfile(f_cache, tep)
         return
     loi = None
     for lan in range(4):
         try:
-            c = edge_tts.Communicate(text, giong, rate=toc_do, pitch=cao_do)
+            c = edge_tts.Communicate(text, giong, rate=toc_do, pitch=cao_do, volume=am_luong)
             await c.save(tep)
             if os.path.exists(tep) and os.path.getsize(tep) > 800:
                 try:
@@ -261,6 +261,78 @@ async def _tts(text, tep, giong, toc_do, cao_do):
             loi = str(e)
         await asyncio.sleep(2 * (lan + 1))
     raise RuntimeError("edge-tts thất bại: %s | đoạn: %s" % (loi, text[:60]))
+
+
+def them_nhan_nha_doc(text, loai=""):
+    """Bổ sung dấu ngắt nhịp vi mô (...) và dấu câu biểu cảm (!, ?) vào văn bản gửi cho TTS
+    để máy đọc tự động tạo khoảng nghỉ lấy đà 0,25s trước từ khóa/con số quan trọng và lên/xuống giọng tự nhiên."""
+    s = str(text or "").strip()
+    if not s:
+        return s
+    loai = str(loai or "").lower()
+    # Ngắt nhịp nhấn mạnh sau các cụm cảnh báo / chuyển折
+    s = re.sub(r"(?i)\b(nhưng\s+khoan|cẩn\s+thận|đừng\s+vội|chú\s+ý\s+nhé|nhưng\s+cẩn\s+thận|khoan\s+đã|bí\s+quyết\s+ở\s+đây\s+là|mấu\s+chốt\s+nằm\s+ở|mấu\s+chốt\s+là)\s*[,:]?", r"\1... ", s)
+    # Ngắt nhịp lấy đà nhẹ trước khi đọc đáp số / kết luận quan trọng
+    s = re.sub(r"(?i)\b(đáp\s+án\s+cuối\s+cùng\s+là|đáp\s+án\s+đúng\s+là|đáp\s+án\s+chính\s+là|kết\s+quả\s+chính\s+là|giá\s+trị\s+lớn\s+nhất\s+là|giá\s+trị\s+nhỏ\s+nhất\s+là)\s+", r"\1... ", s)
+    # Đảm bảo câu hỏi có dấu '?' để TTS tự động vút cao độ ở cuối câu
+    if re.search(r"(?i)\b(bao\s+nhiêu|như\s+thế\s+nào|vì\s+sao|tại\s+sao|đúng\s+không|phải\s+không|không\s+nhỉ|chưa\s+nhỉ)\b", s) and not s.endswith("?"):
+        s = s.rstrip(".!…") + "?"
+    # Cảnh mở đầu, điểm chốt, đáp án: kết câu bằng '!' để giọng đọc vươn cao hào hứng, rạng rỡ
+    elif re.search(r"mo_dau|hook|diem_chot|y_tuong|dap_an|ket_qua", loai) and not s.endswith(("?", "!")):
+        s = s.rstrip(".…") + "!"
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def thong_so_cao_do_cau(cau_text, loai_canh="", idx_cau=0, toc_do_goc="+6%", cao_do_goc="+0Hz"):
+    """Tính toán động (tốc độ, cao độ Hz, âm lượng %) riêng cho TỪNG CÂU dựa trên loại cảnh và ngữ nghĩa câu nói,
+    giúp giọng đọc có cao độ trầm bổng, nhấn nhá rõ rệt và tuyệt đối không bị ngang đều."""
+    try:
+        r0 = int(re.sub(r"[^0-9+-]", "", str(toc_do_goc or "+6%")) or 6)
+    except ValueError:
+        r0 = 6
+    try:
+        p0 = int(re.sub(r"[^0-9+-]", "", str(cao_do_goc or "+0Hz")) or 0)
+    except ValueError:
+        p0 = 0
+    v0 = 2
+    loai = str(loai_canh or "").lower()
+    s = str(cau_text or "")
+
+    # 1) Nền cao độ & nhịp độ theo vai trò sư phạm của cảnh
+    if re.search(r"mo_dau|hook|cau_hoi", loai):
+        r0 += 5; p0 += 6; v0 += 8       # Mở đầu: cao độ sáng, nhanh, bắt tai
+    elif re.search(r"de_bai", loai):
+        r0 -= 1; p0 += 2; v0 += 3       # Đề bài: rõ ràng, đĩnh đạc, nhấn từng dữ kiện
+    elif re.search(r"bay", loai):
+        r0 -= 4; p0 -= 5; v0 += 6       # Cái bẫy: hạ trầm cao độ, chậm lại đầy kịch tính
+    elif re.search(r"diem_chot|y_tuong", loai):
+        r0 += 4; p0 += 7; v0 += 9       # Điểm mấu chốt: bật sáng cao độ ("À, ra là thế!")
+    elif re.search(r"dap_an|ket_qua", loai):
+        r0 -= 1; p0 += 6; v0 += 11      # Đáp án: vang, rạng rỡ, chậm lại một nhịp để khắc sâu kết quả
+    elif re.search(r"kiem_tra", loai):
+        r0 += 1; p0 += 3; v0 += 4       # Thử lại: chắc chắn, tự tin
+    elif re.search(r"bai_hoc|ket_luan|chot", loai):
+        r0 -= 2; p0 += 2; v0 += 5       # Bài học rút ra: ấm áp, đọng lại
+    else:
+        # Cảnh giải/tính toán: luân phiên cao độ giữa các câu liên tiếp để không bao giờ bị ngang giọng
+        dao_dong_p = (3, -1, 5, 1)[idx_cau % 4]
+        dao_dong_r = (2, 0, 3, -1)[idx_cau % 4]
+        p0 += dao_dong_p
+        r0 += dao_dong_r
+        v0 += 4
+
+    # 2) Điều chỉnh thêm theo ngữ điệu riêng của câu nói hiện tại
+    if "?" in s or re.search(r"(?i)\b(bao\s+nhiêu|vì\s+sao|tại\s+sao|thế\s+nào|đố\s+bạn|bạn\s+nghĩ\s+sao)\b", s):
+        p0 += 4; r0 += 2; v0 += 4       # Câu hỏi: vút cao độ kích thích tò mò
+    elif re.search(r"(?i)\b(nhưng\s+khoan|cẩn\s+thận|sai\s+lầm|quên\s+mất|nhầm\s+lẫn|bẫy|đừng\s+vội)\b", s):
+        p0 -= 5; r0 -= 3; v0 += 5       # Câu cảnh báo: trầm xuống, nhấn nặng
+    elif re.search(r"(?i)\b(vậy\s+đáp\s+án|kết\s+quả\s+là|chính\s+là|mấu\s+chốt|suy\s+ra\s+ngay|hoàn\s+toàn\s+chính\s+xác)\b", s):
+        p0 += 4; v0 += 6                # Câu chốt ý / kết luận: nâng cao độ và độ vang
+
+    r_final = max(-10, min(22, r0))
+    p_final = max(-10, min(14, p0))
+    v_final = max(0, min(18, v0))
+    return ("%+d%%" % r_final), ("%+dHz" % p_final), ("%+d%%" % v_final)
 
 
 def _gia_lap(text, tep):
@@ -283,30 +355,28 @@ def _gtts(text, tep, toc):
 THONG_KE_GIONG = {"edge": 0, "gtts": 0, "gemini": 0}
 
 PHONG_CACH_GIONG_MAC_DINH = (
-    "Đọc bằng tiếng Việt chuẩn, nhập vai một người thầy dạy toán trẻ trung, vui vẻ, năng lượng, cực kỳ truyền cảm hứng. "
-    "Phong cách nói chuyện tự nhiên, gần gũi, hóm hỉnh như đang livestream hay đứng lớp trò chuyện trực tiếp với học sinh, không đọc văn bản khô khan. "
-    "Luôn có nụ cười ấm áp trong giọng nói. "
-    "KỸ NĂNG NHẤN NHÁ SƯ PHẠM: "
-    "1) Lên giọng hào hứng ở câu hỏi mở và từ gợi ý; "
-    "2) Nhấn mạnh, rõ ràng từng con số, số đo, công thức then chốt; "
-    "3) Ngắt nghỉ kịch tính 0,3-0,5 giây trước khi tiết lộ cái bẫy học sinh hay mắc hoặc bí quyết giải nhanh; "
-    "4) Giọng vui tươi, phấn khởi, rạng rỡ khi chốt đáp án đúng. "
-    "Tiết tấu nhịp nhàng, lôi cuốn, ngắt câu đúng chỗ. Tuyệt đối chỉ đọc đúng nội dung văn bản, không thêm bớt chữ nào."
+    "Đọc bằng tiếng Việt chuẩn, nhập vai một người thầy dạy toán trẻ trung, giàu năng lượng và truyền cảm hứng. "
+    "TUYỆT ĐỐI KHÔNG ĐỌC NGANG ĐỀU NHƯ ĐỌC VĂN BẢN! Bắt buộc thể hiện rõ CAO ĐỘ TRẦM BỔNG (pitch variation) và NHẤN NHÁ (word stress): "
+    "1) Lên giọng cao, sáng và nảy ở các câu hỏi mở, từ gợi mở ('Đố bạn...', 'Tại sao...?', 'Bao nhiêu...?'); "
+    "2) Hạ giọng trầm xuống và ngắt nhịp kịch tính 0,4 giây ở các từ chuyển ý/cảnh báo ('Nhưng khoan...', 'Cẩn thận nhé...'); "
+    "3) Nhấn mạnh, đọc chậm và tròn vành rõ chữ vào từng con số, phép tính và từ khóa toán học then chốt; "
+    "4) Bật cao độ sáng rực, phấn khởi, đầy tự hào khi tìm ra mấu chốt và khi công bố đáp án cuối cùng. "
+    "Chỉ đọc đúng lời văn bản dưới đây, không tự ý thêm bớt từ."
 )
 
-# Sắc thái giọng theo loại cảnh (kịch bản có thể ghi đè bằng trường "giong_doc" của từng cảnh).
+# Sắc thái & chỉ đạo cao độ/nhấn nhá riêng theo từng loại cảnh
 SAC_THAI_THEO_LOAI = [
-    (r"mo_dau|hook|cau_hoi", "hào hứng, gây tò mò, như đang thách đố người nghe, nhấn mạnh từ khóa"),
-    (r"de_bai", "rõ ràng, nhịp vừa phải như kể một câu chuyện ngắn, đọc chậm và rõ từng con số của đề"),
-    (r"nhac_lai|kien_thuc", "ấm áp, giải thích nhẹ nhàng như nhắc lại cho bạn mình"),
-    (r"mo_hinh", "tập trung, mạch lạc, như đang vẽ phác thảo cho người nghe cùng nhìn"),
-    (r"y_do|thu_nho", "tò mò, suy ngẫm, như đang cùng người nghe đặt câu hỏi"),
-    (r"bay", "hạ giọng một chút, cảnh báo nghiêm túc, hơi bí ẩn như sắp tiết lộ sai lầm"),
-    (r"diem_chot|y_tuong", "sáng lên như vừa phát hiện ra điều thú vị, kiểu 'à, ra là thế'"),
-    (r"tinh|giai", "tự tin, nhịp đều và chắc, nhấn vào từng kết quả trung gian"),
-    (r"kiem_tra", "cẩn thận, chắc chắn, như đang soát lại cho yên tâm"),
-    (r"dap_an|ket_qua", "phấn khích, rõ ràng, đọc đáp số chậm lại một nhịp để người nghe nhớ"),
-    (r"bai_hoc|ket_luan|chot", "thân thiện, chậm lại, đọng lại, như lời dặn cuối buổi học"),
+    (r"mo_dau|hook|cau_hoi", "CAO ĐỘ CAO, SÁNG VÀ NẢY: lên giọng hào hứng ở cuối câu hỏi như đang thách đố thú vị, nhấn mạnh thật rõ vào các con số gây tò mò"),
+    (r"de_bai", "CAO ĐỘ ẤM VÀ RÕ RÀNG: kể chuyện lôi cuốn, ngắt nghỉ rành mạch giữa các dữ kiện và nhấn mạnh vào từng con số, câu hỏi của đề"),
+    (r"nhac_lai|kien_thuc", "CAO ĐỘ MỀM MẠI, TRUYỀN CẢM: giải thích ân cần, nhấn giọng vào tên định lý và tính chất quan trọng"),
+    (r"mo_hinh", "CAO ĐỘ LINH HOẠT, TẬP TRUNG: như đang chỉ tay trực tiếp vào từng chi tiết trên hình vẽ cho học sinh quan sát"),
+    (r"y_do|thu_nho", "CAO ĐỘ GỢI MỞ, NÂNG DẦN Ở CUỐI CÂU: khơi gợi suy nghĩ, đặt câu hỏi dẫn dắt học sinh"),
+    (r"bay", "HẠ TRẦM CAO ĐỘ KỊCH TÍNH: hạ thấp giọng ở đầu câu cảnh báo, ngắt một nhịp ngắn rồi nhấn mạnh vào sai lầm học sinh hay mắc"),
+    (r"diem_chot|y_tuong", "BẬT CAO ĐỘ SÁNG RỰC PHẤN KHÍCH: giọng bừng sáng như vừa phát hiện ra bí quyết ('À, mấu chốt là đây!'), nhấn mạnh từ khóa"),
+    (r"tinh|giai", "NHỊP ĐIỆU KHOẺ KHOẮN, CÓ TRỌNG ÂM: biến thiên cao độ tự nhiên giữa vế đầu và vế suy ra, nhấn rõ từng kết quả trung gian"),
+    (r"kiem_tra", "CAO ĐỘ VỮNG VÀNG, KHẲNG ĐỊNH: nhấn giọng tự tin vào sự khớp nhau của phép thử"),
+    (r"dap_an|ket_qua", "CAO ĐỘ VƯƠN CAO RẠNG RỠ: giọng hào hứng, dừng một nhịp ngắn trước đáp số rồi đọc con số đáp án thật vang, rõ và chậm rãi"),
+    (r"bai_hoc|ket_luan|chot", "CAO ĐỘ ẤM ÁP, TRẦM BỔNG ĐỌNG LẠI: nhịp chậm rãi, truyền cảm hứng như lời nhắn nhủ cuối bài"),
 ]
 
 
@@ -393,8 +463,8 @@ def gemini_tts(text, tep_wav, giong, model, phong_cach, dung_cache=True):
     import urllib.error
     import urllib.request
     import time
-    k_cache = hashlib.sha256(("gemini_%s_%s_%s_%s" % (giong, model, phong_cach, text)).encode("utf8")).hexdigest()
-    f_cache = os.path.join(CACHE_TTS_DIR, "gem_%s.wav" % k_cache)
+    k_cache = hashlib.sha256(("gemini_v2_%s_%s_%s_%s" % (giong, model, phong_cach, text)).encode("utf8")).hexdigest()
+    f_cache = os.path.join(CACHE_TTS_DIR, "gem_v2_%s.wav" % k_cache)
     if dung_cache and os.path.isfile(f_cache) and os.path.getsize(f_cache) > 2000:
         shutil.copyfile(f_cache, tep_wav)
         print("Gemini TTS: lấy từ cache (%s) cho %d ký tự" % (k_cache[:8], len(text)))
@@ -482,20 +552,39 @@ def gemini_tts(text, tep_wav, giong, model, phong_cach, dung_cache=True):
     raise RuntimeError("Gemini TTS lỗi trên mọi model (%s): %s" % (", ".join(ds_model), loi))
 
 
+def _he_so_cao_do_canh(loai, i):
+    """Hệ số dịch cao độ vi mô (0.975 - 1.035) theo vai trò sư phạm của từng cảnh để tạo đường cong cao độ (F0 contour)
+    trầm bổng rõ rệt mà vẫn giữ nguyên màu giọng tự nhiên."""
+    loai = str(loai or "").lower()
+    if re.search(r"mo_dau|hook|cau_hoi", loai):
+        return 1.032
+    if re.search(r"bay", loai):
+        return 0.976
+    if re.search(r"diem_chot|y_tuong", loai):
+        return 1.035
+    if re.search(r"dap_an|ket_qua", loai):
+        return 1.028
+    if re.search(r"bai_hoc|ket_luan|chot", loai):
+        return 0.992
+    return (1.012, 0.996, 1.020, 1.004)[i % 4]
+
+
 def tao_giong_gemini(canh, thu_muc, args):
-    """Tạo trước giọng Gemini cho TẤT CẢ cảnh. Lỗi ở bất kỳ cảnh nào -> trả None để cả video dùng edge-tts
-    (không trộn hai giọng khác nhau trong một video)."""
+    """Tạo giọng Gemini theo TỪNG CẢNH với chỉ đạo cao độ & nhấn nhá riêng biệt cho từng loại cảnh.
+    Lỗi ở bất kỳ cảnh nào -> trả None để cả video dùng edge-tts có biến thiên cao độ (không trộn hai giọng khác nhau)."""
     kq = {}
     for i, c in enumerate(canh):
-        van = chuan_hoa_doc(str(c.get("loi_thoai") or "").strip())
-        if not van:
+        loai_c = str(c.get("loai") or "").lower()
+        van_goc = chuan_hoa_doc(str(c.get("loi_thoai") or "").strip())
+        if not van_goc:
             continue
+        van = them_nhan_nha_doc(van_goc, loai_c)
         wav = os.path.join(thu_muc, "gem_%d.wav" % i)
-        # Diễn xuất ngữ điệu giàu cảm xúc cho từng cảnh thay vì ép phẳng cao độ
+        # Diễn xuất ngữ điệu giàu cảm xúc và biến thiên cao độ cho từng cảnh
         sac = sac_thai_canh(c)
-        sac_prompt = (" Sắc thái của cảnh này: " + sac + ".") if sac else ""
+        sac_prompt = (" Chỉ đạo cao độ & nhấn nhá riêng cho cảnh này: " + sac + ".") if sac else ""
         phong_cach = (args.phong_cach_giong + sac_prompt +
-                      " Diễn xuất tự nhiên, nhấn nhá biểu cảm phong phú, tươi vui và lôi cuốn theo đúng tâm trạng người thầy dạy toán.\nĐoạn cần đọc:")
+                      " Bắt buộc thể hiện rõ sự thay đổi cao độ lên xuống giữa các vế câu và nhấn mạnh vào từ khóa, con số quan trọng.\nĐoạn cần đọc:")
         try:
             gemini_tts(van, wav, args.giong_gemini, args.tts_model, phong_cach)
             tu = max(1, len(van.split()))
@@ -512,7 +601,9 @@ def tao_giong_gemini(canh, thu_muc, args):
             return None
         nhanh = os.path.join(thu_muc, "gem_%d.mp3" % i)
         tempo = float(args.toc_do_gemini or 1.0)
-        loc = ("atempo=%.3f," % tempo if abs(tempo - 1) > 0.01 else "") + "aresample=44100"
+        hs_pitch = _he_so_cao_do_canh(loai_c, i)
+        tempo_bu = tempo / hs_pitch
+        loc = "asetrate=24000*%.4f,aresample=44100,atempo=%.4f" % (hs_pitch, max(0.5, min(2.0, tempo_bu)))
         chay(["ffmpeg", "-y", "-loglevel", "error", "-i", wav, "-af", loc, "-c:a", "libmp3lame", "-b:a", "128k", nhanh])
         kq[i] = nhanh
         THONG_KE_GIONG["gemini"] += 1
@@ -618,7 +709,7 @@ def tao_giong_gemini_mot_lan(canh, thu_muc, args):
     return None
 
 
-async def tao_cac_doan(cac_doan, thu_muc, args):
+async def tao_cac_doan(cac_doan, thu_muc, args, loai_canh=""):
     cac_tep = []
     sem = asyncio.Semaphore(3)
 
@@ -627,14 +718,15 @@ async def tao_cac_doan(cac_doan, thu_muc, args):
         if args.gia_lap:
             _gia_lap(d, tep)
             return tep
-        van = chuan_hoa_doc(d)
+        van = them_nhan_nha_doc(chuan_hoa_doc(d), loai_canh)
+        toc_do_cau, cao_do_cau, am_luong_cau = thong_so_cao_do_cau(van, loai_canh, i, args.toc_do, args.cao_do)
         async with sem:
             # edge-tts đôi khi trả "No audio was received" với MỘT câu cụ thể (thường câu ngắn, không dấu kết):
             # thử lại với chữ hơi khác (thêm dấu chấm / dấu phẩy mở đầu) để cả video giữ MỘT giọng (không bao giờ đổi sang giọng khác)
             bien_the = [van, van.rstrip(" .,!?") + ".", "À, " + van[0].lower() + van[1:] if van else van]
             for k, v in enumerate(bien_the):
                 try:
-                    await _tts(v, tep, args.giong, args.toc_do, args.cao_do)
+                    await _tts(v, tep, args.giong, toc_do_cau, cao_do_cau, am_luong_cau)
                     THONG_KE_GIONG["edge"] += 1
                     if k:
                         print("edge-tts đọc được sau khi chỉnh chữ (cách %d): %s" % (k, v[:60]))
@@ -649,7 +741,7 @@ async def tao_cac_doan(cac_doan, thu_muc, args):
             for v in bien_the:
                 try:
                     async with sem:
-                        await _tts(v, tep, args.giong, args.toc_do, args.cao_do)
+                        await _tts(v, tep, args.giong, toc_do_cau, cao_do_cau, am_luong_cau)
                     THONG_KE_GIONG["edge"] += 1
                     print("edge-tts đọc được sau khi chờ thử lại (vòng %d)" % (lan + 1))
                     return tep
@@ -1173,17 +1265,18 @@ def main():
     tam_gem = tempfile.mkdtemp()
     giong_gem = None
     if not args.gia_lap and args.may_giong == "gemini":
-        # mặc định: đọc cả video MỘT lần (một người đọc xuyên suốt). CACH_DOC_GEMINI=tung_canh để quay về kiểu cũ.
-        if (os.environ.get("CACH_DOC_GEMINI") or "mot_lan") == "tung_canh":
-            giong_gem = tao_giong_gemini(canh, tam_gem, args)
-        else:
+        # Mặc định đọc TỪNG CẢNH (tung_canh) để truyền chỉ đạo cao độ & nhấn nhá riêng cho từng loại cảnh (hook, bẫy, điểm chốt, đáp án)
+        # giúp giọng đọc trầm bổng giàu cảm xúc thay vì bị phẳng khi gộp chung 1 đoạn văn dài.
+        if (os.environ.get("CACH_DOC_GEMINI") or "tung_canh") == "mot_lan":
             giong_gem = tao_giong_gemini_mot_lan(canh, tam_gem, args)
             if not giong_gem:
-                # đọc cả bài một lần bị rè / cắt không khớp -> thử đọc TỪNG CẢNH (đoạn ngắn ít bị lạc giọng), vẫn kiểm tạp âm từng cảnh
-                print("Đọc cả bài một lần không đạt -> thử Gemini đọc từng cảnh (có kiểm tra rè)")
                 giong_gem = tao_giong_gemini(canh, tam_gem, args)
+        else:
+            giong_gem = tao_giong_gemini(canh, tam_gem, args)
+            if not giong_gem:
+                giong_gem = tao_giong_gemini_mot_lan(canh, tam_gem, args)
         if not giong_gem:
-            print("Gemini không đọc được cả video -> CẢ video dùng một giọng edge-tts (không trộn giọng)")
+            print("Gemini không đọc được cả video -> CẢ video dùng một giọng edge-tts có biến thiên cao độ (không trộn giọng)")
     for i, c in enumerate(canh):
         so = int(c.get("so") or i + 1)
         loi_thoai = sua_chinh_ta_tieng_viet(str(c.get("loi_thoai") or "").strip())
@@ -1210,7 +1303,7 @@ def main():
                 shutil.copyfile(gon, os.path.join(thu_muc_giong, "tam_" + ten))
                 gap = 0
             else:
-                cac_tep_tho = asyncio.run(tao_cac_doan(cac_doan, tam, args))
+                cac_tep_tho = asyncio.run(tao_cac_doan(cac_doan, tam, args, str(c.get("loai") or "")))
                 cac_tep = []
                 for k, tho in enumerate(cac_tep_tho):
                     gon = os.path.join(tam, "g%03d.mp3" % k)
@@ -1218,9 +1311,10 @@ def main():
                     cac_tep.append(gon)
                 do_dai = [do_thoi_luong(t) for t in cac_tep]
                 ghep(cac_tep, os.path.join(thu_muc_giong, "tam_" + ten))
-            # chuẩn hóa độ lớn giọng (kiểu podcast/TikTok, -15 LUFS) để lời giảng luôn rõ hơn nhạc nền
+            # Chuẩn hóa độ lớn giọng (-15 LUFS) nhưng giữ nguyên dải động tự nhiên (LRA=13, ratio=1.6, attack=25ms)
+            # để bảo toàn trọng âm nhấn nhá của giọng đọc (tránh nén bẹp âm lượng làm giọng bị ngang)
             chay(["ffmpeg", "-y", "-loglevel", "error", "-i", os.path.join(thu_muc_giong, "tam_" + ten), "-af",
-                  "highpass=f=70,acompressor=threshold=-20dB:ratio=3:attack=5:release=80,loudnorm=I=-15:TP=-1.5:LRA=7",
+                  "highpass=f=75,treble=g=1.8:f=3600,acompressor=threshold=-14dB:ratio=1.6:attack=25:release=180,loudnorm=I=-15:TP=-1.2:LRA=13",
                   "-ar", "44100", "-c:a", "libmp3lame", "-b:a", "128k", os.path.join(thu_muc_giong, ten)])
             os.remove(os.path.join(thu_muc_giong, "tam_" + ten))
         tong_am = do_thoi_luong(os.path.join(thu_muc_giong, ten))

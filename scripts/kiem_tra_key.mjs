@@ -37,12 +37,11 @@ if (!dsKey.length) { console.log('Không có key nào trong GEMINI_KEYS / GEMINI
 const ketQua = [];
 for (const {k, ten} of dsKey) {
   const theoModel = {}, lyDo = {};
-  for (const m of MODELS) {
+  await Promise.all(MODELS.map(async (m) => {
     const r = await thu(k, m);
     theoModel[m] = r.loai;
     if (r.msg) lyDo[m] = r.msg;
-    await new Promise((x) => setTimeout(x, 400));
-  }
+  }));
   const v = Object.values(theoModel);
   const chay = MODELS.filter((m) => theoModel[m] === 'DUNG_DUOC');
   const ketLuan = chay.length ? {loai: 'DUNG_DUOC', model: chay[0]}
@@ -60,8 +59,18 @@ for (const r of ketQua) {
   console.log('    theo model: ' + Object.entries(r.theo_model).map(([m, l]) => `${m}=${l}${l !== 'DUNG_DUOC' && r.ly_do[m] ? ' (' + r.ly_do[m].slice(0, 70) + ')' : ''}`).join(', '));
 }
 const dem = (l) => ketQua.filter((r) => r.loai === l).length;
-console.log(`TONG: ${ketQua.length} key | dùng được ${dem('DUNG_DUOC')} | hết hạn mức ngày ${dem('HET_NGAY')} | giới hạn phút ${dem('GIOI_HAN_PHUT')} | lỗi thật ${dem('LOI_THAT')} | khác ${ketQua.length - dem('DUNG_DUOC') - dem('HET_NGAY') - dem('GIOI_HAN_PHUT') - dem('LOI_THAT')}`);
+const conXaiDuoc = dem('DUNG_DUOC') + dem('GIOI_HAN_PHUT');
+const dongTomTat = `📊 TỔNG: ${ketQua.length} key | ✅ Đang dùng tốt: ${conXaiDuoc} key (${dem('DUNG_DUOC')} chạy ngay, ${dem('GIOI_HAN_PHUT')} giới hạn phút) | ⏳ Hết hạn mức ngày: ${dem('HET_NGAY')} key (chờ reset) | ❌ Lỗi thật: ${dem('LOI_THAT')} key`;
+console.log(dongTomTat);
 console.log('=====HET_KET_QUA_KEY=====');
+const chiTietDong = ketQua.map((r) => `• ${r.ten} (${r.ma}): ${NHAN[r.loai] || r.loai}${r.model ? ` [${r.model}]` : ''}`).join('\n');
+fs.writeFileSync('/tmp/gemini_key_bao_cao.json', JSON.stringify({
+  tong: ketQua.length,
+  dung_duoc: conXaiDuoc,
+  het_ngay: dem('HET_NGAY'),
+  loi_that: dem('LOI_THAT'),
+  bao_cao: `${dongTomTat}\n${chiTietDong}`,
+}));
 // key lỗi thật: ghi để bước sau báo về Apps Script -> Zalo
 const hong = ketQua.map((r, i) => ({r, i})).filter(({r}) => r.loai === 'LOI_THAT').map(({r}) => ({so: Number((/#(\d+)/.exec(r.ten) || [])[1]) || 0, dau: r.ma.replace('…', '_'), ly_do: r.msg}));
 if (hong.length) fs.writeFileSync('/tmp/gemini_key_hong.json', JSON.stringify(hong));

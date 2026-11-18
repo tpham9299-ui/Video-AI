@@ -151,6 +151,7 @@ function nhanZalo_(e) {
     nhoNguoiNhan_(chat);   // thông báo chung của hệ thống sẽ gửi qua bot này cho bạn
     if (/^\/(giup|help)\b/.test(lenh)) { guiZaloToi_(chat, huongDanZalo_()); return tra; }
     if (/^\/(tt|trangthai|trạng thái)\b/.test(lenh) || lenh === 'tt') { guiZaloToi_(chat, tinhTrangUuTien_()); return tra; }
+    if (/^\/(key|keys|khokey|kiemtrakey)\b/.test(lenh) && typeof thongTinKhoKeyZalo_ === 'function') { guiZaloToi_(chat, thongTinKhoKeyZalo_(true)); return tra; }
     if (/^\/huy\b/.test(lenh)) { guiZaloToi_(chat, huyUuTien_(chat)); return tra; }
     // lệnh (một hoặc NHIỀU dòng: /duyet /sua /bo /cho /sanpham /xacnhan /huysp...; "duyệt <mã>" không dấu gạch cũng hiểu) (SanPham.gs)
     if ((/^\//.test(lenh) || (typeof laTinLenh_ === 'function' && laTinLenh_(chu))) && typeof xuLyLenhZaloMoi_ === 'function' && xuLyLenhZaloMoi_(chat, chu, anh)) return tra;
@@ -190,7 +191,7 @@ function dsNguoiGuiDe_() {
 function huongDanZalo_() {
   return '🤖 Gửi cho mình ẢNH CHỤP một đề toán (xác suất hoặc toán thực tế) hoặc GÕ đề, mình sẽ ưu tiên làm video hướng dẫn ngay.\n' +
     'Mẹo: chụp thẳng, rõ số; ảnh có nhiều câu thì ghi chú kèm ảnh, ví dụ "câu 3, lớp 12".\n' +
-    'Lệnh: /tt tiến độ | /huy hủy đề vừa gửi | /id mã chat | /token hạn token GitHub | /phongcach tỉ lệ duyệt theo phong cách\n' +
+    'Lệnh: /tt tiến độ | /key kiểm tra số lượng key Gemini còn xài được | /huy hủy đề vừa gửi | /id mã chat | /token hạn token GitHub | /phongcach tỉ lệ duyệt theo phong cách\n' +
     'Hình học khó: /hinhhoc [phang|khonggian] [10|11|12] [chungminh|tinh] - sáng tác ngay một đề và làm video ưu tiên\n' +
     'Duyệt video: /cho xem video chờ duyệt | /duyet [mã] | /sua [mã] <góp ý> | /bo [mã]\n' +
     'Duyệt HÀNG LOẠT: mỗi dòng một lệnh trong cùng một tin, hoặc /duyet <mã1> <mã2> <mã3>, hoặc /duyet tatca\n' +

@@ -561,3 +561,21 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
      - Trong `damBaoCauHinhTuDong_()` (`BoPhan1.gs`, nâng cờ `DA_CAP_NHAT_TU_DONG_V48`), tự động quét và giải cứu toàn bộ các video `CO_VIDEO` đang bị kẹt ở `KHONG_DAT` do lỗi `"AI chưa chấm được video"` sang `DA_DUYET` để xếp lịch đăng ngay.
   4. **Đổi tên thương hiệu ở màn hình Outro thành `"Tư duy Xác suất"` (`phong_cach.json`, `scripts/chuanbi.py`)**:
      - Đổi `"ten"` từ `"Toán Thầy Trí"` thành `"Tư duy Xác suất"` và `"handle"` thành `"@tuduyxacsuat"` trong `phong_cach.json` và `tim_thuong_hieu()` (`scripts/chuanbi.py`).
+
+
+
+#### 16. Khôi phục KhoKey.gs & Dịch vụ YouTube/YouTubeAnalytics, Nâng cấp Nhấn nhá & Cao độ Giọng đọc, và Báo cáo số lượng Key Gemini còn dùng được (v49)
+- **Tệp chỉnh sửa**: [KhoKey.gs](file:///e:/Video-AI/KhoKey.gs), [appsscript.json](file:///e:/Video-AI/appsscript.json), [BoPhan1.gs](file:///e:/Video-AI/BoPhan1.gs), [BoPhan2.gs](file:///e:/Video-AI/BoPhan2.gs), [SanPham.gs](file:///e:/Video-AI/SanPham.gs), [ZaloDeBai.gs](file:///e:/Video-AI/ZaloDeBai.gs), [scripts/chuanbi.py](file:///e:/Video-AI/scripts/chuanbi.py), [scripts/kiem_tra_key.mjs](file:///e:/Video-AI/scripts/kiem_tra_key.mjs), [.github/workflows/kiem-tra-key.yml](file:///e:/Video-AI/.github/workflows/kiem-tra-key.yml).
+- **Vấn đề đã xử lý**:
+  1. **Khôi phục `KhoKey.gs` và Dịch vụ `YouTube` + `YouTubeAnalytics` khi đồng bộ từ GitHub (`KhoKey.gs`, `appsscript.json`, `BoPhan1.gs`)**:
+     - Đưa nguyên vẹn tệp `KhoKey.gs` vào kho mã nguồn và thêm `'KhoKey'` vào `DANH_SACH_TEP_GS_` (đủ 10 tệp `.gs`).
+     - Bổ sung cấu hình `enabledAdvancedServices` cho `YouTube` (`youtube` v3) và `YouTubeAnalytics` (`youtubeAnalytics` v2) cùng các quyền OAuth YouTube vào `appsscript.json`.
+     - Trong `capNhatMaAppsScriptTuGitHub()` (`BoPhan1.gs`), giữ nguyên mọi tệp riêng và hợp nhất `dependencies` (`enabledAdvancedServices`, `libraries`) trên Apps Script để không bao giờ xóa nhầm tệp hay dịch vụ khi đồng bộ.
+     - Tự động giải cứu đề Zalo bị dừng do lỗi `khoDanhSachKey_ is not defined` (như `ZL261118-095438-84`) trong `damBaoCauHinhTuDong_()` (`V49`) và chống lỗi Google Sheets đổi phân số `10/3` thành ngày tháng trong `ghi_()` / `docHang_()`.
+  2. **Kiểm tra và báo cáo chính xác số lượng Key Gemini còn xài được (`KhoKey.gs`, `SanPham.gs`, `ZaloDeBai.gs`, `BoPhan2.gs`, `scripts/kiem_tra_key.mjs`, `kiem-tra-key.yml`)**:
+     - Nâng cấp `khoXem()` và thêm `thongTinKhoKeyZalo_()` trong `KhoKey.gs`, kết hợp lệnh Zalo `/key` (hoặc `/khokey`, `/kiemtrakey`) và mục menu `🔑 Xem số lượng Key Gemini còn dùng được (KhoKey)` trên Google Sheet.
+     - Tự động chạy `kiem-tra-key.yml` trên GitHub Actions và gửi báo cáo tổng hợp số lượng key đang dùng tốt / hết hạn mức ngày / lỗi thật về Zalo qua `doPost` (`loai: 'bao_cao_key'`).
+  3. **Nâng cấp Nhấn nhá (Emphasis) & Biến thiên Cao độ (Pitch Modulation) cho Giọng đọc (`scripts/chuanbi.py`)**:
+     - Thêm `them_nhan_nha_doc()` tự động chèn nhịp ngắt vi mô (`... `) trước từ khóa/con số đáp án và chuẩn hóa dấu câu cảm thán/nghi vấn (`!`, `?`).
+     - Thêm `thong_so_cao_do_cau()` tính toán động `(toc_do, cao_do Hz, am_luong %)` cho từng câu thoại theo vai trò cảnh (`mo_dau/hook` nâng cao độ `+6Hz`, `bay` hạ trầm kịch tính `-5Hz`, `diem_chot` bật sáng `+7Hz`, `dap_an` vươn cao `+6Hz`, các câu tính toán luân phiên cao độ để không bị ngang).
+     - Chuyển mặc định Gemini TTS sang đọc theo từng cảnh (`tung_canh`) kèm chỉ đạo cao độ chi tiết và dịch cao độ vi mô `_he_so_cao_do_canh()`, đồng thời mở rộng dải động âm thanh (`LRA=13`, `ratio=1.6`, `attack=25ms`) để giữ trọn trọng âm nhấn nhá.

@@ -358,6 +358,15 @@ function doPost(e) {
     var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
     // key Gemini lỗi thật (GitHub phát hiện): báo Zalo để người dùng gỡ key, mỗi key một lần mỗi ngày
     if (Array.isArray(d.key_hong) && d.key_hong.length) baoKeyHong_(d.key_hong);
+    if (d.loai === 'bao_cao_key' && d.bao_cao) {
+      PropertiesService.getScriptProperties().setProperty('BAO_CAO_KEY_GH', String(d.bao_cao).slice(0, 1800));
+      var tbKey = '🔑 KẾT QUẢ KIỂM TRA KEY GEMINI TRÊN GITHUB:\n' + String(d.bao_cao).slice(0, 1200);
+      if (typeof khoXem === 'function') {
+        try { tbKey += '\n\n📂 KHO KEY APPS SCRIPT:\n' + String(khoXem()).slice(0, 700); } catch (eKx) {}
+      }
+      guiZalo_(tbKey, 'cao', 'BC_KEY_GH_' + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd_HHmm'));
+      return tra({ ok: true });
+    }
     if (d.loai === 'key_hong') return tra({ ok: true });
     if (d.loai === 'bo_phan_1') {   // kết quả giải + kịch bản từ GitHub (BoPhan1.gs, lần 23)
       return tra(nhanKetQuaBoPhan1_(sh, d));

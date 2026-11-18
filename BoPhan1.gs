@@ -233,7 +233,7 @@ function chayBoPhan1() {
 function damBaoCauHinhTuDong_() {
   try {
     var p = PropertiesService.getScriptProperties();
-    if (p.getProperty('DA_CAP_NHAT_TU_DONG_V48') === '1') return;
+    if (p.getProperty('DA_CAP_NHAT_TU_DONG_V49') === '1') return;
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var ch = ss.getSheetByName(TEN_CAU_HINH);
     if (ch && ch.getLastRow() > 0) {
@@ -262,8 +262,11 @@ function damBaoCauHinhTuDong_() {
       });
       _bo_nho_cau_hinh_ = null;
     }
-    // Tự động giải cứu các video đã dựng xong (CO_VIDEO) nhưng trước đây bị kẹt ở trạng thái KHONG_DAT do "AI chưa chấm được video"
+    // Tự động giải cứu:
+    // 1) Các video đã dựng xong (CO_VIDEO) bị kẹt ở KHONG_DAT do "AI chưa chấm được video"
+    // 2) Các đề Zalo (vd ZL261118-095438-84) bị dừng ở LOI do thiếu hàm khoDanhSachKey_ trước khi khôi phục KhoKey.gs
     var sh = ss.getSheetByName(TEN_HANG_DOI);
+    var coDeZaloCuu = false;
     if (sh && sh.getLastRow() > 1) {
       var dsHang = docHang_(sh);
       dsHang.forEach(function (r) {
@@ -271,16 +274,29 @@ function damBaoCauHinhTuDong_() {
           var kqD = {};
           try { kqD = JSON.parse(String(r.link_dang || '{}')) || {}; } catch (e0) { kqD = {}; }
           kqD._duyet_luc = kqD._duyet_luc || Date.now();
-          capNhatHang_(sh, r._dong, {
+          ghi_(sh, r._row, {
             duyet: 'DA_DUYET',
             link_dang: JSON.stringify(kqD),
-            ghi_chu: 'Đã giải cứu tự động từ trạng thái nghẽn key kiểm duyệt',
-            cap_nhat: new Date()
+            ghi_chu: 'Đã giải cứu tự động từ trạng thái nghẽn key kiểm duyệt'
           });
+        } else if (r.trang_thai === 'LOI' && /khoDanhSachKey_/i.test(String(r.ghi_chu || ''))) {
+          var ttKhoiPhuc = (/^ZL/i.test(String(r.id || '')) && (r.chu_de === 'Đề gửi qua Zalo' || r.file_anh)) ? 'CHO_DOC' : (r.dap_an ? 'DA_GIAI' : 'MOI');
+          ghi_(sh, r._row, {
+            trang_thai: ttKhoiPhuc,
+            so_lan_loi: 0,
+            ghi_chu: ''
+          });
+          if (laUuTien_(r)) coDeZaloCuu = true;
         }
       });
     }
-    p.setProperty('DA_CAP_NHAT_TU_DONG_V48', '1');
+    if (coDeZaloCuu && typeof henUuTien_ === 'function') {
+      try { henUuTien_(10); } catch (eH) {}
+    }
+    if (typeof thongTinKhoKeyZalo_ === 'function') {
+      try { guiZalo_(thongTinKhoKeyZalo_(true), 'cao', 'BAO_CAO_KEY_V49'); } catch (eK) {}
+    }
+    p.setProperty('DA_CAP_NHAT_TU_DONG_V49', '1');
   } catch (e) {}
 }
 
@@ -1833,7 +1849,13 @@ function docHang_(sh) {
   var v = sh.getDataRange().getValues(), out = [];
   for (var i = 1; i < v.length; i++) {
     var o = { _row: i + 1 };
-    for (var j = 0; j < COT.length; j++) o[COT[j]] = v[i][j];
+    for (var j = 0; j < COT.length; j++) {
+      var val = v[i][j];
+      if ((COT[j] === 'dap_an' || COT[j] === 'dap_an_hien') && val instanceof Date && !isNaN(val.getTime())) {
+        val = val.getDate() + '/' + (val.getMonth() + 1);
+      }
+      o[COT[j]] = val;
+    }
     out.push(o);
   }
   return out;
@@ -1842,10 +1864,24 @@ function ghi_(sh, row, f) {
   f.cap_nhat = new Date();
   Object.keys(f).forEach(function (k) {
     var c = COT.indexOf(k);
-    if (c >= 0) sh.getRange(row, c + 1).setValue(f[k]);
+    if (c >= 0) {
+      var val = f[k];
+      if ((k === 'dap_an' || k === 'dap_an_hien') && typeof val === 'string' && /^\s*\d+\s*\/\s*\d+\s*$/.test(val)) {
+        val = "'" + val.trim();
+      }
+      sh.getRange(row, c + 1).setValue(val);
+    }
   });
 }
-function themHang_(sh, o) { sh.appendRow(COT.map(function (k) { return o[k] === undefined ? '' : o[k]; })); }
+function themHang_(sh, o) {
+  sh.appendRow(COT.map(function (k) {
+    var val = o[k] === undefined ? '' : o[k];
+    if ((k === 'dap_an' || k === 'dap_an_hien') && typeof val === 'string' && /^\s*\d+\s*\/\s*\d+\s*$/.test(val)) {
+      return "'" + val.trim();
+    }
+    return val;
+  }));
+}
 
 function bam_(s) {
   var b = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, String(s).toLowerCase().replace(/\s+/g, ' ').trim());
@@ -1959,6 +1995,7 @@ function onOpen() {
     .addItem('🎓 Tạo video dài 10 phút học tập (YouTube)', 'taoVideoDai10Phut')
     .addItem('🔁 Quét Drive & sửa toàn bộ video cũ sang bản mới', 'quetVaSuaVideoCuDrive')
     .addItem('☁️ Tự cập nhật mã .gs từ GitHub vào Apps Script', 'capNhatMaAppsScriptTuGitHub')
+    .addItem('🔑 Xem số lượng Key Gemini còn dùng được (KhoKey)', 'khoXem')
     .addItem('🧹 Dọn ngay các đề đã xong', 'donNgay')
     .addItem('🔄 Cập nhật bảng đề và kịch bản', 'dongBoBangDoc')
     .addItem('🧱 Dựng lại bảng kịch bản', 'dungLaiBangKichBan')
@@ -2594,8 +2631,8 @@ function taoDeVideoDai10Phut_(goiYChuDe, chat) {
   return '🎓 Đã tạo chuyên đề Video Dài 10 Phút YouTube (' + id + ' - Lớp ' + obj.lop + '):\n📌 Chủ đề: ' + obj.chu_de + '\n📖 Đề trọng tâm: ' + obj.de_bai.slice(0, 220) + '...\n⏳ Hệ thống đang giải kiểm chứng và viết kịch bản 5 chương (~45 cảnh, ~10 phút) để dựng video học tập.';
 }
 
-// Tự động đồng bộ toàn bộ 9 tệp .gs và tệp kê khai appsscript.json mới nhất từ nhánh master trên GitHub thẳng vào dự án Google Apps Script hiện tại
-var DANH_SACH_TEP_GS_ = ['BoPhan1', 'PromptKichBan', 'KiemTraHinh', 'HinhHoc', 'BoPhan2', 'NangCao', 'DangVideo', 'SanPham', 'ZaloDeBai'];
+// Tự động đồng bộ toàn bộ 10 tệp .gs (bao gồm KhoKey.gs) và tệp kê khai appsscript.json (giữ nguyên mọi Dịch vụ/Thư viện như YouTube, YouTubeAnalytics) từ nhánh master trên GitHub thẳng vào dự án Google Apps Script hiện tại
+var DANH_SACH_TEP_GS_ = ['BoPhan1', 'PromptKichBan', 'KiemTraHinh', 'HinhHoc', 'BoPhan2', 'NangCao', 'DangVideo', 'SanPham', 'ZaloDeBai', 'KhoKey'];
 function capNhatMaAppsScriptTuGitHub() {
   Logger.log('🚀 [BƯỚC 1/4] Bắt đầu đồng bộ mã từ GitHub...');
   var p = PropertiesService.getScriptProperties();
@@ -2605,8 +2642,8 @@ function capNhatMaAppsScriptTuGitHub() {
   var headersGh = tokenGh ? { Authorization: 'Bearer ' + tokenGh } : {};
   var filesMoi = [];
   
-  // 1. Tải 9 tệp .gs từ GitHub
-  Logger.log('📥 [BƯỚC 2/4] Đang tải 9 tệp .gs từ GitHub (' + repo + '@' + nhanh + ')...');
+  // 1. Tải 10 tệp .gs từ GitHub
+  Logger.log('📥 [BƯỚC 2/4] Đang tải ' + DANH_SACH_TEP_GS_.length + ' tệp .gs từ GitHub (' + repo + '@' + nhanh + ')...');
   for (var i = 0; i < DANH_SACH_TEP_GS_.length; i++) {
     var ten = DANH_SACH_TEP_GS_[i];
     var urlRaw = 'https://raw.githubusercontent.com/' + repo + '/' + encodeURIComponent(nhanh) + '/' + ten + '.gs';
@@ -2654,7 +2691,12 @@ function capNhatMaAppsScriptTuGitHub() {
         '2. Dán nội dung sau vào tệp appsscript.json rồi bấm Lưu (Ctrl+S):\n' +
         '{\n' +
         '  "timeZone": "Asia/Ho_Chi_Minh",\n' +
-        '  "dependencies": {},\n' +
+        '  "dependencies": {\n' +
+        '    "enabledAdvancedServices": [\n' +
+        '      { "userSymbol": "YouTube", "serviceId": "youtube", "version": "v3" },\n' +
+        '      { "userSymbol": "YouTubeAnalytics", "serviceId": "youtubeAnalytics", "version": "v2" }\n' +
+        '    ]\n' +
+        '  },\n' +
         '  "exceptionLogging": "STACKDRIVER",\n' +
         '  "runtimeVersion": "V8",\n' +
         '  "oauthScopes": [\n' +
@@ -2663,11 +2705,14 @@ function capNhatMaAppsScriptTuGitHub() {
         '    "https://www.googleapis.com/auth/spreadsheets",\n' +
         '    "https://www.googleapis.com/auth/drive",\n' +
         '    "https://www.googleapis.com/auth/script.scriptapp",\n' +
-        '    "https://www.googleapis.com/auth/script.storage"\n' +
+        '    "https://www.googleapis.com/auth/script.storage",\n' +
+        '    "https://www.googleapis.com/auth/youtube",\n' +
+        '    "https://www.googleapis.com/auth/youtube.readonly",\n' +
+        '    "https://www.googleapis.com/auth/yt-analytics.readonly"\n' +
         '  ]\n' +
         '}\n\n' +
         '3. Sau đó chọn lại hàm capNhatMaAppsScriptTuGitHub và bấm "Chạy". Google sẽ hiện cửa sổ yêu cầu cấp quyền (Authorization Required) -> Bấm Xem lại quyền -> Chọn tài khoản Google -> Nâng cao -> Chuyển đến (không an toàn) -> Cho phép.\n' +
-        '4. Ngay sau khi chạy xong, bấm F5 trên trình duyệt là toàn bộ 9 file .gs sẽ tự động cập nhật phiên bản mới nhất!';
+        '4. Ngay sau khi chạy xong, bấm F5 trên trình duyệt là toàn bộ 10 file .gs và dịch vụ sẽ tự động cập nhật phiên bản mới nhất!';
       Logger.log(thongBaoLoiQuyen);
       return thongBaoLoiQuyen;
     }
@@ -2679,12 +2724,41 @@ function capNhatMaAppsScriptTuGitHub() {
     }
 
     var curData = JSON.parse(curRes.getContentText());
-    if (manifestContent) {
-      filesMoi.unshift({ name: 'appsscript', type: 'JSON', source: manifestContent });
-    } else {
-      var manifest = (curData.files || []).filter(function (f) { return f.name === 'appsscript'; })[0];
-      if (manifest) filesMoi.unshift(manifest);
+    // Giữ lại mọi tệp riêng khác trên Apps Script không nằm trong DANH_SACH_TEP_GS_ (không bao giờ xóa nhầm tệp của người dùng)
+    (curData.files || []).forEach(function (f) {
+      if (f && f.name && f.name !== 'appsscript' && DANH_SACH_TEP_GS_.indexOf(f.name) < 0) {
+        filesMoi.push(f);
+        Logger.log('   ✓ Giữ nguyên tệp riêng trên Apps Script: ' + f.name);
+      }
+    });
+    // Hợp nhất tệp kê khai appsscript.json: giữ nguyên mọi Dịch vụ (YouTube, YouTubeAnalytics...) và Thư viện đang có trên Apps Script
+    var manifestCuObj = {};
+    var manifestCuFile = (curData.files || []).filter(function (f) { return f.name === 'appsscript'; })[0];
+    if (manifestCuFile && manifestCuFile.source) {
+      try { manifestCuObj = JSON.parse(manifestCuFile.source) || {}; } catch (eM0) { manifestCuObj = {}; }
     }
+    var manifestMoiObj = {};
+    if (manifestContent) {
+      try { manifestMoiObj = JSON.parse(manifestContent) || {}; } catch (eM1) { manifestMoiObj = {}; }
+    }
+    var mergedManifest = Object.assign({}, manifestCuObj, manifestMoiObj);
+    mergedManifest.dependencies = mergedManifest.dependencies || {};
+    var dsDichVu = [
+      { userSymbol: 'YouTube', serviceId: 'youtube', version: 'v3' },
+      { userSymbol: 'YouTubeAnalytics', serviceId: 'youtubeAnalytics', version: 'v2' }
+    ];
+    var dvCu = (manifestCuObj.dependencies && manifestCuObj.dependencies.enabledAdvancedServices) || [];
+    var dvMoi = (manifestMoiObj.dependencies && manifestMoiObj.dependencies.enabledAdvancedServices) || [];
+    dvCu.concat(dvMoi).forEach(function (s) {
+      if (s && s.serviceId && !dsDichVu.some(function (x) { return x.serviceId === s.serviceId && x.userSymbol === s.userSymbol; })) {
+        dsDichVu.push(s);
+      }
+    });
+    mergedManifest.dependencies.enabledAdvancedServices = dsDichVu;
+    if (manifestCuObj.dependencies && manifestCuObj.dependencies.libraries && !mergedManifest.dependencies.libraries) {
+      mergedManifest.dependencies.libraries = manifestCuObj.dependencies.libraries;
+    }
+    filesMoi.unshift({ name: 'appsscript', type: 'JSON', source: JSON.stringify(mergedManifest, null, 2) });
 
     Logger.log('💾 [BƯỚC 4/4] Đang ghi đè ' + filesMoi.length + ' tệp vào dự án Apps Script...');
     var putRes = UrlFetchApp.fetch(urlContent, {
@@ -2696,9 +2770,10 @@ function capNhatMaAppsScriptTuGitHub() {
     });
 
     if (putRes.getResponseCode() === 200) {
+      try { damBaoCauHinhTuDong_(); } catch (eRescue) {}
       var msgOk = '🎉 ĐÃ TỰ ĐỘNG ĐỒNG BỘ THÀNH CÔNG 100%!\n' +
-        '☁️ Đã nạp toàn bộ ' + DANH_SACH_TEP_GS_.length + ' tệp .gs và tệp kê khai appsscript.json từ GitHub (' + repo + '@' + nhanh + ') thẳng vào Google Apps Script.\n\n' +
-        '🔄 LƯU Ý BẮT BUỘC: Bạn hãy nhấn phím F5 (Tải lại trang trình duyệt) để trình soạn thảo Apps Script hiển thị toàn bộ mã nguồn vừa được cập nhật!';
+        '☁️ Đã nạp toàn bộ ' + DANH_SACH_TEP_GS_.length + ' tệp .gs (bao gồm KhoKey.gs) và khôi phục đầy đủ Dịch vụ (YouTube, YouTubeAnalytics) từ GitHub (' + repo + '@' + nhanh + ') thẳng vào Google Apps Script.\n\n' +
+        '🔄 LƯU Ý BẮT BUỘC: Bạn hãy nhấn phím F5 (Tải lại trang trình duyệt) để trình soạn thảo Apps Script hiển thị toàn bộ mã nguồn và dịch vụ vừa được cập nhật!';
       Logger.log(msgOk);
       nhatKy_('CAP_NHAT_CODE', msgOk);
       return msgOk;

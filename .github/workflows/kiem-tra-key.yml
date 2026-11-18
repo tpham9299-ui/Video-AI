@@ -3,6 +3,11 @@ name: Kiểm tra key Gemini
 # Chạy tay (Actions > Kiểm tra key Gemini > Run workflow): thử từng key trong GEMINI_KEYS / GEMINI_API_KEY bằng một câu rất ngắn,
 # báo key nào dùng được, key nào hết hạn mức ngày (giữ lại, chờ reset), key nào LỖI THẬT (nên xóa). Không in key ra nhật ký.
 on:
+  push:
+    branches: [master]
+    paths:
+      - 'scripts/kiem_tra_key.mjs'
+      - '.github/workflows/kiem-tra-key.yml'
   workflow_dispatch:
     inputs:
       models:
@@ -29,9 +34,26 @@ jobs:
         run: |
           [ -n "$MODELS" ] || unset MODELS
           node scripts/kiem_tra_key.mjs
-      - name: Báo key lỗi thật về Apps Script (Zalo)
+      - name: Gửi báo cáo tổng hợp số lượng key & key lỗi về Apps Script (Zalo)
         if: ${{ env.APPS_SCRIPT_URL != '' }}
         run: |
-          [ -s /tmp/gemini_key_hong.json ] || { echo "Không có key lỗi thật"; exit 0; }
-          python3 -c "import json,os;json.dump({'token':os.environ['DUNG_VIDEO_SECRET'],'loai':'key_hong','key_hong':json.load(open('/tmp/gemini_key_hong.json'))},open('bao.json','w'))"
-          curl -sS -L -H 'Content-Type: application/json' --data @bao.json "$APPS_SCRIPT_URL" || true
+          python3 - <<'PY'
+          import json, os, urllib.request
+          url = os.environ.get("APPS_SCRIPT_URL", "").strip()
+          secret = os.environ.get("DUNG_VIDEO_SECRET", "").strip()
+          if not url or not secret:
+              raise SystemExit
+          payload = {"token": secret, "loai": "bao_cao_key"}
+          if os.path.exists("/tmp/gemini_key_bao_cao.json"):
+              bc = json.load(open("/tmp/gemini_key_bao_cao.json", encoding="utf8"))
+              payload["bao_cao"] = bc.get("bao_cao", "")
+          if os.path.exists("/tmp/gemini_key_hong.json"):
+              payload["key_hong"] = json.load(open("/tmp/gemini_key_hong.json", encoding="utf8"))
+          if payload.get("bao_cao") or payload.get("key_hong"):
+              req = urllib.request.Request(url, data=json.dumps(payload).encode("utf8"), headers={"Content-Type": "application/json"}, method="POST")
+              try:
+                  with urllib.request.urlopen(req, timeout=25) as r:
+                      print("Đã gửi báo cáo key về Apps Script:", r.status)
+              except Exception as e:
+                  print("Gửi báo cáo key:", e)
+          PY

@@ -102,6 +102,7 @@ function traLoiLenh_(chat, chu, anh) {
   if (/^\/xoaquytac\b/.test(l) && typeof xoaQuyTac_ === 'function') return xoaQuyTac_(chu);
   if (/^\/gopy\b/.test(l) && typeof nhanGopYChung_ === 'function') return nhanGopYChung_(chat, chu);
   if (/^\/(tt|trangthai)\b/.test(l) && typeof tinhTrangUuTien_ === 'function') return tinhTrangUuTien_();
+  if (/^\/(key|keys|khokey|kiemtrakey)\b/.test(l) && typeof thongTinKhoKeyZalo_ === 'function') return thongTinKhoKeyZalo_(true);
   if (/^\/(token|hantoken)\b/.test(l) && typeof thongTinTokenGitHub_ === 'function') return thongTinTokenGitHub_();
   if (/^\/hinhhoc\b/.test(l)) return typeof taoDeHinhNgay_ === 'function' ? taoDeHinhNgay_(chat, chu) : '⚠️ Chưa có tệp HinhHoc.gs trong Apps Script: thêm tệp mới HinhHoc.gs (bản bàn giao) rồi Triển khai phiên bản mới.';
   if (/^\/phongcach\b/.test(l) && typeof bangPhongCach_ === 'function') return bangPhongCach_() + (thongKeLyDoBo_() ? '\n📉 ' + thongKeLyDoBo_() : '');
