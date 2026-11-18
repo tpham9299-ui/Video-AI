@@ -304,6 +304,11 @@ export const HinhTuDo: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
     return {x0: x - rong / 2, x1: x + rong / 2, y0: h.tam[1] * s - coC * 0.7, y1: h.tam[1] * s + coC * 0.7};
   });
   const coVatThuc = v.hinh.some((h) => h.kieu === 'vat');   // cảnh thật (cột cờ, nhà...): hình học vẽ thêm là chú thích phẳng
+  // Giữ nguyên điểm neo khi chuyển từ cảnh thật sang nét đo theo lời giảng.
+  const buocDo = (v.kieu === 'canh_ngang' || v.kieu === 'canh_tren')
+    ? Math.min(...v.hinh.filter((h) => h.buoc > 1 && h.kieu !== 'vat' && h.kieu !== 'chu').map((h) => h.buoc))
+    : Infinity;
+  const moCanhThat = Number.isFinite(buocDo) && st.tb ? 1 - 0.60 * easeOut(kep((st.t - st.tb(buocDo)) / 1.1)) : 1;
   const KHOI = 6; // số lớp đùn khối (hình tô màu nằm trên bàn 3D -> nổi thành khối có bề dày)
   // bộ hiệu ứng mới: nhiều chữ rời cùng một bước thì bật LẦN LƯỢT (0,3 giây/chữ) kèm vòng sóng, như các ga tàu hiện dần
   const treChu = new Map<number, number>();
@@ -344,7 +349,7 @@ export const HinhTuDo: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
             if (h.kieu === 'vat') {
               // vật thực tế: mọc từ chân lên, có nhịp chuyển động riêng (cờ bay, đèn quét...); nghiêng theo "xoay" (thang dựa tường)
               return (
-                <g key={i} transform={h.xoay ? `rotate(${h.xoay} ${h.tam[0]} ${h.tam[1]})` : undefined} opacity={1 - 0.6 * lb} style={c ? {filter: `drop-shadow(0 0 ${2 + 3 * c.p}px ${mau})`} : undefined}>
+                <g key={i} transform={h.xoay ? `rotate(${h.xoay} ${h.tam[0]} ${h.tam[1]})` : undefined} opacity={moCanhThat * (1 - 0.6 * lb)} style={c ? {filter: `drop-shadow(0 0 ${2 + 3 * c.p}px ${mau})`} : undefined}>
                   <VatThuc ten={h.ten} x={h.tam[0]} y={h.tam[1]} cao={h.cao} rong={h.rong || undefined} lat={h.lat} mau={mau} t={st.t} p={(t - bd) / 0.8} bien={h.bien} emoji={h.emoji} dongTac={h.dongTac} gocChi={h.gocChi} />
                 </g>
               );
@@ -357,7 +362,7 @@ export const HinhTuDo: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
             const hx = kg.huong ? kg.huong[0] : Math.sin(g3), hy = kg.huong ? kg.huong[1] : Math.cos(g3);
             const tamKhung: D = [v.khung[0] / 2, v.khung[1] / 2];
             return (
-              <g key={`g${i}`} transform={bienTf(st.bienNet.get(0), tamKhung)}>
+              <g key={`g${i}`} opacity={v.kieu === 'canh_tren' && h.buoc === 1 ? moCanhThat : 1} transform={bienTf(st.bienNet.get(0), tamKhung)}>
                 <g transform={bienTf(st.bienNet.get(i + 1), h.tam)}>
                   {nets.map((n, k) => {
                     let tf = '';

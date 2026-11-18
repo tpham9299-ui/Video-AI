@@ -818,6 +818,27 @@ class VideoHinh(Scene):
         self.ti_le = k
         self.tam = np.mean(list(self.P.values()), axis=0)
         self._chuan_bi_chieu_sau_3d()
+        self.goc_doc = 0.0
+        if mo.la_khong_gian:
+            canh = [p["khoa"] for p in mo.pt if p.get("kieu_net") in ("canh", "khuat")]
+            # Ưu tiên góc gốc khi điểm như nhau. Chấm cả đỉnh sát lòng cạnh khác
+            # (hai đoạn chiếu gần trùng) lẫn đoạn bị co ngắn.
+            def diem_che(goc):
+                h = self.chieu_dinh(goc)
+                phat = 0.0
+                for a, b in canh:
+                    ab = h[b] - h[a]
+                    dai2 = float(ab @ ab)
+                    phat += max(0, 0.45 - math.sqrt(dai2))
+                    for n, q in h.items():
+                        if n in (a, b):
+                            continue
+                        t = float((q - h[a]) @ ab) / max(1e-9, dai2)
+                        if 0 <= t <= 1:
+                            phat += max(0, 0.22 - np.linalg.norm(q - h[a] - t * ab))
+                return phat + abs(goc) * 0.08
+            self.goc_doc = min(map(math.radians, [0, 6, -6, 12, -12]), key=diem_che)
+            self.P = self.chieu_dinh(self.goc_doc)
 
     def _chuan_bi_chieu_sau_3d(self):
         """Khởi tạo độ sâu 3D (Z_sau) cho từng đỉnh của khối đa diện không gian để phục vụ xoay 3D trực quan,
@@ -869,7 +890,7 @@ class VideoHinh(Scene):
         doan_chinh = [p["khoa"] for p in mo.pt if p["kieu"] == "doan" and p.get("kieu_net") in ("canh", "khuat")]
         for n, p0 in self.P0.items():
             for a, b in doan_chinh:
-                if n in (a, b):
+                if n in (a, b) or n in (mo.diem_3d or {}):
                     continue
                 pa, pb = self.P0[a][:2], self.P0[b][:2]
                 ab = pb - pa
@@ -1063,18 +1084,23 @@ class VideoHinh(Scene):
             self.lech_nhan[n] = vt - p
             self.nhan_diem[n] = MathTex(tex_ten(n), tex_template=TEX, font_size=36, color=TRANG).move_to(vt)
 
-    def cap_nhat_goc_3d(self, goc_rad):
+    def chieu_dinh(self, goc_rad):
         """Chiếu tọa độ 3D của khối đa diện tại góc xoay goc_rad (radian) quanh trục thẳng đứng đi qua tâm khối."""
         cx, cy = float(self.tam[0]), float(self.tam[1])
         c_th, s_th = math.cos(goc_rad), math.sin(goc_rad)
         kappa = 0.25  # độ nghiêng phối cảnh trục đứng khi xoay 3D
+        diem = {}
         for n, p0 in self.P0.items():
             dx = float(p0[0]) - cx
             dy = float(p0[1]) - cy
             dz = float(self.Z_sau.get(n, 0.0))
             nx = cx + dx * c_th + dz * s_th
             ny = cy + dy + kappa * (dx * s_th + dz * (c_th - 1.0))
-            self.P[n] = np.array([nx, ny, 0.0])
+            diem[n] = np.array([nx, ny, 0.0])
+        return diem
+
+    def cap_nhat_goc_3d(self, goc_rad):
+        self.P = self.chieu_dinh(self.goc_doc + goc_rad)
 
         for p in self.mo.pt:
             k = (p["kieu"], p["khoa"])
@@ -1451,11 +1477,8 @@ class VideoHinh(Scene):
             # 3.5) HÌNH HỌC KHÔNG GIAN 3D: xoay 3D trực quan khối đa diện để học sinh quan sát rõ cấu trúc không gian
             if getattr(mo, "la_khong_gian", False) and len(self.tren_man) >= 4:
                 con_3d = D - self._bay_gio()
-                if i <= 1 and con_3d > 1.6:
-                    self.xoay_3d([0, 36, -30, 0], run_time=min(2.2, con_3d * 0.48))
-                elif con_3d > 2.2:
-                    goc_lech = 26 if (i % 2 == 0) else -26
-                    self.xoay_3d([0, goc_lech, 0], run_time=min(1.4, con_3d * 0.30))
+                if i == 1 and con_3d >= 4.5:
+                    self.xoay_3d([0, 6, 0], run_time=1.8)
 
             # 4) Đồng bộ giọng đọc từng câu (cau) & hiện công thức biến đổi bên dưới:
             # Khi giọng đọc nhắc tới điểm/cạnh/góc/tam giác/mặt phẳng nào, Manim phóng tia sáng ShowPassingFlash

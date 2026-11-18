@@ -803,3 +803,9 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
 - Workflow dựng video yêu cầu rclone ghi thống kê truyền mỗi 30 giây vào log Actions. Bước tải video vẫn kiểm tra ID tệp trên Drive trước khi báo kết quả về Apps Script.
 - Kiểm duyệt chụp lượt cuối cảnh trước, rồi đến lượt giữa cảnh. Sau mỗi lần chụp, script thay báo cáo bằng thao tác đổi tên tệp nguyên tử để giữ lỗi đã phát hiện nếu Chrome hoặc Gemini treo.
 - Script dừng bắt đầu khung mới sau 355 giây và giới hạn các lần gọi lại Gemini theo thời gian còn lại tới giây 400. Workflow gửi TERM ở giây 415 và KILL sau 5 giây nếu cần. Báo cáo thiếu khung mang cờ `hong`; lỗi nặng đã đo vẫn đi qua điều kiện chặn hiện hành.
+
+#### Lần 32 (v65) — Làm rõ hình chiếu và chuyển từ cảnh thật sang mô hình toán
+
+- Manim thử góc chính diện và các góc lệch ±6°, ±12° cho hình không gian. Điểm phạt tăng khi một đỉnh nằm sát cạnh khác hoặc một cạnh bị co ngắn. Góc được chọn dùng cho ảnh bìa và phần dựng hình. Cảnh thứ hai có thể xoay thêm 6° rồi trở về khi đủ thời gian.
+- Remotion giảm biên độ rung ngang của vật từ 16 xuống tối đa 3 pixel, làm mềm nhịp nhấn máy quay. Với cảnh thật có bước đo, vật minh họa hoặc lớp nền mặt bằng mờ dần trong 1,1 giây khi nét đo xuất hiện. Đường đo, nhãn và hình minh họa dùng chung hệ tọa độ.
+- Kiểm tra trên cảnh cột cờ bằng giọng giả lập và bài thử chiếu một đỉnh trùng cạnh khác. Mẫu cột cờ dùng minh họa dựng từ dữ liệu của đề.

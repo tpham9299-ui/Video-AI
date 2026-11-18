@@ -80,7 +80,7 @@ export function tinhTrangThai(v: Vat, ds: HanhDong[], t: number, tb: (b: number)
       }
       case 'rung': {
         const q = h.buoc <= 0 ? 1 : tienDo(t, bd, 0.7);
-        st.rung = Math.sin(q * Math.PI * 9) * 16 * (1 - q);
+        st.rung = 3 * Math.sin(q * Math.PI * 2) * Math.sin(q * Math.PI) ** 2;
         break;
       }
       case 'quay':

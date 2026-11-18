@@ -138,11 +138,11 @@ export function mayQuay(f: number, ketThuc: number, suKien: SuKienMay[], luiRa: 
     const d = f - k.f;
     if (d < 0 || d > 40) continue;
     const m = k.manh ?? 1;
-    if (k.kieu === 'dap') s += 0.075 * m * (d < 2 ? d / 2 : Math.exp(-(d - 2) / 6));
+    if (k.kieu === 'dap') s += 0.022 * m * Math.sin(Math.PI * Math.min(d / 24, 1)) ** 2;
     else {
-      const g = Math.exp(-d / 4);
-      x += Math.sin(d * 2.6) * 14 * m * g;
-      y += Math.cos(d * 3.3) * 8 * m * g;
+      const g = Math.sin(Math.PI * Math.min(d / 20, 1)) ** 2;
+      x += Math.sin(d * 0.30) * 2 * m * g;
+      y += Math.sin(d * 0.22) * 1.5 * m * g;
     }
   }
   if (luiRa) s *= 1 + 0.07 * (1 - easeOut(kep(f / 45)));
