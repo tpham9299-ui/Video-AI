@@ -26,6 +26,8 @@ Với bài hình học phẳng và không gian, GitHub Actions bắt buộc dự
 
 Bộ chuẩn bị kịch bản chọn minh họa bờ biển hoặc căn hộ khi nhận diện được dữ kiện tương ứng. Remotion dùng Montserrat cho tiêu đề và Be Vietnam Pro cho phần văn bản theo cấu hình mặc định. Hình bình bi dùng chung thân trụ trong suốt trên hai định dạng kịch bản.
 
+Với bài toán thực tế, sau bước chuẩn bị, GitHub Actions chạy `scripts/canh_3d.py` để chọn cảnh phù hợp. Blender Cycles trên CPU dựng ảnh từ dữ kiện sân khấu hoặc từ các khối trong `mo_hinh_3d.chi_tiet`. Remotion hiển thị ảnh trong vùng minh họa trước khi chuyển sang mô hình toán.
+
 ### Kiến trúc 2 tầng phối hợp:
 1. **Tầng điều phối & quản trị (Google Apps Script + Google Sheets + Google Drive + Zalo Bot)**:
    - Lưu trữ hàng đợi bài toán (`HANG_DOI`), cấu hình (`CAU_HINH`), lịch sử góp ý học tập (`GOP_Y_HOC`), quy tắc tự học (`QUY_TAC_HOC`), thống kê số liệu (`SO_LIEU`), chuỗi video (`SERIES`), quảng cáo sản phẩm (`SAN_PHAM`), và kho khóa API (`KHO_KEY`).
@@ -883,3 +885,9 @@ Bộ chuẩn bị kịch bản chọn minh họa bờ biển hoặc căn hộ kh
 - Tiêu đề trên bìa, đầu cảnh và tiêu đề bài học dùng Montserrat. Nội dung, nhãn hình và phụ đề dùng Be Vietnam Pro. Ký hiệu toán tiếp tục qua bộ dựng công thức.
 - Bài cập bờ có sơ đồ đường thủy và đường bộ theo tỷ lệ AH, HB. Bài cho thuê nhà vẽ số căn theo đề và chỉ thể hiện số căn trống khi lời giảng nêu trạng thái cụ thể.
 - Bình bi có vành elip, thành kính và đáy cong. Sân khấu dành chỗ cho khay theo hành động rút bi trong kịch bản. Với định dạng cũ, các nhóm đông được xếp thành nhiều hàng.
+
+#### Lần 44 (v77) — Dựng bối cảnh thực tế bằng Blender
+
+- Bản vẽ khu vườn bảo toàn kích thước và cạnh có tường hoặc rào. Cảnh cập bờ, căn hộ và một số vật có chiều cao dùng các dữ kiện đã chuẩn bị cho sơ đồ.
+- Kịch bản có thể mô tả vật mới bằng các khối ghép theo tọa độ chung. Mỗi chi tiết cần dẫn cụm từ xuất hiện trong đề. Bài bể nước mẫu dùng một đáy và bốn thành bao quanh lòng bể.
+- Workflow cài Blender khi có cảnh phù hợp, dựng ảnh một lần cho mỗi mô hình rồi ghép trước sơ đồ trong video dọc. Khi thiếu mô tả hợp lệ, Remotion tiếp tục dùng minh họa của cảnh.

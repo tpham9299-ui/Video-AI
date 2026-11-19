@@ -2,7 +2,7 @@ import {CanhThucTe, DuLieuThucTe} from './CanhThucTe';
 import {BangPhanCong} from './BangPhanCong';
 import {BiaGap} from './BiaGap';
 import React from 'react';
-import {Audio, interpolate, Sequence, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
+import {Audio, Img, interpolate, Sequence, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
 import {coChuCongThuc, laChuThuong, NHAN_HOOK, phanLoaiHinh} from './bocuc';
 import {BienDoi} from './BienDoi';
 import {ChuThich} from './ChuThich';
@@ -114,7 +114,8 @@ export const Canh: React.FC<{
   const veBia = bia && (laMoDau || ungDung || /de_bai|mo_hinh/.test(canh.loai));
   const bangPhanCong = !lopManim && canh.minhHoa.loai === 'bang_phan_cong';
   const thucTe = !lopManim && canh.minhHoa.loai === 'thuc_te_theo_de' ? canh.minhHoa.duLieu as DuLieuThucTe : null;
-  const coHinh = !!thucTe || bangPhanCong || veBia || kieu !== null;
+  const anh3D = !lopManim && canh.anhCanh3D;
+  const coHinh = !!anh3D || !!thucTe || bangPhanCong || veBia || kieu !== null;
   const coHook = laMoDau && !!hook.chu;
 
   // ----- công thức -----
@@ -302,6 +303,14 @@ export const Canh: React.FC<{
           </div>
           </CoChuSan.Provider></>}
         </NhoeHuong>
+      ) : null}
+
+      {anh3D ? (
+        <div style={{position: 'absolute', top: yNoiDung, left: 40, right: 40, height: caoSan, background: '#102023',
+          borderRadius: 26, overflow: 'hidden', display: 'grid', placeItems: 'center',
+          opacity: kep((canh.soFrame - frame - 2) / 8) * (kieu || thucTe || veBia ? kep((Math.min(3.8, giayAm * .62) - t) / .45) : 1)}}>
+          <Img src={staticFile(anh3D)} style={{width: '100%', height: '100%', objectFit: 'contain'}} />
+        </div>
       ) : null}
 
       {lopManim && canh.loai === 'de_bai' && deBai && coTheDe(deBai) && !coQuangCaoCuoi ? (() => {

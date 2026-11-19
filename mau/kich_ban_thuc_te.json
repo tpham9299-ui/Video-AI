@@ -5,6 +5,13 @@
  "chu_de": "Bể nước tốn ít vật liệu nhất",
  "chu_de_ngan": "Bể nước tiết kiệm nhất",
  "de_bai": "Người ta xây một bể nước hình hộp chữ nhật không nắp, đáy là hình vuông, thể tích 32 m³. Hỏi cạnh đáy và chiều cao bằng bao nhiêu để tốn ít vật liệu nhất (diện tích xây nhỏ nhất)?",
+ "mo_hinh_3d": {"chi_tiet": [
+  {"tu_de": "bể nước hình hộp chữ nhật không nắp", "hinh": "hop", "tam": [0, 0, -0.06], "co": [4.24, 4.24, 0.12], "vat_lieu": "gach"},
+  {"tu_de": "bể nước hình hộp chữ nhật không nắp", "hinh": "hop", "tam": [0, -2.06, 1], "co": [4.24, 0.12, 2], "vat_lieu": "gach"},
+  {"tu_de": "bể nước hình hộp chữ nhật không nắp", "hinh": "hop", "tam": [0, 2.06, 1], "co": [4.24, 0.12, 2], "vat_lieu": "gach"},
+  {"tu_de": "bể nước hình hộp chữ nhật không nắp", "hinh": "hop", "tam": [-2.06, 0, 1], "co": [0.12, 4, 2], "vat_lieu": "gach"},
+  {"tu_de": "bể nước hình hộp chữ nhật không nắp", "hinh": "hop", "tam": [2.06, 0, 1], "co": [0.12, 4, 2], "vat_lieu": "gach"}
+ ]},
  "dap_an": "48",
  "dap_an_hien": "x = 4 m, h = 2 m, S = 48 m²",
  "tieu_de": "Xây bể 32 khối sao cho tốn ít gạch nhất?",

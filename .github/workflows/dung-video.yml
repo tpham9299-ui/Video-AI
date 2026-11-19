@@ -252,6 +252,18 @@ jobs:
           ls -la out
           echo "ok=1" >> "$GITHUB_OUTPUT"
 
+      - name: Dựng ảnh bối cảnh thực tế bằng Blender
+        if: steps.kb.outputs.hh != '1'
+        run: |
+          SO_CANH=$(python3 scripts/canh_3d.py kich_ban.json public/props.json --dem)
+          if [ "$SO_CANH" -gt 0 ]; then
+            if ! command -v blender >/dev/null; then
+              sudo apt-get update -qq
+              sudo apt-get install -y -qq --no-install-recommends blender
+            fi
+            python3 scripts/canh_3d.py kich_ban.json public/props.json
+          fi
+
       - name: Gọn tài nguyên & đóng gói Remotion + ảnh bìa
         run: |
           python3 - <<'PY'

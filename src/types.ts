@@ -10,6 +10,7 @@ export type CanhProps = {
   mocCongThuc?: number[];
   noiDung: string[]; // các dòng LaTeX hiện trên màn hình
   minhHoa: MinhHoa;
+  anhCanh3D?: string;
   audio: string | null; // đường dẫn trong thư mục public/, ví dụ "giong/VT2610-xx_c1.mp3"
   batDau: number; // khung hình bắt đầu của cảnh trong cả video
   soFrame: number; // số khung hình của cảnh
