@@ -8,7 +8,8 @@ import re
 
 import numpy as np
 from PIL import Image
-from manim import Camera, Line, tempconfig
+from manim import Camera, Line, Text, tempconfig
+from manimpango import register_font
 from manim_hinh import chuan_tex, tao_cong_thuc
 
 
@@ -44,7 +45,30 @@ def diagram(cam, folder):
                 end = (oriented(line["flat"][j]) - center) * scale if line["flat"] else start
                 ends.append([*(start + progress * (end - start)), 0])
             objects.append(Line(*ends, color=line["color"], stroke_width=10))
-        camera_image(cam, objects).save(folder / f"net-{i}.png")
+        labels = []
+        for segment, edge in zip(lines, objects):
+            if not segment.get("nhan"):
+                continue
+            text = Text(
+                segment["nhan"], font="Be Vietnam Pro", weight="BOLD", color="#FFF2B5"
+            ).scale_to_fit_height(0.56)
+            vec = edge.get_vector()
+            normal = np.array([-vec[1], vec[0], 0]) / max(0.001, np.linalg.norm(vec))
+            if normal[1] < 0:
+                normal *= -1
+            for shift in (0.65, -0.65, 1.25, -1.25):
+                pos = edge.get_center() + shift * normal
+                pos[0] = np.clip(pos[0], -7.8 + text.width / 2, 7.8 - text.width / 2)
+                pos[1] = np.clip(pos[1], -4.6, 4.6)
+                text.move_to(pos)
+                if all(
+                    abs(pos[0] - other.get_x()) > (text.width + other.width) / 2 + 0.1
+                    or abs(pos[1] - other.get_y()) > 0.68
+                    for other in labels
+                ):
+                    labels.append(text)
+                    break
+        camera_image(cam, objects + labels).save(folder / f"net-{i}.png")
     return (15 if target else 0), objects
 
 
@@ -71,6 +95,7 @@ def main():
     manifest = Path(sys.argv[1])
     props_path = Path(sys.argv[2])
     props = json.loads(props_path.read_text())
+    register_font(str(Path(__file__).resolve().parents[1] / "public/fonts/BeVietnamPro-Bold.ttf"))
     root = props_path.parent
     for c in props["canh"]:
         for field in ("chuoi3D", "nhanNet", "mocNhanNet", "anhCanh3D", "congThucManim"):
@@ -96,7 +121,13 @@ def main():
                         raise ValueError(f"Khung Blender {key}/{i} thiếu vật hoặc thiếu nền trong suốt")
             last, diagram_lines[key] = diagram(cam, folder)
             for index in indexes:
-                props["canh"][index]["chuoi3D"] = dict(thuMuc=key, netCuoi=last)
+                props["canh"][index]["chuoi3D"] = dict(
+                    thuMuc=key,
+                    netCuoi=last,
+                    coThuoc=any(
+                        x.get("nhan") for x in json.loads((folder / "projection.json").read_text())
+                    ),
+                )
         carry = None
         label_file = None
         for c in props["canh"]:

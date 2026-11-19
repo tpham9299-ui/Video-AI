@@ -28,6 +28,8 @@ Bộ chuẩn bị kịch bản chọn minh họa bờ biển hoặc căn hộ kh
 
 Với bài toán thực tế, sau bước chuẩn bị, GitHub Actions chạy `scripts/canh_3d.py` để chọn cảnh phù hợp. Blender Cycles trên CPU dựng chuỗi RGBA với máy quay chuyển nhẹ từ dữ kiện sân khấu hoặc từ các khối trong `mo_hinh_3d.chi_tiet`. Máy xuất tọa độ ở góc cuối cho `scripts/manim_thuc_te.py` vẽ nét trùng hình và dựng công thức của phần giải. Remotion ghép chuyển tiếp trên nền video theo thời gian của từng cảnh.
 
+Mỗi cảnh có thể khai báo riêng `mo_hinh_3d`. Bước chuẩn bị truyền mô hình này sang Blender; các đoạn đo có thể neo theo tâm cuối của vật và chuyển cho Manim sau khi đối chiếu độ dài với đề.
+
 ### Kiến trúc 2 tầng phối hợp:
 1. **Tầng điều phối & quản trị (Google Apps Script + Google Sheets + Google Drive + Zalo Bot)**:
    - Lưu trữ hàng đợi bài toán (`HANG_DOI`), cấu hình (`CAU_HINH`), lịch sử góp ý học tập (`GOP_Y_HOC`), quy tắc tự học (`QUY_TAC_HOC`), thống kê số liệu (`SO_LIEU`), chuỗi video (`SERIES`), quảng cáo sản phẩm (`SAN_PHAM`), và kho khóa API (`KHO_KEY`).
@@ -898,3 +900,9 @@ Với bài toán thực tế, sau bước chuẩn bị, GitHub Actions chạy `s
 - Phần giải của video có chuỗi Blender dùng Manim dựng từng dòng công thức từ kịch bản. Bộ ghép dùng mốc lời giải hiện có để đưa từng dòng lên hình.
 - Kiểm tra tổng hàng rào, cấu tạo đáy và bốn vách của bể chữ nhật không nắp, cùng thể tích lòng bể khi đề cho bằng mét khối. Mô hình khai báo sai dừng ở bước chuẩn bị.
 - Với video dùng Blender, kiểm duyệt trước khi dựng lấy một ảnh cuối mỗi cảnh và thêm một ảnh vật thể cho mỗi cảnh chuyển từ 3D sang Manim. Báo cáo được đánh dấu chưa hoàn tất nếu thiếu ảnh hoặc AI chưa đối chiếu được. Các phép kiểm tra này dùng dữ kiện kịch bản và khung hình mẫu.
+
+#### Lần 46 (v79) — Minh họa 3D theo từng cảnh và dữ kiện mới
+
+- Bổ sung thân thuyền, băng chuyền có con lăn và lăng trụ đùn từ đa giác lồi. Biên kịch có thể kết hợp nhiều chi tiết trong một hệ tọa độ, xoay và tịnh tiến từng vật. Mô hình từng cảnh dùng được cả ở phần liên hệ thực tế và các cảnh minh họa của bài xác suất. Hình học chuyên biệt tiếp tục dùng Manim.
+- Với kịch bản thiếu bản vẽ, bộ chuẩn bị nhận một số cách viết đơn giản cho khoảng cách từ thuyền đến bờ sông và chiều dài băng chuyền. Các tình huống phức hợp dựa vào bản vẽ có cấu trúc. Manim đặt đường đo tại tọa độ đã chiếu, đối chiếu nhãn với trích dẫn và đổi đơn vị trước khi kiểm tra độ dài.
+- Cảnh Blender dùng tiêu đề một khối Montserrat, nhãn độ dài Be Vietnam Pro và tăng không gian cho vật thể. Khi hiện số đo, vật thể còn hiện mờ làm mốc.

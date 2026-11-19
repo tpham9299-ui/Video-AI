@@ -7,7 +7,7 @@ from pathlib import Path
 import sys
 
 import bpy
-from mathutils import Vector
+from mathutils import Euler, Vector
 
 
 COLORS = {
@@ -122,12 +122,86 @@ def vuon(s):
                 vat("hop", (*mid, u * i * 0.018), (dx or u * 0.004, dy or u * 0.004, u * 0.004), "thep")
 
 
+def vo_khoi(profile, size, taper, mat):
+    # Hai vành có cùng thứ tự đỉnh, đáy tàu được thu nhỏ theo phương ngang.
+    x, y, z = size
+    xs, ys = zip(*profile)
+
+    def coord(a, lo, hi):
+        return (a - lo) / (hi - lo) - 0.5
+
+    outline = [(coord(a, min(xs), max(xs)) * x, coord(b, min(ys), max(ys)) * y) for a, b in profile]
+    if sum(a * d - b * c for (a, b), (c, d) in zip(outline, outline[1:] + outline[:1])) < 0:
+        outline.reverse()
+    n = len(outline)
+    vertices = [(a * k, b * k, h * z) for k, h in ((taper, -0.5), (1, 0.5)) for a, b in outline]
+    faces = [list(reversed(range(n))), list(range(n, 2 * n))]
+    faces += [(i, (i + 1) % n, (i + 1) % n + n, i + n) for i in range(n)]
+    mesh = bpy.data.meshes.new("Vỏ")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    ob = bpy.data.objects.new("Vỏ", mesh)
+    bpy.context.collection.objects.link(ob)
+    ob.data.materials.append(MATS.get(mat, MATS["go"]))
+    return ob
+
+
+def chi_tiet(p):
+    w, d, h = p["co"]
+    shape = p["hinh"]
+    material = p.get("vat_lieu", "da")
+    center = Vector(p["tam"])
+    rot = Euler(tuple(map(math.radians, p.get("xoay", [0, 0, 0])))).to_matrix()
+    if shape == "bang_chuyen":
+        pieces = [vat("hop", (0, 0, 0.32 * h), (w, d, 0.24 * h), "toi")]
+        for sign in (-1, 1):
+            pieces.append(vat("hop", (0, sign * 0.46 * d, 0.22 * h), (w, 0.08 * d, 0.3 * h), material))
+            for end in (-1, 1):
+                pieces.append(
+                    vat(
+                        "hop",
+                        (end * 0.4 * w, sign * 0.4 * d, -0.14 * h),
+                        (0.045 * w, 0.09 * d, 0.72 * h),
+                        "thep",
+                    )
+                )
+        for i in range(12):
+            pieces.append(
+                vat(
+                    "tru",
+                    ((i / 11 - 0.5) * w * 0.95, 0, 0.40 * h),
+                    (0.2 * h, 0.2 * h, d * 0.89),
+                    "thep",
+                    (90, 0, 0),
+                )
+            )
+    elif shape == "thuyen":
+        hull = vo_khoi(
+            [(-1, -0.62), (0.36, -1), (1, 0), (0.36, 1), (-1, 0.62)], (w, d, h * 0.6), 0.70, material
+        )
+        hull.location.z = -0.2 * h
+        pieces = [
+            hull,
+            vat("hop", (-0.13 * w, 0, 0.25 * h), (0.37 * w, 0.59 * d, 0.3 * h), "kinh"),
+            vat("hop", (-0.13 * w, 0, 0.45 * h), (0.43 * w, 0.68 * d, 0.1 * h), "trang"),
+        ]
+    elif shape == "lang_tru":
+        pieces = [vo_khoi(p["day"], p["co"], 1, material)]
+    else:
+        pieces = [vat(shape, (0, 0, 0), p["co"], material)]
+    for ob in pieces:
+        ob.location = center + rot @ ob.location
+        ob.rotation_euler = (rot @ ob.rotation_euler.to_matrix()).to_euler()
+        if any(p.get("dich_chuyen", [])):
+            ob["dich"] = p["dich_chuyen"]
+
+
 def dung(s):
     if s["loai"] == "vuon":
         vuon(s)
     elif s["loai"] == "lap_ghep":
         for p in s["chi_tiet"]:
-            vat(p["hinh"], p["tam"], p["co"], p.get("vat_lieu", "da"), p.get("xoay", (0, 0, 0)))
+            chi_tiet(p)
     elif s["loai"] == "can_ho":
         nha(0, 0, 9, 3, 6, s["tong"], s.get("trong"))
     elif s["loai"] == "cap_bo":
@@ -187,6 +261,10 @@ def render(plan, dest):
     dung(plan)
     bpy.context.view_layer.update()
     pts = [o.matrix_world @ Vector(c) for o in scene.objects for c in o.bound_box]
+    moving = [(ob, ob.location.copy(), Vector(ob["dich"])) for ob in scene.objects if "dich" in ob]
+    pts.extend(ob.matrix_world @ Vector(c) + delta for ob, _, delta in moving for c in ob.bound_box)
+    for segment in plan.get("doan_toan", []):
+        pts.extend(Vector(segment[k]) for k in ("a", "b"))
     lo = Vector(tuple(min(p[i] for p in pts) for i in range(3)))
     hi = Vector(tuple(max(p[i] for p in pts) for i in range(3)))
     center = (lo + hi) / 2
@@ -229,6 +307,8 @@ def render(plan, dest):
     for i in range(16):
         t = i / 15
         angle = math.radians(-7 * (1 - t * t * (3 - 2 * t)))
+        for ob, origin, delta in moving:
+            ob.location = origin + delta * t * t * (3 - 2 * t)
         axis = Matrix.Rotation(angle, 3, "Z") @ direction
         cam.location = center + axis * span * 2
         cam.rotation_euler = (-axis).to_track_quat("-Z", "Y").to_euler()
@@ -248,7 +328,12 @@ def render(plan, dest):
         )
 
     kind = plan["loai"]
-    if kind == "vuon":
+    if plan.get("doan_toan"):
+        for segment in plan["doan_toan"]:
+            edge(segment["a"], segment["b"])
+            if segment.get("do_dai"):
+                lines[-1]["nhan"] = segment["do_dai"]
+    elif kind == "vuon":
         w, d = plan["rong"], plan["dai"]
         corners = [(0, 0, 0), (w, 0, 0), (w, d, 0), (0, d, 0)]
         for i, side in enumerate(("duoi", "phai", "tren", "trai")):

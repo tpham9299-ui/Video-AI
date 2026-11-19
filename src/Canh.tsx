@@ -23,7 +23,7 @@ import {LopHinh} from './sankhau/hinhtudo';
 import {tinhGoc3D} from './sankhau/trangthai';
 import {nhanCanh, TieuDeCanh} from './TieuDeCanh';
 import {phaCua, ThanhBuoc} from './ThanhBuoc';
-import {chuTrenMau, FONT, GIAO_DIEN, laMoi, MAU} from './theme';
+import {chuTrenMau, FONT, FONT_TIEU_DE, GIAO_DIEN, laMoi, MAU} from './theme';
 import {Toan} from './Toan';
 import {VuaKhung} from './VuaKhung';
 import {boCucTheDe, coTheDe, DeBai, TheDeBai} from './TheDeBai';
@@ -307,7 +307,7 @@ export const Canh: React.FC<{
         </NhoeHuong>
       ) : null}
 
-      {clip ? <div style={{position: 'absolute', top: 420, left: 48, right: 48, height: 570, opacity: ra}}>
+      {clip ? <div style={{position: 'absolute', top: Math.max(425, yNoiDung), left: 38, right: 38, height: Math.min(775, yNoiDung + caoSan - Math.max(425, yNoiDung)), opacity: ra}}>
         <CanhBlender canh={canh} frame={frame} fps={fps} />
       </div> : null}
       {anh3D && !clip ? (
@@ -384,7 +384,12 @@ export const Canh: React.FC<{
 
       {/* Đầu cảnh: nhãn + tiêu đề (hoặc câu hook ở cảnh 1) */}
       <div style={{position: 'absolute', left: 40, right: 40, top: moi ? (coHook ? 200 : 250) : Y_DAU, height: dayTieuDe - (moi ? (coHook ? 200 : 250) : Y_DAU) - (moi ? 4 : 10), display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: moi ? 'center' : undefined, opacity: ra}}>
-        {moi ? (
+        {clip ? (anTieuDe ? null : <VuaKhung maxW={956} maxH={155}>
+          <div style={{fontFamily: FONT_TIEU_DE, fontSize: 68, fontWeight: 800, lineHeight: 1.12,
+            textAlign: 'center', color: '#f1f6f5', textShadow: '0 2px 7px #081019'}}>
+            {coHook ? hook.chu : tieuDeCanh || tieuDe}
+          </div>
+        </VuaKhung>) : moi ? (
           anTieuDe ? null : (
             <VuaKhung maxW={1000} maxH={dayTieuDe - (coHook ? 200 : 250) - 8}>
               <ChuBaTang dan={baTang.dan} chot={baTang.chot} duoi={baTang.duoi} mau={mauNhan} tre={coHook ? canh.leadFrame : 0} coToiDa={coHook ? 128 : 102} noi={coHook || khungCuoi} />

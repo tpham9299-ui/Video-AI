@@ -41,6 +41,11 @@ def canh_tu_kich_ban(kb, mh):
         return model
     if kb.get("mo_hinh_3d"):
         raise ValueError("Mô hình 3D không khớp dữ kiện đề hoặc có chi tiết không hợp lệ")
+    if any(isinstance(v, dict) and v.get("loai") in ("do_thi", "hinh_hoc") for v in vat):
+        return None
+    simple = canh_mot_vat(de)
+    if simple:
+        return mo_hinh_tu_de(dict(kb, mo_hinh_3d=simple))
     bv = next((v for v in vat if isinstance(v, dict) and v.get("loai") == "canh_that"), None)
     if bv and isinstance(bv.get("vat") or [], list):
         objs = [v for v in bv.get("vat") or [] if isinstance(v, dict) and v.get("ten") != "mat_troi"]
@@ -104,6 +109,69 @@ def canh_tu_kich_ban(kb, mh):
     return None
 
 
+MET = {"km": 1000, "m": 1, "mét": 1, "cm": 0.01, "mm": 0.001}
+DO_DAI = r"(\d+(?:[.,]\d+)?)\s*(km|cm|mm|mét|m)"
+
+
+def canh_mot_vat(de):
+    """Nhận hai quan hệ đơn giản trong đề cũ thiếu bản vẽ. Đề phức hợp dùng bản vẽ của biên kịch."""
+    measure = "(?P<length>" + DO_DAI + r")\b"
+    boat = re.search(
+        r"(?P<obj>thuyền|tàu|xuồng)(?: [a-z])? (?:đang )?cách (?P<bank>bờ sông) " + measure, de
+    )
+    belt = re.search(r"(?P<obj>băng chuyền|băng tải)(?: thẳng)? dài " + measure, de)
+    if bool(boat) == bool(belt) or re.search(
+        r"hai (?:chiếc|băng)|nghiêng|góc nghiêng|thứ hai|song song|hợp với|ngược chiều|bờ đối diện", de
+    ):
+        return None
+    m = boat or belt
+    num, unit = re.fullmatch(DO_DAI, m["length"]).groups()
+    d = float(num.replace(",", ".")) * MET[unit]
+    if not 1e-4 <= d <= 1e5:
+        return None
+
+    def part(shape, quote, center, size, material):
+        return dict(
+            hinh=shape,
+            tu_de=quote,
+            tam=[v * d for v in center],
+            co=[v * d for v in size],
+            vat_lieu=material,
+        )
+
+    if boat:
+        parts = [
+            part("hop", "sông", (0, 0.75, -0.035), (2, 1.5, 0.065), "nuoc"),
+            part("hop", m["bank"], (0, -0.075, -0.02), (2, 0.15, 0.04), "dat"),
+            part("thuyen", m["obj"], (0, 1, 0.035), (0.37, 0.13, 0.085), "do"),
+        ]
+        start, end = [0, d, 0], [0, 0, 0]
+    else:
+        parts = [part("bang_chuyen", m["obj"], (0, 0, 0.075), (1, 0.18, 0.15), "vang")]
+        if "kiện hàng" in de:
+            parcel = part("hop", "kiện hàng", (-0.45, 0, 0.195), (0.1, 0.085, 0.09), "go")
+            if re.search(r"từ đầu (?:đến|tới) cuối", de):
+                parcel["dich_chuyen"] = [0.90 * d, 0, 0]
+            parts.append(parcel)
+        start, end = [-0.5 * d, 0, 0.15 * d], [0.5 * d, 0, 0.15 * d]
+    return dict(chi_tiet=parts, doan_toan=[dict(a=start, b=end, tu_de=m[0], do_dai=m["length"])])
+
+
+def bien_dang_loi(points):
+    if not isinstance(points, list) or not 3 <= len(points) <= 24:
+        return False
+    if not all(isinstance(p, list) and len(p) == 2 and all(so(x) for x in p) for p in points):
+        return False
+    # Mọi đỉnh còn lại phải cùng phía mỗi cạnh (loại nét tự cắt và cạnh suy biến).
+    signs = []
+    for i, (x, y) in enumerate(points):
+        u, v = points[(i + 1) % len(points)]
+        for j, (a, b) in enumerate(points):
+            if j not in (i, (i + 1) % len(points)):
+                signs.append((u - x) * (b - y) - (v - y) * (a - x))
+    return min(signs) > 1e-8 or max(signs) < -1e-8
+
+
 def mo_hinh_tu_de(kb):
     # Mô hình tự do gồm các chi tiết ghép chung một hệ tọa độ. Chỉ nhận dữ liệu khai báo.
     mo = kb.get("mo_hinh_3d")
@@ -120,7 +188,11 @@ def mo_hinh_tu_de(kb):
         if (
             len(source) < 2
             or source not in de
-            or item.get("hinh") not in ("hop", "tru", "cau", "non")
+            or item.get("hinh") not in ("hop", "tru", "cau", "non", "thuyen", "bang_chuyen", "lang_tru")
+            or (item["hinh"] == "lang_tru" and not bien_dang_loi(item.get("day")))
+            or (item["hinh"] == "thuyen" and not re.search("thuyền|tàu|ca nô|xuồng", source))
+            or (item["hinh"] == "bang_chuyen" and not re.search("băng (?:chuyền|tải)", source))
+            or not bo_ba(item.get("dich_chuyen", [0, 0, 0]))
             or not bo_ba(item.get("tam"))
             or not bo_ba(item.get("co"))
             or min(item["co"]) <= 0
@@ -131,7 +203,44 @@ def mo_hinh_tu_de(kb):
     if re.search(r"bể.{0,80}hình hộp.{0,40}không (?:có )?nắp", de):
         if not be_khong_nap(parts, de):
             return None
-    return {"loai": "lap_ghep", "chi_tiet": parts}
+    lines = mo.get("doan_toan", [])
+    if not isinstance(lines, list) or len(lines) > 12:
+        return None
+    centers = {}
+    for part in parts:
+        if "id" in part:
+            name = part["id"]
+            if not isinstance(name, str) or not name or name in centers:
+                return None
+            centers[name] = [a + b for a, b in zip(part["tam"], part.get("dich_chuyen", [0, 0, 0]))]
+    segments = []
+    for raw in lines:
+        if not isinstance(raw, dict):
+            return None
+        line = dict(raw)
+        for key in ("a", "b"):
+            pt = line.get(key)
+            if isinstance(pt, dict):
+                name = pt.get("vat")
+                offset = pt.get("lech", [0, 0, 0])
+                if not isinstance(name, str) or name not in centers or not bo_ba(offset):
+                    return None
+                line[key] = [a + b for a, b in zip(centers[name], offset)]
+            if not bo_ba(line.get(key)):
+                return None
+        segments.append(line)
+        quote = " ".join(str(line.get("tu_de") or "").casefold().split())
+        length = math.dist(line["a"], line["b"])
+        if len(quote) < 2 or quote not in de or length < 1e-6:
+            return None
+        if "do_dai" in line:
+            m = re.fullmatch(DO_DAI, str(line["do_dai"]).casefold())
+            if not m or not re.search(r"(?<![\d.,])" + re.escape(m[0]) + r"(?!\w)", quote):
+                return None
+            meters = float(m[1].replace(",", ".")) * MET[m[2]]
+            if not math.isclose(length, meters, rel_tol=0.002):
+                return None
+    return {"loai": "lap_ghep", "chi_tiet": parts, "doan_toan": segments}
 
 
 def be_khong_nap(parts, de):
@@ -170,14 +279,30 @@ def be_khong_nap(parts, de):
 
 
 def ke_hoach(kb, props):
-    if kb.get("mon") != "THUC_TE" and not (not kb.get("mon") and str(kb.get("id", "")).startswith("TT")):
-        return {}
+    practical = kb.get("mon") == "THUC_TE" or (not kb.get("mon") and str(kb.get("id", "")).startswith("TT"))
     ds = {}
     for i, c in enumerate(props.get("canh", [])):
-        if c.get("loai") not in ("mo_dau", "hook", "de_bai", "mo_hinh_hoa"):
+        local = c.get("moHinh3D")
+        if local is None and (
+            (not practical and not kb.get("mo_hinh_3d"))
+            or c.get("loai") not in ("mo_dau", "hook", "de_bai", "mo_hinh_hoa")
+        ):
             continue
-        plan = canh_tu_kich_ban(kb, c.get("minhHoa") or {})
-        if plan and plan not in ds.values():
+        if kb.get("mon") == "HINH_HOC":
+            continue
+        mh = c.get("minhHoa") or {}
+        if local is not None:
+            du = mh.get("duLieu") or {}
+            if isinstance(du, dict) and any(
+                isinstance(v, dict) and v.get("loai") == "anh_that" for v in du.get("vat") or []
+            ):
+                continue
+            plan = mo_hinh_tu_de(dict(kb, mo_hinh_3d=local))
+            if not plan:
+                raise ValueError(f"Mô hình riêng của cảnh {i + 1} sai dữ kiện hoặc kích thước")
+        else:
+            plan = canh_tu_kich_ban(kb, mh)
+        if plan and (local is not None or plan not in ds.values()):
             ds[i] = plan
     return ds
 
@@ -210,7 +335,7 @@ def main():
         path = clip / "projection.json"
         if not path.exists() or not all((clip / f"orbit-{j}.png").exists() for j in range(16)):
             jobs[str(path)] = scene
-        groups["canh_3d/" + key] = [i]
+        groups.setdefault("canh_3d/" + key, []).append(i)
     if jobs:
         with tempfile.TemporaryDirectory() as td:
             batch = Path(td) / "batch.json"

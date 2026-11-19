@@ -11,7 +11,7 @@ export type CanhProps = {
   noiDung: string[]; // các dòng LaTeX hiện trên màn hình
   minhHoa: MinhHoa;
   anhCanh3D?: string;
-  chuoi3D?: {thuMuc: string; netCuoi: number; giuNet?: boolean};
+  chuoi3D?: {thuMuc: string; netCuoi: number; coThuoc?: boolean; giuNet?: boolean};
   nhanNet?: string;
   mocNhanNet?: number;
   congThucManim?: string[];

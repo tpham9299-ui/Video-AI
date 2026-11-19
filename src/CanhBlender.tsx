@@ -17,12 +17,13 @@ export const CanhBlender: React.FC<{canh: CanhProps; frame: number; fps: number}
     <Img key={name} src={staticFile(clip.thuMuc + '/' + name + '.png')}
       style={{position: 'absolute', width: '100%', height: '100%', objectFit: 'contain', opacity}} /> : null;
   if (clip.giuNet) return <>
+    {clip.coThuoc && pic('orbit-15', .32)}
     {pic('net-' + clip.netCuoi, 1)}
     {canh.nhanNet && <Img src={staticFile(canh.nhanNet)} style={{position: 'absolute', width: '100%',
       height: '100%', objectFit: 'contain', opacity: canh.mocNhanNet === undefined ? 1 : kep((time - canh.mocNhanNet) / .3)}} />}
   </>;
   return <>
-    {pic('orbit-' + Math.round(turn), 1 - blend)}
+    {pic('orbit-' + Math.round(turn), 1 - blend * (clip.coThuoc ? .68 : 1))}
     {pic('net-' + Math.round(flatten * clip.netCuoi), blend)}
   </>;
 };
