@@ -84,6 +84,7 @@ function traLoiLenh_(chat, chu, anh) {
   if (/^\/duyet\b/.test(l)) return duyetVideo_(chu);
   if (/^\/sua\b/.test(l)) return yeuCauSuaVideo_(chat, chu);
   if (/^\/bo\b/.test(l)) return boVideo_(chu, chat);
+  if (l === '/donvideoloi') return donVideoLoi_(chat);
   if (/^\/cho\b/.test(l)) return danhSachChoDuyet_();
   if (/^\/(suavideocu|dunglai|nangcap)\b/.test(l) && typeof quetVaSuaVideoCuDrive === 'function') return quetVaSuaVideoCuDrive();
   if (/^\/(videodai|10phut|youtube10p)\b/.test(l) && typeof taoVideoDaiZalo_ === 'function') return taoVideoDaiZalo_(chat, chu);
@@ -411,6 +412,71 @@ function traLoiLyDoBo_(chat, chu) {
     return '✍️ Đã nhận góp ý: "' + noiDung.slice(0, 180) + '".\n🔄 Thay vì bỏ luôn, hệ thống đã khôi phục ' + daKhoiPhuc.join(', ') + ' và giao AI CHỈNH SỬA LẠI KỊCH BẢN theo đúng góp ý của bạn rồi dựng lại video mới!\n🧠 Đồng thời rút thành quy tắc áp dụng cho các video đang chờ và video sau.';
   }
   return '🙏 Đã ghi lý do cho ' + o.ids.length + ' video vừa bỏ: ' + noiDung.slice(0, 200) + '\n🧠 Hệ thống sẽ học để các video sau tránh lỗi này.';
+}
+
+// Chỉ dọn bản MP4 mà kết quả kiểm duyệt hiện tại đã kết luận lỗi.
+function videoCoKetLuanLoi_(r) {
+  if (!r.id || !r.file_video || r.trang_thai !== 'CO_VIDEO') return false;
+  var chu = String(r.ghi_chu || '');
+  if (r.duyet === 'KHONG_DAT') return !/chưa chấm|chưa xem|hết key|nghẽn key|thiếu kết quả/i.test(chu);
+  if (r.duyet !== 'CHO') return false;
+  if (/Cảnh \d+, giây [\d.]+: vùng ảnh đảo qua lại nhiều lần/.test(chu)) return true;
+  var m = /^Chờ duyệt tay sau \d+ lần sửa \((\d+)%\)/.exec(chu);
+  if (!m) return false;
+  var kt = docAiKT_(r);
+  if (kt.phan_tram !== Number(m[1])) return false;
+  return kt.phan_tram < nguongDapUng_() || Object.keys(kt.chi_tiet || {}).some(function (k) {
+    return kt.chi_tiet[k] < diemMoiTieuChi_();
+  });
+}
+
+function donVideoLoi_(chat) {
+  return voiKhoa_(5000, function () {
+    var p = PropertiesService.getScriptProperties();
+    if (!p.getProperty('DOT_DON_VIDEO_LOI')) {
+      p.setProperty('DOT_DON_VIDEO_LOI', JSON.stringify({den: Date.now(), sau: '', daDon: 0, loi: 0, chat: chat}));
+    }
+    return donLoVideoLoi_(p);
+  }) || 'Hệ thống đang bận. Gửi lại /donvideoloi sau ít phút.';
+}
+
+// Cả lệnh Zalo và lịch chayDonDep đều giữ khóa khi gọi hàm này.
+function donLoVideoLoi_(p) {
+  var raw = p.getProperty('DOT_DON_VIDEO_LOI');
+  if (!raw) return '';
+  var dot = JSON.parse(raw);
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
+  var hang = docHang_(sh);
+  var tepDungChung = Object.create(null);
+  hang.forEach(function (r) {
+    if (r.file_video) tepDungChung[r.file_video] = (tepDungChung[r.file_video] || 0) + 1;
+  });
+  var ds = hang.filter(function (r) {
+    return videoCoKetLuanLoi_(r) && String(r.id) > dot.sau && !(new Date(r.cap_nhat).getTime() > dot.den);
+  }).sort(function (a, b) { return a.id < b.id ? -1 : a.id > b.id ? 1 : 0; });
+  var batDau = Date.now(), i = 0;
+  while (i < ds.length && i < 15 && Date.now() - batDau < 18000) {
+    var r = ds[i++];
+    try {
+      var f = DriveApp.getFileById(String(r.file_video));
+      if (tepDungChung[r.file_video] > 1 || !/^video\//i.test(f.getMimeType())) throw Error('Tệp dùng chung hoặc sai loại');
+      if (!f.isTrashed()) f.setTrashed(true);
+      ghi_(sh, r._row, {trang_thai: 'DA_DON_VIDEO', file_video: '', duyet: 'BO'}, r.id);
+      dot.daDon++;
+    } catch (e) {
+      dot.loi++;
+      nhatKy_('DON_VIDEO_LOI', r.id + ': ' + e.message);
+    }
+    dot.sau = String(r.id);
+  }
+  SpreadsheetApp.flush();
+  var tin = 'Đã dọn ' + dot.daDon + ' video lỗi vào Thùng rác Drive. Có lỗi khi xử lý ' + dot.loi + ' video.';
+  if (i === ds.length) {
+    p.deleteProperty('DOT_DON_VIDEO_LOI');
+    return tin;
+  }
+  p.setProperty('DOT_DON_VIDEO_LOI', JSON.stringify(dot));
+  return tin + ' Lịch dọn nền sẽ tiếp tục.';
 }
 
 function danhSachChoDuyet_() {

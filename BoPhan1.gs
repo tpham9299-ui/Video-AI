@@ -2899,13 +2899,20 @@ function caiDatTriggerDon() {
 function chayDonDep() {
   var khoa = LockService.getScriptLock();
   if (!khoa.tryLock(5000)) return;   // đang có lần chạy chính thì bỏ qua
-  var canVe = false;
+  var canVe = false, tinDon = '', chatDon = '';
   try {
     var p = PropertiesService.getScriptProperties();
+    var dotDon = p.getProperty('DOT_DON_VIDEO_LOI');
+    if (dotDon) {
+      chatDon = JSON.parse(dotDon).chat;
+      tinDon = donLoVideoLoi_(p);
+      if (p.getProperty('DOT_DON_VIDEO_LOI')) tinDon = '';
+    }
     var can = p.getProperty('CAN_DONG_BO') === '1';
     if (donDaXong_() > 0 || can) { p.deleteProperty('CAN_DONG_BO'); canVe = true; }
   } finally { khoa.releaseLock(); }
   // Vẽ lại bảng DOC_DE / DOC_KICH_BAN bên ngoài khóa để không bao giờ chặn lệnh Zalo của người dùng
+  if (tinDon && chatDon) guiZaloToi_(chatDon, tinDon);
   if (canVe) dongBoBangDoc();
 }
 

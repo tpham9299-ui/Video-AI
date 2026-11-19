@@ -20,6 +20,8 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
 
 Khi chuẩn bị hình, bộ viết kịch bản chọn vật theo lời giảng. Trước khi dựng, `scripts/chuanbi.py` đối chiếu số học sinh từng khối với đề và chọn cảnh bảng phân công cho lời liên hệ về chia nhóm hoặc ca trực. Remotion dùng chung họ chữ cho tiêu đề, phụ đề và nhãn. Manim ưu tiên cùng họ Be Vietnam Pro khi dựng nhãn hình học.
 
+Lệnh Zalo `/donvideoloi` dùng kết quả kiểm duyệt trong HANG_DOI để dọn MP4 lỗi vào Thùng rác Drive. Lịch dọn nền tiếp tục khi có nhiều video.
+
 ### Kiến trúc 2 tầng phối hợp:
 1. **Tầng điều phối & quản trị (Google Apps Script + Google Sheets + Google Drive + Zalo Bot)**:
    - Lưu trữ hàng đợi bài toán (`HANG_DOI`), cấu hình (`CAU_HINH`), lịch sử góp ý học tập (`GOP_Y_HOC`), quy tắc tự học (`QUY_TAC_HOC`), thống kê số liệu (`SO_LIEU`), chuỗi video (`SERIES`), quảng cáo sản phẩm (`SAN_PHAM`), và kho khóa API (`KHO_KEY`).
@@ -860,3 +862,8 @@ Khi chuẩn bị hình, bộ viết kịch bản chọn vật theo lời giảng
 - Đồng bộ họ chữ tiếng Việt trong tiêu đề, phụ đề, nhãn sân khấu và hình học. Bộ hiển thị công thức và tạo phụ đề chuẩn hóa chữ x giữa hai số thành dấu nhân ×, giữ biến trong các biểu thức như 2x và x².
 - Khi đề cho rõ số học sinh từng khối và cảnh thiếu hình hoặc dùng hộp bi thay người, bước chuẩn bị dựng nhóm học sinh theo dữ kiện. Lời chọn rõ số bạn ở khối nào sẽ đánh dấu các bạn tương ứng.
 - Cảnh liên hệ nói về chia nhóm hoặc phân công ca trực có minh họa người gắn phiếu lên bảng. Cảnh bốc thăm dùng phiếu, vòng quay dành cho lời giảng thực sự nói đến quay số.
+
+#### Lần 41 (v74) — Dọn video đã có kết luận lỗi trên Drive
+
+- Lệnh `/donvideoloi` dọn video từ hàng đợi theo mã tệp Drive. Lệnh nhận diện trạng thái kiểm duyệt cũ và kết luận lỗi từ lượt chấm nội dung hoặc đo chuyển động. Bản thiếu báo cáo được giữ để duyệt tay.
+- Mỗi lượt xử lý tối đa 15 video. Khi còn việc, lịch dọn nền tiếp tục và báo kết quả qua Zalo. Kịch bản, ảnh bìa và dòng lịch sử được giữ lại.
