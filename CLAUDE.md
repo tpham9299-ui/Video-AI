@@ -26,7 +26,7 @@ Với bài hình học phẳng và không gian, GitHub Actions bắt buộc dự
 
 Bộ chuẩn bị kịch bản chọn minh họa bờ biển hoặc căn hộ khi nhận diện được dữ kiện tương ứng. Remotion dùng Montserrat cho tiêu đề và Be Vietnam Pro cho phần văn bản theo cấu hình mặc định. Hình bình bi dùng chung thân trụ trong suốt trên hai định dạng kịch bản.
 
-Với bài toán thực tế, sau bước chuẩn bị, GitHub Actions chạy `scripts/canh_3d.py` để chọn cảnh phù hợp. Blender Cycles trên CPU dựng ảnh từ dữ kiện sân khấu hoặc từ các khối trong `mo_hinh_3d.chi_tiet`. Remotion hiển thị ảnh trong vùng minh họa trước khi chuyển sang mô hình toán.
+Với bài toán thực tế, sau bước chuẩn bị, GitHub Actions chạy `scripts/canh_3d.py` để chọn cảnh phù hợp. Blender Cycles trên CPU dựng chuỗi RGBA với máy quay chuyển nhẹ từ dữ kiện sân khấu hoặc từ các khối trong `mo_hinh_3d.chi_tiet`. Máy xuất tọa độ ở góc cuối cho `scripts/manim_thuc_te.py` vẽ nét trùng hình và dựng công thức của phần giải. Remotion ghép chuyển tiếp trên nền video theo thời gian của từng cảnh.
 
 ### Kiến trúc 2 tầng phối hợp:
 1. **Tầng điều phối & quản trị (Google Apps Script + Google Sheets + Google Drive + Zalo Bot)**:
@@ -891,3 +891,10 @@ Với bài toán thực tế, sau bước chuẩn bị, GitHub Actions chạy `s
 - Bản vẽ khu vườn bảo toàn kích thước và cạnh có tường hoặc rào. Cảnh cập bờ, căn hộ và một số vật có chiều cao dùng các dữ kiện đã chuẩn bị cho sơ đồ.
 - Kịch bản có thể mô tả vật mới bằng các khối ghép theo tọa độ chung. Mỗi chi tiết cần dẫn cụm từ xuất hiện trong đề. Bài bể nước mẫu dùng một đáy và bốn thành bao quanh lòng bể.
 - Workflow cài Blender khi có cảnh phù hợp, dựng ảnh một lần cho mỗi mô hình rồi ghép trước sơ đồ trong video dọc. Khi thiếu mô tả hợp lệ, Remotion tiếp tục dùng minh họa của cảnh.
+
+#### Lần 45 (v78) — Chuyển từ vật thể sang hình toán ngay trên nền video
+
+- Bỏ mặt nền của Blender và lớp nền riêng ở khung ghép. Máy quay xoay nhẹ một chiều rồi dừng. Manim vẽ đường toán ngay trên tọa độ ảnh cuối, sau đó trải hình vườn hoặc sơ đồ cập bờ lên mặt phẳng. Sơ đồ được giữ qua các cảnh giải thích kế tiếp khi chưa có minh họa khác. Với lời đặt ẩn cho hai hướng cạnh vườn, nhãn xuất hiện theo mốc thoại.
+- Phần giải của video có chuỗi Blender dùng Manim dựng từng dòng công thức từ kịch bản. Bộ ghép dùng mốc lời giải hiện có để đưa từng dòng lên hình.
+- Kiểm tra tổng hàng rào, cấu tạo đáy và bốn vách của bể chữ nhật không nắp, cùng thể tích lòng bể khi đề cho bằng mét khối. Mô hình khai báo sai dừng ở bước chuẩn bị.
+- Với video dùng Blender, kiểm duyệt trước khi dựng lấy một ảnh cuối mỗi cảnh và thêm một ảnh vật thể cho mỗi cảnh chuyển từ 3D sang Manim. Báo cáo được đánh dấu chưa hoàn tất nếu thiếu ảnh hoặc AI chưa đối chiếu được. Các phép kiểm tra này dùng dữ kiện kịch bản và khung hình mẫu.

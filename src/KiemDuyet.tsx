@@ -65,6 +65,11 @@ function doKhungHinh(goc: HTMLElement): {loi: LoiKD[]; chu: string[]; so: string
 
   const khoi: Khoi[] = [];
   const loi: LoiKD[] = [];
+  for (const e of Array.from(goc.querySelectorAll<HTMLImageElement>('img[data-manim-formula]'))) {
+    if (!e.complete || !e.naturalWidth || boQua(e) || doMo(e) < .55) continue;
+    const hop = catBoi(e, quy(e.getBoundingClientRect()));
+    if (hop && dt(hop) > 0) khoi.push({chu: e.alt, hop, co: 0, el: e, katex: true});
+  }
   const walker = document.createTreeWalker(goc, NodeFilter.SHOW_TEXT);
   const daKatex = new Set<Element>();
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {

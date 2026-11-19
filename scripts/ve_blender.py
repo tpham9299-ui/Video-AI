@@ -204,7 +204,8 @@ def render(plan, dest):
     cam.data.clip_start = span * 0.0001
     cam.data.clip_end = span * 80
     scene.camera = cam
-    vat("hop", (center.x, center.y, lo.z - span * 0.016), (span * 50, span * 50, span * 0.03), "co")
+    scene.render.film_transparent = True
+    scene.render.image_settings.color_mode = "RGBA"
     bpy.ops.object.light_add(type="AREA", location=center + Vector((-1, -1, 2)) * span)
     lamp = bpy.context.object
     lamp.rotation_euler = (center - lamp.location).to_track_quat("-Z", "Y").to_euler()
@@ -220,10 +221,68 @@ def render(plan, dest):
     scene.cycles.use_denoising = False
     scene.render.resolution_x, scene.render.resolution_y = 960, 600
     scene.render.resolution_percentage = 100
-    tmp = dest.with_suffix(".tmp.png")
-    scene.render.filepath = str(tmp)
-    bpy.ops.render.render(write_still=True)
-    tmp.replace(dest)
+    # Lấy cả quỹ đạo trong cùng khung trực giao, dừng ở góc dùng để chiếu nét Manim.
+    from mathutils import Matrix
+    from bpy_extras.object_utils import world_to_camera_view
+
+    scene.cycles.samples = 12
+    for i in range(16):
+        t = i / 15
+        angle = math.radians(-7 * (1 - t * t * (3 - 2 * t)))
+        axis = Matrix.Rotation(angle, 3, "Z") @ direction
+        cam.location = center + axis * span * 2
+        cam.rotation_euler = (-axis).to_track_quat("-Z", "Y").to_euler()
+        bpy.context.view_layer.update()
+        scene.render.filepath = str(dest.parent / f"orbit-{i}.png")
+        bpy.ops.render.render(write_still=True)
+
+    def project(pt):
+        uv = world_to_camera_view(scene, cam, Vector(pt))
+        return [float(uv.x), float(uv.y)]
+
+    lines = []
+
+    def edge(a, b, color="#7EE9DB", flat=False):
+        lines.append(
+            dict(a=project(a), b=project(b), color=color, flat=[list(a[:2]), list(b[:2])] if flat else None)
+        )
+
+    kind = plan["loai"]
+    if kind == "vuon":
+        w, d = plan["rong"], plan["dai"]
+        corners = [(0, 0, 0), (w, 0, 0), (w, d, 0), (0, d, 0)]
+        for i, side in enumerate(("duoi", "phai", "tren", "trai")):
+            edge(corners[i], corners[(i + 1) % 4], "#FFB968" if side == plan["tuong"] else "#7EE9DB", True)
+    elif kind == "cap_bo":
+        a, b = plan["ah"], plan["hb"]
+        edge((0, a, 0), (0, 0, 0), flat=True)
+        edge((0, 0, 0), (b, 0, 0), "#FFB968", True)
+    elif kind == "vat":
+        for obj in plan["vat"]:
+            x, y = obj["x"], obj.get("y", 0)
+            edge((x, y, 0), (x, y, obj["cao"]))
+    else:
+        # Chiếu đường bao và các cạnh sắc nhìn thấy từ góc máy cuối.
+        graph = bpy.context.evaluated_depsgraph_get()
+        for ob in scene.objects:
+            if ob.type != "MESH":
+                continue
+            mesh = ob.data
+            normals = {}
+            for poly in mesh.polygons:
+                n = ob.matrix_world.to_quaternion() @ poly.normal
+                for key in poly.edge_keys:
+                    normals.setdefault(key, []).append(n)
+            for (i, j), ns in normals.items():
+                facing = [n.dot(direction) for n in ns]
+                if max(facing) <= 0 or (min(facing) > 0 and len(ns) == 2 and ns[0].dot(ns[1]) > 0.8):
+                    continue
+                a, b = (ob.matrix_world @ mesh.vertices[k].co for k in (i, j))
+                mid = (a + b) * 0.5
+                hit, loc, *_ = scene.ray_cast(graph, mid + direction * span * 3, -direction)
+                if not hit or (loc - mid).length < span * 0.003:
+                    edge(a, b)
+    dest.write_text(json.dumps(lines))
 
 
 if __name__ == "__main__":

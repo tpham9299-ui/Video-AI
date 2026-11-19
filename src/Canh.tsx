@@ -1,3 +1,4 @@
+import {CanhBlender} from './CanhBlender';
 import {CanhThucTe, DuLieuThucTe} from './CanhThucTe';
 import {BangPhanCong} from './BangPhanCong';
 import {BiaGap} from './BiaGap';
@@ -115,7 +116,8 @@ export const Canh: React.FC<{
   const bangPhanCong = !lopManim && canh.minhHoa.loai === 'bang_phan_cong';
   const thucTe = !lopManim && canh.minhHoa.loai === 'thuc_te_theo_de' ? canh.minhHoa.duLieu as DuLieuThucTe : null;
   const anh3D = !lopManim && canh.anhCanh3D;
-  const coHinh = !!anh3D || !!thucTe || bangPhanCong || veBia || kieu !== null;
+  const clip = !lopManim && canh.chuoi3D;
+  const coHinh = !!clip || !!anh3D || !!thucTe || bangPhanCong || veBia || kieu !== null;
   const coHook = laMoDau && !!hook.chu;
 
   // ----- công thức -----
@@ -259,9 +261,9 @@ export const Canh: React.FC<{
       <div style={{position: 'absolute', top: 0, bottom: 0, left: `${-15 + (frame / 12) * 120}%`, width: 90, transform: 'skewX(-14deg)', pointerEvents: 'none', zIndex: 5,
         background: `linear-gradient(90deg, transparent, ${mauNhan}55, #ffffffaa, ${mauNhan}55, transparent)`, opacity: Math.min(1, (14 - frame) / 5)}} />
     ) : null}
-    <div style={{position: 'absolute', inset: 0, fontFamily: FONT, transformOrigin: `540px ${goc_y}px`, transform: moi && !lopManim ? `translate(${may.x}px, ${may.y}px) scale(${may.s})` : undefined}}>
+    <div style={{position: 'absolute', inset: 0, fontFamily: FONT, transformOrigin: `540px ${goc_y}px`, transform: moi && !lopManim && !clip ? `translate(${may.x}px, ${may.y}px) scale(${may.s})` : undefined}}>
       {/* Sân khấu */}
-      {coHinh ? (
+      {coHinh && !clip ? (
         <NhoeHuong nx={ccSan.nx} ny={ccSan.ny} style={{position: 'absolute', left: 0, right: 0, top: yNoiDung, height: caoSan, display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: veBia ? 1 : ccSan.mo, transform: veBia ? undefined : `perspective(1600px) translate(${ccSan.x}px, ${ccSan.y}px) rotateX(${ccSan.rx}deg) rotateY(${ccSan.ry}deg) rotateZ(${ccSan.rz}deg) scale(${ccSan.s})`, clipPath: veBia ? undefined : ccSan.clip}}>
           {thucTe ? <CanhThucTe du={thucTe} cao={caoSan}/> : bangPhanCong ? <BangPhanCong cao={caoSan} caTruc={/trực|chia ca/i.test(canh.cau.map(c => c.text).join(' '))}
             moc={canh.cau.find(c => /phân công|chia|trực|phân bổ/i.test(c.text))?.bat ?? 0.5} /> : veBia ? <BiaGap cao={caoSan} dai={giayAm} ungDung={ungDung && !laMoDau} kienTruc={canh.cau.some(c => /kiến trúc/i.test(c.text))}
@@ -305,8 +307,11 @@ export const Canh: React.FC<{
         </NhoeHuong>
       ) : null}
 
-      {anh3D ? (
-        <div style={{position: 'absolute', top: yNoiDung, left: 40, right: 40, height: caoSan, background: '#102023',
+      {clip ? <div style={{position: 'absolute', top: 420, left: 48, right: 48, height: 570, opacity: ra}}>
+        <CanhBlender canh={canh} frame={frame} fps={fps} />
+      </div> : null}
+      {anh3D && !clip ? (
+        <div style={{position: 'absolute', top: yNoiDung, left: 40, right: 40, height: caoSan,
           borderRadius: 26, overflow: 'hidden', display: 'grid', placeItems: 'center',
           opacity: kep((canh.soFrame - frame - 2) / 8) * (kieu || thucTe || veBia ? kep((Math.min(3.8, giayAm * .62) - t) / .45) : 1)}}>
           <Img src={staticFile(anh3D)} style={{width: '100%', height: '100%', objectFit: 'contain'}} />
@@ -342,7 +347,15 @@ export const Canh: React.FC<{
             border: coHinh ? `2px solid ${khungCuoi ? 'rgba(59,242,154,0.55)' : `${mauNhan}48`}` : khungCuoi ? '2px solid rgba(59,242,154,0.42)' : 'none',
             boxShadow: coHinh || khungCuoi ? '0 14px 36px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.1)' : 'none',
             opacity: kep((t - (canh.mocCongThuc?.[0] ?? treCT) + 0.3) * 3)}}>
-            {dungBienDoi ? (
+            {canh.congThucManim?.length === nDong ? (
+              canh.congThucManim.map((src, i) => {
+                const progress = kep((t - thoiDiemDong[i]) / .30);
+                if (dungBienDoi && i + 1 < nDong && t >= thoiDiemDong[i + 1]) return null;
+                if (dungBienDoi && progress === 0) return null;
+                return <Img key={i} alt={canh.noiDung[i]} data-manim-formula={canh.noiDung[i]} src={staticFile(src)} style={{objectFit: 'contain', maxWidth: 890,
+                  height: Math.min(coCT * 1.6, 85), opacity: progress}} />;
+              })
+            ) : dungBienDoi ? (
               <BienDoi dong={canh.noiDung} batDong={thoiDiemDong} t={t} co={coCT} maxWidth={920} khungCuoi={khungCuoi} mauGoc={MAU.vang} mauNhay="#FFD27A" />
             ) : dungCongDon ? (
               hang.map((h, r) => (

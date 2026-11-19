@@ -29,13 +29,15 @@ const inputProps = {...props, kiemDuyet: true};
 const canh = props.canh || [];
 
 // khung mẫu: 55% và 95% mỗi cảnh (tái dùng chính khung 95% của các cảnh được chọn cho AI nhìn hình -> giảm một nửa số lần renderStill)
+const coCanhBlender = canh.some(c => c.chuoi3D && !c.chuoi3D.giuNet);
 const chonSet = new Set(
-  canh.map((c, i) => i).filter((i, k, a) => a.length <= 18 || k % Math.ceil(a.length / 18) === 0 || /dap_an|ket_qua/.test(String(canh[i].loai)))
+  canh.map((c, i) => i).filter((i, k, a) => coCanhBlender || a.length <= 18 || k % Math.ceil(a.length / 18) === 0 || /dap_an|ket_qua/.test(String(canh[i].loai)))
 );
 const mau = [];
+const debut3D = c => c.chuoi3D && !c.chuoi3D.giuNet;
 for (const p of [0.95, 0.55]) {
   canh.forEach((c, i) => {
-    const off = p === 0.95 ? Math.min(Math.round(c.soFrame * p), Math.max(0, c.soFrame - 10)) : Math.round(c.soFrame * p);
+    const off = p === 0.95 ? Math.min(Math.round(c.soFrame * p), Math.max(0, c.soFrame - 10)) : Math.round(c.soFrame * (debut3D(c) ? .23 : p));
     mau.push({f: Math.min(props.tongFrame - 1, lech + c.batDau + off), i, isEnd: p === 0.95});
   });
 }
@@ -47,8 +49,8 @@ const anhAi = [];
 const tam = fs.mkdtempSync('/tmp/kd-');
 async function chup(m) {
   let nhan = null;
-  const layAi = m.isEnd && chonSet.has(m.i);
-  const tep = path.join(tam, layAi ? `ai${m.i}.jpeg` : `k${m.i}-${m.f}.jpeg`);
+  const layAi = debut3D(canh[m.i]) || (m.isEnd && chonSet.has(m.i));
+  const tep = path.join(tam, layAi ? `ai${m.i}-${m.f}.jpeg` : `k${m.i}-${m.f}.jpeg`);
   await renderStill({
     serveUrl: path.resolve(bundle), composition: comp, inputProps, frame: m.f, output: tep, imageFormat: 'jpeg',
     jpegQuality: layAi ? 58 : 40, scale: layAi ? 0.3 : 0.25,
@@ -68,7 +70,7 @@ for (let i = 0; i < mau.length; i += songSong) {
   await Promise.all(mau.slice(i, i + songSong).map(async (m, j) => {
     const {nhan, tep, layAi} = await chup(m);
     if (nhan && !nhan.hong && nhan.frame === m.f) tho[i + j] = {...nhan, canh: m.i};
-    if (layAi) anhAi[m.i] = {canh: m.i, ten: `${m.i + 1} (${(canh[m.i] || {}).loai || '?'})`, tep};
+    if (layAi) anhAi[2 * m.i + Number(m.isEnd)] = {canh: m.i, ten: `${m.i + 1} (${(canh[m.i] || {}).loai || '?'}, ${!m.isEnd ? 'vật 3D' : 'cuối cảnh'})`, tep};
     ghiBaoCao({chay: false, loi: [], ly_do: 'kiểm duyệt chưa hoàn tất'}, false);
   }));
 }
@@ -136,7 +138,7 @@ function ghiBaoCao(aiKq, hoanTat) {
   const nang = ds.filter(laNang).map(moTa).concat(aiLoi, loiDapAn);
   const nhe = ds.filter((l) => !laNang(l)).map(moTa);
   if (!aiKq.chay) nhe.push('AI_NHIN_HINH_KHONG_CHAY: ' + (aiKq.ly_do || 'không gọi được Gemini') + ' - hình chưa được AI đối chiếu với đề');
-  const bao = {hong: khung.length < mau.length || !hoanTat, so_khung: khung.length, so_khung_mau: mau.length, nang: [...new Set(nang)], nhe: [...new Set(nhe)], ai_nhin: aiKq.chay ? (aiLoi.length ? 'sai' : 'dung') : 'khong_chay', chi_tiet: ds.slice(0, 80)};
+  const bao = {hong: khung.length < mau.length || !hoanTat || (coCanhBlender && !aiKq.chay), so_khung: khung.length, so_khung_mau: mau.length, nang: [...new Set(nang)], nhe: [...new Set(nhe)], ai_nhin: aiKq.chay ? (aiLoi.length ? 'sai' : 'dung') : 'khong_chay', chi_tiet: ds.slice(0, 80)};
   fs.writeFileSync(tepRa + '.tmp', JSON.stringify(bao, null, 1));
   fs.renameSync(tepRa + '.tmp', tepRa);
   if (!hoanTat) return;
@@ -152,13 +154,15 @@ async function aiNhinHinh(anh) {
   if (props.manimLop) return {chay: false, ly_do: 'đối chiếu lớp Manim trên MP4 sau khi ghép', loi: []};
   const keys = [...new Set(String((process.env.GEMINI_KEYS || '') + ',' + (process.env.GEMINI_API_KEY || '')).split(/[\s,;]+/).filter(Boolean))];
   if (!keys.length) return {chay: false, ly_do: 'không có key Gemini dùng được', loi: []};
+  const missing = coCanhBlender ? canh.findIndex((c, i) => anh.filter(a => a.canh === i).length < (debut3D(c) ? 2 : 1)) : -1;
+  if (missing >= 0) return {chay: false, ly_do: 'thiếu khung cần đối chiếu ở cảnh ' + (missing + 1), loi: []};
   if (!anh.length || !tepKichBan || !fs.existsSync(tepKichBan)) return {chay: false, ly_do: 'thiếu ảnh hoặc kịch bản', loi: []};
   const kb = JSON.parse(fs.readFileSync(tepKichBan, 'utf8'));
   const de = String(kb.de_bai || '').trim();
   if (!de) return {chay: false, ly_do: 'kịch bản không có đề bài', loi: []};
   const dapAn = String(kb.dap_an_hien || kb.dap_an || '');
   const dsCanh = anh.map((a, i) => { const c = (kb.canh || [])[a.canh] || {}; return `ẢNH ${i + 1} = cảnh ${a.ten}: "${String(c.loi_thoai || '').slice(0, 140)}" | công thức: ${(c.noi_dung_man_hinh || []).join(' ; ').slice(0, 120)}`; }).join('\n');
-  const prompt = 'Bạn là người KIỂM DUYỆT KHẮT KHE video dạy toán trước khi dựng. Mỗi ảnh là khung cuối của một cảnh.\n' +
+  const prompt = 'Bạn là người KIỂM DUYỆT KHẮT KHE video dạy toán trước khi dựng. Với cặp vật 3D và cuối cảnh, đối chiếu cùng một vật, số lượng, vị trí tương đối, tỉ lệ và cạnh tương ứng khi chuyển sang sơ đồ. Báo nếu có nền chữ nhật riêng che nền video. Những cảnh còn lại dùng khung cuối.\n' +
     'ĐỀ BÀI: ' + de + (kb.mo_ta_hinh ? '\nMÔ TẢ HÌNH ĐỀ: ' + kb.mo_ta_hinh : '') + '\nĐÁP ÁN ĐÚNG (đã kiểm chứng bằng 2 cách giải + mã tính): ' + dapAn + '\n' + dsCanh + '\n' +
     'Kiểm tra TỪNG ảnh, chỉ báo lỗi THẬT:\n' +
     '(1) Vật/địa điểm thật trong đề (cột cờ, tòa nhà, ngân hàng, hàng rào, tường, cây, người, xe...) phải vẽ ĐÚNG là vật đó; khối hộp/khối trụ/thẻ chữ thay vật thật là SAI.\n' +
@@ -205,9 +209,10 @@ async function aiNhinHinh(anh) {
         const txt = j && j.candidates && j.candidates[0] && j.candidates[0].content && (j.candidates[0].content.parts || []).map((p) => p.text || '').join('');
         let kq = null;
         try { kq = JSON.parse(txt); } catch (e) { lyDo = model + ' trả lời không đọc được'; continue; }
-        if (typeof kq.dung !== 'boolean') { lyDo = model + ' trả lời thiếu "dung"'; continue; }
+        if (!kq || typeof kq.dung !== 'boolean') { lyDo = model + ' trả lời thiếu "dung"'; continue; }
         console.log(`AI nhìn hình (${anh.length} cảnh, ${model}): ` + (kq.dung ? 'ĐÚNG đề' : 'SAI: ' + (kq.van_de || []).join(' | ')));
-        return {chay: true, loi: kq.dung === false ? (kq.van_de || []).slice(0, 6).map((x) => 'AI_NHIN_HINH: ' + String(x)) : []};
+        const issues = Array.isArray(kq.van_de) && kq.van_de.length ? kq.van_de : ['hình không khớp đề'];
+        return {chay: true, loi: kq.dung ? [] : issues.slice(0, 6).map(x => 'AI_NHIN_HINH: ' + String(x))};
       }
     }
     if (!choMs || Date.now() + choMs >= hanKiemDuyet) break;

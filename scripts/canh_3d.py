@@ -19,6 +19,7 @@ def bo_ba(v):
 
 
 def canh_tu_kich_ban(kb, mh):
+    de = str(kb.get("de_bai") or "").casefold()
     # Ưu tiên dữ kiện định lượng đã chuẩn hóa ở bước chuẩn bị.
     du = mh.get("duLieu")
     if not isinstance(du, dict):
@@ -38,16 +39,25 @@ def canh_tu_kich_ban(kb, mh):
     model = mo_hinh_tu_de(kb)
     if model:
         return model
+    if kb.get("mo_hinh_3d"):
+        raise ValueError("Mô hình 3D không khớp dữ kiện đề hoặc có chi tiết không hợp lệ")
     bv = next((v for v in vat if isinstance(v, dict) and v.get("loai") == "canh_that"), None)
     if bv and isinstance(bv.get("vat") or [], list):
         objs = [v for v in bv.get("vat") or [] if isinstance(v, dict) and v.get("ten") != "mat_troi"]
         regions = bv.get("vung") or []
-        kinds = ("nguoi", "cot_co", "cay", "toa_nha")
+        kinds = {
+            "nguoi": r"người|học sinh|bạn|anh|chị|bác",
+            "cot_co": r"cột cờ",
+            "cay": r"cây",
+            "toa_nha": r"(?:tòa|toà|ngôi|căn) nhà|cao ốc|chung cư",
+        }
         if (
             0 < len(objs) <= 20
             and not regions
             and all(
-                v.get("ten") in kinds
+                isinstance(v.get("ten"), str)
+                and v["ten"] in kinds
+                and re.search(kinds[v["ten"]], de)
                 and so(v.get("cao"))
                 and v["cao"] > 0
                 and ("rong" not in v or so(v["rong"]) and v["rong"] > 0)
@@ -63,6 +73,7 @@ def canh_tu_kich_ban(kb, mh):
             sides = ("tren", "duoi", "trai", "phai")
             if (
                 r.get("ten") in ("vuon", "ruong")
+                and re.search(r"vườn|ruộng", de)
                 and so(r.get("rong"))
                 and so(r.get("dai"))
                 and min(r["rong"], r["dai"]) > 0
@@ -70,9 +81,8 @@ def canh_tu_kich_ban(kb, mh):
             ):
                 fence = r.get("hang_rao", False)
                 if isinstance(fence, bool) or isinstance(fence, list) and all(s in sides for s in fence):
-                    de = str(kb.get("de_bai") or "").casefold()
                     if "tường" in de and not r.get("tuong"):
-                        return None
+                        raise ValueError("Vườn thiếu cạnh tựa tường nêu trong đề")
                     # Đối chiếu tổng mét lưới đã cho với các cạnh thực sự được rào.
                     luoi = re.search(r"(\d+(?:[.,]\d+)?)\s*m\s+lưới", de)
                     if luoi:
@@ -83,7 +93,7 @@ def canh_tu_kich_ban(kb, mh):
                         ]
                         length = sum(r["rong"] if side in ("tren", "duoi") else r["dai"] for side in edges)
                         if not math.isclose(length, float(luoi[1].replace(",", ".")), rel_tol=0.001):
-                            return None
+                            raise ValueError(f"Tổng cạnh thực sự được rào ({length:g} m) khác dữ kiện đề")
                     return {
                         "loai": "vuon",
                         "rong": r["rong"],
@@ -118,7 +128,45 @@ def mo_hinh_tu_de(kb):
             or not bo_ba(item.get("xoay", [0, 0, 0]))
         ):
             return None
+    if re.search(r"bể.{0,80}hình hộp.{0,40}không (?:có )?nắp", de):
+        if not be_khong_nap(parts, de):
+            return None
     return {"loai": "lap_ghep", "chi_tiet": parts}
+
+
+def be_khong_nap(parts, de):
+    """Đo lòng bể trực tiếp giữa bốn mặt trong của các vách."""
+    if len(parts) != 5 or any(p["hinh"] != "hop" or any(p.get("xoay", [])) for p in parts):
+        return False
+    axes = [[], [], []]
+    for p in parts:
+        axis = min(range(3), key=p["co"].__getitem__)
+        axes[axis].append(tuple((c - s / 2, c + s / 2) for c, s in zip(p["tam"], p["co"])))
+    if list(map(len, axes)) != [2, 2, 1]:
+        return False
+    base = axes[2][0]
+    inner = []
+    for axis in (0, 1):
+        a, b = sorted(axes[axis], key=lambda box: box[axis][0])
+        inner.append((a[axis][1], b[axis][0]))
+    walls = axes[0] + axes[1]
+    height = walls[0][2][1] - base[2][1]
+    eps = max(p["co"][2] for p in parts) * 1e-5
+    for i, pair in enumerate(axes[:2]):
+        low, high = inner[1 - i]
+        if any(w[1 - i][0] > low + eps or w[1 - i][1] < high - eps for w in pair):
+            return False
+    if any(abs(w[2][0] - base[2][1]) > eps or abs(w[2][1] - walls[0][2][1]) > eps for w in walls):
+        return False
+    if any(base[i][0] > a + eps or base[i][1] < b - eps for i, (a, b) in enumerate(inner)):
+        return False
+    width, depth = (b - a for a, b in inner)
+    if min(width, depth, height) <= 0 or ("đáy là hình vuông" in de and abs(width - depth) > eps):
+        return False
+    volume = re.search(r"thể tích(?: là| bằng)?\s*([0-9]+(?:[.,][0-9]+)?)\s*m(?:³|3|\^3)", de)
+    return not volume or math.isclose(
+        width * depth * height, float(volume[1].replace(",", ".")), rel_tol=0.002
+    )
 
 
 def ke_hoach(kb, props):
@@ -138,6 +186,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("kb", type=Path)
     ap.add_argument("props", type=Path)
+    ap.add_argument("--manim-python", default="/tmp/mv/bin/python")
     ap.add_argument("--dem", action="store_true")
     args = ap.parse_args()
     props = json.loads(args.props.read_text())
@@ -151,14 +200,17 @@ def main():
     folder.mkdir(exist_ok=True)
     jobs = {}
     renderer = Path(__file__).with_name("ve_blender.py").resolve()
+    groups = {}
     for i, scene in ds.items():
         key = hashlib.sha256(
             renderer.read_bytes() + json.dumps(scene, sort_keys=True).encode()
         ).hexdigest()[:20]
-        path = folder / (key + ".png")
-        if not path.exists():
+        clip = folder / key
+        clip.mkdir(exist_ok=True)
+        path = clip / "projection.json"
+        if not path.exists() or not all((clip / f"orbit-{j}.png").exists() for j in range(16)):
             jobs[str(path)] = scene
-        props["canh"][i]["anhCanh3D"] = "canh_3d/" + path.name
+        groups["canh_3d/" + key] = [i]
     if jobs:
         with tempfile.TemporaryDirectory() as td:
             batch = Path(td) / "batch.json"
@@ -179,7 +231,18 @@ def main():
                 ],
                 check=True,
             )
-    args.props.write_text(json.dumps(props, ensure_ascii=False))
+    with tempfile.TemporaryDirectory() as td:
+        manifest = Path(td) / "manifest.json"
+        manifest.write_text(json.dumps(groups))
+        subprocess.run(
+            [
+                args.manim_python,
+                str(renderer.with_name("manim_thuc_te.py")),
+                str(manifest),
+                str(args.props.resolve()),
+            ],
+            check=True,
+        )
 
 
 if __name__ == "__main__":
