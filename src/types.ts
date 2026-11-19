@@ -4,6 +4,11 @@ export type Cau = {text: string; bat: number; ket: number}; // bat/ket: giây t�
 
 export type MinhHoa = {loai: string; moTa?: string; duLieu?: unknown};
 
+export type MoiTruong = {loai: 'xe_duong'} | {
+  loai: 'phep_thu'; vat: 'hop_bi' | 'dong_xu' | 'xuc_xac'; gia_tri: (string | number)[];
+  dong: boolean; so_rut: number; mau_rut: string | null; giuCuoi?: boolean;
+};
+
 export type CanhProps = {
   so: number;
   loai: string;
@@ -11,8 +16,9 @@ export type CanhProps = {
   noiDung: string[]; // các dòng LaTeX hiện trên màn hình
   minhHoa: MinhHoa;
   anhCanh3D?: string;
+  moiTruong?: MoiTruong;
   nhipXe?: {tong:number; moc:{t:number;s:number;v:number;a:number;j?:number;chay?:number}[]};
-  chuoi3D?: {thuMuc: string; netCuoi: number; xeDuong?: [number,number]; coThuoc?: boolean; giuVatCuoi?: boolean; phepThu?: boolean; giuNet?: boolean};
+  chuoi3D?: {nenDung?: string; thuMuc: string; netCuoi: number; xeDuong?: [number,number]; coThuoc?: boolean; giuVatCuoi?: boolean; phepThu?: boolean; giuNet?: boolean};
   nhanNet?: string;
   mocNhanNet?: number;
   congThucManim?: string[];

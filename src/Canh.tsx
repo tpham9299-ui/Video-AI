@@ -1,3 +1,4 @@
+import {CanhMoiTruong} from './CanhMoiTruong';
 import {CanhBlender} from './CanhBlender';
 import {CanhThucTe, DuLieuThucTe} from './CanhThucTe';
 import {BangPhanCong} from './BangPhanCong';
@@ -117,7 +118,8 @@ export const Canh: React.FC<{
   const thucTe = !lopManim && canh.minhHoa.loai === 'thuc_te_theo_de' ? canh.minhHoa.duLieu as DuLieuThucTe : null;
   const anh3D = !lopManim && canh.anhCanh3D;
   const clip = !lopManim && canh.chuoi3D;
-  const coHinh = !!clip || !!anh3D || !!thucTe || bangPhanCong || veBia || kieu !== null;
+  const moiTruong = !lopManim && canh.moiTruong;
+  const coHinh = !!moiTruong || !!clip || !!anh3D || !!thucTe || bangPhanCong || veBia || kieu !== null;
   const coHook = laMoDau && !!hook.chu;
 
   // ----- công thức -----
@@ -126,7 +128,7 @@ export const Canh: React.FC<{
   const batDong = canh.noiDung.map((_, i) => (nCau ? canh.cau[Math.min(nCau - 1, Math.floor((i * nCau) / nDong))].bat + 0.05 : 0.4 + i * 0.8));
   // cảnh ĐỀ BÀI: thẻ "ĐỀ CHO / CẦN TÌM" thay cho dòng công thức (đề phải được nêu đủ trước khi vào mô phỏng)
   const theDe = !lopManim && canh.loai === 'de_bai' && coTheDe(deBai) ? deBai! : null;
-  const hienCongThuc = !lopManim && !theDe && nDong > 0 && !(coHook && coHinh && nDong > 1 && !canh.chuoi3D?.xeDuong);
+  const hienCongThuc = !lopManim && !theDe && nDong > 0 && !(coHook && coHinh && nDong > 1 && !canh.chuoi3D?.xeDuong && !moiTruong);
   const kieuTB = canh.trinhBay;
   const dungBienDoi = kieuTB === 'bien_doi' && coTheBienDoi(canh.noiDung);
   const dungCongDon = (kieuTB === 'cong_don' || kieuTB === 'bien_doi') && !dungBienDoi && coTheCongDon(canh.noiDung);
@@ -255,15 +257,20 @@ export const Canh: React.FC<{
 
   return (
     <>
+    {clip && clip.nenDung && !clip.giuNet && <div style={{position:'absolute',inset:0}}>
+      <Img src={staticFile(clip.nenDung)} style={{width:'100%',height:'100%'}} />
+      <div style={{position:'absolute',inset:0,background:'linear-gradient(to bottom,rgba(12,23,28,.75),transparent 38%,transparent 57%,rgba(12,23,28,.78))'}}/>
+    </div>}
+    {moiTruong && <CanhMoiTruong canh={canh} plan={moiTruong} time={t} />}
     {coCuaTron ? <DiaCuaTron f={frame} /> : null}
     {/* chuyển cảnh "quét sáng": một vệt sáng màu nhấn chạy ngang khung đúng lúc nội dung lộ ra */}
     {kieuCC === 'quet_sang' && !giuTruoc && frame < 14 ? (
       <div style={{position: 'absolute', top: 0, bottom: 0, left: `${-15 + (frame / 12) * 120}%`, width: 90, transform: 'skewX(-14deg)', pointerEvents: 'none', zIndex: 5,
         background: `linear-gradient(90deg, transparent, ${mauNhan}55, #ffffffaa, ${mauNhan}55, transparent)`, opacity: Math.min(1, (14 - frame) / 5)}} />
     ) : null}
-    <div style={{position: 'absolute', inset: 0, fontFamily: FONT, transformOrigin: `540px ${goc_y}px`, transform: moi && !lopManim && !clip ? `translate(${may.x}px, ${may.y}px) scale(${may.s})` : undefined}}>
+    <div style={{position: 'absolute', inset: 0, fontFamily: FONT, transformOrigin: `540px ${goc_y}px`, transform: moi && !lopManim && !clip && !moiTruong ? `translate(${may.x}px, ${may.y}px) scale(${may.s})` : undefined}}>
       {/* Sân khấu */}
-      {coHinh && !clip ? (
+      {coHinh && !clip && !moiTruong ? (
         <NhoeHuong nx={ccSan.nx} ny={ccSan.ny} style={{position: 'absolute', left: 0, right: 0, top: yNoiDung, height: caoSan, display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: veBia ? 1 : ccSan.mo, transform: veBia ? undefined : `perspective(1600px) translate(${ccSan.x}px, ${ccSan.y}px) rotateX(${ccSan.rx}deg) rotateY(${ccSan.ry}deg) rotateZ(${ccSan.rz}deg) scale(${ccSan.s})`, clipPath: veBia ? undefined : ccSan.clip}}>
           {thucTe ? <CanhThucTe du={thucTe} cao={caoSan}/> : bangPhanCong ? <BangPhanCong cao={caoSan} caTruc={/trực|chia ca/i.test(canh.cau.map(c => c.text).join(' '))}
             moc={canh.cau.find(c => /phân công|chia|trực|phân bổ/i.test(c.text))?.bat ?? 0.5} /> : veBia ? <BiaGap cao={caoSan} dai={giayAm} ungDung={ungDung && !laMoDau} kienTruc={canh.cau.some(c => /kiến trúc/i.test(c.text))}
@@ -307,10 +314,10 @@ export const Canh: React.FC<{
         </NhoeHuong>
       ) : null}
 
-      {clip ? <div style={{position: 'absolute', top: Math.max(425, yNoiDung), left: 38, right: 38, height: Math.min(775, yNoiDung + caoSan - Math.max(425, yNoiDung)), opacity: ra}}>
+      {clip ? <div style={clip.nenDung && !clip.giuNet ? {position:'absolute', top: '50%', width:'100%', aspectRatio:'1.6', transform:'translateY(-50%)', opacity:ra} : {position: 'absolute', top: Math.max(425, yNoiDung), left: 38, right: 38, height: Math.min(775, yNoiDung + caoSan - Math.max(425, yNoiDung)), opacity: ra}}>
         <CanhBlender canh={canh} frame={frame} fps={fps} />
       </div> : null}
-      {anh3D && !clip ? (
+      {anh3D && !clip && !moiTruong ? (
         <div style={{position: 'absolute', top: yNoiDung, left: 40, right: 40, height: caoSan,
           borderRadius: 26, overflow: 'hidden', display: 'grid', placeItems: 'center',
           opacity: kep((canh.soFrame - frame - 2) / 8) * (kieu || thucTe || veBia ? kep((Math.min(3.8, giayAm * .62) - t) / .45) : 1)}}>
@@ -384,7 +391,7 @@ export const Canh: React.FC<{
 
       {/* Đầu cảnh: nhãn + tiêu đề (hoặc câu hook ở cảnh 1) */}
       <div style={{position: 'absolute', left: 40, right: 40, top: moi ? (coHook ? 200 : 250) : Y_DAU, height: dayTieuDe - (moi ? (coHook ? 200 : 250) : Y_DAU) - (moi ? 4 : 10), display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: moi ? 'center' : undefined, opacity: ra}}>
-        {clip ? (anTieuDe ? null : <VuaKhung maxW={956} maxH={155}>
+        {(clip || moiTruong) ? (anTieuDe ? null : <VuaKhung maxW={956} maxH={155}>
           <div style={{fontFamily: FONT_TIEU_DE, fontSize: 68, fontWeight: 800, lineHeight: 1.12,
             textAlign: 'center', color: '#f1f6f5', textShadow: '0 2px 7px #081019'}}>
             {coHook ? hook.chu : tieuDeCanh || tieuDe}

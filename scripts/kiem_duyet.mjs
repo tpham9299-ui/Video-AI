@@ -29,15 +29,15 @@ const inputProps = {...props, kiemDuyet: true};
 const canh = props.canh || [];
 
 // khung mẫu: 55% và 95% mỗi cảnh (tái dùng chính khung 95% của các cảnh được chọn cho AI nhìn hình -> giảm một nửa số lần renderStill)
-const coCanhBlender = canh.some(c => c.chuoi3D && !c.chuoi3D.giuNet);
+const coCanhBlender = canh.some(c => c.moiTruong || (c.chuoi3D && !c.chuoi3D.giuNet));
 const chonSet = new Set(
   canh.map((c, i) => i).filter((i, k, a) => coCanhBlender || a.length <= 18 || k % Math.ceil(a.length / 18) === 0 || /dap_an|ket_qua/.test(String(canh[i].loai)))
 );
 const mau = [];
-const debut3D = c => c.chuoi3D && !c.chuoi3D.giuNet;
+const debut3D = c => c.moiTruong || (c.chuoi3D && !c.chuoi3D.giuNet);
 for (const p of [0.95, 0.55]) {
   canh.forEach((c, i) => {
-    const off = p === 0.95 ? Math.min(Math.round(c.soFrame * p), Math.max(0, c.soFrame - 10)) : Math.round(c.soFrame * (c.chuoi3D?.phepThu ? 0 : debut3D(c) ? .23 : p));
+    const off = p === 0.95 ? Math.min(Math.round(c.soFrame * p), Math.max(0, c.soFrame - 10)) : Math.round(c.soFrame * ((c.chuoi3D?.phepThu || c.moiTruong?.loai === 'phep_thu') ? 0 : debut3D(c) ? .23 : p));
     mau.push({f: Math.min(props.tongFrame - 1, lech + c.batDau + off), i, isEnd: p === 0.95});
   });
 }

@@ -363,6 +363,57 @@ def dung(s):
                 vat("cau", (x, y, h * 0.67), (h * 0.55, h * 0.53, h * 0.66), "la")
 
 
+def chup_moi_truong(scene, cam, plan, dest, center, span, ground):
+    """Chụp lớp nền dọc cùng tỉ lệ ngang với lớp vật thể/sơ đồ toán."""
+    objects = [o for o in scene.objects if o.type == "MESH"]
+    for o in objects:
+        o.hide_render = True
+    old_scale = cam.data.ortho_scale
+    before = set(scene.objects)
+    parts = plan.get("chi_tiet", [])
+    warehouse = any(p["hinh"] == "bang_chuyen" for p in parts)
+    outside = plan["loai"] in ("vuon", "vat", "cap_bo", "can_ho") or any(
+        p["hinh"] == "thuyen" or p.get("vat_lieu") in ("co", "dat", "nuoc") for p in parts)
+    x, y = center.x, center.y
+    def prop(shape, dx, dy, z, size, surface):
+        return vat(shape, (x+span*dx, y+span*dy, ground+span*z),
+                   tuple(span*s for s in size), surface)
+
+    prop("hop", 0, 0, -.055, (20, 20, .10), "co" if outside else "da" if warehouse else "go")
+    if outside:
+        for i in range(11):
+            dx, dy = i*.53-3, 1.8+(i%3)*.22
+            prop("tru", dx, dy, .19, (.035,.035,.38), "go")
+            prop("cau", dx, dy, .47, (.30,.31,.47), "la")
+    else:
+        wall_y = 1.05
+        prop("hop", 0, wall_y, 1.4, (12,.09,2.8), "da" if warehouse else "trang")
+        if warehouse:
+            for dy in (-.34, .38):
+                prop("hop", 0, dy, -.003, (7,.018,.006), "vang")
+            for i in range(-5, 6):
+                prop("hop", i*.62, 0, -.004, (.005,4,.004), "toi")
+        for i in range(-6, 7):
+            prop("hop", i*.68, wall_y-.06, .57, (.59,.035,.84), "kinh")
+            if warehouse:
+                prop("hop", i*.68, wall_y-.12, 1.33, (.045,.075,2.66), "thep")
+    cam.data.ortho_scale = old_scale * 16/9
+    scene.render.resolution_x, scene.render.resolution_y = 720, 1280
+    scene.render.film_transparent = False
+    scene.render.filepath = str(dest.parent/"moi-truong.jpg")
+    scene.render.image_settings.file_format = "JPEG"
+    bpy.ops.render.render(write_still=True)
+    for ob in set(scene.objects)-before:
+        bpy.data.objects.remove(ob, do_unlink=True)
+    for ob in objects:
+        ob.hide_render = False
+    cam.data.ortho_scale = old_scale
+    scene.render.resolution_x, scene.render.resolution_y = 960, 600
+    scene.render.film_transparent = True
+    scene.render.image_settings.file_format = "PNG"
+    scene.render.image_settings.color_mode = "RGBA"
+
+
 def render(plan, dest):
     global MATS
     bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -456,6 +507,7 @@ def render(plan, dest):
             bpy.ops.render.render(write_still=True)
         dest.write_text(json.dumps({"xeDuong":[b.x-a.x,a.y-b.y]}))
         return
+    chup_moi_truong(scene, cam, plan, dest, center, span, lo.z)
     for i in range(16):
         t = i / 15
         angle = math.radians(-7 * (1 - t * t * (3 - 2 * t)))

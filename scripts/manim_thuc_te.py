@@ -130,17 +130,18 @@ def main():
                     props["canh"][i]["chuoi3D"]=dict(thuMuc=key,netCuoi=0,xeDuong=projection["xeDuong"])
                 car_indexes.extend(indexes)
                 continue
+            backdrop = key + "/moi-truong.jpg"
             if isinstance(projection, dict) and projection.get("phepThu"):
                 for index in indexes:
                     c = props["canh"][index]
                     hold = c.get("giuSanKhau") and not c.get("moHinh3D") and index-1 in indexes
-                    c["chuoi3D"] = dict(thuMuc=key, netCuoi=0, phepThu=True, giuVatCuoi=bool(hold))
+                    c["chuoi3D"] = dict(thuMuc=key, netCuoi=0, nenDung=backdrop, phepThu=True, giuVatCuoi=bool(hold))
                 continue
             last, diagram_lines[key] = diagram(cam, folder)
             for index in indexes:
                 props["canh"][index]["chuoi3D"] = dict(
                     thuMuc=key,
-                    netCuoi=last,
+                    netCuoi=last, nenDung=backdrop,
                     coThuoc=any(
                         x.get("nhan") for x in json.loads((folder / "projection.json").read_text())
                     ),
@@ -149,7 +150,7 @@ def main():
         carry = None
         label_file = None
         for c in props["canh"]:
-            if c.get("nhipXe") or (c.get("chuoi3D") or {}).get("phepThu"):
+            if c.get("moiTruong") or c.get("nhipXe") or (c.get("chuoi3D") or {}).get("phepThu"):
                 carry = None
                 label_file = None
             elif c.get("chuoi3D"):

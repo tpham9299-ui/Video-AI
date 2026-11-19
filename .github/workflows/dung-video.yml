@@ -252,19 +252,26 @@ jobs:
           ls -la out
           echo "ok=1" >> "$GITHUB_OUTPUT"
 
-      - name: Dựng ảnh bối cảnh thực tế bằng Blender
+      - name: Kiểm tra dữ kiện và chọn bộ dựng 3D
+        id: bo_dung_3d
         if: steps.kb.outputs.hh != '1'
         run: |
           python3 scripts/test_canh_3d.py
-          SO_CANH=$(python3 scripts/canh_3d.py kich_ban.json public/props.json --dem)
-          if [ "$SO_CANH" -gt 0 ]; then
-            if ! command -v blender >/dev/null; then
-              sudo apt-get update -qq
-              sudo apt-get install -y -qq --no-install-recommends blender
-            fi
-            bash scripts/cai_manim.sh
-            python3 scripts/canh_3d.py kich_ban.json public/props.json
+          SO_CANH=$(python3 scripts/canh_3d.py kich_ban.json public/props.json --chuan-bi)
+          echo "so_canh_blender=$SO_CANH" >> "$GITHUB_OUTPUT"
+
+      - name: Cài Blender và Manim cho cảnh có bản vẽ
+        if: steps.bo_dung_3d.outputs.so_canh_blender != '' && steps.bo_dung_3d.outputs.so_canh_blender != '0'
+        run: |
+          if ! command -v blender >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq --no-install-recommends blender
           fi
+          bash scripts/cai_manim.sh
+
+      - name: Dựng bối cảnh Blender và lớp hình toán
+        if: steps.bo_dung_3d.outputs.so_canh_blender != '' && steps.bo_dung_3d.outputs.so_canh_blender != '0'
+        run: python3 scripts/canh_3d.py kich_ban.json public/props.json
 
       - name: Gọn tài nguyên & đóng gói Remotion + ảnh bìa
         run: |

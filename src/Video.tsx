@@ -118,7 +118,11 @@ const NoiDungVideo: React.FC<Props> = (props) => {
   // quy trình cố định: luôn đủ 6 phần theo đúng thứ tự (người xem biết bài đang ở bước nào)
   const dsPha = SAU_PHA;
   // cảnh trước còn ở lại 8 khung hình để hòa vào cảnh sau (trừ khi cảnh sau diễn tiếp trên cùng sân khấu)
-  const keoDai = (i: number) => (i < canh.length - 1 && !canh[i + 1].giuSanKhau ? 8 : 0);
+  const keoDai = (i: number) => {
+    const next = canh[i + 1];
+    if (!next || next.giuSanKhau || next.moiTruong || next.chuoi3D?.nenDung) return 0;
+    return 8;
+  };
   const coThuongHieu = !!thuongHieu && !!(thuongHieu.ten || thuongHieu.logo || thuongHieu.handle);
   return (
     <AbsoluteFill style={{fontFamily: FONT}}>

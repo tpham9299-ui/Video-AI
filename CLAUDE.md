@@ -30,7 +30,7 @@ Với bài toán thực tế, sau bước chuẩn bị, GitHub Actions chạy `s
 
 Mỗi cảnh có thể khai báo riêng `mo_hinh_3d`. Bước chuẩn bị truyền mô hình này sang Blender; các đoạn đo có thể neo theo tâm cuối của vật và chuyển cho Manim sau khi đối chiếu độ dài với đề.
 
-Các cảnh vật lý ngoài hình học đi qua bộ chọn Blender ở cả phần giải và liên hệ. Với một xe trên đường, Blender xuất xe và mặt đường RGBA cùng phép chiếu. Remotion tích phân vận tốc theo mốc lời đọc rồi giữ vị trí ở sự kiện dừng. Cảnh có sự kiện chuyển động dùng thời lượng âm thanh từng câu. Phương trình đa thức hỗ trợ đơn vị SI, quãng đường được quy đổi theo chiều dài đoạn đường minh họa. Manim tự chọn vùng nhìn cho từng bước chứng minh phẳng. Báo cáo đo bố cục quy đổi thời điểm của ảnh bìa về đúng khung nội dung trước khi đối chiếu.
+Các cảnh vật lý ngoài hình học đi qua bộ chọn Blender ở cả phần giải và liên hệ. Với một xe trên đường hoặc phép thử bi, xu, xúc xắc được hỗ trợ, bộ chuẩn bị ghi moiTruong vào từng cảnh. Three.js dựng phố hoặc bàn thí nghiệm toàn khung trong Chromium bằng SwiftShader. GitHub chỉ cài Blender và Manim cho các bản vẽ còn lại. Blender chụp riêng bối cảnh dọc và lớp vật thể RGBA để chuyển sang nét toán. Remotion tích phân vận tốc theo mốc lời đọc rồi giữ vị trí ở sự kiện dừng. Cảnh có sự kiện chuyển động dùng thời lượng âm thanh từng câu. Phương trình đa thức hỗ trợ đơn vị SI, quãng đường được quy đổi theo chiều dài đoạn đường minh họa. Manim tự chọn vùng nhìn cho từng bước chứng minh phẳng. Báo cáo đo bố cục quy đổi thời điểm của ảnh bìa về đúng khung nội dung trước khi đối chiếu.
 
 Sân khấu xác suất có một bình bi, một nhóm xu hoặc xúc xắc có thể chuyển tự động thành phép thử Blender. Kịch bản có thể tạo vật chưa có mẫu bằng cách nối các tiết diện elip trong `khoi_tiet_dien.tang`.
 
@@ -923,3 +923,10 @@ Sân khấu xác suất có một bình bi, một nhóm xu hoặc xúc xắc có
 - Cảnh vật thể và phép thử xác suất dùng mô hình riêng hoặc mô hình từ đề. Khi thiếu mô hình cho vật lý đã nhận diện, báo số cảnh cần bổ sung. Một phép thử tĩnh nối sang cảnh tiếp theo có thể giữ khung cuối.
 - Nhãn tiếng Việt trong công thức và các bước biến đổi dùng phông nội dung. Hình học phẳng điều chỉnh vùng nhìn theo nhãn và nét đang dựng, giới hạn số đo và nét nhấn đồng thời.
 - Đo bố cục đúng khung khi có ảnh bìa. Bot tách lý do thiếu khung, kiểm duyệt ảnh chưa xong và lỗi chuyển động trong MP4. Bỏ vòng sáng quét mặc định, đối chiếu các pixel lặp lại qua nhiều chu kỳ để nhận biết nhấp nháy.
+
+#### Lần 49 (v82) — Bối cảnh 3D phủ khung video dọc
+
+- Three.js dựng xe trong một con phố có phối cảnh, mặt đường, nhà, cây, ánh sáng và bóng đổ. Máy quay và bánh xe theo vị trí suy ra từ lời đọc, kể cả khi dựng các khúc song song.
+- Phép thử bi, xu và xúc xắc được đặt trên mặt bàn. Số vật, màu, mặt kết quả và số bi rút lấy từ kế hoạch đã kiểm tra. Cảnh giữ sân khấu dùng trạng thái cuối.
+- Với bản vẽ giao cho Blender, máy dựng tạo thêm một ảnh môi trường dọc cho mỗi mô hình. Nền nhà xưởng, ngoài trời hoặc trong phòng được chọn theo dữ liệu đã có. Nét Manim tiếp tục lấy tọa độ từ phép chiếu của vật.
+- Actions báo riêng bước kiểm tra dữ kiện, cài công cụ và dựng Blender. Kiểm duyệt lấy khung đầu phép thử và khung cuối để đối chiếu kết quả. Khi chuyển sang môi trường toàn khung, lớp tiêu đề của cảnh trước kết thúc ở ranh giới cảnh.

@@ -432,16 +432,41 @@ def ke_hoach(kb, props):
     return ds
 
 
+def tach_moi_truong(ds, props):
+    """Dựng xe và phép thử trực tiếp trong môi trường Three.js của Remotion."""
+    from xe_3d import nhip_xe
+    cars, blender = [], {}
+    for scene in props["canh"]:
+        if scene.pop("moiTruong", None):
+            scene.pop("nhipXe", None)
+    for i, plan in ds.items():
+        if plan["loai"] not in ("xe_duong", "phep_thu"):
+            blender[i] = plan
+            continue
+        scene = props["canh"][i]
+        held = scene.get("giuSanKhau") and ds.get(i-1) == plan
+        scene["moiTruong"] = dict(plan, giuCuoi=True) if held else plan
+        scene.pop("chuoi3D", None)
+        if plan["loai"] == "xe_duong":
+            cars.append(i)
+    nhip_xe(props, cars)
+    return blender
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("kb", type=Path)
     ap.add_argument("props", type=Path)
     ap.add_argument("--manim-python", default="/tmp/mv/bin/python")
+    ap.add_argument("--chuan-bi", action="store_true", help="Ghi môi trường Remotion và đếm các cảnh cần Blender")
     ap.add_argument("--dem", action="store_true")
     args = ap.parse_args()
     props = json.loads(args.props.read_text())
     ds = ke_hoach(json.loads(args.kb.read_text()), props)
-    if args.dem:
+    ds = tach_moi_truong(ds, props)
+    if not args.dem:
+        args.props.write_text(json.dumps(props, ensure_ascii=False))
+    if args.dem or args.chuan_bi:
         print(len(ds))
         return
     if not ds:
@@ -458,7 +483,7 @@ def main():
         clip = folder / key
         clip.mkdir(exist_ok=True)
         path = clip / "projection.json"
-        assets = ["xe.png","duong.png"] if scene["loai"]=="xe_duong" else [f"orbit-{j}.png" for j in range(16)]
+        assets = ["xe.png","duong.png"] if scene["loai"]=="xe_duong" else ["moi-truong.jpg"] + [f"orbit-{j}.png" for j in range(16)]
         if not path.exists() or not all((clip / asset).exists() for asset in assets):
             jobs[str(path)] = scene
         groups.setdefault("canh_3d/" + key, []).append(i)
