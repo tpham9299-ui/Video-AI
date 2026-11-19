@@ -11,6 +11,11 @@ from mathutils import Euler, Vector
 
 
 COLORS = {
+    "xanh_duong": (0.035, 0.31, 0.88),
+    "xanh_la": (0.07, 0.63, 0.22),
+    "cam": (0.96, 0.31, 0.05),
+    "tim": (0.54, 0.17, 0.82),
+    "den": (0.022, 0.027, 0.03),
     "go": (0.43, 0.22, 0.095),
     "la": (0.23, 0.46, 0.17),
     "co": (0.34, 0.48, 0.21),
@@ -146,6 +151,110 @@ def vo_khoi(profile, size, taper, mat):
     return ob
 
 
+def khoi_tiet_dien(p):
+    n = 32
+    verts = [
+        (cx + rx * math.cos(i * math.tau / n), cy + ry * math.sin(i * math.tau / n), z)
+        for z, cx, cy, rx, ry in p["tang"]
+        for i in range(n)
+    ]
+    base = len(verts) - n
+    faces = [tuple(reversed(range(n))), tuple(range(base, base + n))]
+    for k in range(0, base, n):
+        faces.extend((k + i, k + (i + 1) % n, k + n + (i + 1) % n, k + n + i) for i in range(n))
+    # Chuẩn hóa quanh tâm trước khi đặt vật vào hệ tọa độ chung của đề.
+    lo = list(map(min, zip(*verts)))
+    hi = list(map(max, zip(*verts)))
+    verts = [[((v - lo[j]) / (hi[j] - lo[j]) - 0.5) * p["co"][j] for j, v in enumerate(pt)] for pt in verts]
+    mesh = bpy.data.meshes.new("Tiết diện")
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    for face in list(mesh.polygons)[2:]:
+        face.use_smooth = True
+    ob = bpy.data.objects.new("Khối theo tiết diện", mesh)
+    bpy.context.collection.objects.link(ob)
+    ob.data.materials.append(MATS.get(p.get("vat_lieu"), MATS["da"]))
+    return ob
+
+
+def phep_thu(s):
+    values = s["gia_tri"]
+    if s["vat"] == "hop_bi":
+        cols = math.ceil(math.sqrt(len(values)))
+        rows = math.ceil(len(values) / cols)
+        radius = math.hypot(cols - 1, rows - 1) * 0.52 + 0.66
+        vat("tru", (0, 0, -0.1), (2 * radius, 2 * radius, 0.2), "thep")
+        for z in (0, 0.98):
+            bpy.ops.mesh.primitive_torus_add(major_radius=radius, minor_radius=0.047, location=(0, 0, z))
+            bpy.context.object.data.materials.append(MATS["thep"])
+        for i in range(10):
+            phi = i * math.tau / 10
+            vat("tru", (radius * math.cos(phi), radius * math.sin(phi), 0.49), (0.044, 0.044, 0.98), "thep")
+        taken = 0
+        for i, color in enumerate(values):
+            x = (i % cols - (cols - 1) / 2) * 1.04
+            y = (i // cols - (rows - 1) / 2) * 1.04
+            ob = vat("cau", (x, y, 0.48), (0.93, 0.93, 0.93), color)
+            if color == s["mau_rut"] and taken < s["so_rut"]:
+                dest = Vector((radius + 1.1 + (taken % 3) * 1.03, (taken // 3) * 1.03, 0.48))
+                ob["dich"] = list(dest - ob.location)
+                ob["nhac"] = 1.65
+                taken += 1
+        return
+    for i, value in enumerate(values):
+        x = (i - (len(values) - 1) / 2) * 1.75
+        center = Vector((x, 0, 0))
+        if s["vat"] == "dong_xu":
+            pieces = [vat("tru", center, (1.45, 1.45, 0.15), "vang")]
+            for sign, letter in ((1, value), (-1, "S" if value == "N" else "N")):
+                bpy.ops.object.text_add(
+                    location=(x, 0, sign * 0.08), rotation=(0 if sign == 1 else math.pi, 0, 0)
+                )
+                ob = bpy.context.object
+                ob.data.body = letter
+                ob.data.font = bpy.data.fonts.load(
+                    str(Path(__file__).resolve().parents[1] / "public/fonts/BeVietnamPro-Bold.ttf"),
+                    check_existing=True,
+                )
+                ob.data.align_x = ob.data.align_y = "CENTER"
+                ob.data.size = 0.83
+                ob.data.materials.append(MATS["toi"])
+                pieces.append(ob)
+        else:
+            pieces = [vat("hop", center, (1.32, 1.32, 1.32), "trang")]
+            # Các cặp đối diện có tổng bằng bảy. Xoay cả khối để mặt kết quả hướng lên.
+            orient = {
+                1: (0, 0, 0),
+                6: (180, 0, 0),
+                2: (-90, 0, 0),
+                5: (90, 0, 0),
+                3: (0, -90, 0),
+                4: (0, 90, 0),
+            }
+            basis = Euler(tuple(map(math.radians, orient[value]))).to_matrix()
+            for face, normal in enumerate(
+                ((0, 0, 1), (0, -1, 0), (1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, 0, -1)), 1
+            ):
+                n = Vector(normal)
+                u = Vector((1, 0, 0) if not n.x else (0, 1, 0))
+                v = n.cross(u)
+                dots = [] if face % 2 == 0 else [(0, 0)]
+                if face >= 2:
+                    dots.extend([(-1, -1), (1, 1)])
+                if face >= 4:
+                    dots.extend([(-1, 1), (1, -1)])
+                if face == 6:
+                    dots.extend([(-1, 0), (1, 0)])
+                for a, b in dots:
+                    pos = center + basis @ (n * 0.665 + 0.32 * (a * u + b * v))
+                    ob = vat("cau", pos, (0.21, 0.21, 0.045), "toi")
+                    ob.rotation_euler = (basis @ n).to_track_quat("Z", "Y").to_euler()
+                    pieces.append(ob)
+        if s["dong"]:
+            for ob in pieces:
+                ob["pivot"] = list(center)
+
+
 def chi_tiet(p):
     w, d, h = p["co"]
     shape = p["hinh"]
@@ -185,6 +294,8 @@ def chi_tiet(p):
             vat("hop", (-0.13 * w, 0, 0.25 * h), (0.37 * w, 0.59 * d, 0.3 * h), "kinh"),
             vat("hop", (-0.13 * w, 0, 0.45 * h), (0.43 * w, 0.68 * d, 0.1 * h), "trang"),
         ]
+    elif shape == "khoi_tiet_dien":
+        pieces = [khoi_tiet_dien(p)]
     elif shape == "lang_tru":
         pieces = [vo_khoi(p["day"], p["co"], 1, material)]
     else:
@@ -197,7 +308,9 @@ def chi_tiet(p):
 
 
 def dung(s):
-    if s["loai"] == "vuon":
+    if s["loai"] == "phep_thu":
+        phep_thu(s)
+    elif s["loai"] == "vuon":
         vuon(s)
     elif s["loai"] == "lap_ghep":
         for p in s["chi_tiet"]:
@@ -265,6 +378,13 @@ def render(plan, dest):
     pts.extend(ob.matrix_world @ Vector(c) + delta for ob, _, delta in moving for c in ob.bound_box)
     for segment in plan.get("doan_toan", []):
         pts.extend(Vector(segment[k]) for k in ("a", "b"))
+    spinning = [
+        (ob, ob.location.copy(), ob.rotation_euler.to_matrix(), Vector(ob["pivot"]))
+        for ob in scene.objects
+        if "pivot" in ob
+    ]
+    if spinning or any(ob.get("nhac") for ob, _, _ in moving):
+        pts.extend(pt + Vector((0, 0, 1.7)) for pt in list(pts))
     lo = Vector(tuple(min(p[i] for p in pts) for i in range(3)))
     hi = Vector(tuple(max(p[i] for p in pts) for i in range(3)))
     center = (lo + hi) / 2
@@ -309,6 +429,11 @@ def render(plan, dest):
         angle = math.radians(-7 * (1 - t * t * (3 - 2 * t)))
         for ob, origin, delta in moving:
             ob.location = origin + delta * t * t * (3 - 2 * t)
+            ob.location.z += ob.get("nhac", 0) * math.sin(t * math.pi)
+        for ob, origin, rotation, pivot in spinning:
+            turn = Matrix.Rotation(1.5 * math.pi * (1 - t * t * (3 - 2 * t)), 3, "X")
+            ob.location = pivot + turn @ (origin - pivot) + Vector((0, 0, 0.45 * math.sin(math.pi * t)))
+            ob.rotation_euler = (turn @ rotation).to_euler()
         axis = Matrix.Rotation(angle, 3, "Z") @ direction
         cam.location = center + axis * span * 2
         cam.rotation_euler = (-axis).to_track_quat("-Z", "Y").to_euler()
@@ -328,6 +453,9 @@ def render(plan, dest):
         )
 
     kind = plan["loai"]
+    if kind == "phep_thu" or plan.get("giu_vat"):
+        dest.write_text(json.dumps({"phepThu": True}))
+        return
     if plan.get("doan_toan"):
         for segment in plan["doan_toan"]:
             edge(segment["a"], segment["b"])

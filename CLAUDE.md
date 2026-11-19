@@ -30,6 +30,8 @@ Với bài toán thực tế, sau bước chuẩn bị, GitHub Actions chạy `s
 
 Mỗi cảnh có thể khai báo riêng `mo_hinh_3d`. Bước chuẩn bị truyền mô hình này sang Blender; các đoạn đo có thể neo theo tâm cuối của vật và chuyển cho Manim sau khi đối chiếu độ dài với đề.
 
+Sân khấu xác suất có một bình bi, một nhóm xu hoặc xúc xắc có thể chuyển tự động thành phép thử Blender. Kịch bản có thể tạo vật chưa có mẫu bằng cách nối các tiết diện elip trong `khoi_tiet_dien.tang`.
+
 ### Kiến trúc 2 tầng phối hợp:
 1. **Tầng điều phối & quản trị (Google Apps Script + Google Sheets + Google Drive + Zalo Bot)**:
    - Lưu trữ hàng đợi bài toán (`HANG_DOI`), cấu hình (`CAU_HINH`), lịch sử góp ý học tập (`GOP_Y_HOC`), quy tắc tự học (`QUY_TAC_HOC`), thống kê số liệu (`SO_LIEU`), chuỗi video (`SERIES`), quảng cáo sản phẩm (`SAN_PHAM`), và kho khóa API (`KHO_KEY`).
@@ -906,3 +908,9 @@ Mỗi cảnh có thể khai báo riêng `mo_hinh_3d`. Bước chuẩn bị truy�
 - Bổ sung thân thuyền, băng chuyền có con lăn và lăng trụ đùn từ đa giác lồi. Biên kịch có thể kết hợp nhiều chi tiết trong một hệ tọa độ, xoay và tịnh tiến từng vật. Mô hình từng cảnh dùng được cả ở phần liên hệ thực tế và các cảnh minh họa của bài xác suất. Hình học chuyên biệt tiếp tục dùng Manim.
 - Với kịch bản thiếu bản vẽ, bộ chuẩn bị nhận một số cách viết đơn giản cho khoảng cách từ thuyền đến bờ sông và chiều dài băng chuyền. Các tình huống phức hợp dựa vào bản vẽ có cấu trúc. Manim đặt đường đo tại tọa độ đã chiếu, đối chiếu nhãn với trích dẫn và đổi đơn vị trước khi kiểm tra độ dài.
 - Cảnh Blender dùng tiêu đề một khối Montserrat, nhãn độ dài Be Vietnam Pro và tăng không gian cho vật thể. Khi hiện số đo, vật thể còn hiện mờ làm mốc.
+
+#### Lần 47 (v80) — Dựng phép thử xác suất và vật chưa có mẫu
+
+- Bộ chuẩn bị đọc các nhóm bi và hành động lấy ra, hoặc số mặt xu và chấm xúc xắc đã ghi trong kịch bản. Với cảnh hỗ trợ, Blender dựng chuyển động và giữ trạng thái cuối để người xem đối chiếu với lời giải. Phép thử chưa rõ mặt hoặc hành động phức hợp tiếp tục dùng sân khấu của cảnh.
+- Vật tự do có thể dùng nhiều tiết diện elip có tâm, cao độ và hai bán kính khác nhau. Bộ kiểm tra đối chiếu trích dẫn với đề, kiểm tra thứ tự các tầng và bán kính trước khi tạo lưới.
+- Bước kiểm duyệt lấy khung đầu và khung cuối của cảnh phép thử để đối chiếu số lượng, màu và kết quả với lời giảng.

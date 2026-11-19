@@ -16,6 +16,12 @@ export const CanhBlender: React.FC<{canh: CanhProps; frame: number; fps: number}
   const pic = (name: string, opacity: number) => opacity > 0 ?
     <Img key={name} src={staticFile(clip.thuMuc + '/' + name + '.png')}
       style={{position: 'absolute', width: '100%', height: '100%', objectFit: 'contain', opacity}} /> : null;
+  if (clip.phepThu) {
+    const action = canh.cau.find(c => /rút|lấy|gieo|tung|lắc/i.test(c.text));
+    const at = Math.min(action?.bat ?? .25, duration * .72);
+    const step = kep((time - at) / Math.min(1.5, duration - at));
+    return pic('orbit-' + Math.round(step * 15), 1);
+  }
   if (clip.giuNet) return <>
     {clip.coThuoc && pic('orbit-15', .32)}
     {pic('net-' + clip.netCuoi, 1)}

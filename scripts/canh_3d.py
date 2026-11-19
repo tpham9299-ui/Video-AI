@@ -172,6 +172,19 @@ def bien_dang_loi(points):
     return min(signs) > 1e-8 or max(signs) < -1e-8
 
 
+def tang_hop_le(rows):
+    # Mỗi tiết diện elip: cao độ, lệch tâm x/y, hai bán kính.
+    return (
+        isinstance(rows, list)
+        and 2 <= len(rows) <= 16
+        and all(
+            isinstance(row, list) and len(row) == 5 and all(so(x) for x in row) and min(row[3:]) > 0
+            for row in rows
+        )
+        and all(a[0] < b[0] for a, b in zip(rows, rows[1:]))
+    )
+
+
 def mo_hinh_tu_de(kb):
     # Mô hình tự do gồm các chi tiết ghép chung một hệ tọa độ. Chỉ nhận dữ liệu khai báo.
     mo = kb.get("mo_hinh_3d")
@@ -188,7 +201,9 @@ def mo_hinh_tu_de(kb):
         if (
             len(source) < 2
             or source not in de
-            or item.get("hinh") not in ("hop", "tru", "cau", "non", "thuyen", "bang_chuyen", "lang_tru")
+            or item.get("hinh")
+            not in ("hop", "tru", "cau", "non", "thuyen", "bang_chuyen", "lang_tru", "khoi_tiet_dien")
+            or (item["hinh"] == "khoi_tiet_dien" and not tang_hop_le(item.get("tang")))
             or (item["hinh"] == "lang_tru" and not bien_dang_loi(item.get("day")))
             or (item["hinh"] == "thuyen" and not re.search("thuyền|tàu|ca nô|xuồng", source))
             or (item["hinh"] == "bang_chuyen" and not re.search("băng (?:chuyền|tải)", source))
@@ -278,11 +293,85 @@ def be_khong_nap(parts, de):
     )
 
 
+def phep_thu_3d(c):
+    mh = c.get("minhHoa") or {}
+    du = mh.get("duLieu")
+    if mh.get("loai") != "san_khau" or not isinstance(du, dict) or c.get("giuSanKhau"):
+        return None
+    objects = du.get("vat")
+    if not isinstance(objects, list) or len(objects) != 1 or not isinstance(objects[0], dict):
+        return None
+    obj = objects[0]
+    kind = obj.get("loai")
+    if kind not in ("hop_bi", "xuc_xac", "dong_xu") or obj.get("nhan") or obj.get("noi_dung"):
+        return None
+    actions = du.get("hanh_dong") or []
+    if not isinstance(actions, list) or any(not isinstance(a, dict) for a in actions):
+        return None
+    actions = [a for a in actions if a.get("kieu") != "goc_3d"]
+    if len(actions) > 1 or any(a.get("vat") != obj.get("id") for a in actions):
+        return None
+    action = actions[0] if actions else {}
+    if kind == "hop_bi":
+        palette = ("do", "xanh_duong", "xanh_la", "vang", "trang", "tim", "cam", "den")
+        groups = obj.get("nhom")
+        if (
+            not isinstance(groups, list)
+            or not groups
+            or any(
+                not isinstance(g, dict)
+                or g.get("mau") not in palette
+                or type(g.get("so")) is not int
+                or not 1 <= g["so"] <= 20
+                for g in groups
+            )
+        ):
+            return None
+        if sum(g["so"] for g in groups) > 20:
+            return None
+        values = [g["mau"] for g in groups for _ in range(g["so"])]
+        if action and (
+            action.get("kieu") != "lay_ra"
+            or type(action.get("so", 1)) is not int
+            or not 1 <= action.get("so", 1) <= values.count(action.get("mau"))
+        ):
+            return None
+    else:
+        values = obj.get("ket_qua" if kind == "xuc_xac" else "ds")
+        if not isinstance(values, list) or not 1 <= len(values) <= (3 if kind == "xuc_xac" else 4):
+            return None
+        if obj.get("so_luong", len(values)) != len(values) or (action and action.get("kieu") != "quay"):
+            return None
+        if kind == "xuc_xac" and any(type(x) is not int or not 1 <= x <= 6 for x in values):
+            return None
+        if kind == "dong_xu" and any(x not in ("S", "N") for x in values):
+            return None
+    return dict(
+        loai="phep_thu",
+        vat=kind,
+        gia_tri=values,
+        dong=bool(action),
+        so_rut=action.get("so", 1) if kind == "hop_bi" and action else 0,
+        mau_rut=action.get("mau"),
+    )
+
+
 def ke_hoach(kb, props):
     practical = kb.get("mon") == "THUC_TE" or (not kb.get("mon") and str(kb.get("id", "")).startswith("TT"))
+    probability = kb.get("mon") == "XAC_SUAT" or (
+        not kb.get("mon") and str(kb.get("id", "")).startswith(("XS", "VD", "VT"))
+    )
     ds = {}
-    for i, c in enumerate(props.get("canh", [])):
+    scenes = props.get("canh", [])
+    for i, c in enumerate(scenes):
         local = c.get("moHinh3D")
+        if probability and local is None and not kb.get("mo_hinh_3d"):
+            if i + 1 < len(scenes) and scenes[i + 1].get("giuSanKhau"):
+                continue
+            plan = phep_thu_3d(c)
+            if plan:
+                ds[i] = plan
+            continue
         if local is None and (
             (not practical and not kb.get("mo_hinh_3d"))
             or c.get("loai") not in ("mo_dau", "hook", "de_bai", "mo_hinh_hoa")
@@ -302,6 +391,8 @@ def ke_hoach(kb, props):
                 raise ValueError(f"Mô hình riêng của cảnh {i + 1} sai dữ kiện hoặc kích thước")
         else:
             plan = canh_tu_kich_ban(kb, mh)
+        if probability and plan and plan["loai"] == "lap_ghep" and not plan.get("doan_toan"):
+            plan["giu_vat"] = True
         if plan and (local is not None or plan not in ds.values()):
             ds[i] = plan
     return ds

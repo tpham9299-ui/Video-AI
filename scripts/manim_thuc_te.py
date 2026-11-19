@@ -119,6 +119,11 @@ def main():
                 with Image.open(folder / f"orbit-{i}.png") as img:
                     if img.mode != "RGBA" or img.getchannel("A").getextrema() != (0, 255):
                         raise ValueError(f"Khung Blender {key}/{i} thiếu vật hoặc thiếu nền trong suốt")
+            projection = json.loads((folder / "projection.json").read_text())
+            if isinstance(projection, dict) and projection.get("phepThu"):
+                for index in indexes:
+                    props["canh"][index]["chuoi3D"] = dict(thuMuc=key, netCuoi=0, phepThu=True)
+                continue
             last, diagram_lines[key] = diagram(cam, folder)
             for index in indexes:
                 props["canh"][index]["chuoi3D"] = dict(
@@ -131,7 +136,10 @@ def main():
         carry = None
         label_file = None
         for c in props["canh"]:
-            if c.get("chuoi3D"):
+            if (c.get("chuoi3D") or {}).get("phepThu"):
+                carry = None
+                label_file = None
+            elif c.get("chuoi3D"):
                 carry = c["chuoi3D"]
                 label_file = None
             elif carry:

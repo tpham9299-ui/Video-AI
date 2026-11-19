@@ -37,7 +37,7 @@ const mau = [];
 const debut3D = c => c.chuoi3D && !c.chuoi3D.giuNet;
 for (const p of [0.95, 0.55]) {
   canh.forEach((c, i) => {
-    const off = p === 0.95 ? Math.min(Math.round(c.soFrame * p), Math.max(0, c.soFrame - 10)) : Math.round(c.soFrame * (debut3D(c) ? .23 : p));
+    const off = p === 0.95 ? Math.min(Math.round(c.soFrame * p), Math.max(0, c.soFrame - 10)) : Math.round(c.soFrame * (c.chuoi3D?.phepThu ? 0 : debut3D(c) ? .23 : p));
     mau.push({f: Math.min(props.tongFrame - 1, lech + c.batDau + off), i, isEnd: p === 0.95});
   });
 }
@@ -162,7 +162,7 @@ async function aiNhinHinh(anh) {
   if (!de) return {chay: false, ly_do: 'kịch bản không có đề bài', loi: []};
   const dapAn = String(kb.dap_an_hien || kb.dap_an || '');
   const dsCanh = anh.map((a, i) => { const c = (kb.canh || [])[a.canh] || {}; return `ẢNH ${i + 1} = cảnh ${a.ten}: "${String(c.loi_thoai || '').slice(0, 140)}" | công thức: ${(c.noi_dung_man_hinh || []).join(' ; ').slice(0, 120)}`; }).join('\n');
-  const prompt = 'Bạn là người KIỂM DUYỆT KHẮT KHE video dạy toán trước khi dựng. Với cặp vật 3D và cuối cảnh, đối chiếu cùng một vật, số lượng, vị trí tương đối, tỉ lệ và cạnh tương ứng khi chuyển sang sơ đồ. Báo nếu có nền chữ nhật riêng che nền video. Những cảnh còn lại dùng khung cuối.\n' +
+  const prompt = 'Bạn là người KIỂM DUYỆT KHẮT KHE video dạy toán trước khi dựng. Với cặp vật 3D và cuối cảnh, đối chiếu cùng một vật, số lượng, vị trí tương đối, tỉ lệ và cạnh tương ứng khi chuyển sang sơ đồ. Với phép thử xác suất, so số vật, màu trước và sau lần rút, hoặc mặt ngửa của xu và số chấm mặt trên khi xúc xắc dừng với lời mô tả. Kết quả minh họa của một lần thử không phải xác suất của biến cố. Báo nếu có nền chữ nhật riêng che nền video. Những cảnh còn lại dùng khung cuối.\n' +
     'ĐỀ BÀI: ' + de + (kb.mo_ta_hinh ? '\nMÔ TẢ HÌNH ĐỀ: ' + kb.mo_ta_hinh : '') + '\nĐÁP ÁN ĐÚNG (đã kiểm chứng bằng 2 cách giải + mã tính): ' + dapAn + '\n' + dsCanh + '\n' +
     'Kiểm tra TỪNG ảnh, chỉ báo lỗi THẬT:\n' +
     '(1) Vật/địa điểm thật trong đề (cột cờ, tòa nhà, ngân hàng, hàng rào, tường, cây, người, xe...) phải vẽ ĐÚNG là vật đó; khối hộp/khối trụ/thẻ chữ thay vật thật là SAI.\n' +
