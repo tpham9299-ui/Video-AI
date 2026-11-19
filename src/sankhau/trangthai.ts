@@ -15,7 +15,6 @@ export type TrangThai = {
   loai: Map<number, number>;
   loaiCa: number;
   sang: number; // nhịp sáng 0..1
-  rung: number; // độ lệch rung (px)
   nghiengDi: number; // vật đang di chuyển: nghiêng người theo hướng đi (độ), như có quán tính
   quay: number; // tiến độ lần quay/mở gần nhất (0..1), -1 nếu chưa quay
   coQuay: boolean; // có hành động quay/mở trong cảnh không
@@ -42,7 +41,7 @@ export function tinhTrangThai(v: Vat, ds: HanhDong[], t: number, tb: (b: number)
   const ta = tb(v.buoc);
   const st: TrangThai = {
     t, ta, vao: v.buoc <= 0 ? 1 : tienDo(t, ta, 0.5),
-    chon: new Map(), chonCa: 0, mauChon: '', coChon: 0, loai: new Map(), loaiCa: 0, sang: 0, rung: 0, nghiengDi: 0,
+    chon: new Map(), chonCa: 0, mauChon: '', coChon: 0, loai: new Map(), loaiCa: 0, sang: 0, nghiengDi: 0,
     quay: -1, coQuay: false, mo: new Map(), layRa: [], bung: 0,
     giaTri: isFinite(v.giaTri) ? v.giaTri : v.loai === 'do_thi' ? NaN : 0.5, giaTriChu: v.giaTriChu, noiDung: v.noiDung, dx: 0, dy: 0, an: 0, tb,
     bienNet: new Map(), tach: 0, demTang: -1,
@@ -80,7 +79,7 @@ export function tinhTrangThai(v: Vat, ds: HanhDong[], t: number, tb: (b: number)
       }
       case 'rung': {
         const q = h.buoc <= 0 ? 1 : tienDo(t, bd, 0.7);
-        st.rung = 3 * Math.sin(q * Math.PI * 2) * Math.sin(q * Math.PI) ** 2;
+        st.sang = Math.max(st.sang, Math.sin(q * Math.PI) ** 2);
         break;
       }
       case 'quay':
@@ -331,9 +330,13 @@ export function tuXepSanKhau(dsVat: Vat[], W: number, H: number, k = 1, doThat?:
   // THẺ CHỮ giữ nguyên cỡ (chữ phải đọc được); chỉ VẬT HÌNH (người, đồ vật...) được thu nhỏ khi sân khấu chật
   const CO_DINH = new Set(['nhan', 'chu']);
   // khi PHÓNG TO (f > 1): chỉ vật hình được to lên; số đếm, thẻ, danh sách, biểu đồ giữ cỡ (chữ số đã đủ to, phóng thêm dễ lấn vật bên cạnh)
-  const KHONG_PHONG = new Set(['so_dem', 'the', 'danh_sach', 'bieu_do_cot', 'luoi_o', 'dong_ho_do', 'thanh']);
+  const KHONG_PHONG = new Set(['hop_bi', 'tui', 'so_dem', 'the', 'danh_sach', 'bieu_do_cot', 'luoi_o', 'dong_ho_do', 'thanh']);
   const heSo = (loai: string, f: number) => (CO_DINH.has(loai) ? 1 : f > 1 && KHONG_PHONG.has(loai) ? 1 : loai === 'danh_sach' ? Math.max(0.8, f) : f);
   const goc = xs.map((v) => {
+    if (v.loai === 'hop_bi' || v.loai === 'tui') {
+      // Khay bi xuất hiện sau khi lấy. Giữ chỗ từ đầu, kể cả lúc DOM chưa có khay.
+      return {v, w: 840 * v.co, h: 450 * v.co, coDinh: false};
+    }
     const m = doThat && doThat.get(v.id);
     if (m && m.w > 4 && m.h > 4) { const r = v.co / (m.co || 1); return {v, w: m.w * r * 1.03, h: m.h * r * 1.03, coDinh: CO_DINH.has(v.loai)}; }
     const kt = kichThuocVat(v, k); const [aw, ah] = AN_TOAN[v.loai] || [1.04, 1.08];

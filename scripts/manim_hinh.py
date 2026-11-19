@@ -238,50 +238,28 @@ class MoHinh:
         self.la_khong_gian = la_kg
         if not la_kg:
             return
-        doan_chinh = [p for p in self.pt if p["kieu"] == "doan" and p.get("kieu_net") in ("canh", "khuat")]
-        dinh_chinh = sorted({x for p in doan_chinh for x in p["khoa"] if x in self.diem})
-        if len(dinh_chinh) < 4:
-            return
-
-        def la_canh_bao_loi(a, b):
-            ax, ay = self.diem[a]
-            bx, by = self.diem[b]
-            dx, dy = bx - ax, by - ay
-            L = math.hypot(dx, dy)
-            if L < 1e-6:
-                return False
-            duong, am = 0, 0
-            for k in dinh_chinh:
-                if k in (a, b):
-                    continue
-                px, py = self.diem[k]
-                cr = (dx * (py - ay) - dy * (px - ax)) / L
-                if cr > 0.15:
-                    duong += 1
-                elif cr < -0.15:
-                    am += 1
-                if duong > 0 and am > 0:
-                    return False
-            return True
-
-        # 1) Cạnh nằm trên đường viền bao ngoài cùng của khối: bắt buộc là cạnh nhìn thấy (nét liền)
-        dinh_tren_bao = set()
-        for p in doan_chinh:
-            a, b = p["khoa"]
-            if la_canh_bao_loi(a, b):
-                dinh_tren_bao.update((a, b))
-                if p.get("kieu_net") == "khuat":
-                    p["kieu_net"] = "canh"
-
-        # 2) Nếu bài không gian chưa có cạnh khuất nào (do kịch bản cũ quên đánh dấu khuat):
-        # Đỉnh nằm hẳn bên trong bao lồi (góc khuất phía sau của đáy chóp/lăng trụ, thường có y nhỏ hơn = cao hơn trên màn hình) -> các cạnh nối tới nó là cạnh khuất!
-        if not any(p.get("kieu_net") == "khuat" for p in doan_chinh):
-            dinh_trong = [k for k in dinh_chinh if k not in dinh_tren_bao]
-            if dinh_trong:
-                for p in doan_chinh:
-                    a, b = p["khoa"]
-                    if (a in dinh_trong or b in dinh_trong) and not la_canh_bao_loi(a, b):
-                        p["kieu_net"] = "khuat"
+        # Chỉ suy ra các mặt khi đề xác định thứ tự đỉnh của khối.
+        # Với bản vẽ 2D thiếu dữ kiện, giữ quy ước nét đã khai báo.
+        self.mat_khoi = []
+        self.day = []
+        de = self.de_bai.replace("$", "").replace("′", "'").replace("’", "'")
+        ky_hieu = r"(?:[A-Z](?:'|_?\d+)?)"
+        ten = re.search(r"(?i:hình chóp|tứ diện|hình hộp|lăng trụ)\s+(" + ky_hieu + r"{1,5})\s*[.·]\s*(" + ky_hieu + r"{3,5})", de)
+        tu_dien = re.search(r"(?i:tứ diện(?: vuông)?)\s+([A-Z]{4})", de)
+        if ten:
+            a, b = ([ten_chuan(n) for n in re.findall(ky_hieu, ds)] for ds in ten.groups())
+            if len(a) == 1:
+                self.day = b
+                self.mat_khoi = [b] + [[a[0], n, b[i-1]] for i, n in enumerate(b)]
+            elif len(a) == len(b):
+                self.day = a
+                self.mat_khoi = [a, b] + [[a[i-1], n, b[i], b[i-1]] for i, n in enumerate(a)]
+        elif tu_dien:
+            a, b, c, d = tu_dien.group(1)
+            self.day = [b,c,d]
+            self.mat_khoi = [self.day, [a,b,c], [a,c,d], [a,d,b]]
+        if any(n not in self.diem for face in self.mat_khoi for n in face):
+            self.mat_khoi, self.day = [], []
 
     def _tu_sinh_hinh_tu_de(self):
         """Phương án dự phòng tự sinh hình chuẩn xác từ đề bài và lời giải khi kịch bản thiếu tọa độ v['diem'],
@@ -753,12 +731,10 @@ def phong_hoa(tex):
 def tao_cong_thuc(tex, co=40):
     try:
         return MathTex(phong_hoa(tex) if PHONG_CHU_SO else tex, tex_template=TEX, font_size=co)
-    except Exception as e:  # noqa: BLE001
-        print("  TeX lỗi (%s) -> dùng chữ thường: %s" % (str(e)[:80], tex[:80]))
-        try:
-            return MathTex(chuan_tex(bo_tex(tex)), tex_template=TEX, font_size=co)
-        except Exception:  # noqa: BLE001
-            return Text(bo_tex(tex), font=PHONG, weight="ULTRABOLD", font_size=co * 0.8, color=TRANG)
+    except Exception:
+        if not PHONG_CHU_SO:
+            raise
+        return MathTex(tex, tex_template=TEX, font_size=co)
 
 
 def khoi_chu(chu, co, rong, cao, mau=TRANG):
@@ -839,6 +815,72 @@ class VideoHinh(Scene):
                 return phat + abs(goc) * 0.08
             self.goc_doc = min(map(math.radians, [0, 6, -6, 12, -12]), key=diem_che)
             self.P = self.chieu_dinh(self.goc_doc)
+            self.goc_dang_xem = 0
+            self.net_goc = self.canh_khuat(self.goc_doc)
+            for p in mo.pt:
+                if p["kieu"] == "doan" and p["khoa"] in self.net_goc:
+                    p["kieu_net"] = "khuat" if self.net_goc[p["khoa"]] else "canh"
+
+    def canh_khuat(self, goc):
+        # Trên khối lồi, một cạnh bị che khi mọi mặt kề đều quay ra sau.
+        # Z_sau tăng ra xa máy quay. Xác định hướng mặt từ tâm khối.
+        faces = getattr(self.mo, "mat_khoi", [])
+        if not faces:
+            return {}
+        xyz = {n: np.array([*self.P0[n][:2], self.Z_sau[n]]) for face in faces for n in face}
+        tam = np.mean(list(xyz.values()), axis=0)
+        c, s = math.cos(goc), math.sin(goc)
+        tia = np.array([-s, 0.25 * (s*s - c*(c-1)), c])
+        thay = {}
+        for face in faces:
+            a, b, d = (xyz[n] for n in face[:3])
+            phap = np.cross(b-a, d-a)
+            huong = float(phap @ (a-tam))
+            if abs(huong) < 1e-6:
+                return {}
+            truoc = np.sign(huong) * (phap @ tia) <= 1e-6
+            for i, n in enumerate(face):
+                k = khoa_doan(n, face[i-1])
+                thay[k] = thay.get(k, False) or truoc
+        return {k: not v for k,v in thay.items()}
+
+    def net_phu(self, d, goc):
+        # Cắt đoạn theo từng tam giác chiếu của vỏ khối. Tọa độ barycentric
+        # và chênh độ sâu đều tuyến tính theo tham số t dọc đoạn.
+        a,b = (self.P[n] for n in d)
+        if not self.net_goc:
+            return DashedLine(a,b, dash_length=0.18, dashed_ratio=0.56, color=NET_DUT)
+        def sau(n):
+            return self.Z_sau[n]*math.cos(goc) - (self.P0[n][0]-self.tam[0])*math.sin(goc)
+        che = []
+        for face in self.mo.mat_khoi:
+            for j in range(1,len(face)-1):
+                i,k,l = face[0],face[j],face[j+1]
+                o = self.P[i][:2]
+                he = np.column_stack((self.P[k][:2]-o,self.P[l][:2]-o))
+                if abs(np.linalg.det(he)) < 1e-8:
+                    continue
+                u,v = np.linalg.solve(he,np.column_stack((a[:2]-o,b[:2]-o)))
+                w = 1-u-v
+                lech = np.array([sau(n) for n in d]) - (w*sau(i)+u*sau(k)+v*sau(l)) - 1e-4
+                dau,cuoi = 0.,1.
+                for x,y in (u,v,w,lech):
+                    if max(x,y) < 0:
+                        cuoi = -1
+                        break
+                    if x < 0: dau = max(dau,-x/(y-x))
+                    if y < 0: cuoi = min(cuoi,-x/(y-x))
+                if cuoi-dau > 1e-5:
+                    che.append((dau,cuoi))
+        moc = sorted({0.,1.,*(t for khoang in che for t in khoang)})
+        nhom = VGroup()
+        for x,y in zip(moc,moc[1:]):
+            if (y-x)*np.linalg.norm(b-a) < 0.002:
+                continue
+            p,q = a+x*(b-a), a+y*(b-a)
+            an = any(lo <= (x+y)/2 <= hi for lo,hi in che)
+            nhom.add(DashedLine(p,q,dash_length=0.18,dashed_ratio=0.56) if an else Line(p,q))
+        return nhom.set_stroke(NET_DUT,width=3)
 
     def _chuan_bi_chieu_sau_3d(self):
         """Khởi tạo độ sâu 3D (Z_sau) cho từng đỉnh của khối đa diện không gian để phục vụ xoay 3D trực quan,
@@ -1032,7 +1074,9 @@ class VideoHinh(Scene):
             m = None
             if p["kieu"] == "doan":
                 a, b = (self.P[x] for x in p["khoa"])
-                if p["kieu_net"] in ("khuat", "phu"):
+                if p["kieu_net"] == "phu" and mo.la_khong_gian:
+                    m = self.net_phu(p["khoa"], self.goc_doc)
+                elif p["kieu_net"] == "khuat":
                     # Cạnh khuất (không gian 3D) và đường thẳng phụ kẻ thêm: vẽ bằng nét đứt rõ ràng (dash_length=0.18, dashed_ratio=0.56)
                     m = DashedLine(a, b, dash_length=0.18, dashed_ratio=0.56, stroke_width=3.5,
                                    color=NET_DUT if p["kieu_net"] == "phu" else XAM)
@@ -1082,7 +1126,7 @@ class VideoHinh(Scene):
             self.cham[n] = Dot(p, radius=0.065, color=TRANG)
             vt = vt_tam[n]
             self.lech_nhan[n] = vt - p
-            self.nhan_diem[n] = MathTex(tex_ten(n), tex_template=TEX, font_size=36, color=TRANG).move_to(vt)
+            self.nhan_diem[n] = MathTex(tex_ten(n), tex_template=TEX, font_size=36, color=TRANG).move_to(vt).set_stroke("#10171d", width=4, background=True).set_z_index(8)
 
     def chieu_dinh(self, goc_rad):
         """Chiếu tọa độ 3D của khối đa diện tại góc xoay goc_rad (radian) quanh trục thẳng đứng đi qua tâm khối."""
@@ -1105,20 +1149,27 @@ class VideoHinh(Scene):
         for p in self.mo.pt:
             k = (p["kieu"], p["khoa"])
             m = self.hinh.get(k)
-            if m is None or m not in self.tren_man:
+            if m is None:
                 continue
             if p["kieu"] == "doan":
                 a, b = (self.P[x] for x in p["khoa"])
                 if np.linalg.norm(b - a) < 1e-4:
                     continue
                 net = self.net_chinh(m)
-                net.put_start_and_end_on(a, b)
+                if p["kieu_net"] == "phu" and self.mo.la_khong_gian:
+                    net.become(self.net_phu(p["khoa"], self.goc_doc + goc_rad))
+                else:
+                    net.put_start_and_end_on(a, b)
                 if m is not net and len(m) > 1:
                     huong = np.cross(b - a, [0, 0, 1])
                     huong = huong / max(1e-6, np.linalg.norm(huong))
                     if np.dot((a + b) / 2 + huong - self.tam, huong) < np.dot((a + b) / 2 - self.tam, huong):
                         huong = -huong
                     m[1].move_to((a + b) / 2 + huong * 0.32)
+            elif p["kieu"] == "bang":
+                m.become(self.vach_bang(*(self.P[x] for x in p["khoa"]), p["so"]))
+            elif p["kieu"] == "goc":
+                m.become(self.cung_goc(p["ba"], self.mo.mau.get(k, VANG), p.get("nhan")))
             elif p["kieu"] == "mien":
                 pts = [self.P[x] for x in p["dinh"]]
                 if len(pts) >= 3:
@@ -1131,16 +1182,17 @@ class VideoHinh(Scene):
                 m.set_points_as_corners([o + u, o + u + w, o + w])
 
         for k, m in list(self.hinh.items()):
+            if k[0] == "so" and hasattr(m, "neo_do"):
+                ds, lech = m.neo_do
+                m.move_to(np.mean([self.P[n] for n in ds], axis=0) + lech)
             if k[0] == "mien" and m in self.tren_man and k not in self.mo.chi_so:
                 pts = [self.P[x] for x in k[1] if x in self.P]
                 if len(pts) >= 3:
                     m.set_points_as_corners(pts + [pts[0]])
 
         for n in self.P:
-            if self.cham[n] in self.tren_man:
-                self.cham[n].move_to(self.P[n])
-            if self.nhan_diem[n] in self.tren_man:
-                self.nhan_diem[n].move_to(self.P[n] + self.lech_nhan.get(n, np.array([0.0, 0.36, 0.0])))
+            self.cham[n].move_to(self.P[n])
+            self.nhan_diem[n].move_to(self.P[n] + self.lech_nhan.get(n, np.array([0.0, 0.36, 0.0])))
 
     def xoay_3d(self, ds_goc_do, run_time=1.8):
         """Xoay 3D mượt mà khối đa diện qua chuỗi các góc độ (độ) để học sinh quan sát trực quan hình không gian."""
@@ -1150,6 +1202,14 @@ class VideoHinh(Scene):
         n_doan = len(moc_rad) - 1
         khung_ao = Dot(self.tam, radius=0.001, fill_opacity=0, stroke_opacity=0)
         self.add(khung_ao)
+        lech_dau = dict(self.lech_nhan)
+        p_dau = self.P
+        self.P = self.chieu_dinh(self.goc_doc + moc_rad[-1])
+        vi_tri_cuoi = {}
+        for n in self.P:
+            vi_tri_cuoi[n] = self.vi_tri_nhan(n, [v[:2] for v in vi_tri_cuoi.values()])
+        lech_cuoi = {n: vi_tri_cuoi[n] - p for n,p in self.P.items()}
+        self.P = p_dau
 
         def _cap_nhat(_mob, alpha):
             pos = max(0.0, min(float(n_doan), float(alpha) * n_doan))
@@ -1158,6 +1218,7 @@ class VideoHinh(Scene):
             # Nội suy mượt cosine (smoothstep) giữa hai góc
             t_muot = 0.5 - 0.5 * math.cos(t_con * math.pi)
             goc = moc_rad[idx] + (moc_rad[idx + 1] - moc_rad[idx]) * t_muot
+            self.lech_nhan = {n: (1-alpha)*lech_dau[n] + alpha*lech_cuoi[n] for n in lech_dau}
             self.cap_nhat_goc_3d(goc)
 
         self.choi(UpdateFromAlphaFunc(khung_ao, _cap_nhat), run_time=run_time)
@@ -1246,18 +1307,18 @@ class VideoHinh(Scene):
             if m not in self.tren_man:
                 continue
             duoc = k in sang
-            mo_do = 1.0  # Không bao giờ làm mờ các nét xung quanh
+            mo_do = 0.58 if co_tap_trung and not duoc else 1.0
             net = self.net_chinh(m)
             if k[0] == "doan":
                 kieu_net = mo.pt[mo.chi_so[k]]["kieu_net"] if k in mo.chi_so else "canh"
                 mau_mac_dinh = NET_DUT if (isinstance(net, DashedLine) and kieu_net == "phu") else (XAM if isinstance(net, DashedLine) else TRANG)
-                mau = mo.mau.get(k, VANG) if duoc else (mo.mau.get(k, TRANG) if k in self.da_to else mau_mac_dinh)
+                mau = mo.mau.get(k, VANG) if duoc else mau_mac_dinh
                 if duoc:
                     self.da_to.add(k)
                 # Cạnh đang xét: dày nổi bật (8.5 cho nét liền, 5.8 cho nét đứt); cạnh không xét: giữ nguyên độ rõ 100% ở nét chuẩn
                 rong = (5.8 if isinstance(net, DashedLine) else 8.5) if (duoc and co_tap_trung) else (3.5 if isinstance(net, DashedLine) else 4.2)
                 if kieu_net == "con":
-                    if k not in self.da_to and not duoc:
+                    if not duoc:
                         mo_do = 0.0
                     rong += 1.8     # đoạn con nằm đè lên cạnh mẹ: dày hơn để nổi bật màu riêng
                 anim.append(net.animate.set_stroke(color=mau, width=rong, opacity=mo_do))
@@ -1407,7 +1468,12 @@ class VideoHinh(Scene):
                     return moc_doan[d]
                 return min((moc_diem.get(x, 0.0) for x in d), default=0.0)
 
-            moi_doan_sx = sorted(moi_doan, key=_moc_cua_doan)
+            day = set(getattr(mo, "day", []))
+            def thu_tu(p):
+                if p.get("kieu_net") in ("phu", "con"):
+                    return 2
+                return 0 if set(p["khoa"]) <= day else 1
+            moi_doan_sx = sorted(moi_doan, key=lambda p: (thu_tu(p), _moc_cua_doan(p)))
             buoc_ve = []  # list of (t_bat_mong_muon, list_animations)
             # Điểm lẻ được giọng đọc gọi tên sớm trước khi nối đoạn
             for x in list(diem_moi):
@@ -1438,7 +1504,7 @@ class VideoHinh(Scene):
                 for x in list(diem_moi):
                     le += [GrowFromCenter(self.cham[x]), Write(self.nhan_diem[x])]
                     self.tren_man.update([self.cham[x], self.nhan_diem[x]])
-                buoc_ve.insert(0, (0.0, le))
+                buoc_ve.append((0.0, le))
 
             for p in moi_khac:
                 m = self.hinh[(p["kieu"], p["khoa"])]
@@ -1446,9 +1512,8 @@ class VideoHinh(Scene):
                 buoc_ve.append((t_k, [FadeIn(m)] if p["kieu"] == "mien" else [Create(m)]))
                 self.tren_man.add(m)
 
-            buoc_ve.sort(key=lambda item: item[0])
             if buoc_ve:
-                ngan_sach = min(D * 0.52, 0.55 + 0.42 * len(buoc_ve))
+                ngan_sach = min(D * 0.65, 0.5 + 0.8 * len(buoc_ve))
                 rt = max(0.30, min(0.80, ngan_sach / len(buoc_ve)))
                 for t_muc, g in buoc_ve:
                     if t_muc > self.da + 0.08 and t_muc < D * 0.60:
@@ -1477,8 +1542,20 @@ class VideoHinh(Scene):
             # 3.5) HÌNH HỌC KHÔNG GIAN 3D: xoay 3D trực quan khối đa diện để học sinh quan sát rõ cấu trúc không gian
             if getattr(mo, "la_khong_gian", False) and len(self.tren_man) >= 4:
                 con_3d = D - self._bay_gio()
-                if i == 1 and con_3d >= 4.5:
-                    self.xoay_3d([0, 6, 0], run_time=1.8)
+                canh_xet = mo.nhac[i]["doan"]
+                if canh_xet and self.net_goc and con_3d >= 3 and not any(k[0] == "tron" for k in self.hinh):
+                    def do_ro(do):
+                        h = self.chieu_dinh(self.goc_doc + math.radians(do))
+                        return min((np.linalg.norm(h[a]-h[b]) for a,b in canh_xet if a in h and b in h), default=0)
+                    goc_cu = self.goc_dang_xem
+                    # Giữ trong miền góc có cùng tập cạnh khuất trong suốt chuyển động.
+                    goc = [d for d in (-12, -6, 0, 6, 12) if all(
+                        self.canh_khuat(self.goc_doc + math.radians(q)) == self.net_goc
+                        for q in np.linspace(goc_cu,d,9))]
+                    moi_goc = max(goc or [goc_cu], key=do_ro)
+                    if do_ro(moi_goc) > do_ro(goc_cu) + 0.08:
+                        self.xoay_3d([goc_cu, moi_goc], run_time=1.4)
+                        self.goc_dang_xem = moi_goc
 
             # 4) Đồng bộ giọng đọc từng câu (cau) & hiện công thức biến đổi bên dưới:
             # Khi giọng đọc nhắc tới điểm/cạnh/góc/tam giác/mặt phẳng nào, Manim phóng tia sáng ShowPassingFlash
@@ -1502,11 +1579,7 @@ class VideoHinh(Scene):
                             if m_d is not None and m_d in self.tren_man:
                                 net_d = self.net_chinh(m_d)
                                 mau_d = mo.mau.get(("doan", d), VANG)
-                                tia_c = (
-                                    DashedLine(*(self.P[x] for x in d), dash_length=0.18, dashed_ratio=0.56).set_stroke(VANG, width=11)
-                                    if isinstance(net_d, DashedLine)
-                                    else Line(*(self.P[x] for x in d)).set_stroke(VANG, width=14)
-                                )
+                                tia_c = net_d.copy().set_stroke(VANG, width=8)
                                 cau_loe.append(ShowPassingFlash(tia_c, time_width=0.80))
                                 cau_loe.append(net_d.animate.set_stroke(color=mau_d, width=(6.0 if isinstance(net_d, DashedLine) else 9.0), opacity=1.0))
                         for gk in c_nt["goc"]:
@@ -1566,11 +1639,7 @@ class VideoHinh(Scene):
                     if m_d is not None and m_d in self.tren_man:
                         net_d = self.net_chinh(m_d)
                         mau_d = mo.mau.get(("doan", d), VANG)
-                        tia_loe = (
-                            DashedLine(*(self.P[x] for x in d), dash_length=0.18, dashed_ratio=0.56).set_stroke(VANG, width=10)
-                            if isinstance(net_d, DashedLine)
-                            else Line(*(self.P[x] for x in d)).set_stroke(VANG, width=13)
-                        )
+                        tia_loe = net_d.copy().set_stroke(VANG, width=8)
                         loe.append(ShowPassingFlash(tia_loe, time_width=0.65))
                         loe.append(net_d.animate.set_stroke(color=mau_d, width=(6.0 if isinstance(net_d, DashedLine) else 8.8), opacity=1.0))
                 for gk in dong_nt["goc"]:
@@ -1637,6 +1706,7 @@ class VideoHinh(Scene):
             u = u / max(1e-6, np.linalg.norm(u))
             pos = chon_vi_tri_thoang([O + u * r_ for r_ in (0.85, 1.12, 0.65)])
             nhan = tao_cong_thuc(v + r"^\circ", 30).set_color(mo.mau.get(("goc", gk), VANG)).move_to(pos)
+            nhan.neo_do = ([ten_chuan(o)], pos - O)
             self.hinh[khoa] = nhan
             self.tren_man.add(nhan)
             da_dat.append(pos[:2])
@@ -1657,6 +1727,7 @@ class VideoHinh(Scene):
             giua = (A + B) / 2
             pos = chon_vi_tri_thoang([giua + ph * 0.42, giua - ph * 0.42, giua + ph * 0.68])
             nhan = tao_cong_thuc(v, 30).set_color(mo.mau.get(("doan", d), VANG)).move_to(pos)
+            nhan.neo_do = (d, pos - giua)
             self.hinh[khoa] = nhan
             self.tren_man.add(nhan)
             da_dat.append(pos[:2])

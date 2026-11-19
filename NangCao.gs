@@ -164,6 +164,7 @@ function xuLyKetQuaAiXem_(sh, d) {
   if (!r) return { ok: false, loi: 'KHONG_TIM_THAY' };
   if (r.trang_thai !== 'CO_VIDEO' || String(r.duyet) !== 'AI_XEM') return { ok: true, lap: true };
   var kq = d.ok && d.kq && d.kq.chi_tiet ? d.kq : null;
+  if (d.ok && (!d.anh_kt || String(d.anh_kt) !== String(r.anh_kt))) return { ok: true, lap: true };
   if (!kq && d.loi) nhatKy_('AI_XEM_LOI', r.id + ' [GitHub]: ' + String(d.loi).slice(0, 200));
   apDungKetQuaAiXem_(sh, r, kq);
   return { ok: true };
@@ -221,35 +222,10 @@ function apDungKetQuaAiXem_(sh, r, kq) {
     return;
   }
   if (lan >= toiDa || !r.file_kich_ban) {
-    // Kiểm tra nghiêm ngặt toàn bộ tiêu chí cốt lõi của chủ kênh (toán đúng + bám đề + bố cục + quy tắc đã dạy + đề bài + sản phẩm).
-    // Tuyệt đối KHÔNG tự duyệt (DA_DUYET) khi vi phạm bất kỳ tiêu chí bắt buộc nào (< 7).
-    var ctDiem = kq.chi_tiet || {};
-    var toanDung = (Number(ctDiem.loi_giai) >= 7 || ctDiem.loi_giai === undefined) && (Number(ctDiem.dap_an) >= 7 || ctDiem.dap_an === undefined);
-    var cotLoiDat = ['de_bai', 'bam_de', 'loi_giai', 'dap_an', 'bo_cuc', 'quy_tac_hoc', 'san_pham'].every(function (k) {
-      return ctDiem[k] === undefined || Number(ctDiem[k]) >= 7;
-    });
-    var khongLoiNghiemTrong = ['bam_de', 'bo_cuc', 'quy_tac_hoc', 'de_bai', 'san_pham'].every(function (k) {
-      return ctDiem[k] === undefined || Number(ctDiem[k]) >= 6;
-    });
-    if (toanDung && khongLoiNghiemTrong && r.file_video) {
-      var tuDuyet = !canDuyet_() && cotLoiDat && pt >= Math.max(80, nguongPT - 5);
-      var kqD2 = {};
-      try { kqD2 = JSON.parse(String(r.link_dang || '{}')) || {}; } catch (eD2) { kqD2 = {}; }
-      if (tuDuyet) kqD2._duyet_luc = kqD2._duyet_luc || Date.now();
-      ghiAiKT_(sh, r, { diem: kq.diem, phan_tram: pt, chi_tiet: kq.chi_tiet, van_de: kq.van_de, phien_ban: typeof PHIEN_BAN_EDIT !== 'undefined' ? PHIEN_BAN_EDIT : 45 },
-        { duyet: tuDuyet ? 'DA_DUYET' : 'CHO', link_dang: JSON.stringify(kqD2), ghi_chu: (tuDuyet ? 'Đạt chuẩn cốt lõi sau ' : 'Chờ duyệt tay (chưa đủ chuẩn tự đăng, ') + lan + ' vòng AI sửa (' + pt + '%)' });
-      nhatKy_('AI_XEM', r.id + ': ' + (tuDuyet ? 'giữ bản đạt chuẩn cốt lõi (' + pt + '%)' : 'chuyển CHO để chủ kênh kiểm tra (' + pt + '%, ' + tomTatTieuChi_(kq) + ')'));
-      if (tuDuyet) {
-        henDangVideoS_(10);
-      } else {
-        guiDuyet_(r, '⚠️ Đạt ' + pt + '% sau ' + lan + ' lần AI tự sửa (' + tomTatTieuChi_(kq) + '). Cần bạn xác nhận trước khi đăng');
-      }
-      return;
-    }
-    var lyDo = 'đáp ứng ' + pt + '% sau ' + lan + ' lần tự sửa' + (kq.nang.length ? ', tiêu chí bắt buộc chưa đạt: ' + kq.nang.join(', ') : '') + '. ' + kq.van_de.slice(0, 3).join('; ');
-    ghiAiKT_(sh, r, { diem: kq.diem, phan_tram: pt, chi_tiet: kq.chi_tiet, van_de: kq.van_de }, {});
-    boDeKhongDat_(sh, r, lyDo, 'video');
-    if (laUuTien_(r)) baoZaloDe_(r, '❌ Video cho đề ' + r.id + ' bị sai toán/đáp án sau ' + lan + ' lần tự sửa nên hệ thống đã bỏ video.\nLý do: ' + kq.van_de.slice(0, 2).join('; ').slice(0, 250), 'cao');
+    var lyDo = 'Chờ duyệt tay sau ' + lan + ' lần sửa (' + pt + '%): ' + kq.van_de.slice(0, 3).join('; ');
+    ghiAiKT_(sh, r, { diem: kq.diem, phan_tram: pt, chi_tiet: kq.chi_tiet, van_de: kq.van_de },
+      { duyet: 'CHO', ghi_chu: lyDo });
+    guiDuyet_(r, lyDo);
     return;
   }
   traVeSuaKichBan_(sh, r,
@@ -281,17 +257,25 @@ function aiChamVideo_(r) {
   var ds = tieuChiYeuCau_(!!kb.san_pham, 'video');
   if (kb.san_pham && typeof anhSanPhamChoGemini_ === 'function') anhSanPhamChoGemini_(kb.san_pham, 2).forEach(function (a) { anhs.push(a); });
   var canh = (kb.canh || []);
-  var moTa = canh.map(function (c, i) { return 'Cảnh ' + (i + 1) + ' (' + c.loai + '): ' + (c.tieu_de_canh || '') + ' | hình: ' + String((c.minh_hoa || {}).mo_ta || '').slice(0, 140); }).join('\n');
-  var prompt = 'Bạn là người KIỂM DUYỆT KHẮT KHE video dạy toán TikTok trước khi gửi cho chủ kênh. ẢNH 1 là lưới khung hình của video: MỖI CẢNH MỘT KHUNG theo đúng thứ tự cảnh của kịch bản bên dưới (đọc từ trái sang phải, trên xuống dưới).' + (anhDe ? ' ẢNH 2 là ảnh chụp đề gốc.' : '') +
+  if (!canh.length || !chuanLop_(r.lop)) throw new Error('Thiếu kịch bản hoặc lớp để xác minh phương pháp');
+  var vuotLop = kiemTraViPhamLop_(kb, r.lop, r.mon, r.de_bai);
+  var moTa = canh.map(function (c, i) {
+    return 'Cảnh ' + (i + 1) + ': ' + [c.tieu_de_canh, c.loi_thoai, c.noi_dung_man_hinh, c.chu_thich, (c.minh_hoa || {}).mo_ta].filter(Boolean).join(' | ');
+  }).join('\n');
+  var prompt = 'Bạn là người KIỂM DUYỆT KHẮT KHE video dạy toán TikTok trước khi gửi cho chủ kênh. ẢNH 1 là lưới khung hình của video: tối đa 24 khung lấy mẫu theo thứ tự thời gian của kịch bản bên dưới (đọc từ trái sang phải, trên xuống dưới).' + (anhDe ? ' ẢNH 2 là ảnh chụp đề gốc.' : '') +
     '\nLỚP HỌC CỦA ĐỀ: Lớp ' + r.lop + (typeof yeuCauKienThucLop_ === 'function' && yeuCauKienThucLop_(r.lop, r.mon) ? '\n' + yeuCauKienThucLop_(r.lop, r.mon) : '') +
     '\nĐỀ BÀI: ' + r.de_bai + (r.mo_ta_hinh ? '\nMÔ TẢ HÌNH CỦA ĐỀ: ' + r.mo_ta_hinh : '') + '\nĐÁP ÁN ĐÚNG: ' + (r.dap_an_hien || r.dap_an) + '\nKỊCH BẢN:\n' + moTa + '\n' +
     (kb.khong_thu_lai ? 'KỊCH BẢN GHI KHÔNG THỂ THỬ LẠI VÌ: ' + kb.khong_thu_lai + '\n' : '') +
     (kb.san_pham ? 'SẢN PHẨM QUẢNG BÁ: ' + kb.san_pham.ten + ' (giá kênh bán ' + kb.san_pham.gia_ban + 'đ). Các ảnh sau ảnh lưới là ẢNH THẬT của sản phẩm để đối chiếu.\n' : '') +
     'TIÊU CHÍ CỦA CHỦ KÊNH (chấm mỗi tiêu chí 0-10; 9-10 khi chính xác và hiển thị rõ; 8 khi tốt chỉ còn góp ý nhỏ; <= 6 khi có lỗi sai toán, sai đáp án, chữ đè che khuất hoặc sai vật của đề):\n' + moTaTieuChi_(ds) + '\n' +
-    'Tự kiểm lại từng phép tính nhìn thấy. "van_de": mỗi vấn đề một câu, nói rõ khung/cảnh nào. "gop_y": chỉ dẫn sửa cụ thể theo từng cảnh của kịch bản.\n' +
+    'Đối chiếu phương pháp từng bước với kiến thức được phép của lớp và các điều kiện áp dụng. Nếu vượt lớp, nêu cảnh, công thức và phương pháp thay thế. Tự kiểm lại từng phép tính nhìn thấy. "van_de": mỗi vấn đề một câu, nói rõ khung/cảnh nào. "gop_y": chỉ dẫn sửa cụ thể theo từng cảnh của kịch bản.\n' +
     'Trả JSON: {"diem":{' + ds.map(function (t) { return '"' + t.id + '":0'; }).join(',') + '},"van_de":[],"gop_y":""}';
   var j = goiGemini_(prompt, 0.1, { suyNghi: 'low', anhs: anhs });
   if (!j || !j.diem || typeof j.diem !== 'object') throw new Error('AI không trả điểm');
+  if (vuotLop.length) {
+    j.diem.loi_giai = 0;
+    j.van_de = vuotLop.concat(Array.isArray(j.van_de) ? j.van_de : []);
+  }
   var kq = tinhDapUng_(j, ds);
   kq.diem = Math.round(kq.phan_tram) / 10;
   return kq;
@@ -305,7 +289,7 @@ function aiChamVideo_(r) {
 // Chưa đạt -> tự sửa theo nhận xét (tối đa SO_LAN_SUA_YEU_CAU lần mỗi cửa); sửa rồi vẫn thấp -> BỎ VIDEO + XÓA ĐỀ, hệ thống làm đề mới.
 var TIEU_CHI_YEU_CAU_ = [
   { id: 'de_bai', w: 1.5, bb: true, kb: true, chu: 'Mở đầu nêu RÕ ĐỀ BÀI trong lời thoại: đề cho gì (đủ dữ kiện, đúng số), cần tìm gì; không nhảy thẳng vào lời giải. Riêng video Hình học (HINH_HOC) thì đề bài do giọng đọc đảm nhận và hình vẽ hiển thị thật to ở giữa màn hình (không cần hiện thẻ chữ ĐỀ BÀI trên màn hình).' },
-  { id: 'bam_de', w: 3, bb: true, kb: true, chu: 'Hình minh họa BÁM SÁT NGỮ CẢNH ĐỀ: đúng đối tượng (người, vật, công trình...), đúng số lượng, đúng cách sắp xếp/vị trí (ngồi bàn tròn phải vẽ vòng quanh bàn, bờ sông - đường ống phải vẽ sông và ống...), số đo trên hình khớp đề; không vẽ vật không liên quan, không lặp vật; bài lãi suất / tiền bạc không được có khối hộp, trụ, nón, cầu hay hình học mà đề không nhắc; bài hình học không gian cạnh nhìn thấy phải là nét liền, cạnh bị khuất là nét đứt, đường kẻ phụ vẽ rõ ràng.' },
+  { id: 'bam_de', w: 3, bb: true, kb: true, chu: 'Hình minh họa BÁM SÁT NGỮ CẢNH ĐỀ: đúng đối tượng (người, vật, công trình...), đúng số lượng, đúng cách sắp xếp/vị trí (ngồi bàn tròn phải vẽ vòng quanh bàn, bờ sông - đường ống phải vẽ sông và ống...), số đo trên hình khớp đề; không vẽ vật không liên quan, không lặp vật; bài lãi suất / tiền bạc không được có khối hộp, trụ, nón, cầu hay hình học mà đề không nhắc; bài cảnh có vật biến đổi phải vẽ tuần tự trạng thái trước, thao tác và kết quả; cảnh ứng dụng vẽ đúng vật được lời đọc nhắc đến; hình học dựng đáy, cạnh bên rồi yếu tố phụ theo lời, nhãn tách khỏi nét; hình học không gian cạnh nhìn thấy phải là nét liền, cạnh bị khuất là nét đứt, đường kẻ phụ vẽ rõ ràng.' },
   { id: 'loi_giai', w: 3, bb: true, kb: true, chu: 'LỜI GIẢI ĐÚNG TOÁN HỌC & ĐÚNG CHƯƠNG TRÌNH LỚP (GDPT 2018): mọi phép tính, số trung gian, công thức trên màn hình đúng toán học, dẫn đúng tới đáp án, giải thích công thức có từ đâu; VÀ BẮT BUỘC dùng đúng phương pháp của lớp ghi trên đề (lớp 10-11 TUYỆT ĐỐI KHÔNG dùng bảng biến thiên / đạo hàm y\'=0 tìm cực trị-GTLN-GTNN, nguyên hàm-tích phân, Oxyz, xác suất có điều kiện/Bayes của lớp 12; không dùng số phức). Nếu giải vượt lớp -> chấm <= 4 điểm.' },
   { id: 'dap_an', w: 2, bb: true, kb: true, chu: 'ĐÁP ÁN đúng (khớp đáp án đã kiểm chứng), hiện rõ, đọc được đầy đủ chữ số và đơn vị.' },
   { id: 'thu_lai', w: 1.5, bb: true, kb: true, chu: 'THỬ LẠI THẬT: cảnh thử lại có phép thử bằng số cụ thể (thế đáp án vào đề / cách thứ hai / so giá trị khác) cả trên màn hình lẫn lời thoại; chỉ một khung chữ "thử lại" là không đạt. Kịch bản ghi rõ "khong_thu_lai" kèm lý do hợp lý thì tiêu chí này đạt.' },

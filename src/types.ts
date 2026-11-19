@@ -78,6 +78,7 @@ export type Props = {
   anhBiaDau?: string | null; // ảnh bìa đặt ở khung hình đầu tiên (1/30 giây) để TikTok lấy làm ảnh bìa; cả video lùi 1 khung // ảnh bìa: loại câu hỏi, tiêu đề ngắn, khung hình lấy hình minh họa
   series?: {ten: string; tap: number} | null; // series video (hiện "TẬP n" trên thanh đầu)
   quangCao?: {ten: string; gia?: string; anh?: string; cta?: string} | null; // video có sản phẩm do kênh bán: nhãn minh bạch + thẻ sản phẩm cuối video
+  deGoc?: string;
   deBai?: {cho: string[]; tim: string} | null; // thẻ ĐỀ BÀI (đề cho gì, cần tìm gì) ở cảnh de_bai
   duKien?: string[]; // 2-4 dữ kiện then chốt của đề (thẻ nhỏ trên đầu màn hình suốt phần giải)
   tiepTheo?: string; // câu hẹn video sau (màn kết)

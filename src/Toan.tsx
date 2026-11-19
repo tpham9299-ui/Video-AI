@@ -32,7 +32,7 @@ export const Toan: React.FC<{
     }
   }, [tex, thuong]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = ref.current;
     if (!el || !maxWidth) return;
     const khop = () => khopVua(el, maxWidth);
@@ -44,7 +44,6 @@ export const Toan: React.FC<{
     };
   }, [tex, size, maxWidth, thuong, html]);
 
-  // useLayoutEffect không cần: useEffect chạy trước khi Remotion chụp khung hình (nó chờ sau mỗi lần render).
   const chung: React.CSSProperties = {
     display: 'inline-block',
     width: 'max-content',
@@ -57,7 +56,7 @@ export const Toan: React.FC<{
   if (thuong || html === null) {
     const hien = thuong ? String(tex) : texSangChu(tex);
     return (
-      <span ref={ref} data-maxw={maxWidth} style={{...chung, ...(GIAO_DIEN.kieuToan === 'latex' ? {fontFamily: FONT_SERIF, fontStyle: 'italic', fontWeight: 400} : GIAO_DIEN.kieuToan === 'dam' ? {fontFamily: FONT_DAM, fontWeight: 800, textShadow: '0 3px 0 rgba(4,12,12,0.9)'} : {fontFamily: FONT, fontWeight: 700}), whiteSpace: 'nowrap'}}>
+      <span ref={ref} data-tex-loi={thuong ? undefined : tex} data-maxw={maxWidth} style={{...chung, ...(GIAO_DIEN.kieuToan === 'latex' ? {fontFamily: FONT_SERIF, fontStyle: 'italic', fontWeight: 400} : GIAO_DIEN.kieuToan === 'dam' ? {fontFamily: FONT_DAM, fontWeight: 800, textShadow: '0 3px 0 rgba(4,12,12,0.9)'} : {fontFamily: FONT, fontWeight: 700}), whiteSpace: 'nowrap'}}>
         {hien}
       </span>
     );
@@ -79,12 +78,8 @@ export const NapPhongToan: React.FC = () => {
 // .toan-ngat: bật xuống dòng cho công thức quá dài.
 export const KieuToan: React.FC<{kieu: string}> = ({kieu}) => (
   <style>{kieu === 'dam' ? `
-    .katex { font-family: ${FONT_DAM} !important; font-size: 1.04em !important; font-weight: 800; text-shadow: 0 3px 0 rgba(4,12,12,0.9), 0 6px 16px rgba(0,0,0,0.5); }
-    .katex .mathnormal, .katex .mathit, .katex .mathdefault, .katex .textit { font-family: ${FONT_DAM} !important; font-style: italic; font-weight: 800; }
-    .katex .mathrm, .katex .textrm, .katex .text, .katex .text *, .katex .mord, .katex .mbin, .katex .mrel, .katex .mopen, .katex .mclose, .katex .mpunct { font-family: ${FONT_DAM} !important; font-weight: 800; }
-    .katex .mathbf, .katex .textbf, .katex .boldsymbol { font-family: ${FONT_DAM} !important; font-weight: 900; }
-    .katex .frac-line { border-bottom-width: 0.08em !important; min-height: 0.08em !important; }
-    .katex .delimsizing, .katex .delimsizinginner, .katex .sqrt > .root { font-weight: 400; }
+    .katex { font-size: 1.1em; font-weight: normal; }
+    .katex .text { font-family: ${FONT}; }
     .toan-ngat { white-space: normal !important; }
     .toan-ngat .katex { white-space: normal !important; }
     .toan-ngat .katex .katex-html { white-space: normal !important; }

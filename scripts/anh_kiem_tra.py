@@ -34,13 +34,13 @@ def main():
     def chup_mot_khung(item):
         k, t = item
         f = os.path.join(ra, "_kt%d.jpg" % k)
-        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-ss", "%.2f" % t, "-i", video, "-frames:v", "1", "-vf", "scale=324:576", f])
-        return f if os.path.exists(f) else None
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-ss", "%.2f" % t, "-i", video, "-frames:v", "1", "-vf", "scale=324:576", "-threads", "1", f], check=True)
+        return f if os.path.getsize(f) > 0 else None
 
     with ThreadPoolExecutor(max_workers=min(4, max(1, len(moc)))) as ex:
         tam = [f for f in ex.map(chup_mot_khung, enumerate(moc)) if f]
-    if not tam:
-        sys.exit("Không lấy được khung hình nào")
+    if not tam or len(tam) != len(chon):
+        sys.exit("Thiếu khung hình cần kiểm duyệt")
     kt = os.path.join(ra, "%s_kt.jpg" % id_)
     try:
         # ghép ngang bằng Pillow: máy ghép video chỉ có ffmpeg rút gọn của Remotion (không có bộ lọc hstack)

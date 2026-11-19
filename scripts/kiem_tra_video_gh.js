@@ -101,6 +101,7 @@ vm.runInContext(`
 try {
   const r = dl.hang || {};
   const kq = ctx.aiChamVideo_(r);
+  out.anh_kt = r.anh_kt;
   out.ok = true;
   out.kq = kq;
   console.log(`AI_XEM [${out.id}]: ${kq.phan_tram}% (dat=${kq.dat})`);

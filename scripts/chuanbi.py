@@ -464,8 +464,8 @@ def gemini_tts(text, tep_wav, giong, model, phong_cach, dung_cache=True):
     import urllib.error
     import urllib.request
     import time
-    k_cache = hashlib.sha256(("gemini_v2_%s_%s_%s_%s" % (giong, model, phong_cach, text)).encode("utf8")).hexdigest()
-    f_cache = os.path.join(CACHE_TTS_DIR, "gem_v2_%s.wav" % k_cache)
+    k_cache = hashlib.sha256(("gemini_v3_%s_%s_%s_%s" % (giong, model, phong_cach, text)).encode("utf8")).hexdigest()
+    f_cache = os.path.join(CACHE_TTS_DIR, "gem_v3_%s.wav" % k_cache)
     if dung_cache and os.path.isfile(f_cache) and os.path.getsize(f_cache) > 2000:
         shutil.copyfile(f_cache, tep_wav)
         print("Gemini TTS: lấy từ cache (%s) cho %d ký tự" % (k_cache[:8], len(text)))
@@ -478,12 +478,7 @@ def gemini_tts(text, tep_wav, giong, model, phong_cach, dung_cache=True):
         "generationConfig": {"responseModalities": ["AUDIO"],
                              "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": giong}}}},
     }
-    ds_model = []
-    for m_ten in [model, os.environ.get("TTS_MODEL_DU_PHONG") or "", "gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"]:
-        for m_item in str(m_ten or "").split(","):
-            m_s = m_item.strip()
-            if m_s and m_s not in ds_model:
-                ds_model.append(m_s)
+    ds_model = [str(model).split(",")[0].strip()]
     loi = None
     with _GEM_LOCK:
         if not _BAT_DAU_GEMINI:
@@ -1564,14 +1559,14 @@ def main():
         # mà vẫn có nhấn nhá trọng âm tự nhiên (không bị lệch giọng giữa các cảnh).
         if (os.environ.get("CACH_DOC_GEMINI") or "mot_lan") != "tung_canh":
             giong_gem = tao_giong_gemini_mot_lan(canh, tam_gem, args)
-            if not giong_gem:
-                giong_gem = tao_giong_gemini(canh, tam_gem, args)
         else:
             giong_gem = tao_giong_gemini(canh, tam_gem, args)
             if not giong_gem:
                 giong_gem = tao_giong_gemini_mot_lan(canh, tam_gem, args)
         if not giong_gem:
             print("Gemini không đọc được cả video -> CẢ video dùng một giọng edge-tts đồng nhất 100% có nhấn nhá (không trộn giọng)")
+    if giong_gem is not None and set(giong_gem) != set(range(len(canh))):
+        giong_gem = None
     chuan_hoa = []
     for i, c in enumerate(canh):
         so = int(c.get("so") or i + 1)
@@ -1765,6 +1760,7 @@ def main():
         "quangCao": the_san_pham(kb, anh_sp),
         "duKien": [str(x).strip()[:30] for x in (kb.get("du_kien") or []) if str(x).strip()][:4],
         "deBai": de_bai_the,
+        "deGoc": str(kb.get("de_bai") or ""),
         "tiepTheo": str(kb.get("video_tiep_theo") or "")[:70],
         "nen": ds_nen[0] if ds_nen else None,
         "dsNen": ds_nen,

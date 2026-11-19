@@ -1,9 +1,9 @@
 import React from 'react';
-import {spring, useCurrentFrame, useVideoConfig} from 'remotion';
+import {useCurrentFrame, useVideoConfig} from 'remotion';
 import {chuanTu, tuNhanManh} from './bocuc';
 import {FONT, FONT_DAM, BONG_CHU, vienChu, MAU} from './theme';
 
-// Câu hook 5 giây đầu: chữ rất lớn bật lên từng từ (kiểu "kinetic typography"), từ khóa vàng to hơn và rung nhẹ khi xuất hiện.
+// Câu hook 5 giây đầu: chữ rất lớn bật lên từng từ (kiểu "kinetic typography"), từ khóa vàng to hơn.
 export const HookChu: React.FC<{chu: string; nhanManh: string[]; kieu: string; lead: number}> = ({chu, nhanManh, kieu, lead}) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
@@ -18,9 +18,9 @@ export const HookChu: React.FC<{chu: string; nhanManh: string[]; kieu: string; l
       <div style={{display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: `${co * 0.08}px ${co * 0.28}px`, fontFamily: FONT_DAM, fontWeight: 900, lineHeight: 1.08, textAlign: 'center', letterSpacing: -1, perspective: 900}}>
         {tu.map((w, i) => {
           const bd = lead + 3 + i * buoc;
-          const e = frame < bd ? 0 : spring({frame: frame - bd, fps, config: {damping: 9, stiffness: 190}});
+          const t = Math.max(0, Math.min(1, (frame - bd) / Math.max(1, fps * 0.3)));
+          const e = t * t * (3 - 2 * t);
           const manh = nhan.has(chuanTu(w));
-          const rung = manh && frame >= bd && frame < bd + 8 ? Math.sin(frame * 4) * (8 - (frame - bd)) * 0.9 : 0;
           // từ khóa: ô cam quét ngang phía sau chữ (motion graphic) sau khi chữ đã đáp xuống
           const hop = manh ? Math.max(0, Math.min(1, (frame - bd - 6) / 7)) : 0;
           return (
@@ -31,8 +31,7 @@ export const HookChu: React.FC<{chu: string; nhanManh: string[]; kieu: string; l
                 display: 'inline-block',
                 fontSize: manh ? co * 1.14 : co,
                 color: manh ? '#ffffff' : MAU.chu,
-                // lật vào kiểu 3D (xoay quanh trục ngang) + bật lên
-                transform: `translate(${rung}px, ${(1 - Math.min(1, e)) * 50}px) rotateX(${(1 - Math.min(1, e)) * 85}deg) scale(${0.4 + 0.6 * e}) rotate(${manh ? -3 * Math.min(1, e) : 0}deg)`,
+                transform: `translateY(${(1 - e) * 12}px)`,
                 opacity: Math.min(1, e * 2),
                 WebkitTextStroke: vienChu(co),
                 paintOrder: 'stroke fill',

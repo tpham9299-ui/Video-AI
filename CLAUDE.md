@@ -844,3 +844,11 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
 - Bộ phận 1 trên GitHub xử lý tối đa ba yêu cầu trong mỗi tiến trình, giới hạn thêm theo số key. Mặc định chỉ gọi dự phòng sau lỗi. Lỗi quyền được ghi theo cặp key/model. Khi model cấu hình không dùng được, bộ gọi có thể tra các trang ListModels để chọn model sinh văn bản.
 - Kiểm tra key mặc định tra danh mục rồi dừng ở lần sinh thành công đầu tiên. Khi nhập danh sách model thủ công, workflow vẫn kiểm tra từng model đã nhập.
 - Apps Script phân biệt kho bị chặn quyền với hết quota ngày. Bước kiểm duyệt hình, TTS và kiểm tra key giữ lại key gặp lỗi quyền hoặc billing để người vận hành kiểm tra cấu hình dự án.
+
+#### Lần 39 (v72) — Kiểm tra chuyển động trên MP4 và giữ bản chưa xác minh để duyệt tay
+
+- Khi dựng xong và sau lần nén cuối, GitHub so sánh các cụm khung liên tiếp ở đoạn đầu, giữa, cuối mỗi cảnh và mốc công thức. Báo cáo ghi cảnh và giây khi cùng một vùng hình đảo qua lại. Apps Script giữ video thiếu báo cáo, thiếu kiểm duyệt hoặc còn lỗi để chủ kênh xem. Chỉ trạng thái DA_DUYET được vào hàng đăng.
+- Tiêu đề hiện theo cụm và giữ vị trí sau khi nạp phông. Bộ xếp hình chừa chỗ cho khay lấy bi. Công thức dùng ký hiệu KaTeX, bộ kiểm duyệt nhận biết lỗi cú pháp khi bộ hiển thị phải chuyển sang chữ thường. Danh sách chốt hiện lần lượt theo mốc bước.
+- Bài toán cắt góc tấm bìa có mô hình chiếu 3D cho thấy tấm bìa, bốn phần cắt và bốn bản lề gấp. Lời kết về bao bì và kiến trúc có hình minh họa tương ứng. TTS giữ một model trong lượt đọc, khi thiếu cảnh thì đọc lại cả video bằng cùng giọng dự phòng.
+- Manim ưu tiên cạnh đáy, cạnh bên, nét dựng. Với khối lồi xác định được các mặt, bộ dựng xét mặt trước/sau và chia nét phụ tại biên che khuất. Đổi góc theo cạnh đang chứng minh khi hình hỗ trợ. Nhãn điểm có nền viền tương phản và cập nhật vị trí khi xoay.
+- Cửa duyệt cuối đọc kịch bản, công thức, chú thích và chương trình lớp cùng ảnh chụp MP4. Nếu phát hiện phương pháp vượt lớp thì điểm lời giải bằng 0.

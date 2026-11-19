@@ -132,7 +132,7 @@ const NoiDungVideo: React.FC<Props> = (props) => {
       {nhac ? <Audio src={staticFile(nhac)} loop volume={amNhac} /> : null}
       {canh.map((c, i) => (
         <Sequence key={c.so} from={c.batDau} durationInFrames={c.soFrame + keoDai(i)}>
-          <Canh canh={c} tieuDe={tieuDe} deBai={props.deBai || null} theDeGiu={canh.slice(0, i).some((x) => x.loai === 'de_bai')} coQuangCaoCuoi={!!(props.quangCao && props.quangCao.ten && c.batDau + c.soFrame > ketThuc - 135)} tongCanh={canh.length} hook={{chu: hookChu, kieu: hookKieu, nhanManh}} pc={phongCach}
+          <Canh deGoc={props.deGoc} canh={c} tieuDe={tieuDe} deBai={props.deBai || null} theDeGiu={canh.slice(0, i).some((x) => x.loai === 'de_bai')} coQuangCaoCuoi={!!(props.quangCao && props.quangCao.ten && c.batDau + c.soFrame > ketThuc - 135)} tongCanh={canh.length} hook={{chu: hookChu, kieu: hookKieu, nhanManh}} pc={phongCach}
             sanKhau={dsSanKhau[i]} cacBuoc={dsPha} phaTruoc={i > 0 ? phaCua(canh[i - 1].loai) : ''} giuTruoc={i > 0 && c.giuSanKhau && !!dsSanKhau[i - 1]} giuSau={!!canh[i + 1] && canh[i + 1].giuSanKhau && !!dsSanKhau[i]} keoDai={keoDai(i)} />
         </Sequence>
       ))}

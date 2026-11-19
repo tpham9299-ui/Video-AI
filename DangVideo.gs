@@ -111,7 +111,7 @@ function dangNgay() {
     _bat_dau_chay_ = Date.now();
     _bo_nho_cau_hinh_ = null;
     var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
-    var ds = docHang_(sh).filter(function (r) { return r.trang_thai === 'CO_VIDEO' && r.file_video && (typeof daDuyet_ !== 'function' || daDuyet_(r)); })
+    var ds = docHang_(sh).filter(function (r) { return r.trang_thai === 'CO_VIDEO' && r.file_video && daDuyet_(r); })
       .sort(function (a, b) { return new Date(a.cap_nhat).getTime() - new Date(b.cap_nhat).getTime(); });
     if (!ds.length) { Logger.log('Không có video "Có video" nào ĐÃ ĐẠT KIỂM DUYỆT / ĐÃ DUYỆT để đăng.'); return; }
     dangVideo_(sh, ds[0]);
@@ -215,7 +215,7 @@ function khungDangHienTai_(hang) {
 function chonVideoDang_(hang) {
   // Chỉ video đã đạt kiểm duyệt yêu cầu (daDuyet_ = true) mới được đăng
   var cho = hang.filter(function (r) {
-    return r.trang_thai === 'CO_VIDEO' && r.file_video && !CacheService.getScriptCache().get('DA_BO_' + r.id) && (typeof daDuyet_ !== 'function' || daDuyet_(r));
+    return r.trang_thai === 'CO_VIDEO' && r.file_video && !CacheService.getScriptCache().get('DA_BO_' + r.id) && daDuyet_(r);
   });
   if (!cho.length) return null;
   var bay = Date.now();

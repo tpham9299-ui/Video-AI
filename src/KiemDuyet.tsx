@@ -100,8 +100,8 @@ function doKhungHinh(goc: HTMLElement): {loi: LoiKD[]; chu: string[]; so: string
     khoi.push({chu: chu.slice(0, 60), hop: thay, co, el: cha, katex: false});
     if (/\\[a-zA-Z]{2,}|\\[{}]|\$[^$]*\$|\^\{|_\{|\\\\/.test(chu)) loi.push({kieu: 'TEX_THO', chu: chu.slice(0, 60), hop});
   }
-  goc.querySelectorAll('.katex-error').forEach((e) => {
-    if (!boQua(e) && doMo(e) > 0.55) loi.push({kieu: 'KATEX_LOI', chu: (e.textContent || '').slice(0, 60), hop: quy(e.getBoundingClientRect())});
+  goc.querySelectorAll('.katex-error, [data-tex-loi]').forEach((e) => {
+    if (!boQua(e) && doMo(e) > 0.55) loi.push({kieu: 'KATEX_LOI', chu: (e.getAttribute('data-tex-loi') === '1' ? e.textContent || '' : e.getAttribute('data-tex-loi') || e.textContent || '').slice(0, 60), hop: quy(e.getBoundingClientRect())});
   });
 
   for (const k of khoi) {

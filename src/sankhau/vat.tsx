@@ -170,6 +170,10 @@ const The: Ve = (v, st) => {
   const cot = cotThe(n), hang = Math.ceil(n / cot);
   const khoang = w + 26;
   const laTheSo = n >= 2 && Array.from({length: n}, (_, idx) => (v.ds[idx] || String(idx + 1)).trim()).every((s) => s.length <= 4);
+  const kyHieu = v.ds[0] || st.noiDung;
+  if (n === 1 && !v.nhan && !st.giaTriChu && laToanNhan(kyHieu)) {
+    return <Toan tex={texNhan(kyHieu)} size={Math.max(48, kt.co)} color={goc} maxWidth={720} />;
+  }
   return (
     <div style={{position: 'relative', width: Math.max(w, khoang * cot), height: hang * (h + 26) + (v.nhan ? 60 : 10)}}>
       {Array.from({length: n}, (_, k) => {
@@ -423,9 +427,9 @@ const Bi: React.FC<{mau: string; r: number; sang?: number; so?: string}> = ({mau
 };
 const HopBi: Ve = (v, st) => {
   const tui = v.loai === 'tui';
-  const W = 420 * v.co;
-  const H = 336 * v.co;
-  const r = 23 * v.co;
+  const W = 344 * v.co;
+  const H = 248 * v.co;
+  const r = Math.min(20, 105 / Math.sqrt(Math.max(1, v.nhom.reduce((n, g) => n + g.so, 0)))) * v.co;
   const tat: string[] = [];
   v.nhom.forEach((g) => {
     for (let i = 0; i < g.so; i++) tat.push(g.mau);
@@ -871,6 +875,7 @@ export const laToanNhan = (s: string) => /[_^\\]|\d\s*[=+×·*/]\s*\d|^\s*[A-Za-
 const texNhan = (s: string) => /\\(?:text|mathrm|textbf|operatorname|mbox)\s*\{|[{}]/.test(s) ? s : s.split(/\s+/).filter(Boolean).map((w) => (/[À-ỹà-ỹ]/.test(w) || /^[A-Za-z]{3,}[,.:]?$/.test(w) ? `\\text{${w}}` : w)).join('\\ ');
 export const NhanNeon: React.FC<{chu: string; tuKhoa: string; mau: string; mauNhan: string; co?: number; xoay?: number}> = ({chu, tuKhoa, mau, mauNhan, co = 44, xoay = 0}) => {
   const toan = laToanNhan(chu);
+  if (toan) return <Toan tex={texNhan(chu)} size={co * 1.2} color={mauNhan} maxWidth={720} />;
   const dai = chu.replace(/\\[a-zA-Z]+|[{}_^]/g, '').length > 18;
   return (
     <div style={{transform: xoay ? `rotate(${xoay}deg)` : undefined, border: `2.5px solid ${mau}cc`, borderRadius: 16, background: 'linear-gradient(165deg, rgba(12,24,34,0.94), rgba(6,13,20,0.96))',
@@ -1032,7 +1037,8 @@ const DanhSach: Ve = (v, st) => {
         </div>
       ) : null}
       {v.ds.map((d, k) => {
-        const a = kep((st.t - st.ta - 0.15 - k * 0.22) / 0.4);
+        const mocDong = st.tb ? st.tb(k + 1) : st.ta + k * 0.75;
+        const a = kep((st.t - Math.max(st.ta, mocDong)) / 0.45);
         const c = st.chon.get(k + 1);
         const l = st.loai.get(k + 1) || 0;
         const quet = c ? easeOut(c.p) : 0;

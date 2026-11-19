@@ -168,7 +168,8 @@ function kiemTraViPhamLop_(duLieu, lop, mon, deBai) {
     if (typeof v === 'object') {
       if (Array.isArray(v.canh)) {
         return v.canh.map(function (c) {
-          return [c.tieu_de_canh, c.kien_thuc, (c.noi_dung_man_hinh || []).join(' '), c.loi_thoai].join('\n');
+          return [c.tieu_de_canh, c.kien_thuc, (c.noi_dung_man_hinh || []).join(' '), c.chu_thich, c.loi_thoai,
+            JSON.stringify((c.minh_hoa || {}).du_lieu || {})].join('\n');
         }).join('\n');
       }
       var cacBuocTxt = Array.isArray(v.cac_buoc)
@@ -180,7 +181,7 @@ function kiemTraViPhamLop_(duLieu, lop, mon, deBai) {
     }
     return String(v);
   };
-  var txt = gomChu(duLieu);
+  var txt = gomChu(duLieu).normalize('NFC').replace(/\\(?:prime\b|'|’)|[′’]/g, "'");
   if (!txt.trim()) return [];
   var loi = [];
   var them = function (mau, thongBao) { if (mau.test(txt)) loi.push(thongBao); };
@@ -202,7 +203,7 @@ function kiemTraViPhamLop_(duLieu, lop, mon, deBai) {
       'Lớp 11 không dùng đạo hàm xét đồng biến/nghịch biến (thuộc lớp 12)');
   }
   if (l === '10') {
-    them(/đạo hàm|\bf'\s*\(|\by'\s*=|\\frac\{d[a-z]\}\{d|\\dfrac\{d[a-z]\}\{d/i,
+    them(/đạo hàm|\bf'\s*\(|\b[fyg]'\s*(?:\([^)]*\)\s*)?=|\\frac\{d[a-z]\}\{d|\\dfrac\{d[a-z]\}\{d/i,
       'Lớp 10 không học đạo hàm (thuộc lớp 11-12)');
     them(/(?:\\lim\b|\blim\s*[_\(\{])|giới hạn dãy|giới hạn hàm|cấp số cộng|cấp số nhân/i,
       'Lớp 10 không học dãy số / cấp số / giới hạn (thuộc lớp 11)');
@@ -210,7 +211,7 @@ function kiemTraViPhamLop_(duLieu, lop, mon, deBai) {
       'Lớp 10 không học lũy thừa thực / logarit (thuộc lớp 11-12)');
     them(/(?:công thức|quy tắc)\s+nhân\s+xác suất|biến cố độc lập|biến cố hợp|P\(\s*[A-Z]\s*(?:\\cup|∪)\s*[A-Z]\s*\)/i,
       'Lớp 10 chỉ dùng xác suất cổ điển, không dùng biến cố hợp/độc lập/quy tắc nhân xác suất (thuộc lớp 11)');
-    them(/góc nhị diện|hai đường thẳng chéo nhau|khoảng cách hai đường chéo nhau|vuông góc với mặt phẳng/i,
+    them(/góc nhị diện|hai mặt phẳng vuông góc|giao tuyến (?:của )?hai mặt phẳng|hình chiếu vuông góc .* lên mặt phẳng|hai đường thẳng chéo nhau|khoảng cách hai đường chéo nhau|vuông góc với mặt phẳng/i,
       'Lớp 10 không học hình học không gian đường-mặt (thuộc lớp 11)');
   }
   return loi;

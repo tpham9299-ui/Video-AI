@@ -299,7 +299,6 @@ jobs:
       # Dựng thử tay (không có mã đề) hoặc _kiem_duyet = bao: chỉ ghi báo cáo, vẫn dựng.
       - name: Kiểm duyệt bố cục
         id: kd
-        if: ${{ steps.manim.outputs.ok != '1' }}
         run: |
           # Giữ lỗi đã đo khi hết 7 phút; nếu chưa đo được khung nào thì dùng báo cáo dự phòng.
           rm -f out/kiem_duyet.json
@@ -499,7 +498,7 @@ jobs:
       - name: Cài thư viện
         if: ${{ env.DA_DUNG == 'true' }}
         run: |
-          ( pip install -q pillow ) > /tmp/pip.log 2>&1 &
+          ( pip install -q pillow numpy ) > /tmp/pip.log 2>&1 &
           PIP=$!
           if [ -n "$RCLONE_CONF" ] && ! command -v rclone >/dev/null 2>&1; then
             ( curl -fsSL https://rclone.org/install.sh | sudo bash ) > /tmp/rclone.log 2>&1 &
@@ -551,9 +550,9 @@ jobs:
           fi
           ls -la out
           echo "id=$ID" >> "$GITHUB_OUTPUT"
-          # ảnh kiểm tra (4 khung hình để AI so với đề); dùng ffmpeg đi kèm Remotion, lỗi ở đây không làm hỏng việc dựng
-          export PATH="$PWD/node_modules/@remotion/compositor-linux-x64-gnu:$PATH"
-          python3 scripts/anh_kiem_tra.py public/props.json "out/$ID.mp4" out/ || echo "Không tạo được ảnh kiểm tra"
+          command -v ffmpeg >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg; }
+          python3 scripts/kiem_tra_chuyen_dong.py public/props.json "out/$ID.mp4" out/chuyen_dong.json
+          python3 scripts/anh_kiem_tra.py public/props.json "out/$ID.mp4" out/
 
       - name: Lưu bản sao 3 ngày trên GitHub
         if: ${{ steps.dung.outcome == 'success' }}
@@ -578,7 +577,7 @@ jobs:
           echo "file_id=$FILE_ID" >> "$GITHUB_OUTPUT"
           for LOAI in kt bia; do
             if [ -f "out/${ID}_${LOAI}.jpg" ]; then
-              rclone copy "out/${ID}_${LOAI}.jpg" "gdrive:$THU_MUC/anh" || true
+              rclone copy "out/${ID}_${LOAI}.jpg" "gdrive:$THU_MUC/anh"
               AID=$(rclone lsjson "gdrive:$THU_MUC/anh" --files-only --include "${ID}_${LOAI}.jpg" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d[0]['ID'] if d else '')" || true)
               echo "anh_${LOAI}=$AID" >> "$GITHUB_OUTPUT"
             fi
@@ -607,6 +606,16 @@ jobs:
               "anh_bia": os.environ.get("ANH_BIA", ""),
               "loi": "" if ok else "Xem nhật ký: https://github.com/%s/actions/runs/%s" % (os.environ["GITHUB_REPOSITORY"], os.environ["GITHUB_RUN_ID"]),
           }
+          if ok:
+              with open('out/chuyen_dong.json') as f:
+                  kd = json.load(f)
+              bo_cuc = {}
+              if os.path.exists('out/kiem_duyet.json'):
+                  with open('out/kiem_duyet.json') as f:
+                      bo_cuc = json.load(f)
+              if bo_cuc.get('hong', True) or bo_cuc.get('nang'):
+                  kd = {"dat": False, "ly_do": "Kiểm tra bố cục thiếu khung hoặc còn lỗi. " + kd.get("ly_do", "")}
+              d['kiem_tra_mp4'] = kd
           json.dump(d, open("bao_ket_qua.json", "w"))
           PY
           # Apps Script có thể đang bận chạy Bộ phận 1 (tối đa ~6 phút): chỉ khi nó trả lời "BAN" mới thử lại.

@@ -192,7 +192,7 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
     const oy = v.tuHuong === 'tren' ? -lech : v.tuHuong === 'duoi' ? lech : 0;
     const nhom = v.soLuong > 1 && ['nguoi', 'the', 'cua', 'banh', 'the_bai', 'xuc_xac', 'dong_xu', 'bieu_tuong'].includes(v.loai);
     // vật đơn: bật lên; vật nhóm: từng phần tử tự bật lần lượt nên khung chỉ hiện mờ dần
-    const sc = nhom ? 1 : popOut(a);
+    const sc = nhom ? 1 : expoOut(a);
     const mo = (nhom ? kep(a * 3) : kep(a * 2.2)) * (1 - st.an);
     const sangNhip = st.sang > 0 ? 1 + 0.06 * st.sang : 1;
     const ngang = v.tuHuong === 'trai' || v.tuHuong === 'phai';
@@ -200,8 +200,6 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
     // bien_hinh cho cả vật (không phải hình tự do): dời (% sân khấu), xoay, phóng - vật di chuyển theo lời giảng
     const bv = v.loai !== 'hinh_tu_do' ? st.bienNet.get(0) : undefined;
     const bienVat = bv ? ` translate(${(bv.dx / 100) * SK_W}px, ${(bv.dy / 100) * SK_H}px) rotate(${bv.goc}deg) scale(${bv.s})` : '';
-    // bộ hiệu ứng mới: vật thật lơ lửng rất nhẹ (không đứng đơ như khối cứng), mỗi vật một nhịp
-    const loLung = laMoi() && !phang && !['danh_sach', 'bieu_do_cot', 'do_thi', 'hinh_tu_do', 'hinh_hoc', 'luoi_o'].includes(v.loai) ? Math.sin(frame / 38 + v.id.length * 1.7) * 5 : 0;
     if (co3d && !phang && kt.w > 0) {
       bong.push(
         <div key={`b${v.id}`} style={{position: 'absolute', left: san.sx - kt.w * 0.42 * san.s, top: san.sy - kt.w * 0.13 * san.s * (0.35 + 0.65 * Math.cos((g3.nghieng * Math.PI) / 180)), width: kt.w * 0.84 * san.s, height: kt.w * 0.26 * san.s * (0.35 + 0.65 * Math.cos((g3.nghieng * Math.PI) / 180)), borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 70%)', opacity: sinN * mo}} />
@@ -220,7 +218,7 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
             position: 'absolute',
             left: tamVat.sx,
             top: tamVat.sy,
-            transform: `translate(-50%, -50%) translate(${ox + st.rung}px, ${oy + loLung}px)${bienVat}${st.nghiengDi ? ` rotate(${st.nghiengDi.toFixed(2)}deg)` : ''} scale(${sc * sangNhip * (1 - 0.3 * st.an) * tiLeSau})`,
+            transform: `translate(-50%, -50%) translate(${ox}px, ${oy}px)${bienVat}${st.nghiengDi ? ` rotate(${st.nghiengDi.toFixed(2)}deg)` : ''} scale(${sc * sangNhip * (1 - 0.3 * st.an) * tiLeSau})`,
             opacity: mo,
           }}
         >

@@ -67,7 +67,7 @@ for (let i = 0; i < mau.length; i += songSong) {
   // Ghi từng khung ngay khi xong; giữ thứ tự mẫu cho báo cáo và ảnh gửi Gemini.
   await Promise.all(mau.slice(i, i + songSong).map(async (m, j) => {
     const {nhan, tep, layAi} = await chup(m);
-    if (nhan) tho[i + j] = {...nhan, canh: m.i};
+    if (nhan && !nhan.hong && nhan.frame === m.f) tho[i + j] = {...nhan, canh: m.i};
     if (layAi) anhAi[m.i] = {canh: m.i, ten: `${m.i + 1} (${(canh[m.i] || {}).loai || '?'})`, tep};
     ghiBaoCao({chay: false, loi: [], ly_do: 'kiểm duyệt chưa hoàn tất'}, false);
   }));
@@ -88,7 +88,7 @@ function ghiBaoCao(aiKq, hoanTat) {
   try {
     const kbDA = tepKichBan && fs.existsSync(tepKichBan) ? JSON.parse(fs.readFileSync(tepKichBan, 'utf8')) : {};
     const dapAn = Number(String(kbDA.dap_an ?? '').replace(',', '.'));
-    if (String(kbDA.dap_an ?? '').trim() && Number.isFinite(dapAn) && /^-?\d+([.,]\d+)?$/.test(String(kbDA.dap_an).trim())) {
+    if (!props.manimLop && String(kbDA.dap_an ?? '').trim() && Number.isFinite(dapAn) && /^-?\d+([.,]\d+)?$/.test(String(kbDA.dap_an).trim())) {
       const docSo = (t) => (String(t).replace(/(\d)\s+(?=\d{3}\b)/g, '$1').match(/-?\d+(?:[.,]\d+)?/g) || []).map((x) => Number(x.replace(',', '.')));
       const bang = (x) => Math.abs(x - dapAn) <= Math.max(1e-9, Math.abs(dapAn) * 1e-9);
       canh.forEach((c, i) => {
@@ -149,6 +149,7 @@ function ghiBaoCao(aiKq, hoanTat) {
 // ngân hàng ra ngân hàng, hàng rào ra hàng rào), số đo có đúng chỗ không. Sai thì trả lỗi nặng -> kịch bản được sửa trước khi dựng.
 // Cần GEMINI_API_KEY (hoặc GEMINI_KEYS) trong GitHub Secrets; không có thì bỏ qua bước này.
 async function aiNhinHinh(anh) {
+  if (props.manimLop) return {chay: false, ly_do: 'đối chiếu lớp Manim trên MP4 sau khi ghép', loi: []};
   const keys = [...new Set(String((process.env.GEMINI_KEYS || '') + ',' + (process.env.GEMINI_API_KEY || '')).split(/[\s,;]+/).filter(Boolean))];
   if (!keys.length) return {chay: false, ly_do: 'không có key Gemini dùng được', loi: []};
   if (!anh.length || !tepKichBan || !fs.existsSync(tepKichBan)) return {chay: false, ly_do: 'thiếu ảnh hoặc kịch bản', loi: []};

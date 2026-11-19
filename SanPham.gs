@@ -60,11 +60,7 @@ function canDuyet_() { return String(cauHinh_('DUYET_TRUOC_KHI_DANG') || 'TAT').
 // Video đang được AI kiểm duyệt hoặc chưa đạt kiểm duyệt thì KHÔNG bao giờ được đăng.
 // Khi DUYET_TRUOC_KHI_DANG = TAT (mặc định mới): AI kiểm duyệt đạt sẽ tự đánh dấu DA_DUYET để tự đăng mỗi ngày 2 video.
 function daDuyet_(r) {
-  var dv = String(r.duyet || '');
-  if (dv === 'AI_XEM' || dv === 'KHONG_DAT' || dv === 'BO') return false;
-  var tuKT = typeof chNC_ === 'function' ? String(chNC_('TU_KIEM_TRA_VIDEO') || 'BAT').toUpperCase() !== 'TAT' : true;
-  if (tuKT && !canDuyet_()) return dv === 'DA_DUYET';
-  return !canDuyet_() || dv === 'DA_DUYET';
+  return String(r.duyet || '') === 'DA_DUYET';
 }
 
 /* ===================== LỆNH ZALO MỚI (gọi từ nhanZalo_) ===================== */

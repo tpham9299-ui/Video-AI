@@ -31,29 +31,8 @@ export function coChuChot(chot: string, toiDa = 118) {
   return Math.max(64, Math.min(toiDa, Math.floor(960 / (0.72 * Math.max(1, n)))));
 }
 
-const KyTu: React.FC<{c: string; p: number; dy: number; s?: number}> = ({c, p, dy, s = 1}) => (
-  <span style={{display: 'inline-block', opacity: kep(p * 1.6), transform: `translateY(${(1 - p) * dy}px) scale(${1 + (s - 1) * (1 - p)})`, whiteSpace: 'pre'}}>{c}</span>
-);
-
-// hiện từng ký tự; giữ nguyên từng từ trên một dòng (không bẻ giữa từ)
-const DongChu: React.FC<{chu: string; f: number; tre: number; cham: number; dai: number; dy: number; s?: number}> = ({chu, f, tre, cham, dai, dy, s}) => {
-  let k = 0;
-  return (
-    <>
-      {chu.split(' ').map((w, wi) => (
-        <React.Fragment key={wi}>
-          {wi > 0 ? ' ' : null}
-          <span style={{display: 'inline-block', whiteSpace: 'nowrap'}}>
-            {Array.from(w).map((c, ci) => {
-              const p = expoOut(kep((f - tre - (k++) * cham) / dai));
-              return <KyTu key={ci} c={c} p={p} dy={dy} s={s} />;
-            })}
-          </span>
-        </React.Fragment>
-      ))}
-    </>
-  );
-};
+const DongChu: React.FC<{chu: string; f: number; tre: number}> = ({chu, f, tre}) =>
+  <span style={{opacity: kep((f - tre) / 8)}}>{chu}</span>;
 
 export const ChuBaTang: React.FC<{dan: string; chot: string; duoi: string; mau: string; tre?: number; coToiDa?: number; inHoa?: boolean; noi?: boolean}> = ({dan, chot, duoi, mau, tre = 0, coToiDa = 118, inHoa = true, noi = false}) => {
   const f = useCurrentFrame() - tre;
@@ -67,21 +46,21 @@ export const ChuBaTang: React.FC<{dan: string; chot: string; duoi: string; mau: 
     <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 6, maxWidth: 1000}}>
       {dan ? (
         <div style={{fontFamily: FONT_DAM, fontWeight: 700, fontStyle: 'italic', fontSize: 38, color: 'rgba(255,255,255,0.86)', textShadow: '0 3px 18px rgba(0,0,0,0.7)', lineHeight: 1.1}}>
-          <DongChu chu={dan} f={f} tre={0} cham={0.7} dai={8} dy={14} />
+          <DongChu chu={dan} f={f} tre={0} />
         </div>
       ) : null}
       {chot ? (
         <div style={{position: 'relative', fontFamily: FONT_DAM, fontWeight: 900, fontSize: co, lineHeight: 1.12, color: mau, letterSpacing: -1, padding: '0 6px',
           // chữ NỔI KHỐI 3D (hook, đáp án): các lớp bóng đặc xếp chồng tạo bề dày + nghiêng phối cảnh đung đưa
           textShadow: noi ? Array.from({length: 9}, (_, i) => `0 ${(i + 1) * co * 0.017}px 0 ${toiMau(mau, 0.62 - i * 0.045)}`).join(', ') + `, 0 ${co * 0.2}px ${co * 0.3}px rgba(0,0,0,0.65)` : `0 6px 30px rgba(0,0,0,0.65), 0 0 34px ${mau}44`,
-          transform: noi ? `perspective(900px) rotateX(${12 + 2 * Math.sin(f / 37)}deg) rotateY(${5 * Math.sin(f / 29)}deg)` : undefined}}>
-          <DongChu chu={chotHien} f={f} tre={batChot} cham={1.3} dai={10} dy={-co * 0.25} s={1.35} />
+          transform: undefined}}>
+          <DongChu chu={chotHien} f={f} tre={batChot} />
           <div style={{position: 'absolute', left: '50%', bottom: -2, height: 5, width: `${gach * 70}%`, transform: 'translateX(-50%)', borderRadius: 3, background: `linear-gradient(90deg, transparent, ${mau}, transparent)`, opacity: 0.9, boxShadow: `0 0 12px ${mau}`}} />
         </div>
       ) : null}
       {duoi ? (
         <div style={{fontFamily: FONT_DAM, fontWeight: 800, fontSize: coDuoi, color: '#fff', textShadow: '0 4px 20px rgba(0,0,0,0.7)', lineHeight: 1.15, marginTop: chot ? 4 : 0}}>
-          <DongChu chu={duoi} f={f} tre={batDuoi} cham={chot ? 0.55 : 0.9} dai={9} dy={22} />
+          <DongChu chu={duoi} f={f} tre={batDuoi} />
         </div>
       ) : null}
     </div>
