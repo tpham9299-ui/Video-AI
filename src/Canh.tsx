@@ -104,6 +104,7 @@ export const Canh: React.FC<{
   // bài hình học dựng bằng Manim: cảnh chỉ còn phần vỏ chung (tiêu đề, thanh bước, phụ đề, âm thanh); hình + công thức do Manim ghép đè
   const lopManim = GIAO_DIEN.manimLop;
   const kieu = lopManim ? null : sanKhau ? 'sankhau' : phanLoaiHinh(canh.minhHoa.loai, canh.minhHoa.moTa, canh.minhHoa.duLieu);
+  const dayTieuDe = lopManim ? 410 : Y_SAN;
   const laMoDau = canh.so === 1;
   const laCuoi = canh.so === tongCanh;
   const de = [deGoc, tieuDe, ...(deBai?.cho || []), deBai?.tim, hook.chu, canh.minhHoa.moTa, canh.cau.map(c => c.text).join(' ')].join(' ');
@@ -255,7 +256,7 @@ export const Canh: React.FC<{
       <div style={{position: 'absolute', top: 0, bottom: 0, left: `${-15 + (frame / 12) * 120}%`, width: 90, transform: 'skewX(-14deg)', pointerEvents: 'none', zIndex: 5,
         background: `linear-gradient(90deg, transparent, ${mauNhan}55, #ffffffaa, ${mauNhan}55, transparent)`, opacity: Math.min(1, (14 - frame) / 5)}} />
     ) : null}
-    <div style={{position: 'absolute', inset: 0, fontFamily: FONT, transformOrigin: `540px ${goc_y}px`, transform: moi ? `translate(${may.x}px, ${may.y}px) scale(${may.s})` : undefined}}>
+    <div style={{position: 'absolute', inset: 0, fontFamily: FONT, transformOrigin: `540px ${goc_y}px`, transform: moi && !lopManim ? `translate(${may.x}px, ${may.y}px) scale(${may.s})` : undefined}}>
       {/* Sân khấu */}
       {coHinh ? (
         <NhoeHuong nx={ccSan.nx} ny={ccSan.ny} style={{position: 'absolute', left: 0, right: 0, top: yNoiDung, height: caoSan, display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: veBia ? 1 : ccSan.mo, transform: veBia ? undefined : `perspective(1600px) translate(${ccSan.x}px, ${ccSan.y}px) rotateX(${ccSan.rx}deg) rotateY(${ccSan.ry}deg) rotateZ(${ccSan.rz}deg) scale(${ccSan.s})`, clipPath: veBia ? undefined : ccSan.clip}}>
@@ -301,6 +302,17 @@ export const Canh: React.FC<{
         </NhoeHuong>
       ) : null}
 
+      {lopManim && canh.loai === 'de_bai' && deBai && coTheDe(deBai) && !coQuangCaoCuoi ? (() => {
+        const dong = [...deBai.cho, ...(deBai.tim ? [deBai.tim] : [])];
+        const phan = giayAm > 0 ? kep(t / giayAm) : 0;
+        const buoc = Math.min(dong.length - 1, Math.floor(phan * dong.length));
+        const canTim = !!deBai.tim && buoc === dong.length - 1;
+        return <div style={{position: 'absolute', top: 1238, left: 60, right: 60}}>
+          <VuaKhung maxW={960} maxH={206} goc="center top">
+            <TheDeBai de={{cho: canTim ? [] : [dong[buoc]], tim: canTim ? dong[buoc] : ''}} giuNguyen moc={[0]} caoToiDa={206} />
+          </VuaKhung>
+        </div>;
+      })() : null}
       {/* Chú thích + công thức */}
       {lopManim ? null : (
       <NhoeHuong nx={ccCT.nx} ny={ccCT.ny} style={{position: 'absolute', left: 50, right: 50, top: coHinh ? yNoiDung + caoSan + 16 : Y_SAN, bottom: 1920 - dayVung, display: 'flex', flexDirection: 'column', justifyContent: coHinh ? 'flex-start' : 'center', alignItems: 'center', gap: 16, opacity: frame < 4 ? 0 : ccCT.mo, transform: `perspective(1600px) translate(${ccCT.x}px, ${ccCT.y}px) rotateX(${ccCT.rx}deg) rotateY(${ccCT.ry}deg) rotateZ(${ccCT.rz}deg) scale(${ccCT.s})`, clipPath: ccCT.clip}}>
@@ -347,10 +359,10 @@ export const Canh: React.FC<{
       )}
 
       {/* Đầu cảnh: nhãn + tiêu đề (hoặc câu hook ở cảnh 1) */}
-      <div style={{position: 'absolute', left: 40, right: 40, top: moi ? (coHook ? 200 : 250) : Y_DAU, height: Y_SAN - (moi ? (coHook ? 200 : 250) : Y_DAU) - (moi ? 4 : 10), display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: moi ? 'center' : undefined, opacity: ra}}>
+      <div style={{position: 'absolute', left: 40, right: 40, top: moi ? (coHook ? 200 : 250) : Y_DAU, height: dayTieuDe - (moi ? (coHook ? 200 : 250) : Y_DAU) - (moi ? 4 : 10), display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: moi ? 'center' : undefined, opacity: ra}}>
         {moi ? (
           anTieuDe ? null : (
-            <VuaKhung maxW={1000} maxH={Y_SAN - (coHook ? 200 : 250) - 8}>
+            <VuaKhung maxW={1000} maxH={dayTieuDe - (coHook ? 200 : 250) - 8}>
               <ChuBaTang dan={baTang.dan} chot={baTang.chot} duoi={baTang.duoi} mau={mauNhan} tre={coHook ? canh.leadFrame : 0} coToiDa={coHook ? 128 : 102} noi={coHook || khungCuoi} />
             </VuaKhung>
           )

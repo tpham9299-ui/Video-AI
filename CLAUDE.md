@@ -22,6 +22,8 @@ Khi chuẩn bị hình, bộ viết kịch bản chọn vật theo lời giảng
 
 Lệnh Zalo `/donvideoloi` dùng kết quả kiểm duyệt trong HANG_DOI để dọn MP4 lỗi vào Thùng rác Drive. Lịch dọn nền tiếp tục khi có nhiều video.
 
+Với bài hình học phẳng và không gian, GitHub Actions bắt buộc dựng lớp hình và công thức bằng Manim trước khi chia khúc Remotion. Remotion dựng phần chữ, âm thanh và thẻ đề ở vùng thấp.
+
 ### Kiến trúc 2 tầng phối hợp:
 1. **Tầng điều phối & quản trị (Google Apps Script + Google Sheets + Google Drive + Zalo Bot)**:
    - Lưu trữ hàng đợi bài toán (`HANG_DOI`), cấu hình (`CAU_HINH`), lịch sử góp ý học tập (`GOP_Y_HOC`), quy tắc tự học (`QUY_TAC_HOC`), thống kê số liệu (`SO_LIEU`), chuỗi video (`SERIES`), quảng cáo sản phẩm (`SAN_PHAM`), và kho khóa API (`KHO_KEY`).
@@ -867,3 +869,9 @@ Lệnh Zalo `/donvideoloi` dùng kết quả kiểm duyệt trong HANG_DOI để
 
 - Lệnh `/donvideoloi` dọn video từ hàng đợi theo mã tệp Drive. Lệnh nhận diện trạng thái kiểm duyệt cũ và kết luận lỗi từ lượt chấm nội dung hoặc đo chuyển động. Bản thiếu báo cáo được giữ để duyệt tay.
 - Mỗi lượt xử lý tối đa 15 video. Khi còn việc, lịch dọn nền tiếp tục và báo kết quả qua Zalo. Kịch bản, ảnh bìa và dòng lịch sử được giữ lại.
+
+#### Lần 42 (v75) — Hình học phẳng và không gian dùng chung quy tắc dựng
+
+- Workflow dừng khi cài đặt hoặc dựng Manim lỗi. Kịch bản hình học cũ thiếu trường môn được nhận diện qua mã HH hoặc đối tượng hình học trong cảnh.
+- Vùng hình lớn hơn theo chiều dọc, tiêu đề ngắn lại và thẻ đề chia từng dữ kiện ở dưới hình. Hình phẳng ưu tiên đường bao tam giác, tứ giác trước nét phụ trong cùng cảnh. Chân đường cao suy ra từ tọa độ phần trăm được tính theo tỷ lệ thật của hai trục.
+- Bộ xếp nhãn dùng chiều rộng và chiều cao thật của tên điểm, kể cả dấu phẩy và chỉ số. Với khối xoay, máy kiểm tra các khung trung gian và giữ góc nhìn hiện tại nếu nhãn va nhau hoặc vượt biên.

@@ -167,8 +167,21 @@ jobs:
               python3 -c "import json, glob; meta = json.load(open('kich_ban.json', encoding='utf8')); f_kb = glob.glob('kb_drive/*')[0]; kb = json.load(open(f_kb, encoding='utf8')); [kb.update({k: meta[k]}) for k in ('id', 'giong', 'gioi_tinh_giong', '_kiem_duyet', 'mon') if k in meta and meta[k]]; json.dump(kb, open('kich_ban.json', 'w', encoding='utf8'), ensure_ascii=False); print('Đã ghép kịch bản đầy đủ từ Drive:', len(kb.get('canh') or []), 'cảnh')"
             fi
           fi
-          MON=$(python3 -c "import json;kb=json.load(open('kich_ban.json',encoding='utf8'));m=str(kb.get('mon') or '').upper();i=str(kb.get('id') or '').upper();print('1' if (m=='HINH_HOC' or i.startswith('HH')) else '0')" 2>/dev/null || echo 0)
-          echo "hh=$MON" >> "$GITHUB_OUTPUT"
+          python3 - <<'PY_HINH'
+          import json, os
+          with open("kich_ban.json", encoding="utf8") as f:
+              kb = json.load(f)
+          mon = str(kb.get("mon") or "").upper()
+          hh = mon == "HINH_HOC" or str(kb.get("id") or "").upper().startswith("HH")
+          if not mon and not hh:
+              for c in kb.get("canh") or []:
+                  du = (c.get("minh_hoa") or {}).get("du_lieu")
+                  if isinstance(du, dict) and any(isinstance(v, dict) and v.get("loai") == "hinh_hoc" for v in du.get("vat") or []):
+                      hh = True
+                      break
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              print(f"hh={int(hh)}", file=f)
+          PY_HINH
 
       - name: Cache âm thanh giọng đọc TTS
         uses: actions/cache@v4
@@ -194,14 +207,14 @@ jobs:
           fi
 
       - name: Cache Manim virtualenv (chỉ bài hình học)
-        if: ${{ vars.MANIM_HINH != 'TAT' && steps.kb.outputs.hh == '1' }}
+        if: ${{ steps.kb.outputs.hh == '1' }}
         uses: actions/cache@v4
         with:
           path: /tmp/mv
           key: manim-venv-0.22.1-${{ runner.os }}-py312-v2
 
       - name: Cache Manim LaTeX SVG (tích lũy liên video)
-        if: ${{ vars.MANIM_HINH != 'TAT' && steps.kb.outputs.hh == '1' }}
+        if: ${{ steps.kb.outputs.hh == '1' }}
         uses: actions/cache@v4
         with:
           path: /tmp/manim_tex_cache
@@ -210,30 +223,27 @@ jobs:
             manim-tex-${{ runner.os }}-v2-
 
       - name: Tạo giọng đọc và chuẩn bị công cụ hình học song song
-        id: giong
         env:
-          CAN_MANIM: ${{ vars.MANIM_HINH != 'TAT' && steps.kb.outputs.hh == '1' }}
+          CAN_MANIM: ${{ steps.kb.outputs.hh }}
         run: |
-          if [ "$CAN_MANIM" = "true" ]; then
+          if [ "$CAN_MANIM" = "1" ]; then
             bash scripts/cai_manim.sh &
             MANIM_PID=$!
           fi
           python3 scripts/chuanbi.py kich_ban.json
           if [ -n "${MANIM_PID:-}" ]; then
-            if wait "$MANIM_PID"; then
-              echo "manim_ok=1" >> "$GITHUB_OUTPUT"
-            else
-              echo "::warning::Cài đặt Manim thất bại, dùng Remotion"
+            if ! wait "$MANIM_PID"; then
+              echo "::error::Cài đặt Manim thất bại cho bài hình học"
+              exit 1
             fi
           fi
 
       # BÀI HÌNH HỌC: phần toán (hình, công thức, chuyển động, hiệu ứng) dựng 100% bằng MANIM (scripts/manim_hinh.py) thành
       # một lớp trong suốt; Remotion vẫn dựng PHẦN VỎ CHUNG như mọi video (nền, tiêu đề, thanh bước, phụ đề, giọng, nhạc, tiếng
-      # hiệu ứng) rồi máy ghép đè lớp Manim lên. Manim lỗi -> video dựng bằng Remotion như cũ. Tắt: Variable MANIM_HINH = TAT.
+      # hiệu ứng) rồi máy ghép đè lớp Manim lên. Lỗi lớp hình sẽ dừng lượt dựng.
       - name: Dựng video hình học bằng Manim
         id: manim
-        if: steps.giong.outputs.manim_ok == '1'
-        continue-on-error: true
+        if: steps.kb.outputs.hh == '1'
         run: |
           mkdir -p out /tmp/manim_tex_cache
           /tmp/mv/bin/python scripts/manim_hinh.py public/props.json kich_ban.json out --public public

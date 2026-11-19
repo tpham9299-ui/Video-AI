@@ -58,8 +58,8 @@ Y_TIEU_DE = 7.25
 Y_BUOC = 6.35
 # vùng của Manim = vùng nội dung của video Remotion (dưới tiêu đề bước, trên phụ đề)
 # Mở rộng tối đa vùng hình học ở chính giữa màn hình (không hiện thẻ ĐỀ BÀI chữ dài)
-HINH_TREN, HINH_DUOI, HINH_RONG = 4.45, -1.60, 8.85
-CT_TREN, CT_DUOI, CT_RONG = -1.75, -4.20, 8.4
+HINH_TREN, HINH_DUOI, HINH_RONG = 4.45, -2.04, 8.85
+CT_TREN, CT_DUOI, CT_RONG = -2.13, -4.20, 8.4
 CO_CT = 46
 
 # ---------- NHẬN DIỆN ĐẠI LƯỢNG trong chữ / công thức ----------
@@ -187,11 +187,10 @@ class MoHinh:
             bx, by = b_pt
             cx, cy = c_pt
             dx, dy = cx - bx, cy - by
-            d2 = dx * dx + dy * dy
+            d2 = (8.8 * dx) ** 2 + (6.0 * dy) ** 2
             if d2 < 1e-9:
                 return ((bx + cx) / 2.0, (by + cy) / 2.0)
-            t = ((ax - bx) * dx + (ay - by) * dy) / d2
-            t = max(0.05, min(0.95, t))
+            t = ((ax - bx) * dx * 8.8**2 + (ay - by) * dy * 6.0**2) / d2
             return (bx + t * dx, by + t * dy)
 
         for m in re.finditer(
@@ -234,7 +233,7 @@ class MoHinh:
         - Mọi cạnh nằm trên đường bao lồi ngoài cùng (2D Convex Hull) của khối đa diện BẮT BUỘC là nét liền ('canh').
         - Các cạnh bị khuất phía sau hoặc đi xuyên qua lòng khối đa diện BẮT BUỘC là nét đứt ('khuat' hoặc 'phu')."""
         co_khuat = any(p["kieu"] == "doan" and p.get("kieu_net") == "khuat" for p in self.pt)
-        la_kg = co_khuat or bool(re.search(r"(?i:hình\s+chóp|lăng\s+trụ|tứ\s+diện|hình\s+hộp|mặt\s+phẳng|không\s+gian)", self.de_bai))
+        la_kg = bool(self.diem_3d) or co_khuat or bool(re.search(r"(?i:hình\s+chóp|lăng\s+trụ|tứ\s+diện|hình\s+hộp|không\s+gian)", self.de_bai))
         self.la_khong_gian = la_kg
         if not la_kg:
             return
@@ -1018,8 +1017,7 @@ class VideoHinh(Scene):
             t = 0.0 if d2 < 1e-9 else max(0.0, min(1.0, float(np.dot(c - a, ab) / d2)))
             return float(np.linalg.norm(c - (a + t * ab)))
 
-        rx = 0.28 if ("'" in n or "_" in n) else 0.22
-        ry = 0.22
+        rx, ry = self.co_nhan[n]
         mau_kiem = [
             np.array([0.0, 0.0]),
             np.array([-rx, -ry]), np.array([rx, -ry]),
@@ -1038,11 +1036,13 @@ class VideoHinh(Scene):
             u = np.array([math.cos(g), math.sin(g)])
             cos_max = max((float(np.dot(u, tk)) for tk in tia_ke), default=-1.0)
             phat_tia = 3.5 * max(0.0, cos_max - 0.80)
-            for r in (0.44, 0.54, 0.66, 0.78):
+            for r in (0.44, 0.54, 0.66, 0.78, 0.94):
                 c = p + u * r
                 kc_canh = min([kc_hop_doan(c, a, b) for a, b in doan] + [abs(float(np.linalg.norm(c - o)) - rr) - rx * 0.6 for o, rr in tron] + [9.0])
                 kc_diem = min([float(np.linalg.norm(c - d)) - rx * 0.7 for d in diem] + [9.0])
-                kc_nhan = min([float(np.linalg.norm(c - d)) - rx * 1.45 for d in da_dat] + [9.0])
+                # Khoảng hở giữa hai hộp chữ theo trục phân cách (âm khi đè nhau).
+                kc_nhan = min((max(abs(c[0] - d[0]) - rx - w, abs(c[1] - d[1]) - ry - h)
+                               for d, w, h in da_dat), default=9.0)
                 kc = min(kc_canh, kc_diem, kc_nhan)
                 phat_de = 0.0
                 if kc_canh < 0.08:
@@ -1051,13 +1051,10 @@ class VideoHinh(Scene):
                     phat_de += (0.10 - kc_nhan) * 35.0
                 if kc_diem < 0.12:
                     phat_de += (0.12 - kc_diem) * 25.0
-                phat_bien = 0.0
-                if abs(c[0]) > HINH_RONG / 2 - 0.25:
-                    phat_bien += (abs(c[0]) - (HINH_RONG / 2 - 0.25)) * 12.0
-                if c[1] > HINH_TREN - 0.20:
-                    phat_bien += (c[1] - (HINH_TREN - 0.20)) * 12.0
-                if c[1] < HINH_DUOI + 0.20:
-                    phat_bien += ((HINH_DUOI + 0.20) - c[1]) * 12.0
+                tran = max(0.0, abs(c[0]) + rx - HINH_RONG / 2,
+                           c[1] + ry - HINH_TREN, HINH_DUOI - c[1] + ry)
+                phat_bien = tran * 100
+                phat_de += max(0.0, 0.045 - kc_nhan) * 120
                 diem_so = min(kc, 0.36) * 14.0 - 0.55 * (1.0 - float(np.dot(u, goc))) - (r - 0.44) * 2.2 - phat_tia - phat_de - phat_bien
                 if diem_so > tot:
                     tot, chon = diem_so, c
@@ -1066,7 +1063,9 @@ class VideoHinh(Scene):
     def dung_phan_tu(self):
         mo = self.mo
         self.hinh = {}       # (kieu, khoa) -> mobject
-        self.nhan_diem = {}
+        self.nhan_diem = {n: MathTex(tex_ten(n), tex_template=TEX, font_size=38, color=TRANG)
+                          .set_stroke("#10171d", width=4, background=True).set_z_index(8) for n in self.P}
+        self.co_nhan = {n: (m.width / 2 + 0.035, m.height / 2 + 0.035) for n, m in self.nhan_diem.items()}
         self.cham = {}
         da_dat_canh = []
         for p in mo.pt:
@@ -1091,7 +1090,7 @@ class VideoHinh(Scene):
                         huong = -huong
                     vt_nhan_c = (a + b) / 2 + huong * 0.34
                     t = tao_cong_thuc(chuan_tex(p["nhan"]), 30).move_to(vt_nhan_c)
-                    da_dat_canh.append(vt_nhan_c[:2])
+                    da_dat_canh.append((vt_nhan_c[:2], t.width / 2, t.height / 2))
                     m = VGroup(m, t)
                     m.la_co_nhan = True
             elif p["kieu"] == "tron":
@@ -1119,14 +1118,14 @@ class VideoHinh(Scene):
         ds_dinh = list(self.P.keys())
         for luot in range(2):
             for n in ds_dinh:
-                da_dat = list(da_dat_canh) + [vt_tam[m][:2] for m in ds_dinh if m != n and m in vt_tam]
+                da_dat = list(da_dat_canh) + [(vt_tam[m][:2], *self.co_nhan[m]) for m in ds_dinh if m != n and m in vt_tam]
                 vt_tam[n] = self.vi_tri_nhan(n, da_dat)
         self.lech_nhan = {}
         for n, p in self.P.items():
             self.cham[n] = Dot(p, radius=0.065, color=TRANG)
             vt = vt_tam[n]
             self.lech_nhan[n] = vt - p
-            self.nhan_diem[n] = MathTex(tex_ten(n), tex_template=TEX, font_size=36, color=TRANG).move_to(vt).set_stroke("#10171d", width=4, background=True).set_z_index(8)
+            self.nhan_diem[n].move_to(vt)
 
     def chieu_dinh(self, goc_rad):
         """Chiếu tọa độ 3D của khối đa diện tại góc xoay goc_rad (radian) quanh trục thẳng đứng đi qua tâm khối."""
@@ -1200,30 +1199,46 @@ class VideoHinh(Scene):
             return
         moc_rad = [math.radians(float(g)) for g in ds_goc_do]
         n_doan = len(moc_rad) - 1
-        khung_ao = Dot(self.tam, radius=0.001, fill_opacity=0, stroke_opacity=0)
-        self.add(khung_ao)
         lech_dau = dict(self.lech_nhan)
         p_dau = self.P
         self.P = self.chieu_dinh(self.goc_doc + moc_rad[-1])
         vi_tri_cuoi = {}
         for n in self.P:
-            vi_tri_cuoi[n] = self.vi_tri_nhan(n, [v[:2] for v in vi_tri_cuoi.values()])
+            vi_tri_cuoi[n] = self.vi_tri_nhan(n, [(v[:2], *self.co_nhan[m]) for m, v in vi_tri_cuoi.items()])
         lech_cuoi = {n: vi_tri_cuoi[n] - p for n,p in self.P.items()}
         self.P = p_dau
 
-        def _cap_nhat(_mob, alpha):
+        def goc_tai(alpha):
             pos = max(0.0, min(float(n_doan), float(alpha) * n_doan))
             idx = min(n_doan - 1, int(pos))
             t_con = pos - idx
             # Nội suy mượt cosine (smoothstep) giữa hai góc
             t_muot = 0.5 - 0.5 * math.cos(t_con * math.pi)
-            goc = moc_rad[idx] + (moc_rad[idx + 1] - moc_rad[idx]) * t_muot
+            return moc_rad[idx] + (moc_rad[idx + 1] - moc_rad[idx]) * t_muot
+
+        # Kiểm tra các hộp nhãn trên đường xoay trước khi bắt đầu chuyển động.
+        for a in np.linspace(0, 1, max(3, math.ceil(run_time * self.mo.fps) + 1)):
+            dinh = self.chieu_dinh(self.goc_doc + goc_tai(a))
+            hop = []
+            for n, q in dinh.items():
+                x, y = (q + (1-a)*lech_dau[n] + a*lech_cuoi[n])[:2]
+                w, h = self.co_nhan[n]
+                if (abs(x) + w > HINH_RONG/2 or y+h > HINH_TREN or y-h < HINH_DUOI
+                        or any(abs(x-u) < w+rw and abs(y-v) < h+rh for u,v,rw,rh in hop)):
+                    return False
+                hop.append((x,y,w,h))
+
+        khung_ao = Dot(self.tam, radius=0.001, fill_opacity=0, stroke_opacity=0)
+        self.add(khung_ao)
+        def _cap_nhat(_mob, alpha):
+            goc = goc_tai(alpha)
             self.lech_nhan = {n: (1-alpha)*lech_dau[n] + alpha*lech_cuoi[n] for n in lech_dau}
             self.cap_nhat_goc_3d(goc)
 
         self.choi(UpdateFromAlphaFunc(khung_ao, _cap_nhat), run_time=run_time)
         self.cap_nhat_goc_3d(moc_rad[-1])
         self.remove(khung_ao)
+        return True
 
     def cung_goc(self, ba, mau, nhan=""):
         a, o, b = (self.P[x] for x in ba)
@@ -1469,10 +1484,17 @@ class VideoHinh(Scene):
                 return min((moc_diem.get(x, 0.0) for x in d), default=0.0)
 
             day = set(getattr(mo, "day", []))
+            bien_phang = set()
+            if not mo.la_khong_gian:
+                contour = re.search(r"(?i:tam giác|tứ giác|hình vuông|hình chữ nhật)\s+([A-Z]{3,4})\b", mo.de_bai)
+                if contour:
+                    ds = contour[1]
+                    bien_phang = {khoa_doan(x, ds[j-1]) for j, x in enumerate(ds)}
+
             def thu_tu(p):
                 if p.get("kieu_net") in ("phu", "con"):
                     return 2
-                return 0 if set(p["khoa"]) <= day else 1
+                return 0 if p["khoa"] in bien_phang or set(p["khoa"]) <= day else 1
             moi_doan_sx = sorted(moi_doan, key=lambda p: (thu_tu(p), _moc_cua_doan(p)))
             buoc_ve = []  # list of (t_bat_mong_muon, list_animations)
             # Điểm lẻ được giọng đọc gọi tên sớm trước khi nối đoạn
@@ -1553,8 +1575,7 @@ class VideoHinh(Scene):
                         self.canh_khuat(self.goc_doc + math.radians(q)) == self.net_goc
                         for q in np.linspace(goc_cu,d,9))]
                     moi_goc = max(goc or [goc_cu], key=do_ro)
-                    if do_ro(moi_goc) > do_ro(goc_cu) + 0.08:
-                        self.xoay_3d([goc_cu, moi_goc], run_time=1.4)
+                    if do_ro(moi_goc) > do_ro(goc_cu) + 0.08 and self.xoay_3d([goc_cu, moi_goc], run_time=1.4):
                         self.goc_dang_xem = moi_goc
 
             # 4) Đồng bộ giọng đọc từng câu (cau) & hiện công thức biến đổi bên dưới:
