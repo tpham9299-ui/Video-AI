@@ -24,6 +24,8 @@ Lệnh Zalo `/donvideoloi` dùng kết quả kiểm duyệt trong HANG_DOI để
 
 Với bài hình học phẳng và không gian, GitHub Actions bắt buộc dựng lớp hình và công thức bằng Manim trước khi chia khúc Remotion. Remotion dựng phần chữ, âm thanh và thẻ đề ở vùng thấp.
 
+Bộ chuẩn bị kịch bản chọn minh họa bờ biển hoặc căn hộ khi nhận diện được dữ kiện tương ứng. Remotion dùng Montserrat cho tiêu đề và Be Vietnam Pro cho phần văn bản theo cấu hình mặc định. Hình bình bi dùng chung thân trụ trong suốt trên hai định dạng kịch bản.
+
 ### Kiến trúc 2 tầng phối hợp:
 1. **Tầng điều phối & quản trị (Google Apps Script + Google Sheets + Google Drive + Zalo Bot)**:
    - Lưu trữ hàng đợi bài toán (`HANG_DOI`), cấu hình (`CAU_HINH`), lịch sử góp ý học tập (`GOP_Y_HOC`), quy tắc tự học (`QUY_TAC_HOC`), thống kê số liệu (`SO_LIEU`), chuỗi video (`SERIES`), quảng cáo sản phẩm (`SAN_PHAM`), và kho khóa API (`KHO_KEY`).
@@ -875,3 +877,9 @@ Với bài hình học phẳng và không gian, GitHub Actions bắt buộc dự
 - Workflow dừng khi cài đặt hoặc dựng Manim lỗi. Kịch bản hình học cũ thiếu trường môn được nhận diện qua mã HH hoặc đối tượng hình học trong cảnh.
 - Vùng hình lớn hơn theo chiều dọc, tiêu đề ngắn lại và thẻ đề chia từng dữ kiện ở dưới hình. Hình phẳng ưu tiên đường bao tam giác, tứ giác trước nét phụ trong cùng cảnh. Chân đường cao suy ra từ tọa độ phần trăm được tính theo tỷ lệ thật của hai trục.
 - Bộ xếp nhãn dùng chiều rộng và chiều cao thật của tên điểm, kể cả dấu phẩy và chỉ số. Với khối xoay, máy kiểm tra các khung trung gian và giữ góc nhìn hiện tại nếu nhãn va nhau hoặc vượt biên.
+
+#### Lần 43 (v76) — Hai họ chữ và minh họa gắn với dữ kiện
+
+- Tiêu đề trên bìa, đầu cảnh và tiêu đề bài học dùng Montserrat. Nội dung, nhãn hình và phụ đề dùng Be Vietnam Pro. Ký hiệu toán tiếp tục qua bộ dựng công thức.
+- Bài cập bờ có sơ đồ đường thủy và đường bộ theo tỷ lệ AH, HB. Bài cho thuê nhà vẽ số căn theo đề và chỉ thể hiện số căn trống khi lời giảng nêu trạng thái cụ thể.
+- Bình bi có vành elip, thành kính và đáy cong. Sân khấu dành chỗ cho khay theo hành động rút bi trong kịch bản. Với định dạng cũ, các nhóm đông được xếp thành nhiều hàng.

@@ -1259,6 +1259,50 @@ def _la_nhan_an_so_som(nhan, de_goc):
     return not co_trong_de
 
 
+def minh_hoa_thuc_te(kb):
+    if kb.get("mon") not in (None, "", "THUC_TE"):
+        return
+    de = " ".join([str(kb.get("de_bai") or ""), *map(str, kb.get("de_cho") or [])])
+    de = de.replace("{,}", ",")
+    de = re.sub(r"[{}$]|\\(?:text|mathrm)|\\[,; ]", " ", de)
+    def khoang_cach(ten, mo_ta):
+        do_dai = r"\s*(?:=|là|dài)?\s*(\d+(?:[.,]\d+)?)\s*km\b"
+        m = re.search(r"(?:\b" + ten + r"\b|" + mo_ta + r")" + do_dai, de, re.I)
+        return float(m[1].replace(",", ".")) if m else 0
+
+    ah = khoang_cach("AH", r"(?:tàu|thuyền)\s+A\s+cách\s+bờ(?: biển)?")
+    hb = khoang_cach("(?:HB|BH)", r"(?:trạm\s+)?B\s+cách\s+H")
+    can = re.search(r"(?:\bcó|gồm|quản lý|tổng số|toàn bộ)\s+(\d+)\s*căn hộ", de, re.I)
+    if not can:
+        can = re.search(r"(?:^|[.;])\s*(\d+)\s*căn hộ\b", de, re.I)
+    du = None
+    if ah and hb and 0.25 <= hb / ah <= 8 and re.search(r"tàu|thuyền", de, re.I) and re.search("bờ", de, re.I):
+        du = {"loai": "cap_bo", "ah": ah, "hb": hb}
+    elif can and 1 <= int(can[1]) <= 150 and re.search("thuê", de, re.I):
+        du = {"loai": "can_ho", "tong": int(can[1]), "trong": None}
+    if not du:
+        return
+    for c in kb.get("canh") or []:
+        if c.get("loai") not in ("mo_dau", "hook", "de_bai", "mo_hinh_hoa"):
+            continue
+        mh = c.get("minh_hoa") or {}
+        if mh.get("loai") not in (None, "", "khong", "san_khau"):
+            continue
+        vat = (mh["du_lieu"].get("vat") or []) if isinstance(mh.get("du_lieu"), dict) else []
+        if any(v.get("loai") in ("anh_that", "do_thi", "hinh_hoc") for v in vat if isinstance(v, dict)):
+            continue
+        data = dict(du)
+        if du["loai"] == "can_ho":
+            loi = str(c.get("loi_thoai") or "")
+            so_trong = re.search(r"(?<![.,\d])(\d+)\s*căn (?:hộ )?(?:bị |bỏ )?trống", loi, re.I)
+            if so_trong and int(so_trong[1]) <= du["tong"] and not re.search(r"mỗi|cứ |thêm|tăng|giảm|nếu", loi, re.I):
+                data["trong"] = int(so_trong[1])
+            elif re.search(r"thuê hết|thuê kín|kín phòng", loi, re.I) and not re.search(r"chưa|không|nếu|tăng|giảm", loi, re.I):
+                data["trong"] = 0
+        c["minh_hoa"] = {"loai": "thuc_te_theo_de", "du_lieu": data}
+        c["giu_san_khau"] = False
+
+
 def minh_hoa_chon_nhom(kb):
     de = " ".join([str(kb.get("de_bai") or ""), *map(str, kb.get("de_cho") or [])])
     nhom = {}
@@ -1582,6 +1626,7 @@ def main():
                         if isinstance(d_item, dict):
                             d_item["buoc"] = min(4, 1 + ((idx_d + idx_c) % 4))
                     v["do"] = ds_do
+    minh_hoa_thuc_te(kb)
     minh_hoa_chon_nhom(kb)
     chuan_hoa_hinh_kich_ban(kb)
     anh_sp = chuan_anh_san_pham(kb, args.public)

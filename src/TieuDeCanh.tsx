@@ -2,7 +2,7 @@ import React from 'react';
 import {useCurrentFrame} from 'remotion';
 import {easeOut, kep, popOut} from './sankhau/donghieu';
 import {expoOut} from './sankhau/chuyendong';
-import {BONG_CHU, FONT_DAM, vienChu} from './theme';
+import {BONG_CHU, FONT_TIEU_DE, vienChu} from './theme';
 
 // Đầu mỗi cảnh: nhãn cam dạng viên thuốc ("ĐỀ BÀI", "CÁI BẪY"...) + tiêu đề rất đậm (Montserrat Black, kiểu sticker:
 // viền tối + bóng khối). Từng từ lướt lên kèm nhòe chuyển động (motion graphic), sau đó một nét bút kiểu Manim
@@ -37,7 +37,7 @@ export const VienThuoc: React.FC<{chu: string; f: number}> = ({chu, f}) => {
   const a = kep(f / 9);
   const quet = kep((f - 8) / 14);
   return (
-    <div style={{position: 'relative', overflow: 'hidden', transform: `scale(${popOut(a, 2.2)}) rotate(${(1 - a) * -6}deg)`, opacity: kep(a * 2), background: 'linear-gradient(180deg, #FF9D52, #EA5B16)', color: '#fff', fontFamily: FONT_DAM, fontWeight: 900, fontSize: 32, letterSpacing: 1.5, padding: '7px 26px', borderRadius: 30, border: '1.5px solid rgba(255,255,255,0.28)', boxShadow: '0 4px 0 #9a3a0c, inset 0 1px 0 rgba(255,255,255,0.4), 0 0 22px rgba(255,122,47,0.5)'}}>
+    <div style={{position: 'relative', overflow: 'hidden', transform: `scale(${popOut(a, 2.2)}) rotate(${(1 - a) * -6}deg)`, opacity: kep(a * 2), background: 'linear-gradient(180deg, #FF9D52, #EA5B16)', color: '#fff', fontFamily: FONT_TIEU_DE, fontWeight: 900, fontSize: 32, letterSpacing: 1.5, padding: '7px 26px', borderRadius: 30, border: '1.5px solid rgba(255,255,255,0.28)', boxShadow: '0 4px 0 #9a3a0c, inset 0 1px 0 rgba(255,255,255,0.4), 0 0 22px rgba(255,122,47,0.5)'}}>
       {chu}
       <span style={{position: 'absolute', top: 0, bottom: 0, width: 40, left: `${-20 + quet * 130}%`, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent)', transform: 'skewX(-20deg)', opacity: quet < 1 ? 1 : 0}} />
     </div>
@@ -62,7 +62,7 @@ export const TieuDeCanh: React.FC<{nhan: string; chu: string; tuKhoa: string; tr
     <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20}}>
       {dau ? dau : nhan ? <VienThuoc chu={nhan} f={f} /> : null}
       {chu ? (
-        <div style={{maxWidth: 980, textAlign: 'center', fontFamily: FONT_DAM, fontWeight: 900, fontSize: co, lineHeight: 1.12, color: '#fff', letterSpacing: inHoa ? 0 : -0.5, textTransform: inHoa ? 'uppercase' : 'none'}}>
+        <div style={{maxWidth: 980, textAlign: 'center', fontFamily: FONT_TIEU_DE, fontWeight: 900, fontSize: co, lineHeight: 1.12, color: '#fff', letterSpacing: inHoa ? 0 : -0.5, textTransform: inHoa ? 'uppercase' : 'none'}}>
           {dsTu.map((x, i) => {
             if (!x.w.trim()) return <span key={i}> </span>;
             const k = thuTu++;

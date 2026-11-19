@@ -2,7 +2,7 @@ import React from 'react';
 import {useCurrentFrame, useVideoConfig} from 'remotion';
 import {DuLieuHinhVe, MAU_TEN, PhanTu} from './bocuc';
 import {kep01, smooth} from './manim';
-import {FONT_SERIF, GIAO_DIEN, MAU} from './theme';
+import {FONT_DAM, GIAO_DIEN, MAU} from './theme';
 import {Toan} from './Toan';
 import {Bai3D, Xu3D, Xuc3D} from './Vat3D';
 
@@ -131,8 +131,8 @@ export const HinhVe: React.FC<{du: DuLieuHinhVe; giayAm: number}> = ({du, giayAm
               <>
                 <rect x={cx - w / 2} y={cy - h / 2} width={w} height={h} rx={12} stroke="#ffffff" strokeWidth={5} {...NET} strokeDashoffset={1 - p} style={{fill: 'rgba(255,255,255,0.05)'}} />
                 <g opacity={smooth(kep01((p - 0.6) / 0.4))}>
-                  <text x={cx - w / 2 + 14} y={cy - h / 2 + 40} fontFamily={FONT_SERIF} fontStyle="italic" fontSize={38} fill={ch.c}>{e.giaTri}</text>
-                  <text x={cx} y={cy + 26} textAnchor="middle" fontFamily={FONT_SERIF} fontSize={74} fill={ch.c}>{ch.k}</text>
+                  <text x={cx - w / 2 + 14} y={cy - h / 2 + 40} fontFamily={FONT_DAM} fontStyle="italic" fontSize={38} fill={ch.c}>{e.giaTri}</text>
+                  <text x={cx} y={cy + 26} textAnchor="middle" fontFamily={FONT_DAM} fontSize={74} fill={ch.c}>{ch.k}</text>
                 </g>
               </>
             )
@@ -149,7 +149,7 @@ export const HinhVe: React.FC<{du: DuLieuHinhVe; giayAm: number}> = ({du, giayAm
             goi(
               <>
                 <circle cx={cx} cy={cy} r={58} stroke={MAU.vang} strokeWidth={6} {...NET} strokeDashoffset={1 - p} style={{fill: 'rgba(245,166,35,0.1)'}} />
-                <text x={cx} y={cy + 20} textAnchor="middle" fontFamily={FONT_SERIF} fontStyle="italic" fontSize={58} fill={MAU.vang} opacity={smooth(kep01((p - 0.6) / 0.4))}>{e.giaTri}</text>
+                <text x={cx} y={cy + 20} textAnchor="middle" fontFamily={FONT_DAM} fontStyle="italic" fontSize={58} fill={MAU.vang} opacity={smooth(kep01((p - 0.6) / 0.4))}>{e.giaTri}</text>
               </>
             )
           );

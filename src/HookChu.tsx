@@ -1,7 +1,7 @@
 import React from 'react';
 import {useCurrentFrame, useVideoConfig} from 'remotion';
 import {chuanTu, tuNhanManh} from './bocuc';
-import {FONT, FONT_DAM, BONG_CHU, vienChu, MAU} from './theme';
+import {FONT, FONT_TIEU_DE, BONG_CHU, vienChu, MAU} from './theme';
 
 // Câu hook 5 giây đầu: chữ rất lớn bật lên từng từ (kiểu "kinetic typography"), từ khóa vàng to hơn.
 export const HookChu: React.FC<{chu: string; nhanManh: string[]; kieu: string; lead: number}> = ({chu, nhanManh, kieu, lead}) => {
@@ -15,7 +15,7 @@ export const HookChu: React.FC<{chu: string; nhanManh: string[]; kieu: string; l
     <div style={{position: 'relative', height: 300, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18}}>
       {/* quầng sáng nhịp đập phía sau câu hook */}
       <div style={{position: 'absolute', left: '10%', right: '10%', top: '15%', bottom: '15%', borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(255,138,61,0.22), rgba(255,138,61,0) 70%)', transform: `scale(${1 + 0.06 * Math.sin(frame / 6)})`, opacity: Math.min(1, frame / 10)}} />
-      <div style={{display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: `${co * 0.08}px ${co * 0.28}px`, fontFamily: FONT_DAM, fontWeight: 900, lineHeight: 1.08, textAlign: 'center', letterSpacing: -1, perspective: 900}}>
+      <div style={{display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: `${co * 0.08}px ${co * 0.28}px`, fontFamily: FONT_TIEU_DE, fontWeight: 900, lineHeight: 1.08, textAlign: 'center', letterSpacing: -1, perspective: 900}}>
         {tu.map((w, i) => {
           const bd = lead + 3 + i * buoc;
           const t = Math.max(0, Math.min(1, (frame - bd) / Math.max(1, fps * 0.3)));

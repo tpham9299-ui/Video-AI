@@ -28,6 +28,7 @@ function taoPromptKichBan_(r, c1, c2) {
     'NGUYÊN TẮC SỐ LIỆU: mọi con số chỉ lấy từ đề và hai lời giải trên; dòng CUỐI của cảnh đáp án phải chứa đúng đáp số ' + r.dap_an + ' (viết dấu phẩy thập phân kiểu Việt Nam trong LaTeX là {,}, ví dụ 12{,}5) kèm đơn vị. Không viết câu thông báo của hệ thống (hạn mức, xin lỗi...).\n\n',
 
     '1) TOÁN THỰC TẾ = DỰNG LẠI CẢNH THẬT RỒI MÔ HÌNH HÓA (bắt buộc): người xem phải THẤY vật thật trước, rồi thấy nó "biến" thành hình học/hàm số, cuối cùng quay lại vật thật với kết quả. ',
+    'Đối chiếu mỗi nhãn với đúng vật trong đề. Bài di chuyển phải có vị trí xuất phát, điểm chuyển phương tiện và đích đến; vẽ đường đi qua các điểm ấy. Bài kinh tế phải phân biệt tổng số, số đang sử dụng và số bỏ trống. Khi đề chỉ nêu mức biến thiên, giữ biến trên hình đến khi có giá trị cụ thể. ',
     'Mạch hình ảnh: cảnh thật 3D (vật đúng hình dạng: hộp/bể = khoi_hop, lon/cốc/bồn = tru, phễu = non, nhà = toa_nha, thang = thang, đường đi có xe = xe, cảnh quan = cay) -> giữ sân khấu, gắn nhãn kích thước (x, h, 4 m...) lên vật -> mô hình phẳng (hinh_hoc: tam giác, góc, cạnh) hoặc hàm số (do_thi) -> tính -> quay lại cảnh thật 3D với kích thước đúng của đáp số. ',
     'Vật 3D phải đúng TỈ LỆ của đề ("kich_thuoc" ghi số thật, ví dụ đáy 4x4, cao 2 -> [4,4,2]); khi đổi kích thước để so sánh thì dùng hai vật cạnh nhau.\n\n',
 

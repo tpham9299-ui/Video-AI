@@ -1,6 +1,7 @@
 // Thư viện VẬT THẬT cho sân khấu, phong cách neon như video mẫu: viền phát sáng trên nền tối, bật lên có độ nảy,
 // mỗi vật có chuyển động riêng (xúc xắc lăn, đồng xu lật, vòng quay quay, hộp quà mở, kim đồng hồ đo xác suất chạy...).
 import React from 'react';
+import {BinhBi} from '../BinhBi';
 import {Img, staticFile} from 'remotion';
 import {FONT, FONT_DAM, BONG_CHU, vienChu, laMoi, GIAO_DIEN} from '../theme';
 import {GachTay} from '../dong/DiemNhan';
@@ -441,36 +442,29 @@ const HopBi: Ve = (v, st) => {
     for (let k = 0; k < l.so; k++) {
       let idx = -1;
       for (let j = tat.length - 1; j >= 0; j--) if (conLai[j] && (!l.mau || tat[j] === l.mau)) { idx = j; break; }
-      if (idx < 0) for (let j = tat.length - 1; j >= 0; j--) if (conLai[j]) { idx = j; break; }
+
       if (idx < 0) break;
       conLai[idx] = false;
       daLay.push({idx, p: kep((l.p - k * 0.15) / 0.85), thu: l.thu, k: daLay.length});
     }
   });
-  const cot = Math.max(4, Math.floor((W - 56) / (r * 2.25)));
-  const viTri = (j: number) => ({x: 36 + (j % cot) * r * 2.22 + r, y: H - 36 - Math.floor(j / cot) * r * 2.02 - r});
+  const cot = Math.max(4, Math.floor((W - 56 * v.co) / (r * 2.25)));
+  const viTri = (j: number) => ({x: 28 * v.co + (j % cot) * r * 2.22 + r, y: H * 0.85 - Math.floor(j / cot) * r * 2.02 - r});
   const goc = neon(v.mau, neon('xanh_duong'));
   const khay = (k: number) => ({x: W + 48 + (k % 3) * r * 2.55, y: H * 0.36 + Math.floor(k / 3) * r * 2.55});
-  const idHop = `hop_${bamChuoi(v.id)}`;
+
+  const conTrongBinh = v.nhom.map(g => g.so);
+  let offset = 0;
+  v.nhom.forEach((g, i) => {
+    conTrongBinh[i] -= daLay.filter(d => d.idx >= offset && d.idx < offset + g.so && d.p >= 0.5).length;
+    offset += g.so;
+  });
   const coKhay = daLay.length > 0 || st.layRa.length > 0;
   return (
     <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
       <div style={{position: 'relative', width: W, height: H + 12}}>
         {/* Lớp 1: Đế hộp 3D, thành kính phía sau và miệng hộp nửa sau */}
         <svg width={W} height={H + 16} viewBox={`0 0 ${W} ${H + 16}`} style={{position: 'absolute', left: 0, top: 0, overflow: 'visible', filter: phatSang(goc, 6 + 8 * st.sang)}}>
-          <defs>
-            <linearGradient id={`${idHop}_glass`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor={goc} stopOpacity={0.22} />
-              <stop offset="35%" stopColor="#0b1f2e" stopOpacity={0.55} />
-              <stop offset="70%" stopColor="#07131d" stopOpacity={0.62} />
-              <stop offset="100%" stopColor={goc} stopOpacity={0.26} />
-            </linearGradient>
-            <linearGradient id={`${idHop}_base`} x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#0d2230" />
-              <stop offset="50%" stopColor="#1b4358" />
-              <stop offset="100%" stopColor="#0d2230" />
-            </linearGradient>
-          </defs>
           {/* Bóng đổ dưới mặt bàn */}
           <ellipse cx={W * 0.5} cy={H + 6} rx={W * 0.46} ry={14 * v.co} fill="rgba(0,0,0,0.6)" />
           {tui ? (
@@ -480,18 +474,7 @@ const HopBi: Ve = (v, st) => {
               <path d={`M${W * 0.26} ${H * 0.2} Q${W * 0.5} ${H * 0.3} ${W * 0.74} ${H * 0.2}`} stroke={goc} strokeWidth={5} fill="none" strokeDasharray="6 8" />
             </>
           ) : (
-            <>
-              {/* Đế bệ 3D nâng hộp pha lê */}
-              <path d={`M 18 ${H - 22} L ${W - 18} ${H - 22} L ${W - 6} ${H - 4} Q ${W * 0.5} ${H + 8} 6 ${H - 4} Z`}
-                fill={`url(#${idHop}_base)`} stroke={goc} strokeWidth={2.5} opacity={easeOut(st.vao)} />
-              {/* Mặt sàn trong hộp */}
-              <ellipse cx={W * 0.5} cy={H - 22} rx={W * 0.45} ry={13 * v.co} fill="rgba(16,44,62,0.75)" stroke={`${goc}66`} strokeWidth={1.8} opacity={easeOut(st.vao)} />
-              {/* Thành bình pha lê 3D */}
-              <path d={`M 16 ${H * 0.11} L 16 ${H - 22} Q 16 ${H - 8} 38 ${H - 8} L ${W - 38} ${H - 8} Q ${W - 16} ${H - 8} ${W - 16} ${H - 22} L ${W - 16} ${H * 0.11} Z`}
-                fill={`url(#${idHop}_glass)`} stroke={goc} strokeWidth={4.5} strokeLinejoin="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - easeOut(st.vao)} />
-              {/* Vành miệng hộp phía sau (nét mảnh 3D) */}
-              <ellipse cx={W * 0.5} cy={H * 0.11} rx={W * 0.5 - 16} ry={14 * v.co} fill="rgba(79,195,247,0.08)" stroke={`${goc}88`} strokeWidth={2.2} strokeDasharray="8 6" opacity={easeOut(st.vao)} />
-            </>
+            <BinhBi rong={W} cao={H} mau={goc}/>
           )}
           {/* Khay nhung 3D bên phải khi có hành động lấy bi ra */}
           {coKhay ? (
@@ -506,7 +489,7 @@ const HopBi: Ve = (v, st) => {
         {/* Lớp 2: Các viên bi pha lê 3D nằm trong hộp */}
         {!tui
           ? tat.map((m, j) => {
-              if (!conLai[j]) return null;
+              if (daLay.some(d => d.idx === j && d.p > 0)) return null;
               const a = kep((st.t - st.ta - 0.22 - j * Math.min(0.055, 0.9 / Math.max(1, tat.length))) / 0.42);
               const p = viTri(j);
               return (
@@ -528,15 +511,7 @@ const HopBi: Ve = (v, st) => {
         {/* Lớp 3: Mặt kính phản quang phía trước đè lên bi + vành miệng trước + huy hiệu thống kê số bi */}
         {!tui ? (
           <svg width={W} height={H + 16} viewBox={`0 0 ${W} ${H + 16}`} style={{position: 'absolute', left: 0, top: 0, overflow: 'visible', pointerEvents: 'none', opacity: easeOut(st.vao)}}>
-            {/* Vệt lóa kính chéo (glass reflection sheen) */}
-            <polygon points={`28,${H * 0.15} 78,${H * 0.15} 46,${H - 26} 22,${H - 26}`} fill="rgba(255,255,255,0.08)" />
-            <polygon points={`${W - 64},${H * 0.15} ${W - 30},${H * 0.15} ${W - 24},${H - 26} ${W - 44},${H - 26}`} fill="rgba(255,255,255,0.06)" />
-            {/* Viền sáng khúc xạ dọc hai cạnh bình */}
-            <line x1={23} y1={H * 0.14} x2={23} y2={H - 24} stroke="rgba(255,255,255,0.35)" strokeWidth={3} strokeLinecap="round" />
-            <line x1={W - 23} y1={H * 0.14} x2={W - 23} y2={H - 24} stroke="rgba(255,255,255,0.22)" strokeWidth={2.5} strokeLinecap="round" />
-            {/* Vành miệng bình phía trước */}
-            <path d={`M 16 ${H * 0.11} A ${W * 0.5 - 16} ${14 * v.co} 0 0 0 ${W - 16} ${H * 0.11}`} fill="none" stroke="#ffffff" strokeOpacity={0.75} strokeWidth={3.5} strokeLinecap="round" />
-            <path d={`M 16 ${H * 0.11} A ${W * 0.5 - 16} ${14 * v.co} 0 0 0 ${W - 16} ${H * 0.11}`} fill="none" stroke={goc} strokeWidth={2} strokeLinecap="round" />
+            <BinhBi rong={W} cao={H} mau={goc} truoc/>
           </svg>
         ) : null}
 
@@ -546,7 +521,7 @@ const HopBi: Ve = (v, st) => {
             {v.nhom.map((g, i) => (
               <div key={i} style={{display: 'flex', alignItems: 'center', gap: 6, fontFamily: FONT_DAM, fontWeight: 900, fontSize: Math.max(20, 24 * v.co * KC), color: '#fff'}}>
                 <span style={{width: 14 * v.co, height: 14 * v.co, borderRadius: '50%', background: neon(g.mau), boxShadow: `0 0 8px ${neon(g.mau)}`, display: 'inline-block'}} />
-                <span>{g.so}</span>
+                <span>{conTrongBinh[i]}</span>
               </div>
             ))}
           </div>
@@ -678,7 +653,7 @@ const BongBay: Ve = (v, st, frame) => {
         <path d={`M0 ${R * 1.2 + 40} C 30 ${R * 1.2 + 100}, -30 ${R * 1.2 + 160}, 0 340`} stroke="#ddd" strokeWidth={3} fill="none" />
         <ellipse cx={0} cy={60} rx={R} ry={R * 1.2} fill={`url(#bb${v.id})`} style={{filter: phatSang(mau, 14)}} />
         <path d={`M-10 ${60 + R * 1.2} L10 ${60 + R * 1.2} L0 ${60 + R * 1.2 + 14} Z`} fill={mau} />
-        <text x={0} y={72} textAnchor="middle" fontFamily="Liberation Sans, sans-serif" fontWeight={900} fontSize={Math.max(30, R * 0.36)} fill="#fff">{tc(st.giaTriChu || v.nhan)}</text>
+        <text x={0} y={72} textAnchor="middle" fontFamily={FONT_DAM} fontWeight={900} fontSize={Math.max(30, R * 0.36)} fill="#fff">{tc(st.giaTriChu || v.nhan)}</text>
       </svg>
     </div>
   );
@@ -706,8 +681,8 @@ const DongHoDo: Ve = (v, st) => {
         <path d={cung(0, Math.max(0.001, val), R)} stroke={`url(#dh${v.id})`} strokeWidth={26} fill="none" strokeLinecap="round" style={{filter: phatSang(mau, 10)}} />
         <line x1={0} y1={0} x2={Math.cos(g) * (R - 30)} y2={-Math.sin(g) * (R - 30)} stroke="#fff" strokeWidth={9} strokeLinecap="round" />
         <circle r={16} fill="#fff" />
-        <text x={-R} y={40} textAnchor="middle" fill="#9fb3b0" fontFamily="Liberation Sans, sans-serif" fontWeight={800} fontSize={30}>0</text>
-        <text x={R} y={40} textAnchor="middle" fill="#9fb3b0" fontFamily="Liberation Sans, sans-serif" fontWeight={800} fontSize={30}>1</text>
+        <text x={-R} y={40} textAnchor="middle" fill="#9fb3b0" fontFamily={FONT_DAM} fontWeight={800} fontSize={30}>0</text>
+        <text x={R} y={40} textAnchor="middle" fill="#9fb3b0" fontFamily={FONT_DAM} fontWeight={800} fontSize={30}>1</text>
       </svg>
       <div style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: Math.max(64 * v.co, 60 * KC), color: mau, textShadow: `0 0 16px ${mau}`, marginTop: -14}}>{tc(st.giaTriChu) || `${Math.round(val * 100)}%`}</div>
     </div>
@@ -788,7 +763,7 @@ const VongQuay: Ve = (v, st) => {
               return (
                 <g key={i}>
                   <path d={`M0 0 L${Math.cos(a0) * 104} ${Math.sin(a0) * 104} A104 104 0 0 1 ${Math.cos(a1) * 104} ${Math.sin(a1) * 104} Z`} fill={sang ? mau : mau + '55'} stroke="#0b1514" strokeWidth={2} />
-                  <text x={Math.cos(am) * 68} y={Math.sin(am) * 68 + 6} textAnchor="middle" fontFamily="Liberation Sans, sans-serif" fontWeight={900} fontSize={Math.max(n > 8 ? 15 : 20, ((n > 8 ? 30 : 36) * KC) / ((R * 2 + 30) / 230))} fill="#fff" transform={`rotate(${(am * 180) / Math.PI + 90} ${Math.cos(am) * 68} ${Math.sin(am) * 68})`}>{d}</text>
+                  <text x={Math.cos(am) * 68} y={Math.sin(am) * 68 + 6} textAnchor="middle" fontFamily={FONT_DAM} fontWeight={900} fontSize={Math.max(n > 8 ? 15 : 20, ((n > 8 ? 30 : 36) * KC) / ((R * 2 + 30) / 230))} fill="#fff" transform={`rotate(${(am * 180) / Math.PI + 90} ${Math.cos(am) * 68} ${Math.sin(am) * 68})`}>{d}</text>
                 </g>
               );
             })}
@@ -857,7 +832,7 @@ const Banh: Ve = (v, st) => {
           return (
             <g key={i} transform={`translate(${Math.cos(am) * ra} ${Math.sin(am) * ra}) scale(${popOut(a)})`} opacity={kep(a * 2)}>
               <path d={`M0 0 L${Math.cos(a0) * 100} ${Math.sin(a0) * 100} A100 100 0 0 1 ${Math.cos(a1) * 100} ${Math.sin(a1) * 100} Z`} fill={s.pc > 0.01 ? s.mau : NEN_VAT_2} stroke={s.mau} strokeWidth={3} style={{filter: s.pc > 0.01 ? phatSang(s.mau, 8) : 'none'}} />
-              {v.ds[i] ? <text x={Math.cos(am) * 62} y={Math.sin(am) * 62 + 8} textAnchor="middle" fontFamily="Liberation Sans, sans-serif" fontWeight={900} fontSize={Math.max(n > 6 ? 17 : 23, (40 * KC) / ((R * 2 + 40) / 240))} fill="#fff" stroke="rgba(0,0,0,0.55)" strokeWidth={3} paintOrder="stroke">{v.ds[i]}</text> : null}
+              {v.ds[i] ? <text x={Math.cos(am) * 62} y={Math.sin(am) * 62 + 8} textAnchor="middle" fontFamily={FONT_DAM} fontWeight={900} fontSize={Math.max(n > 6 ? 17 : 23, (40 * KC) / ((R * 2 + 40) / 240))} fill="#fff" stroke="rgba(0,0,0,0.55)" strokeWidth={3} paintOrder="stroke">{v.ds[i]}</text> : null}
             </g>
           );
         })}

@@ -2,7 +2,7 @@ import React from 'react';
 import {useCurrentFrame} from 'remotion';
 import {expoOut} from '../sankhau/chuyendong';
 import {kep} from '../sankhau/donghieu';
-import {FONT_DAM} from '../theme';
+import {FONT_TIEU_DE} from '../theme';
 import {toiMau} from './KhongGian';
 
 // CHỮ 3 TẦNG (học từ các video motion typography): dòng dẫn nhỏ chữ nghiêng có chân -> TỪ CHỐT cực lớn màu nhấn -> dòng đuôi vừa.
@@ -45,12 +45,12 @@ export const ChuBaTang: React.FC<{dan: string; chot: string; duoi: string; mau: 
   return (
     <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 6, maxWidth: 1000}}>
       {dan ? (
-        <div style={{fontFamily: FONT_DAM, fontWeight: 700, fontStyle: 'italic', fontSize: 38, color: 'rgba(255,255,255,0.86)', textShadow: '0 3px 18px rgba(0,0,0,0.7)', lineHeight: 1.1}}>
+        <div style={{fontFamily: FONT_TIEU_DE, fontWeight: 700, fontStyle: 'italic', fontSize: 38, color: 'rgba(255,255,255,0.86)', textShadow: '0 3px 18px rgba(0,0,0,0.7)', lineHeight: 1.1}}>
           <DongChu chu={dan} f={f} tre={0} />
         </div>
       ) : null}
       {chot ? (
-        <div style={{position: 'relative', fontFamily: FONT_DAM, fontWeight: 900, fontSize: co, lineHeight: 1.12, color: mau, letterSpacing: -1, padding: '0 6px',
+        <div style={{position: 'relative', fontFamily: FONT_TIEU_DE, fontWeight: 900, fontSize: co, lineHeight: 1.12, color: mau, letterSpacing: -1, padding: '0 6px',
           // chữ NỔI KHỐI 3D (hook, đáp án): các lớp bóng đặc xếp chồng tạo bề dày + nghiêng phối cảnh đung đưa
           textShadow: noi ? Array.from({length: 9}, (_, i) => `0 ${(i + 1) * co * 0.017}px 0 ${toiMau(mau, 0.62 - i * 0.045)}`).join(', ') + `, 0 ${co * 0.2}px ${co * 0.3}px rgba(0,0,0,0.65)` : `0 6px 30px rgba(0,0,0,0.65), 0 0 34px ${mau}44`,
           transform: undefined}}>
@@ -59,7 +59,7 @@ export const ChuBaTang: React.FC<{dan: string; chot: string; duoi: string; mau: 
         </div>
       ) : null}
       {duoi ? (
-        <div style={{fontFamily: FONT_DAM, fontWeight: 800, fontSize: coDuoi, color: '#fff', textShadow: '0 4px 20px rgba(0,0,0,0.7)', lineHeight: 1.15, marginTop: chot ? 4 : 0}}>
+        <div style={{fontFamily: FONT_TIEU_DE, fontWeight: 800, fontSize: coDuoi, color: '#fff', textShadow: '0 4px 20px rgba(0,0,0,0.7)', lineHeight: 1.15, marginTop: chot ? 4 : 0}}>
           <DongChu chu={duoi} f={f} tre={batDuoi} />
         </div>
       ) : null}

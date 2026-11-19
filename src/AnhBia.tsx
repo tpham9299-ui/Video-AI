@@ -1,6 +1,6 @@
 import React from 'react';
 import {AbsoluteFill, Img, staticFile} from 'remotion';
-import {FONT_DAM, vienChu} from './theme';
+import {FONT_DAM, FONT_TIEU_DE, vienChu} from './theme';
 import {LogoTron} from './ThuongHieu';
 import {Props} from './types';
 import {Video} from './Video';
@@ -59,7 +59,7 @@ export const AnhBia: React.FC<Props> = (props) => {
       </div>
       {/* tiêu đề */}
       <div style={{position: 'absolute', top: 230, left: 50, right: 50, height: 390, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center'}}>
-        <div style={{fontSize: co, fontWeight: 900, lineHeight: 1.12, color: '#fff', letterSpacing: -1, ...Vien({co})}}>
+        <div style={{fontFamily: FONT_TIEU_DE, fontSize: co, fontWeight: 900, lineHeight: 1.12, color: '#fff', letterSpacing: -1, ...Vien({co})}}>
           {doan.map((d, i) =>
             d.nhan ? (
               <span key={i} style={{background: mau, color: '#0a0a12', borderRadius: co * 0.16, padding: `0 ${co * 0.14}px`, boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone', WebkitTextStroke: '0px', textShadow: 'none', boxShadow: `0 ${co * 0.07}px 0 rgba(0,0,0,0.55)`}}>{d.chu}</span>

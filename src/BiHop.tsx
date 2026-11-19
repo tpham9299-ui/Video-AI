@@ -1,4 +1,5 @@
 import React from 'react';
+import {BinhBi} from './BinhBi';
 import {DuLieuBiHop} from './bocuc';
 import {PHAT_SANG_ID, PhatSang, tien, useGiayCan} from './manimKit';
 import {MAU} from './theme';
@@ -22,17 +23,20 @@ function mauBi(ten: string, i: number): string {
 // bay ra khay bên dưới (cung bay mượt), sáng vàng, kèm ghi chú số cách chọn.
 export const BiHop: React.FC<{du: DuLieuBiHop; giayAm: number}> = ({du, giayAm}) => {
   const nhom = du.nhom;
-  const tong = nhom.reduce((a, g) => a + Math.min(g.so, 12), 0);
-  const r = tong > 14 ? 28 : 34;
+  const soBi = nhom.reduce((n, g) => n + g.so, 0);
+  const soChon = du.chon.reduce((n, c) => n + c.so, 0);
+  const nhieuNhat = Math.max(1, ...nhom.map(g => g.so), soChon);
+  const cot = Math.min(nhieuNhat, Math.ceil(Math.sqrt(nhieuNhat * 6)));
+  const hang = Math.ceil(nhieuNhat / cot);
+  const r = Math.min(34, 585 / (2.4 * cot), 88 / (2.4 * hang));
+  const buoc = 2.4 * r;
   const W = 900;
-  const caoNhom = r * 2 + 34;
-  const hHop = nhom.length * caoNhom + 40;
-  const coChon = du.chon.length > 0;
-  const yKhay = hHop + 50;
-  const hKhay = r * 2 + 50;
+  const caoNhom = Math.max(64, buoc * Math.ceil(Math.max(...nhom.map(g => g.so)) / cot) + 14);
+  const hHop = nhom.length * caoNhom + 68;
+  const coChon = soChon > 0;
+  const yKhay = hHop + 36;
+  const hKhay = Math.max(72, Math.ceil(soChon / cot) * buoc + 16);
   const H = coChon ? yKhay + hKhay + 70 : hHop + 10;
-  const soBi = nhom.reduce((a, g) => a + Math.min(g.so, 12), 0);
-  const soChon = du.chon.reduce((a, c) => a + c.so, 0);
   const t = useGiayCan(giayAm, 0.8 + soBi * 0.1 + 0.6 + (soChon ? 0.2 + soChon * 0.35 + 1.0 + (du.ghiChu ? 0.8 : 0) : 0.5));
   const khung = tien(t, 0, 0.7);
 
@@ -41,8 +45,8 @@ export const BiHop: React.FC<{du: DuLieuBiHop; giayAm: number}> = ({du, giayAm})
   const bi: Bi[] = [];
   let dem = 0;
   nhom.forEach((g, gi) => {
-    for (let k = 0; k < Math.min(g.so, 12); k++) {
-      bi.push({g: gi, k, x: 240 + k * (r * 2 + 12) + r, y: 20 + gi * caoNhom + caoNhom / 2, bd: 0.8 + dem++ * 0.1, mau: mauBi(g.ten, gi)});
+    for (let k = 0; k < g.so; k++) {
+      bi.push({g: gi, k, x: 240 + (k % cot) * buoc + r, y: 42 + gi * caoNhom + (Math.floor(k / cot) + 0.5) * buoc, bd: 0.8 + dem++ * 0.1, mau: mauBi(g.ten, gi)});
     }
   });
   const tRoi = 0.8 + dem * 0.1 + 0.6;
@@ -51,16 +55,16 @@ export const BiHop: React.FC<{du: DuLieuBiHop; giayAm: number}> = ({du, giayAm})
   du.chon.forEach((c) => {
     const gi = nhom.findIndex((g) => g.ten === c.ten);
     if (gi < 0) return;
-    bi.filter((b) => b.g === gi).slice(0, c.so).forEach((b) => chon.push({bi: b, ti: chon.length}));
+    bi.filter((b) => b.g === gi && !chon.some(c => c.bi === b)).slice(0, c.so).forEach((b) => chon.push({bi: b, ti: chon.length}));
   });
-  const dichKhay = (i: number) => ({x: 240 + i * (r * 2 + 16) + r, y: yKhay + hKhay / 2});
+  const dichKhay = (i: number) => ({x: 240 + (i % cot) * buoc + r, y: yKhay + 8 + (Math.floor(i / cot) + 0.5) * buoc});
   const eChon = (i: number) => tien(t, tRoi + 0.2 + i * 0.35, 0.9);
 
   return (
     <div style={{position: 'relative', width: W, height: H, margin: '0 auto'}}>
       <svg width={W} height={H} style={{position: 'absolute', left: 0, top: 0, overflow: 'visible'}}>
         <defs>{PhatSang}</defs>
-        <rect x={2} y={2} width={W - 4} height={hHop} rx={18} fill="none" stroke="#ffffff" strokeWidth={5} pathLength={1} strokeDasharray={1} strokeDashoffset={1 - khung} />
+        <g opacity={khung}><BinhBi rong={W} cao={hHop} mau={MAU.lam}/></g>
         {coChon ? (
           <rect x={2} y={yKhay} width={W - 4} height={hKhay} rx={18} fill="none" stroke={MAU.vang} strokeWidth={4} strokeDasharray="14 12" opacity={tien(t, tRoi, 0.5)} />
         ) : null}
@@ -82,6 +86,7 @@ export const BiHop: React.FC<{du: DuLieuBiHop; giayAm: number}> = ({du, giayAm})
           }
           return <circle key={i} cx={b.x} cy={b.y - (1 - e) * 60} r={r * e} fill={b.mau} stroke="#ffffff" strokeWidth={3} opacity={Math.min(1, e * 3)} />;
         })}
+        <g opacity={khung}><BinhBi rong={W} cao={hHop} mau={MAU.lam} truoc/></g>
       </svg>
       {nhom.map((g, gi) => (
         <div key={gi} style={{position: 'absolute', left: 36, top: 20 + gi * caoNhom + caoNhom / 2, transform: 'translateY(-50%)', opacity: tien(t, 0.6, 0.4), whiteSpace: 'nowrap'}}>

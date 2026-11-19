@@ -371,7 +371,7 @@ const VE: Record<TenVatThuc, (p: P) => React.ReactNode> = {
     <g>
       {[0, 1, 2, 3, 4].map((k) => <rect key={k} x={-60 + k * 2} y={-14 - k * 11} width={80} height={12} rx={2} fill={`${XANH_LA}66`} stroke={XANH_LA} strokeWidth={1} />)}
       <rect x={-52} y={-68} width={80} height={14} rx={2} fill={`${XANH_LA}99`} stroke={XANH_LA} strokeWidth={1.2} />
-      <text x={-12} y={-57.5} textAnchor="middle" fontSize={10} fontWeight={900} fill="#06231a" fontFamily="Liberation Sans, sans-serif">₫</text>
+      <text x={-12} y={-57.5} textAnchor="middle" fontSize={10} fontWeight={900} fill="#06231a" fontFamily={FONT_DAM}>₫</text>
       {[0, 1, 2, 3].map((k) => <ellipse key={k} cx={45} cy={-6 - k * 8} rx={18} ry={6} fill={VANG} stroke="#a77b00" strokeWidth={1} />)}
       <g transform={`translate(45 ${-48 - Math.abs(Math.sin(t * 2.4)) * 10})`}><ellipse rx={18} ry={6} fill={VANG} stroke="#a77b00" strokeWidth={1} /></g>
       {mau ? null : null}

@@ -120,7 +120,8 @@ export const SanKhau: React.FC<{du: DuLieuSanKhau; giayAm: number; amThanh?: boo
       continueRender(cho);
     }
   };
-  const vatXep = React.useMemo(() => tuXepSanKhau(du.vat, SK_W, SK_H, Math.max(1, Math.min(1.6, kChu)), doThat), [du, kChu, doThat]);
+  const vatXep = React.useMemo(() => tuXepSanKhau(du.vat, SK_W, SK_H, Math.max(1, Math.min(1.6, kChu)), doThat,
+    new Set(du.hanhDong.filter(h => h.kieu === 'lay_ra').map(h => h.vat))), [du, kChu, doThat]);
   const coLucDo = React.useRef(new Map<string, number>());
   React.useLayoutEffect(() => {
     if (doThat) return;

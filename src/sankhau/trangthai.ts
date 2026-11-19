@@ -323,7 +323,7 @@ export function kichThuocVat(v: Vat, k = 1): {w: number; h: number} {
 // doThat: KÍCH THƯỚC ĐO THẬT trên trang (SanKhau đo sau lần vẽ đầu) -> xếp theo số đo thật thay cho ước lượng (không còn vật đè vật
 // vì ước lượng sai). Kích thước tỉ lệ theo co: số đo lúc co = m.co -> quy về co của vật.
 export type DoThat = Map<string, {w: number; h: number; co: number}>;
-export function tuXepSanKhau(dsVat: Vat[], W: number, H: number, k = 1, doThat?: DoThat | null): Vat[] {
+export function tuXepSanKhau(dsVat: Vat[], W: number, H: number, k = 1, doThat?: DoThat | null, coKhay?: Set<string>): Vat[] {
   const xs = dsVat.filter((v) => v.loai !== 'mui_ten');
   // kích thước vẽ thật thường lớn hơn ước lượng (viền sáng, bóng, nhãn dưới chân) -> cộng khoảng an toàn
   const AN_TOAN: Record<string, [number, number]> = {danh_sach: [1.06, 1.22], nguoi: [1.08, 1.2], the: [1.06, 1.14]};
@@ -335,7 +335,10 @@ export function tuXepSanKhau(dsVat: Vat[], W: number, H: number, k = 1, doThat?:
   const goc = xs.map((v) => {
     if (v.loai === 'hop_bi' || v.loai === 'tui') {
       // Khay bi xuất hiện sau khi lấy. Giữ chỗ từ đầu, kể cả lúc DOM chưa có khay.
-      return {v, w: 840 * v.co, h: 450 * v.co, coDinh: false};
+      const kt = kichThuocVat(v, k);
+      const giuKhay = !coKhay || coKhay.has(v.id);
+      return {v, w: Math.max(giuKhay ? 840 * v.co : 380 * v.co, v.nhan ? kt.w : 0),
+        h: Math.max(giuKhay ? 450 * v.co : 300 * v.co, kt.h), coDinh: false};
     }
     const m = doThat && doThat.get(v.id);
     if (m && m.w > 4 && m.h > 4) { const r = v.co / (m.co || 1); return {v, w: m.w * r * 1.03, h: m.h * r * 1.03, coDinh: CO_DINH.has(v.loai)}; }

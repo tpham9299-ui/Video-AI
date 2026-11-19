@@ -4,7 +4,7 @@ import {NenToi} from './NenToi';
 import {expoOut} from './sankhau/chuyendong';
 import {easeOut, kep, popOut} from './sankhau/donghieu';
 import {LogoTron} from './ThuongHieu';
-import {BONG_CHU, FONT, FONT_DAM, vienChu} from './theme';
+import {BONG_CHU, FONT, FONT_DAM, FONT_TIEU_DE, vienChu} from './theme';
 import {Toan} from './Toan';
 import {ThuongHieuProps} from './types';
 
@@ -81,7 +81,7 @@ export const ManKetChuyenNghiep: React.FC<{th: ThuongHieuProps; baiHoc: string[]
             </Vao>
           ) : null}
           <Vao tu={6}>
-            <div style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: 76, color: '#fff', textAlign: 'center', lineHeight: 1.05, WebkitTextStroke: vienChu(76), paintOrder: 'stroke fill', textShadow: BONG_CHU}}>
+            <div style={{fontFamily: FONT_TIEU_DE, fontWeight: 900, fontSize: 76, color: '#fff', textAlign: 'center', lineHeight: 1.05, WebkitTextStroke: vienChu(76), paintOrder: 'stroke fill', textShadow: BONG_CHU}}>
               BÀI HỌC <span style={{color: CAM}}>RÚT RA</span>
             </div>
           </Vao>
