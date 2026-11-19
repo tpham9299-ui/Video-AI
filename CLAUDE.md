@@ -18,6 +18,8 @@
 
 Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ khâu **tự sinh đề / nhận đề qua Zalo** $\rightarrow$ **giải toán & kiểm chứng độc lập** $\rightarrow$ **viết kịch bản sư phạm 6 phần** $\rightarrow$ **kiểm tra & tự sửa hình minh họa** $\rightarrow$ **dựng video dọc 9:16 (Remotion + Manim + Gemini TTS / Edge-TTS)** $\rightarrow$ **AI tự kiểm tra chất lượng video** $\rightarrow$ **tự động đăng 2 video/ngày lên YouTube Shorts, Facebook Reels, TikTok**.
 
+Khi chuẩn bị hình, bộ viết kịch bản chọn vật theo lời giảng. Trước khi dựng, `scripts/chuanbi.py` đối chiếu số học sinh từng khối với đề và chọn cảnh bảng phân công cho lời liên hệ về chia nhóm hoặc ca trực. Remotion dùng chung họ chữ cho tiêu đề, phụ đề và nhãn. Manim ưu tiên cùng họ Be Vietnam Pro khi dựng nhãn hình học.
+
 ### Kiến trúc 2 tầng phối hợp:
 1. **Tầng điều phối & quản trị (Google Apps Script + Google Sheets + Google Drive + Zalo Bot)**:
    - Lưu trữ hàng đợi bài toán (`HANG_DOI`), cấu hình (`CAU_HINH`), lịch sử góp ý học tập (`GOP_Y_HOC`), quy tắc tự học (`QUY_TAC_HOC`), thống kê số liệu (`SO_LIEU`), chuỗi video (`SERIES`), quảng cáo sản phẩm (`SAN_PHAM`), và kho khóa API (`KHO_KEY`).
@@ -852,3 +854,9 @@ Hệ thống **Video-AI** là dây chuyền tự động hóa khép kín từ kh
 - Bài toán cắt góc tấm bìa có mô hình chiếu 3D cho thấy tấm bìa, bốn phần cắt và bốn bản lề gấp. Lời kết về bao bì và kiến trúc có hình minh họa tương ứng. TTS giữ một model trong lượt đọc, khi thiếu cảnh thì đọc lại cả video bằng cùng giọng dự phòng.
 - Manim ưu tiên cạnh đáy, cạnh bên, nét dựng. Với khối lồi xác định được các mặt, bộ dựng xét mặt trước/sau và chia nét phụ tại biên che khuất. Đổi góc theo cạnh đang chứng minh khi hình hỗ trợ. Nhãn điểm có nền viền tương phản và cập nhật vị trí khi xoay.
 - Cửa duyệt cuối đọc kịch bản, công thức, chú thích và chương trình lớp cùng ảnh chụp MP4. Nếu phát hiện phương pháp vượt lớp thì điểm lời giải bằng 0.
+
+#### Lần 40 (v73) — Đồng nhất chữ và minh họa bài chọn nhóm theo đề
+
+- Đồng bộ họ chữ tiếng Việt trong tiêu đề, phụ đề, nhãn sân khấu và hình học. Bộ hiển thị công thức và tạo phụ đề chuẩn hóa chữ x giữa hai số thành dấu nhân ×, giữ biến trong các biểu thức như 2x và x².
+- Khi đề cho rõ số học sinh từng khối và cảnh thiếu hình hoặc dùng hộp bi thay người, bước chuẩn bị dựng nhóm học sinh theo dữ kiện. Lời chọn rõ số bạn ở khối nào sẽ đánh dấu các bạn tương ứng.
+- Cảnh liên hệ nói về chia nhóm hoặc phân công ca trực có minh họa người gắn phiếu lên bảng. Cảnh bốc thăm dùng phiếu, vòng quay dành cho lời giảng thực sự nói đến quay số.

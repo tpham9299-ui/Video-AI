@@ -352,7 +352,7 @@ const MatXu: React.FC<{chu: string; co: number; id: string}> = ({chu, co, id}) =
     </defs>
     <circle cx={50} cy={50} r={48} fill={`url(#${id})`} stroke="#8a5a12" strokeWidth={3} />
     <circle cx={50} cy={50} r={37} fill="none" stroke="#a86e16" strokeWidth={3} strokeDasharray="4 4" />
-    <text x={50} y={64} textAnchor="middle" fontFamily="Montserrat, Liberation Sans, sans-serif" fontWeight={900} fontSize={42} fill="#6b420b">{chu}</text>
+    <text x={50} y={64} textAnchor="middle" fontFamily={FONT_DAM} fontWeight={900} fontSize={42} fill="#6b420b">{chu}</text>
   </svg>
 );
 // Đồng xu 3D: đĩa có 2 mặt (S trước, N sau) và viền dày; tung = lật quanh trục ngang nhiều vòng rồi dừng đúng mặt.
@@ -421,7 +421,7 @@ const Bi: React.FC<{mau: string; r: number; sang?: number; so?: string}> = ({mau
       {/* Đốm phản quang pha lê góc trên trái (specular highlight) */}
       <ellipse cx={15.5} cy={13.5} rx={5.5} ry={3.2} transform="rotate(-28 15.5 13.5)" fill="#ffffff" fillOpacity={0.82} />
       <circle cx={11.8} cy={18.5} r={1.6} fill="#ffffff" fillOpacity={0.65} />
-      {so ? <text data-kd-bo="1" x={22} y={26} textAnchor="middle" fontFamily="Montserrat, sans-serif" fontWeight={900} fontSize={14} fill="#ffffff" stroke="rgba(0,0,0,0.65)" strokeWidth={2.5} paintOrder="stroke">{so}</text> : null}
+      {so ? <text data-kd-bo="1" x={22} y={26} textAnchor="middle" fontFamily={FONT_DAM} fontWeight={900} fontSize={14} fill="#ffffff" stroke="rgba(0,0,0,0.65)" strokeWidth={2.5} paintOrder="stroke">{so}</text> : null}
     </svg>
   );
 };

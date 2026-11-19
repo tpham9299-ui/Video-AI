@@ -44,7 +44,7 @@ NET_DUT = "#FFE066"
 TRON = "#74C0FC"
 BANG_MAU = ["#FF6B6B", "#4ECDC4", "#FFA94D", "#B197FC", "#69DB7C", "#74C0FC", "#F783AC", "#E599F7", "#63E6BE", "#FF8787"]
 MAU_MIEN = ["#4ECDC4", "#FFA94D", "#B197FC", "#69DB7C", "#F783AC", "#74C0FC"]
-PHONG = "Montserrat"   # Montserrat ExtraBold: phông chữ đậm của mọi video (tiêu đề, phụ đề, thẻ đề, công thức)
+PHONG = "Be Vietnam Pro"
 
 TEX = TexTemplate(
     tex_compiler="xelatex", output_format=".xdv",
@@ -625,7 +625,7 @@ RE_TU_VIET_KHONG_DAU = re.compile(
 
 
 def chuan_tex(s):
-    s = str(s)
+    s = re.sub(r"(\d)\s*[xX]\s*(?=\d)", r"\1 × ", str(s))
     for a, b in THAY_UNICODE.items():
         s = s.replace(a, b)
     s = s.replace(r"\tfrac", r"\frac").replace(r"\dfrac", r"\frac")
@@ -1386,7 +1386,7 @@ class VideoHinh(Scene):
         nội dung nằm NGAY DƯỚI nhãn (không đè)."""
         pill = None
         if nhan:
-            chu = Text(nhan, font="Montserrat", weight="ULTRABOLD", font_size=22, color=NEN_THE)
+            chu = Text(nhan, font=PHONG, weight="ULTRABOLD", font_size=22, color=NEN_THE)
             vien = RoundedRectangle(width=chu.width + 0.34, height=chu.height + 0.18, corner_radius=0.13, stroke_width=0,
                                     fill_color=NHAN, fill_opacity=1)
             chu.move_to(vien)
@@ -1758,9 +1758,7 @@ class VideoHinh(Scene):
 # 4) CHẠY: phông chung + video lớp trong suốt + ảnh hình cho bìa + mốc tiếng
 # ============================================================
 def nap_phong(public, kieu_toan="dam"):  # noqa: C901
-    """Dùng ĐÚNG phông của các video khác: công thức, tên điểm, số đo = Montserrat ExtraBold (kiểu công thức "dam",
-    mặc định của mọi video) hoặc Be Vietnam Pro Bold (gói edit "dong_nhat"); chữ trong thẻ = Be Vietnam Pro.
-    mathastext: chữ cái, chữ số, dấu = trong công thức cũng dùng phông đó (không còn phông LaTeX có chân)."""
+    """Ưu tiên cùng họ chữ với Remotion cho nhãn và công thức."""
     global TEX
     thu_muc = os.path.abspath(os.path.join(public, "fonts"))
     try:
@@ -1770,7 +1768,7 @@ def nap_phong(public, kieu_toan="dam"):  # noqa: C901
                 manimpango.register_font(os.path.join(thu_muc, f))
     except Exception as e:  # noqa: BLE001
         print("Không nạp được phông:", e)
-    if kieu_toan == "dong_nhat" and os.path.exists(os.path.join(thu_muc, "BeVietnamPro-Bold.ttf")):
+    if os.path.exists(os.path.join(thu_muc, "BeVietnamPro-Bold.ttf")):
         phong = "BeVietnamPro-Bold.ttf}[Path=" + thu_muc + "/, ItalicFont=BeVietnamPro-BoldItalic.ttf, BoldFont=BeVietnamPro-ExtraBold.ttf"
     elif os.path.exists(os.path.join(thu_muc, "Montserrat-ExtraBold.ttf")):
         phong = "Montserrat-ExtraBold.ttf}[Path=" + thu_muc + "/, ItalicFont=Montserrat-ExtraBoldItalic.ttf, BoldFont=Montserrat-ExtraBold.ttf"

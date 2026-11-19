@@ -104,7 +104,7 @@ LOI_CHINH_TA_VIET = [
 
 
 def sua_chinh_ta_tieng_viet(text):
-    s = str(text or "")
+    s = re.sub(r"(\d)\s*[xX]\s*(?=\d)", r"\1 × ", str(text or ""))
     # Đổi các lệnh LaTeX bị sót sang chữ đọc tự nhiên trước khi hiển thị phụ đề
     for _ in range(3):
         s_cu = s
@@ -1259,6 +1259,50 @@ def _la_nhan_an_so_som(nhan, de_goc):
     return not co_trong_de
 
 
+def minh_hoa_chon_nhom(kb):
+    de = " ".join([str(kb.get("de_bai") or ""), *map(str, kb.get("de_cho") or [])])
+    nhom = {}
+    for m in re.finditer(r"\b(\d+)\s*(?:học sinh|hs|bạn)\s*(?:ở |thuộc )?(?:khối|lớp)\s*(10|11|12)\b", de, re.I):
+        if re.search(r"(?:chọn|lấy)\s*$", de[:m.start()], re.I):
+            continue
+        nhom.setdefault(m[2], int(m[1]))
+    if any(so < 1 or so > 12 for so in nhom.values()):
+        nhom.clear()
+    for c in kb.get("canh") or []:
+        loai = str(c.get("loai") or "")
+        loi = str(c.get("loi_thoai") or "").lower()
+        mh = c.get("minh_hoa") or {}
+        du = mh.get("du_lieu") or {}
+        vat = (du.get("vat") or []) if isinstance(du, dict) else []
+        loai_vat = {v.get("loai") for v in vat if isinstance(v, dict)}
+        that = loai_vat - {"chu", "nhan", "the", "so_dem", "mui_ten", "danh_sach", "bieu_tuong"}
+        if mh.get("loai") not in (None, "", "khong", "san_khau", "bi_hop"):
+            continue
+        quay_that = re.search(r"vòng quay|quay số|bánh xe", loi)
+        if re.search(r"lien_he|bai_hoc|ket_luan", loai) and not quay_that and (
+                re.search(r"phân công|phân bổ nhân sự|ca trực|chia (?:nhóm|ca)|lập đội|xếp lịch", loi)
+                and (not that or that & {"hop_qua", "vong_quay"} or str(mh.get("mo_ta") or "").startswith("Liên hệ thực tế sinh động"))):
+            c["minh_hoa"] = {"loai": "bang_phan_cong", "mo_ta": "Người điều phối gắn phiếu thành viên lên bảng phân công"}
+            c["giu_san_khau"] = False
+        elif len(nhom) >= 2 and loai in ("mo_dau", "de_bai", "mo_hinh_hoa", "nhac_lai", "tinh_toan", "diem_chot", "mo_phong") and re.search(r"trường hợp|tổ hợp|chọn|khối", loi) and (
+                not loai_vat or loai_vat <= {"chu", "nhan", "hop_bi", "tui", "hop_qua"}):
+            vat_moi, hd = [], []
+            loi_chon = loi
+            for chu, so_lop in (("mười hai", "12"), ("mười một", "11"), ("mười", "10")):
+                loi_chon = re.sub(r"((?:khối|lớp)\s+)" + chu + r"\b", lambda m: m[1] + so_lop, loi_chon)
+            for i, (lop, so) in enumerate(sorted(nhom.items())):
+                ma = "khoi_" + lop
+                vat_moi.append({"id": ma, "loai": "nguoi", "x": 50, "y": (i + 0.5) * 100 / len(nhom), "co": 0.46 if so > 6 else 0.64,
+                                "so_luong": so, "buoc": i + 1, "nhan": "Khối " + lop})
+                chon = re.search(r"(?:chọn|lấy)\s+(một|hai|ba|bốn|[1-9])\s*(?:học sinh|bạn|em)\s*(?:ở |thuộc )?(?:khối|lớp)\s*" + lop + r"\b", loi_chon)
+                if chon:
+                    n = {"một": 1, "hai": 2, "ba": 3, "bốn": 4}.get(chon[1]) or int(chon[1])
+                    if n <= so:
+                        hd.append({"buoc": len(nhom) + 1, "vat": ma, "kieu": "chon", "chi_so": list(range(1, n + 1)), "mau": "xanh_la"})
+            c["minh_hoa"] = {"loai": "san_khau", "mo_ta": "Học sinh từng khối theo số lượng của đề", "du_lieu": {"vat": vat_moi, "hanh_dong": hd}}
+            c["giu_san_khau"] = False
+
+
 def chuan_hoa_hinh_kich_ban(kb):
     """Tự động chuẩn hóa 4 lỗi hình minh họa phổ biến ngay cả với các kịch bản cũ đang chờ dựng trên Drive:
     1) Đề tấm thẻ đánh số nhưng vẽ hop_bi -> đổi sang các tấm thẻ đánh số (the).
@@ -1367,10 +1411,17 @@ def chuan_hoa_hinh_kich_ban(kb):
         vat = du["vat"]
         chu_the = " ".join(str(v.get("noi_dung") or "") + " " + " ".join(str(x) for x in (v.get("ds") or [])) for v in vat if isinstance(v, dict))
         loi = (str(c.get("loi_thoai") or "") + " " + str(c.get("tieu_de_canh") or "") + " " + chu_the).lower()
-        if any(isinstance(v, dict) and v.get("loai") == "hop_qua" for v in vat) and not re.search(r"hộp quà|món quà|tặng quà|sinh nhật", loi):
+        loi_doc = str(c.get("loi_thoai") or "").lower()
+        thay = set()
+        if not re.search(r"hộp quà|món quà|tặng quà|sinh nhật", loi):
+            thay.add("hop_qua")
+        if re.search(r"bốc thăm|rút thăm|chia bảng|mật khẩu|mã pin|điện thoại", loi_doc) and not re.search(r"vòng quay|quay số|bánh xe", loi_doc):
+            thay.add("vong_quay")
+        if any(isinstance(v, dict) and v.get("loai") in thay for v in vat):
+            loi = loi_doc
             vat_phu = []
             for v in vat:
-                if isinstance(v, dict) and v.get("loai") != "hop_qua":
+                if isinstance(v, dict) and v.get("loai") not in thay:
                     vc = dict(v)
                     if float(vc.get("y") or 50) < 68:
                         vc["y"] = 76
@@ -1383,12 +1434,10 @@ def chuan_hoa_hinh_kich_ban(kb):
                     {"id": id_chinh + "_ng", "loai": "nguoi", "x": 72, "y": 42, "co": 0.92, "so_luong": 2, "ds": ["Người dùng", "Hệ thống"], "kieu": "chi", "buoc": 2}
                 ]
                 hd_moi = [{"buoc": 2, "vat": id_chinh, "kieu": "chon", "chi_so": [1, 2], "mau": "xanh_la"}]
-            elif re.search(r"bốc thăm|rút thăm|quay số|trúng thưởng|xổ số|chia bảng", loi):
-                vat_moi = [
-                    {"id": id_chinh, "loai": "vong_quay", "x": 30, "y": 38, "co": 0.84, "buoc": 1, "ds": ["Thăm 1", "Thăm 2", "Thăm 3", "Thăm 4", "Thăm 5", "Thăm 6"], "ket_qua": [2], "nhan": "Bốc thăm ngẫu nhiên"},
-                    {"id": id_chinh + "_ng", "loai": "nguoi", "x": 72, "y": 38, "co": 0.88, "so_luong": 4, "ds": ["Ca sáng", "Ca chiều", "Ca tối", "Dự phòng"], "kieu": "gio_tay", "nhan": "Phân bổ nhân sự", "buoc": 2}
-                ]
-                hd_moi = [{"buoc": 2, "vat": id_chinh, "kieu": "quay"}, {"buoc": 3, "vat": id_chinh + "_ng", "kieu": "chon", "chi_so": [1, 2], "mau": "xanh_la"}]
+            elif re.search(r"bốc thăm|rút thăm|chia bảng", loi):
+                vat_moi = [{"id": id_chinh, "loai": "the", "x": 50, "y": 40, "buoc": 1,
+                            "ds": ["A", "B", "C"], "so_luong": 3, "nhan": "Ví dụ phiếu bốc thăm"}]
+                hd_moi = [{"buoc": 2, "vat": id_chinh, "kieu": "chon", "chi_so": [1]}]
             else:
                 vat_moi = [
                     {"id": id_chinh, "loai": "bieu_do_cot", "x": 34, "y": 38, "co": 0.85, "buoc": 1, "ds": ["Phương án A", "Phương án B", "Phương án C"], "ds_so": [72, 48, 88], "nhan": "Ứng dụng thực tế"},
@@ -1533,6 +1582,7 @@ def main():
                         if isinstance(d_item, dict):
                             d_item["buoc"] = min(4, 1 + ((idx_d + idx_c) % 4))
                     v["do"] = ds_do
+    minh_hoa_chon_nhom(kb)
     chuan_hoa_hinh_kich_ban(kb)
     anh_sp = chuan_anh_san_pham(kb, args.public)
     de_bai_the = the_de_bai(kb)

@@ -1,3 +1,4 @@
+import {BangPhanCong} from './BangPhanCong';
 import {BiaGap} from './BiaGap';
 import React from 'react';
 import {Audio, interpolate, Sequence, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
@@ -39,7 +40,7 @@ function sanKhauDuPhong(c: CanhProps): DuLieuSanKhau | null {
 
 export function sanKhauCuaCanh(ds: CanhProps[], i: number): DuLieuSanKhau | null {
   const c = ds[i];
-  if (!c) return null;
+  if (!c || c.minhHoa.loai === 'bang_phan_cong') return null;
   if (c.minhHoa.loai !== 'san_khau') {
     // cảnh không có hình lẫn công thức: dùng sân khấu dự phòng cho khỏi trống
     const hinhCu = phanLoaiHinh(c.minhHoa.loai, c.minhHoa.moTa, c.minhHoa.duLieu);
@@ -109,7 +110,8 @@ export const Canh: React.FC<{
   const bia = !lopManim && /bìa|tấm giấy/i.test(de) && /(?:bốn|4) góc|góc.*hình vuông/i.test(de) && /hộp|gấp/i.test(de);
   const ungDung = /bao bì|kiến trúc/i.test(canh.cau.map(c => c.text).join(' '));
   const veBia = bia && (laMoDau || ungDung || /de_bai|mo_hinh/.test(canh.loai));
-  const coHinh = veBia || kieu !== null;
+  const bangPhanCong = !lopManim && canh.minhHoa.loai === 'bang_phan_cong';
+  const coHinh = bangPhanCong || veBia || kieu !== null;
   const coHook = laMoDau && !!hook.chu;
 
   // ----- công thức -----
@@ -257,7 +259,8 @@ export const Canh: React.FC<{
       {/* Sân khấu */}
       {coHinh ? (
         <NhoeHuong nx={ccSan.nx} ny={ccSan.ny} style={{position: 'absolute', left: 0, right: 0, top: yNoiDung, height: caoSan, display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: veBia ? 1 : ccSan.mo, transform: veBia ? undefined : `perspective(1600px) translate(${ccSan.x}px, ${ccSan.y}px) rotateX(${ccSan.rx}deg) rotateY(${ccSan.ry}deg) rotateZ(${ccSan.rz}deg) scale(${ccSan.s})`, clipPath: veBia ? undefined : ccSan.clip}}>
-          {veBia ? <BiaGap cao={caoSan} dai={giayAm} ungDung={ungDung && !laMoDau} kienTruc={canh.cau.some(c => /kiến trúc/i.test(c.text))}
+          {bangPhanCong ? <BangPhanCong cao={caoSan} caTruc={/trực|chia ca/i.test(canh.cau.map(c => c.text).join(' '))}
+            moc={canh.cau.find(c => /phân công|chia|trực|phân bổ/i.test(c.text))?.bat ?? 0.5} /> : veBia ? <BiaGap cao={caoSan} dai={giayAm} ungDung={ungDung && !laMoDau} kienTruc={canh.cau.some(c => /kiến trúc/i.test(c.text))}
             batCat={Math.min(giayAm * 0.35, canh.cau.find(c => /cắt/i.test(c.text))?.bat ?? giayAm * 0.25)}
             batGap={Math.min(giayAm * 0.75, Math.max(giayAm * 0.45, canh.cau.find(c => /gấp/i.test(c.text))?.bat ?? giayAm * 0.55))} /> : <>
           {moi && kieu3D !== 'nam' ? <QuyDao cx={540} cy={caoSan / 2} R={Math.min(caoSan, 1000) * 0.47} mau={mauNhan} mo={(giuTruoc ? 1 : kep((frame - 3) / 14)) * (1 - kep(sinN3d * 1.8))} /> : null}

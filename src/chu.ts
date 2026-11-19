@@ -19,12 +19,15 @@ export function suaChinhTaTiengViet(s: string): string {
     .replace(/\btổng\s+số\s+kết\s+quả\b/gi, (m) => (m[0] === 'T' ? 'Tổng số kết quả' : 'tổng số kết quả'));
 }
 
+// Chỉ nhận x giữa các thừa số viết bằng số. Giữ nguyên biến x, 2x và x².
+export const dauNhan = (s: string) => s.replace(/(\d)\s*[xX]\s*(?=\d)/g, '$1 × ');
+
 export function chuanTex(s: unknown): string {
   let x = typeof s === 'string' ? s : s === null || s === undefined ? '' : String(s);
   x = x.replace(/\\\\(?=[a-zA-Z])/g, '\\');            // "\\frac" (thừa một lớp escape) -> "\frac"
   x = x.replace(/\\\(|\\\)|\\\[|\\\]/g, ' ');           // \( ... \) \[ ... \]
   x = x.replace(/\$\$?/g, ' ');                         // $...$ / $$...$$
-  return suaChinhTaTiengViet(x.replace(/\s+/g, ' ').trim());
+  return suaChinhTaTiengViet(dauNhan(x).replace(/\s+/g, ' ').trim());
 }
 
 export const coTex = (s: string) => /\\[a-zA-Z]+|[_^]\{|[A-Za-z0-9)][_^][A-Za-z0-9]/.test(s);

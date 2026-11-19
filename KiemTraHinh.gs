@@ -486,9 +486,12 @@ function suaLienHeThucTe_(kb) {
     var vat = du && Array.isArray(du.vat) ? du.vat : [];
     var chuThe = vat.map(function (v) { return v ? (String(v.noi_dung || '') + ' ' + String(v.nhan || '') + ' ' + (Array.isArray(v.ds) ? v.ds.join(' ') : '')) : ''; }).join(' ');
     var loi = (String(c.loi_thoai || '') + ' ' + String(c.tieu_de_canh || '') + ' ' + String((mh && mh.mo_ta) || '') + ' ' + chuThe).toLowerCase();
+    var loiDoc = String(c.loi_thoai || '').toLowerCase();
+    var vongQuayThua = vat.some(function (v) { return v && v.loai === 'vong_quay'; }) && !/vòng quay|quay số|bánh xe/.test(loiDoc);
+    if (vongQuayThua) loi = loiDoc;
     var coHopQuaThua = vat.some(function (v) { return v && v.loai === 'hop_qua'; }) && !/hộp quà|món quà|tặng quà|sinh nhật/.test(loi);
     var coVatThatKhac = vat.some(function (v) { return v && CHU_.indexOf(v.loai) < 0 && !(coHopQuaThua && v.loai === 'hop_qua'); });
-    if (coVatThatKhac && !coHopQuaThua) return;   // đã có vật thật đa dạng (không phải hop_qua chung chung)
+    if (coVatThatKhac && !coHopQuaThua && !vongQuayThua) return;   // đã có vật thật đa dạng (không phải hop_qua chung chung)
 
     // Giữ lại các thẻ chữ tóm tắt ở phía dưới sân khấu (nếu có) và thay hop_qua bằng hình minh họa khớp lời thoại
     var vatPhuDuoi = vat.filter(function (v) { return v && v.loai !== 'hop_qua' && CHU_.indexOf(v.loai) >= 0; }).map(function (v) {
@@ -500,20 +503,16 @@ function suaLienHeThucTe_(kb) {
 
     var vatMoi = [], hdMoi = [];
     var idChinh = 'lh_' + (i + 1);
-    if (/mật khẩu|mã pin|bảo mật|điện thoại|tin nhắn|mạng|tài khoản|ứng dụng/.test(loi)) {
+    if (/mật khẩu|mã pin|bảo mật|điện thoại|tin nhắn|mạng|tài khoản/.test(loi)) {
       vatMoi.push({ id: idChinh, loai: 'dien_thoai', x: 34, y: 42, co: 0.92, buoc: 1, noi_dung: 'Bảo mật & Xác thực', ds: ['Mã PIN: ••••', 'OTP ngẫu nhiên', 'Bảo vệ tài khoản'], gia_tri_chu: 'An toàn' });
       vatMoi.push({ id: idChinh + '_ng', loai: 'nguoi', x: 72, y: 44, co: 0.95, so_luong: 2, ds: ['Người dùng', 'Hệ thống'], kieu: 'chi', buoc: 2 });
       hdMoi.push({ buoc: 2, vat: idChinh, kieu: 'chon', chi_so: [1, 2], mau: 'xanh_la' });
-    } else if (/bốc thăm|rút thăm|quay số|trúng thưởng|xổ số|chia bảng|vòng quay/.test(loi) && /ca trực|lịch trực|phân bổ|phân công|nhân sự|chia ca|nhóm/.test(loi)) {
-      // Kết hợp cả Bốc thăm (vòng quay) VÀ Phân bổ ca trực (nhân sự) đúng như lời thoại
-      vatMoi.push({ id: idChinh, loai: 'vong_quay', x: 30, y: 40, co: 0.85, buoc: 1, ds: ['Thăm 1', 'Thăm 2', 'Thăm 3', 'Thăm 4', 'Thăm 5', 'Thăm 6'], ket_qua: [2], nhan: 'Bốc thăm ngẫu nhiên' });
-      vatMoi.push({ id: idChinh + '_ng', loai: 'nguoi', x: 72, y: 40, co: 0.9, so_luong: 4, ds: ['Ca sáng', 'Ca chiều', 'Ca tối', 'Dự phòng'], kieu: 'gio_tay', nhan: 'Phân bổ ca trực', buoc: 2 });
-      hdMoi.push({ buoc: 2, vat: idChinh, kieu: 'quay' });
-      hdMoi.push({ buoc: 3, vat: idChinh + '_ng', kieu: 'chon', chi_so: [1, 2], mau: 'xanh_la' });
-    } else if (/bốc thăm|rút thăm|quay số|trúng thưởng|xổ số|vòng quay|may mắn/.test(loi)) {
-      vatMoi.push({ id: idChinh, loai: 'vong_quay', x: 34, y: 42, co: 0.9, buoc: 1, ds: ['Giải Nhất', 'Giải Nhì', 'Giải Ba', 'Vé 01', 'Vé 02', 'Vé 03'], ket_qua: [1], nhan: 'Quay số & Bốc thăm' });
-      vatMoi.push({ id: idChinh + '_ng', loai: 'nguoi', x: 74, y: 44, co: 0.95, so_luong: 3, ds: ['Người chơi 1', 'Người chơi 2', 'Người chơi 3'], kieu: 'vui', buoc: 2 });
-      hdMoi.push({ buoc: 2, vat: idChinh, kieu: 'quay' });
+    } else if (/vòng quay|quay số|bánh xe/.test(loiDoc)) {
+      vatMoi.push({id: idChinh, loai: 'vong_quay', x: 50, y: 42, ds: ['1', '2', '3', '4'], buoc: 1, nhan: 'Minh họa quay số'});
+      hdMoi.push({buoc: 2, vat: idChinh, kieu: 'quay'});
+    } else if (/bốc thăm|rút thăm|chia bảng/.test(loiDoc) && !/phân công|ca trực|chia nhóm/.test(loiDoc)) {
+      vatMoi.push({id: idChinh, loai: 'the', x: 50, y: 42, so_luong: 3, ds: ['A', 'B', 'C'], buoc: 1, nhan: 'Ví dụ phiếu bốc thăm'});
+      hdMoi.push({buoc: 2, vat: idChinh, kieu: 'chon', chi_so: [1], mau: 'xanh_la'});
     } else if (/bàn tròn|hội nghị|tiệc|sắp xếp chỗ/.test(loi)) {
       vatMoi.push({ id: idChinh, loai: 'ban_tron', x: 50, y: 42, co: 0.92, buoc: 1, ds: ['Khách 1', 'Khách 2', 'Khách 3', 'Khách 4', 'Khách 5', 'Khách 6'], noi_dung: 'Xếp chỗ', nhan: 'Sắp xếp bàn tròn' });
       hdMoi.push({ buoc: 2, vat: idChinh, kieu: 'quay' });

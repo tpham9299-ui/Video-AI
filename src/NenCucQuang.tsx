@@ -1,5 +1,6 @@
 import React from 'react';
 import {AbsoluteFill, useCurrentFrame, useVideoConfig} from 'remotion';
+import {FONT} from './theme';
 import {ngauNhien} from './sankhau/donghieu';
 
 // NỀN "CỰC QUANG" (mặc định): nền motion graphic nhiều lớp, có chiều sâu nhưng không lấn át nội dung.
@@ -84,7 +85,7 @@ export const NenCucQuang: React.FC<{nhom?: number; chuyen?: number; chiLop?: boo
         const x = g.x + Math.sin(t * 0.3 + g.pha) * 30 + f * g.vx * 0.3;
         const co = [46, 70, 104][g.tang];
         return (
-          <div key={i} style={{position: 'absolute', left: ((x % W) + W) % W, top: y, fontFamily: '"VietDam", "DejaVu Sans", sans-serif', fontWeight: 900, fontSize: co, color: mau[i % 4], opacity: [0.07, 0.11, 0.16][g.tang], transform: `rotate(${g.xoay + Math.sin(t * 0.4 + g.pha) * 10}deg)`}}>
+          <div key={i} style={{position: 'absolute', left: ((x % W) + W) % W, top: y, fontFamily: FONT, fontWeight: 900, fontSize: co, color: mau[i % 4], opacity: [0.07, 0.11, 0.16][g.tang], transform: `rotate(${g.xoay + Math.sin(t * 0.4 + g.pha) * 10}deg)`}}>
             {g.k}
           </div>
         );

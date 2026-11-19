@@ -1,3 +1,4 @@
+import {FONT_DAM} from '../theme';
 import {NguoiCuDong} from './NguoiCuDong';
 import React from 'react';
 
@@ -96,10 +97,10 @@ const VE: Record<TenVatThuc, (p: P) => React.ReactNode> = {
         </g>
       ))}
       <rect x={-54} y={-75} width={108} height={14} fill={mau} stroke={TRANG} strokeWidth={1.2} />
-      <text data-kd-bo="1" x={0} y={-64} textAnchor="middle" fontSize={11.5} fontWeight={900} fill="#0b0b18" fontFamily="VietDam, VietNoi, sans-serif" letterSpacing={0.5}>NGÂN HÀNG</text>
+      <text data-kd-bo="1" x={0} y={-64} textAnchor="middle" fontSize={11.5} fontWeight={900} fill="#0b0b18" fontFamily={FONT_DAM} letterSpacing={0.5}>NGÂN HÀNG</text>
       <polygon points="-54,-72 0,-100 54,-72" fill="url(#khoi3DTruoc)" stroke={mau} strokeWidth={1.6} />
       <circle cx={0} cy={-84} r={7.5} fill={VANG} stroke="#a77b00" strokeWidth={1.2} />
-      <text data-kd-bo="1" x={0} y={-81} textAnchor="middle" fontSize={9.5} fontWeight={900} fill="#5a3d00" fontFamily="VietSans, sans-serif">₫</text>
+      <text data-kd-bo="1" x={0} y={-81} textAnchor="middle" fontSize={9.5} fontWeight={900} fill="#5a3d00" fontFamily={FONT_DAM}>₫</text>
     </g>
   ),
   nha: ({mau}) => (
@@ -426,7 +427,7 @@ const VE: Record<TenVatThuc, (p: P) => React.ReactNode> = {
       {[0, 1, 2].map((r) => [0, 1, 2, 3].map((c) => <rect key={`${r}${c}`} x={-36 + c * 19} y={-62 + r * 17} width={11} height={10} fill={`${VANG}99`} stroke={TRANG} strokeWidth={0.5} />))}
       <rect x={-10} y={-18} width={20} height={18} fill={`${XANH}66`} stroke={TRANG} strokeWidth={1} />
       <rect x={-54} y={-104} width={108} height={24} rx={3} fill={mau} stroke={TRANG} strokeWidth={1} />
-      <text data-kd-bo="1" x={0} y={-87} textAnchor="middle" fontSize={Math.min(15, 175 / Math.max(6, (bien || 'CÔNG TRÌNH').length))} fontWeight={900} fill="#06161a" fontFamily="VietDam, VietNoi, sans-serif">{(bien || 'CÔNG TRÌNH').toUpperCase()}</text>
+      <text data-kd-bo="1" x={0} y={-87} textAnchor="middle" fontSize={Math.min(15, 175 / Math.max(6, (bien || 'CÔNG TRÌNH').length))} fontWeight={900} fill="#06161a" fontFamily={FONT_DAM}>{(bien || 'CÔNG TRÌNH').toUpperCase()}</text>
     </g>
   ),
   // CỬA HÀNG / CHỢ / SIÊU THỊ: mái hiên sọc, quầy, biển tên
@@ -437,7 +438,7 @@ const VE: Record<TenVatThuc, (p: P) => React.ReactNode> = {
       <rect x={-40} y={-48} width={50} height={30} fill={`${XANH}55`} stroke={TRANG} strokeWidth={1} />
       <rect x={18} y={-48} width={22} height={48} fill={`${NAU}99`} stroke={TRANG} strokeWidth={1} />
       <rect x={-54} y={-96} width={108} height={24} rx={3} fill={VANG} />
-      <text data-kd-bo="1" x={0} y={-79} textAnchor="middle" fontSize={Math.min(15, 175 / Math.max(6, (bien || 'CỬA HÀNG').length))} fontWeight={900} fill="#3a2600" fontFamily="VietDam, VietNoi, sans-serif">{(bien || 'CỬA HÀNG').toUpperCase()}</text>
+      <text data-kd-bo="1" x={0} y={-79} textAnchor="middle" fontSize={Math.min(15, 175 / Math.max(6, (bien || 'CỬA HÀNG').length))} fontWeight={900} fill="#3a2600" fontFamily={FONT_DAM}>{(bien || 'CỬA HÀNG').toUpperCase()}</text>
     </g>
   ),
   xe_may: ({mau, t}) => {

@@ -6,7 +6,7 @@ import {laChuThuong} from './bocuc';
 import {khopVua} from './vua';
 import {bocChuViet, chuanTex, texSangChu} from './chu';
 import {napPhong} from './phong';
-import {FONT, FONT_DAM, FONT_SERIF, GIAO_DIEN} from './theme';
+import {FONT, FONT_DAM, GIAO_DIEN} from './theme';
 
 // Hiện một chuỗi: công thức LaTeX (KaTeX) hoặc chữ thường (tiếng Việt, "Cùng đỏ"...), tự nhận biết.
 // Có maxWidth thì chữ/công thức TỰ VỪA KHUNG: đo bề rộng thật, thử xuống dòng, vẫn tràn thì thu nhỏ.
@@ -56,7 +56,7 @@ export const Toan: React.FC<{
   if (thuong || html === null) {
     const hien = thuong ? String(tex) : texSangChu(tex);
     return (
-      <span ref={ref} data-tex-loi={thuong ? undefined : tex} data-maxw={maxWidth} style={{...chung, ...(GIAO_DIEN.kieuToan === 'latex' ? {fontFamily: FONT_SERIF, fontStyle: 'italic', fontWeight: 400} : GIAO_DIEN.kieuToan === 'dam' ? {fontFamily: FONT_DAM, fontWeight: 800, textShadow: '0 3px 0 rgba(4,12,12,0.9)'} : {fontFamily: FONT, fontWeight: 700}), whiteSpace: 'nowrap'}}>
+      <span ref={ref} data-tex-loi={thuong ? undefined : tex} data-maxw={maxWidth} style={{...chung, ...(GIAO_DIEN.kieuToan === 'latex' ? {fontFamily: FONT, fontWeight: 500} : GIAO_DIEN.kieuToan === 'dam' ? {fontFamily: FONT_DAM, fontWeight: 800, textShadow: '0 3px 0 rgba(4,12,12,0.9)'} : {fontFamily: FONT, fontWeight: 700}), whiteSpace: 'nowrap'}}>
         {hien}
       </span>
     );
@@ -94,7 +94,7 @@ export const KieuToan: React.FC<{kieu: string}> = ({kieu}) => (
     .toan-ngat .katex .katex-html { white-space: normal !important; }
   ` : `
     .katex { font-size: 1.12em !important; }
-    .katex .text, .katex .text * { font-family: ${FONT_SERIF} !important; font-style: italic; }
+    .katex .text, .katex .text * { font-family: ${FONT} !important; font-style: normal; }
     .toan-ngat { white-space: normal !important; }
     .toan-ngat .katex { white-space: normal !important; }
     .toan-ngat .katex .katex-html { white-space: normal !important; }

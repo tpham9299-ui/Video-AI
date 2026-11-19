@@ -1,3 +1,4 @@
+import {dauNhan} from './chu';
 // Công cụ cho hiệu ứng kiểu Manim: hàm làm mượt, tách công thức LaTeX thành các "thành phần", và ghép thành phần giữa hai dòng (TransformMatchingTex).
 // Thuần (không phụ thuộc React) nên kiểm thử được.
 
@@ -13,7 +14,7 @@ export type LoaiTu = 'quanhe' | 'toantu' | 'khac';
 export type Tu = {s: string; loai: LoaiTu};
 
 const QUAN_HE = new Set(['=', '<', '>', '\\approx', '\\neq', '\\ne', '\\le', '\\leq', '\\ge', '\\geq', '\\Rightarrow', '\\Leftrightarrow', '\\to', '\\rightarrow', '\\in', '\\notin', '\\subset', '\\subseteq']);
-const TOAN_TU = new Set(['+', '-', '\\times', '\\cdot', '\\div', '\\cup', '\\cap', '\\pm', '\\setminus']);
+const TOAN_TU = new Set(['+', '-', '×', '\\times', '\\cdot', '\\div', '\\cup', '\\cap', '\\pm', '\\setminus']);
 
 const hetNhom = (s: string, i: number, mo: string, dong: string): number => {
   // s[i] === mo; trả về chỉ số của ký tự đóng tương ứng (hoặc cuối chuỗi nếu thiếu)
@@ -47,7 +48,7 @@ const ganChiSo = (s: string, k: number): number => {
 };
 
 export function tachTu(nguon: string): Tu[] {
-  const s = String(nguon).replace(/\s+/g, ' ').trim();
+  const s = dauNhan(String(nguon)).replace(/\s+/g, ' ').trim();
   const kq: Tu[] = [];
   const them = (t: string) => {
     const x = t.trim();
