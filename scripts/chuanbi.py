@@ -1649,19 +1649,6 @@ def main():
     bat_dau = 0
     tam_gem = tempfile.mkdtemp()
     giong_gem = None
-    if not args.gia_lap and args.may_giong == "gemini":
-        # Mặc định đọc LIỀN MẠCH MỘT LẦN (mot_lan) kết hợp them_nhan_nha_doc() để giọng đọc ĐỒNG NHẤT 100% xuyên suốt các cảnh
-        # mà vẫn có nhấn nhá trọng âm tự nhiên (không bị lệch giọng giữa các cảnh).
-        if (os.environ.get("CACH_DOC_GEMINI") or "mot_lan") != "tung_canh":
-            giong_gem = tao_giong_gemini_mot_lan(canh, tam_gem, args)
-        else:
-            giong_gem = tao_giong_gemini(canh, tam_gem, args)
-            if not giong_gem:
-                giong_gem = tao_giong_gemini_mot_lan(canh, tam_gem, args)
-        if not giong_gem:
-            print("Gemini không đọc được cả video -> CẢ video dùng một giọng edge-tts đồng nhất 100% có nhấn nhá (không trộn giọng)")
-    if giong_gem is not None and set(giong_gem) != set(range(len(canh))):
-        giong_gem = None
     chuan_hoa = []
     for i, c in enumerate(canh):
         so = int(c.get("so") or i + 1)
@@ -1677,6 +1664,36 @@ def main():
             sys.exit("Cảnh %d không có lời thoại." % so)
         chuan_hoa.append((i, so, c, loi_thoai, noi_dung_tam, tach_cau(loi_thoai)))
 
+    from xe_3d import CAR, EVENT
+    xe = CAR.search(str(kb.get("de_bai") or ""))
+    tach_nhip = {i for i, _, _, van, _, _ in chuan_hoa if xe and EVENT.search(van)}
+    gem_doan = {}
+    if not args.gia_lap and args.may_giong == "gemini":
+        # Mặc định đọc LIỀN MẠCH MỘT LẦN (mot_lan) kết hợp them_nhan_nha_doc() để giọng đọc ĐỒNG NHẤT 100% xuyên suốt các cảnh
+        # mà vẫn có nhấn nhá trọng âm tự nhiên (không bị lệch giọng giữa các cảnh).
+        if tach_nhip:
+            # Đo thời lượng bản đọc từng câu có sự kiện, giữ cùng một giọng cho cả bài.
+            ds_doc, chi_muc = [], {}
+            for i, _, c, van, _, cau_doc in chuan_hoa:
+                indices = []
+                for doan in (cau_doc if i in tach_nhip else [van]):
+                    indices.append(len(ds_doc))
+                    ds_doc.append(dict(c, loi_thoai=doan))
+                chi_muc[i] = indices
+            wavs = tao_giong_gemini(ds_doc, tam_gem, args)
+            if wavs and len(wavs) == len(ds_doc):
+                gem_doan = {i: [wavs[j] for j in ids] for i, ids in chi_muc.items() if i in tach_nhip}
+                giong_gem = {i: wavs[ids[0]] for i, ids in chi_muc.items()}
+        elif (os.environ.get("CACH_DOC_GEMINI") or "mot_lan") != "tung_canh":
+            giong_gem = tao_giong_gemini_mot_lan(canh, tam_gem, args)
+        else:
+            giong_gem = tao_giong_gemini(canh, tam_gem, args)
+            if not giong_gem:
+                giong_gem = tao_giong_gemini_mot_lan(canh, tam_gem, args)
+        if not giong_gem:
+            print("Gemini không đọc được cả video -> CẢ video dùng một giọng edge-tts đồng nhất 100% có nhấn nhá (không trộn giọng)")
+    if giong_gem is not None and set(giong_gem) != set(range(len(canh))):
+        giong_gem = None
     am_thanh_kq = {}
     with tempfile.TemporaryDirectory() as tam_chung:
         nhiem_vu_edge = []
@@ -1694,7 +1711,7 @@ def main():
             ten = "%s_c%d.mp3" % (id_an_toan, so)
             tam_wav = os.path.join(tam_i, "tam_%d.wav" % i)
             dich_mp3 = os.path.join(thu_muc_giong, ten)
-            if giong_gem and i in giong_gem:
+            if giong_gem and i in giong_gem and i not in gem_doan:
                 # Gemini đọc cả cảnh một lần (ngữ điệu liền mạch); mốc từng câu chia theo số ký tự
                 nguon_gem = giong_gem[i]
                 if str(nguon_gem).endswith(".gon.wav"):
@@ -1708,7 +1725,7 @@ def main():
                 gap_c = 0
                 vao_loc = gon
             else:
-                cac_tep_tho = edge_tho[i]
+                cac_tep_tho = gem_doan[i] if i in gem_doan else edge_tho[i]
                 cac_tep = []
                 for k, tho in enumerate(cac_tep_tho):
                     gon = os.path.join(tam_i, "g%03d.wav" % k)

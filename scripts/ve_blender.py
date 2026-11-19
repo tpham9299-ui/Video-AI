@@ -308,6 +308,26 @@ def chi_tiet(p):
 
 
 def dung(s):
+    if s["loai"] == "xe_duong":
+        vat("hop",(0,0,-.14),(16,3.75,.28),"toi")
+        for i in range(-4,5):
+            vat("hop",(i*1.75,.52,.005),(.9,.045,.02),"trang")
+        for y in (-1.76,1.76):
+            vat("hop",(0,y,.005),(15.9,.035,.02),"trang")
+        road = set(bpy.context.scene.objects)
+        x,y = -5.7,-.62
+        vat("hop",(x,y,.48),(3.35,1.27,.57),"do")
+        vat("hop",(x-.23,y,.93),(1.83,1.11,.53),"kinh")
+        vat("hop",(x-.25,y,1.21),(1.68,1.16,.08),"do")
+        for side in (-1,1):
+            vat("hop",(x+.03,y+side*.556,.98),(.10,.04,.45),"toi")
+            for end in (-1,1):
+                vat("tru",(x+end*1.03,y+side*.63,.33),(.65,.65,.20),"toi",(90,0,0))
+                vat("tru",(x+end*1.03,y+side*.738,.33),(.34,.34,.025),"thep",(90,0,0))
+            vat("hop",(x+1.68,y+side*.42,.54),(.04,.25,.14),"trang")
+        for obj in set(bpy.context.scene.objects)-road:
+            obj["xe"] = True
+        return
     if s["loai"] == "phep_thu":
         phep_thu(s)
     elif s["loai"] == "vuon":
@@ -424,6 +444,18 @@ def render(plan, dest):
     from bpy_extras.object_utils import world_to_camera_view
 
     scene.cycles.samples = 12
+    if plan["loai"] == "xe_duong":
+        bpy.context.view_layer.update()
+        a = world_to_camera_view(scene,cam,Vector((0,0,0)))
+        b = world_to_camera_view(scene,cam,Vector((11.4,0,0)))
+        for name,car in (("duong",False),("xe",True)):
+            for obj in scene.objects:
+                if obj.type=="MESH":
+                    obj.hide_render = bool(obj.get("xe")) != car
+            scene.render.filepath = str(dest.parent/(name+".png"))
+            bpy.ops.render.render(write_still=True)
+        dest.write_text(json.dumps({"xeDuong":[b.x-a.x,a.y-b.y]}))
+        return
     for i in range(16):
         t = i / 15
         angle = math.radians(-7 * (1 - t * t * (3 - 2 * t)))

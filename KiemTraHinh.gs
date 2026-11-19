@@ -909,6 +909,13 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc, lop) {
     var c = kb.canh[i];
     if (!c.loi_thoai || !String(c.loi_thoai).trim()) { nang.push('THIEU_LOI_THOAI_CANH_' + (i + 1) + ': cảnh nào cũng phải có lời thoại.'); continue; }
     if (/[\\$]/.test(c.loi_thoai)) nang.push('LOI_THOAI_CHUA_LATEX_CANH_' + (i + 1));
+    if (String(mon || kb.mon).toUpperCase() !== 'HINH_HOC') {
+      var vat3d = ((c.minh_hoa || {}).du_lieu || {}).vat || [];
+      var canMoHinh = Array.isArray(vat3d) && vat3d.some(function (v) {
+        return v && /^(nguoi|the|the_bai|tui|hop_qua|dong_ho|dien_thoai|bong_bay|vong_quay|cua|banh|ban_tron|khoi_hop|tru|non|cau|toa_nha|cay|thang)$/.test(v.loai);
+      });
+      if (canMoHinh && !c.mo_hinh_3d && !kb.mo_hinh_3d) nang.push('THIEU_MO_HINH_3D_CANH_' + (i + 1) + ': thêm mo_hinh_3d cho vật minh họa theo dữ kiện đề.');
+    }
     tong += uocGiayDoc_(c.loi_thoai);
   }
   if (/^\s*(xin\s+)?chào/i.test(kb.canh[0].loi_thoai) && !(typeof cauHinh_ === 'function' && cauHinh_('KIEU_MO_DAU') === 'chao_hook')) nhe.push('MO_DAU_BANG_LOI_CHAO');

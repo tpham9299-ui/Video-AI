@@ -79,7 +79,8 @@ export const NapPhongToan: React.FC = () => {
 export const KieuToan: React.FC<{kieu: string}> = ({kieu}) => (
   <style>{kieu === 'dam' ? `
     .katex { font-size: 1.1em; font-weight: normal; }
-    .katex .text { font-family: ${FONT}; }
+    .katex .text, .katex .text * { font-family: ${FONT} !important; font-weight: 600; }
+    .katex .mathnormal, .katex .mathit, .katex .mord.mathrm { font-family: ${FONT} !important; font-weight: 600; }
     .toan-ngat { white-space: normal !important; }
     .toan-ngat .katex { white-space: normal !important; }
     .toan-ngat .katex .katex-html { white-space: normal !important; }

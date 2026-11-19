@@ -17,10 +17,16 @@ def vung_dao_lien_tuc(khung):
         tich = (o[buoc:] * o[:-buoc]).mean(axis=(2, 4))
         dao = (tich < -0.75 * np.sqrt(nang_luong[buoc:] * nang_luong[:-buoc])) & (
             np.minimum(nang_luong[buoc:], nang_luong[:-buoc]) > 100)
+        # Kiểm tra các pixel có thật sự trở về trạng thái cũ (A/B/A).
+        # Một đường sáng lướt qua ô cũng cho hai sai phân trái dấu.
+        ve_cu = ((o[buoc:] + o[:-buoc]) ** 2).mean(axis=(2, 4))
+        dao &= ve_cu < .38 * np.minimum(nang_luong[buoc:], nang_luong[:-buoc])
         for bat in range(len(dao) - 3 * buoc):
             lap = dao[bat:bat + 4 * buoc:buoc].all(axis=0)
             if lap.any():
-                return bat
+                pixels = np.abs(o[bat:bat + 5 * buoc:buoc]) > 18
+                if (lap & (pixels.all(axis=0).sum(axis=(1, 3)) >= 12)).any():
+                    return bat
     return None
 
 

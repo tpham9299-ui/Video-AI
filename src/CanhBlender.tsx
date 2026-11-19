@@ -16,10 +16,23 @@ export const CanhBlender: React.FC<{canh: CanhProps; frame: number; fps: number}
   const pic = (name: string, opacity: number) => opacity > 0 ?
     <Img key={name} src={staticFile(clip.thuMuc + '/' + name + '.png')}
       style={{position: 'absolute', width: '100%', height: '100%', objectFit: 'contain', opacity}} /> : null;
+  if (clip.xeDuong && canh.nhipXe) {
+    const phase = canh.nhipXe.moc.filter(m => m.t <= time).slice(-1)[0];
+    const elapsed = Math.max(0,Math.min(duration,time)-phase.t);
+    const dt = Math.min(elapsed, phase.chay ?? (phase.a < 0 ? phase.v / -phase.a : elapsed));
+    const s = kep((phase.s + phase.v*dt + phase.a*dt**2/2 + (phase.j ?? 0)*dt**3/6)/canh.nhipXe.tong);
+    const [dx,dy] = clip.xeDuong;
+    return <div style={{position:'absolute',inset:0,containerType:'size',display:'grid',placeItems:'center'}}>
+      <div style={{position:'relative',width:'min(100cqw,160cqh)',aspectRatio:'1.6'}}>
+        {['duong','xe'].map(name => <Img key={name} src={staticFile(clip.thuMuc+'/'+name+'.png')}
+          style={{position:'absolute',inset:0,width:'100%',height:'100%',transform:name==='xe' ? `translate(${100*dx*s}%,${100*dy*s}%)` : undefined}} />)}
+      </div>
+    </div>;
+  }
   if (clip.phepThu) {
     const action = canh.cau.find(c => /rút|lấy|gieo|tung|lắc/i.test(c.text));
     const at = Math.min(action?.bat ?? .25, duration * .72);
-    const step = kep((time - at) / Math.min(1.5, duration - at));
+    const step = clip.giuVatCuoi ? 1 : kep((time - at) / Math.min(1.5, duration - at));
     return pic('orbit-' + Math.round(step * 15), 1);
   }
   if (clip.giuNet) return <>

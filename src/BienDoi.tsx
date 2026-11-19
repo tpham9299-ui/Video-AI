@@ -1,7 +1,7 @@
 import React, {useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import {continueRender, delayRender} from 'remotion';
 import katex from 'katex';
-import {texSangChu} from './chu';
+import {bocChuViet, texSangChu} from './chu';
 import {ghepTu, kep01, smooth, tachTu, Tu} from './manim';
 import {napPhong} from './phong';
 import {FONT} from './theme';
@@ -58,7 +58,7 @@ export const BienDoi: React.FC<{
   can?: 'giua' | 'trai'; // 'trai': dòng lớn dần sang phải, phần đầu đứng yên (như video mẫu)
 }> = ({dong, batDong, t, co, maxWidth, khungCuoi, mauGoc = '#ffffff', mauNhay = '#FFD27A', mauKhung = '#ffffff', can = 'giua'}) => {
   const khoa = dong.join('¦');
-  const toks = useMemo<Tu[][]>(() => dong.map(tachTu), [khoa]);
+  const toks = useMemo<Tu[][]>(() => dong.map(line => tachTu(bocChuViet(line))), [khoa]);
   const dom = useRef<(HTMLDivElement | null)[]>([]);
   const [geo, setGeo] = useState<Geo[] | null>(null);
   const [h] = useState(() => delayRender('Đo công thức'));

@@ -453,7 +453,7 @@ class MoHinh:
         self.nhac = [self.nhac_toi(self.chu_canh(i)) for i in range(len(self.canh_p))]
         # đoạn thẳng được nhắc tới nhưng chưa có trên hình (vd đường cao AH) -> kẻ thêm nét đứt từ cảnh đó
         for i, nt in enumerate(self.nhac):
-            for d in nt["doan"]:
+            for d in nt["doan"][:2]:
                 if ("doan", d) not in self.chi_so:
                     # nằm trên một cạnh có sẵn (vd MB là một nửa BC) -> đoạn con, chỉ hiện khi được tô màu; còn lại kẻ thêm nét đứt
                     self.them("doan", d, i, kieu_net="con" if self.nam_tren_canh(d) else "phu", nhan="")
@@ -461,7 +461,7 @@ class MoHinh:
         canh_dau_doan = {}
         canh_dau_diem = {}
         for i, nt in enumerate(self.nhac):
-            for d in nt["doan"]:
+            for d in nt["doan"][:2]:
                 canh_dau_doan.setdefault(d, i)
             for x in nt["diem"]:
                 canh_dau_diem.setdefault(x, i)
@@ -550,15 +550,15 @@ class MoHinh:
         j = 0
         jm = 0
         for i, nt in enumerate(self.nhac):
-            for d in nt["doan"]:
+            for d in nt["doan"][:2]:
                 if ("doan", d) not in self.mau:
                     self.mau[("doan", d)] = BANG_MAU[j % len(BANG_MAU)]
                     j += 1
-            for g in nt["goc"]:
+            for g in nt["goc"][:1]:
                 if ("goc", g) not in self.mau:
                     self.mau[("goc", g)] = BANG_MAU[(j + 3) % len(BANG_MAU)]
                     j += 1
-            for t in nt["tam_giac"] + nt["mat"]:
+            for t in (nt["tam_giac"] + nt["mat"])[:1]:
                 k = ("mien", khoa_da_giac(t))
                 if k not in self.mau:
                     self.mau[k] = MAU_MIEN[jm % len(MAU_MIEN)]
@@ -1300,11 +1300,11 @@ class VideoHinh(Scene):
         mo = self.mo
         nt = mo.nhac[i] if dong is None else dong
         sang = set()
-        for d in nt["doan"]:
+        for d in nt["doan"][:2]:
             sang.add(("doan", d))
-        for g in nt["goc"]:
+        for g in nt["goc"][:1]:
             sang.add(("vuong", g) if ("vuong", g) in self.hinh else ("goc", g))
-        for t in nt["tam_giac"] + nt["mat"]:
+        for t in (nt["tam_giac"] + nt["mat"])[:1]:
             km = ("mien", khoa_da_giac(t))
             if km not in self.hinh:   # tam giác / mặt phẳng được nhắc tới: tạo vùng tô màu riêng của nó
                 mau_m = mo.mau.get(km, MAU_MIEN[0])
@@ -1340,11 +1340,13 @@ class VideoHinh(Scene):
                 if net is not m:
                     anim.append(m[1].animate.set_opacity(1.0).set_color(VANG if duoc else (mo.mau.get(k, TRANG) if k in self.da_to else TRANG)))
             elif k[0] == "mien":
-                anim.append(m.animate.set_fill(opacity=0.36 if duoc else 0.12))
+                anim.append(m.animate.set_fill(opacity=0.18 if duoc else 0))
             elif k[0] == "tron":
                 anim.append(m.animate.set_stroke(color=VANG if duoc else TRON, opacity=1.0, width=5.5 if (duoc and co_tap_trung) else 3.2))
             elif k[0] == "vuong" and duoc:
                 anim.append(m.animate.set_stroke(color=mo.mau.get(("goc", k[1]), VANG), width=4.5, opacity=1.0))
+            elif k[0] in ("goc","vuong","bang"):
+                anim.append(m.animate.set_opacity(1.0 if duoc else 0.18))
             else:
                 anim.append(m.animate.set_opacity(1.0))
         dang_xet = set(nt["diem"])
@@ -1420,6 +1422,63 @@ class VideoHinh(Scene):
         return g
 
     # ---------- dựng cả video ----------
+    def khung_chung_minh(self, i):
+        """Cửa sổ của phần hình, tính cả kích thước nhãn và các nét vừa được dựng."""
+        mo = self.mo
+        full = np.array([-W/2,HINH_DUOI,W/2,HINH_TREN])
+        if mo.la_khong_gian:
+            return full
+        names = set(mo.nhac[i]["diem"])
+        names.update(n for n,first in mo.diem_canh.items() if first==i)
+        items = [self.nhan_diem[n] for n in names if n in self.nhan_diem]
+        for p in mo.pt:
+            if p["canh"]==i or (p["kieu"]=="tron" and mo.nhac[i]["tron"] and p["canh"]<=i):
+                obj = self.hinh.get((p["kieu"],p["khoa"]))
+                if obj is not None:
+                    items.append(obj)
+        if len(items)<2:
+            return full
+        group = VGroup(*items)
+        w,h = full[2]-full[0],full[3]-full[1]
+        scale = min(1.85,w/(group.width+.9),h/(group.height+.85))
+        if scale < 1.18:
+            return full
+        half = np.array([w,h])/(2*scale)
+        center = np.clip(group.get_center()[:2],full[:2]+half,full[2:]-half)
+        return np.r_[center-half,center+half]
+
+    def lap_may_chung_minh(self):
+        # Chỉ đổi khung phần hình. Thẻ công thức phía dưới giữ nguyên kích thước.
+        from PIL import Image
+        writer = self.renderer.file_writer
+        write = writer.write_frame
+        full = np.array([-W/2,HINH_DUOI,W/2,HINH_TREN])
+        self.khung_cu = self.khung_moi = full
+        self.frame_da_ghi = 0
+        def ghi(pixels, *, repeat=1):
+            def px(box):
+                l,b,r,t = box
+                h,w = pixels.shape[:2]
+                return (round((l/W+.5)*w),round((.5-t/H)*h),round((r/W+.5)*w),round((.5-b/H)*h))
+            target = px(full)
+            if np.array_equal(self.khung_cu, full) and np.array_equal(self.khung_moi, full):
+                self.frame_da_ghi += repeat
+                write(pixels, repeat=repeat)
+                return
+            for _ in range(repeat):
+                t = float(np.clip((self.frame_da_ghi/self.mo.fps-self.t0)/.55,0,1))
+                box = self.khung_cu + (self.khung_moi-self.khung_cu)*(t*t*(3-2*t))
+                self.frame_da_ghi += 1
+                source = px(box)
+                if source == target:
+                    write(pixels)
+                    continue
+                frame = Image.fromarray(pixels)
+                l,b,r,t = target
+                frame.paste(frame.crop(source).resize((r-l,t-b),Image.Resampling.BICUBIC),(l,b))
+                write(np.asarray(frame))
+        writer.write_frame = ghi
+
     def construct(self):
         mo = self.mo
         self.chuan_bi_toa_do()
@@ -1436,7 +1495,9 @@ class VideoHinh(Scene):
         cu = VGroup()     # thẻ / công thức đang trên màn
         tach = None
         fps = mo.fps
+        self.lap_may_chung_minh()
         for i, cp in enumerate(mo.canh_p):
+            self.khung_cu,self.khung_moi = self.khung_moi,self.khung_chung_minh(i)
             D = cp["soFrame"] / fps
             self.t0 = cp["batDau"] / fps
             self.D = D
@@ -1447,6 +1508,11 @@ class VideoHinh(Scene):
             # 1) dọn bước trước (tiêu đề bước, thanh bước, phụ đề do phần vỏ chung của Remotion lo)
             # Lưu ý: KHÔNG hiện thẻ ĐỀ BÀI lên màn hình — đề bài do giọng đọc đảm nhận và hình vẽ hiển thị thật to ở giữa màn hình
             ra = [FadeOut(cu, shift=UP * 0.25)] if len(cu) else []
+            for key in list(self.hinh):
+                if key[0]=="so":
+                    old = self.hinh.pop(key)
+                    ra.append(FadeOut(old))
+                    self.tren_man.discard(old)
             if tach is not None:
                 ra.append(FadeOut(tach))
                 tach = None
@@ -1595,7 +1661,7 @@ class VideoHinh(Scene):
                     if any(c_nt[k] for k in ("doan", "goc", "tam_giac", "mat", "diem")):
                         self.doi_toi(min(max(t_bat, self.da), D - 0.35))
                         cau_loe = []
-                        for d in c_nt["doan"]:
+                        for d in c_nt["doan"][:1]:
                             m_d = self.hinh.get(("doan", d))
                             if m_d is not None and m_d in self.tren_man:
                                 net_d = self.net_chinh(m_d)
@@ -1655,7 +1721,7 @@ class VideoHinh(Scene):
                 rt = max(0.4, min(1.25, con * 0.5))
                 dong_nt = mo.nhac_toi(dong[j] + (" ; " + c_text_j if c_text_j else ""))
                 loe = []
-                for d in dong_nt["doan"]:
+                for d in dong_nt["doan"][:1]:
                     m_d = self.hinh.get(("doan", d))
                     if m_d is not None and m_d in self.tren_man:
                         net_d = self.net_chinh(m_d)
@@ -1663,7 +1729,7 @@ class VideoHinh(Scene):
                         tia_loe = net_d.copy().set_stroke(VANG, width=8)
                         loe.append(ShowPassingFlash(tia_loe, time_width=0.65))
                         loe.append(net_d.animate.set_stroke(color=mau_d, width=(6.0 if isinstance(net_d, DashedLine) else 8.8), opacity=1.0))
-                for gk in dong_nt["goc"]:
+                for gk in dong_nt["goc"][:1]:
                     if ("vuong", gk) in self.hinh:     # góc vuông đã có ký hiệu: tô màu ký hiệu, không vẽ thêm cung
                         loe.append(self.hinh[("vuong", gk)].animate.set_stroke(color=mo.mau.get(("goc", gk), VANG), width=4.2, opacity=1.0))
                         continue
@@ -1715,6 +1781,8 @@ class VideoHinh(Scene):
             return max(cac_diem_3d, key=lambda p: min(float(np.linalg.norm(p[:2] - q)) for q in da_dat))
 
         for m in RE_SO_GOC.finditer(s):
+            if sum(k[0]=="so" for k in self.hinh)>=2:
+                break
             a, o, b, v = m.groups()
             if not all(ten_chuan(x) in self.P for x in (a, o, b)):
                 continue
@@ -1733,6 +1801,8 @@ class VideoHinh(Scene):
             da_dat.append(pos[:2])
             anim.append(FadeIn(nhan, scale=1.4))
         for m in RE_SO_DOAN.finditer(s):
+            if sum(k[0]=="so" for k in self.hinh)>=2:
+                break
             a, b, v = m.groups()
             if not all(ten_chuan(x) in self.P for x in (a, b)) or ten_chuan(a) == ten_chuan(b):
                 continue

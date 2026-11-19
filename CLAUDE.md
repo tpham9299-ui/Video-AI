@@ -30,6 +30,8 @@ Với bài toán thực tế, sau bước chuẩn bị, GitHub Actions chạy `s
 
 Mỗi cảnh có thể khai báo riêng `mo_hinh_3d`. Bước chuẩn bị truyền mô hình này sang Blender; các đoạn đo có thể neo theo tâm cuối của vật và chuyển cho Manim sau khi đối chiếu độ dài với đề.
 
+Các cảnh vật lý ngoài hình học đi qua bộ chọn Blender ở cả phần giải và liên hệ. Với một xe trên đường, Blender xuất xe và mặt đường RGBA cùng phép chiếu. Remotion tích phân vận tốc theo mốc lời đọc rồi giữ vị trí ở sự kiện dừng. Cảnh có sự kiện chuyển động dùng thời lượng âm thanh từng câu. Phương trình đa thức hỗ trợ đơn vị SI, quãng đường được quy đổi theo chiều dài đoạn đường minh họa. Manim tự chọn vùng nhìn cho từng bước chứng minh phẳng. Báo cáo đo bố cục quy đổi thời điểm của ảnh bìa về đúng khung nội dung trước khi đối chiếu.
+
 Sân khấu xác suất có một bình bi, một nhóm xu hoặc xúc xắc có thể chuyển tự động thành phép thử Blender. Kịch bản có thể tạo vật chưa có mẫu bằng cách nối các tiết diện elip trong `khoi_tiet_dien.tang`.
 
 ### Kiến trúc 2 tầng phối hợp:
@@ -914,3 +916,10 @@ Sân khấu xác suất có một bình bi, một nhóm xu hoặc xúc xắc có
 - Bộ chuẩn bị đọc các nhóm bi và hành động lấy ra, hoặc số mặt xu và chấm xúc xắc đã ghi trong kịch bản. Với cảnh hỗ trợ, Blender dựng chuyển động và giữ trạng thái cuối để người xem đối chiếu với lời giải. Phép thử chưa rõ mặt hoặc hành động phức hợp tiếp tục dùng sân khấu của cảnh.
 - Vật tự do có thể dùng nhiều tiết diện elip có tâm, cao độ và hai bán kính khác nhau. Bộ kiểm tra đối chiếu trích dẫn với đề, kiểm tra thứ tự các tầng và bán kính trước khi tạo lưới.
 - Bước kiểm duyệt lấy khung đầu và khung cuối của cảnh phép thử để đối chiếu số lượng, màu và kết quả với lời giảng.
+
+#### Lần 48 (v81) — Xe theo lời đọc, khung chứng minh và kiểm duyệt chuyển động
+
+- Blender dựng xe và đường có nền trong suốt. Cảnh mô phỏng giữ công thức của kịch bản. Xe có thể tăng tốc, giảm tốc, dừng và chạy tiếp. Bộ dựng đọc vận tốc đa thức đến bậc hai hoặc gia tốc đến bậc nhất kèm vận tốc đầu ghi bằng ký hiệu SI. Các trường hợp còn lại dùng nhịp định tính từ lời giảng.
+- Cảnh vật thể và phép thử xác suất dùng mô hình riêng hoặc mô hình từ đề. Khi thiếu mô hình cho vật lý đã nhận diện, báo số cảnh cần bổ sung. Một phép thử tĩnh nối sang cảnh tiếp theo có thể giữ khung cuối.
+- Nhãn tiếng Việt trong công thức và các bước biến đổi dùng phông nội dung. Hình học phẳng điều chỉnh vùng nhìn theo nhãn và nét đang dựng, giới hạn số đo và nét nhấn đồng thời.
+- Đo bố cục đúng khung khi có ảnh bìa. Bot tách lý do thiếu khung, kiểm duyệt ảnh chưa xong và lỗi chuyển động trong MP4. Bỏ vòng sáng quét mặc định, đối chiếu các pixel lặp lại qua nhiều chu kỳ để nhận biết nhấp nháy.

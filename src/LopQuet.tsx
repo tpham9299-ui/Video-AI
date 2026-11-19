@@ -11,12 +11,12 @@ export const LopQuet: React.FC<{kieu: string}> = ({kieu}) => {
   if (kieu === 'vong') {
     return (
       <AbsoluteFill style={{pointerEvents: 'none'}}>
-        {['#FF8A3D', '#3BF29A', 'rgba(255,255,255,0.6)'].map((m, i) => {
+        {['#3BF29A'].map((m, i) => {
           const p = expoOut(kep((f - i * 2) / 12));
           const r = 60 + p * 1500;
           return <div key={i} style={{position: 'absolute', left: 540 - r, top: 900 - r, width: r * 2, height: r * 2, borderRadius: '50%', border: `${(1 - p) * 26 + 3}px solid ${m}`, opacity: (1 - p) * 0.7, boxShadow: `0 0 40px ${m}`}} />;
         })}
-        <AbsoluteFill style={{background: '#fff', opacity: Math.max(0, 0.12 - Math.abs(f - 7) * 0.04)}} />
+
       </AbsoluteFill>
     );
   }

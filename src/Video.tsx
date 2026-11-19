@@ -139,7 +139,7 @@ const NoiDungVideo: React.FC<Props> = (props) => {
       {/* chuyển cảnh motion graphic ở chỗ nối các cảnh (trừ cảnh nối tiếp sân khấu) */}
       {/* lớp quét chỉ ở khoảnh khắc kịch tính (sang cái bẫy / đáp án); các chỗ nối khác hòa mờ tự nhiên.
           phong_cach.json "lopQuet": "luon" để quét ở mọi chỗ nối như bản cũ, false để tắt hẳn. */}
-      {phongCach.lopQuet !== false
+      {(phongCach.lopQuet === true || phongCach.lopQuet === 'luon')
         ? canh.map((c, i) =>
             i > 0 && !c.giuSanKhau && (phongCach.lopQuet === 'luon' || (/dap_an|ket_qua|bay/i.test(c.loai) && phaCua(c.loai) !== phaCua(canh[i - 1].loai))) ? (
               <Sequence key={`quet${c.so}`} from={c.batDau - 7} durationInFrames={16} layout="none">

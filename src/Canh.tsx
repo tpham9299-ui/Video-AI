@@ -126,7 +126,7 @@ export const Canh: React.FC<{
   const batDong = canh.noiDung.map((_, i) => (nCau ? canh.cau[Math.min(nCau - 1, Math.floor((i * nCau) / nDong))].bat + 0.05 : 0.4 + i * 0.8));
   // cảnh ĐỀ BÀI: thẻ "ĐỀ CHO / CẦN TÌM" thay cho dòng công thức (đề phải được nêu đủ trước khi vào mô phỏng)
   const theDe = !lopManim && canh.loai === 'de_bai' && coTheDe(deBai) ? deBai! : null;
-  const hienCongThuc = !lopManim && !theDe && nDong > 0 && !(coHook && coHinh && nDong > 1);
+  const hienCongThuc = !lopManim && !theDe && nDong > 0 && !(coHook && coHinh && nDong > 1 && !canh.chuoi3D?.xeDuong);
   const kieuTB = canh.trinhBay;
   const dungBienDoi = kieuTB === 'bien_doi' && coTheBienDoi(canh.noiDung);
   const dungCongDon = (kieuTB === 'cong_don' || kieuTB === 'bien_doi') && !dungBienDoi && coTheCongDon(canh.noiDung);

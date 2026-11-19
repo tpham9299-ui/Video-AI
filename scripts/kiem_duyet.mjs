@@ -69,7 +69,7 @@ for (let i = 0; i < mau.length; i += songSong) {
   // Ghi từng khung ngay khi xong; giữ thứ tự mẫu cho báo cáo và ảnh gửi Gemini.
   await Promise.all(mau.slice(i, i + songSong).map(async (m, j) => {
     const {nhan, tep, layAi} = await chup(m);
-    if (nhan && !nhan.hong && nhan.frame === m.f) tho[i + j] = {...nhan, canh: m.i};
+    if (nhan && !nhan.hong && nhan.frame === m.f - lech) tho[i + j] = {...nhan, frame: m.f, canh: m.i};
     if (layAi) anhAi[2 * m.i + Number(m.isEnd)] = {canh: m.i, ten: `${m.i + 1} (${(canh[m.i] || {}).loai || '?'}, ${!m.isEnd ? 'vật 3D' : 'cuối cảnh'})`, tep};
     ghiBaoCao({chay: false, loi: [], ly_do: 'kiểm duyệt chưa hoàn tất'}, false);
   }));

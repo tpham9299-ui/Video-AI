@@ -255,6 +255,7 @@ jobs:
       - name: Dựng ảnh bối cảnh thực tế bằng Blender
         if: steps.kb.outputs.hh != '1'
         run: |
+          python3 scripts/test_canh_3d.py
           SO_CANH=$(python3 scripts/canh_3d.py kich_ban.json public/props.json --dem)
           if [ "$SO_CANH" -gt 0 ]; then
             if ! command -v blender >/dev/null; then
@@ -636,8 +637,17 @@ jobs:
               if os.path.exists('out/kiem_duyet.json'):
                   with open('out/kiem_duyet.json') as f:
                       bo_cuc = json.load(f)
-              if bo_cuc.get('hong', True) or bo_cuc.get('nang'):
-                  kd = {"dat": False, "ly_do": "Kiểm tra bố cục thiếu khung hoặc còn lỗi. " + kd.get("ly_do", "")}
+              reasons = list((bo_cuc.get('nang') or [])[:2])
+              seen, total = bo_cuc.get('so_khung'), bo_cuc.get('so_khung_mau')
+              if bo_cuc.get('hong', True):
+                  if total is not None and seen != total:
+                      reasons.append(f"Bố cục: đã đo {seen}/{total} khung")
+                  elif bo_cuc.get('ai_nhin') == 'khong_chay':
+                      reasons.append("Kiểm duyệt hình ảnh chưa hoàn tất")
+                  else:
+                      reasons.append("Chưa hoàn tất báo cáo bố cục")
+              if reasons:
+                  kd = {"dat": False, "ly_do": ". ".join(reasons + ([kd["ly_do"]] if kd.get("ly_do") else []))}
               d['kiem_tra_mp4'] = kd
           json.dump(d, open("bao_ket_qua.json", "w"))
           PY

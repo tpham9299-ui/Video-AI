@@ -296,6 +296,19 @@ def be_khong_nap(parts, de):
 def phep_thu_3d(c):
     mh = c.get("minhHoa") or {}
     du = mh.get("duLieu")
+    if mh.get("loai") == "bi_hop" and isinstance(du,dict):
+        colors = {"đỏ":"do","xanh dương":"xanh_duong","xanh lá":"xanh_la","vàng":"vang",
+                  "trắng":"trang","tím":"tim","cam":"cam","đen":"den"}
+        def group(g):
+            label = str(g.get("ten","")).casefold().removeprefix("bi ").strip()
+            return {"mau":colors.get(label), "so":g.get("so")}
+        groups, selected = du.get("nhom") or [], du.get("chon") or []
+        if not isinstance(groups,list) or not isinstance(selected,list) or len(selected)>1 or not all(isinstance(g,dict) for g in groups+selected):
+            return None
+        obj = dict(id="bi",loai="hop_bi",nhom=[group(g) for g in groups])
+        actions = [dict(kieu="lay_ra",vat="bi",**group(selected[0]))] if selected else []
+        du = dict(vat=[obj],hanh_dong=actions)
+        mh = dict(loai="san_khau")
     if mh.get("loai") != "san_khau" or not isinstance(du, dict) or c.get("giuSanKhau"):
         return None
     objects = du.get("vat")
@@ -357,44 +370,65 @@ def phep_thu_3d(c):
 
 
 def ke_hoach(kb, props):
+    from xe_3d import CAR
+    de = str(kb.get("de_bai") or "")
+    car_problem = CAR.search(de) and not re.search(r"hai (?:chiếc )?xe|hai (?:chiếc )?ô tô|xe thứ hai|ngược chiều nhau",de,re.I)
     practical = kb.get("mon") == "THUC_TE" or (not kb.get("mon") and str(kb.get("id", "")).startswith("TT"))
-    probability = kb.get("mon") == "XAC_SUAT" or (
-        not kb.get("mon") and str(kb.get("id", "")).startswith(("XS", "VD", "VT"))
-    )
+    if kb.get("mon") == "HINH_HOC":
+        return {}
+    physical_kinds = set("nguoi the the_bai xuc_xac dong_xu hop_bi tui hop_qua dong_ho dien_thoai bong_bay vong_quay cua banh ban_tron khoi_hop tru non cau toa_nha xe cay thang canh_that".split())
     ds = {}
     scenes = props.get("canh", [])
     for i, c in enumerate(scenes):
         local = c.get("moHinh3D")
-        if probability and local is None and not kb.get("mo_hinh_3d"):
-            if i + 1 < len(scenes) and scenes[i + 1].get("giuSanKhau"):
-                continue
-            plan = phep_thu_3d(c)
-            if plan:
-                ds[i] = plan
-            continue
-        if local is None and (
-            (not practical and not kb.get("mo_hinh_3d"))
-            or c.get("loai") not in ("mo_dau", "hook", "de_bai", "mo_hinh_hoa")
-        ):
-            continue
-        if kb.get("mon") == "HINH_HOC":
-            continue
         mh = c.get("minhHoa") or {}
-        if local is not None:
-            du = mh.get("duLieu") or {}
-            if isinstance(du, dict) and any(
-                isinstance(v, dict) and v.get("loai") == "anh_that" for v in du.get("vat") or []
-            ):
+        data = mh.get("duLieu")
+        objects = data.get("vat") or [] if isinstance(data,dict) else []
+        kinds = {v.get("loai") for v in objects if isinstance(v,dict)}
+        voice = " ".join(cue["text"] for cue in c.get("cau",[]))
+        car_only = kinds <= {"xe", "chu", "nhan", "mui_ten", "so_dem"}
+        car_scene = "xe" in kinds or c.get("loai") in ("mo_dau", "hook", "de_bai") or CAR.search(voice)
+        car_scene = car_scene or re.search(r"dừng đột ngột|dừng hẳn|hãm phanh", voice, re.I)
+        if car_problem and car_only and car_scene and (local is None or kinds == {"xe"}):
+            ds[i] = {"loai": "xe_duong"}
+            continue
+        physical = bool(kinds & physical_kinds) or mh.get("loai") in ("thuc_te_theo_de","bi_hop","bang_phan_cong") or any(
+            isinstance(n,dict) and n.get("kieu") in ("bi","xuc_xac","the_bai","dong_xu","vat")
+            for n in (data.get("phan_tu") or [] if isinstance(data,dict) else [])
+        ) or any(
+            isinstance(n, dict) and n.get("kieu") == "vat"
+            for obj in objects if isinstance(obj, dict) for n in (obj["hinh"] if isinstance(obj.get("hinh"),list) else [])
+        )
+        opening = c.get("loai") in ("mo_dau", "hook", "de_bai", "mo_hinh_hoa")
+        if "anh_that" in kinds and not physical:
+            continue
+        if c.get("giuSanKhau") and i-1 in ds and local is None:
+            actions = data.get("hanh_dong") if isinstance(data,dict) else []
+            if not objects and not actions and ds[i-1]["loai"] == "phep_thu":
+                ds[i] = ds[i-1]
                 continue
+            if not physical:
+                raise ValueError(f"Cảnh {i + 1}: khai báo mo_hinh_3d cho trạng thái tiếp theo của vật được giữ")
+
+        if local is None:
+            native = phep_thu_3d(c)
+            if native:
+                ds[i] = native
+                continue
+            if not physical and not (opening and (practical or kb.get("mo_hinh_3d"))):
+                continue
+        if local is not None:
             plan = mo_hinh_tu_de(dict(kb, mo_hinh_3d=local))
             if not plan:
                 raise ValueError(f"Mô hình riêng của cảnh {i + 1} sai dữ kiện hoặc kích thước")
         else:
             plan = canh_tu_kich_ban(kb, mh)
-        if probability and plan and plan["loai"] == "lap_ghep" and not plan.get("doan_toan"):
+        if plan and plan["loai"] == "lap_ghep" and not plan.get("doan_toan"):
             plan["giu_vat"] = True
-        if plan and (local is not None or plan not in ds.values()):
+        if plan and (local is not None or physical or plan not in ds.values()):
             ds[i] = plan
+        elif physical and not plan:
+            raise ValueError(f"Cảnh {i + 1}: cần mo_hinh_3d theo đề để dựng vật {', '.join(sorted(kinds))}")
     return ds
 
 
@@ -424,7 +458,8 @@ def main():
         clip = folder / key
         clip.mkdir(exist_ok=True)
         path = clip / "projection.json"
-        if not path.exists() or not all((clip / f"orbit-{j}.png").exists() for j in range(16)):
+        assets = ["xe.png","duong.png"] if scene["loai"]=="xe_duong" else [f"orbit-{j}.png" for j in range(16)]
+        if not path.exists() or not all((clip / asset).exists() for asset in assets):
             jobs[str(path)] = scene
         groups.setdefault("canh_3d/" + key, []).append(i)
     if jobs:
