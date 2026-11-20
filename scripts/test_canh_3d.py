@@ -2,7 +2,8 @@ import unittest
 
 import numpy as np
 
-from canh_3d import ke_hoach, phan_vai
+from canh_3d import ke_hoach, phan_vai, kiem_kich_ban, ThieuMoHinh
+from tao_mo_hinh import bo_sung_mo_hinh
 from kiem_tra_chuyen_dong import vung_dao_lien_tuc
 from xe_3d import luat_van_toc, nhip_xe
 
@@ -71,6 +72,36 @@ class CanhVideoTest(unittest.TestCase):
         props["canh"][-1]["netToan"][0]["diem"] = [[2,1]]
         with self.assertRaisesRegex(ValueError, "Cảnh 4"):
             phan_vai(result,props,kb)
+
+    def test_sinh_luoi_cho_vat_la_va_dung_lai(self):
+        kb = {"de_bai":"Nêm chặn bánh xe cao 12 cm.", "mon":"THUC_TE",
+              "canh":[{"loai":"mo_dau"}, {"loai":"de_bai"}, {"loai":"tinh_toan",
+              "net_toan":[{"diem":[[0,0],[1,1]]}]}]}
+        part = {"hinh":"luoi_tam_giac", "tu_de":"Nêm chặn bánh xe", "co":[.3,.16,.12],
+                "tam":[0,0,.06], "dinh":[[0,0,0],[1,0,0],[0,1,0],[0,0,1]],
+                "mat":[[0,2,1],[1,2,3],[2,0,3],[0,1,3]]}
+        model = {"chi_tiet":[part]}
+        invalid = {"chi_tiet":[dict(part, mat=[[0,0,3]])]}
+        replies = iter([invalid,model,{"dat":True,"loi":""}])
+        self.assertTrue(bo_sung_mo_hinh(kb,kiem_kich_ban,ThieuMoHinh,lambda _:next(replies)))
+        self.assertEqual(kb["canh"][0]["mo_hinh_3d"], model)
+        self.assertFalse(bo_sung_mo_hinh(kb,kiem_kich_ban,ThieuMoHinh,lambda _:self.fail("gọi lại AI")))
+        kb["canh"][0]["mo_hinh_3d"] = invalid
+        replies = iter([model,{"dat":True,"loi":""}])
+        self.assertTrue(bo_sung_mo_hinh(kb,kiem_kich_ban,ThieuMoHinh,lambda _:next(replies)))
+        del kb["canh"][0]["mo_hinh_3d"]
+        rejects = iter([model,{"dat":False,"loi":"sai vật"}]*2)
+        with self.assertRaisesRegex(ValueError,"Cảnh 1: sai vật"):
+            bo_sung_mo_hinh(kb,kiem_kich_ban,ThieuMoHinh,lambda _:next(rejects))
+        self.assertNotIn("mo_hinh_3d",kb["canh"][0])
+
+    def test_tu_dung_theo_tiet_dien_khong_can_ten_vat(self):
+        kb = {"de_bai":"Chi tiết Z dạng lăng trụ đứng có đáy là tam giác vuông, hai cạnh góc vuông "
+              "lần lượt là 30 cm và 12 cm, chiều cao lăng trụ là 16 cm.", "mon":"THUC_TE",
+              "canh":[{"loai":"mo_dau"},{"loai":"de_bai"},{"loai":"tinh_toan"}]}
+        model = kiem_kich_ban(kb)[0]
+        self.assertEqual(model["chi_tiet"][0]["co"], [.3,.12,.16])
+        self.assertEqual([line["do_dai"] for line in model["doan_toan"]], ["30 cm","12 cm","16 cm"])
 
     def test_chu_nhay_va_vat_di_chuyen(self):
         frames = np.zeros((16, 512, 288), np.uint8)

@@ -44,7 +44,7 @@ def canh_tu_kich_ban(kb, mh):
     # Nếu bản vẽ gốc không hợp lệ, tiếp tục dò dữ kiện sân khấu/đề đã kiểm tra.
     if any(isinstance(v, dict) and v.get("loai") in ("do_thi", "hinh_hoc") for v in vat):
         return None
-    simple = canh_mot_vat(de)
+    simple = lang_tru_tu_de(de) or canh_mot_vat(de)
     if simple:
         return mo_hinh_tu_de(dict(kb, mo_hinh_3d=simple))
     bv = next((v for v in vat if isinstance(v, dict) and v.get("loai") == "canh_that"), None)
@@ -112,6 +112,32 @@ def canh_tu_kich_ban(kb, mh):
 
 MET = {"km": 1000, "m": 1, "mét": 1, "cm": 0.01, "mm": 0.001}
 DO_DAI = r"(\d+(?:[.,]\d+)?)\s*(km|cm|mm|mét|m)"
+
+
+def lang_tru_tu_de(de):
+    """Lắp khối theo tiết diện và kích thước đã cho, độc lập với tên đồ vật."""
+    if len(re.findall(r"lăng trụ đứng", de)) != 1 or re.search(r"rỗng|khoét|ghép|hai lăng trụ", de):
+        return None
+    length = r"\d+(?:[.,]\d+)?\s*(?:km|cm|mm|mét|m)\b"
+    base = re.search(
+        r"lăng trụ đứng[^.;!?]{0,70}?tam giác vuông[^.;!?]{0,48}?hai cạnh góc vuông "
+        r"(?:lần lượt )?(?:dài |là )?(" + length + r")\s*(?:và|,)\s*(" + length + ")", de)
+    height = re.findall(r"(?:chiều cao (?:của )?(?:khối |lăng trụ )?(?:là )?|lăng trụ cao )(" + length + ")", de)
+    if not base or len(height) != 1:
+        return None
+    labels = [base[1], base[2], height[0]]
+    sizes = []
+    for label in labels:
+        number, unit = re.fullmatch(DO_DAI, label).groups()
+        sizes.append(float(number.replace(",", ".")) * MET[unit])
+    if min(sizes) <= 0:
+        return None
+    w, d, h = sizes
+    a = [-w/2,-d/2,0]
+    ends = [[w/2,-d/2,0],[-w/2,d/2,0],[-w/2,-d/2,h]]
+    return {"chi_tiet":[{"hinh":"lang_tru","day":[[0,0],[1,0],[0,1]],
+                         "tam":[0,0,h/2],"co":sizes,"tu_de":base[0]}],
+            "doan_toan":[{"a":a,"b":b,"tu_de":label,"do_dai":label} for b,label in zip(ends,labels)]}
 
 
 def canh_mot_vat(de):
@@ -186,6 +212,27 @@ def tang_hop_le(rows):
     )
 
 
+def luoi_hop_le(part):
+    vertices, faces = part.get("dinh"), part.get("mat")
+    if not isinstance(vertices, list) or not 3 <= len(vertices) <= 256 or not all(map(bo_ba, vertices)):
+        return False
+    if not isinstance(faces, list) or not 1 <= len(faces) <= 512:
+        return False
+    used = set()
+    for face in faces:
+        if not isinstance(face, list) or len(face) != 3 or not all(
+            type(i) is int and 0 <= i < len(vertices) for i in face
+        ):
+            return False
+        a, b, c = (vertices[i] for i in face)
+        u = [x-y for x,y in zip(b,a)]
+        v = [x-y for x,y in zip(c,a)]
+        if not any(abs(u[i-1]*v[i]-v[i-1]*u[i]) > 1e-12 for i in range(3)):
+            return False
+        used.update(face)
+    return len(used) == len(vertices)
+
+
 def chuan_trich_dan(text):
     return " ".join(unicodedata.normalize("NFC", str(text or "")).casefold().split())
 
@@ -214,7 +261,8 @@ def mo_hinh_tu_de(kb, loi=None):
             return invalid(f"chi_tiet[{index}] cần tam và co gồm ba số, kích thước co phải dương")
         if (
             item.get("hinh")
-            not in ("hop", "tru", "cau", "non", "thuyen", "bang_chuyen", "lang_tru", "khoi_tiet_dien")
+            not in ("hop", "tru", "cau", "non", "thuyen", "bang_chuyen", "lang_tru", "khoi_tiet_dien", "luoi_tam_giac")
+            or (item["hinh"] == "luoi_tam_giac" and not luoi_hop_le(item))
             or (item["hinh"] == "khoi_tiet_dien" and not tang_hop_le(item.get("tang")))
             or (item["hinh"] == "lang_tru" and not bien_dang_loi(item.get("day")))
             or (item["hinh"] == "thuyen" and not re.search("thuyền|tàu|ca nô|xuồng", source))
@@ -378,6 +426,13 @@ def phep_thu_3d(c):
     )
 
 
+class ThieuMoHinh(ValueError):
+    def __init__(self, index, reason):
+        self.index = index
+        position = "Mô hình chung" if index is None else f"Cảnh {index+1}"
+        super().__init__(f"{position}: {reason}")
+
+
 def ke_hoach(kb, props):
     from xe_3d import CAR
     de = str(kb.get("de_bai") or "")
@@ -396,6 +451,13 @@ def ke_hoach(kb, props):
         if not isinstance(objects, list) or not all(isinstance(v, dict) for v in objects):
             raise ValueError(f"Cảnh {i+1}: vat phải là một danh sách vật thể")
         kinds = {v["loai"] for v in objects if isinstance(v,dict) and isinstance(v.get("loai"), str)}
+        # Các cảnh giải có bản vẽ Manim riêng hoặc số liệu Manim biết dựng.
+        if i > 0 and c.get("loai") != "de_bai" and not local and (c.get("netToan") or
+                (kinds and kinds <= {"do_thi", "bieu_do_cot", "thanh", "dong_ho_do",
+                                     "danh_sach", "the", "nhan", "chu", "banh", "khoi_hop"})):
+            continue
+        if i > 0 and c.get("loai") == "de_bai" and 0 in ds and not local:
+            continue
         voice = " ".join(cue["text"] for cue in c.get("cau",[]))
         car_only = kinds <= {"xe", "chu", "nhan", "mui_ten", "so_dem"}
         car_scene = "xe" in kinds or c.get("loai") in ("mo_dau", "hook", "de_bai") or CAR.search(voice)
@@ -459,7 +521,9 @@ def ke_hoach(kb, props):
             if not errors and kb.get("mo_hinh_3d") is not None:
                 mo_hinh_tu_de(kb, errors)
             reason = errors[0] if errors else "thiếu mô hình cho " + (", ".join(sorted(kinds)) or "vật trong đề")
-            raise ValueError(f"Cảnh {i + 1}: {reason}")
+            if errors or local or kinds in ({"hop_bi"}, {"xuc_xac"}, {"dong_xu"}) or mh.get("loai") == "bi_hop":
+                raise ValueError(f"Cảnh {i + 1}: {reason}")
+            raise ThieuMoHinh(i, reason)
     return ds
 
 
@@ -482,7 +546,7 @@ def phan_vai(ds, props, kb):
             if plan is None and len(scenes)>1 and scenes[1].get("loai") == "de_bai":
                 plan = ds.get(1)
             if plan is None:
-                raise ValueError("Cảnh 1: thiếu bản vẽ Blender cho vật chính của đề")
+                raise ThieuMoHinh(0, "thiếu bản vẽ Blender cho vật chính của đề")
             ds[0] = plan
     transition = next((i for i, c in enumerate(scenes) if i and c.get("loai") == "de_bai"), 1)
     current = ds[0]
@@ -510,20 +574,58 @@ def phan_vai(ds, props, kb):
     return ds
 
 
+def kiem_kich_ban(kb):
+    """Chạy bộ chọn mô hình trên bản viết, trước khi tạo bất cứ tệp âm thanh nào."""
+    if not isinstance(kb.get("canh"), list) or not kb["canh"]:
+        raise ValueError("Kịch bản thiếu danh sách cảnh")
+    props = {"canh": []}
+    for i, scene in enumerate(kb["canh"]):
+        if not isinstance(scene, dict) or not isinstance(scene.get("minh_hoa") or {}, dict):
+            raise ValueError(f"Cảnh {i+1}: sai cấu trúc cảnh hoặc minh_hoa")
+        mh = scene.get("minh_hoa") or {}
+        props["canh"].append({
+            "loai": scene.get("loai"), "moHinh3D": scene.get("mo_hinh_3d"),
+            "minhHoa": {"loai": mh.get("loai"), "duLieu": mh.get("du_lieu")},
+            "giuSanKhau": bool(scene.get("giu_san_khau")) and i > 0,
+            "netToan": scene.get("net_toan"),
+            "cau": [{"text": scene.get("loi_thoai") or ""}],
+        })
+    for index, source in [(None, kb), *enumerate(kb["canh"])]:
+        if "mo_hinh_3d" in source:
+            errors = []
+            if not mo_hinh_tu_de(dict(kb, mo_hinh_3d=source["mo_hinh_3d"]), errors):
+                raise ThieuMoHinh(index, errors[0])
+    return phan_vai(ke_hoach(kb, props), props, kb)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("kb", type=Path)
-    ap.add_argument("props", type=Path)
+    ap.add_argument("props", type=Path, nargs="?")
+    ap.add_argument("--kiem-kich-ban", action="store_true")
+    ap.add_argument("--tu-tao", action="store_true", help="Tạo bản vẽ cho cảnh thiếu mô hình")
     ap.add_argument("--manim-python", default="/tmp/mv/bin/python")
     ap.add_argument("--chuan-bi", action="store_true", help="Ghi môi trường Remotion và đếm các cảnh cần Blender")
     ap.add_argument("--dem", action="store_true")
     args = ap.parse_args()
-    props = json.loads(args.props.read_text())
+    if not args.kiem_kich_ban and args.props is None:
+        ap.error("Thiếu đường dẫn props")
     try:
         kb = json.loads(args.kb.read_text())
+        if args.kiem_kich_ban:
+            if args.tu_tao:
+                from tao_mo_hinh import bo_sung_mo_hinh
+                if bo_sung_mo_hinh(kb, kiem_kich_ban, ThieuMoHinh):
+                    with tempfile.NamedTemporaryFile(dir=args.kb.parent, mode="w", delete=False) as tmp:
+                        json.dump(kb, tmp, ensure_ascii=False)
+                    Path(tmp.name).replace(args.kb)
+            else:
+                kiem_kich_ban(kb)
+            return
+        props = json.loads(args.props.read_text())
         ds = phan_vai(ke_hoach(kb, props), props, kb)
     except ValueError as exc:
-        if args.chuan_bi:
+        if args.chuan_bi or args.kiem_kich_ban:
             report = Path("out/loi_mo_hinh.json")
             report.parent.mkdir(exist_ok=True)
             report.write_text(json.dumps({"nang":[str(exc) + ". Khai báo chi_tiet đúng kiểu, trích nguyên văn đề ở tu_de; kiểm tra tam/co và đoạn đo đúng đơn vị."]},ensure_ascii=False))

@@ -898,6 +898,40 @@ function loiCauChuyen_(kb) {
   return '';
 }
 
+// Dùng cùng phép kiểm khi viết và khi GitHub nhận kịch bản để dựng.
+function loiKichBanDungCanh_(kb, deGoc) {
+  var loi = [], canh = kb.canh;
+  if (!Array.isArray(canh) || canh.length < 3) return ['Cần cảnh mở đầu thực tế, cảnh đọc đề và cảnh giải.'];
+  if (!canh.every(function(c) { return c && typeof c === 'object'; })) return ['Danh sách cảnh có phần tử sai kiểu.'];
+  if (!/^(hook|mo_dau)$/.test(canh[0].loai) || canh[1].loai !== 'de_bai')
+    loi.push('Cảnh 1 phải mở câu chuyện bằng vật thật, cảnh 2 đọc đề và nối cùng vật sang hình toán.');
+  var de = String(deGoc || kb.de_bai || '').normalize('NFC').toLowerCase().replace(/\s+/g, ' ');
+  function banVe(model, viTri) {
+    if (!model) return;
+    (['chi_tiet','doan_toan']).forEach(function(k) {
+      if (!Array.isArray(model[k])) return;
+      model[k].forEach(function(v) {
+        var trich = String(v && v.tu_de || '').trim().normalize('NFC').toLowerCase().replace(/\s+/g, ' ');
+        if (!trich || de.indexOf(trich) < 0) loi.push(viTri + ': ' + k + ' cần trích đúng dữ kiện từ đề gốc.');
+      });
+    });
+  }
+  banVe(kb.mo_hinh_3d, 'Mô hình chung');
+  canh.forEach(function(c,i) {
+    var viTri = 'Cảnh ' + (i + 1);
+    if (!String(c.loi_thoai || '').trim()) loi.push(viTri + ': thiếu lời dẫn.');
+    banVe(c.mo_hinh_3d, viTri);
+    if (c.net_toan !== undefined && (!Array.isArray(c.net_toan) || c.net_toan.length > 32 ||
+      !c.net_toan.every(function(net) {
+        return net && Array.isArray(net.diem) && net.diem.length >= 1 && net.diem.length <= 120 &&
+          net.diem.every(function(p) { return Array.isArray(p) && p.length === 2 &&
+            p.every(function(x) { return typeof x === 'number' && isFinite(x) && x >= 0 && x <= 1; }); }) &&
+          (net.nhan === undefined || typeof net.nhan === 'string');
+      }))) loi.push(viTri + ': nét Manim cần 1–120 điểm [x,y] trong khoảng 0–1.');
+  });
+  return loi;
+}
+
 function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc, lop) {
   var nang = [], nhe = [];
   var lopKT = lop || (kb && kb.lop) || '';
@@ -910,6 +944,7 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc, lop) {
   var them = function (ds, loi) { if (loi) ds.push(loi); };
   if (!kb || !Array.isArray(kb.canh) || !kb.canh.length) return { nang: ['KHONG_CO_CANH: kịch bản phải có mảng "canh" gồm 14-18 cảnh.'], nhe: [] };
   them(nang, loiCauChuyen_(kb));
+  if (String(mon || kb.mon || "").toUpperCase() !== "HINH_HOC") nang = nang.concat(loiKichBanDungCanh_(kb, deGoc));
   var laDai10P = kb.kieu_video === 'DAI_10_PHUT';
   // VIDEO NHIỀU CẢNH, CHI TIẾT: 14-18 cảnh cho video ngắn; 28-65 cảnh cho video bài giảng chuyên đề dài 10 phút
   if (laDai10P) {
@@ -927,13 +962,8 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc, lop) {
     var c = kb.canh[i];
     if (!c.loi_thoai || !String(c.loi_thoai).trim()) { nang.push('THIEU_LOI_THOAI_CANH_' + (i + 1) + ': cảnh nào cũng phải có lời thoại.'); continue; }
     if (/[\\$]/.test(c.loi_thoai)) nang.push('LOI_THOAI_CHUA_LATEX_CANH_' + (i + 1));
-    if (String(mon || kb.mon).toUpperCase() !== 'HINH_HOC') {
-      var vat3d = ((c.minh_hoa || {}).du_lieu || {}).vat || [];
-      var canMoHinh = Array.isArray(vat3d) && vat3d.some(function (v) {
-        return v && /^(nguoi|the|the_bai|tui|hop_qua|dong_ho|dien_thoai|bong_bay|vong_quay|cua|banh|ban_tron|khoi_hop|tru|non|cau|toa_nha|cay|thang)$/.test(v.loai);
-      });
-      if (canMoHinh && !c.mo_hinh_3d && !kb.mo_hinh_3d) nang.push('THIEU_MO_HINH_3D_CANH_' + (i + 1) + ': thêm mo_hinh_3d cho vật minh họa theo dữ kiện đề.');
-    }
+    // Quyết định cần tạo mô hình dựa vào bộ lập cảnh trước TTS.
+    // Các loại "the", "banh", "khoi_hop" cũng là hình Manim trong phần giải.
     tong += uocGiayDoc_(c.loi_thoai);
   }
   if (/^\s*(xin\s+)?chào/i.test(kb.canh[0].loi_thoai) && !(typeof cauHinh_ === 'function' && cauHinh_('KIEU_MO_DAU') === 'chao_hook')) nhe.push('MO_DAU_BANG_LOI_CHAO');
@@ -943,9 +973,12 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc, lop) {
   else if (tong > gioiHan) nhe.push('QUA_DAI_' + tong + '_GIAY');
   if (String(kb.dap_an_cuoi).replace(/\s/g, '') !== dapAn) nang.push('DAP_AN_CUOI_SAI');
 
+  var banVeDau = kb.mo_hinh_3d || kb.canh[0].mo_hinh_3d || (kb.canh[1] && kb.canh[1].mo_hinh_3d);
+  var coBanVeDau = banVeDau && Array.isArray(banVeDau.chi_tiet) && banVeDau.chi_tiet.length > 0;
   var idTruoc = {}, soSanKhau = 0, so3D = 0, soMoHinh = 0, coHinh = 0;
   for (var j = 0; j < kb.canh.length; j++) {
     var cj = kb.canh[j];
+    if (Array.isArray(cj.net_toan) && cj.net_toan.length) soMoHinh++;
     var laSK = cj.minh_hoa && cj.minh_hoa.loai === 'san_khau';
     var idCu = laSK && cj.giu_san_khau ? idTruoc : null;
     them(nhe, kiemTraMinhHoa_(cj.minh_hoa, j + 1, idCu));
@@ -1024,7 +1057,7 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc, lop) {
     var chuDe = String(coHinhDe).toLowerCase();
     // đề XẾP CHỒNG (ống, lon, gạch, khúc gỗ xếp thành tầng/hàng): phải vẽ đúng chồng vật (nét xep_chong hoặc các hình tròn), không thay bằng một khối trụ/hộp
     var xepChong = /xếp|chồng|chất/.test(chuDe) && /tầng|hàng|lớp|chồng/.test(chuDe);
-    var veHinh = kb.canh.slice(0, 3).some(function (c) {
+    var veHinh = (coBanVeDau && !xepChong) || kb.canh.slice(0, 3).some(function (c) {
       var du0 = c && c.minh_hoa && c.minh_hoa.du_lieu;
       if (xepChong) return !!(du0 && Array.isArray(du0.vat) && du0.vat.some(function (v) { return v && v.loai === 'hinh_tu_do' && Array.isArray(v.hinh) && v.hinh.some(function (h) { return h && (h.kieu === 'xep_chong' || h.kieu === 'tron' || (h.kieu === 'lap' && h.hinh && h.hinh.kieu === 'tron')); }); }));
       var du = c && c.minh_hoa && c.minh_hoa.du_lieu;
@@ -1041,7 +1074,7 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc, lop) {
   }
   var taiChinh = laDeTaiChinh_(deGoc);
   if (taiChinh) { var tcK = kiemTraTaiChinh_(kb, deGoc); tcK.nang.forEach(function (x) { nang.push(x); }); tcK.nhe.forEach(function (x) { nhe.push(x); }); }
-  if (thucTe && !taiChinh && so3D < 2 && !coHinhDe) nhe.push('THIEU_CANH_3D: video toán thực tế nên có ít nhất 2 cảnh có vật 3D thật dựng lại tình huống của đề.');
+  if (thucTe && !taiChinh && !coBanVeDau && !so3D && !coHinhDe) nhe.push('THIEU_CANH_3D: video toán thực tế cần tình huống mở đầu có thể dựng bằng Blender.');
   if (thucTe && soMoHinh < 1) nhe.push('THIEU_MO_HINH: video toán thực tế nên có ít nhất 1 cảnh hinh_hoc, do_thi hoặc hinh_tu_do để mô hình hóa.');
   var canDA = kb.canh[timCanhDapAn_(kb)];
   var dsDA = (canDA && canDA.noi_dung_man_hinh) || [];
@@ -2038,7 +2071,7 @@ function kiemTraPhepTinh_(kb) {
         var a = texThanhSo_(ve[m]), b = texThanhSo_(ve[m + 1]);
         if (a === null || b === null) continue;
         var xapXi = dau[m] !== '=';
-        var tol = Math.max(0.5 * Math.pow(10, -soLe10_(ve[m + 1])) * 1.001, Math.abs(b) * (xapXi ? 0.006 : 1e-9), 1e-9);
+        var tol = xapXi ? Math.max(0.5 * Math.pow(10, -soLe10_(ve[m + 1])) * 1.001, Math.abs(b) * 0.006, 1e-9) : Math.max(Math.abs(b) * 1e-9, 1e-9);
         if (Math.abs(a - b) > tol) {
           loi.push('PHEP_TINH_SAI_CANH_' + (j + 1) + ': dòng "' + s.slice(0, 90) + '" sai: ' + ve[m].trim().slice(0, 40) + ' tính ra ' + (Math.round(a * 10000) / 10000) + ', không phải ' + (Math.round(b * 10000) / 10000) +
             '. Sửa cho đúng; nếu đề không có đáp số tròn thì nói thật điều đó, không được ép phép tính sai.');

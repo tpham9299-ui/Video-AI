@@ -162,15 +162,20 @@ def khoi_tiet_dien(p):
     faces = [tuple(reversed(range(n))), tuple(range(base, base + n))]
     for k in range(0, base, n):
         faces.extend((k + i, k + (i + 1) % n, k + n + (i + 1) % n, k + n + i) for i in range(n))
+    return tao_luoi(p, verts, faces, tiet_dien=True)
+
+
+def tao_luoi(p, verts, faces, tiet_dien=False):
     # Chuẩn hóa quanh tâm trước khi đặt vật vào hệ tọa độ chung của đề.
     lo = list(map(min, zip(*verts)))
     hi = list(map(max, zip(*verts)))
-    verts = [[((v - lo[j]) / (hi[j] - lo[j]) - 0.5) * p["co"][j] for j, v in enumerate(pt)] for pt in verts]
+    verts = [[((v - lo[j]) / (hi[j] - lo[j]) - 0.5) * p["co"][j] if hi[j] > lo[j] else 0 for j, v in enumerate(pt)] for pt in verts]
     mesh = bpy.data.meshes.new("Tiết diện")
     mesh.from_pydata(verts, [], faces)
     mesh.update()
-    for face in list(mesh.polygons)[2:]:
-        face.use_smooth = True
+    if tiet_dien:
+        for face in list(mesh.polygons)[2:]:
+            face.use_smooth = True
     ob = bpy.data.objects.new("Khối theo tiết diện", mesh)
     bpy.context.collection.objects.link(ob)
     ob.data.materials.append(MATS.get(p.get("vat_lieu"), MATS["da"]))
@@ -296,6 +301,8 @@ def chi_tiet(p):
             vat("hop", (-0.13 * w, 0, 0.25 * h), (0.37 * w, 0.59 * d, 0.3 * h), "kinh"),
             vat("hop", (-0.13 * w, 0, 0.45 * h), (0.43 * w, 0.68 * d, 0.1 * h), "trang"),
         ]
+    elif shape == "luoi_tam_giac":
+        pieces = [tao_luoi(p, p["dinh"], p["mat"])]
     elif shape == "khoi_tiet_dien":
         pieces = [khoi_tiet_dien(p)]
     elif shape == "lang_tru":

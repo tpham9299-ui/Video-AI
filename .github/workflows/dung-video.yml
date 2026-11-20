@@ -183,6 +183,13 @@ jobs:
               print(f"hh={int(hh)}", file=f)
           PY_HINH
 
+      - name: Đối chiếu kịch bản và thử lập cảnh trước giọng đọc
+        id: kich_ban_canh
+        if: steps.kb.outputs.hh != '1'
+        run: |
+          python3 scripts/canh_3d.py kich_ban.json --kiem-kich-ban --tu-tao
+          node scripts/kiem_tra_kich_ban.cjs kich_ban.json
+
       - name: Cache âm thanh giọng đọc TTS
         uses: actions/cache@v4
         with:
@@ -372,7 +379,7 @@ jobs:
 
       - name: Kiểm duyệt không đạt - báo về Apps Script để tự sửa kịch bản
         id: bao_sua
-        if: always() && env.APPS_SCRIPT_URL != '' && env.ID_VIDEO != '' && (steps.kd.outputs.chan == 'true' || (steps.bo_dung_3d.outcome == 'failure' && hashFiles('out/loi_mo_hinh.json') != ''))
+        if: always() && env.APPS_SCRIPT_URL != '' && env.ID_VIDEO != '' && (steps.kd.outputs.chan == 'true' || ((steps.bo_dung_3d.outcome == 'failure' || steps.kich_ban_canh.outcome == 'failure') && hashFiles('out/loi_mo_hinh.json') != ''))
         run: |
           python3 - <<'PY'
           import json, os

@@ -1321,6 +1321,8 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       var dg = null, lanSua = 0, hetGio = false;
       var maxSua = Number(cauHinh_('SO_LAN_SUA_KICH_BAN')) || 2;
       for (;;) {
+        try { boSungBanVeMoDau_(kb, r, sn); }
+        catch (eBV) { if (kb && kb.canh) luuNhapKichBan_(r.id, kb); throw eBV; }
         chuanBiKichBan_(kb, r, ctxSua);
         dg = danhGiaKichBan_(kb, r.dap_an, r.mon, hinhDe, spham, r.de_bai, r.lop);
         // Hết lỗi nặng thì đi tiếp ngay sang cửa AI chấm tiêu chí (gộp sửa các lưu ý nhẹ vào cùng 1 vòng nếu AI chấm cần sửa, tiết kiệm 1-2 lượt Gemini).
@@ -1364,13 +1366,14 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       }
       // BỘ PHẬN KIỂM DUYỆT YÊU CẦU - cửa 1 (NangCao.gs): AI chấm kịch bản theo bảng yêu cầu của chủ kênh TRƯỚC khi dựng.
       // Nếu kịch bản đạt >= 72% ngay lượt đầu -> tối đa 1 vòng sửa; dưới 72% -> cho phép 2 vòng trên GitHub để nâng chất lượng nhanh gọn.
-      if (typeof aiDuyetKichBan_ === 'function' && String(chNC_('AI_DUYET_KICH_BAN')).toUpperCase() !== 'TAT') {
+      var batBuocDuyetCanh = !laMonHinhHoc_(r);
+      if (batBuocDuyetCanh || (typeof aiDuyetKichBan_ === 'function' && String(chNC_('AI_DUYET_KICH_BAN')).toUpperCase() !== 'TAT')) {
         var maxYC = typeof soLanSuaKichBanYC_ === 'function' ? soLanSuaKichBanYC_() : soLanSuaYeuCau_();
         var lanYC = 0, toiDaYC = Math.min(trenGitHub ? 2 : 1, maxYC), boDe = null, dy = null, totNhatYC = null;
         while (conDuGoiGemini_()) {
           try { dy = aiDuyetKichBan_(kb, r, spham); }
           catch (eYC) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(eYC.message))) { luuNhapKichBan_(r.id, kb); throw eYC; } dy = null; }
-          if (!dy) { nhatKy_('KIEM_DUYET_YC', r.id + ': AI chưa chấm được kịch bản, để cửa kiểm duyệt video chặn sau'); break; }
+          if (!dy) break;
           if (lanYC === 0 && Number(dy.phan_tram) >= 72) toiDaYC = Math.min(1, toiDaYC);
           nhatKy_('KIEM_DUYET_YC', r.id + ' kịch bản lần ' + (lanYC + 1) + ': đáp ứng ' + dy.phan_tram + '% | ' + tomTatTieuChi_(dy) + (dy.dat ? ' -> ĐẠT' : ' | ' + dy.van_de.slice(0, 3).join('; ').slice(0, 250)));
           if (dy.dat) break;
@@ -1396,6 +1399,14 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
             if (dgYC.nang.length) { kb = JSON.parse(kbTruoc); nhatKy_('KIEM_DUYET_YC', r.id + ': bản sửa sinh lỗi nặng (' + dgYC.nang.map(function (x) { return String(x).split(':')[0]; }).join(', ') + '), giữ bản trước'); }
             else dg = dgYC;
           }
+        }
+        if (batBuocDuyetCanh && !(dy && dy.dat)) {
+          luuNhapKichBan_(r.id, kb);
+          if (!boDe) {
+            ghi_(sh, r._row, {so_lan_loi: Math.max(0, (Number(r.so_lan_loi) || 1) - 1), ghi_chu: 'Chờ duyệt đủ nội dung và hình của từng cảnh trước khi dựng'});
+            continue;
+          }
+          throw new Error('KICH_BAN_KHONG_HOP_LE: ' + boDe);
         }
         if (boDe) {
           // Khôi phục bản kịch bản tốt nhất đã được AI chỉnh sửa theo góp ý (totNhatYC).
@@ -1505,6 +1516,26 @@ function chuanBiKichBan_(kb, r, ctxSua) {
   kb._phien_ban_edit = PHIEN_BAN_EDIT;
   suaDapAn_(kb, r.dap_an);   // sau khi tự sửa (có thể vừa thêm/đổi cảnh) để cảnh đáp án luôn đúng
   if (sua.length) nhatKy_('KICH_BAN_TU_SUA', r.id + ': ' + sua.slice(0, 8).join('; ').slice(0, 450));
+}
+
+// Bổ sung riêng vật chính trước khi người duyệt đọc kịch bản, dùng cùng kho key với biên kịch.
+function boSungBanVeMoDau_(kb, r, sn) {
+  if (laMonHinhHoc_(r) || !kb || !Array.isArray(kb.canh) || !kb.canh.length || kb.mo_hinh_3d) return;
+  var c = kb.canh[0], tiep = kb.canh[1];
+  if (!c || c.mo_hinh_3d || (tiep && tiep.loai === 'de_bai' && tiep.mo_hinh_3d)) return;
+  var mh = c.minh_hoa || {}, du = mh.du_lieu || {};
+  var vat = (Array.isArray(du.vat) ? du.vat : []).filter(function(v) {
+    return v && ['nhan','chu','mui_ten','so_dem'].indexOf(v.loai) < 0;
+  });
+  if (mh.loai === 'bi_hop' || mh.loai === 'thuc_te_theo_de' ||
+      (vat.length === 1 && ['hop_bi','xuc_xac','dong_xu','cua','xe','canh_that'].indexOf(vat[0].loai) >= 0)) return;
+  if (!conDuGoiGemini_()) throw new Error('HET_GIO');
+  var model = goiGemini_('Bạn phụ trách tạo mô hình Blender. Dựa trên đề gốc và lời dẫn sau, tự thiết kế vật chính; trả đối tượng JSON có chi_tiet và doan_toan. ' +
+    'Mỗi chi tiết có id riêng, tu_de trích nguyên văn đề, tam và co [x,y,z] theo mét, xoay theo độ, vat_lieu, dich_chuyen nếu vật chuyển động. ' +
+    'Ghép hop, tru, cau, non, lang_tru (day là đa giác lồi), khoi_tiet_dien (tang là các hàng [z,cx,cy,rx,ry] tăng theo z) hoặc luoi_tam_giac (dinh và mat là bộ ba chỉ số từ 0). ' +
+    'Dựng đặc điểm nhận dạng, số lượng và quan hệ đúng đề. Đoạn đo có a,b,tu_de và do_dai nếu đề cho số đo. Không ghi kích thước mỹ thuật thành số liệu toán. ' +
+    'Chỉ trả bản vẽ. Đề: ' + r.de_bai + '\nCảnh: ' + JSON.stringify(c), 0.15, sn);
+  if (model && Array.isArray(model.chi_tiet) && model.chi_tiet.length) c.mo_hinh_3d = model;
 }
 
 // Nhờ Gemini sửa ĐÚNG các lỗi còn lại (gửi kèm toàn bộ quy tắc + kịch bản hiện tại), giữ nguyên phần đã đúng.

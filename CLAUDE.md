@@ -97,13 +97,15 @@ Sân khấu xác suất có một bình bi, một nhóm xu hoặc xúc xắc có
 
 ---
 
-## III. CHI TIẾT CÁC CƠ CHẾ TRỌNG TÂM (PHIÊN BẢN HIỆN HÀNH — LẦN 51)
+## III. CHI TIẾT CÁC CƠ CHẾ TRỌNG TÂM (PHIÊN BẢN HIỆN HÀNH — LẦN 52)
 
-### Kịch bản, bối cảnh và bộ dựng ở v84
+### Kịch bản, bối cảnh và bộ dựng ở v85
 
 Biên kịch nhận lời giải đã kiểm chứng và viết lời dẫn quanh một quyết định. Trường `cau_chuyen` đi qua kiểm tra của Apps Script. Với toán thực tế và xác suất, Blender dựng môi trường dọc theo `phong_canh` và xuất vật thể có alpha. Khi đọc đề, Remotion hòa khung vật thể cuối sang hình Manim ở cùng tọa độ chiếu. Các cảnh giải dùng sơ đồ Manim ổn định, gồm hình chiếu từ mô hình, dữ liệu đồ thị và các đường `net_toan` của kịch bản. GitHub dùng secrets của runner. Khi kho GitHub không phục vụ được yêu cầu viết, hàng đợi chuyển bản nháp sang Apps Script và dùng KhoKey của nhóm VIDEO.
 
 Phép thử chuẩn và xe có bộ dựng riêng. Với vật khác, bộ chọn đối chiếu bản vẽ riêng, mô hình chung và dữ kiện có thể dựng. Khi thiếu dữ kiện, workflow gửi số cảnh về luồng sửa kịch bản. Hình học tiếp tục dùng Manim và tọa độ đã kiểm chứng.
+
+Trước khi giao dựng, biên kịch có thể gọi riêng Gemini để bổ sung mô hình vật chính. Người duyệt đọc đầy đủ lời thoại, hình, phép tính của từng cảnh cùng đề và lời giải đã kiểm chứng. Bài thực tế và xác suất cần kết quả đạt cho toàn bộ cảnh. GitHub lập thử kế hoạch từ JSON trước TTS. Khi thiếu mô hình, runner thử dữ kiện hình học trực tiếp, rồi yêu cầu Gemini sinh bản vẽ riêng cho cảnh và đối chiếu lại. Blender nhận cả lưới tam giác tùy biến. Manim lấy tọa độ chiếu từ vật đã dựng.
 
 Lịch đăng chạy bằng trigger `chayLichDangDinhKy` mỗi 15 phút theo khung giờ Việt Nam. Trigger `kiemTraDangSauDuyet` kiểm tra thêm sau khi duyệt. Kết quả được lưu theo từng nền tảng để phục hồi lần đăng thành công một phần.
 
@@ -950,3 +952,9 @@ Lịch đăng chạy bằng trigger `chayLichDangDinhKy` mỗi 15 phút theo khu
 - Blender xuất môi trường, chuyển động và dữ liệu chiếu. Manim dựng nét hình, các dấu kết quả xác suất, đồ thị và công thức. Remotion đồng bộ hòa mờ khi đọc đề và giữ góc nhìn ổn định trong phần giải.
 - Bước chọn cảnh kiểm tra tọa độ nét toán, số lượng vật trong phép thử và gửi lỗi mô hình về luồng sửa kịch bản. Bộ lấy mẫu kiểm duyệt phân biệt cảnh chuyển đổi với cảnh giải.
 - Tách trigger sau duyệt khỏi lịch định kỳ và phục hồi lịch cũ. Apps Script nhận ô giờ dạng thời gian của Sheets và thử lại những nền tảng còn thiếu sau khi đã có kết quả thành công. Hai workflow đăng đều báo lỗi về hàng đợi khi bước chuẩn bị thất bại.
+
+#### Lần 52 (v85) — Kiểm chứng kịch bản theo cảnh và sinh mô hình theo đề
+
+- Apps Script và bộ viết trên GitHub giữ bản nháp khi chưa duyệt đủ cảnh thực tế hoặc xác suất. Lỗi dữ kiện, sai phép tính và sai chuyển động đi vào vòng sửa với số cảnh.
+- Workflow thử lập cảnh trước giọng đọc. Các cảnh có sơ đồ Manim hoặc số liệu biểu đồ dùng hình toán. Bản vẽ thiếu hoặc sai cấu trúc có thể được tạo riêng từ đề, kiểm tra bằng bộ lập cảnh và một lượt đối chiếu nội dung. Bản đã đạt được dùng lại trong cùng lượt dựng.
+- Bổ sung lưới tam giác tự do và phép dựng lăng trụ từ hai cạnh góc vuông cùng chiều cao ghi trong đề. Bộ kiểm tra bắt chỉ số mặt sai, tam giác suy biến, trích dẫn và độ dài đường đo sai.

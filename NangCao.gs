@@ -149,12 +149,12 @@ function xuLyKiemDuyetBoCuc_(sh, r, kd) {
   var nang = (kd && kd.nang) || [];
   if (kd && kd.loai === 'mo_hinh' && r.file_kich_ban) {
     var soLan = Number(docAiKT_(r).mo_hinh_lan) || 0;
-    var lyDo = 'Bản vẽ 3D: ' + nang.join(' | ');
+    var lyDo = 'Kịch bản và bản vẽ: ' + nang.join(' | ');
     if (soLan >= soLanSuaYeuCau_()) {
       ghi_(sh, r._row, {trang_thai: 'LOI', ghi_chu: lyDo.slice(0, 300)});
       nhatKy_('DUNG_LOI', r.id + ' ' + lyDo);
     } else {
-      traVeSuaKichBan_(sh, r, lyDo, 'Sửa dữ kiện bản vẽ 3D', {mo_hinh_lan: soLan + 1});
+      traVeSuaKichBan_(sh, r, lyDo, 'Sửa kịch bản và dữ kiện dựng cảnh', {mo_hinh_lan: soLan + 1});
     }
     return {ok: true};
   }
@@ -360,20 +360,41 @@ function moTaKichBanChoDuyet_(kb) {
       '\n  hình: ' + String((c.minh_hoa || {}).mo_ta || '').slice(0, 200) + ' || vật: ' + vatCua(c);
   }).join('\n').slice(0, 16000);
 }
+function loiDoiChieuCanh_(ds, soCanh) {
+  if (!Array.isArray(ds) || ds.length !== soCanh) return ['Chưa đối chiếu đủ ' + soCanh + ' cảnh với đề gốc.'];
+  var loi = [];
+  ds.forEach(function(c,i) {
+    if (!c || c.canh !== i+1 || !Array.isArray(c.loi)) loi.push('Thiếu kết quả đối chiếu cảnh ' + (i+1));
+    else c.loi.forEach(function(x) { loi.push('Cảnh ' + (i+1) + ': ' + String(x)); });
+  });
+  return loi;
+}
 function aiDuyetKichBan_(kb, r, spham) {
   var ds = tieuChiYeuCau_(!!spham, 'kb');
+  var canDoiChieu = !laMonHinhHoc_(r);
   var prompt = 'Bạn là BỘ PHẬN KIỂM DUYỆT YÊU CẦU của một kênh video dạy toán (TikTok/YouTube/Facebook). Chấm KỊCH BẢN dưới đây TRƯỚC KHI DỰNG, thật khắt khe, theo đúng các yêu cầu của chủ kênh.\n' +
     'LỚP HỌC CỦA ĐỀ: Lớp ' + r.lop + (typeof yeuCauKienThucLop_ === 'function' && yeuCauKienThucLop_(r.lop, r.mon) ? '\n' + yeuCauKienThucLop_(r.lop, r.mon) + '\n' : '\n') +
     'ĐỀ BÀI: ' + r.de_bai + (r.mo_ta_hinh ? '\nMÔ TẢ HÌNH CỦA ĐỀ: ' + r.mo_ta_hinh : '') + '\nĐÁP ÁN ĐÃ KIỂM CHỨNG: ' + (r.dap_an_hien || r.dap_an) +
     (kb.khong_thu_lai ? '\nKỊCH BẢN GHI KHÔNG THỂ THỬ LẠI VÌ: ' + kb.khong_thu_lai : '') +
     (spham ? '\nSẢN PHẨM QUẢNG BÁ: ' + spham.ten + ' | giá kênh bán ' + spham.gia_ban + 'đ | thông số đã xác minh: ' + (spham.thong_so || []).join('; ') + ' | số ảnh thật: ' + ((spham.anh || []).length) : '') +
-    '\nKỊCH BẢN (' + (kb.canh || []).length + ' cảnh):\n' + moTaKichBanChoDuyet_(kb) + '\n' +
+    '\nKỊCH BẢN (' + (kb.canh || []).length + ' cảnh):\n' + (canDoiChieu ? JSON.stringify({cau_chuyen:kb.cau_chuyen, mo_hinh_3d:kb.mo_hinh_3d, canh:kb.canh}) : moTaKichBanChoDuyet_(kb)) + '\n' +
     'TIÊU CHÍ (chấm mỗi tiêu chí 0-10; 9-10 khi rõ ràng và đúng chuẩn; 8 khi tốt chỉ còn góp ý văn phong nhỏ; <= 6 khi có lỗi sai toán, sai đáp án, thiếu thử lại bằng số, hoặc vẽ sai hẳn vật của đề):\n' + moTaTieuChi_(ds) + '\n' +
     'Tự kiểm lại từng phép tính trên màn hình. "van_de": mỗi vấn đề một câu, ghi rõ cảnh số mấy. "gop_y": chỉ dẫn sửa CỤ THỂ theo từng cảnh (vẽ vật gì, đặt ở đâu, số nào sai sửa thành gì).\n' +
     'Trả JSON: {"diem":{' + ds.map(function (t) { return '"' + t.id + '":0'; }).join(',') + '},"van_de":[],"gop_y":""}';
+  if (canDoiChieu) prompt += '\nLỜI GIẢI THAM CHIẾU: ' + String(r.cach_1 || '') +
+    '\nĐối chiếu từng cảnh với đề và lời giải trên. Kiểm lại số lượng, đơn vị, điều kiện, từng phép biến đổi, và công thức đúng lớp. Kiểm tra vật Blender mở đầu và hành động trùng lời kể, vật chuyển sang nét toán cùng vị trí khi đọc đề, hình Manim đúng đại lượng đang giải, góc nhìn ổn định. Ví dụ sai phải được đính chính. Bổ sung doi_chieu_canh là mảng có đúng một mục cho MỖI cảnh theo thứ tự, mỗi mục {canh: số thứ tự từ 1, loi: []}; khi có sai sót hoặc thiếu căn cứ, ghi từng lỗi cụ thể vào loi.';
   var j = goiGemini_(prompt, 0.1, tuyChonBienKich_());
   if (!j || !j.diem) return null;
-  return tinhDapUng_(j, ds);
+  var kq = tinhDapUng_(j, ds);
+  if (canDoiChieu) {
+    var loi = loiDoiChieuCanh_(j.doi_chieu_canh, kb.canh.length);
+    if (loi.length) {
+      kq.dat = false;
+      kq.nang.push('doi_chieu_canh');
+      kq.van_de = loi.concat(kq.van_de);
+    }
+  }
+  return kq;
 }
 
 // Bỏ video + xóa đề (không đạt yêu cầu sau khi đã tự sửa). Đề được dọn khỏi sheet ở lần chạy tới (mã băm lưu lại để không sinh lại).
