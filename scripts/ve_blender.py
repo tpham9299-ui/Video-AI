@@ -324,7 +324,7 @@ def phep_thu(s):
                     dots.extend([(-1, 0), (1, 0)])
                 for a, b in dots:
                     pos = center + basis @ (n * 0.665 + 0.32 * (a * u + b * v))
-                    ob = vat("cau", pos, (0.21, 0.21, 0.045), "toi")
+                    ob = vat("cau", pos, (0.21, 0.21, 0.045), "den")
                     ob.rotation_euler = (basis @ n).to_track_quat("Z", "Y").to_euler()
                     pieces.append(ob)
         pieces[0]["ket_qua"] = str(value)
