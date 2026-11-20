@@ -147,6 +147,17 @@ function traVeSuaKichBan_(sh, r, gopY, ghiChu, them) {
 // GitHub báo KIỂM DUYỆT BỐ CỤC không đạt (đo trên khung hình thật: chữ tràn mép, chữ đè, TeX thô, công thức lỗi)
 function xuLyKiemDuyetBoCuc_(sh, r, kd) {
   var nang = (kd && kd.nang) || [];
+  if (kd && kd.loai === 'mo_hinh' && r.file_kich_ban) {
+    var soLan = Number(docAiKT_(r).mo_hinh_lan) || 0;
+    var lyDo = 'Bản vẽ 3D: ' + nang.join(' | ');
+    if (soLan >= soLanSuaYeuCau_()) {
+      ghi_(sh, r._row, {trang_thai: 'LOI', ghi_chu: lyDo.slice(0, 300)});
+      nhatKy_('DUNG_LOI', r.id + ' ' + lyDo);
+    } else {
+      traVeSuaKichBan_(sh, r, lyDo, 'Sửa dữ kiện bản vẽ 3D', {mo_hinh_lan: soLan + 1});
+    }
+    return {ok: true};
+  }
   var lan = (Number(docAiKT_(r).kd_lan) || 0) + 1;
   nhatKy_('KIEM_DUYET', r.id + ' lần ' + lan + ': ' + nang.length + ' lỗi bố cục | ' + nang.slice(0, 4).join(' | ').slice(0, 400));
   if (!r.file_kich_ban) { baoLoiDung_(sh, r, 'KIEM_DUYET: ' + nang.slice(0, 2).join('; ')); return { ok: true }; }
@@ -254,7 +265,7 @@ function aiChamVideo_(r) {
   if (anhDe) anhs.push(anhDe);
   var kb = {};
   try { kb = JSON.parse(DriveApp.getFileById(r.file_kich_ban).getBlob().getDataAsString()); } catch (e) {}
-  var ds = tieuChiYeuCau_(!!kb.san_pham, 'video');
+  var ds = tieuChiYeuCau_(!!kb.san_pham, 'video').filter(function(t) { return t.id !== 'ke_chuyen' || !!kb.cau_chuyen; });
   if (kb.san_pham && typeof anhSanPhamChoGemini_ === 'function') anhSanPhamChoGemini_(kb.san_pham, 2).forEach(function (a) { anhs.push(a); });
   var canh = (kb.canh || []);
   if (!canh.length || !chuanLop_(r.lop)) throw new Error('Thiếu kịch bản hoặc lớp để xác minh phương pháp');
@@ -293,6 +304,7 @@ var TIEU_CHI_YEU_CAU_ = [
   { id: 'loi_giai', w: 3, bb: true, kb: true, chu: 'LỜI GIẢI ĐÚNG TOÁN HỌC & ĐÚNG CHƯƠNG TRÌNH LỚP (GDPT 2018): mọi phép tính, số trung gian, công thức trên màn hình đúng toán học, dẫn đúng tới đáp án, giải thích công thức có từ đâu; VÀ BẮT BUỘC dùng đúng phương pháp của lớp ghi trên đề (lớp 10-11 TUYỆT ĐỐI KHÔNG dùng bảng biến thiên / đạo hàm y\'=0 tìm cực trị-GTLN-GTNN, nguyên hàm-tích phân, Oxyz, xác suất có điều kiện/Bayes của lớp 12; không dùng số phức). Nếu giải vượt lớp -> chấm <= 4 điểm.' },
   { id: 'dap_an', w: 2, bb: true, kb: true, chu: 'ĐÁP ÁN đúng (khớp đáp án đã kiểm chứng), hiện rõ, đọc được đầy đủ chữ số và đơn vị.' },
   { id: 'thu_lai', w: 1.5, bb: true, kb: true, chu: 'THỬ LẠI THẬT: cảnh thử lại có phép thử bằng số cụ thể (thế đáp án vào đề / cách thứ hai / so giá trị khác) cả trên màn hình lẫn lời thoại; chỉ một khung chữ "thử lại" là không đạt. Kịch bản ghi rõ "khong_thu_lai" kèm lý do hợp lý thì tiêu chí này đạt.' },
+  { id: 'ke_chuyen', w: 2, bb: true, kb: true, chu: 'Nghe lời thoại có nhận ra một người kể, một mục tiêu ban đầu, lý do từng bước giải và quyết định cuối dựa trên đáp án không? Cảnh vật phải thuộc câu chuyện. Chỉ rõ cảnh bị đứt mạch hoặc thêm sai dữ kiện.' },
   { id: 'nhieu_canh', w: 2, bb: true, kb: true, chu: 'MỖI CẢNH MỘT MINH HỌA LINH HOẠT KHỚP NỘI DUNG CẢNH ĐÓ: mỗi cảnh của bài toán thực tế phải thể hiện đúng đoạn nội dung mà cảnh đó đang nói (chia thành nhiều bước/khung hình con, phóng to phần đang xét, làm nổi đại lượng đang tính, mô phỏng sai lầm ở cảnh bẫy, biểu đồ/đồ thị/số đếm ở bước tính); tránh dùng duy nhất 1 hình minh họa tĩnh giống hệt nhau áp dụng cho toàn bộ video.' },
   { id: 'bo_cuc', w: 2, bb: true, kb: false, chu: 'BỐ CỤC SẠCH: không chữ/hình/người đè lên nhau, không tràn hay bị cắt ở mép, không mã LaTeX thô, chữ đủ to đọc trên điện thoại.' },
   { id: 'tham_my', w: 1, bb: false, kb: false, chu: 'THẨM MỸ: hình hấp dẫn, có chiều sâu, cân đối, màu sắc thống nhất.' },
@@ -341,7 +353,7 @@ function moTaKichBanChoDuyet_(kb) {
       return v.loai + (nd !== '' ? '(' + String(nd).slice(0, 40) + ')' : '') + (v.anh !== undefined && v.loai === 'anh_that' ? '[ảnh SP ' + v.anh + ']' : '');
     }).join(', ') + (c.giu_san_khau ? ' [giữ hình cảnh trước]' : '');
   };
-  return (kb.canh || []).map(function (c, i) {
+  return JSON.stringify(kb.cau_chuyen || {}) + "\n" + (kb.canh || []).map(function (c, i) {
     return 'Cảnh ' + (i + 1) + ' [' + c.loai + '] ' + String(c.tieu_de_canh || '') +
       '\n  lời: ' + String(c.loi_thoai || '').slice(0, 260) +
       '\n  màn hình: ' + (c.noi_dung_man_hinh || []).map(String).join(' | ').slice(0, 260) +
@@ -359,7 +371,7 @@ function aiDuyetKichBan_(kb, r, spham) {
     'TIÊU CHÍ (chấm mỗi tiêu chí 0-10; 9-10 khi rõ ràng và đúng chuẩn; 8 khi tốt chỉ còn góp ý văn phong nhỏ; <= 6 khi có lỗi sai toán, sai đáp án, thiếu thử lại bằng số, hoặc vẽ sai hẳn vật của đề):\n' + moTaTieuChi_(ds) + '\n' +
     'Tự kiểm lại từng phép tính trên màn hình. "van_de": mỗi vấn đề một câu, ghi rõ cảnh số mấy. "gop_y": chỉ dẫn sửa CỤ THỂ theo từng cảnh (vẽ vật gì, đặt ở đâu, số nào sai sửa thành gì).\n' +
     'Trả JSON: {"diem":{' + ds.map(function (t) { return '"' + t.id + '":0'; }).join(',') + '},"van_de":[],"gop_y":""}';
-  var j = goiGemini_(prompt, 0.1, { suyNghi: 'low' });
+  var j = goiGemini_(prompt, 0.1, tuyChonBienKich_());
   if (!j || !j.diem) return null;
   return tinhDapUng_(j, ds);
 }

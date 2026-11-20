@@ -1,3 +1,4 @@
+import {BoiCanh, NenCauChuyen} from './NenCauChuyen';
 import React from 'react';
 import {AbsoluteFill, Audio, Img, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame} from 'remotion';
 import {Canh, sanKhauCuaCanh} from './Canh';
@@ -125,14 +126,14 @@ const NoiDungVideo: React.FC<Props> = (props) => {
   };
   const coThuongHieu = !!thuongHieu && !!(thuongHieu.ten || thuongHieu.logo || thuongHieu.handle);
   return (
-    <AbsoluteFill style={{fontFamily: FONT}}>
+    <BoiCanh.Provider value={props.phongCanh}><AbsoluteFill style={{fontFamily: FONT}}>
       <KieuToan kieu={phongCach.kieuToan || 'dam'} />
       {/* chữ xuống dòng CÂN BẰNG (các dòng dài gần bằng nhau, không còn một chữ lẻ loi ở dòng dưới), tránh ngắt ở cụm ngắn */}
       <style>{'div, span { text-wrap: balance; } .katex, .katex * { text-wrap: nowrap; }'}</style>
       <NapPhongToan />
       {/* nền tự tạo riêng cho từng video (mặc định); chỉ dùng nền ảnh của bạn khi đặt DUNG_NEN_DRIVE=1 */}
-      {props.nenTuTao ? <NenTuTao cfg={props.nenTuTao} nhan={GIAO_DIEN.nhan} /> : <Nen nen={nen} dsNen={props.dsNen} canh={canh} pc={phongCach} tongFrame={tongFrame} />}
-      {moi && (!props.nenTuTao || props.nenTuTao.kieu === 'luoi') ? <LuoiSan mau={GIAO_DIEN.nhan} /> : null}
+      {props.phongCanh ? <NenCauChuyen set={props.phongCanh} /> : props.nenTuTao ? <NenTuTao cfg={props.nenTuTao} nhan={GIAO_DIEN.nhan} /> : <Nen nen={nen} dsNen={props.dsNen} canh={canh} pc={phongCach} tongFrame={tongFrame} />}
+      {!props.phongCanh && moi && (!props.nenTuTao || props.nenTuTao.kieu === 'luoi') ? <LuoiSan mau={GIAO_DIEN.nhan} /> : null}
       {nhac ? <Audio src={staticFile(nhac)} loop volume={amNhac} /> : null}
       {canh.map((c, i) => (
         <Sequence key={c.so} from={c.batDau} durationInFrames={c.soFrame + keoDai(i)}>
@@ -208,6 +209,6 @@ const NoiDungVideo: React.FC<Props> = (props) => {
         </Sequence>
       ) : null}
       {props.kiemDuyet ? <KiemDuyet /> : null}
-    </AbsoluteFill>
+    </AbsoluteFill></BoiCanh.Provider>
   );
 };

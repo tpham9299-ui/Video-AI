@@ -20,7 +20,7 @@ const RA = process.env.BP1_RA || path.join(GOC, 'ket_qua_bp1.json');
 const DE_MAU = {hang: {id: 'THU-' + Date.now().toString(36), trang_thai: 'MOI', lop: '12', mon: 'THUC_TE', chu_de: 'Bể nước ít vật liệu', so_lan_loi: 0,
   de_bai: 'Xây một bể nước hình hộp chữ nhật không nắp, đáy là hình vuông, thể tích 32 m³. Tìm diện tích xây (đáy + 4 mặt bên) nhỏ nhất (m²).'}, cau_hinh: {}};
 const de = process.env.BP1_DE ? JSON.parse(process.env.BP1_DE) : process.argv[2] ? JSON.parse(fs.readFileSync(process.argv[2], 'utf8')) : DE_MAU;
-const keys = String(process.env.GEMINI_KEYS || process.env.GEMINI_API_KEY || '').split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean);
+const keys = [...new Set([process.env.GEMINI_KEYS, process.env.GEMINI_API_KEY].filter(Boolean).join(',').split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean))];
 const GIA_LAP = process.env.BP1_GIA_LAP === '1';
 const out = {id: de.hang && de.hang.id, ok: false, hang: {}, kich_ban: null, nhat_ky: [], zalo: [], series_ghi: null, loi: ''};
 
@@ -75,7 +75,7 @@ const thuMuc = {
 
 /* ---------------- gọi Gemini: tiến trình phụ gọi song song, đồng bộ với mã .gs ---------------- */
 let vongKey = 0;
-function goiTho(model, bodies) {
+function goiTho(model, bodies, tungModel = false) {
   if (GIA_LAP) return bodies.map(giaLapGemini);
   const t = path.join(os.tmpdir(), `bp1_${process.pid}_${Date.now()}.json`);
   // Danh sách model linh hoạt: tự động đổi model ngay trong tiến trình gọi khi gặp lỗi (404, 400, 429 hết ngày, 500, 503, mạng)
@@ -83,7 +83,7 @@ function goiTho(model, bodies) {
   const dsCauHinh = typeof ctx.danhSachModel_ === 'function' ? ctx.danhSachModel_() : [];
   const models = [...new Set([model, ...dsCauHinh, ch.MODEL_CHINH, ch.MODEL_DU_PHONG, 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-flash-lite-latest'].map((x) => String(x || '').trim()).filter(Boolean))];
   const hedgeGiay = String(ch.GOI_DU_PHONG_SONG_SONG).toUpperCase() === 'TAT' ? 0 : Number(ch.GIAY_GOI_DU_PHONG) || 0;
-  fs.writeFileSync(t, JSON.stringify({model, models, bodies, keys, batDauKey: vongKey, hedgeGiay}));
+  fs.writeFileSync(t, JSON.stringify({model, models, bodies, keys, batDauKey: vongKey, hedgeGiay, tungModel}), {mode: 0o600});
   vongKey = (vongKey + bodies.length) % Math.max(1, keys.length);
   try {
     return JSON.parse(execFileSync(process.execPath, [path.join(__dirname, 'goi_gemini.js'), t], {maxBuffer: 64 * 1024 * 1024, timeout: 330000}).toString());
@@ -126,7 +126,7 @@ const ctx = {
   ScriptApp: {getProjectTriggers: () => [], newTrigger: () => new Proxy({}, {get: () => () => ({})}), deleteTrigger() {}},
   // kho key (thay tệp KhoKey.gs của Apps Script)
   khoDanhSachKey_: () => (GIA_LAP ? ['gia_lap'] : keys),
-  khoGoi_: (_nhom, model, body) => goiTho(model, [body])[0],
+  khoGoi_: (_nhom, model, body, opts) => goiTho(model, [body], !!opts?.tungModel)[0],
   khoGoiSong_: (_nhom, model, bodies) => goiTho(model, bodies),
 };
 
@@ -206,7 +206,7 @@ for (;;) {
     break;
   } catch (e) {
     const m = String(e && e.message);
-    if (m === 'QUA_TAI' && lan < 3) { lan++; console.log('Gemini quá tải, chờ ' + 25 * lan + ' giây rồi thử lại'); ngu(25000 * lan); continue; }
+    if (m === 'QUA_TAI' && viec !== 'kich_ban' && lan < 3) { lan++; console.log('Gemini quá tải, chờ ' + 25 * lan + ' giây rồi thử lại'); ngu(25000 * lan); continue; }
     out.loi = m;
     out.viec = viec;
     console.log('LỖI: ' + m + '\n' + String(e && e.stack || '').slice(0, 800));

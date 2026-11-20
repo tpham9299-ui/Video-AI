@@ -62,7 +62,7 @@ jobs:
       so_khuc: ${{ steps.chia.outputs.so_khuc }}
       khuc: ${{ steps.chia.outputs.khuc }}
       manim: ${{ steps.chia.outputs.manim }}
-      chan: ${{ steps.kd.outputs.chan || 'false' }}
+      chan: ${{ steps.kd.outputs.chan == 'true' || steps.bao_sua.outputs.da_bao == 'true' }}
     env:
       RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
       DRIVE_NEN: ${{ vars.DRIVE_NEN }}
@@ -371,19 +371,21 @@ jobs:
           done
 
       - name: Kiểm duyệt không đạt - báo về Apps Script để tự sửa kịch bản
-        if: steps.kd.outputs.chan == 'true' && env.APPS_SCRIPT_URL != ''
+        id: bao_sua
+        if: always() && env.APPS_SCRIPT_URL != '' && env.ID_VIDEO != '' && (steps.kd.outputs.chan == 'true' || (steps.bo_dung_3d.outcome == 'failure' && hashFiles('out/loi_mo_hinh.json') != ''))
         run: |
           python3 - <<'PY'
           import json, os
-          b = json.load(open('out/kiem_duyet.json', encoding='utf8'))
+          path = 'out/loi_mo_hinh.json' if os.path.isfile('out/loi_mo_hinh.json') else 'out/kiem_duyet.json'
+          b = json.load(open(path, encoding='utf8'))
           d = {"token": os.environ["DUNG_VIDEO_SECRET"], "id": os.environ["ID_VIDEO"], "ok": False, "loi": "KIEM_DUYET_BO_CUC",
-               "kiem_duyet": {"nang": b.get("nang", [])[:15], "nhe": b.get("nhe", [])[:10]}}
+               "kiem_duyet": {"loai": "mo_hinh" if path.endswith("loi_mo_hinh.json") else "bo_cuc", "nang": b.get("nang", [])[:15], "nhe": b.get("nhe", [])[:10]}}
           json.dump(d, open("bao_kiem_duyet.json", "w", encoding="utf8"), ensure_ascii=False)
           PY
           for lan in 1 2 3 4 5 6; do
             KQ=$(curl -sS -L --max-time 45 -H 'Content-Type: application/json' --data @bao_kiem_duyet.json "$APPS_SCRIPT_URL" || true)
             echo "Lần $lan: $KQ"
-            if echo "$KQ" | grep -Eq '"ok" *: *true|KHONG_TIM_THAY'; then break; fi
+            if echo "$KQ" | grep -Eq '"ok" *: *true|KHONG_TIM_THAY'; then echo "da_bao=true" >> "$GITHUB_OUTPUT"; break; fi
             if echo "$KQ" | grep -q 'SAI_TOKEN'; then echo "SAI_TOKEN"; break; fi
             if echo "$KQ" | grep -q 'BAN'; then sleep 60; continue; fi
             sleep 20

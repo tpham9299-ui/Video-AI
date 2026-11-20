@@ -43,8 +43,8 @@ await renderMedia({
   separateAudioTo: path.join(ra, `khuc_${i}.aac`),
   outputLocation: path.join(ra, `khuc_${i}.ts`),
   imageFormat: 'jpeg',
-  concurrency: inputProps.canh.some(c => c.moiTruong) ? Math.min(3, soLuong) : soLuong,
-  chromiumOptions: inputProps.canh.some(c => c.moiTruong) ? {gl: 'swangle'} : undefined,
+  concurrency: (inputProps.phongCanh || inputProps.canh.some(c => c.moiTruong)) ? Math.min(3, soLuong) : soLuong,
+  chromiumOptions: (inputProps.phongCanh || inputProps.canh.some(c => c.moiTruong)) ? {gl: 'swangle'} : undefined,
   browserExecutable,
   overwrite: true,
   onProgress: ({progress}) => {

@@ -76,7 +76,8 @@ var HUONG_DAN_MA_HINH_ = 'Viết MỘT hàm JavaScript thuần tên kiemChung() 
   'Hình PHẲNG: điểm [x,y]; tự viết hàm giao 2 đường thẳng, giao đường thẳng - đường tròn, giao 2 đường tròn, trung điểm, chân đường vuông góc, tâm đường tròn ngoại tiếp, phân giác, quay điểm. ' +
   'Hình KHÔNG GIAN: điểm [x,y,z] (đặt đáy trên mặt z = 0, chiều cao theo trục z; góc khuất phía sau-trái đặt ở y > 0 như A=[0,d,0], các đỉnh phía trước ở y = 0 để phép chiếu sách giáo khoa X = x + 0.41*y, Y = z + 0.29*y nhìn từ phía trước-trên-bên phải thấy rõ mặt trước và che khuất đúng cạnh sau); ' +
   'tự viết hàm tích vô hướng, tích có hướng, phương trình mặt phẳng, hình chiếu điểm lên mặt phẳng / đường thẳng, khoảng cách điểm - mặt phẳng, khoảng cách hai đường chéo nhau, góc đường thẳng - mặt phẳng, góc hai mặt phẳng, thể tích (|tích hỗn tạp|/6). ' +
-  'Đề có dữ kiện tự do (tam giác bất kỳ, điểm M bất kỳ, hình chóp bất kỳ...) thì sinh tham số NGẪU NHIÊN hợp lệ (đúng mọi điều kiện của đề; dùng Math.random). ' +
+  'Đề có dữ kiện tự do (tam giác bất kỳ, điểm M bất kỳ, hình chóp bất kỳ...) thì sinh tham số NGẪU NHIÊN hợp lệ (đúng mọi điều kiện của đề; dùng Math.random để kiểm chứng các cấu hình; riêng hình trả về chọn ví dụ đúng mà khoảng cách nhỏ nhất giữa hai điểm phân biệt là lớn nhất sau khi chia cho đường kính hình). ' +
+  'Với tam giác nhọn tự do dùng mẫu lệch rõ: B=(0,0), C=(8,0), A=(2.1,4.6); các góc đều nhỏ hơn 90 độ. Dùng cùng cấu hình đã chọn xuyên mọi cảnh. Nếu đề quy định cân, đều, tù, vuông, số đo hay thứ tự cạnh thì dựng đúng loại và dữ kiện thay cho mẫu. Dựng toàn bộ điểm phụ từ đỉnh đã chọn. Ưu tiên điểm tự do ở trong đoạn, cách hai đầu; khi AH và AM khác nhau phải thấy rõ góc giữa hai đường. Không tách các điểm buộc trùng theo đề. ' +
   'Mọi vòng lặp phải dừng, tổng không quá 200000 phép tính. ';
 var DANG_TRA_HINH_ = '"hinh": {"diem":{"A":[x,y] hoặc [x,y,z],...} tọa độ TẤT CẢ các điểm có tên trong đề VÀ các điểm phụ (H, M, K, I, O...) của MỘT cấu hình đẹp, dễ nhìn (không quá dẹt, các điểm không sát nhau), ' +
   '"canh":[["A","B"],...] các cạnh NHÌN THẤY của hình (vẽ nét liền), "khuat":[["A","D"],...] (CHỈ hình không gian) các cạnh BỊ CHE KHUẤT nằm phía sau hoặc bên trong khối khi nhìn từ phía trước (vẽ nét đứt chuẩn hình học không gian), ' +
@@ -111,6 +112,17 @@ function giaiHinhHoc_(r) {
     try { may = chayMaHinh_(r, goiGemini_(HUONG_DAN_MA_HINH_ + 'Thử mệnh đề ở ÍT NHẤT 6 cấu hình ngẫu nhiên, trả {"kieu":"chung_minh","so_cau_hinh":n,"du_max":số,' + DANG_TRA_HINH_ + '}. Trả JSON: {"ma":"function kiemChung(){...}"}\n\n' + de, 0.2, { suyNghi: 'high' })); }
     catch (e) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(e.message))) throw e; }
     dung = may && may.kieu === 'chung_minh' && Number(may.so_cau_hinh) >= 4 && Number(may.du_max) < 1e-6;
+  }
+  // Nếu mã luôn trả về cùng một hình quá sát, xin một phép dựng khác.
+  // Chỉ thay hình sau khi mã mới cũng kiểm chứng được mệnh đề.
+  if (dung && may.hinh && doRoHinhPhang_(may.hinh, r.de_bai) < 0.045 && !/\d/.test(r.de_bai)) {
+    var veLai = HUONG_DAN_MA_HINH_ + 'Hình trước có hai điểm sát nhau hoặc đường cao gần trùng trung tuyến. Chọn lại các tham số TỰ DO để tách rõ điểm và nét, rồi dựng lại điểm phụ. Nếu giả thiết bắt buộc trùng, giữ nguyên. ' +
+      'Thử ít nhất 6 cấu hình, trả {"kieu":"chung_minh","so_cau_hinh":n,"du_max":số,' + DANG_TRA_HINH_ + '}. Trả JSON {"ma":"function kiemChung(){...}"}.\n' + de;
+    try {
+      var alt = chayMaHinh_(r, goiGemini_(veLai, 0.2, {suyNghi:'high'}));
+      if (alt && alt.kieu === 'chung_minh' && alt.so_cau_hinh >= 4 && alt.du_max < 1e-6 &&
+          alt.hinh && doRoHinhPhang_(alt.hinh, r.de_bai) > doRoHinhPhang_(may.hinh, r.de_bai)) may = alt;
+    } catch (eVe) { nhatKy_('GIAI', r.id + ': giữ cấu hình hình học đã kiểm chứng'); }
   }
   var cm1 = c1.chung_minh_duoc === true, cm2 = c2.chung_minh_duoc === true;
   // hai lời chứng minh đều nói ĐƯỢC mà máy thử lại thấy sai: nhiều khả năng mã dựng hình viết sai (không phải đề sai)
@@ -181,10 +193,43 @@ function giaiHinhTinh_(r, de, t0, deGiai, phuongPhap2) {
   return { dat: true, c1: c1, c2: c2, dap_an: dapAn, dap_an_hien: hien, mo_ta: tt.mo, de_co_van_de: tt.de_co_van_de };
 }
 
+// So các cấu hình đúng của cùng phép dựng; giữ nguyên quan hệ phụ thuộc giữa các điểm.
+function doRoHinhPhang_(h, de) {
+  var pts = h && h.diem || {}, names = Object.keys(pts);
+  if (names.length < 3 || !names.every(function(n){return Array.isArray(pts[n]) && pts[n].length===2;})) return 1;
+  var max = 0, min = Infinity;
+  names.forEach(function(a,i){ names.slice(i+1).forEach(function(b){
+    var d = Math.hypot(pts[a][0]-pts[b][0],pts[a][1]-pts[b][1]);
+    min=Math.min(min,d); max=Math.max(max,d);
+  }); });
+  var score = max ? min/max : 0;
+  var match = /[Tt]am giác\s+(?:nhọn\s+([A-Z]{3})|([A-Z]{3})\s+nhọn)(?![A-Za-z])/.exec(de);
+  var vertices = match && (match[1] || match[2]).split('');
+  if (vertices && vertices.every(function(n) { return !!pts[n]; })) {
+    var sides = vertices.map(function(n, i) {
+      var q = pts[vertices[(i+1)%3]];
+      return Math.hypot(pts[n][0]-q[0], pts[n][1]-q[1]);
+    }).sort(function(a,b) { return a-b; });
+    if (sides[0]*sides[0]+sides[1]*sides[1]<=sides[2]*sides[2]) return -1;
+    if (!/tam giác (?:nhọn )?(?:cân|đều)|cân tại|đều tại/i.test(de)) score=Math.min(score,(sides[1]-sides[0])/max,(sides[2]-sides[1])/max);
+  }
+  return score;
+}
 function chayMaHinh_(r, kc) {
   if (!kc || !kc.ma) return null;
-  try { return chayKiemChung_(kc.ma); }
-  catch (e) { nhatKy_('GIAI', r.id + ': mã dựng hình lỗi (' + String(e.message).slice(0, 100) + ')'); return null; }
+  try {
+    var best = chayKiemChung_(kc.ma);
+    if (!best || best.kieu !== 'chung_minh' || !(best.du_max < 1e-6) || best.so_cau_hinh < 4) return best;
+    var score = doRoHinhPhang_(best.hinh, r.de_bai);
+    var batDauChon = Date.now();
+    for (var i = 0; i < 8 && score < 0.075 && Date.now() - batDauChon < 1500; i++) {
+      var next = chayKiemChung_(kc.ma);
+      if (!next || next.kieu !== 'chung_minh' || !(next.du_max < 1e-6) || next.so_cau_hinh < 4) return next;
+      var s = doRoHinhPhang_(next.hinh, r.de_bai);
+      if (s>score) {best=next; score=s;}
+    }
+    return score < 0 ? null : best;
+  } catch (e) { nhatKy_('GIAI', r.id + ': mã dựng hình lỗi (' + String(e.message).slice(0, 100) + ')'); return null; }
 }
 
 // ============================================================
@@ -437,7 +482,7 @@ function chieuHinhKhongGian_(h) {
 function chuanHinhToaDo_(h) {
   if (!h || typeof h !== 'object' || !h.diem || typeof h.diem !== 'object') return null;
   h = chieuHinhKhongGian_(h);
-  var ten = Object.keys(h.diem).filter(function (k) { var p = h.diem[k]; return Array.isArray(p) && isFinite(Number(p[0])) && isFinite(Number(p[1])); }).slice(0, 24);
+  var ten = Object.keys(h.diem).filter(function (k) { var p = h.diem[k]; return /^[A-Z](?:'+|_?\d+|_\{\d+\})?$/.test(k) && Array.isArray(p) && isFinite(Number(p[0])) && isFinite(Number(p[1])); }).slice(0, 24);
   if (ten.length < 2) return null;
   var xs = [], ys = [];
   ten.forEach(function (k) { xs.push(Number(h.diem[k][0])); ys.push(Number(h.diem[k][1])); });

@@ -1,4 +1,60 @@
 {
+  "cau_chuyen": {
+    "nguoi_ke": "người dẫn trò",
+    "dia_diem": "sân khấu trò chơi",
+    "muc_tieu": "giúp người chơi quyết định giữ hay đổi cửa",
+    "phong_canh": {
+      "troi": "#84a4b6",
+      "dat": "#726b61",
+      "vat": [
+        {
+          "ten": "vách sân khấu",
+          "hinh": "hop",
+          "tam": [
+            0,
+            3,
+            -9
+          ],
+          "co": [
+            18,
+            6,
+            0.5
+          ],
+          "mau": "#256d76"
+        },
+        {
+          "ten": "cánh gà trái",
+          "hinh": "hop",
+          "tam": [
+            -5,
+            3,
+            -5
+          ],
+          "co": [
+            2,
+            6,
+            1
+          ],
+          "mau": "#b6684d"
+        },
+        {
+          "ten": "cánh gà phải",
+          "hinh": "hop",
+          "tam": [
+            5,
+            3,
+            -5
+          ],
+          "co": [
+            2,
+            6,
+            1
+          ],
+          "mau": "#b6684d"
+        }
+      ]
+    }
+  },
  "id": "VT-mau-monty",
  "lop": "12",
  "chu_de": "Ba cánh cửa: giữ hay đổi?",
@@ -6,7 +62,7 @@
  "de_bai": "Một gameshow có 3 cánh cửa, sau 1 cửa là xe máy, sau 2 cửa còn lại là con dê. Bạn chọn cửa số 1. Người dẫn chương trình biết xe ở đâu, mở một trong hai cửa còn lại và luôn mở cửa có dê. Nếu bạn đổi sang cửa còn lại, xác suất thắng xe là bao nhiêu?",
  "dap_an": "2/3",
  "tieu_de": "Đổi cửa thì thắng gấp đôi? Toán nói CÓ",
- "hook": "Ba cánh cửa, một xe máy. Đổi cửa thắng gấp đôi, bạn tin không?",
+ "hook": "Tối nay tôi dẫn trò chơi ba cánh cửa. Tôi biết xe máy ở đâu. Bạn chọn một cửa rồi, liệu tôi có thể cho bạn một lý do để đổi ý?",
  "hook_chu": "Đổi cửa, cơ hội thắng GẤP ĐÔI?",
  "hook_kieu": "bat_ngo",
  "nhan_manh": [
@@ -28,7 +84,7 @@
   {
    "so": 1,
    "loai": "mo_dau",
-   "loi_thoai": "Ba cánh cửa, một xe máy. Đổi cửa thắng gấp đôi, bạn tin không?",
+   "loi_thoai": "Tối nay tôi dẫn trò chơi ba cánh cửa. Tôi biết xe máy ở đâu. Bạn chọn một cửa rồi, liệu tôi có thể cho bạn một lý do để đổi ý?",
    "noi_dung_man_hinh": [],
    "minh_hoa": {
     "loai": "san_khau",
@@ -646,7 +702,7 @@
    "loai": "bai_hoc",
    "tieu_de_canh": "Ghi nhớ 3 điều",
    "tu_khoa": "3 điều",
-   "loi_thoai": "Vậy rút ra được gì? Xét hết trường hợp trước khi đoán năm mươi năm mươi. Ai biết trước mà cho thêm thông tin thì xác suất thay đổi. Thử nghĩ: một trăm cửa, mở chín mươi tám cửa dê, đổi thắng bao nhiêu? Bình luận nhé!",
+   "loi_thoai": "Tôi mở cửa có dê vì tôi biết giải thưởng ở đâu. Bạn đổi sang cửa còn đóng thì cơ hội thắng là hai phần ba. Lần sau gặp một lời gợi ý, hãy hỏi người đưa tin đã biết điều gì.",
    "noi_dung_man_hinh": [],
    "minh_hoa": {
     "loai": "san_khau",

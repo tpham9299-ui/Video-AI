@@ -881,6 +881,23 @@ function kiemTraCachDay_(kb) {
 //  - nang: làm hỏng video hoặc sai nội dung (thiếu lời thoại, sai đáp án, không vẽ hình của đề, quá dài nhiều...) -> phải sửa.
 //  - nhe : chỉ chưa đẹp theo quy ước (tiêu đề, hook, số cảnh có hình...) -> thử sửa một lần, còn thì vẫn dùng được.
 // Gọi SAU tuSuaKichBan_ (máy đã tự sửa phần lớn lỗi vặt).
+function loiCauChuyen_(kb) {
+  var story = kb.cau_chuyen, set = story && story.phong_canh;
+  function chu(x) { return typeof x === 'string' && x.trim().length > 1; }
+  function mau(x) { return /^#[0-9a-f]{6}$/i.test(String(x)); }
+  function ba(x) { return Array.isArray(x) && x.length === 3 && x.every(function(n){return typeof n === 'number' && isFinite(n);}); }
+  if (!story || ![story.nguoi_ke, story.dia_diem, story.muc_tieu].every(chu))
+    return 'THIEU_CAU_CHUYEN: ghi rõ người kể, địa điểm, quyết định cần đưa ra và kể bằng lời thoại.';
+  if (!set || !mau(set.troi) || !mau(set.dat) || !Array.isArray(set.vat) || set.vat.length < 3 || set.vat.length > 32)
+    return 'THIEU_PHONG_CANH: dựng địa điểm bằng màu trời, sàn và 3–32 khối ở phong_canh.vat.';
+  if (!set.vat.every(function(v) {
+    return v && chu(v.ten) && /^(hop|tru|cau|non)$/.test(v.hinh) && mau(v.mau) && ba(v.tam) &&
+      Math.abs(v.tam[0]) <= 10 && v.tam[1]>=0 && v.tam[1]<=8 && v.tam[2]>=-12 && v.tam[2]<=0 &&
+      ba(v.co) && v.co.every(function(n){return n>0 && n<=20;});
+  })) return 'PHONG_CANH_SAI: kiểm tra tên, hình, màu, tâm [x,y,z] và kích thước từng vật theo quy ước phong_canh.';
+  return '';
+}
+
 function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc, lop) {
   var nang = [], nhe = [];
   var lopKT = lop || (kb && kb.lop) || '';
@@ -892,6 +909,7 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc, lop) {
   }
   var them = function (ds, loi) { if (loi) ds.push(loi); };
   if (!kb || !Array.isArray(kb.canh) || !kb.canh.length) return { nang: ['KHONG_CO_CANH: kịch bản phải có mảng "canh" gồm 14-18 cảnh.'], nhe: [] };
+  them(nang, loiCauChuyen_(kb));
   var laDai10P = kb.kieu_video === 'DAI_10_PHUT';
   // VIDEO NHIỀU CẢNH, CHI TIẾT: 14-18 cảnh cho video ngắn; 28-65 cảnh cho video bài giảng chuyên đề dài 10 phút
   if (laDai10P) {

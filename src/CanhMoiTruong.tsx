@@ -1,6 +1,7 @@
+import {BoiCanh, datPhongCanh} from './NenCauChuyen';
 import React, { useLayoutEffect, useRef } from 'react';
 import * as T from 'three';
-import { CanhProps, MoiTruong } from './types';
+import { CanhProps, MoiTruong, PhongCanh } from './types';
 
 const clamp = (x: number) => Math.max(0, Math.min(1, x));
 const material = (color: string, metalness = 0) =>
@@ -73,7 +74,7 @@ function shadow(parent: T.Object3D, w: number, d: number) {
   obj.rotation.x = -Math.PI / 2;
   return obj;
 }
-function route(scene: T.Scene, camera: T.PerspectiveCamera, c: CanhProps) {
+function route(scene: T.Scene, camera: T.PerspectiveCamera, c: CanhProps, set?: PhongCanh) {
   scene.background = new T.Color('#b7d9e7');
   scene.fog = new T.FogExp2('#d6e1d8', 0.02);
   box(scene, 0, -0.22, 0, 240, 0.32, 160, '#809161');
@@ -82,7 +83,7 @@ function route(scene: T.Scene, camera: T.PerspectiveCamera, c: CanhProps) {
   for (let x = -65; x < 70; x += 5) box(scene, x, 0.014, 0, 2.5, 0.018, 0.095, '#fff1c4');
   box(scene, 0, 0, -4.2, 150, 0.22, 1.4, '#c9bca8');
   const facades = ['#c68862', '#cbbd98', '#dfc9aa', '#a9b9b0'];
-  for (let i = 0; i < 18; i++) {
+  for (let i = 0; !set && i < 18; i++) {
     const x = i * 6 - 46,
       h = 4 + ((i * 7) % 5) * 0.9,
       z = -11 - (i % 3);
@@ -103,6 +104,7 @@ function route(scene: T.Scene, camera: T.PerspectiveCamera, c: CanhProps) {
       }
     }
   }
+  if (set) datPhongCanh(scene,set);
   const car = new T.Group();
   scene.add(car);
   shadow(car, 5.3, 2.5);
@@ -255,13 +257,17 @@ function table(
   camera: T.PerspectiveCamera,
   plan: Extract<MoiTruong, { loai: 'phep_thu' }>,
   c: CanhProps,
+  set?: PhongCanh,
 ) {
   scene.background = new T.Color('#bdc8b9');
   scene.fog = new T.Fog('#bbbcaa', 12, 34);
   mesh(scene, new T.BoxGeometry(42, 0.4, 22), surface(true), 0, -0.2, 0);
+  if (set) datPhongCanh(scene,set);
+  else {
   box(scene, 0, 4, -10, 40, 8, 0.3, '#74897e');
   box(scene, -2, 3.2, -9.78, 8, 4.3, 0.13, '#e4ddd0');
   for (let i = 0; i < 3; i++) box(scene, i * 2.55 - 4.55, 3.2, -9.66, 2.4, 4, 0.12, '#accbd0');
+  }
   const group = new T.Group();
   scene.add(group);
   const count = plan.gia_tri.length,
@@ -367,6 +373,7 @@ export const CanhMoiTruong: React.FC<{ plan: MoiTruong; canh: CanhProps; time: n
   canh,
   time,
 }) => {
+  const set = React.useContext(BoiCanh);
   const host = useRef<HTMLDivElement>(null);
   const draw = useRef<(t: number) => void>();
   useLayoutEffect(() => {
@@ -384,7 +391,7 @@ export const CanhMoiTruong: React.FC<{ plan: MoiTruong; canh: CanhProps; time: n
     const sun = new T.DirectionalLight('#fff0c9', 2.25);
     sun.position.set(-6, 10, 6);
     scene.add(sun);
-    const animate = plan.loai === 'xe_duong' ? route(scene, camera, canh) : table(scene, camera, plan, canh);
+    const animate = plan.loai === 'xe_duong' ? route(scene, camera, canh, set) : table(scene, camera, plan, canh, set);
     renderer.shadowMap.enabled = true;
     sun.castShadow = true;
     const extent = plan.loai === 'xe_duong' ? 20 : 9;
@@ -424,7 +431,7 @@ export const CanhMoiTruong: React.FC<{ plan: MoiTruong; canh: CanhProps; time: n
       renderer.forceContextLoss();
       renderer.domElement.remove();
     };
-  }, [canh, plan]);
+  }, [canh, plan, set]);
   useLayoutEffect(() => {
     draw.current?.(time);
   }, [time, canh, plan]);

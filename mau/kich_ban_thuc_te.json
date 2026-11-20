@@ -1,4 +1,60 @@
 {
+  "cau_chuyen": {
+    "nguoi_ke": "người phụ trách công trường",
+    "dia_diem": "công trường xây bể",
+    "muc_tieu": "chọn kích thước bể để tiết kiệm gạch",
+    "phong_canh": {
+      "troi": "#84a4b6",
+      "dat": "#726b61",
+      "vat": [
+        {
+          "ten": "tường gạch",
+          "hinh": "hop",
+          "tam": [
+            0,
+            1.5,
+            -8
+          ],
+          "co": [
+            16,
+            3,
+            0.4
+          ],
+          "mau": "#ab6953"
+        },
+        {
+          "ten": "kiện gạch",
+          "hinh": "hop",
+          "tam": [
+            -3,
+            0.6,
+            -3
+          ],
+          "co": [
+            2,
+            1.2,
+            1
+          ],
+          "mau": "#b15c46"
+        },
+        {
+          "ten": "cột nhà xưởng",
+          "hinh": "hop",
+          "tam": [
+            4,
+            3,
+            -5
+          ],
+          "co": [
+            0.8,
+            6,
+            0.8
+          ],
+          "mau": "#707777"
+        }
+      ]
+    }
+  },
  "id": "VT-mau-be-nuoc",
  "mon": "THUC_TE",
  "lop": "12",
@@ -15,7 +71,7 @@
  "dap_an": "48",
  "dap_an_hien": "x = 4 m, h = 2 m, S = 48 m²",
  "tieu_de": "Xây bể 32 khối sao cho tốn ít gạch nhất?",
- "hook": "Xây bể nước ba mươi hai khối, làm sao cho tốn ít gạch nhất?",
+ "hook": "Tôi đang tính gạch cho một bể nước không nắp. Bể phải chứa đủ ba mươi hai mét khối. Nên chọn cạnh đáy thế nào để tiết kiệm gạch?",
  "hook_chu": "Bể 32 khối: xây sao cho tốn ÍT GẠCH NHẤT?",
  "hook_kieu": "cau_hoi",
  "nhan_manh": [
@@ -42,7 +98,7 @@
   {
    "so": 1,
    "loai": "mo_dau",
-   "loi_thoai": "Xây bể nước ba mươi hai khối, làm sao cho tốn ít gạch nhất?",
+   "loi_thoai": "Tôi đang tính gạch cho một bể nước không nắp. Bể phải chứa đủ ba mươi hai mét khối. Nên chọn cạnh đáy thế nào để tiết kiệm gạch?",
    "noi_dung_man_hinh": [],
    "minh_hoa": {
     "loai": "san_khau",
@@ -575,7 +631,7 @@
    "loai": "bai_hoc",
    "tieu_de_canh": "Ghi nhớ dạng bài tối ưu",
    "tu_khoa": "tối ưu",
-   "loi_thoai": "Vậy rút ra được gì? Dùng đại lượng cố định để khử bớt ẩn, đọc kỹ có nắp hay không, rồi cho đạo hàm bằng không. Thử nhé: bể có nắp thì cạnh đáy bao nhiêu? Bình luận cho mình biết!",
+   "loi_thoai": "Tôi ghi vào bản vẽ đáy vuông cạnh bốn mét, thành cao hai mét. Bể chứa vừa đủ ba mươi hai mét khối, còn phần cần xây chỉ có bốn mươi tám mét vuông.",
    "noi_dung_man_hinh": [],
    "minh_hoa": {
     "loai": "san_khau",

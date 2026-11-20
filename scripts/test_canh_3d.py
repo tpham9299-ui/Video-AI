@@ -21,12 +21,33 @@ class CanhVideoTest(unittest.TestCase):
         self.assertIsNone(luat_van_toc("v(t)=sin(t) m/s"))
 
     def test_phep_thu_giu_nguyen_so_bi(self):
-        shot = {"minhHoa": {"loai": "bi_hop", "duLieu": {
+        shot = {"moHinh3D": {"chi_tiet": []}, "minhHoa": {"loai": "bi_hop", "duLieu": {
             "nhom": [{"ten": "đỏ", "so": 3}], "chon": [{"ten": "đỏ", "so": 2}]}}}
         plans = ke_hoach({"mon": "XAC_SUAT"}, {"canh": [shot, {"giuSanKhau": True}]})
         self.assertEqual(plans[0]["gia_tri"], ["do"] * 3)
         self.assertEqual(plans[0]["so_rut"], 2)
         self.assertEqual(plans[0], plans[1])
+
+    def test_ban_ve_rieng_hong_con_du_kien(self):
+        scene = {"loai":"de_bai", "moHinh3D":{"chi_tiet":[]}}
+        plans = ke_hoach({"mon":"THUC_TE", "de_bai":"Băng chuyền dài 8 m."}, {"canh":[scene]})
+        self.assertEqual(plans[0]["loai"], "lap_ghep")
+        with self.assertRaisesRegex(ValueError, "Cảnh 1"):
+            ke_hoach({"mon":"THUC_TE", "de_bai":"Kho hàng."}, {"canh":[scene]})
+
+    def test_san_khau_cua_giu_hanh_dong(self):
+        stage = {"vat":[{"id":"cua","loai":"cua","so_luong":3}],
+                 "hanh_dong":[{"vat":"cua","kieu":"mo","chi_so":[3]}]}
+        props = {"canh":[{"minhHoa":{"loai":"san_khau","duLieu":stage}}]}
+        self.assertEqual(ke_hoach({"mon":"XAC_SUAT"},props), {})
+        self.assertEqual(stage["hanh_dong"][0]["chi_so"], [3])
+
+    def test_xuc_xac_va_nhan_di_cung_nhau(self):
+        stage = {"vat":[{"id":"xx","loai":"xuc_xac","ket_qua":[3,4]},
+                        {"id":"tong","loai":"nhan","noi_dung":"Tổng bằng 7"}]}
+        props = {"canh":[{"minhHoa":{"loai":"san_khau","duLieu":stage}}]}
+        self.assertEqual(ke_hoach({"mon":"XAC_SUAT"},props), {})
+        self.assertEqual(stage["vat"][0]["ket_qua"], [3,4])
 
     def test_quyen_dung_moi_truong(self):
         props = {"fps": 30, "canh": [{"soFrame": 90, "cau": []}, {}, {"giuSanKhau": True}, {}]}

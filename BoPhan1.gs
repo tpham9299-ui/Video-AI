@@ -79,6 +79,8 @@ var MAC_DINH = {
   SO_DE_GITHUB_CUNG_LUC: '3',  // số đề GitHub xử lý song song mỗi luồng
   SO_GIAI_DE_CUNG_LUC: '3',    // luồng 1A (Giải đề MOI -> DA_GIAI): số đề giải song song trên GitHub
   SO_KICH_BAN_CUNG_LUC: '5',   // luồng 1B (Xây kịch bản DA_GIAI -> CO_KICH_BAN): tăng lên 5 luồng song song để cấp kịch bản nhanh cho bộ dựng video
+  MODEL_BIEN_KICH: 'gemini-2.5-pro',
+  SUY_NGHI_BIEN_KICH: 'high',
   MUC_SUY_NGHI_KICH_BAN: 'low', // mức "suy nghĩ" của Gemini khi viết kịch bản/tìm đề: low (nhanh, khuyên dùng) | high | tat (không gửi tham số)
   MUC_SUY_NGHI_GIAI: 'mac_dinh', // khi GIẢI đề: mac_dinh (để Gemini tự quyết, chính xác hơn) | low | high
   UOC_GOI_GEMINI_GIAY: '75',   // ước lượng một lần gọi Gemini mất bao lâu; không đủ chừng này thời gian thì để lần chạy sau
@@ -1260,7 +1262,7 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       r._series = typeof xacDinhSeries_ === 'function' ? xacDinhSeries_(r) : null;
       r._hook = typeof chonKieuHook_ === 'function' ? chonKieuHook_() : '';
       var prompt = taoPromptKichBan_(r, c1, c2);   // lời nhắc nằm trong tệp PromptKichBan.gs
-      var sn = { suyNghi: cauHinh_('MUC_SUY_NGHI_KICH_BAN') };
+      var sn = tuyChonBienKich_();
       // Đề gửi kèm ảnh: cho Gemini NHÌN ảnh khi viết kịch bản để vẽ lại đúng hình của đề (không thay bằng vật "gần giống").
       var anhDe = anhDeChoGemini_(r);
       if (anhDe) sn.anh = anhDe;
@@ -1270,7 +1272,7 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       r._banVe = null;
       if ((anhDe || deCoHinh_(r)) && typeof lapBanVe_ === 'function' && conDuGoiGemini_()) {
         try { r._banVe = lapBanVe_(r, anhDe); if (r._banVe) nhatKy_('BAN_VE', r.id + ': đã lập bản vẽ ' + (r._banVe.vat || []).map(function (v) { return v.ten; }).join(', ')); }
-        catch (eBv) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(eBv.message))) throw eBv; }
+        catch (eBv) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(eBv.message))) throw eBv; }
         prompt = taoPromptKichBan_(r, c1, c2);
       }
       // Có bản nháp từ lần trước (đang sửa dở) thì sửa tiếp từ đó, không viết lại từ đầu.
@@ -1306,7 +1308,7 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
           }
         } catch (eGY) {
           luuNhapKichBan_(r.id, kb);
-          if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(eGY.message))) throw eGY;
+          if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(eGY.message))) throw eGY;
           ghi_(sh, r._row, { ghi_chu: 'Chưa sửa được theo góp ý (' + String(eGY.message).slice(0, 120) + '), thử lại lượt sau' }, r.id);
           continue;
         }
@@ -1327,7 +1329,7 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
         var kbMoi = null;
         try { kbMoi = suaKichBanBangGemini_(kb, dsLoi, prompt, sn); }
         catch (eS) {
-          if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(eS.message))) { luuNhapKichBan_(r.id, kb); throw eS; }
+          if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(eS.message))) { luuNhapKichBan_(r.id, kb); throw eS; }
           nhatKy_('KICH_BAN_SUA', r.id + ': Gemini sửa lỗi (' + String(eS.message).slice(0, 120) + ')');
         }
         if (kbMoi && Array.isArray(kbMoi.canh) && kbMoi.canh.length) kb = kbMoi;
@@ -1355,7 +1357,7 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
             if (dgGT.nang.length) { kb = JSON.parse(kbLuu); nhatKy_('KICH_BAN_GIAI_THICH', r.id + ': bỏ cảnh giải thích bổ sung (' + dgGT.nang.map(function (x) { return String(x).split(':')[0]; }).join(', ') + ')'); }
             else { dg = dgGT; nhatKy_('KICH_BAN_GIAI_THICH', r.id + ': đã thêm cảnh giải thích công thức, nay ' + demCanhGiaiThich_(kb) + ' cảnh, tổng ' + kb.canh.length + ' cảnh'); }
           }
-        } catch (eGT) { kb = JSON.parse(kbLuu); if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(eGT.message))) { luuNhapKichBan_(r.id, kb); throw eGT; } }
+        } catch (eGT) { kb = JSON.parse(kbLuu); if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(eGT.message))) { luuNhapKichBan_(r.id, kb); throw eGT; } }
       }
       // BỘ PHẬN KIỂM DUYỆT YÊU CẦU - cửa 1 (NangCao.gs): AI chấm kịch bản theo bảng yêu cầu của chủ kênh TRƯỚC khi dựng.
       // Nếu kịch bản đạt >= 72% ngay lượt đầu -> tối đa 1 vòng sửa; dưới 72% -> cho phép 2 vòng trên GitHub để nâng chất lượng nhanh gọn.
@@ -1364,7 +1366,7 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
         var lanYC = 0, toiDaYC = Math.min(trenGitHub ? 2 : 1, maxYC), boDe = null, dy = null, totNhatYC = null;
         while (conDuGoiGemini_()) {
           try { dy = aiDuyetKichBan_(kb, r, spham); }
-          catch (eYC) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(eYC.message))) { luuNhapKichBan_(r.id, kb); throw eYC; } dy = null; }
+          catch (eYC) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(eYC.message))) { luuNhapKichBan_(r.id, kb); throw eYC; } dy = null; }
           if (!dy) { nhatKy_('KIEM_DUYET_YC', r.id + ': AI chưa chấm được kịch bản, để cửa kiểm duyệt video chặn sau'); break; }
           if (lanYC === 0 && Number(dy.phan_tram) >= 72) toiDaYC = Math.min(1, toiDaYC);
           nhatKy_('KIEM_DUYET_YC', r.id + ' kịch bản lần ' + (lanYC + 1) + ': đáp ứng ' + dy.phan_tram + '% | ' + tomTatTieuChi_(dy) + (dy.dat ? ' -> ĐẠT' : ' | ' + dy.van_de.slice(0, 3).join('; ').slice(0, 250)));
@@ -1382,7 +1384,7 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
             return /^(MO_PHONG_DON_DIEU|HINH_LAP_LAI_NHIEU_CANH|CHUNG_MINH_QUA_GON|CHU_DE_LEN_HINH|HINH_DUNG_YEN|CAI_BAY|CAU_NOI_LAP|GIOI_THIEU_AN_SOM|IT_ANH_SAN_PHAM)\b/.test(String(x));
           }).slice(0, 3) : [];
           try { kbYC = suaKichBanBangGemini_(kb, ['KIEM_DUYET_YEU_CAU (bắt buộc sửa hết; kịch bản mới đáp ứng ' + dy.phan_tram + '%, tiêu chí: ' + tomTatTieuChi_(dy) + '). Vấn đề: ' + dy.van_de.join(' || ') + '. Cách sửa: ' + dy.gop_y].concat(goiYNhe), prompt, sn); }
-          catch (eYS) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(eYS.message))) { luuNhapKichBan_(r.id, kb); throw eYS; } }
+          catch (eYS) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(eYS.message))) { luuNhapKichBan_(r.id, kb); throw eYS; } }
           lanYC++;
           if (kbYC && Array.isArray(kbYC.canh) && kbYC.canh.length) {
             kb = kbYC;
@@ -1628,11 +1630,20 @@ function laModelKhongCo_(kq) {
 
 // opts.suyNghi: mức suy nghĩ ('low' | 'high' | 'mac_dinh' | 'tat'). Gọi có hạn chót: không đủ thời gian thì ném 'HET_GIO'.
 // Tự động chuyển sang model kế tiếp ngay lập tức khi gặp bất kỳ lỗi nào (404, 400, 429, 503, JSON hỏng...).
+function tuyChonBienKich_() {
+  return { modelUuTien: String(cauHinh_('MODEL_BIEN_KICH') || 'gemini-2.5-pro').trim(),
+           suyNghi: cauHinh_('SUY_NGHI_BIEN_KICH') || 'high' };
+}
+
 function goiGemini_(prompt, nhiet, opts) {
   opts = opts || {};
   if (!khoDanhSachKey_().length) throw new Error('THIEU_GEMINI_API_KEY');
   var models = danhSachModel_();
   var cache = CacheService.getScriptCache();
+  if (opts.modelUuTien && !cache.get('MODEL_HONG_' + opts.modelUuTien) &&
+      !cache.get('QUA_TAI_' + opts.modelUuTien) && !cache.get('HET_NGAY_MODEL_' + opts.modelUuTien)) {
+    models = [opts.modelUuTien].concat(models.filter(function (md) { return md !== opts.modelUuTien; }));
+  }
   var hetHanMuc = false, lyDo = '', soLoi = 0, soQuaTai = 0, daDoThem = false;
   for (var lan = 0; lan < 3; lan++) {
     var coTheThuLai = false;
@@ -1645,7 +1656,7 @@ function goiGemini_(prompt, nhiet, opts) {
       var kq = khoGoiCoSuyNghi_(tenModel, {
         contents: [{ parts: phan }],
         generationConfig: { temperature: nhiet, responseMimeType: 'application/json' }
-      }, opts.suyNghi, { hanChoMs: 20000 });
+      }, opts.suyNghi, { hanChoMs: 20000, tungModel: !!opts.modelUuTien });
       if (kq.ok) {
         try {
           var parsed = docKetQua_(kq.raw);
@@ -1677,6 +1688,7 @@ function goiGemini_(prompt, nhiet, opts) {
     if (!duThoiGian_(_bat_dau_chay_, uocGoiMs_() + cho)) break;
     Utilities.sleep(cho);
   }
+  if (opts.modelUuTien && THOI_GIAN_TOI_DA_MS > 600000 && /HTTP (401|403|404|429)/.test(lyDo)) throw new Error('KHO_GITHUB_KHONG_KHA_DUNG');
   if (soQuaTai && soQuaTai === soLoi) throw new Error('QUA_TAI');
   throw new Error(hetHanMuc ? 'HET_HAN_MUC' : 'GEMINI_LOI: ' + lyDo);
 }
@@ -2089,6 +2101,12 @@ function nhanKetQuaBoPhan1_(sh, d) {
   var cu = m ? m[1] : 'MOI';
   (d.nhat_ky || []).slice(-30).forEach(function (x) { nhatKy_(x[1], '[GitHub] ' + x[2]); });
   try { ghiKeyHetNgay_(d.het_ngay); } catch (eHN) {}
+  // Hai kho độc lập: trả bản nháp cho Apps Script tiếp tục bằng khoGoi_ của VIDEO.
+  if (cu === 'DA_GIAI' && !d.kich_ban && /^(HET_HAN_MUC|QUA_TAI|THIEU_GEMINI_API_KEY|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(d.loi))) {
+    if (d.nhap) luuNhapKichBan_(r.id, JSON.parse(d.nhap));
+    ghi_(sh, r._row, { trang_thai: cu, ghi_chu: 'TAI_CHO: viết tiếp kịch bản bằng KhoKey (' + d.loi + ')' }, r.id);
+    return { ok: true };
+  }
   if (!d.hang || (!d.ok && !Object.keys(d.hang).length)) {
     var lyDo = String(d.loi || 'GitHub báo lỗi');
     var tamNghi = /^(QUA_TAI|HET_HAN_MUC)$/.test(lyDo);
@@ -2195,6 +2213,7 @@ function xoaNghi() {
 
 function xuLyLoiHang_(sh, r, e, bc) {
   var msg = String(e.message);
+  if (msg === 'KHO_GITHUB_KHONG_KHA_DUNG') throw e;
   if (msg === 'HET_HAN_MUC' || msg === 'HET_GIO' || msg === 'QUA_TAI') {
     // không phải lỗi của đề: trả lại lượt đã tính ở batDauViec_
     ghi_(sh, r._row, { so_lan_loi: Math.max(0, (Number(r.so_lan_loi) || 1) - 1), ghi_chu: msg === 'HET_GIO' ? 'Chờ lần chạy sau (hết thời gian)' : msg === 'QUA_TAI' ? 'Chờ Gemini hết quá tải' : 'Chờ hạn mức Gemini' });

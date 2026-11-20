@@ -66,7 +66,13 @@ export type PhongCach = {
   mau: Record<string, string>; // ghi đè bảng màu (vang, lam, hong, xanh, nen1, nen2)
 };
 
+export type PhongCanh = {
+  troi: string; dat: string; vat: {ten: string; hinh: 'hop'|'tru'|'cau'|'non'; mau: string;
+    tam: [number,number,number]; co: [number,number,number]}[];
+};
+
 export type Props = {
+  phongCanh?: PhongCanh;
   id: string;
   tieuDe: string;
   hook: string;

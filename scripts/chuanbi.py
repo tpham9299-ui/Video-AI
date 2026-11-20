@@ -1878,6 +1878,7 @@ def main():
         "nen": ds_nen[0] if ds_nen else None,
         "dsNen": ds_nen,
         "nenTuTao": nen_tu_tao,
+        **({"phongCanh": kb["cau_chuyen"]["phong_canh"]} if isinstance(kb.get("cau_chuyen"),dict) and kb["cau_chuyen"].get("phong_canh") else {}),
         "thuongHieu": thuong_hieu,
         "outro": outro,
         "phongCach": pc,

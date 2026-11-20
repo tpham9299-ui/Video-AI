@@ -97,7 +97,13 @@ Sân khấu xác suất có một bình bi, một nhóm xu hoặc xúc xắc có
 
 ---
 
-## III. CHI TIẾT CÁC CƠ CHẾ TRỌNG TÂM (PHIÊN BẢN HIỆN HÀNH — LẦN 46)
+## III. CHI TIẾT CÁC CƠ CHẾ TRỌNG TÂM (PHIÊN BẢN HIỆN HÀNH — LẦN 50)
+
+### Kịch bản, bối cảnh và bộ dựng ở v83
+
+Biên kịch nhận lời giải đã kiểm chứng và viết lời dẫn quanh một quyết định. Trường `cau_chuyen` đi qua kiểm tra của Apps Script. Bộ chuẩn bị chuyển `phong_canh` sang Remotion để dựng môi trường chung. GitHub dùng secrets của runner. Khi kho GitHub không phục vụ được yêu cầu viết, hàng đợi chuyển bản nháp sang Apps Script và dùng KhoKey của nhóm VIDEO.
+
+Phép thử chuẩn và xe có bộ dựng riêng. Với vật khác, bộ chọn đối chiếu bản vẽ riêng, mô hình chung và dữ kiện có thể dựng. Khi thiếu dữ kiện, workflow gửi số cảnh về luồng sửa kịch bản. Hình học tiếp tục dùng Manim và tọa độ đã kiểm chứng.
 
 ### 1. Cơ chế chống nghẽn "Hệ thống đang bận" & Phản hồi tức thời lệnh `/bo`, `/sua`, `/duyet`, `/huy`
 - **Loại bỏ khóa cứng 5 phút**: Các hàm chạy ngầm định kỳ (`chayBoPhan1`, `chayKiemTraVideo`, `xuLyHocGopY`, `chayDangVideo`) **không còn giữ `LockService.getScriptLock()` suốt nhiều phút**. Thay vào đó, hệ thống dùng cờ nhẹ trong `CacheService` (`DANG_CHAY_BP1`, `DANG_CHAY_KT_VIDEO`, `DANG_CHAY_HOC_GOP_Y`, `DANG_CHAY_DANG_VIDEO`) để tránh hai tiến trình định kỳ chồng lên nhau mà hoàn toàn không khóa bảng tính.
@@ -930,3 +936,9 @@ Sân khấu xác suất có một bình bi, một nhóm xu hoặc xúc xắc có
 - Phép thử bi, xu và xúc xắc được đặt trên mặt bàn. Số vật, màu, mặt kết quả và số bi rút lấy từ kế hoạch đã kiểm tra. Cảnh giữ sân khấu dùng trạng thái cuối.
 - Với bản vẽ giao cho Blender, máy dựng tạo thêm một ảnh môi trường dọc cho mỗi mô hình. Nền nhà xưởng, ngoài trời hoặc trong phòng được chọn theo dữ liệu đã có. Nét Manim tiếp tục lấy tọa độ từ phép chiếu của vật.
 - Actions báo riêng bước kiểm tra dữ kiện, cài công cụ và dựng Blender. Kiểm duyệt lấy khung đầu phép thử và khung cuối để đối chiếu kết quả. Khi chuyển sang môi trường toàn khung, lớp tiêu đề của cảnh trước kết thúc ở ranh giới cảnh.
+
+#### Lần 50 (v83) — Câu chuyện toán học, phục hồi bước chọn cảnh và nhãn hình học
+
+- Thêm vai người kể, địa điểm, mục tiêu, bản thiết kế bối cảnh và tiêu chí kiểm duyệt mạch kể. Cấu hình `MODEL_BIEN_KICH` mặc định là `gemini-2.5-pro`, `SUY_NGHI_BIEN_KICH` là `high`.
+- Bản vẽ riêng bị lỗi có thể phục hồi bằng dữ kiện đề hoặc mô hình hợp lệ. Sân khấu trò chơi giữ các hành động chọn và mở cửa. Cảnh cần sửa trả về Apps Script kèm tên trường sai; số lượt viết lại bản vẽ chịu giới hạn SO_LAN_SUA_YEU_CAU.
+- Với chứng minh phẳng, chọn trong các cấu hình đã kiểm tra theo khoảng cách giữa các điểm và độ tách cạnh của tam giác nhọn. Manim bỏ tên cạnh trùng hai đầu mút, dựng nét trước nhãn và đồng bộ điểm phụ với nét đang xét. Tiêu đề các cảnh sau mở đầu chừa khoảng cách cho hàng thẻ dữ kiện phía trên.

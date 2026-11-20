@@ -11,7 +11,7 @@ const {model, bodies, batDauKey = 0, gioiHanGiay = 300} = cauHinh;
 //    hệ thống tự động chuyển ngay sang model tiếp theo trong chuỗi mà không cố định 1 model.
 //  - Model chính chưa trả lời sau "hedgeGiay" giây -> gọi song song model dự phòng bằng key khác, lấy kết quả nào về trước.
 const duPhong = (cauHinh.duPhong || []).filter((m) => m && m !== model);
-const chuoiModel = [...new Set([model, ...(cauHinh.models || []), ...duPhong, 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-flash-lite-latest'].filter(Boolean))];
+const chuoiModel = cauHinh.tungModel ? [model] : [...new Set([model, ...(cauHinh.models || []), ...duPhong, 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-flash-lite-latest'].filter(Boolean))];
 const hedgeGiay = Number(cauHinh.hedgeGiay) || 0;
 const TEP_KEY_HONG = path.join(os.tmpdir(), 'gemini_key_hong.txt');
 const TEP_KEY_HONG_JSON = path.join(os.tmpdir(), 'gemini_key_hong.json');
@@ -170,12 +170,13 @@ async function motModel(model, body, i, huy, soVong = 2) {
 // Thử lần lượt các model trong chuỗi linh hoạt: hễ model hiện tại lỗi (404, 400, 429 hết hạn mức, 500, 503, lỗi mạng)
 // thì TỰ ĐỘNG chuyển ngay sang model kế tiếp (kể cả tự dò danh sách model từ Google API nếu cần).
 async function motChuoiModel(dsModel, body, i, huy) {
+  if (cauHinh.tungModel && model404.has(model)) return {ok: false, code: 404, raw: 'MODEL_KHONG_CO', het: false};
   let ds = dsModel.filter((m) => m && !model404.has(m));
   const modelTot = fs.existsSync(TEP_MODEL_TOT) ? fs.readFileSync(TEP_MODEL_TOT, 'utf8').trim() : '';
-  if (modelTot && !model404.has(modelTot) && ds.includes(modelTot) && ds[0] !== modelTot) {
+  if (!cauHinh.tungModel && modelTot && !model404.has(modelTot) && ds.includes(modelTot) && ds[0] !== modelTot) {
     ds = [modelTot, ...ds.filter((m) => m !== modelTot)];
   }
-  if (!ds.length) ds = (await tuTimModelTrenApi()).filter((m) => !model404.has(m)).slice(0, 6);
+  if (!ds.length && !cauHinh.tungModel) ds = (await tuTimModelTrenApi()).filter((m) => !model404.has(m)).slice(0, 6);
   let cuoi = {ok: false, code: 0, raw: 'KHONG_CO_MODEL', het: false};
   let canDoModel = false;
   for (let mIdx = 0; mIdx < ds.length; mIdx++) {
@@ -195,7 +196,7 @@ async function motChuoiModel(dsModel, body, i, huy) {
     }
   }
   // Nếu mọi model cấu hình đều 404 -> tự hỏi API Google lấy danh sách model thật sự khả dụng và thử ngay
-  if (canDoModel) {
+  if (canDoModel && !cauHinh.tungModel) {
     const dsMoi = await tuTimModelTrenApi();
     for (const md of dsMoi.filter((m) => !ds.includes(m) && !model404.has(m)).slice(0, 6)) {
       process.stderr.write(`TU_DO_MODEL: thử model tự phát hiện từ API: ${md}\n`);

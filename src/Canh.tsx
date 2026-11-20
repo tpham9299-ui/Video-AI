@@ -1,3 +1,4 @@
+import {BoiCanh} from './NenCauChuyen';
 import {CanhMoiTruong} from './CanhMoiTruong';
 import {CanhBlender} from './CanhBlender';
 import {CanhThucTe, DuLieuThucTe} from './CanhThucTe';
@@ -96,6 +97,7 @@ export const Canh: React.FC<{
   theDeGiu?: boolean; // đã có cảnh de_bai trước: thẻ hiện sẵn đủ, không chạy lại
   coQuangCaoCuoi?: boolean; // cảnh trùng lúc thẻ sản phẩm hiện ở cuối video
 }> = ({canh, tieuDe, deGoc, deBai, theDeGiu, coQuangCaoCuoi = false, tongCanh, hook, pc, sanKhau, giuTruoc, giuSau, cacBuoc = [], phaTruoc = '', keoDai = 0}) => {
+  const phongCanh = React.useContext(BoiCanh);
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
   const t = frame / fps;
@@ -252,12 +254,13 @@ export const Canh: React.FC<{
   }
   const may = moi ? mayQuay(frame, ketThuc, suKien, /bai_hoc|ket_luan/i.test(canh.loai)) : {s: 1, x: 0, y: 0};
   const goc_y = coHinh ? yNoiDung + caoSan / 2 : 960;
+  const yTieuDe = moi ? (coHook ? 200 : 295) : Y_DAU;
   const iris = coCuaTron ? cuaTron(frame) : {p: 1};
   const nhan = coHook ? (NHAN_HOOK[hook.kieu] || '').replace(/^[^A-Za-zÀ-ỹ]+/, '') : nhanCanh(canh.loai, canh.nhan);
 
   return (
     <>
-    {clip && clip.nenDung && !clip.giuNet && <div style={{position:'absolute',inset:0}}>
+    {clip && !phongCanh && clip.nenDung && !clip.giuNet && <div style={{position:'absolute',inset:0}}>
       <Img src={staticFile(clip.nenDung)} style={{width:'100%',height:'100%'}} />
       <div style={{position:'absolute',inset:0,background:'linear-gradient(to bottom,rgba(12,23,28,.75),transparent 38%,transparent 57%,rgba(12,23,28,.78))'}}/>
     </div>}
@@ -390,7 +393,7 @@ export const Canh: React.FC<{
       )}
 
       {/* Đầu cảnh: nhãn + tiêu đề (hoặc câu hook ở cảnh 1) */}
-      <div style={{position: 'absolute', left: 40, right: 40, top: moi ? (coHook ? 200 : 250) : Y_DAU, height: dayTieuDe - (moi ? (coHook ? 200 : 250) : Y_DAU) - (moi ? 4 : 10), display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: moi ? 'center' : undefined, opacity: ra}}>
+      <div style={{position: 'absolute', left: 40, right: 40, top: yTieuDe, height: dayTieuDe - yTieuDe - (moi ? 4 : 10), display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: moi ? 'center' : undefined, opacity: ra}}>
         {(clip || moiTruong) ? (anTieuDe ? null : <VuaKhung maxW={956} maxH={155}>
           <div style={{fontFamily: FONT_TIEU_DE, fontSize: 68, fontWeight: 800, lineHeight: 1.12,
             textAlign: 'center', color: '#f1f6f5', textShadow: '0 2px 7px #081019'}}>
@@ -398,7 +401,7 @@ export const Canh: React.FC<{
           </div>
         </VuaKhung>) : moi ? (
           anTieuDe ? null : (
-            <VuaKhung maxW={1000} maxH={dayTieuDe - (coHook ? 200 : 250) - 8}>
+            <VuaKhung maxW={1000} maxH={dayTieuDe - yTieuDe - 8}>
               <ChuBaTang dan={baTang.dan} chot={baTang.chot} duoi={baTang.duoi} mau={mauNhan} tre={coHook ? canh.leadFrame : 0} coToiDa={coHook ? 128 : 102} noi={coHook || khungCuoi} />
             </VuaKhung>
           )

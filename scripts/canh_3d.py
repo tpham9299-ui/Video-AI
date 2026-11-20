@@ -8,6 +8,8 @@ import re
 from pathlib import Path
 import subprocess
 import tempfile
+import sys
+import unicodedata
 
 
 def so(v):
@@ -39,8 +41,7 @@ def canh_tu_kich_ban(kb, mh):
     model = mo_hinh_tu_de(kb)
     if model:
         return model
-    if kb.get("mo_hinh_3d"):
-        raise ValueError("Mô hình 3D không khớp dữ kiện đề hoặc có chi tiết không hợp lệ")
+    # Nếu bản vẽ gốc không hợp lệ, tiếp tục dò dữ kiện sân khấu/đề đã kiểm tra.
     if any(isinstance(v, dict) and v.get("loai") in ("do_thi", "hinh_hoc") for v in vat):
         return None
     simple = canh_mot_vat(de)
@@ -185,53 +186,61 @@ def tang_hop_le(rows):
     )
 
 
-def mo_hinh_tu_de(kb):
+def chuan_trich_dan(text):
+    return " ".join(unicodedata.normalize("NFC", str(text or "")).casefold().split())
+
+
+def mo_hinh_tu_de(kb, loi=None):
     # Mô hình tự do gồm các chi tiết ghép chung một hệ tọa độ. Chỉ nhận dữ liệu khai báo.
+    def invalid(message):
+        if loi is not None:
+            loi.append(message)
+        return None
+
     mo = kb.get("mo_hinh_3d")
     if not isinstance(mo, dict):
-        return None
+        return invalid("mo_hinh_3d phải là đối tượng")
     parts = mo.get("chi_tiet")
     if not isinstance(parts, list) or not 1 <= len(parts) <= 80:
-        return None
-    de = " ".join(str(kb.get("de_bai") or "").casefold().split())
-    for item in parts:
+        return invalid("chi_tiet cần từ 1 đến 80 phần")
+    de = chuan_trich_dan(kb.get("de_bai"))
+    for index, item in enumerate(parts, 1):
         if not isinstance(item, dict):
-            return None
-        source = " ".join(str(item.get("tu_de") or "").casefold().split())
+            return invalid(f"chi_tiet[{index}] phải là đối tượng")
+        source = chuan_trich_dan(item.get("tu_de"))
+        if len(source) < 2 or source not in de:
+            return invalid(f"chi_tiet[{index}].tu_de phải trích nguyên văn đề")
+        if not bo_ba(item.get("tam")) or not bo_ba(item.get("co")) or min(item["co"]) <= 0:
+            return invalid(f"chi_tiet[{index}] cần tam và co gồm ba số, kích thước co phải dương")
         if (
-            len(source) < 2
-            or source not in de
-            or item.get("hinh")
+            item.get("hinh")
             not in ("hop", "tru", "cau", "non", "thuyen", "bang_chuyen", "lang_tru", "khoi_tiet_dien")
             or (item["hinh"] == "khoi_tiet_dien" and not tang_hop_le(item.get("tang")))
             or (item["hinh"] == "lang_tru" and not bien_dang_loi(item.get("day")))
             or (item["hinh"] == "thuyen" and not re.search("thuyền|tàu|ca nô|xuồng", source))
             or (item["hinh"] == "bang_chuyen" and not re.search("băng (?:chuyền|tải)", source))
             or not bo_ba(item.get("dich_chuyen", [0, 0, 0]))
-            or not bo_ba(item.get("tam"))
-            or not bo_ba(item.get("co"))
-            or min(item["co"]) <= 0
             or not isinstance(item.get("vat_lieu", "da"), str)
             or not bo_ba(item.get("xoay", [0, 0, 0]))
         ):
-            return None
+            return invalid(f"chi_tiet[{index}] sai hình, thuộc tính hoặc chuyển động")
     if re.search(r"bể.{0,80}hình hộp.{0,40}không (?:có )?nắp", de):
         if not be_khong_nap(parts, de):
-            return None
+            return invalid("Bể không nắp cần đáy và bốn vách bao đúng thể tích trong đề")
     lines = mo.get("doan_toan", [])
     if not isinstance(lines, list) or len(lines) > 12:
-        return None
+        return invalid("doan_toan cần danh sách tối đa 12 đoạn")
     centers = {}
     for part in parts:
         if "id" in part:
             name = part["id"]
             if not isinstance(name, str) or not name or name in centers:
-                return None
+                return invalid("id chi tiết phải là chuỗi riêng biệt")
             centers[name] = [a + b for a, b in zip(part["tam"], part.get("dich_chuyen", [0, 0, 0]))]
     segments = []
-    for raw in lines:
+    for index, raw in enumerate(lines, 1):
         if not isinstance(raw, dict):
-            return None
+            return invalid(f"doan_toan[{index}] phải là đối tượng")
         line = dict(raw)
         for key in ("a", "b"):
             pt = line.get(key)
@@ -239,22 +248,22 @@ def mo_hinh_tu_de(kb):
                 name = pt.get("vat")
                 offset = pt.get("lech", [0, 0, 0])
                 if not isinstance(name, str) or name not in centers or not bo_ba(offset):
-                    return None
+                    return invalid(f"doan_toan[{index}].{key} sai tham chiếu vật hoặc độ lệch")
                 line[key] = [a + b for a, b in zip(centers[name], offset)]
             if not bo_ba(line.get(key)):
-                return None
+                return invalid(f"doan_toan[{index}].{key} cần ba tọa độ")
         segments.append(line)
-        quote = " ".join(str(line.get("tu_de") or "").casefold().split())
+        quote = chuan_trich_dan(line.get("tu_de"))
         length = math.dist(line["a"], line["b"])
         if len(quote) < 2 or quote not in de or length < 1e-6:
-            return None
+            return invalid(f"doan_toan[{index}] sai trích dẫn hoặc hai đầu trùng nhau")
         if "do_dai" in line:
             m = re.fullmatch(DO_DAI, str(line["do_dai"]).casefold())
             if not m or not re.search(r"(?<![\d.,])" + re.escape(m[0]) + r"(?!\w)", quote):
-                return None
+                return invalid(f"doan_toan[{index}].do_dai và đơn vị phải khớp dữ kiện")
             meters = float(m[1].replace(",", ".")) * MET[m[2]]
             if not math.isclose(length, meters, rel_tol=0.002):
-                return None
+                return invalid(f"doan_toan[{index}] dài {length:g} m theo tọa độ, dữ kiện ghi {meters:g} m")
     return {"loai": "lap_ghep", "chi_tiet": parts, "doan_toan": segments}
 
 
@@ -373,7 +382,7 @@ def ke_hoach(kb, props):
     from xe_3d import CAR
     de = str(kb.get("de_bai") or "")
     car_problem = CAR.search(de) and not re.search(r"hai (?:chiếc )?xe|hai (?:chiếc )?ô tô|xe thứ hai|ngược chiều nhau",de,re.I)
-    practical = kb.get("mon") == "THUC_TE" or (not kb.get("mon") and str(kb.get("id", "")).startswith("TT"))
+    fold = re.search(r"bìa|tấm giấy", de, re.I) and re.search(r"(?:bốn|4) góc|góc.*hình vuông", de, re.I) and re.search(r"hộp|gấp", de, re.I)
     if kb.get("mon") == "HINH_HOC":
         return {}
     physical_kinds = set("nguoi the the_bai xuc_xac dong_xu hop_bi tui hop_qua dong_ho dien_thoai bong_bay vong_quay cua banh ban_tron khoi_hop tru non cau toa_nha xe cay thang canh_that".split())
@@ -384,7 +393,7 @@ def ke_hoach(kb, props):
         mh = c.get("minhHoa") or {}
         data = mh.get("duLieu")
         objects = data.get("vat") or [] if isinstance(data,dict) else []
-        kinds = {v.get("loai") for v in objects if isinstance(v,dict)}
+        kinds = {v["loai"] for v in objects if isinstance(v,dict) and isinstance(v.get("loai"), str)}
         voice = " ".join(cue["text"] for cue in c.get("cau",[]))
         car_only = kinds <= {"xe", "chu", "nhan", "mui_ten", "so_dem"}
         car_scene = "xe" in kinds or c.get("loai") in ("mo_dau", "hook", "de_bai") or CAR.search(voice)
@@ -402,33 +411,53 @@ def ke_hoach(kb, props):
         opening = c.get("loai") in ("mo_dau", "hook", "de_bai", "mo_hinh_hoa")
         if "anh_that" in kinds and not physical:
             continue
-        if c.get("giuSanKhau") and i-1 in ds and local is None:
-            actions = data.get("hanh_dong") if isinstance(data,dict) else []
-            if not objects and not actions and ds[i-1]["loai"] == "phep_thu":
+        native = phep_thu_3d(c)
+        if native:
+            ds[i] = native
+            continue
+        if c.get("giuSanKhau") and i-1 in ds and not objects and not (data.get("hanh_dong") if isinstance(data,dict) else None):
+            if ds[i-1]["loai"] == "phep_thu":
                 ds[i] = ds[i-1]
                 continue
-            if not physical:
-                raise ValueError(f"Cảnh {i + 1}: khai báo mo_hinh_3d cho trạng thái tiếp theo của vật được giữ")
-
-        if local is None:
-            native = phep_thu_3d(c)
-            if native:
-                ds[i] = native
-                continue
-            if not physical and not (opening and (practical or kb.get("mo_hinh_3d"))):
-                continue
-        if local is not None:
-            plan = mo_hinh_tu_de(dict(kb, mo_hinh_3d=local))
-            if not plan:
-                raise ValueError(f"Mô hình riêng của cảnh {i + 1} sai dữ kiện hoặc kích thước")
-        else:
+        errors = []
+        plan = mo_hinh_tu_de(dict(kb, mo_hinh_3d=local), errors) if local is not None else None
+        if not plan and (physical or opening or local):
+            if local:
+                print(f"Cảnh {i+1}: bản vẽ riêng không hợp lệ, đối chiếu mô hình từ dữ kiện đề.", file=sys.stderr)
             plan = canh_tu_kich_ban(kb, mh)
+        if not plan and car_problem and car_only and car_scene:
+            plan = {"loai": "xe_duong"}
+        # Các cảnh có nhiều vật và hành động nối tiếp cần giữ nguyên sân khấu.
+        # Áp dụng cho các loại có bộ vẽ cụ thể trong src/sankhau/vat.tsx.
+        if not plan and fold and (i == 0 or c.get("loai") in ("de_bai","mo_hinh_hoa") or re.search(r"bao bì|kiến trúc", voice, re.I)):
+            continue  # BiaGap dựng bốn mép quay quanh đáy theo lời giảng.
+        if not plan and mh.get("loai") == "bang_phan_cong":
+            continue
+        if not plan and mh.get("loai") == "san_khau" and kinds and all(
+            isinstance(v, dict) and v.get("id") for v in objects
+        ):
+            diagrams = {"cua", "banh", "the", "nhan", "chu", "so_dem", "mui_ten", "danh_sach"}
+            if kinds <= diagrams:
+                continue
+            trial_stage = {"hop_bi", "tui", "hop_qua", "xuc_xac", "dong_xu", "nguoi", "the_bai",
+                           "dong_ho", "vong_quay", "bong_bay", "bieu_tuong", "thanh", "luoi_o"}
+            if not local and kinds <= diagrams | trial_stage and kb.get("mon") in ("XAC_SUAT", "", None):
+                # Một phép thử đơn với dữ liệu sai vẫn cần được sửa. Với cảnh
+                # kết hợp, giữ đủ nhãn và hành động do sân khấu gốc đã mô tả.
+                single_trial = len(objects) == 1 and kinds <= {"hop_bi", "dong_xu", "xuc_xac"}
+                if not single_trial:
+                    continue
+        if not plan and not physical and not local:
+            continue
         if plan and plan["loai"] == "lap_ghep" and not plan.get("doan_toan"):
             plan["giu_vat"] = True
         if plan and (local is not None or physical or plan not in ds.values()):
             ds[i] = plan
-        elif physical and not plan:
-            raise ValueError(f"Cảnh {i + 1}: cần mo_hinh_3d theo đề để dựng vật {', '.join(sorted(kinds))}")
+        elif (physical or local) and not plan:
+            if not errors and kb.get("mo_hinh_3d") is not None:
+                mo_hinh_tu_de(kb, errors)
+            reason = errors[0] if errors else "thiếu mô hình cho " + (", ".join(sorted(kinds)) or "vật trong đề")
+            raise ValueError(f"Cảnh {i + 1}: {reason}")
     return ds
 
 
@@ -462,7 +491,14 @@ def main():
     ap.add_argument("--dem", action="store_true")
     args = ap.parse_args()
     props = json.loads(args.props.read_text())
-    ds = ke_hoach(json.loads(args.kb.read_text()), props)
+    try:
+        ds = ke_hoach(json.loads(args.kb.read_text()), props)
+    except ValueError as exc:
+        if args.chuan_bi:
+            report = Path("out/loi_mo_hinh.json")
+            report.parent.mkdir(exist_ok=True)
+            report.write_text(json.dumps({"nang":[str(exc) + ". Khai báo chi_tiet đúng kiểu, trích nguyên văn đề ở tu_de; kiểm tra tam/co và đoạn đo đúng đơn vị."]},ensure_ascii=False))
+        raise
     ds = tach_moi_truong(ds, props)
     if not args.dem:
         args.props.write_text(json.dumps(props, ensure_ascii=False))
