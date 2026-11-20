@@ -13,7 +13,9 @@ Dựng đúng các vật, số lượng, quan hệ, tỉ lệ, màu, hướng ch
 Vật lạ: phân tích thành bộ phận, dựng thân/viền bằng tiết diện thay đổi theo chiều cao,
 đế hoặc mặt cắt đa giác bằng lăng trụ; không thay cả vật bằng một khối hộp.
 Mỗi phần có id duy nhất, tu_de trích nguyên văn đề, hinh (hop, tru, non, cau, lang_tru,
-khoi_tiet_dien, thuyen, bang_chuyen), tam và co [x,y,z] theo mét, xoay theo độ,
+khoi_tiet_dien, thuyen, bang_chuyen, lon, bon_vom), tam và co [x,y,z] theo mét, xoay theo độ,
+lon = lon nước giống thật (co=[đường kính, đường kính, cao]); bon_vom = bồn trụ đứng có mái vòm bán cầu và chân đế
+(co=[đường kính, đường kính, tổng chiều cao]); vật dùng hằng ngày phải đúng tỉ lệ thật (lon 6,6 x 12 cm),
 vat_lieu (go, thep, kinh, nuoc, do, trang, da, vang, toi), dich_chuyen [dx,dy,dz] nếu chuyển động.
 lang_tru có day gồm 3–24 đỉnh XY của đa giác lồi theo chu vi. khoi_tiet_dien có tang gồm
 2–16 hàng [z,tâm_x,tâm_y,bán_kính_x,bán_kính_y] với z tăng, bán kính dương.

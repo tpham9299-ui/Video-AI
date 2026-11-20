@@ -1,6 +1,5 @@
 """Chiếu lại các cạnh Blender bằng Manim và dựng từng dòng lời giải theo kịch bản."""
 
-import hashlib
 import json
 from pathlib import Path
 import sys
@@ -10,7 +9,7 @@ import numpy as np
 from PIL import Image
 from manim import Camera, Dot, Line, Text, tempconfig
 from manimpango import register_font
-from manim_hinh import chuan_tex, tao_cong_thuc, nap_phong
+from manim_hinh import tao_cong_thuc, nap_phong
 
 
 def camera_image(cam, objects):
@@ -91,6 +90,52 @@ def label_garden(folder, lines, symbols):
     return labels
 
 
+SOLID_KINDS = {"khoi_hop", "tru", "non", "cau"}
+
+
+def khoi_tron(kind, sizes, labels, caption):
+    """Khối tròn xoay đúng quy ước hình học: nét liền phía trước, nét đứt phía sau, nhãn r/h đặt đúng đoạn."""
+    from manim import VGroup, DashedLine, DashedVMobject, ParametricFunction, Circle, Dot
+    r = float(sizes[0])
+    h = float(sizes[1]) if len(sizes) > 1 else 2 * r
+    s = 5.2 / max(2 * r, h if kind != "cau" else 2 * r)
+    R, H = r * s, (h * s if kind != "cau" else 2 * r * s)
+    ry = R * 0.3
+    edge = dict(color="#E8F7F4", stroke_width=6)
+
+    def half(cy, front, visible=False):
+        a, b = (np.pi, 2 * np.pi) if front else (0, np.pi)
+        arc = ParametricFunction(lambda t: np.array([R * np.cos(t), cy + ry * np.sin(t), 0]), t_range=[a, b], **edge)
+        return arc if front or visible else DashedVMobject(arc, num_dashes=18).set_stroke(opacity=.75)
+
+    group = VGroup()
+    label = lambda i, d: (labels[i] if i < len(labels) and labels[i] else d)
+    if kind == "cau":
+        group.add(Circle(radius=R, **edge), half(0, True), half(0, False))
+        o, a = np.array([0, 0, 0]), np.array([R, 0, 0])
+        group.add(Dot(o, color="#FFD43B", radius=.07), DashedLine(o, a, color="#FFD43B", stroke_width=5))
+        group.add(caption(label(0, "r")).next_to((o + a) / 2, [0, 1, 0], buff=.18))
+        return group
+    bot, top = -H / 2, H / 2
+    group.add(half(bot, True), half(bot, False))
+    if kind == "tru":
+        group.add(half(top, True), half(top, False, visible=True))  # mặt trên nhìn thấy trọn
+        group.add(*[Line([x, bot, 0], [x, top, 0], **edge) for x in (-R, R)])
+        hx = R + .55
+        group.add(DashedLine([hx, bot, 0], [hx, top, 0], color="#FFD43B", stroke_width=4))
+        group.add(caption(label(1, "h")).next_to([hx, 0, 0], [1, 0, 0], buff=.15))
+        o, a = np.array([0, top, 0]), np.array([R, top, 0])
+    else:  # non: đỉnh ở trên, đường cao nét đứt
+        apex = np.array([0, top, 0])
+        group.add(*[Line(apex, [x, bot, 0], **edge) for x in (-R, R)])
+        group.add(DashedLine(apex, [0, bot, 0], color="#FFD43B", stroke_width=4))
+        group.add(caption(label(1, "h")).next_to([0, 0, 0], [-1, 0, 0], buff=.15))
+        o, a = np.array([0, bot, 0]), np.array([R, bot, 0])
+    group.add(Dot(o, color="#FFD43B", radius=.07), DashedLine(o, a, color="#FFD43B", stroke_width=5))
+    group.add(caption(label(0, "r")).next_to((o + a) / 2, [0, 1, 0], buff=.14))
+    return group
+
+
 def stage_diagram(stage):
     """Dựng số liệu từ sân khấu kịch bản cũ trên mặt phẳng Manim."""
     import ast
@@ -98,7 +143,8 @@ def stage_diagram(stage):
     from manim import VGroup, Rectangle, Circle
     groups = []
     def caption(value):
-        return Text(str(value), font="Be Vietnam Pro").scale_to_fit_height(.48)
+        # Cùng phông nhãn Be Vietnam Pro đậm như phần còn lại của video (trước đây thiếu weight nên rơi về phông hệ thống).
+        return Text(str(value), font="Be Vietnam Pro", weight="BOLD", color="#FFF2B5").scale_to_fit_height(.46)
     for obj in stage.get("vat", []):
         kind = obj.get("loai")
         data = obj.get("ds") or []
@@ -115,9 +161,14 @@ def stage_diagram(stage):
                 b = base[(i+1)%4]
                 group.add((DashedLine if i in (2,3) else Line)(a,b),Line(a+z,b+z),
                           (DashedLine if i==3 else Line)(a,a+z))
-            for label,pos in zip(obj.get("nhan_kich_thuoc",[]), (u/2+[0,-.4,0],u+v/2+[.8,0,0],z/2+[-.8,0,0])):
+            for label,pos,way in zip(obj.get("nhan_kich_thuoc",[]), (u/2,u+v/2,z/2), ([0,-1,0],[1,0,0],[-1,0,0])):
                 if label:
-                    group.add(caption(label).move_to(pos))
+                    group.add(caption(label).next_to(pos, way, buff=.22))
+        elif kind in ("tru", "non", "cau"):
+            sizes = obj.get("kich_thuoc")
+            if not isinstance(sizes, list) or not sizes or not all(isinstance(v, (int, float)) and v > 0 for v in sizes):
+                continue
+            group = khoi_tron(kind, sizes, obj.get("nhan_kich_thuoc") or [], caption)
         elif kind == "do_thi":
             xmin, xmax, ymin, ymax = (obj.get(k) for k in ("x_tu","x_den","y_tu","y_den"))
             if None in (xmin,xmax,ymin,ymax) or xmax <= xmin or ymax <= ymin:
@@ -191,7 +242,8 @@ def main():
     manifest = Path(sys.argv[1])
     props_path = Path(sys.argv[2])
     props = json.loads(props_path.read_text())
-    register_font(str(Path(__file__).resolve().parents[1] / "public/fonts/BeVietnamPro-Bold.ttf"))
+    for weight in ("Medium", "Bold", "ExtraBold"):
+        register_font(str(Path(__file__).resolve().parents[1] / f"public/fonts/BeVietnamPro-{weight}.ttf"))
     nap_phong(str(Path(__file__).resolve().parents[1] / "public"))
     root = props_path.parent
     for c in props["canh"]:
@@ -238,7 +290,8 @@ def main():
             garden_labels = None
             for index in indexes:
                 c = props["canh"][index]
-                c["chuoi3D"] = dict(thuMuc=key, khungThat=frames, netCuoi=last, nenDung=key+"/moi-truong.jpg")
+                c["chuoi3D"] = dict(thuMuc=key, khungThat=frames, netCuoi=last, nenDung=key+"/moi-truong.jpg",
+                                    nenKhung=len(list(folder.glob("nen-*.jpg"))))
                 if c.get("phaMinhHoa") != "toan":
                     continue
                 stage = (c.get("minhHoa") or {}).get("duLieu") or {}
@@ -253,8 +306,10 @@ def main():
                             label = Text(line["nhan"],font="Be Vietnam Pro").scale_to_fit_height(.48)
                             label.move_to(np.array(coords[-1])+[0,.42,0])
                             objects.append(label)
-                elif isinstance(stage, dict):
-                    objects = stage_diagram(stage)
+                elif isinstance(stage, dict) and any(isinstance(v, dict) and v.get("loai") in SOLID_KINDS for v in stage.get("vat", [])):
+                    # Chỉ hình khối mới cần Manim; số liệu, danh sách, biểu đồ do Remotion dựng (cùng phông, có hiệu ứng).
+                    solids = dict(stage, vat=[v for v in stage["vat"] if isinstance(v, dict) and v.get("loai") in SOLID_KINDS])
+                    objects = stage_diagram(solids)
                 if objects:
                     file = key + f"/bai-{index}.png"
                     camera_image(cam,objects).save(root/file)
@@ -271,20 +326,7 @@ def main():
                     if garden_labels:
                         c["nhanNet"] = garden_labels
         nhip_xe(props, [i for i,c in enumerate(props["canh"]) if c.get("xeMoDau")])
-        for c in props["canh"]:
-            if not c.get("noiDung") or c["loai"] in ("mo_dau", "hook", "de_bai"):
-                continue
-            assets = []
-            for tex in c["noiDung"]:
-                name = "canh_3d/ct-" + hashlib.sha256(("be-v81:" + tex).encode()).hexdigest()[:20] + ".png"
-                path = root / name
-                if not path.exists():
-                    obj = tao_cong_thuc(chuan_tex(tex)).set_color("#FFD43B")
-                    obj.scale(min(14.8 / max(obj.width, 0.01), 2 / max(obj.height, 0.01)))
-                    img = camera_image(cam, [obj])
-                    img.crop(img.getchannel("A").getbbox()).save(path)
-                assets.append(name)
-            c["congThucManim"] = assets
+        # Công thức do KaTeX trong Remotion dựng (một phông, một cỡ chữ cho cả video); không xuất ảnh công thức Manim nữa.
     props_path.write_text(json.dumps(props, ensure_ascii=False))
 
 

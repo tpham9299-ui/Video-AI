@@ -1532,7 +1532,7 @@ function boSungBanVeMoDau_(kb, r, sn) {
   if (!conDuGoiGemini_()) throw new Error('HET_GIO');
   var model = goiGemini_('Bạn phụ trách tạo mô hình Blender. Dựa trên đề gốc và lời dẫn sau, tự thiết kế vật chính; trả đối tượng JSON có chi_tiet và doan_toan. ' +
     'Mỗi chi tiết có id riêng, tu_de trích nguyên văn đề, tam và co [x,y,z] theo mét, xoay theo độ, vat_lieu, dich_chuyen nếu vật chuyển động. ' +
-    'Ghép hop, tru, cau, non, lang_tru (day là đa giác lồi), khoi_tiet_dien (tang là các hàng [z,cx,cy,rx,ry] tăng theo z) hoặc luoi_tam_giac (dinh và mat là bộ ba chỉ số từ 0). ' +
+    'Ghép hop, tru, cau, non, lon (lon nước thật, co=[đường kính,đường kính,cao]), bon_vom (bồn trụ có mái vòm bán cầu), lang_tru (day là đa giác lồi), khoi_tiet_dien (tang là các hàng [z,cx,cy,rx,ry] tăng theo z) hoặc luoi_tam_giac (dinh và mat là bộ ba chỉ số từ 0). ' +
     'Dựng đặc điểm nhận dạng, số lượng và quan hệ đúng đề. Đoạn đo có a,b,tu_de và do_dai nếu đề cho số đo. Không ghi kích thước mỹ thuật thành số liệu toán. ' +
     'Chỉ trả bản vẽ. Đề: ' + r.de_bai + '\nCảnh: ' + JSON.stringify(c), 0.15, sn);
   if (model && Array.isArray(model.chi_tiet) && model.chi_tiet.length) c.mo_hinh_3d = model;

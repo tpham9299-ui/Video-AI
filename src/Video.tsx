@@ -64,6 +64,19 @@ const DauTrang: React.FC<{chu: string; lop: string; tu: number; lui: number; den
   );
 };
 
+// Nền môi trường Blender của phần mở đầu (ảnh thật), tắt bằng nhòe + tối dần trong ~1,2 giây đầu cảnh chuyển.
+const NenBlender: React.FC<{src: string; tat: number}> = ({src, tat}) => {
+  const f = useCurrentFrame();
+  const p = interpolate(f, [tat + 6, tat + 40], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
+  if (p >= 1) return null;
+  return (
+    <AbsoluteFill style={{backgroundColor: '#13202a', opacity: 1 - p}}>
+      <Img src={staticFile(src)} style={{width: '100%', height: '100%', objectFit: 'cover', opacity: 0.82, transform: `scale(${1.03 + f * 0.0003 + p * 0.12})`, filter: p > 0 ? `blur(${p * 16}px)` : undefined}} />
+      <AbsoluteFill style={{background: 'linear-gradient(to bottom, rgba(10,18,24,.55), transparent 30%, transparent 66%, rgba(10,18,24,.7))'}} />
+    </AbsoluteFill>
+  );
+};
+
 // Nhạc nền tự giảm âm lượng khi có giọng đọc (ducking) để lời giảng luôn rõ, tăng lên ở các quãng nghỉ.
 function taoAmLuongNhac(props: Props) {
   const {canh, tongFrame, fps} = props;
@@ -121,10 +134,13 @@ const NoiDungVideo: React.FC<Props> = (props) => {
   // cảnh trước còn ở lại 8 khung hình để hòa vào cảnh sau (trừ khi cảnh sau diễn tiếp trên cùng sân khấu)
   const keoDai = (i: number) => {
     const next = canh[i + 1];
-    if (!next || next.giuSanKhau || next.moiTruong || next.chuoi3D?.nenDung) return 0;
+    if (!next || next.giuSanKhau || next.moiTruong || (next.chuoi3D?.nenDung && next.phaMinhHoa !== 'toan')) return 0;
     return 8;
   };
   const nenBlender = canh[0]?.phaMinhHoa && canh[0]?.chuoi3D?.nenDung;
+  // nền Blender chỉ sống ở phần mở đầu; tới cảnh 'chuyen' nó nhòe + tối dần rồi nhường nền đồ họa của phần giải
+  const iChuyen = canh.findIndex((c) => c.phaMinhHoa === 'chuyen');
+  const tatNen = iChuyen >= 0 ? canh[iChuyen].batDau : canh.find((c) => c.phaMinhHoa === 'toan')?.batDau ?? tongFrame;
   const coThuongHieu = !!thuongHieu && !!(thuongHieu.ten || thuongHieu.logo || thuongHieu.handle);
   return (
     <BoiCanh.Provider value={props.phongCanh}><AbsoluteFill style={{fontFamily: FONT}}>
@@ -133,8 +149,9 @@ const NoiDungVideo: React.FC<Props> = (props) => {
       <style>{'div, span { text-wrap: balance; } .katex, .katex * { text-wrap: nowrap; }'}</style>
       <NapPhongToan />
       {/* nền tự tạo riêng cho từng video (mặc định); chỉ dùng nền ảnh của bạn khi đặt DUNG_NEN_DRIVE=1 */}
-      {nenBlender ? <AbsoluteFill style={{backgroundColor:"#13202a"}}><Img src={staticFile(nenBlender)} style={{width:"100%",height:"100%",opacity:.52}} /></AbsoluteFill> : props.phongCanh ? <NenCauChuyen set={props.phongCanh} /> : props.nenTuTao ? <NenTuTao cfg={props.nenTuTao} nhan={GIAO_DIEN.nhan} /> : <Nen nen={nen} dsNen={props.dsNen} canh={canh} pc={phongCach} tongFrame={tongFrame} />}
-      {!nenBlender && !props.phongCanh && moi && (!props.nenTuTao || props.nenTuTao.kieu === 'luoi') ? <LuoiSan mau={GIAO_DIEN.nhan} /> : null}
+      {props.phongCanh ? <NenCauChuyen set={props.phongCanh} /> : props.nenTuTao ? <NenTuTao cfg={props.nenTuTao} nhan={GIAO_DIEN.nhan} /> : <Nen nen={nen} dsNen={props.dsNen} canh={canh} pc={phongCach} tongFrame={tongFrame} />}
+      {nenBlender ? <Sequence from={0} durationInFrames={tatNen + 45} layout="none"><NenBlender src={nenBlender} tat={tatNen} /></Sequence> : null}
+      {!props.phongCanh && moi && (!props.nenTuTao || props.nenTuTao.kieu === 'luoi') ? <LuoiSan mau={GIAO_DIEN.nhan} /> : null}
       {nhac ? <Audio src={staticFile(nhac)} loop volume={amNhac} /> : null}
       {canh.map((c, i) => (
         <Sequence key={c.so} from={c.batDau} durationInFrames={c.soFrame + keoDai(i)}>

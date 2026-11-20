@@ -119,6 +119,7 @@ class MoHinh:
         self.de_bai = str(kb.get("de_bai") or "")
         self.diem = {}
         self.diem_3d = {}
+        self.bo_sung = []   # cạnh tự bổ sung cho đủ hình (ghi vào cảnh báo để theo dõi chất lượng kịch bản)
         self.pt = []   # phần tử: dict(kieu, khoa, canh, ...)
         self.chi_so = {}
         self._doc_hinh()
@@ -259,6 +260,17 @@ class MoHinh:
             self.mat_khoi = [self.day, [a,b,c], [a,c,d], [a,d,b]]
         if any(n not in self.diem for face in self.mat_khoi for n in face):
             self.mat_khoi, self.day = [], []
+        # Khối đã xác định đủ mặt: bổ sung MỌI cạnh của khối mà kịch bản bỏ sót (trước đây hình chóp/lăng trụ hay thiếu cạnh).
+        # Nét liền/đứt của các cạnh này được canh_khuat() quyết định lại theo góc nhìn khi dựng.
+        canh_dau = min((p["canh"] for p in self.pt if p["kieu"] == "doan"), default=0)
+        for face in self.mat_khoi:
+            for j, n in enumerate(face):
+                k = khoa_doan(n, face[j - 1])
+                if ("doan", k) not in self.chi_so:
+                    self.them("doan", k, canh_dau, kieu_net="canh", nhan="")
+                    self.bo_sung.append("cạnh " + "".join(k))
+                elif self.pt[self.chi_so[("doan", k)]].get("kieu_net") == "con":
+                    self.pt[self.chi_so[("doan", k)]]["kieu_net"] = "canh"
 
     def _tu_sinh_hinh_tu_de(self):
         """Phương án dự phòng tự sinh hình chuẩn xác từ đề bài và lời giải khi kịch bản thiếu tọa độ v['diem'],
@@ -505,6 +517,18 @@ class MoHinh:
         polygon = re.search(r"(?i:tam giác|tứ giác|hình chữ nhật|hình vuông|hình thang|hình bình hành|hình thoi)\s+(?:(?i:nhọn|vuông|cân|đều|tù|không cân)\s+)*([A-Z]{3,4})\b", self.de_bai)
         self.da_giac_chinh = polygon[1] if polygon and not self.la_khong_gian else ''
         self.dinh_chinh = set(self.da_giac_chinh) if self.da_giac_chinh else dinh_co_ban
+        # Đa giác chính của đề (tam giác ABC, hình thang ABCD...) luôn đủ các cạnh, kể cả khi kịch bản quên khai báo.
+        ds_dg = self.da_giac_chinh
+        if ds_dg and all(x in self.diem for x in ds_dg):
+            canh_dau = min((p["canh"] for p in self.pt if p["kieu"] == "doan"), default=0)
+            for j, x in enumerate(ds_dg):
+                k = khoa_doan(x, ds_dg[j - 1])
+                if ("doan", k) not in self.chi_so:
+                    self.them("doan", k, canh_dau, kieu_net="canh", nhan="")
+                    self.bo_sung.append("cạnh " + "".join(k))
+                    dinh_co_ban.update(k)
+                elif self.pt[self.chi_so[("doan", k)]].get("kieu_net") == "con":
+                    self.pt[self.chi_so[("doan", k)]]["kieu_net"] = "canh"
         # Đường kẻ phụ ('phu') hoặc ký hiệu vuông góc/bằng nhau: nếu giọng đọc mới giới thiệu ở cảnh i_nhac > p["canh"],
         # dời lịch vẽ sang đúng cảnh i_nhac để không vẽ đường phụ trước khi giọng đọc nhắc tới!
         for p in self.pt:
@@ -548,6 +572,19 @@ class MoHinh:
                         supports.append(p["canh"])
             if supports:
                 self.diem_canh[n] = max(first,min(supports))
+
+    def diem_thieu(self):
+        """Các điểm đề bài nêu tên (đỉnh khối/đa giác, 'điểm M', 'trung điểm N', 'tại H', 'giao điểm I') nhưng hình chưa có tọa độ."""
+        de = self.de_bai.replace("$", "")
+        ten = set()
+        for m in re.finditer(r"(?i:điểm|tại|tâm)\s+(" + TEN_DIEM + r")(?![" + CHU_VIET + r"'])", de):
+            ten.add(ten_chuan(m.group(1)))
+        for m in RE_CHOP.finditer(de):
+            ten.update(ten_chuan(x) for x in m.groups() if x)
+        hinh = re.search(r"(?i:tam giác|tứ giác|hình chữ nhật|hình vuông|hình thang|hình bình hành|hình thoi|tứ diện)\s+(?:(?i:nhọn|vuông|cân|đều|tù|không cân)\s+)*((?:" + TEN_DIEM + r"){3,4})\b", de)
+        if hinh:
+            ten.update(ten_chuan(x) for x in re.findall(TEN_DIEM, hinh.group(1)))
+        return sorted(x for x in ten if x not in self.diem)
 
     def kgoc(self, a, o, b):
         """Khóa của một góc theo HÌNH (đỉnh + hướng hai tia): \\angle EAB và \\angle CAF (E thuộc AC, F thuộc AB)
@@ -1974,6 +2011,11 @@ def main():
     props["manimLop"] = True
     props["anhManimBia"] = "manim/bia.png"
     props["suKienManim"] = sc.su_kien
+    thieu = mo.diem_thieu()
+    if thieu:
+        sc.canh_bao.add("Hình thiếu điểm đề bài nêu: " + ", ".join(thieu))
+    if mo.bo_sung:
+        sc.canh_bao.add("Đã tự bổ sung cho đủ hình: " + ", ".join(mo.bo_sung[:12]))
     props["manimCanhBao"] = sorted(sc.canh_bao)
     for cb in sorted(sc.canh_bao):
         print("Cảnh báo Manim:", cb)

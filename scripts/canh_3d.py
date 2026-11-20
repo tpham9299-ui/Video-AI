@@ -261,7 +261,7 @@ def mo_hinh_tu_de(kb, loi=None):
             return invalid(f"chi_tiet[{index}] cần tam và co gồm ba số, kích thước co phải dương")
         if (
             item.get("hinh")
-            not in ("hop", "tru", "cau", "non", "thuyen", "bang_chuyen", "lang_tru", "khoi_tiet_dien", "luoi_tam_giac")
+            not in ("hop", "tru", "cau", "non", "lon", "bon_vom", "thuyen", "bang_chuyen", "lang_tru", "khoi_tiet_dien", "luoi_tam_giac")
             or (item["hinh"] == "luoi_tam_giac" and not luoi_hop_le(item))
             or (item["hinh"] == "khoi_tiet_dien" and not tang_hop_le(item.get("tang")))
             or (item["hinh"] == "lang_tru" and not bien_dang_loi(item.get("day")))
@@ -651,7 +651,7 @@ def main():
         clip = folder / key
         clip.mkdir(exist_ok=True)
         path = clip / "projection.json"
-        assets = ["moi-truong.jpg"] + [f"orbit-{j}.png" for j in range(16)]
+        assets = ["moi-truong.jpg", "nen-0.jpg"] + [f"orbit-{j}.png" for j in range(16)]
         if not path.exists() or not all((clip / asset).exists() for asset in assets):
             jobs[str(path)] = scene
         groups.setdefault("canh_3d/" + key, []).append(i)

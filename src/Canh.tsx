@@ -1,6 +1,6 @@
 import {BoiCanh} from './NenCauChuyen';
 import {CanhMoiTruong} from './CanhMoiTruong';
-import {CanhBlender} from './CanhBlender';
+import {CanhBlender, ChuyenLayNet, dichMay, khungThuc, NenKhungBlender, tienChuyen} from './CanhBlender';
 import {CanhThucTe, DuLieuThucTe} from './CanhThucTe';
 import {BangPhanCong} from './BangPhanCong';
 import {BiaGap} from './BiaGap';
@@ -41,6 +41,28 @@ function sanKhauDuPhong(c: CanhProps): DuLieuSanKhau | null {
   if (!chu) return null;
   return hopLeSanKhau({vat: [{id: 'du_phong', loai: 'nhan', x: 50, y: 50, noi_dung: chu.slice(0, 40), tu_khoa: c.tuKhoa, mau: 'xanh_la', buoc: 1}], hanh_dong: [{buoc: 2, vat: 'du_phong', kieu: 'sang'}]});
 }
+
+// Tiêu đề cảnh viết hoa kiểu "Mô Hình Hóa Thể Tích" -> "Mô hình hóa thể tích" (đồng nhất kiểu chữ giữa các video).
+export function chuanTieuDe(s?: string): string {
+  const chu = (s || '').trim();
+  const laHoa = (c: string) => c !== c.toLowerCase() && c === c.toUpperCase();
+  const tu = chu.split(/\s+/).filter((w) => w.length > 1 && /\p{L}/u.test(w[0]));
+  const hoa = tu.filter((w) => laHoa(w[0]) && !laHoa(w[1])).length;
+  if (tu.length < 3 || hoa < tu.length * 0.75) return chu;
+  // giữ nguyên chữ đầu câu, ký hiệu toán một chữ cái (r, h, V), biểu thức có ngoặc và từ viết tắt in hoa
+  return chu.split(/(\s+)/).map((w, i) => (i === 0 || w.length < 2 || /[()'=0-9]/.test(w) || [...w].every((c) => !/\p{L}/u.test(c) || laHoa(c)) ? w : w.charAt(0).toLowerCase() + w.slice(1))).join('');
+}
+
+// Bản vẽ hình khối Manim (nền trong suốt) hiện ra như được vẽ dần từ trái sang phải, rồi lấy nét.
+const HinhKhoi: React.FC<{src: string; cao: number; t: number}> = ({src, cao, t}) => {
+  const p = kep((t - 0.15) / 0.9);
+  const e = 1 - Math.pow(1 - p, 3);
+  return (
+    <div style={{width: 1000, height: cao, display: 'grid', placeItems: 'center', clipPath: `inset(0 ${(1 - e) * 100}% 0 0)`, opacity: kep(p * 3)}}>
+      <Img src={staticFile(src)} style={{width: '100%', height: '100%', objectFit: 'contain', filter: 'drop-shadow(0 0 10px rgba(126,233,219,0.35))', transform: `scale(${0.96 + 0.04 * e})`}} />
+    </div>
+  );
+};
 
 export function sanKhauCuaCanh(ds: CanhProps[], i: number): DuLieuSanKhau | null {
   const c = ds[i];
@@ -120,9 +142,15 @@ export const Canh: React.FC<{
   const bangPhanCong = !lopManim && canh.minhHoa.loai === 'bang_phan_cong';
   const thucTe = !lopManim && canh.minhHoa.loai === 'thuc_te_theo_de' ? canh.minhHoa.duLieu as DuLieuThucTe : null;
   const anh3D = !lopManim && canh.anhCanh3D;
-  const clip = !lopManim && canh.chuoi3D;
+  // Ba pha của bài thực tế / xác suất: 'thuc' = cảnh Blender giống thật; 'chuyen' = ảnh thật mờ dần + lấy nét sang hình 2D;
+  // 'toan' = lời giải dựng bằng Remotion (sân khấu, KaTeX), riêng hình khối (trụ, nón, cầu, hộp) dùng bản vẽ Manim.
+  const pha = lopManim ? undefined : canh.phaMinhHoa;
+  const hinhKhoi = pha === 'toan' && canh.chuoi3D?.hinhGiai ? canh.chuoi3D.hinhGiai : null;
+  const chuyen3D = pha === 'chuyen' && canh.chuoi3D ? canh.chuoi3D : null;
+  const clip = !lopManim && pha !== 'toan' && pha !== 'chuyen' && canh.chuoi3D;
+  const pChuyen = chuyen3D ? tienChuyen(canh, t) : 1;
   const moiTruong = !lopManim && canh.moiTruong;
-  const coHinh = !!moiTruong || !!clip || !!anh3D || !!thucTe || bangPhanCong || veBia || kieu !== null;
+  const coHinh = !!moiTruong || !!clip || !!hinhKhoi || !!anh3D || !!thucTe || bangPhanCong || veBia || kieu !== null;
   const coHook = laMoDau && !!hook.chu;
 
   // ----- công thức -----
@@ -187,7 +215,7 @@ export const Canh: React.FC<{
   const g3c = sanKhau && tbCanh ? tinhGoc3D(sanKhau.gocDau, sanKhau.hanhDong, t, tbCanh) : {nghieng: 0, xoay: 0};
   const sinN3d = Math.sin((g3c.nghieng * Math.PI) / 180) + Math.min(0.5, Math.abs(g3c.xoay) / 60);
   const ccCT = trangThaiChuyen(kieuCC, frame - 4, ketThuc - 4);
-  const tieuDeCanh = canh.tieuDeCanh;
+  const tieuDeCanh = chuanTieuDe(canh.tieuDeCanh);
 
   // ===== KHÔNG GIAN 3D TỰ ĐỘNG: hình nằm trên bàn kính có bề dày / thẻ lơ lửng =====
   // phần ĐỀ BÀI (mở đầu + đọc đề): hình PHẲNG 2D, vật chuyển động trên mặt phẳng; không xoay máy 3D (chỉ hộp chữ có hiệu ứng)
@@ -265,6 +293,9 @@ export const Canh: React.FC<{
       <Img src={staticFile(clip.nenDung)} style={{width:'100%',height:'100%'}} />
       <div style={{position:'absolute',inset:0,background:'linear-gradient(to bottom,rgba(12,23,28,.75),transparent 38%,transparent 57%,rgba(12,23,28,.78))'}}/>
     </div>}
+    {/* cảnh thật mở đầu: nền Blender chuyển động cùng góc máy với vật (thị sai thật), phủ toàn khung dọc */}
+    {clip && pha === 'thuc' && clip.nenKhung ? <NenKhungBlender canh={canh} k={(clip.nenKhung - 1) * khungThuc(canh, t) / Math.max(1, (clip.khungThat ?? 16) - 1)}
+      style={{transform: dichMay(t, canh.soFrame / fps)}} /> : null}
     {moiTruong && <CanhMoiTruong canh={canh} plan={moiTruong} time={t} />}
     {coCuaTron ? <DiaCuaTron f={frame} /> : null}
     {/* chuyển cảnh "quét sáng": một vệt sáng màu nhấn chạy ngang khung đúng lúc nội dung lộ ra */}
@@ -275,8 +306,8 @@ export const Canh: React.FC<{
     <div style={{position: 'absolute', inset: 0, fontFamily: FONT, transformOrigin: `540px ${goc_y}px`, transform: moi && !lopManim && !clip && !moiTruong ? `translate(${may.x}px, ${may.y}px) scale(${may.s})` : undefined}}>
       {/* Sân khấu */}
       {coHinh && !clip && !moiTruong ? (
-        <NhoeHuong nx={ccSan.nx} ny={ccSan.ny} style={{position: 'absolute', left: 0, right: 0, top: yNoiDung, height: caoSan, display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: veBia ? 1 : ccSan.mo, transform: veBia ? undefined : `perspective(1600px) translate(${ccSan.x}px, ${ccSan.y}px) rotateX(${ccSan.rx}deg) rotateY(${ccSan.ry}deg) rotateZ(${ccSan.rz}deg) scale(${ccSan.s})`, clipPath: veBia ? undefined : ccSan.clip}}>
-          {thucTe ? <CanhThucTe du={thucTe} cao={caoSan}/> : bangPhanCong ? <BangPhanCong cao={caoSan} caTruc={/trực|chia ca/i.test(canh.cau.map(c => c.text).join(' '))}
+        <NhoeHuong nx={ccSan.nx} ny={ccSan.ny} style={{position: 'absolute', left: 0, right: 0, top: yNoiDung, height: caoSan, display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: (veBia ? 1 : ccSan.mo) * (chuyen3D ? kep(pChuyen * 1.4 - 0.25) : 1), filter: chuyen3D && pChuyen < 1 ? `blur(${(1 - pChuyen) * 10}px)` : undefined, transform: veBia ? undefined : `perspective(1600px) translate(${ccSan.x}px, ${ccSan.y}px) rotateX(${ccSan.rx}deg) rotateY(${ccSan.ry}deg) rotateZ(${ccSan.rz}deg) scale(${ccSan.s})`, clipPath: veBia ? undefined : ccSan.clip}}>
+          {hinhKhoi ? <HinhKhoi src={hinhKhoi} cao={caoSan} t={t} /> : thucTe ? <CanhThucTe du={thucTe} cao={caoSan}/> : bangPhanCong ? <BangPhanCong cao={caoSan} caTruc={/trực|chia ca/i.test(canh.cau.map(c => c.text).join(' '))}
             moc={canh.cau.find(c => /phân công|chia|trực|phân bổ/i.test(c.text))?.bat ?? 0.5} /> : veBia ? <BiaGap cao={caoSan} dai={giayAm} ungDung={ungDung && !laMoDau} kienTruc={canh.cau.some(c => /kiến trúc/i.test(c.text))}
             batCat={Math.min(giayAm * 0.35, canh.cau.find(c => /cắt/i.test(c.text))?.bat ?? giayAm * 0.25)}
             batGap={Math.min(giayAm * 0.75, Math.max(giayAm * 0.45, canh.cau.find(c => /gấp/i.test(c.text))?.bat ?? giayAm * 0.55))} /> : <>
@@ -321,6 +352,7 @@ export const Canh: React.FC<{
       {clip ? <div style={clip.nenDung && !clip.giuNet ? {position:'absolute', top: '50%', width:'100%', aspectRatio:'1.6', transform:'translateY(-50%)', opacity:canh.phaMinhHoa ? 1 : ra} : {position: 'absolute', top: Math.max(425, yNoiDung), left: 38, right: 38, height: Math.min(775, yNoiDung + caoSan - Math.max(425, yNoiDung)), opacity: ra}}>
         <CanhBlender canh={canh} truoc={truoc} frame={frame} fps={fps} />
       </div> : null}
+      {chuyen3D ? <ChuyenLayNet canh={canh} truoc={truoc} p={pChuyen} /> : null}
       {anh3D && !clip && !moiTruong ? (
         <div style={{position: 'absolute', top: yNoiDung, left: 40, right: 40, height: caoSan,
           borderRadius: 26, overflow: 'hidden', display: 'grid', placeItems: 'center',
@@ -357,16 +389,8 @@ export const Canh: React.FC<{
             background: coHinh ? 'linear-gradient(165deg, rgba(10,24,26,0.84), rgba(6,14,18,0.9))' : khungCuoi ? 'radial-gradient(ellipse at 50% 50%, rgba(59,242,154,0.12), rgba(6,14,18,0.62) 76%)' : 'transparent',
             border: coHinh ? `2px solid ${khungCuoi ? 'rgba(59,242,154,0.55)' : `${mauNhan}48`}` : khungCuoi ? '2px solid rgba(59,242,154,0.42)' : 'none',
             boxShadow: coHinh || khungCuoi ? '0 14px 36px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.1)' : 'none',
-            opacity: kep((t - (canh.mocCongThuc?.[0] ?? treCT) + 0.3) * 3)}}>
-            {canh.congThucManim?.length === nDong ? (
-              canh.congThucManim.map((src, i) => {
-                const progress = kep((t - thoiDiemDong[i]) / .30);
-                if (dungBienDoi && i + 1 < nDong && t >= thoiDiemDong[i + 1]) return null;
-                if (dungBienDoi && progress === 0) return null;
-                return <Img key={i} alt={canh.noiDung[i]} data-manim-formula={canh.noiDung[i]} src={staticFile(src)} style={{objectFit: 'contain', maxWidth: 890,
-                  height: Math.min(coCT * 1.6, 85), opacity: progress}} />;
-              })
-            ) : dungBienDoi ? (
+            opacity: kep((t - (thoiDiemDong[0] ?? treCT) + 0.05) * 4)}}>
+            {dungBienDoi ? (
               <BienDoi dong={canh.noiDung} batDong={thoiDiemDong} t={t} co={coCT} maxWidth={920} khungCuoi={khungCuoi} mauGoc={MAU.vang} mauNhay="#FFD27A" />
             ) : dungCongDon ? (
               hang.map((h, r) => (

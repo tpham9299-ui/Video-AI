@@ -51,7 +51,7 @@
    * **Hình học (`HINH_HOC`):** Bắt buộc dựng bằng **Manim (`0.22.1`)** nền trong suốt phủ lên Remotion; bảo toàn quy tắc 3D (`canh` nét liền, `khuat` nét đứt, `phu` đường phụ); lỗi cài/dựng Manim phải dừng workflow.
    * **Thực tế & Xác suất (`THUC_TE`, `XAC_SUAT`):**
      * Xe chạy trên đường hoặc phép thử bi/xu/xúc xắc hỗ trợ $\rightarrow$ ghi `moiTruong` và dựng toàn khung bằng **Three.js** (SwiftShader trong Chromium).
-     * Vật thể thực tế / `mo_hinh_3d.chi_tiet` / `khoi_tiet_dien.tang` / lưới tam giác tự do $\rightarrow$ **Blender Cycles CPU** (`canh_3d.py`) xuất nền dọc + lớp vật thể RGBA + tọa độ góc cuối $\rightarrow$ **Manim (`manim_thuc_te.py`)** vẽ nét toán trùng tọa độ & công thức phần giải $\rightarrow$ Remotion hòa mờ chuyển tiếp.
+     * Vật thể thực tế / `mo_hinh_3d.chi_tiet` / `khoi_tiet_dien.tang` / lưới tam giác tự do $\rightarrow$ **Blender Cycles CPU** (`canh_3d.py`) chỉ dựng phần mở đầu (pha `thuc`) $\rightarrow$ cảnh `de_bai` (pha `chuyen`) đẩy máy + nhòe ảnh thật để lấy nét sang hình 2D $\rightarrow$ pha `toan`: Remotion (sân khấu + KaTeX), riêng hình khối hộp/trụ/nón/cầu do **Manim (`manim_thuc_te.py`)** vẽ.
      * Tránh dùng `filter: blur(...)` lặp theo phần tử hoặc `<feTurbulence>` toàn màn hình trong `src/` để giữ tốc độ render Chromium.
 
 3. **Kịch bản, Model & Giọng đọc:**

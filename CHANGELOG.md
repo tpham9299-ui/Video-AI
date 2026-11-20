@@ -335,3 +335,16 @@
 - Duyệt đầy đủ từng cảnh thực tế/xác suất (lời thoại, hình, phép tính) trước khi giao dựng; giữ bản nháp khi chưa đạt và chuyển về Apps Script dùng `KhoKey` nhóm `VIDEO` nếu kho GitHub không phục vụ được.
 - GitHub lập thử kế hoạch từ JSON trước TTS; khi thiếu mô hình có thể yêu cầu Gemini sinh bản vẽ riêng cho cảnh và đối chiếu lại.
 - Bổ sung lưới tam giác tự do và phép dựng lăng trụ từ hai cạnh góc vuông + chiều cao; kiểm tra chỉ số mặt, tam giác suy biến, trích dẫn và độ dài đường đo.
+### Lần 53 (v86) -- Ảnh thật -> lấy nét sang hình 2D, thống nhất phông, giọng tự nhiên
+- Nền Blender chỉ ở phần mở đầu (`thuc`); cảnh `chuyen` đẩy máy + nhòe + tối ảnh thật để lộ hình 2D (`ChuyenLayNet`), không còn phủ cảnh tĩnh suốt video.
+- Pha `toan` dựng bằng Remotion (sân khấu + KaTeX); chỉ hình khối (hộp/trụ/nón/cầu) dùng Manim (`khoi_tron`, nét đứt phía sau). Bỏ "nét chiếu" Blender vô nghĩa, bỏ ảnh công thức Manim lệch phông, chữ Manim dùng Be Vietnam Pro đậm.
+- Cảnh mở đầu: hòa trộn 16 khung Blender + máy trôi chậm cho chuyển động mượt. Tiêu đề Title Case tự đổi về kiểu câu.
+- Giọng đọc: chỉ dẫn kể chuyện tự nhiên, bỏ chèn "..." gây ngắt cụt.
+- Hình học: tự bổ sung cạnh thiếu của khối/đa giác chính, báo điểm đề nêu mà hình thiếu (`manimCanhBao`).
+
+### Lần 54 (v86) -- Nâng mô hình Blender cho cảnh mở đầu giống thật
+- Máy quay phối cảnh 50 mm (bỏ trực giao), lượn 9° + đẩy vào 12%; khung tự vừa theo phối cảnh.
+- Ánh sáng 3 điểm (chính ấm, phụ lạnh, viền), AgX, Cycles lấy mẫu thích ứng + khử nhiễu OIDN.
+- Vật liệu PBR (nhám biến thiên, kim loại, sơn có lớp bóng, kính/nước truyền sáng); trụ/nón/cầu bo mượt, mép bo bắt sáng.
+- Sàn hứng bóng (shadow catcher): vật có bóng đổ trên nền. Nền xóa phông dựng theo từng khung máy (`nen-i.jpg`) -> thị sai thật; cửa sổ phát sáng.
+- Hình mới `lon` (lon nước có vành, cổ thắt, khoen) và `bon_vom` (bồn trụ + vòm bán cầu + chân đế); `tru` có trích dẫn "lon"/"bồn ... vòm" tự nâng cấp.

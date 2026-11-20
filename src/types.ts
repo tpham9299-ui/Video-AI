@@ -19,7 +19,7 @@ export type CanhProps = {
   moiTruong?: MoiTruong;
   nhipXe?: {tong:number; moc:{t:number;s:number;v:number;a:number;j?:number;chay?:number}[]};
   phaMinhHoa?: "thuc" | "chuyen" | "toan";
-  chuoi3D?: {khungThat?: number; hinhGiai?: string;nenDung?: string; thuMuc: string; netCuoi: number; xeDuong?: [number,number]; coThuoc?: boolean; giuVatCuoi?: boolean; phepThu?: boolean; giuNet?: boolean};
+  chuoi3D?: {khungThat?: number; hinhGiai?: string;nenDung?: string; nenKhung?: number; thuMuc: string; netCuoi: number; xeDuong?: [number,number]; coThuoc?: boolean; giuVatCuoi?: boolean; phepThu?: boolean; giuNet?: boolean};
   nhanNet?: string;
   mocNhanNet?: number;
   congThucManim?: string[];

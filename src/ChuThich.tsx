@@ -17,7 +17,7 @@ export const ChuThich: React.FC<{dong: string[]; bd: number}> = ({dong, bd}) => 
       </div>
       <div style={{background: 'linear-gradient(160deg, rgba(40,32,8,0.95), rgba(14,12,4,0.95))', border: '3px solid rgba(255,213,74,0.75)', borderRadius: 22, padding: '34px 30px 22px', boxShadow: '0 0 26px rgba(255,213,74,0.28), 0 18px 40px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8}}>
         {dong.map((d, i) => {
-          const p = tien(t, bd + 0.35 + i * 0.4, 0.45);
+          const p = tien(t, bd + 0.12 + i * 0.4, 0.4);
           return (
             <div key={i} style={{display: 'flex', alignItems: 'center', gap: 12, opacity: p, transform: `translateY(${(1 - p) * 14}px)`}}>
               {i > 0 ? <span style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: 36, color: '#FFD54A'}}>⇒</span> : null}

@@ -308,11 +308,11 @@ def them_nhan_nha_doc(text, loai=""):
         return s
     loai = str(loai or "").lower()
     # 1) Ngắt nhịp nhấn mạnh sau các cụm cảnh báo / chuyển ý / gọi sự chú ý
-    s = re.sub(r"(?i)\b(nhưng\s+khoan|cẩn\s+thận|đừng\s+vội|chú\s+ý\s+nhé|để\s+ý\s+kỹ\s+nhé|nhưng\s+cẩn\s+thận|khoan\s+đã|bí\s+quyết\s+ở\s+đây\s+là|mấu\s+chốt\s+nằm\s+ở|mấu\s+chốt\s+là|điều\s+kỳ\s+diệu\s+là)\s*[,:]?", r"\1, ... ", s)
+    s = re.sub(r"(?i)\b(nhưng\s+khoan|cẩn\s+thận|đừng\s+vội|chú\s+ý\s+nhé|để\s+ý\s+kỹ\s+nhé|nhưng\s+cẩn\s+thận|khoan\s+đã|bí\s+quyết\s+ở\s+đây\s+là|mấu\s+chốt\s+nằm\s+ở|mấu\s+chốt\s+là|điều\s+kỳ\s+diệu\s+là)\s*[,:]?", r"\1, ", s)
     # 2) Ngắt nhịp lấy đà trước khi đọc đáp số / kết luận quan trọng để TTS tự động nhấn trọng âm vào kết quả
-    s = re.sub(r"(?i)\b(đáp\s+án\s+cuối\s+cùng\s+là|đáp\s+án\s+đúng\s+là|đáp\s+án\s+chính\s+là|vậy\s+đáp\s+số\s+là|vậy\s+xác\s+suất\s+cần\s+tìm\s+là|kết\s+quả\s+chính\s+là|giá\s+trị\s+lớn\s+nhất\s+là|giá\s+trị\s+nhỏ\s+nhất\s+là|suy\s+ra\s+ngay)\s+", r"\1, ... ", s)
+    s = re.sub(r"(?i)\b(đáp\s+án\s+cuối\s+cùng\s+là|đáp\s+án\s+đúng\s+là|đáp\s+án\s+chính\s+là|vậy\s+đáp\s+số\s+là|vậy\s+xác\s+suất\s+cần\s+tìm\s+là|kết\s+quả\s+chính\s+là|giá\s+trị\s+lớn\s+nhất\s+là|giá\s+trị\s+nhỏ\s+nhất\s+là|suy\s+ra\s+ngay)\s+", r"\1, ", s)
     # 3) Nhấn nhẹ trước các từ khóa toán học quan trọng ("bằng đúng", "chỉ còn", "tổng cộng")
-    s = re.sub(r"(?i)\b(bằng\s+đúng|chỉ\s+còn\s+đúng|tổng\s+cộng\s+có)\s+", r"... \1 ", s)
+    # (bỏ dấu "..." chen giữa câu: giọng TTS ngắt cụt, nghe như đọc máy)
     # 4) Đảm bảo câu hỏi có dấu '?' để TTS tự động vút ngữ điệu ở cuối câu hỏi
     if re.search(r"(?i)\b(bao\s+nhiêu|như\s+thế\s+nào|vì\s+sao|tại\s+sao|đúng\s+không|phải\s+không|không\s+nhỉ|chưa\s+nhỉ|ở\s+đâu\s+nhỉ)\b", s) and not s.endswith("?"):
         s = s.rstrip(".!…") + "?"
@@ -349,28 +349,27 @@ def _gtts(text, tep, toc):
 THONG_KE_GIONG = {"edge": 0, "gtts": 0, "gemini": 0}
 
 PHONG_CACH_GIONG_MAC_DINH = (
-    "Đọc bằng tiếng Việt chuẩn, nhập vai một người thầy dạy toán trẻ trung, giàu năng lượng và truyền cảm hứng. "
-    "TUYỆT ĐỐI KHÔNG ĐỌC NGANG ĐỀU NHƯ ĐỌC VĂN BẢN! Bắt buộc thể hiện rõ CAO ĐỘ TRẦM BỔNG (pitch variation) và NHẤN NHÁ (word stress): "
-    "1) Lên giọng cao, sáng và nảy ở các câu hỏi mở, từ gợi mở ('Đố bạn...', 'Tại sao...?', 'Bao nhiêu...?'); "
-    "2) Hạ giọng trầm xuống và ngắt nhịp kịch tính 0,4 giây ở các từ chuyển ý/cảnh báo ('Nhưng khoan...', 'Cẩn thận nhé...'); "
-    "3) Nhấn mạnh, đọc chậm và tròn vành rõ chữ vào từng con số, phép tính và từ khóa toán học then chốt; "
-    "4) Bật cao độ sáng rực, phấn khởi, đầy tự hào khi tìm ra mấu chốt và khi công bố đáp án cuối cùng. "
-    "Chỉ đọc đúng lời văn bản dưới đây, không tự ý thêm bớt từ."
+    "Đọc bằng tiếng Việt chuẩn, giọng của một người anh/chị dạy toán đang kể chuyện cho em nghe: tự nhiên, ấm, gần gũi, "
+    "như nói chuyện thật chứ không như đọc văn bản hay quảng cáo. Tốc độ nói vừa phải, đều tay; câu dài thì ngắt hơi ở dấu phẩy. "
+    "Nhấn nhẹ và rõ vào con số, kết quả và từ khóa, nhưng KHÔNG gào, KHÔNG kéo dài giọng, KHÔNG lên giọng quá đà. "
+    "Câu hỏi thì cuối câu hơi lên giọng; lúc cảnh báo sai lầm thì chậm lại một chút; lúc ra đáp án thì vui và chắc chắn. "
+    "Đọc ký hiệu toán theo cách giáo viên Việt Nam nói (ví dụ: 'pi', 'r bình phương', 'phần'). "
+    "Chỉ đọc đúng lời văn bản dưới đây, không thêm bớt từ."
 )
 
 # Sắc thái & chỉ đạo cao độ/nhấn nhá riêng theo từng loại cảnh
 SAC_THAI_THEO_LOAI = [
-    (r"mo_dau|hook|cau_hoi", "CAO ĐỘ CAO, SÁNG VÀ NẢY: lên giọng hào hứng ở cuối câu hỏi như đang thách đố thú vị, nhấn mạnh thật rõ vào các con số gây tò mò"),
-    (r"de_bai", "CAO ĐỘ ẤM VÀ RÕ RÀNG: kể chuyện lôi cuốn, ngắt nghỉ rành mạch giữa các dữ kiện và nhấn mạnh vào từng con số, câu hỏi của đề"),
-    (r"nhac_lai|kien_thuc", "CAO ĐỘ MỀM MẠI, TRUYỀN CẢM: giải thích ân cần, nhấn giọng vào tên định lý và tính chất quan trọng"),
-    (r"mo_hinh", "CAO ĐỘ LINH HOẠT, TẬP TRUNG: như đang chỉ tay trực tiếp vào từng chi tiết trên hình vẽ cho học sinh quan sát"),
-    (r"y_do|thu_nho", "CAO ĐỘ GỢI MỞ, NÂNG DẦN Ở CUỐI CÂU: khơi gợi suy nghĩ, đặt câu hỏi dẫn dắt học sinh"),
-    (r"bay", "HẠ TRẦM CAO ĐỘ KỊCH TÍNH: hạ thấp giọng ở đầu câu cảnh báo, ngắt một nhịp ngắn rồi nhấn mạnh vào sai lầm học sinh hay mắc"),
-    (r"diem_chot|y_tuong", "BẬT CAO ĐỘ SÁNG RỰC PHẤN KHÍCH: giọng bừng sáng như vừa phát hiện ra bí quyết ('À, mấu chốt là đây!'), nhấn mạnh từ khóa"),
-    (r"tinh|giai", "NHỊP ĐIỆU KHOẺ KHOẮN, CÓ TRỌNG ÂM: biến thiên cao độ tự nhiên giữa vế đầu và vế suy ra, nhấn rõ từng kết quả trung gian"),
-    (r"kiem_tra", "CAO ĐỘ VỮNG VÀNG, KHẲNG ĐỊNH: nhấn giọng tự tin vào sự khớp nhau của phép thử"),
-    (r"dap_an|ket_qua", "CAO ĐỘ VƯƠN CAO RẠNG RỠ: giọng hào hứng, dừng một nhịp ngắn trước đáp số rồi đọc con số đáp án thật vang, rõ và chậm rãi"),
-    (r"bai_hoc|ket_luan|chot", "CAO ĐỘ ẤM ÁP, TRẦM BỔNG ĐỌNG LẠI: nhịp chậm rãi, truyền cảm hứng như lời nhắn nhủ cuối bài"),
+    (r"mo_dau|hook|cau_hoi", "tò mò, gợi chuyện như đang hỏi một người bạn; cuối câu hỏi hơi lên giọng"),
+    (r"de_bai", "kể chuyện rõ ràng, ngắt nghỉ gọn giữa các dữ kiện, đọc rõ từng con số"),
+    (r"nhac_lai|kien_thuc", "ân cần, giải thích từ tốn"),
+    (r"mo_hinh", "tập trung, như đang chỉ vào từng chi tiết trên hình"),
+    (r"y_do|thu_nho", "gợi mở, dẫn dắt nhẹ nhàng"),
+    (r"bay", "chậm lại một chút, giọng cảnh báo nhẹ nhàng, nhấn vào chỗ hay sai"),
+    (r"diem_chot|y_tuong", "vui vẻ như vừa nhận ra mấu chốt, không cường điệu"),
+    (r"tinh|giai", "đều tay, rành mạch, nhấn nhẹ kết quả trung gian"),
+    (r"kiem_tra", "chắc chắn, bình tĩnh"),
+    (r"dap_an|ket_qua", "vui và chắc chắn, dừng một nhịp ngắn trước đáp số rồi đọc rõ đáp số"),
+    (r"bai_hoc|ket_luan|chot", "ấm áp, chậm rãi như lời nhắn cuối bài"),
 ]
 
 
@@ -568,7 +567,7 @@ def tao_giong_gemini(canh, thu_muc, args):
     phong_cach_chung = (
         args.phong_cach_giong +
         " Giữ cố định đúng một màu giọng, một tốc độ và một âm sắc người đọc xuyên suốt; "
-        "nhấn mạnh trọng âm rõ ràng vào các từ khóa sau dấu '...' và thể hiện ngữ điệu tự nhiên theo dấu '?', '!'.\nĐoạn cần đọc:"
+        "nhấn nhẹ vào con số và từ khóa, ngữ điệu tự nhiên như nói chuyện theo dấu '?', '!'.\nĐoạn cần đọc:"
     )
     tempo = float(args.toc_do_gemini or 1.0)
     loc = ("atempo=%.3f," % tempo if abs(tempo - 1) > 0.01 else "") + "aresample=44100,aformat=channel_layouts=mono"
@@ -636,7 +635,7 @@ def _doc_khuc_gemini_mot_lan(ds_canh, chi_so_bat_dau, thu_muc, args):
         args.phong_cach_giong +
         " Đây là toàn bộ lời giảng liền mạch của một người thầy duy nhất. "
         "BẮT BUỘC giữ đồng nhất 100% một chất giọng, một âm sắc xuyên suốt từ đầu đến cuối; "
-        "thể hiện sự NHẤN NHÁ sống động vào các từ khóa, con số sau dấu '...' và lên xuống ngữ điệu tự nhiên ở các câu hỏi '?', câu cảm thán '!'. "
+        "nhấn nhẹ vào con số, từ khóa; lên xuống ngữ điệu tự nhiên như đang kể chuyện, không cường điệu. "
         "Giữa hai đoạn (cách nhau một dòng trống) hãy ngắt nghỉ rõ khoảng 1,2 giây.\nLời giảng:"
     )
     ky_tu = [max(1, len(v)) for v in van]

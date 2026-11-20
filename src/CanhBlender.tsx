@@ -17,8 +17,73 @@ function khungVat(canh: CanhProps, time: number, fps: number) {
       p = kep((phase.s + phase.v * dt + phase.a * dt**2 / 2 + (phase.j ?? 0) * dt**3 / 6) / canh.nhipXe.tong);
     }
   }
-  return Math.round(last * p);
+  return last * p;   // số thực: hai khung kề nhau được hòa trộn để vật quay mượt (16 khung Blender không bị giật bậc)
 }
+
+const eio = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+
+// Tiến độ chuyển từ ảnh thật sang hình minh họa của cảnh 'chuyen' (0 -> 1), bắt đầu khi lời đọc vào đề.
+export function tienChuyen(canh: CanhProps, time: number) {
+  const duration = canh.soFrame / 30;
+  const cue = canh.cau.find(c => /gọi|đặt|mô hình|biểu diễn|đề bài|cho biết/i.test(c.text));
+  const start = Math.min(cue?.bat ?? 0.35, duration * 0.3);
+  return eio(kep((time - start) / 1.15));
+}
+
+// Máy quay CSS rất nhẹ (máy Blender đã tự lượn + đẩy vào): dùng CHUNG cho lớp nền và lớp vật để hai lớp luôn khớp.
+export const dichMay = (time: number, duration: number) => {
+  const e = eio(kep(time / Math.max(1, duration)));
+  return `scale(${1.0 + 0.03 * e}) translateY(${-6 * e}px)`;
+};
+
+// Khung nền Blender (bối cảnh xóa phông, cùng góc máy với lớp vật) phủ toàn màn hình dọc.
+export const NenKhungBlender: React.FC<{canh: CanhProps; k: number; style?: React.CSSProperties}> = ({canh, k, style}) => {
+  const clip = canh.chuoi3D!;
+  const n = clip.nenKhung ?? 0;
+  if (!n) return null;
+  const a = n === 1 ? 0 : Math.min(n - 1, Math.floor(k)), w = n === 1 ? 0 : Math.min(1, k - a);
+  const img = (i: number, o: number) => <Img key={i} src={staticFile(clip.thuMuc + '/nen-' + i + '.jpg')}
+    style={{position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: o}} />;
+  return <div style={{position: 'absolute', inset: 0, ...style}}>
+    {img(a, 1)}
+    {w > 0.02 && a + 1 < n ? img(a + 1, w) : null}
+    {/* tối nhẹ trên/dưới cho chữ tiêu đề và phụ đề luôn đọc rõ trên ảnh thật */}
+    <div style={{position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(8,14,20,.55), transparent 26%, transparent 70%, rgba(8,14,20,.62))'}} />
+  </div>;
+};
+
+export const khungThuc = (canh: CanhProps, time: number) => khungVat(canh, time, 30);
+
+// Ảnh Blender cuối của phần mở đầu: máy quay đẩy vào (focus pull), nhòe sâu và tối dần, để lộ hình 2D phía dưới.
+export const ChuyenLayNet: React.FC<{canh: CanhProps; truoc?: CanhProps; p: number}> = ({canh, truoc, p}) => {
+  if (p >= 1) return null;
+  const clip = canh.chuoi3D!;
+  const last = (clip.khungThat ?? 16) - 1;
+  const k = Math.round(truoc?.chuoi3D ? khungVat(truoc, (truoc.soFrame - 1) / 30, 30) : last);
+  const flash = Math.sin(Math.PI * kep(p * 1.6)) * 0.22;
+  return <div style={{position: 'absolute', inset: 0, pointerEvents: 'none'}}>
+    <div style={{position: 'absolute', inset: 0, transform: `scale(${1 + 0.28 * p})`,
+      filter: `blur(${p * 18}px) brightness(${1 - 0.55 * p}) saturate(${1 - 0.6 * p})`, opacity: 1 - kep((p - 0.35) / 0.65)}}>
+      <NenKhungBlender canh={canh} k={(clip.nenKhung ?? 0) > 1 ? (clip.nenKhung! - 1) * k / Math.max(1, last) : 0} />
+      <div style={{position: 'absolute', top: '50%', width: '100%', aspectRatio: '1.6', transform: 'translateY(-50%)',
+        WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, #000 9%, #000 88%, transparent 100%)'}}>
+        <Img src={staticFile(clip.thuMuc + '/orbit-' + k + '.png')} style={{width: '100%', height: '100%', objectFit: 'contain'}} />
+      </div>
+    </div>
+    {/* vệt sáng nhẹ ở giữa khung lúc lấy nét: mắt người xem được dẫn vào hình minh họa */}
+    <div style={{position: 'absolute', inset: 0, background: 'radial-gradient(circle at 50% 48%, rgba(220,255,248,0.9), rgba(120,220,210,0.25) 32%, transparent 62%)', opacity: flash}} />
+  </div>;
+};
+
+// Khung Blender với chỉ số thực: hòa hai ảnh kề nhau.
+const KhungMuot: React.FC<{thuMuc: string; k: number}> = ({thuMuc, k}) => {
+  const a = Math.floor(k), w = k - a;
+  const style = (o: number): React.CSSProperties => ({position: 'absolute', width: '100%', height: '100%', objectFit: 'contain', opacity: o});
+  return <>
+    <Img src={staticFile(thuMuc + '/orbit-' + a + '.png')} style={style(1)} />
+    {w > 0.02 ? <Img src={staticFile(thuMuc + '/orbit-' + (a + 1) + '.png')} style={style(w)} /> : null}
+  </>;
+};
 
 export const CanhBlender: React.FC<{canh: CanhProps; truoc?: CanhProps; frame: number; fps: number}> = ({canh, truoc, frame, fps}) => {
   const clip = canh.chuoi3D!;
@@ -40,13 +105,17 @@ export const CanhBlender: React.FC<{canh: CanhProps; truoc?: CanhProps; frame: n
         {canh.nhanNet && <Img src={staticFile(canh.nhanNet)} style={{position:'absolute',inset:0,width:'100%',opacity:kep((time-(canh.mocNhanNet ?? 0))/.3)}} />}
       </>;
     if (canh.phaMinhHoa === 'thuc') {
-      return pic('orbit-'+khungVat(canh,time,fps),1);
+      // máy quay trôi chậm liên tục suốt cảnh mở đầu; mép trên/dưới lớp vật mờ dần để bóng đổ không bị cắt ngang
+      const mask = 'linear-gradient(to bottom, transparent 0%, #000 9%, #000 88%, transparent 100%)';
+      return <div style={{position: 'absolute', inset: 0, transform: dichMay(time, duration), WebkitMaskImage: mask, maskImage: mask}}>
+        <KhungMuot thuMuc={clip.thuMuc} k={khungVat(canh, time, fps)} />
+      </div>;
     }
     const cue = canh.cau.find(c => /gọi|đặt|mô hình|biểu diễn/i.test(c.text));
     const start = Math.min(cue?.bat ?? .25, duration*.4);
     const p = kep((time-start)/Math.min(1,duration*.4));
     return <>
-      <div style={{position:'absolute',inset:0,filter:`blur(${p*4}px)`}}>{pic('orbit-'+(truoc ? khungVat(truoc,(truoc.soFrame-1)/fps,fps) : last),1-p)}</div>
+      <div style={{position:'absolute',inset:0,filter:`blur(${p*4}px)`}}>{pic('orbit-'+Math.round(truoc ? khungVat(truoc,(truoc.soFrame-1)/fps,fps) : last),1-p)}</div>
       {pic('net-'+Math.round(clip.netCuoi*p),p)}
     </>;
   }

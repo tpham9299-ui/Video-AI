@@ -3,6 +3,7 @@
 import json
 import math
 import random
+import re
 from pathlib import Path
 import sys
 
@@ -29,7 +30,73 @@ COLORS = {
     "trang": (0.89, 0.87, 0.75),
     "do": (0.73, 0.085, 0.045),
     "toi": (0.075, 0.11, 0.14),
+    "nhom": (0.80, 0.81, 0.83),
 }
+
+# Kiểu bề mặt của từng vật liệu: (độ nhám, kim loại, lớp phủ bóng). Vật liệu không có ở đây là sơn/nhựa mờ.
+BE_MAT = {
+    "thep": (0.30, 1.0, 0.0), "nhom": (0.22, 1.0, 0.0), "vang": (0.34, 0.0, 0.35),
+    "kinh": (0.03, 0.0, 0.0), "nuoc": (0.04, 0.0, 0.0), "trang": (0.42, 0.0, 0.25),
+    "do": (0.36, 0.0, 0.45), "xanh_duong": (0.36, 0.0, 0.45), "xanh_la": (0.38, 0.0, 0.35),
+    "cam": (0.36, 0.0, 0.40), "tim": (0.36, 0.0, 0.40), "den": (0.45, 0.0, 0.2),
+    "go": (0.62, 0.0, 0.0), "da": (0.78, 0.0, 0.0), "gach": (0.85, 0.0, 0.0),
+    "dat": (0.95, 0.0, 0.0), "co": (0.9, 0.0, 0.0), "la": (0.6, 0.0, 0.0), "toi": (0.5, 0.0, 0.1),
+}
+
+
+def dat_dau_vao(shader, ten, gia_tri):
+    sock = shader.inputs.get(ten)
+    if sock is not None:
+        sock.default_value = gia_tri
+
+
+def tao_vat_lieu(name, rgb):
+    """Vật liệu PBR: nhám thay đổi nhẹ theo vết bẩn/vân, kính và nước truyền sáng, kim loại phản chiếu, sơn có lớp bóng."""
+    mat = bpy.data.materials.new(name)
+    mat.diffuse_color = (*rgb, 1)
+    mat.use_nodes = True
+    tree = mat.node_tree
+    shader = tree.nodes.get("Principled BSDF")
+    rough, metal, coat = BE_MAT.get(name, (0.5, 0.0, 0.2))
+    dat_dau_vao(shader, "Base Color", (*rgb, 1))
+    dat_dau_vao(shader, "Metallic", metal)
+    dat_dau_vao(shader, "Coat Weight", coat)
+    dat_dau_vao(shader, "Coat Roughness", 0.12)
+    if name in ("kinh", "nuoc"):
+        dat_dau_vao(shader, "Transmission Weight", 0.92 if name == "kinh" else 0.85)
+        dat_dau_vao(shader, "IOR", 1.45 if name == "kinh" else 1.33)
+        dat_dau_vao(shader, "Roughness", rough)
+        return mat
+    # Vết nhám ngẫu nhiên: bề mặt thật không bao giờ đều tuyệt đối (đây là khác biệt lớn nhất giữa "đồ chơi" và "ảnh thật").
+    noise = tree.nodes.new("ShaderNodeTexNoise")
+    noise.inputs["Scale"].default_value = 9
+    noise.inputs["Detail"].default_value = 6
+    rmap = tree.nodes.new("ShaderNodeMapRange")
+    rmap.inputs["To Min"].default_value = rough * 0.75
+    rmap.inputs["To Max"].default_value = min(1, rough * 1.3 + 0.04)
+    tree.links.new(noise.outputs["Fac"], rmap.inputs["Value"])
+    tree.links.new(rmap.outputs["Result"], shader.inputs["Roughness"])
+    if name in ("gach", "dat", "co", "go", "nuoc", "da", "la"):
+        detail = tree.nodes.new("ShaderNodeTexWave" if name == "go" else "ShaderNodeTexNoise")
+        if name == "go":
+            detail.wave_type = "BANDS"
+            detail.inputs["Scale"].default_value = 7
+            detail.inputs["Distortion"].default_value = 2.5
+            detail.inputs["Detail"].default_value = 4
+        else:
+            detail.inputs["Scale"].default_value = 38
+            detail.inputs["Detail"].default_value = 8
+        ramp = tree.nodes.new("ShaderNodeValToRGB")
+        for elem, gain in zip(ramp.color_ramp.elements, (0.86, 1.06) if name == "go" else (0.62, 1.15)):
+            elem.color = (*[min(1, v * gain) for v in rgb], 1)
+        tree.links.new(detail.outputs["Fac"], ramp.inputs[0])
+        tree.links.new(ramp.outputs[0], shader.inputs["Base Color"])
+        bump = tree.nodes.new("ShaderNodeBump")
+        bump.inputs["Strength"].default_value = 0.02 if name == "go" else 0.22
+        bump.inputs["Distance"].default_value = 0.03
+        tree.links.new(detail.outputs["Fac"], bump.inputs["Height"])
+        tree.links.new(bump.outputs["Normal"], shader.inputs["Normal"])
+    return mat
 
 
 def vat(hinh, tam, co, mau, xoay=(0, 0, 0)):
@@ -37,23 +104,27 @@ def vat(hinh, tam, co, mau, xoay=(0, 0, 0)):
     if hinh == "hop":
         bpy.ops.mesh.primitive_cube_add(size=1, **pos)
     elif hinh == "tru":
-        bpy.ops.mesh.primitive_cylinder_add(vertices=32, **pos)
+        bpy.ops.mesh.primitive_cylinder_add(vertices=64, **pos)
     elif hinh == "non":
-        bpy.ops.mesh.primitive_cone_add(vertices=32, **pos)
+        bpy.ops.mesh.primitive_cone_add(vertices=64, **pos)
     else:
-        bpy.ops.mesh.primitive_uv_sphere_add(segments=20, ring_count=12, **pos)
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=48, ring_count=24, **pos)
     ob = bpy.context.object
     ob.dimensions = co
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     ob.rotation_euler = tuple(map(math.radians, xoay))
-    if hinh in ("hop", "tru"):
+    # Bề mặt cong phải mượt (trước đây trụ/nón hiện rõ từng mặt phẳng, trông như mô hình giấy).
+    # Mép được bo nhẹ để bắt sáng; WEIGHTED_NORMAL giữ mặt phẳng phẳng, mép tròn tròn.
+    for face in ob.data.polygons:
+        face.use_smooth = True
+    if hinh in ("hop", "tru", "non"):
         bevel = ob.modifiers.new("Bo mép", "BEVEL")
-        bevel.width = min(co) * 0.045
-        bevel.segments = 2
-        ob.modifiers.new("Pháp tuyến", "WEIGHTED_NORMAL")
-    if hinh == "cau":
-        for face in ob.data.polygons:
-            face.use_smooth = True
+        bevel.width = min(co) * (0.03 if hinh == "hop" else 0.02)
+        bevel.segments = 3
+        bevel.limit_method = "ANGLE"
+        bevel.harden_normals = True
+        wn = ob.modifiers.new("Pháp tuyến", "WEIGHTED_NORMAL")
+        wn.keep_sharp = True
     ob.data.materials.append(MATS.get(mau, MATS["da"]))
     return ob
 
@@ -262,10 +333,90 @@ def phep_thu(s):
                 ob["pivot"] = list(center)
 
 
+def tru_cut(z, r1, r2, depth, mat, n=64):
+    """Thân nón cụt (cổ lon, vành bồn) đặt tâm đáy giữa ở cao độ z."""
+    bpy.ops.mesh.primitive_cone_add(vertices=n, radius1=r1, radius2=r2, depth=depth, location=(0, 0, z + depth / 2))
+    ob = bpy.context.object
+    for face in ob.data.polygons:
+        face.use_smooth = True
+    ob.data.materials.append(MATS.get(mat, MATS["da"]))
+    return ob
+
+
+def vanh(z, r, day, mat):
+    bpy.ops.mesh.primitive_torus_add(major_radius=r, minor_radius=day, major_segments=72, minor_segments=12, location=(0, 0, z))
+    ob = bpy.context.object
+    for face in ob.data.polygons:
+        face.use_smooth = True
+    ob.data.materials.append(MATS.get(mat, MATS["thep"]))
+    return ob
+
+
+def vom(z, r, cao, mat):
+    """Vòm bán cầu (mái bồn chứa): nửa trên của mặt cầu, co giãn theo chiều cao vòm."""
+    import bmesh
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=64, ring_count=32, radius=1, location=(0, 0, 0))
+    ob = bpy.context.object
+    bm = bmesh.new()
+    bm.from_mesh(ob.data)
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.co.z < -1e-4], context="VERTS")
+    bm.to_mesh(ob.data)
+    bm.free()
+    ob.scale = (r, r, cao)
+    ob.location = (0, 0, z)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    for face in ob.data.polygons:
+        face.use_smooth = True
+    ob.data.materials.append(MATS.get(mat, MATS["trang"]))
+    return ob
+
+
+def lon(w, h, mat):
+    """Lon nước giống thật: thân sơn bóng, cổ thắt hai đầu, vành cuộn và nắp nhôm có khoen."""
+    r = w / 2
+    co = h * 0.07
+    than = vat("tru", (0, 0, 0), (w, w, h - 2 * co), mat)
+    parts = [than,
+             tru_cut(-h / 2, r * 0.86, r, co, "nhom"),
+             tru_cut(h / 2 - co, r, r * 0.84, co, "nhom"),
+             vanh(h / 2, r * 0.84, r * 0.035, "nhom"),
+             vanh(-h / 2 + r * 0.02, r * 0.84, r * 0.03, "nhom"),
+             vat("tru", (0, 0, h / 2 - r * 0.03), (r * 1.62, r * 1.62, r * 0.02), "nhom"),
+             vat("hop", (0, r * 0.28, h / 2 + r * 0.005), (r * 0.42, r * 0.62, r * 0.02), "thep")]
+    return parts
+
+
+def bon_vom(w, h, mat):
+    """Bồn chứa: thân trụ đứng, mái vòm bán cầu, vành nối và bốn chân đế thép."""
+    r = w / 2
+    cao_vom = min(r, h * 0.45)
+    chan = h * 0.08
+    than_cao = h - cao_vom - chan
+    z0 = -h / 2 + chan
+    than = vat("tru", (0, 0, z0 + than_cao / 2), (w, w, than_cao), mat)
+    parts = [than, vom(z0 + than_cao, r, cao_vom, mat),
+             vanh(z0 + than_cao, r * 1.005, r * 0.025, "thep"),
+             vanh(z0 + r * 0.03, r * 1.005, r * 0.03, "thep"),
+             vat("tru", (0, 0, z0 + than_cao + cao_vom * 0.97), (r * 0.32, r * 0.32, r * 0.1), "thep")]
+    for i in range(4):
+        a = math.pi / 4 + i * math.pi / 2
+        parts.append(vat("hop", (r * 0.78 * math.cos(a), r * 0.78 * math.sin(a), -h / 2 + chan / 2), (r * 0.12, r * 0.12, chan), "thep"))
+    return parts
+
+
 def chi_tiet(p):
     w, d, h = p["co"]
     shape = p["hinh"]
     material = p.get("vat_lieu", "da")
+    nguon = str(p.get("tu_de") or "").casefold()
+    # Biên kịch thường mô tả lon / bồn bằng một khối trụ trơn: tự nâng thành vật thật có chi tiết.
+    if shape == "tru" and abs(w - d) < 1e-6 * max(w, d, 1) and not any(p.get("xoay", [])):
+        if "lon" in nguon.split() or "vỏ lon" in nguon:
+            shape = "lon"
+        elif re.search(r"bồn|bể|téc|bình chứa", nguon) and re.search(r"bán cầu|vòm|chỏm cầu", nguon):
+            shape = "bon_vom"
+    if shape in ("lon", "bon_vom") and material in ("da", "toi"):
+        material = "do" if shape == "lon" else "trang"
     center = Vector(p["tam"])
     rot = Euler(tuple(map(math.radians, p.get("xoay", [0, 0, 0])))).to_matrix()
     if shape == "bang_chuyen":
@@ -307,6 +458,10 @@ def chi_tiet(p):
         pieces = [khoi_tiet_dien(p)]
     elif shape == "lang_tru":
         pieces = [vo_khoi(p["day"], p["co"], 1, material)]
+    elif shape == "lon":
+        pieces = lon(w, h, material)
+    elif shape == "bon_vom":
+        pieces = bon_vom(w, h, material)
     else:
         pieces = [vat(shape, (0, 0, 0), p["co"], material)]
     for ob in pieces:
@@ -378,12 +533,8 @@ def dung(s):
                 vat("cau", (x, y, h * 0.67), (h * 0.55, h * 0.53, h * 0.66), "la")
 
 
-def chup_moi_truong(scene, cam, plan, dest, center, span, ground):
-    """Chụp lớp nền dọc cùng tỉ lệ ngang với lớp vật thể/sơ đồ toán."""
-    objects = [o for o in scene.objects if o.type in ("MESH", "FONT")]
-    for o in objects:
-        o.hide_render = True
-    old_scale = cam.data.ortho_scale
+def tao_moi_truong(scene, plan, center, span, ground):
+    """Dựng bối cảnh quanh vật (sàn, tường, cây...). Trả danh sách vật bối cảnh để bật/tắt khi chụp từng lớp."""
     before = set(scene.objects)
     parts = plan.get("chi_tiet", [])
     warehouse = any(p["hinh"] == "bang_chuyen" for p in parts)
@@ -398,82 +549,84 @@ def chup_moi_truong(scene, cam, plan, dest, center, span, ground):
     if story:
         def story_material(color):
             if color not in MATS:
-                mat = bpy.data.materials.new(color)
-                mat.diffuse_color = tuple((int(color[i:i+2],16)/255)**2.2 for i in (1,3,5)) + (1,)
-                MATS[color] = mat
+                rgb = tuple((int(color[i:i+2], 16)/255)**2.2 for i in (1, 3, 5))
+                MATS[color] = tao_vat_lieu(color, rgb)
             return color
-        prop("hop",0,0,-.055,(20,20,.10),story_material(story["dat"]))
+        prop("hop", 0, 0, -.055, (20, 20, .10), story_material(story["dat"]))
         for part in story["vat"]:
-            px,py,pz = part["tam"]
-            w,h,d = part["co"]
-            prop(part["hinh"],px*.22,-pz*.22,py*.22,(w*.22,d*.22,h*.22),story_material(part["mau"]))
-        if not scene.world:
-            scene.world = bpy.data.worlds.new("BoiCanh")
+            px, py, pz = part["tam"]
+            w, h, d = part["co"]
+            prop(part["hinh"], px*.22, -pz*.22, py*.22, (w*.22, d*.22, h*.22), story_material(part["mau"]))
         scene.world.node_tree.nodes["Background"].inputs[0].default_value = MATS[story_material(story["troi"])].diffuse_color
     else:
         prop("hop", 0, 0, -.055, (20, 20, .10), "co" if outside else "da" if warehouse else "go")
         if outside:
+            rng = random.Random(5)
             for i in range(11):
-                dx, dy = i*.53-3, 1.8+(i%3)*.22
-                prop("tru", dx, dy, .19, (.035,.035,.38), "go")
-                prop("cau", dx, dy, .47, (.30,.31,.47), "la")
+                dx, dy = i*.53-3 + rng.uniform(-.08, .08), 1.8+(i % 3)*.22
+                s = rng.uniform(.8, 1.2)
+                prop("tru", dx, dy, .19*s, (.035, .035, .38*s), "go")
+                prop("cau", dx, dy, .47*s, (.30*s, .31*s, .47*s), "la")
         else:
             wall_y = 1.05
-            prop("hop", 0, wall_y, 1.4, (12,.09,2.8), "da" if warehouse else "trang")
+            prop("hop", 0, wall_y, 1.4, (12, .09, 2.8), "da" if warehouse else "trang")
+            # chân tường: chi tiết nhỏ giúp mắt đọc được tỉ lệ căn phòng
+            prop("hop", 0, wall_y-.05, .04, (12, .02, .08), "go")
             if warehouse:
                 for dy in (-.34, .38):
-                    prop("hop", 0, dy, -.003, (7,.018,.006), "vang")
+                    prop("hop", 0, dy, -.003, (7, .018, .006), "vang")
                 for i in range(-5, 6):
-                    prop("hop", i*.62, 0, -.004, (.005,4,.004), "toi")
+                    prop("hop", i*.62, 0, -.004, (.005, 4, .004), "toi")
             for i in range(-6, 7):
-                prop("hop", i*.68, wall_y-.06, .57, (.59,.035,.84), "kinh")
+                prop("hop", i*.68, wall_y-.06, .57, (.59, .035, .84), "cua_so")
+                prop("hop", i*.68, wall_y-.08, .57, (.012, .02, .84), "trang")   # song cửa
+                prop("hop", i*.68, wall_y-.08, .15, (.62, .045, .03), "trang")   # bậu cửa
                 if warehouse:
-                    prop("hop", i*.68, wall_y-.12, 1.33, (.045,.075,2.66), "thep")
-    cam.data.ortho_scale = old_scale * 16/9
-    scene.render.resolution_x, scene.render.resolution_y = 720, 1280
-    scene.render.film_transparent = False
-    scene.render.filepath = str(dest.parent/"moi-truong.jpg")
-    scene.render.image_settings.file_format = "JPEG"
-    bpy.ops.render.render(write_still=True)
-    for ob in set(scene.objects)-before:
-        bpy.data.objects.remove(ob, do_unlink=True)
-    for ob in objects:
-        ob.hide_render = False
-    cam.data.ortho_scale = old_scale
-    scene.render.resolution_x, scene.render.resolution_y = 960, 600
-    scene.render.film_transparent = True
-    scene.render.image_settings.file_format = "PNG"
-    scene.render.image_settings.color_mode = "RGBA"
+                    prop("hop", i*.68, wall_y-.12, 1.33, (.045, .075, 2.66), "thep")
+    return list(set(scene.objects) - before)
+
+
+def dat_mau_sac(scene):
+    # AgX + tương phản vừa: màu bão hòa tự nhiên, vùng sáng không cháy trắng như ảnh chụp thật.
+    try:
+        scene.view_settings.view_transform = "AgX"
+    except TypeError:
+        return
+    for look in ("AgX - Punchy", "Punchy", "AgX - Medium High Contrast", "Medium High Contrast"):
+        try:
+            scene.view_settings.look = look
+            return
+        except TypeError:
+            continue
+
+
+def den(scene, kieu, vi_tri, nhin, nang_luong, co, mau, bong=True):
+    bpy.ops.object.light_add(type=kieu, location=vi_tri)
+    lamp = bpy.context.object
+    lamp.rotation_euler = (nhin - lamp.location).to_track_quat("-Z", "Y").to_euler()
+    lamp.data.energy = nang_luong
+    lamp.data.color = mau
+    if not bong:
+        lamp.data.use_shadow = False   # đèn phụ/viền chỉ tạo ánh, không vẽ thêm bóng (bóng thật chỉ có một hướng chính)
+    if kieu == "AREA":
+        lamp.data.shape = "DISK"
+        lamp.data.size = co
+    return lamp
 
 
 def render(plan, dest):
     global MATS
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = bpy.context.scene
-    MATS = {}
-    for name, rgb in COLORS.items():
-        mat = bpy.data.materials.new(name)
-        mat.diffuse_color = (*rgb, 1)
-        mat.use_nodes = True
-        shader = mat.node_tree.nodes.get("Principled BSDF")
-        shader.inputs["Base Color"].default_value = (*rgb, 1)
-        shader.inputs["Roughness"].default_value = 0.26 if name in ("kinh", "nuoc", "thep") else 0.72
-        shader.inputs["Metallic"].default_value = 0.75 if name == "thep" else 0.04
-        if name in ("gach", "dat", "co", "go", "nuoc"):
-            tree = mat.node_tree
-            noise = tree.nodes.new("ShaderNodeTexNoise")
-            noise.inputs["Scale"].default_value = 36
-            ramp = tree.nodes.new("ShaderNodeValToRGB")
-            for elem, gain in zip(ramp.color_ramp.elements, (0.56, 1.18)):
-                elem.color = (*[min(1, v * gain) for v in rgb], 1)
-            tree.links.new(noise.outputs["Fac"], ramp.inputs[0])
-            tree.links.new(ramp.outputs[0], shader.inputs["Base Color"])
-            bump = tree.nodes.new("ShaderNodeBump")
-            bump.inputs["Strength"].default_value = 0.19
-            bump.inputs["Distance"].default_value = 0.045
-            tree.links.new(noise.outputs["Fac"], bump.inputs["Height"])
-            tree.links.new(bump.outputs["Normal"], shader.inputs["Normal"])
-        MATS[name] = mat
+    MATS = {name: tao_vat_lieu(name, rgb) for name, rgb in COLORS.items()}
+    # Ô cửa sổ của bối cảnh: phát sáng như trời ban ngày ngoài cửa (thay cho tấm kính tối trông như ô gạch ốp).
+    cua_so = bpy.data.materials.new("cua_so")
+    cua_so.use_nodes = True
+    sh = cua_so.node_tree.nodes.get("Principled BSDF")
+    dat_dau_vao(sh, "Base Color", (0.86, 0.93, 1.0, 1))
+    dat_dau_vao(sh, "Emission Color", (0.86, 0.93, 1.0, 1))
+    dat_dau_vao(sh, "Emission Strength", 2.2)
+    MATS["cua_so"] = cua_so
     dung(plan)
     bpy.context.view_layer.update()
     pts = [o.matrix_world @ Vector(c) for o in scene.objects for c in o.bound_box]
@@ -493,58 +646,127 @@ def render(plan, dest):
     center = (lo + hi) / 2
     span = max(hi - lo)
     direction = Vector((0.64, -1.45, 1.04)).normalized()
-    bpy.ops.object.camera_add(location=center + direction * span * 2)
-    cam = bpy.context.object
-    cam.rotation_euler = (-direction).to_track_quat("-Z", "Y").to_euler()
-    cam.data.type = "ORTHO"
-    rot = cam.rotation_euler.to_matrix().transposed()
-    view = [rot @ (p - center) for p in pts]
-    cam.data.ortho_scale = 1.12 * max(
-        2 * max(abs(p.x) for p in view), 2 * max(abs(p.y) for p in view) * 1.6
-    )
-    cam.data.clip_start = span * 0.0001
-    cam.data.clip_end = span * 80
-    scene.camera = cam
-    scene.render.film_transparent = True
-    scene.render.image_settings.color_mode = "RGBA"
-    bpy.ops.object.light_add(type="AREA", location=center + Vector((-1, -1, 2)) * span)
-    lamp = bpy.context.object
-    lamp.rotation_euler = (center - lamp.location).to_track_quat("-Z", "Y").to_euler()
-    lamp.data.energy = span**2 * 160
-    lamp.data.shape = "DISK"
-    lamp.data.size = span * 1.15
-    scene.world = bpy.data.worlds.new("Ánh sáng trời")
-    scene.world.use_nodes = True
-    scene.world.node_tree.nodes["Background"].inputs[0].default_value = (0.76, 0.86, 1, 1)
-    scene.world.node_tree.nodes["Background"].inputs[1].default_value = 0.38
-    scene.render.engine = "CYCLES"
-    scene.cycles.samples = 20
-    scene.cycles.use_denoising = False
-    scene.render.resolution_x, scene.render.resolution_y = 960, 600
-    scene.render.resolution_percentage = 100
-    # Lấy cả quỹ đạo trong cùng khung trực giao, dừng ở góc dùng để chiếu nét Manim.
     from mathutils import Matrix
     from bpy_extras.object_utils import world_to_camera_view
 
-    scene.cycles.samples = 12
-    chup_moi_truong(scene, cam, plan, dest, center, span, lo.z)
-    frames = 36 if moving or spinning else 16
+    # Máy quay PHỐI CẢNH ống 50 mm (trước đây trực giao -> trông như bản vẽ kỹ thuật, không như ảnh chụp).
+    # Khớp khung theo chiều ngang: lớp vật 960x600 và lớp nền dọc 720x1280 có cùng góc nhìn ngang.
+    bpy.ops.object.camera_add()
+    cam = bpy.context.object
+    cam.data.type = "PERSP"
+    cam.data.lens = 50
+    cam.data.sensor_fit = "HORIZONTAL"
+    cam.data.sensor_width = 36
+    scene.camera = cam
+    scene.render.resolution_x, scene.render.resolution_y = 960, 600
+    scene.render.resolution_percentage = 100
+    tan_x = math.tan(cam.data.angle_x / 2) / 1.12
+    tan_y = tan_x * 600 / 960
+
+    def dat_may(axis, dist):
+        cam.location = center + axis * dist
+        cam.rotation_euler = (-axis).to_track_quat("-Z", "Y").to_euler()
+
+    def vua_khung(axis):
+        rot = (-axis).to_track_quat("-Z", "Y").to_matrix().transposed()
+        lo_d, hi_d = span * 0.2, span * 60
+        for _ in range(48):
+            mid = (lo_d + hi_d) / 2
+            eye = center + axis * mid
+            ok = True
+            for pt in pts:
+                v = rot @ (pt - eye)
+                if v.z >= -1e-6 or abs(v.x) > tan_x * -v.z or abs(v.y) > tan_y * -v.z:
+                    ok = False
+                    break
+            lo_d, hi_d = (lo_d, mid) if ok else (mid, hi_d)
+        return hi_d
+
+    dist = vua_khung(direction)
+    cam.data.clip_start = span * 0.002
+    cam.data.clip_end = span * 120
+    dat_may(direction, dist)
+
+    # Ánh sáng ba điểm kiểu studio: đèn chính ấm mềm, đèn phụ lạnh dịu bóng, đèn viền tách vật khỏi nền.
+    side = Vector((-direction.y, direction.x, 0)).normalized()
+    up = Vector((0, 0, 1))
+    k = span**2
+    den(scene, "AREA", center + (side * -1.3 + direction * 1.1 + up * 1.9) * span, center, k * 150, span * 1.4, (1.0, 0.93, 0.84))
+    den(scene, "AREA", center + (side * 1.6 + direction * 0.9 + up * 0.7) * span, center, k * 38, span * 2.2, (0.82, 0.9, 1.0), bong=False)
+    # đèn viền đặt cao và rộng: bóng của nó ngắn, không kéo dài về phía máy quay
+    den(scene, "AREA", center + (side * 0.6 - direction * 1.2 + up * 2.6) * span, center, k * 55, span * 1.8, (1.0, 0.97, 0.92), bong=False)
+    scene.world = bpy.data.worlds.new("Ánh sáng trời")
+    scene.world.use_nodes = True
+    scene.world.node_tree.nodes["Background"].inputs[0].default_value = (0.62, 0.70, 0.80, 1)
+    scene.world.node_tree.nodes["Background"].inputs[1].default_value = 0.3
+
+    scene.render.engine = "CYCLES"
+    scene.cycles.device = "CPU"
+    scene.cycles.use_adaptive_sampling = True
+    scene.cycles.adaptive_threshold = 0.03
+    scene.cycles.max_bounces = 6
+    scene.cycles.transparent_max_bounces = 6
+    scene.cycles.use_denoising = True
+    try:
+        scene.cycles.denoiser = "OPENIMAGEDENOISE"
+    except TypeError:
+        pass
+    scene.render.use_persistent_data = True
+    dat_mau_sac(scene)
+
+    # Sàn hứng bóng: lớp vật trong suốt vẫn mang bóng đổ + bóng tiếp xúc, vật "đứng" trên nền thay vì dán đè.
+    bpy.ops.mesh.primitive_plane_add(size=span * 30, location=(center.x, center.y, lo.z - span * 0.0008))
+    catcher = bpy.context.object
+    catcher.is_shadow_catcher = True
+    vat_the = [o for o in scene.objects if o.type in ("MESH", "FONT") and o is not catcher]
+    boi_canh = tao_moi_truong(scene, plan, center, span, lo.z)
+
+    def che_do(nen, rong=960, cao=600, mau=24, tep="PNG"):
+        for o in boi_canh:
+            o.hide_render = not nen
+        for o in vat_the + [catcher]:
+            o.hide_render = nen
+        scene.render.film_transparent = not nen
+        scene.render.resolution_x, scene.render.resolution_y = rong, cao
+        scene.cycles.samples = mau
+        scene.render.image_settings.file_format = tep
+        scene.render.image_settings.color_mode = "RGB" if tep == "JPEG" else "RGBA"
+        # Nền chụp với độ sâu trường ảnh (xóa phông): đạo cụ phía sau mềm đi, mắt tập trung vào vật chính.
+        cam.data.dof.use_dof = nen
+        cam.data.dof.focus_distance = (cam.location - center).length
+        cam.data.dof.aperture_fstop = max(0.1, min(16.0, 2.2 / max(1e-3, cam.data.dof.focus_distance)))
+
+    static_cam = bool(moving or spinning)
+    frames = 36 if static_cam else 16
     for i in range(frames):
         t = i / (frames - 1)
-        angle = 0 if moving or spinning else math.radians(-7 * (1 - t * t * (3 - 2 * t)))
+        e = t * t * (3 - 2 * t)
+        # Máy vừa lượn 9° vừa đẩy vào 12%: chuyển động có thị sai thật giữa vật và nền (khung cuối là góc chiếu nét toán).
+        angle = 0 if static_cam else math.radians(-9 * (1 - e))
         for ob, origin, delta in moving:
-            ob.location = origin + delta * (t if plan["loai"] == "xe_duong" else t * t * (3 - 2 * t))
+            ob.location = origin + delta * (t if plan["loai"] == "xe_duong" else e)
             ob.location.z += ob.get("nhac", 0) * math.sin(t * math.pi)
         for ob, origin, rotation, pivot in spinning:
-            turn = Matrix.Rotation(1.5 * math.pi * (1 - t * t * (3 - 2 * t)), 3, "X")
+            turn = Matrix.Rotation(1.5 * math.pi * (1 - e), 3, "X")
             ob.location = pivot + turn @ (origin - pivot) + Vector((0, 0, 0.45 * math.sin(math.pi * t)))
             ob.rotation_euler = (turn @ rotation).to_euler()
-        axis = Matrix.Rotation(angle, 3, "Z") @ direction
-        cam.location = center + axis * span * 2
-        cam.rotation_euler = (-axis).to_track_quat("-Z", "Y").to_euler()
+        dat_may(Matrix.Rotation(angle, 3, "Z") @ direction, dist * (1 if static_cam else 1 + 0.12 * (1 - e)))
         bpy.context.view_layer.update()
+        che_do(False)
         scene.render.filepath = str(dest.parent / f"orbit-{i}.png")
         bpy.ops.render.render(write_still=True)
+        if not static_cam or i == 0:
+            che_do(True, 540, 960, 10, "JPEG")
+            scene.render.filepath = str(dest.parent / f"nen-{i}.jpg")
+            bpy.ops.render.render(write_still=True)
+    # nền tĩnh độ phân giải cao ở góc cuối (dùng cho lớp nền chung và màn chuyển cảnh)
+    che_do(True, 720, 1280, 20, "JPEG")
+    scene.render.filepath = str(dest.parent / "moi-truong.jpg")
+    bpy.ops.render.render(write_still=True)
+    che_do(False)
+    for ob in boi_canh + [catcher]:
+        bpy.data.objects.remove(ob, do_unlink=True)
+    bpy.context.view_layer.update()
 
     def project(pt):
         uv = world_to_camera_view(scene, cam, Vector(pt))
