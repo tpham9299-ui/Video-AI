@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from canh_3d import ke_hoach, tach_moi_truong
+from canh_3d import ke_hoach, phan_vai
 from kiem_tra_chuyen_dong import vung_dao_lien_tuc
 from xe_3d import luat_van_toc, nhip_xe
 
@@ -54,10 +54,23 @@ class CanhVideoTest(unittest.TestCase):
         urn = {"loai": "phep_thu", "vat": "hop_bi", "gia_tri": ["do"]}
         drawing = {"loai": "lap_ghep", "doan_toan": [{"do_dai":"2 m"}]}
         plans = {0: {"loai": "xe_duong"}, 1: urn, 2: urn, 3: drawing}
-        self.assertEqual(tach_moi_truong(plans, props), {3: drawing})
-        self.assertIn("nhipXe", props["canh"][0])
-        self.assertTrue(props["canh"][2]["moiTruong"]["giuCuoi"])
-        self.assertNotIn("moiTruong", props["canh"][3])
+        result = phan_vai(plans, props, {"mon":"THUC_TE"})
+        self.assertEqual(result[1],result[0])
+        self.assertEqual(result[2],urn)
+        self.assertEqual(result[3],drawing)
+        self.assertEqual([c["phaMinhHoa"] for c in props["canh"]], ["thuc","chuyen","toan","toan"])
+
+    def test_pha_theo_canh_doc_de_va_du_lieu_diem(self):
+        props = {"canh":[{"loai":k} for k in ("hook","mo_dau","de_bai","tinh_toan")]}
+        authored = [{},{},{},{"net_toan":[{"diem":[[0,0],[1,1]],"nhan":"AB"}]}]
+        kb = {"mon":"THUC_TE","canh":authored}
+        result = phan_vai({0:{"loai":"xe_duong"}},props,kb)
+        self.assertEqual([s["phaMinhHoa"] for s in props["canh"]],["thuc","thuc","chuyen","toan"])
+        self.assertEqual(result[2],result[0])
+        self.assertEqual(props["canh"][-1]["netToan"],authored[-1]["net_toan"])
+        props["canh"][-1]["netToan"][0]["diem"] = [[2,1]]
+        with self.assertRaisesRegex(ValueError, "Cảnh 4"):
+            phan_vai(result,props,kb)
 
     def test_chu_nhay_va_vat_di_chuyen(self):
         frames = np.zeros((16, 512, 288), np.uint8)

@@ -124,6 +124,7 @@ const NoiDungVideo: React.FC<Props> = (props) => {
     if (!next || next.giuSanKhau || next.moiTruong || next.chuoi3D?.nenDung) return 0;
     return 8;
   };
+  const nenBlender = canh[0]?.phaMinhHoa && canh[0]?.chuoi3D?.nenDung;
   const coThuongHieu = !!thuongHieu && !!(thuongHieu.ten || thuongHieu.logo || thuongHieu.handle);
   return (
     <BoiCanh.Provider value={props.phongCanh}><AbsoluteFill style={{fontFamily: FONT}}>
@@ -132,12 +133,12 @@ const NoiDungVideo: React.FC<Props> = (props) => {
       <style>{'div, span { text-wrap: balance; } .katex, .katex * { text-wrap: nowrap; }'}</style>
       <NapPhongToan />
       {/* nền tự tạo riêng cho từng video (mặc định); chỉ dùng nền ảnh của bạn khi đặt DUNG_NEN_DRIVE=1 */}
-      {props.phongCanh ? <NenCauChuyen set={props.phongCanh} /> : props.nenTuTao ? <NenTuTao cfg={props.nenTuTao} nhan={GIAO_DIEN.nhan} /> : <Nen nen={nen} dsNen={props.dsNen} canh={canh} pc={phongCach} tongFrame={tongFrame} />}
-      {!props.phongCanh && moi && (!props.nenTuTao || props.nenTuTao.kieu === 'luoi') ? <LuoiSan mau={GIAO_DIEN.nhan} /> : null}
+      {nenBlender ? <AbsoluteFill style={{backgroundColor:"#13202a"}}><Img src={staticFile(nenBlender)} style={{width:"100%",height:"100%",opacity:.52}} /></AbsoluteFill> : props.phongCanh ? <NenCauChuyen set={props.phongCanh} /> : props.nenTuTao ? <NenTuTao cfg={props.nenTuTao} nhan={GIAO_DIEN.nhan} /> : <Nen nen={nen} dsNen={props.dsNen} canh={canh} pc={phongCach} tongFrame={tongFrame} />}
+      {!nenBlender && !props.phongCanh && moi && (!props.nenTuTao || props.nenTuTao.kieu === 'luoi') ? <LuoiSan mau={GIAO_DIEN.nhan} /> : null}
       {nhac ? <Audio src={staticFile(nhac)} loop volume={amNhac} /> : null}
       {canh.map((c, i) => (
         <Sequence key={c.so} from={c.batDau} durationInFrames={c.soFrame + keoDai(i)}>
-          <Canh deGoc={props.deGoc} canh={c} tieuDe={tieuDe} deBai={props.deBai || null} theDeGiu={canh.slice(0, i).some((x) => x.loai === 'de_bai')} coQuangCaoCuoi={!!(props.quangCao && props.quangCao.ten && c.batDau + c.soFrame > ketThuc - 135)} tongCanh={canh.length} hook={{chu: hookChu, kieu: hookKieu, nhanManh}} pc={phongCach}
+          <Canh truoc={canh[i-1]} deGoc={props.deGoc} canh={c} tieuDe={tieuDe} deBai={props.deBai || null} theDeGiu={canh.slice(0, i).some((x) => x.loai === 'de_bai')} coQuangCaoCuoi={!!(props.quangCao && props.quangCao.ten && c.batDau + c.soFrame > ketThuc - 135)} tongCanh={canh.length} hook={{chu: hookChu, kieu: hookKieu, nhanManh}} pc={phongCach}
             sanKhau={dsSanKhau[i]} cacBuoc={dsPha} phaTruoc={i > 0 ? phaCua(canh[i - 1].loai) : ''} giuTruoc={i > 0 && c.giuSanKhau && !!dsSanKhau[i - 1]} giuSau={!!canh[i + 1] && canh[i + 1].giuSanKhau && !!dsSanKhau[i]} keoDai={keoDai(i)} />
         </Sequence>
       ))}

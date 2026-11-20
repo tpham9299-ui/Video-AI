@@ -461,6 +461,12 @@ function chayBoPhan1() {
 function damBaoCauHinhTuDong_() {
   try {
     var p = PropertiesService.getScriptProperties();
+    if (typeof damBaoLichDang_ === 'function' && !CacheService.getScriptCache().get('LICH_DANG_DA_KIEM')) {
+      voiKhoa_(2000, function() {
+        damBaoLichDang_();
+        CacheService.getScriptCache().put('LICH_DANG_DA_KIEM', '1', 1800);
+      });
+    }
     if (p.getProperty('DA_CAP_NHAT_TU_DONG_V60') === '1') return;
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var ch = ss.getSheetByName(TEN_CAU_HINH);
@@ -493,7 +499,7 @@ function damBaoCauHinhTuDong_() {
       });
       _bo_nho_cau_hinh_ = null;
     }
-    // Đảm bảo luôn có trigger chayVietKichBan (10 phút) và chayDangVideo (15 phút)
+    // Đảm bảo luôn có trigger chayVietKichBan (10 phút) (lịch đăng đã được kiểm tra bên trên)
     try {
       var trigs = ScriptApp.getProjectTriggers();
       if (!trigs.some(function (t) { return t.getHandlerFunction() === 'chayBoPhan1'; })) {
@@ -501,9 +507,6 @@ function damBaoCauHinhTuDong_() {
       }
       if (!trigs.some(function (t) { return t.getHandlerFunction() === 'chayVietKichBan'; })) {
         ScriptApp.newTrigger('chayVietKichBan').timeBased().everyMinutes(10).create();
-      }
-      if (typeof chayDangVideo === 'function' && !trigs.some(function (t) { return t.getHandlerFunction() === 'chayDangVideo'; })) {
-        ScriptApp.newTrigger('chayDangVideo').timeBased().everyMinutes(15).create();
       }
     } catch (eTr) {}
     // Tự động giải cứu các dòng DA_GIAI hoặc GITHUB đang chờ để đưa vào luồng Xây kịch bản ngay
@@ -2248,7 +2251,12 @@ function cauHinh_(khoa) {
     var ch = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_CAU_HINH);
     if (ch) {
       var v = ch.getDataRange().getValues();
-      for (var i = 1; i < v.length; i++) if (v[i][0] && String(v[i][1]) !== '') _bo_nho_cau_hinh_[v[i][0]] = String(v[i][1]);
+      for (var i = 1; i < v.length; i++) {
+        var key = v[i][0], value = v[i][1];
+        if (!key || String(value) === '') continue;
+        _bo_nho_cau_hinh_[key] = key === 'GIO_DANG' && value instanceof Date
+          ? Utilities.formatDate(value, ch.getParent().getSpreadsheetTimeZone(), 'HH:mm') : String(value);
+      }
     }
   }
   return _bo_nho_cau_hinh_[khoa] !== undefined ? _bo_nho_cau_hinh_[khoa] : MAC_DINH[khoa];

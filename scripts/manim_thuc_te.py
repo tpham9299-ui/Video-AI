@@ -8,7 +8,7 @@ import re
 
 import numpy as np
 from PIL import Image
-from manim import Camera, Line, Text, tempconfig
+from manim import Camera, Dot, Line, Text, tempconfig
 from manimpango import register_font
 from manim_hinh import chuan_tex, tao_cong_thuc, nap_phong
 
@@ -91,6 +91,102 @@ def label_garden(folder, lines, symbols):
     return labels
 
 
+def stage_diagram(stage):
+    """Dựng số liệu từ sân khấu kịch bản cũ trên mặt phẳng Manim."""
+    import ast
+    import operator
+    from manim import VGroup, Rectangle, Circle
+    groups = []
+    def caption(value):
+        return Text(str(value), font="Be Vietnam Pro").scale_to_fit_height(.48)
+    for obj in stage.get("vat", []):
+        kind = obj.get("loai")
+        data = obj.get("ds") or []
+        group = VGroup()
+        if kind == "khoi_hop":
+            sizes = obj.get("kich_thuoc")
+            if not isinstance(sizes,list) or len(sizes)!=3 or not all(isinstance(v,(int,float)) and v>0 for v in sizes):
+                continue
+            w,d,h = np.array(sizes) / max(sizes) * 5
+            u,v,z = np.array([w,0,0]),np.array([.55*d,.42*d,0]),np.array([0,h,0])
+            base = [np.zeros(3),u,u+v,v]
+            from manim import DashedLine
+            for i,a in enumerate(base):
+                b = base[(i+1)%4]
+                group.add((DashedLine if i in (2,3) else Line)(a,b),Line(a+z,b+z),
+                          (DashedLine if i==3 else Line)(a,a+z))
+            for label,pos in zip(obj.get("nhan_kich_thuoc",[]), (u/2+[0,-.4,0],u+v/2+[.8,0,0],z/2+[-.8,0,0])):
+                if label:
+                    group.add(caption(label).move_to(pos))
+        elif kind == "do_thi":
+            xmin, xmax, ymin, ymax = (obj.get(k) for k in ("x_tu","x_den","y_tu","y_den"))
+            if None in (xmin,xmax,ymin,ymax) or xmax <= xmin or ymax <= ymin:
+                continue
+            ops = {ast.Add:operator.add, ast.Sub:operator.sub, ast.Mult:operator.mul, ast.Div:operator.truediv, ast.Pow:operator.pow}
+            def value(node, x):
+                if isinstance(node,ast.Constant) and type(node.value) in (int,float):
+                    return float(node.value)
+                if isinstance(node,ast.Name) and node.id == "x":
+                    return x
+                if isinstance(node,ast.UnaryOp) and isinstance(node.op,ast.USub):
+                    return -value(node.operand,x)
+                if isinstance(node,ast.BinOp) and type(node.op) in ops:
+                    return ops[type(node.op)](value(node.left,x),value(node.right,x))
+                raise ValueError("Hàm chưa hỗ trợ")
+            try:
+                tree = ast.parse(obj["ham"].replace("^","**"),mode="eval").body
+            except (SyntaxError, KeyError):
+                continue
+            prev = None
+            for x in np.linspace(xmin,xmax,160):
+                try:
+                    y = value(tree,float(x))
+                    point = [(x-xmin)/(xmax-xmin)*12-6,(y-ymin)/(ymax-ymin)*6-3,0] if ymin <= y <= ymax else None
+                except (ArithmeticError,TypeError,ValueError):
+                    point = None
+                if point is not None and prev is not None:
+                    group.add(Line(prev,point,color="#62DEC9"))
+                prev = point
+            if not group:
+                continue
+            group.add(Line([-6,-3,0],[6,-3,0]),Line([-6,-3,0],[-6,3,0]))
+            for title,pos in zip(obj.get("nhan_truc",[]),([6,-3.45,0],[-6,3.5,0])):
+                group.add(caption(title).move_to(pos))
+        elif kind == "banh" and 0 < obj.get("so_luong",0) <= 20:
+            count = obj["so_luong"]
+            group.add(Circle(radius=2.8))
+            for i in range(count):
+                angle = i*2*np.pi/count
+                group.add(Line([0,0,0],[2.8*np.cos(angle),2.8*np.sin(angle),0]))
+                if i < len(data) and data[i]:
+                    mid = angle+np.pi/count
+                    group.add(caption(data[i]).move_to([1.8*np.cos(mid),1.8*np.sin(mid),0]))
+        elif kind in ("thanh","dong_ho_do","bieu_do_cot"):
+            vals = obj.get("ds_so",[]) if kind=="bieu_do_cot" else [obj.get("gia_tri")]
+            if not vals or not all(isinstance(v,(int,float)) and v>=0 for v in vals):
+                continue
+            names = data if kind=="bieu_do_cot" else [obj.get("nhan","")]
+            maximum = max(1,*vals)
+            for i,v in enumerate(vals):
+                label = names[i] if i<len(names) else ""
+                shown = obj.get("gia_tri_chu",v) if kind!="bieu_do_cot" else v
+                bar = Rectangle(width=max(.012,8*v/maximum),height=.32,color="#62DEC9",fill_opacity=.8)
+                group.add(VGroup(caption(f"{label}   {shown}"),bar).arrange([0,-1,0],aligned_edge=[-1,0,0]))
+            group.arrange([0,-1,0],buff=.5,aligned_edge=[-1,0,0])
+        elif kind in ("danh_sach","the","nhan","chu"):
+            for label in [obj.get("noi_dung"),*data,obj.get("gia_tri_chu")]:
+                if label:
+                    group.add(caption(label))
+            group.arrange([0,-1,0],buff=.28)
+        if len(group):
+            groups.append(group)
+    if not groups:
+        return []
+    layout = VGroup(*groups).arrange([0,-1,0],buff=.6)
+    layout.scale(min(2.1,14/max(.01,layout.width),8/max(.01,layout.height)))
+    return [layout]
+
+
 def main():
     manifest = Path(sys.argv[1])
     props_path = Path(sys.argv[2])
@@ -114,76 +210,68 @@ def main():
         cam = Camera()
         (manifest.parent / "media" / "Tex").mkdir(parents=True, exist_ok=True)
         from xe_3d import nhip_xe
-        car_indexes = []
-        diagram_lines = {}
         for key, indexes in json.loads(manifest.read_text()).items():
             folder = root / key
             projection = json.loads((folder / "projection.json").read_text())
-            car = isinstance(projection,dict) and "xeDuong" in projection
-            images = ["xe.png","duong.png"] if car else [f"orbit-{j}.png" for j in range(16)]
-            for name in images:
-                with Image.open(folder/name) as img:
-                    if img.mode != "RGBA" or img.getchannel("A").getextrema() != (0, 255):
-                        raise ValueError(f"Khung Blender {key}/{name} thiếu vật hoặc thiếu nền trong suốt")
-            if car:
-                for i in indexes:
-                    props["canh"][i]["chuoi3D"]=dict(thuMuc=key,netCuoi=0,xeDuong=projection["xeDuong"])
-                car_indexes.extend(indexes)
-                continue
-            backdrop = key + "/moi-truong.jpg"
-            if isinstance(projection, dict) and projection.get("phepThu"):
-                for index in indexes:
-                    c = props["canh"][index]
-                    hold = c.get("giuSanKhau") and not c.get("moHinh3D") and index-1 in indexes
-                    c["chuoi3D"] = dict(thuMuc=key, netCuoi=0, nenDung=backdrop, phepThu=True, giuVatCuoi=bool(hold))
-                continue
-            last, diagram_lines[key] = diagram(cam, folder)
+            frames = len(list(folder.glob("orbit-*.png")))
+            for i in range(frames):
+                with Image.open(folder / f"orbit-{i}.png") as image:
+                    if image.mode != "RGBA" or image.getchannel("A").getextrema() != (0, 255):
+                        raise ValueError(f"Khung Blender {key}/{i} thiếu vật hoặc thiếu nền trong suốt")
+            if isinstance(projection, dict):
+                palette = {"do":"#fa6868","xanh_duong":"#47a9ff","xanh_la":"#60cf83","vang":"#ffd057",
+                           "trang":"#ffffff","tim":"#be8bff","cam":"#ffa040","den":"#556070"}
+                objects = []
+                for mark in projection["marks"]:
+                    pos = [*( (np.array(mark["xy"])-.5) * [16,10]),0]
+                    value = mark["value"]
+                    if projection["vat"] == "hop_bi":
+                        objects.append(Dot(pos, radius=.24, color=palette[value]))
+                    else:
+                        objects.append(Text(value, font="Be Vietnam Pro", weight="BOLD").scale_to_fit_height(.60).move_to(pos))
+                if not objects:
+                    raise ValueError(f"Phép thử {key} thiếu điểm kết quả")
+                camera_image(cam,objects).save(folder / "net-0.png")
+                last = 0
+            else:
+                last, edges = diagram(cam, folder)
+            garden_labels = None
             for index in indexes:
-                props["canh"][index]["chuoi3D"] = dict(
-                    thuMuc=key,
-                    netCuoi=last, nenDung=backdrop,
-                    coThuoc=any(
-                        x.get("nhan") for x in json.loads((folder / "projection.json").read_text())
-                    ),
-                )
-        nhip_xe(props,car_indexes)
-        carry = None
-        label_file = None
+                c = props["canh"][index]
+                c["chuoi3D"] = dict(thuMuc=key, khungThat=frames, netCuoi=last, nenDung=key+"/moi-truong.jpg")
+                if c.get("phaMinhHoa") != "toan":
+                    continue
+                stage = (c.get("minhHoa") or {}).get("duLieu") or {}
+                objects = []
+                if c.get("netToan"):
+                    for line in c["netToan"]:
+                        coords = [[(x-.5)*14,(.5-y)*8,0] for x,y in line["diem"]]
+                        if len(coords)==1:
+                            objects.append(Dot(coords[0],color="#7EE9DB"))
+                        objects.extend(Line(a,b,color="#7EE9DB") for a,b in zip(coords,coords[1:]) if a!=b)
+                        if line.get("nhan"):
+                            label = Text(line["nhan"],font="Be Vietnam Pro").scale_to_fit_height(.48)
+                            label.move_to(np.array(coords[-1])+[0,.42,0])
+                            objects.append(label)
+                elif isinstance(stage, dict):
+                    objects = stage_diagram(stage)
+                if objects:
+                    file = key + f"/bai-{index}.png"
+                    camera_image(cam,objects).save(root/file)
+                    c["chuoi3D"]["hinhGiai"] = file
+                elif isinstance(projection,list):
+                    for cue in c.get("cau", []):
+                        match = re.search(r"\b([a-z]) là cạnh song song.{0,35}\b([a-z]) là (?:hai )?cạnh vuông góc",cue["text"].casefold())
+                        if match:
+                            labels = label_garden(folder,edges,match.groups())
+                            if labels:
+                                garden_labels = key + "/nhan-" + "".join(match.groups()) + ".png"
+                                camera_image(cam,labels).save(root/garden_labels)
+                                c["mocNhanNet"] = cue["bat"]
+                    if garden_labels:
+                        c["nhanNet"] = garden_labels
+        nhip_xe(props, [i for i,c in enumerate(props["canh"]) if c.get("xeMoDau")])
         for c in props["canh"]:
-            if c.get("moiTruong") or c.get("nhipXe") or (c.get("chuoi3D") or {}).get("phepThu"):
-                carry = None
-                label_file = None
-            elif c.get("chuoi3D"):
-                carry = c["chuoi3D"]
-                label_file = None
-            elif carry:
-                mh = c.get("minhHoa") or {}
-                du = mh.get("duLieu") or {}
-                if (
-                    c["loai"] in ("de_bai", "mo_hinh_hoa", "y_do", "tinh_toan")
-                    and mh.get("loai") in ("san_khau", "khong", "")
-                    and isinstance(du, dict)
-                    and not du.get("vat")
-                ):
-                    c["chuoi3D"] = dict(carry, giuNet=True)
-                else:
-                    carry = None
-            if carry and c.get("chuoi3D"):
-                key = carry["thuMuc"]
-                for cue in c.get("cau", []):
-                    match = re.search(
-                        r"\b([a-z]) là cạnh song song.{0,35}\b([a-z]) là (?:hai )?cạnh vuông góc",
-                        cue["text"].casefold(),
-                    )
-                    if match:
-                        labels = label_garden(root / key, diagram_lines[key], match.groups())
-                        if labels:
-                            label_file = key + "/nhan-" + "".join(match.groups()) + ".png"
-                            camera_image(cam, labels).save(root / label_file)
-                            c["mocNhanNet"] = cue["bat"]
-                            break
-                if label_file:
-                    c["nhanNet"] = label_file
             if not c.get("noiDung") or c["loai"] in ("mo_dau", "hook", "de_bai"):
                 continue
             assets = []

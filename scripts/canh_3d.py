@@ -393,6 +393,8 @@ def ke_hoach(kb, props):
         mh = c.get("minhHoa") or {}
         data = mh.get("duLieu")
         objects = data.get("vat") or [] if isinstance(data,dict) else []
+        if not isinstance(objects, list) or not all(isinstance(v, dict) for v in objects):
+            raise ValueError(f"Cảnh {i+1}: vat phải là một danh sách vật thể")
         kinds = {v["loai"] for v in objects if isinstance(v,dict) and isinstance(v.get("loai"), str)}
         voice = " ".join(cue["text"] for cue in c.get("cau",[]))
         car_only = kinds <= {"xe", "chu", "nhan", "mui_ten", "so_dem"}
@@ -461,25 +463,51 @@ def ke_hoach(kb, props):
     return ds
 
 
-def tach_moi_truong(ds, props):
-    """Dựng xe và phép thử trực tiếp trong môi trường Three.js của Remotion."""
-    from xe_3d import nhip_xe
-    cars, blender = [], {}
-    for scene in props["canh"]:
-        if scene.pop("moiTruong", None):
-            scene.pop("nhipXe", None)
-    for i, plan in ds.items():
-        if plan["loai"] not in ("xe_duong", "phep_thu"):
-            blender[i] = plan
-            continue
-        scene = props["canh"][i]
-        held = scene.get("giuSanKhau") and ds.get(i-1) == plan
-        scene["moiTruong"] = dict(plan, giuCuoi=True) if held else plan
-        scene.pop("chuoi3D", None)
-        if plan["loai"] == "xe_duong":
-            cars.append(i)
-    nhip_xe(props, cars)
-    return blender
+def phan_vai(ds, props, kb):
+    """Giữ một góc chiếu khi chuyển từ cảnh mở đầu sang bài giải."""
+    scenes = props["canh"]
+    if kb.get("mon") == "HINH_HOC" or not scenes:
+        return ds
+    if 0 not in ds:
+        first = scenes[0].get("minhHoa") or {}
+        du = first.get("duLieu") or {}
+        objects = du.get("vat", []) if isinstance(du, dict) else []
+        physical = [v for v in objects if v.get("loai") not in ("nhan", "chu")]
+        doors = [v for v in physical if v.get("loai") == "cua"]
+        if len(physical) == len(doors) == 1 and type(doors[0].get("so_luong")) is int and 1 <= doors[0]["so_luong"] <= 12:
+            ds[0] = {"loai":"cua", "so":doors[0]["so_luong"]}
+        else:
+            trial = dict(du, vat=physical) if isinstance(du, dict) else {}
+            plan = phep_thu_3d({"minhHoa":dict(first, duLieu=trial)}) or canh_tu_kich_ban(kb, first)
+            if plan is None and len(scenes)>1 and scenes[1].get("loai") == "de_bai":
+                plan = ds.get(1)
+            if plan is None:
+                raise ValueError("Cảnh 1: thiếu bản vẽ Blender cho vật chính của đề")
+            ds[0] = plan
+    transition = next((i for i, c in enumerate(scenes) if i and c.get("loai") == "de_bai"), 1)
+    current = ds[0]
+    for i, c in enumerate(scenes):
+        c.pop("moiTruong", None)
+        if i > transition and i in ds:
+            current = ds[i]
+        layers = c.get("netToan")
+        if layers is None:
+            authored = kb.get("canh") or []
+            layers = authored[i].get("net_toan") if i < len(authored) else None
+        if layers is not None:
+            if not isinstance(layers, list) or len(layers) > 32:
+                raise ValueError(f"Cảnh {i+1}: net_toan cần danh sách tối đa 32 nét")
+            for line in layers:
+                points = line.get("diem") if isinstance(line, dict) else None
+                if not isinstance(points,list) or not 1 <= len(points) <= 120 or not all(
+                    isinstance(q,list) and len(q)==2 and all(so(x) and 0<=x<=1 for x in q) for q in points
+                ) or not isinstance(line.get("nhan",""),str):
+                    raise ValueError(f"Cảnh {i+1}: net_toan cần điểm [x,y] chuẩn hóa từ 0 đến 1 và nhãn chữ")
+            c["netToan"] = layers
+        ds[i] = current
+        c["xeMoDau"] = i < transition and current["loai"] == "xe_duong"
+        c["phaMinhHoa"] = "thuc" if i < transition else "chuyen" if i == transition else "toan"
+    return ds
 
 
 def main():
@@ -492,14 +520,14 @@ def main():
     args = ap.parse_args()
     props = json.loads(args.props.read_text())
     try:
-        ds = ke_hoach(json.loads(args.kb.read_text()), props)
+        kb = json.loads(args.kb.read_text())
+        ds = phan_vai(ke_hoach(kb, props), props, kb)
     except ValueError as exc:
         if args.chuan_bi:
             report = Path("out/loi_mo_hinh.json")
             report.parent.mkdir(exist_ok=True)
             report.write_text(json.dumps({"nang":[str(exc) + ". Khai báo chi_tiet đúng kiểu, trích nguyên văn đề ở tu_de; kiểm tra tam/co và đoạn đo đúng đơn vị."]},ensure_ascii=False))
         raise
-    ds = tach_moi_truong(ds, props)
     if not args.dem:
         args.props.write_text(json.dumps(props, ensure_ascii=False))
     if args.dem or args.chuan_bi:
@@ -513,13 +541,15 @@ def main():
     renderer = Path(__file__).with_name("ve_blender.py").resolve()
     groups = {}
     for i, scene in ds.items():
+        if props.get("phongCanh"):
+            scene = dict(scene, phong_canh=props["phongCanh"])
         key = hashlib.sha256(
             renderer.read_bytes() + json.dumps(scene, sort_keys=True).encode()
         ).hexdigest()[:20]
         clip = folder / key
         clip.mkdir(exist_ok=True)
         path = clip / "projection.json"
-        assets = ["xe.png","duong.png"] if scene["loai"]=="xe_duong" else ["moi-truong.jpg"] + [f"orbit-{j}.png" for j in range(16)]
+        assets = ["moi-truong.jpg"] + [f"orbit-{j}.png" for j in range(16)]
         if not path.exists() or not all((clip / asset).exists() for asset in assets):
             jobs[str(path)] = scene
         groups.setdefault("canh_3d/" + key, []).append(i)

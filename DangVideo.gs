@@ -2,13 +2,13 @@
  * ============================================================
  * HẸN GIỜ ĐĂNG VIDEO lên YouTube, Facebook, TikTok (dán thành tệp mới DangVideo.gs, cùng dự án với BoPhan1.gs, BoPhan2.gs)
  *
- * Cách chạy: trigger chayDangVideo mỗi 15 phút. Đến khung giờ trong CAU_HINH > GIO_DANG (giờ Việt Nam) thì lấy video
+ * Cách chạy: trigger chayLichDangDinhKy mỗi 15 phút. Đến khung giờ trong CAU_HINH > GIO_DANG (giờ Việt Nam) thì lấy video
  * "Có video" cũ nhất chưa đăng và đăng lên các nền tảng trong NEN_TANG_DANG. Muốn hẹn giờ riêng cho một video:
  * gõ ngày giờ vào cột lich_dang của dòng đó trong HANG_DOI (ví dụ 20/11/2026 19:30), đến giờ là đăng.
  *   - YouTube: đăng thẳng từ Apps Script (cần bật dịch vụ YouTube Data API v3, xem bên dưới).
  *   - Facebook (Trang) và TikTok: Apps Script nhờ GitHub đăng (mã truy cập để trong GitHub Secrets), GitHub báo kết quả về.
  *   Đăng xong: trạng thái "Đã đăng", cột link_dang chứa link từng nền tảng, Zalo báo cho bạn.
- *   Nền tảng nào lỗi sẽ được thử lại ở khung giờ sau (tối đa SO_LAN_THU_DANG lần), nền tảng đã đăng được thì không đăng lại.
+ *   Nền tảng nào lỗi sẽ được chờ lần kiểm tra tiếp theo (tối đa SO_LAN_THU_DANG lần), nền tảng đã đăng được thì không đăng lại.
  *
  * CẤU HÌNH (sheet CAU_HINH, thêm dòng nếu chưa có; caiDatDangVideo() tự thêm các dòng mặc định):
  *   DANG_TU_DONG   BAT | TAT (mặc định TAT: chỉ bật khi đã cài xong tài khoản)
@@ -44,6 +44,20 @@ function dsNenTangChoVideo_(r) {
 
 /* ===================== CÀI ĐẶT ===================== */
 
+// Handler riêng để lần kiểm tra ngay sau duyệt không thể thay thế lịch định kỳ.
+function chayLichDangDinhKy() { chayDangVideo(); }
+
+function damBaoLichDang_() {
+  var triggers = ScriptApp.getProjectTriggers();
+  if (!triggers.some(function(t) { return t.getHandlerFunction() === 'chayLichDangDinhKy'; })) {
+    ScriptApp.newTrigger('chayLichDangDinhKy').timeBased().everyMinutes(15).create();
+  }
+  // Các bản cũ dùng chung tên này cho cả hai kiểu trigger.
+  triggers.forEach(function(t) { if (t.getHandlerFunction() === 'chayDangVideo') ScriptApp.deleteTrigger(t); });
+}
+
+function kiemTraDangSauDuyet() { chayDangVideo(); }
+
 function caiDatDangVideo() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   damBaoCot_(ss.getSheetByName(TEN_HANG_DOI));
@@ -51,10 +65,9 @@ function caiDatDangVideo() {
   var co = {};
   ch.getDataRange().getValues().forEach(function (v) { co[v[0]] = true; });
   Object.keys(MAC_DINH_DANG_).forEach(function (k) { if (!co[k]) ch.appendRow([k, MAC_DINH_DANG_[k]]); });
-  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'chayDangVideo') ScriptApp.deleteTrigger(t); });
-  ScriptApp.newTrigger('chayDangVideo').timeBased().everyMinutes(15).create();
+  damBaoLichDang_();
   _bo_nho_cau_hinh_ = null;
-  Logger.log('Đã đặt trigger chayDangVideo (15 phút/lần). Cấu hình hiện tại: DANG_TU_DONG=' + chDang_('DANG_TU_DONG') + ', GIO_DANG=' + chDang_('GIO_DANG') + ', NEN_TANG_DANG=' + dsNenTangDang_().join(','));
+  Logger.log('Đã đặt trigger chayLichDangDinhKy (15 phút/lần). Cấu hình hiện tại: DANG_TU_DONG=' + chDang_('DANG_TU_DONG') + ', GIO_DANG=' + chDang_('GIO_DANG') + ', NEN_TANG_DANG=' + dsNenTangDang_().join(','));
   Logger.log(typeof YouTube === 'undefined' ? '⚠️ Chưa bật dịch vụ YouTube Data API v3 (Dịch vụ + > YouTube Data API v3) nên chưa đăng được YouTube.' : '✅ Đã bật dịch vụ YouTube.');
   Logger.log('Hệ thống tự động đăng mỗi ngày ' + chDang_('SO_VIDEO_MOI_NGAY') + ' video khi video đạt kiểm duyệt. Muốn thử ngay: chạy dangNgay().');
 }
@@ -107,6 +120,7 @@ function chayDangVideo() {
 function dangNgay() {
   var khoa = LockService.getScriptLock();
   var coKhoa = khoa.tryLock(5000);
+  if (!coKhoa) return;
   try {
     _bat_dau_chay_ = Date.now();
     _bo_nho_cau_hinh_ = null;
@@ -197,7 +211,7 @@ function khungDangHienTai_(hang) {
   var dsKhung = [];
   chDang_('GIO_DANG').split(/[,;\s]+/).forEach(function (g) {
     var m = /^(\d{1,2})[:hH](\d{2})?$/.exec(g.trim());
-    if (!m) return;
+    if (!m || +m[1] > 23 || +m[2] > 59) return;
     var tenK = ('0' + m[1]).slice(-2) + ':' + ('0' + (+m[2] || 0)).slice(-2);
     var p = +m[1] * 60 + (+m[2] || 0);
     dsKhung.push({ ten: tenK, phut: p });
@@ -219,6 +233,14 @@ function chonVideoDang_(hang) {
   });
   if (!cho.length) return null;
   var bay = Date.now();
+  // Lượt thử lại cho nền tảng còn lỗi thuộc về video đã dùng khung.
+  var conThieu = cho.filter(function(r) {
+    var kq = docKetQuaDang_(r);
+    return kq._thu && Number(kq._thu_lai_luc || 0) <= bay &&
+      dsNenTangChoVideo_(r).some(function(n) { return kq[n] && kq[n].ok; });
+  });
+  if (conThieu.length) return conThieu[0];
+  cho = cho.filter(function(r) { return Number(docKetQuaDang_(r)._thu_lai_luc || 0) <= bay; });
   // 1) video có hẹn giờ riêng (cột lich_dang) đã tới giờ
   var den = cho.filter(function (r) { var t = thoiDiem_(r.lich_dang); return t && t.getTime() <= bay; })
     .sort(function (a, b) { return thoiDiem_(a.lich_dang).getTime() - thoiDiem_(b.lich_dang).getTime(); });
@@ -239,7 +261,6 @@ function chonVideoDang_(hang) {
   // ĐĂNG THEO THỨ TỰ ĐẠT KIỂM DUYỆT / DUYỆT (số tập đánh lúc đăng -> tập tăng dần đúng thứ tự)
   var ds = cho.filter(function (r) { return !thoiDiem_(r.lich_dang) && !(typeof laVideoDai_ === 'function' && laVideoDai_(r)); })
     .sort(function (a, b) { return lucDuyet_(a) - lucDuyet_(b); });
-  if (!ds.length) ds = cho.filter(function (r) { return !thoiDiem_(r.lich_dang); }).sort(function (a, b) { return lucDuyet_(a) - lucDuyet_(b); });
   if (!ds.length) return null;
   // Giữ chỗ tạm thời (dang_cho_khung), CHỈ chốt tt.khung & DANG_KHUNG_CUOI khi ketThucDang_ ghi nhận đăng thành công!
   tt.dang_cho_khung = { id: ds[0].id, kieu: 'khung', khung: khung.ten, ma: khung.ma, luc: Date.now() };
@@ -470,11 +491,12 @@ function ketThucDang_(sh, r, kq) {
   var toiDa = Number(chDang_('SO_LAN_THU_DANG')) || 3;
   if (loi.length) kq._thu = (Number(kq._thu) || 0) + 1;
   var xong = !loi.length || kq._thu >= toiDa;
+  if (!xong && loi.length) kq._thu_lai_luc = Date.now() + 15 * 60000;
   var trangThai = xong ? (dat.length ? 'DA_DANG' : 'LOI') : 'CO_VIDEO';
   if (typeof ghi_ === 'function') {
     ghi_(sh, r._row, {
       trang_thai: trangThai, link_dang: JSON.stringify(kq),
-      ghi_chu: (loi.length ? 'Đăng lỗi: ' + loi.map(function (n) { return n + ' (' + String((kq[n] || {}).loi || '').slice(0, 80) + ')'; }).join('; ') + (xong ? '' : ' -> thử lại ở khung giờ sau') : '').slice(0, 300)
+      ghi_chu: (loi.length ? 'Đăng lỗi: ' + loi.map(function (n) { return n + ' (' + String((kq[n] || {}).loi || '').slice(0, 80) + ')'; }).join('; ') + (xong ? '' : ' -> chờ lần kiểm tra tiếp theo') : '').slice(0, 300)
     }, r.id);
   }
   var lopSo = String(r.lop || '').replace(/[^0-9]/g, '');
@@ -503,7 +525,7 @@ function ketThucDang_(sh, r, kq) {
     dat.map(function (n) { return '\n' + TEN_NEN_TANG_[n] + ': ' + (kq[n].url || 'đã đăng') + (kq[n].ghi_chu ? ' (' + kq[n].ghi_chu + ')' : ''); }).join('') +
     loi.map(function (n) { return '\n❌ ' + TEN_NEN_TANG_[n] + ': ' + String((kq[n] || {}).loi || 'lỗi').slice(0, 150); }).join('') +
     boQua.map(function (n) { return '\n⏭ ' + TEN_NEN_TANG_[n] + ': ' + String(kq[n].loi || 'chưa cài đặt').slice(0, 100); }).join('') +
-    (loi.length && !xong ? '\n🔁 Sẽ thử lại nền tảng lỗi ở khung giờ sau.' : '');
+    (loi.length && !xong ? '\n🔁 Sẽ thử lại nền tảng lỗi ở lần kiểm tra tiếp theo.' : '');
   // đăng thành công: mức vừa (đã có trong báo cáo ngày); lỗi không tự thử lại được: mức cao
   try { guiZaloMotLan_('DANG_' + r.id + '_' + (kq._thu || 0) + '_' + dat.join(''), tin, loi.length && xong ? 'cao' : 'vua'); } catch (e) {}
 }

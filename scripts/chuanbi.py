@@ -1785,6 +1785,7 @@ def main():
             "loai": str(c.get("loai") or ""),
             "noiDung": noi_dung,
             **({"mocCongThuc": moc_loi} if moc_loi else {}),
+            **({"netToan": c["net_toan"]} if "net_toan" in c else {}),
             **({"moHinh3D": c["mo_hinh_3d"]} if "mo_hinh_3d" in c else {}),
             "minhHoa": {
                 "loai": str(mh.get("loai") or "khong"),

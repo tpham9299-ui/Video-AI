@@ -91,8 +91,8 @@ function henKiemTraVideo_(giay) {
 }
 function henDangVideoS_(giay) {
   try {
-    ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'chayDangVideo') ScriptApp.deleteTrigger(t); });
-    ScriptApp.newTrigger('chayDangVideo').timeBased().after(Math.max(5, giay) * 1000).create();
+    if (!ScriptApp.getProjectTriggers().some(function(t) { return t.getHandlerFunction() === 'kiemTraDangSauDuyet'; }))
+      ScriptApp.newTrigger('kiemTraDangSauDuyet').timeBased().after(Math.max(5, giay) * 1000).create();
   } catch (eT) {
     try { if (typeof chayDangVideo === 'function') chayDangVideo(); } catch (eDV) {}
   }

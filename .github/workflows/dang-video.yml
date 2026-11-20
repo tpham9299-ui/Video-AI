@@ -70,7 +70,7 @@ jobs:
         run: python3 scripts/dang_video.py
 
       - name: Báo lỗi đăng về Apps Script nếu workflow gặp sự cố
-        if: ${{ failure() && steps.dang_py.outcome != 'skipped' && env.APPS_SCRIPT_URL != '' && env.ID_VIDEO != '' }}
+        if: ${{ failure() && env.APPS_SCRIPT_URL != '' && env.ID_VIDEO != '' }}
         run: |
           python3 - <<'PY'
           import json, os

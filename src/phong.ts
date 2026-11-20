@@ -1,4 +1,4 @@
-import {staticFile} from 'remotion';
+import {getStaticFiles, staticFile} from 'remotion';
 import {KHAI_BAO_PHONG} from './theme';
 
 // Nạp phông đóng gói (public/fonts) và phông KaTeX MỘT lần cho cả video. Mọi lỗi đều bị bỏ qua (thiếu tệp phông riêng, v.v.),
@@ -13,7 +13,9 @@ export function napPhong(): Promise<void> {
     return loi;
   }
   const viec: Promise<unknown>[] = [];
+  const files = new Set(getStaticFiles().map(file => file.name));
   for (const [fam, tep, weight, style] of KHAI_BAO_PHONG) {
+    if (tep.startsWith("tuy_chon-") && !files.has("fonts/" + tep)) continue;
     try {
       const ff = new (window as any).FontFace(fam, `url(${staticFile('fonts/' + tep)})`, {weight, style});
       viec.push(ff.load().then((x: any) => f.add(x)).catch(() => undefined));

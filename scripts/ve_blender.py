@@ -195,6 +195,7 @@ def phep_thu(s):
             x = (i % cols - (cols - 1) / 2) * 1.04
             y = (i // cols - (rows - 1) / 2) * 1.04
             ob = vat("cau", (x, y, 0.48), (0.93, 0.93, 0.93), color)
+            ob["ket_qua"] = color
             if color == s["mau_rut"] and taken < s["so_rut"]:
                 dest = Vector((radius + 1.1 + (taken % 3) * 1.03, (taken // 3) * 1.03, 0.48))
                 ob["dich"] = list(dest - ob.location)
@@ -250,6 +251,7 @@ def phep_thu(s):
                     ob = vat("cau", pos, (0.21, 0.21, 0.045), "toi")
                     ob.rotation_euler = (basis @ n).to_track_quat("Z", "Y").to_euler()
                     pieces.append(ob)
+        pieces[0]["ket_qua"] = str(value)
         if s["dong"]:
             for ob in pieces:
                 ob["pivot"] = list(center)
@@ -326,9 +328,15 @@ def dung(s):
                 vat("tru",(x+end*1.03,y+side*.738,.33),(.34,.34,.025),"thep",(90,0,0))
             vat("hop",(x+1.68,y+side*.42,.54),(.04,.25,.14),"trang")
         for obj in set(bpy.context.scene.objects)-road:
-            obj["xe"] = True
+            obj["dich"] = [11.4, 0, 0]
         return
-    if s["loai"] == "phep_thu":
+    if s["loai"] == "cua":
+        for i in range(s["so"]):
+            x = (i - (s["so"] - 1) / 2) * 1.4
+            door = vat("hop", (x,0,1), (1.22,.14,2), "go")
+            door["ket_qua"] = str(i+1)
+            vat("cau",(x+.38,-.1,1),(.1,.1,.1),"vang")
+    elif s["loai"] == "phep_thu":
         phep_thu(s)
     elif s["loai"] == "vuon":
         vuon(s)
@@ -365,38 +373,55 @@ def dung(s):
 
 def chup_moi_truong(scene, cam, plan, dest, center, span, ground):
     """Chụp lớp nền dọc cùng tỉ lệ ngang với lớp vật thể/sơ đồ toán."""
-    objects = [o for o in scene.objects if o.type == "MESH"]
+    objects = [o for o in scene.objects if o.type in ("MESH", "FONT")]
     for o in objects:
         o.hide_render = True
     old_scale = cam.data.ortho_scale
     before = set(scene.objects)
     parts = plan.get("chi_tiet", [])
     warehouse = any(p["hinh"] == "bang_chuyen" for p in parts)
-    outside = plan["loai"] in ("vuon", "vat", "cap_bo", "can_ho") or any(
+    outside = plan["loai"] in ("vuon", "vat", "cap_bo", "can_ho", "xe_duong") or any(
         p["hinh"] == "thuyen" or p.get("vat_lieu") in ("co", "dat", "nuoc") for p in parts)
     x, y = center.x, center.y
     def prop(shape, dx, dy, z, size, surface):
         return vat(shape, (x+span*dx, y+span*dy, ground+span*z),
                    tuple(span*s for s in size), surface)
 
-    prop("hop", 0, 0, -.055, (20, 20, .10), "co" if outside else "da" if warehouse else "go")
-    if outside:
-        for i in range(11):
-            dx, dy = i*.53-3, 1.8+(i%3)*.22
-            prop("tru", dx, dy, .19, (.035,.035,.38), "go")
-            prop("cau", dx, dy, .47, (.30,.31,.47), "la")
+    story = plan.get("phong_canh")
+    if story:
+        def story_material(color):
+            if color not in MATS:
+                mat = bpy.data.materials.new(color)
+                mat.diffuse_color = tuple((int(color[i:i+2],16)/255)**2.2 for i in (1,3,5)) + (1,)
+                MATS[color] = mat
+            return color
+        prop("hop",0,0,-.055,(20,20,.10),story_material(story["dat"]))
+        for part in story["vat"]:
+            px,py,pz = part["tam"]
+            w,h,d = part["co"]
+            prop(part["hinh"],px*.22,-pz*.22,py*.22,(w*.22,d*.22,h*.22),story_material(part["mau"]))
+        if not scene.world:
+            scene.world = bpy.data.worlds.new("BoiCanh")
+        scene.world.node_tree.nodes["Background"].inputs[0].default_value = MATS[story_material(story["troi"])].diffuse_color
     else:
-        wall_y = 1.05
-        prop("hop", 0, wall_y, 1.4, (12,.09,2.8), "da" if warehouse else "trang")
-        if warehouse:
-            for dy in (-.34, .38):
-                prop("hop", 0, dy, -.003, (7,.018,.006), "vang")
-            for i in range(-5, 6):
-                prop("hop", i*.62, 0, -.004, (.005,4,.004), "toi")
-        for i in range(-6, 7):
-            prop("hop", i*.68, wall_y-.06, .57, (.59,.035,.84), "kinh")
+        prop("hop", 0, 0, -.055, (20, 20, .10), "co" if outside else "da" if warehouse else "go")
+        if outside:
+            for i in range(11):
+                dx, dy = i*.53-3, 1.8+(i%3)*.22
+                prop("tru", dx, dy, .19, (.035,.035,.38), "go")
+                prop("cau", dx, dy, .47, (.30,.31,.47), "la")
+        else:
+            wall_y = 1.05
+            prop("hop", 0, wall_y, 1.4, (12,.09,2.8), "da" if warehouse else "trang")
             if warehouse:
-                prop("hop", i*.68, wall_y-.12, 1.33, (.045,.075,2.66), "thep")
+                for dy in (-.34, .38):
+                    prop("hop", 0, dy, -.003, (7,.018,.006), "vang")
+                for i in range(-5, 6):
+                    prop("hop", i*.62, 0, -.004, (.005,4,.004), "toi")
+            for i in range(-6, 7):
+                prop("hop", i*.68, wall_y-.06, .57, (.59,.035,.84), "kinh")
+                if warehouse:
+                    prop("hop", i*.68, wall_y-.12, 1.33, (.045,.075,2.66), "thep")
     cam.data.ortho_scale = old_scale * 16/9
     scene.render.resolution_x, scene.render.resolution_y = 720, 1280
     scene.render.film_transparent = False
@@ -495,24 +520,13 @@ def render(plan, dest):
     from bpy_extras.object_utils import world_to_camera_view
 
     scene.cycles.samples = 12
-    if plan["loai"] == "xe_duong":
-        bpy.context.view_layer.update()
-        a = world_to_camera_view(scene,cam,Vector((0,0,0)))
-        b = world_to_camera_view(scene,cam,Vector((11.4,0,0)))
-        for name,car in (("duong",False),("xe",True)):
-            for obj in scene.objects:
-                if obj.type=="MESH":
-                    obj.hide_render = bool(obj.get("xe")) != car
-            scene.render.filepath = str(dest.parent/(name+".png"))
-            bpy.ops.render.render(write_still=True)
-        dest.write_text(json.dumps({"xeDuong":[b.x-a.x,a.y-b.y]}))
-        return
     chup_moi_truong(scene, cam, plan, dest, center, span, lo.z)
-    for i in range(16):
-        t = i / 15
-        angle = math.radians(-7 * (1 - t * t * (3 - 2 * t)))
+    frames = 36 if moving or spinning else 16
+    for i in range(frames):
+        t = i / (frames - 1)
+        angle = 0 if moving or spinning else math.radians(-7 * (1 - t * t * (3 - 2 * t)))
         for ob, origin, delta in moving:
-            ob.location = origin + delta * t * t * (3 - 2 * t)
+            ob.location = origin + delta * (t if plan["loai"] == "xe_duong" else t * t * (3 - 2 * t))
             ob.location.z += ob.get("nhac", 0) * math.sin(t * math.pi)
         for ob, origin, rotation, pivot in spinning:
             turn = Matrix.Rotation(1.5 * math.pi * (1 - t * t * (3 - 2 * t)), 3, "X")
@@ -537,10 +551,13 @@ def render(plan, dest):
         )
 
     kind = plan["loai"]
-    if kind == "phep_thu" or plan.get("giu_vat"):
-        dest.write_text(json.dumps({"phepThu": True}))
+    if kind in ("phep_thu", "cua"):
+        marks = [{"xy":project(ob.location), "value":ob["ket_qua"]} for ob in scene.objects if "ket_qua" in ob]
+        dest.write_text(json.dumps({"marks":marks, "vat":plan.get("vat", "cua")}))
         return
-    if plan.get("doan_toan"):
+    if kind == "xe_duong":
+        edge((-5.7,-.62,0), (5.7,-.62,0), flat=True)
+    elif plan.get("doan_toan"):
         for segment in plan["doan_toan"]:
             edge(segment["a"], segment["b"])
             if segment.get("do_dai"):

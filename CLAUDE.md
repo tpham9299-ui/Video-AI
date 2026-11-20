@@ -97,13 +97,15 @@ Sân khấu xác suất có một bình bi, một nhóm xu hoặc xúc xắc có
 
 ---
 
-## III. CHI TIẾT CÁC CƠ CHẾ TRỌNG TÂM (PHIÊN BẢN HIỆN HÀNH — LẦN 50)
+## III. CHI TIẾT CÁC CƠ CHẾ TRỌNG TÂM (PHIÊN BẢN HIỆN HÀNH — LẦN 51)
 
-### Kịch bản, bối cảnh và bộ dựng ở v83
+### Kịch bản, bối cảnh và bộ dựng ở v84
 
-Biên kịch nhận lời giải đã kiểm chứng và viết lời dẫn quanh một quyết định. Trường `cau_chuyen` đi qua kiểm tra của Apps Script. Bộ chuẩn bị chuyển `phong_canh` sang Remotion để dựng môi trường chung. GitHub dùng secrets của runner. Khi kho GitHub không phục vụ được yêu cầu viết, hàng đợi chuyển bản nháp sang Apps Script và dùng KhoKey của nhóm VIDEO.
+Biên kịch nhận lời giải đã kiểm chứng và viết lời dẫn quanh một quyết định. Trường `cau_chuyen` đi qua kiểm tra của Apps Script. Với toán thực tế và xác suất, Blender dựng môi trường dọc theo `phong_canh` và xuất vật thể có alpha. Khi đọc đề, Remotion hòa khung vật thể cuối sang hình Manim ở cùng tọa độ chiếu. Các cảnh giải dùng sơ đồ Manim ổn định, gồm hình chiếu từ mô hình, dữ liệu đồ thị và các đường `net_toan` của kịch bản. GitHub dùng secrets của runner. Khi kho GitHub không phục vụ được yêu cầu viết, hàng đợi chuyển bản nháp sang Apps Script và dùng KhoKey của nhóm VIDEO.
 
 Phép thử chuẩn và xe có bộ dựng riêng. Với vật khác, bộ chọn đối chiếu bản vẽ riêng, mô hình chung và dữ kiện có thể dựng. Khi thiếu dữ kiện, workflow gửi số cảnh về luồng sửa kịch bản. Hình học tiếp tục dùng Manim và tọa độ đã kiểm chứng.
+
+Lịch đăng chạy bằng trigger `chayLichDangDinhKy` mỗi 15 phút theo khung giờ Việt Nam. Trigger `kiemTraDangSauDuyet` kiểm tra thêm sau khi duyệt. Kết quả được lưu theo từng nền tảng để phục hồi lần đăng thành công một phần.
 
 ### 1. Cơ chế chống nghẽn "Hệ thống đang bận" & Phản hồi tức thời lệnh `/bo`, `/sua`, `/duyet`, `/huy`
 - **Loại bỏ khóa cứng 5 phút**: Các hàm chạy ngầm định kỳ (`chayBoPhan1`, `chayKiemTraVideo`, `xuLyHocGopY`, `chayDangVideo`) **không còn giữ `LockService.getScriptLock()` suốt nhiều phút**. Thay vào đó, hệ thống dùng cờ nhẹ trong `CacheService` (`DANG_CHAY_BP1`, `DANG_CHAY_KT_VIDEO`, `DANG_CHAY_HOC_GOP_Y`, `DANG_CHAY_DANG_VIDEO`) để tránh hai tiến trình định kỳ chồng lên nhau mà hoàn toàn không khóa bảng tính.
@@ -942,3 +944,9 @@ Phép thử chuẩn và xe có bộ dựng riêng. Với vật khác, bộ chọ
 - Thêm vai người kể, địa điểm, mục tiêu, bản thiết kế bối cảnh và tiêu chí kiểm duyệt mạch kể. Cấu hình `MODEL_BIEN_KICH` mặc định là `gemini-2.5-pro`, `SUY_NGHI_BIEN_KICH` là `high`.
 - Bản vẽ riêng bị lỗi có thể phục hồi bằng dữ kiện đề hoặc mô hình hợp lệ. Sân khấu trò chơi giữ các hành động chọn và mở cửa. Cảnh cần sửa trả về Apps Script kèm tên trường sai; số lượt viết lại bản vẽ chịu giới hạn SO_LAN_SUA_YEU_CAU.
 - Với chứng minh phẳng, chọn trong các cấu hình đã kiểm tra theo khoảng cách giữa các điểm và độ tách cạnh của tam giác nhọn. Manim bỏ tên cạnh trùng hai đầu mút, dựng nét trước nhãn và đồng bộ điểm phụ với nét đang xét. Tiêu đề các cảnh sau mở đầu chừa khoảng cách cho hàng thẻ dữ kiện phía trên.
+
+#### Lần 51 (v84) — Nối cảnh thực với mô hình toán và phục hồi lịch đăng
+
+- Blender xuất môi trường, chuyển động và dữ liệu chiếu. Manim dựng nét hình, các dấu kết quả xác suất, đồ thị và công thức. Remotion đồng bộ hòa mờ khi đọc đề và giữ góc nhìn ổn định trong phần giải.
+- Bước chọn cảnh kiểm tra tọa độ nét toán, số lượng vật trong phép thử và gửi lỗi mô hình về luồng sửa kịch bản. Bộ lấy mẫu kiểm duyệt phân biệt cảnh chuyển đổi với cảnh giải.
+- Tách trigger sau duyệt khỏi lịch định kỳ và phục hồi lịch cũ. Apps Script nhận ô giờ dạng thời gian của Sheets và thử lại những nền tảng còn thiếu sau khi đã có kết quả thành công. Hai workflow đăng đều báo lỗi về hàng đợi khi bước chuẩn bị thất bại.

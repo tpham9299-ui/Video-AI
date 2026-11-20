@@ -82,6 +82,7 @@ const SAN_TOI_THIEU = 560;   // sân khấu (hình minh họa) luôn cao ít nh�
 
 export const Canh: React.FC<{
   canh: CanhProps;
+  truoc?: CanhProps;
   tieuDe: string;
   tongCanh: number;
   hook: HookThongTin;
@@ -96,7 +97,7 @@ export const Canh: React.FC<{
   deBai?: DeBai | null; // thẻ ĐỀ BÀI (cảnh de_bai)
   theDeGiu?: boolean; // đã có cảnh de_bai trước: thẻ hiện sẵn đủ, không chạy lại
   coQuangCaoCuoi?: boolean; // cảnh trùng lúc thẻ sản phẩm hiện ở cuối video
-}> = ({canh, tieuDe, deGoc, deBai, theDeGiu, coQuangCaoCuoi = false, tongCanh, hook, pc, sanKhau, giuTruoc, giuSau, cacBuoc = [], phaTruoc = '', keoDai = 0}) => {
+}> = ({canh, truoc, tieuDe, deGoc, deBai, theDeGiu, coQuangCaoCuoi = false, tongCanh, hook, pc, sanKhau, giuTruoc, giuSau, cacBuoc = [], phaTruoc = '', keoDai = 0}) => {
   const phongCanh = React.useContext(BoiCanh);
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
@@ -260,7 +261,7 @@ export const Canh: React.FC<{
 
   return (
     <>
-    {clip && !phongCanh && clip.nenDung && !clip.giuNet && <div style={{position:'absolute',inset:0}}>
+    {clip && !canh.phaMinhHoa && !phongCanh && clip.nenDung && !clip.giuNet && <div style={{position:'absolute',inset:0}}>
       <Img src={staticFile(clip.nenDung)} style={{width:'100%',height:'100%'}} />
       <div style={{position:'absolute',inset:0,background:'linear-gradient(to bottom,rgba(12,23,28,.75),transparent 38%,transparent 57%,rgba(12,23,28,.78))'}}/>
     </div>}
@@ -317,8 +318,8 @@ export const Canh: React.FC<{
         </NhoeHuong>
       ) : null}
 
-      {clip ? <div style={clip.nenDung && !clip.giuNet ? {position:'absolute', top: '50%', width:'100%', aspectRatio:'1.6', transform:'translateY(-50%)', opacity:ra} : {position: 'absolute', top: Math.max(425, yNoiDung), left: 38, right: 38, height: Math.min(775, yNoiDung + caoSan - Math.max(425, yNoiDung)), opacity: ra}}>
-        <CanhBlender canh={canh} frame={frame} fps={fps} />
+      {clip ? <div style={clip.nenDung && !clip.giuNet ? {position:'absolute', top: '50%', width:'100%', aspectRatio:'1.6', transform:'translateY(-50%)', opacity:canh.phaMinhHoa ? 1 : ra} : {position: 'absolute', top: Math.max(425, yNoiDung), left: 38, right: 38, height: Math.min(775, yNoiDung + caoSan - Math.max(425, yNoiDung)), opacity: ra}}>
+        <CanhBlender canh={canh} truoc={truoc} frame={frame} fps={fps} />
       </div> : null}
       {anh3D && !clip && !moiTruong ? (
         <div style={{position: 'absolute', top: yNoiDung, left: 40, right: 40, height: caoSan,
