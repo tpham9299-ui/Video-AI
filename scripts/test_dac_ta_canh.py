@@ -308,5 +308,58 @@ class GiaiDoanD(unittest.TestCase):
         self.assertIsNone(lap_moi_truong_phep_thu(doc("trai_ca")))
 
 
+def hop_the(plan, the_id):
+    return vat.hop_bao([p for p in plan["chi_tiet"] if p["the"] == the_id])
+
+
+def giao_xy(a, b, gap=0.0):
+    return all(min(a[1][k], b[1][k]) + gap > max(a[0][k], b[0][k]) for k in range(2))
+
+
+class VaChamVaHinhDangTest(unittest.TestCase):
+    def test_bon_kin_co_nap_khong_nuoc_va_bo_nguoi_thua(self):
+        kb = doc("bon_kin")
+        plan = xep_cho.lap_ke_hoach_dac_ta(kb, kb["dac_ta_canh"]["quay"][0])
+        bon = [p for p in plan["chi_tiet"] if p["the"] == "bon"]
+        self.assertFalse(any(p["vat_lieu"] == "nuoc" for p in bon))          # không lộ mặt nước
+        self.assertTrue(any(p["hinh"] == "cau" for p in bon))                # nắp chỏm kín
+        self.assertEqual(dem_ban_sao(plan, "cong_nhan"), 0)                  # đề không nhắc người -> bỏ
+        self.assertEqual(plan["tieu_diem"], ["bon"])
+
+    def test_nguoi_cach_bon_do_tu_mep_khong_chong(self):
+        kb = doc("bon_kin")
+        kb["de_bai"] += " Một công nhân đứng cạnh bồn."
+        kb["dac_ta_canh"]["thuc_the"][1]["tu_de"] = "công nhân"
+        kb["dac_ta_canh"]["quay"][0]["hanh_dong"].append({"vat": "cong_nhan", "dong_tu": "di_chuyen", "tham_so": {"den": "bon"}, "khi_noi": "kín"})
+        plan = xep_cho.lap_ke_hoach_dac_ta(kb, kb["dac_ta_canh"]["quay"][0])
+        self.assertEqual(dem_ban_sao(plan, "cong_nhan"), 1)
+        self.assertFalse(giao_xy(hop_the(plan, "bon"), hop_the(plan, "cong_nhan"), 0.14))
+
+    def test_vat_khong_bao_gio_dat_len_nguoi(self):
+        kb = doc("bon_kin")
+        kb["dac_ta_canh"]["thuc_the"].append({"id": "hop", "ten": "thùng hàng", "lop": "do_vat", "mau_tv": "hop", "so_luong": 1, "vai_tro": "phu"})
+        kb["dac_ta_canh"]["thuc_the"][1]["tu_de"] = "công nhân"
+        kb["de_bai"] += " Công nhân bê thùng hàng."
+        kb["dac_ta_canh"]["quan_he"] = [{"kieu": "tren", "a": "hop", "b": "cong_nhan"}]
+        kb["dac_ta_canh"]["quay"][0]["hanh_dong"].append({"vat": "cong_nhan", "dong_tu": "di_chuyen", "khi_noi": "kín"})
+        plan = xep_cho.lap_ke_hoach_dac_ta(kb, kb["dac_ta_canh"]["quay"][0])
+        ids = ["bon", "cong_nhan", "hop"]
+        for i in range(3):
+            for j in range(i + 1, 3):
+                self.assertFalse(giao_xy(hop_the(plan, ids[i]), hop_the(plan, ids[j])), (ids[i], ids[j]))
+        self.assertLess(hop_the(plan, "hop")[0][2], 0.01)                   # hộp đứng trên sàn, không trên đầu người
+
+    def test_tam_bia_cat_goc_gap_hop(self):
+        kb = doc("tam_bia")
+        plan = xep_cho.lap_ke_hoach_dac_ta(kb, kb["dac_ta_canh"]["quay"][0])
+        vat_bia = [p for p in plan["chi_tiet"] if p["the"] == "bia"]
+        self.assertEqual(sum(1 for p in vat_bia if p.get("ban_le")), 4)      # 4 vạt có bản lề
+        self.assertEqual(dem_ban_sao(plan, "an"), 0)                         # vật nhỏ trên bàn -> không nhét người
+        self.assertEqual([a["dong_tu"] for a in plan["quay"]["hanh_dong"]], ["gap_hop"])
+        self.assertEqual(khop_vat({"ten": "hộp không nắp"}), "hop_khong_nap")
+        self.assertEqual(khop_vat({"ten": "bồn chứa", "tu_de": "bồn chứa nước hình trụ kín"}), "bon_kin")
+        self.assertEqual(khop_vat({"ten": "bể cá", "tu_de": "bể cá hình trụ"}), "be_tru")
+
+
 if __name__ == "__main__":
     unittest.main()

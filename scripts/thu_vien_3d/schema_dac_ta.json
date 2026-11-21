@@ -54,6 +54,7 @@
             "type": "object", "additionalProperties": false,
             "properties": {
               "muc_nuoc": {"type": "number", "minimum": 0, "maximum": 1},
+              "cat": {"type": "number", "minimum": 0.05, "maximum": 0.4},
               "mo": {"type": "boolean"},
               "xoay": {"type": "number", "minimum": -360, "maximum": 360}
             }
@@ -116,7 +117,7 @@
               "type": "object", "required": ["vat", "dong_tu"], "additionalProperties": false,
               "properties": {
                 "vat": {"type": "string"},
-                "dong_tu": {"enum": ["di_chuyen", "roi", "lay_ra", "bo_vao", "tung", "lan", "quay", "rot_day", "mo", "dong", "xep", "danh_dau_chon", "sang_len", "dung_yen"]},
+                "dong_tu": {"enum": ["di_chuyen", "roi", "lay_ra", "bo_vao", "tung", "lan", "quay", "rot_day", "gap_hop", "mo", "dong", "xep", "danh_dau_chon", "sang_len", "dung_yen"]},
                 "so": {"type": "integer", "minimum": 1},
                 "tham_so": {"type": "object"},
                 "khi_noi": {"type": "string", "maxLength": 120}

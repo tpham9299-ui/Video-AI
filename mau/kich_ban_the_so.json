@@ -1,0 +1,28 @@
+{
+ "id": "MAU-THE-SO",
+ "mon": "XAC_SUAT",
+ "luong": "thuc_te_xac_suat",
+ "lop": 11,
+ "de_bai": "Trên bàn có 10 tấm thẻ được đánh số từ 1 đến 10. Rút ngẫu nhiên 2 tấm thẻ. Tính xác suất để tích hai số ghi trên thẻ là một số chẵn.",
+ "cau_chuyen": {"nguoi_ke": "bạn Minh", "dia_diem": "phòng học", "muc_tieu": "đoán khả năng tích là số chẵn"},
+ "canh": [
+  {"so": 1, "loai": "mo_dau", "loi_thoai": "Mười tấm thẻ, rút hai tấm. Tích của chúng chẵn hay lẻ dễ hơn?", "noi_dung_man_hinh": [], "minh_hoa": {"loai": "san_khau", "mo_ta": "", "du_lieu": {"vat": [{"id": "t", "loai": "the"}]}}},
+  {"so": 2, "loai": "de_bai", "loi_thoai": "Rút ngẫu nhiên hai tấm thẻ từ mười tấm đánh số một đến mười.", "noi_dung_man_hinh": [], "minh_hoa": {"loai": "san_khau", "mo_ta": "", "du_lieu": {"vat": [{"id": "t", "loai": "the"}]}}},
+  {"so": 3, "loai": "tinh_toan", "loi_thoai": "Tích lẻ khi cả hai thẻ đều lẻ: có năm thẻ lẻ.", "noi_dung_man_hinh": ["P(\\overline{A}) = \\frac{C_5^2}{C_{10}^2}"], "minh_hoa": {"loai": "san_khau", "mo_ta": "", "du_lieu": {"vat": [{"id": "n", "loai": "nhan", "noi_dung": "x"}]}}},
+  {"so": 4, "loai": "kiem_tra", "loi_thoai": "Thử so sánh số cách: mười cách tích lẻ, ba mươi lăm cách tích chẵn trên tổng bốn mươi lăm.", "noi_dung_man_hinh": [], "minh_hoa": {"loai": "san_khau", "mo_ta": "", "du_lieu": {"vat": [{"id": "c", "loai": "bieu_do_cot", "ds": ["lẻ", "chẵn", "tổng"], "ds_so": [10, 35, 45], "toi_uu": "max", "khi_noi_dong": ["mười cách tích lẻ", "ba mươi lăm cách tích chẵn", "tổng bốn mươi lăm"]}]}}}
+ ],
+ "dac_ta_canh": {
+  "phien_ban": 1,
+  "boi_canh": {"mau": "lop_hoc", "trong_nha": true, "thoi_gian": "sang", "tu_de": "Trên bàn"},
+  "thuc_the": [
+   {"id": "the", "ten": "thẻ đánh số", "tu_de": "10 tấm thẻ được đánh số từ 1 đến 10", "lop": "do_choi_xac_suat", "mau_tv": "the", "so_luong": 10, "mau_sac": "xanh_duong", "vai_tro": "chinh"}
+  ],
+  "quan_he": [],
+  "so_lieu": [],
+  "phep_thu": {"khong_gian": ["the"], "chon": 2, "hoan_lai": false},
+  "quay": [
+   {"canh": 1, "tieu_diem": ["the"], "goc_may": "toan_canh", "chuyen_may": "luot_ngang"},
+   {"canh": 2, "tieu_diem": ["the"], "goc_may": "trung", "chuyen_may": "xoay_quanh", "hanh_dong": [{"vat": "the", "dong_tu": "lay_ra", "so": 2, "khi_noi": "Rút ngẫu nhiên hai tấm thẻ"}]}
+  ]
+ }
+}

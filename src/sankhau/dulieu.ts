@@ -107,6 +107,7 @@ export type Vat = {
   danhDau: number[]; // do_thi: các giá trị x cần đánh dấu (cực tiểu, nghiệm...)
   mocHienDiem: number | null; // v89 do_thi: giây hiện tọa độ điểm đánh dấu (null = như cũ, -1 = giữ dấu "?" chống lộ đáp án)
   bbtMoc: string[]; bbtDau: string[]; bbtGiaTri: string[]; bbtBien: string; bbtHam: string; // v89 bang_bien_thien
+  toiUu: 'min' | 'max' | ''; // bieu_do_cot: cột tối ưu được tô nổi ('' = không tự tô)
   mocDong: number[]; // v89 danh_sach: giây hiện từng dòng (đúng lúc lời giảng nói tới), rỗng = chia theo bước
   nhanTruc: string[]; // do_thi: tên trục ["x", "y"]
   gocNghieng: number; // thang: góc với mặt đất (độ)
@@ -209,6 +210,9 @@ function vat(raw: Record<string, unknown>, i: number): Vat | null {
     bbtGiaTri: raw.loai === 'bang_bien_thien' && laMang(raw.gia_tri) ? raw.gia_tri.slice(0, 6).map((x) => chu(x, 16)) : [],
     bbtBien: raw.loai === 'bang_bien_thien' ? chu(raw.bien || 'x', 4) : 'x',
     bbtHam: raw.loai === 'bang_bien_thien' ? chu(raw.ham || 'f', 4) : 'f',
+    toiUu: raw.toi_uu === 'min' || raw.toi_uu === 'max' ? raw.toi_uu
+      : raw.loai === 'bieu_do_cot' && /nhỏ nhất|ít nhất|tiết kiệm nhất|min/i.test(String(raw.nhan || '')) ? 'min'
+      : raw.loai === 'bieu_do_cot' && /lớn nhất|nhiều nhất|max/i.test(String(raw.nhan || '')) ? 'max' : '',
     mocDong: laMang(raw.moc_dong) ? raw.moc_dong.map((x) => so(x, 0, -1, 600)) : [],
     nhanTruc: laMang(raw.nhan_truc) ? raw.nhan_truc.slice(0, 2).map((x) => chu(x, 12)) : ['x', 'y'],
     gocNghieng: so(raw.goc_nghieng, 55, 5, 85),

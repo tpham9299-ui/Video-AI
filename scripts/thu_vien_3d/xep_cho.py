@@ -10,7 +10,7 @@ import re
 from pathlib import Path
 
 from .khop import DANH_MUC, bo_dau, chuan, khop_mau_sac, khop_moi_truong, khop_vat, mau_theo_lop
-from .vat import dat_vao, dung_tu_bo_phan, dung_vat
+from .vat import dat_vao, dung_tu_bo_phan, dung_vat, hop_bao
 
 DV = {"km": 1000.0, "m": 1.0, "dm": 0.1, "cm": 0.01, "mm": 0.001}
 HIEN_TOI_DA = 30          # số bản sao dựng tối đa cho mỗi thực thể (số thật vẫn giữ trong lời đọc)
@@ -100,16 +100,33 @@ class BanSao:
         self.vi_tri = [0.0, 0.0, 0.0]   # tâm đáy
         self.xoay = 0.0
 
-    def bao(self):
+    def bao_danh_nghia(self):
+        """Hộp bao theo kích thước của đề (đo số liệu, lòng vật chứa) -- không tính phần thò ra như van, tay người."""
         w, d, h = self.co
         if abs(math.sin(math.radians(self.xoay))) > 0.7:
             w, d = d, w
         x, y, z = self.vi_tri
         return [x - w / 2, y - d / 2, z], [x + w / 2, y + d / 2, z + h]
 
+    def _local(self):
+        key = (tuple(self.co), self.mau)
+        if getattr(self, "_khoa", None) != key:
+            self._khoa = key
+            self._bp = (dung_tu_bo_phan(self.bo_phan, self.co, self.mau) if self.bo_phan
+                        else dung_vat(self.mau_tv, self.co, self.mau, self.ts))
+        return self._bp
+
+    def bao(self):
+        """Hộp bao THẾ GIỚI từ mọi bộ phận thật (tính cả xoay): tay người, van bồn, vạt bìa đều được kể."""
+        lo, hi = hop_bao(dat_vao(self._local(), self.vi_tri, self.xoay))
+        lo2, hi2 = self.bao_danh_nghia()
+        return [min(lo[k], lo2[k]) for k in range(3)], [max(hi[k], hi2[k]) for k in range(3)]
+
+    def la_nguoi(self):
+        return self.mau_tv == "nguoi" or self.the.get("lop") == "nguoi"
+
     def bo_phan_the_gioi(self):
-        local = dung_tu_bo_phan(self.bo_phan, self.co, self.mau) if self.bo_phan else dung_vat(self.mau_tv, self.co, self.mau, self.ts)
-        out = dat_vao(local, self.vi_tri, self.xoay)
+        out = dat_vao(self._local(), self.vi_tri, self.xoay)
         for p in out:
             p["the"] = self.the["id"]
             p["vai_tro"] = self.the.get("vai_tro", "phu")
@@ -202,7 +219,7 @@ def dat_ben_trong(con, cha, troi_noi):
         group = con[j::len(cha)]
         if not group:
             continue
-        lo, hi = parent.bao()
+        lo, hi = parent.bao_danh_nghia()
         iw, idp, ih = (hi[0] - lo[0]) * 0.78, (hi[1] - lo[1]) * 0.78, (hi[2] - lo[2]) * 0.85
         w, d, h = (max(i.co[k] for i in group) for k in range(3))
         per_row = max(1, int(iw // (w * 1.08)))
@@ -249,6 +266,86 @@ def dat_tren(con, cha):
         dich(group, cx - (glo[0] + ghi[0]) / 2, cy - (glo[1] + ghi[1]) / 2, hi[2])
 
 
+HANG = {"chinh": 0, "phu": 1, "trang_tri": 2}
+
+
+def khoang_an_toan(a, b):
+    """Khoảng trống tối thiểu giữa hai cụm theo X/Y: 10% cạnh ngang nhỏ hơn, có người thì >= 0,15 m."""
+    def ngang(items):
+        lo, hi = bao_nhom(items)
+        return min(hi[0] - lo[0], hi[1] - lo[1])
+    gap = max(0.1 * min(ngang(a), ngang(b)), 0.01)
+    if any(i.la_nguoi() for i in a + b):
+        gap = max(gap, 0.15)
+    return gap
+
+
+def giao_nhau(a, b):
+    """Độ xuyên (X, Y) giữa hai cụm, đã cộng khoảng an toàn; số dương ở cả hai trục = va chạm."""
+    gap = khoang_an_toan(a, b)
+    alo, ahi = bao_nhom(a)
+    blo, bhi = bao_nhom(b)
+    return [min(ahi[k], bhi[k]) + gap - max(alo[k], blo[k]) for k in range(2)]
+
+
+def tach_va_cham(cum, canh_bao, so_vong=40):
+    """Đẩy các cụm đứng trên đất ra xa nhau cho tới khi hộp bao X/Y (cộng khoảng an toàn) không giao nhau.
+    Cụm ưu tiên thấp hơn (phụ < chính) bị đẩy; hướng đẩy = trục xuyên ít nhất, ra phía ngoài cụm kia."""
+    da_bao = set()
+    for _ in range(so_vong):
+        doi = False
+        for i in range(len(cum)):
+            for j in range(i + 1, len(cum)):
+                (ta, a), (tb, b) = cum[i], cum[j]
+                pen = giao_nhau(a, b)
+                if min(pen) <= 1e-9:
+                    continue
+                dong, dung = (b, a) if HANG[tb["vai_tro"]] >= HANG[ta["vai_tro"]] else (a, b)
+                k = 0 if pen[0] <= pen[1] * 1.5 else 1   # ưu tiên tách ngang (máy nhìn từ phía trước)
+                dlo, dhi = bao_nhom(dong)
+                slo, shi = bao_nhom(dung)
+                huong = 1 if (dlo[k] + dhi[k]) >= (slo[k] + shi[k]) else -1
+                d = pen[k] + 1e-6
+                dich(dong, d * huong if k == 0 else 0.0, d * huong if k == 1 else 0.0)
+                key = tuple(sorted((ta["id"], tb["id"])))
+                if key not in da_bao:
+                    da_bao.add(key)
+                    canh_bao.append(f"tách va chạm '{ta['ten']}' / '{tb['ten']}' ({d:.2f} m theo {'X' if k == 0 else 'Y'})")
+                doi = True
+        if not doi:
+            return
+    canh_bao.append(f"tách va chạm: chưa hội tụ sau {so_vong} vòng")
+
+
+def nguoi_thua(kb, spec, the):
+    """Nhân vật không đóng vai trò trực quan: không phải vật chính, không có hành động / tiêu điểm / số liệu, và
+    (đề không nhắc tới người đó HOẶC vật chính là đồ nhỏ trên bàn như tấm bìa, thẻ -> người chỉ chen vào khung).
+    Bỏ để máy tập trung vào vật chính (bài bồn hóa chất, cắt tấm bìa) thay vì nhét thêm người gây vướng."""
+    if the.get("vai_tro") == "chinh" or (the.get("lop") != "nguoi" and khop_vat(the) != "nguoi"):
+        return False
+    de = chuan(kb.get("de_bai"))
+    nhac = any(chuan(x) and chuan(x) in de for x in (the.get("tu_de"), the.get("ten")))
+    chinh = [t for t in spec["thuc_the"] if t.get("vai_tro") == "chinh"]
+    def cao(t):
+        tv = khop_vat(t)
+        co = DANH_MUC["vat"][tv]["co"] if tv in DANH_MUC["vat"] else [1, 1, 1]
+        kt = t.get("kich_thuoc") or {}
+        return max([met(v) for k, v in kt.items() if k in ("cao", "dai", "rong", "duong_kinh")] or [max(co)])
+    nho = bool(chinh) and max(map(cao, chinh)) < 0.5
+    if nhac and not nho:
+        return False
+    tid = the["id"]
+    for q in spec.get("quay") or []:
+        for a in q.get("hanh_dong") or []:
+            if a.get("dong_tu") != "dung_yen" and tid in (tach_ref(a.get("vat"))[0], tach_ref((a.get("tham_so") or {}).get("den"))[0]):
+                return False
+        if any(tach_ref(r)[0] == tid for r in q.get("tieu_diem") or []):
+            return False
+    if any(re.search(r"(?<![a-z0-9_])" + re.escape(tid) + r"(?![a-z0-9_])", s.get("gan", "")) for s in spec.get("so_lieu") or []):
+        return False
+    return True
+
+
 def lap_ke_hoach_dac_ta(kb, quay_canh=None):
     """dac_ta_canh -> kế hoạch Blender. Ném LoiDacTa nếu thực thể chính không dựng được."""
     spec = kb["dac_ta_canh"]
@@ -256,6 +353,9 @@ def lap_ke_hoach_dac_ta(kb, quay_canh=None):
     groups = {}
     order = []
     for the in spec["thuc_the"]:
+        if nguoi_thua(kb, spec, the):
+            canh_bao.append(f"bỏ nhân vật '{the['ten']}' (không có hành động / vai trò trực quan) -> máy tập trung vật chính")
+            continue
         mau_tv = khop_vat(the)
         bo_phan = the.get("bo_phan")
         co_chuan = the.get("co_chuan")
@@ -298,7 +398,16 @@ def lap_ke_hoach_dac_ta(kb, quay_canh=None):
             return items
         return [items[k - 1]] if 1 <= k <= len(items) else None
 
-    rels = spec.get("quan_he") or []
+    rels = []
+    for r in spec.get("quan_he") or []:
+        b = ban_sao(r.get("b")) if r.get("b") else None
+        a = groups.get(tach_ref(r.get("a"))[0])
+        # vật không bao giờ đặt trên / trong người (trước đây "người cầm hộp" -> hộp chụp lên đầu người),
+        # người không đứng trong vật chứa
+        if r["kieu"] in ("trong", "tren") and ((b and b[0].la_nguoi()) or (r["kieu"] == "trong" and a and a[0].la_nguoi())):
+            canh_bao.append(f"quan hệ '{r['kieu']}' {r.get('a')} -> {r.get('b')} có người, đổi thành 'canh'")
+            r = dict(r, kieu="canh", phia=r.get("phia") or "phai")
+        rels.append(r)
     attached = {}
     for r in rels:
         if r["kieu"] in ("trong", "tren") and tach_ref(r.get("a"))[0] in groups and ban_sao(r.get("b")):
@@ -314,6 +423,7 @@ def lap_ke_hoach_dac_ta(kb, quay_canh=None):
 
     # 2) đặt các cụm đứng trên đất cạnh nhau: chính ở giữa, phụ hai bên, trang trí phía sau
     placed = []   # (lo, hi)
+    do_mep = set()   # cặp thực thể có khoảng cách đo giữa hai mép (không phải tâm)
     ground = [t for t in order if t["id"] not in attached]
     ground.sort(key=lambda t: {"chinh": 0, "phu": 1, "trang_tri": 2}[t["vai_tro"]])
     side = 1
@@ -332,6 +442,11 @@ def lap_ke_hoach_dac_ta(kb, quay_canh=None):
             rlo, rhi = bao_nhom(ref)
             dist = met(rel_cach["khoang_cach"])
             cx = (rlo[0] + rhi[0]) / 2 + dist
+            # tâm cách tâm mà hai vật chồng nhau -> đề muốn khoảng cách giữa hai MÉP (người "cách bồn 1 m")
+            if cx - (hi[0] - lo[0]) / 2 < rhi[0] + khoang_an_toan(items, ref):
+                cx = rhi[0] + dist + (hi[0] - lo[0]) / 2
+                do_mep.add(tuple(sorted((the["id"], tach_ref(rel_cach["b"])[0]))))
+                canh_bao.append(f"'cach' {the['id']} - {rel_cach['b']}: đo giữa hai mép để không chồng vật")
             dich(items, cx - (lo[0] + hi[0]) / 2, (rlo[1] + rhi[1]) / 2 - (lo[1] + hi[1]) / 2)
         elif rel_canh:
             ref = ban_sao(rel_canh["b"])
@@ -377,8 +492,24 @@ def lap_ke_hoach_dac_ta(kb, quay_canh=None):
         if a and b:
             blo, bhi = bao_nhom(b)
             for it in a:
-                it.vi_tri = [blo[0] - it.co[2] * 0.25, (blo[1] + bhi[1]) / 2, 0.0]
+                it.vi_tri = [0.0, 0.0, 0.0]
+                ihi = it.bao()[1]
+                it.vi_tri = [blo[0] - ihi[0] - 0.02, (blo[1] + bhi[1]) / 2, 0.0]
             canh_bao.append("dua_vao: đặt sát vật tựa (độ nghiêng dựng ở giai đoạn D)")
+
+    # 4b) kiểm va chạm cuối giữa các cụm đứng trên đất; cụm gắn trong/trên vật khác đi theo vật đỡ
+    con_cua = {}
+    for tid, r in attached.items():
+        con_cua.setdefault(tach_ref(r["b"])[0], []).append(tid)
+
+    def ca_cum(tid, seen=()):
+        out = list(groups[tid])
+        for c in con_cua.get(tid, []):
+            if c not in seen:
+                out += ca_cum(c, seen + (tid,))
+        return out
+    tua = {tach_ref(r["a"])[0] for r in rels if r["kieu"] == "dua_vao"}
+    tach_va_cham([(t, ca_cum(t["id"])) for t in ground if t["id"] not in tua], canh_bao)
 
     every = [i for t in order for i in groups[t["id"]]]
     lo, hi = bao_nhom(every)
@@ -395,15 +526,18 @@ def lap_ke_hoach_dac_ta(kb, quay_canh=None):
             A, B = ban_sao(ra), ban_sao(rb)
             if not A or not B:
                 raise LoiDacTa(f"so_lieu '{gan}' tham chiếu thực thể không có")
-            (alo, ahi), (blo, bhi) = A[0].bao(), B[0].bao()
+            (alo, ahi), (blo, bhi) = A[0].bao_danh_nghia(), B[0].bao_danh_nghia()
             a = [(alo[0] + ahi[0]) / 2, (alo[1] + ahi[1]) / 2, alo[2]]
             b = [(blo[0] + bhi[0]) / 2, (blo[1] + bhi[1]) / 2, blo[2]]
+            if tuple(sorted((tach_ref(ra)[0], tach_ref(rb)[0]))) in do_mep:
+                a[0], b[0] = (ahi[0], blo[0]) if a[0] <= b[0] else (alo[0], bhi[0])   # đo giữa hai mép đối diện
+                b[1] = a[1]
         else:
             ref, dim = gan.rsplit(".", 1)
             A = ban_sao(ref)
             if not A:
                 raise LoiDacTa(f"so_lieu '{gan}' tham chiếu thực thể không có")
-            blo, bhi = A[0].bao()
+            blo, bhi = A[0].bao_danh_nghia()
             off = 0.08 * max(bhi[k] - blo[k] for k in range(3))
             if dim == "cao":
                 a, b = [bhi[0] + off, blo[1], blo[2]], [bhi[0] + off, blo[1], bhi[2]]

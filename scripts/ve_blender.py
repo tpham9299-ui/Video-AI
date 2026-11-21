@@ -42,6 +42,7 @@ COLORS = {
     "xam": (0.33, 0.35, 0.37),
     "bang": (0.03, 0.12, 0.08),
     "da_nguoi": (0.80, 0.53, 0.38),
+    "bia": (0.50, 0.33, 0.17),   # bìa các-tông
 }
 
 # Kiểu bề mặt của từng vật liệu: (độ nhám, kim loại, lớp phủ bóng). Vật liệu không có ở đây là sơn/nhựa mờ.
@@ -52,6 +53,7 @@ BE_MAT = {
     "cam": (0.36, 0.0, 0.40), "tim": (0.36, 0.0, 0.40), "den": (0.45, 0.0, 0.2),
     "go": (0.62, 0.0, 0.0), "da": (0.78, 0.0, 0.0), "gach": (0.85, 0.0, 0.0),
     "dat": (0.95, 0.0, 0.0), "co": (0.9, 0.0, 0.0), "la": (0.6, 0.0, 0.0), "toi": (0.5, 0.0, 0.1),
+    "bia": (0.86, 0.0, 0.0),
 }
 
 
@@ -79,7 +81,11 @@ def tao_vat_lieu(name, rgb):
         dat_dau_vao(shader, "Roughness", rough)
         return mat
     # Vết nhám ngẫu nhiên: bề mặt thật không bao giờ đều tuyệt đối (đây là khác biệt lớn nhất giữa "đồ chơi" và "ảnh thật").
+    # Vân theo tọa độ VẬT (mét thật, đã áp scale) thay cho "Generated" (0..1 theo hộp bao): mặt bàn dài không còn
+    # kéo giãn vân gỗ, tấm thẻ nhỏ không bị phóng vân to.
+    coord = tree.nodes.new("ShaderNodeTexCoord")
     noise = tree.nodes.new("ShaderNodeTexNoise")
+    tree.links.new(coord.outputs["Object"], noise.inputs["Vector"])
     noise.inputs["Scale"].default_value = 9
     noise.inputs["Detail"].default_value = 6
     rmap = tree.nodes.new("ShaderNodeMapRange")
@@ -87,12 +93,13 @@ def tao_vat_lieu(name, rgb):
     rmap.inputs["To Max"].default_value = min(1, rough * 1.3 + 0.04)
     tree.links.new(noise.outputs["Fac"], rmap.inputs["Value"])
     tree.links.new(rmap.outputs["Result"], shader.inputs["Roughness"])
-    if name in ("gach", "dat", "co", "go", "nuoc", "da", "la"):
+    if name in ("gach", "dat", "co", "go", "nuoc", "da", "la", "bia"):
         detail = tree.nodes.new("ShaderNodeTexWave" if name == "go" else "ShaderNodeTexNoise")
+        tree.links.new(coord.outputs["Object"], detail.inputs["Vector"])
         if name == "go":
             detail.wave_type = "BANDS"
-            detail.inputs["Scale"].default_value = 7
-            detail.inputs["Distortion"].default_value = 2.5
+            detail.inputs["Scale"].default_value = 26   # vân mảnh ~4 cm, không thành sọc to trên bàn
+            detail.inputs["Distortion"].default_value = 9
             detail.inputs["Detail"].default_value = 4
         else:
             detail.inputs["Scale"].default_value = 38
@@ -103,7 +110,7 @@ def tao_vat_lieu(name, rgb):
         tree.links.new(detail.outputs["Fac"], ramp.inputs[0])
         tree.links.new(ramp.outputs[0], shader.inputs["Base Color"])
         bump = tree.nodes.new("ShaderNodeBump")
-        bump.inputs["Strength"].default_value = 0.02 if name == "go" else 0.22
+        bump.inputs["Strength"].default_value = 0.04 if name in ("go", "bia") else 0.22
         bump.inputs["Distance"].default_value = 0.03
         tree.links.new(detail.outputs["Fac"], bump.inputs["Height"])
         tree.links.new(bump.outputs["Normal"], shader.inputs["Normal"])
@@ -497,6 +504,8 @@ def chi_tiet(p):
             ob["the"] = p["the"]
             ob["ban"] = int(p.get("ban") or 1)
         ob["vat_lieu"] = material
+        if p.get("ban_le"):
+            ob["ban_le"] = [*p["ban_le"]["diem"], *p["ban_le"]["truc"], float(p["ban_le"].get("goc", 90))]
     return pieces
 
 
@@ -589,7 +598,8 @@ def tao_moi_truong(scene, plan, center, span, ground):
         for part in env["chi_tiet"]:
             chi_tiet(part)
         dat_troi(scene, env)
-    elif story:
+    elif story and False:
+        # Bỏ: khối phong_canh AI tự xếp từng thành "hộp nâu" đứng giữa khung. Dùng phông studio / bối cảnh mẫu.
         def story_material(color):
             if color not in MATS:
                 rgb = tuple((int(color[i:i+2], 16)/255)**2.2 for i in (1, 3, 5))
@@ -602,6 +612,8 @@ def tao_moi_truong(scene, plan, center, span, ground):
             prop(part["hinh"], px*.22, -pz*.22, py*.22, (w*.22, d*.22, h*.22), story_material(part["mau"]))
         scene.world.node_tree.nodes["Background"].inputs[0].default_value = MATS[story_material(story["troi"])].diffuse_color
     else:
+        dat_troi(scene, {"hdri": "kloofendal_48d_partly_cloudy_puresky" if outside else "brown_photostudio_02",
+                         "ngoai_troi": outside})
         prop("hop", 0, 0, -.055, (20, 20, .10), "co" if outside else "da" if warehouse else "go")
         if outside:
             rng = random.Random(5)
@@ -655,7 +667,7 @@ def dat_mau_sac(scene):
         scene.view_settings.view_transform = "AgX"
     except TypeError:
         return
-    for look in ("AgX - Punchy", "Punchy", "AgX - Medium High Contrast", "Medium High Contrast"):
+    for look in ("AgX - Medium High Contrast", "Medium High Contrast", "AgX - Punchy", "Punchy"):
         try:
             scene.view_settings.look = look
             return
@@ -733,7 +745,7 @@ def _phat_sang(obs):
                 nodes.append(sh)
     def dat(a):
         for sh in nodes:
-            dat_dau_vao(sh, "Emission Strength", 1.4 * a)
+            dat_dau_vao(sh, "Emission Strength", 0.55 * a)   # sáng lên vừa đủ, không làm vật bạc trắng
     return dat
 
 
@@ -799,12 +811,17 @@ def lap_hanh_dong(scene, plan, lo_all, hi_all):
                     d = ((tlo + thi) / 2 - c)
                     d.z = 0
                     L = d.length
-                    stop = max(0.0, L - (size + max(thi - tlo)) / 2 * 1.05)
-                    delta = d.normalized() * stop if L > 1e-6 else Vector()
+                    # dừng ở MÉP vật đích (chỉ tính X/Y, không lấy chiều cao bồn), chừa 0,15 m an toàn
+                    u = d.normalized() if L > 1e-6 else Vector((1, 0, 0))
+                    ban = lambda a, b: abs(u.x) * (b.x - a.x) / 2 + abs(u.y) * (b.y - a.y) / 2
+                    stop = max(0.0, L - ban(lo, hi) - ban(tlo, thi) - 0.15)
+                    delta = u * stop if L > 1e-6 else Vector()
                     fns.append(lambda x, apply=apply, delta=delta: apply(_T(delta * x)))
                 else:
                     huong = {"trai": (-1, 0, 0), "phai": (1, 0, 0), "truoc": (0, -1, 0), "sau": (0, 1, 0)}
-                    v = Vector(huong.get(ts.get("huong"), (-1, 0, 0)))
+                    # mặc định đi vào TỪ PHÍA NGOÀI cụm vật (trước đây luôn từ trái -> người bên phải xuyên qua bồn)
+                    ngoai = (1, 0, 0) if c.x >= (lo_all.x + hi_all.x) / 2 else (-1, 0, 0)
+                    v = Vector(huong.get(ts.get("huong"), ngoai))
                     dist = float(ts.get("quang_duong") or 0) or 3 * size
                     fns.append(lambda x, apply=apply, v=v, dist=dist: apply(_T(v * dist * (1 - x))))
             elif kind == "rot_day":
@@ -813,6 +830,15 @@ def lap_hanh_dong(scene, plan, lo_all, hi_all):
                     olo, _ = hop_bao([o])
                     fns.append(lambda x, o=o, p=Vector((o.matrix_world.translation.x, o.matrix_world.translation.y, olo.z)):
                                setattr(o, "matrix_world", _quanh(p, Matrix.Diagonal((1, 1, max(0.02, x)))) @ o.matrix_world))
+            elif kind == "gap_hop":
+                # tấm bìa cắt góc: mỗi vạt quay quanh bản lề của nó (mép đáy) lên thành thành hộp không nắp
+                for ob in g:
+                    bl = ob.get("ban_le")
+                    if not bl:
+                        continue
+                    diem, truc, goc = Vector(bl[0:3]), Vector(bl[3:6]), math.radians(bl[6])
+                    fns.append(lambda x, ob=ob, diem=diem, truc=truc, goc=goc: setattr(ob, "matrix_world",
+                               _quanh(diem, Matrix.Rotation(goc * x, 3, truc)) @ ob.matrix_world))
             elif kind in ("mo", "dong"):
                 nap = max(g, key=lambda o: hop_bao([o])[1].z)
                 nlo, nhi = hop_bao([nap])
@@ -991,9 +1017,10 @@ def render(plan, dest):
         scene.render.image_settings.file_format = tep
         scene.render.image_settings.color_mode = "RGB" if tep == "JPEG" else "RGBA"
         # Nền chụp với độ sâu trường ảnh (xóa phông): đạo cụ phía sau mềm đi, mắt tập trung vào vật chính.
-        cam.data.dof.use_dof = nen
+        # Lớp vật cũng có DoF nhẹ (f/5.6, lấy nét đúng cụm vật chính) -> chiều sâu điện ảnh; lớp nền mở f/2.8 để xóa phông.
+        cam.data.dof.use_dof = True
         cam.data.dof.focus_distance = (cam.location - tam).length
-        cam.data.dof.aperture_fstop = max(0.1, min(16.0, 2.2 / max(1e-3, cam.data.dof.focus_distance)))
+        cam.data.dof.aperture_fstop = 2.8 if nen else 5.6
 
     static_cam = bool(moving or spinning)
     frames = 36 if static_cam else 16

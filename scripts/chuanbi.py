@@ -1899,6 +1899,14 @@ def gan_moc_chong_lo(c, cau, tu):
             moc = moc_cong_thuc(cum, cau, len(cum), tu)
             if moc:
                 v["moc_dong"] = moc
+        elif v.get("loai") == "bieu_do_cot" and isinstance(v.get("ds_so"), list) and v["ds_so"]:
+            # từng cột mọc lên đúng lúc lời đọc nói tới giá trị thử đó (khi_noi_dong[i] hoặc nhãn cột)
+            kn = v.get("khi_noi_dong")
+            nhan = v.get("ds") if isinstance(v.get("ds"), list) and len(v["ds"]) == len(v["ds_so"]) else []
+            cum = [str(x) for x in kn] if isinstance(kn, list) and len(kn) == len(v["ds_so"]) else [texSangChuPy(str(x)) for x in nhan]
+            moc = moc_cong_thuc(cum, cau, len(cum), tu) if cum else None
+            if moc:
+                v["moc_dong"] = moc
         elif v.get("loai") == "bang_bien_thien" and isinstance(v.get("khi_noi_dong"), list) and v["khi_noi_dong"]:
             kn = [str(x) for x in v["khi_noi_dong"][:2]]
             moc = moc_cong_thuc(kn, cau, len(kn), tu)

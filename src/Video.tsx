@@ -1,4 +1,5 @@
-import {BoiCanh, NenCauChuyen} from './NenCauChuyen';
+import {BoiCanh} from './NenCauChuyen';
+import {NenChieuSau} from './NenChieuSau';
 import React from 'react';
 import {AbsoluteFill, Audio, Img, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame} from 'remotion';
 import {Canh, sanKhauCuaCanh} from './Canh';
@@ -155,6 +156,8 @@ const NoiDungVideo: React.FC<Props & {coIntro?: boolean}> = (props) => {
     if (!next || next.giuSanKhau || next.moiTruong || (next.chuoi3D?.nenDung && next.phaMinhHoa !== 'toan')) return 0;
     return 8;
   };
+  // bài thực tế / xác suất có cảnh 3D (Blender hoặc Three.js) -> phần giải dùng nền tối chiều sâu
+  const laThucTe = !props.manimLop && canh.some((c) => c.phaMinhHoa || c.moiTruong);
   const nenBlender = canh[0]?.phaMinhHoa && canh[0]?.chuoi3D?.nenDung;
   // nền Blender chỉ sống ở phần mở đầu; tới cảnh 'chuyen' nó nhòe + tối dần rồi nhường nền đồ họa của phần giải
   const iChuyen = canh.findIndex((c) => c.phaMinhHoa === 'chuyen');
@@ -167,9 +170,10 @@ const NoiDungVideo: React.FC<Props & {coIntro?: boolean}> = (props) => {
       <style>{'div, span { text-wrap: balance; } .katex, .katex * { text-wrap: nowrap; }'}</style>
       <NapPhongToan />
       {/* nền tự tạo riêng cho từng video (mặc định); chỉ dùng nền ảnh của bạn khi đặt DUNG_NEN_DRIVE=1 */}
-      {props.phongCanh ? <NenCauChuyen set={props.phongCanh} /> : props.nenTuTao ? <NenTuTao cfg={props.nenTuTao} nhan={GIAO_DIEN.nhan} /> : <Nen nen={nen} dsNen={props.dsNen} canh={canh} pc={phongCach} tongFrame={tongFrame} />}
+      {/* luồng Thực tế & Xác suất: nền tối có chiều sâu (không còn ảnh phối cảnh tĩnh của phong_canh giữ suốt bài) */}
+      {props.phongCanh || laThucTe ? <NenChieuSau canh={canh} /> : props.nenTuTao ? <NenTuTao cfg={props.nenTuTao} nhan={GIAO_DIEN.nhan} /> : <Nen nen={nen} dsNen={props.dsNen} canh={canh} pc={phongCach} tongFrame={tongFrame} />}
       {nenBlender ? <Sequence from={0} durationInFrames={tatNen + 45} layout="none"><NenBlender src={nenBlender} tat={tatNen} /></Sequence> : null}
-      {!props.phongCanh && moi && (!props.nenTuTao || props.nenTuTao.kieu === 'luoi') ? <LuoiSan mau={GIAO_DIEN.nhan} /> : null}
+      {!props.phongCanh && !laThucTe && moi && (!props.nenTuTao || props.nenTuTao.kieu === 'luoi') ? <LuoiSan mau={GIAO_DIEN.nhan} /> : null}
       {nhac ? <Audio src={staticFile(nhac)} loop volume={amNhac} /> : null}
       {canh.map((c, i) => (
         <Sequence key={c.so} from={c.batDau} durationInFrames={c.soFrame + keoDai(i)}>

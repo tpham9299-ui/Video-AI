@@ -692,30 +692,64 @@ const DongHoDo: Ve = (v, st) => {
 const NEON_DO = '#FF5C61';
 
 /* ---------------- BIỂU ĐỒ CỘT ---------------- */
+// Biểu đồ cột (cảnh THỬ LẠI: các giá trị thử). Trục đứng KHÔNG bắt buộc từ 0: các giá trị thử thường sát nhau
+// (1024, 1058, 1080...) nên cột từ 0 cao gần bằng nhau -> trục bắt đầu ở một mốc tròn dưới giá trị nhỏ nhất, có dấu
+// ngắt trục. Mỗi cột mọc đúng mốc lời đọc (mocDong), cột tối ưu (toiUu min/max) sáng vàng + nhãn khi đủ các cột.
+const mocTron = (x: number) => {
+  if (x <= 0) return 0;
+  const b = Math.pow(10, Math.floor(Math.log10(x)));
+  const buoc = [1, 2, 2.5, 5, 10].map((k) => k * b / 10).find((k) => x / k <= 20) ?? b;
+  return Math.floor(x / buoc) * buoc;
+};
 const BieuDoCot: Ve = (v, st) => {
   const n = v.dsSo.length;
   const W = Math.min(900, 220 * n) * v.co;
   const H = 420 * v.co;
   const max = Math.max(...v.dsSo, 1e-9);
+  const min = Math.min(...v.dsSo);
+  const san = min > 0 && (max - min) / max < 0.4 ? mocTron(min - (max - min) * 0.8) : 0;
+  const ngat = san > 0;
   const bw = (W / n) * 0.6;
   const goc = neon(v.mau, neon('xanh_la'));
+  const vang = neon('vang');
+  const iToiUu = v.toiUu ? v.dsSo.indexOf(v.toiUu === 'min' ? min : max) : -1;
+  const batCot = v.dsSo.map((_, k) => Math.max(st.ta, v.mocDong[k] !== undefined && v.mocDong[k] >= 0 ? v.mocDong[k] : st.ta + 0.15 + k * 0.35));
+  const pToiUu = iToiUu >= 0 ? easeOut(kep((st.t - Math.max(...batCot) - 0.75) / 0.5)) : 0;
+  const so = (x: number) => (Number.isInteger(x) ? x.toLocaleString('vi-VN') : x.toFixed(2).replace('.', ','));
   return (
     <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
       <div style={{position: 'relative', width: W, height: H, borderBottom: '4px solid rgba(255,255,255,0.6)'}}>
+        {ngat ? (
+          <>
+            <svg width={44} height={36} style={{position: 'absolute', left: -46, bottom: -18}}>
+              <path d="M4 26 L14 10 L24 26 L34 10" stroke="rgba(255,255,255,0.7)" strokeWidth={4} fill="none" strokeLinejoin="round" />
+            </svg>
+            <div style={{position: 'absolute', left: -60, bottom: -54, width: 120, textAlign: 'center', fontFamily: FONT_DAM, fontWeight: 600, fontSize: 26 * KC, color: 'rgba(230,245,255,0.65)'}}>{so(san)}</div>
+          </>
+        ) : null}
         {v.dsSo.map((x, k) => {
-          const a = easeOut(kep((st.t - st.ta - 0.15 - k * 0.2) / 0.7));
+          const a = easeOut(kep((st.t - batCot[k]) / 0.7));
           const s = phanTu(st, k + 1, goc);
-          const h = (x / max) * (H - 60) * a;
+          const laToiUu = k === iToiUu;
+          const mau = laToiUu && pToiUu > 0.01 ? vang : s.mau;
+          const mo = s.mo * (iToiUu >= 0 && !laToiUu ? 1 - 0.45 * pToiUu : 1);
+          const h = Math.max(18, ((x - san) / Math.max(1e-9, max - san)) * (H - 80)) * a;
+          const chu = String(so(x));
           return (
-            <div key={k} style={{position: 'absolute', left: (k + 0.5) * (W / n) - bw / 2, bottom: 0, width: bw, height: h, background: `linear-gradient(180deg, ${s.mau}, ${s.mau}55)`, border: `3px solid ${s.mau}`, borderBottom: 'none', borderRadius: '10px 10px 0 0', boxShadow: `0 0 ${10 + 16 * s.pc}px ${s.mau}`, opacity: s.mo}}>
-              <div style={{position: 'absolute', top: -58 * KC, left: -40, right: -40, textAlign: 'center', fontFamily: FONT_DAM, fontWeight: 900, fontSize: Math.min(42 * KC, (W / n) / (0.62 * Math.max(2, String(Number.isInteger(x) ? x : x.toFixed(2)).length))), color: '#fff', opacity: a, textShadow: '0 2px 10px rgba(0,0,0,0.8)', whiteSpace: 'nowrap'}}>{Number.isInteger(x) ? x : x.toFixed(2)}</div>
+            <div key={k} style={{position: 'absolute', left: (k + 0.5) * (W / n) - bw / 2, bottom: 0, width: bw, height: h, background: `linear-gradient(180deg, ${mau}, ${mau}55)`, border: `3px solid ${mau}`, borderBottom: 'none', borderRadius: '10px 10px 0 0', boxShadow: `0 0 ${10 + 16 * s.pc + 26 * (laToiUu ? pToiUu : 0)}px ${mau}`, opacity: mo, transform: laToiUu ? `scaleX(${1 + 0.08 * pToiUu})` : undefined}}>
+              <div style={{position: 'absolute', top: -58 * KC, left: -40, right: -40, textAlign: 'center', fontFamily: FONT_DAM, fontWeight: 800, fontSize: Math.min(42 * KC, (W / n) / (0.62 * Math.max(2, chu.length))), color: laToiUu && pToiUu > 0.5 ? vang : '#fff', opacity: a, textShadow: '0 2px 10px rgba(0,0,0,0.8)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums'}}>{chu}</div>
+              {laToiUu && pToiUu > 0 ? (
+                <div style={{position: 'absolute', top: -112 * KC, left: -70, right: -70, textAlign: 'center', opacity: pToiUu, transform: `translateY(${(1 - pToiUu) * 14}px)`}}>
+                  <span style={{display: 'inline-block', padding: '4px 16px', borderRadius: 20, background: vang, color: '#1d1503', fontFamily: FONT_DAM, fontWeight: 800, fontSize: 28 * KC}}>{v.toiUu === 'min' ? 'nhỏ nhất' : 'lớn nhất'}</span>
+                </div>
+              ) : null}
             </div>
           );
         })}
       </div>
       <div style={{display: 'flex', width: W}}>
         {v.dsSo.map((_, k) => (
-          <div key={k} style={{flex: 1, textAlign: 'center', fontFamily: FONT_DAM, fontWeight: 800, fontSize: 36 * KC, color: '#e6fff7', marginTop: 10, lineHeight: 1.1, padding: '0 4px'}}>{v.ds[k] || ''}</div>
+          <div key={k} style={{flex: 1, textAlign: 'center', fontFamily: FONT_DAM, fontWeight: 700, fontSize: 36 * KC, color: k === iToiUu && pToiUu > 0.5 ? vang : '#e6fff7', marginTop: 10, lineHeight: 1.1, padding: '0 4px', opacity: easeOut(kep((st.t - batCot[k]) / 0.5))}}>{v.ds[k] || ''}</div>
         ))}
       </div>
       <Nhan chu={v.nhan} />

@@ -65,15 +65,32 @@ def khop_vat(the):
     vat = DANH_MUC["vat"]
     mau_tv = the.get("mau_tv")
     if mau_tv in vat:
-        return mau_tv
+        return nang_mau(mau_tv, the)
     bang = {k: [chuan(n) for n in v["ten"]] + [k.replace("_", " ")] for k, v in vat.items()}
     khong_dau = {k: [bo_dau(n) for n in v] for k, v in bang.items()}
     for nguon in (the.get("ten"), the.get("tu_de")):
         for ten in cac_dau_cum(nguon):
             key = _dau_cum(ten, bang) or _dau_cum(bo_dau(ten), khong_dau)
             if key:
-                return key
+                return nang_mau(key, the)
     return None
+
+
+KIN = re.compile(r"\b(kín|có nắp|nắp đậy|đậy nắp|hóa chất|công nghiệp|xăng|dầu|khí đốt|gas)\b")
+KHONG_NAP = re.compile(r"\b(không nắp|không có nắp|hở nắp|mở nắp|hộp hở)\b")
+
+
+def nang_mau(key, the):
+    """Hình dạng theo tính từ của đề, không chỉ theo danh từ chính: 'bồn chứa hình trụ kín' phải có nắp (bon_kin),
+    'hộp không nắp' phải hở miệng (hop_khong_nap) -- trước đây cả hai rơi về be_tru (hở, có nước) / hop (khối đặc)."""
+    van = " ".join(chuan(the.get(k)) for k in ("ten", "tu_de", "mo_ta"))
+    if key in ("be_tru", "bon_vom") and KIN.search(van) and not re.search(r"\bhở\b|không nắp", van):
+        return "bon_kin" if key == "be_tru" else key
+    if key == "hop" and KHONG_NAP.search(van):
+        return "hop_khong_nap"
+    if key in ("the", "hop") and re.search(r"tấm (bìa|các-tông|carton|tôn|nhôm)|miếng bìa", van):
+        return "tam_bia"
+    return key
 
 
 def mau_theo_lop(lop):

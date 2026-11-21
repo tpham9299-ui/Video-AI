@@ -40,7 +40,9 @@ function texture(paint: (ctx: CanvasRenderingContext2D) => void) {
   tex.colorSpace = T.SRGBColorSpace;
   return tex;
 }
-function surface(wood: boolean) {
+// Vân lặp theo KÍCH THƯỚC THẬT của mặt (mỗi ô vân gỗ ~2,4 đơn vị, nhựa đường ~0,6): trước đây cố định repeat(4,3)
+// trên mặt bàn 42x22 nên vân gỗ bị phóng to và kéo giãn gấp ~3 lần so với tấm thẻ đặt trên đó.
+function surface(wood: boolean, w = wood ? 42 : 170, d = wood ? 22 : 7) {
   const map = texture((ctx) => {
     ctx.fillStyle = wood ? '#ad8054' : '#595e61';
     ctx.fillRect(0, 0, 256, 256);
@@ -52,7 +54,8 @@ function surface(wood: boolean) {
     }
   });
   map.wrapS = map.wrapT = T.MirroredRepeatWrapping;
-  map.repeat.set(wood ? 4 : 24, 3);
+  map.repeat.set(w / (wood ? 2.4 : 7), d / (wood ? 2.4 : 2.3));
+  map.anisotropy = 4;
   return new T.MeshStandardMaterial({ map, roughness: 0.86 });
 }
 function shadow(parent: T.Object3D, w: number, d: number) {
@@ -381,7 +384,7 @@ function boiCanhDacTa(scene: T.Scene, b: DacTa['boiCanh'], R: number) {
   if (b.ngoaiTroi) {
     scene.fog = new T.Fog(b.troi, 18 + R * 2, 60 + R * 4);
     box(scene, 0, -1.4, 0, 240, 0.3, 240, b.dat);
-    mesh(scene, new T.BoxGeometry(R * 3.4 + 4, 0.4, R * 2.4 + 4), surface(true), 0, -0.2, 0);
+    mesh(scene, new T.BoxGeometry(R * 3.4 + 4, 0.4, R * 2.4 + 4), surface(true, R * 3.4 + 4, R * 2.4 + 4), 0, -0.2, 0);
     for (const x of [-1, 1]) for (const z of [-1, 1]) box(scene, x * (R * 1.5 + 1.6), -0.8, z * (R + 1.5), 0.3, 1.2, 0.3, '#6e4c33');
     for (let i = 0; i < 9; i++) {
       const x = (i - 4) * 5.2 + ((i * 37) % 7) * 0.3, z = -14 - (i % 3) * 3;
@@ -396,7 +399,7 @@ function boiCanhDacTa(scene: T.Scene, b: DacTa['boiCanh'], R: number) {
     return;
   }
   scene.fog = new T.Fog(toi ? '#2b3442' : b.troi, 14 + R * 2, 40 + R * 4);
-  mesh(scene, new T.BoxGeometry(W, 0.4, Math.max(22, R * 5)), surface(true), 0, -0.2, 0);
+  mesh(scene, new T.BoxGeometry(W, 0.4, Math.max(22, R * 5)), surface(true, W, Math.max(22, R * 5)), 0, -0.2, 0);
   const wall = b.mau === 'lop_hoc' ? '#c9d3c2' : b.mau === 'cua_hang' ? '#e6dccb' : b.mau === 'bep' ? '#dfe3e0' : '#74897e';
   const zw = -Math.max(10, R * 2.6);
   box(scene, 0, 4, zw, W, 8 + R, 0.3, wall);
@@ -467,7 +470,9 @@ function dacTa(scene: T.Scene, camera: T.PerspectiveCamera, plan: DacTa, c: Canh
   tu.filter((t) => !t.trong || !viTri.has(t.trong)).forEach((t) => roi.set(t.the, [...(roi.get(t.the) ?? []), t]));
   let z = chua.length ? Math.max(...chua.map((v) => banKinh.get(v.id)!)) + 1.4 : 0;
   [...roi.values()].forEach((nhom) => {
-    const cols = Math.min(nhom.length, 8);
+    // lưới cân đối cho khung dọc: <=5 một hàng, 6-12 hai hàng đều (10 thẻ = 5 x 2), nhiều hơn thì lưới gần vuông
+    const n = nhom.length;
+    const cols = n <= 5 ? n : n <= 12 ? Math.ceil(n / 2) : Math.min(8, Math.ceil(Math.sqrt(n * 1.6)));
     nhom.forEach((t, j) => viTri.set(t.id, new T.Vector3(((j % cols) - (cols - 1) / 2) * buoc(t.kieu) * 1.25, cao(t.kieu),
       z + Math.floor(j / cols) * buoc(t.kieu) * 1.25)));
     z += Math.ceil(nhom.length / cols) * buoc(nhom[0].kieu) * 1.25 + 0.5;
@@ -600,7 +605,17 @@ function dacTa(scene: T.Scene, camera: T.PerspectiveCamera, plan: DacTa, c: Canh
     toan_canh: [0.08, 0.71, 0.76], trung: [0.1, 0.6, 0.8], can: [0.1, 0.5, 0.86],
     tu_tren: [0.02, 0.97, 0.25], ngang: [0.1, 0.24, 0.97], theo_vat: [0.1, 0.6, 0.8]};
   const dir = new T.Vector3(...(huong[q.gocMay] ?? huong.toan_canh)).normalize();
-  const xa = Math.max(5.6, focus.r * ({trung: 3.6, can: 3.0}[q.gocMay] ?? 4.1));
+  // Vừa khung theo GÓC NGANG của khung dọc 9:16 (chỉ ~26°), không theo đường chéo cụm vật: hàng thẻ rộng không còn
+  // tràn mép trái/phải. Lề an toàn 12% mỗi bên; xoay_quanh tính bề ngang lớn nhất trong suốt cung xoay.
+  const tanNgang = Math.tan(T.MathUtils.degToRad(44 / 2)) * (9 / 16);
+  const diemKhung = focus === all ? diem : tieu;
+  const hop = new T.Box3().setFromPoints(diemKhung.length ? diemKhung : [new T.Vector3()]);
+  const kt = hop.getSize(new T.Vector3());
+  const rongXoay = q.chuyenMay === 'xoay_quanh' ? Math.max(kt.x, kt.x * Math.cos(0.6) + kt.z * Math.sin(0.6)) : kt.x;
+  const nuaNgang = rongXoay / 2 + 0.75 * nho;
+  const xa = Math.max(5.6, focus.r * ({trung: 3.6, can: 3.0}[q.gocMay] ?? 4.1), nuaNgang / (tanNgang * 0.76));
+  // lướt ngang chỉ trong phần dư của khung -> vật không bao giờ trôi ra ngoài mép
+  const duNgang = Math.max(0, xa * tanNgang * 0.88 - nuaNgang);
   const duration = c.soFrame / 30;
 
   return (time: number) => {
@@ -668,7 +683,7 @@ function dacTa(scene: T.Scene, camera: T.PerspectiveCamera, plan: DacTa, c: Canh
     const ngang = new T.Vector3(-dir.z, 0, dir.x).normalize();
     if (q.chuyenMay === 'xoay_quanh') d.applyAxisAngle(new T.Vector3(0, 1, 0), -0.6 * (1 - e));
     else if (q.chuyenMay === 'luot_vao') k = 1 + 0.25 * (1 - e);
-    if (q.chuyenMay === 'luot_ngang') tam.addScaledVector(ngang, focus.r * 0.8 * (1 - e));
+    if (q.chuyenMay === 'luot_ngang') tam.addScaledVector(ngang, Math.min(focus.r * 0.8, duNgang) * (1 - e));
     camera.position.copy(tam).addScaledVector(d, xa * k);
     // nhìn hơi về phía trước cụm vật: vật dồn lên giữa khung dọc, hàng vật trước không bị phụ đề che
     camera.lookAt(tam.x, tam.y, tam.z + focus.r * 0.45);

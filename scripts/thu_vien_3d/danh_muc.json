@@ -2,8 +2,11 @@
   "_ghi_chu": "Danh mục mẫu tham số. co = [ngang x, sâu y, cao z] theo mét ở kích thước thật. Hàm dựng cùng tên trong vat.py / moi_truong.py. Thêm mẫu mới: thêm 1 mục ở đây + 1 hàm dựng; PromptKichBan.gs đọc danh sách id qua DANH_MUC_3D_ (test kiểm khớp).",
   "vat": {
     "hop":       {"ten": ["hộp", "thùng", "kiện hàng", "thùng hàng", "hộp giấy", "thùng carton", "khối hộp", "viên gạch", "tủ"], "lop": ["do_vat", "vat_chua"], "co": [0.4, 0.3, 0.3], "mau": "go"},
+    "hop_khong_nap": {"ten": ["hộp không nắp", "hộp không có nắp", "hộp hở", "hộp hở nắp", "hộp các-tông không nắp", "thùng không nắp", "hộp mở nắp", "khay"], "lop": ["do_vat", "vat_chua"], "co": [0.4, 0.4, 0.12], "mau": "bia"},
+    "tam_bia":   {"ten": ["tấm bìa", "tấm bìa vuông", "tấm các-tông", "tấm carton", "miếng bìa", "tờ bìa", "tấm giấy cứng", "tấm tôn", "tấm nhôm", "tấm kim loại"], "lop": ["do_vat"], "co": [0.6, 0.6, 0.004], "mau": "bia"},
     "be_tru":    {"ten": ["bể trụ", "bể hình trụ", "bể cá", "bồn nước", "bồn", "téc", "téc nước", "thùng phi", "bể chứa", "thùng nước", "giếng"], "lop": ["vat_chua"], "co": [1.6, 1.6, 1.2], "mau": "xanh_duong"},
     "be_hop":    {"ten": ["bể hình hộp", "bể kính", "hồ cá", "bể bơi", "hồ bơi", "bể nước", "bể"], "lop": ["vat_chua"], "co": [1.2, 0.6, 0.6], "mau": "kinh"},
+    "bon_kin":   {"ten": ["bồn kín", "bồn chứa kín", "bồn hình trụ kín", "bồn trụ kín", "bồn hóa chất", "bồn chứa hóa chất", "téc kín", "bồn công nghiệp", "bồn xăng", "bồn chứa xăng", "bồn dầu", "bồn chứa dầu", "bồn khí", "bình chứa kín"], "lop": ["vat_chua", "cong_trinh"], "co": [2.0, 2.0, 3.2], "mau": "nhom"},
     "lon":       {"ten": ["lon", "lon nước", "vỏ lon", "lon sữa", "hộp sữa trụ"], "lop": ["vat_chua", "thuc_pham"], "co": [0.066, 0.066, 0.12], "mau": "do"},
     "bon_vom":   {"ten": ["bồn có vòm", "bồn chứa vòm", "silo", "tháp chứa"], "lop": ["vat_chua", "cong_trinh"], "co": [3, 3, 5], "mau": "trang"},
     "chai":      {"ten": ["chai", "chai nước", "lọ", "bình nước", "chai dầu"], "lop": ["vat_chua", "thuc_pham"], "co": [0.07, 0.07, 0.25], "mau": "kinh"},
@@ -30,7 +33,7 @@
     "bi":        {"ten": ["bi", "viên bi", "quả cầu nhỏ", "hòn bi"], "lop": ["do_choi_xac_suat"], "co": [0.04, 0.04, 0.04], "mau": "do"},
     "xuc_xac":   {"ten": ["xúc xắc", "con xúc xắc", "súc sắc", "con súc sắc"], "lop": ["do_choi_xac_suat"], "co": [0.05, 0.05, 0.05], "mau": "trang"},
     "dong_xu":   {"ten": ["đồng xu", "xu", "đồng tiền"], "lop": ["do_choi_xac_suat"], "co": [0.025, 0.025, 0.003], "mau": "vang"},
-    "the":       {"ten": ["thẻ", "lá bài", "quân bài", "tấm thẻ", "phiếu", "lá phiếu", "vé", "tấm bìa"], "lop": ["do_choi_xac_suat", "do_vat"], "co": [0.063, 0.003, 0.088], "mau": "trang"},
+    "the":       {"ten": ["thẻ", "lá bài", "quân bài", "tấm thẻ", "phiếu", "lá phiếu", "vé"], "lop": ["do_choi_xac_suat", "do_vat"], "co": [0.063, 0.003, 0.088], "mau": "trang"},
     "ca":        {"ten": ["cá", "con cá", "cá giống"], "lop": ["dong_vat"], "co": [0.25, 0.06, 0.1], "mau": "cam"},
     "dong_vat":  {"ten": ["con vật", "con gà", "gà", "con vịt", "vịt", "con bò", "bò", "con lợn", "lợn", "heo", "con chó", "chó", "con mèo", "mèo", "con dê", "dê", "con trâu", "trâu"], "lop": ["dong_vat"], "co": [0.5, 0.25, 0.4], "mau": "trang"},
     "cay_nho":   {"ten": ["chậu cây", "chậu hoa", "bụi cây", "luống rau", "cây cảnh"], "lop": ["cay"], "co": [0.4, 0.4, 0.6], "mau": "la"}
