@@ -26,26 +26,90 @@ phải khớp trích dẫn. Không tự chọn một kết quả ngẫu nhiên l
 dữ kiện thiết yếu để phân biệt các tình huống, trả {"thieu":"dữ kiện cần bổ sung"}."""
 
 
-def hoi_json(prompt):
+def hoi_json(prompt, anh=None):
+    """Gọi Gemini trả JSON; anh = đường dẫn ảnh PNG/JPG gửi kèm (AI nhìn hình)."""
     keys = re.split(r"[\s,;]+", " ".join(os.getenv(k, "") for k in ("GEMINI_KEYS","GEMINI_API_KEY")).strip())
     if not any(keys):
         raise ValueError("Chưa có khóa Gemini để tạo bản vẽ mới")
+    parts = [{"text": prompt}]
+    if anh:
+        import base64
+        mime = "image/jpeg" if str(anh).lower().endswith((".jpg", ".jpeg")) else "image/png"
+        parts.append({"inline_data": {"mime_type": mime, "data": base64.b64encode(Path(anh).read_bytes()).decode()}})
     request = {"keys": keys, "model": "gemini-2.5-flash", "gioiHanGiay": 60,
-               "bodies": [{"contents": [{"parts": [{"text": prompt}]}],
+               "bodies": [{"contents": [{"parts": parts}],
                            "generationConfig": {"temperature": 0.1, "responseMimeType":"application/json"}}]}
-    with tempfile.NamedTemporaryFile(mode="w") as f:
+    # delete=False: Windows không cho tiến trình khác mở tệp tạm đang mở.
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf8") as f:
         json.dump(request, f)
-        f.flush()
-        try:
-            result = subprocess.run(["node", str(Path(__file__).parent / "bophan1/goi_gemini.js"), f.name],
-                                    capture_output=True, text=True, check=True, timeout=90)
-            response = json.loads(result.stdout)[0]
-            if not response.get("ok"):
-                raise ValueError("Gemini chưa tạo được bản vẽ")
-            parts = json.loads(response["raw"])["candidates"][0]["content"]["parts"]
-            return json.loads("".join(p.get("text","") for p in parts if not p.get("thought")))
-        except (subprocess.SubprocessError, KeyError, IndexError, json.JSONDecodeError) as e:
-            raise ValueError("Không đọc được bản vẽ JSON từ Gemini") from e
+    try:
+        result = subprocess.run(["node", str(Path(__file__).parent / "bophan1/goi_gemini.js"), f.name],
+                                capture_output=True, text=True, encoding="utf8", check=True, timeout=90)
+        response = json.loads(result.stdout)[0]
+        if not response.get("ok"):
+            raise ValueError("Gemini chưa tạo được bản vẽ")
+        out = json.loads(response["raw"])["candidates"][0]["content"]["parts"]
+        return json.loads("".join(p.get("text","") for p in out if not p.get("thought")))
+    except (subprocess.SubprocessError, KeyError, IndexError, json.JSONDecodeError) as e:
+        raise ValueError("Không đọc được bản vẽ JSON từ Gemini") from e
+    finally:
+        Path(f.name).unlink(missing_ok=True)
+
+
+QUY_UOC_VAT = """Phân tích vật thật thành 2–40 bộ phận để Blender dựng. Trả JSON
+{"co_chuan":[ngang,sâu,cao theo mét ở kích thước thật],"bo_phan":[{"ten":"tên bộ phận","hinh":"hop|tru|cau|non|lang_tru|khoi_tiet_dien",
+"tam":[x,y,z],"co":[x,y,z],"xoay":[độ,độ,độ],"vat_lieu":"chinh|go|thep|kinh|nuoc|trang|den|do|vang|da|toi|nhom"}]}.
+Tọa độ trong KHUNG CHUẨN của vật: x,y từ -0.5 đến 0.5, z từ 0 (đáy) đến 1 (đỉnh); co là kích thước bộ phận theo tỉ lệ khung (0–1).
+Các bộ phận phải chạm nhau thành một vật liền, phủ kín khung; dáng phải nhận ra ngay là vật này (không thay cả vật bằng một hộp).
+vat_lieu "chinh" = màu chính của vật. lang_tru có "day" 3–24 đỉnh XY đa giác lồi; khoi_tiet_dien có "tang" 2–16 hàng
+[z, tâm_x, tâm_y, bán_kính_x, bán_kính_y] z tăng dần. Không trả tọa độ thế giới, không thêm vật khác."""
+
+
+def sinh_vat_moi(the, de, hoi=hoi_json, luu=True):
+    """Fallback cho thực thể chưa có mẫu: AI ghép bộ phận -> kiểm -> AI đối chiếu -> lưu thư viện sinh/."""
+    from thu_vien_3d.xep_cho import THU_MUC_SINH, bo_phan_hop_le, doc_sinh, khoa_sinh
+    cached = doc_sinh(the)
+    if cached:
+        return cached
+    context = json.dumps({"de": de, "vat": {k: the.get(k) for k in ("ten", "tu_de", "lop", "kich_thuoc", "mau_sac")}}, ensure_ascii=False)
+    problem = ""
+    for _ in range(2):
+        asset = hoi(QUY_UOC_VAT + "\n" + context + (("\nBản trước bị loại: " + problem) if problem else ""))
+        if not isinstance(asset, dict):
+            problem = "không phải JSON đối tượng"
+            continue
+        problem = bo_phan_hop_le(asset.get("bo_phan")) or ""
+        co = asset.get("co_chuan")
+        if not problem and not (isinstance(co, list) and len(co) == 3 and all(type(v) in (int, float) and 0 < v <= 500 for v in co)):
+            problem = "co_chuan cần ba số dương (mét)"
+        if problem:
+            continue
+        review = hoi('Bản ghép bộ phận này có nhận ra đúng là "' + str(the.get("ten")) + '" trong đề không? Kiểm hình dáng, tỉ lệ, '
+                     'bộ phận đặc trưng. Trả JSON {"dat":true|false,"loi":"sai ở đâu"}.\n' + context + "\nBản ghép: " +
+                     json.dumps(asset, ensure_ascii=False))
+        if isinstance(review, dict) and review.get("dat") is True:
+            asset = {"ten": the.get("ten"), "lop": the.get("lop"), "co_chuan": co, "bo_phan": asset["bo_phan"]}
+            if luu:
+                THU_MUC_SINH.mkdir(exist_ok=True)
+                (THU_MUC_SINH / (khoa_sinh(the) + ".json")).write_text(json.dumps(asset, ensure_ascii=False, indent=1), encoding="utf8")
+            return asset
+        problem = str(review.get("loi") if isinstance(review, dict) else "") or "chưa được xác nhận"
+    raise ValueError(f"Không sinh được mẫu 3D cho '{the.get('ten')}': {problem}")
+
+
+def bo_sung_dac_ta(kb, hoi=hoi_json):
+    """Gắn bo_phan (AI sinh) vào mọi thực thể CHÍNH chưa có mẫu. Trả True nếu kb đã đổi."""
+    from thu_vien_3d.khop import khop_vat
+    spec = kb.get("dac_ta_canh")
+    if not isinstance(spec, dict):
+        return False
+    changed = False
+    for the in spec.get("thuc_the") or []:
+        if the.get("vai_tro") == "chinh" and not the.get("bo_phan") and khop_vat(the) is None:
+            asset = sinh_vat_moi(the, kb.get("de_bai"), hoi)
+            the["bo_phan"], the["co_chuan"] = asset["bo_phan"], asset["co_chuan"]
+            changed = True
+    return changed
 
 
 def bo_sung_mo_hinh(kb, lap_ke_hoach, loi_thieu, hoi=hoi_json):

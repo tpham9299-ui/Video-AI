@@ -36,7 +36,7 @@
 | Nhóm | Tệp chính & Vai trò |
 | :--- | :--- |
 | **Apps Script (`/*.gs`)** | `BoPhan1.gs` (lõi hàng đợi, model động, GDPT 2018, tự đồng bộ GitHub), `PromptKichBan.gs` (prompt 6 phần, `cau_chuyen`, bản vẽ thực tế, bài 10 phút), `KiemTraHinh.gs` (tự sửa thuật toán, kiểm tra phép tính LaTeX & vật thật), `HinhHoc.gs` (tọa độ 2D/3D, chiếu Cavalier, phân loại `canh`/`khuat`/`phu`), `BoPhan2.gs` (giao dựng video & webhook `doPost`), `NangCao.gs` (tiêu chí duyệt, học từ góp ý, series/hook), `DangVideo.gs` (lịch đăng `chayLichDangDinhKy`, `kiemTraDangSauDuyet`, giữ chỗ 2 pha), `SanPham.gs` (lệnh Zalo tức thời & quảng cáo), `ZaloDeBai.gs` (nhận đề chữ/ảnh/PDF/Word/LaTeX), `KhoKey.gs` (quản lý key), `appsscript.json` (OAuth scopes & YouTube Advanced Services). |
-| **Scripts (`/scripts/`)** | `bophan1/chay_bp1.js` (chạy `.gs` trong Node `vm`), `bophan1/goi_gemini.js` (xoay vòng key, tự né 404/429, tra `ListModels`), `chuanbi.py` (chuẩn hóa đọc toán, Gemini TTS `mot_lan` + cache + fallback `edge-tts`, mốc `mocCongThuc`, tạo `public/props.json`), `canh_3d.py`, `ve_blender.py`, `tao_mo_hinh.py`, `xe_3d.py` (lập kế hoạch & dựng cảnh Blender Cycles CPU RGBA + xuất tọa độ chiếu), `manim_hinh.py` (dựng bài `HINH_HOC` Manim `0.22.1`, vẽ từng nét theo mốc từ, ghi `manimNhatKy`), `kiem_hinh_hoc.py` (kiểm tra chéo bắt buộc luồng/cảnh/điểm/quan hệ/đồng bộ trước & sau Manim), `manim_thuc_te.py` (vẽ nét toán & công thức trùng tọa độ chiếu từ Blender), `kiem_duyet.mjs` (đo DOM + AI nhìn hình trước dựng), `dung_khuc.mjs`, `ghep_khuc.mjs`, `anh_kiem_tra.py`, `dang_video.py`. |
+| **Scripts (`/scripts/`)** | `bophan1/chay_bp1.js` (chạy `.gs` trong Node `vm`), `bophan1/goi_gemini.js` (xoay vòng key, tự né 404/429, tra `ListModels`), `chuanbi.py` (chuẩn hóa đọc toán, Gemini TTS `mot_lan` + cache + fallback `edge-tts`, mốc `mocCongThuc`, tạo `public/props.json`), `canh_3d.py`, `ve_blender.py`, `tao_mo_hinh.py`, `xe_3d.py` (lập kế hoạch & dựng cảnh Blender Cycles CPU RGBA + xuất tọa độ chiếu), `manim_hinh.py` (dựng bài `HINH_HOC` Manim `0.22.1`, vẽ từng nét theo mốc từ, ghi `manimNhatKy`), `kiem_hinh_hoc.py` (kiểm tra chéo bắt buộc luồng/cảnh/điểm/quan hệ/đồng bộ trước & sau Manim), `manim_thuc_te.py` (vẽ nét toán & công thức trùng tọa độ chiếu từ Blender), `thu_vien_3d/` (đặc tả cảnh v87: `schema_dac_ta.json`, `danh_muc.json`, `vat.py`, `moi_truong.py`, `khop.py`, `xep_cho.py`, `sinh/` vật AI đã ghép), `kiem_bam_de.py` (kiểm đặc tả bám đề + AI nhìn ảnh), `nang_cap_dinh_dang.py`, `thu_dac_ta.py` (dựng thử cục bộ), `kiem_duyet.mjs` (đo DOM + AI nhìn hình trước dựng), `dung_khuc.mjs`, `ghep_khuc.mjs`, `anh_kiem_tra.py`, `dang_video.py`. |
 | **Remotion (`/src/`)** | `Root.tsx` (`Video` 1080x1920 30fps, `AnhBia`), `Video.tsx`, `AnhBia.tsx`, `Canh.tsx`, `CanhBlender.tsx`, `CanhMoiTruong.tsx`, `CanhThucTe.tsx`, `BinhBi.tsx`, `NenCauChuyen.tsx`, `TheDeBai.tsx`, `DuKien.tsx`, `ManKet.tsx`, `PhuDeTikTok.tsx`, `KiemDuyet.tsx`, `chu.ts` (chuẩn hóa KaTeX/tiếng Việt), `sankhau/SanKhau.tsx`, `sankhau/dulieu.ts`, `sankhau/canhthat.ts`, `sankhau/vatthuc.tsx`, `sankhau/vat3d.tsx`, `sankhau/hinhhoc.tsx`, `sankhau/hinhtudo.tsx`, `sankhau/vat.tsx`. |
 
 ## 4. CÁC NGUYÊN TẮC KỸ THUẬT KHÔNG ĐƯỢC PHÁ VỠ (v85)
@@ -53,6 +53,7 @@
    * **Thực tế & Xác suất (`THUC_TE`, `XAC_SUAT`):**
      * Xe chạy trên đường hoặc phép thử bi/xu/xúc xắc hỗ trợ $\rightarrow$ ghi `moiTruong` và dựng toàn khung bằng **Three.js** (SwiftShader trong Chromium).
      * Vật thể thực tế / `mo_hinh_3d.chi_tiet` / `khoi_tiet_dien.tang` / lưới tam giác tự do $\rightarrow$ **Blender Cycles CPU** (`canh_3d.py`) chỉ dựng phần mở đầu (pha `thuc`) $\rightarrow$ cảnh `de_bai` (pha `chuyen`) đẩy máy + nhòe ảnh thật để lấy nét sang hình 2D $\rightarrow$ pha `toan`: Remotion (sân khấu + KaTeX), riêng hình khối hộp/trụ/nón/cầu do **Manim (`manim_thuc_te.py`)** vẽ.
+     * **Đặc tả cảnh (v87):** cảnh mở đầu dựng từ `kb.dac_ta_canh` (ngữ nghĩa, không tọa độ) -> `kiem_bam_de.py` -> `thu_vien_3d/xep_cho.py` -> Blender; vật mới qua `--tu-tao` (AI ghép bộ phận, lưu `sinh/`). Thêm mẫu vật/bối cảnh: sửa `danh_muc.json` + hàm dựng + `DANH_MUC_3D_` (PromptKichBan.gs). Blender ghim 5.3.0.
      * Tránh dùng `filter: blur(...)` lặp theo phần tử hoặc `<feTurbulence>` toàn màn hình trong `src/` để giữ tốc độ render Chromium.
 
 3. **Kịch bản, Model & Giọng đọc:**
@@ -83,6 +84,8 @@ node scripts/kiem_duyet.mjs
 
 # Chạy bộ kiểm thử nhanh cảnh 3D / lịch đăng / kịch bản
 python scripts/test_canh_3d.py
+python scripts/test_dac_ta_canh.py
+python scripts/thu_dac_ta.py mau/kich_ban_trai_ca.json   # dựng thử đặc tả cảnh (~25 s)
 node scripts/test_luong_hinh_hoc.cjs
 node scripts/test_lich_dang.cjs
 node scripts/test_kich_ban_canh.cjs

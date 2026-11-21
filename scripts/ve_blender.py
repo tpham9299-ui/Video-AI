@@ -2,6 +2,7 @@
 
 import json
 import math
+import os
 import random
 import re
 from pathlib import Path
@@ -9,6 +10,11 @@ import sys
 
 import bpy
 from mathutils import Euler, Vector
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from thu_vien_3d.moi_truong import dung_moi_truong  # noqa: E402  (thuần Python, dùng chung với bộ xếp chỗ)
+
+HDRI = Path(__file__).resolve().parents[1] / "assets" / "hdri"
 
 
 COLORS = {
@@ -31,6 +37,11 @@ COLORS = {
     "do": (0.73, 0.085, 0.045),
     "toi": (0.075, 0.11, 0.14),
     "nhom": (0.80, 0.81, 0.83),
+    "hong": (0.92, 0.36, 0.55),
+    "nau": (0.30, 0.16, 0.07),
+    "xam": (0.33, 0.35, 0.37),
+    "bang": (0.03, 0.12, 0.08),
+    "da_nguoi": (0.80, 0.53, 0.38),
 }
 
 # Kiểu bề mặt của từng vật liệu: (độ nhám, kim loại, lớp phủ bóng). Vật liệu không có ở đây là sơn/nhựa mờ.
@@ -125,8 +136,18 @@ def vat(hinh, tam, co, mau, xoay=(0, 0, 0)):
         bevel.harden_normals = True
         wn = ob.modifiers.new("Pháp tuyến", "WEIGHTED_NORMAL")
         wn.keep_sharp = True
-    ob.data.materials.append(MATS.get(mau, MATS["da"]))
+    ob.data.materials.append(vat_lieu(mau))
     return ob
+
+
+def vat_lieu(ten):
+    """Vật liệu theo tên danh mục hoặc mã màu #RRGGBB (màu đề nêu / màu bối cảnh)."""
+    if ten in MATS:
+        return MATS[ten]
+    if isinstance(ten, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", ten):
+        MATS[ten] = tao_vat_lieu(ten, tuple((int(ten[i:i + 2], 16) / 255) ** 2.2 for i in (1, 3, 5)))
+        return MATS[ten]
+    return MATS["da"]
 
 
 def nguoi(x, y, h):
@@ -218,7 +239,7 @@ def vo_khoi(profile, size, taper, mat):
     mesh.update()
     ob = bpy.data.objects.new("Vỏ", mesh)
     bpy.context.collection.objects.link(ob)
-    ob.data.materials.append(MATS.get(mat, MATS["go"]))
+    ob.data.materials.append(vat_lieu(mat) if mat in MATS or str(mat).startswith("#") else MATS["go"])
     return ob
 
 
@@ -249,7 +270,7 @@ def tao_luoi(p, verts, faces, tiet_dien=False):
             face.use_smooth = True
     ob = bpy.data.objects.new("Khối theo tiết diện", mesh)
     bpy.context.collection.objects.link(ob)
-    ob.data.materials.append(MATS.get(p.get("vat_lieu"), MATS["da"]))
+    ob.data.materials.append(vat_lieu(p.get("vat_lieu")))
     return ob
 
 
@@ -469,6 +490,9 @@ def chi_tiet(p):
         ob.rotation_euler = (rot @ ob.rotation_euler.to_matrix()).to_euler()
         if any(p.get("dich_chuyen", [])):
             ob["dich"] = p["dich_chuyen"]
+        if p.get("vai_tro"):
+            ob["vai_tro"] = p["vai_tro"]
+    return pieces
 
 
 def dung(s):
@@ -502,7 +526,7 @@ def dung(s):
         phep_thu(s)
     elif s["loai"] == "vuon":
         vuon(s)
-    elif s["loai"] == "lap_ghep":
+    elif s["loai"] in ("lap_ghep", "dac_ta"):
         for p in s["chi_tiet"]:
             chi_tiet(p)
     elif s["loai"] == "can_ho":
@@ -545,8 +569,22 @@ def tao_moi_truong(scene, plan, center, span, ground):
         return vat(shape, (x+span*dx, y+span*dy, ground+span*z),
                    tuple(span*s for s in size), surface)
 
+    preset = (plan.get("moi_truong") or {}).get("mau")
     story = plan.get("phong_canh")
-    if story:
+    if preset:
+        lo = (center.x - span / 2, center.y - span / 2, ground)
+        objs = [o for o in before if o.type == "MESH" and not o.is_shadow_catcher]
+        if objs:
+            pts = [o.matrix_world @ Vector(c) for o in objs for c in o.bound_box]
+            lo = tuple(min(p[i] for p in pts) for i in range(3))
+            hi = tuple(max(p[i] for p in pts) for i in range(3))
+        else:
+            hi = (center.x + span / 2, center.y + span / 2, ground + span)
+        env = dung_moi_truong(preset, lo, hi)
+        for part in env["chi_tiet"]:
+            chi_tiet(part)
+        dat_troi(scene, env)
+    elif story:
         def story_material(color):
             if color not in MATS:
                 rgb = tuple((int(color[i:i+2], 16)/255)**2.2 for i in (1, 3, 5))
@@ -584,6 +622,26 @@ def tao_moi_truong(scene, plan, center, span, ground):
                 if warehouse:
                     prop("hop", i*.68, wall_y-.12, 1.33, (.045, .075, 2.66), "thep")
     return list(set(scene.objects) - before)
+
+
+def dat_troi(scene, env):
+    """Trời/ánh sáng môi trường: HDRI CC0 (assets/hdri) nếu có, ngược lại màu trời của mẫu."""
+    tree = scene.world.node_tree
+    bg = tree.nodes["Background"]
+    path = HDRI / f"{env.get('hdri')}_1k.hdr" if env.get("hdri") else None
+    if path and path.exists():
+        tex = tree.nodes.new("ShaderNodeTexEnvironment")
+        tex.image = bpy.data.images.load(str(path), check_existing=True)
+        mapping = tree.nodes.new("ShaderNodeMapping")
+        coord = tree.nodes.new("ShaderNodeTexCoord")
+        tree.links.new(coord.outputs["Generated"], mapping.inputs["Vector"])
+        tree.links.new(mapping.outputs["Vector"], tex.inputs["Vector"])
+        tree.links.new(tex.outputs["Color"], bg.inputs["Color"])
+        bg.inputs["Strength"].default_value = 0.5 if env.get("ngoai_troi") else 0.4
+    else:
+        h = env.get("troi", "#9cc3e6")
+        bg.inputs["Color"].default_value = (*[(int(h[i:i + 2], 16) / 255) ** 2.2 for i in (1, 3, 5)], 1)
+        bg.inputs["Strength"].default_value = 0.4
 
 
 def dat_mau_sac(scene):
@@ -645,7 +703,7 @@ def render(plan, dest):
     hi = Vector(tuple(max(p[i] for p in pts) for i in range(3)))
     center = (lo + hi) / 2
     span = max(hi - lo)
-    direction = Vector((0.64, -1.45, 1.04)).normalized()
+    direction = Vector(plan.get("huong_may") or (0.64, -1.45, 1.04)).normalized()
     from mathutils import Matrix
     from bpy_extras.object_utils import world_to_camera_view
 
@@ -738,7 +796,9 @@ def render(plan, dest):
 
     static_cam = bool(moving or spinning)
     frames = 36 if static_cam else 16
-    for i in range(frames):
+    # VE_XEM_TRUOC=1: chỉ dựng khung cuối + nền (kiểm bố cục nhanh tại máy, không dùng cho video).
+    xem_truoc = os.getenv("VE_XEM_TRUOC") == "1"
+    for i in ([frames - 1] if xem_truoc else range(frames)):
         t = i / (frames - 1)
         e = t * t * (3 - 2 * t)
         # Máy vừa lượn 9° vừa đẩy vào 12%: chuyển động có thị sai thật giữa vật và nền (khung cuối là góc chiếu nét toán).
@@ -755,7 +815,7 @@ def render(plan, dest):
         che_do(False)
         scene.render.filepath = str(dest.parent / f"orbit-{i}.png")
         bpy.ops.render.render(write_still=True)
-        if not static_cam or i == 0:
+        if not static_cam or i == 0 or xem_truoc:
             che_do(True, 540, 960, 10, "JPEG")
             scene.render.filepath = str(dest.parent / f"nen-{i}.jpg")
             bpy.ops.render.render(write_still=True)
@@ -808,7 +868,7 @@ def render(plan, dest):
         # Chiếu đường bao và các cạnh sắc nhìn thấy từ góc máy cuối.
         graph = bpy.context.evaluated_depsgraph_get()
         for ob in scene.objects:
-            if ob.type != "MESH":
+            if ob.type != "MESH" or (kind == "dac_ta" and ob.get("vai_tro") != "chinh"):
                 continue
             mesh = ob.data
             normals = {}

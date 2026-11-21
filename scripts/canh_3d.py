@@ -426,6 +426,35 @@ def phep_thu_3d(c):
     )
 
 
+def ke_hoach_dac_ta(kb):
+    """Đường dựng mới: dac_ta_canh -> kiểm bám đề -> bộ xếp chỗ. None nếu kịch bản không có đặc tả.
+
+    Lỗi bám đề (số lượng, màu, kích thước, trích dẫn sai) là lỗi nặng: dừng để Apps Script sửa kịch bản.
+    Thực thể chính chưa có mẫu (và chưa được --tu-tao sinh bản ghép) thì quay về đường dựng cũ.
+    """
+    if not isinstance(kb.get("dac_ta_canh"), dict):
+        return None
+    from kiem_bam_de import kiem_dac_ta
+    from thu_vien_3d.xep_cho import LoiDacTa, ThieuMau, lap_ke_hoach_dac_ta
+    errors, warnings = kiem_dac_ta(kb)
+    for w in warnings:
+        print("Đặc tả cảnh:", w, file=sys.stderr)
+    if errors:
+        raise ValueError("Đặc tả cảnh chưa bám đề: " + "; ".join(errors[:4]))
+    shots = (kb["dac_ta_canh"].get("quay") or [])
+    first = next((q for q in shots if q.get("canh") == 1), None)
+    try:
+        plan = lap_ke_hoach_dac_ta(kb, first)
+    except ThieuMau as e:
+        print(f"Đặc tả cảnh: {e}; dùng đường dựng cũ", file=sys.stderr)
+        return None
+    except LoiDacTa as e:
+        raise ValueError(f"Đặc tả cảnh: {e}") from e
+    for w in plan.pop("canh_bao", []):
+        print("Đặc tả cảnh:", w, file=sys.stderr)
+    return plan
+
+
 class ThieuMoHinh(ValueError):
     def __init__(self, index, reason):
         self.index = index
@@ -440,6 +469,11 @@ def ke_hoach(kb, props):
     fold = re.search(r"bìa|tấm giấy", de, re.I) and re.search(r"(?:bốn|4) góc|góc.*hình vuông", de, re.I) and re.search(r"hộp|gấp", de, re.I)
     if kb.get("mon") == "HINH_HOC":
         return {}
+    spec_plan = ke_hoach_dac_ta(kb)
+    if spec_plan and car_problem:
+        # Có đặc tả cảnh: chỉ giữ đường "xe chạy trên đường" (Three.js) khi đề thật sự có luật chuyển động.
+        from xe_3d import luat_van_toc
+        car_problem = luat_van_toc(de) is not None
     physical_kinds = set("nguoi the the_bai xuc_xac dong_xu hop_bi tui hop_qua dong_ho dien_thoai bong_bay vong_quay cua banh ban_tron khoi_hop tru non cau toa_nha xe cay thang canh_that".split())
     ds = {}
     scenes = props.get("canh", [])
@@ -476,6 +510,10 @@ def ke_hoach(kb, props):
         if "anh_that" in kinds and not physical:
             continue
         native = phep_thu_3d(c)
+        if spec_plan and i == 0 and not native:
+            # Cảnh mở đầu dựng theo đặc tả (vật + bối cảnh của đề); phép thử bi/xu/xúc xắc có chuyển động giữ đường riêng.
+            ds[0] = spec_plan
+            continue
         if native:
             ds[i] = native
             continue
@@ -598,6 +636,44 @@ def kiem_kich_ban(kb):
     return phan_vai(ke_hoach(kb, props), props, kb)
 
 
+def anh_xem_truoc(clip):
+    """Ghép lớp vật (khung cuối) lên nền dọc: ảnh gần đúng như người xem thấy, để AI nhìn hình."""
+    from PIL import Image
+    frames = sorted(clip.glob("orbit-*.png"), key=lambda f: int(f.stem.split("-")[1]))
+    bg = Image.open(clip / "moi-truong.jpg").convert("RGBA")
+    fg = Image.open(frames[-1]).convert("RGBA")
+    fg = fg.resize((bg.width, round(fg.height * bg.width / fg.width)))
+    bg.alpha_composite(fg, (0, (bg.height - fg.height) // 2))
+    out = clip / "xem-truoc.png"
+    bg.convert("RGB").save(out)
+    return out
+
+
+def kiem_anh_sau_dung(clip, kb):
+    """AI nhìn ảnh dựng xong: thiếu thực thể chính hoặc sai bối cảnh -> dừng (không đưa ảnh lạc đề vào video)."""
+    import os
+    preview = anh_xem_truoc(clip)
+    if (clip / "kiem-anh.json").exists():
+        return   # ảnh trong cache đã được AI duyệt đạt
+    if os.getenv("KIEM_ANH_3D", "1") == "0" or not (os.getenv("GEMINI_KEYS") or os.getenv("GEMINI_API_KEY")):
+        print(f"Bỏ qua AI nhìn hình ({preview}): chưa có khóa hoặc KIEM_ANH_3D=0", file=sys.stderr)
+        return
+    from kiem_bam_de import kiem_anh
+    from tao_mo_hinh import hoi_json
+    try:
+        ok, report = kiem_anh(preview, kb, hoi_json)
+    except ValueError as e:
+        print(f"AI nhìn hình lỗi ({e}); giữ ảnh, cần duyệt tay", file=sys.stderr)
+        return
+    (clip / "kiem-anh.json").write_text(json.dumps(report, ensure_ascii=False), encoding="utf8")
+    if not ok:
+        raise ValueError("Ảnh 3D chưa bám đề: thiếu " + ", ".join(report.get("thieu_chinh") or []) +
+                         ("" if report.get("boi_canh_khop") is not False else "; bối cảnh sai") +
+                         f". {report.get('nhan_xet', '')}")
+    for x in report.get("thieu_phu") or []:
+        print("AI nhìn hình: chưa rõ", x, file=sys.stderr)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("kb", type=Path)
@@ -611,7 +687,7 @@ def main():
     if not args.kiem_kich_ban and args.props is None:
         ap.error("Thiếu đường dẫn props")
     try:
-        kb = json.loads(args.kb.read_text())
+        kb = json.loads(args.kb.read_text(encoding="utf8"))
         # v86 KHÓA LUỒNG: bài hình học thuần tuyệt đối không đi Blender / Three.js
         if str(kb.get("luong") or "") == "hinh_hoc_thuan" or str(kb.get("mon") or "").upper() == "HINH_HOC":
             if args.chuan_bi or args.dem:
@@ -623,15 +699,16 @@ def main():
             sys.exit("Luồng hình học thuần (kb.luong = hinh_hoc_thuan) không được dựng cảnh Blender / Three.js")
         if args.kiem_kich_ban:
             if args.tu_tao:
-                from tao_mo_hinh import bo_sung_mo_hinh
-                if bo_sung_mo_hinh(kb, kiem_kich_ban, ThieuMoHinh):
-                    with tempfile.NamedTemporaryFile(dir=args.kb.parent, mode="w", delete=False) as tmp:
+                from tao_mo_hinh import bo_sung_dac_ta, bo_sung_mo_hinh
+                doi_dac_ta = bo_sung_dac_ta(kb)
+                if bo_sung_mo_hinh(kb, kiem_kich_ban, ThieuMoHinh) or doi_dac_ta:
+                    with tempfile.NamedTemporaryFile(dir=args.kb.parent, mode="w", delete=False, encoding="utf8") as tmp:
                         json.dump(kb, tmp, ensure_ascii=False)
                     Path(tmp.name).replace(args.kb)
             else:
                 kiem_kich_ban(kb)
             return
-        props = json.loads(args.props.read_text())
+        props = json.loads(args.props.read_text(encoding="utf8"))
         ds = phan_vai(ke_hoach(kb, props), props, kb)
     except ValueError as exc:
         if args.chuan_bi or args.kiem_kich_ban:
@@ -640,7 +717,7 @@ def main():
             report.write_text(json.dumps({"nang":[str(exc) + ". Khai báo chi_tiet đúng kiểu, trích nguyên văn đề ở tu_de; kiểm tra tam/co và đoạn đo đúng đơn vị."]},ensure_ascii=False))
         raise
     if not args.dem:
-        args.props.write_text(json.dumps(props, ensure_ascii=False))
+        args.props.write_text(json.dumps(props, ensure_ascii=False), encoding="utf8")
     if args.dem or args.chuan_bi:
         print(len(ds))
         return
@@ -650,13 +727,20 @@ def main():
     folder.mkdir(exist_ok=True)
     jobs = {}
     renderer = Path(__file__).with_name("ve_blender.py").resolve()
+    from nang_cap_dinh_dang import gan_moi_truong
+    # Mã thư viện vật/bối cảnh cũng quyết định ảnh: đưa vào khóa cache.
+    library = b"".join(f.read_bytes() for f in sorted(renderer.with_name("thu_vien_3d").glob("*.py")))
+    library += renderer.with_name("thu_vien_3d").joinpath("danh_muc.json").read_bytes()
     groups = {}
+    plans = {}
     for i, scene in ds.items():
-        if props.get("phongCanh"):
+        scene = gan_moi_truong(scene, kb)
+        if props.get("phongCanh") and not scene.get("moi_truong"):
             scene = dict(scene, phong_canh=props["phongCanh"])
         key = hashlib.sha256(
-            renderer.read_bytes() + json.dumps(scene, sort_keys=True).encode()
+            renderer.read_bytes() + library + json.dumps(scene, sort_keys=True).encode()
         ).hexdigest()[:20]
+        plans[key] = scene
         clip = folder / key
         clip.mkdir(exist_ok=True)
         path = clip / "projection.json"
@@ -684,6 +768,9 @@ def main():
                 ],
                 check=True,
             )
+    for key, scene in plans.items():
+        if scene.get("loai") == "dac_ta":
+            kiem_anh_sau_dung(folder / key, kb)
     with tempfile.TemporaryDirectory() as td:
         manifest = Path(td) / "manifest.json"
         manifest.write_text(json.dumps(groups))

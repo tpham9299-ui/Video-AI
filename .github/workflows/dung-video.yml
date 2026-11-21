@@ -199,6 +199,7 @@ jobs:
         id: kich_ban_canh
         if: steps.kb.outputs.hh != '1'
         run: |
+          pip install -q jsonschema pillow
           python3 scripts/canh_3d.py kich_ban.json --kiem-kich-ban --tu-tao
           node scripts/kiem_tra_kich_ban.cjs kich_ban.json
 
@@ -285,16 +286,30 @@ jobs:
         if: steps.kb.outputs.hh != '1'
         run: |
           python3 scripts/test_canh_3d.py
+          python3 scripts/test_dac_ta_canh.py
           SO_CANH=$(python3 scripts/canh_3d.py kich_ban.json public/props.json --chuan-bi)
           echo "so_canh_blender=$SO_CANH" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Blender 5.3 (ghim cùng bản với máy dựng thử)
+        if: steps.bo_dung_3d.outputs.so_canh_blender != '' && steps.bo_dung_3d.outputs.so_canh_blender != '0'
+        uses: actions/cache@v4
+        with:
+          path: ~/blender-5.3
+          key: blender-5.3.0-linux-x64
 
       - name: Cài Blender và Manim cho cảnh có bản vẽ
         if: steps.bo_dung_3d.outputs.so_canh_blender != '' && steps.bo_dung_3d.outputs.so_canh_blender != '0'
         run: |
-          if ! command -v blender >/dev/null; then
-            sudo apt-get update -qq
-            sudo apt-get install -y -qq --no-install-recommends blender
+          # Blender chính thức 5.3.0 (apt của Ubuntu 24.04 chỉ có 4.0 -> ảnh lệch so với máy dựng thử).
+          if [ ! -x ~/blender-5.3/blender ]; then
+            curl -fsSL --retry 3 https://download.blender.org/release/Blender5.3/blender-5.3.0-linux-x64.tar.xz -o /tmp/blender.tar.xz
+            mkdir -p ~/blender-5.3
+            tar -xJf /tmp/blender.tar.xz -C ~/blender-5.3 --strip-components=1
+            rm /tmp/blender.tar.xz
           fi
+          sudo apt-get install -y -qq --no-install-recommends libxi6 libxkbcommon0 libsm6 libxrender1 libxxf86vm1 libxfixes3 libgl1 libegl1 >/dev/null
+          sudo ln -sf ~/blender-5.3/blender /usr/local/bin/blender
+          blender --version | head -1
           bash scripts/cai_manim.sh
 
       - name: Dựng bối cảnh Blender và lớp hình toán

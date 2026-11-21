@@ -1,0 +1,191 @@
+{
+ "id": "MAU-BAI-XE",
+ "mon": "XAC_SUAT",
+ "luong": "thuc_te_xac_suat",
+ "lop": 10,
+ "de_bai": "Bãi đỗ xe của siêu thị đang có 4 chiếc ô tô màu đỏ và 3 chiếc ô tô màu trắng. Bảo vệ chọn ngẫu nhiên 2 chiếc xe để kiểm tra. Tính xác suất để 2 chiếc xe được chọn đều màu đỏ.",
+ "cau_chuyen": {
+  "nguoi_ke": "anh bảo vệ",
+  "dia_diem": "bãi đỗ xe siêu thị",
+  "muc_tieu": "kiểm tra ngẫu nhiên"
+ },
+ "canh": [
+  {
+   "so": 1,
+   "loai": "mo_dau",
+   "loi_thoai": "Bảy chiếc ô tô trong bãi đỗ xe, anh bảo vệ chọn ngẫu nhiên hai chiếc.",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "n",
+       "loai": "nhan",
+       "noi_dung": "x"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "so": 2,
+   "loai": "de_bai",
+   "loi_thoai": "Có bốn xe đỏ và ba xe trắng, chọn ngẫu nhiên hai chiếc xe để kiểm tra.",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "n",
+       "loai": "nhan",
+       "noi_dung": "x"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "so": 3,
+   "loai": "tinh_toan",
+   "loi_thoai": "Số cách chọn hai xe trong bảy xe là tổ hợp chập hai của bảy, bằng hai mươi mốt.",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "n",
+       "loai": "nhan",
+       "noi_dung": "x"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "so": 4,
+   "loai": "dap_an",
+   "loi_thoai": "Xác suất bằng sáu phần hai mươi mốt, tức hai phần bảy.",
+   "noi_dung_man_hinh": [],
+   "minh_hoa": {
+    "loai": "san_khau",
+    "mo_ta": "",
+    "du_lieu": {
+     "vat": [
+      {
+       "id": "n",
+       "loai": "nhan",
+       "noi_dung": "x"
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "dac_ta_canh": {
+  "phien_ban": 1,
+  "boi_canh": {
+   "mau": "bai_do_xe",
+   "trong_nha": false,
+   "tu_de": "Bãi đỗ xe của siêu thị"
+  },
+  "thuc_the": [
+   {
+    "id": "xe_do",
+    "ten": "ô tô",
+    "tu_de": "4 chiếc ô tô màu đỏ",
+    "lop": "phuong_tien",
+    "mau_tv": "o_to",
+    "so_luong": 4,
+    "mau_sac": "do",
+    "vai_tro": "chinh"
+   },
+   {
+    "id": "xe_trang",
+    "ten": "ô tô",
+    "tu_de": "3 chiếc ô tô màu trắng",
+    "lop": "phuong_tien",
+    "mau_tv": "o_to",
+    "so_luong": 3,
+    "mau_sac": "trang",
+    "vai_tro": "chinh"
+   },
+   {
+    "id": "bao_ve",
+    "ten": "bảo vệ",
+    "tu_de": "Bảo vệ",
+    "lop": "nguoi",
+    "mau_tv": "nguoi",
+    "so_luong": 1,
+    "mau_sac": "xanh_duong",
+    "vai_tro": "phu"
+   }
+  ],
+  "quan_he": [
+   {
+    "kieu": "xep_hang",
+    "vat": "xe_do",
+    "huong": "ngang",
+    "khoang_cach": {
+     "gt": 0.9,
+     "dv": "m"
+    }
+   },
+   {
+    "kieu": "xep_hang",
+    "vat": "xe_trang",
+    "huong": "ngang",
+    "khoang_cach": {
+     "gt": 0.9,
+     "dv": "m"
+    }
+   },
+   {
+    "kieu": "canh",
+    "a": "xe_trang",
+    "b": "xe_do",
+    "phia": "phai"
+   },
+   {
+    "kieu": "canh",
+    "a": "bao_ve",
+    "b": "xe_do",
+    "phia": "truoc"
+   }
+  ],
+  "phep_thu": {
+   "khong_gian": [
+    "xe_do",
+    "xe_trang"
+   ],
+   "chon": 2,
+   "hoan_lai": false
+  },
+  "quay": [
+   {
+    "canh": 1,
+    "tieu_diem": [
+     "xe_do",
+     "xe_trang"
+    ],
+    "goc_may": "tu_tren"
+   },
+   {
+    "canh": 2,
+    "hanh_dong": [
+     {
+      "vat": "xe_do",
+      "dong_tu": "danh_dau_chon",
+      "so": 2,
+      "khi_noi": "chọn ngẫu nhiên hai chiếc xe"
+     }
+    ]
+   }
+  ]
+ }
+}

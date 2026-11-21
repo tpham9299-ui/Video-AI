@@ -881,6 +881,70 @@ function kiemTraCachDay_(kb) {
 //  - nang: làm hỏng video hoặc sai nội dung (thiếu lời thoại, sai đáp án, không vẽ hình của đề, quá dài nhiều...) -> phải sửa.
 //  - nhe : chỉ chưa đẹp theo quy ước (tiêu đề, hook, số cảnh có hình...) -> thử sửa một lần, còn thì vẫn dùng được.
 // Gọi SAU tuSuaKichBan_ (máy đã tự sửa phần lớn lỗi vặt).
+// Đặc tả cảnh 3D (dac_ta_canh v1) — cùng quy tắc với scripts/kiem_bam_de.py (bản Python kiểm đầy đủ JSON Schema trước khi dựng).
+// Trả { nang: [...], nhe: [...] }. Thiếu đặc tả = nhẹ (thử bổ sung 1 lần); đặc tả sai đề = nặng.
+function loiDacTaCanh_(kb, deGoc) {
+  var out = { nang: [], nhe: [] };
+  var dt = kb && kb.dac_ta_canh;
+  if (!dt) { out.nhe.push('THIEU_DAC_TA_CANH: thêm "dac_ta_canh" liệt kê đủ vật, số lượng, màu, kích thước, bối cảnh và quan hệ của đề (không ghi tọa độ).'); return out; }
+  function chuan(x) { return String(x || '').normalize('NFC').toLowerCase().replace(/\s+/g, ' ').trim(); }
+  var de = chuan(deGoc || kb.de_bai), story = kb.cau_chuyen || {};
+  var nguon = de + ' ' + chuan(story.dia_diem) + ' ' + chuan(story.nguoi_ke);
+  var LOP = ['vat_chua', 'phuong_tien', 'cong_trinh', 'nguoi', 'cay', 'dong_vat', 'do_vat', 'do_choi_xac_suat', 'noi_that', 'thuc_pham', 'khac'];
+  var DV = { km: 1, m: 1, dm: 1, cm: 1, mm: 1 };
+  var SO = { 'một': 1, 'hai': 2, 'ba': 3, 'bốn': 4, 'năm': 5, 'sáu': 6, 'bảy': 7, 'tám': 8, 'chín': 9, 'mười': 10 };
+  var nang = function (m) { out.nang.push('DAC_TA_CANH_SAI: ' + m); };
+  if (dt.phien_ban !== 1 || !dt.boi_canh || typeof dt.boi_canh !== 'object') nang('cần phien_ban 1 và boi_canh.');
+  var ds = Array.isArray(dt.thuc_the) ? dt.thuc_the : [];
+  if (ds.length < 1 || ds.length > 24) { nang('thuc_the cần 1–24 thực thể.'); return out; }
+  var dem = {};
+  ds.forEach(function (t, i) {
+    var ten = 'thuc_the[' + (i + 1) + ']';
+    if (!t || !/^[a-z][a-z0-9_]{0,30}$/.test(t.id || '') || dem[t.id] !== undefined) { nang(ten + ': id chữ thường không dấu, không trùng.'); return; }
+    dem[t.id] = typeof t.so_luong === 'number' ? t.so_luong : 99;
+    if (!t.ten || LOP.indexOf(t.lop) < 0 || ['chinh', 'phu', 'trang_tri'].indexOf(t.vai_tro) < 0) nang(t.id + ': thiếu ten / lop / vai_tro hợp lệ.');
+    if (!(t.so_luong === 'nhieu' || (t.so_luong === Math.floor(t.so_luong) && t.so_luong >= 1 && t.so_luong <= 500))) nang(t.id + ': so_luong là số nguyên 1–500 hoặc "nhieu".');
+    if (t.tam || t.co || t.toa_do) nang(t.id + ': không ghi tọa độ/kích thước khối (tam, co); máy tự xếp chỗ.');
+    var q = chuan(t.tu_de);
+    if (q && nguon.indexOf(q) < 0) nang(t.id + ': tu_de "' + t.tu_de + '" không phải nguyên văn đề.');
+    var m = q && q.match(/^(\d+|một|hai|ba|bốn|năm|sáu|bảy|tám|chín|mười)\s/);
+    if (m && typeof t.so_luong === 'number') {
+      var n = /^\d+$/.test(m[1]) ? +m[1] : SO[m[1]];
+      if (n !== t.so_luong) nang(t.id + ': so_luong ' + t.so_luong + ' khác đề (' + q + ').');
+    }
+    Object.keys(t.kich_thuoc || {}).forEach(function (k) {
+      var v = t.kich_thuoc[k];
+      if (!v || !(v.gt > 0) || !DV[v.dv]) { nang(t.id + '.kich_thuoc.' + k + ' cần {gt>0, dv}.'); return; }
+      if ((v.nguon || 'de') === 'de') {
+        var g = String(v.gt), re = new RegExp('(^|[^\\d.,])(' + g.replace('.', '[.,]') + ')\\s*' + v.dv + '(?![a-zà-ỹ])');
+        if (!re.test(de)) nang(t.id + '.kich_thuoc.' + k + ' = ' + g + ' ' + v.dv + ' không có trong đề (tự ước lượng thì ghi nguon "uoc_luong").');
+      }
+    });
+  });
+  if (!ds.some(function (t) { return t && t.vai_tro === 'chinh'; })) nang('cần ít nhất một thực thể vai_tro "chinh" (vật mang số liệu của đề).');
+  function ref(x) { var m = String(x || '').match(/^([a-z][a-z0-9_]*)(?:#(\d+))?$/); return !!(m && dem[m[1]] !== undefined && (!m[2] || (+m[2] >= 1 && +m[2] <= dem[m[1]]))); }
+  (dt.quan_he || []).forEach(function (r) {
+    ['vat', 'a', 'b'].forEach(function (k) { if (r && r[k] !== undefined && !ref(r[k])) nang('quan_he ' + r.kieu + ': "' + r[k] + '" không phải thực thể.'); });
+  });
+  (dt.so_lieu || []).forEach(function (s) {
+    var g = String(s && s.gan || ''), refs = g.indexOf('khoang_cach:') === 0 ? g.slice(12).split(',') : [g.replace(/\.(dai|rong|cao|duong_kinh)$/, '')];
+    if (!refs.every(ref)) nang('so_lieu "' + g + '" tham chiếu thực thể không có.');
+    if (s && s.tu_de && de.indexOf(chuan(s.tu_de)) < 0) nang('so_lieu "' + g + '": tu_de không phải nguyên văn đề.');
+  });
+  (dt.quay || []).forEach(function (q) {
+    var c = q && kb.canh[q.canh - 1];
+    if (!c) { nang('quay: cảnh ' + (q && q.canh) + ' không tồn tại.'); return; }
+    (q.hanh_dong || []).forEach(function (a) {
+      if (!ref(a.vat)) nang('quay cảnh ' + q.canh + ': "' + a.vat + '" không phải thực thể.');
+      if (a.khi_noi && chuan(c.loi_thoai).indexOf(chuan(a.khi_noi)) < 0) nang('quay cảnh ' + q.canh + ': khi_noi "' + a.khi_noi + '" không có nguyên văn trong lời thoại.');
+    });
+  });
+  if (dt.boi_canh && dt.boi_canh.tu_de && nguon.indexOf(chuan(dt.boi_canh.tu_de)) < 0) nang('boi_canh.tu_de không phải nguyên văn đề/địa điểm.');
+  return out;
+}
+
+function laDai10P_(kb) { return !!kb && kb.kieu_video === 'DAI_10_PHUT'; }
+
 function loiCauChuyen_(kb) {
   var story = kb.cau_chuyen, set = story && story.phong_canh;
   function chu(x) { return typeof x === 'string' && x.trim().length > 1; }
@@ -945,6 +1009,7 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc, lop) {
   if (!kb || !Array.isArray(kb.canh) || !kb.canh.length) return { nang: ['KHONG_CO_CANH: kịch bản phải có mảng "canh" gồm 14-18 cảnh.'], nhe: [] };
   var laLuongHH = String(mon || kb.mon || '').toUpperCase() === 'HINH_HOC' || kb.luong === 'hinh_hoc_thuan';
   if (!laLuongHH) them(nang, loiCauChuyen_(kb));   // luồng hình học thuần: không có phong cảnh 3D / câu chuyện đời sống
+  if (!laLuongHH && !laDai10P_(kb)) { var dtc = loiDacTaCanh_(kb, deGoc); nang = nang.concat(dtc.nang); nhe = nhe.concat(dtc.nhe); }
   if (String(mon || kb.mon || "").toUpperCase() !== "HINH_HOC") nang = nang.concat(loiKichBanDungCanh_(kb, deGoc));
   var laDai10P = kb.kieu_video === 'DAI_10_PHUT';
   // VIDEO NHIỀU CẢNH, CHI TIẾT: 14-18 cảnh cho video ngắn; 28-65 cảnh cho video bài giảng chuyên đề dài 10 phút

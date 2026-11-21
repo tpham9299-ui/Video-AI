@@ -43,7 +43,7 @@ function laDeHinhHocThuan_(de) {
 }
 // Vật duy nhất được phép trong luồng hình học thuần (Manim vẽ); mọi vật đời sống / 3D / phong cảnh bị gỡ.
 var VAT_HINH_HOC_THUAN_ = ['hinh_hoc'];
-var KHOA_3D_KICH_BAN_ = ['mo_hinh_3d', 'ban_ve', 'moi_truong', 'moiTruong', 'chuoi_3d', 'chuoi3D', 'anh_canh_3d', 'net_toan'];
+var KHOA_3D_KICH_BAN_ = ['mo_hinh_3d', 'dac_ta_canh', 'ban_ve', 'moi_truong', 'moiTruong', 'chuoi_3d', 'chuoi3D', 'anh_canh_3d', 'net_toan'];
 function khoaLuongHinhHoc_(kb) {
   var sua = [];
   if (!kb || !Array.isArray(kb.canh)) return sua;
