@@ -226,6 +226,7 @@ function kichHoatDungVideo_(r) {
   delete kb.cach_giai;                       // lời giải chi tiết không cần cho việc dựng, bớt dung lượng
   kb.id = r.id;
   if (!kb.mon && (r.mon || /^HH/i.test(String(r.id || '')))) kb.mon = r.mon || 'HINH_HOC';
+  if (!kb.luong) kb.luong = String(kb.mon || '').toUpperCase() === 'HINH_HOC' ? 'hinh_hoc_thuan' : 'thuc_te_xac_suat';   // v86 khóa luồng (kịch bản cũ)
   // kiểm duyệt bố cục trên GitHub: 'chan' = lỗi nặng thì dừng, gửi về để tự sửa kịch bản; sau 2 lần sửa vẫn lỗi -> 'bao' (dựng rồi AI chấm)
   var kdCu = {};
   try { kdCu = JSON.parse(String(r.ai_kiem_tra || '{}')); } catch (e0) {}
@@ -260,7 +261,7 @@ function kichHoatDungVideo_(r) {
         DriveApp.getFileById(tepIdGui).setContent(chuoi);
       }
     } catch (eSave) { tepIdGui = String(r.file_kich_ban); }
-    payloadFallback = { id: r.id, _file_kich_ban_drive: tepIdGui, giong: kb.giong, gioi_tinh_giong: kb.gioi_tinh_giong, _kiem_duyet: kb._kiem_duyet, mon: kb.mon };
+    payloadFallback = { id: r.id, _file_kich_ban_drive: tepIdGui, giong: kb.giong, gioi_tinh_giong: kb.gioi_tinh_giong, _kiem_duyet: kb._kiem_duyet, mon: kb.mon, luong: kb.luong || (String(kb.mon || '').toUpperCase() === 'HINH_HOC' ? 'hinh_hoc_thuan' : 'thuc_te_xac_suat') };
     chuoi = JSON.stringify(payloadFallback);
   }
 

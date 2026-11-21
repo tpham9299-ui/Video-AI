@@ -1273,7 +1273,7 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       // BẢN VẼ cảnh thực tế: chỉ gọi thêm 1 lượt Gemini khi đề có ảnh chụp (anhDe) hoặc có mô tả hình;
       // các đề chữ thông thường dùng ngay bản vẽ chuẩn mặc định (banVeMacDinh_) trong taoPromptKichBan_ để tiết kiệm 30-45 giây/kịch bản.
       r._banVe = null;
-      if ((anhDe || deCoHinh_(r)) && typeof lapBanVe_ === 'function' && conDuGoiGemini_()) {
+      if (!laMonHinhHoc_(r) && (anhDe || deCoHinh_(r)) && typeof lapBanVe_ === 'function' && conDuGoiGemini_()) {   // luồng hình học thuần: KHÔNG lập bản vẽ cảnh thật
         try { r._banVe = lapBanVe_(r, anhDe); if (r._banVe) nhatKy_('BAN_VE', r.id + ': đã lập bản vẽ ' + (r._banVe.vat || []).map(function (v) { return v.ten; }).join(', ')); }
         catch (eBv) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(eBv.message))) throw eBv; }
         prompt = taoPromptKichBan_(r, c1, c2);
@@ -1444,6 +1444,8 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       kb.dap_an = r.dap_an; kb.cach_giai = c1;
       kb._phien_ban_edit = PHIEN_BAN_EDIT;
       kb.mon = typeof laMonHinhHoc_ === 'function' && laMonHinhHoc_(r) ? 'HINH_HOC' : laMonThucTe_(r) ? 'THUC_TE' : 'XAC_SUAT';
+      kb.luong = typeof xacDinhLuong_ === 'function' ? xacDinhLuong_(r) : (kb.mon === 'HINH_HOC' ? 'hinh_hoc_thuan' : 'thuc_te_xac_suat');   // khóa luồng: BP3 đọc trường này
+      if (kb.luong === 'hinh_hoc_thuan' && typeof khoaLuongHinhHoc_ === 'function') khoaLuongHinhHoc_(kb);   // chốt lần cuối: không còn dấu vết cảnh thật / 3D
       if (r.dap_an_hien) kb.dap_an_hien = String(r.dap_an_hien);
       if (laUuTien_(r)) kb.uu_tien = 1;
       if (spham) kb.san_pham = spham;   // bộ dựng video tự gắn nhãn có sản phẩm do kênh bán
@@ -1491,15 +1493,19 @@ function chuanBiKichBan_(kb, r, ctxSua) {
   if (laVideoDai_(r)) kb.kieu_video = 'DAI_10_PHUT';
   if (cauHinh_('KIEU_MO_DAU') !== 'chao_hook') xoaLoiChao_(kb);
   if (r.dap_an_hien && !kb.dap_an_hien) kb.dap_an_hien = String(r.dap_an_hien);
-  if (r._banVe && !kb.ban_ve) kb.ban_ve = r._banVe;   // có sẵn bản vẽ của đề: cảnh nào mất hết vật thì dùng bản vẽ thay vì để trống
+  if (r._banVe && !kb.ban_ve && !(typeof laMonHinhHoc_ === 'function' && laMonHinhHoc_(r))) kb.ban_ve = r._banVe;   // có sẵn bản vẽ của đề: cảnh nào mất hết vật thì dùng bản vẽ thay vì để trống
   var sua = typeof tuSuaKichBan_ === 'function' ? tuSuaKichBan_(kb, ctxSua, r) || [] : [];
   if (typeof tuSuaQuyTrinh_ === 'function') sua = sua.concat(tuSuaQuyTrinh_(kb, r.de_bai) || []);
-  if (typeof laMonHinhHoc_ === 'function' && laMonHinhHoc_(r)) {   // hình học: tọa độ ĐÚNG từ mã dựng hình đã kiểm chứng
+  var laHH = typeof laMonHinhHoc_ === 'function' && laMonHinhHoc_(r);
+  if (laHH) {   // LUỒNG HÌNH HỌC THUẦN: gỡ mọi vật đời sống / 3D trước, rồi gắn tọa độ ĐÚNG từ mã dựng hình đã kiểm chứng
+    delete kb.ban_ve;
+    if (typeof khoaLuongHinhHoc_ === 'function') sua = sua.concat(khoaLuongHinhHoc_(kb));
     try { var c1H = JSON.parse(String(r.cach_1 || '{}')); if (c1H && c1H.hinh_toa_do) sua = sua.concat(chenToaDoHinh_(kb, c1H.hinh_toa_do)); } catch (eH) {}
+  } else {
+    if (typeof tuSuaTaiChinh_ === 'function') sua = sua.concat(tuSuaTaiChinh_(kb, r.de_bai) || []);   // bài lãi suất: gỡ hình khối không liên quan
+    if (typeof tuSuaVatLa_ === 'function') sua = sua.concat(tuSuaVatLa_(kb, r.de_bai) || []);   // đề hải đăng mà vẽ tòa nhà -> đổi đúng vật, giữ số đo
+    if (typeof tuSuaBoCucDe_ === 'function') sua = sua.concat(tuSuaBoCucDe_(kb, r.de_bai) || []);   // đề bàn tròn -> người ngồi quanh bàn tròn
   }
-  if (typeof tuSuaTaiChinh_ === 'function') sua = sua.concat(tuSuaTaiChinh_(kb, r.de_bai) || []);   // bài lãi suất: gỡ hình khối không liên quan
-  if (typeof tuSuaVatLa_ === 'function') sua = sua.concat(tuSuaVatLa_(kb, r.de_bai) || []);   // đề hải đăng mà vẽ tòa nhà -> đổi đúng vật, giữ số đo
-  if (typeof tuSuaBoCucDe_ === 'function') sua = sua.concat(tuSuaBoCucDe_(kb, r.de_bai) || []);   // đề bàn tròn -> người ngồi quanh bàn tròn
   if (typeof tuSuaDaDangHinh_ === 'function') sua = sua.concat(tuSuaDaDangHinh_(kb, r) || []);    // đa dạng hóa hình minh họa theo từng cảnh
   // câu KÊU GỌI cuối video (dùng chung cho mọi nền tảng: YouTube "đăng ký", TikTok/Facebook "theo dõi"; dải chữ riêng từng nền tảng in lúc đăng)
   var cuoi = kb.canh[kb.canh.length - 1];
@@ -1508,11 +1514,11 @@ function chuanBiKichBan_(kb, r, ctxSua) {
     sua.push('thêm câu kêu gọi đăng ký / theo dõi cuối video');
   }
   // bản vẽ nhìn từ trên: tường đặt nhầm lên cạnh ngắn (tổng rào không khớp đề) -> tự đổi cạnh dài/ngắn
-  if (typeof tuSuaSoDoVung_ === 'function') kb.canh.forEach(function (c, i) {
+  if (!laHH && typeof tuSuaSoDoVung_ === 'function') kb.canh.forEach(function (c, i) {
     var vs = c && c.minh_hoa && c.minh_hoa.du_lieu && c.minh_hoa.du_lieu.vat;
     (Array.isArray(vs) ? vs : []).forEach(function (v) { if (v && v.loai === 'canh_that' && tuSuaSoDoVung_(v, r.de_bai)) sua.push('SO_DO_VUNG_CANH_' + (i + 1)); });
   });
-  if (r._banVe && typeof chenBanVe_ === 'function') { sua = sua.concat(chenBanVe_(kb, r._banVe)); kb.ban_ve = r._banVe; }
+  if (!laHH && r._banVe && typeof chenBanVe_ === 'function') { sua = sua.concat(chenBanVe_(kb, r._banVe)); kb.ban_ve = r._banVe; }
   kb._phien_ban_edit = PHIEN_BAN_EDIT;
   suaDapAn_(kb, r.dap_an);   // sau khi tự sửa (có thể vừa thêm/đổi cảnh) để cảnh đáp án luôn đúng
   if (sua.length) nhatKy_('KICH_BAN_TU_SUA', r.id + ': ' + sua.slice(0, 8).join('; ').slice(0, 450));

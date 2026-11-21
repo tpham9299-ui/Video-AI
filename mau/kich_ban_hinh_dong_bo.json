@@ -1,0 +1,102 @@
+{
+  "tieu_de": "BD vuông góc (SAC) - đồng bộ từng nét",
+  "chu_de_ngan": "Hình không gian 11",
+  "hook": "Vì sao BD lại vuông góc với cả mặt phẳng SAC?",
+  "hook_chu": "BD vuông góc (SAC)?",
+  "de_cho": ["Đáy ABCD là hình vuông", "SA ⊥ (ABCD)"],
+  "can_tim": "Chứng minh BD ⊥ (SAC)",
+  "du_kien": [],
+  "dap_an_cuoi": "CM",
+  "dap_an": "CM",
+  "id": "THU-dongbo1",
+  "lop": "11",
+  "mon": "HINH_HOC",
+  "luong": "hinh_hoc_thuan",
+  "giong": "Charon",
+  "gioi_tinh_giong": "nam",
+  "de_bai": "Cho hình chóp S.ABCD có đáy là hình vuông, SA vuông góc với (ABCD). Chứng minh BD vuông góc với mặt phẳng (SAC).",
+  "hinh_chuan": {
+    "diem": {"S": [18, 10], "A": [18, 90], "B": [63.4, 90], "C": [82, 70.7], "D": [36.6, 70.7], "O": [50, 80.3]},
+    "diem_goc": {"S": [0, 0, 2.4], "A": [0, 0, 0], "B": [2, 0, 0], "C": [2, 2, 0], "D": [0, 2, 0], "O": [1, 1, 0]},
+    "quan_he": [
+      {"loai": "vuong_goc_mat", "a": ["S", "A"], "mat": ["A", "B", "C"]},
+      {"loai": "vuong_goc", "a": ["A", "B"], "b": ["A", "D"]},
+      {"loai": "bang", "a": ["A", "B"], "b": ["A", "D"]},
+      {"loai": "song_song", "a": ["A", "B"], "b": ["D", "C"]},
+      {"loai": "trung_diem", "diem": "O", "a": ["A", "C"]},
+      {"loai": "trung_diem", "diem": "O", "a": ["B", "D"]},
+      {"loai": "vuong_goc", "a": ["B", "D"], "b": ["A", "C"]}
+    ],
+    "canh": [["S", "A"], ["S", "B"], ["S", "C"], ["A", "B"], ["B", "C"]],
+    "khuat": [["S", "D"], ["C", "D"], ["D", "A"]],
+    "phu": [["A", "C"], ["B", "D"]],
+    "tron": [],
+    "khong_gian": true,
+    "mat": [["A","B","C","D"],["S","A","B"],["S","B","C"],["S","C","D"],["S","D","A"]]
+  },
+  "canh": [
+    {
+      "so": 1, "loai": "de_bai", "tieu_de_canh": "Đề bài", "tu_khoa": "Đề", "giu_san_khau": false, "giong_doc": "rõ ràng",
+      "loi_thoai": "Cho hình chóp S.ABCD. Đáy ABCD là hình vuông, hai cạnh AD và CD nằm phía sau nên vẽ nét đứt. Cạnh SA vuông góc với mặt đáy. Chứng minh BD vuông góc với mặt phẳng SAC.",
+      "noi_dung_man_hinh": [], "moc_loi": [], "trinh_bay": "cong_don",
+      "buoc_ve": [
+        {"ve": "AB", "khi_noi": "Đáy ABCD là"},
+        {"ve": "BC", "khi_noi": "là hình vuông"},
+        {"ve": "AD", "khi_noi": "cạnh AD và"},
+        {"ve": "CD", "khi_noi": "CD nằm phía sau"},
+        {"ve": "SA", "khi_noi": "Cạnh SA vuông góc"},
+        {"ve": "\\perp SA AB", "khi_noi": "với mặt đáy"}
+      ],
+      "minh_hoa": {"loai": "san_khau", "mo_ta": "Hình chóp S.ABCD hiện dần theo từng giả thiết: đáy vuông, cạnh khuất nét đứt, SA vuông góc đáy.", "du_lieu": {"vat": [
+        {"id": "hh", "loai": "hinh_hoc", "x": 50, "y": 48, "co": 1.25, "diem": {"S": [18, 10], "A": [18, 90], "B": [63.4, 90], "C": [82, 70.7], "D": [36.6, 70.7]},
+         "canh": [["S", "A", ""], ["S", "B", ""], ["S", "C", ""], ["A", "B", ""], ["B", "C", ""]], "khuat": [["S", "D"], ["C", "D"], ["D", "A"]], "vuong": [["S", "A", "B"]]}
+      ], "hanh_dong": []}}
+    },
+    {
+      "so": 2, "loai": "y_do", "tieu_de_canh": "Hướng suy nghĩ", "tu_khoa": "Hướng", "giu_san_khau": true, "giong_doc": "gợi mở",
+      "loi_thoai": "Muốn một đường vuông góc với mặt phẳng, chỉ cần nó vuông góc với hai đường cắt nhau nằm trong mặt phẳng đó.",
+      "kien_thuc": "Đường thẳng vuông góc với hai đường cắt nhau trong mặt phẳng thì vuông góc với mặt phẳng",
+      "noi_dung_man_hinh": ["d \\perp a,\\; d \\perp b \\Rightarrow d \\perp (P)"], "moc_loi": ["chỉ cần nó vuông góc"], "trinh_bay": "cong_don",
+      "minh_hoa": {"loai": "san_khau", "mo_ta": "Giữ hình chóp, hiện điều kiện vuông góc đường - mặt.", "du_lieu": {"vat": [], "hanh_dong": []}}
+    },
+    {
+      "so": 3, "loai": "tinh_toan", "tieu_de_canh": "BD vuông góc AC", "tu_khoa": "AC", "giu_san_khau": true, "giong_doc": "chậm rãi",
+      "loi_thoai": "Ta kẻ hai đường chéo AC và BD của hình vuông, chúng cắt nhau tại O. Hình vuông có hai đường chéo vuông góc, nên BD vuông góc với AC.",
+      "kien_thuc": "Hai đường chéo của hình vuông vuông góc với nhau",
+      "noi_dung_man_hinh": ["BD \\perp AC \\;\\text{(vì ABCD là hình vuông)}"], "moc_loi": ["nên BD vuông góc"], "trinh_bay": "cong_don",
+      "buoc_ve": [
+        {"ve": "AC", "khi_noi": "đường chéo AC"},
+        {"ve": "BD", "khi_noi": "và BD của"},
+        {"ve": "O", "khi_noi": "cắt nhau tại O"}
+      ],
+      "minh_hoa": {"loai": "san_khau", "mo_ta": "Kẻ hai đường chéo đáy bằng nét phụ, đánh dấu giao điểm O.", "du_lieu": {"vat": [
+        {"id": "hh", "loai": "hinh_hoc", "x": 50, "y": 48, "co": 1.25, "diem": {"S": [18, 10], "A": [18, 90], "B": [63.4, 90], "C": [82, 70.7], "D": [36.6, 70.7], "O": [50, 80.3]},
+         "canh": [["S", "A", ""], ["S", "B", ""], ["S", "C", ""], ["A", "B", ""], ["B", "C", ""]], "khuat": [["S", "D"], ["C", "D"], ["D", "A"]], "phu": [["A", "C"], ["B", "D"]]}
+      ], "hanh_dong": []}}
+    },
+    {
+      "so": 4, "loai": "tinh_toan", "tieu_de_canh": "BD vuông góc SA", "tu_khoa": "SA", "giu_san_khau": true, "giong_doc": "chắc chắn",
+      "loi_thoai": "Mặt khác, SA vuông góc với mặt đáy, mà BD nằm trong mặt đáy, nên BD vuông góc với SA.",
+      "kien_thuc": "Đường vuông góc với mặt phẳng thì vuông góc với mọi đường nằm trong mặt phẳng đó",
+      "noi_dung_man_hinh": ["SA \\perp (ABCD) \\Rightarrow BD \\perp SA"], "moc_loi": ["nên BD vuông góc"], "trinh_bay": "cong_don",
+      "minh_hoa": {"loai": "san_khau", "mo_ta": "Làm nổi SA và BD.", "du_lieu": {"vat": [], "hanh_dong": []}}
+    },
+    {
+      "so": 5, "loai": "dap_an", "tieu_de_canh": "BD vuông góc (SAC)", "tu_khoa": "(SAC)", "giu_san_khau": true, "giong_doc": "hào hứng",
+      "loi_thoai": "Hai đường AC và SA cắt nhau tại A, cùng nằm trong mặt phẳng SAC. Vậy BD vuông góc với mặt phẳng SAC. Điều phải chứng minh.",
+      "kien_thuc": "Đường thẳng vuông góc với hai đường cắt nhau trong mặt phẳng thì vuông góc với mặt phẳng",
+      "noi_dung_man_hinh": ["BD \\perp (SAC)\\;\\blacksquare"], "moc_loi": ["Vậy BD vuông góc"], "trinh_bay": "cong_don",
+      "buoc_ve": [{"ve": "(SAC)", "khi_noi": "trong mặt phẳng SAC"}],
+      "minh_hoa": {"loai": "san_khau", "mo_ta": "Tô mặt SAC, chốt kết luận.", "du_lieu": {"vat": [
+        {"id": "hh", "loai": "hinh_hoc", "x": 50, "y": 48, "co": 1.25, "diem": {"S": [18, 10], "A": [18, 90], "B": [63.4, 90], "C": [82, 70.7], "D": [36.6, 70.7], "O": [50, 80.3]},
+         "canh": [["S", "A", ""], ["S", "B", ""], ["S", "C", ""], ["A", "B", ""], ["B", "C", ""]], "khuat": [["S", "D"], ["C", "D"], ["D", "A"]], "phu": [["A", "C"], ["B", "D"]], "to": [["S", "A", "C"]]}
+      ], "hanh_dong": []}}
+    },
+    {
+      "so": 6, "loai": "bai_hoc", "tieu_de_canh": "Ghi nhớ", "tu_khoa": "Ghi nhớ", "giu_san_khau": true, "giong_doc": "ấm áp",
+      "loi_thoai": "Ghi nhớ nhé: muốn đường vuông góc với mặt, hãy tìm hai đường cắt nhau trong mặt mà nó cùng vuông góc.",
+      "noi_dung_man_hinh": [], "moc_loi": [], "trinh_bay": "cong_don",
+      "minh_hoa": {"loai": "san_khau", "mo_ta": "Giữ hình, nhấn lại mặt SAC.", "du_lieu": {"vat": [], "hanh_dong": []}}
+    }
+  ]
+}

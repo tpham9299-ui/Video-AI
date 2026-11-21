@@ -15,7 +15,7 @@ on:
       mau:
         description: 'Kịch bản mẫu để dựng thử (khi không có kich_ban)'
         type: choice
-        options: [kich_ban_thuc_te, kich_ban_koch, kich_ban_koch_moi, kich_ban_ong_thep, kich_ban_cot_co, kich_ban_rao_vuon, kich_ban_toa_nha, kich_ban_san_pham, kich_ban_hinh_hoc, kich_ban_hinh_khong_gian, kich_ban_hinh_manim, kich_ban_mau]
+        options: [kich_ban_thuc_te, kich_ban_koch, kich_ban_koch_moi, kich_ban_ong_thep, kich_ban_cot_co, kich_ban_rao_vuon, kich_ban_toa_nha, kich_ban_san_pham, kich_ban_hinh_hoc, kich_ban_hinh_khong_gian, kich_ban_hinh_manim, kich_ban_hinh_dong_bo, kich_ban_mau]
         default: kich_ban_thuc_te
       viec:
         description: 'dung = dựng video | dang = đăng video lên mạng xã hội'
@@ -164,21 +164,33 @@ jobs:
             rclone backend copyid gdrive: "$FILE_KB" kb_drive/
             F_KB=$(ls kb_drive | head -1)
             if [ -n "$F_KB" ]; then
-              python3 -c "import json, glob; meta = json.load(open('kich_ban.json', encoding='utf8')); f_kb = glob.glob('kb_drive/*')[0]; kb = json.load(open(f_kb, encoding='utf8')); [kb.update({k: meta[k]}) for k in ('id', 'giong', 'gioi_tinh_giong', '_kiem_duyet', 'mon') if k in meta and meta[k]]; json.dump(kb, open('kich_ban.json', 'w', encoding='utf8'), ensure_ascii=False); print('Đã ghép kịch bản đầy đủ từ Drive:', len(kb.get('canh') or []), 'cảnh')"
+              python3 -c "import json, glob; meta = json.load(open('kich_ban.json', encoding='utf8')); f_kb = glob.glob('kb_drive/*')[0]; kb = json.load(open(f_kb, encoding='utf8')); [kb.update({k: meta[k]}) for k in ('id', 'giong', 'gioi_tinh_giong', '_kiem_duyet', 'mon', 'luong') if k in meta and meta[k]]; json.dump(kb, open('kich_ban.json', 'w', encoding='utf8'), ensure_ascii=False); print('Đã ghép kịch bản đầy đủ từ Drive:', len(kb.get('canh') or []), 'cảnh')"
             fi
           fi
           python3 - <<'PY_HINH'
-          import json, os
+          import json, os, re
           with open("kich_ban.json", encoding="utf8") as f:
               kb = json.load(f)
           mon = str(kb.get("mon") or "").upper()
-          hh = mon == "HINH_HOC" or str(kb.get("id") or "").upper().startswith("HH")
-          if not mon and not hh:
+          luong = str(kb.get("luong") or "")
+          # v86 KHÓA LUỒNG: kb.luong (Apps Script ghi) là nguồn quyết định; mâu thuẫn với mon -> dừng, không đoán
+          if luong == "thuc_te_xac_suat" and mon == "HINH_HOC":
+              raise SystemExit("::error::Kịch bản mâu thuẫn: luong=thuc_te_xac_suat nhưng mon=HINH_HOC")
+          if luong == "hinh_hoc_thuan" and mon in ("THUC_TE", "XAC_SUAT"):
+              raise SystemExit("::error::Kịch bản mâu thuẫn: luong=hinh_hoc_thuan nhưng mon=" + mon)
+          hh = luong == "hinh_hoc_thuan" or mon == "HINH_HOC" or (not luong and re.match(r"^H[HI]", str(kb.get("id") or "").upper()) is not None)
+          if not mon and not hh and not luong:
               for c in kb.get("canh") or []:
                   du = (c.get("minh_hoa") or {}).get("du_lieu")
                   if isinstance(du, dict) and any(isinstance(v, dict) and v.get("loai") == "hinh_hoc" for v in du.get("vat") or []):
                       hh = True
                       break
+          if hh and luong != "hinh_hoc_thuan":   # kịch bản cũ chưa có trường luong: khóa lại để mọi bước sau đọc cùng một giá trị
+              kb["luong"] = "hinh_hoc_thuan"
+              kb["mon"] = "HINH_HOC"
+              with open("kich_ban.json", "w", encoding="utf8") as f:
+                  json.dump(kb, f, ensure_ascii=False)
+          print("Luồng dựng:", "hinh_hoc_thuan (Manim, không Blender)" if hh else "thuc_te_xac_suat")
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
               print(f"hh={int(hh)}", file=f)
           PY_HINH
@@ -248,6 +260,13 @@ jobs:
       # BÀI HÌNH HỌC: phần toán (hình, công thức, chuyển động, hiệu ứng) dựng 100% bằng MANIM (scripts/manim_hinh.py) thành
       # một lớp trong suốt; Remotion vẫn dựng PHẦN VỎ CHUNG như mọi video (nền, tiêu đề, thanh bước, phụ đề, giọng, nhạc, tiếng
       # hiệu ứng) rồi máy ghép đè lớp Manim lên. Lỗi lớp hình sẽ dừng lượt dựng.
+      # v86: KIỂM TRA CHÉO BẮT BUỘC đề <-> kịch bản <-> hình <-> mốc giọng đọc trước khi dựng (không đạt -> dừng, không render)
+      - name: Kiểm tra chéo hình học trước dựng
+        if: steps.kb.outputs.hh == '1'
+        run: |
+          mkdir -p out
+          python3 scripts/kiem_hinh_hoc.py kich_ban.json public/props.json --truoc --bao out/kiem_hinh_hoc.json
+
       - name: Dựng video hình học bằng Manim
         id: manim
         if: steps.kb.outputs.hh == '1'
@@ -256,6 +275,8 @@ jobs:
           /tmp/mv/bin/python scripts/manim_hinh.py public/props.json kich_ban.json out --public public
           ID=$(python3 -c "import json;print(json.load(open('public/props.json',encoding='utf8'))['id'])")
           [ -s "out/${ID}_manim.mov" ] || { echo "Manim không ra video"; exit 1; }
+          # đủ cảnh + từng nét vẽ khớp mốc lời đọc (lệch <= 0,25 s), không đạt -> dừng
+          python3 scripts/kiem_hinh_hoc.py kich_ban.json public/props.json --sau --bao out/kiem_hinh_hoc_sau.json
           ls -la out
           echo "ok=1" >> "$GITHUB_OUTPUT"
 

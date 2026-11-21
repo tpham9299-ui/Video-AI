@@ -122,7 +122,15 @@ class MoHinh:
         self.bo_sung = []   # cạnh tự bổ sung cho đủ hình (ghi vào cảnh báo để theo dõi chất lượng kịch bản)
         self.pt = []   # phần tử: dict(kieu, khoa, canh, ...)
         self.chi_so = {}
+        # v86: tọa độ 3D GỐC đã kiểm chứng (kb.hinh_chuan.diem_goc) -> chiều sâu thật cho nét khuất; không đoán bằng heuristic
+        hc = kb.get("hinh_chuan") if isinstance(kb.get("hinh_chuan"), dict) else {}
+        self.khuat_chuan = [tuple(x[:2]) for x in (hc.get("khuat") or []) if isinstance(x, list) and len(x) >= 2]
+        self._diem_goc = {k: v for k, v in (hc.get("diem_goc") or {}).items() if isinstance(v, list) and len(v) >= 3}
         self._doc_hinh()
+        if not self.diem_3d and hc.get("khong_gian") and len(self._diem_goc) >= 4:
+            for k, v in self._diem_goc.items():
+                if re.fullmatch(TEN_DIEM, k):
+                    self.diem_3d[ten_chuan(k)] = tuple(float(x) for x in v[:3])
         self._doc_nhac_toi()
         self.mau = {}
         self._gan_mau()
@@ -354,7 +362,8 @@ class MoHinh:
                             self.diem_3d[ten_chuan(k)] = (float(p3[0]), float(p3[1]), float(p3[2]))
                         except (TypeError, ValueError):
                             pass
-        v_du_phong = self._tu_sinh_hinh_tu_de() if len(self.diem) < 2 else None
+        # v86: KHÔNG tự sinh hình mẫu tọa độ cố định nữa (sai tỉ lệ, sai quan hệ của đề). Thiếu tọa độ -> main() dừng, workflow báo lỗi.
+        v_du_phong = self._tu_sinh_hinh_tu_de() if len(self.diem) < 2 and os.environ.get("MANIM_HINH_MAU") == "1" else None
         self._bo_sung_diem_phu()
         co = lambda *ds: all(ten_chuan(x) in self.diem for x in ds)
         ds_nguon = [(i, self.vat_hinh(i)) for i in range(len(self.canh_p))]
@@ -502,6 +511,16 @@ class MoHinh:
         # Đồng bộ tiến độ xuất hiện của đường kẻ phụ / ký hiệu góc / điểm phụ theo đúng cảnh giọng đọc nhắc tới đầu tiên:
         canh_dau_doan = {}
         canh_dau_diem = {}
+        # v86: "buoc_ve" của kịch bản là khai báo TƯỜNG MINH nét nào vẽ ở cảnh nào -> ưu tiên trước mọi suy đoán từ lời thoại
+        # (trước đây chỉ lấy 2 đoạn nhắc đầu tiên mỗi cảnh: cạnh đáy trong công thức chiếm chỗ -> đường phụ bị dời sang cảnh sau)
+        for i, ck in enumerate(self.canh_k):
+            for b in ck.get("buoc_ve") or [] if isinstance(ck, dict) else []:
+                if isinstance(b, dict) and b.get("ve"):
+                    nt_b = self.nhac_toi(str(b["ve"]))
+                    for d in nt_b["doan"]:
+                        canh_dau_doan.setdefault(d, i)
+                    for x in nt_b["diem"]:
+                        canh_dau_diem.setdefault(x, i)
         for i, nt in enumerate(self.nhac):
             for d in nt["doan"][:2]:
                 canh_dau_doan.setdefault(d, i)
@@ -880,7 +899,12 @@ class VideoHinh(Scene):
         self.tam = np.mean(list(self.P.values()), axis=0)
         self._chuan_bi_chieu_sau_3d()
         self.goc_doc = 0.0
-        if mo.la_khong_gian:
+        self.net_goc = {}
+        if mo.la_khong_gian and not mo.diem_3d:
+            # v86: KHÔNG có tọa độ 3D thật -> giữ nguyên nét liền / nét đứt đã khai báo (đã kiểm chứng ở Apps Script),
+            # không tự đoán độ sâu (heuristic cũ vẽ nhầm cạnh trước thành nét đứt), không xoay 3D.
+            self._canh_bao_dau = "Hình không gian thiếu tọa độ 3D: giữ nét khai báo, không xoay"
+        elif mo.la_khong_gian:
             canh = [p["khoa"] for p in mo.pt if p.get("kieu_net") in ("canh", "khuat")]
             # Ưu tiên góc gốc khi điểm như nhau. Chấm cả đỉnh sát lòng cạnh khác
             # (hai đoạn chiếu gần trùng) lẫn đoạn bị co ngắn.
@@ -1456,7 +1480,7 @@ class VideoHinh(Scene):
             if nh in self.tren_man:
                 # Giữ đỉnh chính làm mốc, đồng bộ chấm và nhãn phụ với nét chứa điểm.
                 la_dinh_xet = co_tap_trung and (n in dang_xet)
-                opacity = float(n in mo.dinh_chinh or n in net_ro)
+                opacity = float(n in mo.dinh_chinh or n in net_ro or n in nt["diem"])   # v86: điểm lời thoại cảnh này nhắc tới (vd giao điểm O) luôn hiện
                 anim.append(nh.animate.set_opacity(opacity).set_color(VANG if la_dinh_xet else TRANG))
                 anim.append(self.cham[n].animate.set_opacity(opacity).set_color(VANG if la_dinh_xet else TRANG))
         self.diem_ro = net_ro | mo.dinh_chinh
@@ -1587,7 +1611,12 @@ class VideoHinh(Scene):
         self.t0, self.D, self.i_canh = 0.0, 1e9, 0
         self.da = 0.0
         self.canh_bao = set()
+        if getattr(self, "_canh_bao_dau", None):
+            self.canh_bao.add(self._canh_bao_dau)
         self.su_kien = []
+        self.nhat_ky = []          # v86: mốc thực của từng nét / dòng so với mốc lời đọc -> scripts/kiem_hinh_hoc.py --sau
+        self.so_canh_da_dung = 0
+        self.hang_ve, self.xa_ve, self.dang_cho = [], (lambda t: None), set()
         tong = 0.0
         cu = VGroup()     # thẻ / công thức đang trên màn
         tach = None
@@ -1623,28 +1652,51 @@ class VideoHinh(Scene):
             moi_doan = [p for p in moi if p["kieu"] == "doan"]
             moi_khac = [p for p in moi if p["kieu"] != "doan"]
             diem_moi = [n for n, c in mo.diem_canh.items() if c == i and n in self.P]
+            self.so_canh_da_dung += 1
 
-            # Ánh xạ từng điểm mới và đoạn mới vào mốc thời gian câu nói đầu tiên nhắc tới nó trong cảnh i
-            moc_diem = {}
-            moc_doan = {}
-            if cau:
-                for idx_c, c in enumerate(cau):
-                    c_text = str(c.get("text") or c.get("chu") or c.get("cau") or "")
-                    t_bat = float(c.get("bat", 0))
-                    c_nt = mo.nhac_toi(c_text)
-                    for x in c_nt["diem"]:
-                        if x in diem_moi and x not in moc_diem:
-                            moc_diem[x] = t_bat
-                    for d in c_nt["doan"]:
-                        if d not in moc_doan:
-                            moc_doan[d] = t_bat
+            # v86: MỐC VẼ = lúc giọng đọc NÓI tới đối tượng. Nguồn theo thứ tự tin cậy:
+            #   (1) buoc_ve của kịch bản (cụm "khi_noi" đã neo vào mốc TỪ THẬT edge-tts -> cp["mocVe"]),
+            #   (2) lần đầu đối tượng được nhắc trong dòng từ có mốc thật (cp["tu"]),
+            #   (3) dự phòng: đầu câu phụ đề (cau) nhắc tới nó; không ai nhắc -> đầu cảnh.
+            tu_c = cp.get("tu") or []
+            moc_diem, moc_doan, moc_khac, nguon_moc = {}, {}, {}, {}
 
-            # Sắp xếp thứ tự vẽ các đoạn và điểm mới theo tiến độ giọng nói (t_bat tăng dần)
-            def _moc_cua_doan(p):
-                d = p["khoa"]
-                if d in moc_doan:
-                    return moc_doan[d]
-                return min((moc_diem.get(x, 0.0) for x in d), default=0.0)
+            def ghi_moc(nt, t, ng):
+                for x in nt["diem"]:
+                    if x not in moc_diem:
+                        moc_diem[x], nguon_moc[("diem", x)] = t, ng
+                for d in nt["doan"]:
+                    if d not in moc_doan:
+                        moc_doan[d], nguon_moc[("doan", d)] = t, ng
+                for gk in nt["goc"]:
+                    for kk in (("goc", gk), ("vuong", gk)):
+                        if kk not in moc_khac:
+                            moc_khac[kk], nguon_moc[kk] = t, ng
+                for tg in nt["tam_giac"] + nt["mat"]:
+                    kk = ("mien", khoa_da_giac(tg))
+                    if kk not in moc_khac:
+                        moc_khac[kk], nguon_moc[kk] = t, ng
+
+            for m_v in cp.get("mocVe") or []:
+                if not m_v.get("khop") or m_v.get("t") is None:
+                    continue
+                ve, t_v = str(m_v.get("ve") or ""), float(m_v["t"])
+                if ve.startswith("\\perp"):   # "\perp SA AB": ký hiệu vuông góc tại điểm chung của hai đoạn
+                    hai = [x for x in re.findall(r"[A-Z]'*", ve)]
+                    if len(hai) >= 4:
+                        d1, d2 = set(hai[0:2]), set(hai[2:4])
+                        chung = list(d1 & d2)
+                        if len(chung) == 1 and all(ten_chuan(x) in mo.diem for x in hai[:4]):
+                            o = chung[0]
+                            gk = mo.kgoc(list(d1 - {o})[0], o, list(d2 - {o})[0])
+                            moc_khac.setdefault(("vuong", gk), t_v)
+                            nguon_moc.setdefault(("vuong", gk), "buoc_ve")
+                ghi_moc(mo.nhac_toi(ve), t_v, "buoc_ve")
+            if tu_c:
+                for k_w, w in enumerate(tu_c):
+                    ghi_moc(mo.nhac_toi(" ".join(x["w"] for x in tu_c[max(0, k_w - 2):k_w + 1])), float(w["bat"]), "tu")
+            for c in cau:
+                ghi_moc(mo.nhac_toi(str(c.get("text") or c.get("chu") or c.get("cau") or "")), float(c.get("bat", 0)), "cau")
 
             day = set(getattr(mo, "day", []))
             bien_phang = set()
@@ -1656,45 +1708,93 @@ class VideoHinh(Scene):
                 if p.get("kieu_net") in ("phu", "con"):
                     return 2
                 return 0 if p["khoa"] in bien_phang or set(p["khoa"]) <= day else 1
-            moi_doan_sx = sorted(moi_doan, key=lambda p: (thu_tu(p), _moc_cua_doan(p)))
-            buoc_ve = []  # list of (t_bat_mong_muon, list_animations)
-            for p in moi_doan_sx:
-                t_p = _moc_cua_doan(p)
+
+            def moc_cua(p):
+                kk = (p["kieu"], p["khoa"])
+                if p["kieu"] == "doan":
+                    if p["khoa"] in moc_doan:
+                        return moc_doan[p["khoa"]], nguon_moc.get(kk, "tu")
+                    ts = [moc_diem[x] for x in p["khoa"] if x in moc_diem]
+                    if ts:   # đoạn không gọi tên: vẽ khi đầu mút sau cùng được nhắc
+                        return max(ts), "dau_mut"
+                    return None, "dau_canh"
+                if kk in moc_khac:
+                    return moc_khac[kk], nguon_moc.get(kk, "tu")
+                ts = [moc_diem[x] for x in mo.dinh_cua(p) if x in moc_diem]
+                return (max(ts), "dau_mut") if ts else (None, "dau_canh")
+
+            nhom_ve = []   # (mốc, [hoạt cảnh], [nhãn đối tượng], nguồn)
+            for p in sorted(moi_doan, key=lambda p: ((moc_cua(p)[0] or 0.0), thu_tu(p))):
+                t_p, ng = moc_cua(p)
                 m = self.hinh[("doan", p["khoa"])]
-                pts = [x for x in p["khoa"] if x in diem_moi]
-                ten_diem = []
-                for x in pts:
-                    ten_diem += [GrowFromCenter(self.cham[x]), Write(self.nhan_diem[x])]
-                    diem_moi.remove(x)
-                    self.tren_man.update([self.cham[x], self.nhan_diem[x]])
                 g = [Create(self.net_chinh(m))]
                 if m is not self.net_chinh(m):
                     g.append(Write(m[1]))
-                buoc_ve.append((t_p, g))
-                if ten_diem:
-                    buoc_ve.append((t_p, ten_diem))
-                self.tren_man.add(m)
-
+                nhan = ["doan " + "".join(p["khoa"])]
+                mob_tm = [m]
+                for x in [x for x in p["khoa"] if x in diem_moi]:
+                    g += [GrowFromCenter(self.cham[x]), Write(self.nhan_diem[x])]
+                    diem_moi.remove(x)
+                    mob_tm += [self.cham[x], self.nhan_diem[x]]
+                    nhan.append("diem " + x)
+                nhom_ve.append((t_p, g, nhan, ng, mob_tm))
             for p in moi_khac:
+                t_k, ng = moc_cua(p)
                 m = self.hinh[(p["kieu"], p["khoa"])]
-                t_k = min((moc_diem.get(x, 0.0) for x in mo.dinh_cua(p)), default=0.0)
-                buoc_ve.append((t_k, [FadeIn(m)] if p["kieu"] == "mien" else [Create(m)]))
-                self.tren_man.add(m)
+                nhom_ve.append((t_k, [FadeIn(m)] if p["kieu"] == "mien" else [Create(m)], ["%s %s" % (p["kieu"], "".join(map(str, p["khoa"])))], ng, [m]))
+            for x in list(diem_moi):
+                t_x = moc_diem.get(x)
+                nhom_ve.append((t_x, [GrowFromCenter(self.cham[x]), Write(self.nhan_diem[x])], ["diem " + x], nguon_moc.get(("diem", x), "dau_canh") if t_x is not None else "dau_canh", [self.cham[x], self.nhan_diem[x]]))
+            diem_moi = []
+            # gom các nét cùng mốc (lệch < 0,12 s) thành một nhịp; hàng đợi được "xả" dần theo đồng hồ cảnh
+            hang_ve = []
+            for t_m, g, nhan, ng, mob_tm in sorted(nhom_ve, key=lambda x: (x[0] if x[0] is not None else -1.0)):
+                t_m = 0.0 if t_m is None else max(0.0, t_m)
+                if hang_ve and abs(hang_ve[-1][0] - t_m) < 0.12:
+                    hang_ve[-1][1].extend(g)
+                    hang_ve[-1][2].extend((n_, ng) for n_ in nhan)
+                    hang_ve[-1][3].extend(mob_tm)
+                else:
+                    hang_ve.append([t_m, list(g), [(n_, ng) for n_ in nhan], list(mob_tm)])
+            self.hang_ve = hang_ve
+            self.dang_cho = {id(m_) for h_ in hang_ve for m_ in h_[3]}
 
-            if diem_moi:
-                le = []
-                for x in list(diem_moi):
-                    le += [GrowFromCenter(self.cham[x]), Write(self.nhan_diem[x])]
-                    self.tren_man.update([self.cham[x], self.nhan_diem[x]])
-                buoc_ve.append((0.0, le))
-
-            if buoc_ve:
-                ngan_sach = min(D * 0.65, 0.5 + 0.8 * len(buoc_ve))
-                rt = max(0.30, min(0.80, ngan_sach / len(buoc_ve)))
-                for t_muc, g in buoc_ve:
-                    if t_muc > self.da + 0.08 and t_muc < D * 0.60:
-                        self.doi_toi(min(t_muc, D * 0.58))
+            def xa_ve(t_den):
+                """Vẽ mọi nhịp có mốc <= t_den: chờ đúng mốc nói, run_time vừa khít tới nhịp sau (không dồn trễ)."""
+                while self.hang_ve and self.hang_ve[0][0] <= t_den + 1e-6:
+                    t_m, g, nhan, mob_tm = self.hang_ve.pop(0)
+                    t_m = min(t_m, max(0.0, D - 0.45))
+                    if t_m > self.da + 0.5 / fps:
+                        self.doi_toi(t_m)
+                    t_sau = self.hang_ve[0][0] if self.hang_ve else D - 0.2
+                    rt = max(0.25, min(0.8, t_sau - max(t_m, self.da) - 0.03))
+                    bat = self._bay_gio()
                     self.choi(*g, run_time=rt)
+                    self.tren_man.update(mob_tm)
+                    self.dang_cho -= {id(m_) for m_ in mob_tm}
+                    for n_, ng in nhan:
+                        self.nhat_ky.append({"canh": i + 1, "doi_tuong": n_, "muc_tieu": round(t_m, 3), "thuc": round(bat, 3),
+                                             "lech": round(bat - t_m, 3), "nguon": ng})
+            self.xa_ve = xa_ve
+            dong_truoc = mo.cong_thuc(i)
+            moc_dau_ct = None
+            if dong_truoc and len(cp.get("mocCongThuc") or []) == len(dong_truoc):
+                moc_dau_ct = float(cp["mocCongThuc"][0])
+            # nét có mốc trước dòng công thức đầu (hoặc trước lần làm nổi đầu) vẽ ngay; phần sau được xả xen kẽ đúng mốc ở bước 4
+            xa_ve(min(0.6, moc_dau_ct - 0.05) if moc_dau_ct is not None else 0.6)
+
+            def cua_so_ranh():
+                """Khoảng trống (giây) tới mốc lời đọc kế tiếp: nét chờ vẽ, dòng công thức đầu, lần nhắc đối tượng kế tiếp."""
+                moc_ke = [D - 0.3]
+                if self.hang_ve:
+                    moc_ke.append(self.hang_ve[0][0])
+                if moc_dau_ct is not None:
+                    moc_ke.append(moc_dau_ct)
+                for k_w, w in enumerate(tu_c):
+                    if float(w["bat"]) > self.da and any(mo.nhac_toi(w["w"])[kk] for kk in ("doan", "goc", "tam_giac", "mat")):
+                        moc_ke.append(float(w["bat"]))
+                        break
+                return min(moc_ke) - self.da
             for p in moi:
                 if p["kieu"] == "mien":
                     self.bring_to_back(self.hinh[(p["kieu"], p["khoa"])])
@@ -1706,11 +1806,11 @@ class VideoHinh(Scene):
                 p_k = mo.pt[mo.chi_so[k]] if k in mo.chi_so else None
                 if p_k is not None and p_k["canh"] > i and k[0] != "mien":
                     continue
-                if k in self.hinh and self.hinh[k] not in self.tren_man:
+                if k in self.hinh and self.hinh[k] not in self.tren_man and id(self.hinh[k]) not in self.dang_cho:
                     moi_hien.append(FadeIn(self.hinh[k]) if k[0] == "mien" else Create(self.hinh[k]))
                     self.tren_man.add(self.hinh[k])
             if anim or moi_hien:
-                self.choi(*(anim + moi_hien), run_time=0.55)
+                self.choi(*(anim + moi_hien), run_time=max(0.15, min(0.55, cua_so_ranh() - 0.05)))   # v86: không lấn mốc lời đọc kế tiếp
                 for k in sang:
                     if k[0] == "mien" and k in self.hinh:
                         self.bring_to_back(self.hinh[k])
@@ -1719,7 +1819,8 @@ class VideoHinh(Scene):
             if getattr(mo, "la_khong_gian", False) and len(self.tren_man) >= 4:
                 con_3d = D - self._bay_gio()
                 canh_xet = mo.nhac[i]["doan"]
-                if canh_xet and self.net_goc and con_3d >= 3 and not any(k[0] == "tron" for k in self.hinh):
+                # v86: chỉ xoay khi còn đủ khoảng trống trước mốc lời đọc kế tiếp (không đẩy lùi nét / dòng công thức đã hẹn giờ)
+                if canh_xet and self.net_goc and con_3d >= 3 and cua_so_ranh() >= 1.6 and not any(k[0] == "tron" for k in self.hinh):
                     def do_ro(do):
                         h = self.chieu_dinh(self.goc_doc + math.radians(do))
                         return min((np.linalg.norm(h[a]-h[b]) for a,b in canh_xet if a in h and b in h), default=0)
@@ -1740,12 +1841,23 @@ class VideoHinh(Scene):
             bien_doi = str(cp.get("trinhBay") or "") == "bien_doi" and len(dong) >= 2
 
             if cau and not dong:
-                for c in cau:
-                    c_text = str(c.get("text") or c.get("chu") or c.get("cau") or "")
-                    t_bat = float(c.get("bat", 0))
-                    if not c_text or t_bat <= self.da - 0.15:
+                # v86: mốc làm nổi = lúc đọc TỪ nhắc tới đối tượng (cp["tu"]); không có mốc từ thì theo đầu câu phụ đề
+                if tu_c:
+                    su_kien_loe, da_thay = [], set()
+                    for k_w, w in enumerate(tu_c):
+                        nt_w = mo.nhac_toi(" ".join(x["w"] for x in tu_c[max(0, k_w - 2):k_w + 1]))
+                        moi_w = {kk: [x for x in nt_w[kk] if (kk, x) not in da_thay] for kk in ("doan", "goc", "tam_giac", "mat", "diem")}
+                        for kk, ds_ in moi_w.items():
+                            da_thay.update((kk, x) for x in ds_)
+                        if any(moi_w.values()):
+                            su_kien_loe.append((float(w["bat"]), dict(moi_w, tron=nt_w["tron"])))
+                else:
+                    su_kien_loe = [(float(c.get("bat", 0)), mo.nhac_toi(str(c.get("text") or c.get("chu") or c.get("cau") or ""))) for c in cau]
+                for t_bat, c_nt in su_kien_loe:
+                    self.xa_ve(t_bat)
+                    if t_bat < self.da - 0.6:
+                        self.canh_bao.add("Cảnh %d: làm nổi trễ hơn lời đọc %.1f s" % (i + 1, self.da - t_bat))
                         continue
-                    c_nt = mo.nhac_toi(c_text)
                     if any(c_nt[k] for k in ("doan", "goc", "tam_giac", "mat", "diem")):
                         self.doi_toi(min(max(t_bat, self.da), D - 0.35))
                         cau_loe = []
@@ -1787,6 +1899,7 @@ class VideoHinh(Scene):
                     stroke_color=VANG if dap_an else NHAN, stroke_width=3.2, stroke_opacity=0.85,
                 )
                 g.move_to(nen_ct)
+                self.xa_ve(self.da + 0.35)   # v86: nét đến hạn trong lúc hiện ô nền phải vẽ trước, không bị ô nền đẩy lùi
                 self.choi(FadeIn(nen_ct), FadeIn(vien_sang), run_time=0.28)
                 cu.add(nen_ct, vien_sang)
             t_con = D - self.da - (1.4 if dap_an else 0.4)
@@ -1804,7 +1917,12 @@ class VideoHinh(Scene):
                     c_text_j = str(cau[jc].get("text") or cau[jc].get("chu") or cau[jc].get("cau") or "")
                 else:
                     moc = self.da + j * max(0.8, t_con / max(1, len(mob)))
+                self.xa_ve(moc)
+                if moc < self.da - 0.6:
+                    self.canh_bao.add("Cảnh %d: dòng công thức %d hiện trễ hơn lời đọc %.1f s" % (i + 1, j + 1, self.da - moc))
                 self.doi_toi(min(max(moc, self.da), D - 1.0))
+                self.nhat_ky.append({"canh": i + 1, "doi_tuong": "dong %d" % (j + 1), "muc_tieu": round(moc, 3), "thuc": round(self._bay_gio(), 3),
+                                     "lech": round(self._bay_gio() - moc, 3), "nguon": "moc_loi" if len(cp.get("mocCongThuc") or []) == len(mob) else ("cau" if nc else "deu")})
                 con = D - self.da - 0.3
                 rt = max(0.4, min(1.25, con * 0.5))
                 dong_nt = mo.nhac_toi(dong[j] + (" ; " + c_text_j if c_text_j else ""))
@@ -1839,6 +1957,7 @@ class VideoHinh(Scene):
                 else:
                     self.choi(Write(m), *loe, run_time=rt)
                 cu.add(m)
+            self.xa_ve(D)   # nét còn lại (mốc sau dòng công thức cuối)
             # 5) đáp án: khung vàng quanh dòng kết luận
             if dap_an and mob:
                 khung = SurroundingRectangle(mob[-1], color=VANG, buff=0.14, stroke_width=4, corner_radius=0.1)
@@ -1939,7 +2058,7 @@ class VideoHinh(Scene):
 def nap_phong(public, kieu_toan="dam"):  # noqa: C901
     """Ưu tiên cùng họ chữ với Remotion cho nhãn và công thức."""
     global TEX
-    thu_muc = os.path.abspath(os.path.join(public, "fonts"))
+    thu_muc = os.path.abspath(os.path.join(public, "fonts")).replace("\\", "/")   # Windows: "\" trong Path= bị xelatex hiểu là lệnh
     try:
         import manimpango
         for f in sorted(os.listdir(thu_muc)):
@@ -2017,6 +2136,11 @@ def main():
     if mo.bo_sung:
         sc.canh_bao.add("Đã tự bổ sung cho đủ hình: " + ", ".join(mo.bo_sung[:12]))
     props["manimCanhBao"] = sorted(sc.canh_bao)
+    props["manimNhatKy"] = {"so_canh": sc.so_canh_da_dung, "so_canh_props": len(props.get("canh") or []), "ve": sc.nhat_ky,
+                            "khuat": sorted("".join(sorted(p["khoa"])) for p in mo.pt if p["kieu"] == "doan" and p.get("kieu_net") == "khuat"),
+                            "canh_lien": sorted("".join(sorted(p["khoa"])) for p in mo.pt if p["kieu"] == "doan" and p.get("kieu_net") == "canh")}
+    with open(os.path.join(a.ra, "%s_manim_nhat_ky.json" % id_), "w", encoding="utf8") as f:
+        json.dump(props["manimNhatKy"], f, ensure_ascii=False, indent=1)
     for cb in sorted(sc.canh_bao):
         print("Cảnh báo Manim:", cb)
     with open(a.props, "w", encoding="utf8") as f:

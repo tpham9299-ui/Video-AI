@@ -36,7 +36,7 @@
 | Nhóm | Tệp chính & Vai trò |
 | :--- | :--- |
 | **Apps Script (`/*.gs`)** | `BoPhan1.gs` (lõi hàng đợi, model động, GDPT 2018, tự đồng bộ GitHub), `PromptKichBan.gs` (prompt 6 phần, `cau_chuyen`, bản vẽ thực tế, bài 10 phút), `KiemTraHinh.gs` (tự sửa thuật toán, kiểm tra phép tính LaTeX & vật thật), `HinhHoc.gs` (tọa độ 2D/3D, chiếu Cavalier, phân loại `canh`/`khuat`/`phu`), `BoPhan2.gs` (giao dựng video & webhook `doPost`), `NangCao.gs` (tiêu chí duyệt, học từ góp ý, series/hook), `DangVideo.gs` (lịch đăng `chayLichDangDinhKy`, `kiemTraDangSauDuyet`, giữ chỗ 2 pha), `SanPham.gs` (lệnh Zalo tức thời & quảng cáo), `ZaloDeBai.gs` (nhận đề chữ/ảnh/PDF/Word/LaTeX), `KhoKey.gs` (quản lý key), `appsscript.json` (OAuth scopes & YouTube Advanced Services). |
-| **Scripts (`/scripts/`)** | `bophan1/chay_bp1.js` (chạy `.gs` trong Node `vm`), `bophan1/goi_gemini.js` (xoay vòng key, tự né 404/429, tra `ListModels`), `chuanbi.py` (chuẩn hóa đọc toán, Gemini TTS `mot_lan` + cache + fallback `edge-tts`, mốc `mocCongThuc`, tạo `public/props.json`), `canh_3d.py`, `ve_blender.py`, `tao_mo_hinh.py`, `xe_3d.py` (lập kế hoạch & dựng cảnh Blender Cycles CPU RGBA + xuất tọa độ chiếu), `manim_hinh.py` (dựng bài `HINH_HOC` Manim `0.22.1`), `manim_thuc_te.py` (vẽ nét toán & công thức trùng tọa độ chiếu từ Blender), `kiem_duyet.mjs` (đo DOM + AI nhìn hình trước dựng), `dung_khuc.mjs`, `ghep_khuc.mjs`, `anh_kiem_tra.py`, `dang_video.py`. |
+| **Scripts (`/scripts/`)** | `bophan1/chay_bp1.js` (chạy `.gs` trong Node `vm`), `bophan1/goi_gemini.js` (xoay vòng key, tự né 404/429, tra `ListModels`), `chuanbi.py` (chuẩn hóa đọc toán, Gemini TTS `mot_lan` + cache + fallback `edge-tts`, mốc `mocCongThuc`, tạo `public/props.json`), `canh_3d.py`, `ve_blender.py`, `tao_mo_hinh.py`, `xe_3d.py` (lập kế hoạch & dựng cảnh Blender Cycles CPU RGBA + xuất tọa độ chiếu), `manim_hinh.py` (dựng bài `HINH_HOC` Manim `0.22.1`, vẽ từng nét theo mốc từ, ghi `manimNhatKy`), `kiem_hinh_hoc.py` (kiểm tra chéo bắt buộc luồng/cảnh/điểm/quan hệ/đồng bộ trước & sau Manim), `manim_thuc_te.py` (vẽ nét toán & công thức trùng tọa độ chiếu từ Blender), `kiem_duyet.mjs` (đo DOM + AI nhìn hình trước dựng), `dung_khuc.mjs`, `ghep_khuc.mjs`, `anh_kiem_tra.py`, `dang_video.py`. |
 | **Remotion (`/src/`)** | `Root.tsx` (`Video` 1080x1920 30fps, `AnhBia`), `Video.tsx`, `AnhBia.tsx`, `Canh.tsx`, `CanhBlender.tsx`, `CanhMoiTruong.tsx`, `CanhThucTe.tsx`, `BinhBi.tsx`, `NenCauChuyen.tsx`, `TheDeBai.tsx`, `DuKien.tsx`, `ManKet.tsx`, `PhuDeTikTok.tsx`, `KiemDuyet.tsx`, `chu.ts` (chuẩn hóa KaTeX/tiếng Việt), `sankhau/SanKhau.tsx`, `sankhau/dulieu.ts`, `sankhau/canhthat.ts`, `sankhau/vatthuc.tsx`, `sankhau/vat3d.tsx`, `sankhau/hinhhoc.tsx`, `sankhau/hinhtudo.tsx`, `sankhau/vat.tsx`. |
 
 ## 4. CÁC NGUYÊN TẮC KỸ THUẬT KHÔNG ĐƯỢC PHÁ VỠ (v85)
@@ -48,7 +48,8 @@
 
 2. **Phân luồng dựng hình ảnh & đồ họa (v85):**
    * **Phông chữ:** Tiêu đề bìa/đầu cảnh/bài học dùng `Montserrat`; nội dung, phụ đề, nhãn hình & Manim dùng `Be Vietnam Pro`; công thức qua KaTeX (đổi chữ `x` giữa hai số thành dấu nhân $\times$, giữ nguyên biến $2x, x^2$).
-   * **Hình học (`HINH_HOC`):** Bắt buộc dựng bằng **Manim (`0.22.1`)** nền trong suốt phủ lên Remotion; bảo toàn quy tắc 3D (`canh` nét liền, `khuat` nét đứt, `phu` đường phụ); lỗi cài/dựng Manim phải dừng workflow.
+   * **Khóa luồng (v86):** `kb.luong` = `hinh_hoc_thuan` | `thuc_te_xac_suat` do Apps Script quyết định một lần (`xacDinhLuong_`, HinhHoc.gs) và mọi tầng sau chỉ đọc trường này; luồng hình học thuần **cấm** Blender/Three.js/`canh_that`/`mo_hinh_3d`/phong cảnh (`khoaLuongHinhHoc_`, `canh_3d.py` từ chối, `kiem_hinh_hoc.py` chặn).
+   * **Hình học (`HINH_HOC`):** Bắt buộc dựng bằng **Manim (`0.22.1`)** nền trong suốt phủ lên Remotion; bảo toàn quy tắc 3D (`canh` nét liền, `khuat` nét đứt, `phu` đường phụ); lỗi cài/dựng Manim hoặc `kiem_hinh_hoc.py` không đạt phải dừng workflow. Giọng đọc bài hình học dùng edge-tts `WordBoundary` (mốc từng từ thật); mỗi cảnh khai báo `buoc_ve: [{ve, khi_noi}]` để nét vẽ khớp đúng lời đọc.
    * **Thực tế & Xác suất (`THUC_TE`, `XAC_SUAT`):**
      * Xe chạy trên đường hoặc phép thử bi/xu/xúc xắc hỗ trợ $\rightarrow$ ghi `moiTruong` và dựng toàn khung bằng **Three.js** (SwiftShader trong Chromium).
      * Vật thể thực tế / `mo_hinh_3d.chi_tiet` / `khoi_tiet_dien.tang` / lưới tam giác tự do $\rightarrow$ **Blender Cycles CPU** (`canh_3d.py`) chỉ dựng phần mở đầu (pha `thuc`) $\rightarrow$ cảnh `de_bai` (pha `chuyen`) đẩy máy + nhòe ảnh thật để lấy nét sang hình 2D $\rightarrow$ pha `toan`: Remotion (sân khấu + KaTeX), riêng hình khối hộp/trụ/nón/cầu do **Manim (`manim_thuc_te.py`)** vẽ.
@@ -82,6 +83,7 @@ node scripts/kiem_duyet.mjs
 
 # Chạy bộ kiểm thử nhanh cảnh 3D / lịch đăng / kịch bản
 python scripts/test_canh_3d.py
+node scripts/test_luong_hinh_hoc.cjs
 node scripts/test_lich_dang.cjs
 node scripts/test_kich_ban_canh.cjs
 

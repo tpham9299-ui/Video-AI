@@ -612,6 +612,15 @@ def main():
         ap.error("Thiếu đường dẫn props")
     try:
         kb = json.loads(args.kb.read_text())
+        # v86 KHÓA LUỒNG: bài hình học thuần tuyệt đối không đi Blender / Three.js
+        if str(kb.get("luong") or "") == "hinh_hoc_thuan" or str(kb.get("mon") or "").upper() == "HINH_HOC":
+            if args.chuan_bi or args.dem:
+                print(0)
+                return
+            if args.kiem_kich_ban:
+                print("Luồng hình học thuần: bỏ qua lập cảnh 3D", file=sys.stderr)
+                return
+            sys.exit("Luồng hình học thuần (kb.luong = hinh_hoc_thuan) không được dựng cảnh Blender / Three.js")
         if args.kiem_kich_ban:
             if args.tu_tao:
                 from tao_mo_hinh import bo_sung_mo_hinh

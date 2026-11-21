@@ -943,7 +943,8 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc, lop) {
   }
   var them = function (ds, loi) { if (loi) ds.push(loi); };
   if (!kb || !Array.isArray(kb.canh) || !kb.canh.length) return { nang: ['KHONG_CO_CANH: kịch bản phải có mảng "canh" gồm 14-18 cảnh.'], nhe: [] };
-  them(nang, loiCauChuyen_(kb));
+  var laLuongHH = String(mon || kb.mon || '').toUpperCase() === 'HINH_HOC' || kb.luong === 'hinh_hoc_thuan';
+  if (!laLuongHH) them(nang, loiCauChuyen_(kb));   // luồng hình học thuần: không có phong cảnh 3D / câu chuyện đời sống
   if (String(mon || kb.mon || "").toUpperCase() !== "HINH_HOC") nang = nang.concat(loiKichBanDungCanh_(kb, deGoc));
   var laDai10P = kb.kieu_video === 'DAI_10_PHUT';
   // VIDEO NHIỀU CẢNH, CHI TIẾT: 14-18 cảnh cho video ngắn; 28-65 cảnh cho video bài giảng chuyên đề dài 10 phút
@@ -1010,15 +1011,17 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc, lop) {
     kM.nang.forEach(function (x) { nang.push(x); });
     kM.nhe.forEach(function (x) { nhe.push(x); });
   }
-  kiemTraVatThucDe_(kb, deGoc).forEach(function (x) { nang.push(x); });
-  kiemTraBoCucDe_(kb, deGoc).forEach(function (x) { nang.push(x); });
+  if (!laLuongHH) {
+    kiemTraVatThucDe_(kb, deGoc).forEach(function (x) { nang.push(x); });
+    kiemTraBoCucDe_(kb, deGoc).forEach(function (x) { nang.push(x); });
+  }
   // CÔNG THỨC: phải có cảnh giải thích công thức (từ đâu ra, ý nghĩa đại lượng, áp dụng); mỗi cảnh ≤ 3 dòng công thức
   var dungCongThuc = kb.canh.some(function (c) { return /tinh|giai/.test(String(c && c.loai)) && (c.noi_dung_man_hinh || []).some(function (d) { return /=/.test(String(d)); }); });
   var soGiaiThich = kb.canh.filter(laCanhGiaiThichCongThuc_).length;
   if (dungCongThuc && soGiaiThich === 0) nang.push('THIEU_GIAI_THICH_CONG_THUC: bài dùng công thức nhưng không có cảnh "nhac_lai" giải thích. Thêm 2-3 cảnh nhac_lai trước phần tính: công thức TỪ ĐÂU RA, Ý NGHĨA từng đại lượng (chỉ lên hình), ÁP DỤNG vào bài này thế nào.');
   else if (dungCongThuc && soGiaiThich < 2) nhe.push('GIAI_THICH_CONG_THUC_SO_SAI: chỉ có ' + soGiaiThich + ' cảnh nhac_lai; nên 2-3 cảnh (từ đâu ra, ý nghĩa đại lượng, áp dụng vào bài).');
   kb.canh.forEach(function (c, j) { if (c && Array.isArray(c.noi_dung_man_hinh) && c.noi_dung_man_hinh.length > 3) nhe.push('QUA_NHIEU_DONG_CONG_THUC_CANH_' + (j + 1) + ': ' + c.noi_dung_man_hinh.length + ' dòng công thức (chữ sẽ nhỏ). Tối đa 2-3 dòng mỗi cảnh, tách phần còn lại sang cảnh sau.'); });
-  if (!kb.canh.some(function (c) { return /lien_he/.test(String(c && c.loai)); })) nhe.push('THIEU_LIEN_HE_THUC_TE: nên có 1 cảnh "lien_he_thuc_te": cách nghĩ/công thức này dùng ở đâu ngoài đời (2-3 ví dụ cụ thể, có hình vật thật).');
+  if (!laLuongHH && !kb.canh.some(function (c) { return /lien_he/.test(String(c && c.loai)); })) nhe.push('THIEU_LIEN_HE_THUC_TE: nên có 1 cảnh "lien_he_thuc_te": cách nghĩ/công thức này dùng ở đâu ngoài đời (2-3 ví dụ cụ thể, có hình vật thật).');
   // cảnh ĐỀ BÀI phải cho thấy VẬT THẬT của đề (hộp bi, tấm thẻ, xúc xắc, đồng xu, người, cột cờ...), không chỉ toàn khung chữ
   var CHU_THUAN_ = ['nhan', 'chu', 'danh_sach', 'so_dem', 'mui_ten'];
   kb.canh.forEach(function (c, j) {

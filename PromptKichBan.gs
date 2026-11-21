@@ -74,7 +74,7 @@ function taoPromptKichBan_(r, c1, c2) {
   var moDau = [
     'MỞ ĐẦU ẤN TƯỢNG (quyết định người xem có lướt đi không; 1,5 giây đầu là quan trọng nhất): cảnh 1 tối đa 5 giây, "loi_thoai" cảnh 1 tối đa 16 từ. Nghĩ 3 phương án hook, ghi vào "hook_ung_vien", chọn phương án mạnh nhất. ',
     'Công thức hook mạnh: (a) phá vỡ kỳ vọng ("Bể to hơn mà lại tốn ÍT gạch hơn?"); (b) đặt cược/thách thức có con số cụ thể ("Cho bạn 10 giây: ..."); (c) nói trước kết quả gây sốc rồi hứa giải thích; (d) chỉ ra sai lầm mà chính người xem đang mắc; (e) câu hỏi đời thực ai cũng từng gặp. ',
-    'Nói thẳng với "bạn", động từ mạnh, có con số hoặc hình ảnh cụ thể; hình ảnh cảnh 1 phải là vật thật đang chuyển động (camera 3D xoay, vật bung ra, xúc xắc lăn...), không mở bằng chữ suông. ',
+    'Nói thẳng với "bạn", động từ mạnh, có con số hoặc hình ảnh cụ thể; ' + (hh ? 'hình ảnh cảnh 1 là chính HÌNH VẼ của đề đang hiện dần (nét vẽ chạy, điểm bật sáng), không vật thật, không mở bằng chữ suông. ' : 'hình ảnh cảnh 1 phải là vật thật đang chuyển động (camera 3D xoay, vật bung ra, xúc xắc lăn...), không mở bằng chữ suông. '),
     chao ? 'Được phép mở bằng MỘT lời chào cực ngắn có năng lượng (tối đa 3 từ, ví dụ "Chào bạn!") rồi vào hook ngay trong cùng câu thoại; KHÔNG "hôm nay", "các bạn ơi", "mọi người". '
          : 'KHÔNG chào hỏi, KHÔNG "hôm nay", "các bạn ơi", "mọi người": vào thẳng câu móc. ',
     '"hook_kieu": sai_lam | thach_thuc | bat_ngo | ket_qua_truoc | cau_hoi. Không bịa thống kê kiểu "90% học sinh sai". ',
@@ -257,6 +257,14 @@ function taoPromptKichBan_(r, c1, c2) {
     '"canh":[{"so":1,"loai":"mo_dau|de_bai|mo_hinh_hoa|y_do|thu_nho|bay|nhac_lai|diem_chot|tinh_toan|dap_an|kiem_tra|lien_he_thuc_te|bai_hoc","tieu_de_canh":"","tu_khoa":"","nhan":"","giu_san_khau":false,"giong_doc":"","loi_thoai":"","noi_dung_man_hinh":[],"moc_loi":[],"trinh_bay":"cong_don|bien_doi|xep","chu_thich":[],"minh_hoa":{"loai":"san_khau","mo_ta":"","du_lieu":{"goc_nhin":null,"vat":[],"hanh_dong":[]}}}]}'
   ];
 
+  // (v86) LUỒNG HÌNH HỌC THUẦN: prompt riêng, không chứa bất kỳ hướng dẫn cảnh thật / Blender / vật 3D nào (HinhHoc.gs)
+  if (hh && typeof taoPromptHinhHocThuan_ === 'function') {
+    var loiThoaiHH = ['MỖI CẢNH CÓ: "loai"; "tieu_de_canh" (từ cảnh 2, 3-8 từ nói đúng ý chính); "tu_khoa" (1-3 từ nguyên văn trong tiêu đề); "giu_san_khau"; "giong_doc"; "loi_thoai"; "noi_dung_man_hinh"; "moc_loi"; "trinh_bay"; "buoc_ve"; "kien_thuc"; "nhan_manh_hinh"; "minh_hoa".\n',
+      'LỜI THOẠI: câu ngắn (≤ 16 từ), mỗi cảnh ≤ 45 từ; số và công thức đọc thành LỜI, KHÔNG ký hiệu LaTeX, dấu / hay %; tên điểm viết in hoa liền (SA, ABCD) để máy đánh vần đúng.\n',
+      'CÔNG THỨC "noi_dung_man_hinh": mảng LaTeX (không kèm $), tối đa 3 dòng ngắn, chữ tiếng Việt trong \text{}; "trinh_bay": "cong_don" | "bien_doi" | "xep".\n\n'];
+    return taoPromptHinhHocThuan_(r, c1, c2, { moDau: moDau, nangCao: nangCao.filter(function (x) { return x && !/BÀI TÀI CHÍNH|GÓC NHÌN 3D|BỎ QUA mọi yêu cầu/.test(x); }),
+      noiCanh: [noiCanh[0]].concat(noiCanh.slice(6)), loiThoai: loiThoaiHH, traVe: traVe });
+  }
   return [].concat(
     dauVao,
     ['Mỗi bài là một câu chuyện toán học. Thêm ở gốc JSON "cau_chuyen":{"nguoi_ke":"vai người kể","dia_diem":"địa điểm cụ thể","muc_tieu":"quyết định cần đưa ra","phong_canh":{"troi":"#RRGGBB","dat":"#RRGGBB","vat":[{"ten":"chi tiết đặc trưng của nơi này","hinh":"hop|tru|cau|non","tam":[x,y,z],"co":[rộng,cao,sâu],"mau":"#RRGGBB"}]}}. Dùng màu hex thực. Bố trí 3–32 khối ghép thành cảnh nhận diện được: X trái/phải từ -10 đến 10, Y là độ cao 0–8, Z từ -12 đến 0 (xa tới gần), kích thước mỗi trục >0 và ≤20. Đây là phối cảnh trang trí, vật mang số liệu trình bày riêng đúng theo đề. Chừa trung tâm cho hình và phép tính.\n',

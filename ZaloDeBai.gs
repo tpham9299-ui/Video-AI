@@ -278,6 +278,8 @@ function xuLyDocDe_(sh, bc, bat) {
         continue;
       }
       var mon = String(j.mon || '').toUpperCase() === 'XAC_SUAT' ? 'XAC_SUAT' : String(j.mon || '').toUpperCase() === 'HINH_HOC' && typeof giaiHinhHoc_ === 'function' ? 'HINH_HOC' : 'THUC_TE';
+      // v86: AI hay xếp nhầm hình KHÔNG GIAN (chóp, lăng trụ...) vào THUC_TE -> luồng Blender. Đề hình thuần (có tên điểm, không vật đời sống) luôn là HINH_HOC.
+      if (mon === 'THUC_TE' && typeof giaiHinhHoc_ === 'function' && typeof laDeHinhHocThuan_ === 'function' && laDeHinhHocThuan_(j.de_bai)) mon = 'HINH_HOC';
       var lop = /^(10|11|12)$/.test(String(r.lop)) ? String(r.lop) : (/^(10|11|12)$/.test(String(j.lop)) ? String(j.lop) : '12');
       var b = bam_(j.de_bai);
       // Đề này đã có video rồi -> gửi lại link, khỏi làm lại
@@ -332,7 +334,7 @@ function docDe_(sh, r) {
     '- Đề trắc nghiệm: bỏ phương án A, B, C, D, giữ dữ kiện và câu hỏi. Đề nhiều ý (a, b, c, d) hoặc đúng/sai: chọn MỘT ý có đáp số là một con số hoặc một phân số.\n' +
     '- Bài HÌNH HỌC PHẲNG có câu CHỨNG MINH (bằng nhau, vuông góc, song song, thẳng hàng, tứ giác nội tiếp...): GIỮ NGUYÊN câu chứng minh (một ý), "mon" = "HINH_HOC".\n' +
     '- Câu hỏi không có đáp số là một số (tìm tập nghiệm, nhiều đáp số...; trừ chứng minh hình học ở trên): đổi thành câu hỏi tương đương có đáp số là MỘT số (ví dụ "tổng các nghiệm", "giá trị lớn nhất bằng bao nhiêu") và giải thích ngắn trong "ghi_chu_doi".\n' +
-    '- "mon": "XAC_SUAT" nếu câu hỏi là tính MỘT xác suất (đáp án là phân số); "HINH_HOC" nếu là bài hình học phẳng thuần túy (tính độ dài/góc/diện tích hoặc chứng minh); mọi bài khác (toán thực tế, hàm số, đại số, lãi suất...) là "THUC_TE" (đáp số là một con số).\n' +
+    '- "mon": "XAC_SUAT" nếu câu hỏi là tính MỘT xác suất (đáp án là phân số); "HINH_HOC" nếu là bài hình học THUẦN TÚY, PHẲNG HOẶC KHÔNG GIAN (tam giác, đường tròn, hình chóp, lăng trụ, tứ diện, hình hộp...; tính độ dài/góc/diện tích/thể tích/khoảng cách hoặc chứng minh) và đề KHÔNG gắn với vật hay tình huống đời sống; mọi bài khác (toán thực tế, hàm số, đại số, lãi suất...) là "THUC_TE" (đáp số là một con số).\n' +
     '- "lop": lớp phù hợp nhất (10, 11 hoặc 12). "dang": mã dạng gần nhất trong: ' + DANG_DUNG_DUOC.XAC_SUAT.concat(DANG_DUNG_DUOC.THUC_TE).join(', ') + ' (không khớp thì ghi "khac").\n' +
     '- "doc_duoc": false nếu không phải đề toán hoặc ảnh mờ không chắc chắn các con số; ghi "ly_do" ngắn gọn bằng tiếng Việt.\n' +
        '- "mo_ta_hinh": nếu ảnh có HÌNH VẼ (hình học, sơ đồ, hình minh họa, chuỗi hình theo bước...) thì mô tả thật chi tiết để vẽ lại y hệt: hình gì, bao nhiêu hình, xếp thế nào, hình dạng từng hình (tam giác đều, ngôi sao sáu cánh, bông tuyết Koch...), màu, các điểm và nhãn số đo trên hình, hình sau biến đổi từ hình trước ra sao. Nếu hình có dấu ba chấm ("…", "⋮", "⋯") thì PHẢI ghi rõ nó thay cho cái gì (vd "⋮ ở giữa = các tầng 4 đến 18 bị lược, mỗi tầng hơn tầng trên 1 ống") chứ không ghi "có ba chấm". Tách rõ đâu là VẬT THẬT (cột cờ, tòa nhà, ngân hàng, cây, người quan sát, ống, mảnh đất...) và đâu là CHÚ THÍCH (nhãn, số đo, mũi tên, ngoặc); đề chỉ có chữ mà nói tới vật thật thì vẫn mô tả cảnh: vật gì, đứng ở đâu, nhìn từ đâu, số đo nằm ở đâu. Không có hình thì để "".\n' +

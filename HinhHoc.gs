@@ -19,6 +19,67 @@
 
 function laMonHinhHoc_(r) { return String((r && r.mon) || '').toUpperCase() === 'HINH_HOC'; }
 function batHinhHoc_() { return String(cauHinh_('HINH_HOC_KHO') || 'BAT').toUpperCase() !== 'TAT'; }
+
+// ===================== KHÓA LUỒNG DỰNG VIDEO (v86) =====================
+// Hai luồng TÁCH BIỆT TUYỆT ĐỐI, quyết định MỘT lần từ r.mon và ghi vào kịch bản (kb.luong):
+//   hinh_hoc_thuan   : 100% khung hình thuần toán (Manim + KaTeX), KHÔNG Blender/Three.js/canh_that/phong cảnh.
+//   thuc_te_xac_suat : được dùng cảnh đời sống Blender / mô phỏng phép thử.
+// BP3 (dung-video.yml, canh_3d.py, kiem_hinh_hoc.py) đọc kb.luong và DỪNG nếu kịch bản còn dấu vết của luồng kia.
+var LUONG_HINH_HOC_ = 'hinh_hoc_thuan';
+var LUONG_THUC_TE_ = 'thuc_te_xac_suat';
+function xacDinhLuong_(r) { return laMonHinhHoc_(r) ? LUONG_HINH_HOC_ : LUONG_THUC_TE_; }
+// Đề có đối tượng hình học được đặt tên (tam giác ABC, hình chóp S.ABCD, (O), (SAC)...) và KHÔNG có vật/tình huống đời sống.
+// Dùng để sửa khi bộ đọc đề AI xếp nhầm bài hình học (nhất là hình không gian) vào THUC_TE.
+function laDeHinhHocThuan_(de) {
+  var s = String(de || '');
+  var coTen = /(tam giác|tứ giác|hình vuông|hình chữ nhật|hình thoi|hình bình hành|hình thang|hình chóp|chóp|lăng trụ|tứ diện|hình hộp|đường tròn|ngũ giác|lục giác)\s+(?:đều\s+|vuông\s+|cân\s+)?\(?[A-Z][A-Z'.]*/.test(s) ||
+    /\b[A-Z]\.[A-Z]{3,5}\b/.test(s) || /\(([A-Z]{3,4}|O)\)/.test(s);
+  if (!coTen) return false;
+  var doiSong = 'xác suất|ngẫu nhiên|lãi suất|tiền|giá bán|lợi nhuận|vận tốc|km/h|người|cây|nhà|tòa|sông|bể|thùng|bồn|lon|cột|cái thang|chiếc thang|xe|ô tô|mảnh vườn|mảnh đất|hàng rào|công ty|nhà máy';
+  if (new RegExp('(^|[^a-zà-ỹđ])(' + doiSong + ')(?=$|[^a-zà-ỹđ])', 'i').test(s)) return false;
+  var low = s.toLowerCase();
+  if (typeof TU_VAT_THUC_ !== 'undefined' && TU_VAT_THUC_.some(function (m) { return m[0].test(low); })) return false;
+  return true;
+}
+// Vật duy nhất được phép trong luồng hình học thuần (Manim vẽ); mọi vật đời sống / 3D / phong cảnh bị gỡ.
+var VAT_HINH_HOC_THUAN_ = ['hinh_hoc'];
+var KHOA_3D_KICH_BAN_ = ['mo_hinh_3d', 'ban_ve', 'moi_truong', 'moiTruong', 'chuoi_3d', 'chuoi3D', 'anh_canh_3d', 'net_toan'];
+function khoaLuongHinhHoc_(kb) {
+  var sua = [];
+  if (!kb || !Array.isArray(kb.canh)) return sua;
+  kb.luong = LUONG_HINH_HOC_;
+  kb.mon = 'HINH_HOC';
+  KHOA_3D_KICH_BAN_.forEach(function (k) { if (kb[k] !== undefined) { delete kb[k]; sua.push('gỡ ' + k + ' (luồng hình học thuần)'); } });
+  if (kb.cau_chuyen && kb.cau_chuyen.phong_canh) { delete kb.cau_chuyen.phong_canh; sua.push('gỡ phong cảnh 3D của cau_chuyen'); }
+  kb.canh.forEach(function (c, i) {
+    if (!c) return;
+    KHOA_3D_KICH_BAN_.forEach(function (k) { if (c[k] !== undefined) { delete c[k]; sua.push('cảnh ' + (i + 1) + ': gỡ ' + k); } });
+    var mh = c.minh_hoa;
+    if (!mh || typeof mh !== 'object') { c.minh_hoa = { loai: 'san_khau', mo_ta: 'Hình hình học chính của đề', du_lieu: { vat: [] } }; return; }
+    if (mh.loai !== 'san_khau') { sua.push('cảnh ' + (i + 1) + ': đổi mẫu "' + mh.loai + '" thành hình hình học'); mh.loai = 'san_khau'; mh.du_lieu = { vat: [] }; }
+    var du = mh.du_lieu && typeof mh.du_lieu === 'object' ? mh.du_lieu : (mh.du_lieu = { vat: [] });
+    var vat = Array.isArray(du.vat) ? du.vat : [];
+    var bo = vat.filter(function (v) { return !v || VAT_HINH_HOC_THUAN_.indexOf(v.loai) < 0; }).map(function (v) { return v && v.loai; });
+    if (bo.length) sua.push('cảnh ' + (i + 1) + ': gỡ vật không thuần toán (' + bo.join(', ') + ')');
+    du.vat = vat.filter(function (v) { return v && VAT_HINH_HOC_THUAN_.indexOf(v.loai) >= 0; });
+    delete du.goc_nhin; delete du.phong_canh;
+    if (Array.isArray(du.hanh_dong)) du.hanh_dong = [];
+  });
+  return sua;
+}
+// Kịch bản luồng hình học thuần còn dấu vết thực tế/3D? (trả danh sách lỗi; rỗng = sạch)
+function loiLuongHinhHoc_(kb) {
+  var loi = [];
+  if (!kb || !Array.isArray(kb.canh)) return ['KHONG_CO_CANH'];
+  KHOA_3D_KICH_BAN_.forEach(function (k) { if (kb[k] !== undefined) loi.push('LUONG_HINH_HOC_CON_' + k); });
+  if (kb.cau_chuyen && kb.cau_chuyen.phong_canh) loi.push('LUONG_HINH_HOC_CON_PHONG_CANH');
+  kb.canh.forEach(function (c, i) {
+    KHOA_3D_KICH_BAN_.forEach(function (k) { if (c && c[k] !== undefined) loi.push('LUONG_HINH_HOC_CANH_' + (i + 1) + '_CON_' + k); });
+    var du = c && c.minh_hoa && c.minh_hoa.du_lieu;
+    (du && Array.isArray(du.vat) ? du.vat : []).forEach(function (v) { if (v && VAT_HINH_HOC_THUAN_.indexOf(v.loai) < 0) loi.push('LUONG_HINH_HOC_CANH_' + (i + 1) + '_CO_VAT_' + v.loai); });
+  });
+  return loi;
+}
 var CHUONG_TRINH_HINH_HOC = {
   '10': 'hình học phẳng THCS nâng cao + lớp 10: tam giác đồng dạng, hệ thức lượng (định lý sin, cos), đường tròn (góc nội tiếp, tiếp tuyến, tứ giác nội tiếp, phương tích), véc tơ, diện tích',
   '11': 'hình học phẳng nâng cao (phương tích, trục đẳng phương, phép biến hình) VÀ hình học KHÔNG GIAN lớp 11: quan hệ song song, quan hệ vuông góc, góc giữa đường thẳng và mặt phẳng, góc giữa hai mặt phẳng, khoảng cách (điểm - mặt, hai đường chéo nhau), thiết diện',
@@ -83,7 +144,9 @@ var DANG_TRA_HINH_ = '"hinh": {"diem":{"A":[x,y] hoặc [x,y,z],...} tọa độ
   '"canh":[["A","B"],...] các cạnh NHÌN THẤY của hình (vẽ nét liền), "khuat":[["A","D"],...] (CHỈ hình không gian) các cạnh BỊ CHE KHUẤT nằm phía sau hoặc bên trong khối khi nhìn từ phía trước (vẽ nét đứt chuẩn hình học không gian), ' +
   '"mat":[["S","A","B"],["A","B","C","D"],...] (CHỈ hình không gian) danh sách các mặt của khối đa diện để máy kiểm tra che khuất 3D, ' +
   '"tron":[["O","A"]] đường tròn (tâm, một điểm trên đường tròn) hoặc [["A","B","C"]] (đường tròn qua 3 điểm) - chỉ hình phẳng, ' +
-  '"phu":[["A","H"],...] các ĐƯỜNG THẲNG PHỤ kẻ thêm để phục vụ bài toán (đường cao, đường trung tuyến, hình chiếu, đoạn nối phụ...)}';
+  '"phu":[["A","H"],...] các ĐƯỜNG THẲNG PHỤ kẻ thêm để phục vụ bài toán (đường cao, đường trung tuyến, hình chiếu, đoạn nối phụ...), ' +
+  '"quan_he":[...] MỌI quan hệ hình học mà ĐỀ BÀI nêu (máy kiểm lại trên chính tọa độ trả về trước khi dựng video): {"loai":"vuong_goc","a":["S","A"],"b":["A","B"]} | {"loai":"song_song","a":["A","B"],"b":["C","D"]} | ' +
+  '{"loai":"trung_diem","diem":"M","a":["B","C"]} | {"loai":"thuoc","diem":"H","a":["B","C"]} (điểm nằm trên đường thẳng) | {"loai":"bang","a":["A","B"],"b":["A","C"]} (hai đoạn bằng nhau) | {"loai":"vuong_goc_mat","a":["S","A"],"mat":["A","B","C"]} (đường vuông góc mặt phẳng)}';
 
 function giaiHinhHoc_(r) {
   var t0 = Date.now();
@@ -477,7 +540,7 @@ function chieuHinhKhongGian_(h) {
     d2[k] = [x + 0.41 * y, z + 0.29 * y];
   });
   var pl = phanLoaiCanhKhongGian3D_(d3, d2, h);
-  return { diem: d2, diem_3d: d3, mat: pl.mat || [], canh: pl.canh, khuat: pl.khuat, phu: pl.phu, tron: [], _kg: true };
+  return { diem: d2, diem_3d: d3, mat: pl.mat || [], canh: pl.canh, khuat: pl.khuat, phu: pl.phu, tron: [], _kg: true, quan_he: h.quan_he };
 }
 function chuanHinhToaDo_(h) {
   if (!h || typeof h !== 'object' || !h.diem || typeof h.diem !== 'object') return null;
@@ -514,14 +577,21 @@ function chuanHinhToaDo_(h) {
   var khuat = loc(h.khuat, 2).map(function (c) { return [c[0], c[1]]; });
   var laKhuat = function (c) { return khuat.some(function (k) { return (k[0] === c[0] && k[1] === c[1]) || (k[0] === c[1] && k[1] === c[0]); }); };
   var phu = loc(h.phu, 2).map(function (c) { return [c[0], c[1]]; });
+  // tọa độ GỐC (chưa chiếu, chưa co giãn về phần trăm) + quan hệ của đề: scripts/kiem_hinh_hoc.py kiểm lại vuông góc / song song / trung điểm trên đó
+  var diemGoc = {};
+  ten.forEach(function (n) { var p = (h.diem_3d && h.diem_3d[n]) || h.diem[n]; diemGoc[n] = p.slice(0, 3).map(Number); });
+  var quanHe = (Array.isArray(h.quan_he) ? h.quan_he : []).filter(function (q) { return q && typeof q === 'object' && q.loai; }).slice(0, 30);
   return { diem: diem, diem_3d: h.diem_3d || null, mat: h.mat || [], canh: loc(h.canh, 2).map(function (c) { return [c[0], c[1]]; }).filter(function (c) { return !laKhuat(c); }), khuat: khuat, tron: tron,
-    phu: phu, khong_gian: !!h._kg };
+    phu: phu, khong_gian: !!h._kg, diem_goc: diemGoc, quan_he: quanHe };
 }
 
 // Kịch bản hình học: mọi hinh_hoc dùng TỌA ĐỘ ĐÚNG từ mã dựng hình (giữ cạnh/góc/nhãn kịch bản viết; đồng bộ đường thẳng phụ, cạnh khuất/nhìn thấy và tọa độ 3D).
 function chenToaDoHinh_(kb, hinh) {
   if (!hinh || !hinh.diem || !kb || !Array.isArray(kb.canh)) return [];
   var sua = [];
+  // hình chuẩn đã kiểm chứng đi kèm kịch bản -> bộ dựng kiểm chéo (scripts/kiem_hinh_hoc.py) trước khi render
+  kb.hinh_chuan = { diem: hinh.diem, diem_goc: hinh.diem_goc || null, quan_he: hinh.quan_he || [], canh: hinh.canh || [], khuat: hinh.khuat || [],
+    phu: hinh.phu || [], tron: hinh.tron || [], mat: hinh.mat || [], khong_gian: !!hinh.khong_gian };
   var cungDoan = function (a, b) { return (a[0] === b[0] && a[1] === b[1]) || (a[0] === b[1] && a[1] === b[0]); };
   // Đảm bảo cảnh mở đầu / đề bài luôn có đối tượng hinh_hoc để Manim dựng hình 100% (tuyệt đối không để rơi về Remotion)
   var coVatHinh = kb.canh.some(function (c) {
@@ -554,6 +624,17 @@ function chenToaDoHinh_(kb, hinh) {
       Object.keys(v.diem).forEach(function (n) { if (hinh.diem[n]) { v.diem[n] = hinh.diem[n].slice(); doi++; } });
       if (!doi && !Object.keys(hinh.diem).length) return;
       Object.keys(hinh.diem).forEach(function (n) { if (!v.diem[n]) v.diem[n] = hinh.diem[n].slice(); });
+      // điểm AI tự đặt (không có trong mã dựng hình đã kiểm chứng) = tọa độ đoán -> bỏ, cùng mọi nét dùng tới nó
+      var tuDat = Object.keys(v.diem).filter(function (n) { return !hinh.diem[n]; });
+      if (tuDat.length) {
+        tuDat.forEach(function (n) { delete v.diem[n]; });
+        var SO_DIEM_ = { canh: 2, khuat: 2, phu: 2, bang: 2, vuong: 3, goc: 3, to: 99, tron: 3 };
+        Object.keys(SO_DIEM_).forEach(function (k) {
+          if (!Array.isArray(v[k])) return;
+          v[k] = v[k].filter(function (x) { return Array.isArray(x) && x.slice(0, SO_DIEM_[k]).every(function (p) { return !!v.diem[p]; }); });
+        });
+        sua.push('cảnh ' + (i + 1) + ': bỏ điểm tự đặt không có trong hình kiểm chứng (' + tuDat.join(', ') + ')');
+      }
       if (hinh.diem_3d) v.diem_3d = JSON.parse(JSON.stringify(hinh.diem_3d));
       if (hinh.mat && hinh.mat.length) v.mat = JSON.parse(JSON.stringify(hinh.mat));
       if (hinh.khong_gian) v.khong_gian = true;
@@ -648,6 +729,60 @@ function huongDanKichBanHinh_(r) {
     (Array.isArray(c1.cac_buoc) && c1.cac_buoc.length ? '- Lời giải đã kiểm chứng (bám sát, không thêm bước sai): ' + JSON.stringify(c1.cac_buoc).slice(0, 2500) + '\n' : '');
 }
 
+// PROMPT RIÊNG CHO LUỒNG HÌNH HỌC THUẦN (v86): không dùng chung khung "toán thực tế 3D" nữa (trước đây AI được bảo dựng
+// cảnh thật / Blender / phong cảnh -> sinh vật thật mà Manim không vẽ -> cảnh trống, hình lẫn). PromptKichBan.gs gọi hàm này.
+// phan: các khối dùng chung của prompt (moDau, noiCanh, nangCao, traVe) đã lọc bỏ phần vật thật.
+function taoPromptHinhHocThuan_(r, c1, c2, phan) {
+  var buocC1 = (c1.cac_buoc || []).map(function (b, i) { return (i + 1) + '. ' + b; }).join('\n');
+  var buocC2 = (c2.cac_buoc || []).map(function (b, i) { return (i + 1) + '. ' + b; }).join('\n');
+  var kt = typeof yeuCauKienThucLop_ === 'function' ? yeuCauKienThucLop_(r.lop, 'HINH_HOC') : '';
+  var dauVao = [
+    'Bạn là giáo viên Toán giỏi kiêm biên kịch video ngắn dọc (TikTok/YouTube Shorts) dạy học sinh lớp ' + r.lop + ' một bài HÌNH HỌC THUẦN TÚY.\n',
+    'LUỒNG DỰNG: "hinh_hoc_thuan". Video được dựng TỰ ĐỘNG 100% bằng MANIM trên nền tối sạch: chỉ có HÌNH VẼ hình học (điểm, cạnh, đường tròn, góc, nét đứt cạnh khuất, đường phụ) và CÔNG THỨC chuẩn sách giáo khoa. ',
+    'TUYỆT ĐỐI KHÔNG có cảnh đời sống, vật thật, người, đồ vật, phong cảnh, Blender, 3D trang trí, emoji, ảnh minh họa: KHÔNG dùng canh_that, khoi_hop, tru, non, cau, nguoi, the, hinh_tu_do, do_thi, mo_hinh_3d, net_toan, cau_chuyen.phong_canh. ',
+    'Mỗi cảnh chỉ có đúng MỘT vật {"id":"hh","loai":"hinh_hoc",...} (cùng một hình xuyên suốt, giu_san_khau: true từ cảnh 2), máy tự thay tọa độ đúng tỉ lệ từ mã dựng hình đã kiểm chứng.\n\n',
+    'DỮ LIỆU ĐÃ KIỂM CHỨNG (nguồn sự thật duy nhất):\nĐỀ: ' + r.de_bai + '\n',
+    'ĐÁP ÁN (đã kiểm chứng bằng máy, KHÔNG được đổi): ' + r.dap_an + (r.dap_an_hien ? ' (trình bày: ' + r.dap_an_hien + ')' : '') + '\n',
+    typeof vanDeDe_ === 'function' ? vanDeDe_(r) : '',
+    'Yếu tố cần suy nghĩ: ' + (r.yeu_to_tu_duy || '') + '\nBẫy học sinh hay sai: ' + (r.bay_thuong_gap || '') + '\n',
+    kt ? kt + '\n(BẮT BUỘC giảng đúng phương pháp của lớp ' + r.lop + '; KHÔNG dùng kiến thức lớp trên hoặc số phức).\n' : '',
+    'LỜI GIẢI GỌN (ưu tiên dùng để dạy): ' + (c2.y_tuong ? 'Ý tưởng then chốt: ' + c2.y_tuong + '\n' : '\n') + buocC2 + '\n',
+    'LỜI GIẢI CHI TIẾT (để đối chiếu): ' + buocC1 + '\n\n',
+    'NGUYÊN TẮC SỐ LIỆU: mọi con số chỉ lấy từ đề và hai lời giải; dòng CUỐI của cảnh đáp án chứa đúng đáp án (dấu phẩy thập phân viết {,}).\n\n'
+  ];
+  var quyTrinh = [
+    'QUY TRÌNH 6 PHẦN CHO BÀI HÌNH (15-20 cảnh, mỗi cảnh MỘT ý, lời thoại 12-30 từ):\n',
+    'PHẦN 1 - ĐỀ BÀI: mo_dau (câu móc ≤ 5 giây, chính là câu hỏi của đề, hình bắt đầu hiện), de_bai (1-2 cảnh): đọc từng giả thiết, MỖI GIẢ THIẾT được vẽ ra ĐÚNG LÚC đọc (điểm, cạnh, ký hiệu vuông góc, vạch bằng nhau, nét đứt cạnh khuất). noi_dung_man_hinh của mo_dau/de_bai để [].\n',
+    'PHẦN 2 - PHÂN TÍCH: y_do / mo_hinh_hoa: đề hỏi gì, cần chứng minh/tính đại lượng nào, kẻ thêm đường phụ nào ("phu") và VÌ SAO.\n',
+    'PHẦN 3 - BẪY: bay: lỗi học sinh hay mắc (nhầm cạnh khuất, nhầm góc, áp sai định lý) chỉ thẳng trên hình.\n',
+    'PHẦN 4 - GIẢI: mỗi bước một cảnh tinh_toan (hoặc chung_minh): khẳng định + lý do (định lý) + làm nổi đúng cạnh/góc đang xét; dap_an chốt kết quả.\n',
+    'PHẦN 5 - THỬ LẠI: kiem_tra bằng cách thứ hai hoặc số cụ thể trên chính hình.\n',
+    'PHẦN 6 - CHỐT: bai_hoc: 2-3 dấu hiệu nhận dạng và cách vận dụng (vẫn trên hình, không minh họa đời sống).\n',
+    'Trả thêm "de_cho" (2-5 giả thiết ≤ 60 ký tự) và "can_tim" (≤ 80 ký tự).\n\n'
+  ];
+  var dongBo = [
+    'ĐỒNG BỘ HÌNH - TIẾNG (BẮT BUỘC, máy đo mốc TỪNG TỪ của giọng đọc thật): mỗi cảnh có "buoc_ve": danh sách các nét MỚI của cảnh theo đúng thứ tự nói, ',
+    'mỗi phần tử {"ve":"<đối tượng>","khi_noi":"<cụm 2-5 từ NGUYÊN VĂN, liên tiếp trong loi_thoai của chính cảnh đó>"}. ',
+    '"ve" viết: "A" (một điểm), "SA" (đoạn/cạnh), "\\\\angle SAB" (góc), "\\\\perp SA AB" (ký hiệu vuông góc tại điểm chung), "\\\\triangle ABC" hoặc "(SAC)" (tô mặt), "(O)" (đường tròn). ',
+    'Máy vẽ nét đó ĐÚNG lúc giọng đọc nói tới cụm "khi_noi" (không sớm, không muộn), nên cụm phải đứng đúng chỗ câu nói nhắc tới đối tượng, ví dụ lời "SA vuông góc với mặt đáy" -> {"ve":"SA","khi_noi":"SA vuông góc"}. ',
+    'Mọi điểm, cạnh, đường phụ, ký hiệu MỚI xuất hiện ở cảnh nào đều phải có trong buoc_ve của cảnh đó; không nhắc tới điểm/cạnh không có trên hình.\n',
+    'Mỗi dòng noi_dung_man_hinh có một phần tử "moc_loi" tương ứng (cụm 3-6 từ nguyên văn trong loi_thoai, chỗ bắt đầu giảng dòng đó).\n\n'
+  ];
+  var viDu = [
+    'VÍ DỤ MỘT CẢNH ĐỀ BÀI TỐT (hình chóp S.ABCD đáy vuông, SA vuông góc đáy):\n',
+    '{"so":2,"loai":"de_bai","tieu_de_canh":"Đáy vuông, SA dựng đứng","tu_khoa":"SA","giu_san_khau":true,"giong_doc":"chậm rãi, rõ ràng",',
+    '"loi_thoai":"Đáy ABCD là hình vuông. Từ A, cạnh SA dựng thẳng đứng, vuông góc với mặt đáy. Cạnh AD nằm phía sau nên vẽ nét đứt.","noi_dung_man_hinh":[],"moc_loi":[],',
+    '"buoc_ve":[{"ve":"AB","khi_noi":"Đáy ABCD"},{"ve":"BC","khi_noi":"là hình vuông"},{"ve":"SA","khi_noi":"cạnh SA dựng"},{"ve":"\\\\perp SA AB","khi_noi":"vuông góc với mặt"},{"ve":"AD","khi_noi":"Cạnh AD nằm"}],',
+    '"minh_hoa":{"loai":"san_khau","mo_ta":"Hình chóp S.ABCD hiện dần: đáy vuông, cạnh SA thẳng đứng có ký hiệu vuông góc, cạnh khuất AD nét đứt.",',
+    '"du_lieu":{"vat":[{"id":"hh","loai":"hinh_hoc","x":50,"y":48,"co":1.2,"diem":{"S":[20,10],"A":[20,90],"B":[62,90],"C":[79,72],"D":[38,72]},"canh":[["S","B"],["S","C"],["A","B"],["B","C"],["S","A"]],"khuat":[["A","D"],["C","D"],["S","D"]],"vuong":[["S","A","B"]]}],"hanh_dong":[]}}}\n\n'
+  ];
+  var traVe = (phan.traVe || []).map(function (s) {
+    return String(s).replace(/3\. HÌNH VẼ CHÍNH XÁC:[^\n]*\n/, '3. HÌNH VẼ CHÍNH XÁC: chỉ dùng vật hinh_hoc; mọi điểm của đề có trong "diem"; buoc_ve neo đúng cụm nguyên văn của lời thoại.\n')
+      .replace(/#toanthucte/g, '#hinhhoc').replace(/"giu_san_khau":false/, '"giu_san_khau":true,"buoc_ve":[{"ve":"","khi_noi":""}]');
+  });
+  return [].concat(dauVao, [huongDanKichBanHinh_(r)], quyTrinh, dongBo, phan.moDau || [], phan.nangCao || [], phan.noiCanh || [], phan.loiThoai || [], viDu, traVe).join('');
+}
+
 // Kiểm tra kịch bản hình học (dựng bằng Manim): bước nào cũng phải có công thức + lý do, chứng minh không quá gọn.
 // Trả {nang:[], nhe:[]}; KiemTraHinh.gs gọi khi kb.mon = HINH_HOC.
 function kiemTraKichBanManim_(kb) {
@@ -655,6 +790,39 @@ function kiemTraKichBanManim_(kb) {
   if (!kb || !Array.isArray(kb.canh)) return { nang: nang, nhe: nhe };
   var laBuoc = function (c) { return /tinh|giai|chung_minh|buoc|lap_luan|suy_luan/.test(String(c && c.loai)); };
   var buoc = kb.canh.filter(laBuoc);
+  // (v86) KIỂM TRA CHÉO CỨNG đề <-> kịch bản <-> hình: luồng sạch, đủ điểm, buoc_ve neo đúng lời thoại
+  loiLuongHinhHoc_(kb).forEach(function (x) { nang.push(x + ': video hình học thuần chỉ được có vật hinh_hoc (không canh_that, mo_hinh_3d, phong cảnh, vật đời sống).'); });
+  var coDiem = {};
+  if (kb.hinh_chuan && kb.hinh_chuan.diem) Object.keys(kb.hinh_chuan.diem).forEach(function (n) { coDiem[n] = 1; });
+  kb.canh.forEach(function (c) {
+    var du = c && c.minh_hoa && c.minh_hoa.du_lieu;
+    (du && Array.isArray(du.vat) ? du.vat : []).forEach(function (v) { if (v && v.loai === 'hinh_hoc' && v.diem) Object.keys(v.diem).forEach(function (n) { coDiem[n] = 1; }); });
+  });
+  var tenDiemTrong = function (s) {
+    var ra = {};
+    String(s || '').replace(/\\[a-zA-Z]+/g, ' ').replace(/(^|[^A-Za-zÀ-ỹ'])([A-Z](?:'|_?\d)?(?:[A-Z](?:'|_?\d)?){0,4})(?=$|[^A-Za-zÀ-ỹ'_(])/g, function (m, a, t) {
+      if (/^(CM|SGK|OK|TH|ĐPCM|THCS|THPT|GTLN|GTNN|PT|HS|V|P|R)\d*$/.test(t)) return m;   // ký hiệu thể tích / xác suất / bán kính, viết tắt
+      (t.match(/[A-Z](?:'|_?\d)?/g) || []).forEach(function (p) { ra[p] = 1; });
+      return m;
+    });
+    return Object.keys(ra);
+  };
+  var soDiem = Object.keys(coDiem).length;
+  if (!soDiem) nang.push('THIEU_TOA_DO_HINH: không có hình hinh_hoc nào có tọa độ điểm; máy không dựng được hình đúng tỉ lệ.');
+  else {
+    var thieuDe = tenDiemTrong(kb.de_bai).filter(function (p) { return !coDiem[p]; });
+    if (thieuDe.length) nang.push('HINH_THIEU_DIEM_DE: đề nêu điểm ' + thieuDe.join(', ') + ' nhưng hình không có. Mọi điểm của đề phải có trong hinh_hoc.diem.');
+    kb.canh.forEach(function (c, j) {
+      var thieu = tenDiemTrong(String(c.loi_thoai || '') + ' ' + (c.noi_dung_man_hinh || []).join(' ')).filter(function (p) { return !coDiem[p]; });
+      if (thieu.length) nang.push('HINH_THIEU_DIEM_CANH_' + (j + 1) + ': lời thoại / công thức nhắc ' + thieu.join(', ') + ' nhưng hình không có điểm này (thêm vào hinh_hoc hoặc sửa lời).');
+      (Array.isArray(c.buoc_ve) ? c.buoc_ve : []).forEach(function (b, k) {
+        var cum = String((b && b.khi_noi) || '').trim();
+        if (!cum || String(c.loi_thoai || '').toLowerCase().indexOf(cum.toLowerCase()) < 0) nang.push('BUOC_VE_KHONG_KHOP_LOI_CANH_' + (j + 1) + ': buoc_ve[' + k + '].khi_noi "' + cum + '" phải là cụm NGUYÊN VĂN trong loi_thoai của cảnh (máy dùng nó để vẽ đúng lúc giọng đọc nói).');
+        var mt = tenDiemTrong((b && b.ve) || '').filter(function (p) { return !coDiem[p]; });
+        if (mt.length) nang.push('BUOC_VE_DOI_TUONG_LA_CANH_' + (j + 1) + ': buoc_ve[' + k + '].ve "' + b.ve + '" dùng điểm không có trên hình (' + mt.join(', ') + ').');
+      });
+    });
+  }
   if (String(kb.dap_an_cuoi || kb.dap_an) === 'CM' && buoc.length < 3) nhe.push('CHUNG_MINH_QUA_GON: chỉ có ' + buoc.length + ' cảnh giải. Tách lời chứng minh thành ít nhất 4 cảnh, mỗi cảnh MỘT bước (khẳng định + lý do) để người xem theo kịp.');
   kb.canh.forEach(function (c, j) {
     if (!laBuoc(c)) return;

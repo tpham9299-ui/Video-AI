@@ -11,6 +11,7 @@ Chạy:
 """
 import argparse
 import asyncio
+import difflib
 import json
 import math
 import os
@@ -137,7 +138,10 @@ def sua_chinh_ta_tieng_viet(text):
             return r
         s = re.sub(pat, _giu_hoa, s)
     s = re.sub(r"\s+([,.;:!?])", r"\1", s)
+    # tên khối S.ABCD / ABC.A'B'C' giữ liền (trước đây bị tách "S. ABCD" -> tách câu sai, giọng ngắt giữa tên hình)
+    s = re.sub(r"\b([A-Z]{1,4}'*)\.(?=[A-Z]'*[A-Z])", "\\1\u00a7", s)
     s = re.sub(r"([,.;:!?])(?=[A-Za-zÀ-ỹđĐ])", r"\1 ", s)
+    s = s.replace("\u00a7", ".")
     return re.sub(r"\s+", " ", s).strip()
 
 
@@ -150,6 +154,7 @@ def _danh_van(m):
 
 def chuan_hoa_doc(text):
     s = sua_chinh_ta_tieng_viet(text)
+    s = re.sub(r"\b([A-Z]{1,4}'*)\.(?=[A-Z]'*[A-Z])", r"\1 ", s)   # S.ABCD -> "S ABCD" (đọc liền, không ngắt ở dấu chấm)
     s = re.sub(r"\(\s*([A-Z]{3,4})\s*\)", r" mặt phẳng \1 ", s)    # (SAC) -> mặt phẳng SAC
     s = re.sub(r"\(\s*([A-Z])\s*\)", r" \1 ", s)                  # đường tròn (O) -> đường tròn O
     for k, v in KY_HIEU_DOC:
@@ -276,19 +281,35 @@ async def _tts(text, tep, giong, toc_do, cao_do, am_luong="+0%"):
     import edge_tts
     k_cache = hashlib.sha256(("edge_v2_%s_%s_%s_%s_%s" % (giong, toc_do, cao_do, am_luong, text)).encode("utf8")).hexdigest()
     f_cache = os.path.join(CACHE_TTS_DIR, "edge_v2_%s.mp3" % k_cache)
-    if os.path.isfile(f_cache) and os.path.getsize(f_cache) > 800:
+    f_tu_cache = f_cache + ".tu.json"
+    if os.path.isfile(f_cache) and os.path.getsize(f_cache) > 800 and os.path.isfile(f_tu_cache):
         shutil.copyfile(f_cache, tep)
+        shutil.copyfile(f_tu_cache, tep + ".tu.json")
         return
     loi = None
     for lan in range(4):
         try:
-            c = edge_tts.Communicate(text, giong, rate=toc_do, pitch=cao_do, volume=am_luong)
-            await c.save(tep)
+            # v86: đọc kèm mốc TỪNG TỪ thật (WordBoundary: offset/duration đơn vị 100 ns) để đồng bộ cứng hình - tiếng
+            try:
+                c = edge_tts.Communicate(text, giong, rate=toc_do, pitch=cao_do, volume=am_luong, boundary="WordBoundary")
+            except TypeError:   # edge-tts cũ (< 7) không có tham số boundary: mặc định đã trả WordBoundary
+                c = edge_tts.Communicate(text, giong, rate=toc_do, pitch=cao_do, volume=am_luong)
+            tu = []
+            with open(tep, "wb") as f_am:
+                async for ch in c.stream():
+                    if ch.get("type") == "audio":
+                        f_am.write(ch["data"])
+                    elif ch.get("type") == "WordBoundary":
+                        tu.append([str(ch.get("text") or ""), round(ch["offset"] / 1e7, 4), round((ch["offset"] + ch["duration"]) / 1e7, 4)])
             if os.path.exists(tep) and os.path.getsize(tep) > 800:
+                with open(tep + ".tu.json", "w", encoding="utf8") as f_tu:
+                    json.dump(tu, f_tu, ensure_ascii=False)
                 try:
                     tmp_c = f_cache + ".tmp.%d" % os.getpid()
                     shutil.copyfile(tep, tmp_c)
                     os.replace(tmp_c, f_cache)
+                    shutil.copyfile(tep + ".tu.json", tmp_c)
+                    os.replace(tmp_c, f_tu_cache)
                 except Exception:
                     pass
                 return
@@ -335,6 +356,10 @@ def _gia_lap(text, tep):
     chay(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i",
           "sine=frequency=220:duration=%.2f" % giay, "-af", "volume=0.15",
           "-ac", "1", "-ar", "24000", "-c:a", "libmp3lame", "-b:a", "48k", tep])
+    ds = text.split()
+    buoc = giay / max(1, len(ds))
+    with open(tep + ".tu.json", "w", encoding="utf8") as f_tu:
+        json.dump([[w, round(k * buoc, 3), round((k + 0.85) * buoc, 3)] for k, w in enumerate(ds)], f_tu, ensure_ascii=False)
 
 
 def _gtts(text, tep, toc):
@@ -800,6 +825,109 @@ def cat_lang(tep_vao, tep_ra):
            "silenceremove=start_periods=1:start_threshold=-48dB:start_silence=0.03,areverse")
     codec = ["-c:a", "pcm_s16le"] if str(tep_ra).lower().endswith(".wav") else ["-c:a", "libmp3lame", "-b:a", "96k"]
     chay(["ffmpeg", "-y", "-loglevel", "error", "-i", tep_vao, "-af", loc] + codec + [tep_ra])
+
+
+def doc_tu_edge(tep):
+    """Mốc từng từ edge-tts đã lưu cạnh tệp âm thanh: [[chữ đọc, bắt đầu, kết thúc], ...] (giây) hoặc None."""
+    try:
+        with open(tep + ".tu.json", encoding="utf8") as f:
+            tu = json.load(f)
+        tu = [x for x in tu if isinstance(x, list) and len(x) == 3 and x[2] >= x[1] >= 0]
+        return tu or None
+    except Exception:
+        return None
+
+
+def cat_theo_tu(tep_vao, tep_ra, tu):
+    """Cắt đầu/cuối đoạn theo đúng mốc từ đầu/cuối (thay silenceremove: biết chính xác đã cắt bao nhiêu giây),
+    trả lại mốc từ đã dời về gốc tệp mới."""
+    bd = max(0.0, tu[0][1] - 0.04)
+    kt = tu[-1][2] + 0.15
+    chay(["ffmpeg", "-y", "-loglevel", "error", "-i", tep_vao, "-ss", "%.3f" % bd, "-to", "%.3f" % kt,
+          "-af", "aresample=44100,aformat=channel_layouts=mono", "-c:a", "pcm_s16le", tep_ra])
+    return [[w, round(a - bd, 4), round(b - bd, 4)] for w, a, b in tu]
+
+
+def _tok(s):
+    return re.findall(r"\w+", str(s).casefold())
+
+
+def can_tu_tho(doan_tho, tu_noi):
+    """Gán mốc THẬT cho từng từ GỐC của câu lời thoại (doan_tho.split(" ")) từ mốc các từ ĐÃ ĐỌC (tu_noi, chữ sau chuẩn hóa:
+    "SA" -> "ét a", số -> chữ...). So khớp chuỗi bằng difflib; từ không khớp nội suy theo độ dài giữa hai từ khớp kề nhau."""
+    goc = doan_tho.split(" ")
+    ky_vong, nguon = [], []
+    for i, w in enumerate(goc):
+        try:
+            doc = _tok(chuan_hoa_doc(w)) or _tok(w)
+        except Exception:
+            doc = _tok(w)
+        for t in doc:
+            ky_vong.append(t)
+            nguon.append(i)
+    thuc, thoi = [], []
+    for w, a, b in tu_noi:
+        ds = _tok(w) or ["_"]
+        for k, t in enumerate(ds):
+            thuc.append(t)
+            thoi.append((a + (b - a) * k / len(ds), a + (b - a) * (k + 1) / len(ds)))
+    gan = [[] for _ in goc]
+    for a, b, n in difflib.SequenceMatcher(None, ky_vong, thuc, autojunk=False).get_matching_blocks():
+        for k in range(n):
+            gan[nguon[a + k]].append(thoi[b + k])
+    dau, cuoi = tu_noi[0][1], tu_noi[-1][2]
+    moc = [(min(x[0] for x in g), max(x[1] for x in g)) if g else None for g in gan]
+    i = 0
+    while i < len(goc):
+        if moc[i] is not None:
+            i += 1
+            continue
+        j = i
+        while j < len(goc) and moc[j] is None:
+            j += 1
+        t0 = moc[i - 1][1] if i > 0 else dau
+        t1 = moc[j][0] if j < len(goc) else cuoi
+        t1 = max(t0, t1)
+        tong = float(sum(max(1, len(goc[k])) for k in range(i, j)))
+        t = t0
+        for k in range(i, j):
+            dt = (t1 - t0) * max(1, len(goc[k])) / tong
+            moc[k] = (t, t + dt)
+            t += dt
+        i = j
+    return [[w, round(a, 3), round(b, 3)] for w, (a, b) in zip(goc, moc)]
+
+
+def tim_cum_tu(cum, tu, tu_vi_tri=0):
+    """Tìm cụm chữ (nguyên văn lời thoại) trong danh sách từ có mốc của cảnh; trả (chỉ số từ đầu cụm, chỉ số sau cụm) hoặc None.
+    Tìm tiếp từ tu_vi_tri trước (giữ thứ tự đọc), không thấy mới tìm lại từ đầu."""
+    can = _tok(cum)
+    if not can:
+        return None
+    phang = []
+    for k, x in enumerate(tu):
+        for t in _tok(x["w"]):
+            phang.append((t, k))
+    for bat in (tu_vi_tri, 0):
+        for i in range(len(phang) - len(can) + 1):
+            if phang[i][1] < bat:
+                continue
+            if [q[0] for q in phang[i:i + len(can)]] == can:
+                return phang[i][1], phang[i + len(can) - 1][1] + 1
+    return None
+
+
+def moc_buoc_ve(buoc_ve, tu):
+    """Mốc vẽ từng nét theo "buoc_ve" kịch bản: [{"ve","khi_noi","t","khop"}] (t: giây tính từ đầu cảnh, lúc giọng đọc bắt đầu cụm)."""
+    kq, vt = [], 0
+    for b in buoc_ve if isinstance(buoc_ve, list) else []:
+        if not isinstance(b, dict) or not str(b.get("ve") or "").strip():
+            continue
+        tim = tim_cum_tu(str(b.get("khi_noi") or ""), tu, vt) if tu else None
+        if tim:
+            vt = tim[1]
+        kq.append({"ve": str(b["ve"]).strip(), "khi_noi": str(b.get("khi_noi") or ""), "t": tu[tim[0]]["bat"] if tim else None, "khop": bool(tim)})
+    return kq
 
 
 def ghep(cac_tep, dich):
@@ -1554,10 +1682,19 @@ def chuan_hoa_hinh_kich_ban(kb):
                 break
 
 
-def moc_cong_thuc(cum, cau, so_dong):
-    """Ước lượng đầu cụm nói theo vị trí từ trong từng đoạn phụ đề đã định thời."""
+def moc_cong_thuc(cum, cau, so_dong, tu=None):
+    """Mốc đầu cụm nói cho từng dòng công thức: dùng mốc TỪ THẬT (tu) khi có, không thì ước lượng theo vị trí từ trong phụ đề."""
     if not isinstance(cum, list) or not cum or len(cum) != so_dong:
         return None
+    if tu:
+        kq, vt = [], 0
+        for nhan in cum:
+            tim = tim_cum_tu(nhan, tu, vt) if isinstance(nhan, str) else None
+            if not tim or tim[0] < vt:
+                return None
+            kq.append(round(tu[tim[0]]["bat"], 3))
+            vt = tim[1]
+        return kq
     tu, moc = [], []
     for c in cau:
         ds = re.findall(r"\w+", c["text"].casefold())
@@ -1610,6 +1747,11 @@ def main():
     elif str(kb.get("gioi_tinh_giong") or "") == "nam":
         args.giong = "vi-VN-NamMinhNeural"
     print("Giọng của video này: Gemini %s (dự phòng edge %s)" % (args.giong_gemini, args.giong))
+    luong_hh = str(kb.get("luong") or "") == "hinh_hoc_thuan" or str(kb.get("mon") or "").upper() == "HINH_HOC"
+    if luong_hh and args.may_giong != "edge" and os.environ.get("HH_GIONG_GEMINI") != "1":
+        # Gemini TTS không trả mốc từng từ -> bài hình học dùng edge-tts (WordBoundary) để từng nét vẽ khớp đúng lời đọc
+        args.may_giong = "edge"
+        print("Luồng hình học thuần: dùng edge-tts có mốc từng từ (WordBoundary) để đồng bộ cứng nét vẽ với giọng đọc")
     # cảnh ghi "dung_ban_ve": bung lại vật/điểm/vùng từ bản vẽ chung kb.ban_ve (Apps Script nén để kịch bản nhiều cảnh vừa giới hạn gửi)
     bv = kb.get("ban_ve") if isinstance(kb.get("ban_ve"), dict) else None
     for idx_c, c in enumerate(kb.get("canh") or []):
@@ -1625,8 +1767,9 @@ def main():
                         if isinstance(d_item, dict):
                             d_item["buoc"] = min(4, 1 + ((idx_d + idx_c) % 4))
                     v["do"] = ds_do
-    minh_hoa_thuc_te(kb)
-    minh_hoa_chon_nhom(kb)
+    if not luong_hh:   # luồng hình học thuần: không bung vật đời sống / bản vẽ cảnh thật
+        minh_hoa_thuc_te(kb)
+        minh_hoa_chon_nhom(kb)
     chuan_hoa_hinh_kich_ban(kb)
     anh_sp = chuan_anh_san_pham(kb, args.public)
     de_bai_the = the_de_bai(kb)
@@ -1723,12 +1866,19 @@ def main():
                 do_dai = [tong * k / sum(ky_tu) for k in ky_tu]
                 gap_c = 0
                 vao_loc = gon
+                tu_doan = None
             else:
                 cac_tep_tho = gem_doan[i] if i in gem_doan else edge_tho[i]
                 cac_tep = []
+                tu_doan = []
                 for k, tho in enumerate(cac_tep_tho):
                     gon = os.path.join(tam_i, "g%03d.wav" % k)
-                    cat_lang(tho, gon)
+                    tu_tho = doc_tu_edge(tho) if i not in gem_doan else None
+                    if tu_tho:
+                        tu_doan.append(cat_theo_tu(tho, gon, tu_tho))
+                    else:
+                        cat_lang(tho, gon)
+                        tu_doan.append(None)
                     cac_tep.append(gon)
                 do_dai = [do_thoi_luong(t) for t in cac_tep]
                 ghep(cac_tep, tam_wav)
@@ -1740,7 +1890,7 @@ def main():
                   "highpass=f=75,treble=g=1.8:f=3600,acompressor=threshold=-14dB:ratio=1.6:attack=25:release=180,loudnorm=I=-15:TP=-1.2:LRA=13",
                   "-ar", "44100", "-c:a", "libmp3lame", "-b:a", "128k", dich_mp3])
             tong_am = do_thoi_luong(dich_mp3)
-            return ten, do_dai, tong_am, gap_c
+            return ten, do_dai, tong_am, gap_c, tu_doan
 
         with ThreadPoolExecutor(max_workers=min(4, max(1, len(chuan_hoa)))) as ex:
             for item, kq_am in zip(chuan_hoa, ex.map(xu_ly_am_canh, chuan_hoa)):
@@ -1749,17 +1899,30 @@ def main():
     shutil.rmtree(tam_gem, ignore_errors=True)
 
     for i, so, c, loi_thoai, noi_dung_tam, cac_doan in chuan_hoa:
-        ten, do_dai, tong_am, gap = am_thanh_kq[i]
+        ten, do_dai, tong_am, gap, tu_doan = am_thanh_kq[i]
         lead_c, tail_c = nghi_canh(canh, i)
         cau, t = [], lead_c
-        for d, dd in zip(cac_doan, do_dai):
+        tu_canh = []   # v86: mốc THẬT từng từ gốc của lời thoại (giây tính từ đầu cảnh) -> Manim vẽ đúng lúc nói
+        du_tu = bool(tu_doan) and all(tu_doan)
+        for k, (d, dd) in enumerate(zip(cac_doan, do_dai)):
             doan = chia_phu_de(d)
-            tong_ky_tu = float(sum(len(x) for x in doan))
-            t_doan = t
-            for x in doan:
-                dai_x = dd * len(x) / tong_ky_tu
-                cau.append({"text": x, "bat": round(t_doan, 3), "ket": round(t_doan + dai_x, 3)})
-                t_doan += dai_x
+            if du_tu:
+                moc = can_tu_tho(d, tu_doan[k])
+                for w, a, b in moc:
+                    tu_canh.append({"w": w, "bat": round(t + a, 3), "ket": round(t + b, 3)})
+                vt = 0
+                for x in doan:
+                    n = len(x.split(" "))
+                    seg = moc[vt:vt + n] or moc[-1:]
+                    vt += n
+                    cau.append({"text": x, "bat": round(t + seg[0][1], 3), "ket": round(t + seg[-1][2], 3)})
+            else:
+                tong_ky_tu = float(sum(len(x) for x in doan))
+                t_doan = t
+                for x in doan:
+                    dai_x = dd * len(x) / tong_ky_tu
+                    cau.append({"text": x, "bat": round(t_doan, 3), "ket": round(t_doan + dai_x, 3)})
+                    t_doan += dai_x
             t += dd + gap
 
         so_frame = max(int(round((lead_c + tong_am + tail_c) * FPS)), 2 * FPS)
@@ -1776,7 +1939,8 @@ def main():
             so_frame = max(so_frame, int(round(can * FPS)))
         mh = c.get("minh_hoa") or {}
         noi_dung = [chuan_don_vi(str(x)) for x in (c.get("noi_dung_man_hinh") or []) if str(x).strip()]
-        moc_loi = moc_cong_thuc(c.get("moc_loi"), cau, len(noi_dung))
+        moc_loi = moc_cong_thuc(c.get("moc_loi"), cau, len(noi_dung), tu_canh)
+        moc_ve = moc_buoc_ve(c.get("buoc_ve"), tu_canh) if c.get("buoc_ve") else []
         if moc_loi:
             so_frame = max(so_frame, math.ceil((moc_loi[-1] + 1.5) * FPS))
         canh_props.append({
@@ -1784,6 +1948,8 @@ def main():
             "loai": str(c.get("loai") or ""),
             "noiDung": noi_dung,
             **({"mocCongThuc": moc_loi} if moc_loi else {}),
+            **({"tu": tu_canh, "dongBo": "tu_that"} if tu_canh else {"dongBo": "uoc_luong"}),
+            **({"mocVe": moc_ve} if moc_ve else {}),
             **({"netToan": c["net_toan"]} if "net_toan" in c else {}),
             **({"moHinh3D": c["mo_hinh_3d"]} if "mo_hinh_3d" in c else {}),
             "minhHoa": {
@@ -1878,7 +2044,8 @@ def main():
         "nen": ds_nen[0] if ds_nen else None,
         "dsNen": ds_nen,
         "nenTuTao": nen_tu_tao,
-        **({"phongCanh": kb["cau_chuyen"]["phong_canh"]} if isinstance(kb.get("cau_chuyen"),dict) and kb["cau_chuyen"].get("phong_canh") else {}),
+        **({"phongCanh": kb["cau_chuyen"]["phong_canh"]} if not luong_hh and isinstance(kb.get("cau_chuyen"),dict) and kb["cau_chuyen"].get("phong_canh") else {}),
+        **({"luong": "hinh_hoc_thuan"} if luong_hh else {"luong": str(kb.get("luong") or "thuc_te_xac_suat")}),
         "thuongHieu": thuong_hieu,
         "outro": outro,
         "phongCach": pc,
