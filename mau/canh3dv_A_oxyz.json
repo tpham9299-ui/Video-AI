@@ -1,0 +1,42 @@
+{
+  "_ghi_chu": "Mẫu A (v90): Oxyz — 2 mặt cầu lưới kinh–vĩ tuyến + đường thẳng d + điểm M trượt trên d kéo theo IM, JM.",
+  "_khung_thu": [20, 66, 125],
+  "tongFrame": 135,
+  "fps": 30,
+  "thuongHieu": "Tư duy Toán",
+  "boCuc": {"anToanTikTok": true, "phuDe": "tat"},
+  "deGhim": [
+    {"id": "S1", "nhan": "(S_1): R = 2"},
+    {"id": "S2", "nhan": "(S_2): R = 1"},
+    {"id": "d", "nhan": "d"},
+    {"id": "IM", "nhan": "IM_{\\min} = ?", "mau": "hong"}
+  ],
+  "buoc": [
+    {"t": 0, "nhan": "Dựng hình", "tieu_de": "Hai mặt cầu trong không gian", "mau": "cyan", "du_kien": ["S1", "S2"],
+     "the": [{"loai": "cong_thuc", "dong": ["(S_1): x^2 + y^2 + z^2 = 4", "(S_2): (x - 3)^2 + (y - 1)^2 + (z - 1)^2 = 1"]}]},
+    {"t": 1.2, "nhan": "Đường thẳng", "tieu_de": "Đường thẳng d cắt ngang", "mau": "vang", "du_kien": ["d"],
+     "the": [{"loai": "cong_thuc", "dong": ["d: \\dfrac{x + 3}{4} = \\dfrac{y - 2}{-2} = \\dfrac{z - 3}{-1}"]}]},
+    {"t": 2.0, "nhan": "Điểm di động", "tieu_de": "Cho M chạy trên d", "mau": "hong", "du_kien": ["d", "IM"],
+     "the": [{"loai": "cong_thuc", "dong": ["M(-3 + 4t;\\ 2 - 2t;\\ 3 - t)", "IM^2 = (4t - 3)^2 + (2 - 2t)^2 + (3 - t)^2"]}]}
+  ],
+  "canh3dv": {
+    "phien_ban": 1,
+    "doi_tuong": [
+      {"id": "Ox", "loai": "vector", "tu": [0, 0, 0], "den": [3.2, 0, 0], "mau": "xam", "nhan": "x"},
+      {"id": "Oy", "loai": "vector", "tu": [0, 0, 0], "den": [0, 3.2, 0], "mau": "xam", "nhan": "y"},
+      {"id": "Oz", "loai": "vector", "tu": [0, 0, 0], "den": [0, 0, 3.2], "mau": "xam", "nhan": "z"},
+      {"id": "S1", "loai": "mat_cau", "tam": [0, 0, 0], "ban_kinh": 2, "mau": "cyan", "nhan": "(S_1)", "ten_dinh": ["I"]},
+      {"id": "S2", "loai": "mat_cau", "tam": [3, 1, 1], "ban_kinh": 1, "mau": "hong", "nhan": "(S_2)", "ten_dinh": ["J"], "luoi": [10, 5]},
+      {"id": "d", "loai": "doan_thang", "tu": [-3, 2, 3], "den": [5, -2, 1], "mau": "vang", "nhan": "d"},
+      {"id": "M", "loai": "diem", "tren": {"duong": "d", "t": 0.12}, "mau": "vang", "nhan": "M"},
+      {"id": "IM", "loai": "doan_thang", "tu": "I", "den": "M", "mau": "cyan"},
+      {"id": "JM", "loai": "doan_thang", "tu": "J", "den": "M", "mau": "hong"}
+    ],
+    "buoc": [
+      {"t": 0, "camera": [35, 20, 1], "hien": ["Ox", "Oy", "Oz", "S1", "S2"]},
+      {"t": 1.2, "hien": ["d"], "nhan_manh": ["d"]},
+      {"t": 2.0, "camera": [12, 28, 1], "hien": ["M", "IM", "JM"], "nhan_manh": ["M", "IM", "JM", "d"],
+       "hanh_dong": [{"loai": "truot_diem", "vat": "M", "t": 2.2, "d": 2.2, "tu": 0.12, "den": 0.78}]}
+    ]
+  }
+}

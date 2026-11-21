@@ -1,0 +1,51 @@
+{
+  "_ghi_chu": "Mẫu B (v90): khung cẩu 4 dây cáp, góc 60°, tách lực — góc nghiêng 3D rồi xoay nhìn thẳng từ trên xuống. Dựng thử: node scripts/thu_canh_3d_vector.mjs mau/canh3dv_B_cau_4cap.json",
+  "_khung_thu": [25, 70, 128],
+  "tongFrame": 135,
+  "fps": 30,
+  "thuongHieu": "Tư duy Toán",
+  "boCuc": {"anToanTikTok": true, "phuDe": "tat"},
+  "deGhim": [
+    {"id": "cap", "nhan": "4 CÁP"},
+    {"id": "goc", "nhan": "\\alpha = 60^\\circ"},
+    {"id": "F", "nhan": "F = 4500"},
+    {"id": "P", "nhan": "P = ?", "mau": "hong"}
+  ],
+  "buoc": [
+    {"t": 0, "nhan": "Dựng hình", "tieu_de": "Bốn dây cáp treo khung hàng", "mau": "cyan", "du_kien": ["cap"],
+     "the": [{"loai": "cong_thuc", "nhan": "Đề cho", "dong": ["EA = EB = EC = ED", "(EA, (ABCD)) = 60^\\circ"]}]},
+    {"t": 1.6, "nhan": "Phân tích lực", "tieu_de": "Tách một lực căng", "mau": "vang", "du_kien": ["goc", "F"],
+     "the": [{"loai": "cong_thuc", "dong": ["\\vec F_1 = \\vec F_{\\text{ngang}} + \\vec F_{\\text{đứng}}", "F_{\\text{đứng}} = F \\sin 60^\\circ"]}]},
+    {"t": 2.6, "nhan": "Nhìn từ trên", "tieu_de": "Phần ngang triệt tiêu nhau", "mau": "hong", "du_kien": ["cap", "F", "P"],
+     "the": [{"loai": "cong_thuc", "dong": ["\\vec F_1 + \\vec F_3 = \\vec 0", "4F \\sin 60^\\circ = P"]}]}
+  ],
+  "canh3dv": {
+    "phien_ban": 1,
+    "doi_tuong": [
+      {"id": "khung", "loai": "hinh_hop", "tam": [0, 0, 0.3], "kich_thuoc": [2.4, 2.4, 0.6], "mau": "cyan", "mo": 0.1, "ten_dinh": ["", "", "", "", "A", "B", "C", "D"]},
+      {"id": "E", "loai": "diem", "toa_do": [0, 0, 3.54], "mau": "vang", "nhan": "E"},
+      {"id": "O", "loai": "diem", "toa_do": [0, 0, 0.6], "mau": "trang", "nhan": "O"},
+      {"id": "EO", "loai": "doan_thang", "tu": "E", "den": "O", "mau": "xam", "net": "dut"},
+      {"id": "cap1", "loai": "doan_thang", "tu": "E", "den": "A", "mau": "vang"},
+      {"id": "cap2", "loai": "doan_thang", "tu": "E", "den": "B", "mau": "vang"},
+      {"id": "cap3", "loai": "doan_thang", "tu": "E", "den": "C", "mau": "vang"},
+      {"id": "cap4", "loai": "doan_thang", "tu": "E", "den": "D", "mau": "vang"},
+      {"id": "F1", "loai": "vector", "tu": "E", "den": [-0.54, -0.54, 2.217], "mau": "cyan", "nhan": "\\vec F_1"},
+      {"id": "F2", "loai": "vector", "tu": "E", "den": [0.54, -0.54, 2.217], "mau": "cyan", "nhan": "\\vec F_2"},
+      {"id": "F3", "loai": "vector", "tu": "E", "den": [0.54, 0.54, 2.217], "mau": "cyan", "nhan": "\\vec F_3"},
+      {"id": "F4", "loai": "vector", "tu": "E", "den": [-0.54, 0.54, 2.217], "mau": "cyan", "nhan": "\\vec F_4"},
+      {"id": "alpha", "loai": "goc", "dinh": "A", "canh": ["E", "O"], "nhan": "60^\\circ", "mau": "vang", "ban_kinh": 0.55}
+    ],
+    "buoc": [
+      {"t": 0, "camera": [32, 22, 1], "hien": ["khung", "E", "O", "EO", "cap1", "cap2", "cap3", "cap4"]},
+      {"t": 0.9, "hien": ["F1", "F2", "F3", "F4", "alpha"]},
+      {"t": 1.6, "nhan_manh": ["F1", "alpha"], "hanh_dong": [{"loai": "tach_vector", "vat": "F1", "t": 1.7, "d": 0.8}]},
+      {"t": 2.6, "camera": "tu_tren", "an": ["alpha"], "nhan_manh": ["F1", "F2", "F3", "F4"],
+       "hanh_dong": [
+         {"loai": "tach_vector", "vat": "F2", "t": 2.9, "d": 0.8, "thanh_phan": ["ngang"]},
+         {"loai": "tach_vector", "vat": "F3", "t": 2.9, "d": 0.8, "thanh_phan": ["ngang"]},
+         {"loai": "tach_vector", "vat": "F4", "t": 2.9, "d": 0.8, "thanh_phan": ["ngang"]}
+       ]}
+    ]
+  }
+}

@@ -1,0 +1,604 @@
+{
+ "_ghi_chu": "Mẫu C (v90): tấm bìa 6×6 nguyên vẹn -> 4 góc tô đỏ nét đứt (cắt cạnh x) rồi mờ đi -> gập 4 vạt thành hộp không nắp.",
+ "_khung_thu": [
+  12,
+  40,
+  90,
+  130
+ ],
+ "tongFrame": 135,
+ "fps": 30,
+ "thuongHieu": "Tư duy Toán",
+ "boCuc": {
+  "anToanTikTok": true,
+  "phuDe": "tat"
+ },
+ "deGhim": [
+  {
+   "id": "bia",
+   "nhan": "BÌA 6 × 6"
+  },
+  {
+   "id": "cat",
+   "nhan": "CẮT 4 GÓC x"
+  },
+  {
+   "id": "V",
+   "nhan": "V_{\\max} = ?",
+   "mau": "hong"
+  }
+ ],
+ "buoc": [
+  {
+   "t": 0,
+   "nhan": "Dựng hình",
+   "tieu_de": "Tấm bìa vuông cạnh 6",
+   "mau": "cyan",
+   "du_kien": [
+    "bia",
+    "cat"
+   ],
+   "the": [
+    {
+     "loai": "cong_thuc",
+     "dong": [
+      "\\text{Cắt 4 hình vuông cạnh } x",
+      "0 < x < 3"
+     ]
+    }
+   ]
+  },
+  {
+   "t": 2.0,
+   "nhan": "Gập hộp",
+   "tieu_de": "Gập bốn vạt thành hộp",
+   "mau": "vang",
+   "du_kien": [
+    "cat",
+    "V"
+   ],
+   "the": [
+    {
+     "loai": "cong_thuc",
+     "dong": [
+      "\\text{Đáy } (6 - 2x) \\times (6 - 2x),\\ \\text{cao } x",
+      "V = x(6 - 2x)^2"
+     ]
+    },
+    {
+     "loai": "casio",
+     "t": 3.1,
+     "nhan": "Bấm máy",
+     "phim": [
+      "MENU",
+      "8",
+      "x(6-2x)^2",
+      "="
+     ],
+     "ket_qua": "x = 1 \\Rightarrow V = 16"
+    }
+   ]
+  }
+ ],
+ "canh3dv": {
+  "phien_ban": 1,
+  "doi_tuong": [
+   {
+    "id": "day",
+    "loai": "da_giac",
+    "diem": [
+     [
+      -2,
+      -2,
+      0
+     ],
+     [
+      2,
+      -2,
+      0
+     ],
+     [
+      2,
+      2,
+      0
+     ],
+     [
+      -2,
+      2,
+      0
+     ]
+    ],
+    "mau": "cyan",
+    "mo": 0.14,
+    "nhan": "6 - 2x",
+    "nhan_canh": 0
+   },
+   {
+    "id": "vat_truoc",
+    "loai": "da_giac",
+    "diem": [
+     [
+      -2,
+      -3,
+      0
+     ],
+     [
+      2,
+      -3,
+      0
+     ],
+     [
+      2,
+      -2,
+      0
+     ],
+     [
+      -2,
+      -2,
+      0
+     ]
+    ],
+    "ban_le": [
+     [
+      -2,
+      -2,
+      0
+     ],
+     [
+      2,
+      -2,
+      0
+     ]
+    ],
+    "mau": "cyan",
+    "mo": 0.12
+   },
+   {
+    "id": "vat_sau",
+    "loai": "da_giac",
+    "diem": [
+     [
+      -2,
+      2,
+      0
+     ],
+     [
+      2,
+      2,
+      0
+     ],
+     [
+      2,
+      3,
+      0
+     ],
+     [
+      -2,
+      3,
+      0
+     ]
+    ],
+    "ban_le": [
+     [
+      -2,
+      2,
+      0
+     ],
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "mau": "cyan",
+    "mo": 0.12
+   },
+   {
+    "id": "vat_trai",
+    "loai": "da_giac",
+    "diem": [
+     [
+      -3,
+      -2,
+      0
+     ],
+     [
+      -2,
+      -2,
+      0
+     ],
+     [
+      -2,
+      2,
+      0
+     ],
+     [
+      -3,
+      2,
+      0
+     ]
+    ],
+    "ban_le": [
+     [
+      -2,
+      -2,
+      0
+     ],
+     [
+      -2,
+      2,
+      0
+     ]
+    ],
+    "mau": "cyan",
+    "mo": 0.12
+   },
+   {
+    "id": "vat_phai",
+    "loai": "da_giac",
+    "diem": [
+     [
+      2,
+      -2,
+      0
+     ],
+     [
+      3,
+      -2,
+      0
+     ],
+     [
+      3,
+      2,
+      0
+     ],
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "ban_le": [
+     [
+      2,
+      -2,
+      0
+     ],
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "mau": "cyan",
+    "mo": 0.12
+   },
+   {
+    "id": "goc1",
+    "loai": "da_giac",
+    "diem": [
+     [
+      -3,
+      -3,
+      0
+     ],
+     [
+      -2,
+      -3,
+      0
+     ],
+     [
+      -2,
+      -2,
+      0
+     ],
+     [
+      -3,
+      -2,
+      0
+     ]
+    ],
+    "mau": "cyan",
+    "mo": 0.12
+   },
+   {
+    "id": "goc2",
+    "loai": "da_giac",
+    "diem": [
+     [
+      2,
+      -3,
+      0
+     ],
+     [
+      3,
+      -3,
+      0
+     ],
+     [
+      3,
+      -2,
+      0
+     ],
+     [
+      2,
+      -2,
+      0
+     ]
+    ],
+    "mau": "cyan",
+    "mo": 0.12
+   },
+   {
+    "id": "goc3",
+    "loai": "da_giac",
+    "diem": [
+     [
+      2,
+      2,
+      0
+     ],
+     [
+      3,
+      2,
+      0
+     ],
+     [
+      3,
+      3,
+      0
+     ],
+     [
+      2,
+      3,
+      0
+     ]
+    ],
+    "mau": "cyan",
+    "mo": 0.12
+   },
+   {
+    "id": "goc4",
+    "loai": "da_giac",
+    "diem": [
+     [
+      -3,
+      2,
+      0
+     ],
+     [
+      -2,
+      2,
+      0
+     ],
+     [
+      -2,
+      3,
+      0
+     ],
+     [
+      -3,
+      3,
+      0
+     ]
+    ],
+    "mau": "cyan",
+    "mo": 0.12
+   },
+   {
+    "id": "cat1",
+    "loai": "da_giac",
+    "diem": [
+     [
+      -3,
+      -3,
+      0
+     ],
+     [
+      -2,
+      -3,
+      0
+     ],
+     [
+      -2,
+      -2,
+      0
+     ],
+     [
+      -3,
+      -2,
+      0
+     ]
+    ],
+    "mau": "hong",
+    "net": "dut",
+    "mo": 0.2,
+    "che": false,
+    "nhan": "x"
+   },
+   {
+    "id": "cat2",
+    "loai": "da_giac",
+    "diem": [
+     [
+      2,
+      -3,
+      0
+     ],
+     [
+      3,
+      -3,
+      0
+     ],
+     [
+      3,
+      -2,
+      0
+     ],
+     [
+      2,
+      -2,
+      0
+     ]
+    ],
+    "mau": "hong",
+    "net": "dut",
+    "mo": 0.2,
+    "che": false
+   },
+   {
+    "id": "cat3",
+    "loai": "da_giac",
+    "diem": [
+     [
+      2,
+      2,
+      0
+     ],
+     [
+      3,
+      2,
+      0
+     ],
+     [
+      3,
+      3,
+      0
+     ],
+     [
+      2,
+      3,
+      0
+     ]
+    ],
+    "mau": "hong",
+    "net": "dut",
+    "mo": 0.2,
+    "che": false
+   },
+   {
+    "id": "cat4",
+    "loai": "da_giac",
+    "diem": [
+     [
+      -3,
+      2,
+      0
+     ],
+     [
+      -2,
+      2,
+      0
+     ],
+     [
+      -2,
+      3,
+      0
+     ],
+     [
+      -3,
+      3,
+      0
+     ]
+    ],
+    "mau": "hong",
+    "net": "dut",
+    "mo": 0.2,
+    "che": false
+   }
+  ],
+  "buoc": [
+   {
+    "t": 0,
+    "camera": [
+     28,
+     50,
+     1
+    ],
+    "hien": [
+     "day",
+     "vat_truoc",
+     "vat_sau",
+     "vat_trai",
+     "vat_phai",
+     "goc1",
+     "goc2",
+     "goc3",
+     "goc4"
+    ]
+   },
+   {
+    "t": 0.9,
+    "an": [
+     "goc1",
+     "goc2",
+     "goc3",
+     "goc4"
+    ],
+    "hien": [
+     "cat1",
+     "cat2",
+     "cat3",
+     "cat4"
+    ],
+    "nhan_manh": [
+     "cat1",
+     "cat2",
+     "cat3",
+     "cat4"
+    ]
+   },
+   {
+    "t": 1.6,
+    "an": [
+     "cat1",
+     "cat2",
+     "cat3",
+     "cat4"
+    ]
+   },
+   {
+    "t": 2.0,
+    "camera": [
+     38,
+     30,
+     1.05
+    ],
+    "hanh_dong": [
+     {
+      "loai": "gap_mat",
+      "vat": "vat_truoc",
+      "t": 2.0,
+      "d": 2.0,
+      "tu": 0,
+      "den": 90
+     },
+     {
+      "loai": "gap_mat",
+      "vat": "vat_sau",
+      "t": 2.0,
+      "d": 2.0,
+      "tu": 0,
+      "den": 90
+     },
+     {
+      "loai": "gap_mat",
+      "vat": "vat_trai",
+      "t": 2.0,
+      "d": 2.0,
+      "tu": 0,
+      "den": 90
+     },
+     {
+      "loai": "gap_mat",
+      "vat": "vat_phai",
+      "t": 2.0,
+      "d": 2.0,
+      "tu": 0,
+      "den": 90
+     }
+    ]
+   }
+  ]
+ }
+}

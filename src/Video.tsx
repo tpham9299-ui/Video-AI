@@ -21,6 +21,7 @@ import {LogoTron, ManKetTuTao, moHuyHieu, ThuongHieu} from './ThuongHieu';
 import {ThanhTienDo} from './ThanhTienDo';
 import {KieuToan, NapPhongToan} from './Toan';
 import {Props, ThuongHieuProps} from './types';
+import {Khung4Tang} from './khung4tang/Khung4Tang';
 
 // Chớp sáng ở khung hình đầu tiên: cắt ngang thói quen lướt của người xem.
 const ChopSang: React.FC = () => {
@@ -102,7 +103,11 @@ function taoAmLuongNhac(props: Props) {
 }
 
 // Video có ảnh bìa ở khung hình đầu: khung 0 là ảnh bìa, toàn bộ nội dung lùi 1 khung (1/30 giây, mắt không nhận ra).
-export const Video: React.FC<Props> = (props) => {
+// v90: props có boCuc '4tang' + khung4tang -> khung 4 tầng (sân khấu 3D Vector); còn lại giữ nguyên đường dựng cũ.
+export const Video: React.FC<Props> = (props) =>
+  props.boCuc === '4tang' && props.khung4tang ? <Khung4Tang {...props.khung4tang} /> : <VideoCu {...props} />;
+
+const VideoCu: React.FC<Props> = (props) => {
   if (props.anhBiaDau) {
     return (
       <AbsoluteFill style={{background: '#000'}}>
