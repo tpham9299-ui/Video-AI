@@ -6,8 +6,8 @@ import {Img, staticFile} from 'remotion';
 import {FONT, FONT_DAM, BONG_CHU, vienChu, laMoi, GIAO_DIEN} from '../theme';
 import {GachTay} from '../dong/DiemNhan';
 import {CoChuSan} from '../dong/KhongGian';
-import {Toan} from '../Toan';
-import {texSangChu} from '../chu';
+import {HopVua, Toan} from '../Toan';
+import {chuanDauCau, inHoaGiuToan, texSangChu} from '../chu';
 import {NguoiCuDong} from './NguoiCuDong';
 import {bamChuoi, easeInOut, easeOut, kep, lerp, nay, NEN_VAT, NEN_VAT_2, neon, ngauNhien, popOut, tienDo, VONG_MAU} from './donghieu';
 import {Vat} from './dulieu';
@@ -15,6 +15,7 @@ import {boCucDanhSach, cotThe, kichBanTron, kichThe, TrangThai} from './trangtha
 import {Goc3D} from './chieu3d';
 import {DoThi, HinhHoc} from './hinhhoc';
 import {HinhTuDo} from './hinhtudo';
+import {BangBienThien} from './BangBienThien';
 import {Cau, Cay, KhoiHop, Thang, ToaNha, Tru, Xe} from './vat3d';
 
 const phatSang = (c: string, r = 10) => `drop-shadow(0 0 ${r}px ${c}) drop-shadow(0 0 ${Math.max(1, r / 5)}px ${c})`;
@@ -845,7 +846,7 @@ const Banh: Ve = (v, st) => {
 /* ---------------- NHÃN NEON (chữ hai màu, nghiêng nhẹ) ---------------- */
 // nhãn neon: ký hiệu toán (u_n, S_n = 260, \frac...) hiện bằng công thức thật (không còn "S_n" thô);
 // chữ dài thì XUỐNG DÒNG thay vì thu nhỏ đến mức không đọc được.
-export const laToanNhan = (s: string) => /[_^\\]|\d\s*[=+×·*/]\s*\d|^\s*[A-Za-z](_\{?\w+\}?)?\s*=/.test(s);
+export const laToanNhan = (s: string) => /[_^\\]|\d\s*[=+×·*/]\s*\d|^\s*[A-Za-z](_\{?\w+\}?)?\s*=|^\s*[A-Za-z]'*\([a-z]\)\s*=/.test(s);   // v89: "V'(x) = 0" là công thức
 // chữ thường trong nhãn toán (KaTeX bỏ dấu cách): bọc từng từ có chữ cái tiếng Việt / từ dài vào \text{} (tránh bọc lại nếu đã có \text{ hoặc ngoặc TeX)
 const texNhan = (s: string) => /\\(?:text|mathrm|textbf|operatorname|mbox)\s*\{|[{}]/.test(s) ? s : s.split(/\s+/).filter(Boolean).map((w) => (/[À-ỹà-ỹ]/.test(w) || /^[A-Za-z]{3,}[,.:]?$/.test(w) ? `\\text{${w}}` : w)).join('\\ ');
 export const NhanNeon: React.FC<{chu: string; tuKhoa: string; mau: string; mauNhan: string; co?: number; xoay?: number}> = ({chu, tuKhoa, mau, mauNhan, co = 44, xoay = 0}) => {
@@ -1006,34 +1007,40 @@ const DanhSach: Ve = (v, st) => {
     <div style={{position: 'relative', width: b.W, boxSizing: 'border-box', borderRadius: 28, background: 'linear-gradient(160deg, rgba(16,40,44,0.94), rgba(6,16,20,0.94))', border: `3px solid ${nhan}aa`,
       boxShadow: `0 20px 60px rgba(0,0,0,0.55), 0 0 26px ${nhan}44, inset 0 0 30px ${nhan}14`, padding: b.pad, fontFamily: FONT_DAM, color: '#fff', textAlign: 'left'}}>
       {st.noiDung ? (
-        <div style={{display: 'flex', alignItems: 'center', gap: 12, fontWeight: 900, fontSize: b.coTieuDe, color: nhan, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10, textShadow: `0 0 14px ${nhan}88`}}>
+        <div style={{display: 'flex', alignItems: 'center', gap: 12, fontWeight: 900, fontSize: b.coTieuDe, color: nhan, letterSpacing: 1, marginBottom: 10, textShadow: `0 0 14px ${nhan}88`}}>
           <span style={{width: 10, height: b.coTieuDe * 0.9, borderRadius: 5, background: nhan, boxShadow: `0 0 10px ${nhan}`, flexShrink: 0}} />
-          {tc(st.noiDung)}
+          {inHoaGiuToan(chuanDauCau(tc(st.noiDung)))}
         </div>
       ) : null}
+      <HopVua khoa={v.ds.join('|')}>
       {v.ds.map((d, k) => {
-        const mocDong = st.tb ? st.tb(k + 1) : st.ta + k * 0.75;
+        // v89: có mốc lời giảng của từng dòng thì hiện đúng lúc đó (không hiện sẵn kết quả của bước khi chưa giảng tới)
+        const mocDong = v.mocDong[k] !== undefined ? v.mocDong[k] : st.tb ? st.tb(k + 1) : st.ta + k * 0.75;
         const a = kep((st.t - Math.max(st.ta, mocDong)) / 0.45);
         const c = st.chon.get(k + 1);
         const l = st.loai.get(k + 1) || 0;
         const quet = c ? easeOut(c.p) : 0;
         const mauChon = c ? (c.mau === 'xanh_la' ? '#3BF29A' : c.mau === 'do' ? '#FF5C61' : '#FFD54A') : nhan;
         return (
-          <div key={k} style={{position: 'relative', display: 'flex', alignItems: 'center', gap: 18, padding: '12px 14px', borderRadius: 16, marginTop: 8, overflow: 'hidden',
+          <div key={k} style={{position: 'relative', display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start', textAlign: 'left', gap: 18, padding: '12px 14px', borderRadius: 16, marginTop: 8,
             opacity: kep(a * 2) * (1 - 0.6 * l), transform: `translateX(${(1 - easeOut(a)) * -70}px)`,
             background: 'rgba(255,255,255,0.045)', border: '1px solid rgba(255,255,255,0.08)'}}>
             <div style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: `${quet * 100}%`, background: `linear-gradient(90deg, ${mauChon}55, ${mauChon}22)`, borderRadius: 16}} />
             {c ? <div style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, background: mauChon, boxShadow: `0 0 12px ${mauChon}`, opacity: quet}} /> : null}
             <div style={{position: 'relative', flexShrink: 0, width: b.huy, height: b.huy, borderRadius: '50%', border: `3px solid ${c ? mauChon : nhan}`, background: 'rgba(0,0,0,0.35)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: b.huy * 0.5, color: c ? mauChon : nhan, boxShadow: `0 0 12px ${c ? mauChon : nhan}66`}}>{k + 1}</div>
-            <div style={{position: 'relative', flex: 1, fontWeight: 800, fontSize: b.co, lineHeight: 1.22, textShadow: '0 2px 8px rgba(0,0,0,0.6)'}}>
-              {laToanNhan(d) ? <Toan tex={texNhan(d)} size={b.co} color="#ffffff" maxWidth={b.W - b.pad * 2 - b.huy - 90} /> : d}
-              {l > 0 ? <span style={{position: 'absolute', left: -8, right: -8, top: '18%', bottom: '18%'}}><GachTay w={0} h={0} p={l} /></span> : null}
+            <div style={{position: 'relative', flex: 1, minWidth: 0, alignSelf: 'center', textAlign: 'left', fontWeight: 700, fontSize: `calc(${b.co}px * var(--k, 1))`, lineHeight: 1.22, textShadow: '0 2px 8px rgba(0,0,0,0.6)', fontVariantNumeric: 'tabular-nums'}}>
+              {/* nét gạch bám đúng bề rộng chữ (không kéo dài tới mép hàng) */}
+              <span style={{position: 'relative', display: 'inline-block', maxWidth: '100%'}}>
+                {laToanNhan(d) ? <Toan tex={texNhan(d)} size={b.co} color="#ffffff" maxWidth={b.rongChu} can="trai" /> : chuanDauCau(d)}
+                {l > 0 ? <span style={{position: 'absolute', left: -8, right: -8, top: '18%', bottom: '18%'}}><GachTay w={0} h={0} p={l} /></span> : null}
+              </span>
             </div>
             {c ? <DauTich p={c.p} mau={mauChon} co={44} style={{position: 'relative', flexShrink: 0}} /> : <div style={{width: 44, flexShrink: 0}} />}
           </div>
         );
       })}
+      </HopVua>
     </div>
   );
 };
@@ -1095,6 +1102,7 @@ export const VE_VAT: Partial<Record<Vat['loai'], Ve>> = {
   cay: (v, st, f) => <Cay v={v} st={st} frame={f} />, thang: (v, st) => <Thang v={v} st={st} />,
   hinh_hoc: (v, st) => <HinhHoc v={v} st={st} />, do_thi: (v, st) => <DoThi v={v} st={st} />,
   hinh_tu_do: (v, st) => <HinhTuDo v={v} st={st} />,
+  bang_bien_thien: (v, st) => <BangBienThien v={v} st={st} />,
 };
 
 // mũi tên cong nối hai điểm (pixel trên sân khấu), vẽ dần

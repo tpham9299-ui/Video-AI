@@ -27,6 +27,8 @@ export const LOAI_VAT = [
   'khoi_hop', 'tru', 'non', 'cau', 'toa_nha', 'xe', 'cay', 'thang', 'hinh_hoc', 'do_thi',
   // hình tự do: vẽ đúng hình của đề bằng các nét (đa giác, đường, tròn, cung, SVG, fractal, đường cong tham số, nhân bản)
   'hinh_tu_do',
+  // v89: bảng biến thiên chuẩn SGK (x / f'(x) / f(x))
+  'bang_bien_thien',
 ] as const;
 export type LoaiVat = (typeof LOAI_VAT)[number];
 
@@ -103,6 +105,9 @@ export type Vat = {
   ham: string; // do_thi: biểu thức theo x, ví dụ "3/sin(x)+3/cos(x)"
   xTu: number; xDen: number; yTu: number; yDen: number; // do_thi: khoảng vẽ (yTu = yDen = 0 thì tự tính)
   danhDau: number[]; // do_thi: các giá trị x cần đánh dấu (cực tiểu, nghiệm...)
+  mocHienDiem: number | null; // v89 do_thi: giây hiện tọa độ điểm đánh dấu (null = như cũ, -1 = giữ dấu "?" chống lộ đáp án)
+  bbtMoc: string[]; bbtDau: string[]; bbtGiaTri: string[]; bbtBien: string; bbtHam: string; // v89 bang_bien_thien
+  mocDong: number[]; // v89 danh_sach: giây hiện từng dòng (đúng lúc lời giảng nói tới), rỗng = chia theo bước
   nhanTruc: string[]; // do_thi: tên trục ["x", "y"]
   gocNghieng: number; // thang: góc với mặt đất (độ)
   soTang: number; // toa_nha: số tầng
@@ -166,7 +171,7 @@ function vat(raw: Record<string, unknown>, i: number): Vat | null {
     co: so(raw.co, 1, 0.4, 2.5),
     mau: tenMau(raw.mau),
     nhan: chuDon(raw.nhan, 36),
-    noiDung: ['nhan', 'chu', 'hinh_hoc'].includes(loai) ? chu(raw.noi_dung, loai === 'chu' ? 60 : 48) : chuDon(raw.noi_dung, 48),
+    noiDung: ['nhan', 'chu', 'hinh_hoc', 'do_thi', 'bang_bien_thien'].includes(loai) ? chu(raw.noi_dung, loai === 'chu' ? 60 : 48) : chuDon(raw.noi_dung, 48),
     tuKhoa: chuDon(raw.tu_khoa, 30),
     soLuong: Math.round(so(raw.so_luong, loai === 'cua' ? 3 : loai === 'banh' ? 8 : loai === 'luoi_o' ? 36 : ds.length || 1, 1, mac)),
     giaTri: loai === 'do_thi' ? so(raw.gia_tri, NaN, -1e6, 1e6) : so(raw.gia_tri, loai === 'so_dem' ? 10 : 0.5, 0, loai === 'so_dem' ? 1e6 : 1),
@@ -198,6 +203,13 @@ function vat(raw: Record<string, unknown>, i: number): Vat | null {
     yTu: so(raw.y_tu, 0, -1e6, 1e6),
     yDen: so(raw.y_den, 0, -1e6, 1e6),
     danhDau: laMang(raw.danh_dau) ? raw.danh_dau.slice(0, 4).map((x) => so(x, 0, -1e4, 1e4)) : [],
+    mocHienDiem: typeof raw.moc_hien_diem === 'number' && isFinite(raw.moc_hien_diem) ? raw.moc_hien_diem : null,
+    bbtMoc: raw.loai === 'bang_bien_thien' && laMang(raw.moc) ? raw.moc.slice(0, 6).map((x) => chu(x, 16)) : [],
+    bbtDau: raw.loai === 'bang_bien_thien' && laMang(raw.dau) ? raw.dau.slice(0, 5).map((x) => chu(x, 2)) : [],
+    bbtGiaTri: raw.loai === 'bang_bien_thien' && laMang(raw.gia_tri) ? raw.gia_tri.slice(0, 6).map((x) => chu(x, 16)) : [],
+    bbtBien: raw.loai === 'bang_bien_thien' ? chu(raw.bien || 'x', 4) : 'x',
+    bbtHam: raw.loai === 'bang_bien_thien' ? chu(raw.ham || 'f', 4) : 'f',
+    mocDong: laMang(raw.moc_dong) ? raw.moc_dong.map((x) => so(x, 0, -1, 600)) : [],
     nhanTruc: laMang(raw.nhan_truc) ? raw.nhan_truc.slice(0, 2).map((x) => chu(x, 12)) : ['x', 'y'],
     gocNghieng: so(raw.goc_nghieng, 55, 5, 85),
     soTang: Math.round(so(raw.so_tang, 6, 1, 30)),

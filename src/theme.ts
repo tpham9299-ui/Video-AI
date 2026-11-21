@@ -1,10 +1,13 @@
-// Phông chữ ĐÓNG GÓI SẴN trong public/fonts (không tải từ Google Fonts nên không thể lỗi mạng/lỗi tên phông).
-// Thứ tự ưu tiên: phông riêng của bạn (tuy_chon-*.ttf, nếu có) > Liberation Sans (chữ, số, biến) > DejaVu Sans (ký hiệu toán) > phông hệ thống.
-// Be Vietnam Pro (OFL): phông thiết kế riêng cho tiếng Việt, nét đậm mạnh, hợp tiêu đề và phụ đề TikTok.
-export const FONT = '"VietTuyChon", "VietNoi", "VietSans", "VietSym", "Liberation Sans", "DejaVu Sans", sans-serif';
-// Phụ đề, nhãn và văn bản dùng họ nội dung. Tiêu đề trên hình dùng họ riêng.
+// v89: MỘT HỌ CHỮ DUY NHẤT cho toàn video = Be Vietnam Pro (đóng gói trong public/fonts, nạp xong mới chụp khung).
+// Phân cấp chỉ bằng độ đậm (900 tiêu đề, 700-800 nhấn/phụ đề, 500-600 nội dung) và thang cỡ CO_CHU.
+// DejaVu Sans chỉ là dự phòng cho vài ký hiệu Be Vietnam Pro không có (⋮ ⇒ ∈ ...), không bao giờ là phông chính.
+export const FONT = '"VietNoi", "VietSym", "DejaVu Sans", sans-serif';
 export const FONT_DAM = FONT;
-export const FONT_TIEU_DE = '"VietTieuDeRieng", "VietTieuDe", ' + FONT;
+export const FONT_TIEU_DE = FONT;
+// Thang cỡ chữ cố định (px, khung 1080 rộng). Mọi thành phần chọn một bậc, không tự co từng dòng.
+export const CO_CHU = {tieuDe: [76, 66, 58], tieuDeHop: 32, noiDung: 40, phuDe: 56, nhan: 32, ghiChu: 28} as const;
+// số liệu/bộ đếm/bảng: chữ số cùng bề rộng -> không nhảy khi đổi số
+export const SO_DEU: {fontVariantNumeric: 'tabular-nums'} = {fontVariantNumeric: 'tabular-nums'};
 // Chữ kiểu "sticker" TikTok: viền tối dày + bóng đổ khối 3D để chữ nổi trên nền nhiều hình ảnh.
 export const BONG_CHU = '0 3px 0 rgba(4,12,12,0.95), 0 6px 0 rgba(4,12,12,0.6), 0 10px 22px rgba(0,0,0,0.55)';
 export const vienChu = (co: number) => `${Math.max(2, co * 0.07).toFixed(1)}px rgba(4,12,12,0.95)`;

@@ -516,7 +516,7 @@ function goiYTuSoLieu_() {
 
 /* ===================== 3. LUÂN PHIÊN KIỂU MỞ ĐẦU ===================== */
 
-var KIEU_HOOK_NC_ = ['sai_lam', 'thach_thuc', 'bat_ngo', 'ket_qua_truoc', 'cau_hoi'];
+var KIEU_HOOK_NC_ = ['sai_lam', 'thach_thuc', 'bat_ngo', 'cau_hoi'];   // v89: bỏ 'ket_qua_truoc' (lộ đáp án)
 function chonKieuHook_() {
   if (chNC_('THU_HOOK').toUpperCase() === 'TAT') return '';
   var ds = docTK_().filter(function (r) { return Number(r.luot_xem) > 0 && KIEU_HOOK_NC_.indexOf(r.hook_kieu) >= 0; });

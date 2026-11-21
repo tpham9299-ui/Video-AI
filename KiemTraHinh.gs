@@ -8,7 +8,7 @@
 
 var LOAI_VAT_ = ['canh_that', 'nguoi', 'the', 'the_bai', 'xuc_xac', 'dong_xu', 'hop_bi', 'tui', 'hop_qua', 'dong_ho', 'dien_thoai', 'bong_bay',
   'dong_ho_do', 'bieu_do_cot', 'thanh', 'vong_quay', 'cua', 'banh', 'nhan', 'chu', 'so_dem', 'mui_ten', 'bieu_tuong', 'luoi_o', 'danh_sach', 'ban_tron', 'anh_that',
-  'khoi_hop', 'tru', 'non', 'cau', 'toa_nha', 'xe', 'cay', 'thang', 'hinh_hoc', 'do_thi', 'hinh_tu_do'];
+  'khoi_hop', 'tru', 'non', 'cau', 'toa_nha', 'xe', 'cay', 'thang', 'hinh_hoc', 'do_thi', 'hinh_tu_do', 'bang_bien_thien'];
 var VAT_3D_ = ['khoi_hop', 'tru', 'non', 'cau', 'toa_nha', 'xe', 'cay', 'thang', 'xuc_xac', 'hop_bi', 'hop_qua', 'cua'];   // vật 3D thật (cảnh đời thực)
 var VAT_MO_HINH_ = ['hinh_hoc', 'do_thi', 'hinh_tu_do', 'canh_that'];   // canh_that: cảnh thực tế tự dựng cũng là hình vẽ của đề
 var TU_VAT_3D_ = {
@@ -724,7 +724,7 @@ function kiemTraMinhHoa_(mh, so, idCu) {
   return '';
 }
 
-var HOOK_KIEU_ = ['sai_lam', 'thach_thuc', 'bat_ngo', 'ket_qua_truoc', 'cau_hoi'];
+var HOOK_KIEU_ = ['sai_lam', 'thach_thuc', 'bat_ngo', 'cau_hoi'];   // v89: bỏ 'ket_qua_truoc' (lộ đáp án ngay câu đầu)
 var CAM_XUC_ = ['ngac_nhien', 'nghi', 'boi_roi', 'y_tuong', 'thao_tac', 'vui', 'tu_tin'];
 
 function demTu_(t) { return String(t || '').trim().split(/\s+/).filter(Boolean).length; }
@@ -746,6 +746,53 @@ function kiemTraHook_(kb) {
   if (choChao) loiDau = loiDau.replace(/^\s*(xin\s+)?chào\s+(bạn|cả nhà)\s*[!,.]?\s*/i, '');   // cho phép "Chào bạn!" rồi vào hook ngay
   if (/^\s*(các bạn|mọi người|hôm nay|xin chào|chào|hello|hi\b)/i.test(loiDau) || /^\s*(các bạn|mọi người|hôm nay)/i.test(kb.hook_chu)) return 'HOOK_YEU: hook không được mở bằng lời chào hay "hôm nay", "các bạn", "mọi người". Hãy mở bằng mâu thuẫn, tình huống hoặc câu hỏi cụ thể.';
   if (/\d+\s*%/.test(kb.hook_chu + ' ' + c1.loi_thoai)) return 'HOOK_BIA_SO_LIEU: không bịa số liệu thống kê (ví dụ "90% học sinh sai"); dùng "rất nhiều bạn", "dễ sai".';
+  var lo = loHookDapAn_(kb);
+  if (lo) return lo;
+  var pa = tieuDePhienAm_(kb);
+  if (pa) return pa;
+  return '';
+}
+
+// v89 CHỐNG LỘ ĐÁP ÁN: đáp số (không có sẵn trong đề) không được xuất hiện ở hook / tiêu đề / ảnh bìa / lời cảnh 1.
+function loHookDapAn_(kb) {
+  var dap = String(kb.dap_an_cuoi || kb.dap_an || '');
+  if (!dap) return '';
+  var de = [].concat(kb.de_cho || [], kb.du_kien || [], [kb.can_tim || '']).join(' ');
+  var mau = [];
+  var phanSo = dap.match(/(\d+)\s*\/\s*(\d+)|frac\{(\d+)\}\{(\d+)\}/);
+  if (phanSo) {
+    var tu = phanSo[1] || phanSo[3], mauSo = phanSo[2] || phanSo[4];
+    mau.push(new RegExp('(^|[^\\d])' + tu + '\\s*/\\s*' + mauSo + '(?!\\d)'));
+    mau.push(new RegExp('frac\\{' + tu + '\\}\\{' + mauSo + '\\}'));
+    mau.push(new RegExp(soThanhChu_(Number(tu)) + '\\s+phần\\s+' + soThanhChu_(Number(mauSo)), 'i'));
+  } else {
+    (dap.match(/\d+(?:[.,]\d+)?/g) || []).forEach(function (so) {
+      var n = Number(so.replace(',', '.'));
+      if (!isFinite(n) || n < 2) return;                                     // 0, 1 quá phổ biến
+      var reSo = '(^|[^\\d.,])' + so.replace(/[.,]/, '[.,]') + '(?![\\d])';
+      if (new RegExp(reSo).test(de)) return;                                // số có sẵn trong đề
+      mau.push(new RegExp(reSo));
+      if (Math.floor(n) === n && n < 1000000) mau.push(new RegExp('(^|\\s)' + soThanhChu_(n) + '(?=\\s|$|[,.!?])', 'i'));
+    });
+  }
+  if (!mau.length) return '';
+  var o = {hook: kb.hook, hook_chu: kb.hook_chu, tieu_de_bia: kb.tieu_de_bia, tieu_de: kb.tieu_de, chu_de_ngan: kb.chu_de_ngan,
+    hook_ung_vien: (kb.hook_ung_vien || []).join(' | '), 'loi_thoai cảnh 1': kb.canh && kb.canh[0] ? kb.canh[0].loi_thoai : ''};
+  for (var k in o) {
+    var v = String(o[k] || '');
+    for (var i = 0; i < mau.length; i++) if (mau[i].test(v)) return 'HOOK_LO_DAP_AN: "' + k + '" đang nêu đáp số (' + dap + '). Mở bài phải là câu hỏi gợi tò mò (ví dụ "P(A ∩ B) = ?", "r bằng bao nhiêu thì rẻ nhất?"), không nói trước kết quả.';
+  }
+  return '';
+}
+
+// v89: tiêu đề cảnh không viết phiên âm ("V phẩy bằng zero", "mười cm", "năm mươi tư") và không mở đầu bằng dấu câu.
+function tieuDePhienAm_(kb) {
+  var re = /(^|\s)(zero|phẩy|xăng-ti-mét|xen-ti-mét|mươi|một phần|hai phần|ba phần)(?=\s|$)|(^|\s)(một|hai|ba|bốn|năm|sáu|bảy|tám|chín|mười)\s+(cm|m|mét|độ)(?=\s|$)/i;
+  for (var i = 0; i < (kb.canh || []).length; i++) {
+    var t = String(kb.canh[i].tieu_de_canh || '');
+    if (re.test(t)) return 'TIEU_DE_PHIEN_AM: tiêu đề cảnh ' + (i + 1) + ' "' + t + '" viết phiên âm; viết kiểu toán: "V\'(x) = 0", "10 cm", "54π m³", "1/4".';
+    if (/^\s*[:,;?!]/.test(t)) return 'TIEU_DE_DAU_CAU: tiêu đề cảnh ' + (i + 1) + ' "' + t + '" bắt đầu bằng dấu câu.';
+  }
   return '';
 }
 

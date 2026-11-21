@@ -102,6 +102,17 @@ export const ManKetChuyenNghiep: React.FC<{th: ThuongHieuProps; baiHoc: string[]
         </div>
       ) : null}
 
+      {/* v89: video đã có cảnh chốt kiến thức -> màn kết chỉ nhắc ĐÁP ÁN (một lần, đủ đơn vị) + kênh, không lặp lại các gạch đầu dòng */}
+      {!coBaiHoc && dapAn ? (
+        <div style={{position: 'absolute', left: 60, right: 60, top: 360, display: 'flex', justifyContent: 'center'}}>
+          <Vao tu={2}>
+            <div style={{display: 'flex', alignItems: 'center', gap: 22, padding: '18px 38px', borderRadius: 36, border: `3px solid ${XANH}`, background: 'linear-gradient(135deg, rgba(59,242,154,0.2), rgba(16,185,129,0.08))', boxShadow: `0 0 30px ${XANH}44`}}>
+              <span style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: 34, color: XANH}}>Đáp án</span>
+              <Toan tex={/^\s*-?\d+(?:\.\d+)?\s*\/\s*-?\d+(?:\.\d+)?\s*$/.test(dapAn) ? `\\frac{${dapAn.split('/')[0].trim()}}{${dapAn.split('/')[1].trim()}}` : dapAn} size={60} color="#fff" />
+            </div>
+          </Vao>
+        </div>
+      ) : null}
       {/* tầng kênh */}
       <div style={{position: 'absolute', left: 0, right: 0, top: coBaiHoc ? 1135 : 620, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18}}>
         {!ten && !th.logo ? (

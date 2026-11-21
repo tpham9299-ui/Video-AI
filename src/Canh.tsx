@@ -26,6 +26,7 @@ import {tinhGoc3D} from './sankhau/trangthai';
 import {nhanCanh, TieuDeCanh} from './TieuDeCanh';
 import {phaCua, ThanhBuoc} from './ThanhBuoc';
 import {chuTrenMau, FONT, FONT_TIEU_DE, GIAO_DIEN, laMoi, MAU} from './theme';
+import {chuanTieuDe as chuanKyHieuTieuDe} from './chu';
 import {Toan} from './Toan';
 import {VuaKhung} from './VuaKhung';
 import {boCucTheDe, coTheDe, DeBai, TheDeBai} from './TheDeBai';
@@ -37,14 +38,14 @@ export type HookThongTin = {chu: string; kieu: string; nhanManh: string[]};
 // Dữ liệu sân khấu của một cảnh, đã nối tiếp các cảnh trước nếu cảnh đó "giu_san_khau".
 // Sân khấu dự phòng: hình của cảnh hỏng/thiếu (đề lạ, AI viết sai dạng) -> nhãn neon lớn ghi tiêu đề cảnh, không để trống.
 function sanKhauDuPhong(c: CanhProps): DuLieuSanKhau | null {
-  const chu = (c.tieuDeCanh || c.chuThich[0] || '').trim();
+  const chu = chuanTieuDe(c.tieuDeCanh || c.chuThich[0] || '');   // v89: nhãn dự phòng cũng bỏ dấu câu lẻ / phiên âm
   if (!chu) return null;
   return hopLeSanKhau({vat: [{id: 'du_phong', loai: 'nhan', x: 50, y: 50, noi_dung: chu.slice(0, 40), tu_khoa: c.tuKhoa, mau: 'xanh_la', buoc: 1}], hanh_dong: [{buoc: 2, vat: 'du_phong', kieu: 'sang'}]});
 }
 
 // Tiêu đề cảnh viết hoa kiểu "Mô Hình Hóa Thể Tích" -> "Mô hình hóa thể tích" (đồng nhất kiểu chữ giữa các video).
 export function chuanTieuDe(s?: string): string {
-  const chu = (s || '').trim();
+  const chu = chuanKyHieuTieuDe(s || '');   // v89: dấu câu lẻ + tiêu đề phiên âm -> ký hiệu toán
   const laHoa = (c: string) => c !== c.toLowerCase() && c === c.toUpperCase();
   const tu = chu.split(/\s+/).filter((w) => w.length > 1 && /\p{L}/u.test(w[0]));
   const hoa = tu.filter((w) => laHoa(w[0]) && !laHoa(w[1])).length;
@@ -169,7 +170,16 @@ export const Canh: React.FC<{
   const giayCanh = (canh.soFrame - (canh.leadFrame || 0)) / fps;
   const nhipToiDa = nDong > 1 ? (giayCanh - treCT - 0.9 - 1.2) / (nDong - 1) : 1.8;
   const nhipDong = Math.max(0.6, Math.min(1.8, Math.max(1.1, (giayAm - 0.3) / Math.max(1, nDong)), nhipToiDa));
-  const thoiDiemDong = canh.mocCongThuc ?? (dungBienDoi || dungCongDon ? canh.noiDung.map((_, i) => treCT + i * nhipDong) : batDong.map((b) => Math.max(b, coHinh ? treCT : 0)));
+  // v89: không có mốc lời giảng thì vẫn bám câu đang đọc (batDong) thay vì nhịp cố định (nhịp cố định làm kết quả bước
+  // hiện trước khi lời giảng tới). Dòng sau luôn sau dòng trước ít nhất "nhịp tối thiểu" để kịp biến hình.
+  const thoiDiemDong = canh.mocCongThuc ?? (() => {
+    const ra: number[] = [];
+    batDong.forEach((b, i) => {
+      const tt = Math.max(b, coHinh ? treCT : 0, i ? ra[i - 1] + (dungBienDoi || dungCongDon ? Math.min(nhipDong, 1.1) : 0.5) : 0);
+      ra.push(Math.min(tt, Math.max(0, giayCanh - 1.2 - (nDong - 1 - i) * 0.6)));
+    });
+    return ra;
+  })();
   const hang = dungCongDon ? nhomHang(canh.noiDung) : [];
   const khungCuoi = /dap_an|ket_qua/i.test(canh.loai);
   const coNote = canh.chuThich.length > 0;
@@ -443,7 +453,7 @@ export const Canh: React.FC<{
 
       {/* Phụ đề */}
       {pc.phuDe ? (
-        <div style={{position: 'absolute', left: 60, right: 60, top: Y_PHU_DE, height: 150, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: frame > canh.soFrame - 2 ? ra : 1}}>
+        <div style={{position: 'absolute', left: 60, right: 60, top: Y_PHU_DE, height: 150, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: frame >= canh.soFrame ? 0 : 1}}>
           {pc.kieuNen !== 'luoi' && pc.kieuNen !== 'luoi_phang' && pc.kieuNen !== 'gradient' ? <PhuDeTikTok cau={canh.cau} t={t} kieu={pc.kieuPhuDe} mauHop={moi ? mauNhan : pc.mauPhuDe} chuHop={moi ? chuTrenMau(mauNhan) : '#ffffff'} /> : <PhuDe cau={canh.cau} t={t} co={42} />}
         </div>
       ) : null}

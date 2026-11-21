@@ -152,8 +152,120 @@ def _danh_van(m):
     return " " + ten + (" phẩy" * phay) + " "
 
 
+# ---------- v89: PHỤ ĐỀ HIỂN THỊ SỐ & KÝ HIỆU (tách khỏi văn bản đọc TTS) ----------
+# Văn đọc ("năm mươi tư pi mét khối", "một phần bốn", "x bằng mười") chỉ để giọng đọc; phụ đề phải hiện "54π m³", "1/4", "x = 10".
+# Mốc thời gian vẫn tính trên văn đọc (từng từ thật), chỉ chữ hiển thị của mỗi cụm được đổi. Cụm toán nối bằng dấu cách không ngắt
+# ( ) để phụ đề không chẻ "x = 10" thành hai cụm.
+SO_DON_VI = {"không": 0, "zero": 0, "một": 1, "mốt": 1, "hai": 2, "ba": 3, "bốn": 4, "tư": 4, "năm": 5, "lăm": 5,
+             "sáu": 6, "bảy": 7, "tám": 8, "chín": 9}
+TU_SO = set(SO_DON_VI) | {"mười", "mươi", "trăm", "linh", "lẻ", "nghìn", "ngàn"}
+DON_VI_HIEN = [("xăng ti mét vuông", "cm²"), ("xăng-ti-mét vuông", "cm²"), ("xăng ti mét khối", "cm³"), ("xăng-ti-mét khối", "cm³"),
+               ("xăng-ti-mét", "cm"), ("xăng ti mét", "cm"), ("xen-ti-mét", "cm"), ("xen ti mét", "cm"), ("centimet", "cm"), ("xentimét", "cm"),
+               ("mét vuông", "m²"), ("mét khối", "m³"), ("ki-lô-mét", "km"), ("ki lô mét", "km"), ("mi-li-mét", "mm"), ("ki-lô-gam", "kg"),
+               ("m lập phương", "m³"), ("m bình phương", "m²"), ("mét", "m")]
+DON_VI_SAU_SO = re.compile(r"^(cm|mm|m|km|kg|g|m²|m³|cm²|cm³|mét|độ|phần|lít|giờ|phút|giây|đồng|nghìn|triệu|thẻ|số|pi|lần|người|bạn|viên|quả|cái|%|nhỏ|lớn|bằng|cộng|trừ|nhân|chia|<|>|=)$|^(xăng|xen|ki-lô|mi-li)", re.I)
+NOI_CUM_SO = {"phần", "phẩy", "pi", "mét", "xăng-ti-mét", "bằng", "nhỏ", "lớn", "hơn", "trừ", "cộng", "nhân", "chia", "bình", "lập", "phương"}
+TU_TOAN_TRUOC = re.compile(r"^(bằng|=|là|phẩy|phần|chia|nhân|cộng|trừ|<|>|hơn|được|còn|tổng|tích|x|r|h|y|n|k)$", re.I)
+
+
+def _gia_tri_cum_so(ws):
+    tong = tram = 0
+    chuc = dv = -1
+    for w in ws:
+        if w == "trăm":
+            tram += (dv if dv >= 0 else 1) * 100
+            dv = chuc = -1
+        elif w in ("nghìn", "ngàn"):
+            tong += ((tram + max(0, chuc) * 10 + max(0, dv)) or 1) * 1000
+            tram = 0
+            dv = chuc = -1
+        elif w == "mười":
+            if chuc >= 0 or dv >= 0:
+                return None
+            chuc = 1
+        elif w == "mươi":
+            if dv < 0:
+                return None
+            chuc, dv = dv, -1
+        elif w in ("linh", "lẻ"):
+            chuc = 0
+        elif w in SO_DON_VI:
+            if dv >= 0:
+                return None
+            dv = SO_DON_VI[w]
+    return tong + tram + max(0, chuc) * 10 + max(0, dv) if ws else None
+
+
+def so_chu_sang_so(text):
+    """'năm mươi tư' -> '54'; 'mười cm' -> '10 cm'; một từ số lẻ chỉ đổi khi đứng sau từ toán (bằng, phần...) hoặc trước đơn vị."""
+    tu = text.split(" ")
+    ra = []
+    i = 0
+    while i < len(tu):
+        w = tu[i]
+        sach = w.lower().strip(",.;:!?")
+        if sach not in TU_SO or w.lower() != sach and i + 1 < len(tu) and False:
+            ra.append(w)
+            i += 1
+            continue
+        cum, j = [], i
+        while j < len(tu) and tu[j].lower().strip(",.;:!?") in TU_SO:
+            cum.append(tu[j].lower().strip(",.;:!?"))
+            if tu[j][-1:] in ",.;:!?":
+                j += 1
+                break
+            j += 1
+        dau_cuoi = tu[j - 1][-1:] if tu[j - 1][-1:] in ",.;:!?" else ""
+        sau = tu[j].lower().strip(",.;:!?") if j < len(tu) else ""
+        truoc = ra[-1].lower().strip(",.;:!?") if ra else ""
+        v = _gia_tri_cum_so(cum)
+        # "không" đơn lẻ chỉ là số 0 khi đứng sau từ toán ("bằng không"), tránh đổi "không thỏa mãn"
+        if cum == ["không"] and not TU_TOAN_TRUOC.match(truoc) and sau not in ("nhỏ", "lớn", "<", ">"):
+            v = None
+        doi = v is not None and (len(cum) >= 2 or DON_VI_SAU_SO.match(sau) or TU_TOAN_TRUOC.match(truoc) or cum[0] == "zero")
+        if not doi:
+            ra.append(w)
+            i += 1
+            continue
+        ra.append(str(v) + dau_cuoi)
+        i = j
+    return " ".join(ra)
+
+
+def hien_phu_de(text):
+    s = so_chu_sang_so(re.sub(r"\s+", " ", str(text)).strip())
+    s = re.sub(r"(\d)\s+pi\b", r"\1π", s, flags=re.I)
+    s = re.sub(r"(?<![\wÀ-ỹ])([a-zA-Z])\s+phẩy\b", r"\1'", s)
+    for doc, hien in DON_VI_HIEN:
+        s = re.sub(r"(\d|π)\s+" + re.escape(doc) + r"(?![\wÀ-ỹ])", r"\1 " + hien, s, flags=re.I)
+    s = re.sub(r"(\d+)\s+phần trăm\b", r"\1%", s)
+    s = re.sub(r"(\d+)\s+phẩy\s+(\d+)", r"\1,\2", s)                       # 29 phẩy 5 -> 29,5
+    s = re.sub(r"\b\d{5,}\b", lambda m: "{:,}".format(int(m.group(0))).replace(",", "."), s)   # 500000 -> 500.000
+    s = re.sub(r"\s+mỗi\s+(mét vuông|m²)(?![\wÀ-ỹ])", "/m²", s)
+    s = re.sub(r"\s+mỗi\s+(mét khối|m³)(?![\wÀ-ỹ])", "/m³", s)
+    s = re.sub(r"(\d+)\s+phần\s+(\d+)", r"\1/\2", s)
+    s = re.sub(r"(\S)\s+bình phương\b", r"\1²", s)
+    s = re.sub(r"(\S)\s+lập phương\b", r"\1³", s)
+    toan = r"(?:[a-zA-Z]'?\([a-z]\)|[\d.,]+[π²³%]?|[a-zA-Z]'?[²³]?|\)[²³]?)"
+    for doc, ky in (("lớn hơn hoặc bằng", "≥"), ("nhỏ hơn hoặc bằng", "≤"), ("nhỏ hơn", "<"), ("lớn hơn", ">"), ("bằng", "="),
+                    ("trừ", "−"), ("cộng", "+"), ("nhân", "·")):
+        s = re.sub(r"(?<![\wÀ-ỹ'])(" + toan + r")\s+" + doc + r"\s+(?=" + toan + r"(?![\wÀ-ỹ]))", r"\1 " + ky + " ", s)
+    # nối cụm toán bằng dấu cách không ngắt: "x = 10", "0 < x < 30", "30 − x", "54π m³"
+    s = re.sub(r"(?<=\S) (?=[=<>≤≥−+·] )", " ", s)
+    s = re.sub(r"(?<=[=<>≤≥−+·]) (?=\S)", " ", s)
+    s = re.sub(r"(?<=\d|π) (?=(?:cm|mm|m|km|kg|m²|m³|cm²|cm³)(?![\wÀ-ỹ]))", " ", s)
+    return s
+
+
 def chuan_hoa_doc(text):
     s = sua_chinh_ta_tieng_viet(text)
+    # v89: đơn vị sau số đọc thành lời (lời thoại nay viết "10 cm", "54π m³" cho phụ đề; giọng vẫn đọc tự nhiên)
+    for ky, doc in (("cm²", "xăng-ti-mét vuông"), ("cm³", "xăng-ti-mét khối"), ("m²", "mét vuông"), ("m³", "mét khối"),
+                    ("cm", "xăng-ti-mét"), ("mm", "mi-li-mét"), ("km", "ki-lô-mét"), ("m", "mét")):
+        s = re.sub(r"(\d|π)\s*" + re.escape(ky) + r"(?![\wÀ-ỹ²³])", r"\1 " + doc, s)
+    s = re.sub(r"(?<=\s)<(?=\s)", "nhỏ hơn", s)
+    s = re.sub(r"(?<=\s)>(?=\s)", "lớn hơn", s)
+    s = re.sub(r"(\d)\s*⋮\s*(\d)", r"\1 chia hết cho \2", s)
     s = re.sub(r"\b([A-Z]{1,4}'*)\.(?=[A-Z]'*[A-Z])", r"\1 ", s)   # S.ABCD -> "S ABCD" (đọc liền, không ngắt ở dấu chấm)
     s = re.sub(r"\(\s*([A-Z]{3,4})\s*\)", r" mặt phẳng \1 ", s)    # (SAC) -> mặt phẳng SAC
     s = re.sub(r"\(\s*([A-Z])\s*\)", r" \1 ", s)                  # đường tròn (O) -> đường tròn O
@@ -260,11 +372,16 @@ def chia_phu_de(cau, toi_da=TOI_DA_KY_TU):
     k = math.ceil(len(cau) / toi_da)
     tu = cau.split(" ")
     phan, cur, con_lai = [], [], len(cau)
-    for w in tu:
+    for idx, w in enumerate(tu):
         cur.append(w)
         dai = len(" ".join(cur))
         con_phan = k - len(phan)
         if con_phan <= 1:
+            continue
+        # v89: không cắt giữa cụm số/biểu thức đọc thành lời ("năm mươi | tư", "x bằng | mười") -> phụ đề đổi được về "54", "x = 10"
+        nxt = tu[idx + 1].lower().strip(",.;:!?") if idx + 1 < len(tu) else ""
+        hien = w.lower().strip(",.;:!?")
+        if w[-1:] not in ",;:" and (nxt in TU_SO or nxt in NOI_CUM_SO or hien in NOI_CUM_SO) and dai < 1.5 * con_lai / con_phan:
             continue
         muc_tieu = con_lai / con_phan
         if dai >= muc_tieu or (w[-1:] in ",;:" and dai >= 0.7 * muc_tieu):
@@ -1258,6 +1375,25 @@ def tim_thuong_hieu(public, th):
     return hien, outro
 
 
+def ten_kenh_theo_chuyen_muc(thuong_hieu, th, kb):
+    """v89: tên kênh ở Intro / dấu nước / màn kết theo chuyên mục (phong_cach.json -> thuongHieu.tenTheoChuyenMuc,
+    ví dụ {"Xác suất": "Tư duy Xác suất", "mac_dinh": "Tư duy Toán"}) để bài Đạo hàm/Tối ưu không gắn cứng chữ "Xác suất"."""
+    bang = (th or {}).get("tenTheoChuyenMuc")
+    if not isinstance(bang, dict) or not bang:
+        return thuong_hieu
+    mon = str(kb.get("mon") or kb.get("loai_cau_hoi") or kb.get("chuyen_muc") or "")
+    chu = (mon + " " + str(kb.get("chu_de") or kb.get("tieu_de") or "")).lower()
+    ten = None
+    for k, v in bang.items():
+        if k != "mac_dinh" and k.lower() in chu:
+            ten = v
+            break
+    if ten is None and re.search(r"xac_suat|xác suất|xac suat", chu):
+        ten = bang.get("Xác suất")
+    ten = ten or bang.get("mac_dinh")
+    return dict(thuong_hieu, ten=ten) if ten else thuong_hieu
+
+
 def chon_man_ket(outro_tep, th, bai_hoc):
     """Màn kết: mặc định dùng màn kết tự tạo chuyên nghiệp (tóm tắt bài học + kênh + nút Theo dõi).
     Chỉ dùng tệp outro của bạn khi phong_cach.json đặt "thuongHieu": {"dungOutroRieng": true}."""
@@ -1266,7 +1402,7 @@ def chon_man_ket(outro_tep, th, bai_hoc):
     if not th.get("outroTuTao", True):
         return outro_tep
     if bai_hoc or th.get("ten") or th.get("handle") or th.get("logo"):
-        giay = 6.0 if bai_hoc else 3.5
+        giay = 6.0 if bai_hoc else 3.2
         return {"tep": "", "loai": "tu_tao", "soFrame": int(round(giay * FPS))}
     return outro_tep
 
@@ -1741,39 +1877,103 @@ def chuan_hoa_hinh_kich_ban(kb):
                 break
 
 
+LOAI_CANH_GIAI = re.compile(r"dap_an|ket_qua|kiem_tra|tinh|giai|diem_chot|bai_hoc|ket_luan")
+
+
+def gan_moc_chong_lo(c, cau, tu):
+    """v89 CHỐNG LỘ ĐÁP ÁN trên sân khấu:
+    - danh_sach: mỗi dòng hiện đúng lúc lời giảng nói tới (khi_noi_dong[i] hoặc chính chữ của dòng) -> vat["moc_dong"].
+    - do_thi: tọa độ điểm đánh dấu (cực trị) chỉ hiện khi lời giảng nói tới "khi_noi_diem"; cảnh đặt vấn đề (không phải cảnh giải/đáp án)
+      mà không khai báo thì hiện dấu "?" -> vat["moc_hien_diem"] (giây, -1 = giữ dấu ?)."""
+    mh = c.get("minh_hoa") if isinstance(c.get("minh_hoa"), dict) else None
+    du = mh.get("du_lieu") if mh else None
+    if not isinstance(du, dict) or not isinstance(du.get("vat"), list):
+        return
+    la_giai = bool(LOAI_CANH_GIAI.search(str(c.get("loai") or "").lower()))
+    for v in du["vat"]:
+        if not isinstance(v, dict):
+            continue
+        if v.get("loai") == "danh_sach" and isinstance(v.get("ds"), list) and v["ds"]:
+            kn = v.get("khi_noi_dong")
+            cum = [str(x) for x in kn] if isinstance(kn, list) and len(kn) == len(v["ds"]) else [texSangChuPy(str(x)) for x in v["ds"]]
+            moc = moc_cong_thuc(cum, cau, len(cum), tu)
+            if moc:
+                v["moc_dong"] = moc
+        elif v.get("loai") == "bang_bien_thien" and isinstance(v.get("khi_noi_dong"), list) and v["khi_noi_dong"]:
+            kn = [str(x) for x in v["khi_noi_dong"][:2]]
+            moc = moc_cong_thuc(kn, cau, len(kn), tu)
+            if moc:
+                v["moc_dong"] = moc
+        elif v.get("loai") == "do_thi" and v.get("danh_dau"):
+            kn = str(v.get("khi_noi_diem") or "").strip()
+            moc = moc_cong_thuc([kn], cau, 1, tu) if kn else None
+            v["moc_hien_diem"] = moc[0] if moc else (None if la_giai else -1)
+
+
+def texSangChuPy(s):
+    """Chữ đọc được từ một dòng TeX ngắn (để dò dòng đó trong lời giảng): bỏ lệnh, ngoặc."""
+    s = re.sub(r"\\(?:dfrac|frac)\s*\{([^{}]*)\}\s*\{([^{}]*)\}", r"\1 phần \2", s)
+    s = re.sub(r"\\[a-zA-Z]+|[{}$^_]", " ", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
 def moc_cong_thuc(cum, cau, so_dong, tu=None):
-    """Mốc đầu cụm nói cho từng dòng công thức: dùng mốc TỪ THẬT (tu) khi có, không thì ước lượng theo vị trí từ trong phụ đề."""
+    """Mốc đầu cụm nói cho từng dòng công thức: dùng mốc TỪ THẬT (tu) khi có, không thì ước lượng theo vị trí từ trong phụ đề.
+    v89: khớp TỪNG DÒNG (trước đây một dòng lệch là bỏ cả cảnh -> công thức hiện theo nhịp cố định, lộ kết quả trước lời giảng).
+    Dòng không khớp được nội suy giữa hai dòng đã khớp; không dòng nào khớp mới trả None."""
     if not isinstance(cum, list) or not cum or len(cum) != so_dong:
         return None
+    kq = [None] * so_dong
     if tu:
-        kq, vt = [], 0
-        for nhan in cum:
-            tim = tim_cum_tu(nhan, tu, vt) if isinstance(nhan, str) else None
-            if not tim or tim[0] < vt:
-                return None
-            kq.append(round(tu[tim[0]]["bat"], 3))
-            vt = tim[1]
-        return kq
-    tu, moc = [], []
-    for c in cau:
-        ds = re.findall(r"\w+", c["text"].casefold())
-        for i, w in enumerate(ds):
-            tu.append(w)
-            moc.append(c["bat"] + (c["ket"] - c["bat"]) * i / len(ds))
-    ket_qua = []
-    vi_tri = 0
-    for nhan in cum:
-        ds = re.findall(r"\w+", nhan.casefold()) if isinstance(nhan, str) else []
-        if not ds:
-            return None
-        for i in range(vi_tri, len(tu) - len(ds) + 1):
-            if tu[i:i + len(ds)] == ds:
-                ket_qua.append(round(moc[i], 3))
-                vi_tri = i + len(ds)
-                break
+        vt = 0
+        for i, nhan in enumerate(cum):
+            tim = None
+            if isinstance(nhan, str):
+                for bien in (nhan, hien_phu_de(nhan), chuan_hoa_doc(nhan)):
+                    tim = tim_cum_tu(bien, tu, vt)
+                    if tim and tim[0] >= vt:
+                        break
+                    tim = None
+            if tim:
+                kq[i] = round(tu[tim[0]]["bat"], 3)
+                vt = tim[1]
+    else:
+        tu_p, moc = [], []
+        for c in cau:
+            ds = re.findall(r"\w+", c["text"].casefold())
+            for j, w in enumerate(ds):
+                tu_p.append(w)
+                moc.append(c["bat"] + (c["ket"] - c["bat"]) * j / len(ds))
+        vi_tri = 0
+        for i, nhan in enumerate(cum):
+            for bien in ((nhan, hien_phu_de(nhan)) if isinstance(nhan, str) else ()):
+                ds = re.findall(r"\w+", bien.casefold())
+                if not ds:
+                    continue
+                for j in range(vi_tri, len(tu_p) - len(ds) + 1):
+                    if tu_p[j:j + len(ds)] == ds:
+                        kq[i] = round(moc[j], 3)
+                        vi_tri = j + len(ds)
+                        break
+                if kq[i] is not None:
+                    break
+    biet = [i for i, v in enumerate(kq) if v is not None]
+    if not biet:
+        return None
+    for i in range(so_dong):
+        if kq[i] is not None:
+            continue
+        truoc = max([j for j in biet if j < i], default=None)
+        sau = min([j for j in biet if j > i], default=None)
+        if truoc is not None and sau is not None:
+            kq[i] = round(kq[truoc] + (kq[sau] - kq[truoc]) * (i - truoc) / (sau - truoc), 3)
+        elif truoc is not None:
+            kq[i] = round(kq[truoc] + 0.9 * (i - truoc), 3)
         else:
-            return None
-    return ket_qua
+            kq[i] = round(max(0.2, kq[sau] - 0.9 * (sau - i)), 3)
+    for i in range(1, so_dong):   # giữ thứ tự hiện, cách nhau tối thiểu 0,35 s
+        kq[i] = round(max(kq[i], kq[i - 1] + 0.35), 3)
+    return kq
 
 
 def main():
@@ -1974,16 +2174,17 @@ def main():
                     n = len(x.split(" "))
                     seg = moc[vt:vt + n] or moc[-1:]
                     vt += n
-                    cau.append({"text": x, "bat": round(t + seg[0][1], 3), "ket": round(t + seg[-1][2], 3)})
+                    cau.append({"text": hien_phu_de(x), "bat": round(t + seg[0][1], 3), "ket": round(t + seg[-1][2], 3)})
             else:
                 tong_ky_tu = float(sum(len(x) for x in doan))
                 t_doan = t
                 for x in doan:
                     dai_x = dd * len(x) / tong_ky_tu
-                    cau.append({"text": x, "bat": round(t_doan, 3), "ket": round(t_doan + dai_x, 3)})
+                    cau.append({"text": hien_phu_de(x), "bat": round(t_doan, 3), "ket": round(t_doan + dai_x, 3)})
                     t_doan += dai_x
             t += dd + gap
 
+        gan_moc_chong_lo(c, cau, tu_canh if du_tu else None)
         so_frame = max(int(round((lead_c + tong_am + tail_c) * FPS)), 2 * FPS)
         loai_hinh = str((c.get("minh_hoa") or {}).get("loai") or "").lower()
         toi_thieu = {"venn": 4.6, "luoi_mau": 5.2, "dien_tich": 6.0, "thuc_nghiem": 5.6, "so_do_cay": 5.0, "bi_hop": 3.8}.get(loai_hinh, 0)
@@ -2080,6 +2281,9 @@ def main():
     bai_hoc = [str(x).strip()[:90] for x in (kb.get("bai_hoc_rut_ra") or []) if str(x).strip()][:3]
     # Tự động chèn màn kết/outro thương hiệu chuyên nghiệp vào cuối video (tóm tắt bài học + kênh + nút Thích / Theo dõi).
     co_man_ket = bool(th.get("coManKet", True))
+    # v89: video đã có cảnh bai_hoc (chốt kiến thức) -> màn kết KHÔNG lặp lại 3 gạch đầu dòng, chỉ đáp án + kênh (ngắn hơn, bớt đuôi im lặng)
+    if any(re.search(r"bai_hoc|ket_luan|chot", str(c.get("loai") or "").lower()) for c in (kb.get("canh") or [])):
+        bai_hoc = []
     outro = chon_man_ket(outro, dict(th, logo=thuong_hieu.get("logo")), bai_hoc) if co_man_ket else None
     if outro:
         outro["batDau"] = bat_dau
@@ -2116,7 +2320,7 @@ def main():
         "nenTuTao": nen_tu_tao,
         **({"phongCanh": kb["cau_chuyen"]["phong_canh"]} if not luong_hh and isinstance(kb.get("cau_chuyen"),dict) and kb["cau_chuyen"].get("phong_canh") else {}),
         **({"luong": "hinh_hoc_thuan"} if luong_hh else {"luong": str(kb.get("luong") or "thuc_te_xac_suat")}),
-        "thuongHieu": thuong_hieu,
+        "thuongHieu": ten_kenh_theo_chuyen_muc(thuong_hieu, th, kb),
         "outro": outro,
         "intro": intro,
         "phongCach": pc,

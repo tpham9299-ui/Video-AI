@@ -216,7 +216,8 @@ export function boCucDanhSach(v: Vat, k0 = 1) {
   const W = Math.min(920, 880 * Math.max(0.78, Math.min(1.05, v.co)));
   const pad = 30 * cs;
   const huy = 56 * k; // huy hiệu số thứ tự
-  const rongChu = W - pad * 2 - huy - 18 - 46;
+  // bề rộng THẬT của cột chữ: đệm hàng 14·2 + 2 khoảng gap 18 + cột dấu tích 44 (trước đây trừ thiếu -> chữ tràn, bị cắt mép)
+  const rongChu = W - pad * 2 - huy - 28 - 36 - 44;
   const dai = (s: string) => texSangChu(s).length;
   const daiNhat = Math.max(1, ...v.ds.map(dai));
   let co = 46 * k;
@@ -229,7 +230,7 @@ export function boCucDanhSach(v: Vat, k0 = 1) {
   const dong = v.ds.map((s) => Math.min(3, soDong(co, s)));
   const coTieuDe = 40 * k;
   const h = pad * 2 + (v.noiDung ? coTieuDe * 1.5 + 8 : 0) + dong.reduce((a, n) => a + n * co * 1.22 + 24 + 8, 0);
-  return {W, pad, huy, co, coTieuDe, dong, h};
+  return {W, pad, huy, co, coTieuDe, dong, h, rongChu};
 }
 
 // THẺ (the): thẻ có chữ tự RỘNG RA theo nội dung (không thu chữ nhỏ xíu trong thẻ hẹp); dài quá thì xuống tối đa 2 dòng
@@ -302,6 +303,7 @@ export function kichThuocVat(v: Vat, k = 1): {w: number; h: number} {
     case 'cay': w = n * 180; h = 250; break;
     case 'thang': { const g = (v.gocNghieng * Math.PI) / 180; w = 460 * Math.cos(g) + 60; h = 460 * Math.sin(g) + 60; break; }
     case 'hinh_hoc': w = 880; h = 600; break;
+    case 'bang_bien_thien': w = 900; h = 394 + (v.noiDung ? 70 : 0); break;
     case 'do_thi': w = 860; h = 560 + (v.noiDung ? 150 : 0); break;   // chừa chỗ tiêu đề phía trên (tâm vật giữ nguyên nên cộng cả hai phía)
     case 'hinh_tu_do': ({w, h} = kichThuocHinhTuDo(v)); break;
     default: break;

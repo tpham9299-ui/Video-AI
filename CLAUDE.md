@@ -47,7 +47,7 @@
    * **Mọi lớp:** Cấm tuyệt đối số phức. Lỗi vượt lớp bị đánh 0 điểm lời giải.
 
 2. **Phân luồng dựng hình ảnh & đồ họa (v85):**
-   * **Phông chữ:** Tiêu đề bìa/đầu cảnh/bài học dùng `Montserrat`; nội dung, phụ đề, nhãn hình & Manim dùng `Be Vietnam Pro`; công thức qua KaTeX (đổi chữ `x` giữa hai số thành dấu nhân $\times$, giữ nguyên biến $2x, x^2$).
+   * **Phông chữ (v89):** MỘT họ chữ `Be Vietnam Pro` cho mọi vai trò (tiêu đề, badge, hộp, phụ đề, nhãn, Manim), phân cấp bằng độ đậm + thang `CO_CHU` (`src/theme.ts`); KaTeX dùng chung Be Vietnam (`KieuToan`), hộp danh sách một cỡ chung (`HopVua`), phụ đề hiện số/ký hiệu tách khỏi văn đọc (`hien_phu_de`); công thức qua KaTeX (đổi chữ `x` giữa hai số thành dấu nhân $\times$, giữ nguyên biến $2x, x^2$).
    * **Khóa luồng (v86):** `kb.luong` = `hinh_hoc_thuan` | `thuc_te_xac_suat` do Apps Script quyết định một lần (`xacDinhLuong_`, HinhHoc.gs) và mọi tầng sau chỉ đọc trường này; luồng hình học thuần **cấm** Blender/Three.js/`canh_that`/`mo_hinh_3d`/phong cảnh (`khoaLuongHinhHoc_`, `canh_3d.py` từ chối, `kiem_hinh_hoc.py` chặn).
    * **Hình học (`HINH_HOC`):** Bắt buộc dựng bằng **Manim (`0.22.1`)** nền trong suốt phủ lên Remotion; bảo toàn quy tắc 3D (`canh` nét liền, `khuat` nét đứt, `phu` đường phụ); lỗi cài/dựng Manim hoặc `kiem_hinh_hoc.py` không đạt phải dừng workflow. Giọng đọc bài hình học dùng edge-tts `WordBoundary` (mốc từng từ thật); mỗi cảnh khai báo `buoc_ve: [{ve, khi_noi}]` để nét vẽ khớp đúng lời đọc.
    * **Thực tế & Xác suất (`THUC_TE`, `XAC_SUAT`):**

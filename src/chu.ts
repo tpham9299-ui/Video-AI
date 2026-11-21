@@ -22,9 +22,93 @@ export function suaChinhTaTiengViet(s: string): string {
 // Chỉ nhận x giữa các thừa số viết bằng số. Giữ nguyên biến x, 2x và x².
 export const dauNhan = (s: string) => s.replace(/(\d)\s*[xX]\s*(?=\d)/g, '$1 × ');
 
+// v89: lỗi escape JSON của AI: "\vdots" viết một gạch chéo -> JSON hiểu "\v" là ký tự điều khiển (vertical tab), "\frac" -> form feed,
+// "\times"/"\text" -> tab, "\binom" -> backspace, "\right" -> CR. Khôi phục lại lệnh TeX trước khi dựng.
+function khoiPhucEscape(x: string): string {
+  return x
+    .replace(/\u000B/g, '\\v')
+    .replace(/\u000C/g, '\\f')
+    .replace(/\u0008/g, '\\b')
+    .replace(/\u0009(?=imes|ext|heta|au\b|an\b|o\b|riangle|ilde)/g, '\\t')
+    .replace(/\r(?=ight|ho\b)/g, '\\r');
+}
+
+// v89: DẤU CÂU LẺ: bỏ ":", ",", "?", ";" ... ở đầu chuỗi; dấu câu đứng sau dấu cách thì dính vào từ trước
+// (không bao giờ rớt một mình xuống đầu dòng: ": Nhầm diện tích", "CẮT CHÍNH GIỮA ?", ", 2 thẻ lẻ").
+export function chuanDauCau(s: string): string {
+  return String(s ?? '')
+    .replace(/^[\s:;,.?!–—-]+(?=\S)/u, '')
+    .replace(/\s+([:;,?!])(?=\s|$)/g, '$1')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+// v89: SỐ ĐỌC THÀNH CHỮ -> CHỮ SỐ ("năm mươi tư" -> 54, "mười cm" -> 10 cm) cho tiêu đề và kịch bản cũ.
+const SO_DON: Record<string, number> = {'không': 0, 'zero': 0, 'một': 1, 'mốt': 1, 'hai': 2, 'ba': 3, 'bốn': 4, 'tư': 4, 'năm': 5, 'lăm': 5, 'sáu': 6, 'bảy': 7, 'tám': 8, 'chín': 9};
+const laTuSo = (w: string) => w in SO_DON || ['mười', 'mươi', 'trăm', 'linh', 'lẻ', 'nghìn', 'ngàn'].includes(w);
+// "mười hai" = 12, "năm mươi tư" = 54, "một trăm linh năm" = 105, "hai nghìn" = 2000; cụm không hợp lệ -> null
+function giaTriCum(ws: string[]): number | null {
+  let tong = 0, tram = 0, chuc = -1, dv = -1;
+  for (const w of ws) {
+    if (w === 'trăm') { tram += (dv >= 0 ? dv : 1) * 100; dv = -1; chuc = -1; continue; }
+    if (w === 'nghìn' || w === 'ngàn') { tong += (tram + Math.max(0, chuc) * 10 + Math.max(0, dv) || 1) * 1000; tram = 0; chuc = -1; dv = -1; continue; }
+    if (w === 'mười') { if (chuc >= 0 || dv >= 0) return null; chuc = 1; continue; }
+    if (w === 'mươi') { if (dv < 0) return null; chuc = dv; dv = -1; continue; }
+    if (w === 'linh' || w === 'lẻ') { chuc = 0; continue; }
+    if (w in SO_DON) { if (dv >= 0) return null; dv = SO_DON[w]; continue; }
+  }
+  return ws.length ? tong + tram + Math.max(0, chuc) * 10 + Math.max(0, dv) : null;
+}
+const DON_VI_SAU = /^(cm|mm|m|km|kg|g|mét|xăng-ti-mét|xen-ti-mét|centimet|xentimét|độ|phần|lít|giờ|phút|giây|%|đồng|nghìn|triệu|thẻ|số)$/i;
+export function chuSangSo(s: string): string {
+  const tu = String(s ?? '').split(/(\s+)/);
+  const ra: string[] = [];
+  for (let i = 0; i < tu.length; i++) {
+    const w = tu[i];
+    if (!w.trim() || !laTuSo(w.toLowerCase())) { ra.push(w); continue; }
+    const cum: string[] = [];
+    let j = i;
+    while (j < tu.length && (tu[j].trim() === '' || laTuSo(tu[j].toLowerCase()))) {
+      if (tu[j].trim()) cum.push(tu[j].toLowerCase());
+      j++;
+    }
+    while (j > i + 1 && !tu[j - 1].trim()) j--;
+    const sau = (tu.slice(j).find((x) => x.trim()) || '').toLowerCase().replace(/[.,;:!?]+$/, '');
+    const truoc = (ra.filter((x) => x.trim()).slice(-1)[0] || '').toLowerCase();
+    const v = giaTriCum(cum);
+    const doi = v !== null && (cum.length >= 2 || DON_VI_SAU.test(sau) || /^(bằng|=|là|<|>|phần|chia|nhân|cộng|trừ)$/.test(truoc) || cum[0] === 'zero');
+    if (!doi) { ra.push(w); continue; }
+    ra.push(String(v));
+    i = j - 1;
+  }
+  return ra.join('')
+    .replace(/\s*\b(xăng-ti-mét|xen-ti-mét|xentimét|centimet)\b/gi, ' cm')
+    .replace(/(\d)\s+phần\s+(\d+)/gi, '$1/$2');
+}
+
+// v89: TIÊU ĐỀ CHUẨN TOÁN: "V PHẨY BẰNG ZERO" -> "V'(x) = 0", "MƯỜI CM" -> "10 cm", bỏ dấu câu lẻ ở đầu/đứng riêng.
+export function chuanTieuDe(s: string): string {
+  let x = chuanDauCau(String(s ?? ''));
+  x = x.replace(/(^|\s)([A-Za-z])\s+phẩy(?=\s|$)/giu, "$1$2'");
+  x = chuSangSo(x);
+  x = x.replace(/\s+bằng\s+(?=[\d\-−(]|[A-Za-z](?:\s|$|'))/giu, ' = ');
+  x = x.replace(/(^|\s)([A-Za-z]')\s*=\s*0(?![\d,.])/g, '$1$2(x) = 0');
+  return x;
+}
+
+// v89: IN HOA nhưng giữ nguyên cụm toán / đơn vị ("Phân tích V(x) = u · v" -> "PHÂN TÍCH V(x) = u · v", không thành "V(X) = U · V").
+export function inHoaGiuToan(s: string): string {
+  return String(s ?? '').split(/(\s+)/).map((w) => (/[\d=<>/^²³π'()·×÷−+√⋮;]/.test(w) || /^[a-zA-Z]$/.test(w) || /^(cm|mm|m|km|kg|g|dm|ha|m²|m³|cm²|cm³)[.,:;!?]?$/.test(w) ? w : w.toUpperCase())).join('');
+}
+
 export function chuanTex(s: unknown): string {
   let x = typeof s === 'string' ? s : s === null || s === undefined ? '' : String(s);
+  x = khoiPhucEscape(x);
   x = x.replace(/\\\\(?=[a-zA-Z])/g, '\\');            // "\\frac" (thừa một lớp escape) -> "\frac"
+  x = x.replace(/(^|[^\\])\\:?\s*\\(?=\d)/g, '$1\\vdots ');   // "120\:\4" (lệnh \vdots bị mất chữ) -> "120 \vdots 4"
+  if (/\\[a-zA-Z]|[_^{]/.test(x)) x = x.replace(/⋮/g, ' \\vdots ');
+  // dấu chấm câu dùng làm PHÉP NHÂN ("4x . (30-x)^2", "(u . v)'") -> dấu nhân toán học
+  x = x.replace(/([\w)\]}²³'])\s+\.\s+(?=[\w(\\])/g, (_, a) => `${a} ${/[À-ỹ]/.test(x) && !/\\/.test(x) ? '·' : '\\cdot'} `);
   x = x.replace(/\\\(|\\\)|\\\[|\\\]/g, ' ');           // \( ... \) \[ ... \]
   x = x.replace(/\$\$?/g, ' ');                         // $...$ / $$...$$
   return suaChinhTaTiengViet(dauNhan(x).replace(/\s+/g, ' ').trim());
@@ -48,7 +132,14 @@ const LENH: Record<string, string> = {
 // Chỉ đổi số có ĐÚNG MỘT dấu chấm (không đụng "1.000.000", "v1.2.3"); trong TeX viết {,} để KaTeX không chèn khoảng trắng.
 export function thapPhanViet(s: string, tex = false): string {
   // tiền "249.000đ", "6.000 đồng": dấu chấm là dấu NGHÌN, giữ nguyên
-  return s.replace(/(^|[^\d.\w])(\d+)\.(\d+)(?![\d.])(?!\s*(?:đ|Đ|đồng|VND|vnđ|k\b|nghìn|triệu))/g, (_, a, b, c) => `${a}${b}${tex ? '{,}' : ','}${c}`);
+  return s
+    // tiền viết kiểu Anh "500,000 đồng" -> "500.000 đồng"
+    .replace(/(\d{1,3})((?:,\d{3})+)(?=\s*(?:đ|Đ|đồng|VND|vnđ)(?!\p{L}))/gu, (_, a, b) => a + b.replace(/,/g, '.'))
+    .replace(/(^|[^\d.\w])(\d+)\.(\d+)(?![\d.])(?!\s*(?:đ|Đ|đồng|VND|vnđ|k\b|nghìn|triệu))/g, (_, a, b, c) => {
+      // 29.50 -> 29,5 (thống nhất một cách viết); "1.000" (3 chữ số sau dấu chấm, dễ là phần nghìn) giữ nguyên chữ số
+      const le = String(c).length === 3 ? String(c) : String(c).replace(/0+$/, '');
+      return le ? `${a}${b}${tex ? '{,}' : ','}${le}` : `${a}${b}`;
+    });
 }
 
 export function texSangChu(s: unknown): string {

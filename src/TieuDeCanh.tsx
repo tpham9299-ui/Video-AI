@@ -3,6 +3,10 @@ import {useCurrentFrame} from 'remotion';
 import {easeOut, kep, popOut} from './sankhau/donghieu';
 import {expoOut} from './sankhau/chuyendong';
 import {BONG_CHU, FONT_TIEU_DE, vienChu} from './theme';
+import {chuanTieuDe as chuanKyHieuTieuDe} from './chu';
+
+// từ mang ký hiệu toán / đơn vị (V'(x), 10, cm, m³, 0<x<30) giữ nguyên chữ thường khi tiêu đề in hoa
+const laTuToan = (w: string) => /[\d='<>/^²³π()]|^(cm|mm|m|km|kg|g|dm|ha|m²|m³|cm²|cm³|[a-z])$/i.test(w) && !/^[A-ZÀ-Ỹ]{2,}$/.test(w);
 
 // Đầu mỗi cảnh: nhãn cam dạng viên thuốc ("ĐỀ BÀI", "CÁI BẪY"...) + tiêu đề rất đậm (Montserrat Black, kiểu sticker:
 // viền tối + bóng khối). Từng từ lướt lên kèm nhòe chuyển động (motion graphic), sau đó một nét bút kiểu Manim
@@ -44,8 +48,10 @@ export const VienThuoc: React.FC<{chu: string; f: number}> = ({chu, f}) => {
   );
 };
 
-export const TieuDeCanh: React.FC<{nhan: string; chu: string; tuKhoa: string; tre?: number; inHoa?: boolean; dau?: React.ReactNode}> = ({nhan, chu, tuKhoa, tre = 0, inHoa = false, dau}) => {
+export const TieuDeCanh: React.FC<{nhan: string; chu: string; tuKhoa: string; tre?: number; inHoa?: boolean; dau?: React.ReactNode}> = ({nhan, chu: chuGoc, tuKhoa, tre = 0, inHoa = false, dau}) => {
   const f = useCurrentFrame() - tre;
+  // v89: bỏ dấu câu lẻ, đổi tiêu đề phiên âm ("V PHẨY BẰNG ZERO", "MƯỜI CM") về ký hiệu toán chuẩn
+  const chu = chuanKyHieuTieuDe(chuGoc);
   const co = (chu.length > 40 ? 58 : chu.length > 26 ? 66 : 76) * (inHoa ? 0.86 : 1);
   // vị trí cụm từ khóa trong câu để tô cam đúng các từ đó
   const iKhoa = tuKhoa ? chu.toLowerCase().indexOf(tuKhoa.toLowerCase()) : -1;
@@ -62,7 +68,7 @@ export const TieuDeCanh: React.FC<{nhan: string; chu: string; tuKhoa: string; tr
     <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20}}>
       {dau ? dau : nhan ? <VienThuoc chu={nhan} f={f} /> : null}
       {chu ? (
-        <div style={{maxWidth: 980, textAlign: 'center', fontFamily: FONT_TIEU_DE, fontWeight: 900, fontSize: co, lineHeight: 1.12, color: '#fff', letterSpacing: inHoa ? 0 : -0.5, textTransform: inHoa ? 'uppercase' : 'none'}}>
+        <div style={{maxWidth: 980, textAlign: 'center', fontFamily: FONT_TIEU_DE, fontWeight: 900, fontSize: co, lineHeight: 1.12, color: '#fff', letterSpacing: inHoa ? 0 : -0.5, textTransform: 'none'}}>
           {dsTu.map((x, i) => {
             if (!x.w.trim()) return <span key={i}> </span>;
             const k = thuTu++;
@@ -70,7 +76,7 @@ export const TieuDeCanh: React.FC<{nhan: string; chu: string; tuKhoa: string; tr
             return (
               <span key={i} style={{position: 'relative', display: 'inline-block', color: x.khoa ? CAM : '#fff', WebkitTextStroke: vienChu(co), paintOrder: 'stroke fill', textShadow: BONG_CHU,
                 opacity: kep(p * 2), transform: `translateY(${(1 - p) * 56}px) scale(${0.86 + 0.14 * p})`}}>
-                {x.w}
+                {inHoa && !laTuToan(x.w) ? x.w.toUpperCase() : x.w}
                 {x.khoa ? (
                   <svg style={{position: 'absolute', left: -6, right: -6, bottom: -co * 0.2, width: 'calc(100% + 12px)', height: co * 0.32, overflow: 'visible'}} viewBox="0 0 100 20" preserveAspectRatio="none">
                     <path d="M2 12 C 20 4, 35 18, 52 10 S 85 4, 98 11" stroke={CAM} strokeWidth={5} fill="none" strokeLinecap="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - easeOut(gach)} vectorEffect="non-scaling-stroke" />

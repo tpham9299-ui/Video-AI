@@ -330,7 +330,7 @@ export const DoThi: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
         <div key={`vy${y}`} style={{position: 'absolute', left: x0 - 12, top: Y(y), transform: 'translate(-100%,-50%)', fontFamily: FONT_DAM, fontWeight: 800, fontSize: 33, color: 'rgba(255,255,255,0.75)', opacity: kep(pTruc)}}>{soViet(y)}</div>
       )))}
       <div style={{position: 'absolute', right: pad.r - 24, top: y0 - 40, fontFamily: FONT_DAM, fontWeight: 900, fontStyle: 'italic', fontSize: 38, color: TRANG}}>{v.nhanTruc[0] || 'x'}</div>
-      <div style={{position: 'absolute', left: x0 + 14, top: pad.t - 30, fontFamily: FONT_DAM, fontWeight: 900, fontStyle: 'italic', fontSize: 38, color: TRANG}}>{v.nhanTruc[1] || 'y'}</div>
+      <div style={{position: 'absolute', left: x0 + 22, top: pad.t - 14, transform: 'translateY(-100%)', fontFamily: FONT_DAM, fontWeight: 800, fontStyle: 'italic', fontSize: 36, color: TRANG, background: 'rgba(6,14,18,0.85)', padding: '0 8px', borderRadius: 8, whiteSpace: 'nowrap'}}>{v.nhanTruc[1] || 'y'}</div>
       {v.noiDung ? (
         // tiêu đề đồ thị nằm TRÊN khung đồ thị (trước đây nằm trong vùng vẽ -> đè lên số trên trục và đường cong)
         <div style={{position: 'absolute', left: 0, right: 0, top: -74, display: 'flex', justifyContent: 'center', opacity: kep((t - 1.2) / 0.4)}}>
@@ -347,10 +347,14 @@ export const DoThi: React.FC<{v: Vat; st: TrangThai}> = ({v, st}) => {
       {v.danhDau.map((xd, i) => {
         const yd = f(xd);
         if (!trongKhung(yd)) return null;
-        const p = (t - 2 - i * 0.3) / 0.4 + (st.chonCa > 0 ? 1 : 0);
+        // v89 CHỐNG LỘ ĐÁP ÁN: tọa độ chỉ hiện khi lời giảng nói tới (mocHienDiem) hoặc có hành động chọn điểm;
+        // cảnh đặt vấn đề hiện dấu "?" ở đỉnh thay cho "(10; 16000)".
+        const choHien = st.chonCa > 0 || v.mocHienDiem === null || (v.mocHienDiem >= 0 && t >= v.mocHienDiem);
+        const p0 = v.mocHienDiem !== null && v.mocHienDiem >= 0 ? (t - v.mocHienDiem) / 0.4 : (t - 2 - i * 0.3) / 0.4;
+        const p = choHien ? p0 + (st.chonCa > 0 ? 1 : 0) : (t - 2 - i * 0.3) / 0.4;
         return (
-          <div key={`nd${i}`} style={{position: 'absolute', left: X(xd), top: Y(yd) + 30, transform: `translateX(-50%) scale(${popOut(kep(p), 1.8)})`, opacity: kep(p), background: '#3BF29A', color: '#062019', borderRadius: 12, padding: '4px 14px', fontFamily: FONT_DAM, fontWeight: 900, fontSize: 30, whiteSpace: 'nowrap'}}>
-            ({soViet(xd)}; {soViet(yd)})
+          <div key={`nd${i}`} style={{position: 'absolute', left: X(xd), top: choHien ? Y(yd) + 30 : Y(yd) - 92, transform: `translateX(-50%) scale(${popOut(kep(p), 1.8)})`, opacity: kep(p), background: choHien ? '#3BF29A' : 'rgba(6,20,24,0.92)', color: choHien ? '#062019' : '#FFD54A', border: choHien ? 'none' : '3px solid #FFD54A', borderRadius: 12, padding: '4px 14px', fontFamily: FONT_DAM, fontWeight: 900, fontSize: choHien ? 30 : 44, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums'}}>
+            {choHien ? `(${soViet(xd)}; ${soViet(yd)})` : '?'}
           </div>
         );
       })}

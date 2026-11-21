@@ -62,7 +62,8 @@ export const Intro: React.FC<{it: IntroProps; th: ThuongHieuProps}> = ({it, th})
   // tên kênh: nửa sau tô màu nhấn ("Tư duy" + "Xác suất")
   const tu = ten.split(/\s+/).filter(Boolean);
   const soNhan = Math.max(0, Math.min(tu.length - 1, it.soTuNhan ?? Math.floor(tu.length / 2)));
-  const coChu = Math.min(108, Math.round(940 / Math.max(6, ten.length * 0.62)));
+  // v89: cỡ chữ tính cả giãn chữ lớn nhất (0,06em) để tên kênh luôn nằm MỘT dòng trong 960 px (trước đây "suất" rớt dòng)
+  const coChu = Math.min(108, Math.floor(960 / Math.max(6, ten.length * (0.66 + 0.06))));
   let iChu = 0;
   const chuTen = tu.map((w, wi) => {
     const mau = wi >= tu.length - soNhan ? nhan : '#ffffff';
@@ -81,7 +82,7 @@ export const Intro: React.FC<{it: IntroProps; th: ThuongHieuProps}> = ({it, th})
       </span>
     );
   });
-  const gian = interpolate(tien(1.12, 1.9), [0, 1], [0.16, 0.01]);
+  const gian = interpolate(tien(1.12, 1.9), [0, 1], [0.06, 0.01]);
   const gach = easeOut(tien(1.45, 1.95));
   const pKhau = spring({frame: f - s(1.58), fps, config: {damping: 18, stiffness: 110}});
   const yTen = CY1 + R * tl + 70;
@@ -143,7 +144,7 @@ export const Intro: React.FC<{it: IntroProps; th: ThuongHieuProps}> = ({it, th})
 
         {/* tên kênh */}
         <div style={{position: 'absolute', left: 50, right: 50, top: yTen, textAlign: 'center', opacity: mo}}>
-          <div style={{fontFamily: FONT_TIEU_DE, fontWeight: 900, fontSize: coChu, lineHeight: 1.08, letterSpacing: `${gian}em`, textShadow: '0 6px 24px rgba(0,0,0,0.55)'}}>{chuTen}</div>
+          <div style={{display: 'flex', justifyContent: 'center', whiteSpace: 'nowrap', fontFamily: FONT_TIEU_DE, fontWeight: 900, fontSize: coChu, lineHeight: 1.08, letterSpacing: `${gian}em`, textShadow: '0 6px 24px rgba(0,0,0,0.55)'}}>{chuTen}</div>
           <div style={{margin: '26px auto 0', height: 5, width: 420 * gach, borderRadius: 3, background: `linear-gradient(90deg, transparent, ${nhan}, ${phu}, transparent)`}} />
           {khau ? (
             <div style={{marginTop: 30, fontFamily: FONT, fontWeight: 600, fontSize: 42, color: '#d3ebe4', letterSpacing: '0.02em', opacity: kep(pKhau * 1.4), transform: `translateY(${(1 - pKhau) * 34}px)`}}>

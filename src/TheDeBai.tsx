@@ -3,8 +3,8 @@ import {useCurrentFrame, useVideoConfig} from 'remotion';
 import {expoOut} from './sankhau/chuyendong';
 import {kep, popOut} from './sankhau/donghieu';
 import {FONT_DAM, GIAO_DIEN} from './theme';
-import {Toan} from './Toan';
-import {coTex, texSangChu} from './chu';
+import {HopVua, Toan} from './Toan';
+import {chuanDauCau, coTex, texSangChu} from './chu';
 
 // THẺ ĐỀ BÀI PHONG CÁCH TRỰC QUAN (lấy cảm hứng từ phong cách thiết kế Anh Shiper Toán):
 // - Khung kính tối tinh tế (frosted dark slate), các câu dữ kiện nối tiếp nhau xuất hiện ĐÚNG NHỊP GIỌNG ĐỌC (moc[i]).
@@ -48,8 +48,9 @@ export function boCucTheDe(d: DeBai, rong = 960, caoToiDa = 640) {
   return {co, cao: Math.min(caoToiDa, caoVoi(co))};
 }
 
-const Dong: React.FC<{s: string; co: number; mau: string; mx: number; idx: number}> = ({s, co, mau, mx, idx}) =>
-  coTex(s) ? <Toan tex={s} size={co} color={mau} maxWidth={mx} /> : <span style={{fontSize: co, color: mau}}>{toMauCumTuDe(s, idx)}</span>;
+// v89: dòng TeX và dòng chữ thường CÙNG một cỡ (--k chung của HopVua), căn trái, không co riêng từng dòng.
+const Dong: React.FC<{s: string; co: number; mau: string; mx: number; idx: number; giua?: boolean}> = ({s, co, mau, mx, idx, giua}) =>
+  coTex(s) ? <Toan tex={s} size={co} color={mau} maxWidth={mx} can={giua ? 'giua' : 'trai'} /> : <span style={{fontSize: `calc(${co}px * var(--k, 1))`, color: mau, fontWeight: 600, fontVariantNumeric: 'tabular-nums'}}>{toMauCumTuDe(chuanDauCau(s), idx)}</span>;
 
 export const TheDeBai: React.FC<{de: DeBai; moc: number[]; giuNguyen?: boolean; rong?: number; caoToiDa?: number}> = ({de, moc, giuNguyen, rong = 960, caoToiDa = 640}) => {
   const f = useCurrentFrame();
@@ -69,30 +70,30 @@ export const TheDeBai: React.FC<{de: DeBai; moc: number[]; giuNguyen?: boolean; 
         <span data-kd-bo="1" style={{fontSize: 25, fontWeight: 900, letterSpacing: 1.5, color: '#94a3b8'}}>DỮ KIỆN ĐỀ BÀI</span>
         <div style={{flex: 1, height: 1.5, background: 'linear-gradient(90deg, rgba(148,163,184,0.35), transparent)'}} />
       </div>
-      <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>
+      <HopVua khoa={de.cho.join('|')} style={{display: 'flex', flexDirection: 'column', gap: 8}}>
         {de.cho.map((s, i) => {
           const a = hien(i);
-          if (a <= 0.01) return null;
+          // v89: dòng chưa tới lượt vẫn giữ chỗ (ẩn) để cỡ chữ chung của cả hộp không đổi khi dòng dài xuất hiện sau
           const dangDoc = !giuNguyen && t >= (moc[i] ?? 0) && t < (moc[i + 1] ?? 999);
           const mauDot = BANG_MAU_NHAN[i % BANG_MAU_NHAN.length];
           return (
-            <div key={i} style={{display: 'flex', alignItems: 'baseline', gap: 12, opacity: kep(a * 1.5), transform: `translateY(${(1 - a) * 14}px)`,
+            <div key={i} style={{display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start', gap: 12, opacity: kep(a * 1.5), visibility: a <= 0.01 ? 'hidden' : 'visible', transform: `translateY(${(1 - a) * 14}px)`,
               lineHeight: 1.36, textAlign: 'left', padding: '4px 10px', borderRadius: 12,
               borderLeft: dangDoc ? `4px solid ${mauDot}` : '4px solid transparent',
               background: dangDoc ? 'rgba(255,255,255,0.06)' : 'transparent'}}>
-              <span style={{flexShrink: 0, width: 10, height: 10, borderRadius: 5, background: mauDot, boxShadow: `0 0 8px ${mauDot}`}} />
-              <div style={{flex: 1}}>
+              <span style={{flexShrink: 0, marginTop: co * 0.5, width: 10, height: 10, borderRadius: 5, background: mauDot, boxShadow: `0 0 8px ${mauDot}`}} />
+              <div style={{flex: 1, minWidth: 0, textAlign: 'left'}}>
                 <Dong s={s} co={co} mau="#f1f5f9" mx={rong - 106} idx={i} />
               </div>
             </div>
           );
         })}
-      </div>
+      </HopVua>
       {de.tim && aTim > 0.01 ? (
         <div style={{marginTop: 14, borderRadius: 18, padding: '12px 20px', background: 'linear-gradient(90deg, rgba(251,191,36,0.16), rgba(245,158,11,0.08))',
           border: '1.8px solid rgba(251,191,36,0.68)', opacity: kep(aTim * 1.6),
           transform: `scale(${popOut(aTim, 1.35)})`, boxShadow: '0 8px 24px rgba(251,191,36,0.18), inset 0 1px 0 rgba(255,255,255,0.12)', textAlign: 'center'}}>
-          <Dong s={de.tim} co={Math.round(co * 1.02)} mau="#fde68a" mx={rong - 90} idx={0} />
+          <Dong s={de.tim} co={Math.round(co * 1.02)} mau="#fde68a" mx={rong - 90} idx={0} giua />
         </div>
       ) : null}
     </div>

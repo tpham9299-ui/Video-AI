@@ -1,5 +1,6 @@
 import React from 'react';
 import {easeOut, kep, popOut} from './sankhau/donghieu';
+// cỡ chữ phụ đề CỐ ĐỊNH (không phóng/thu theo nhịp vào cụm, không đổi ở đoạn chuyển cảnh)
 import {FONT, FONT_DAM, BONG_CHU, vienChu} from './theme';
 import {Cau} from './types';
 
@@ -8,10 +9,15 @@ import {Cau} from './types';
 //  - "mau": từ đang đọc phóng to và đổi màu xanh neon.
 type Cum = {tu: string[]; bat: number; ket: number};
 
+// v89: in hoa phụ đề nhưng GIỮ NGUYÊN ký hiệu toán và đơn vị (x, π, cm, m³, V'(x), 1/4, 0 < x < 30 không thành "X", "Π", "CM").
+const laCumToan = (w: string) => /[\d=<>/^²³π'()·×÷−+√⋮]| /.test(w) || /^(cm|mm|m|km|kg|g|dm|ha|m²|m³|cm²|cm³|[a-zA-Z])[.,!?]?$/.test(w);
+const inHoaPhuDe = (w: string) => (laCumToan(w) ? w : w.toUpperCase());
+
 function chiaCum(cau: Cau[], toiDa: number): Cum[] {
   const kq: Cum[] = [];
   cau.forEach((c) => {
-    const tu = c.text.split(/\s+/).filter(Boolean);
+    // tách theo dấu cách THƯỜNG: cụm toán đã được chuanbi.py nối bằng dấu cách không ngắt ("x = 10") không bị chẻ
+    const tu = c.text.split(/ +/).filter(Boolean);
     if (!tu.length) return;
     const soCum = Math.ceil(tu.length / toiDa);
     const moiCum = Math.ceil(tu.length / soCum);
@@ -41,7 +47,7 @@ export const PhuDeTikTok: React.FC<{cau: Cau[]; t: number; co?: number; kieu?: s
   let da = 0;
   const coChu = hop ? co * 0.92 : co;
   return (
-    <div style={{display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: `${coChu * 0.14}px ${coChu * (hop ? 0.2 : 0.28)}px`, transform: `translateY(${(1 - easeOut(vao)) * 18}px) scale(${popOut(vao, 1.2)})`, opacity: kep(vao * 2), fontFamily: FONT_DAM, fontWeight: 900, fontSize: coChu, lineHeight: 1.2, textAlign: 'center', textTransform: hop ? 'uppercase' : 'none'}}>
+    <div style={{display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: `${coChu * 0.14}px ${coChu * (hop ? 0.2 : 0.28)}px`, transform: `translateY(${(1 - easeOut(vao)) * 14}px)`, opacity: kep(vao * 2), fontFamily: FONT_DAM, fontWeight: 900, fontSize: coChu, lineHeight: 1.2, textAlign: 'center', fontVariantNumeric: 'tabular-nums'}}>
       {c.tu.map((w, i) => {
         const dau = da / tong;
         da += w.length + 1;
@@ -55,7 +61,7 @@ export const PhuDeTikTok: React.FC<{cau: Cau[]; t: number; co?: number; kieu?: s
             {hop && o > 0 ? (
               <span style={{position: 'absolute', inset: `${coChu * 0.02}px 0`, borderRadius: coChu * 0.18, background: mauHop, transform: `scale(${0.6 + 0.4 * popOut(o, 2.2)})`, opacity: o, boxShadow: `0 6px 18px ${mauHop}66`}} />
             ) : null}
-            <span style={{position: 'relative', color: hop && o > 0.5 ? chuHop : undefined, WebkitTextStroke: hop && o > 0.5 ? '0px' : `${coChu * 0.09}px #000`, paintOrder: 'stroke fill', textShadow: o > 0.5 ? (chuHop === '#ffffff' ? '0 2px 0 rgba(0,0,0,0.35)' : 'none') : BONG_CHU}}>{w}</span>
+            <span style={{position: 'relative', color: hop && o > 0.5 ? chuHop : undefined, WebkitTextStroke: hop && o > 0.5 ? '0px' : `${coChu * 0.09}px #000`, paintOrder: 'stroke fill', whiteSpace: 'nowrap', textShadow: o > 0.5 ? (chuHop === '#ffffff' ? '0 2px 0 rgba(0,0,0,0.35)' : 'none') : BONG_CHU}}>{hop ? inHoaPhuDe(w) : w}</span>
           </span>
         );
       })}

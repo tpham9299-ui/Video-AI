@@ -21,7 +21,8 @@ const htmlTu = (tex: string): string => {
   let v = cacheHtml.get(tex);
   if (v === undefined) {
     try {
-      v = katex.renderToString(tex.replace(/(^|[^\\])%/g, '$1\\%').replace(/\\frac(?=\s*\{)/g, '\\dfrac'), {throwOnError: true, strict: 'ignore', displayMode: false, output: 'html'});
+      v = katex.renderToString(tex.replace(/(^|[^\\])%/g, '$1\\%').replace(/\\frac(?=\s*\{)/g, '\\dfrac'), {throwOnError: true, strict: 'ignore', displayMode: false, output: 'html'})
+        .replace(/′/g, '<span class="toan-phay">′</span>');   // v89: dấu phẩy đạo hàm giữ phông KaTeX (Be Vietnam không có ′ đẹp)
     } catch (e) {
       // TeX sai cú pháp: hiện dạng chữ đọc được, không bao giờ hiện mã đỏ thô
       const chu = texSangChu(tex).replace(/[&<>]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'})[c] as string);
