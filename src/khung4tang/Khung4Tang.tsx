@@ -46,7 +46,7 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
       <NapPhongToan />
       <NenTramToanHoc t={t} mauNhan={mauNhan} tamSanKhau={bc.t2.y + bc.t2.h / 2} />
       {p.thuongHieu ? (
-        <div style={{position: 'absolute', top: Math.max(24, bc.t1.y - 58), right: 44, fontFamily: FONT, fontWeight: 800, fontSize: 22, color: 'rgba(230,237,245,0.5)', letterSpacing: 0.4}}>{p.thuongHieu}</div>
+        <div data-kd-bo="1" style={{position: 'absolute', top: Math.max(24, bc.t1.y - 58), right: 44, fontFamily: FONT, fontWeight: 800, fontSize: 22, color: 'rgba(230,237,245,0.5)', letterSpacing: 0.4}}>{p.thuongHieu}</div>
       ) : null}
       <Tang ten="t1" v={bc.t1}>
         <TangTieuDe buoc={buoc} i={i} t={t} mau={mauBuoc} />

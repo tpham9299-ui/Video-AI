@@ -1,4 +1,4 @@
-# VIDEO-AI — HƯỚNG DẪN KIẾN TRÚC & QUY TẮC LÀM VIỆC (v85)
+# VIDEO-AI — HƯỚNG DẪN KIẾN TRÚC & QUY TẮC LÀM VIỆC (v91)
 
 > **Lưu ý tiết kiệm token:** Tệp này chỉ chứa quy tắc bắt buộc, bản đồ tệp và kiến trúc hiện hành (v85). Toàn bộ lịch sử nâng cấp từ v1--v85 (đã gom từ các tệp `SUA_CODE_*.md` cũ) được lưu riêng trong `CHANGELOG.md` và chỉ đọc khi người dùng yêu cầu tra cứu lịch sử.
 
@@ -13,7 +13,7 @@
 ## 2. TỔNG QUAN HỆ THỐNG (v85)
 
 **Video-AI** là dây chuyền tự động sản xuất video toán học dọc 9:16 (ngắn + chuyên đề dài 10 phút `-10P`):
-`Tự sinh / Zalo gửi đề -> Giải & kiểm chứng 2 cách + JS -> Viết kịch bản sư phạm 6 phần -> Lập cảnh 3D/Manim/TTS -> Kiểm duyệt bố cục & AI nhìn hình -> Dựng song song -> Kiểm tra chuyển động MP4 & AI chấm cuối -> Tự đăng (Shorts, Reels, TikTok)`.
+`Tự sinh / Zalo gửi đề -> Giải & kiểm chứng 2 cách + JS -> Viết kịch bản sư phạm 6 phần (Auto-fix lỗi hình thức) -> Lập cảnh (Khung 4 tầng + 3D Vector / Manim) & TTS -> Kiểm duyệt bố cục & AI nhìn hình -> Dựng song song -> Kiểm tra chuyển động MP4 + Mắt thần 3×3 & AI chấm cuối -> Tự đăng (Shorts, Reels, TikTok)`.
 
 ### Kiến trúc 2 tầng
 
@@ -26,7 +26,7 @@
    * `sinh-de.yml` (**BP0**): Sinh/tìm đề mới & đề 10 phút (`scripts/bophan1/sinh_de_gh.js`).
    * `bo-phan-1.yml` (**BP1**): Giải đề & kiểm chứng `MOI -> DA_GIAI` (`scripts/bophan1/chay_bp1.js`).
    * `viet-kich-ban.yml` (**BP2**): Viết, tự sửa & duyệt kịch bản `DA_GIAI -> CO_KICH_BAN`, chạy song song 5 luồng (`chay_bp1.js`).
-   * `dung-video.yml` (**BP3**): Chuẩn bị TTS + cảnh 3D/Manim, kiểm duyệt bố cục (trần 7 phút), dựng khúc song song, ghép MP4, kiểm tra chuyển động & đẩy Drive.
+   * `dung-video.yml` (**BP3**): Chuẩn bị TTS + cảnh (mặc định Khung 4 tầng + 3D Vector trong Remotion, bỏ qua Blender; Blender chỉ khi kịch bản không có `khung4tang`, `bo_dung=blender` hoặc input `blender=1`), kiểm duyệt bố cục (trần 7 phút), dựng khúc song song, ghép MP4, kiểm tra chuyển động, **Mắt thần 3×3** & đẩy Drive.
    * `kiem-tra-video.yml` (**BP4**): AI xem lưới ảnh + kịch bản chấm điểm (`scripts/kiem_tra_video_gh.js`).
    * `dang-video.yml` (**BP5**): Gắn số tập/bìa và đăng đa nền tảng (`scripts/dang_video.py`).
    * *(Phụ trợ)* `kiem-tra-key.yml`: Kiểm tra sức khỏe kho `GEMINI_KEYS` (`scripts/kiem_tra_key.mjs`).
@@ -36,8 +36,8 @@
 | Nhóm | Tệp chính & Vai trò |
 | :--- | :--- |
 | **Apps Script (`/*.gs`)** | `BoPhan1.gs` (lõi hàng đợi, model động, GDPT 2018, tự đồng bộ GitHub), `PromptKichBan.gs` (prompt 6 phần, `cau_chuyen`, bản vẽ thực tế, bài 10 phút), `KiemTraHinh.gs` (tự sửa thuật toán, kiểm tra phép tính LaTeX & vật thật), `HinhHoc.gs` (tọa độ 2D/3D, chiếu Cavalier, phân loại `canh`/`khuat`/`phu`), `BoPhan2.gs` (giao dựng video & webhook `doPost`), `NangCao.gs` (tiêu chí duyệt, học từ góp ý, series/hook), `DangVideo.gs` (lịch đăng `chayLichDangDinhKy`, `kiemTraDangSauDuyet`, giữ chỗ 2 pha), `SanPham.gs` (lệnh Zalo tức thời & quảng cáo), `ZaloDeBai.gs` (nhận đề chữ/ảnh/PDF/Word/LaTeX), `KhoKey.gs` (quản lý key), `appsscript.json` (OAuth scopes & YouTube Advanced Services). |
-| **Scripts (`/scripts/`)** | `bophan1/chay_bp1.js` (chạy `.gs` trong Node `vm`), `bophan1/goi_gemini.js` (xoay vòng key, tự né 404/429, tra `ListModels`), `chuanbi.py` (chuẩn hóa đọc toán, Gemini TTS `mot_lan` + cache + fallback `edge-tts`, mốc `mocCongThuc`, tạo `public/props.json`), `canh_3d.py`, `ve_blender.py`, `tao_mo_hinh.py`, `xe_3d.py` (lập kế hoạch & dựng cảnh Blender Cycles CPU RGBA + xuất tọa độ chiếu), `manim_hinh.py` (dựng bài `HINH_HOC` Manim `0.22.1`, vẽ từng nét theo mốc từ, ghi `manimNhatKy`), `kiem_hinh_hoc.py` (kiểm tra chéo bắt buộc luồng/cảnh/điểm/quan hệ/đồng bộ trước & sau Manim), `manim_thuc_te.py` (vẽ nét toán & công thức trùng tọa độ chiếu từ Blender), `thu_vien_3d/` (đặc tả cảnh v87: `schema_dac_ta.json`, `danh_muc.json`, `vat.py`, `moi_truong.py`, `khop.py`, `xep_cho.py`, `phep_thu_nhieu.py` (xác suất nhiều vật -> Three.js), `sinh/` vật AI đã ghép), `kiem_bam_de.py` (kiểm đặc tả bám đề + AI nhìn ảnh), `nang_cap_dinh_dang.py`, `thu_dac_ta.py` (dựng thử cục bộ), `kiem_duyet.mjs` (đo DOM + AI nhìn hình trước dựng), `dung_khuc.mjs`, `ghep_khuc.mjs`, `anh_kiem_tra.py`, `dang_video.py`. |
-| **Remotion (`/src/`)** | `Root.tsx` (`Video` 1080x1920 30fps, `AnhBia`), `Video.tsx`, `Intro.tsx` (intro thương hiệu, cấu hình `phong_cach.json -> intro`, nội dung lùi `props.intro.lech` khung), `AnhBia.tsx`, `Canh.tsx`, `CanhBlender.tsx`, `CanhMoiTruong.tsx`, `NenChieuSau.tsx` (nền tối chiều sâu phần giải luồng thực tế), `UngDungThucTe.tsx` (thẻ minh họa cảnh ứng dụng), `CanhThucTe.tsx`, `BinhBi.tsx`, `NenCauChuyen.tsx`, `TheDeBai.tsx`, `DuKien.tsx`, `ManKet.tsx`, `PhuDeTikTok.tsx`, `KiemDuyet.tsx`, `chu.ts` (chuẩn hóa KaTeX/tiếng Việt), `sankhau/SanKhau.tsx`, `sankhau/dulieu.ts`, `sankhau/canhthat.ts`, `sankhau/vatthuc.tsx`, `sankhau/vat3d.tsx`, `sankhau/hinhhoc.tsx`, `sankhau/hinhtudo.tsx`, `sankhau/vat.tsx`. |
+| **Scripts (`/scripts/`)** | `bophan1/chay_bp1.js` (chạy `.gs` trong Node `vm`), `bophan1/goi_gemini.js` (xoay vòng key, tự né 404/429, tra `ListModels`), `chuanbi.py` (chuẩn hóa đọc toán, Gemini TTS `mot_lan` + cache + fallback `edge-tts`, mốc `mocCongThuc`, tạo `public/props.json`), `canh_3d.py`, `ve_blender.py`, `tao_mo_hinh.py`, `xe_3d.py` (lập kế hoạch & dựng cảnh Blender Cycles CPU RGBA + xuất tọa độ chiếu), `manim_hinh.py` (dựng bài `HINH_HOC` Manim `0.22.1`, vẽ từng nét theo mốc từ, ghi `manimNhatKy`), `kiem_hinh_hoc.py` (kiểm tra chéo bắt buộc luồng/cảnh/điểm/quan hệ/đồng bộ trước & sau Manim), `manim_thuc_te.py` (vẽ nét toán & công thức trùng tọa độ chiếu từ Blender), `thu_vien_3d/` (đặc tả cảnh v87: `schema_dac_ta.json`, `danh_muc.json`, `vat.py`, `moi_truong.py`, `khop.py`, `xep_cho.py`, `phep_thu_nhieu.py` (xác suất nhiều vật -> Three.js), `sinh/` vật AI đã ghép), `kiem_bam_de.py` (kiểm đặc tả bám đề + AI nhìn ảnh), `nang_cap_dinh_dang.py`, `thu_dac_ta.py` (dựng thử cục bộ), `kiem_duyet.mjs` (đo DOM + AI nhìn hình trước dựng), `dung_khuc.mjs`, `ghep_khuc.mjs`, `anh_kiem_tra.py`, `mat_than_3x3.py` (v91: lưới 3×3 + Gemini Flash chặn đăng khi cắt chữ/chồng chữ/LaTeX thô/lộ đáp án), `dang_video.py`. |
+| **Remotion (`/src/`)** | `Root.tsx` (`Video` 1080x1920 30fps, `AnhBia`), `Video.tsx`, `Intro.tsx` (intro thương hiệu, cấu hình `phong_cach.json -> intro`, nội dung lùi `props.intro.lech` khung), `AnhBia.tsx`, `Canh.tsx`, `CanhBlender.tsx`, `CanhMoiTruong.tsx`, `NenChieuSau.tsx` (nền tối chiều sâu phần giải luồng thực tế), `UngDungThucTe.tsx` (thẻ minh họa cảnh ứng dụng), `CanhThucTe.tsx`, `BinhBi.tsx`, `NenCauChuyen.tsx`, `TheDeBai.tsx`, `DuKien.tsx`, `ManKet.tsx`, `PhuDeTikTok.tsx`, `KiemDuyet.tsx`, `chu.ts` (chuẩn hóa KaTeX/tiếng Việt), `sankhau/SanKhau.tsx`, `sankhau/dulieu.ts`, `sankhau/canhthat.ts`, `sankhau/vatthuc.tsx`, `sankhau/vat3d.tsx`, `sankhau/hinhhoc.tsx`, `sankhau/hinhtudo.tsx`, `sankhau/vat.tsx`, `khung4tang/` (Khung 4 tầng: `Khung4Tang.tsx`, `kieu.ts`, `vung.ts`...), `3d-vector/` (động cơ 3D Vector: `dac_ta.ts`, `SanKhau3DVector.tsx`...). |
 
 ## 4. CÁC NGUYÊN TẮC KỸ THUẬT KHÔNG ĐƯỢC PHÁ VỠ (v85)
 
@@ -55,6 +55,7 @@
      * Vật thể thực tế / `mo_hinh_3d.chi_tiet` / `khoi_tiet_dien.tang` / lưới tam giác tự do $\rightarrow$ **Blender Cycles CPU** (`canh_3d.py`) chỉ dựng phần mở đầu (pha `thuc`) $\rightarrow$ cảnh `de_bai` (pha `chuyen`) đẩy máy + nhòe ảnh thật để lấy nét sang hình 2D $\rightarrow$ pha `toan`: Remotion (sân khấu + KaTeX), riêng hình khối hộp/trụ/nón/cầu do **Manim (`manim_thuc_te.py`)** vẽ.
      * **Đặc tả cảnh (v87):** cảnh mở đầu dựng từ `kb.dac_ta_canh` (ngữ nghĩa, không tọa độ) -> `kiem_bam_de.py` -> `thu_vien_3d/xep_cho.py` -> Blender; vật mới qua `--tu-tao` (AI ghép bộ phận, lưu `sinh/`). Thêm mẫu vật/bối cảnh: sửa `danh_muc.json` + hàm dựng + `DANH_MUC_3D_` (PromptKichBan.gs). Blender ghim 5.3.0.
      * **Góc máy & hành động (v88):** `quay[]` từng cảnh -> `props.quay` (mốc `khi_noi`, `chuanbi.py`) -> mỗi cảnh mở đầu/đề một kế hoạch Blender riêng + `props.nhipQuay` (`CanhBlender.tsx` chạy hành động đúng mốc). Bài xác suất mà vật chính đều là đồ chơi xác suất -> `moiTruong {loai:'dac_ta'}` dựng toàn bộ bằng Three.js (`CanhMoiTruong.tsx`, nhiều vật + `boi_canh`), không cần Blender.
+     * **Khung 4 tầng + 3D Vector (v91, MẶC ĐỊNH luồng thực tế & xác suất):** `PromptKichBan.gs` (`huongDanKhung4Tang_`, `dungKhung4Tang_`, CAU_HINH `BO_DUNG_MAC_DINH=3d_vector|blender`) dạy AI viết `kb.khung4tang` = `{de_ghim, buoc[{khi_noi, nhan, tieu_de, mau, du_kien, the}], canh_3d_vector}` (mốc theo lời `khi_noi`, không ghi giây) -> `tuSuaKhung4Tang_` (KiemTraHinh.gs) chuẩn hóa, ghi `kb.bo_dung` -> `chuanbi.py khung_4_tang` đổi `khi_noi` thành giây -> `props.boCuc='4tang'` + `props.khung4tang` -> `Video.tsx` (`NoiDung4Tang`) giữ vỏ chung (ảnh bìa, intro, giọng từng cảnh, nhạc, màn kết). Bài 10 phút và luồng hình học thuần không dùng (khóa luồng gỡ `khung4tang`/`canh_3d_vector`/`bo_dung`). Oxyz chỉ lớp 12.
      * Tránh dùng `filter: blur(...)` lặp theo phần tử hoặc `<feTurbulence>` toàn màn hình trong `src/` để giữ tốc độ render Chromium.
 
 3. **Kịch bản, Model & Giọng đọc:**
@@ -63,7 +64,9 @@
    * Giọng đọc Gemini TTS mặc định chế độ `mot_lan` (hoặc theo chặng đồng nhất 100% âm sắc, không đổi cao độ `asetrate`), fallback `edge-tts` cùng giới tính.
 
 4. **Kiểm duyệt & Lịch đăng:**
-   * Cửa kiểm duyệt gồm: đo bố cục & AI nhìn hình (`kiem_duyet.mjs`), kiểm tra nhấp nháy/chuyển động trên MP4, và AI chấm cuối (`kiem-tra-video.yml`). Chỉ trạng thái `DA_DUYET` mới được vào hàng đăng.
+   * Cửa kiểm duyệt gồm: đo bố cục & AI nhìn hình (`kiem_duyet.mjs`), kiểm tra nhấp nháy/chuyển động trên MP4, **Mắt thần 3×3** (`mat_than_3x3.py`, v91) và AI chấm cuối (`kiem-tra-video.yml`). Chỉ trạng thái `DA_DUYET` mới được vào hàng đăng.
+   * **Mắt thần 3×3 (v91):** lỗi nặng -> `kiem_tra_mp4.dat=false` + `mat_than` + `anh_3x3` về `doPost` -> giữ `CHO`, ghi `link_dang._mat_than_chan`, Zalo nhận ảnh lưới (`guiAnhZalo_`, bật chia sẻ link riêng ảnh đó) + danh sách lỗi; `DangVideo.gs matThanChan_` chặn tới khi bạn `/duyet` sau thời điểm chặn. Mắt thần không chạy được (thiếu key/hết hạn mức) thì không chặn. Tắt: GitHub Variable `MAT_THAN_3X3=TAT`.
+   * **Auto-fix kịch bản (v91):** `tuSuaHinhThuc_` (TeX `\binom`/`C(n,k)`/`$`/ngoặc/dấu nhân, màu, nhãn thừa, tiêu đề, trường hook, đáp số lộ ở hook) chạy trong `chuanBiKichBan_`; `phanLoaiLoiCung_` chỉ giữ lỗi cứng (`LOI_CUNG_RE_`: rỗng cảnh/lời, đáp án, phép tính, vượt lớp, khóa luồng, dữ kiện Manim) - còn lại thành cảnh báo. Python: `kiem_dac_ta_tu_sua` (kiem_bam_de.py). Tắt: CAU_HINH `AUTO_FIX_KICH_BAN=TAT` / env `AUTO_FIX_KICH_BAN=0`.
    * Lịch đăng chạy qua `chayLichDangDinhKy` (15 phút/lần, giờ VN `11:30` & `19:30`) + trigger `kiemTraDangSauDuyet`, dùng cơ chế giữ chỗ 2 pha (`dang_cho`) và lưu kết quả theo từng nền tảng để phục hồi phần lỗi.
    * Video 10 phút (`-10P`) chỉ đăng duy nhất lên **YouTube** (nén $< 44\text{ MB}$ khi qua Apps Script YouTube API).
 
@@ -90,6 +93,9 @@ python scripts/thu_dac_ta.py mau/kich_ban_trai_ca.json   # dựng thử đặc t
 node scripts/test_luong_hinh_hoc.cjs
 node scripts/test_lich_dang.cjs
 node scripts/test_kich_ban_canh.cjs
+node scripts/test_auto_fix_kich_ban.cjs                 # v91: Auto-fix + khung4tang + khóa luồng
+python scripts/test_mat_than_3x3.py                     # v91: lưới 3×3 (MP4 giả, không gọi API)
+python scripts/chuanbi.py mau/kich_ban_4tang_luc.json --gia-lap --props-ra out/thu_4tang/props.json   # in bảng thời gian từng khâu
 
 # Test nhanh 1 khung hình cuối Manim chất lượng thấp
 manim -ql -s scripts/manim_hinh.py <TenScene>

@@ -23,7 +23,8 @@ import sys
 NGUONG_LECH = 0.25          # giây: nét vẽ bắt đầu lệch tối đa so với lời đọc
 NGUONG_GOC = 0.02           # |cos| cho vuông góc, |sin| cho song song
 NGUONG_DO_DAI = 2e-3        # tỉ lệ theo đường chéo hình
-KHOA_3D = ("mo_hinh_3d", "dac_ta_canh", "ban_ve", "moi_truong", "moiTruong", "chuoi_3d", "chuoi3D", "anh_canh_3d", "net_toan")
+KHOA_3D = ("mo_hinh_3d", "dac_ta_canh", "ban_ve", "moi_truong", "moiTruong", "chuoi_3d", "chuoi3D", "anh_canh_3d", "net_toan",
+           "khung4tang", "canh_3d_vector", "bo_dung")   # v91: khung 4 tầng / 3D Vector chỉ cho luồng thực tế & xác suất
 KHOA_3D_PROPS = ("moHinh3D", "moiTruong", "chuoi3D", "anhCanh3D", "netToan", "phaMinhHoa", "quay", "nhipQuay")
 VAT_DUOC = ("hinh_hoc",)
 VIET_TAT = re.compile(r"^(CM|SGK|OK|TH|ĐPCM|THCS|THPT|GTLN|GTNN|PT|HS|V|P|R)\d*$")
@@ -129,7 +130,7 @@ def kiem_truoc(kb, props):
             loi.append("LUONG: kịch bản hình học còn '%s'" % k)
     if isinstance(kb.get("cau_chuyen"), dict) and kb["cau_chuyen"].get("phong_canh"):
         loi.append("LUONG: kịch bản hình học còn phong cảnh 3D (cau_chuyen.phong_canh)")
-    for k in ("phongCanh", "nenBlender"):
+    for k in ("phongCanh", "nenBlender", "khung4tang", "boCuc"):
         if props.get(k):
             loi.append("LUONG: props còn '%s'" % k)
     for i, c in enumerate(canh_k):

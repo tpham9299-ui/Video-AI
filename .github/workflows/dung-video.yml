@@ -15,7 +15,7 @@ on:
       mau:
         description: 'Kịch bản mẫu để dựng thử (khi không có kich_ban)'
         type: choice
-        options: [kich_ban_thuc_te, kich_ban_koch, kich_ban_koch_moi, kich_ban_ong_thep, kich_ban_cot_co, kich_ban_rao_vuon, kich_ban_toa_nha, kich_ban_san_pham, kich_ban_hinh_hoc, kich_ban_hinh_khong_gian, kich_ban_hinh_manim, kich_ban_hinh_dong_bo, kich_ban_mau]
+        options: [kich_ban_4tang_luc, kich_ban_thuc_te, kich_ban_koch, kich_ban_koch_moi, kich_ban_ong_thep, kich_ban_cot_co, kich_ban_rao_vuon, kich_ban_toa_nha, kich_ban_san_pham, kich_ban_hinh_hoc, kich_ban_hinh_khong_gian, kich_ban_hinh_manim, kich_ban_hinh_dong_bo, kich_ban_mau]
         default: kich_ban_thuc_te
       viec:
         description: 'dung = dựng video | dang = đăng video lên mạng xã hội'
@@ -34,6 +34,11 @@ on:
         description: 'Thông tin đăng bài JSON (Apps Script tự điền)'
         type: string
         default: ''
+      blender:
+        description: 'v91: 1 = ép dựng cảnh mở đầu bằng Blender 5.3 (mặc định: Khung 4 tầng + 3D Vector trong Remotion)'
+        type: choice
+        options: ['0', '1']
+        default: '0'
 
 # Mỗi đề một nhóm: đề ưu tiên (gửi qua Zalo) được dựng SONG SONG với video đang dựng, không phải xếp hàng chờ;
 # cùng một đề gửi lặp thì chỉ dựng/đăng một lần.
@@ -83,6 +88,10 @@ jobs:
       DUNG_VIDEO_SECRET: ${{ secrets.DUNG_VIDEO_SECRET }}
       ID_VIDEO: ${{ github.event.client_payload.id || github.event.inputs.id }}
       GEMINI_KEYS: ${{ secrets.GEMINI_KEYS }}
+      # v91: số luồng edge-tts song song / số luồng chuẩn âm ffmpeg (chuanbi.py in bảng thời gian từng khâu)
+      EDGE_SONG_SONG: ${{ vars.EDGE_SONG_SONG || '8' }}
+      THU_MUC_RA: out
+      EP_BLENDER: ${{ github.event.inputs.blender || vars.EP_BLENDER || '0' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -190,14 +199,25 @@ jobs:
               kb["mon"] = "HINH_HOC"
               with open("kich_ban.json", "w", encoding="utf8") as f:
                   json.dump(kb, f, ensure_ascii=False)
-          print("Luồng dựng:", "hinh_hoc_thuan (Manim, không Blender)" if hh else "thuc_te_xac_suat")
+          # v91: khung 4 tầng + 3D Vector (Remotion) là bộ dựng MẶC ĐỊNH của luồng thực tế & xác suất -> bỏ qua Blender.
+          # Blender chỉ chạy khi kịch bản không có khung4tang hợp lệ, kb.bo_dung = blender, hoặc ép tay (input blender = 1).
+          if hh and ("khung4tang" in kb or "bo_dung" in kb):   # khóa luồng hình học thuần: gỡ mọi lớp 3D Vector
+              kb.pop("khung4tang", None); kb.pop("bo_dung", None)
+              with open("kich_ban.json", "w", encoding="utf8") as f:
+                  json.dump(kb, f, ensure_ascii=False)
+          k4 = kb.get("khung4tang")
+          v3d = (not hh and isinstance(k4, dict) and isinstance(k4.get("buoc"), list) and len(k4["buoc"]) > 0
+                 and str(kb.get("bo_dung") or "3d_vector") != "blender" and os.environ.get("EP_BLENDER") != "1")
+          print("Luồng dựng:", "hinh_hoc_thuan (Manim, không Blender)" if hh else
+                ("thuc_te_xac_suat - Khung 4 tầng + 3D Vector (Remotion, bỏ qua Blender)" if v3d else "thuc_te_xac_suat - đường dựng cũ (Blender khi cần)"))
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
               print(f"hh={int(hh)}", file=f)
+              print(f"v3d={int(v3d)}", file=f)
           PY_HINH
 
       - name: Đối chiếu kịch bản và thử lập cảnh trước giọng đọc
         id: kich_ban_canh
-        if: steps.kb.outputs.hh != '1'
+        if: steps.kb.outputs.hh != '1' && steps.kb.outputs.v3d != '1'
         run: |
           pip install -q jsonschema pillow
           python3 scripts/canh_3d.py kich_ban.json --kiem-kich-ban --tu-tao
@@ -251,6 +271,7 @@ jobs:
             MANIM_PID=$!
           fi
           python3 scripts/chuanbi.py kich_ban.json
+          [ -f out/thoi_gian_chuanbi.json ] && echo "Thời gian chuanbi.py: $(python3 -c "import json;print(json.load(open('out/thoi_gian_chuanbi.json'))['tong'])") s"
           if [ -n "${MANIM_PID:-}" ]; then
             if ! wait "$MANIM_PID"; then
               echo "::error::Cài đặt Manim thất bại cho bài hình học"
@@ -281,9 +302,16 @@ jobs:
           ls -la out
           echo "ok=1" >> "$GITHUB_OUTPUT"
 
+      # v91: khung 4 tầng + 3D Vector -> chỉ chạy test động cơ 3D Vector (vài giây), không lập kế hoạch / cài / dựng Blender
+      - name: Kiểm tra động cơ 3D Vector (khung 4 tầng)
+        if: steps.kb.outputs.v3d == '1'
+        run: |
+          node scripts/test_canh_3d_vector.mjs
+          python3 -c "import json;p=json.load(open('public/props.json',encoding='utf8'));k=p.get('khung4tang');print('Khung 4 tầng:',len(k['buoc']),'bước') if p.get('boCuc')=='4tang' and k else print('::warning::chuanbi.py không sinh được khung4tang -> dựng giao diện cũ (không Blender)')"
+
       - name: Kiểm tra dữ kiện và chọn bộ dựng 3D
         id: bo_dung_3d
-        if: steps.kb.outputs.hh != '1'
+        if: steps.kb.outputs.hh != '1' && steps.kb.outputs.v3d != '1'
         run: |
           python3 scripts/test_canh_3d.py
           python3 scripts/test_dac_ta_canh.py
@@ -550,6 +578,10 @@ jobs:
       DRIVE_THU_MUC: ${{ vars.DRIVE_THU_MUC }}
       DA_DUNG: ${{ needs.chuan_bi.result == 'success' && needs.dung_khuc.result == 'success' }}
       MANIM: ${{ needs.chuan_bi.outputs.manim }}
+      # v91 Mắt thần 3×3: tái dùng kho key Gemini sẵn có (goi_gemini.js xoay key, né 404/429). Tắt: GitHub Variable MAT_THAN_3X3 = TAT
+      GEMINI_KEYS: ${{ secrets.GEMINI_KEYS }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      MAT_THAN_MODEL: ${{ vars.MAT_THAN_MODEL }}
     steps:
       - uses: actions/checkout@v4
         if: ${{ env.DA_DUNG == 'true' }}
@@ -630,6 +662,15 @@ jobs:
           python3 scripts/kiem_tra_chuyen_dong.py public/props.json "out/$ID.mp4" out/chuyen_dong.json
           python3 scripts/anh_kiem_tra.py public/props.json "out/$ID.mp4" out/
 
+      # v91 MẮT THẦN AI: 9 khung mốc -> lưới 3×3 -> Gemini Flash tìm cắt chữ / chồng chữ / LaTeX thô / lộ đáp án sớm.
+      # Lỗi nặng -> báo Apps Script (kiem_tra_mp4.dat = false) => video giữ ở CHO, không vào lịch đăng, Zalo nhận ảnh lưới + lỗi.
+      # Bản thân Mắt thần lỗi (thiếu key, hết hạn mức) -> không chặn, BP4 vẫn chấm trước khi DA_DUYET.
+      - name: Mắt thần AI quét lưới 3×3
+        id: mat_than
+        if: ${{ steps.dung.outcome == 'success' && vars.MAT_THAN_3X3 != 'TAT' }}
+        continue-on-error: true
+        run: python3 scripts/mat_than_3x3.py public/props.json "out/${{ steps.dung.outputs.id }}.mp4" out/
+
       - name: Lưu bản sao 3 ngày trên GitHub
         if: ${{ steps.dung.outcome == 'success' }}
         uses: actions/upload-artifact@v4
@@ -651,7 +692,7 @@ jobs:
           FILE_ID=$(rclone lsjson "gdrive:$THU_MUC" --files-only --include "$ID.mp4" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d[0]['ID'] if d else '')")
           if [ -z "$FILE_ID" ]; then echo "Không lấy được ID tệp trên Drive"; exit 1; fi
           echo "file_id=$FILE_ID" >> "$GITHUB_OUTPUT"
-          for LOAI in kt bia; do
+          for LOAI in kt bia 3x3; do
             if [ -f "out/${ID}_${LOAI}.jpg" ]; then
               rclone copy "out/${ID}_${LOAI}.jpg" "gdrive:$THU_MUC/anh"
               AID=$(rclone lsjson "gdrive:$THU_MUC/anh" --files-only --include "${ID}_${LOAI}.jpg" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d[0]['ID'] if d else '')" || true)
@@ -666,6 +707,7 @@ jobs:
           FILE_ID: ${{ steps.drive.outputs.file_id }}
           ANH_KT: ${{ steps.drive.outputs.anh_kt }}
           ANH_BIA: ${{ steps.drive.outputs.anh_bia }}
+          ANH_3X3: ${{ steps.drive.outputs.anh_3x3 }}
           GIAY: ${{ needs.chuan_bi.outputs.giay }}
           TRANG_THAI: ${{ job.status }}
         run: |
@@ -698,6 +740,16 @@ jobs:
                       reasons.append("Kiểm duyệt hình ảnh chưa hoàn tất")
                   else:
                       reasons.append("Chưa hoàn tất báo cáo bố cục")
+              # v91 Mắt thần 3×3: lỗi nặng -> chặn (kèm danh sách lỗi + ảnh lưới để Apps Script gửi Zalo)
+              if os.path.exists('out/mat_than.json'):
+                  try:
+                      mt = json.load(open('out/mat_than.json', encoding='utf8'))
+                  except Exception:
+                      mt = {}
+                  d['mat_than'] = {k: mt.get(k) for k in ('dat', 'chay', 'loi', 'ly_do', 'canh_bao', 'o_dap_an')}
+                  d['anh_3x3'] = os.environ.get("ANH_3X3", "")
+                  if mt.get('chay') and mt.get('dat') is False:
+                      reasons.insert(0, mt.get('ly_do') or 'Mắt thần 3×3 phát hiện lỗi nặng')
               if reasons:
                   kd = {"dat": False, "ly_do": ". ".join(reasons + ([kd["ly_do"]] if kd.get("ly_do") else []))}
               d['kiem_tra_mp4'] = kd

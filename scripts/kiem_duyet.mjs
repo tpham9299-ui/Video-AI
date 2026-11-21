@@ -46,7 +46,7 @@ const trinhDuyet = await openBrowser('chrome', {browserExecutable: process.env.T
 const comp = await selectComposition({serveUrl: path.resolve(bundle), id: 'Video', inputProps, puppeteerInstance: trinhDuyet});
 const tho = [];
 const anhAi = [];
-const tam = fs.mkdtempSync('/tmp/kd-');
+const tam = fs.mkdtempSync(path.join(os.tmpdir(), 'kd-'));
 async function chup(m) {
   let nhan = null;
   const layAi = debut3D(canh[m.i]) || (m.isEnd && chonSet.has(m.i));

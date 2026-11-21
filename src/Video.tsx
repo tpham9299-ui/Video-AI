@@ -103,9 +103,49 @@ function taoAmLuongNhac(props: Props) {
 }
 
 // Video có ảnh bìa ở khung hình đầu: khung 0 là ảnh bìa, toàn bộ nội dung lùi 1 khung (1/30 giây, mắt không nhận ra).
-// v90: props có boCuc '4tang' + khung4tang -> khung 4 tầng (sân khấu 3D Vector); còn lại giữ nguyên đường dựng cũ.
-export const Video: React.FC<Props> = (props) =>
-  props.boCuc === '4tang' && props.khung4tang ? <Khung4Tang {...props.khung4tang} /> : <VideoCu {...props} />;
+// v91: props có boCuc '4tang' + khung4tang -> phần nội dung là khung 4 tầng (sân khấu 3D Vector) nhưng VẪN giữ vỏ chung
+// (ảnh bìa khung đầu, intro thương hiệu, giọng đọc từng cảnh, nhạc ducking, màn kết); còn lại giữ nguyên đường dựng cũ.
+export const Video: React.FC<Props> = (props) => <VideoCu {...props} />;
+
+const la4Tang = (p: Props) => p.boCuc === '4tang' && !!p.khung4tang;
+
+// Nội dung luồng 4 tầng: mốc `t` trong khung4tang tính bằng giây kể từ đầu phần nội dung (sau intro), do chuanbi.py đổi từ `khi_noi`.
+const NoiDung4Tang: React.FC<Props & {coIntro?: boolean}> = (props) => {
+  const {canh, tongFrame, fps, nhac, thuongHieu, outro} = props;
+  const k = props.khung4tang!;
+  const amNhac = React.useMemo(() => taoAmLuongNhac(props), [canh, tongFrame, fps, props.amLuongNhac]);
+  const ketThuc = outro ? outro.batDau : tongFrame;
+  // phụ đề gọn: câu của từng cảnh đổi sang giây toàn phần nội dung
+  const cau = React.useMemo(() => canh.flatMap((c) => c.cau.map((x) => ({text: x.text, bat: c.batDau / fps + x.bat, ket: c.batDau / fps + x.ket}))), [canh, fps]);
+  return (
+    <AbsoluteFill style={{fontFamily: FONT, background: '#0E1014'}}>
+      <Sequence from={0} durationInFrames={Math.max(1, ketThuc)}>
+        <Khung4Tang {...k} fps={fps} tongFrame={Math.max(1, ketThuc)} thuongHieu={k.thuongHieu ?? thuongHieu?.ten} cau={k.boCuc?.phuDe === 'gon' ? cau : k.cau} />
+      </Sequence>
+      {nhac ? <Audio src={staticFile(nhac)} loop volume={amNhac} /> : null}
+      {canh.map((c) =>
+        c.audio ? (
+          <Sequence key={`am${c.so}`} from={c.batDau + (c.leadFrame || 0)} durationInFrames={c.soFrame} layout="none">
+            <Audio src={staticFile(c.audio)} volume={1} />
+          </Sequence>
+        ) : null
+      )}
+      {canh.map((c) =>
+        /dap_an|ket_qua/i.test(c.loai) && c.batDau > 40 ? (
+          <Sequence key={`riser${c.so}`} from={c.batDau - 36} durationInFrames={40} layout="none">
+            <Audio src={staticFile('sfx/riser.wav')} volume={0.2} />
+          </Sequence>
+        ) : null
+      )}
+      {outro ? (
+        <Sequence from={outro.batDau} durationInFrames={outro.soFrame}>
+          {outro.loai === 'tu_tao' ? <ManKetChuyenNghiep th={thuongHieu} baiHoc={props.baiHoc || []} dapAn={props.dapAn} tiepTheo={props.tiepTheo || ''} /> : <ManKet tep={outro.tep} loai={outro.loai} />}
+        </Sequence>
+      ) : null}
+      {props.kiemDuyet ? <KiemDuyet /> : null}
+    </AbsoluteFill>
+  );
+};
 
 const VideoCu: React.FC<Props> = (props) => {
   if (props.anhBiaDau) {
@@ -140,7 +180,9 @@ const VoiIntro: React.FC<Props> = (props) => {
   );
 };
 
-const NoiDungVideo: React.FC<Props & {coIntro?: boolean}> = (props) => {
+const NoiDungVideo: React.FC<Props & {coIntro?: boolean}> = (props) => (la4Tang(props) ? <NoiDung4Tang {...props} /> : <NoiDungCu {...props} />);
+
+const NoiDungCu: React.FC<Props & {coIntro?: boolean}> = (props) => {
   const {canh, tongFrame, fps, nhac, lop, tieuDe, nen, phongCach, hookChu, hookKieu, nhanManh, thuongHieu, outro} = props;
   Object.assign(MAU, MAU_GOC, phongCach.mau || {}); // đặt lại bảng màu gốc rồi ghi đè theo phong_cach.json
   GIAO_DIEN.kieuToan = phongCach.kieuToan || 'dam';

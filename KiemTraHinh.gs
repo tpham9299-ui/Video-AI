@@ -755,8 +755,21 @@ function kiemTraHook_(kb) {
 
 // v89 CHỐNG LỘ ĐÁP ÁN: đáp số (không có sẵn trong đề) không được xuất hiện ở hook / tiêu đề / ảnh bìa / lời cảnh 1.
 function loHookDapAn_(kb) {
+  var mau = mauDapSoLo_(kb);
+  if (!mau.length) return '';
   var dap = String(kb.dap_an_cuoi || kb.dap_an || '');
-  if (!dap) return '';
+  var o = {hook: kb.hook, hook_chu: kb.hook_chu, tieu_de_bia: kb.tieu_de_bia, tieu_de: kb.tieu_de, chu_de_ngan: kb.chu_de_ngan,
+    hook_ung_vien: (kb.hook_ung_vien || []).join(' | '), 'loi_thoai cảnh 1': kb.canh && kb.canh[0] ? kb.canh[0].loi_thoai : ''};
+  for (var k in o) {
+    var v = String(o[k] || '');
+    for (var i = 0; i < mau.length; i++) if (mau[i].test(v)) return 'HOOK_LO_DAP_AN: "' + k + '" đang nêu đáp số (' + dap + '). Mở bài phải là câu hỏi gợi tò mò (ví dụ "P(A ∩ B) = ?", "r bằng bao nhiêu thì rẻ nhất?"), không nói trước kết quả.';
+  }
+  return '';
+}
+// Mẫu nhận diện đáp số (không có sẵn trong đề) dưới dạng số, phân số, chữ đọc -> dùng cho kiểm tra và Auto-fix chống lộ đáp án.
+function mauDapSoLo_(kb) {
+  var dap = String(kb.dap_an_cuoi || kb.dap_an || '');
+  if (!dap) return [];
   var de = [].concat(kb.de_cho || [], kb.du_kien || [], [kb.can_tim || '']).join(' ');
   var mau = [];
   var phanSo = dap.match(/(\d+)\s*\/\s*(\d+)|frac\{(\d+)\}\{(\d+)\}/);
@@ -775,14 +788,7 @@ function loHookDapAn_(kb) {
       if (Math.floor(n) === n && n < 1000000) mau.push(new RegExp('(^|\\s)' + soThanhChu_(n) + '(?=\\s|$|[,.!?])', 'i'));
     });
   }
-  if (!mau.length) return '';
-  var o = {hook: kb.hook, hook_chu: kb.hook_chu, tieu_de_bia: kb.tieu_de_bia, tieu_de: kb.tieu_de, chu_de_ngan: kb.chu_de_ngan,
-    hook_ung_vien: (kb.hook_ung_vien || []).join(' | '), 'loi_thoai cảnh 1': kb.canh && kb.canh[0] ? kb.canh[0].loi_thoai : ''};
-  for (var k in o) {
-    var v = String(o[k] || '');
-    for (var i = 0; i < mau.length; i++) if (mau[i].test(v)) return 'HOOK_LO_DAP_AN: "' + k + '" đang nêu đáp số (' + dap + '). Mở bài phải là câu hỏi gợi tò mò (ví dụ "P(A ∩ B) = ?", "r bằng bao nhiêu thì rẻ nhất?"), không nói trước kết quả.';
-  }
-  return '';
+  return mau;
 }
 
 // v89: tiêu đề cảnh không viết phiên âm ("V phẩy bằng zero", "mười cm", "năm mươi tư") và không mở đầu bằng dấu câu.
@@ -1241,7 +1247,9 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc, lop) {
     nhe = nhe.filter(function (x) { return !boQuaHH.test(String(x)); });
     if (kb.canh.length < 6) nang.push('IT_CANH_HINH_HOC: bài hình học cần ít nhất 6 cảnh (mở đầu, đề bài, ý tưởng, các bước giải, kết luận).');
   }
-  return { nang: nang, nhe: nhe };
+  if (!laLuongHH) nhe = nhe.concat(loiKhung4Tang_(kb));
+  // v91 AUTO-FIX: chỉ lỗi cứng (đáp án/phép tính/lớp/khóa luồng/rỗng) còn trong "nang"; lỗi hình thức thành cảnh báo
+  return phanLoaiLoiCung_(nang, nhe, kb);
 }
 
 // Giữ tên cũ: trả lỗi đầu tiên (nặng trước), '' nếu hoàn hảo.
@@ -2550,4 +2558,209 @@ function kiemTraDaDangHinhThucTe_(kb, mon) {
     loi.push('HINH_LAP_LAI_NHIEU_CANH: có ' + maxLap + ' cảnh liên tiếp dùng y hệt một hình minh họa tĩnh. Mỗi cảnh phải thể hiện đúng đoạn nội dung cảnh đó đang nói (ẩn/hiện các phép đo theo bước buoc: 1..4, đổi nhãn từ "?" sang số vừa tính được, phóng to hoặc tô sáng phần đang xét).');
   }
   return loi;
+}
+
+
+
+/* ===================== v91: AUTO-FIX THAY CHO TỪ CHỐI CỨNG ===================== */
+// Lỗi nhỏ / hình thức được máy TỰ CHUẨN HÓA (tuSuaHinhThuc_) rồi hạ thành cảnh báo nhẹ (phanLoaiLoiCung_).
+// Chỉ TỪ CHỐI CỨNG khi: kịch bản rỗng cảnh / lời đọc, sai kết quả toán học cốt lõi (đáp án, phép tính, vượt chương trình lớp),
+// vi phạm khóa luồng hinh_hoc_thuan hoặc hình học thiếu dữ kiện bắt buộc cho Manim. JSON hỏng đã bị chặn từ lúc đọc (BoPhan1.gs).
+// Tắt: CAU_HINH AUTO_FIX_KICH_BAN = TAT (quay về cách cũ).
+var LOI_CUNG_RE_ = /^(KHONG_CO_CANH|QUA_IT_CANH|THIEU_LOI_THOAI_CANH_|DAP_AN_CUOI_SAI|DAP_AN_SAI_TREN_MAN_HINH|PHEP_TINH_SAI_CANH_|VI_PHAM_CHUONG_TRINH_LOP|LUONG_HINH_HOC|NOI_DUNG_LA|THOI_LUONG_CHUYEN_DE|SO_CANH_VIDEO_DAI_SAI|HINH_THIEU_DIEM_DE|HINH_THIEU_DIEM_CANH_|THIEU_TOA_DO_HINH|BUOC_VE_KHONG_KHOP_LOI_CANH_|BUOC_VE_DOI_TUONG_LA_CANH_)/;
+var MAU_SAN_KHAU_ = ['do', 'xanh_duong', 'xanh_la', 'cam', 'vang', 'tim', 'hong', 'ngoc', 'trang', 'xam', 'nau'];
+var MAU_GAN_ = {'đỏ': 'do', red: 'do', xanh: 'xanh_duong', 'xanh dương': 'xanh_duong', xanh_lam: 'xanh_duong', lam: 'xanh_duong', blue: 'xanh_duong', cyan: 'xanh_duong',
+  'xanh lá': 'xanh_la', xanh_luc: 'xanh_la', luc: 'xanh_la', green: 'xanh_la', orange: 'cam', 'vàng': 'vang', yellow: 'vang', 'tím': 'tim', purple: 'tim',
+  'hồng': 'hong', pink: 'hong', 'trắng': 'trang', white: 'trang', 'xám': 'xam', gray: 'xam', grey: 'xam', 'nâu': 'nau', brown: 'nau', den: 'xam', 'đen': 'xam', black: 'xam'};
+var MAU_3DV_GAN_ = {xanh: 'cyan', xanh_duong: 'cyan', lam: 'cyan', blue: 'cyan', 'vàng': 'vang', yellow: 'vang', cam: 'vang', do: 'hong', 'đỏ': 'hong', red: 'hong',
+  tim: 'hong', 'hồng': 'hong', pink: 'hong', xanh_la: 'ngoc', green: 'ngoc', white: 'trang', 'trắng': 'trang', gray: 'xam', grey: 'xam', 'xám': 'xam'};
+
+function batAutoFix_() { return String((typeof cauHinh_ === 'function' && cauHinh_('AUTO_FIX_KICH_BAN')) || 'BAT').toUpperCase() !== 'TAT'; }
+
+// Chuẩn hóa một chuỗi LaTeX hiển thị: \binom / C(n,k) -> C_n^k, bỏ $, gạch chéo kép, dấu "." làm phép nhân -> \cdot, cân ngoặc { }.
+function suaTexHienThi_(s) {
+  if (typeof s !== 'string' || !s) return s;
+  var t = s.replace(/\$/g, '').replace(/\\\\([a-zA-Z])/g, '\\$1');
+  t = t.replace(/\\[dt]?binom\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, 'C_{$1}^{$2}')
+    .replace(/(^|[^A-Za-z\\_])C\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)/g, '$1C_{$2}^{$3}')
+    .replace(/(\d)\s+\.\s+(\d)/g, '$1 \\cdot $2')                       // "3 . 4" -> 3 · 4 (giữ số thập phân 29.50)
+    .replace(/(\d|\))\s*\.\s*(\(|\\(?:frac|sqrt|pi))/g, '$1 \\cdot $2')  // "2.(x+1)", "3.\frac", "2.\pi"
+    .replace(/([a-z])\s+\.\s+([a-z0-9])/g, '$1 \\cdot $2');            // "a . b" (có khoảng trắng; không đụng "S.ABCD")
+  var mo = 0, ra = '';
+  for (var i = 0; i < t.length; i++) {
+    var ch = t.charAt(i);
+    if (ch === '\\' && (t.charAt(i + 1) === '{' || t.charAt(i + 1) === '}')) { ra += ch + t.charAt(i + 1); i++; continue; }
+    if (ch === '{') mo++;
+    if (ch === '}') { if (!mo) continue; mo--; }                        // ngoặc đóng thừa -> bỏ
+    ra += ch;
+  }
+  while (mo-- > 0) ra += '}';                                            // thiếu ngoặc đóng -> bù cuối
+  return ra;
+}
+
+function thayDapSo_(s, mau, thay) {
+  if (typeof s !== 'string' || !s) return s;
+  mau.forEach(function (re) {
+    s = s.replace(new RegExp(re.source, re.flags.indexOf('g') >= 0 ? re.flags : re.flags + 'g'), function (all, p1) {
+      return (typeof p1 === 'string' && p1.length <= 1 && all.indexOf(p1) === 0 ? p1 : '') + thay;
+    });
+  });
+  return s.replace(/\?\s*\?/g, '?');
+}
+
+function tuSuaHinhThuc_(kb, r) {
+  var sua = [];
+  if (!batAutoFix_() || !kb || !Array.isArray(kb.canh)) return sua;
+  var dem = {tex: 0, mau: 0, nhan: 0, td: 0};
+  var texMang = function (ds) { return Array.isArray(ds) ? ds.map(function (x) { var y = suaTexHienThi_(x); if (y !== x) dem.tex++; return y; }) : ds; };
+  var chuanMau = function (m) {
+    if (typeof m !== 'string' || MAU_SAN_KHAU_.indexOf(m) >= 0 || /^#[0-9a-f]{3,8}$/i.test(m)) return m;
+    var k = m.trim().toLowerCase(), g = MAU_GAN_[k] || MAU_GAN_[k.replace(/_/g, ' ')];
+    if (g) { dem.mau++; return g; }
+    return m;
+  };
+  kb.canh.forEach(function (c, i) {
+    if (!c) return;
+    // lời thoại còn ký hiệu LaTeX -> đọc thành chữ (giọng đọc không đọc được \frac)
+    if (/[\\$]/.test(String(c.loi_thoai || ''))) { c.loi_thoai = docLatexThanhLoi_(c.loi_thoai); sua.push('cảnh ' + (i + 1) + ': đổi LaTeX trong lời thoại thành chữ'); }
+    c.noi_dung_man_hinh = texMang(c.noi_dung_man_hinh);
+    c.chu_thich = texMang(c.chu_thich);
+    // tiêu đề: bỏ dấu câu rớt đầu, điền khi thiếu
+    if (typeof c.tieu_de_canh === 'string' && /^\s*[:,;.?!\-–]+/.test(c.tieu_de_canh)) { c.tieu_de_canh = c.tieu_de_canh.replace(/^\s*[:,;.?!\-–]+\s*/, ''); dem.td++; }
+    if (i > 0 && String(c.tieu_de_canh || '').trim().length < 6 && c.loi_thoai) { c.tieu_de_canh = tieuDeTuLoi_(c.loi_thoai); dem.td++; }
+    var du = c.minh_hoa && c.minh_hoa.du_lieu;
+    if (!du || !Array.isArray(du.vat)) return;
+    du.vat.forEach(function (v) {
+      if (!v) return;
+      ['noi_dung', 'nhan'].forEach(function (k) { if (typeof v[k] === 'string') { var y = suaTexHienThi_(v[k]); if (y !== v[k]) { v[k] = y; dem.tex++; } } });
+      v.ds = texMang(v.ds);
+      if (v.mau !== undefined) v.mau = chuanMau(v.mau);
+      if (Array.isArray(v.hinh)) v.hinh.forEach(function (h) { if (h) { ['noi_dung', 'nhan'].forEach(function (k) { if (typeof h[k] === 'string') h[k] = suaTexHienThi_(h[k]); }); if (h.mau !== undefined) h.mau = chuanMau(h.mau); } });
+    });
+    // quá 3 nhãn chữ trên sân khấu -> giữ 3 nhãn đầu, gỡ hành động trỏ tới nhãn bị bỏ
+    var nhan = du.vat.filter(function (v) { return v && (v.loai === 'nhan' || v.loai === 'chu'); });
+    if (nhan.length > 3) {
+      var bo = {};
+      nhan.slice(3).forEach(function (v) { bo[v.id] = 1; });
+      du.vat = du.vat.filter(function (v) { return !(v && (v.loai === 'nhan' || v.loai === 'chu') && bo[v.id]); });
+      if (Array.isArray(du.hanh_dong)) du.hanh_dong = du.hanh_dong.filter(function (h) { return !(h && bo[h.vat]); });
+      dem.nhan++;
+    }
+  });
+  kb.de_cho = texMang(kb.de_cho);
+  if (typeof kb.can_tim === 'string') kb.can_tim = suaTexHienThi_(kb.can_tim);
+  // trường phụ của hook
+  if (!String(kb.hook_chu || '').trim() && kb.hook) { kb.hook_chu = catTu_(kb.hook, 12); sua.push('điền hook_chu từ hook'); }
+  if (HOOK_KIEU_.indexOf(kb.hook_kieu) < 0) { kb.hook_kieu = /\?\s*$/.test(String(kb.hook_chu || '')) ? 'cau_hoi' : 'thach_thuc'; sua.push('đặt hook_kieu mặc định'); }
+  var hc = String(kb.hook_chu || '');
+  if (hc && (!Array.isArray(kb.nhan_manh) || !kb.nhan_manh.length || kb.nhan_manh.length > 3 || kb.nhan_manh.some(function (x) { return hc.toLowerCase().indexOf(String(x).toLowerCase()) < 0; }))) {
+    var hop = (Array.isArray(kb.nhan_manh) ? kb.nhan_manh : []).filter(function (x) { return x && hc.toLowerCase().indexOf(String(x).toLowerCase()) >= 0; }).slice(0, 3);
+    kb.nhan_manh = hop.length ? hop : [catTu_(hc.replace(/[?!.]+$/, ''), 3)];
+    sua.push('chuẩn hóa nhan_manh theo hook_chu');
+  }
+  if (hc && (!Array.isArray(kb.hook_ung_vien) || kb.hook_ung_vien.length < 3)) {
+    var uv = (Array.isArray(kb.hook_ung_vien) ? kb.hook_ung_vien : []).filter(Boolean);
+    while (uv.length < 3) uv.push(uv.length ? hc + (uv.length === 1 ? ' Thử đoán xem!' : ' Bạn chọn cách nào?') : hc);
+    kb.hook_ung_vien = uv;
+    sua.push('bù hook_ung_vien đủ 3');
+  }
+  // hook / tiêu đề / bìa lỡ dính đáp số -> thay bằng "?" (lời cảnh 1 -> "bao nhiêu")
+  if (typeof mauDapSoLo_ === 'function' && loHookDapAn_(kb)) {
+    var mau = mauDapSoLo_(kb);
+    ['hook', 'hook_chu', 'tieu_de_bia', 'tieu_de', 'chu_de_ngan'].forEach(function (k) { kb[k] = thayDapSo_(kb[k], mau, '?'); });
+    if (Array.isArray(kb.hook_ung_vien)) kb.hook_ung_vien = kb.hook_ung_vien.map(function (x) { return thayDapSo_(x, mau, '?'); });
+    if (kb.canh[0]) kb.canh[0].loi_thoai = thayDapSo_(kb.canh[0].loi_thoai, mau, 'bao nhiêu');
+    sua.push('che đáp số lộ ở hook/tiêu đề/cảnh 1');
+  }
+  if (!Array.isArray(kb.bai_hoc_rut_ra) || kb.bai_hoc_rut_ra.filter(function (x) { return String(x).trim().length >= 8; }).length < 2) {
+    var chot = kb.canh.filter(function (c) { return c && /bai_hoc|ket_luan|chot/.test(String(c.loai || '')); }).map(function (c) { return catTu_(String(c.loi_thoai || '').split(/[.!?]/)[0], 12); }).filter(function (x) { return x.length >= 8; });
+    if (chot.length) { kb.bai_hoc_rut_ra = chot.slice(0, 3); sua.push('điền bai_hoc_rut_ra từ cảnh chốt'); }
+  }
+  if (dem.tex) sua.push('chuẩn hóa ' + dem.tex + ' công thức (binom, $, ngoặc, dấu nhân)');
+  if (dem.mau) sua.push('đổi ' + dem.mau + ' tên màu về bảng màu chuẩn');
+  if (dem.nhan) sua.push('cắt bớt nhãn chữ thừa ở ' + dem.nhan + ' cảnh');
+  if (dem.td) sua.push('sửa ' + dem.td + ' tiêu đề cảnh');
+  return sua.concat(tuSuaKhung4Tang_(kb, r));
+}
+
+// v91: chuẩn hóa kb.khung4tang (khớp src/3d-vector/dac_ta.ts: phần tử sai thì bỏ). Luồng hình học thuần: gỡ (khóa luồng).
+function tuSuaKhung4Tang_(kb, r) {
+  var sua = [];
+  if (!kb || kb.khung4tang === undefined) return sua;
+  if (kb.luong === 'hinh_hoc_thuan' || String(kb.mon || '').toUpperCase() === 'HINH_HOC' || (r && typeof laMonHinhHoc_ === 'function' && laMonHinhHoc_(r))) {
+    delete kb.khung4tang; delete kb.bo_dung; sua.push('gỡ khung4tang (luồng hình học thuần)'); return sua;
+  }
+  var k4 = kb.khung4tang;
+  if (!k4 || typeof k4 !== 'object' || !Array.isArray(k4.buoc)) { delete kb.khung4tang; kb.bo_dung = 'blender'; sua.push('khung4tang hỏng -> đường dựng cũ'); return sua; }
+  var dsMau = typeof MAU_3DV_ !== 'undefined' ? MAU_3DV_ : ['cyan', 'vang', 'hong', 'ngoc', 'trang', 'xam'];
+  var mau3 = function (m, md) { var k = String(m || '').trim().toLowerCase().replace(/\s+/g, '_'); k = MAU_3DV_GAN_[k] || k; return dsMau.indexOf(k) >= 0 ? k : md; };
+  k4.de_ghim = (Array.isArray(k4.de_ghim) ? k4.de_ghim : []).filter(function (d) { return d && String(d.nhan || '').trim(); }).slice(0, 5).map(function (d, i) {
+    var o = {id: String(d.id || ('d' + i)), nhan: suaTexHienThi_(String(d.nhan))};
+    if (d.mau) o.mau = mau3(d.mau, 'hong');
+    return o;
+  });
+  var idDe = {};
+  k4.de_ghim.forEach(function (d) { idDe[d.id] = 1; });
+  var truoc = k4.buoc.length;
+  k4.buoc = k4.buoc.filter(function (b) { return b && typeof b === 'object'; }).map(function (b, j) {
+    b.mau = mau3(b.mau, ['cyan', 'vang', 'hong', 'ngoc'][j % 4]);
+    if (!String(b.nhan || '').trim()) b.nhan = 'Bước ' + (j + 1);
+    if (!String(b.tieu_de || '').trim()) b.tieu_de = String(b.nhan);
+    b.du_kien = (Array.isArray(b.du_kien) ? b.du_kien : []).map(String).filter(function (x) { return idDe[x]; });
+    b.the = (Array.isArray(b.the) ? b.the : []).filter(function (t) { return t && /^(cong_thuc|casio|bang_bien_thien|chu)$/.test(t.loai); }).map(function (t) {
+      if (t.loai === 'cong_thuc') t.dong = (Array.isArray(t.dong) ? t.dong : []).map(suaTexHienThi_).filter(Boolean).slice(0, 4);
+      return t;
+    }).filter(function (t) { return t.loai !== 'cong_thuc' || t.dong.length; });
+    return b;
+  });
+  if (k4.buoc.length < truoc) sua.push('khung4tang: bỏ ' + (truoc - k4.buoc.length) + ' bước hỏng');
+  var c3 = k4.canh_3d_vector;
+  if (c3 && typeof c3 === 'object' && Array.isArray(c3.doi_tuong)) {
+    var loai = typeof LOAI_3DV_ !== 'undefined' ? LOAI_3DV_ : ['diem', 'doan_thang', 'vector', 'da_giac', 'hinh_hop', 'mat_cau', 'hinh_tru', 'hinh_non', 'hinh_chop', 'duong_cong', 'goc', 'nhom_lap'];
+    var nDT = c3.doi_tuong.length, id = {};
+    c3.doi_tuong = c3.doi_tuong.filter(function (d) {
+      if (!d || !d.id || loai.indexOf(d.loai) < 0 || id[d.id]) return false;
+      id[d.id] = 1;
+      return true;
+    });
+    c3.doi_tuong.forEach(function (d) { if (d.mau) d.mau = mau3(d.mau, 'cyan'); if (typeof d.nhan === 'string') d.nhan = suaTexHienThi_(d.nhan); });
+    if (c3.doi_tuong.length < nDT) sua.push('3D Vector: bỏ ' + (nDT - c3.doi_tuong.length) + ' đối tượng sai loại/trùng id');
+    (Array.isArray(c3.buoc) ? c3.buoc : []).forEach(function (b) {
+      if (!b) return;
+      ['hien', 'an', 'nhan_manh'].forEach(function (k) { if (Array.isArray(b[k])) b[k] = b[k].filter(function (x) { return id[x]; }); });
+      if (Array.isArray(b.hanh_dong)) b.hanh_dong = b.hanh_dong.filter(function (h) { return h && id[h.vat] && /^(truot_diem|tach_vector|gap_mat)$/.test(h.loai); });
+    });
+    if (!c3.phien_ban) c3.phien_ban = 1;
+  } else if (c3 !== undefined) { delete k4.canh_3d_vector; sua.push('3D Vector: đặc tả hỏng, chỉ giữ thẻ giải'); }
+  if (!k4.buoc.length) { delete kb.khung4tang; kb.bo_dung = 'blender'; sua.push('khung4tang không còn bước -> đường dựng cũ'); return sua; }
+  kb.bo_dung = '3d_vector';
+  return sua;
+}
+
+// Cảnh báo nhẹ cho khung4tang (không bao giờ từ chối: thiếu/hỏng thì quay về đường dựng cũ).
+function loiKhung4Tang_(kb) {
+  var nhe = [];
+  if (!kb || !Array.isArray(kb.canh)) return nhe;
+  var can = typeof boDungMacDinh_ === 'function' && boDungMacDinh_() === '3d_vector' && kb.kieu_video !== 'DAI_10_PHUT' &&
+    kb.luong !== 'hinh_hoc_thuan' && String(kb.mon || '').toUpperCase() !== 'HINH_HOC';
+  if (can && !kb.khung4tang) nhe.push('THIEU_KHUNG4TANG: bài này dựng bằng khung 4 tầng + 3D Vector; thêm "khung4tang" đúng schema (de_ghim, buoc có khi_noi nguyên văn, canh_3d_vector).');
+  var k4 = kb.khung4tang;
+  if (k4 && Array.isArray(k4.buoc)) {
+    var loi = kb.canh.map(function (c) { return String((c && c.loi_thoai) || '').toLowerCase(); }).join(' ');
+    var lech = k4.buoc.slice(1).filter(function (b) { return b.khi_noi && loi.indexOf(String(b.khi_noi).toLowerCase()) < 0; }).length;
+    if (lech) nhe.push('KHUNG4TANG_KHI_NOI_LECH: ' + lech + ' bước có khi_noi không nằm nguyên văn trong loi_thoai (máy sẽ ước lượng mốc).');
+    if (!k4.canh_3d_vector) nhe.push('KHUNG4TANG_THIEU_3D: chưa có canh_3d_vector, tầng sân khấu sẽ trống.');
+  }
+  return nhe;
+}
+
+// Phân loại cuối: chỉ giữ lỗi CỨNG trong "nang"; còn lại hạ thành cảnh báo nhẹ (đã/đang được máy tự sửa, vẫn gửi làm gợi ý khi sửa bằng AI).
+function phanLoaiLoiCung_(nang, nhe, kb) {
+  if (!batAutoFix_()) return {nang: nang, nhe: nhe};
+  var cung = [], ha = [];
+  nang.forEach(function (x) { (LOI_CUNG_RE_.test(String(x)) ? cung : ha).push(x); });
+  if (kb && Array.isArray(kb.canh) && kb.canh.length && kb.canh.length < 4) cung.push('QUA_IT_CANH: kịch bản chỉ có ' + kb.canh.length + ' cảnh, không đủ dựng video.');
+  if (ha.length && typeof nhatKy_ === 'function') { try { nhatKy_('AUTO_FIX', (kb && kb.id ? kb.id + ': ' : '') + 'hạ ' + ha.length + ' lỗi hình thức thành cảnh báo: ' + ha.map(function (x) { return String(x).split(':')[0]; }).slice(0, 8).join(', ')); } catch (e) {} }
+  // giữ nguyên mã lỗi ở đầu chuỗi (moTaLoiKichBan_ / bộ lọc gợi ý tra theo mã), chỉ đánh dấu ở cuối
+  return {nang: cung, nhe: ha.map(function (x) { return x + ' [cảnh báo: không chặn kịch bản]'; }).concat(nhe)};
 }

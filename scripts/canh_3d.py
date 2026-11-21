@@ -435,10 +435,10 @@ def ke_hoach_dac_ta(kb, so_canh=1, kiem=True):
     """
     if not isinstance(kb.get("dac_ta_canh"), dict):
         return None
-    from kiem_bam_de import kiem_dac_ta
+    from kiem_bam_de import kiem_dac_ta_tu_sua
     from thu_vien_3d.xep_cho import LoiDacTa, ThieuMau, lap_ke_hoach_dac_ta
     if kiem:
-        errors, warnings = kiem_dac_ta(kb)
+        errors, warnings = kiem_dac_ta_tu_sua(kb)   # v91: tự sửa lỗi bám đề sửa được rồi mới kiểm
         for w in warnings:
             print("Đặc tả cảnh:", w, file=sys.stderr)
         if errors:
@@ -666,8 +666,8 @@ def kiem_kich_ban(kb):
         })
     from thu_vien_3d.phep_thu_nhieu import lap_moi_truong_phep_thu
     if lap_moi_truong_phep_thu(kb):
-        from kiem_bam_de import kiem_dac_ta
-        errors, _ = kiem_dac_ta(kb)
+        from kiem_bam_de import kiem_dac_ta_tu_sua
+        errors, _ = kiem_dac_ta_tu_sua(kb)
         if errors:
             raise ValueError("Đặc tả cảnh chưa bám đề: " + "; ".join(errors[:4]))
         return {}

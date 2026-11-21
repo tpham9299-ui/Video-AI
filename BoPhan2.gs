@@ -403,18 +403,18 @@ function doPost(e) {
     }
     // Nếu người dùng vừa yêu cầu /bo video này trong lúc GitHub đang dựng: hủy tệp mới trên Drive và bỏ qua
     if (d.id && CacheService.getScriptCache().get('DA_BO_' + d.id)) {
-      [d.file_id, d.anh_kt, d.anh_bia].forEach(function (fid) { if (fid) { try { DriveApp.getFileById(String(fid)).setTrashed(true); } catch (eTr) {} } });
+      [d.file_id, d.anh_kt, d.anh_bia, d.anh_3x3].forEach(function (fid) { if (fid) { try { DriveApp.getFileById(String(fid)).setTrashed(true); } catch (eTr) {} } });
       return tra({ ok: true, lap: true });
     }
     var r = null;
     docHang_(sh).forEach(function (x) { if (x.id === d.id) r = x; });
     if (!r) {
-      [d.file_id, d.anh_kt, d.anh_bia].forEach(function (fid) { if (fid) { try { DriveApp.getFileById(String(fid)).setTrashed(true); } catch (eTr) {} } });
+      [d.file_id, d.anh_kt, d.anh_bia, d.anh_3x3].forEach(function (fid) { if (fid) { try { DriveApp.getFileById(String(fid)).setTrashed(true); } catch (eTr) {} } });
       return tra({ ok: false, loi: 'KHONG_TIM_THAY' });
     }
     // Nếu người dùng vừa nhắn /sua <mã> khiến dòng đã quay về MOI / DA_GIAI / GITHUB hoặc vừa mới sửa xong (SUA_MOI_): bỏ kết quả dựng cũ
     if (['MOI', 'DA_GIAI', 'GITHUB'].indexOf(String(r.trang_thai)) >= 0 || CacheService.getScriptCache().get('SUA_MOI_' + r.id)) {
-      [d.file_id, d.anh_kt, d.anh_bia].forEach(function (fid) { if (fid) { try { DriveApp.getFileById(String(fid)).setTrashed(true); } catch (eTr) {} } });
+      [d.file_id, d.anh_kt, d.anh_bia, d.anh_3x3].forEach(function (fid) { if (fid) { try { DriveApp.getFileById(String(fid)).setTrashed(true); } catch (eTr) {} } });
       return tra({ ok: true, lap: true });
     }
 
@@ -429,8 +429,32 @@ function doPost(e) {
       if (r.trang_thai === 'DA_XONG') return tra({ ok: true, lap: true });
       var lyDoCho = d.kiem_tra_mp4 && d.kiem_tra_mp4.dat === true ? '' :
         String((d.kiem_tra_mp4 || {}).ly_do || 'Thiếu kết quả kiểm tra MP4');
-      ghi_(sh, r._row, { trang_thai: 'CO_VIDEO', file_video: String(d.file_id), ghi_chu: lyDoCho, so_lan_loi: 0, duyet: 'CHO', anh_kt: d.anh_kt || '', anh_bia: d.anh_bia || '' });
+      var gc = { trang_thai: 'CO_VIDEO', file_video: String(d.file_id), ghi_chu: lyDoCho, so_lan_loi: 0, duyet: 'CHO', anh_kt: d.anh_kt || '', anh_bia: d.anh_bia || '' };
+      // v91 MẮT THẦN 3×3 phát hiện lỗi nặng: giữ ở CHO (không giao AI xem, không xếp lịch), đánh dấu chặn trong link_dang
+      // (DangVideo.gs bỏ qua cho tới khi chính bạn /duyet sau thời điểm chặn) và gửi ảnh lưới + danh sách lỗi qua Zalo.
+      var matThanChan = d.mat_than && d.mat_than.dat === false;
+      if (matThanChan) {
+        var kqMT = {};
+        try { kqMT = JSON.parse(String(r.link_dang || '{}')) || {}; } catch (eMT) { kqMT = {}; }
+        kqMT._mat_than_chan = String(d.file_id); kqMT._mat_than_luc = Date.now();
+        gc.link_dang = JSON.stringify(kqMT);
+      }
+      ghi_(sh, r._row, gc);
       r.file_video = String(d.file_id); r.anh_kt = d.anh_kt || ''; r.anh_bia = d.anh_bia || '';
+      if (matThanChan) {
+        nhatKy_('MAT_THAN', r.id + ': chặn đăng - ' + String(d.mat_than.ly_do || '').slice(0, 300));
+        var dsLoiMT = (d.mat_than.loi || []).filter(function (x) { return x && x.nang !== false; }).slice(0, 6)
+          .map(function (x) { return '• Ô ' + x.o + ' – ' + ({cat_chu: 'cắt chữ/tràn khung', chong_chu: 'chồng nhãn/chữ', latex_tho: 'mã LaTeX thô', lo_dap_an: 'lộ đáp án sớm'}[x.loai] || x.loai) + (x.mo_ta ? ': ' + x.mo_ta : ''); });
+        var tinMT = '🛑 Mắt thần 3×3 CHẶN ĐĂNG video ' + r.id + (r.chu_de ? ' (' + r.chu_de + ')' : '') + ':\n' + dsLoiMT.join('\n') +
+          '\nVideo: https://drive.google.com/file/d/' + d.file_id + '/view' +
+          '\nXem kỹ rồi /duyet ' + r.id + ' (vẫn cho đăng) hoặc /sua ' + r.id + ' <góp ý> để dựng lại.';
+        var cMT = CacheService.getScriptCache();
+        if (!cMT.get('ZALO_MT_' + r.id + '_' + d.file_id)) {
+          cMT.put('ZALO_MT_' + r.id + '_' + d.file_id, '1', 21600);
+          if (typeof guiAnhZalo_ === 'function') guiAnhZalo_(d.anh_3x3, tinMT, laUuTien_(r) && r.zalo_chat ? r.zalo_chat : '');
+          else guiZalo_(tinMT, 'cao');
+        }
+      }
       var aiXem = !lyDoCho && typeof giaoAiXemVideo_ === 'function' && giaoAiXemVideo_(sh, r, d);
       nhatKy_('DUNG_VIDEO', r.id + ' -> xong, file ' + d.file_id);
       var tinVideo = '🎞 Video đã dựng xong: ' + (r.chu_de || r.id) + (d.giay ? ' (' + d.giay + ' giây)' : '') +
@@ -438,6 +462,8 @@ function doPost(e) {
         (lyDoCho ? '\n' + lyDoCho : '') + '\nChờ kiểm duyệt. /duyet ' + r.id + ' để cho đăng hoặc /sua ' + r.id + ' <góp ý> để dựng lại';
       if (aiXem) {
         nhatKy_('AI_XEM', r.id + ': video xong, AI đang tự kiểm tra yêu cầu trước khi xếp lịch đăng');
+      } else if (matThanChan) {
+        // đã báo Zalo kèm ảnh lưới ở trên
       } else if (laUuTien_(r) && r.zalo_chat) {
         var cacheV = CacheService.getScriptCache();
         if (!cacheV.get('ZALO_VIDEO_' + r.id + '_' + d.file_id)) {

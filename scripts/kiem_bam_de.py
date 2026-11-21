@@ -57,6 +57,64 @@ def _mau_gan_ten(de, ten):
     return mau
 
 
+def tu_sua_dac_ta(kb):
+    """v91 AUTO-FIX: sửa tại chỗ các lỗi bám đề sửa được bằng máy, trả danh sách đã sửa (ghi cảnh báo, không chặn):
+    tu_de không nguyên văn -> bỏ trích dẫn; so_luong lệch mà đề chỉ nêu MỘT số -> lấy số của đề; kích thước nguồn "de" không có
+    trong đề -> nguon "uoc_luong"; màu khác màu đề nêu -> màu đề; khi_noi của quay không có trong lời thoại -> bỏ (mốc ước lượng)."""
+    spec = kb.get("dac_ta_canh")
+    sua = []
+    if not isinstance(spec, dict) or not isinstance(spec.get("thuc_the"), list):
+        return sua
+    de = chuan(kb.get("de_bai"))
+    cau = kb.get("cau_chuyen") if isinstance(kb.get("cau_chuyen"), dict) else {}
+    nguon = de + " " + chuan(cau.get("dia_diem")) + " " + chuan(cau.get("nguoi_ke"))
+    for t in spec["thuc_the"]:
+        if not isinstance(t, dict) or not t.get("id"):
+            continue
+        name = str(t.get("ten") or "")
+        if t.get("tu_de") and chuan(t["tu_de"]) not in nguon:
+            sua.append(f"{t['id']}: bỏ tu_de không nguyên văn '{t['tu_de']}'")
+            t.pop("tu_de", None)
+        quote = chuan(t.get("tu_de"))
+        nums = (_so_trong_de(quote, name) | _so_trong_de(de, quote)) if quote else _so_trong_de(de, name)
+        if isinstance(t.get("so_luong"), int) and len(nums) == 1 and t["so_luong"] not in nums:
+            moi = next(iter(nums))
+            sua.append(f"{t['id']}: so_luong {t['so_luong']} -> {moi} theo đề")
+            t["so_luong"] = moi
+        for key, v in (t.get("kich_thuoc") or {}).items():
+            if isinstance(v, dict) and v.get("nguon", "de") == "de" and "gt" in v and "dv" in v and not _gt_trong_de(de, v):
+                v["nguon"] = "uoc_luong"
+                sua.append(f"{t['id']}.kich_thuoc.{key}: đổi nguồn thành ước lượng")
+        de_mau = set()
+        if quote:
+            de_mau = {k for k, names in DANH_MUC["mau_sac"].items() if any(co_cum(chuan(n), quote) for n in names)}
+            de_mau |= _mau_gan_ten(de, quote)
+        elif name:
+            de_mau = _mau_gan_ten(de, name)
+        mine = t.get("mau_sac")
+        mine_set = {khop_mau_sac(x) for x in (mine if isinstance(mine, list) else [mine] if mine else [])} - {None}
+        if de_mau and mine_set and not (de_mau & mine_set) and len(de_mau) == 1:
+            t["mau_sac"] = next(iter(de_mau))
+            sua.append(f"{t['id']}: màu -> {t['mau_sac']} theo đề")
+    loi_thoai = {int(c.get("so") or i + 1): chuan(c.get("loi_thoai")) for i, c in enumerate(kb.get("canh") or []) if isinstance(c, dict)}
+    for q in spec.get("quay") or []:
+        if not isinstance(q, dict):
+            continue
+        for a in q.get("hanh_dong") or []:
+            if isinstance(a, dict) and a.get("khi_noi") and chuan(a["khi_noi"]) not in loi_thoai.get(q.get("canh"), ""):
+                sua.append(f"quay cảnh {q.get('canh')}: bỏ khi_noi lệch '{a['khi_noi']}' (mốc ước lượng)")
+                a.pop("khi_noi", None)
+    return sua
+
+
+def kiem_dac_ta_tu_sua(kb):
+    """Auto-fix rồi mới kiểm (dùng trong pipeline). Tắt bằng AUTO_FIX_KICH_BAN=0 -> hành vi cũ."""
+    import os
+    sua = tu_sua_dac_ta(kb) if os.environ.get("AUTO_FIX_KICH_BAN", "1") != "0" else []
+    loi, canh_bao = kiem_dac_ta(kb)
+    return loi, ["tự sửa: " + s for s in sua] + canh_bao
+
+
 def kiem_dac_ta(kb):
     spec = kb.get("dac_ta_canh")
     loi, canh_bao = [], []

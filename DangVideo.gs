@@ -226,10 +226,19 @@ function khungDangHienTai_(hang) {
   return null;
 }
 
+// v91 chốt phòng hờ: video bị Mắt thần 3×3 chặn (BoPhan2.gs ghi link_dang._mat_than_chan = file video) chỉ được đăng khi
+// chính bạn /duyet SAU thời điểm chặn (_duyet_luc > _mat_than_luc). Video dựng lại (file khác) không còn bị chặn.
+function matThanChan_(r) {
+  var kq = {};
+  try { kq = JSON.parse(String(r.link_dang || '{}')) || {}; } catch (e) { return false; }
+  if (!kq._mat_than_chan || String(kq._mat_than_chan) !== String(r.file_video)) return false;
+  return !(Number(kq._duyet_luc || 0) > Number(kq._mat_than_luc || 0));
+}
+
 function chonVideoDang_(hang) {
   // Chỉ video đã đạt kiểm duyệt yêu cầu (daDuyet_ = true) mới được đăng
   var cho = hang.filter(function (r) {
-    return r.trang_thai === 'CO_VIDEO' && r.file_video && !CacheService.getScriptCache().get('DA_BO_' + r.id) && daDuyet_(r);
+    return r.trang_thai === 'CO_VIDEO' && r.file_video && !CacheService.getScriptCache().get('DA_BO_' + r.id) && daDuyet_(r) && !matThanChan_(r);
   });
   if (!cho.length) return null;
   var bay = Date.now();

@@ -241,10 +241,27 @@ class TichHopTest(unittest.TestCase):
             self.assertEqual([c["phaMinhHoa"] for c in props["canh"]][:2], ["thuc", "chuyen"])
 
     def test_dac_ta_sai_de_dung_lai(self):
+        # tắt Auto-fix (v91) -> hành vi cũ: sai số lượng so với đề thì dừng
+        import os
+        os.environ["AUTO_FIX_KICH_BAN"] = "0"
+        try:
+            kb = doc("bai_xe")
+            kb["dac_ta_canh"]["thuc_the"][0]["so_luong"] = 9
+            with self.assertRaisesRegex(ValueError, "chưa bám đề"):
+                ke_hoach(kb, self.props(kb))
+        finally:
+            os.environ.pop("AUTO_FIX_KICH_BAN", None)
+
+    def test_auto_fix_so_luong_theo_de(self):
+        # v91 Auto-fix: đề chỉ nêu một số lượng -> tự sửa theo đề, ghi cảnh báo, không dừng
+        from kiem_bam_de import kiem_dac_ta_tu_sua
         kb = doc("bai_xe")
+        goc = kb["dac_ta_canh"]["thuc_the"][0]["so_luong"]
         kb["dac_ta_canh"]["thuc_the"][0]["so_luong"] = 9
-        with self.assertRaisesRegex(ValueError, "chưa bám đề"):
-            ke_hoach(kb, self.props(kb))
+        loi, canh_bao = kiem_dac_ta_tu_sua(kb)
+        self.assertEqual(loi, [])
+        self.assertEqual(kb["dac_ta_canh"]["thuc_the"][0]["so_luong"], goc)
+        self.assertTrue(any("tự sửa" in w and "so_luong" in w for w in canh_bao), canh_bao)
 
     def test_khoa_luong_hinh_hoc_go_dac_ta(self):
         import kiem_hinh_hoc

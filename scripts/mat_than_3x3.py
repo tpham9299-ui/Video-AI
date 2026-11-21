@@ -1,0 +1,225 @@
+#!/usr/bin/env python3
+"""v91 — "MẮT THẦN AI": chốt kiểm lỗi nặng trên MP4 vừa ghép, chạy TRƯỚC khi tải lên Drive / vào hàng đăng.
+
+  1. ffmpeg trích 9 khung mốc (hook, đề, 5 mốc giải - 2 mốc sát trước đáp án, đáp án, màn kết) -> lưới 3×3
+     <id>_3x3.jpg (1080×1920, mỗi ô có số 1..9). Ghép bằng Pillow vì máy ghép chỉ có ffmpeg rút gọn của Remotion.
+  2. Gửi DUY NHẤT ảnh lưới qua Gemini Flash (tái dùng GEMINI_KEYS / GEMINI_API_KEY + scripts/bophan1/goi_gemini.js:
+     xoay key, né 404/429, tự đổi model) để tìm 4 lỗi nặng: cat_chu (chữ bị cắt/tràn khung), chong_chu (nhãn/chữ đè nhau),
+     latex_tho (mã LaTeX thô như \\frac, $, ^{ }), lo_dap_an (đáp số hiện ở ô TRƯỚC ô đáp án).
+  3. Ghi <ra>/mat_than.json: {dat, chay, loi:[{o, loai, mo_ta, nang}], ly_do, anh, o_dap_an}.
+
+Không chặn khi chính Mắt thần không chạy được (thiếu key, hết hạn mức, lỗi mạng): ghi chay=false, dat=true + cảnh báo,
+vì BP4 (kiem-tra-video.yml) vẫn chấm lưới trước khi video được DA_DUYET.
+
+Cách dùng: python3 scripts/mat_than_3x3.py public/props.json out/ID.mp4 out/
+Thử không gọi API: MAT_THAN_GIA_LAP=dat | loi  (loi = giả lập một lỗi nặng "lo_dap_an" ở ô 6)
+"""
+import base64
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+from concurrent.futures import ThreadPoolExecutor
+
+GOC = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+O_RONG, O_CAO = 360, 640
+LOAI_LOI = ("cat_chu", "chong_chu", "latex_tho", "lo_dap_an")
+TEN_LOI = {"cat_chu": "Cắt chữ / tràn khung", "chong_chu": "Chồng nhãn / chồng chữ", "latex_tho": "Mã LaTeX thô", "lo_dap_an": "Lộ đáp án sớm"}
+
+
+def lech_dau(p):
+    fps = float(p.get("fps") or 30)
+    return ((1 if p.get("anhBiaDau") else 0) + int((p.get("intro") or {}).get("lech") or 0)) / fps
+
+
+def chon_moc(p, dai_video):
+    """9 mốc (giây trong tệp MP4, nhãn). Ô 8 luôn là cảnh đáp án; ô 6, 7 là hai cảnh ngay trước đáp án (bắt lộ đáp án sớm)."""
+    fps = float(p.get("fps") or 30)
+    canh = p.get("canh") or []
+    lech = lech_dau(p)
+    gioi_han = max(0.0, dai_video - 0.3)
+
+    def t_canh(c, ti):
+        return min(lech + (c["batDau"] + c["soFrame"] * ti) / fps, gioi_han)
+
+    if not canh:
+        return [(gioi_han * (k + 0.5) / 9, "khung %d" % (k + 1)) for k in range(9)], 8
+    i_da = next((i for i, c in enumerate(canh) if re.search(r"dap_an|ket_qua", str(c.get("loai") or ""))), len(canh) - 1)
+    i_de = next((i for i, c in enumerate(canh) if str(c.get("loai") or "") == "de_bai"), min(1, len(canh) - 1))
+    moc = [(t_canh(canh[0], 0.6), "hook"), (t_canh(canh[i_de], 0.85), "đề bài")]
+    giua = list(range(i_de + 1, i_da)) or [i_de]
+    # 5 mốc giải: 3 rải đều phần đầu + 2 cảnh sát trước đáp án; thiếu cảnh thì lấy nhiều thời điểm trong cùng cảnh
+    sat = giua[-2:] if len(giua) >= 2 else giua * 2
+    dau = giua[:-2] if len(giua) > 2 else giua
+    chon = [dau[int(k * len(dau) / 3)] for k in range(3)] + sat
+    ti_lap = {}
+    for j in chon:
+        ti_lap[j] = ti_lap.get(j, 0) + 1
+    dem = {}
+    for k, j in enumerate(chon):
+        dem[j] = dem.get(j, 0) + 1
+        ti = 0.85 if ti_lap[j] == 1 else 0.3 + 0.55 * (dem[j] - 1) / max(1, ti_lap[j] - 1)
+        moc.append((t_canh(canh[j], ti), "giải %d" % (k + 1)))
+    moc.append((t_canh(canh[i_da], 0.85), "đáp án"))
+    o = p.get("outro")
+    if o and o.get("batDau") is not None:
+        moc.append((min(lech + (o["batDau"] + o["soFrame"] * 0.6) / fps, gioi_han), "màn kết"))
+    else:
+        moc.append((t_canh(canh[-1], 0.95), "cuối"))
+    return moc[:9], 8
+
+
+def do_dai(video):
+    try:
+        return float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", video],
+                                    capture_output=True, text=True).stdout.strip())
+    except (ValueError, FileNotFoundError, OSError):
+        return 1e9
+
+
+def tao_luoi(video, moc, dich):
+    from PIL import Image, ImageDraw, ImageFont
+    tam = tempfile.mkdtemp()
+
+    def chup(item):
+        k, (t, _) = item
+        f = os.path.join(tam, "o%d.jpg" % k)
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-ss", "%.3f" % t, "-i", video, "-frames:v", "1",
+                        "-vf", "scale=%d:%d" % (O_RONG, O_CAO), "-threads", "1", f], check=True)
+        return f
+
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        tep = list(ex.map(chup, enumerate(moc)))
+    luoi = Image.new("RGB", (O_RONG * 3, O_CAO * 3), (8, 12, 14))
+    ve = ImageDraw.Draw(luoi)
+    try:
+        phong = ImageFont.truetype(os.path.join(GOC, "public", "fonts", "BeVietnamPro-Bold.ttf"), 26)
+    except OSError:
+        phong = ImageFont.load_default()
+    for k, f in enumerate(tep):
+        x, y = (k % 3) * O_RONG, (k // 3) * O_CAO
+        if os.path.exists(f) and os.path.getsize(f) > 0:
+            luoi.paste(Image.open(f).convert("RGB").resize((O_RONG, O_CAO)), (x, y))
+        # số ô + nhãn mốc (để AI và người xem chỉ đúng ô lỗi)
+        ve.rectangle([x, y, x + 150, y + 38], fill=(0, 0, 0))
+        ve.text((x + 8, y + 4), "%d · %s" % (k + 1, moc[k][1]), fill=(255, 214, 10), font=phong)
+        ve.rectangle([x, y, x + O_RONG - 1, y + O_CAO - 1], outline=(60, 70, 80), width=2)
+    luoi.save(dich, quality=84)
+    for f in tep:
+        try:
+            os.remove(f)
+        except OSError:
+            pass
+    return dich
+
+
+def prompt_ai(p, o_da):
+    dap = str(p.get("dapAn") or "").strip()
+    return (
+        "Bạn là người kiểm duyệt cuối của video toán dọc 9:16. Ảnh là lưới 3×3 gồm 9 khung hình theo thứ tự thời gian, "
+        "mỗi ô có số 1..9 ở góc trên trái (dải nhãn đen-vàng đó là của người kiểm duyệt, KHÔNG phải lỗi video). "
+        "Ô %d là cảnh đáp án, ô 9 là màn kết. Đáp số của bài: \"%s\".\n"
+        "Chỉ tìm 4 loại LỖI NẶNG, bỏ qua mọi góp ý thẩm mỹ:\n"
+        "- cat_chu: chữ/công thức bị cắt mất một phần ở mép khung hoặc mép hộp, tràn ra ngoài khung hình.\n"
+        "- chong_chu: hai nhãn/dòng chữ/công thức đè lên nhau đến mức khó đọc.\n"
+        "- latex_tho: hiện nguyên mã LaTeX như \\\\frac, \\\\sqrt, \\\\cdot, $...$, ^{...}, _{...}, \\\\text thay vì công thức đã dựng.\n"
+        "- lo_dap_an: đáp số cuối (%s) hiện rõ ở một ô TRƯỚC ô %d (hook, đề bài, các bước giải). Ô %d và ô 9 được phép có đáp số.\n"
+        "Chỉ báo khi thấy rõ. nang=true khi người xem chắc chắn nhận ra lỗi. "
+        "Trả JSON đúng mẫu: {\"loi\":[{\"o\":số ô,\"loai\":\"cat_chu|chong_chu|latex_tho|lo_dap_an\",\"mo_ta\":\"ngắn gọn tiếng Việt\",\"nang\":true}]} ; "
+        "không có lỗi thì {\"loi\":[]}."
+    ) % (o_da, dap or "không rõ", dap or "không rõ", o_da, o_da)
+
+
+def goi_gemini(anh, p, o_da):
+    keys = [k for k in re.split(r"[\s,;]+", os.environ.get("GEMINI_KEYS") or os.environ.get("GEMINI_API_KEY") or "") if k]
+    if not keys:
+        return None, "THIEU_GEMINI_KEYS"
+    body = {
+        "contents": [{"role": "user", "parts": [
+            {"text": prompt_ai(p, o_da)},
+            {"inline_data": {"mime_type": "image/jpeg", "data": base64.b64encode(open(anh, "rb").read()).decode()}},
+        ]}],
+        "generationConfig": {"temperature": 0.1, "responseMimeType": "application/json", "maxOutputTokens": 1024,
+                             "thinkingConfig": {"thinkingBudget": 0}},
+    }
+    model = os.environ.get("MAT_THAN_MODEL") or "gemini-2.5-flash"
+    tep = os.path.join(tempfile.gettempdir(), "mat_than_%d.json" % os.getpid())
+    with open(tep, "w", encoding="utf8") as f:
+        json.dump({"model": model, "models": [model, "gemini-flash-latest", "gemini-2.0-flash"], "bodies": [body], "keys": keys,
+                   "gioiHanGiay": 120}, f)
+    try:
+        r = subprocess.run(["node", os.path.join(GOC, "scripts", "bophan1", "goi_gemini.js"), tep],
+                           capture_output=True, text=True, encoding="utf8", timeout=180)
+        kq = json.loads(r.stdout or "[]")[0]
+    except Exception as e:   # noqa: BLE001 - mọi lỗi tiến trình -> Mắt thần không chạy, không chặn
+        return None, "LOI_GOI: %s" % str(e)[:160]
+    finally:
+        try:
+            os.remove(tep)
+        except OSError:
+            pass
+    if not kq.get("ok"):
+        return None, "GEMINI_%s: %s" % (kq.get("code"), str(kq.get("raw") or "")[:160])
+    try:
+        d = json.loads(kq["raw"])
+        chu = "".join(x.get("text", "") for x in d["candidates"][0]["content"]["parts"])
+        m = re.search(r"\{.*\}", chu, re.S)
+        return json.loads(m.group(0) if m else chu), ""
+    except Exception as e:   # noqa: BLE001
+        return None, "KHONG_DOC_DUOC_JSON: %s" % str(e)[:120]
+
+
+def chuan_loi(ds, o_da):
+    kq = []
+    for x in ds if isinstance(ds, list) else []:
+        if not isinstance(x, dict) or x.get("loai") not in LOAI_LOI:
+            continue
+        try:
+            o = int(x.get("o"))
+        except (TypeError, ValueError):
+            o = 0
+        if x["loai"] == "lo_dap_an" and (o >= o_da or o <= 0):
+            continue   # ô đáp án / màn kết được phép có đáp số
+        kq.append({"o": o, "loai": x["loai"], "mo_ta": str(x.get("mo_ta") or "")[:160], "nang": x.get("nang") is not False})
+    return kq
+
+
+def main():
+    if len(sys.argv) < 4:
+        sys.exit(__doc__)
+    props_tep, video, ra = sys.argv[1:4]
+    p = json.load(open(props_tep, encoding="utf8"))
+    id_ = p.get("id") or os.path.splitext(os.path.basename(video))[0]
+    os.makedirs(ra, exist_ok=True)
+    moc, o_da = chon_moc(p, do_dai(video))
+    anh = tao_luoi(video, moc, os.path.join(ra, "%s_3x3.jpg" % id_))
+    print("Mắt thần: đã tạo lưới 3×3", anh, "| mốc:", ", ".join("%d=%s@%.1fs" % (k + 1, n, t) for k, (t, n) in enumerate(moc)))
+
+    gia_lap = os.environ.get("MAT_THAN_GIA_LAP", "").strip()
+    if gia_lap:
+        tho = {"loi": [{"o": 6, "loai": "lo_dap_an", "mo_ta": "Giả lập: đáp số hiện ở bước giải", "nang": True}]} if gia_lap == "loi" else {"loi": []}
+        canh_bao = ""
+    else:
+        tho, canh_bao = goi_gemini(anh, p, o_da)
+    if tho is None:
+        kq = {"dat": True, "chay": False, "loi": [], "ly_do": "", "canh_bao": "Mắt thần chưa chạy (%s), để BP4 kiểm duyệt" % canh_bao}
+    else:
+        loi = chuan_loi(tho.get("loi"), o_da)
+        nang = [x for x in loi if x["nang"]]
+        ly_do = "; ".join("ô %d %s%s" % (x["o"], TEN_LOI[x["loai"]], (": " + x["mo_ta"]) if x["mo_ta"] else "") for x in nang)
+        kq = {"dat": not nang, "chay": True, "loi": loi, "ly_do": ("Mắt thần 3×3: " + ly_do) if nang else ""}
+    kq.update({"anh": os.path.basename(anh), "o_dap_an": o_da, "moc": [{"o": k + 1, "nhan": n, "giay": round(t, 2)} for k, (t, n) in enumerate(moc)]})
+    with open(os.path.join(ra, "mat_than.json"), "w", encoding="utf8") as f:
+        json.dump(kq, f, ensure_ascii=False, indent=1)
+    if not kq["chay"]:
+        print("::warning::" + kq["canh_bao"])
+    elif kq["dat"]:
+        print("Mắt thần: ĐẠT (không có lỗi nặng)%s" % ("" if not kq["loi"] else ", %d lưu ý nhẹ" % len(kq["loi"])))
+    else:
+        print("::error::" + kq["ly_do"])
+
+
+if __name__ == "__main__":
+    main()

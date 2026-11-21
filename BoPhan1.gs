@@ -66,6 +66,9 @@ var MAC_DINH = {
   DIEM_TU_DUY_TOI_THIEU: '7',  // thang 1-10
   MAX_LAN_LOI: '3',
   SO_LAN_SUA_KICH_BAN: '2',    // số vòng sửa kịch bản tối đa (tự sửa bằng máy trước, chỉ gọi AI khi còn lỗi nặng)
+  BO_DUNG_MAC_DINH: '3d_vector',  // v91: luồng thực tế & xác suất dựng bằng Khung 4 tầng + 3D Vector (Remotion); 'blender' = đường cũ
+  AUTO_FIX_KICH_BAN: 'BAT',       // v91: lỗi hình thức tự chuẩn hóa + chỉ cảnh báo; TAT = từ chối như cũ
+  MAT_THAN_3X3: 'BAT',            // v91: chốt ảnh lưới 3×3 trước khi đăng (GitHub gửi kết quả về doPost)
   CHE_DO_NGUON: 'UU_TIEN_INTERNET', // UU_TIEN_INTERNET: tìm đề có thật trên internet trước, không có mới để AI sáng tác | CHI_INTERNET | SANG_TAC (chỉ AI) | KHO_DE (bạn tự thêm dòng MOI có de_bai)
   THU_MUC_GOC: 'VIDEO_XACSUAT',
   TOI_DA_CHO_DUNG_VIDEO: '12', // số kịch bản chờ dựng video tối đa; đạt mức này thì tạm dừng sinh đề (0 = không giới hạn)
@@ -1400,7 +1403,11 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
             else dg = dgYC;
           }
         }
-        if (batBuocDuyetCanh && !(dy && dy.dat)) {
+        // v91 AUTO-FIX: luồng thực tế hết vòng sửa mà chưa "đạt" -> không ném bỏ ngay; xét như các luồng khác theo TIÊU CHÍ CỐT LÕI
+        // (đề bài, bám đề, lời giải, đáp án, quy tắc đã dạy, sản phẩm >= 7/10) ở khối "if (boDe)" bên dưới.
+        var autoFixYC = !!boDe && typeof batAutoFix_ === 'function' && batAutoFix_();
+        if (autoFixYC) nhatKy_('AUTO_FIX', r.id + ': kiểm duyệt cảnh chưa đạt (' + boDe.slice(0, 120) + ') -> xét tiêu chí cốt lõi thay vì từ chối');
+        if (batBuocDuyetCanh && !(dy && dy.dat) && !autoFixYC) {
           luuNhapKichBan_(r.id, kb);
           if (!boDe) {
             ghi_(sh, r._row, {so_lan_loi: Math.max(0, (Number(r.so_lan_loi) || 1) - 1), ghi_chu: 'Chờ duyệt đủ nội dung và hình của từng cảnh trước khi dựng'});
@@ -1519,6 +1526,9 @@ function chuanBiKichBan_(kb, r, ctxSua) {
     (Array.isArray(vs) ? vs : []).forEach(function (v) { if (v && v.loai === 'canh_that' && tuSuaSoDoVung_(v, r.de_bai)) sua.push('SO_DO_VUNG_CANH_' + (i + 1)); });
   });
   if (!laHH && r._banVe && typeof chenBanVe_ === 'function') { sua = sua.concat(chenBanVe_(kb, r._banVe)); kb.ban_ve = r._banVe; }
+  // v91 AUTO-FIX: chuẩn hóa lỗi hình thức (TeX, màu, nhãn thừa, tiêu đề, trường hook, đáp số lộ ở hook) + khung4tang / bo_dung
+  if (typeof tuSuaHinhThuc_ === 'function') sua = sua.concat(tuSuaHinhThuc_(kb, r) || []);
+  if (!laHH && !kb.bo_dung) kb.bo_dung = kb.khung4tang ? '3d_vector' : 'blender';
   kb._phien_ban_edit = PHIEN_BAN_EDIT;
   suaDapAn_(kb, r.dap_an);   // sau khi tự sửa (có thể vừa thêm/đổi cảnh) để cảnh đáp án luôn đúng
   if (sua.length) nhatKy_('KICH_BAN_TU_SUA', r.id + ': ' + sua.slice(0, 8).join('; ').slice(0, 450));
@@ -2400,6 +2410,44 @@ function guiZalo_(noiDung, muc, khoa) {
         payload: JSON.stringify({ chat_id: id, text: String(noiDung).slice(0, 2000) })
       });
     } catch (e) { Logger.log('Loi gui Zalo: ' + e.message); }
+  });
+}
+
+// v91: gửi ẢNH (tệp Drive) kèm chú thích qua Zalo Bot (sendPhoto). Bật chia sẻ "ai có link xem được" cho RIÊNG tệp ảnh đó
+// để Zalo tải được; không gửi được ảnh -> gửi tin chữ kèm link Drive. chatRieng: gửi thêm cho người gửi đề (nếu có).
+function guiAnhZalo_(fileId, noiDung, chatRieng) {
+  var token = typeof tokenNhanZalo_ === 'function' ? tokenNhanZalo_() : PropertiesService.getScriptProperties().getProperty('ZALO_BOT_TOKEN');
+  var ds = (typeof dsNhanThongBao_ === 'function' ? dsNhanThongBao_() : String(PropertiesService.getScriptProperties().getProperty('ZALO_CHAT_IDS') || '').split(','))
+    .map(function (x) { return String(x).trim(); }).filter(Boolean);
+  if (chatRieng && ds.indexOf(String(chatRieng)) < 0) ds.push(String(chatRieng));
+  var linkAnh = '';
+  if (fileId) {
+    try {
+      DriveApp.getFileById(String(fileId)).setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      linkAnh = 'https://lh3.googleusercontent.com/d/' + fileId;
+    } catch (eS) { nhatKy_('ZALO_ANH', 'Không bật chia sẻ ảnh ' + fileId + ': ' + eS.message); }
+  }
+  var chu = String(noiDung) + (fileId ? '\nẢnh lưới 3×3: https://drive.google.com/file/d/' + fileId + '/view' : '');
+  if (!token || !ds.length || !duocThongBao_('cao')) { try { nhatKy_('ZALO_AN', chu.replace(/\n/g, ' | ').slice(0, 300)); } catch (e0) {} return; }
+  ds.forEach(function (id) {
+    var daGuiAnh = false;
+    if (linkAnh) {
+      try {
+        var res = UrlFetchApp.fetch('https://bot-api.zaloplatforms.com/bot' + token + '/sendPhoto', {
+          method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+          payload: JSON.stringify({ chat_id: id, photo: linkAnh, caption: String(noiDung).slice(0, 900) })
+        });
+        daGuiAnh = res.getResponseCode() === 200 && /"ok"\s*:\s*true/.test(res.getContentText());
+      } catch (eP) { daGuiAnh = false; }
+    }
+    if (!daGuiAnh || chu.length > 900) {
+      try {
+        UrlFetchApp.fetch('https://bot-api.zaloplatforms.com/bot' + token + '/sendMessage', {
+          method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+          payload: JSON.stringify({ chat_id: id, text: chu.slice(0, 2000) })   // ảnh lỗi, hoặc chú thích bị cắt -> gửi đủ chữ
+        });
+      } catch (eM) { Logger.log('Loi gui Zalo: ' + eM.message); }
+    }
   });
 }
 

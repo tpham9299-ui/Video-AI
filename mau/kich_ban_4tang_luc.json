@@ -1,0 +1,67 @@
+{
+  "_ghi_chu": "Mẫu v91: kịch bản luồng thực tế có khung4tang (mốc theo khi_noi) -> chuanbi.py sinh props.boCuc='4tang'. Thử: python scripts/chuanbi.py mau/kich_ban_4tang_luc.json --gia-lap",
+  "id": "THU-4TANG-LUC",
+  "mon": "THUC_TE",
+  "luong": "thuc_te_xac_suat",
+  "bo_dung": "3d_vector",
+  "lop": "12",
+  "tieu_de": "Bốn dây cáp giữ khung hàng",
+  "de_bai": "Một khung hàng nặng P được treo bởi bốn dây cáp EA, EB, EC, ED bằng nhau, mỗi dây tạo với mặt khung góc 60 độ và có lực căng 4500 N. Tính P.",
+  "dap_an_cuoi": "P≈15588N",
+  "hook": "Bốn sợi cáp giữ được khung nặng bao nhiêu?",
+  "canh": [
+    {"so": 1, "loai": "mo_dau", "loi_thoai": "Bốn sợi cáp cùng kéo một khung hàng. Chúng giữ được bao nhiêu cân?", "noi_dung_man_hinh": [], "minh_hoa": {"loai": "khong"}},
+    {"so": 2, "loai": "de_bai", "loi_thoai": "Mỗi dây căng bốn nghìn rưỡi niutơn và nghiêng sáu mươi độ so với mặt khung.", "noi_dung_man_hinh": [], "minh_hoa": {"loai": "khong"}},
+    {"so": 3, "loai": "tinh_toan", "loi_thoai": "Tách một lực căng thành phần nằm ngang và phần thẳng đứng.", "noi_dung_man_hinh": ["F_{đứng} = F \\sin 60^\\circ"], "minh_hoa": {"loai": "khong"}},
+    {"so": 4, "loai": "tinh_toan", "loi_thoai": "Nhìn từ trên xuống, bốn phần nằm ngang triệt tiêu nhau từng cặp.", "noi_dung_man_hinh": ["4F \\sin 60^\\circ = P"], "minh_hoa": {"loai": "khong"}},
+    {"so": 5, "loai": "dap_an", "loi_thoai": "Vậy khung nặng khoảng mười lăm nghìn năm trăm tám mươi tám niutơn.", "noi_dung_man_hinh": ["P \\approx 15588\\ \\text{N}"], "minh_hoa": {"loai": "khong"}}
+  ],
+  "khung4tang": {
+    "phu_de": "gon",
+    "de_ghim": [
+      {"id": "cap", "nhan": "4 CÁP"},
+      {"id": "goc", "nhan": "\\alpha = 60^\\circ"},
+      {"id": "F", "nhan": "F = 4500"},
+      {"id": "P", "nhan": "P = ?", "mau": "đỏ"}
+    ],
+    "buoc": [
+      {"canh": 1, "nhan": "Dựng hình", "tieu_de": "Bốn dây cáp treo khung hàng", "mau": "xanh", "du_kien": ["cap"],
+       "the": [{"loai": "cong_thuc", "nhan": "Đề cho", "dong": ["EA = EB = EC = ED"]}]},
+      {"khi_noi": "Tách một lực căng", "nhan": "Phân tích lực", "tieu_de": "Tách một lực căng", "mau": "vang", "du_kien": ["goc", "F"],
+       "the": [{"loai": "cong_thuc", "dong": ["\\vec F_1 = \\vec F_{ngang} + \\vec F_{đứng}", "F_{đứng} = F \\sin 60^\\circ"], "khi_noi_dong": ["phần nằm ngang", "phần thẳng đứng"]}]},
+      {"khi_noi": "Nhìn từ trên xuống", "nhan": "Nhìn từ trên", "tieu_de": "Phần ngang triệt tiêu nhau", "mau": "hong", "du_kien": ["cap", "F", "P"],
+       "the": [{"loai": "cong_thuc", "dong": ["\\vec F_1 + \\vec F_3 = \\vec 0", "4F \\sin 60^\\circ = P"]}]},
+      {"khi_noi": "Vậy khung nặng", "nhan": "Kết luận", "tieu_de": "Trọng lượng khung", "mau": "ngoc", "du_kien": ["P"],
+       "the": [{"loai": "cong_thuc", "dong": ["P \\approx 15588\\ \\text{N}"]}]}
+    ],
+    "canh_3d_vector": {
+      "phien_ban": 1,
+      "doi_tuong": [
+        {"id": "khung", "loai": "hinh_hop", "tam": [0, 0, 0.3], "kich_thuoc": [2.4, 2.4, 0.6], "mau": "cyan", "mo": 0.1, "ten_dinh": ["", "", "", "", "A", "B", "C", "D"]},
+        {"id": "E", "loai": "diem", "toa_do": [0, 0, 3.54], "mau": "vang", "nhan": "E"},
+        {"id": "O", "loai": "diem", "toa_do": [0, 0, 0.6], "mau": "trang", "nhan": "O"},
+        {"id": "EO", "loai": "doan_thang", "tu": "E", "den": "O", "mau": "xam", "net": "dut"},
+        {"id": "cap1", "loai": "doan_thang", "tu": "E", "den": "A", "mau": "vang"},
+        {"id": "cap2", "loai": "doan_thang", "tu": "E", "den": "B", "mau": "vang"},
+        {"id": "cap3", "loai": "doan_thang", "tu": "E", "den": "C", "mau": "vang"},
+        {"id": "cap4", "loai": "doan_thang", "tu": "E", "den": "D", "mau": "vang"},
+        {"id": "F1", "loai": "vector", "tu": "E", "den": [-0.54, -0.54, 2.217], "mau": "cyan", "nhan": "\\vec F_1"},
+        {"id": "F2", "loai": "vector", "tu": "E", "den": [0.54, -0.54, 2.217], "mau": "cyan", "nhan": "\\vec F_2"},
+        {"id": "F3", "loai": "vector", "tu": "E", "den": [0.54, 0.54, 2.217], "mau": "cyan", "nhan": "\\vec F_3"},
+        {"id": "F4", "loai": "vector", "tu": "E", "den": [-0.54, 0.54, 2.217], "mau": "cyan", "nhan": "\\vec F_4"},
+        {"id": "alpha", "loai": "goc", "dinh": "A", "canh": ["E", "O"], "nhan": "60^\\circ", "mau": "vang", "ban_kinh": 0.55}
+      ],
+      "buoc": [
+        {"camera": [32, 22, 1], "hien": ["khung", "E", "O", "EO", "cap1", "cap2", "cap3", "cap4"]},
+        {"khi_noi": "nghiêng sáu mươi độ", "hien": ["F1", "F2", "F3", "F4", "alpha"]},
+        {"khi_noi": "Tách một lực căng", "nhan_manh": ["F1", "alpha"], "hanh_dong": [{"loai": "tach_vector", "vat": "F1", "khi_noi": "phần nằm ngang", "d": 0.8}]},
+        {"khi_noi": "Nhìn từ trên xuống", "camera": "tu_tren", "an": ["alpha"], "nhan_manh": ["F1", "F2", "F3", "F4"],
+         "hanh_dong": [
+           {"loai": "tach_vector", "vat": "F2", "khi_noi": "triệt tiêu nhau", "d": 0.8, "thanh_phan": ["ngang"]},
+           {"loai": "tach_vector", "vat": "F3", "khi_noi": "triệt tiêu nhau", "d": 0.8, "thanh_phan": ["ngang"]},
+           {"loai": "tach_vector", "vat": "F4", "khi_noi": "triệt tiêu nhau", "d": 0.8, "thanh_phan": ["ngang"]}
+         ]}
+      ]
+    }
+  }
+}

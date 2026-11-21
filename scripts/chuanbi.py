@@ -11,6 +11,7 @@ Chạy:
 """
 import argparse
 import asyncio
+import time
 import difflib
 import json
 import math
@@ -883,7 +884,7 @@ def tao_giong_gemini_mot_lan(canh, thu_muc, args):
 
 
 async def tao_cac_doan(cac_doan, thu_muc, args, loai_canh="", sem=None):
-    sem = sem or asyncio.Semaphore(6)
+    sem = sem or asyncio.Semaphore(SO_EDGE_SONG_SONG)
 
     async def mot(i, d):
         tep = os.path.join(thu_muc, "d%03d.mp3" % i)
@@ -925,7 +926,7 @@ async def tao_cac_doan(cac_doan, thu_muc, args, loai_canh="", sem=None):
 
 async def tao_tat_ca_doan_edge(nhiem_vu, args):
     """Tạo giọng edge-tts (hoặc giả lập) SONG SONG cho mọi cảnh trong cùng 1 event loop."""
-    sem = asyncio.Semaphore(6)
+    sem = asyncio.Semaphore(SO_EDGE_SONG_SONG)
 
     async def chay_canh(muc):
         i, cac_doan, thu_muc, loai_canh = muc
@@ -1086,6 +1087,108 @@ def quay_canh(kb, so, cau, tu):
     return {"gocMay": shot.get("goc_may") or "toan_canh", "chuyenMay": shot.get("chuyen_may") or "luot_vao",
             "tieuDiem": [str(x) for x in shot.get("tieu_diem") or []],
             "hienSoLieu": [str(x) for x in shot.get("hien_so_lieu") or []], "hanhDong": hd}
+
+
+MAU_3DV = {"cyan", "vang", "hong", "ngoc", "trang", "xam"}
+# Auto-fix tên màu AI hay viết lệch -> bảng màu ngữ nghĩa của 3D Vector (src/3d-vector/kieu.ts)
+MAU_3DV_GAN = {"xanh": "cyan", "xanh_duong": "cyan", "lam": "cyan", "blue": "cyan", "vàng": "vang", "yellow": "vang", "cam": "vang",
+               "do": "hong", "đỏ": "hong", "red": "hong", "tim": "hong", "hồng": "hong", "pink": "hong", "xanh_la": "ngoc", "luc": "ngoc",
+               "green": "ngoc", "white": "trang", "trắng": "trang", "gray": "xam", "grey": "xam", "xám": "xam"}
+
+
+def khung_4_tang(kb, canh_props, fps):
+    """v91: kb.khung4tang (AI viết, mốc theo lời `khi_noi`) -> props.khung4tang (mốc `t` giây từ đầu phần nội dung).
+    Mốc lấy từ từ thật (edge WordBoundary) hoặc ước lượng theo câu phụ đề; không khớp thì nối tiếp mốc trước / đầu cảnh `canh`.
+    Khóa luồng hình học thuần: luôn trả None (bài hình học dựng bằng Manim)."""
+    if str(kb.get("luong") or "") == "hinh_hoc_thuan" or str(kb.get("mon") or "").upper() == "HINH_HOC":
+        return None
+    k4 = kb.get("khung4tang")
+    if not isinstance(k4, dict) or not isinstance(k4.get("buoc"), list) or not k4["buoc"]:
+        return None
+    # danh sách từ toàn phần nội dung (giây tính từ đầu cảnh 1)
+    tu_all, dau_canh = [], {}
+    for c in canh_props:
+        goc = c["batDau"] / float(fps)
+        dau_canh[int(c["so"])] = goc + c.get("leadFrame", 0) / float(fps)
+        for w in (c.get("tu") or tu_tu_cau(c.get("cau") or [])):
+            tu_all.append({"w": w["w"], "bat": round(goc + w["bat"], 3), "ket": round(goc + w["ket"], 3)})
+    tong = canh_props[-1]["batDau"] / float(fps) + canh_props[-1]["soFrame"] / float(fps) if canh_props else 0
+    vt = [0]
+    thong_ke = {"khop": 0, "uoc": 0}
+
+    def moc(x, mac_dinh):
+        cum = str((x or {}).get("khi_noi") or "").strip() if isinstance(x, dict) else ""
+        tim = tim_cum_tu(cum, tu_all, vt[0]) if cum and tu_all else None
+        if tim:
+            vt[0] = tim[1]
+            thong_ke["khop"] += 1
+            return round(tu_all[tim[0]]["bat"], 3)
+        if isinstance(x, dict) and x.get("canh") is not None:
+            try:
+                so = int(x["canh"])
+                if so in dau_canh:
+                    thong_ke["uoc"] += 1
+                    return round(dau_canh[so], 3)
+            except (TypeError, ValueError):
+                pass
+        if isinstance(x, dict) and isinstance(x.get("t"), (int, float)):
+            return float(x["t"])
+        thong_ke["uoc"] += 1
+        return round(min(max(0.0, mac_dinh), max(0.0, tong - 0.5)), 3)
+
+    def mau(m, md="cyan"):
+        m = str(m or "").strip().lower().replace(" ", "_")
+        m = MAU_3DV_GAN.get(m, m)
+        return m if m in MAU_3DV else md
+
+    buoc, t_truoc = [], -1.0
+    ds_buoc = [b for b in k4["buoc"] if isinstance(b, dict)]
+    for j, b in enumerate(ds_buoc):
+        t = moc(b, 0.0 if j == 0 else t_truoc + max(1.5, tong / max(1, len(ds_buoc))))
+        t = max(t, t_truoc + 0.6) if j else 0.0   # bước đầu luôn hiện từ giây 0
+        the = []
+        for th in b.get("the") or []:
+            if not isinstance(th, dict) or th.get("loai") not in ("cong_thuc", "casio", "bang_bien_thien", "chu"):
+                continue
+            th = dict(th)
+            if th.get("khi_noi"):
+                th["t"] = max(t, moc(th, t))
+            if th["loai"] == "cong_thuc":
+                th["dong"] = [str(d) for d in th.get("dong") or [] if str(d).strip()][:4]
+                if not th["dong"]:
+                    continue
+                kd = th.pop("khi_noi_dong", None)
+                if isinstance(kd, list) and kd:
+                    th["moc"] = [max(t, moc({"khi_noi": s}, t + 0.45 * i)) for i, s in enumerate(kd[:len(th["dong"])])]
+            th.pop("khi_noi", None)
+            the.append(th)
+        buoc.append({"t": t, "nhan": str(b.get("nhan") or "Bước %d" % (j + 1))[:24], "tieu_de": str(b.get("tieu_de") or "")[:60],
+                     "mau": mau(b.get("mau"), ["cyan", "vang", "hong", "ngoc"][j % 4]),
+                     "du_kien": [str(x) for x in b.get("du_kien") or []], "the": the})
+        t_truoc = t
+    if not buoc:
+        return None
+    de_ghim = [{"id": str(d.get("id") or "d%d" % i), "nhan": str(d.get("nhan") or "")[:28], **({"mau": mau(d["mau"])} if d.get("mau") else {})}
+               for i, d in enumerate(k4.get("de_ghim") or []) if isinstance(d, dict) and str(d.get("nhan") or "").strip()][:5]
+    c3 = k4.get("canh_3d_vector")
+    c3 = json.loads(json.dumps(c3)) if isinstance(c3, dict) else None
+    if c3:
+        vt[0] = 0
+        t3 = -1.0
+        for i, b in enumerate(c3.get("buoc") or []):
+            if not isinstance(b, dict):
+                continue
+            b["t"] = 0.0 if i == 0 else max(moc(b, t3 + 1.2), t3 + 0.4)
+            for h in b.get("hanh_dong") or []:
+                if isinstance(h, dict) and h.get("khi_noi"):
+                    h["t"] = max(b["t"], moc(h, b["t"] + 0.2))
+            for kh in ("khi_noi", "canh"):
+                b.pop(kh, None)
+            t3 = b["t"]
+    print("Khung 4 tầng: %d bước, %d mốc khớp lời đọc, %d mốc ước lượng" % (len(buoc), thong_ke["khop"], thong_ke["uoc"]))
+    return {"tongFrame": int(round(tong * fps)), "fps": fps,
+            "boCuc": {"anToanTikTok": True, "phuDe": "tat" if k4.get("phu_de") == "tat" else "gon"},
+            "deGhim": de_ghim, "buoc": buoc, "canh3dv": c3}
 
 
 def ghep(cac_tep, dich):
@@ -1984,6 +2087,57 @@ def moc_cong_thuc(cum, cau, so_dong, tu=None):
     return kq
 
 
+# v91: đo thời gian từng khâu của bước chuẩn bị (in bảng cuối bước + out/thoi_gian_chuanbi.json + GITHUB_STEP_SUMMARY)
+SO_EDGE_SONG_SONG = max(1, min(16, int(os.environ.get("EDGE_SONG_SONG") or 8)))
+SO_LUONG_AM = max(2, min(8, int(os.environ.get("LUONG_AM") or (os.cpu_count() or 4))))
+THOI_GIAN_KHAU = []
+
+
+class do_khau:
+    def __init__(self, ten):
+        self.ten = ten
+
+    def __enter__(self):
+        self.t0 = time.perf_counter()
+        return self
+
+    def __exit__(self, *a):
+        THOI_GIAN_KHAU.append((self.ten, time.perf_counter() - self.t0))
+        return False
+
+
+_MOC_KHAU = [None]
+
+
+def cham(ten):
+    """Ghi thời gian từ điểm chấm trước tới giờ cho khâu `ten`."""
+    bay_gio = time.perf_counter()
+    if _MOC_KHAU[0] is not None:
+        THOI_GIAN_KHAU.append((ten, bay_gio - _MOC_KHAU[0]))
+    _MOC_KHAU[0] = bay_gio
+
+
+def in_bang_thoi_gian(tong_giay, thu_muc_ra="out"):
+    dong = ["| Khâu | Giây | % |", "|---|---:|---:|"]
+    for ten, g in THOI_GIAN_KHAU:
+        dong.append("| %s | %.2f | %d%% |" % (ten, g, round(100 * g / max(1e-6, tong_giay))))
+    dong.append("| **Tổng chuanbi.py** | **%.2f** | 100%% |" % tong_giay)
+    print("\n=== THỜI GIAN BƯỚC CHUẨN BỊ ===")
+    for ten, g in THOI_GIAN_KHAU:
+        print("  %-34s %7.2f s" % (ten, g))
+    print("  %-34s %7.2f s" % ("TỔNG", tong_giay))
+    try:
+        os.makedirs(thu_muc_ra, exist_ok=True)
+        with open(os.path.join(thu_muc_ra, "thoi_gian_chuanbi.json"), "w", encoding="utf8") as f:
+            json.dump({"tong": round(tong_giay, 2), "khau": [{"ten": t, "giay": round(g, 2)} for t, g in THOI_GIAN_KHAU]}, f, ensure_ascii=False, indent=1)
+        tom_tat = os.environ.get("GITHUB_STEP_SUMMARY")
+        if tom_tat:
+            with open(tom_tat, "a", encoding="utf8") as f:
+                f.write("### Thời gian chuanbi.py\n\n" + "\n".join(dong) + "\n\n")
+    except OSError:
+        pass
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("kich_ban")
@@ -2004,6 +2158,8 @@ def main():
     ap.add_argument("--toc-do-gemini", default=os.environ.get("TOC_DO_GEMINI") or "1.08")
     ap.add_argument("--phong-cach-giong", default=os.environ.get("PHONG_CACH_GIONG") or PHONG_CACH_GIONG_MAC_DINH)
     args = ap.parse_args()
+    t_tong = time.perf_counter()
+    cham("")
 
     kb = json.load(open(args.kich_ban, encoding="utf8"))
     # giọng do Apps Script chọn theo quy tắc (Charon nam / Kore nữ...); dự phòng edge cùng giới tính để không đổi giọng nam <-> nữ
@@ -2073,6 +2229,10 @@ def main():
             sys.exit("Cảnh %d không có lời thoại." % so)
         chuan_hoa.append((i, so, c, loi_thoai, noi_dung_tam, tach_cau(loi_thoai)))
 
+    # phong cách / thương hiệu / nền đọc song song với giọng đọc (độc lập với TTS)
+    ex_phu = ThreadPoolExecutor(max_workers=2)
+    tuong_lai_pc = ex_phu.submit(doc_phong_cach, args.phong_cach)
+    cham("Chuẩn hóa kịch bản")
     from xe_3d import CAR, EVENT
     xe = CAR.search(str(kb.get("de_bai") or ""))
     tach_nhip = {i for i, _, _, van, _, _ in chuan_hoa if xe and EVENT.search(van)}
@@ -2103,6 +2263,7 @@ def main():
             print("Gemini không đọc được cả video -> CẢ video dùng một giọng edge-tts đồng nhất 100% có nhấn nhá (không trộn giọng)")
     if giong_gem is not None and set(giong_gem) != set(range(len(canh))):
         giong_gem = None
+    cham("Giọng Gemini TTS")
     am_thanh_kq = {}
     with tempfile.TemporaryDirectory() as tam_chung:
         nhiem_vu_edge = []
@@ -2112,6 +2273,7 @@ def main():
                 os.makedirs(tam_i, exist_ok=True)
                 nhiem_vu_edge.append((i, cac_doan, tam_i, str(c.get("loai") or "")))
         edge_tho = asyncio.run(tao_tat_ca_doan_edge(nhiem_vu_edge, args)) if nhiem_vu_edge else {}
+        cham("Giọng edge-tts (song song %d)" % SO_EDGE_SONG_SONG)
 
         def xu_ly_am_canh(muc):
             i, so, c, loi_thoai, noi_dung_tam, cac_doan = muc
@@ -2159,9 +2321,10 @@ def main():
             tong_am = do_thoi_luong(dich_mp3)
             return ten, do_dai, tong_am, gap_c, tu_doan
 
-        with ThreadPoolExecutor(max_workers=min(4, max(1, len(chuan_hoa)))) as ex:
+        with ThreadPoolExecutor(max_workers=min(SO_LUONG_AM, max(1, len(chuan_hoa)))) as ex:
             for item, kq_am in zip(chuan_hoa, ex.map(xu_ly_am_canh, chuan_hoa)):
                 am_thanh_kq[item[0]] = kq_am
+        cham("Cắt lặng + chuẩn âm (%d luồng)" % SO_LUONG_AM)
 
     shutil.rmtree(tam_gem, ignore_errors=True)
 
@@ -2253,6 +2416,7 @@ def main():
         so_tu = len(loi_thoai.split())
         print("Cảnh %d: %d câu, %d từ, giọng %.1fs (%.1f từ/giây), %d khung hình" % (so, len(cac_doan), so_tu, tong_am - GAP, so_tu / max(0.1, tong_am - GAP), so_frame))
 
+    cham("Mốc phụ đề / công thức / góc máy")
     nhac = chon_nhac(args.public, id_an_toan)
     if nhac == "nhac/nen.wav" and os.environ.get("NHAC_THEO_CANH", "1") != "0":
         for f in os.listdir(os.path.join(args.public, "nhac")):
@@ -2262,7 +2426,9 @@ def main():
     hook_chu = str(kb.get("hook_chu") or kb.get("hook") or "").strip()
     if not hook_chu and canh:
         hook_chu = str(canh[0].get("tieu_de") or kb.get("tieu_de") or "BÍ QUYẾT GIẢI TOÁN").strip()
-    pc, nen_co_dinh, th = doc_phong_cach(args.phong_cach)
+    cham("Nhạc nền theo cảnh")
+    pc, nen_co_dinh, th = tuong_lai_pc.result()
+    ex_phu.shutdown(wait=False)
     # bộ hiệu ứng chuyển động: "moi" (chữ 3 tầng, máy quay sống, vòng sóng, dấu BẪY, lóe sáng đáp án) | "cu"
     # ưu tiên: biến môi trường KIEU_CHUYEN_DONG (chạy thử tay trên GitHub) > kịch bản "kieu_chuyen_dong" > phong_cach.json
     kieu_cd = (os.environ.get("KIEU_CHUYEN_DONG") or str(kb.get("kieu_chuyen_dong") or "")).strip()
@@ -2334,13 +2500,21 @@ def main():
         "phongCach": pc,
         "canh": canh_props,
     }
+    k4 = khung_4_tang(kb, canh_props, FPS)
+    if k4:
+        props["boCuc"] = "4tang"
+        props["khung4tang"] = k4
+    cham("Thương hiệu, bìa, khung 4 tầng")
     if not args.gia_lap:
         print("Giọng đọc: %d cảnh bằng Gemini TTS (%s), %d đoạn bằng edge-tts (%s), %d đoạn bằng Google TTS dự phòng" % (
             THONG_KE_GIONG["gemini"], args.giong_gemini, THONG_KE_GIONG["edge"], args.giong, THONG_KE_GIONG["gtts"]))
     dich = args.props_ra or os.path.join(args.public, "props.json")
+    os.makedirs(os.path.dirname(os.path.abspath(dich)), exist_ok=True)
     with open(dich, "w", encoding="utf8") as f:
         json.dump(props, f, ensure_ascii=False, indent=1)
     print("Xong: %d cảnh, %.1f giây -> %s" % (len(canh_props), bat_dau / FPS, dich))
+    cham("Ghi props.json")
+    in_bang_thoi_gian(time.perf_counter() - t_tong, os.environ.get("THU_MUC_RA") or "out")
 
 
 if __name__ == "__main__":
