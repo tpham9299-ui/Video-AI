@@ -94,3 +94,8 @@ node scripts/test_kich_ban_canh.cjs
 # Test nhanh 1 khung hình cuối Manim chất lượng thấp
 manim -ql -s scripts/manim_hinh.py <TenScene>
 ```
+## Quy tắc BẮT BUỘC sử dụng Skills
+Trước khi viết hoặc sửa code ở bất kỳ hạng mục nào dưới đây, BẮT BUỘC đọc và tuân thủ đầy đủ Skill tương ứng trong `.claude/skills/`, đồng thời ghi 1 dòng "Đã áp dụng skill: <tên>" ở đầu kế hoạch:
+- Sửa UI, chuyển cảnh, font, phụ đề, Intro/Outro trong `src/` (Remotion) -> dùng `remotion-best-practices` và `frontend-design`.
+- Sửa vẽ hình học, công thức, đồng bộ timestamp trong `scripts/manim_*.py` -> dùng `manim-toan-dep`.
+- Sửa dựng cảnh 3D, ánh sáng, camera, thư viện vật thể trong `scripts/ve_blender.py`, `canh_3d.py`, `scripts/thu_vien_3d/` -> dùng `blender-canh-3d-dep` (chỉ áp dụng cho luồng Thực tế & Xác suất).
