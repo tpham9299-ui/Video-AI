@@ -1968,7 +1968,8 @@ class VideoHinh(Scene):
                 cu.add(khung)
             self.doi_toi(D)
             tong += D
-        du = mo.props.get("tongFrame", 0) / fps - self.renderer.time
+        # tongFrame đã gồm phần intro thương hiệu (lớp Manim được ffmpeg lùi đúng intro.lech khung) -> trừ ra
+        du = (mo.props.get("tongFrame", 0) - int((mo.props.get("intro") or {}).get("lech") or 0)) / fps - self.renderer.time
         if du > 0.5 / fps:
             self.wait(du)
 

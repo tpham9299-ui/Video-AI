@@ -41,7 +41,7 @@ def kiem_tra(props, video):
         moc = [c.get('leadFrame', 0), c['soFrame'] // 2, c['soFrame'] - dai]
         moc.extend(round(t * fps) for t in c.get('mocCongThuc', []))
         for f in sorted({max(0, min(t, c['soFrame'] - dai)) for t in moc}):
-            giay = (c['batDau'] + int(bool(props.get('anhBiaDau'))) + f) / fps
+            giay = (c['batDau'] + int(bool(props.get('anhBiaDau'))) + int((props.get('intro') or {}).get('lech') or 0) + f) / fps
             # Luôn dùng ffmpeg hệ thống có rawvideo và bộ lọc scale.
             cmd = ['ffmpeg', '-v', 'error', '-threads', '1', '-ss', f'{giay:.6f}', '-i', str(video),
                    '-frames:v', str(dai), '-vf', 'scale=288:512', '-pix_fmt', 'gray',

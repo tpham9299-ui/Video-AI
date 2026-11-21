@@ -24,7 +24,7 @@ function ghiKeyHong(k, code, raw) {
 const [bundle, tepProps, tepRa, tepKichBan] = process.argv.slice(2);
 const props = JSON.parse(fs.readFileSync(tepProps, 'utf8'));
 const hanKiemDuyet = Date.now() + 400_000;
-const lech = props.anhBiaDau ? 1 : 0;   // khung 0 là ảnh bìa
+const lech = (props.anhBiaDau ? 1 : 0) + (props.intro && props.intro.soFrame > 0 ? props.intro.lech || 0 : 0);   // khung 0 là ảnh bìa, sau đó intro thương hiệu
 const inputProps = {...props, kiemDuyet: true};
 const canh = props.canh || [];
 

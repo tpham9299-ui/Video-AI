@@ -121,7 +121,7 @@ const WatermarkDong: React.FC<{th: ThuongHieuProps; canh: CanhProps[]; tu: numbe
   );
 };
 
-export const ThuongHieu: React.FC<{th: ThuongHieuProps; canh: CanhProps[]; ketThuc: number; boLoiMoi?: boolean; tuDau?: number}> = ({th, canh, ketThuc, boLoiMoi = false, tuDau = 1e9}) => {
+export const ThuongHieu: React.FC<{th: ThuongHieuProps; canh: CanhProps[]; ketThuc: number; boLoiMoi?: boolean; tuDau?: number; anDau?: boolean}> = ({th, canh, ketThuc, boLoiMoi = false, tuDau = 1e9, anDau = false}) => {
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
   if (!th || (!th.ten && !th.logo && !th.handle)) return null;
@@ -142,7 +142,8 @@ export const ThuongHieu: React.FC<{th: ThuongHieuProps; canh: CanhProps[]; ketTh
     <>
       {th.markNuoc ? <WatermarkDong th={th} canh={canh} tu={tuDau} /> : null}
       {/* huy hiệu canh giữa: chỉ hiện ở đầu video (trước khi thanh đầu trang hiện); bỏ khỏi DOM sau tuDau */}
-      {f < tuDau ? (
+      {/* đã có intro thương hiệu ngay trước -> bỏ huy hiệu đầu video để không lặp tên kênh */}
+      {f < tuDau && !anDau ? (
         <div data-kd-bo="1" style={{position: 'absolute', left: 0, right: 0, top: 112, display: 'flex', justifyContent: 'center'}}>
           <div style={{position: 'relative'}}>
           {song > 0 ? <div style={{position: 'absolute', left: 33 - 33 * (1 + song), top: 33 - 33 * (1 + song), width: 66 * (1 + song), height: 66 * (1 + song), borderRadius: '50%', border: `3px solid ${XANH}`, opacity: 1 - song}} /> : null}

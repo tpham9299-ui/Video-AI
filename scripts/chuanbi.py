@@ -1004,7 +1004,7 @@ def doc_phong_cach(tep):
                 if k in d:
                     pc[k] = d[k]
             co_dinh = str(d.get("nen_co_dinh") or "").strip()
-            for k in ("soNenToiDa", "lopNeonTrenNen", "kieuPhuDe", "mauPhuDe", "lopQuet", "butChi", "thanhBuoc", "tieuDeInHoa", "khungSanKhau", "loiMoiGiuaVideo", "chuyenDong"):
+            for k in ("soNenToiDa", "lopNeonTrenNen", "kieuPhuDe", "mauPhuDe", "lopQuet", "butChi", "thanhBuoc", "tieuDeInHoa", "khungSanKhau", "loiMoiGiuaVideo", "chuyenDong", "intro"):
                 if k in d:
                     pc[k] = d[k]
             if isinstance(d.get("thuongHieu"), dict):
@@ -1012,6 +1012,24 @@ def doc_phong_cach(tep):
         except Exception as e:
             print("Cảnh báo: không đọc được %s (%s), dùng phong cách mặc định" % (tep, e))
     return pc, co_dinh, th
+
+
+def tao_intro(cfg, thuong_hieu):
+    """Intro thương hiệu "nét vẽ hình học" chèn TRƯỚC cảnh hook (src/Intro.tsx), đọc từ phong_cach.json -> "intro".
+    Trả None khi tắt hoặc kênh chưa có tên. lech = số khung nội dung bị lùi (= soFrame - chuyen, phần chuyển cảnh chồng lên cảnh đầu);
+    tongFrame đã cộng lech, các tầng đọc mốc khung (kiểm duyệt, ảnh kiểm tra, chuyển động, lớp Manim) cộng thêm lech."""
+    if not isinstance(cfg, dict) or cfg.get("bat", True) is not True:
+        return None
+    if not (cfg.get("ten") or (thuong_hieu or {}).get("ten") or (thuong_hieu or {}).get("handle")):
+        return None
+    giay = min(3.5, max(2.0, float(cfg.get("giay") or 2.8)))
+    so = int(round(giay * FPS))
+    chuyen = int(round(min(1.0, max(0.25, float(cfg.get("chuyenGiay") or 0.5))) * FPS))
+    it = {"soFrame": so, "chuyen": chuyen, "lech": so - chuyen}
+    for k in ("ten", "khauHieu", "mauNhan", "mauPhu", "mauNen", "soTuNhan", "dungLogo", "amThanh"):
+        if k in cfg and cfg[k] not in (None, ""):
+            it[k] = cfg[k]
+    return it
 
 
 def chon_nen(public, id_, co_dinh, so_toi_da=3):
@@ -2066,6 +2084,7 @@ def main():
     if outro:
         outro["batDau"] = bat_dau
         bat_dau += outro["soFrame"]
+    intro = tao_intro(pc.get("intro"), thuong_hieu)
     if kb.get("kieu_video") == "DAI_10_PHUT" or str(kb.get("id", "")).upper().endswith("-10P"):
         if not 540 * FPS <= bat_dau <= 660 * FPS:
             raise ValueError(f"Chuyên đề dài {bat_dau / FPS:.1f}s sau khi tạo giọng, cần 540–660s. Hãy sửa kịch bản trước khi dựng.")
@@ -2076,7 +2095,7 @@ def main():
         "dapAn": str(kb.get("dap_an_cuoi") or kb.get("dap_an") or ""),
         "lop": str(kb.get("lop") or ""),
         "fps": FPS,
-        "tongFrame": bat_dau,
+        "tongFrame": bat_dau + (intro["lech"] if intro else 0),
         "hookChu": hook_chu,
         "hookKieu": str(kb.get("hook_kieu") or ""),
         "nhanManh": [str(x) for x in (kb.get("nhan_manh") or [])][:5],
@@ -2099,6 +2118,7 @@ def main():
         **({"luong": "hinh_hoc_thuan"} if luong_hh else {"luong": str(kb.get("luong") or "thuc_te_xac_suat")}),
         "thuongHieu": thuong_hieu,
         "outro": outro,
+        "intro": intro,
         "phongCach": pc,
         "canh": canh_props,
     }

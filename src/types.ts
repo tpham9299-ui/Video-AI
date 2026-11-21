@@ -55,6 +55,8 @@ export type CanhProps = {
 };
 
 export type ThuongHieuProps = {ten: string; khauHieu: string; handle: string; markNuoc: boolean; logo: string | null; loiMoi?: string};
+// Intro thương hiệu chèn trước cảnh hook (chuanbi.py tạo từ phong_cach.json -> "intro"). lech = số khung nội dung bị lùi.
+export type IntroProps = {soFrame: number; chuyen: number; lech: number; ten?: string; khauHieu?: string; mauNhan?: string; mauPhu?: string; mauNen?: string; soTuNhan?: number; dungLogo?: boolean; amThanh?: boolean};
 export type OutroProps = {tep: string; loai: 'video' | 'anh' | 'tu_tao'; soFrame: number; batDau: number};
 
 export type NenProps = {tep: string; loai: 'video' | 'anh'; soFrame: number};
@@ -110,6 +112,7 @@ export type Props = {
   manimLop?: boolean;
   suKienManim?: {f: number; kieu: string}[];
   anhManimBia?: string | null; // public/manim/bia.png: hình Manim cho ô hình của ảnh bìa
+  intro?: IntroProps | null; // intro thương hiệu (tùy chọn): phần nội dung lùi intro.lech khung
   anhBiaDau?: string | null; // ảnh bìa đặt ở khung hình đầu tiên (1/30 giây) để TikTok lấy làm ảnh bìa; cả video lùi 1 khung // ảnh bìa: loại câu hỏi, tiêu đề ngắn, khung hình lấy hình minh họa
   series?: {ten: string; tap: number} | null; // series video (hiện "TẬP n" trên thanh đầu)
   quangCao?: {ten: string; gia?: string; anh?: string; cta?: string} | null; // video có sản phẩm do kênh bán: nhãn minh bạch + thẻ sản phẩm cuối video

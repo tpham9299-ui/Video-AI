@@ -605,10 +605,10 @@ jobs:
           node scripts/ghep_khuc.mjs khuc "out/$ID.mp4"
           if [ "$MANIM" = "1" ]; then
             # bài hình học: ghép đè lớp Manim (hình + công thức, nền trong suốt) lên phần vỏ chung do Remotion dựng.
-            # Khung 0 là ảnh bìa (anhBiaDau) -> lớp Manim lùi đúng 1 khung.
+            # Khung 0 là ảnh bìa (anhBiaDau) -> lớp Manim lùi 1 khung; có intro thương hiệu -> lùi thêm intro.lech khung.
             [ -s "out/${ID}_manim.mov" ] || { echo "Thiếu lớp Manim"; exit 1; }
             command -v ffmpeg >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /tmp/apt_ff.log 2>&1; }
-            LUI=$(python3 -c "import json;print(1 if json.load(open('public/props.json',encoding='utf8')).get('anhBiaDau') else 0)")
+            LUI=$(python3 -c "import json;p=json.load(open('public/props.json',encoding='utf8'));print((1 if p.get('anhBiaDau') else 0)+int((p.get('intro') or {}).get('lech') or 0))")
             ffmpeg -y -loglevel error -i "out/$ID.mp4" -i "out/${ID}_manim.mov" -filter_complex \
               "[1:v]format=rgba,tpad=start=${LUI}:color=0x00000000[m];[0:v][m]overlay=0:0:eof_action=pass:format=auto[v]" \
               -map "[v]" -map 0:a -c:v libx264 -preset veryfast -crf 19 -pix_fmt yuv420p -c:a copy -movflags +faststart "out/${ID}_ghep.mp4"

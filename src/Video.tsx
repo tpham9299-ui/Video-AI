@@ -4,6 +4,7 @@ import {AbsoluteFill, Audio, Img, interpolate, OffthreadVideo, Sequence, staticF
 import {Canh, sanKhauCuaCanh} from './Canh';
 import {LopQuet} from './LopQuet';
 import {MoDau} from './MoDau';
+import {Intro, lechIntro} from './Intro';
 import {DuKien} from './DuKien';
 import {NhanQuangCao} from './NhanQuangCao';
 import {ManKetChuyenNghiep} from './ManKet';
@@ -108,15 +109,32 @@ export const Video: React.FC<Props> = (props) => {
           <Img src={staticFile(props.anhBiaDau)} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
         </Sequence>
         <Sequence from={1}>
-          <NoiDungVideo {...props} anhBiaDau={null} tongFrame={props.tongFrame - 1} />
+          <VoiIntro {...props} anhBiaDau={null} tongFrame={props.tongFrame - 1} />
         </Sequence>
       </AbsoluteFill>
     );
   }
-  return <NoiDungVideo {...props} />;
+  return <VoiIntro {...props} />;
 };
 
-const NoiDungVideo: React.FC<Props> = (props) => {
+// Intro thương hiệu (nếu có) chạy trước; nội dung lùi intro.lech khung và lộ ra qua mặt nạ tròn trong intro.chuyen khung cuối.
+const VoiIntro: React.FC<Props> = (props) => {
+  const it = props.intro;
+  const lech = lechIntro(it);
+  if (!it || !lech || !props.thuongHieu) return <NoiDungVideo {...props} intro={null} />;
+  return (
+    <AbsoluteFill style={{background: it.mauNen || '#071513'}}>
+      <Sequence from={lech}>
+        <NoiDungVideo {...props} intro={null} coIntro tongFrame={props.tongFrame - lech} />
+      </Sequence>
+      <Sequence from={0} durationInFrames={it.soFrame}>
+        <Intro it={it} th={props.thuongHieu} />
+      </Sequence>
+    </AbsoluteFill>
+  );
+};
+
+const NoiDungVideo: React.FC<Props & {coIntro?: boolean}> = (props) => {
   const {canh, tongFrame, fps, nhac, lop, tieuDe, nen, phongCach, hookChu, hookKieu, nhanManh, thuongHieu, outro} = props;
   Object.assign(MAU, MAU_GOC, phongCach.mau || {}); // đặt lại bảng màu gốc rồi ghi đè theo phong_cach.json
   GIAO_DIEN.kieuToan = phongCach.kieuToan || 'dam';
@@ -192,7 +210,7 @@ const NoiDungVideo: React.FC<Props> = (props) => {
           <MoDau />
         </Sequence>
       ) : null}
-      {hookChu ? (
+      {hookChu && !props.coIntro ? (
         <Sequence from={0} durationInFrames={8} layout="none">
           <ChopSang />
           <Audio src={staticFile('sfx/sting.wav')} volume={0.55} />
@@ -219,7 +237,7 @@ const NoiDungVideo: React.FC<Props> = (props) => {
         });
         return moc.length >= 2 ? <DuongTienTrinh cacPha={dsPha} mocPha={moc} mau={GIAO_DIEN.nhan} tu={canh[1].batDau} den={ketThuc - 6} /> : null;
       })() : null}
-      <ThuongHieu th={thuongHieu} canh={canh} ketThuc={ketThuc} tuDau={canh.length > 1 ? canh[1].batDau : 1e9} boLoiMoi={phongCach.loiMoiGiuaVideo !== true} />
+      <ThuongHieu th={thuongHieu} canh={canh} ketThuc={ketThuc} tuDau={canh.length > 1 ? canh[1].batDau : 1e9} boLoiMoi={phongCach.loiMoiGiuaVideo !== true} anDau={!!props.coIntro} />
       {phongCach.thanhTienDo ? <ThanhTienDo tongFrame={tongFrame} lop={lop} mon={props.bia?.loai} /> : null}
       {outro ? (
         <Sequence from={outro.batDau} durationInFrames={outro.soFrame}>

@@ -35,7 +35,7 @@ export const AnhBia: React.FC<Props> = (props) => {
   } else doan.push({chu: tu, nhan: false});
   const coBrand = !!props.thuongHieu && !!(props.thuongHieu.ten || props.thuongHieu.logo);
   // ảnh bìa được chụp ĐÚNG khung hình b.khung (npx remotion still ... --frame=<khung>), nên video bên dưới tự ở đúng thời điểm
-  const video = <Video {...props} anhBiaDau={null} nhac={null} canh={props.canh.map((c) => ({...c, audio: ''}))} />;   // ảnh tĩnh: bỏ âm thanh và khung ảnh bìa đầu
+  const video = <Video {...props} anhBiaDau={null} intro={null} nhac={null} canh={props.canh.map((c) => ({...c, audio: ''}))} />;   // ảnh tĩnh: bỏ âm thanh và khung ảnh bìa đầu
   return (
     <AbsoluteFill style={{background: '#050b0d', fontFamily: FONT_DAM, overflow: 'hidden'}}>
       {/* nền studio nổi bật vùng giữa, không dựng lặp Video với blur toàn màn hình */}
