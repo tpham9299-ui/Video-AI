@@ -4,9 +4,24 @@ import {CanhProps} from './types';
 
 const kep = (n: number) => Math.max(0, Math.min(1, n));
 
+// Giai đoạn D: tiến độ khung Blender (0 -> 1) theo mốc khi_noi của từng hành động.
+// Khung [0, dan]: máy vào cảnh (trôi tới mốc hành động đầu); hành động k chiếm khung [dan + k·seg, dan + (k+1)·seg]
+// và chạy từ đúng lúc giọng đọc bắt đầu cụm khi_noi trong d giây; giữa hai hành động máy/vật đứng chờ.
+export function tienQuay(nq: NonNullable<CanhProps['nhipQuay']>, time: number, duration: number) {
+  const n = nq.moc.length;
+  if (!n) return eio(kep(time / Math.max(1, duration * 0.9)));
+  const seg = (1 - nq.dan) / n;
+  let p = nq.dan * eio(kep(time / Math.max(0.3, nq.moc[0].t)));
+  nq.moc.forEach((m, k) => {
+    if (time >= m.t) p = nq.dan + seg * k + seg * eio(kep((time - m.t) / Math.max(0.2, m.d)));
+  });
+  return p;
+}
+
 function khungVat(canh: CanhProps, time: number, fps: number) {
   const last = (canh.chuoi3D?.khungThat ?? 16) - 1;
   const duration = canh.soFrame / fps;
+  if (canh.nhipQuay) return last * tienQuay(canh.nhipQuay, time, duration);
   const act = canh.cau.find(c => /rút|lấy|gieo|tung|lắc/i.test(c.text));
   const at = act?.bat ?? 0;
   let p = kep((time - at) / Math.max(.25, Math.min(2, duration - at)));
@@ -26,7 +41,12 @@ const eio = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3
 export function tienChuyen(canh: CanhProps, time: number) {
   const duration = canh.soFrame / 30;
   const cue = canh.cau.find(c => /gọi|đặt|mô hình|biểu diễn|đề bài|cho biết/i.test(c.text));
-  const start = Math.min(cue?.bat ?? 0.35, duration * 0.3);
+  let start = Math.min(cue?.bat ?? 0.35, duration * 0.3);
+  if (canh.nhipQuay) {
+    // cảnh đề có góc máy / hành động riêng: xem hết hành động rồi mới lấy nét sang hình 2D
+    const cuoi = canh.nhipQuay.moc.slice(-1)[0];
+    start = Math.min(duration * 0.6, Math.max(start, cuoi ? cuoi.t + cuoi.d + 0.2 : 1.4));
+  }
   return eio(kep((time - start) / 1.15));
 }
 
@@ -55,11 +75,13 @@ export const NenKhungBlender: React.FC<{canh: CanhProps; k: number; style?: Reac
 export const khungThuc = (canh: CanhProps, time: number) => khungVat(canh, time, 30);
 
 // Ảnh Blender cuối của phần mở đầu: máy quay đẩy vào (focus pull), nhòe sâu và tối dần, để lộ hình 2D phía dưới.
-export const ChuyenLayNet: React.FC<{canh: CanhProps; truoc?: CanhProps; p: number}> = ({canh, truoc, p}) => {
+export const ChuyenLayNet: React.FC<{canh: CanhProps; truoc?: CanhProps; p: number; time?: number}> = ({canh, truoc, p, time = 0}) => {
   if (p >= 1) return null;
   const clip = canh.chuoi3D!;
   const last = (clip.khungThat ?? 16) - 1;
-  const k = Math.round(truoc?.chuoi3D ? khungVat(truoc, (truoc.soFrame - 1) / 30, 30) : last);
+  // Cảnh đề có quay riêng (thư mục khung riêng): chạy góc máy + hành động của chính cảnh; không thì giữ khung cuối cảnh trước.
+  const rieng = !!canh.nhipQuay && clip.thuMuc !== truoc?.chuoi3D?.thuMuc;
+  const k = rieng ? khungVat(canh, time, 30) : Math.round(truoc?.chuoi3D ? khungVat(truoc, (truoc.soFrame - 1) / 30, 30) : last);
   const flash = Math.sin(Math.PI * kep(p * 1.6)) * 0.22;
   return <div style={{position: 'absolute', inset: 0, pointerEvents: 'none'}}>
     <div style={{position: 'absolute', inset: 0, transform: `scale(${1 + 0.28 * p})`,
@@ -67,7 +89,8 @@ export const ChuyenLayNet: React.FC<{canh: CanhProps; truoc?: CanhProps; p: numb
       <NenKhungBlender canh={canh} k={(clip.nenKhung ?? 0) > 1 ? (clip.nenKhung! - 1) * k / Math.max(1, last) : 0} />
       <div style={{position: 'absolute', top: '50%', width: '100%', aspectRatio: '1.6', transform: 'translateY(-50%)',
         WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, #000 9%, #000 88%, transparent 100%)'}}>
-        <Img src={staticFile(clip.thuMuc + '/orbit-' + k + '.png')} style={{width: '100%', height: '100%', objectFit: 'contain'}} />
+        {rieng ? <KhungMuot thuMuc={clip.thuMuc} k={k} /> :
+          <Img src={staticFile(clip.thuMuc + '/orbit-' + k + '.png')} style={{width: '100%', height: '100%', objectFit: 'contain'}} />}
       </div>
     </div>
     {/* vệt sáng nhẹ ở giữa khung lúc lấy nét: mắt người xem được dẫn vào hình minh họa */}

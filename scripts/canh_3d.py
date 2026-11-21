@@ -426,23 +426,27 @@ def phep_thu_3d(c):
     )
 
 
-def ke_hoach_dac_ta(kb):
+def ke_hoach_dac_ta(kb, so_canh=1, kiem=True):
     """Đường dựng mới: dac_ta_canh -> kiểm bám đề -> bộ xếp chỗ. None nếu kịch bản không có đặc tả.
 
     Lỗi bám đề (số lượng, màu, kích thước, trích dẫn sai) là lỗi nặng: dừng để Apps Script sửa kịch bản.
     Thực thể chính chưa có mẫu (và chưa được --tu-tao sinh bản ghép) thì quay về đường dựng cũ.
+    so_canh: lấy góc máy / hành động của quay[] cảnh này (giai đoạn D: mỗi cảnh một kế hoạch Blender riêng).
     """
     if not isinstance(kb.get("dac_ta_canh"), dict):
         return None
     from kiem_bam_de import kiem_dac_ta
     from thu_vien_3d.xep_cho import LoiDacTa, ThieuMau, lap_ke_hoach_dac_ta
-    errors, warnings = kiem_dac_ta(kb)
-    for w in warnings:
-        print("Đặc tả cảnh:", w, file=sys.stderr)
-    if errors:
-        raise ValueError("Đặc tả cảnh chưa bám đề: " + "; ".join(errors[:4]))
+    if kiem:
+        errors, warnings = kiem_dac_ta(kb)
+        for w in warnings:
+            print("Đặc tả cảnh:", w, file=sys.stderr)
+        if errors:
+            raise ValueError("Đặc tả cảnh chưa bám đề: " + "; ".join(errors[:4]))
     shots = (kb["dac_ta_canh"].get("quay") or [])
-    first = next((q for q in shots if q.get("canh") == 1), None)
+    first = next((q for q in shots if q.get("canh") == so_canh), None)
+    if first is None and so_canh != 1:
+        return None
     try:
         plan = lap_ke_hoach_dac_ta(kb, first)
     except ThieuMau as e:
@@ -477,6 +481,7 @@ def ke_hoach(kb, props):
     physical_kinds = set("nguoi the the_bai xuc_xac dong_xu hop_bi tui hop_qua dong_ho dien_thoai bong_bay vong_quay cua banh ban_tron khoi_hop tru non cau toa_nha xe cay thang canh_that".split())
     ds = {}
     scenes = props.get("canh", [])
+    mo_dau_het = next((i for i, c in enumerate(scenes) if i and c.get("loai") == "de_bai"), 1)
     for i, c in enumerate(scenes):
         local = c.get("moHinh3D")
         mh = c.get("minhHoa") or {}
@@ -510,9 +515,9 @@ def ke_hoach(kb, props):
         if "anh_that" in kinds and not physical:
             continue
         native = phep_thu_3d(c)
-        if spec_plan and i == 0 and not native:
-            # Cảnh mở đầu dựng theo đặc tả (vật + bối cảnh của đề); phép thử bi/xu/xúc xắc có chuyển động giữ đường riêng.
-            ds[0] = spec_plan
+        if spec_plan and i < mo_dau_het and not native:
+            # Các cảnh mở đầu (trước cảnh đề) dựng theo đặc tả (vật + bối cảnh của đề); phép thử bi/xu/xúc xắc có chuyển động giữ đường riêng.
+            ds[i] = spec_plan
             continue
         if native:
             ds[i] = native
@@ -609,7 +614,38 @@ def phan_vai(ds, props, kb):
         ds[i] = current
         c["xeMoDau"] = i < transition and current["loai"] == "xe_duong"
         c["phaMinhHoa"] = "thuc" if i < transition else "chuyen" if i == transition else "toan"
+    quay_theo_canh(kb, props, ds, transition)
     return ds
+
+
+def quay_theo_canh(kb, props, ds, transition):
+    """Giai đoạn D: cảnh mở đầu / cảnh đề có quay[] riêng -> kế hoạch Blender riêng (góc máy, chuyển máy, hành động)
+    và props.nhipQuay = mốc khi_noi của từng hành động (src/CanhBlender.tsx đặt khung Blender theo mốc này).
+    Cảnh giải (pha 'toan') giữ góc máy cảnh 1 để nét toán chiếu không đổi."""
+    if not ds or ds[0].get("loai") != "dac_ta":
+        return
+    scenes = props["canh"]
+    for i, c in enumerate(scenes):
+        c.pop("nhipQuay", None)
+        if i > transition:
+            continue
+        plan = ds[0] if i == 0 else ke_hoach_dac_ta(kb, c.get("so", i + 1), kiem=False)
+        if plan is None or not plan.get("quay"):
+            continue
+        ds[i] = plan
+        pq = {a.get("i"): a for a in (c.get("quay") or {}).get("hanhDong") or []}
+        duration = c.get("soFrame", 150) / 30
+        acts = plan["quay"]["hanh_dong"]
+        moc = []
+        for k, a in enumerate(acts):
+            t = (pq.get(a["i"]) or {}).get("t")
+            moc.append(t if isinstance(t, (int, float)) else duration * (0.3 + 0.45 * k / max(1, len(acts))))
+        # mốc phải tăng dần (mỗi hành động một đoạn khung Blender nối tiếp)
+        for k in range(1, len(moc)):
+            moc[k] = max(moc[k], moc[k - 1] + 0.4)
+        c["nhipQuay"] = {"dan": 0.25, "gocMay": plan["quay"]["goc_may"], "chuyenMay": plan["quay"]["chuyen_may"],
+                         "moc": [{"t": round(t, 3), "d": round(max(0.45, min(1.4, (moc[k + 1] if k + 1 < len(moc) else duration) - t - 0.05)), 3),
+                                  "dongTu": a["dong_tu"], "vat": a["vat"]} for k, (t, a) in enumerate(zip(moc, acts))]}
 
 
 def kiem_kich_ban(kb):
@@ -628,6 +664,13 @@ def kiem_kich_ban(kb):
             "netToan": scene.get("net_toan"),
             "cau": [{"text": scene.get("loi_thoai") or ""}],
         })
+    from thu_vien_3d.phep_thu_nhieu import lap_moi_truong_phep_thu
+    if lap_moi_truong_phep_thu(kb):
+        from kiem_bam_de import kiem_dac_ta
+        errors, _ = kiem_dac_ta(kb)
+        if errors:
+            raise ValueError("Đặc tả cảnh chưa bám đề: " + "; ".join(errors[:4]))
+        return {}
     for index, source in [(None, kb), *enumerate(kb["canh"])]:
         if "mo_hinh_3d" in source:
             errors = []
@@ -709,12 +752,20 @@ def main():
                 kiem_kich_ban(kb)
             return
         props = json.loads(args.props.read_text(encoding="utf8"))
-        ds = phan_vai(ke_hoach(kb, props), props, kb)
+        from thu_vien_3d.phep_thu_nhieu import gan_cho_canh, lap_moi_truong_phep_thu
+        mt = lap_moi_truong_phep_thu(kb)
+        if mt:
+            # Bài xác suất nhiều vật: Three.js dựng toàn khung theo đặc tả (không cần Blender / Manim).
+            print(f"Phép thử nhiều vật (Three.js): {len(mt['vat'])} vật, bối cảnh {mt['boiCanh']['mau']}, cảnh",
+                  [props['canh'][i].get('so') for i in gan_cho_canh(kb, props, mt)], file=sys.stderr)
+            ds = {}
+        else:
+            ds = phan_vai(ke_hoach(kb, props), props, kb)
     except ValueError as exc:
         if args.chuan_bi or args.kiem_kich_ban:
             report = Path("out/loi_mo_hinh.json")
             report.parent.mkdir(exist_ok=True)
-            report.write_text(json.dumps({"nang":[str(exc) + ". Khai báo chi_tiet đúng kiểu, trích nguyên văn đề ở tu_de; kiểm tra tam/co và đoạn đo đúng đơn vị."]},ensure_ascii=False))
+            report.write_text(json.dumps({"nang":[str(exc) + ". Khai báo chi_tiet đúng kiểu, trích nguyên văn đề ở tu_de; kiểm tra tam/co và đoạn đo đúng đơn vị."]},ensure_ascii=False), encoding="utf8")
         raise
     if not args.dem:
         args.props.write_text(json.dumps(props, ensure_ascii=False), encoding="utf8")

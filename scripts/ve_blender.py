@@ -492,6 +492,11 @@ def chi_tiet(p):
             ob["dich"] = p["dich_chuyen"]
         if p.get("vai_tro"):
             ob["vai_tro"] = p["vai_tro"]
+        # nhãn thực thể / bản sao để hành động của đặc tả cảnh ("be#3", "bi") tìm đúng vật
+        if p.get("the"):
+            ob["the"] = p["the"]
+            ob["ban"] = int(p.get("ban") or 1)
+        ob["vat_lieu"] = material
     return pieces
 
 
@@ -672,6 +677,175 @@ def den(scene, kieu, vi_tri, nhin, nang_luong, co, mau, bong=True):
     return lamp
 
 
+# ---------- Giai đoạn D: hành động của vật theo từng cảnh (đặc tả cảnh "quay[].hanh_dong") ----------
+# Dòng thời gian chuẩn hóa t ∈ [0, 1] của một cảnh: [0, DAN] máy quay vào cảnh, rồi mỗi hành động một đoạn bằng nhau.
+# src/CanhBlender.tsx dùng đúng hằng số này (props.nhipQuay.dan) để đặt mỗi đoạn vào mốc khi_noi của lời đọc.
+DAN = 0.25
+
+
+def _kep(x):
+    return max(0.0, min(1.0, x))
+
+
+def _muot(x):
+    return x * x * (3 - 2 * x)
+
+
+def chon_nhom(scene, ref):
+    """'be' -> mọi bản sao [[obj...], ...] theo thứ tự bản; 'be#3' -> chỉ bản 3."""
+    tid, _, k = str(ref or "").partition("#")
+    out = {}
+    for ob in scene.objects:
+        if ob.get("the") == tid and (not k or str(ob.get("ban")) == k):
+            out.setdefault(int(ob.get("ban", 1)), []).append(ob)
+    return [out[b] for b in sorted(out)]
+
+
+def hop_bao(obs):
+    pts = [o.matrix_world @ Vector(c) for o in obs for c in o.bound_box]
+    return (Vector(tuple(min(p[i] for p in pts) for i in range(3))),
+            Vector(tuple(max(p[i] for p in pts) for i in range(3))))
+
+
+def _T(v):
+    from mathutils import Matrix
+    return Matrix.Translation(Vector(v))
+
+
+def _quanh(pivot, M3):
+    """Ma trận 4x4: biến đổi 3x3 M3 quanh điểm pivot."""
+    return _T(pivot) @ M3.to_4x4() @ _T(-Vector(pivot))
+
+
+def _phat_sang(obs):
+    """Tách vật liệu riêng cho nhóm vật để tăng độ phát sáng mà không đổi màu vật khác dùng chung vật liệu."""
+    nodes = []
+    for ob in obs:
+        for slot in ob.material_slots:
+            if not slot.material or not slot.material.use_nodes:
+                continue
+            m = slot.material.copy()
+            slot.material = m
+            sh = m.node_tree.nodes.get("Principled BSDF")
+            if sh:
+                mau = sh.inputs["Base Color"].default_value[:]
+                dat_dau_vao(sh, "Emission Color", mau)
+                nodes.append(sh)
+    def dat(a):
+        for sh in nodes:
+            dat_dau_vao(sh, "Emission Strength", 1.4 * a)
+    return dat
+
+
+def lap_hanh_dong(scene, plan, lo_all, hi_all):
+    """Trả (dat_trang_thai(t), so_hanh_dong). dat_trang_thai đặt mọi vật về tư thế gốc rồi áp các hành động tới thời điểm t."""
+    from mathutils import Matrix
+    acts = (plan.get("quay") or {}).get("hanh_dong") or []
+    base = {ob: ob.matrix_world.copy() for ob in scene.objects if ob.type in ("MESH", "FONT")}
+    span_all = max(hi_all - lo_all)
+    ben_phai = [0.0]   # vật đã lấy ra xếp thành hàng bên phải cụm vật
+    steps = []
+    for a in acts:
+        groups = chon_nhom(scene, a["vat"])
+        ts = a.get("tham_so") or {}
+        if ts.get("mau"):
+            hop = [g for g in groups if any(o.get("vat_lieu") == ts["mau"] for o in g)]
+            groups = hop or groups
+        if a.get("so"):
+            groups = groups[: int(a["so"])]
+        if not groups:
+            steps.append(None)
+            continue
+        boxes = [hop_bao(g) for g in groups]
+        kind = a["dong_tu"]
+        fns = []
+        for j, (g, (lo, hi)) in enumerate(zip(groups, boxes)):
+            c = (lo + hi) / 2
+            size = max(hi - lo)
+            h = hi.z - lo.z
+
+            def apply(M, g=g):
+                for ob in g:
+                    ob.matrix_world = M @ ob.matrix_world
+
+            if kind in ("lay_ra", "bo_vao"):
+                w = hi.x - lo.x
+                dest = Vector((hi_all.x + span_all * 0.12 + ben_phai[0] + w / 2, (lo_all.y + hi_all.y) / 2, lo_all.z))
+                ben_phai[0] += w * 1.35
+                delta = dest - Vector((c.x, c.y, lo.z))
+                lift = max(h * 2.2, (hi_all.z - lo_all.z) * 0.9)
+                ra = kind == "lay_ra"
+                fns.append(lambda x, apply=apply, delta=delta, lift=lift, ra=ra:
+                           apply(_T(delta * (x if ra else 1 - x) + Vector((0, 0, lift * math.sin(math.pi * x))))))
+            elif kind == "roi":
+                H = float(ts.get("do_cao") or 0) or max(1.5 * h, 0.35 * span_all)
+                fns.append(lambda x, apply=apply, H=H: apply(_T((0, 0, H * (1 - x * x)))))
+            elif kind == "tung":
+                lift = max(size * 3, 0.25 * span_all)
+                fns.append(lambda x, apply=apply, c=c, lift=lift, j=j: apply(
+                    _T((0, 0, lift * math.sin(math.pi * x))) @ _quanh(c, Matrix.Rotation(4 * math.pi * (1 - x), 3, "X" if j % 2 == 0 else "Y"))))
+            elif kind == "lan":
+                dist = float(ts.get("quang_duong") or 0) or 4 * size
+                r = max(h / 2, 1e-3)
+                fns.append(lambda x, apply=apply, c=c, dist=dist, r=r: apply(
+                    _T((-(1 - x) * dist, 0, 0)) @ _quanh(c, Matrix.Rotation(-(1 - x) * dist / r, 3, "Y"))))
+            elif kind == "quay":
+                goc = math.radians(float(ts.get("goc") or 360))
+                fns.append(lambda x, apply=apply, c=c, goc=goc: apply(_quanh(c, Matrix.Rotation(goc * x, 3, "Z"))))
+            elif kind == "di_chuyen":
+                den = chon_nhom(scene, ts["den"]) if ts.get("den") else []
+                if den:
+                    tlo, thi = hop_bao([o for gg in den for o in gg])
+                    d = ((tlo + thi) / 2 - c)
+                    d.z = 0
+                    L = d.length
+                    stop = max(0.0, L - (size + max(thi - tlo)) / 2 * 1.05)
+                    delta = d.normalized() * stop if L > 1e-6 else Vector()
+                    fns.append(lambda x, apply=apply, delta=delta: apply(_T(delta * x)))
+                else:
+                    huong = {"trai": (-1, 0, 0), "phai": (1, 0, 0), "truoc": (0, -1, 0), "sau": (0, 1, 0)}
+                    v = Vector(huong.get(ts.get("huong"), (-1, 0, 0)))
+                    dist = float(ts.get("quang_duong") or 0) or 3 * size
+                    fns.append(lambda x, apply=apply, v=v, dist=dist: apply(_T(v * dist * (1 - x))))
+            elif kind == "rot_day":
+                nuoc = [o for o in g if o.get("vat_lieu") == "nuoc"]
+                for o in nuoc:
+                    olo, _ = hop_bao([o])
+                    fns.append(lambda x, o=o, p=Vector((o.matrix_world.translation.x, o.matrix_world.translation.y, olo.z)):
+                               setattr(o, "matrix_world", _quanh(p, Matrix.Diagonal((1, 1, max(0.02, x)))) @ o.matrix_world))
+            elif kind in ("mo", "dong"):
+                nap = max(g, key=lambda o: hop_bao([o])[1].z)
+                nlo, nhi = hop_bao([nap])
+                p = Vector(((nlo.x + nhi.x) / 2, nhi.y, nlo.z))
+                mo = kind == "mo"
+                fns.append(lambda x, nap=nap, p=p, mo=mo: setattr(nap, "matrix_world",
+                           _quanh(p, Matrix.Rotation(-1.8 * (x if mo else 1 - x), 3, "X")) @ nap.matrix_world))
+            elif kind == "xep":
+                goc = j * 2.399
+                r = 1.6 * size
+                fns.append(lambda x, apply=apply, goc=goc, r=r, h=h: apply(
+                    _T((math.cos(goc) * r * (1 - x), math.sin(goc) * r * (1 - x), 0.6 * h * math.sin(math.pi * x)))))
+            elif kind in ("danh_dau_chon", "sang_len"):
+                sang = _phat_sang(g)
+                nhac = kind == "danh_dau_chon"
+                fns.append(lambda x, apply=apply, c=c, h=h, sang=sang, nhac=nhac: (
+                    sang(x), nhac and apply(_T((0, 0, 0.25 * h * x)) @ _quanh(c, Matrix.Diagonal((1, 1, 1)) * (1 + 0.12 * x)))))
+        steps.append(fns)
+    n = len(steps)
+
+    def dat_trang_thai(t):
+        for ob, m in base.items():
+            ob.matrix_world = m.copy()
+        for k, fns in enumerate(steps):
+            if not fns:
+                continue
+            seg = (1 - DAN) / n
+            x = _muot(_kep((t - DAN - k * seg) / seg))
+            for fn in fns:
+                fn(x)
+    return dat_trang_thai, n
+
+
 def render(plan, dest):
     global MATS
     bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -688,6 +862,22 @@ def render(plan, dest):
     dung(plan)
     bpy.context.view_layer.update()
     pts = [o.matrix_world @ Vector(c) for o in scene.objects for c in o.bound_box]
+    quay = plan.get("quay") if plan.get("loai") == "dac_ta" else None
+    dat_trang_thai, so_hd = None, 0
+    pts_tieu = []
+    if quay:
+        lo0 = Vector(tuple(min(p[i] for p in pts) for i in range(3)))
+        hi0 = Vector(tuple(max(p[i] for p in pts) for i in range(3)))
+        dat_trang_thai, so_hd = lap_hanh_dong(scene, plan, lo0, hi0)
+        tieu = [o for ref in plan.get("tieu_diem") or [] for g in chon_nhom(scene, ref) for o in g]
+        # khung máy phải chứa vật ở MỌI thời điểm của hành động (vật bay lên, lấy ra bên cạnh...)
+        for t in [k / 8 for k in range(9)]:
+            dat_trang_thai(t)
+            bpy.context.view_layer.update()
+            pts.extend(o.matrix_world @ Vector(c) for o in scene.objects if o.type in ("MESH", "FONT") for c in o.bound_box)
+            pts_tieu.extend(o.matrix_world @ Vector(c) for o in tieu for c in o.bound_box)
+        dat_trang_thai(1.0)
+        bpy.context.view_layer.update()
     moving = [(ob, ob.location.copy(), Vector(ob["dich"])) for ob in scene.objects if "dich" in ob]
     pts.extend(ob.matrix_world @ Vector(c) + delta for ob, _, delta in moving for c in ob.bound_box)
     for segment in plan.get("doan_toan", []):
@@ -721,8 +911,19 @@ def render(plan, dest):
     tan_x = math.tan(cam.data.angle_x / 2) / 1.12
     tan_y = tan_x * 600 / 960
 
-    def dat_may(axis, dist):
-        cam.location = center + axis * dist
+    # Góc máy theo cảnh (giai đoạn D): "trung" / "can" / "theo_vat" vừa khung theo vật tiêu điểm thay vì cả cụm.
+    goc = (quay or {}).get("goc_may")
+    pts_khung = pts_tieu if goc in ("trung", "can", "theo_vat") and pts_tieu else pts
+    tam = center
+    if pts_khung is pts_tieu:
+        tlo = Vector(tuple(min(p[i] for p in pts_tieu) for i in range(3)))
+        thi = Vector(tuple(max(p[i] for p in pts_tieu) for i in range(3)))
+        tam = (tlo + thi) / 2
+    he_so = {"trung": 1.35, "can": 1.04, "theo_vat": 1.25}.get(goc, 1.0) if pts_khung is pts_tieu else 1.0
+
+    def dat_may(axis, dist, lech=None, tam_may=None):
+        goc_nhin = (tam_may or tam) + (lech or Vector())
+        cam.location = goc_nhin + axis * dist
         cam.rotation_euler = (-axis).to_track_quat("-Z", "Y").to_euler()
 
     def vua_khung(axis):
@@ -730,9 +931,9 @@ def render(plan, dest):
         lo_d, hi_d = span * 0.2, span * 60
         for _ in range(48):
             mid = (lo_d + hi_d) / 2
-            eye = center + axis * mid
+            eye = tam + axis * mid
             ok = True
-            for pt in pts:
+            for pt in pts_khung:
                 v = rot @ (pt - eye)
                 if v.z >= -1e-6 or abs(v.x) > tan_x * -v.z or abs(v.y) > tan_y * -v.z:
                     ok = False
@@ -740,7 +941,7 @@ def render(plan, dest):
             lo_d, hi_d = (lo_d, mid) if ok else (mid, hi_d)
         return hi_d
 
-    dist = vua_khung(direction)
+    dist = vua_khung(direction) * he_so
     cam.data.clip_start = span * 0.002
     cam.data.clip_end = span * 120
     dat_may(direction, dist)
@@ -791,18 +992,54 @@ def render(plan, dest):
         scene.render.image_settings.color_mode = "RGB" if tep == "JPEG" else "RGBA"
         # Nền chụp với độ sâu trường ảnh (xóa phông): đạo cụ phía sau mềm đi, mắt tập trung vào vật chính.
         cam.data.dof.use_dof = nen
-        cam.data.dof.focus_distance = (cam.location - center).length
+        cam.data.dof.focus_distance = (cam.location - tam).length
         cam.data.dof.aperture_fstop = max(0.1, min(16.0, 2.2 / max(1e-3, cam.data.dof.focus_distance)))
 
     static_cam = bool(moving or spinning)
     frames = 36 if static_cam else 16
+    chuyen = (quay or {}).get("chuyen_may")
+    if quay:
+        # 16 khung cho máy + 6 khung mỗi hành động (tối đa 34) -> chuyển động vật vẫn mượt khi Remotion hòa khung kề nhau.
+        frames = min(34, 16 + 6 * so_hd)
+        static_cam = chuyen == "dung" and goc != "theo_vat"
+    side_may = Vector((-direction.y, direction.x, 0)).normalized()
+    tieu_obs = [o for ref in plan.get("tieu_diem") or [] for g in chon_nhom(scene, ref) for o in g] if goc == "theo_vat" else []
     # VE_XEM_TRUOC=1: chỉ dựng khung cuối + nền (kiểm bố cục nhanh tại máy, không dùng cho video).
+    # VE_KHUNG="0,8,15": chỉ dựng các khung này (thử nhanh góc máy / hành động tại máy).
     xem_truoc = os.getenv("VE_XEM_TRUOC") == "1"
-    for i in ([frames - 1] if xem_truoc else range(frames)):
+    chi_khung = [int(x) for x in os.getenv("VE_KHUNG", "").split(",") if x.strip().isdigit()]
+    ds_khung = [k for k in chi_khung if k < frames] if chi_khung else [frames - 1] if xem_truoc else range(frames)
+    for i in ds_khung:
         t = i / (frames - 1)
         e = t * t * (3 - 2 * t)
         # Máy vừa lượn 9° vừa đẩy vào 12%: chuyển động có thị sai thật giữa vật và nền (khung cuối là góc chiếu nét toán).
         angle = 0 if static_cam else math.radians(-9 * (1 - e))
+        if quay:
+            dat_trang_thai(t)
+            bpy.context.view_layer.update()
+            # chuyển máy theo đặc tả; khung cuối (e = 1) luôn về đúng góc đã vừa khung -> nét toán chiếu khớp.
+            xa, lech, tam_may = 1.0, None, None
+            if chuyen == "dung":
+                angle = 0
+            elif chuyen == "luot_ngang":
+                angle, lech = 0, side_may * span * 0.32 * (1 - e)
+            elif chuyen == "xoay_quanh":
+                angle = math.radians(-38 * (1 - e))
+            else:   # luot_vao
+                angle, xa = math.radians(-4 * (1 - e)), 1 + 0.22 * (1 - e)
+            if tieu_obs:
+                tlo, thi = hop_bao(tieu_obs)
+                tam_may = (tlo + thi) / 2
+            dat_may(Matrix.Rotation(angle, 3, "Z") @ direction, dist * xa, lech, tam_may)
+            bpy.context.view_layer.update()
+            che_do(False)
+            scene.render.filepath = str(dest.parent / f"orbit-{i}.png")
+            bpy.ops.render.render(write_still=True)
+            if not static_cam or i == 0 or xem_truoc or chi_khung:
+                che_do(True, 540, 960, 10, "JPEG")
+                scene.render.filepath = str(dest.parent / f"nen-{i}.jpg")
+                bpy.ops.render.render(write_still=True)
+            continue
         for ob, origin, delta in moving:
             ob.location = origin + delta * (t if plan["loai"] == "xe_duong" else e)
             ob.location.z += ob.get("nhac", 0) * math.sin(t * math.pi)
@@ -819,6 +1056,15 @@ def render(plan, dest):
             che_do(True, 540, 960, 10, "JPEG")
             scene.render.filepath = str(dest.parent / f"nen-{i}.jpg")
             bpy.ops.render.render(write_still=True)
+    if quay:
+        # trạng thái + góc máy cuối (dù chỉ dựng vài khung): nền chung và tọa độ chiếu nét toán lấy từ đây
+        dat_trang_thai(1.0)
+        if tieu_obs:
+            tlo, thi = hop_bao(tieu_obs)
+            dat_may(direction, dist, None, (tlo + thi) / 2)
+        else:
+            dat_may(direction, dist)
+        bpy.context.view_layer.update()
     # nền tĩnh độ phân giải cao ở góc cuối (dùng cho lớp nền chung và màn chuyển cảnh)
     che_do(True, 720, 1280, 20, "JPEG")
     scene.render.filepath = str(dest.parent / "moi-truong.jpg")

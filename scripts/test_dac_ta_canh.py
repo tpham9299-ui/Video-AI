@@ -261,5 +261,52 @@ class TichHopTest(unittest.TestCase):
         self.assertNotIn("moi_truong", gan_moi_truong(plan, {"de_bai": "Một khối gỗ."}))
 
 
+class GiaiDoanD(unittest.TestCase):
+    """Góc máy / hành động theo từng cảnh (Blender) và phép thử nhiều vật (Three.js)."""
+
+    def test_moi_canh_mot_ke_hoach_quay(self):
+        kb = doc("trai_ca_goc_may")
+        p1, p2, p3 = (ke_hoach_dac_ta(kb, so) for so in (1, 2, 3))
+        self.assertEqual((p1["quay"]["goc_may"], p1["quay"]["chuyen_may"]), ("toan_canh", "luot_ngang"))
+        self.assertEqual(p2["tieu_diem"], ["be#1"])
+        self.assertEqual(p2["quay"]["hanh_dong"][0]["dong_tu"], "rot_day")
+        self.assertEqual(p3["quay"]["goc_may"], "trung")
+        self.assertIsNone(ke_hoach_dac_ta(kb, 4))   # cảnh không có quay[] riêng
+
+    def test_hanh_dong_tro_vat_khong_co_bi_bo(self):
+        kb = copy.deepcopy(doc("trai_ca_goc_may"))
+        kb["dac_ta_canh"]["quay"][1]["hanh_dong"].insert(0, {"vat": "be#9", "dong_tu": "roi"})
+        plan = ke_hoach_dac_ta(kb, 2, kiem=False)
+        self.assertEqual([(a["i"], a["dong_tu"]) for a in plan["quay"]["hanh_dong"]], [(1, "rot_day")])
+
+    def test_quay_canh_lay_moc_khi_noi(self):
+        from chuanbi import quay_canh
+        kb = doc("xac_suat_nhieu_vat")
+        cau = [{"text": "An lấy ngẫu nhiên một viên bi, rồi gieo xúc xắc,", "bat": 0.5, "ket": 3.5}]
+        q = quay_canh(kb, 2, cau, [])
+        t = {a["dongTu"] + a["vat"]: a["t"] for a in q["hanhDong"]}
+        self.assertAlmostEqual(t["lay_rabi_do"], 0.5 + 3 / 11, places=2)   # từ thứ 2 trong 11 từ
+        self.assertGreater(t["tungxx"], t["lay_rabi_do"])
+        self.assertIsNone(t["tungxu"])                          # khi_noi chưa có trong câu này
+        self.assertIsNone(quay_canh(dict(kb, luong="hinh_hoc_thuan"), 2, cau, []))
+
+    def test_phep_thu_nhieu_vat_three(self):
+        from thu_vien_3d.phep_thu_nhieu import gan_cho_canh, lap_moi_truong_phep_thu
+        kb = doc("xac_suat_nhieu_vat")
+        mt = lap_moi_truong_phep_thu(kb)
+        kieu = Counter(v["kieu"] for v in mt["vat"])
+        self.assertEqual(kieu, Counter({"bi": 5, "binh": 1, "xuc_xac": 1, "dong_xu": 1}))
+        self.assertTrue(all(v.get("trong") == "hop" for v in mt["vat"] if v["kieu"] == "bi"))
+        self.assertEqual(mt["boiCanh"]["mau"], "ban_thi_nghiem")
+        props = {"canh": [{"so": i + 1, "loai": c["loai"], "soFrame": 150, "phaMinhHoa": "toan"} for i, c in enumerate(kb["canh"])]}
+        self.assertEqual(gan_cho_canh(kb, props, mt), [0, 1])
+        self.assertNotIn("phaMinhHoa", props["canh"][3])
+        hd = props["canh"][1]["moiTruong"]["quay"]["hanhDong"]
+        self.assertEqual([a["dongTu"] for a in hd], ["lay_ra", "tung", "tung", "danh_dau_chon"])
+        self.assertTrue(all(a["t"] is not None and a["d"] >= 0.5 for a in hd))
+        # vật chính không phải đồ chơi xác suất -> để Blender dựng
+        self.assertIsNone(lap_moi_truong_phep_thu(doc("trai_ca")))
+
+
 if __name__ == "__main__":
     unittest.main()

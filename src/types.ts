@@ -4,10 +4,24 @@ export type Cau = {text: string; bat: number; ket: number}; // bat/ket: giây t�
 
 export type MinhHoa = {loai: string; moTa?: string; duLieu?: unknown};
 
+// Hành động của vật theo mốc lời đọc (giai đoạn D, từ dac_ta_canh.quay[].hanh_dong).
+export type HanhDong3D = {
+  vat: string; dongTu: string; so?: number | null; thamSo?: Record<string, unknown>;
+  t: number; d: number; khiNoi?: string; xong?: boolean; // xong: đã làm ở cảnh trước -> giữ trạng thái cuối
+};
+export type VatPhepThu = {id: string; the: string; ban: number; kieu: 'binh' | 'coc' | 'hop' | 'bi' | 'xuc_xac' | 'dong_xu' | 'the' | 'bong'; mau: string; nhan?: string; trong?: string};
+
 export type MoiTruong = {loai: 'xe_duong'} | {
   loai: 'phep_thu'; vat: 'hop_bi' | 'dong_xu' | 'xuc_xac'; gia_tri: (string | number)[];
   dong: boolean; so_rut: number; mau_rut: string | null; giuCuoi?: boolean;
+} | {
+  loai: 'dac_ta'; vat: VatPhepThu[]; boQua?: string[];
+  boiCanh: {mau: string; ngoaiTroi: boolean; troi: string; dat: string; thoiGian?: string};
+  quay: {gocMay: string; chuyenMay: string; tieuDiem: string[]; hanhDong: HanhDong3D[]};
 };
+
+// Mốc hành động cho khung Blender: [0, dan] máy vào cảnh, rồi mỗi hành động một đoạn khung bằng nhau (ve_blender.DAN).
+export type NhipQuay = {dan: number; gocMay?: string; chuyenMay?: string; moc: {t: number; d: number; dongTu?: string; vat?: string}[]};
 
 export type CanhProps = {
   so: number;
@@ -17,6 +31,8 @@ export type CanhProps = {
   minhHoa: MinhHoa;
   anhCanh3D?: string;
   moiTruong?: MoiTruong;
+  nhipQuay?: NhipQuay;
+  quay?: {gocMay: string; chuyenMay: string; tieuDiem: string[]; hienSoLieu?: string[]; hanhDong: {i: number; vat: string; dongTu: string; t: number | null; khop: boolean}[]};
   nhipXe?: {tong:number; moc:{t:number;s:number;v:number;a:number;j?:number;chay?:number}[]};
   phaMinhHoa?: "thuc" | "chuyen" | "toan";
   chuoi3D?: {khungThat?: number; hinhGiai?: string;nenDung?: string; nenKhung?: number; thuMuc: string; netCuoi: number; xeDuong?: [number,number]; coThuoc?: boolean; giuVatCuoi?: boolean; phepThu?: boolean; giuNet?: boolean};

@@ -436,6 +436,20 @@ def lap_ke_hoach_dac_ta(kb, quay_canh=None):
             "huong_may": HUONG_MAY.get(q.get("goc_may"), HUONG_MAY["toan_canh"]),
             "tieu_diem": q.get("tieu_diem") or [t["id"] for t in order if t["vai_tro"] == "chinh"],
             "canh_bao": canh_bao}
+    if q:
+        # Giai đoạn D: góc máy / chuyển máy / hành động của cảnh. Chỉ giữ hành động trỏ tới bản sao có dựng;
+        # "i" là chỉ số gốc trong quay[].hanh_dong để canh_3d.py ghép đúng mốc khi_noi (props.quay) cho Remotion.
+        hd = []
+        for i, a in enumerate(q.get("hanh_dong") or []):
+            if a.get("dong_tu") == "dung_yen":
+                continue
+            if not ban_sao(a.get("vat")):
+                canh_bao.append(f"cảnh {q.get('canh')}: hành động '{a.get('dong_tu')}' trỏ tới '{a.get('vat')}' không có, bỏ qua")
+                continue
+            hd.append({"i": i, "vat": a["vat"], "dong_tu": a["dong_tu"], "so": a.get("so"), "tham_so": a.get("tham_so") or {}})
+        plan["tieu_diem"] = [r for r in plan["tieu_diem"] if ban_sao(r)] or [t["id"] for t in order if t["vai_tro"] == "chinh"]
+        plan["quay"] = {"canh": q.get("canh"), "goc_may": q.get("goc_may") or "toan_canh",
+                        "chuyen_may": q.get("chuyen_may") or "luot_vao", "hanh_dong": hd}
     if not doan:
         plan["giu_vat"] = True
     return plan

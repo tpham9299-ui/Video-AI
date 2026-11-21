@@ -352,7 +352,7 @@ export const Canh: React.FC<{
       {clip ? <div style={clip.nenDung && !clip.giuNet ? {position:'absolute', top: '50%', width:'100%', aspectRatio:'1.6', transform:'translateY(-50%)', opacity:canh.phaMinhHoa ? 1 : ra} : {position: 'absolute', top: Math.max(425, yNoiDung), left: 38, right: 38, height: Math.min(775, yNoiDung + caoSan - Math.max(425, yNoiDung)), opacity: ra}}>
         <CanhBlender canh={canh} truoc={truoc} frame={frame} fps={fps} />
       </div> : null}
-      {chuyen3D ? <ChuyenLayNet canh={canh} truoc={truoc} p={pChuyen} /> : null}
+      {chuyen3D ? <ChuyenLayNet canh={canh} truoc={truoc} p={pChuyen} time={t} /> : null}
       {anh3D && !clip && !moiTruong ? (
         <div style={{position: 'absolute', top: yNoiDung, left: 40, right: 40, height: caoSan,
           borderRadius: 26, overflow: 'hidden', display: 'grid', placeItems: 'center',

@@ -930,6 +930,47 @@ def moc_buoc_ve(buoc_ve, tu):
     return kq
 
 
+def tu_tu_cau(cau):
+    """Mốc từng từ ước lượng từ các câu phụ đề (khi giọng đọc không có WordBoundary): chia đều thời lượng câu theo số từ."""
+    tu = []
+    for c in cau:
+        ds = str(c.get("text") or "").split()
+        if not ds:
+            continue
+        buoc = (c["ket"] - c["bat"]) / len(ds)
+        tu.extend({"w": w, "bat": round(c["bat"] + k * buoc, 3), "ket": round(c["bat"] + (k + 1) * buoc, 3)} for k, w in enumerate(ds))
+    return tu
+
+
+def quay_canh(kb, so, cau, tu):
+    """Giai đoạn D (luồng thực tế & xác suất): dac_ta_canh.quay[] của cảnh `so` -> props.canh[i].quay.
+    Mỗi hành động mang mốc t (giây từ đầu cảnh) = lúc giọng đọc bắt đầu cụm khi_noi (mốc từ thật nếu có, không thì ước lượng
+    theo câu). canh_3d.py ghép mốc này vào kế hoạch Blender / Three.js; Remotion chạy hành động đúng lúc nói."""
+    if str(kb.get("luong") or "") == "hinh_hoc_thuan" or str(kb.get("mon") or "").upper() == "HINH_HOC":
+        return None   # khóa luồng hình học thuần: không có cảnh thật / góc máy 3D
+    spec = kb.get("dac_ta_canh")
+    if not isinstance(spec, dict):
+        return None
+    shot = next((q for q in spec.get("quay") or [] if isinstance(q, dict) and q.get("canh") == so), None)
+    if not shot:
+        return None
+    nguon = tu or tu_tu_cau(cau)
+    hd, vt = [], 0
+    for i, a in enumerate(shot.get("hanh_dong") or []):
+        if not isinstance(a, dict) or not a.get("vat") or not a.get("dong_tu"):
+            continue
+        cum = str(a.get("khi_noi") or "")
+        tim = tim_cum_tu(cum, nguon, vt) if cum and nguon else None
+        if tim:
+            vt = tim[1]
+        hd.append({"i": i, "vat": str(a["vat"]), "dongTu": str(a["dong_tu"]), "so": a.get("so"),
+                   "thamSo": a.get("tham_so") or {}, "khiNoi": cum,
+                   "t": nguon[tim[0]]["bat"] if tim else None, "khop": bool(tim), "nguonMoc": "tu_that" if tu else "uoc_luong"})
+    return {"gocMay": shot.get("goc_may") or "toan_canh", "chuyenMay": shot.get("chuyen_may") or "luot_vao",
+            "tieuDiem": [str(x) for x in shot.get("tieu_diem") or []],
+            "hienSoLieu": [str(x) for x in shot.get("hien_so_lieu") or []], "hanhDong": hd}
+
+
 def ghep(cac_tep, dich):
     """Ghép các đoạn thành một tệp, chèn GAP giây im lặng sau mỗi đoạn."""
     lenh = ["ffmpeg", "-y", "-loglevel", "error"]
@@ -1943,6 +1984,15 @@ def main():
         moc_ve = moc_buoc_ve(c.get("buoc_ve"), tu_canh) if c.get("buoc_ve") else []
         if moc_loi:
             so_frame = max(so_frame, math.ceil((moc_loi[-1] + 1.5) * FPS))
+        quay = quay_canh(kb, so, cau, tu_canh)
+        if quay:
+            for a in quay["hanhDong"]:
+                if a["t"] is not None:
+                    a["t"] = round(a["t"], 3)
+                    so_frame = max(so_frame, math.ceil((a["t"] + 1.6) * FPS))   # đủ thời gian xem hết hành động cuối
+            for a in quay["hanhDong"]:
+                if not a["khop"]:
+                    print(f"Cảnh {so}: không thấy khi_noi \"{a['khiNoi']}\" trong lời đọc -> hành động '{a['dongTu']}' dùng mốc ước lượng")
         canh_props.append({
             "so": so,
             "loai": str(c.get("loai") or ""),
@@ -1950,6 +2000,7 @@ def main():
             **({"mocCongThuc": moc_loi} if moc_loi else {}),
             **({"tu": tu_canh, "dongBo": "tu_that"} if tu_canh else {"dongBo": "uoc_luong"}),
             **({"mocVe": moc_ve} if moc_ve else {}),
+            **({"quay": quay} if quay else {}),
             **({"netToan": c["net_toan"]} if "net_toan" in c else {}),
             **({"moHinh3D": c["mo_hinh_3d"]} if "mo_hinh_3d" in c else {}),
             "minhHoa": {
