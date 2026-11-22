@@ -52,7 +52,11 @@ export class NguCanh {
     this.nhanNay = lay(iNay);
     this.nhanTruoc = lay(iNay - 1);
     this.aNhan = iNay >= 0 ? emVaoRa((t - canh.buoc[iNay].t) / THOI_NHAN) : 1;
+    // v95: phần tử vừa được nhấn mạnh NHẤP NHÁY 3 nhịp (~1,35 s) đúng lúc giọng nhắc tới (góc cắt, cạnh 16 - 2x...) rồi sáng đều
+    const dtNhan = iNay > 0 ? t - canh.buoc[iNay].t : Infinity;
+    this.nhay = dtNhan < 1.35 ? 0.62 + 0.38 * Math.cos((dtNhan * 2 * Math.PI) / 0.45) : 1;
   }
+  private nhay = 1;
 
   doiTuong(id: string) {
     return this.dt.get(id);
@@ -82,7 +86,7 @@ export class NguCanh {
   sang(id: string): number {
     if (this.bo) return 0;
     const a = this.muc(this.nhanTruoc, id), b = this.muc(this.nhanNay, id);
-    return a.sang + (b.sang - a.sang) * this.aNhan;
+    return a.sang + (b.sang * (b.sang > 0 ? this.nhay : 1) - a.sang) * this.aNhan;
   }
 
   /* ---- hành động ---- */

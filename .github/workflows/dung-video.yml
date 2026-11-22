@@ -81,6 +81,9 @@ jobs:
       TTS_MODEL: ${{ vars.TTS_MODEL }}
       TOC_DO_GEMINI: ${{ vars.TOC_DO_GEMINI }}
       AM_LUONG_NHAC: ${{ vars.AM_LUONG_NHAC }}
+      NHAC_RIENG: ${{ vars.NHAC_RIENG }}
+      NHAC_DUOI_GIONG_DB: ${{ vars.NHAC_DUOI_GIONG_DB }}
+      PHU_DE_4TANG: ${{ vars.PHU_DE_4TANG }}
       GIONG: ${{ vars.GIONG }}
       TOC_DO: ${{ vars.TOC_DO }}
       SO_MAY_DUNG: ${{ vars.SO_MAY_DUNG }}

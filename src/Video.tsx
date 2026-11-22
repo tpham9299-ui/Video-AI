@@ -86,6 +86,7 @@ const NenBlender: React.FC<{src: string; tat: number}> = ({src, tat}) => {
 function taoAmLuongNhac(props: Props) {
   const {canh, tongFrame, fps} = props;
   const goc = props.amLuongNhac ?? 0.16;
+  const nt = props.nhacTron;
   const khoang: [number, number][] = [];
   canh.forEach((c) => {
     if (!c.cau.length) return;
@@ -98,8 +99,15 @@ function taoAmLuongNhac(props: Props) {
       gan = Math.min(gan, f < a ? a - f : f - b);
     }
     // giảm nhạc mềm (18 khung hình) để không nghe "phập phồng"; ở quãng nghỉ giữa hai cảnh nhạc dâng lên nối hai bước
-    const duck = interpolate(gan, [0, 18], [0.42, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
     const dauCuoi = interpolate(f, [0, 20, tongFrame - 45, tongFrame], [0.5, 1, 1, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
+    if (nt) {
+      // v95: mức tuyệt đối theo đo độ to thật: dưới giọng ~-16 dB (nghe rõ nhịp, không át lời), nghỉ +5 dB,
+      // 3 s đầu (intro) và 2 s cuối (outro) nâng +4 dB
+      const co = interpolate(gan, [0, 18], [nt.duoi, nt.nghi], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
+      const dau = f < 3 * fps || f > tongFrame - 2 * fps ? Math.max(co, nt.dauCuoi) : co;
+      return dau * dauCuoi;
+    }
+    const duck = interpolate(gan, [0, 18], [0.42, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
     return goc * duck * dauCuoi;
   };
 }
@@ -110,6 +118,34 @@ function taoAmLuongNhac(props: Props) {
 export const Video: React.FC<Props> = (props) => <VideoCu {...props} />;
 
 const la4Tang = (p: Props) => p.boCuc === '4tang' && !!p.khung4tang;
+
+// v95: danh sách SFX của khung 4 tầng (tất định từ props): mốc gần nhau < 0,3 s chỉ giữ tiếng ưu tiên cao hơn
+type SuKienSfx = {t: number; tep: string; vol: number; dai: number; uu: number};
+export function suKienSfx4Tang(k: NonNullable<Props['khung4tang']>, tHet: number): SuKienSfx[] {
+  const ds: SuKienSfx[] = [];
+  const buoc = [...(k.buoc || [])].sort((a, b) => a.t - b.t);
+  const G = k.mocCau ? Math.max(3.6, Math.min(k.mocCau.giay || 5, 5, tHet * 0.4)) : 0;
+  buoc.forEach((b, j) => {
+    if (j > 0) ds.push({t: b.t, tep: 'swoosh', vol: 0.16, dai: 0.5, uu: 2});
+    b.the.forEach((th, n) => {
+      const t0 = Math.max(th.t ?? b.t + 0.35 + n * 0.7, b.t + (j > 0 ? 0.2 : 0));
+      if (th.chot) ds.push({t: t0, tep: 'ting', vol: 0.24, dai: 1.0, uu: 4});
+      else ds.push({t: t0, tep: 'pop', vol: 0.2, dai: 0.3, uu: 1});
+    });
+    const dc = b.doi_chieu;
+    if (dc && typeof dc.t_giai === 'number') ds.push({t: dc.t_giai + 0.8, tep: 'ding', vol: 0.24, dai: 0.95, uu: 3});
+  });
+  const c3 = k.canh3dv as {pha?: {ten?: string; t?: number}[]} | null;
+  for (const ph of c3?.pha || []) if (ph && /gap|gấp/.test(String(ph.ten || '')) && typeof ph.t === 'number') ds.push({t: ph.t + 0.25, tep: 'whoosh', vol: 0.18, dai: 0.6, uu: 2});
+  const ra = ds.filter((e) => e.t >= G - 0.2 && e.t < tHet - 0.05).sort((a, b) => a.t - b.t);
+  const giu: SuKienSfx[] = [];
+  for (const e of ra) {
+    const truoc = giu[giu.length - 1];
+    if (truoc && e.t - truoc.t < 0.3) { if (e.uu > truoc.uu) giu[giu.length - 1] = e; continue; }
+    giu.push(e);
+  }
+  return giu;
+}
 
 // Nội dung luồng 4 tầng: mốc `t` trong khung4tang tính bằng giây kể từ đầu phần nội dung (sau intro), do chuanbi.py đổi từ `khi_noi`.
 const NoiDung4Tang: React.FC<Props & {coIntro?: boolean}> = (props) => {
@@ -122,6 +158,7 @@ const NoiDung4Tang: React.FC<Props & {coIntro?: boolean}> = (props) => {
   // v93: màn kết "tóm tắt 3 bước" (giữ mô hình 3D ở trạng thái cuối); không có tomTat -> màn kết v92
   const tomTat = k.tomTat && k.tomTat.length ? k.tomTat : null;
   const canhCuoi = React.useMemo(() => (tomTat ? chuanHoaCanh3DV(k.canh3dv, [...(k.buoc || [])].map((b) => b.t).sort((x, y) => x - y), Math.max(1, ketThuc) / fps).canh : null), [tomTat, k.canh3dv, k.buoc, ketThuc, fps]);
+  const sfx = React.useMemo(() => suKienSfx4Tang(k, Math.max(1, ketThuc) / fps), [k, ketThuc, fps]);
   return (
     <AbsoluteFill style={{fontFamily: FONT, background: '#0E1014'}}>
       <Sequence from={0} durationInFrames={Math.max(1, ketThuc)}>
@@ -138,14 +175,20 @@ const NoiDung4Tang: React.FC<Props & {coIntro?: boolean}> = (props) => {
       {canh.map((c) =>
         /dap_an|ket_qua/i.test(c.loai) && c.batDau > 40 ? (
           <Sequence key={`riser${c.so}`} from={c.batDau - 36} durationInFrames={40} layout="none">
-            <Audio src={staticFile('sfx/riser.wav')} volume={0.2} />
+            <Audio src={staticFile('sfx/riser.wav')} volume={0.14} />
           </Sequence>
         ) : null
       )}
+      {/* v95: SFX tinh tế theo sự kiện (~ -14..-12 dB so với giọng): pop thẻ mới, whoosh đổi bước / gập hộp, ding chốt cực trị, chime thẻ đáp án */}
+      {sfx.map((e, i) => (
+        <Sequence key={`sfx4t${i}`} from={Math.max(0, Math.round(e.t * fps))} durationInFrames={Math.round(e.dai * fps)} layout="none">
+          <Audio src={staticFile(`sfx/${e.tep}.wav`)} volume={e.vol} />
+        </Sequence>
+      ))}
       {outro ? (
         <Sequence from={outro.batDau} durationInFrames={outro.soFrame}>
           {outro.loai === 'tu_tao' && tomTat ? (
-            <OutroTomTat dapAn={props.dapAn} tomTat={tomTat} canh={canhCuoi} tCuoi={Math.max(1, ketThuc) / fps} thuongHieu={k.thuongHieu ?? thuongHieu?.ten} />
+            <OutroTomTat dapAn={props.dapAn} tomTat={tomTat} canh={canhCuoi} tCuoi={Math.max(1, ketThuc) / fps} thuongHieu={k.thuongHieu ?? thuongHieu?.ten} cta={k.cta} />
           ) : outro.loai === 'tu_tao' ? <ManKetChuyenNghiep th={thuongHieu} baiHoc={props.baiHoc || []} dapAn={props.dapAn} tiepTheo={props.tiepTheo || ''} /> : <ManKet tep={outro.tep} loai={outro.loai} />}
         </Sequence>
       ) : null}

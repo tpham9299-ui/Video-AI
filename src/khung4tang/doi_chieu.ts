@@ -122,6 +122,31 @@ export function nhipDoiChieu(d: DoiChieu, dt: number, dai: number): {x: number; 
   return {x: d.xTot, pha: 'dung'};
 }
 
+// v95: nhịp THEO LỜI ĐỌC. dtGiai = giây (tính từ đầu bước) giọng đọc ra nghiệm (chuanbi.py t_giai).
+// Trước dtGiai: điểm sáng dò qua lại cả miền (tam giác chậm, không bao giờ "đậu" ở tối ưu -> không lộ đáp án);
+// từ dtGiai: lướt 0,8 s về điểm tối ưu rồi đứng ('dung'). Không có dtGiai -> nhịp cũ v93.
+export function nhipTheoLoi(d: DoiChieu, dt: number, dai: number, dtGiai?: number): {x: number; pha: 'quet' | 've' | 'dung'} {
+  if (dtGiai === undefined || !Number.isFinite(dtGiai)) return nhipDoiChieu(d, dt, dai);
+  const vao = 0.6, chu = Math.max(3.2, Math.min(5.5, dtGiai * 0.6));
+  const L = (u: number) => u * u * (3 - 2 * u);
+  const quetTai = (s: number) => {
+    if (s < vao) return d.a;
+    const u = ((s - vao) / chu) % 2;
+    return d.a + (d.b - d.a) * L(u <= 1 ? u : 2 - u);
+  };
+  if (dt < dtGiai) return {x: quetTai(dt), pha: 'quet'};
+  const x0 = quetTai(dtGiai);
+  if (dt < dtGiai + 0.8) return {x: x0 + (d.xTot - x0) * L((dt - dtGiai) / 0.8), pha: 've'};
+  return {x: d.xTot, pha: 'dung'};
+}
+
+// v95: huy hiệu: ✓ ĐẠT CHUẨN / ✕ VƯỢT NGƯỠNG chỉ khi đề có ngưỡng ràng buộc thật; bài cực trị thuần -> ★ CỰC ĐẠI / ★ CỰC TIỂU
+export function chuHuyHieu(d: Pick<DoiChieu, 'nguong' | 'kieu'>, y: number, pha: string, gan: boolean): {chu: string; loai: 'dat' | 'vuot' | 'do' | 'cuc'} {
+  if (d.nguong) return datNguong(d, y) ? {chu: '✓ ĐẠT CHUẨN', loai: 'dat'} : {chu: '✕ VƯỢT NGƯỠNG', loai: 'vuot'};
+  if (pha === 'dung' || (pha === 've' && gan)) return {chu: d.kieu === 'min' ? '★ CỰC TIỂU' : '★ CỰC ĐẠI', loai: 'cuc'};
+  return {chu: 'ĐANG DÒ', loai: 'do'};
+}
+
 // số kiểu Việt: 2.5 -> "2,5"; tối đa 2 chữ số thập phân
 export const soViet = (x: number) => {
   const r = Math.round(x * 100) / 100;

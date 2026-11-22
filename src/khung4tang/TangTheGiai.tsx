@@ -14,12 +14,14 @@ import {ChuTron} from './ChuTron';
 import {tachHam} from './chu_tron';
 
 const TOI_DA_THE = 3;
+const VANG = '#FACC15';
+const NGOC = '#2EE6A8';
 const RONG_TRONG = 1080 - 2 * 44 - 2 * 28;
 
 // mốc xuất hiện của thẻ j trong bước b
 export const tTheCua = (b: BuocGiai, j: number) => (b.the[j].t !== undefined ? b.the[j].t! : b.t + 0.35 + j * 0.7);
 
-function NoiDung({th, t0, t, mau}: {th: TheGiai; t0: number; t: number; mau: string}) {
+function NoiDung({th, t0, t, mau, co = 42}: {th: TheGiai; t0: number; t: number; mau: string; co?: number}) {
   if (th.loai === 'cong_thuc') {
     return (
       <div style={{display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start'}}>
@@ -28,7 +30,7 @@ function NoiDung({th, t0, t, mau}: {th: TheGiai; t0: number; t: number; mau: str
           const a = emRa((t - tk) / 0.35);
           return (
             <div key={k} style={{opacity: a, transform: `translateX(${(1 - a) * -12}px)`}}>
-              <Toan tex={d} size={42} color={k === th.dong.length - 1 && th.dong.length > 1 ? mau : '#F4F7FB'} maxWidth={RONG_TRONG} can="trai" />
+              <Toan tex={d} size={co} color={k === th.dong.length - 1 && (th.dong.length > 1 || co > 42) ? mau : '#F4F7FB'} maxWidth={RONG_TRONG} can="trai" style={co > 42 ? {fontWeight: 800} : undefined} />
             </div>
           );
         })}
@@ -46,7 +48,8 @@ function NoiDung({th, t0, t, mau}: {th: TheGiai; t0: number; t: number; mau: str
       </div>
     );
   }
-  return <div style={{color: '#DCE3EC', fontFamily: FONT, fontWeight: 600, fontSize: 38, lineHeight: 1.3}}><ChuTron s={th.noi_dung} co={38} mau="#DCE3EC" dam={600} /></div>;
+  const cc = co > 42 ? 48 : 38, mc = co > 42 ? '#F4FFFB' : '#DCE3EC';
+  return <div style={{color: mc, fontFamily: FONT, fontWeight: co > 42 ? 800 : 600, fontSize: cc, lineHeight: 1.3}}><ChuTron s={th.noi_dung} co={cc} mau={mc} dam={co > 42 ? 800 : 600} /></div>;
 }
 
 // Cụm thẻ căn GIỮA tầng 3 theo chiều dọc. Thẻ chưa tới lượt vẫn giữ chỗ (ẩn) nên cụm không nhảy khi thẻ mới vào.
@@ -54,14 +57,17 @@ function NoiDung({th, t0, t, mau}: {th: TheGiai; t0: number; t: number; mau: str
 const CAO_T3 = 450;
 export const caoThe = (th: TheGiai) => {
   const vo = 38 + (th.nhan || th.loai !== 'chu' ? 46 : 0);
-  if (th.loai === 'cong_thuc') return vo + th.dong.slice(0, 5).reduce((s, d) => s + (/\\d?frac/.test(d) ? 84 : 58), 0);
+  if (th.loai === 'cong_thuc') return vo + (th.chot ? 14 : 0) + th.dong.slice(0, 5).reduce((s, d) => s + (/\\d?frac/.test(d) ? 84 : th.chot ? 68 : 58), 0);
+  if (th.chot) return vo + 14 + 64 * Math.max(1, Math.ceil(String((th as {noi_dung?: string}).noi_dung || '').length / 28));
   if (th.loai === 'casio') return vo + 110;
   if (th.loai === 'bang_bien_thien') return vo + 300;
   return vo + 52 * Math.max(1, Math.ceil(String(th.noi_dung || '').length / 34));
 };
 
 function DanhSachThe({b, t, mau, aChung}: {b: BuocGiai; t: number; mau: string; aChung: number}) {
-  const daHien = b.the.filter((_, j) => t >= tTheCua(b, j)).length;
+  // v95: số thẻ đã hiện = chỉ số thẻ CUỐI đã tới mốc + 1 (không đếm: mốc không đơn điệu từng làm cửa sổ trượt sai thẻ)
+  let daHien = 0;
+  b.the.forEach((_, j) => { if (t >= tTheCua(b, j)) daHien = j + 1; });
   // lùi từ thẻ mới nhất: giữ thẻ cũ khi còn vừa; thẻ sắp tới chỉ giữ chỗ nếu vừa (cụm không nhảy khi thẻ mới vào)
   const cuoi = Math.max(1, Math.min(daHien, b.the.length));
   let dau = cuoi - 1, tong = caoThe(b.the[dau]);
@@ -75,6 +81,22 @@ function DanhSachThe({b, t, mau, aChung}: {b: BuocGiai; t: number; mau: string; 
         const t0 = tTheCua(b, j);
         const a = emRa((t - t0) / 0.38);
         const loe = 1 - kep01((t - t0) / 0.9); // viền lóe khi thẻ vừa vào
+        if (th.chot) {
+          // v95: THẺ CHỐT ĐÁP ÁN — điểm cao trào: viền vàng→ngọc sáng 2 px, nền ngọc rất nhẹ, công thức lớn 52 px, nảy nhẹ khi vào
+          const nay = 1 + 0.05 * Math.sin(Math.PI * kep01((t - t0) / 0.5));
+          const sang = 0.75 + 0.25 * Math.sin(((t - t0) * 2 * Math.PI) / 2.4);
+          return (
+            <div key={j} data-the-giai data-the-chot style={{opacity: a, transform: `translateY(${(1 - a) * 18}px) scale(${nay})`, background: 'linear-gradient(180deg, rgba(46,230,168,0.12), rgba(20,24,32,0.94) 70%)', borderRadius: 20,
+              border: `2px solid ${NGOC}`, boxShadow: `0 0 ${26 * sang + 20 * loe}px ${NGOC}55, inset 0 0 22px ${NGOC}1A`,
+              padding: '18px 30px 22px', display: 'flex', flexDirection: 'column', gap: 12, flexShrink: 0}}>
+              <div style={{display: 'flex', alignItems: 'center', gap: 12}}>
+                <span style={{height: 34, padding: '0 14px', borderRadius: 17, background: VANG, color: '#0E1014', fontFamily: FONT, fontWeight: 900, fontSize: 20, display: 'flex', alignItems: 'center', letterSpacing: 0.6}}>{j + 1} · ĐÁP ÁN</span>
+                {th.nhan ? <span style={{color: VANG, fontFamily: FONT, fontWeight: 800, fontSize: 28}}><ChuTron s={th.nhan} co={28} mau={VANG} dam={800} /></span> : null}
+              </div>
+              <NoiDung th={th} t0={t0 + 0.15} t={t} mau={NGOC} co={52} />
+            </div>
+          );
+        }
         return (
           <div key={j} data-the-giai style={{opacity: a, transform: `translateY(${(1 - a) * 18}px)`, background: 'rgba(20,24,32,0.92)', borderRadius: 18,
             border: `1px solid ${mau}${loe > 0 ? 'CC' : '73'}`, boxShadow: `0 0 ${14 + 18 * loe}px ${mau}${loe > 0.3 ? '40' : '1F'}, inset 0 1px 0 rgba(255,255,255,0.04)`,

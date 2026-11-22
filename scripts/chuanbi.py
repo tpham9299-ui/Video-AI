@@ -34,7 +34,7 @@ except Exception:
 FPS = 30
 LEAD = 0.22      # giây im lặng đầu cảnh trước khi đọc
 TAIL = 0.35      # giây im lặng cuối cảnh
-GAP = 0.09       # khoảng nghỉ giữa các câu
+GAP = 0.15       # khoảng nghỉ giữa các câu (v95: 0,12-0,18 s; trước 0,09 nhưng Gemini tự ngừng dài -> đã rút ở loc_giong_gemini)
 TOI_DA_KY_TU = 72  # độ dài tối đa của một đoạn phụ đề (ký tự)
 TOC_DO_GIA_LAP = 4.7  # từ/giây khi dùng giọng giả
 
@@ -286,8 +286,43 @@ def doc_ky_hieu_ham(s):
     return s
 
 
+def doc_toan_v95(s):
+    r"""v95: chuẩn hóa biểu thức hàm số TRƯỚC khi gửi TTS (chạy trước sua_chinh_ta vì bước đó xóa lệnh TeX và ngoặc nhọn):
+    V_max / V_{\max} / Vmax -> "vê mắc"; S_min -> "ét min"; cm^3 -> cm³; dấu trừ Unicode; phép nhân ngầm x(16 - 2x),
+    2(10 - 2x) -> "ích nhân 16 trừ 2 ích ..."; 2x -> "2 ích"; ích đứng riêng; '+'/'-' giữa hai toán hạng -> cộng / trừ.
+    Ký hiệu hàm V(x), V'(x), f(x), f'(x), S(x) do doc_ky_hieu_ham đọc ("vê ích", "vê phẩy ích", "ép ích"...)."""
+    s = str(s or "").replace("−", "-").replace("–", "-").replace("$", " ")
+    s = re.sub(r"\\(?:mathrm|text|operatorname)\s*\{\s*(max|min)\s*\}", r"\1", s)
+    s = re.sub(r"(?<![A-Za-zÀ-ỹ])([A-Za-z])\s*_\s*\{?\s*\\?(max|min)\s*\}?",
+               lambda m: " %s %s " % (_ten_ky(m.group(1)), "mắc" if m.group(2) == "max" else "min"), s)
+    s = re.sub(r"(?<![A-Za-zÀ-ỹ])([A-Z])(max|min)(?![A-Za-zÀ-ỹ])",
+               lambda m: " %s %s " % (_ten_ky(m.group(1)), "mắc" if m.group(2) == "max" else "min"), s)
+    s = re.sub(r"(cm|dm|mm|m)\s*\^\s*\{?3\}?", r"\1³", s)
+    s = re.sub(r"(cm|dm|mm|m)\s*\^\s*\{?2\}?", r"\1²", s)
+    s = re.sub(r"\\[dt]?frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}", r"\1 phần \2", s)
+    # ký hiệu hàm đọc TRƯỚC (để "x" trong V(x) không bị các luật sau đổi): V'(x) -> vê phẩy ích, f(x) -> ép ích
+    s = re.sub(r"(?<![\wÀ-ỹ'])([A-Za-z])('+)\s*\(\s*([a-z])\s*\)", lambda m: " %s%s %s " % (_ten_ky(m.group(1)), " phẩy" * len(m.group(2)), _ten_ky(m.group(3))), s)
+    s = re.sub(r"(?<![\wÀ-ỹ'])([A-Za-z])\(\s*([a-z])\s*\)", lambda m: " %s %s " % (_ten_ky(m.group(1)), _ten_ky(m.group(2))), s)
+    s = s.replace("π", " pi ")
+    # nhân ngầm: chữ số / biến thường / ngoặc đóng ngay trước "(" mà trong ngoặc có phép toán -> "nhân" ... (ngoặc bỏ)
+    for _ in range(4):
+        s = re.sub(r"(\d|(?<![A-Za-zÀ-ỹ'])[a-z]|[)\]])\s*\(([^()]*[-+*/·][^()]*)\)", r"\1 nhân [\2]", s)
+    s = re.sub(r"\[([^\[\]]*)\]", r" \1 ", s)
+    # cộng / trừ giữa hai toán hạng (số, biến đơn, ngoặc) — không đụng từ ghép có gạch nối "xăng-ti-mét"
+    trai = r"(?:(?<=\d)|(?<=\))|(?<=[²³])|(?<=(?<![A-Za-zÀ-ỹ])[a-z]))"
+    phai = r"(?=\s*(?:\d|\(|[a-z](?![a-zÀ-ỹ])|pi\b))"
+    s = re.sub(trai + r"\s*-" + phai, " trừ ", s)
+    s = re.sub(trai + r"\s*\+" + phai, " cộng ", s)
+    s = re.sub(r"(\d)\s*([a-z])(?![A-Za-zÀ-ỹ'(])", lambda m: m.group(1) + " " + TEN_BIEN.get(m.group(2), m.group(2)), s)   # 2x -> 2 ích
+    s = re.sub(r"(?<=pi )([a-z])([a-z])?(?![A-Za-zÀ-ỹ'(])", lambda m: " ".join(TEN_BIEN.get(c, c) for c in m.groups() if c), s)   # πr² / πrh
+    s = re.sub(r"(?<![A-Za-zÀ-ỹ'])x(?![A-Za-zÀ-ỹ'(])", "ích", s)   # ích đứng riêng (x = 2, cạnh x)
+    # chữ cái đứng riêng ngay trước dấu "=" (V = 144, h = 2r) -> tên chữ kiểu Việt (giọng hay đọc "V" thành "vờ"/"vế")
+    s = re.sub(r"(?<![\wÀ-ỹ'])([A-Za-z])(?=\s*=)", lambda m: _ten_ky(m.group(1)), s)
+    return re.sub(r"[ \t]+", " ", s)
+
+
 def chuan_hoa_doc(text):
-    s = doc_ky_hieu_ham(sua_chinh_ta_tieng_viet(text))
+    s = doc_ky_hieu_ham(sua_chinh_ta_tieng_viet(doc_toan_v95(text)))
     # v89: đơn vị sau số đọc thành lời (lời thoại nay viết "10 cm", "54π m³" cho phụ đề; giọng vẫn đọc tự nhiên)
     for ky, doc in (("cm²", "xăng-ti-mét vuông"), ("cm³", "xăng-ti-mét khối"), ("m²", "mét vuông"), ("m³", "mét khối"),
                     ("cm", "xăng-ti-mét"), ("mm", "mi-li-mét"), ("km", "ki-lô-mét"), ("m", "mét")):
@@ -572,7 +607,7 @@ def nghi_canh(canh, i):
     else:
         lead = LEAD
     if sau is None:
-        tail = 0.85
+        tail = TAIL   # v95: đuôi cảnh cuối 0,35 s (Outro phát cùng giọng, chỉ dư ~1 s đuôi nhạc)
     elif sau.get("giu_san_khau"):
         tail = 0.16
     elif re.search(r"bay|dap_an|ket_qua", str(sau.get("loai") or "").lower()):
@@ -742,8 +777,7 @@ def tao_giong_gemini(canh, thu_muc, args):
         " Giữ cố định đúng một màu giọng, một tốc độ và một âm sắc người đọc xuyên suốt; "
         "nhấn nhẹ vào con số và từ khóa, ngữ điệu tự nhiên như nói chuyện theo dấu '?', '!'.\nĐoạn cần đọc:"
     )
-    tempo = float(args.toc_do_gemini or 1.0)
-    loc = ("atempo=%.3f," % tempo if abs(tempo - 1) > 0.01 else "") + "aresample=44100,aformat=channel_layouts=mono"
+    loc = loc_giong_gemini(args.toc_do_gemini)
     nhiem_vu = []
     for i, c in enumerate(canh):
         loai_c = str(c.get("loai") or "").lower()
@@ -779,6 +813,14 @@ def tao_giong_gemini(canh, thu_muc, args):
             THONG_KE_GIONG["gemini"] = 0
         return None
     return kq
+
+
+def loc_giong_gemini(toc_do):
+    """v95: bộ lọc giọng Gemini: (1) rút mọi khoảng lặng giữa câu về ~0,18 s (ffmpeg >= 6.1: giữ ≈ stop_duration + stop_silence) (Gemini hay ngừng 0,5-0,9 s
+    giữa các câu -> video kéo dài, chết nhịp); (2) atempo giữ cao độ (mặc định 1,14). Tắt (1): env CAT_LANG_GIUA=0."""
+    tempo = float(toc_do or 1.0)
+    rut = "" if os.environ.get("CAT_LANG_GIUA", "1") == "0" else         "silenceremove=stop_periods=-1:stop_duration=0.12:stop_threshold=-42dB:stop_silence=0.06,"
+    return rut + ("atempo=%.3f," % tempo if abs(tempo - 1) > 0.01 else "") + "aresample=44100,aformat=channel_layouts=mono"
 
 
 def tim_khoang_lang(wav, nguong_db=-38, toi_thieu=0.4):
@@ -858,8 +900,7 @@ def _doc_khuc_gemini_mot_lan(ds_canh, chi_so_bat_dau, thu_muc, args):
             print("Cắt cảnh không khớp độ dài chữ (tỉ lệ %.2f-%.2f), đọc lại" % (min(lech), max(lech)))
             continue
         kq = {}
-        tempo = float(args.toc_do_gemini or 1.0)
-        loc = ("atempo=%.3f," % tempo if abs(tempo - 1) > 0.01 else "") + "aresample=44100,aformat=channel_layouts=mono"
+        loc = loc_giong_gemini(args.toc_do_gemini)
         thieu_chu = []
 
         def cat_mot_canh(k):
@@ -1361,7 +1402,30 @@ def _trai_deu(ds, lo, hi):
     return ra
 
 
-def khung_4_tang(kb, canh_props, fps):
+LOAI_OUTRO_4TANG = re.compile(r"bai_hoc|ket_luan|cta|keu_goi|loi_ket", re.I)
+LOAI_CHOT_4TANG = re.compile(r"dap_an|ket_qua|chot", re.I)
+
+
+def vi_tri_outro_4tang(canh_props):
+    """v95: chỉ số cảnh mà Outro tóm tắt bắt đầu CÙNG giọng đọc: chuỗi cảnh cuối có loai bai_hoc|ket_luan|cta
+    (KHÔNG kích hoạt ở cảnh `chot`/`dap_an` đang trình bày phép tính chốt). Không có -> None (Outro sau giọng)."""
+    k = None
+    for i in range(len(canh_props) - 1, 0, -1):
+        loai = str(canh_props[i].get("loai") or "")
+        if LOAI_OUTRO_4TANG.search(loai) and not LOAI_CHOT_4TANG.search(loai):
+            k = i
+        else:
+            break
+    return k
+
+
+def het_giong_canh(c, fps):
+    """Giây (tính từ đầu phần nội dung) giọng đọc của cảnh kết thúc."""
+    cau = c.get("cau") or []
+    return c["batDau"] / float(fps) + (float(cau[-1]["ket"]) if cau else c["soFrame"] / float(fps))
+
+
+def khung_4_tang(kb, canh_props, fps, tong_toi_da=None):
     """v92: kb.khung4tang (AI viết, mốc theo lời `khi_noi`) -> props.khung4tang (mốc `t` giây từ đầu phần nội dung).
     - Khớp `khi_noi` CHỈ TIẾN, trong đúng cảnh `canh` của bước (không quay lại tìm từ đầu -> hết nhảy bước sớm vì cụm trùng
       câu đọc đề); so phần chữ, bỏ số (lời thoại ghi chữ, mốc ước lượng từ phụ đề ghi số); khớp gần >= 72% số từ.
@@ -1372,6 +1436,8 @@ def khung_4_tang(kb, canh_props, fps):
     Khóa luồng hình học thuần: luôn trả None (bài hình học dựng bằng Manim)."""
     if str(kb.get("luong") or "") == "hinh_hoc_thuan" or str(kb.get("mon") or "").upper() == "HINH_HOC":
         return None
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import khung4tang_v95 as v95_k4
     k4 = kb.get("khung4tang")
     if not isinstance(k4, dict) or not isinstance(k4.get("buoc"), list) or not k4["buoc"]:
         return None
@@ -1386,7 +1452,9 @@ def khung_4_tang(kb, canh_props, fps):
             tu_all.append({"w": w["w"], "bat": round(goc + w["bat"], 3), "ket": round(goc + w["ket"], 3)})
         pham_vi[so_c] = (i0, len(tu_all))
     tong = canh_props[-1]["batDau"] / float(fps) + canh_props[-1]["soFrame"] / float(fps) if canh_props else 0
-    phang = [(tk, k) for k, x in enumerate(tu_all) for tk in _tok_khop(x["w"])]
+    if tong_toi_da is not None:   # v95: phần khung 4 tầng dừng ở lúc Outro bật (Outro phát cùng lời tóm tắt / CTA)
+        tong = min(tong, float(tong_toi_da))
+    phang =[(tk, k) for k, x in enumerate(tu_all) for tk in _tok_khop(x["w"])]
     thong_ke = {"khop": 0, "uoc": 0}
 
     def tim(cum, tu_tu=0, tu_den=None):
@@ -1506,15 +1574,20 @@ def khung_4_tang(kb, canh_props, fps):
         return ra
 
     buoc = []
+    # v95: chuẩn hóa thẻ MỌI bước trước khi gán mốc (thẻ lặp ở ranh giới giữ ở bước sau; sắp logic khi không có khi_noi)
+    the_ai = v95_k4.chuan_the_cac_buoc([b.get("the") or [] for b in ds_buoc])
+    khai_bao = v95_k4.dong_khai_bao(the_ai)   # dòng AI đã khai báo theo bước -> thẻ lấp chỗ không mượn thẻ của bước khác
+    da_in_all = set()    # mọi dòng công thức đã in ở các bước trước (thẻ lấp chỗ không lặp lại)
     for j, b in enumerate(ds_buoc):
         t = t_buoc[j]
         t_sau = t_buoc[j + 1] if j + 1 < nb else tong
         vao = t + 0.45   # tiêu đề cũ ra (0,2 s) rồi mới tới thẻ
-        tran = max(vao, t_sau - 1.2)
+        tran = max(vao, t_sau - 0.9)
         w1 = chi_so_tai(t_sau)
-        ct = chi_so_tai(t - 0.3)
+        ct0 = ct = chi_so_tai(t - 0.3)
         the, moc_the = [], []
-        for th in b.get("the") or []:
+        # v95: khử lặp ở ranh giới bước + nếu không thẻ nào có khi_noi thì sắp theo trình tự toán học (đặt ẩn -> hàm -> ...)
+        for th in the_ai[j]:
             if not isinstance(th, dict) or th.get("loai") not in ("cong_thuc", "casio", "bang_bien_thien", "chu"):
                 continue
             th = dict(th)
@@ -1528,9 +1601,10 @@ def khung_4_tang(kb, canh_props, fps):
                 th["phim"] = ["MENU", "8", "f(X)", "="]
             if th["loai"] == "bang_bien_thien" and not th.get("ham") and ham_bbt:
                 th["ham"], th["bien"] = ham_bbt[0], th.get("bien") or ham_bbt[1]
-            kq = tim(str(th.get("khi_noi") or ""), ct, max(w1, ct)) if th.get("khi_noi") else None
+            # v95: mỗi thẻ dò ĐỘC LẬP trong khung lời của bước (trước đây dò nối tiếp: một thẻ khớp muộn đẩy con trỏ qua
+            # lời của thẻ sau -> thẻ sau mất mốc, bị trải đều ra TRƯỚC lời đọc); sau đó sắp theo đúng thứ tự lời đọc
+            kq = tim(str(th.get("khi_noi") or ""), ct0, max(w1, ct0)) if th.get("khi_noi") else None
             if kq:
-                ct = kq[1]
                 thong_ke["khop"] += 1
                 moc_the.append(min(tran, max(vao, tu_all[kq[0]]["bat"])))
             else:
@@ -1540,6 +1614,14 @@ def khung_4_tang(kb, canh_props, fps):
                 moc_the.append(min(tran, max(vao, tc)) if tc is not None else None)
             th.pop("khi_noi", None)
             the.append(th)
+        # v95: thẻ khớp lời -> sắp theo thứ tự lời đọc (thẻ không khớp giữ vị trí tương đối giữa các thẻ khớp kề)
+        if sum(1 for x in moc_the if x is not None) >= 2:
+            khop = sorted([(m, k) for k, m in enumerate(moc_the) if m is not None])
+            o_khop = [k for k, m in enumerate(moc_the) if m is not None]
+            moi_the, moi_moc = list(the), list(moc_the)
+            for o, (m, k) in zip(o_khop, khop):
+                moi_the[o], moi_moc[o] = the[k], m
+            the, moc_the = moi_the, moi_moc
         if moc_the and moc_the[0] is None:
             moc_the[0] = vao   # thẻ đầu không khớp: hiện ngay khi vào bước (không để T3 trống đầu bước)
         moc_the = _trai_deu(moc_the, vao, tran + (tran - vao) / max(1, len(moc_the)))
@@ -1572,9 +1654,11 @@ def khung_4_tang(kb, canh_props, fps):
             return max(b2 - a2 for a2, b2 in zip(mocs, mocs[1:]))
         # lấp chỗ trống: bước < 2 thẻ hoặc hở > 14 s không có thẻ mới -> thẻ từ màn hình của cảnh đang đọc
         if len(the) < 2 or lo_hong() > 14:
-            da_co = {_chuan_dong(d) for x in the for d in (x.get("dong") or [])}
+            da_co = {_chuan_dong(d) for x in the for d in (x.get("dong") or [])} | da_in_all
+            khac_buoc = set().union(*[k for jj, k in enumerate(khai_bao) if jj != j]) if len(khai_bao) > 1 else set()
             for x in the_tu_canh(t - 0.5, t_sau - 1.0):
-                if any(_chuan_dong(d) in da_co for d in x["dong"]) or len(the) >= 6:
+                cd = [_chuan_dong(d) for d in x["dong"]]
+                if any(d in da_co or d in khac_buoc or any(d in e for e in da_co if len(d) >= 6) for d in cd) or len(the) >= 6:
                     continue
                 mocs = sorted([vao] + [y["t"] for y in the] + [t_sau])
                 if len(the) >= 2 and not any(a2 < x["t"] < b2 and b2 - a2 > 14 for a2, b2 in zip(mocs, mocs[1:])):
@@ -1589,6 +1673,7 @@ def khung_4_tang(kb, canh_props, fps):
             the.append({"loai": "chu", "nhan": "Đáp số", "noi_dung": dap_an[:60], "t": round(min(tran, max(vao, the[-1]["t"] + 1.2 if the else vao)), 3)})
         if not the:
             the.append({"loai": "chu", "noi_dung": str(b.get("tieu_de") or b.get("nhan") or "")[:60], "t": round(vao, 3)})
+        da_in_all |= {_chuan_dong(d) for x in the for d in (x.get("dong") or [])}
         tieu_de = str(b.get("tieu_de") or "")[:60]
         for x in so_lo:   # chống lộ đáp số ở tiêu đề bước (tiêu đề hiện TRƯỚC khi tính xong)
             tieu_de = re.sub(r"(?<![\d.,])" + re.escape(x) + r"(?![\d.,])", "?", tieu_de)
@@ -1623,11 +1708,20 @@ def khung_4_tang(kb, canh_props, fps):
         c3["khuon_du_phong"] = suy
     if c3 and c3.get("khuon"):
         ct, ds_pha = 0, []
+        goi_y = v95_k4.GOI_Y_PHA.get(c3["khuon"], {})
+        i_het_de = chi_so_tai(t_het_de)
         for ph in c3.get("pha") or []:
             if not isinstance(ph, dict):
                 continue
             ph = dict(ph)
             kq = tim(str(ph.get("khi_noi") or ""), ct) if ph.get("khi_noi") else None
+            # v95: pha không có / không khớp khi_noi -> dò cụm gợi ý theo tên pha (vd "trừ ích" = lúc đọc "16 trừ 2x")
+            # để hành động 3D (nhấp nháy góc cắt, đổi nhãn cạnh) trùng đúng lời đọc; chỉ tìm TIẾN, sau phần đọc đề
+            if kq is None and ph.get("t") is None and str(ph.get("ten") or "") in goi_y:
+                for cum in goi_y[str(ph["ten"])]:
+                    kq = tim(cum, max(ct, i_het_de))
+                    if kq:
+                        break
             if kq:
                 ct = kq[1]
                 ph["t"] = round(tu_all[kq[0]]["bat"], 3)
@@ -1638,6 +1732,16 @@ def khung_4_tang(kb, canh_props, fps):
                     pass
             ph.pop("khi_noi", None)
             ds_pha.append(ph)
+        # v95: pha không mốc nằm GIỮA hai pha có mốc thì nội suy giữa chúng (trước đây bị trải theo mốc bước -> pha
+        # 'an_goc' rơi SAU 'gap', hộp vẫn còn phẳng khi giọng đã nói gập); pha đầu luôn 0
+        if ds_pha and any(ph.get("t") is not None for ph in ds_pha[1:]):
+            biet = [k for k, ph in enumerate(ds_pha) if k and ph.get("t") is not None]
+            ts = [ph.get("t") if k else 0.0 for k, ph in enumerate(ds_pha)]
+            cuoi = biet[-1]
+            ts[:cuoi + 1] = _trai_deu(ts[:cuoi + 1], 0.0, ts[cuoi])
+            for k in range(1, cuoi + 1):
+                ts[k] = max(ts[k], ts[k - 1] + 0.4)
+                ds_pha[k]["t"] = round(ts[k], 3)
         if ds_pha:
             c3["pha"] = ds_pha
     elif c3:
@@ -1675,14 +1779,53 @@ def khung_4_tang(kb, canh_props, fps):
     j_dc = v93.gan_doi_chieu(kb, ds_buoc[:len(buoc)], buoc, c3, t_dap)
     if j_dc is not None:
         print("Đối chiếu Hình động ↔ Đồ thị: bước %d (%s, hàm %s)" % (j_dc + 1, buoc[j_dc]["nhan"], buoc[j_dc]["doi_chieu"]["ham"]))
+    t_chot, tot = None, None
+    if j_dc is not None:
+        # v95: đồ thị CHỈ chốt cực trị đúng lúc giọng đọc giải ra nghiệm (không chạy vèo từ đầu bước làm lộ đáp án);
+        # ghi số thật lên 2 trục sau mốc giải; badge ★ CỰC ĐẠI/CỰC TIỂU khi không có ngưỡng ràng buộc thật
+        dc = buoc[j_dc]["doi_chieu"]
+        f_dc = v93.ham_an_toan(dc["ham"], dc["bien"])
+        tot = v93.toi_uu_so(f_dc, dc["mien"][0], dc["mien"][1], dc["kieu"]) if f_dc else None
+        if tot:
+            t_sau_dc = buoc[j_dc + 1]["t"] if j_dc + 1 < len(buoc) else tong
+            tg, tc = v95_k4.moc_giai_doi_chieu(buoc[j_dc], tot[0], tot[1], dc["bien"], t_dap)
+            dc["t_giai"] = round(min(max(tg, buoc[j_dc]["t"] + 2.4), t_sau_dc - 0.6), 3)
+            dc["t_chot"] = round(min(max(tc, dc["t_giai"] + 0.5), t_sau_dc - 0.3), 3)
+            dc["hien_so"] = True
+            t_chot = dc["t_chot"]
+        dc["badge"] = v95_k4.kieu_badge(dc)
+    # v95: thẻ chốt đáp án cuối nổi bật nhất màn hình (viền sáng, chữ lớn) + mốc chốt đáp án = lúc thẻ đó hiện
+    t_dap_so = None
+
+    def _co_so(x, sd):   # số đứng riêng (không khớp "2" trong "112")
+        return re.search(r"(?<![\d.,])" + re.escape(sd) + r"(?![\d])", json.dumps(x, ensure_ascii=False)) is not None
+    if so_dap:
+        so_chinh = max(so_dap, key=lambda v: (len(v.replace(",", "").replace(".", "")), so_dap.index(v)))   # 144 hơn 2
+        ung = [x for x in buoc[-1]["the"] if _co_so(x, so_chinh)] or [x for x in buoc[-1]["the"] if any(_co_so(x, sd) for sd in so_dap)]
+        if ung:
+            ung[0]["chot"] = True
+            t_dap_so = ung[0]["t"]
+    if t_dap_so is None:
+        t_dap_so = t_dap if t_dap is not None else t_chot
+    # ô ghim 'x = ?' đổi lúc đồ thị chốt nghiệm, 'V_max = ?' đổi lúc thẻ đáp số hiện (đúng mốc giọng đọc chốt đáp án)
+    moc_bien, gia_tri_bien = {}, {}
+    if j_dc is not None and buoc[j_dc]["doi_chieu"].get("t_giai") is not None:
+        dc = buoc[j_dc]["doi_chieu"]
+        moc_bien[dc["bien"]] = dc["t_chot"]
+        if tot:
+            gia_tri_bien[dc["bien"]] = (v95_k4.so_viet(tot[0]).replace("{,}", ","), "")
+            gia_tri_bien[str(dc.get("ten_ham") or "V")[:1]] = (v95_k4.so_viet(tot[1]).replace("{,}", ","), "")
+    de_ghim = v95_k4.de_ghim_doi(de_ghim, dap_an, t_dap_so, moc_bien, gia_tri_bien)
+    t_chot = t_dap_so
     moc_cau = v93.moc_cau(kb, buoc, so_lo)
+    moc_cau["tieu_de"] = v95_k4.tieu_de_intro_dung(kb, moc_cau["tieu_de"])
     tom_tat = v93.tom_tat(kb, buoc)
     return {"tongFrame": int(round(tong * fps)), "fps": fps,
             "mocCau": moc_cau, "tomTat": tom_tat,
-            # v92: phụ đề MẶC ĐỊNH TẮT trên khung 4 tầng (chỉ bật khi kịch bản ghi rõ phu_de: "gon")
-            # (kịch bản cũ do prompt v91 luôn ghi "gon" -> bỏ qua; muốn bật lại: env PHU_DE_4TANG=BAT)
-            "boCuc": {"anToanTikTok": True, "phuDe": "gon" if str(os.environ.get("PHU_DE_4TANG") or "").upper() in ("1", "BAT", "GON") else "tat"},
-            "deGhim": de_ghim, "buoc": buoc, "canh3dv": c3}
+            # v95: phụ đề gọn 1 dòng MẶC ĐỊNH BẬT (tắt: env PHU_DE_4TANG=TAT hoặc CAU_HINH PHU_DE_4TANG=TAT)
+            "boCuc": {"anToanTikTok": True, "phuDe": "tat" if str(os.environ.get("PHU_DE_4TANG") or "").upper() in ("0", "TAT", "OFF")
+                      or str(k4.get("phu_de") or "").lower() == "tat" and str(os.environ.get("PHU_DE_4TANG") or "").upper() != "BAT" else "gon"},
+            "deGhim": de_ghim, "buoc": buoc, "canh3dv": c3, **({"tChot": round(t_chot, 3)} if t_chot is not None else {})}
 
 
 def ghep(cac_tep, dich):
@@ -1818,12 +1961,43 @@ def chon_nhac(public, id_):
     thu_muc = os.path.join(public, "nhac")
     if not os.path.isdir(thu_muc):
         return None
-    rieng = sorted(f for f in os.listdir(thu_muc) if f.lower().endswith((".mp3", ".m4a", ".wav", ".ogg")) and not f.startswith("nen."))
-    if rieng:
+    # v95: nhạc riêng (Drive) CHỈ dùng khi NHAC_RIENG=BAT; bỏ qua nhạc tự sinh (nen/lofi) và tệp trộn tron_* còn sót
+    rieng = sorted(f for f in os.listdir(thu_muc) if f.lower().endswith((".mp3", ".m4a", ".wav", ".ogg"))
+                   and not f.startswith(("nen.", "lofi.", "tron_")))
+    if rieng and str(os.environ.get("NHAC_RIENG") or "").upper() in ("1", "BAT", "ON"):
         ten = rieng[int(hashlib.md5(id_.encode("utf8")).hexdigest(), 16) % len(rieng)]
         print("Nhạc nền: %s" % ten)
         return "nhac/" + ten
     return "nhac/nen.wav" if os.path.exists(os.path.join(thu_muc, "nen.wav")) else None
+
+
+def _muc_db(tep):
+    """Độ to trung bình (dB, ffmpeg volumedetect) của một tệp âm thanh; lỗi -> None."""
+    try:
+        kq = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", tep, "-af", "volumedetect", "-f", "null", "-"],
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf8", errors="replace", timeout=60)
+        m = re.search(r"mean_volume:\s*(-?[\d.]+)\s*dB", kq.stderr)
+        return float(m.group(1)) if m else None
+    except Exception:   # noqa: BLE001
+        return None
+
+
+def muc_tron_nhac(public, nhac, canh_props, duoi_db=None):
+    """v95: mức trộn nhạc nền theo ĐỘ TO THẬT của giọng và nhạc (không đoán): lúc có giọng nhạc nằm dưới giọng `duoi_db`
+    (mặc định -16 dB, env NHAC_DUOI_GIONG_DB, kẹp -17..-15 theo yêu cầu, cho phép chỉnh ngoài khoảng), quãng nghỉ +5 dB,
+    3 s đầu (intro) và 2 s cuối (outro) +4 dB. Trả gain tuyến tính cho Remotion <Audio volume>."""
+    if not nhac:
+        return None
+    duoi_db = float(duoi_db if duoi_db is not None else (os.environ.get("NHAC_DUOI_GIONG_DB") or -16))
+    m_nhac = _muc_db(os.path.join(public, nhac))
+    ds = [os.path.join(public, c["audio"]) for c in canh_props if c.get("audio")][:4]
+    m_giong = [x for x in (_muc_db(t) for t in ds) if x is not None and x > -60]
+    if m_nhac is None or not m_giong:
+        return None
+    g = 10 ** ((sum(m_giong) / len(m_giong) + duoi_db - m_nhac) / 20)
+    g = max(0.01, min(0.6, g))
+    return {"duoi": round(g, 4), "nghi": round(min(0.8, g * 10 ** (5 / 20)), 4), "dauCuoi": round(min(0.8, g * 10 ** (4 / 20)), 4),
+            "dbGiong": round(sum(m_giong) / len(m_giong), 1), "dbNhac": m_nhac, "duoiDb": duoi_db}
 
 
 TAM_TRANG_THEO_LOAI = [
@@ -2659,7 +2833,7 @@ def main():
     ap.add_argument("--public", default="public")
     ap.add_argument("--props-ra", default=None)
     ap.add_argument("--giong", default=os.environ.get("GIONG", "vi-VN-HoaiMyNeural"))
-    ap.add_argument("--toc-do", default=os.environ.get("TOC_DO") or "+6%")
+    ap.add_argument("--toc-do", default=os.environ.get("TOC_DO") or "+14%")
     ap.add_argument("--cao-do", default=os.environ.get("CAO_DO", "+0Hz"))
     ap.add_argument("--phong-cach", default="phong_cach.json")
     ap.add_argument("--gia-lap", action="store_true", help="dùng tiếng bíp thay giọng thật (để thử máy)")
@@ -2670,7 +2844,7 @@ def main():
                     help="gemini (mặc định khi có key: đọc cả video một lần) | edge")
     ap.add_argument("--giong-gemini", default=os.environ.get("GIONG_GEMINI") or "Puck")
     ap.add_argument("--tts-model", default=os.environ.get("TTS_MODEL") or "gemini-2.5-flash-preview-tts")
-    ap.add_argument("--toc-do-gemini", default=os.environ.get("TOC_DO_GEMINI") or "1.08")
+    ap.add_argument("--toc-do-gemini", default=os.environ.get("TOC_DO_GEMINI") or "1.14")
     ap.add_argument("--phong-cach-giong", default=os.environ.get("PHONG_CACH_GIONG") or PHONG_CACH_GIONG_MAC_DINH)
     args = ap.parse_args()
     t_tong = time.perf_counter()
@@ -2933,6 +3107,20 @@ def main():
 
     cham("Mốc phụ đề / công thức / góc máy")
     nhac = chon_nhac(args.public, id_an_toan)
+    # v95: luồng khung 4 tầng (thực tế / tối ưu / Oxyz / xác suất) mặc định nhạc lo-fi 112 BPM ấm, có nhịp (NHAC_LOFI=0 để tắt)
+    la_k4_kb = isinstance(kb.get("khung4tang"), dict) and str(kb.get("luong") or "") != "hinh_hoc_thuan"
+    tep_lofi = os.path.join(args.public, "nhac", "lofi.wav")
+    if nhac == "nhac/nen.wav" and la_k4_kb and not os.path.exists(tep_lofi) and os.environ.get("NHAC_LOFI", "1") != "0":
+        try:   # *.wav bị .gitignore -> máy dựng tự sinh (~2 s, tất định, không bản quyền)
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            import taoAmThanh
+            taoAmThanh.luu(tep_lofi, taoAmThanh.nhac_lofi())
+        except Exception as e:   # noqa: BLE001
+            print("Không sinh được nhạc lo-fi (%s) -> giữ nhạc nền cũ" % str(e)[:120])
+    if nhac == "nhac/nen.wav" and la_k4_kb and os.path.exists(tep_lofi) \
+            and os.environ.get("NHAC_LOFI", "1") != "0":
+        nhac = "nhac/lofi.wav"
+        print("Nhạc nền: lo-fi 112 BPM (khung 4 tầng)")
     if nhac == "nhac/nen.wav" and os.environ.get("NHAC_THEO_CANH", "1") != "0":
         for f in os.listdir(os.path.join(args.public, "nhac")):
             if f.startswith("tron_"):
@@ -2995,7 +3183,7 @@ def main():
         "hookKieu": str(kb.get("hook_kieu") or ""),
         "nhanManh": [str(x) for x in (kb.get("nhan_manh") or [])][:5],
         "nhac": nhac,
-        "amLuongNhac": float(os.environ.get("AM_LUONG_NHAC") or (0.16 if nhac and (nhac.endswith("nen.wav") or "/tron_" in nhac) else 0.12)),
+        "amLuongNhac": float(os.environ.get("AM_LUONG_NHAC") or (0.2 if nhac and nhac.endswith("lofi.wav") else 0.16 if nhac and (nhac.endswith("nen.wav") or "/tron_" in nhac) else 0.12)),
         "chuDe": str(kb.get("chu_de_ngan") or kb.get("chu_de") or "")[:40],
         "baiHoc": bai_hoc,
         "bia": tao_bia(kb, canh, canh_props),
@@ -3017,7 +3205,10 @@ def main():
         "phongCach": pc,
         "canh": canh_props,
     }
-    k4 = khung_4_tang(kb, canh_props, FPS)
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import khung4tang_v95 as v95_k4
+    k_outro = vi_tri_outro_4tang(canh_props) if la_k4_kb and outro and outro.get("loai") == "tu_tao" else None
+    k4 = khung_4_tang(kb, canh_props, FPS, canh_props[k_outro]["batDau"] / FPS if k_outro is not None else None)
     if k4:
         props["boCuc"] = "4tang"
         props["khung4tang"] = k4
@@ -3028,11 +3219,27 @@ def main():
         elif k4.get("mocCau") and props.get("intro"):
             props["tongFrame"] -= props["intro"]["lech"]
             props["intro"] = None
-        # v93: Outro tóm tắt 3 bước cần >= 6,5 s (màn kết v89 chỉ 3,2 s khi video đã có cảnh bai_hoc)
-        if k4.get("tomTat") and outro and outro.get("loai") == "tu_tao" and outro["soFrame"] < int(6.5 * FPS):
-            them = int(6.5 * FPS) - outro["soFrame"]
-            outro["soFrame"] += them
-            props["tongFrame"] += them
+        # v95: Outro tóm tắt bật NGAY ở đầu cảnh bai_hoc|ket_luan|cta và chạy CÙNG giọng đọc (hết "câm" 6 s cuối);
+        # độ dài = lời + 1,0 s đuôi nhạc, tối thiểu 3,5 s. Không có cảnh như vậy -> Outro sau giọng, chỉ 3,5 s.
+        if k4.get("tomTat") and outro and outro.get("loai") == "tu_tao":
+            ket_cu = outro["batDau"] + outro["soFrame"]
+            if k_outro is not None:
+                bat = canh_props[k_outro]["batDau"]
+                het = max(het_giong_canh(c, FPS) for c in canh_props[k_outro:])
+                outro["batDau"] = bat
+                outro["soFrame"] = max(int(round(3.5 * FPS)), int(round((het + 1.0) * FPS)) - bat)
+                outro["giongCung"] = True
+                k4["cta"] = v95_k4.cta_tu_loi(" ".join(str(c.get("loi_thoai") or "") for c in (kb.get("canh") or [])[k_outro:]
+                                                      if isinstance(c, dict)), (k4.get("mocCau") or {}).get("cta"))
+            else:
+                het = het_giong_canh(canh_props[-1], FPS) if canh_props else 0
+                outro["batDau"] = min(outro["batDau"], int(round((het + 0.3) * FPS)))
+                outro["soFrame"] = int(round(3.5 * FPS))
+            props["tongFrame"] += outro["batDau"] + outro["soFrame"] - ket_cu
+            print("Outro tóm tắt: bật %.1fs, dài %.1fs (%s)" % (outro["batDau"] / FPS, outro["soFrame"] / FPS,
+                                                                "cùng lời tóm tắt/CTA" if k_outro is not None else "sau giọng"))
+    if k4 and not args.gia_lap:
+        props["nhacTron"] = muc_tron_nhac(args.public, nhac, canh_props)   # v95: mức nhạc đo theo độ to thật của giọng
     if luong_hh:
         hinh_phang_chuan_props(kb, canh_props, FPS, props)
     cham("Thương hiệu, bìa, khung 4 tầng")

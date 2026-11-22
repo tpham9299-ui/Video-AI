@@ -20,7 +20,18 @@ const NEN = '#0E1014';
 // đáp án dạng "a/b" -> phân số
 const texDapAn = (s0: string) => { const s = s0.replace(/(\d),(\d)/g, '$1{,}$2'); return (/^\s*-?\d+(?:[.,]\d+)?\s*\/\s*-?\d+(?:[.,]\d+)?\s*$/.test(s) ? `\\frac{${s.split('/')[0].trim()}}{${s.split('/')[1].trim()}}` : s); };
 
-export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: Canh3DV | null; tCuoi: number; thuongHieu?: string}> = ({dapAn, tomTat, canh, tCuoi, thuongHieu}) => {
+// v95: nút CTA = nhãn ngữ nghĩa của LỜI ĐỌC (chuanbi.py cta_tu_loi: ĐĂNG KÝ KÊNH! / LƯU LẠI NGAY! / BÌNH LUẬN NGAY!...)
+const IconCta: React.FC<{cta: string}> = ({cta}) => {
+  if (/BÌNH LUẬN/.test(cta)) return <svg width={36} height={36} viewBox="0 0 24 24"><path d="M4 4h16v11H9l-5 4z" fill="#fff" /></svg>;
+  if (/ĐĂNG KÝ|THEO DÕI/.test(cta)) return <svg width={36} height={36} viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="#fff" /><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z" fill="#fff" /></svg>;
+  if (/CHIA SẺ/.test(cta)) return <svg width={36} height={36} viewBox="0 0 24 24"><path d="M14 4l7 7-7 7v-4c-5 0-8 1.5-10 5 1-5 4-9 10-10z" fill="#fff" /></svg>;
+  if (/TIM/.test(cta)) return <svg width={36} height={36} viewBox="0 0 24 24"><path d="M12 21s-8-5.2-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.8-8 11-8 11z" fill="#fff" /></svg>;
+  return <svg width={36} height={36} viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z" fill="#fff" /></svg>;
+};
+
+export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: Canh3DV | null; tCuoi: number; thuongHieu?: string; cta?: string}> = ({dapAn, tomTat, canh: canhVao, tCuoi, thuongHieu, cta = 'LƯU LẠI NGAY!'}) => {
+  // v95: Outro không làm mờ phần nào của mô hình (bỏ nhấn mạnh 30 %) -> mọi nhãn kích thước sáng rõ
+  const canh = React.useMemo(() => (canhVao ? {...canhVao, buoc: canhVao.buoc.map((b) => ({...b, nhanManh: []}))} : null), [canhVao]);
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
   const t = f / fps;
@@ -76,12 +87,14 @@ export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: C
       <div style={{position: 'absolute', left: 0, right: 0, top: V.nut.y, display: 'flex', justifyContent: 'center', opacity: kep01(sNut * 2)}}>
         <div style={{height: 96, padding: '0 54px', borderRadius: 48, display: 'flex', alignItems: 'center', gap: 16, background: `linear-gradient(180deg, #FF7A7E, ${SAN_HO} 55%, #E2393F)`,
           boxShadow: `0 7px 0 #9E1F25, 0 0 34px rgba(255,90,95,0.45)`, transform: `scale(${(0.6 + 0.4 * sNut) * nhun})`, color: '#fff', fontWeight: 900, fontSize: 38, letterSpacing: 0.8, whiteSpace: 'nowrap'}}>
-          <svg width={36} height={36} viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z" fill="#fff" /></svg>
-          LƯU LẠI NGAY!
+          <IconCta cta={cta} />
+          {cta}
         </div>
       </div>
-      <Sequence from={3} durationInFrames={70} layout="none"><Audio src={staticFile('sfx/ting.wav')} volume={0.35} /></Sequence>
-      <Sequence from={Math.round(tNut * fps)} durationInFrames={20} layout="none"><Audio src={staticFile('sfx/pop.wav')} volume={0.3} /></Sequence>
+      {/* v95: whoosh gọn khi bật Outro + chime sáng lúc đáp án nổi lên (SFX ~ -13 dB so với giọng) */}
+      <Sequence from={0} durationInFrames={20} layout="none"><Audio src={staticFile('sfx/whoosh.wav')} volume={0.2} /></Sequence>
+      <Sequence from={4} durationInFrames={70} layout="none"><Audio src={staticFile('sfx/ting.wav')} volume={0.24} /></Sequence>
+      <Sequence from={Math.round(tNut * fps)} durationInFrames={20} layout="none"><Audio src={staticFile('sfx/pop.wav')} volume={0.22} /></Sequence>
     </AbsoluteFill>
   );
 };

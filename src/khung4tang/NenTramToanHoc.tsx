@@ -46,8 +46,29 @@ function Luoi({tren, t}: {tren: boolean; t: number}) {
 
 export const NenTramToanHoc: React.FC<{t: number; mauNhan: string; tamSanKhau: number}> = ({t, mauNhan, tamSanKhau}) => (
   <div style={{position: 'absolute', inset: 0, background: 'linear-gradient(180deg, #0E1014 0%, #12141A 45%, #12141A 70%, #0E1014 100%)'}}>
-    {/* quầng màu nhấn rất nhẹ sau sân khấu 3D (gradient tĩnh, đổi sắc theo bước) */}
-    <div style={{position: 'absolute', left: 0, right: 0, top: tamSanKhau - 420, height: 840, background: `radial-gradient(ellipse 52% 46% at 50% 50%, ${mauNhan}14 0%, ${mauNhan}08 45%, transparent 75%)`}} />
+    {/* v95: spotlight trắng cực dịu + quầng màu nhấn sau sân khấu 3D -> chiều sâu, hết mảng đen phẳng */}
+    <div style={{position: 'absolute', left: 0, right: 0, top: tamSanKhau - 560, height: 1120, background: 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.018) 45%, transparent 78%)'}} />
+    <div style={{position: 'absolute', left: 0, right: 0, top: tamSanKhau - 420, height: 840, background: `radial-gradient(ellipse 52% 46% at 50% 50%, ${mauNhan}1A 0%, ${mauNhan}0A 45%, transparent 75%)`}} />
+    {/* v95: lưới chấm kỹ thuật phủ TOÀN khung (độ đục ~5 %), trôi rất chậm; viền chéo mờ dần ra mép */}
+    <svg width={RONG} height={CAO} style={{position: 'absolute', inset: 0}}>
+      <defs>
+        <pattern id="luoi-cham" width={36} height={36} patternUnits="userSpaceOnUse" patternTransform={`translate(0 ${(t * 3) % 36})`}>
+          <circle cx={18} cy={18} r={1.35} fill="#E6EDF5" />
+        </pattern>
+        <pattern id="luoi-o" width={144} height={144} patternUnits="userSpaceOnUse" patternTransform={`translate(0 ${(t * 3) % 144})`}>
+          <path d="M144 0H0V144" fill="none" stroke="#E6EDF5" strokeWidth={1} />
+        </pattern>
+        <radialGradient id="phai-mep" cx="50%" cy="45%" r="75%">
+          <stop offset="0" stopColor="#fff" stopOpacity={1} />
+          <stop offset="1" stopColor="#fff" stopOpacity={0.35} />
+        </radialGradient>
+        <mask id="mask-mep"><rect width={RONG} height={CAO} fill="url(#phai-mep)" /></mask>
+      </defs>
+      <g mask="url(#mask-mep)">
+        <rect width={RONG} height={CAO} fill="url(#luoi-cham)" opacity={0.055} />
+        <rect width={RONG} height={CAO} fill="url(#luoi-o)" opacity={0.03} />
+      </g>
+    </svg>
     <svg width={RONG} height={CAO} style={{position: 'absolute', inset: 0}}>
       <Luoi tren t={t} />
       <Luoi tren={false} t={t} />

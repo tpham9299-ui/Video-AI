@@ -306,8 +306,82 @@ def nhac_nen(kieu="chinh"):
     return np.tanh(out * 1.3)
 
 
+# ---------------- v95: NHẠC LO-FI / TECH-STUDY 112 BPM (mặc định luồng khung 4 tầng) ----------------
+# Âm sắc ấm, dịu tai: kick tròn nhẹ, rim/snare mềm, hi-hat lọc thấp nhịp swing, piano điện (Rhodes giả) hợp âm 7 qua
+# low-pass ~1,9 kHz, bass sin trầm, sidechain nhẹ. 16 ô nhịp (~34,3 s), đuôi nốt quấn về đầu -> lặp LIỀN MẠCH.
+VONG_LOFI = [  # (bass, hợp âm 7) — Fmaj7 · Em7 · Dm7 · Cmaj7/G (vòng ii-V ấm, không nốt chói)
+    ("F2", ["F3", "A3", "C4", "E4"]), ("E2", ["E3", "G3", "B3", "D4"]),
+    ("D2", ["D3", "F3", "A3", "C4"]), ("G2", ["E3", "G3", "C4", "D4"]),
+]
+GIAI_LOFI = ["A4", "C5", "E5", "C5", "G4", "B4", "D5", "B4", "F4", "A4", "C5", "A4", "E4", "G4", "D5", "C5"]
+
+
+def nhac_lofi(bpm=112, so_o=16):
+    phach = 60.0 / bpm
+    o_nhip = 4 * phach
+    n = int(round(SR * so_o * o_nhip))
+    out, keys, bass, drum = np.zeros(n), np.zeros(n), np.zeros(n), np.zeros(n)
+    r = np.random.default_rng(112)
+
+    def dat(dst, x, giay):   # quấn đuôi về đầu -> vòng lặp không có vết nối
+        k = int(round(SR * giay)) % n
+        mm = min(len(x), n - k)
+        dst[k:k + mm] += x[:mm]
+        if len(x) > mm:
+            du = x[mm:][:n]
+            dst[:len(du)] += du
+
+    def rhodes(f, giay, luc=1.0):
+        g = moc(giay)
+        env = np.exp(-g * 1.6) * np.minimum(1, g / 0.012)
+        chuong = 0.22 * np.sin(2 * np.pi * f * 7.0 * g) * np.exp(-g * 14)          # tiếng "bell" mềm lúc gõ phím
+        than = np.sin(2 * np.pi * f * g + 0.6 * np.sin(2 * np.pi * f * g) * np.exp(-g * 3))
+        rung = 1 + 0.18 * np.sin(2 * np.pi * 4.2 * g)                               # tremolo nhẹ
+        return (than + chuong) * env * rung * luc
+
+    kick = np.sin(2 * np.pi * np.cumsum(48 + 60 * np.exp(-moc(0.42) * 26)) / SR) * np.exp(-moc(0.42) * 7.5)
+    kick = loc(kick, hi=900)
+    rim = loc(nhieu(int(SR * 0.16)), 600, 2600) * np.exp(-moc(0.16) * 30) * 0.55 \
+        + 0.35 * np.sin(2 * np.pi * 210 * moc(0.16)) * np.exp(-moc(0.16) * 40)
+    hat = loc(nhieu(int(SR * 0.06)), 3200, 6500) * np.exp(-moc(0.06) * 80) * 0.8
+    swing = phach * 0.58                                                              # móc đơn swing ~58%
+    for o in range(so_o):
+        goc, ha = VONG_LOFI[o % 4]
+        t0 = o * o_nhip
+        for b in range(4):
+            tb = t0 + b * phach
+            if b in (0, 2) or (b == 3 and o % 2 == 1):
+                dat(drum, kick * (0.85 if b != 3 else 0.5), tb if b != 3 else tb + swing)
+            if b in (1, 3):
+                dat(drum, rim * 0.5, tb)
+            for h, lech in enumerate((0, swing)):
+                dat(drum, hat * (0.16 if h else 0.24) * (0.8 + 0.4 * r.random()), tb + lech)
+            g = moc(phach * 0.95)
+            dat(bass, np.sin(2 * np.pi * hz(goc) * g) * np.exp(-g * 1.2) * np.minimum(1, g / 0.02) * (0.9 if b in (0, 2) else 0.55), tb)
+        # hợp âm: gõ ở phách 1 và móc "và" của phách 2 (nhịp lo-fi), các nốt rải lệch vài ms cho tự nhiên
+        for lan, (tg, luc) in enumerate(((0.0, 1.0), (phach + swing, 0.55))):
+            for k, nn in enumerate(ha):
+                dat(keys, rhodes(hz(nn), o_nhip * 1.1, luc * 0.22), t0 + tg + 0.012 * k)
+        if o % 2 == 1:   # câu giai điệu thưa ở ô nhịp lẻ
+            for k in range(4):
+                ten = GIAI_LOFI[(o // 2 * 4 + k) % len(GIAI_LOFI)]
+                dat(keys, rhodes(hz(ten), phach * 1.6, 0.15), t0 + k * phach + (swing if k % 2 else 0))
+    t = np.arange(n) / SR
+    pha = (t % phach) / phach
+    bom = 0.72 + 0.28 * np.minimum(1, pha / 0.5)                                       # sidechain nhẹ theo kick
+    am = loc(keys, hi=1900) * bom + loc(bass, hi=320) * bom * 0.9 + drum * 0.8
+    am += loc(nhieu(n), 900, 5000) * 0.004                                             # hạt băng từ rất nhẹ (ấm)
+    am = loc(am, hi=5200, bac=3)                                                       # mềm toàn dải trên -> không chói
+    return np.tanh(am * 1.15)
+
+
 if __name__ == "__main__":
+    import sys
     goc = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "public")
+    if "--lofi" in sys.argv:   # v95: chỉ sinh nhạc lo-fi, không đụng bộ SFX/nhạc cũ đã có trong repo
+        luu(os.path.join(goc, "nhac", "lofi.wav"), nhac_lofi())
+        print("Đã tạo public/nhac/lofi.wav (lo-fi 112 BPM, 16 ô nhịp, lặp liền mạch)")
+        sys.exit(0)
     ds = {"whoosh": whoosh(), "swoosh": swoosh(), "pop": pop(), "click": click(), "ting": ting(), "ding": ding(),
           "sai": sai(), "sting": sting(), "boom": boom(), "riser": riser(), "zoom": zoom(), "tang": tang(), "lac": lac(),
           "xu": xu(), "quay": quay(), "tich": tich(), "mo": mo(), "cua": cua(), "lat": lat()}

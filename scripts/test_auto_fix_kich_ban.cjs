@@ -203,7 +203,7 @@ t('không suy được khuôn + 3D rỗng -> lỗi cứng KHUNG4TANG_3D_RONG', (
   assert.ok(ctx.loiKhung4Tang_(kb).some((x) => /^KHUNG4TANG_3D_RONG/.test(x)));
   assert.ok(ctx.LOI_CUNG_RE_.test('KHUNG4TANG_3D_RONG: x'));
 });
-t('tiêu đề dính đáp số -> "?", phụ đề tắt, Casio SHIFT SOLVE (tối ưu) -> MENU 8, BBT tên hàm động, bước tự gắn cảnh', () => {
+t('tiêu đề dính đáp số -> "?", phụ đề bật mặc định (v95), Casio SHIFT SOLVE (tối ưu) -> MENU 8, BBT tên hàm động, bước tự gắn cảnh', () => {
   const kb = {luong: 'thuc_te_xac_suat', mon: 'THUC_TE', de_bai: 'Từ tấm bìa 12×12 cm cắt 4 góc gấp hộp. Tìm x để thể tích lớn nhất.', dap_an_cuoi: '128',
     canh: [{loi_thoai: 'Đề cho tấm bìa.'}, {loi_thoai: "Lập hàm V'(x) và xét dấu. Vậy thể tích lớn nhất."}],
     khung4tang: {buoc: [
@@ -212,7 +212,7 @@ t('tiêu đề dính đáp số -> "?", phụ đề tắt, Casio SHIFT SOLVE (t�
       canh_3d_vector: {khuon: 'tam_bia', tham_so: {a: 12}}}};
   ctx.tuSuaKhung4Tang_(kb, {mon: 'THUC_TE', lop: '12'});
   const k = kb.khung4tang;
-  assert.equal(k.phu_de, 'tat');
+  assert.equal(k.phu_de, 'gon');   // v95: phụ đề gọn 1 dòng mặc định BẬT (CAU_HINH PHU_DE_4TANG=TAT để tắt)
   assert.equal(k.buoc[1].tieu_de, 'V lớn nhất bằng ?');
   assert.deepEqual(J(k.buoc[0].the[0].phim), ['MENU', '8', 'f(X)', '=']);
   assert.equal(k.buoc[0].the[1].ham, 'V');
@@ -255,7 +255,7 @@ t('kịch bản v92 (không có trường mới) -> tự điền đủ 5 trườ
   assert.equal(kb.tieu_de_intro, 'CẮT GÓC BAO NHIÊU ĐỂ HỘP CHỨA NHIỀU NHẤT?');
   assert.ok(kb.tieu_de_intro.length <= 44);
   assert.equal(kb.phu_de_intro, 'TỐI ƯU HỘP KHÔNG NẮP · LẬP HÀM');
-  assert.ok(kb.cau_hook.length >= 6 && kb.cta === 'LƯU NGAY VIDEO!');
+  assert.ok(kb.cau_hook.length >= 6 && kb.cta === 'LƯU LẠI NGAY!');   // v95: nhãn CTA chuẩn + câu kêu gọi thêm vào lời cảnh cuối
   assert.equal(kb.tom_tat_3_buoc.length, 3);
   assert.deepEqual(J(kb.tom_tat_3_buoc[0]), {chien_thuat: 'Lập hàm', cong_thuc: 'V(x) = x(12 - 2x)^2'});
   assert.ok(!sua.some((x) => ctx.LOI_CUNG_RE_.test(x)), sua.join('; '));

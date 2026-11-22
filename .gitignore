@@ -27,6 +27,7 @@ temp/
 *.mov
 *.mp3
 *.wav
+!public/nhac/lofi.wav
 public/props.json
 kich_ban.json
 .env

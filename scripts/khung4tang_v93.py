@@ -134,7 +134,7 @@ def tom_tat(kb, buoc):
                 ra.append({"chien_thuat": ct, "cong_thuc": cong_thuc_gon(d.get("cong_thuc"))})
         elif isinstance(d, str) and d.strip():
             ra.append({"chien_thuat": chu_sach(d, DAI_CHIEN_THUAT, hoa=False), "cong_thuc": ""})
-    if len(ra) < 2:
+    if not ra:   # v95: có >= 1 dòng AI viết thì GIỮ, chỉ bù thêm (bu_tom_tat)
         ung = buoc[1:] if len(buoc) >= 4 else list(buoc)
         co = [b for b in ung if _cong_thuc_buoc(b)]
         # ưu tiên bước có công thức; bước kết luận (đáp số) để cuối vì đáp án đã ở trên cùng outro
@@ -147,10 +147,13 @@ def tom_tat(kb, buoc):
         ra = [{"chien_thuat": chu_sach(b.get("nhan") or b.get("tieu_de"), DAI_CHIEN_THUAT, hoa=False),
                "cong_thuc": cong_thuc_gon(_cong_thuc_buoc(b)), "mau": b.get("mau")} for b in chon]
         ra = [d for d in ra if d["chien_thuat"]]
+    # v95: LUÔN đủ 3 dòng cân đối (Outro không bao giờ hổng một khoảng trống lớn)
+    import khung4tang_v95 as v95
+    ra = v95.bu_tom_tat(ra, buoc, kb, chu_sach, cong_thuc_gon, _cong_thuc_buoc, DAI_CHIEN_THUAT)
     for d in ra:
         if not d.get("mau"):
             d.pop("mau", None)
-    return ra[:3] if len(ra) >= 2 else None
+    return ra[:3]
 
 
 # ---------------- đối chiếu Hình động ↔ Đồ thị ----------------

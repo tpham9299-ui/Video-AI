@@ -8,7 +8,7 @@ export type VatCan = {cham: {x: number; y: number; r: number}[]; doan: {x1: numb
 // bề rộng ước lượng của nhãn KaTeX (bỏ lệnh \vec, \alpha... đếm như một ký tự)
 export const rongNhan = (tex: string, co: number) => {
   const s = tex.replace(/\\(vec|overrightarrow|mathrm|text|max|min)\b/g, (m) => (m === '\\max' || m === '\\min' ? 'aaa' : '')).replace(/\\[a-zA-Z]+/g, 'x').replace(/[{}^_\s]/g, '');
-  return Math.max(1, s.length) * co * 0.62 + 8;
+  return Math.max(1, s.length) * co * 0.62 + 28; // v95: + viên thuốc nền (đệm 2×10 px + viền)
 };
 
 type Hop = {x0: number; y0: number; x1: number; y1: number};
@@ -39,7 +39,7 @@ export function datNhan(ds: NhanVao[], W: number, H: number, vc: VatCan = {cham:
     }
     const l = Math.hypot(dx, dy);
     if (l < 1e-3) { dx = 0; dy = -1; } else { dx /= l; dy /= l; }
-    const w = rongNhan(n.tex, n.co), h = n.co * 1.25;
+    const w = rongNhan(n.tex, n.co), h = n.co * 1.25 + 6;
     let tot = {x: n.x, y: n.y, diem: Infinity};
     for (const k of KHOANG) {
       for (const g of LECH) {

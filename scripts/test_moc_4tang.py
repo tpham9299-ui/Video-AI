@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """v92 — Test mốc khung 4 tầng (chuanbi.py khung_4_tang), không gọi TTS: python scripts/test_moc_4tang.py
 Kiểm: không nhảy bước sớm (khi_noi trùng câu đọc đề), không mất bước cuối, mỗi bước có >= 1 thẻ từ đầu bước, không hở > 14 s,
-thẻ đáp số giữ tới Outro, phụ đề mặc định tắt, tiêu đề không lộ đáp số, 3D luôn có khuôn, phát âm & phụ đề số."""
+thẻ đáp số giữ tới Outro, phụ đề mặc định bật (v95), tiêu đề không lộ đáp số, 3D luôn có khuôn, phát âm & phụ đề số."""
 import copy
 import json
 import os
@@ -59,7 +59,7 @@ def kiem_bai(ten):
         if any(y["t"] >= t_sau for y in x["the"]):
             hong.append(i + 1)
     kiem(not hong, "%s: mỗi bước có thẻ sớm, không hở > 14 s, không thẻ nào rơi sau bước kế" % ten, "bước %s" % hong)
-    kiem(k["boCuc"]["phuDe"] == "tat", "%s: phụ đề mặc định tắt (kể cả kịch bản ghi \"gon\")" % ten)
+    kiem(k["boCuc"]["phuDe"] == "gon", "%s: v95 phụ đề gọn 1 dòng mặc định BẬT" % ten)
     so = [s for s in __import__("re").findall(r"\d+", kb["dap_an_cuoi"]) if s not in kb["de_bai"]]
     kiem(not any(s in x["tieu_de"] for x in b for s in so), "%s: tiêu đề bước không lộ đáp số" % ten, [x["tieu_de"] for x in b])
     kiem(bool(k["canh3dv"] and (k["canh3dv"].get("khuon") or k["canh3dv"].get("khuon_du_phong"))), "%s: 3D luôn có khuôn tham số" % ten, k["canh3dv"])
@@ -127,7 +127,7 @@ def main():
     kiem(k.get("tomTat") and len(k["tomTat"]) == 3 and all(len(d["chien_thuat"]) <= 18 for d in k["tomTat"]), "tomTat: 3 dòng, tên chiến thuật ≤ 18 ký tự", k.get("tomTat"))
     dc = [b for b in k["buoc"] if b.get("doi_chieu")]
     kiem(len(dc) == 1 and dc[0]["nhan"] == "Xét dấu" and dc[0]["doi_chieu"]["hinh"] == "tam_bia", "bìa 12: đối chiếu tự suy ở bước Xét dấu", [b["nhan"] for b in dc])
-    kiem(dc and dc[0]["doi_chieu"]["hien_so"] is False, "đối chiếu trước cảnh đáp án: hien_so = False (chống lộ đáp án)")
+    kiem(dc and dc[0]["doi_chieu"].get("t_giai", 0) > dc[0]["t"] + 2, "v95 đối chiếu: số thật chỉ hiện sau mốc giải t_giai (chống lộ đáp án)")
     sai = dict(kb, dap_an_cuoi="x = 3 cm, V = 108")
     kiem(v93.kiem_doi_chieu(v93.suy_doi_chieu(sai, {"khuon": "tam_bia_gap_hop", "tham_so": {"a": 12}}), sai["dap_an_cuoi"]) is None,
          "hàm suy từ khuôn không khớp đáp án -> không gắn đối chiếu (giữ 3D)")

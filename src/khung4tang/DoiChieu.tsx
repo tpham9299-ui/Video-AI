@@ -2,12 +2,14 @@
 //   Trái: hình 2D đổi kích thước theo biến (tấm bìa cắt góc | mặt cắt trụ | tam giác lực | thanh đo).
 //   Phải: đồ thị hàm số + điểm sáng chạy theo biến; ngưỡng vi phạm -> đỏ "⚠ VƯỢT NGƯỠNG", đạt / tại tối ưu -> xanh "✓ ĐẠT CHUẨN".
 // Chống lộ đáp án: khi điểm đã dừng ở tối ưu mà chưa tới cảnh đáp án (hienSo = false) chỉ ghi ký hiệu x*, V_max, không ghi số.
+// v95: điểm sáng chỉ CHỐT đúng lúc giọng đọc giải ra nghiệm (t_giai) và khi đó ghi số thật lên 2 trục; badge ★ CỰC ĐẠI khi
+// không có ngưỡng; ✕ VƯỢT NGƯỠNG thay ⚠.
 // Không dùng filter blur: phát sáng = vòng tròn đồng tâm mờ dần.
 import React from 'react';
 import {FONT, SO_DEU} from '../theme';
 import {Toan} from '../Toan';
 import {emRa, kep01} from '../3d-vector/toan3d';
-import {datNguong, DoiChieu, nhipDoiChieu, soViet} from './doi_chieu';
+import {chuHuyHieu, DoiChieu, nhipTheoLoi, soViet} from './doi_chieu';
 
 const CHU = '#E6EDF5';
 const MO = 'rgba(230,237,245,0.42)';
@@ -22,9 +24,12 @@ type TrangThai = {mau: string; chu: string; dat: boolean | null};
 export function trangThaiDoiChieu(d: DoiChieu, x: number, pha: string): TrangThai {
   const y = d.f(x);
   const gan = Math.abs(x - d.xTot) <= 0.015 * (d.b - d.a);
-  if (d.nguong) return datNguong(d, y) ? {mau: DAT, chu: '✓ ĐẠT CHUẨN', dat: true} : {mau: VUOT, chu: '⚠ VƯỢT NGƯỠNG', dat: false};
-  if (pha === 'dung' || gan) return {mau: DAT, chu: '✓ ĐẠT CHUẨN', dat: true};
-  return {mau: VANG, chu: 'ĐANG DÒ', dat: null};
+  // v95: ✓/✕ chỉ khi có ngưỡng thật; bài cực trị thuần -> ★ CỰC ĐẠI / ★ CỰC TIỂU khi điểm sáng đã chốt
+  const h = chuHuyHieu(d, y, pha, gan);
+  if (h.loai === 'dat') return {mau: DAT, chu: h.chu, dat: true};
+  if (h.loai === 'vuot') return {mau: VUOT, chu: h.chu, dat: false};
+  if (h.loai === 'cuc') return {mau: DAT, chu: h.chu, dat: true};
+  return {mau: VANG, chu: h.chu, dat: null};
 }
 
 const Nhan: React.FC<{x: number; y: number; tex: string; mau: string; co?: number; neo?: 'giua' | 'trai' | 'phai'}> = ({x, y, tex, mau, co = 28, neo = 'giua'}) => (
@@ -43,10 +48,11 @@ function HinhTrai({d, x, W, H, mau}: {d: DoiChieu; x: number; W: number; H: numb
     const w = A * S, h = B * S, X = x * S;
     const x0 = cx - w / 2, y0 = 40;
     const goc = [[x0, y0], [x0 + w - X, y0], [x0, y0 + h - X], [x0 + w - X, y0 + h - X]];
-    // hộp gập (phối cảnh xiên) bên dưới: đáy (A - 2x) × (B - 2x), cao x
-    const day = Math.max(0, (A - 2 * x)) * S * 0.62, sau = Math.max(0, (B - 2 * x)) * S * 0.3, cao = X * 0.62;
-    const bx = cx - day / 2 - sau * 0.35, by = y0 + h + 110 + cao;
-    const dx = sau * 0.7, dy = -sau * 0.5;
+    // v95: hộp gập vẽ đúng phép chiếu xiên Cavalier (cùng tỉ lệ kk cho dài / cao, sâu kk·0,5 theo 45°) -> không bẹp
+    const kk = 0.62;
+    const day = Math.max(0, A - 2 * x) * S * kk, sau = Math.max(0, B - 2 * x) * S * kk * 0.5, cao = X * kk;
+    const dx = sau * 0.71, dy = -sau * 0.71;
+    const bx = cx - (day + dx) / 2, by = y0 + h + 96 + cao - dy;
     return (
       <>
         <svg width={W} height={H} style={{position: 'absolute', inset: 0}}>
@@ -63,7 +69,8 @@ function HinhTrai({d, x, W, H, mau}: {d: DoiChieu; x: number; W: number; H: numb
             <path d={`M${bx + dx},${by + dy} v${-cao}`} strokeOpacity={0.35} strokeDasharray="5 5" />
           </g>
         </svg>
-        <Nhan x={x0 + X / 2} y={y0 + X + 20} tex={b} mau={HONG} co={26} />
+        {/* v95: nhãn x đặt NGOÀI mép trái góc cắt (không đè nét đứt của đáy hộp) */}
+        <Nhan x={x0 - 12} y={y0 + X / 2} tex={b} mau={HONG} co={26} neo="phai" />
         <Nhan x={cx} y={y0 + h + 22} tex={soViet(A).replace(/,/g, '{,}')} mau={MO} co={24} />
         <Nhan x={bx + day + dx + 14} y={by + dy - cao / 2} tex={b} mau={mau} co={24} neo="trai" />
       </>
@@ -128,7 +135,7 @@ function HinhTrai({d, x, W, H, mau}: {d: DoiChieu; x: number; W: number; H: numb
 }
 
 /* ---------------- cột phải: đồ thị ---------------- */
-function DoThi({d, x, W, H, tt, hienSo, t, dung}: {d: DoiChieu; x: number; W: number; H: number; tt: TrangThai; hienSo: boolean; t: number; dung: boolean}) {
+function DoThi({d, x, W, H, tt, hienSo, t, dung, tDung}: {d: DoiChieu; x: number; W: number; H: number; tt: TrangThai; hienSo: boolean; t: number; dung: boolean; tDung: number}) {
   const L = 70, R = 26, T = 104, B = 74;
   const gw = W - L - R, gh = H - T - B;
   const X = (u: number) => L + ((u - d.a) / (d.b - d.a)) * gw;
@@ -143,8 +150,12 @@ function DoThi({d, x, W, H, tt, hienSo, t, dung}: {d: DoiChieu; x: number; W: nu
   const tenY = `${d.tenHam}(${d.bien})`;
   // nhãn điểm: đang quét -> số x hiện tại; đã dừng ở tối ưu -> ký hiệu (chưa tới đáp án) hoặc số (từ cảnh đáp án)
   const sv = (v: number) => soViet(v).replace(/,/g, '{,}');
+  // v95: đã chốt -> ghi SỐ THẬT lên 2 trục (x = 2 ở chân gióng đứng, V = 144 ở đầu gióng ngang) thay cho x*, V_max
   const nhanX = dung ? (hienSo ? `${d.bien} = ${sv(d.xTot)}` : `${d.bien}^{*}`) : `${d.bien} = ${sv(x)}`;
-  const nhanY = dung ? (hienSo ? `${d.tenHam}_{${d.kieu === 'max' ? 'max' : 'min'}} = ${sv(d.yTot)}` : `${d.tenHam}_{${d.kieu === 'max' ? 'max' : 'min'}}`) : '';
+  const nhanY = dung ? (hienSo ? `${d.tenHam} = ${sv(d.yTot)}` : `${d.tenHam}_{${d.kieu === 'max' ? 'max' : 'min'}}`) : '';
+  // vòng gợn sóng (pulse ring) lan ra 3 lần lúc chốt, sau đó nhịp chậm
+  const dtD = Math.max(0, t - tDung);
+  const song = dung ? [0, 0.45, 0.9].map((tre) => { const u = (dtD - tre) / 1.1; return u > 0 && u < 1 ? u : dtD > 2.2 ? ((dtD - tre) % 1.8) / 1.8 : -1; }) : [];
   return (
     <>
       {/* huy hiệu trạng thái */}
@@ -178,6 +189,13 @@ function DoThi({d, x, W, H, tt, hienSo, t, dung}: {d: DoiChieu; x: number; W: nu
         ) : (
           <line x1={px} y1={py} x2={px} y2={y0} stroke={tt.mau} strokeOpacity={0.4} strokeWidth={1.4} />
         )}
+        {song.map((u, k) => (u >= 0 ? <circle key={k} cx={px} cy={py} r={12 + 46 * u} fill="none" stroke={tt.mau} strokeWidth={2.4 * (1 - u) + 0.4} opacity={(dtD < 2.2 ? 0.85 : 0.35) * (1 - u)} /> : null))}
+        {dung ? (
+          <>
+            <circle cx={px} cy={y0} r={5} fill={DAT} />
+            <circle cx={L} cy={py} r={5} fill={DAT} />
+          </>
+        ) : null}
         <circle cx={px} cy={py} r={30 * nhip} fill={tt.mau} opacity={0.1} />
         <circle cx={px} cy={py} r={18} fill={tt.mau} opacity={0.22} />
         <circle cx={px} cy={py} r={10} fill={tt.mau} />
@@ -189,13 +207,19 @@ function DoThi({d, x, W, H, tt, hienSo, t, dung}: {d: DoiChieu; x: number; W: nu
       {/* nhãn x bám điểm; gần mép phải/trái thì neo vào trong để không tràn khỏi cột */}
       <Nhan x={px > L + gw * 0.65 ? Math.min(px + 30, W - 10) : px < L + gw * 0.35 ? Math.max(px - 30, 10) : px} y={Math.min(T + gh + 44, y0 + 44)} tex={nhanX} mau={tt.mau} co={26}
         neo={px > L + gw * 0.65 ? 'phai' : px < L + gw * 0.35 ? 'trai' : 'giua'} />
-      {nhanY ? <Nhan x={Math.min(L + gw - 70, Math.max(L + 80, px))} y={Math.max(T + 16, py - 46)} tex={nhanY} mau={DAT} co={26} /> : null}
+      {nhanY ? (
+        <div style={{position: 'absolute', left: L + 10, top: Math.max(T + 4, py - 52), background: 'rgba(14,16,20,0.82)', border: `1px solid ${DAT}66`, borderRadius: 999, padding: '1px 12px 3px'}}>
+          <Toan tex={nhanY} size={27} color={DAT} style={{fontWeight: 800}} />
+        </div>
+      ) : null}
     </>
   );
 }
 
-export const DoiChieu2Cot: React.FC<{d: DoiChieu; dt: number; dai: number; t: number; rong: number; cao: number; hienSo: boolean; a: number}> = ({d, dt, dai, t, rong, cao, hienSo, a}) => {
-  const {x, pha} = nhipDoiChieu(d, dt, dai);
+export const DoiChieu2Cot: React.FC<{d: DoiChieu; dt: number; dai: number; t: number; rong: number; cao: number; hienSo: boolean; a: number; dtGiai?: number}> = ({d, dt, dai, t, rong, cao, hienSo, a, dtGiai}) => {
+  const {x, pha} = nhipTheoLoi(d, dt, dai, dtGiai);
+  // mốc (giây toàn cục) điểm sáng đứng ở tối ưu: theo lời đọc (+0,8 s lướt) hoặc nhịp cũ
+  const tDung = t - dt + (dtGiai !== undefined ? dtGiai + 0.8 : 0.6 + Math.max(1.6, Math.min(4.2, 0.45 * dai)) + Math.max(0.8, Math.min(1.6, 0.18 * dai)));
   const tt = trangThaiDoiChieu(d, x, pha);
   const W = rong / 2;
   const vao = emRa(a);
@@ -208,7 +232,7 @@ export const DoiChieu2Cot: React.FC<{d: DoiChieu; dt: number; dai: number; t: nu
       {/* vạch chia 2 cột */}
       <div style={{position: 'absolute', left: W - 1, top: 40, width: 2, height: cao - 80, background: 'linear-gradient(to bottom, transparent, rgba(230,237,245,0.16), transparent)'}} />
       <div style={{position: 'absolute', left: W, top: 0, width: W, height: cao, transform: `translateX(${(1 - vao) * 30}px)`}}>
-        <DoThi d={d} x={x} W={W} H={cao} tt={tt} hienSo={hienSo} t={t} dung={pha === 'dung'} />
+        <DoThi d={d} x={x} W={W} H={cao} tt={tt} hienSo={hienSo} t={t} dung={pha === 'dung'} tDung={tDung} />
       </div>
     </div>
   );

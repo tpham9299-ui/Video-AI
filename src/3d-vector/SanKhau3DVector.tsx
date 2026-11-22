@@ -17,10 +17,15 @@ type Ve =
 const NEN = '#0E1014';
 
 // v93: lechMay (tùy chọn) = máy xoay thêm n độ quanh trục đứng và phóng k lần quanh tâm hình (intro zoom-out / xoay mở, outro thở)
-export const SanKhau3DVector: React.FC<{canh: Canh3DV; t: number; rong: number; cao: number; tongGiay: number; lechMay?: {n?: number; k?: number}}> = ({canh, t, rong, cao, tongGiay, lechMay}) => {
+// v95: thoNhe (mặc định bật) = chuyển động vi mô liên tục: máy lắc ±2,5° (sin chu kỳ 7 s) + co giãn 1,2 % (chu kỳ 5,3 s),
+// c (độ ngẩng) ±1,2° -> sân khấu không bao giờ đứng như ảnh tĩnh giữa hai pha. Tất định theo t (render song song an toàn).
+export const thoNheMay = (t: number) => ({n: 2.5 * Math.sin((t * 2 * Math.PI) / 7), c: 1.2 * Math.sin((t * 2 * Math.PI) / 9.4 + 1.1), k: 1 + 0.012 * Math.sin((t * 2 * Math.PI) / 5.3)});
+
+export const SanKhau3DVector: React.FC<{canh: Canh3DV; t: number; rong: number; cao: number; tongGiay: number; lechMay?: {n?: number; k?: number}; thoNhe?: boolean}> = ({canh, t, rong, cao, tongGiay, lechMay, thoNhe = true}) => {
   const kc = useMemo(() => tinhKhung(canh, rong, cao, tongGiay), [canh, rong, cao, tongGiay]);
   const may0 = mayTai(kc, t, canh.quayNhe);
-  const may = lechMay ? {...may0, n: may0.n + (lechMay.n || 0), k: may0.k * (lechMay.k && lechMay.k > 0 ? lechMay.k : 1)} : may0;
+  const tho = thoNhe ? thoNheMay(t) : {n: 0, c: 0, k: 1};
+  const may = {...may0, n: may0.n + (lechMay?.n || 0) + tho.n, c: may0.c + tho.c, k: may0.k * (lechMay?.k && lechMay.k > 0 ? lechMay.k : 1) * tho.k};
   const h = heTruc(may);
   const {manh, che} = dungCanh(canh, t, h.viTri);
   const ds: Manh[] = xuLyKhuat(manh, che, h.viTri, kc.R);
@@ -61,7 +66,8 @@ export const SanKhau3DVector: React.FC<{canh: Canh3DV; t: number; rong: number; 
   const vatCan: VatCan = {cham: [], doan: []};
   for (const v of ve) {
     if (v.k === 'cham' && !v.bi && v.op > 0.2) vatCan.cham.push({x: v.x, y: v.y, r: v.r * 2});
-    else if (v.k === 'net' && v.w >= 2.5 && v.op > 0.2) vatCan.doan.push({x1: v.x1, y1: v.y1, x2: v.x2, y2: v.y2, w: v.w * (v.mui ? 2.5 : 1.2)});
+    // v95: nét đứt (cạnh khuất, góc cắt) cũng là vật cản -> nhãn không đè lên nét đứt
+    else if (v.k === 'net' && (v.w >= 2.5 || v.dut) && v.op > 0.15) vatCan.doan.push({x1: v.x1, y1: v.y1, x2: v.x2, y2: v.y2, w: Math.max(4, v.w * (v.mui ? 2.5 : 1.2))});
   }
   const viTriNhan = datNhan(nhan, rong, cao, vatCan);
 
@@ -78,7 +84,8 @@ export const SanKhau3DVector: React.FC<{canh: Canh3DV; t: number; rong: number; 
           ))}
         </defs>
         {ve.map((v, i) => {
-          if (v.k === 'mat') return <path key={i} d={v.d} fill={v.mau} fillOpacity={v.op} />;
+          // v95: mặt tô rõ hơn 15 % + viền trong mảnh cùng màu -> mảng màu có mép sắc, không loang
+          if (v.k === 'mat') return <path key={i} d={v.d} fill={v.mau} fillOpacity={Math.min(0.6, v.op * 1.15)} stroke={v.mau} strokeOpacity={Math.min(0.35, v.op * 0.9)} strokeWidth={0.8} strokeLinejoin="round" />;
           if (v.k === 'cham') {
             if (v.bi) {
               const ten = Object.entries(MAU_3DV).find(([, m]) => m === v.mau)?.[0] || 'cyan';
@@ -97,24 +104,24 @@ export const SanKhau3DVector: React.FC<{canh: Canh3DV; t: number; rong: number; 
               </g>
             );
           }
-          // v92 PHÂN CẤP 3 TẦNG NÉT: trọng tâm (đang giảng) 3px + glow nhịp nhẹ | khung chính 1,6px | nét khuất 1px mờ 35%.
-          // Vector giữ thân dày hơn một bậc; lưới mảnh (mặt cầu) giữ nguyên độ mảnh.
+          // v95 NÉT LÕI SẮC: bỏ quầng rộng (w×3..×4,8 làm cạnh nhòe "out-focus"); nét chính dày hơn ~18 % trên một viền tối
+          // mỏng tách nét khỏi nền/mặt tô; chỉ nét đang giảng có quầng HẸP (w×1,9) nhịp nhẹ. Nét khuất rõ hơn (50-85 %).
           const nhip = v.sang * (0.82 + 0.18 * Math.sin((t * 2 * Math.PI) / 1.8));
-          const goc = v.mui ? 2.6 : v.w >= 2.5 ? 1.6 : v.w;
-          const dinh = v.mui ? 4.2 : v.w >= 2.5 ? 3 : v.w * 1.4;
+          const goc = v.mui ? 3.1 : v.w >= 2.5 ? 1.9 : v.w;
+          const dinh = v.mui ? 4.9 : v.w >= 2.5 ? 3.5 : v.w * 1.4;
           const w = goc + (dinh - goc) * v.sang;
           const dx = v.x2 - v.x1, dy = v.y2 - v.y1;
           const L = Math.hypot(dx, dy) || 1;
           const ux = dx / L, uy = dy / L;
           const dau = v.mui ? Math.min(L * 0.6, 15 + w * 2.4) : 0;
           const x2 = v.x2 - ux * dau * 0.8, y2 = v.y2 - uy * dau * 0.8;
-          const op = v.dut ? v.op * (0.35 + 0.4 * v.sang) : v.op;
+          const op = v.dut ? v.op * (0.5 + 0.35 * v.sang) : v.op;
           return (
             <g key={i} opacity={op}>
-              {!v.dut && v.w >= 2.5 && nhip > 0.02 ? <line x1={v.x1} y1={v.y1} x2={x2} y2={y2} stroke={v.mau} strokeWidth={w * (2.6 + 2.2 * nhip)} strokeOpacity={0.08 + 0.22 * nhip} strokeLinecap="round" /> : null}
-              {!v.dut && v.w >= 2.5 && nhip <= 0.02 ? <line x1={v.x1} y1={v.y1} x2={x2} y2={y2} stroke={v.mau} strokeWidth={w * 3} strokeOpacity={0.07} strokeLinecap="round" /> : null}
-              <line x1={v.x1} y1={v.y1} x2={x2} y2={y2} stroke={v.mau} strokeWidth={v.dut ? 1 + 0.6 * v.sang : w} strokeLinecap={v.dut ? 'butt' : 'round'}
-                strokeDasharray={v.dut ? '7 6' : undefined} />
+              {!v.dut && v.w >= 2.5 ? <line x1={v.x1} y1={v.y1} x2={x2} y2={y2} stroke={NEN} strokeWidth={w + 3} strokeOpacity={0.55} strokeLinecap="round" /> : null}
+              {!v.dut && v.w >= 2.5 && nhip > 0.02 ? <line x1={v.x1} y1={v.y1} x2={x2} y2={y2} stroke={v.mau} strokeWidth={w * 1.9} strokeOpacity={0.16 * nhip} strokeLinecap="round" /> : null}
+              <line x1={v.x1} y1={v.y1} x2={x2} y2={y2} stroke={v.mau} strokeWidth={v.dut ? 1.3 + 0.6 * v.sang : w} strokeLinecap={v.dut ? 'butt' : 'round'}
+                strokeDasharray={v.dut ? '8 6' : undefined} />
               {v.mui && dau > 0 ? (
                 <path d={`M${v.x2},${v.y2} L${v.x2 - ux * dau - uy * dau * 0.5},${v.y2 - uy * dau + ux * dau * 0.5} L${v.x2 - ux * dau + uy * dau * 0.5},${v.y2 - uy * dau - ux * dau * 0.5} Z`} fill={v.mau} />
               ) : null}
@@ -129,8 +136,10 @@ export const SanKhau3DVector: React.FC<{canh: Canh3DV; t: number; rong: number; 
         })}
       </svg>
       {nhan.map((n, i) => (
-        <div key={i} data-nhan-3d style={{position: 'absolute', left: viTriNhan[i].x, top: viTriNhan[i].y, transform: 'translate(-50%, -50%)', opacity: n.op, textShadow: `0 0 6px ${NEN}, 0 0 3px ${NEN}, 0 0 1px ${NEN}`}}>
-          <Toan tex={n.tex} size={n.co} color={n.mau} />
+        // v95: nhãn trên viên thuốc tối bán trong suốt + viền mảnh cùng màu -> sắc, không chìm xám, không lẫn với nét
+        <div key={i} data-nhan-3d style={{position: 'absolute', left: viTriNhan[i].x, top: viTriNhan[i].y, transform: 'translate(-50%, -50%)', opacity: n.op,
+          background: 'rgba(14,16,20,0.78)', border: `1px solid ${n.mau}55`, borderRadius: 999, padding: '1px 10px 3px', lineHeight: 1.15, whiteSpace: 'nowrap'}}>
+          <Toan tex={n.tex} size={n.co} color={n.mau} style={{fontWeight: 700}} />
         </div>
       ))}
     </div>

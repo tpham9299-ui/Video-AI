@@ -80,5 +80,15 @@ const V = I.VUNG_OUTRO;
 thu('outro: đáp án | mô hình | 3 dòng | nút không chồng nhau, trên 14% đáy',
   V.dapAn.y + V.dapAn.h <= V.san.y && V.san.y + V.san.h <= V.dong.y && V.dong.y + 3 * V.dong.h + 2 * V.dong.cach <= V.nut.y && V.nut.y + 96 <= 1650);
 
+// v95: nhịp THEO LỜI ĐỌC + huy hiệu đúng loại
+{
+  const tr = Array.from({length: 40}, (_, i) => D.nhipTheoLoi(bia, 0.2 + i * 0.2, 12, 8.5));
+  thu('v95: trước mốc giải (8,5 s) điểm sáng chỉ dò, không bao giờ "đứng" ở tối ưu', tr.filter((_, i) => 0.2 + i * 0.2 < 8.5).every((n) => n.pha === 'quet'));
+  thu('v95: từ mốc giải lướt 0,8 s rồi chốt đúng x* = 2', D.nhipTheoLoi(bia, 8.9, 12, 8.5).pha === 've' && D.nhipTheoLoi(bia, 9.4, 12, 8.5).pha === 'dung' && Math.abs(D.nhipTheoLoi(bia, 9.4, 12, 8.5).x - 2) < 1e-6);
+  thu('v95: không có mốc giải -> nhịp cũ v93', D.nhipTheoLoi(bia, 5.9, 6).pha === D.nhipDoiChieu(bia, 5.9, 6).pha);
+  thu('v95: bài cực trị thuần -> ★ CỰC ĐẠI khi chốt, ĐANG DÒ khi quét', D.chuHuyHieu(bia, 128, 'dung', true).chu === '★ CỰC ĐẠI' && D.chuHuyHieu(bia, 50, 'quet', false).chu === 'ĐANG DÒ');
+  thu('v95: bài có ngưỡng -> ✓ ĐẠT CHUẨN / ✕ VƯỢT NGƯỠNG', D.chuHuyHieu(lon, 354, 'dung', true).chu === '✓ ĐẠT CHUẨN' && D.chuHuyHieu(lon, 600, 'quet', false).chu === '✕ VƯỢT NGƯỠNG');
+}
+
 console.log(`\n${dat} đạt, ${hong} hỏng`);
 process.exit(hong ? 1 : 0);

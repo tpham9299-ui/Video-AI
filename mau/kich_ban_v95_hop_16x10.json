@@ -1,0 +1,56 @@
+{
+ "_ghi_chu": "v95 — tái hiện lỗi video thật TT261122-133524-0 (hộp 16×10, không ngưỡng): tiêu đề intro 'cắt góc nào' sai nghĩa, câu rào 'thật tuyệt vời' / 'khoan chốt vội' / 'Muốn tìm..., trước hết ta cần', gọi 'đỉnh parabol' với hàm bậc ba, thẻ 'Hàm thể tích' đứng TRƯỚC thẻ 'Đặt ẩn', thẻ V'(x) lặp ở ranh giới bước 2-3, tom_tat_3_buoc chỉ 2 dòng, nút CTA 'LƯU NGAY VIDEO!' trong khi giọng đọc kêu gọi 'Đăng ký kênh', pha 3D không có khi_noi.",
+ "id": "V95-HOP1610",
+ "mon": "THUC_TE",
+ "luong": "thuc_te_xac_suat",
+ "lop": "12",
+ "tieu_de": "Gập hộp từ tấm bìa 16×10",
+ "chu_de": "Tối ưu hộp không nắp",
+ "de_bai": "Từ một tấm bìa hình chữ nhật kích thước 16 cm × 10 cm, người ta cắt bỏ ở bốn góc bốn hình vuông bằng nhau cạnh x rồi gập thành một cái hộp không nắp. Tìm x để thể tích hộp lớn nhất.",
+ "dap_an_cuoi": "x = 2 cm, V lớn nhất = 144 cm³",
+ "hook": "Cắt góc nào để hộp gập từ tấm bìa chứa được nhiều nhất?",
+ "tieu_de_intro": "CẮT GÓC NÀO ĐỂ HỘP LỚN NHẤT?",
+ "cta": "LƯU NGAY VIDEO!",
+ "tom_tat_3_buoc": [
+  {"chien_thuat": "Đặt ẩn cạnh cắt", "cong_thuc": "0 < x < 5"},
+  {"chien_thuat": "Lập hàm thể tích", "cong_thuc": "V(x) = x(16 - 2x)(10 - 2x)"}
+ ],
+ "canh": [
+  {"so": 1, "loai": "mo_dau", "loi_thoai": "Tấm bìa 16 nhân 10, cắt mỗi góc bao nhiêu để hộp chứa nhiều nhất?", "noi_dung_man_hinh": []},
+  {"so": 2, "loai": "de_bai", "loi_thoai": "Tấm bìa chữ nhật 16 cm nhân 10 cm, cắt bốn hình vuông bằng nhau cạnh x ở bốn góc rồi gập thành hộp không nắp. Tìm x để thể tích lớn nhất.", "noi_dung_man_hinh": []},
+  {"so": 3, "loai": "tinh_toan", "loi_thoai": "Thật tuyệt vời! Muốn tìm thể tích, trước hết ta cần đặt ẩn: gọi x là cạnh hình vuông cắt đi, điều kiện 0 < x < 5.", "noi_dung_man_hinh": ["0 < x < 5"]},
+  {"so": 4, "loai": "tinh_toan", "loi_thoai": "Gập lên, đáy hộp có chiều dài 16 - 2x, chiều rộng 10 - 2x, còn chiều cao chính là x.", "noi_dung_man_hinh": ["16 - 2x", "10 - 2x"]},
+  {"so": 5, "loai": "tinh_toan", "loi_thoai": "Thể tích hộp V(x) = x(16 - 2x)(10 - 2x).", "noi_dung_man_hinh": ["V(x) = x(16 - 2x)(10 - 2x)"]},
+  {"so": 6, "loai": "tinh_toan", "loi_thoai": "Khoan chốt vội. Lấy đạo hàm V'(x) = 12x^2 - 104x + 160.", "noi_dung_man_hinh": ["V'(x) = 12x^2 - 104x + 160"]},
+  {"so": 7, "loai": "tinh_toan", "loi_thoai": "Cho V'(x) = 0 được x = 2 hoặc x = 20/3, chỉ x = 2 nằm trong khoảng từ 0 đến 5.", "noi_dung_man_hinh": ["V'(x) = 0 \\Rightarrow x = 2"]},
+  {"so": 8, "loai": "tinh_toan", "loi_thoai": "Đạo hàm đổi dấu từ dương sang âm qua x = 2, nhìn đồ thị tại x = 2 chính là đỉnh parabol.", "noi_dung_man_hinh": []},
+  {"so": 9, "loai": "dap_an", "loi_thoai": "Vậy cắt mỗi góc 2 cm, thể tích lớn nhất V = 144 cm³.", "noi_dung_man_hinh": ["V(2) = 2 \\cdot 12 \\cdot 6 = 144"]},
+  {"so": 10, "loai": "kiem_tra", "loi_thoai": "Thử lại: x = 1 được V = 112, x = 3 được V = 120, đều nhỏ hơn 144 cm³.", "noi_dung_man_hinh": ["V(1) = 112", "V(3) = 120"]},
+  {"so": 11, "loai": "ket_luan", "loi_thoai": "Tóm lại ba bước: đặt ẩn cạnh cắt, lập hàm thể tích, xét dấu đạo hàm để chốt cực đại. Đăng ký kênh để học thêm mẹo mới nhé!", "noi_dung_man_hinh": []}
+ ],
+ "khung4tang": {
+  "phu_de": "tat",
+  "de_ghim": [{"id": "a", "nhan": "16 \\times 10"}, {"id": "x", "nhan": "x = ?", "mau": "hong"}, {"id": "V", "nhan": "V_{max} = ?", "mau": "hong"}],
+  "buoc": [
+   {"canh": 1, "nhan": "Đề bài", "tieu_de": "Tấm bìa 16 × 10", "du_kien": ["a"], "the": [{"loai": "chu", "noi_dung": "Cắt 4 góc vuông cạnh x"}]},
+   {"canh": 3, "khi_noi": "gọi x là cạnh", "nhan": "Lập hàm", "tieu_de": "Thể tích theo x", "du_kien": ["x"], "the": [
+     {"loai": "cong_thuc", "nhan": "Hàm thể tích", "dong": ["V(x) = x(16 - 2x)(10 - 2x)"], "khi_noi": "thể tích hộp"},
+     {"loai": "cong_thuc", "nhan": "Đặt ẩn", "dong": ["0 < x < 5"], "khi_noi": "gọi x là cạnh"},
+     {"loai": "cong_thuc", "nhan": "Kích thước đáy", "dong": ["16 - 2x", "10 - 2x"], "khi_noi": "đáy hộp có chiều dài"},
+     {"loai": "cong_thuc", "nhan": "Đạo hàm", "dong": ["V'(x) = 12x^2 - 104x + 160"], "khi_noi": "lấy đạo hàm"}
+   ]},
+   {"canh": 6, "khi_noi": "lấy đạo hàm", "nhan": "Đạo hàm", "tieu_de": "Cho V'(x) = 0", "the": [
+     {"loai": "cong_thuc", "dong": ["V'(x) = 12x^2 - 104x + 160"], "khi_noi": "lấy đạo hàm"},
+     {"loai": "cong_thuc", "dong": ["V'(x) = 0 \\Rightarrow x = 2"], "khi_noi": "chỉ x = 2 nằm trong"}
+   ]},
+   {"canh": 8, "khi_noi": "đạo hàm đổi dấu", "nhan": "Xét dấu", "tieu_de": "V tăng rồi giảm", "the": [
+     {"loai": "bang_bien_thien", "ham": "V", "bien": "x", "moc_x": ["0", "2", "5"], "dau": ["+", "-"], "gia_tri": ["0", "144", "0"], "khi_noi": "đạo hàm đổi dấu"}
+   ]},
+   {"canh": 9, "khi_noi": "vậy cắt mỗi góc", "nhan": "Kết luận", "tieu_de": "V lớn nhất khi x = ?", "du_kien": ["V"], "the": [
+     {"loai": "cong_thuc", "dong": ["V_{max} = V(2) = 2 \\cdot 12 \\cdot 6 = 144"], "khi_noi": "thể tích lớn nhất"}
+   ]}
+  ],
+  "canh_3d_vector": {"khuon": "tam_bia_gap_hop", "tham_so": {"a": 16, "b": 10, "x": 2, "ten_x": "x"},
+   "pha": [{"ten": "nguyen_ven"}, {"ten": "to_goc"}, {"ten": "an_goc"}, {"ten": "gap"}, {"ten": "nhan_canh"}, {"ten": "the_tich"}]}
+ }
+}
