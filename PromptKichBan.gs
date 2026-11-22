@@ -399,7 +399,22 @@ function huongDanKhung4Tang_(r) {
     'hinh_tru/hinh_non {day:[x,y,z],ban_kinh,cao} | hinh_chop {day:[[x,y,z]...],dinh} | duong_cong {diem|ham} | goc {dinh,canh:[id,id]} | nhom_lap {vat:"the|bi|khoi",so:N,xep:"luoi|hang|vong",mau_tung:[...],nhan_tung:[...]}; ' +
     'hành động: truot_diem, tach_vector, gap_mat, dich {vec}, ve_dan, nang {chi_so (0-based),mau}. Màu mang nghĩa: cyan = đề cho, vàng = đang xét/kết quả, hồng = ẩn cần tìm, ngọc = đã kiểm chứng. ' +
     (lop === '10' ? 'Lớp 10: chỉ hình PHẲNG, không Oxyz, không đạo hàm/tích phân. ' : lop === '11' ? 'Lớp 11: KHÔNG dùng hệ tọa độ Oxyz, không bảng biến thiên/đạo hàm tìm cực trị (dùng Cauchy / tam thức bậc hai). ' : '') +
-    'Mọi khi_noi phải trích NGUYÊN VĂN loi_thoai (máy khớp từng từ); số liệu trên de_ghim, tham_so và thẻ phải khớp đề và đáp án.\n';
+    'Mọi khi_noi phải trích NGUYÊN VĂN loi_thoai (máy khớp từng từ); số liệu trên de_ghim, tham_so và thẻ phải khớp đề và đáp án.\n' +
+    huongDanMocCau_(r);
+}
+// v93: INTRO "3 GIÂY MÓC CÂU" + OUTRO "TÓM TẮT 3 BƯỚC" + ĐỐI CHIẾU HÌNH ↔ ĐỒ THỊ (đều TÙY CHỌN; thiếu thì Auto-fix tự sinh)
+function huongDanMocCau_(r) {
+  var lop = String((r && r.lop) || '');
+  return 'INTRO MÓC CÂU & OUTRO (tùy chọn, ở GỐC JSON; chữ thường không LaTeX, KHÔNG chứa đáp số): ' +
+    '"nhan_thi": ngữ cảnh thi ≤ 28 ký tự, IN HOA (ví dụ "' + (lop === '12' ? 'ĐỀ THI THPT · LỚP 12' : lop === '9' ? 'ÔN THI VÀO 10' : 'ĐỀ GIỮA KÌ 1 · LỚP ' + (lop || '11')) + '"; chỉ ghi tên kỳ thi thật khi đề đúng là đề thi đó), ' +
+    '"tieu_de_intro": tiêu đề IN HOA ≤ 40 ký tự (tối đa 2 dòng), nêu tình huống/câu hỏi (ví dụ "LON NƯỚC TỐN ÍT NHÔM NHẤT"), ' +
+    '"phu_de_intro": 2-3 cụm chuyên đề nối bằng " · ", ≤ 36 ký tự (ví dụ "VECTƠ · LỰC CĂNG · GTNN"), ' +
+    '"cau_hook": câu hook tâm lý ≤ 40 ký tự (ví dụ "MUỐN 9+ THI KÌ KHÔNG THỂ BỎ QUA!"; không bịa số liệu thống kê), "cta": ≤ 18 ký tự (mặc định "LƯU NGAY VIDEO!"), ' +
+    '"tom_tat_3_buoc": [{"chien_thuat":"≤ 18 ký tự, ví dụ Rút h theo r","cong_thuc":"MỘT dòng LaTeX ≤ 40 ký tự, ví dụ S = 2\\\\pi r^2 + \\\\frac{1024}{r}"}] đúng 3 phần tử theo thứ tự giải (Outro được phép có đáp số). ' +
+    'ĐỐI CHIẾU HÌNH ↔ ĐỒ THỊ (chỉ bài TỐI ƯU, đặt ở ĐÚNG MỘT bước khảo sát/xét dấu/tìm cực trị, không đặt ở bước 1): "doi_chieu": {"ham":"biểu thức một biến dùng + - * / ^ ( ) pi, ví dụ x*(12-2*x)^2 hoặc 2*pi*r^2+1024/r","bien":"x|r|t","ten_ham":"V|S|T","mien":[a,b] miền xác định của biến,"kieu":"max|min","toi_uu":số (tùy chọn, phải đúng),' +
+    '"nguong":{"gia_tri":số,"kieu":"<=|>=","nhan":"LaTeX ngắn, ví dụ T \\\\le 4000"} (tùy chọn: chỉ khi đề có giới hạn chịu lực/vật liệu/chi phí; điểm tối ưu phải đạt ngưỡng),"hinh":"tam_bia|mat_cat_tru|tam_giac_luc|thanh","tham_so":{"a":12,"b":12} (tam_bia) | {"V":512} (mat_cat_tru)}. ' +
+    'Máy tính lại điểm tối ưu và kiểm mọi giá trị; sai hoặc không khớp đáp án thì tầng 2 giữ sân khấu 3D. ' +
+    (lop === '10' || lop === '11' ? 'Lớp ' + lop + ': đồ thị chỉ để đối chiếu trực quan, lời giảng vẫn dùng ' + (lop === '10' ? 'tam thức bậc hai / hình phẳng' : 'Cauchy / tam thức bậc hai') + ', không đạo hàm.' : '') + '\n';
 }
 
 function vanDeDe_(r) {

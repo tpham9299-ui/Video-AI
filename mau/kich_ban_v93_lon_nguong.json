@@ -1,0 +1,252 @@
+{
+ "_ghi_chu": "Mẫu v93: bài lon 512 cm³ ghi ĐỦ trường mới (nhan_thi, tieu_de_intro, phu_de_intro, cau_hook, cta, tom_tat_3_buoc, buoc[].doi_chieu có ngưỡng). Thử: python scripts/chuanbi.py mau/kich_ban_v93_lon_nguong.json --gia-lap --props-ra out/v93/lon/props.json",
+ "id": "THU-V93-LON",
+ "mon": "THUC_TE",
+ "luong": "thuc_te_xac_suat",
+ "lop": "12",
+ "tieu_de": "Lon 512 cm³ tốn ít nhôm nhất",
+ "chu_de": "Tối ưu lon hình trụ",
+ "de_bai": "Một lon nước ngọt hình trụ có thể tích 512 cm³. Tìm bán kính đáy r để diện tích toàn phần của lon nhỏ nhất.",
+ "dap_an_cuoi": "r ≈ 4,34 cm",
+ "hook": "Lon nước 512 cm³ phải có bán kính bao nhiêu để tốn ít nhôm nhất?",
+ "canh": [
+  {
+   "so": 1,
+   "loai": "mo_dau",
+   "loi_thoai": "Lon nước năm trăm mười hai xăng-ti-mét khối phải có bán kính bao nhiêu để tốn ít nhôm nhất?",
+   "noi_dung_man_hinh": []
+  },
+  {
+   "so": 2,
+   "loai": "de_bai",
+   "loi_thoai": "Đề cho lon hình trụ có thể tích năm trăm mười hai xăng-ti-mét khối. Tìm bán kính đáy để diện tích toàn phần nhỏ nhất.",
+   "noi_dung_man_hinh": []
+  },
+  {
+   "so": 3,
+   "loai": "y_do",
+   "loi_thoai": "Nhôm làm lon chính là diện tích toàn phần, gồm hai đáy và mặt xung quanh.",
+   "noi_dung_man_hinh": [
+    "S = 2\\pi r^2 + 2\\pi r h"
+   ]
+  },
+  {
+   "so": 4,
+   "loai": "tinh_toan",
+   "loi_thoai": "Từ thể tích, chiều cao bằng năm trăm mười hai chia pi r bình phương.",
+   "noi_dung_man_hinh": [
+    "h = \\frac{512}{\\pi r^2}"
+   ]
+  },
+  {
+   "so": 5,
+   "loai": "tinh_toan",
+   "loi_thoai": "Thế vào, ta được hàm một biến S(r) bằng hai pi r bình phương cộng một nghìn không trăm hai mươi tư chia r.",
+   "noi_dung_man_hinh": [
+    "S(r) = 2\\pi r^2 + \\frac{1024}{r}"
+   ]
+  },
+  {
+   "so": 6,
+   "loai": "tinh_toan",
+   "loi_thoai": "Đạo hàm S'(r) bằng bốn pi r trừ một nghìn không trăm hai mươi tư chia r bình phương. Cho S'(r) = 0.",
+   "noi_dung_man_hinh": [
+    "S'(r) = 4\\pi r - \\frac{1024}{r^2}",
+    "S'(r) = 0"
+   ]
+  },
+  {
+   "so": 7,
+   "loai": "tinh_toan",
+   "loi_thoai": "Giải ra r mũ ba bằng hai trăm năm mươi sáu chia pi, nên r xấp xỉ bốn phẩy ba bốn.",
+   "noi_dung_man_hinh": [
+    "r^3 = \\frac{256}{\\pi}",
+    "r \\approx 4{,}34"
+   ]
+  },
+  {
+   "so": 8,
+   "loai": "tinh_toan",
+   "loi_thoai": "Bảng biến thiên cho thấy S giảm rồi tăng, nên đây là điểm nhỏ nhất.",
+   "noi_dung_man_hinh": []
+  },
+  {
+   "so": 9,
+   "loai": "dap_an",
+   "loi_thoai": "Vậy bán kính đáy khoảng bốn phẩy ba bốn xăng-ti-mét, và chiều cao đúng bằng đường kính.",
+   "noi_dung_man_hinh": [
+    "r \\approx 4{,}34\\ \\text{cm}",
+    "h = 2r"
+   ]
+  },
+  {
+   "so": 10,
+   "loai": "kiem_tra",
+   "loi_thoai": "Thử r bằng bốn: S lớn hơn. Thử r bằng năm: S cũng lớn hơn. Đúng là nhỏ nhất.",
+   "noi_dung_man_hinh": [
+    "S(4) \\approx 356{,}5",
+    "S(4{,}34) \\approx 354{,}2"
+   ]
+  },
+  {
+   "so": 11,
+   "loai": "bai_hoc",
+   "loi_thoai": "Lon tối ưu có chiều cao bằng đường kính, các hãng làm lon vẫn dựa vào ý này.",
+   "noi_dung_man_hinh": []
+  }
+ ],
+ "khung4tang": {
+  "phu_de": "gon",
+  "de_ghim": [
+   {
+    "id": "V",
+    "nhan": "V = 512"
+   },
+   {
+    "id": "S",
+    "nhan": "S_{min} = ?",
+    "mau": "đỏ"
+   }
+  ],
+  "buoc": [
+   {
+    "canh": 1,
+    "nhan": "Đề bài",
+    "tieu_de": "Lon trụ 512 cm³",
+    "du_kien": [
+     "V"
+    ],
+    "the": [
+     {
+      "loai": "chu",
+      "noi_dung": "Tìm r để S nhỏ nhất"
+     }
+    ]
+   },
+   {
+    "khi_noi": "nhôm làm lon chính là diện tích toàn phần",
+    "nhan": "Lập hàm",
+    "tieu_de": "Diện tích S_A theo r",
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "S = 2\\pi r^2 + 2\\pi r h"
+      ]
+     },
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "S(r) = 2\\pi r^2 + \\frac{1024}{r}"
+      ],
+      "khi_noi": "ta được hàm một biến"
+     }
+    ]
+   },
+   {
+    "khi_noi": "đạo hàm",
+    "nhan": "Đạo hàm",
+    "tieu_de": "Cho S'(r) = 0",
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "S'(r) = 4\\pi r - \\frac{1024}{r^2}"
+      ]
+     },
+     {
+      "loai": "casio",
+      "phim": [
+       "SHIFT",
+       "SOLVE"
+      ],
+      "ket_qua": "4,34"
+     }
+    ]
+   },
+   {
+    "khi_noi": "bảng biến thiên cho thấy",
+    "nhan": "Xét dấu",
+    "tieu_de": "Bảng biến thiên",
+    "the": [
+     {
+      "loai": "bang_bien_thien",
+      "moc_x": [
+       "0",
+       "4{,}34",
+       "+\\infty"
+      ],
+      "dau": [
+       "-",
+       "+"
+      ],
+      "gia_tri": [
+       "+\\infty",
+       "354{,}2",
+       "+\\infty"
+      ]
+     }
+    ],
+    "doi_chieu": {
+     "ham": "2*pi*r^2+1024/r",
+     "bien": "r",
+     "ten_ham": "S",
+     "mien": [
+      1.5,
+      9
+     ],
+     "kieu": "min",
+     "toi_uu": 4.34,
+     "nguong": {
+      "gia_tri": 400,
+      "kieu": "<=",
+      "nhan": "S \\le 400"
+     },
+     "hinh": "mat_cat_tru",
+     "tham_so": {
+      "V": 512
+     }
+    }
+   },
+   {
+    "khi_noi": "vậy bán kính đáy khoảng",
+    "nhan": "Kết luận",
+    "tieu_de": "Bán kính tối ưu",
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "r \\approx 4{,}34\\ \\text{cm}"
+      ]
+     }
+    ]
+   }
+  ],
+  "canh_3d_vector": {
+   "khuon": "tru_non_toi_uu",
+   "tham_so": {
+    "loai": "tru",
+    "V": 512
+   }
+  }
+ },
+ "nhan_thi": "ĐỀ GIỮA KÌ 1 · LỚP 12",
+ "tieu_de_intro": "LON NƯỚC TỐN ÍT NHÔM NHẤT",
+ "phu_de_intro": "HÌNH TRỤ · DIỆN TÍCH · GTNN",
+ "cau_hook": "MUỐN 9+ THI KÌ KHÔNG THỂ BỎ QUA!",
+ "cta": "LƯU NGAY VIDEO!",
+ "tom_tat_3_buoc": [
+  {
+   "chien_thuat": "Rút h theo r",
+   "cong_thuc": "h = \\frac{512}{\\pi r^2}"
+  },
+  {
+   "chien_thuat": "Lập hàm S(r)",
+   "cong_thuc": "S = 2\\pi r^2 + \\frac{1024}{r}"
+  },
+  {
+   "chien_thuat": "Tìm cực tiểu",
+   "cong_thuc": "r = \\sqrt[3]{\\frac{256}{\\pi}} \\approx 4{,}34"
+  }
+ ]
+}

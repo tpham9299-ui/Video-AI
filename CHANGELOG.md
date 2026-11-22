@@ -420,3 +420,13 @@
 - Sân khấu: 3 tầng nét (3 px + glow nhịp / 1,6 px / nét khuất 1 px 35%), focus nền 30%, máy "thở" ±2° suốt video, chống suy biến góc máy, đường dẫn nhãn, đầu bút sáng khi vẽ dần.
 - Mắt thần 3×3: đo điểm ảnh tầng 2 (`t2_trong`, `hinh_dung_im`), `logo_sai` từ props, AI chấm thêm `ma_tho`, `logo_sai`, `so_cat` (đều nặng).
 - Test: `test_khuon_3d.mjs` (56), `test_moc_4tang.py` (45), `test_auto_fix_kich_ban.cjs` (20), `test_mat_than_3x3.py` (18); mẫu `mau/loi_qua_dem/{the_12,lon_512,bia_12}.json` (tái hiện lỗi, không phải JSON thật của 6 video). Chưa chạy trên GitHub Actions.
+
+### Lần 64 (v93) -- Intro "3 giây móc câu", Outro "tóm tắt 3 bước", đối chiếu Hình động ↔ Đồ thị ngưỡng (khung 4 tầng)
+- Bỏ intro thương hiệu im lặng 2,3 s ở video khung 4 tầng: `src/khung4tang/IntroMocCau.tsx` phủ ~5 s đầu cùng giọng đọc (viên thuốc `nhan_thi`, tiêu đề vàng ánh kim ≤ 2 dòng, dòng phụ cyan, hook + CTA san hô từ ~3 s, quầng sáng + hạt sáng); sân khấu 3D duy nhất của `Khung4Tang` đứng giữa màn hình (zoom-out 1,35 -> 1, xoay mở 32°, prop mới `lechMay` của `SanKhau3DVector`) rồi trượt về T2, T1/T3/T4 vào sau. `chuanbi.py`: có `mocCau` -> `intro = null`, trừ `lech` khỏi `tongFrame` (công tắc `phong_cach.json intro.mocCau4Tang`).
+- `OutroTomTat.tsx`: đáp án xanh ngọc phát sáng, mô hình 3D ở trạng thái cuối, 3 dòng chiến thuật + công thức KaTeX, nút LƯU LẠI NGAY!; màn kết kéo lên >= 6,5 s khi có `tomTat`.
+- `DoiChieu.tsx` + `doi_chieu.ts`: T2 chia 2 cột (tấm bìa cắt góc + hộp gập | mặt cắt trụ | tam giác lực | thanh đo) ↔ đồ thị có điểm sáng quét miền rồi dừng ở tối ưu; ngưỡng -> đỏ/xanh. Kiểm hợp lệ toàn bộ (hàm an toàn không eval, miền, >= 90% điểm hữu hạn, hàm không hằng, `toi_uu` AI ghi phải khớp máy, ngưỡng đạt tại tối ưu và bị vượt ở đâu đó); sai -> lùi về sân khấu 3D. Chống lộ đáp án: trước cảnh đáp án chỉ ghi `x*`, `V_max`.
+- `scripts/khung4tang_v93.py`: fallback `mocCau` (nhãn thi theo lớp, tiêu đề từ hook_chu, phụ đề từ chủ đề + nhãn bước, hook theo lớp, CTA), `tomTat` (từ các bước có công thức), suy `doi_chieu` từ khuôn (`tam_bia_gap_hop`, `tru_non_toi_uu`, `parabol_quy_dao`) chỉ khi đề hỏi tối ưu VÀ điểm tối ưu khớp số của đáp án.
+- `.gs`: `huongDanMocCau_` (PromptKichBan.gs) dạy các trường tùy chọn; `tuSuaMocCau_` (KiemTraHinh.gs) tự sinh/cắt gọn/che số, bỏ `doi_chieu` hỏng; không có lỗi cứng mới.
+- Mắt thần 3×3: ô 1 = khung Intro (~1,8 s), ghi chú AI chỉ bắt cắt/chồng chữ, mã thô, lộ đáp án, nền đen không hình; đo điểm ảnh vùng mô hình intro.
+- Test: `test_doi_chieu.mjs` (29), `test_auto_fix_kich_ban.cjs` (25), `test_moc_4tang.py` (57), test cũ đều đạt. Mẫu `mau/kich_ban_v93_lon_nguong.json`; ảnh kiểm chứng `out/v93/lon/`, `out/v93/bia_12/`. Chưa chạy trên GitHub Actions, chưa render MP4.
+

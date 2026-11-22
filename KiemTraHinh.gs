@@ -2850,7 +2850,125 @@ function tuSuaKhung4Tang_(kb, r) {
     sua.push('KHUNG4TANG_3D_RONG: thiếu canh_3d_vector và không suy được khuôn từ đề; thêm {"khuon","tham_so","pha"} theo một trong 8 khuôn.');
   }
   if (!k4.buoc.length) { delete kb.khung4tang; kb.bo_dung = 'blender'; sua.push('khung4tang không còn bước -> đường dựng cũ'); return sua; }
+  sua = sua.concat(tuSuaMocCau_(kb, r));
   kb.bo_dung = '3d_vector';
+  return sua;
+}
+
+// v93: INTRO MÓC CÂU / OUTRO TÓM TẮT 3 BƯỚC / ĐỐI CHIẾU HÌNH ↔ ĐỒ THỊ — mọi trường đều TÙY CHỌN: thiếu thì tự sinh,
+// dài thì cắt ở ranh giới từ cho vừa bố cục (tiêu đề intro ≤ 2 dòng, mỗi dòng tóm tắt 1 dòng), số đáp án bị che "?".
+// Không bao giờ tạo lỗi cứng: kịch bản v92 cũ vẫn dựng như trước (chuanbi.py còn tự sinh lần nữa nếu thiếu).
+var DAI_MOC_CAU_ = {nhan_thi: 28, tieu_de_intro: 44, phu_de_intro: 36, cau_hook: 40, cta: 18, chien_thuat: 18, cong_thuc: 56};
+var HOOK_MOC_CAU_ = {
+  '12': ['MUỐN 9+ THI THPT KHÔNG THỂ BỎ QUA!', 'SAI 1 BƯỚC LÀ MẤT ĐIỂM!', 'DẠNG HAY GẶP TRONG ĐỀ THI!'],
+  '9': ['MUỐN ĐỖ VÀO 10 PHẢI NẮM DẠNG NÀY!', 'SAI 1 BƯỚC LÀ MẤT ĐIỂM!', '3 BƯỚC LÀ RA ĐÁP ÁN!'],
+  '': ['MUỐN 9+ THI KÌ KHÔNG THỂ BỎ QUA!', 'SAI 1 BƯỚC LÀ MẤT ĐIỂM!', '3 BƯỚC LÀ RA ĐÁP ÁN!']
+};
+function catTuMocCau_(x, max) {
+  x = String(x || '');
+  if (x.length <= max) return x;
+  var cat = x.slice(0, max + 1).replace(/\s+\S*$/, '').replace(/[\s,.;:·-]+$/, '');
+  return cat.length >= max * 0.5 ? cat : x.slice(0, max).trim();
+}
+// bỏ mã TeX ($, \lệnh, {}, ^, _) -> chữ thường; hoa = in hoa
+function chuSachMocCau_(s, max, hoa) {
+  var x = String(s || '').replace(/\\(?:text|mathrm|mathbf)\s*\{([^{}]*)\}/g, '$1').replace(/\\(times|cdot)/g, '×')
+    .replace(/\\[a-zA-Z]+/g, ' ').replace(/[${}^_\\]/g, '').replace(/\s+/g, ' ').trim();
+  if (hoa !== false) x = x.toUpperCase();
+  return catTuMocCau_(x, max);
+}
+function cheDapSoMocCau_(s, kb) {
+  var mau = typeof mauDapSoLo_ === 'function' ? mauDapSoLo_(kb) : [];
+  s = String(s || '');
+  // mẫu có nhóm (^|...) ở đầu thì giữ lại ký tự đứng trước; mẫu không nhóm (frac{a}{b}) -> tham số thứ 2 là vị trí (số)
+  mau.forEach(function (re) { s = s.replace(new RegExp(re.source, 'g' + (re.ignoreCase ? 'i' : '')), function (m, g1) { return (typeof g1 === 'string' ? g1 : '') + '?'; }); });
+  return s.replace(/\?(?:\s*[\/:,.]\s*\?)+/g, '?');
+}
+function congThucGonMocCau_(tex) {
+  var s = String(tex || '').replace(/\s+/g, ' ').replace(/^\$+|\$+$/g, '').trim();
+  if (s.length <= DAI_MOC_CAU_.cong_thuc) return s;
+  var ve = s.split('=').map(function (v) { return v.trim(); }).filter(function (v) { return v; });
+  while (ve.length > 2) ve.shift();
+  s = ve.join(' = ');
+  return s.length <= DAI_MOC_CAU_.cong_thuc ? s : ve[ve.length - 1].slice(0, DAI_MOC_CAU_.cong_thuc);
+}
+function tuSuaMocCau_(kb, r) {
+  var sua = [];
+  var k4 = kb.khung4tang || {};
+  var lop = String(kb.lop || (r && r.lop) || '').trim();
+  // 1. viên thuốc ngữ cảnh thi
+  var nt = chuSachMocCau_(kb.nhan_thi, DAI_MOC_CAU_.nhan_thi);
+  if (!nt) { nt = lop === '9' ? 'ÔN THI VÀO 10' : lop === '12' ? 'ÔN THI THPT · LỚP 12' : (lop ? 'LUYỆN THI · LỚP ' + lop : 'LUYỆN THI'); sua.push('tự điền nhan_thi'); }
+  kb.nhan_thi = nt;
+  // 2. tiêu đề intro: tối đa 2 dòng (≤ 40 ký tự, bỏ từ dài > 22 ký tự), che số đáp án
+  var td = '', nguon = [kb.tieu_de_intro, kb.hook_chu, kb.tieu_de_bia, kb.tieu_de, kb.chu_de];
+  for (var i = 0; i < nguon.length && td.length < 6; i++) {
+    td = chuSachMocCau_(cheDapSoMocCau_(nguon[i], kb), 200).split(' ').filter(function (w) { return w.length <= 22; }).join(' ');
+    td = catTuMocCau_(td, DAI_MOC_CAU_.tieu_de_intro);
+  }
+  if (td !== String(kb.tieu_de_intro || '')) sua.push(kb.tieu_de_intro ? 'cắt gọn/che số tieu_de_intro' : 'tự điền tieu_de_intro');
+  kb.tieu_de_intro = td || 'GIẢI NHANH BÀI TOÁN';
+  // 3. dòng phụ chuyên đề
+  var pd = chuSachMocCau_(cheDapSoMocCau_(kb.phu_de_intro, kb), DAI_MOC_CAU_.phu_de_intro);
+  if (!pd) {
+    var phan = [], cd = chuSachMocCau_(kb.chu_de_ngan || kb.chu_de || '', 22);
+    if (cd) phan.push(cd);
+    (k4.buoc || []).forEach(function (b) {
+      var n = chuSachMocCau_(b && b.nhan, 14);
+      if (n && !/^(ĐỀ BÀI|ĐỀ|BƯỚC\s*\d+|KẾT LUẬN|DỰNG HÌNH|ĐÁP SỐ|ĐÁP ÁN|TÓM TẮT)$/.test(n) && phan.indexOf(n) < 0 && n.indexOf('?') < 0) phan.push(n);
+    });
+    while (phan.length && phan.join(' · ').length > DAI_MOC_CAU_.phu_de_intro) phan.pop();
+    pd = phan.slice(0, 3).join(' · ');
+    if (pd) sua.push('tự điền phu_de_intro');
+  }
+  kb.phu_de_intro = pd;
+  // 4. câu hook tâm lý + 5. CTA
+  var hk = chuSachMocCau_(cheDapSoMocCau_(kb.cau_hook, kb), DAI_MOC_CAU_.cau_hook);
+  if (hk.length < 6) {
+    var ds = HOOK_MOC_CAU_[lop] || HOOK_MOC_CAU_[''], h = 0, id = String(kb.id || kb.de_bai || '');
+    for (var j = 0; j < id.length; j++) h = (h * 31 + id.charCodeAt(j)) % 9973;
+    hk = ds[h % ds.length]; sua.push('tự điền cau_hook');
+  }
+  kb.cau_hook = hk;
+  kb.cta = chuSachMocCau_(kb.cta, DAI_MOC_CAU_.cta) || 'LƯU NGAY VIDEO!';
+  // 6. tóm tắt 3 bước: mỗi dòng 1 dòng (tên chiến thuật ≤ 18 ký tự, công thức ≤ 56 ký tự TeX); thiếu -> rút từ các bước giải
+  var tt = (Array.isArray(kb.tom_tat_3_buoc) ? kb.tom_tat_3_buoc : []).map(function (d) {
+    if (typeof d === 'string') return {chien_thuat: chuSachMocCau_(d, DAI_MOC_CAU_.chien_thuat, false), cong_thuc: ''};
+    return d && typeof d === 'object' ? {chien_thuat: chuSachMocCau_(d.chien_thuat, DAI_MOC_CAU_.chien_thuat, false), cong_thuc: congThucGonMocCau_(d.cong_thuc)} : null;
+  }).filter(function (d) { return d && d.chien_thuat; });
+  if (tt.length < 2) {
+    var ung = (k4.buoc || []).slice((k4.buoc || []).length >= 4 ? 1 : 0);
+    var ct = function (b) {
+      var the = (b && b.the) || [];
+      for (var q = the.length - 1; q >= 0; q--) {
+        if (the[q] && the[q].loai === 'cong_thuc' && Array.isArray(the[q].dong) && the[q].dong.length) return String(the[q].dong[the[q].dong.length - 1]);
+        if (the[q] && the[q].loai === 'casio' && the[q].ket_qua) return String(the[q].ket_qua);
+      }
+      return '';
+    };
+    var co = ung.filter(function (b) { return ct(b); });
+    if (co.length > 3 && /kết luận|đáp/i.test(String(co[co.length - 1].nhan || ''))) co.pop();
+    if (co.length > 3) co = [co[0], co[Math.floor(co.length / 2)], co[co.length - 1]];
+    var chon = co.concat(ung.filter(function (b) { return co.indexOf(b) < 0; })).slice(0, 3);
+    chon.sort(function (a, b) { return ung.indexOf(a) - ung.indexOf(b); });
+    tt = chon.map(function (b) { return {chien_thuat: chuSachMocCau_(b.nhan || b.tieu_de, DAI_MOC_CAU_.chien_thuat, false), cong_thuc: congThucGonMocCau_(ct(b))}; })
+      .filter(function (d) { return d.chien_thuat; });
+    if (tt.length >= 2) sua.push('tự điền tom_tat_3_buoc');
+  }
+  if (tt.length >= 2) kb.tom_tat_3_buoc = tt.slice(0, 3); else delete kb.tom_tat_3_buoc;
+  // 7. đối chiếu Hình ↔ Đồ thị: kiểm hình dạng dữ liệu; sai một chỗ -> bỏ (tầng 2 giữ sân khấu 3D chuẩn)
+  (k4.buoc || []).forEach(function (b, jb) {
+    if (!b || b.doi_chieu === undefined) return;
+    var d = b.doi_chieu, ok = d && typeof d === 'object' && typeof d.ham === 'string' && d.ham.length <= 120 &&
+      /^[-+*\/^().,0-9a-zπ\s]+$/i.test(d.ham) && Array.isArray(d.mien) && d.mien.length === 2 &&
+      isFinite(Number(d.mien[0])) && isFinite(Number(d.mien[1])) && Number(d.mien[1]) > Number(d.mien[0]);
+    if (ok && d.nguong !== undefined && d.nguong !== null) ok = typeof d.nguong === 'object' && isFinite(Number(d.nguong.gia_tri)) && (d.nguong.kieu === '<=' || d.nguong.kieu === '>=');
+    if (ok && d.toi_uu !== undefined && d.toi_uu !== null) ok = isFinite(Number(d.toi_uu)) && Number(d.toi_uu) >= Number(d.mien[0]) && Number(d.toi_uu) <= Number(d.mien[1]);
+    if (!ok) { delete b.doi_chieu; sua.push('bỏ doi_chieu bước ' + (jb + 1) + ' (dữ liệu hàm/miền/ngưỡng không hợp lệ -> giữ 3D)'); return; }
+    d.mien = [Number(d.mien[0]), Number(d.mien[1])];
+    d.kieu = d.kieu === 'min' ? 'min' : 'max';
+    if (['tam_bia', 'mat_cat_tru', 'tam_giac_luc', 'thanh'].indexOf(d.hinh) < 0) d.hinh = 'thanh';
+  });
   return sua;
 }
 

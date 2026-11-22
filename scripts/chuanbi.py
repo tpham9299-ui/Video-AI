@@ -1638,7 +1638,17 @@ def khung_4_tang(kb, canh_props, fps):
                 b.pop(kh, None)
     print("Khung 4 tầng: %d bước (mốc %s s), %d mốc khớp lời đọc, %d mốc ước lượng, 3D: %s" % (
         len(buoc), ", ".join("%.1f" % x for x in t_buoc), thong_ke["khop"], thong_ke["uoc"], nguon_3d))
+    # ---- v93: đối chiếu Hình động ↔ Đồ thị (bài tối ưu), Intro móc câu, Outro tóm tắt 3 bước (đều có fallback) ----
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import khung4tang_v93 as v93
+    t_dap = next((c["batDau"] / fps for c in canh_props if re.search(r"dap_an|ket_qua", str(c.get("loai") or ""))), None)
+    j_dc = v93.gan_doi_chieu(kb, ds_buoc[:len(buoc)], buoc, c3, t_dap)
+    if j_dc is not None:
+        print("Đối chiếu Hình động ↔ Đồ thị: bước %d (%s, hàm %s)" % (j_dc + 1, buoc[j_dc]["nhan"], buoc[j_dc]["doi_chieu"]["ham"]))
+    moc_cau = v93.moc_cau(kb, buoc, so_lo)
+    tom_tat = v93.tom_tat(kb, buoc)
     return {"tongFrame": int(round(tong * fps)), "fps": fps,
+            "mocCau": moc_cau, "tomTat": tom_tat,
             # v92: phụ đề MẶC ĐỊNH TẮT trên khung 4 tầng (chỉ bật khi kịch bản ghi rõ phu_de: "gon")
             # (kịch bản cũ do prompt v91 luôn ghi "gon" -> bỏ qua; muốn bật lại: env PHU_DE_4TANG=BAT)
             "boCuc": {"anToanTikTok": True, "phuDe": "gon" if str(os.environ.get("PHU_DE_4TANG") or "").upper() in ("1", "BAT", "GON") else "tat"},
@@ -2981,6 +2991,18 @@ def main():
     if k4:
         props["boCuc"] = "4tang"
         props["khung4tang"] = k4
+        # v93: Intro móc câu vào thẳng từ giây 0 cùng giọng đọc -> BỎ intro thương hiệu im lặng phía trước (lech = 0)
+        # (phong_cach.json "intro": {"mocCau4Tang": false} để giữ intro thương hiệu cũ)
+        if (pc.get("intro") or {}).get("mocCau4Tang", True) is False:
+            k4["mocCau"] = None
+        elif k4.get("mocCau") and props.get("intro"):
+            props["tongFrame"] -= props["intro"]["lech"]
+            props["intro"] = None
+        # v93: Outro tóm tắt 3 bước cần >= 6,5 s (màn kết v89 chỉ 3,2 s khi video đã có cảnh bai_hoc)
+        if k4.get("tomTat") and outro and outro.get("loai") == "tu_tao" and outro["soFrame"] < int(6.5 * FPS):
+            them = int(6.5 * FPS) - outro["soFrame"]
+            outro["soFrame"] += them
+            props["tongFrame"] += them
     cham("Thương hiệu, bìa, khung 4 tầng")
     if not args.gia_lap:
         print("Giọng đọc: %d cảnh bằng Gemini TTS (%s), %d đoạn bằng edge-tts (%s), %d đoạn bằng Google TTS dự phòng" % (

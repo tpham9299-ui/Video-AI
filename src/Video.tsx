@@ -22,6 +22,8 @@ import {ThanhTienDo} from './ThanhTienDo';
 import {KieuToan, NapPhongToan} from './Toan';
 import {Props, ThuongHieuProps} from './types';
 import {Khung4Tang} from './khung4tang/Khung4Tang';
+import {OutroTomTat} from './khung4tang/OutroTomTat';
+import {chuanHoaCanh3DV} from './3d-vector/dac_ta';
 
 // Chớp sáng ở khung hình đầu tiên: cắt ngang thói quen lướt của người xem.
 const ChopSang: React.FC = () => {
@@ -117,6 +119,9 @@ const NoiDung4Tang: React.FC<Props & {coIntro?: boolean}> = (props) => {
   const ketThuc = outro ? outro.batDau : tongFrame;
   // phụ đề gọn: câu của từng cảnh đổi sang giây toàn phần nội dung
   const cau = React.useMemo(() => canh.flatMap((c) => c.cau.map((x) => ({text: x.text, bat: c.batDau / fps + x.bat, ket: c.batDau / fps + x.ket}))), [canh, fps]);
+  // v93: màn kết "tóm tắt 3 bước" (giữ mô hình 3D ở trạng thái cuối); không có tomTat -> màn kết v92
+  const tomTat = k.tomTat && k.tomTat.length ? k.tomTat : null;
+  const canhCuoi = React.useMemo(() => (tomTat ? chuanHoaCanh3DV(k.canh3dv, [...(k.buoc || [])].map((b) => b.t).sort((x, y) => x - y), Math.max(1, ketThuc) / fps).canh : null), [tomTat, k.canh3dv, k.buoc, ketThuc, fps]);
   return (
     <AbsoluteFill style={{fontFamily: FONT, background: '#0E1014'}}>
       <Sequence from={0} durationInFrames={Math.max(1, ketThuc)}>
@@ -139,7 +144,9 @@ const NoiDung4Tang: React.FC<Props & {coIntro?: boolean}> = (props) => {
       )}
       {outro ? (
         <Sequence from={outro.batDau} durationInFrames={outro.soFrame}>
-          {outro.loai === 'tu_tao' ? <ManKetChuyenNghiep th={thuongHieu} baiHoc={props.baiHoc || []} dapAn={props.dapAn} tiepTheo={props.tiepTheo || ''} /> : <ManKet tep={outro.tep} loai={outro.loai} />}
+          {outro.loai === 'tu_tao' && tomTat ? (
+            <OutroTomTat dapAn={props.dapAn} tomTat={tomTat} canh={canhCuoi} tCuoi={Math.max(1, ketThuc) / fps} thuongHieu={k.thuongHieu ?? thuongHieu?.ten} />
+          ) : outro.loai === 'tu_tao' ? <ManKetChuyenNghiep th={thuongHieu} baiHoc={props.baiHoc || []} dapAn={props.dapAn} tiepTheo={props.tiepTheo || ''} /> : <ManKet tep={outro.tep} loai={outro.loai} />}
         </Sequence>
       ) : null}
       {props.kiemDuyet ? <KiemDuyet /> : null}

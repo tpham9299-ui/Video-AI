@@ -36,6 +36,19 @@ TEN_LOI = {"cat_chu": "Cắt chữ / tràn khung", "chong_chu": "Chồng nhãn /
            "t2_trong": "Tầng 2 trống đen (không có hình 3D)", "hinh_dung_im": "Hình 3D đứng im ở mọi khung"}
 # Khung 4 tầng (src/khung4tang/vung.ts, an toàn TikTok): tầng 2 = y 288..1036 trên 1920 -> tỉ lệ trong ô lưới
 T2_TREN, T2_DUOI = 288 / 1920.0, 1036 / 1920.0
+# v93: vùng mô hình 3D lúc Intro móc câu (src/khung4tang/IntroMocCau.tsx INTRO_SAN = y 540, cao 748)
+INTRO_TREN, INTRO_DUOI = 540 / 1920.0, 1288 / 1920.0
+
+
+def co_intro_moc_cau(p):
+    """v93: video khung 4 tầng có Intro móc câu -> giây đại diện của intro (tính trong phần nội dung); không có -> None."""
+    k4 = p.get("khung4tang") or {}
+    if p.get("boCuc") != "4tang" or not k4.get("mocCau"):
+        return None
+    fps = float(p.get("fps") or 30)
+    tong = float(k4.get("tongFrame") or p.get("tongFrame") or 0) / fps
+    G = max(3.6, min(float(k4["mocCau"].get("giay") or 5), 5.0, tong * 0.4))
+    return min(1.8, G * 0.4)
 
 
 def lech_dau(p):
@@ -58,6 +71,9 @@ def chon_moc(p, dai_video):
     i_da = next((i for i, c in enumerate(canh) if re.search(r"dap_an|ket_qua", str(c.get("loai") or ""))), len(canh) - 1)
     i_de = next((i for i, c in enumerate(canh) if str(c.get("loai") or "") == "de_bai"), min(1, len(canh) - 1))
     moc = [(t_canh(canh[0], 0.6), "hook"), (t_canh(canh[i_de], 0.85), "đề bài")]
+    t_intro = co_intro_moc_cau(p)
+    if t_intro is not None:   # v93: ô 1 = khung đại diện Intro móc câu (~1,8 s), KHÔNG bỏ trống những giây đầu
+        moc[0] = (min(lech + t_intro, gioi_han), "intro móc câu")
     giua = list(range(i_de + 1, i_da)) or [i_de]
     # 5 mốc giải: 3 rải đều phần đầu + 2 cảnh sát trước đáp án; thiếu cảnh thì lấy nhiều thời điểm trong cùng cảnh
     sat = giua[-2:] if len(giua) >= 2 else giua * 2
@@ -142,6 +158,12 @@ def kiem_tat_dinh(p, anh_o, o_da):
     if p.get("boCuc") != "4tang" or not anh_o:
         return loi
     from PIL import ImageChops, ImageStat
+    # v93: ô 1 là Intro móc câu -> vùng mô hình giữa màn hình không được đen (intro phải có hình 3D ngay từ giây 0)
+    if co_intro_moc_cau(p) is not None and anh_o[0] is not None:
+        im = anh_o[0].crop((0, int(O_CAO * INTRO_TREN), O_RONG, int(O_CAO * INTRO_DUOI))).convert("L")
+        hist = im.histogram()
+        if sum(hist[70:]) / float(max(1, sum(hist))) < 0.003:
+            loi.append({"o": 1, "loai": "t2_trong", "mo_ta": "Intro móc câu không có hình 3D (vùng giữa màn hình đen)", "nang": True})
     y0, y1 = int(O_CAO * T2_TREN), int(O_CAO * T2_DUOI)
     giai = [k for k in range(1, min(o_da - 1, len(anh_o))) if anh_o[k] is not None]   # ô 2 .. ô trước đáp án (0-based)
     cat = {k: anh_o[k].crop((0, y0, O_RONG, y1)).convert("L") for k in giai}
@@ -164,7 +186,13 @@ def kiem_tat_dinh(p, anh_o, o_da):
 def prompt_ai(p, o_da):
     dap = str(p.get("dapAn") or "").strip()
     chuyen = "Xác suất" if (p.get("thuongHieu") or {}).get("chuyenMuc") == "xac_suat" else "Toán (không phải Xác suất)"
-    return (
+    # v93: ô 1 là khung Intro móc câu -> chỉ bắt lỗi hiển thị, không bắt thiếu thẻ giải / thanh ĐỀ / nhãn BƯỚC
+    ghi_chu_intro = (
+        "Ô 1 là khung INTRO MÓC CÂU (viên thuốc kỳ thi, tiêu đề vàng lớn, dòng phụ, mô hình 3D giữa màn hình; có thể có câu hook và nút LƯU NGAY VIDEO). "
+        "Ở ô 1 CHỈ bắt: cat_chu, chong_chu, latex_tho, ma_tho, lo_dap_an, và t2_trong khi vùng giữa màn hình đen không có hình 3D. "
+        "KHÔNG báo lỗi ô 1 vì thiếu thẻ giải, thiếu thanh ĐỀ hay thiếu nhãn BƯỚC (intro không có các phần đó).\n"
+    ) if co_intro_moc_cau(p) is not None else ""
+    return ghi_chu_intro + (
         "Bạn là người kiểm duyệt cuối của video toán dọc 9:16. Ảnh là lưới 3×3 gồm 9 khung hình theo thứ tự thời gian, "
         "mỗi ô có số 1..9 ở góc trên trái (dải nhãn đen-vàng đó là của người kiểm duyệt, KHÔNG phải lỗi video). "
         "Ô %d là cảnh đáp án, ô 9 là màn kết. Đáp số của bài: \"%s\".\n"

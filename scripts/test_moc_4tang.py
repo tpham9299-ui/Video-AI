@@ -116,6 +116,33 @@ def main():
     pc = {"tenTheoChuyenMuc": {"Xác suất": "Tư duy Xác suất", "mac_dinh": "Tư duy Toán"}}
     kiem(cb.ten_kenh_theo_chuyen_muc({"ten": "Tư duy Xác suất"}, pc, {"mon": "THUC_TE", "chu_de": "Tích phân quãng đường"})["ten"] == "Tư duy Toán", "tên kênh bài tích phân: Tư duy Toán")
 
+    print("v93 Intro móc câu / Outro tóm tắt / đối chiếu:")
+    import khung4tang_v93 as v93
+    kb = doc("bia_12.json")
+    cp = canh_gia(kb)
+    k = cb.khung_4_tang(copy.deepcopy(kb), cp, 30)
+    mc = k.get("mocCau") or {}
+    kiem(all(mc.get(x) for x in ("nhan_thi", "tieu_de", "cau_hook", "cta")), "kịch bản v92 cũ vẫn có đủ mocCau (fallback)", mc)
+    kiem(len(mc.get("tieu_de", "")) <= 44 and "128" not in json.dumps(mc, ensure_ascii=False), "mocCau: tiêu đề ≤ 44 ký tự, không lộ 128")
+    kiem(k.get("tomTat") and len(k["tomTat"]) == 3 and all(len(d["chien_thuat"]) <= 18 for d in k["tomTat"]), "tomTat: 3 dòng, tên chiến thuật ≤ 18 ký tự", k.get("tomTat"))
+    dc = [b for b in k["buoc"] if b.get("doi_chieu")]
+    kiem(len(dc) == 1 and dc[0]["nhan"] == "Xét dấu" and dc[0]["doi_chieu"]["hinh"] == "tam_bia", "bìa 12: đối chiếu tự suy ở bước Xét dấu", [b["nhan"] for b in dc])
+    kiem(dc and dc[0]["doi_chieu"]["hien_so"] is False, "đối chiếu trước cảnh đáp án: hien_so = False (chống lộ đáp án)")
+    sai = dict(kb, dap_an_cuoi="x = 3 cm, V = 108")
+    kiem(v93.kiem_doi_chieu(v93.suy_doi_chieu(sai, {"khuon": "tam_bia_gap_hop", "tham_so": {"a": 12}}), sai["dap_an_cuoi"]) is None,
+         "hàm suy từ khuôn không khớp đáp án -> không gắn đối chiếu (giữ 3D)")
+    kiem(v93.kiem_doi_chieu({"ham": "x^2", "mien": [-2, 2], "kieu": "min", "nguong": {"gia_tri": 100, "kieu": "<="}}) is None, "ngưỡng không bao giờ bị vượt -> bỏ")
+    kiem(v93.ham_an_toan("__import__('os')") is None and v93.ham_an_toan("2*pi*r^2+1024/r", "r")(4) > 0, "hàm an toàn: chặn mã lạ, đọc được pi và biến r")
+    kiem(v93.suy_doi_chieu(dict(kb, de_bai="Tấm bìa 12×12 gấp hộp, tính thể tích khi x = 2."), {"khuon": "tam_bia_gap_hop", "tham_so": {"a": 12}}) is None,
+         "đề không hỏi tối ưu -> không đối chiếu")
+    kb_hh = dict(doc("bia_12.json"), luong="hinh_hoc_thuan", mon="HINH_HOC")
+    kiem(cb.khung_4_tang(kb_hh, cp, 30) is None, "luồng hình học thuần: không có khung 4 tầng / intro / đối chiếu")
+    mau = json.load(open(os.path.join(GOC, "mau", "kich_ban_v93_lon_nguong.json"), encoding="utf8"))
+    k2 = cb.khung_4_tang(copy.deepcopy(mau), canh_gia(mau), 30)
+    kiem(k2["mocCau"]["nhan_thi"] == "ĐỀ GIỮA KÌ 1 · LỚP 12" and k2["tomTat"][0]["chien_thuat"] == "Rút h theo r", "trường AI ghi được giữ nguyên")
+    d2 = [b["doi_chieu"] for b in k2["buoc"] if b.get("doi_chieu")]
+    kiem(d2 and d2[0]["nguong"]["gia_tri"] == 400, "đối chiếu AI ghi (có ngưỡng) được giữ")
+
     print("\n%d đạt, %d lỗi" % (DAT, len(LOI)))
     sys.exit(1 if LOI else 0)
 

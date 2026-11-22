@@ -238,4 +238,61 @@ t('sinh đề: xoay vòng khuôn theo lớp và chèn yêu cầu khuôn vào pro
   assert.ok(/KHUÔN HÌNH 3D/.test(ctx.yeuCauKhuonSinhDe_('11', 'XAC_SUAT')));
 });
 
+console.log('v93: Intro móc câu / Outro tóm tắt / đối chiếu');
+const kbV93 = () => ({id: 'V93', luong: 'thuc_te_xac_suat', mon: 'THUC_TE', lop: '12', chu_de_ngan: 'Tối ưu hộp không nắp',
+  de_bai: 'Từ tấm bìa 12×12 cm cắt 4 góc gấp hộp. Tìm x để thể tích lớn nhất.', dap_an_cuoi: 'x = 2, V = 128', hook_chu: 'Cắt góc bao nhiêu để hộp chứa nhiều nhất?',
+  canh: [{loi_thoai: 'Cắt góc bao nhiêu?'}, {loi_thoai: 'Lập hàm thể tích.'}],
+  khung4tang: {buoc: [
+    {nhan: 'Đề bài', tieu_de: 'Tấm bìa', the: [{loai: 'chu', noi_dung: 'Cắt 4 góc'}]},
+    {nhan: 'Lập hàm', tieu_de: 'Thể tích', the: [{loai: 'cong_thuc', dong: ['V(x) = x(12 - 2x)^2']}]},
+    {nhan: 'Đạo hàm', tieu_de: "V'(x) = 0", the: [{loai: 'cong_thuc', dong: ["V'(x) = (12 - 2x)(12 - 6x)"]}]},
+    {nhan: 'Kết luận', tieu_de: 'V lớn nhất', the: [{loai: 'cong_thuc', dong: ['V(2) = 128']}]}],
+    canh_3d_vector: {khuon: 'tam_bia_gap_hop', tham_so: {a: 12}}}});
+t('kịch bản v92 (không có trường mới) -> tự điền đủ 5 trường intro + tom_tat_3_buoc, không lỗi cứng', () => {
+  const kb = kbV93();
+  const sua = ctx.tuSuaKhung4Tang_(kb, {mon: 'THUC_TE', lop: '12'});
+  assert.equal(kb.nhan_thi, 'ÔN THI THPT · LỚP 12');
+  assert.equal(kb.tieu_de_intro, 'CẮT GÓC BAO NHIÊU ĐỂ HỘP CHỨA NHIỀU NHẤT?');
+  assert.ok(kb.tieu_de_intro.length <= 44);
+  assert.equal(kb.phu_de_intro, 'TỐI ƯU HỘP KHÔNG NẮP · LẬP HÀM');
+  assert.ok(kb.cau_hook.length >= 6 && kb.cta === 'LƯU NGAY VIDEO!');
+  assert.equal(kb.tom_tat_3_buoc.length, 3);
+  assert.deepEqual(J(kb.tom_tat_3_buoc[0]), {chien_thuat: 'Lập hàm', cong_thuc: 'V(x) = x(12 - 2x)^2'});
+  assert.ok(!sua.some((x) => ctx.LOI_CUNG_RE_.test(x)), sua.join('; '));
+  assert.equal(kb.bo_dung, '3d_vector');
+});
+t('cắt gọn cho vừa bố cục: tiêu đề ≤ 2 dòng, bỏ TeX, che số đáp án; tóm tắt 1 dòng', () => {
+  const kb = kbV93();
+  Object.assign(kb, {tieu_de_intro: 'Hộp $V_{max}$ = 128 khi cắt góc x bằng bao nhiêu xăng-ti-mét vuông vức chuẩn chỉnh', cau_hook: 'Đáp án 128 nè', nhan_thi: 'đề giữa kì 1 · lớp 12',
+    tom_tat_3_buoc: [{chien_thuat: 'Lập hàm thể tích theo cạnh cắt x', cong_thuc: 'V = x(12-2x)^2 = 4x^3 - 48x^2 + 144x = 4x(x-6)^2'}, {chien_thuat: 'Đạo hàm', cong_thuc: "V' = 0"}]});
+  ctx.tuSuaKhung4Tang_(kb, {mon: 'THUC_TE', lop: '12'});
+  assert.ok(kb.tieu_de_intro.length <= 44 && !/[\\$_{}]/.test(kb.tieu_de_intro) && !/128/.test(kb.tieu_de_intro), kb.tieu_de_intro);
+  assert.ok(!/128/.test(kb.cau_hook));
+  assert.equal(kb.nhan_thi, 'ĐỀ GIỮA KÌ 1 · LỚP 12');
+  assert.ok(kb.tom_tat_3_buoc[0].chien_thuat.length <= 18);
+  assert.ok(kb.tom_tat_3_buoc[0].cong_thuc.length <= 56);
+});
+t('doi_chieu sai (ham có ký tự lạ / miền ngược / ngưỡng hỏng) -> bỏ, giữ 3D; hợp lệ -> giữ', () => {
+  const kb = kbV93();
+  const b = kb.khung4tang.buoc;
+  b[1].doi_chieu = {ham: 'alert(1);x', mien: [0, 6]};
+  b[2].doi_chieu = {ham: 'x*(12-2*x)^2', mien: [6, 0]};
+  b[3].doi_chieu = {ham: 'x*(12-2*x)^2', mien: [0, 6], nguong: {gia_tri: 'abc', kieu: '<='}};
+  b[0].doi_chieu = {ham: 'x*(12-2*x)^2', mien: [0, 6], kieu: 'max', toi_uu: 2, hinh: 'hop_la'};
+  ctx.tuSuaKhung4Tang_(kb, {mon: 'THUC_TE', lop: '12'});
+  assert.ok(!b[1].doi_chieu && !b[2].doi_chieu && !b[3].doi_chieu);
+  assert.equal(b[0].doi_chieu.hinh, 'thanh');
+});
+t('luồng hình học thuần: không có trường intro/doi_chieu nào được thêm (khóa luồng giữ nguyên)', () => {
+  const kb = kbV93();
+  kb.luong = 'hinh_hoc_thuan'; kb.mon = 'HINH_HOC';
+  ctx.tuSuaKhung4Tang_(kb, {mon: 'HINH_HOC', lop: '12'});
+  assert.ok(!kb.khung4tang && !kb.tieu_de_intro && !kb.tom_tat_3_buoc);
+});
+t('prompt v93: dạy trường tùy chọn intro/outro/doi_chieu', () => {
+  const p = ctx.huongDanKhung4Tang_({lop: '12', mon: 'THUC_TE'});
+  assert.ok(/"tieu_de_intro"/.test(p) && /"tom_tat_3_buoc"/.test(p) && /"doi_chieu"/.test(p) && /"nguong"/.test(p) && /"cau_hook"/.test(p));
+  assert.ok(/không đạo hàm/.test(ctx.huongDanKhung4Tang_({lop: '11', mon: 'THUC_TE'})));
+});
+
 console.log(`\n${dat} test đạt`);

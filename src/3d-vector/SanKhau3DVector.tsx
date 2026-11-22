@@ -16,9 +16,11 @@ type Ve =
 
 const NEN = '#0E1014';
 
-export const SanKhau3DVector: React.FC<{canh: Canh3DV; t: number; rong: number; cao: number; tongGiay: number}> = ({canh, t, rong, cao, tongGiay}) => {
+// v93: lechMay (tùy chọn) = máy xoay thêm n độ quanh trục đứng và phóng k lần quanh tâm hình (intro zoom-out / xoay mở, outro thở)
+export const SanKhau3DVector: React.FC<{canh: Canh3DV; t: number; rong: number; cao: number; tongGiay: number; lechMay?: {n?: number; k?: number}}> = ({canh, t, rong, cao, tongGiay, lechMay}) => {
   const kc = useMemo(() => tinhKhung(canh, rong, cao, tongGiay), [canh, rong, cao, tongGiay]);
-  const may = mayTai(kc, t, canh.quayNhe);
+  const may0 = mayTai(kc, t, canh.quayNhe);
+  const may = lechMay ? {...may0, n: may0.n + (lechMay.n || 0), k: may0.k * (lechMay.k && lechMay.k > 0 ? lechMay.k : 1)} : may0;
   const h = heTruc(may);
   const {manh, che} = dungCanh(canh, t, h.viTri);
   const ds: Manh[] = xuLyKhuat(manh, che, h.viTri, kc.R);
