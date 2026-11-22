@@ -73,7 +73,7 @@ export const SanKhauKhongGian: React.FC<{kg: KhongGianVao; t: number; rong: numb
         // v97 tinh tế: nhãn góc 50 % (14 px) — cố ý nhỏ -> data-kd-bo để kiểm duyệt bố cục không báo CHU_NHO
         <div key={g.id + 'n'} data-kd-bo="1" style={{position: 'absolute', left: g.nhan!.x, top: g.nhan!.y, transform: 'translate(-50%, -50%)', opacity: g.op, whiteSpace: 'nowrap',
           background: 'rgba(14,16,20,0.72)', borderRadius: 999, padding: '0 4px 1px'}}>
-          <Toan tex={g.nhan!.tex} size={14} color={MAU_KG.goc} style={{fontWeight: 700}} />
+          <Toan tex={g.nhan!.tex} size={22} color={MAU_KG.goc} style={{fontWeight: 700}} />
         </div>
       ))}
     </div>
