@@ -27,15 +27,16 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
   const fps = p.fps || 30;
   const t = f / fps;
   const bc = boCuc4Tang(p.boCuc?.anToanTikTok !== false);
-  const canh = useMemo(() => chuanHoaCanh3DV(p.canh3dv).canh, [p.canh3dv]);
   const buoc = useMemo(() => [...(p.buoc || [])].sort((a, b) => a.t - b.t), [p.buoc]);
+  // v92: khuôn tham số trải pha theo mốc các bước giải (mỗi bước có hình đổi); tongFrame = hết phần nội dung (sát Outro)
+  const canh = useMemo(() => chuanHoaCanh3DV(p.canh3dv, buoc.map((b) => b.t), p.tongFrame / fps).canh, [p.canh3dv, buoc, p.tongFrame, fps]);
   let i = -1;
   buoc.forEach((b, j) => b.t <= t && (i = j));
   if (i < 0 && buoc.length) i = 0;
   const mauNhan = i >= 0 ? mauBuoc(buoc[i]) : MAU_3DV.cyan;
   const gon = p.boCuc?.phuDe === 'gon';
   const cauNay = gon ? (p.cau || []).find((c) => t >= c.bat && t < c.ket) : undefined;
-  // phụ đề gọn có dải riêng 56 px lấy từ đáy T3 (không chồng lên thẻ giải)
+  // v92: phụ đề MẶC ĐỊNH TẮT (chỉ bật khi boCuc.phuDe === 'gon'); phụ đề gọn có dải riêng 56 px lấy từ đáy T3 (không chồng lên thẻ giải)
   const t3: Vung = gon ? {y: bc.t3.y, h: bc.t3.h - 56} : bc.t3;
 
   return (

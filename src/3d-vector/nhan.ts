@@ -2,7 +2,7 @@
 // vị trí ít va chạm nhất với: nhãn đã đặt, các điểm (chấm), thân nét chính/mũi tên. Sau đó một lượt đẩy nhẹ các nhãn còn
 // sát nhau theo khoảng cách 2D. Nhãn của đoạn/vector ưu tiên hướng VUÔNG GÓC với thân (không nằm đè lên mũi tên).
 export type NhanVao = {x: number; y: number; ax: number; ay: number; tex: string; co: number; huong?: [number, number]};
-export type NhanRa = {x: number; y: number};
+export type NhanRa = {x: number; y: number; w?: number; h?: number};
 export type VatCan = {cham: {x: number; y: number; r: number}[]; doan: {x1: number; y1: number; x2: number; y2: number; w: number}[]};
 
 // bề rộng ước lượng của nhãn KaTeX (bỏ lệnh \vec, \alpha... đếm như một ký tự)
@@ -85,5 +85,17 @@ export function datNhan(ds: NhanVao[], W: number, H: number, vc: VatCan = {cham:
       n.y = Math.min(H - n.h / 2 - 4, Math.max(n.h / 2 + 4, n.y));
     }
   }
-  return ra.map(({x, y}) => ({x, y}));
+  return ra.map(({x, y, w, h}) => ({x, y, w, h}));
+}
+
+// v92 SMART LEADER LINES: nhãn bị đẩy xa điểm neo (chỗ chật) -> nét dẫn mảnh từ điểm neo tới mép hộp nhãn.
+export function netDan(n: {x: number; y: number; co: number}, r: NhanRa): {x1: number; y1: number; x2: number; y2: number} | null {
+  const w = r.w ?? n.co, h = r.h ?? n.co * 1.25;
+  const dx = r.x - n.x, dy = r.y - n.y;
+  const L = Math.hypot(dx, dy);
+  if (L < n.co * 0.9 + 30) return null;
+  // điểm trên mép hộp nhãn theo hướng về điểm neo
+  const t = Math.min(w / 2 / Math.max(1e-6, Math.abs(dx)), h / 2 / Math.max(1e-6, Math.abs(dy)));
+  const ex = r.x - dx * Math.min(1, t) - (dx / L) * 4, ey = r.y - dy * Math.min(1, t) - (dy / L) * 4;
+  return {x1: n.x + (dx / L) * 7, y1: n.y + (dy / L) * 7, x2: ex, y2: ey};
 }

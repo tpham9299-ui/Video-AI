@@ -590,6 +590,8 @@ function sinhDeNeuCan_(sh, bc) {
     nhatKy_('TIM_INTERNET', 'Không tìm được đề phù hợp trên internet, chuyển sang AI sáng tác (' + mon + ', lớp ' + lop + ')');
   }
   var prompt = mon === 'HINH_HOC' ? promptSangTacHinhHoc_(lop, n, daCo) : mon === 'THUC_TE' ? promptSangTacThucTe_(lop, n, daCo) : promptSangTacXacSuat_(lop, n, daCo);
+  // v92: chọn KHUÔN 3D trước (xoay vòng theo lớp) rồi mới sáng tác đề khớp khuôn -> video luôn có hình 3D động đúng đề
+  if (mon !== 'HINH_HOC') prompt += yeuCauKhuonSinhDe_(lop, mon);
   var kq = goiGemini_(prompt, 0.9, { suyNghi: mon === 'HINH_HOC' ? 'medium' : cauHinh_('MUC_SUY_NGHI_KICH_BAN') });
   capNhatTb_('TB_SINH_DE_MS', Date.now() - tSinh);
   if (kq && !Array.isArray(kq) && Array.isArray(kq.de)) kq = kq.de;
@@ -612,6 +614,24 @@ function sinhDeNeuCan_(sh, bc) {
     });
     bc.moi++;
   });
+}
+
+// v92: xoay vòng 8 khuôn 3D tham số (lọc theo lớp: lớp 10 chỉ khuôn phẳng, lớp 11 không Oxyz/đạo hàm) cho đề AI sáng tác.
+function chonKhuonSinhDe_(lop, mon) {
+  var ds = typeof dsKhuonTheoLop_ === 'function' ? dsKhuonTheoLop_(lop, mon) : [];
+  if (!ds.length) return '';
+  var p = PropertiesService.getScriptProperties();
+  var k = Number(p.getProperty('KHUON_KE_' + mon) || 0);
+  p.setProperty('KHUON_KE_' + mon, String((k + 1) % 64));
+  return ds[k % ds.length];
+}
+function yeuCauKhuonSinhDe_(lop, mon) {
+  if (typeof dungKhung4Tang_ === 'function' && !dungKhung4Tang_({lop: lop, mon: mon})) return '';
+  var ten = chonKhuonSinhDe_(lop, mon);
+  if (!ten) return '';
+  return '\nKHUÔN HÌNH 3D CỦA LẦN NÀY (BẮT BUỘC): mọi đề sáng tác phải dựng minh họa được bằng khuôn "' + ten + '" — ' +
+    (typeof moTaKhuon_ === 'function' ? moTaKhuon_(ten) : ten) + '. Chọn bối cảnh và số liệu để hình khuôn này mô tả ĐÚNG đề (số liệu ghi rõ trong đề), vẫn giữ đúng chương trình lớp ' + lop + '. ' +
+    'Thêm vào mỗi phần tử JSON trường "khuon":"' + ten + '".\n';
 }
 
 /* ===================== CHỦ ĐỀ: XÁC SUẤT / TOÁN THỰC TẾ ===================== */

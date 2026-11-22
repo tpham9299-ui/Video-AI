@@ -54,7 +54,8 @@ export type CanhProps = {
   chuyenCanh?: string; // mo | truot_len | phong | luot_ngang | truot_xuong | lat_3d (để trống = tự chọn theo mạch bài) // giữ nguyên sân khấu của cảnh trước rồi diễn tiếp (liền mạch như video mẫu)
 };
 
-export type ThuongHieuProps = {ten: string; khauHieu: string; handle: string; markNuoc: boolean; logo: string | null; loiMoi?: string};
+// v92: chuyenMuc ('xac_suat' | 'toan') do chuanbi.py đặt; logo là tệp đúng chuyên mục (logo_toan.png...) hoặc null -> vẽ chữ động.
+export type ThuongHieuProps = {ten: string; khauHieu: string; handle: string; markNuoc: boolean; logo: string | null; loiMoi?: string; chuyenMuc?: string};
 // Intro thương hiệu chèn trước cảnh hook (chuanbi.py tạo từ phong_cach.json -> "intro"). lech = số khung nội dung bị lùi.
 export type IntroProps = {soFrame: number; chuyen: number; lech: number; ten?: string; khauHieu?: string; mauNhan?: string; mauPhu?: string; mauNen?: string; soTuNhan?: number; dungLogo?: boolean; amThanh?: boolean};
 export type OutroProps = {tep: string; loai: 'video' | 'anh' | 'tu_tao'; soFrame: number; batDau: number};

@@ -1,0 +1,41 @@
+{
+  "_ghi_chu": "v92 — tái hiện lỗi bài '12 thẻ xác suất' chạy qua đêm: canh_3d_vector viết theo prompt cũ (nhom_lap {ds}) -> tầng 2 trống đen; tiêu đề thô Omega / C(12,3); tiêu đề kết luận lộ đáp số; khi_noi bước 2 trùng câu đọc đề (nhảy bước sớm); thẻ không khi_noi; phụ đề 'gon' làm hỏng 'tích không chia hết'.",
+  "id": "LQD-THE12",
+  "mon": "XAC_SUAT",
+  "luong": "thuc_te_xac_suat",
+  "lop": "11",
+  "tieu_de": "Rút 3 thẻ: tích chia hết cho 4?",
+  "chu_de": "Xác suất tích chia hết",
+  "de_bai": "Có 12 tấm thẻ đánh số từ 1 đến 12. Rút ngẫu nhiên đồng thời 3 thẻ. Tính xác suất để tích ba số trên thẻ chia hết cho 4.",
+  "dap_an_cuoi": "31/44",
+  "hook": "Rút ba thẻ bất kỳ, khả năng tích chia hết cho bốn là bao nhiêu?",
+  "canh": [
+    {"so": 1, "loai": "mo_dau", "loi_thoai": "Rút ba thẻ bất kỳ, khả năng tích chia hết cho bốn là bao nhiêu?", "noi_dung_man_hinh": []},
+    {"so": 2, "loai": "de_bai", "loi_thoai": "Có mười hai tấm thẻ đánh số từ một đến mười hai. Rút đồng thời ba thẻ, tính xác suất tích ba số chia hết cho bốn.", "noi_dung_man_hinh": []},
+    {"so": 3, "loai": "y_do", "loi_thoai": "Đếm trực tiếp rất rối. Ta đếm phần bù: những bộ ba có tích không chia hết cho bốn.", "noi_dung_man_hinh": ["\\overline{A}: tích không chia hết cho 4"]},
+    {"so": 4, "loai": "tinh_toan", "loi_thoai": "Không gian mẫu là số cách chọn ba thẻ trong mười hai thẻ, bằng hai trăm hai mươi.", "noi_dung_man_hinh": ["n(\\Omega) = C_{12}^{3} = 220"]},
+    {"so": 5, "loai": "tinh_toan", "loi_thoai": "Chia mười hai số thành ba nhóm: sáu số lẻ, ba số chẵn không chia hết cho bốn, và ba bội của bốn.", "noi_dung_man_hinh": ["Lẻ: 6", "2, 6, 10: 3", "4, 8, 12: 3"]},
+    {"so": 6, "loai": "tinh_toan", "loi_thoai": "Trường hợp một, cả ba thẻ đều lẻ: có hai mươi cách.", "noi_dung_man_hinh": ["C_6^3 = 20"]},
+    {"so": 7, "loai": "tinh_toan", "loi_thoai": "Trường hợp hai, đúng một thẻ thuộc nhóm hai, sáu, mười và hai thẻ lẻ: ba nhân mười lăm bằng bốn mươi lăm cách.", "noi_dung_man_hinh": ["3 \\cdot C_6^2 = 45"]},
+    {"so": 8, "loai": "tinh_toan", "loi_thoai": "Vậy biến cố đối có sáu mươi lăm kết quả, xác suất của nó là sáu mươi lăm phần hai trăm hai mươi.", "noi_dung_man_hinh": ["n(\\overline{A}) = 65", "P(\\overline{A}) = \\frac{65}{220}"]},
+    {"so": 9, "loai": "dap_an", "loi_thoai": "Suy ra xác suất cần tìm bằng một trừ đi, được ba mươi mốt phần bốn mươi bốn.", "noi_dung_man_hinh": ["P(A) = 1 - \\frac{13}{44} = \\frac{31}{44}"]},
+    {"so": 10, "loai": "kiem_tra", "loi_thoai": "Thử lại: một trăm năm mươi lăm bộ tốt cộng sáu mươi lăm bộ xấu đúng bằng hai trăm hai mươi.", "noi_dung_man_hinh": ["155 + 65 = 220 \\;\\checkmark"]},
+    {"so": 11, "loai": "bai_hoc", "loi_thoai": "Gặp chữ chia hết cho bốn, hãy chia nhóm theo số thừa số hai rồi đếm phần bù.", "noi_dung_man_hinh": []}
+  ],
+  "khung4tang": {
+    "phu_de": "gon",
+    "de_ghim": [{"id": "n", "nhan": "12 thẻ"}, {"id": "k", "nhan": "rút 3"}, {"id": "P", "nhan": "P(A) = ?", "mau": "đỏ"}],
+    "buoc": [
+      {"canh": 1, "nhan": "Đề bài", "tieu_de": "Rút 3 trong 12 thẻ", "du_kien": ["n", "k"], "the": [{"loai": "chu", "noi_dung": "A: tích chia hết cho 4"}]},
+      {"khi_noi": "tích ba số chia hết cho bốn", "nhan": "Đếm", "tieu_de": "Đếm n(Omega) bằng C(12,3)", "the": [{"loai": "cong_thuc", "dong": ["n(\\Omega) = C_{12}^{3} = 220"]}]},
+      {"khi_noi": "chia mười hai số thành ba nhóm", "nhan": "Phân nhóm", "tieu_de": "Ba nhóm theo thừa số 2", "the": [{"loai": "cong_thuc", "dong": ["S_1: lẻ (6)", "S_2: 2, 6, 10", "S_3: 4, 8, 12"]}]},
+      {"khi_noi": "biến cố đối có sáu mươi lăm", "nhan": "Phần bù", "tieu_de": "Biến cố đối A", "the": [{"loai": "cong_thuc", "dong": ["n(\\overline{A}) = 20 + 45 = 65"]}]},
+      {"khi_noi": "vậy xác suất cần tìm", "nhan": "Kết luận", "tieu_de": "P(A) = 31/44", "the": [{"loai": "cong_thuc", "dong": ["P(A) = 1 - \\frac{65}{220} = \\frac{31}{44}"]}]}
+    ],
+    "canh_3d_vector": {
+      "phien_ban": 1,
+      "doi_tuong": [{"id": "the", "loai": "nhom_lap", "ds": [{"nhan": "1"}, {"nhan": "2"}, {"nhan": "3"}]}],
+      "buoc": [{"khi_noi": "", "camera": [20, 50, 1], "hien": ["the"]}]
+    }
+  }
+}

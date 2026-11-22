@@ -73,7 +73,9 @@ export type DoiTuong = {
   mauTung?: TenMau[];
 };
 
-export type LoaiHanhDong = 'truot_diem' | 'tach_vector' | 'gap_mat';
+// v92: dich (tịnh tiến cả vật: mặt phẳng cắt trượt, nhấc vật), ve_dan (vẽ dần đồ thị/đường cong theo thời gian),
+// nang (nhấc nổi + đổi màu + phát sáng các phần tử chọn của nhom_lap: thẻ/bi được chọn ở từng bước).
+export type LoaiHanhDong = 'truot_diem' | 'tach_vector' | 'gap_mat' | 'dich' | 've_dan' | 'nang';
 
 export type HanhDong = {
   loai: LoaiHanhDong;
@@ -83,6 +85,10 @@ export type HanhDong = {
   tu?: number; // truot_diem: tham số đầu (0..1); gap_mat: góc đầu (độ)
   den?: number;
   thanhPhan?: ('ngang' | 'dung')[]; // tach_vector
+  vec?: V3; // dich: độ dời cuối (cộng dồn với các lần dịch trước)
+  chiSo?: number[]; // nang: chỉ số phần tử (0-based) của nhom_lap
+  mauNang?: TenMau; // nang: màu phần tử được chọn
+  cao?: number; // nang: độ nhấc (đơn vị thế giới; mặc định 0,4 × khoảng)
   khiNoi?: string;
 };
 

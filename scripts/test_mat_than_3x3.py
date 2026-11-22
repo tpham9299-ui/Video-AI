@@ -55,6 +55,29 @@ def main():
     kiem([x["o"] for x in ds] == [3, 5], "bỏ lộ đáp án ở ô đáp án + loại lạ")
     kiem(ds[1]["nang"] is False, "giữ cờ nhẹ")
 
+    print("v92 kiểm tất định (khung 4 tầng):")
+    from PIL import Image, ImageDraw
+    p4 = dict(props_gia(), boCuc="4tang", thuongHieu={"ten": "Tư duy Toán", "chuyenMuc": "toan", "logo": None})
+
+    def o_anh(sang, lech=0):
+        im = Image.new("RGB", (mt.O_RONG, mt.O_CAO), (14, 16, 20))
+        if sang:
+            d = ImageDraw.Draw(im)
+            d.line([(60 + lech, 150), (300, 300 - lech)], fill=(56, 189, 248), width=4)
+            d.rectangle([100 + lech, 180, 220 + lech, 280], outline=(250, 204, 21), width=3)
+        return im
+    trong = [o_anh(True)] + [o_anh(False)] * 7 + [o_anh(True)]
+    kq = mt.kiem_tat_dinh(p4, trong, 8)
+    kiem(any(x["loai"] == "t2_trong" and x["nang"] for x in kq), "tầng 2 đen ở các ô giải -> t2_trong (nặng)")
+    im_lang = [o_anh(True)] * 9
+    kiem(any(x["loai"] == "hinh_dung_im" for x in mt.kiem_tat_dinh(p4, im_lang, 8)), "hình 3D giống hệt mọi ô -> hinh_dung_im")
+    dong = [o_anh(True, 12 * k) for k in range(9)]
+    kiem(mt.kiem_tat_dinh(p4, dong, 8) == [], "hình đổi theo từng bước -> đạt")
+    sai = dict(p4, thuongHieu={"ten": "Tư duy Xác suất", "chuyenMuc": "toan", "logo": "thuong_hieu/logo.png"})
+    kiem(len([x for x in mt.kiem_tat_dinh(sai, dong, 8) if x["loai"] == "logo_sai"]) == 2, "bài Toán mang tên/logo Xác suất -> logo_sai")
+    kiem(mt.kiem_tat_dinh(props_gia(), trong, 8) == [], "bố cục cũ (không 4 tầng) không áp kiểm tầng 2")
+    kiem(all(k in mt.prompt_ai(p4, 8) for k in ("ma_tho", "logo_sai", "so_cat", "t2_trong", "hinh_dung_im", "Toán (không phải Xác suất)")), "prompt AI có 5 loại lỗi mới + chuyên mục")
+
     if not shutil.which("ffmpeg"):
         print("Bỏ qua phần MP4 (máy không có ffmpeg)")
     else:

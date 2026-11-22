@@ -408,3 +408,15 @@
 - Auto-fix: `tuSuaHinhThuc_` + `phanLoaiLoiCung_` (chỉ lỗi cứng mới chặn), luồng thực tế hết vòng duyệt xét tiêu chí cốt lõi thay vì bỏ; Python `kiem_dac_ta_tu_sua`.
 - Mắt thần 3×3 (`scripts/mat_than_3x3.py`): lỗi nặng -> giữ CHO, `_mat_than_chan`, Zalo ảnh lưới (`guiAnhZalo_`), `DangVideo.gs matThanChan_`.
 - Test: `test_auto_fix_kich_ban.cjs` (14), `test_mat_than_3x3.py` (12), test cũ đều đạt (test_dac_ta_canh cập nhật: 30/30). Chưa chạy trên GitHub Actions và chưa gọi Gemini thật cho Mắt thần.
+
+### Lần 63 (v92) -- Vá 7 lỗi từ 6 video GitHub Actions + Bước 6: 8 khuôn 3D tham số
+- Gốc lỗi T2 trống / hình đứng im: prompt v91 dạy `nhom_lap {ds}`, `da_giac {dinh}`, `hinh_tru {tam_day}` trong khi `dac_ta.ts` đọc `so`/`diem`/`day` -> phần tử bị bỏ âm thầm (`canh = null`); thiếu `canh_3d_vector` chỉ là cảnh báo; mốc 3D không khớp lời = +1,2 s -> mọi thay đổi dồn vào 5 s đầu. Sửa: đọc cả tên cũ, 8 khuôn `src/3d-vector/khuon/` (pha trải theo bước), Auto-fix suy khuôn từ đề (KiemTraHinh.gs / chuanbi.py), `khuon_du_phong`, lỗi cứng `KHUNG4TANG_3D_RONG`.
+- Gốc lệch nhịp: khớp `khi_noi` với chữ phụ đề đã đổi số ("512" ≠ "năm trăm mười hai"), tìm lại từ đầu (khớp câu đọc đề -> nhảy bước sớm), bước và thẻ chung con trỏ, bước không khớp bị ép về `tong - 0,5 s` (mất bước cuối), thẻ không mốc dồn 2 s đầu bước. Viết lại `khung_4_tang` (chỉ tiến, theo cảnh, bỏ số, khớp gần 72%, trải đều, lấp thẻ từ `noi_dung_man_hinh`, thẻ đáp số tới Outro).
+- Phụ đề khung 4 tầng tắt mặc định; `hien_phu_de` bỏ luật "tích không" -> 0, so sánh `<`/`>` chỉ khi có biến, `chia_phu_de` không chẻ con số.
+- Tiêu đề bước / nhãn thẻ / thẻ chữ qua `ChuTron` (Omega, C(12,3), S_A, S'(r) -> KaTeX); BBT tên hàm động (`tachHam`, suy từ V'(x)/S'(r) trong kịch bản); tiêu đề bước che đáp số ("P(A) = ?").
+- Logo: `logo_theo_chuyen_muc` (chuanbi.py) — bài Toán không dùng `logo.png` in chữ Xác suất, `LogoTron` vẽ chữ động; workflow tải thêm `logo_toan.*`, `logo_xac_suat.*`.
+- Phát âm: `doc_ky_hieu_ham` — S'(r) "ét phẩy rờ", V'(x) "vê phẩy ích", dt/dx/dy "đê tê/đê ích/đê i", 0/zero -> "không".
+- Prompt: khuôn theo lớp, mỗi bước 2–3 thẻ có `khi_noi`, Casio MENU 8 / giải f'(x) = 0 + CALC (Auto-fix đổi SHIFT SOLVE ở bài tối ưu), `\overline{A}`, hook khớp đại lượng đáp án.
+- Sân khấu: 3 tầng nét (3 px + glow nhịp / 1,6 px / nét khuất 1 px 35%), focus nền 30%, máy "thở" ±2° suốt video, chống suy biến góc máy, đường dẫn nhãn, đầu bút sáng khi vẽ dần.
+- Mắt thần 3×3: đo điểm ảnh tầng 2 (`t2_trong`, `hinh_dung_im`), `logo_sai` từ props, AI chấm thêm `ma_tho`, `logo_sai`, `so_cat` (đều nặng).
+- Test: `test_khuon_3d.mjs` (56), `test_moc_4tang.py` (45), `test_auto_fix_kich_ban.cjs` (20), `test_mat_than_3x3.py` (18); mẫu `mau/loi_qua_dem/{the_12,lon_512,bia_12}.json` (tái hiện lỗi, không phải JSON thật của 6 video). Chưa chạy trên GitHub Actions.

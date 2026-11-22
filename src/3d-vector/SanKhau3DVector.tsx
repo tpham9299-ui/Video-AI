@@ -6,7 +6,7 @@ import {chieuDiem, heTruc} from './camera';
 import {dungCanh} from './canh';
 import {xuLyKhuat} from './khuat';
 import {mayTai, tinhKhung} from './khung_tu_dong';
-import {datNhan, NhanVao, VatCan} from './nhan';
+import {datNhan, netDan, NhanVao, VatCan} from './nhan';
 import {Toan} from '../Toan';
 
 type Ve =
@@ -95,24 +95,35 @@ export const SanKhau3DVector: React.FC<{canh: Canh3DV; t: number; rong: number; 
               </g>
             );
           }
-          // nét: lõi + quầng (nét rộng mờ phía dưới) — quầng mạnh hơn khi được nhấn mạnh
-          const w = v.w * (1 + 0.35 * v.sang);
+          // v92 PHÂN CẤP 3 TẦNG NÉT: trọng tâm (đang giảng) 3px + glow nhịp nhẹ | khung chính 1,6px | nét khuất 1px mờ 35%.
+          // Vector giữ thân dày hơn một bậc; lưới mảnh (mặt cầu) giữ nguyên độ mảnh.
+          const nhip = v.sang * (0.82 + 0.18 * Math.sin((t * 2 * Math.PI) / 1.8));
+          const goc = v.mui ? 2.6 : v.w >= 2.5 ? 1.6 : v.w;
+          const dinh = v.mui ? 4.2 : v.w >= 2.5 ? 3 : v.w * 1.4;
+          const w = goc + (dinh - goc) * v.sang;
           const dx = v.x2 - v.x1, dy = v.y2 - v.y1;
           const L = Math.hypot(dx, dy) || 1;
           const ux = dx / L, uy = dy / L;
           const dau = v.mui ? Math.min(L * 0.6, 15 + w * 2.4) : 0;
           const x2 = v.x2 - ux * dau * 0.8, y2 = v.y2 - uy * dau * 0.8;
-          const op = v.dut ? v.op * 0.55 : v.op;
+          const op = v.dut ? v.op * (0.35 + 0.4 * v.sang) : v.op;
           return (
             <g key={i} opacity={op}>
-              {!v.dut && v.w >= 2.5 ? <line x1={v.x1} y1={v.y1} x2={x2} y2={y2} stroke={v.mau} strokeWidth={w * (3 + 1.5 * v.sang)} strokeOpacity={0.1 + 0.18 * v.sang} strokeLinecap="round" /> : null}
-              <line x1={v.x1} y1={v.y1} x2={x2} y2={y2} stroke={v.mau} strokeWidth={v.dut ? Math.max(1.2, w * 0.75) : w} strokeLinecap={v.dut ? 'butt' : 'round'}
-                strokeDasharray={v.dut ? `${(w * 2.8).toFixed(1)} ${(w * 2.4).toFixed(1)}` : undefined} />
+              {!v.dut && v.w >= 2.5 && nhip > 0.02 ? <line x1={v.x1} y1={v.y1} x2={x2} y2={y2} stroke={v.mau} strokeWidth={w * (2.6 + 2.2 * nhip)} strokeOpacity={0.08 + 0.22 * nhip} strokeLinecap="round" /> : null}
+              {!v.dut && v.w >= 2.5 && nhip <= 0.02 ? <line x1={v.x1} y1={v.y1} x2={x2} y2={y2} stroke={v.mau} strokeWidth={w * 3} strokeOpacity={0.07} strokeLinecap="round" /> : null}
+              <line x1={v.x1} y1={v.y1} x2={x2} y2={y2} stroke={v.mau} strokeWidth={v.dut ? 1 + 0.6 * v.sang : w} strokeLinecap={v.dut ? 'butt' : 'round'}
+                strokeDasharray={v.dut ? '7 6' : undefined} />
               {v.mui && dau > 0 ? (
                 <path d={`M${v.x2},${v.y2} L${v.x2 - ux * dau - uy * dau * 0.5},${v.y2 - uy * dau + ux * dau * 0.5} L${v.x2 - ux * dau + uy * dau * 0.5},${v.y2 - uy * dau - ux * dau * 0.5} Z`} fill={v.mau} />
               ) : null}
             </g>
           );
+        })}
+      </svg>
+      <svg width={rong} height={cao} style={{position: 'absolute', inset: 0, overflow: 'visible', pointerEvents: 'none'}}>
+        {nhan.map((n, i) => {
+          const d = netDan(n, viTriNhan[i]);
+          return d ? <line key={i} x1={d.x1} y1={d.y1} x2={d.x2} y2={d.y2} stroke={n.mau} strokeWidth={1.1} strokeOpacity={0.7 * n.op} /> : null;
         })}
       </svg>
       {nhan.map((n, i) => (

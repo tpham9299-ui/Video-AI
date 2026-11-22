@@ -146,7 +146,7 @@ jobs:
             NEN="${DRIVE_NEN:-VIDEO_XACSUAT/nen}"
             ( rclone copy "gdrive:$NEN" public/nen --max-size 150M --include "*.{jpg,jpeg,png,webp,mp4,mov,webm,m4v,JPG,JPEG,PNG,MP4,MOV}" || echo "Không có thư mục nền $NEN, dùng nền mặc định" ) &
           fi
-          ( rclone copy "gdrive:${DRIVE_THUONG_HIEU:-VIDEO_XACSUAT/thuong_hieu}" public/thuong_hieu --include "{logo,outro}.*" || echo "Chưa có thư mục thương hiệu" ) &
+          ( rclone copy "gdrive:${DRIVE_THUONG_HIEU:-VIDEO_XACSUAT/thuong_hieu}" public/thuong_hieu --include "{logo,logo_toan,logo_xac_suat,outro}.*" || echo "Chưa có thư mục thương hiệu" ) &
           ( rclone copy "gdrive:${DRIVE_FONT:-VIDEO_XACSUAT/font}" public/fonts --include "tuy_chon-*" || echo "Không có phông riêng, dùng phông đóng gói sẵn" ) &
           ( rclone copy "gdrive:${DRIVE_NHAC:-VIDEO_XACSUAT/nhac}" public/nhac --max-size 30M --include "*.{mp3,m4a,wav,ogg,MP3,M4A,WAV}" || echo "Không có thư mục nhạc riêng, dùng nhạc tự tạo" ) &
           wait

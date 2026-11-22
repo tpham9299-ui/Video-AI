@@ -13,6 +13,11 @@ vì BP4 (kiem-tra-video.yml) vẫn chấm lưới trước khi video được DA
 
 Cách dùng: python3 scripts/mat_than_3x3.py public/props.json out/ID.mp4 out/
 Thử không gọi API: MAT_THAN_GIA_LAP=dat | loi  (loi = giả lập một lỗi nặng "lo_dap_an" ở ô 6)
+
+v92 — thêm kiểm TẤT ĐỊNH (đo điểm ảnh, không cần API, chạy cả khi hết key) cho video khung 4 tầng:
+  t2_trong (tầng 2 sân khấu 3D trống đen ở >= 2 ô giải), hinh_dung_im (hình 3D giống hệt nhau ở mọi ô giải),
+  logo_sai (bài Toán mà tên/logo kênh là "Xác suất"). AI chấm thêm ma_tho (_, Omega, C(n,k), \\frac thô ở tiêu đề/thẻ),
+  logo_sai, so_cat (con số bị cắt / tách đôi). Mọi loại trên đều là LỖI NẶNG.
 """
 import base64
 import json
@@ -25,8 +30,12 @@ from concurrent.futures import ThreadPoolExecutor
 
 GOC = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 O_RONG, O_CAO = 360, 640
-LOAI_LOI = ("cat_chu", "chong_chu", "latex_tho", "lo_dap_an")
-TEN_LOI = {"cat_chu": "Cắt chữ / tràn khung", "chong_chu": "Chồng nhãn / chồng chữ", "latex_tho": "Mã LaTeX thô", "lo_dap_an": "Lộ đáp án sớm"}
+LOAI_LOI = ("cat_chu", "chong_chu", "latex_tho", "lo_dap_an", "ma_tho", "logo_sai", "so_cat", "t2_trong", "hinh_dung_im")
+TEN_LOI = {"cat_chu": "Cắt chữ / tràn khung", "chong_chu": "Chồng nhãn / chồng chữ", "latex_tho": "Mã LaTeX thô", "lo_dap_an": "Lộ đáp án sớm",
+           "ma_tho": "Mã thô ở tiêu đề/thẻ", "logo_sai": "Logo/tên kênh sai chuyên mục", "so_cat": "Con số bị cắt lỗi",
+           "t2_trong": "Tầng 2 trống đen (không có hình 3D)", "hinh_dung_im": "Hình 3D đứng im ở mọi khung"}
+# Khung 4 tầng (src/khung4tang/vung.ts, an toàn TikTok): tầng 2 = y 288..1036 trên 1920 -> tỉ lệ trong ô lưới
+T2_TREN, T2_DUOI = 288 / 1920.0, 1036 / 1920.0
 
 
 def lech_dau(p):
@@ -92,6 +101,7 @@ def tao_luoi(video, moc, dich):
 
     with ThreadPoolExecutor(max_workers=4) as ex:
         tep = list(ex.map(chup, enumerate(moc)))
+    anh_o = []
     luoi = Image.new("RGB", (O_RONG * 3, O_CAO * 3), (8, 12, 14))
     ve = ImageDraw.Draw(luoi)
     try:
@@ -101,7 +111,11 @@ def tao_luoi(video, moc, dich):
     for k, f in enumerate(tep):
         x, y = (k % 3) * O_RONG, (k // 3) * O_CAO
         if os.path.exists(f) and os.path.getsize(f) > 0:
-            luoi.paste(Image.open(f).convert("RGB").resize((O_RONG, O_CAO)), (x, y))
+            o = Image.open(f).convert("RGB").resize((O_RONG, O_CAO))
+            anh_o.append(o)
+            luoi.paste(o, (x, y))
+        else:
+            anh_o.append(None)
         # số ô + nhãn mốc (để AI và người xem chỉ đúng ô lỗi)
         ve.rectangle([x, y, x + 150, y + 38], fill=(0, 0, 0))
         ve.text((x + 8, y + 4), "%d · %s" % (k + 1, moc[k][1]), fill=(255, 214, 10), font=phong)
@@ -112,22 +126,60 @@ def tao_luoi(video, moc, dich):
             os.remove(f)
         except OSError:
             pass
+    tao_luoi.anh_o = anh_o   # ảnh từng ô (360×640) cho kiểm tất định
     return dich
+
+
+def kiem_tat_dinh(p, anh_o, o_da):
+    """v92: lỗi nặng đo được bằng điểm ảnh / props (không cần AI). Chỉ áp dụng video khung 4 tầng."""
+    loi = []
+    th = p.get("thuongHieu") or {}
+    ten = str(th.get("ten") or "")
+    if th.get("chuyenMuc") == "toan" and re.search(r"xác suất", ten, re.I):
+        loi.append({"o": 1, "loai": "logo_sai", "mo_ta": "bài Toán nhưng tên kênh là \"%s\"" % ten, "nang": True})
+    if th.get("chuyenMuc") == "toan" and re.search(r"(^|/)logo\.(png|webp|jpe?g)$", str(th.get("logo") or "")):
+        loi.append({"o": 1, "loai": "logo_sai", "mo_ta": "bài Toán dùng logo.png (logo Xác suất), cần logo_toan.png hoặc logo chữ", "nang": True})
+    if p.get("boCuc") != "4tang" or not anh_o:
+        return loi
+    from PIL import ImageChops, ImageStat
+    y0, y1 = int(O_CAO * T2_TREN), int(O_CAO * T2_DUOI)
+    giai = [k for k in range(1, min(o_da - 1, len(anh_o))) if anh_o[k] is not None]   # ô 2 .. ô trước đáp án (0-based)
+    cat = {k: anh_o[k].crop((0, y0, O_RONG, y1)).convert("L") for k in giai}
+    trong = []
+    for k, im in cat.items():
+        hist = im.histogram()
+        sang = sum(hist[70:]) / float(max(1, sum(hist)))
+        if sang < 0.003:
+            trong.append(k)
+    if len(trong) >= 2:
+        loi.append({"o": trong[0] + 1, "loai": "t2_trong", "mo_ta": "tầng sân khấu 3D gần như đen ở ô %s" % ", ".join(str(k + 1) for k in trong), "nang": True})
+    ds = [cat[k] for k in giai[1:]]   # bỏ ô đề bài, xét các ô giải
+    if len(ds) >= 3 and len(trong) < len(giai):
+        lech = [ImageStat.Stat(ImageChops.difference(a, b)).mean[0] for a, b in zip(ds, ds[1:])]
+        if max(lech) < 1.2:
+            loi.append({"o": giai[1] + 1, "loai": "hinh_dung_im", "mo_ta": "hình 3D giống hệt nhau ở mọi ô giải (lệch lớn nhất %.2f)" % max(lech), "nang": True})
+    return loi
 
 
 def prompt_ai(p, o_da):
     dap = str(p.get("dapAn") or "").strip()
+    chuyen = "Xác suất" if (p.get("thuongHieu") or {}).get("chuyenMuc") == "xac_suat" else "Toán (không phải Xác suất)"
     return (
         "Bạn là người kiểm duyệt cuối của video toán dọc 9:16. Ảnh là lưới 3×3 gồm 9 khung hình theo thứ tự thời gian, "
         "mỗi ô có số 1..9 ở góc trên trái (dải nhãn đen-vàng đó là của người kiểm duyệt, KHÔNG phải lỗi video). "
         "Ô %d là cảnh đáp án, ô 9 là màn kết. Đáp số của bài: \"%s\".\n"
-        "Chỉ tìm 4 loại LỖI NẶNG, bỏ qua mọi góp ý thẩm mỹ:\n"
+        "Chỉ tìm các loại LỖI NẶNG sau, bỏ qua mọi góp ý thẩm mỹ:\n"
         "- cat_chu: chữ/công thức bị cắt mất một phần ở mép khung hoặc mép hộp, tràn ra ngoài khung hình.\n"
         "- chong_chu: hai nhãn/dòng chữ/công thức đè lên nhau đến mức khó đọc.\n"
         "- latex_tho: hiện nguyên mã LaTeX như \\\\frac, \\\\sqrt, \\\\cdot, $...$, ^{...}, _{...}, \\\\text thay vì công thức đã dựng.\n"
         "- lo_dap_an: đáp số cuối (%s) hiện rõ ở một ô TRƯỚC ô %d (hook, đề bài, các bước giải). Ô %d và ô 9 được phép có đáp số.\n"
+        "- ma_tho: tiêu đề bước / tiêu đề thẻ / nhãn hiện chữ thô thay vì ký hiệu đã dựng: dấu gạch dưới (S_A, S_1), chữ Omega/Delta/alpha, C(12,3) thay cho tổ hợp, \\\\frac.\n"
+        "- logo_sai: logo hoặc tên kênh (intro, góc trên, màn kết) ghi chuyên mục SAI: bài này thuộc chuyên mục \"" + chuyen + "\".\n"
+        "- so_cat: con số bị cắt cụt hoặc tách đôi giữa hai dòng/khung (1024 thành 1000 | 24), dấu so sánh chèn sai vào câu chữ.\n"
+        "- t2_trong: video bố cục 4 tầng mà vùng sân khấu giữa (dưới tiêu đề, trên thẻ giải) trống đen ở ô giải.\n"
+        "- hinh_dung_im: hình 3D giữa màn hình y hệt nhau ở mọi ô giải (không đổi góc, không có chi tiết mới).\n"
         "Chỉ báo khi thấy rõ. nang=true khi người xem chắc chắn nhận ra lỗi. "
-        "Trả JSON đúng mẫu: {\"loi\":[{\"o\":số ô,\"loai\":\"cat_chu|chong_chu|latex_tho|lo_dap_an\",\"mo_ta\":\"ngắn gọn tiếng Việt\",\"nang\":true}]} ; "
+        "Trả JSON đúng mẫu: {\"loi\":[{\"o\":số ô,\"loai\":\"cat_chu|chong_chu|latex_tho|lo_dap_an|ma_tho|logo_sai|so_cat|t2_trong|hinh_dung_im\",\"mo_ta\":\"ngắn gọn tiếng Việt\",\"nang\":true}]} ; "
         "không có lỗi thì {\"loi\":[]}."
     ) % (o_da, dap or "không rõ", dap or "không rõ", o_da, o_da)
 
@@ -203,10 +255,13 @@ def main():
         canh_bao = ""
     else:
         tho, canh_bao = goi_gemini(anh, p, o_da)
-    if tho is None:
+    tat_dinh = kiem_tat_dinh(p, getattr(tao_luoi, "anh_o", []), o_da)
+    for x in tat_dinh:
+        print("Mắt thần (đo điểm ảnh): ô %d %s - %s" % (x["o"], TEN_LOI[x["loai"]], x["mo_ta"]))
+    if tho is None and not tat_dinh:
         kq = {"dat": True, "chay": False, "loi": [], "ly_do": "", "canh_bao": "Mắt thần chưa chạy (%s), để BP4 kiểm duyệt" % canh_bao}
     else:
-        loi = chuan_loi(tho.get("loi"), o_da)
+        loi = tat_dinh + chuan_loi((tho or {}).get("loi"), o_da)
         nang = [x for x in loi if x["nang"]]
         ly_do = "; ".join("ô %d %s%s" % (x["o"], TEN_LOI[x["loai"]], (": " + x["mo_ta"]) if x["mo_ta"] else "") for x in nang)
         kq = {"dat": not nang, "chay": True, "loi": loi, "ly_do": ("Mắt thần 3×3: " + ly_do) if nang else ""}

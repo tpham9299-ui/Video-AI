@@ -20,6 +20,12 @@ const chuCai = (th: ThuongHieuProps) => {
   return (w.length >= 2 ? w[0][0] + w[w.length - 1][0] : s.slice(0, 2)).toUpperCase();
 };
 
+// "Tư duy Xác suất" -> ["Tư duy", "Xác suất"]: 2 từ đầu ở dòng trên, phần còn lại (chuyên mục) dòng dưới
+export const dongLogo = (ten: string): [string, string] => {
+  const w = String(ten || '').trim().split(/\s+/);
+  return w.length <= 2 ? [w[0] || '', w[1] || ''] : [w.slice(0, 2).join(' '), w.slice(2).join(' ')];
+};
+
 export const LogoTron: React.FC<{th: ThuongHieuProps; co: number; goc?: number; sang?: number}> = ({th, co, goc = 0, sang = 0}) => (
   <div style={{position: 'relative', width: co, height: co, flexShrink: 0}}>
     <div style={{position: 'absolute', inset: -co * 0.08, borderRadius: '50%', background: `conic-gradient(from ${goc}deg, ${XANH}, ${CAM}, ${XANH}, transparent 70%, ${XANH})`, opacity: 0.92}} />
@@ -27,7 +33,15 @@ export const LogoTron: React.FC<{th: ThuongHieuProps; co: number; goc?: number; 
       {th.logo ? (
         <Img src={staticFile(th.logo)} style={{width: '86%', height: '86%', objectFit: 'contain'}} />
       ) : (
-        <span style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: co * 0.38, color: '#fff'}}>{chuCai(th)}</span>
+        co >= 96 && (th.ten || '').trim().split(/\s+/).length >= 2 ? (
+          // v92: logo chữ ĐỘNG theo chuyên mục ("Tư duy" / "Toán" | "Xác suất"), không dùng ảnh in cứng tên chuyên mục khác
+          <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.02, textAlign: 'center', padding: '0 8%'}}>
+            <span style={{fontFamily: FONT_DAM, fontWeight: 800, fontSize: co * 0.15, color: 'rgba(255,255,255,0.86)'}}>{dongLogo(th.ten)[0]}</span>
+            <span style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: co * (dongLogo(th.ten)[1].length > 6 ? 0.17 : 0.22), color: XANH}}>{dongLogo(th.ten)[1]}</span>
+          </div>
+        ) : (
+          <span style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: co * 0.38, color: '#fff'}}>{chuCai(th)}</span>
+        )
       )}
     </div>
   </div>

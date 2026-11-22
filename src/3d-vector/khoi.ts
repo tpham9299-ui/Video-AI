@@ -204,7 +204,14 @@ export function dungKhoi(d: DoiTuong, ctx: NguCanh, a: number, manh: Manh[], che
     }
     case 'duong_cong': {
       const ds = ctx.duongCua(d.id);
-      duong(ra, ds, {...o, w: 3.5}, a);
+      const tv = ctx.tienVe(d.id);
+      if (tv <= 0.001) break;
+      duong(ra, ds, {...o, w: 3.5}, a * tv);
+      // đầu bút sáng khi đang vẽ dần (đồ thị chạy theo thời gian)
+      if (tv < 0.999 && ds.length > 1) {
+        const dau = catDuong(ds, a * tv);
+        manh.push({k: 'cham', p: dau[dau.length - 1], mau: m, r: 6, op, kieu: 'diem', sang: 1, nhom});
+      }
       if (ds.length) nhanVat(ra, ds[Math.floor(ds.length * 0.85)], d.nhan, m, op, nhom);
       break;
     }
@@ -244,6 +251,7 @@ export function dungKhoi(d: DoiTuong, ctx: NguCanh, a: number, manh: Manh[], che
     }
     case 'nhom_lap': {
       const n = d.so!, k = d.khoang!, T = d.tam!;
+      const sang0 = sang;
       const vt: V3[] = [];
       if (d.xep === 'vong') {
         const R = Math.max(k, (k * n) / (2 * Math.PI));
@@ -255,11 +263,16 @@ export function dungKhoi(d: DoiTuong, ctx: NguCanh, a: number, manh: Manh[], che
       } else {
         for (let i = 0; i < n; i++) vt.push([T[0] + (i - (n - 1) / 2) * k, T[1], T[2]]);
       }
-      vt.forEach((p, i) => {
+      vt.forEach((p0, i) => {
         const ai = ctx.alpha(d.id, i * 0.07);
         if (ai <= 0.001) return;
-        const opi = ai * ctx.doDuc(d.id);
-        const mi = mau(d.mauTung?.[i] || d.mau);
+        // v92: phần tử được chọn nhấc nổi + đổi màu + sáng; phần còn lại hạ độ sáng khi đang có phần tử được nhấc
+        const ng = ctx.nangPhanTu(d.id, i);
+        const p = ng.h ? cong(p0, [0, 0, ng.h * k]) : p0;
+        const coNang = d.vat !== undefined && ctx.canh.buoc.some((b) => b.hanhDong.some((h) => h.vat === d.id && h.loai === 'nang' && h.t <= ctx.t));
+        const opi = ai * ctx.doDuc(d.id) * (coNang ? 0.42 + 0.58 * Math.max(ng.sang, 0) : 1);
+        const sang = Math.max(sang0, ng.sang);
+        const mi = ng.mau && ng.sang > 0.5 ? mau(ng.mau) : mau(d.mauTung?.[i] || d.mau);
         const nh = d.nhanTung?.[i] ?? (d.vat === 'the' ? String(i + 1) : '');
         if (d.vat === 'bi') {
           manh.push({k: 'cham', p: cong(p, [0, 0, k * 0.38]), mau: mi, r: 0, rTheGioi: k * 0.38, op: opi, kieu: 'bi', sang, nhom});

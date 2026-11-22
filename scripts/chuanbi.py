@@ -166,6 +166,7 @@ DON_VI_HIEN = [("xăng ti mét vuông", "cm²"), ("xăng-ti-mét vuông", "cm²"
                ("m lập phương", "m³"), ("m bình phương", "m²"), ("mét", "m")]
 DON_VI_SAU_SO = re.compile(r"^(cm|mm|m|km|kg|g|m²|m³|cm²|cm³|mét|độ|phần|lít|giờ|phút|giây|đồng|nghìn|triệu|thẻ|số|pi|lần|người|bạn|viên|quả|cái|%|nhỏ|lớn|bằng|cộng|trừ|nhân|chia|<|>|=)$|^(xăng|xen|ki-lô|mi-li)", re.I)
 NOI_CUM_SO = {"phần", "phẩy", "pi", "mét", "xăng-ti-mét", "bằng", "nhỏ", "lớn", "hơn", "trừ", "cộng", "nhân", "chia", "bình", "lập", "phương"}
+KHONG_LA_SO = re.compile(r"^(bằng|=|trừ|cộng|nhân|chia|<|>|≤|≥|là)$", re.I)
 TU_TOAN_TRUOC = re.compile(r"^(bằng|=|là|phẩy|phần|chia|nhân|cộng|trừ|<|>|hơn|được|còn|tổng|tích|x|r|h|y|n|k)$", re.I)
 
 
@@ -221,7 +222,8 @@ def so_chu_sang_so(text):
         truoc = ra[-1].lower().strip(",.;:!?") if ra else ""
         v = _gia_tri_cum_so(cum)
         # "không" đơn lẻ chỉ là số 0 khi đứng sau từ toán ("bằng không"), tránh đổi "không thỏa mãn"
-        if cum == ["không"] and not TU_TOAN_TRUOC.match(truoc) and sau not in ("nhỏ", "lớn", "<", ">"):
+        # v92: "tích không chia hết" -> giữ chữ (trước đây "tích"/"tổng"/"được" làm "không" thành 0)
+        if cum == ["không"] and not (KHONG_LA_SO.match(truoc) or sau in ("phẩy", "<", ">")):
             v = None
         doi = v is not None and (len(cum) >= 2 or DON_VI_SAU_SO.match(sau) or TU_TOAN_TRUOC.match(truoc) or cum[0] == "zero")
         if not doi:
@@ -248,8 +250,12 @@ def hien_phu_de(text):
     s = re.sub(r"(\S)\s+bình phương\b", r"\1²", s)
     s = re.sub(r"(\S)\s+lập phương\b", r"\1³", s)
     toan = r"(?:[a-zA-Z]'?\([a-z]\)|[\d.,]+[π²³%]?|[a-zA-Z]'?[²³]?|\)[²³]?)"
-    for doc, ky in (("lớn hơn hoặc bằng", "≥"), ("nhỏ hơn hoặc bằng", "≤"), ("nhỏ hơn", "<"), ("lớn hơn", ">"), ("bằng", "="),
-                    ("trừ", "−"), ("cộng", "+"), ("nhân", "·")):
+    # v92: so sánh < > chỉ khi một vế là BIẾN chữ (x, r, V(x)) -> câu văn "4 lớn hơn 384!" không thành ký hiệu
+    bien = r"(?:[a-zA-Z]'?\([a-z]\)|[a-zA-Z]'?[²³]?)"
+    for doc, ky in (("lớn hơn hoặc bằng", "≥"), ("nhỏ hơn hoặc bằng", "≤"), ("nhỏ hơn", "<"), ("lớn hơn", ">")):
+        s = re.sub(r"(?<![\wÀ-ỹ'])(" + bien + r")\s+" + doc + r"\s+(?=" + toan + r"(?![\wÀ-ỹ!]))", r"\1 " + ky + " ", s)
+        s = re.sub(r"(?<![\wÀ-ỹ'])(" + toan + r")\s+" + doc + r"\s+(?=" + bien + r"(?![\wÀ-ỹ!]))", r"\1 " + ky + " ", s)
+    for doc, ky in (("bằng", "="), ("trừ", "−"), ("cộng", "+"), ("nhân", "·")):
         s = re.sub(r"(?<![\wÀ-ỹ'])(" + toan + r")\s+" + doc + r"\s+(?=" + toan + r"(?![\wÀ-ỹ]))", r"\1 " + ky + " ", s)
     # nối cụm toán bằng dấu cách không ngắt: "x = 10", "0 < x < 30", "30 − x", "54π m³"
     s = re.sub(r"(?<=\S) (?=[=<>≤≥−+·] )", " ", s)
@@ -258,8 +264,30 @@ def hien_phu_de(text):
     return s
 
 
+# v92: tên chữ cái thường khi đọc ký hiệu hàm / vi phân (biến y đọc "i", không phải "i dài")
+TEN_BIEN = {"x": "ích", "y": "i", "t": "tê", "r": "rờ", "s": "ét", "v": "vê", "f": "ép", "g": "gờ", "h": "hát", "n": "nờ", "k": "ca",
+            "a": "a", "b": "bê", "c": "xê", "m": "mờ", "p": "pê", "q": "quy", "l": "lờ", "d": "đê", "u": "u", "z": "dét", "w": "vê kép"}
+
+
+def _ten_ky(c):
+    return TEN_CHU_CAI.get(c, c) if c.isupper() else TEN_BIEN.get(c, c)
+
+
+def doc_ky_hieu_ham(s):
+    """v92: S'(r) -> "ét phẩy rờ", V'(x) -> "vê phẩy ích", V(x) -> "vê ích"; dt/dx/dy -> "đê tê"/"đê ích"/"đê i";
+    "zero" và chữ số 0 đứng riêng -> "không" (giọng Gemini hay đọc "dt" thành "diện tích", "0" thành "zero")."""
+    s = re.sub(r"(?<![\wÀ-ỹ'])([A-Za-z])('+)\s*\(\s*([a-z])\s*\)", lambda m: " %s%s %s " % (_ten_ky(m.group(1)), " phẩy" * len(m.group(2)), _ten_ky(m.group(3))), s)
+    s = re.sub(r"(?<![\wÀ-ỹ'])([A-Za-z])\(\s*([a-z])\s*\)", lambda m: " %s %s " % (_ten_ky(m.group(1)), _ten_ky(m.group(2))), s)
+    if not DOC_CHU_CAI["bat"]:
+        s = re.sub(r"(?<![\wÀ-ỹ'])([A-Za-z])('+)(?![\wÀ-ỹ'])", lambda m: " %s%s " % (_ten_ky(m.group(1)), " phẩy" * len(m.group(2))), s)
+    s = re.sub(r"(?<![\wÀ-ỹ])d([txyr])(?![\wÀ-ỹ])", lambda m: " đê " + _ten_ky(m.group(1)) + " ", s)
+    s = re.sub(r"(?i)\bzero\b", "không", s)
+    s = re.sub(r"(?<![\d.,])0(?![\d.,])", "không", s)
+    return s
+
+
 def chuan_hoa_doc(text):
-    s = sua_chinh_ta_tieng_viet(text)
+    s = doc_ky_hieu_ham(sua_chinh_ta_tieng_viet(text))
     # v89: đơn vị sau số đọc thành lời (lời thoại nay viết "10 cm", "54π m³" cho phụ đề; giọng vẫn đọc tự nhiên)
     for ky, doc in (("cm²", "xăng-ti-mét vuông"), ("cm³", "xăng-ti-mét khối"), ("m²", "mét vuông"), ("m³", "mét khối"),
                     ("cm", "xăng-ti-mét"), ("mm", "mi-li-mét"), ("km", "ki-lô-mét"), ("m", "mét")):
@@ -382,6 +410,8 @@ def chia_phu_de(cau, toi_da=TOI_DA_KY_TU):
         # v89: không cắt giữa cụm số/biểu thức đọc thành lời ("năm mươi | tư", "x bằng | mười") -> phụ đề đổi được về "54", "x = 10"
         nxt = tu[idx + 1].lower().strip(",.;:!?") if idx + 1 < len(tu) else ""
         hien = w.lower().strip(",.;:!?")
+        if w[-1:] not in ",;:" and hien in TU_SO and nxt in TU_SO:
+            continue   # v92: không bao giờ chẻ một con số ("một nghìn | không trăm hai mươi tư" -> "1000" + "24")
         if w[-1:] not in ",;:" and (nxt in TU_SO or nxt in NOI_CUM_SO or hien in NOI_CUM_SO) and dai < 1.5 * con_lai / con_phan:
             continue
         muc_tieu = con_lai / con_phan
@@ -1096,98 +1126,522 @@ MAU_3DV_GAN = {"xanh": "cyan", "xanh_duong": "cyan", "lam": "cyan", "blue": "cya
                "green": "ngoc", "white": "trang", "trắng": "trang", "gray": "xam", "grey": "xam", "xám": "xam"}
 
 
+# ---------- v92: SUY KHUÔN 3D THAM SỐ TỪ ĐỀ (Auto-fix: không bao giờ để tầng sân khấu trống/đứng im) ----------
+TEN_KHUON = ("hai_mat_cau_oxyz", "khung_day_cap", "tam_bia_gap_hop", "tru_non_toi_uu",
+             "parabol_quy_dao", "mat_phang_cat_khoi", "chop_lang_tru", "luoi_the_bi_xac_suat")
+BIET_DANH_KHUON = {"tam_bia": "tam_bia_gap_hop", "gap_hop": "tam_bia_gap_hop", "hop_khong_nap": "tam_bia_gap_hop",
+                   "hinh_tru": "tru_non_toi_uu", "tru_non": "tru_non_toi_uu", "lon": "tru_non_toi_uu", "hinh_non": "tru_non_toi_uu",
+                   "the_so": "luoi_the_bi_xac_suat", "bi": "luoi_the_bi_xac_suat", "xac_suat": "luoi_the_bi_xac_suat",
+                   "parabol": "parabol_quy_dao", "do_thi": "parabol_quy_dao", "van_toc": "parabol_quy_dao", "mat_cau": "hai_mat_cau_oxyz",
+                   "oxyz": "hai_mat_cau_oxyz", "day_cap": "khung_day_cap", "thiet_dien": "mat_phang_cat_khoi", "chop": "chop_lang_tru",
+                   "lang_tru": "chop_lang_tru"}
+SO_CHU_NHO = {"hai": 2, "ba": 3, "bốn": 4, "năm": 5, "sáu": 6, "bảy": 7, "tám": 8, "chín": 9, "mười": 10}
+MAU_BI = {"đỏ": "hong", "xanh": "cyan", "vàng": "vang", "trắng": "trang", "đen": "xam", "tím": "hong", "lục": "ngoc", "hồng": "hong"}
+
+
+def ten_khuon(v):
+    s = re.sub(r"[\s-]+", "_", str(v or "").strip().lower())
+    return s if s in TEN_KHUON else BIET_DANH_KHUON.get(s)
+
+
+def _so(x):
+    try:
+        return float(str(x).replace(",", "."))
+    except (TypeError, ValueError):
+        return None
+
+
+def _so_tu(chu):
+    chu = chu.strip().lower()
+    return _so(chu) if re.match(r"^\d", chu) else SO_CHU_NHO.get(chu)
+
+
+def _ham_mot_bien(bt):
+    """Biểu thức của t (đã lọc chỉ còn số, t, phép toán) -> hàm Python; dùng để tìm khoảng t cho đồ thị."""
+    s = str(bt or "").replace("^", "**").replace(",", ".")
+    s = re.sub(r"(\d)\s*\(", r"\1*(", s)
+    if not re.fullmatch(r"[-+*/(). 0-9t]+", s):
+        return None
+    try:
+        f = eval("lambda t: " + s, {"__builtins__": {}})   # noqa: S307 - chuỗi đã lọc ký tự an toàn
+        f(1.0)
+        return f
+    except Exception:   # noqa: BLE001
+        return None
+
+
+def suy_khuon(kb):
+    """Đề -> {khuon, tham_so} (một trong 8 khuôn src/3d-vector/khuon). None khi không nhận ra dạng bài."""
+    de = " ".join(str(kb.get(k) or "") for k in ("de_bai", "chu_de", "tieu_de", "can_tim"))
+    t = de.lower()
+    mon = str(kb.get("mon") or "").upper()
+    lop = str(kb.get("lop") or "")
+    so = r"(\d+(?:[.,]\d+)?)"
+    if re.search(r"mặt cầu", t) and re.search(r"oxyz|tọa độ", t) and lop == "12":
+        tam = re.findall(r"tâm\s*\w*\s*\(\s*(-?\d+(?:[.,]\d+)?)\s*[;,]\s*(-?\d+(?:[.,]\d+)?)\s*[;,]\s*(-?\d+(?:[.,]\d+)?)\s*\)", t)
+        bk = re.findall(r"bán kính\s*(?:r\s*\w*\s*=\s*)?" + so, t)
+        ts = {}
+        if len(tam) >= 2:
+            ts.update(tam1=[_so(x) for x in tam[0]], tam2=[_so(x) for x in tam[1]])
+        if len(bk) >= 2:
+            ts.update(r1=_so(bk[0]), r2=_so(bk[1]))
+        return {"khuon": "hai_mat_cau_oxyz", "tham_so": ts}
+    if re.search(r"(thẻ|lá bài|viên bi|quả bóng|\bbi\b|quả cầu)", t) and (mon == "XAC_SUAT" or "xác suất" in t):
+        bi = bool(re.search(r"viên bi|\bbi\b|quả bóng|quả cầu", t))
+        ts = {"vat": "bi" if bi else "the"}
+        if bi:
+            nhom = [{"so": int(_so_tu(n)), "mau": MAU_BI.get(m, "cyan")}
+                    for n, m in re.findall(r"(\d+|hai|ba|bốn|năm|sáu|bảy|tám|chín|mười)\s*(?:viên\s*)?(?:bi|quả\s*(?:bóng|cầu))\s*(?:màu\s*)?(đỏ|xanh|vàng|trắng|đen|tím|lục|hồng)", t)
+                    if _so_tu(n)]
+            if nhom:
+                ts["nhom"] = nhom
+            m = re.search(r"(\d+)\s*(?:viên\s*)?bi", t)
+            if not nhom and m:
+                ts["N"] = int(m.group(1))
+        else:
+            m = re.search(r"(?:từ|đánh số)\s*1\s*(?:đến|tới|-)\s*(\d+)", t) or re.search(r"(\d+)\s*(?:tấm\s*)?thẻ", t)
+            if m:
+                ts["N"] = int(m.group(1))
+        m = re.search(r"(?:lấy|chọn|rút|bốc)\s*(?:ra\s*)?(?:ngẫu nhiên\s*)?(?:đồng thời\s*|cùng lúc\s*)?(\d+|hai|ba|bốn|năm)\b", t)
+        if m and _so_tu(m.group(1)):
+            ts["k"] = int(_so_tu(m.group(1)))
+        return {"khuon": "luoi_the_bi_xac_suat", "tham_so": ts}
+    if re.search(r"(tấm|miếng|tờ)\s*(bìa|tôn|nhôm|giấy|carton|thép|kim loại)|gấp\s*(?:lại\s*)?(?:thành\s*)?(?:một\s*)?(?:cái\s*)?(hộp|thùng)|cắt\s*(?:bỏ\s*)?(?:đi\s*)?(4|bốn)\s*(?:hình vuông|góc)", t):
+        ts = {}
+        m = re.search(so + r"\s*(?:cm|dm|m)?\s*[x×*]\s*" + so, t)
+        if m:
+            ts.update(a=_so(m.group(1)), b=_so(m.group(2)))
+        else:
+            m = re.search(r"(?:hình vuông|vuông)\s*(?:có\s*)?cạnh\s*(?:bằng\s*|là\s*|dài\s*)?" + so, t)
+            if m:
+                ts.update(a=_so(m.group(1)), b=_so(m.group(1)))
+        return {"khuon": "tam_bia_gap_hop", "tham_so": ts}
+    if re.search(r"hình trụ|\blon\b|bồn|cốc|thùng phuy|hộp sữa|hình nón|phễu|ống trụ|bình trụ", t):
+        ts = {"loai": "non" if re.search(r"hình nón|phễu", t) else "tru"}
+        m = re.search(so + r"\s*(cm³|cm3|dm³|dm3|m³|m3|lít|ml)", t)
+        if m:
+            ts["V"] = _so(m.group(1)) * (1000 if m.group(2) == "lít" else 1)
+        m = re.search(r"bán kính(?:\s*đáy)?\s*(?:r\s*)?(?:=|bằng|là)?\s*" + so, t)
+        if m:
+            ts["r"] = _so(m.group(1))
+        m = re.search(r"chiều cao\s*(?:h\s*)?(?:=|bằng|là)?\s*" + so, t)
+        if m:
+            ts["h"] = _so(m.group(1))
+        if re.search(r"phôi|tấm (?:tôn|nhôm) hình vuông|cắt (?:nắp|đáy)", t):
+            ts["phoi"] = True
+        return {"khuon": "tru_non_toi_uu", "tham_so": ts}
+    if re.search(r"vận tốc|quãng đường|chuyển động|phanh|hãm|quỹ đạo|ném|gia tốc|tích phân|parabol|đồ thị", t):
+        ts = {"ten_ham": "s" if re.search(r"quãng đường s\s*\(", t) else "h" if "ném" in t else "v"}
+        m = re.search(r"\b([vsh])\s*\(\s*t\s*\)\s*=\s*([-+0-9t.,^*/() ]+?)(?=\s*\(|\s*m/s|[;]|,\s|\.\s|\s+[a-zà-ỹ]|$)", t)
+        if m:
+            ts["ten_ham"] = m.group(1)
+            ts["ham"] = re.sub(r"(\d)\s*t", r"\1*t", m.group(2).strip().replace(",", "."))
+            f = _ham_mot_bien(ts["ham"])
+            if f:
+                try:
+                    b = next((x / 10 for x in range(1, 1201) if f(x / 10) <= 0 < f(0)), None)
+                except Exception:   # noqa: BLE001
+                    b = None
+                m2 = re.search(r"(?:trong|sau)\s*(\d+(?:[.,]\d+)?)\s*(?:giây|s\b)", t)
+                ts["t"] = [0, _so(m2.group(1)) if m2 else (b or 10)]
+        return {"khuon": "parabol_quy_dao", "tham_so": ts}
+    if re.search(r"dây cáp|sợi dây|lực căng|treo", t):
+        ts = {}
+        m = re.search(r"(\d+|hai|ba|bốn|năm|sáu)\s*(?:sợi\s*)?(?:dây|cáp)", t)
+        if m and _so_tu(m.group(1)):
+            ts["so_cap"] = int(_so_tu(m.group(1)))
+        m = re.search(r"(\d+(?:[.,]\d+)?)\s*(?:°|độ)", t)
+        if m:
+            ts["goc"] = _so(m.group(1))
+        return {"khuon": "khung_day_cap", "tham_so": ts}
+    if re.search(r"mặt phẳng cắt|thiết diện|cắt khối|mặt cắt", t):
+        return {"khuon": "mat_phang_cat_khoi", "tham_so": {"khoi": "tru" if "trụ" in t else "hop"}}
+    if re.search(r"hình chóp|lăng trụ|tứ diện|kim tự tháp", t):
+        ts = {"loai": "lang_tru_tam_giac" if "lăng trụ" in t else "chop_tam_giac" if re.search(r"tứ diện|chóp tam giác", t) else "chop_tu_giac"}
+        m = re.search(r"cạnh(?:\s*đáy)?\s*(?:bằng|là|=)?\s*" + so, t)
+        if m:
+            ts["a"] = _so(m.group(1))
+        m = re.search(r"chiều cao\s*(?:bằng|là|=)?\s*" + so, t)
+        if m:
+            ts["h"] = _so(m.group(1))
+        return {"khuon": "chop_lang_tru", "tham_so": ts}
+    if mon == "XAC_SUAT":
+        return {"khuon": "luoi_the_bi_xac_suat", "tham_so": {}}
+    return None
+
+
+def _hop_le_3dv(c3):
+    """Số đối tượng dựng được của đặc tả tự do (khớp dac_ta.ts, kể cả tên trường cũ ds/dinh/tam_day)."""
+    if not isinstance(c3, dict) or not isinstance(c3.get("doi_tuong"), list):
+        return 0
+    n = 0
+    for d in c3["doi_tuong"]:
+        if not isinstance(d, dict) or not d.get("id"):
+            continue
+        l = d.get("loai")
+
+        def duong(k):
+            return isinstance(d.get(k), (int, float)) and d[k] > 0
+        if l == "nhom_lap":
+            ok = duong("so") or bool(isinstance(d.get("ds"), list) and d["ds"])
+        elif l == "da_giac":
+            ok = len(d.get("diem") or d.get("dinh") or []) >= 3
+        elif l in ("hinh_tru", "hinh_non"):
+            ok = (duong("ban_kinh") or duong("r")) and isinstance(d.get("cao", d.get("h")), (int, float)) and d.get("cao", d.get("h")) != 0
+        elif l == "mat_cau":
+            ok = duong("ban_kinh")
+        elif l == "hinh_hop":
+            ok = isinstance(d.get("kich_thuoc"), list) and len(d["kich_thuoc"]) == 3
+        else:
+            ok = l in ("diem", "doan_thang", "vector", "hinh_chop", "duong_cong", "goc")
+        n += 1 if ok else 0
+    return n
+
+
+def _dong_3dv(c3):
+    """Đặc tả tự do có CHUYỂN ĐỘNG không (có hành động, hoặc >= 3 bước có thay đổi)."""
+    bs = [b for b in (c3.get("buoc") or []) if isinstance(b, dict)]
+    # v92: phải đổi hình ở >= 3 bước (hành động cũng tính là đổi) -> một lần gập rồi đứng im suốt bài không còn lọt qua
+    return sum(1 for b in bs if b.get("hien") or b.get("an") or b.get("camera") or b.get("nhan_manh") or b.get("hanh_dong")) >= 3
+
+
+def _tok_khop(s):
+    """Từ dùng để so khớp khi_noi: bỏ số (chữ hay chữ số) vì lời thoại ghi "năm trăm mười hai" còn phụ đề /
+    mốc ước lượng ghi "512" -> hai phía chỉ so phần chữ."""
+    return [w for w in _tok(s) if not w.isdigit() and w not in TU_SO and not re.fullmatch(r"\d+\w*", w)]
+
+
+def _trai_deu(ds, lo, hi):
+    """Điền các mốc None (giữ thứ tự) bằng nội suy đều giữa hai mốc đã biết kề nhau; biên = lo / hi."""
+    ra = list(ds)
+    n = len(ra)
+    i = 0
+    while i < n:
+        if ra[i] is not None:
+            i += 1
+            continue
+        j = i
+        while j < n and ra[j] is None:
+            j += 1
+        a = ra[i - 1] if i > 0 else lo
+        b = ra[j] if j < n else hi
+        for k in range(i, j):
+            ra[k] = a + (b - a) * (k - i + 1) / (j - i + 1)
+        i = j
+    return ra
+
+
 def khung_4_tang(kb, canh_props, fps):
-    """v91: kb.khung4tang (AI viết, mốc theo lời `khi_noi`) -> props.khung4tang (mốc `t` giây từ đầu phần nội dung).
-    Mốc lấy từ từ thật (edge WordBoundary) hoặc ước lượng theo câu phụ đề; không khớp thì nối tiếp mốc trước / đầu cảnh `canh`.
+    """v92: kb.khung4tang (AI viết, mốc theo lời `khi_noi`) -> props.khung4tang (mốc `t` giây từ đầu phần nội dung).
+    - Khớp `khi_noi` CHỈ TIẾN, trong đúng cảnh `canh` của bước (không quay lại tìm từ đầu -> hết nhảy bước sớm vì cụm trùng
+      câu đọc đề); so phần chữ, bỏ số (lời thoại ghi chữ, mốc ước lượng từ phụ đề ghi số); khớp gần >= 72% số từ.
+    - Bước >= 2 không bao giờ trước khi đọc xong đề; bước cuối có ít nhất ~6 s (không bị ép về 0,5 s cuối video).
+    - Thẻ: con trỏ riêng trong khung thời gian của bước; thẻ không khớp trải đều trong bước; thẻ đầu hiện ngay khi vào bước;
+      bước < 2 thẻ / hở > 14 s lấy thêm thẻ từ noi_dung_man_hinh của cảnh đang đọc; bước cuối luôn có thẻ đáp số.
+    - 3D: luôn có khuôn tham số (khuon) hoặc mang khuon_du_phong; mốc 3D không khớp trải theo mốc các bước.
     Khóa luồng hình học thuần: luôn trả None (bài hình học dựng bằng Manim)."""
     if str(kb.get("luong") or "") == "hinh_hoc_thuan" or str(kb.get("mon") or "").upper() == "HINH_HOC":
         return None
     k4 = kb.get("khung4tang")
     if not isinstance(k4, dict) or not isinstance(k4.get("buoc"), list) or not k4["buoc"]:
         return None
-    # danh sách từ toàn phần nội dung (giây tính từ đầu cảnh 1)
-    tu_all, dau_canh = [], {}
+    tu_all, dau_canh, pham_vi, het_canh = [], {}, {}, {}
     for c in canh_props:
         goc = c["batDau"] / float(fps)
-        dau_canh[int(c["so"])] = goc + c.get("leadFrame", 0) / float(fps)
+        so_c = int(c["so"])
+        dau_canh[so_c] = goc + c.get("leadFrame", 0) / float(fps)
+        het_canh[so_c] = goc + c["soFrame"] / float(fps)
+        i0 = len(tu_all)
         for w in (c.get("tu") or tu_tu_cau(c.get("cau") or [])):
             tu_all.append({"w": w["w"], "bat": round(goc + w["bat"], 3), "ket": round(goc + w["ket"], 3)})
+        pham_vi[so_c] = (i0, len(tu_all))
     tong = canh_props[-1]["batDau"] / float(fps) + canh_props[-1]["soFrame"] / float(fps) if canh_props else 0
-    vt = [0]
+    phang = [(tk, k) for k, x in enumerate(tu_all) for tk in _tok_khop(x["w"])]
     thong_ke = {"khop": 0, "uoc": 0}
 
-    def moc(x, mac_dinh):
-        cum = str((x or {}).get("khi_noi") or "").strip() if isinstance(x, dict) else ""
-        tim = tim_cum_tu(cum, tu_all, vt[0]) if cum and tu_all else None
-        if tim:
-            vt[0] = tim[1]
-            thong_ke["khop"] += 1
-            return round(tu_all[tim[0]]["bat"], 3)
-        if isinstance(x, dict) and x.get("canh") is not None:
-            try:
-                so = int(x["canh"])
-                if so in dau_canh:
-                    thong_ke["uoc"] += 1
-                    return round(dau_canh[so], 3)
-            except (TypeError, ValueError):
-                pass
-        if isinstance(x, dict) and isinstance(x.get("t"), (int, float)):
-            return float(x["t"])
-        thong_ke["uoc"] += 1
-        return round(min(max(0.0, mac_dinh), max(0.0, tong - 0.5)), 3)
+    def tim(cum, tu_tu=0, tu_den=None):
+        """(chỉ số từ đầu, chỉ số sau cụm) trong [tu_tu, tu_den); khớp đúng trước, rồi khớp gần (>= 72%)."""
+        can = _tok_khop(cum)
+        if not can or not phang:
+            return None
+        tu_den = len(tu_all) if tu_den is None else tu_den
+        vung = [q for q in phang if tu_tu <= q[1] < tu_den]
+        n = len(can)
+        for i in range(len(vung) - n + 1):
+            if [q[0] for q in vung[i:i + n]] == can:
+                return vung[i][1], vung[i + n - 1][1] + 1
+        tot = None
+        for i in range(max(0, len(vung) - n + 1)):
+            r = difflib.SequenceMatcher(None, can, [q[0] for q in vung[i:i + n]]).ratio()
+            if r >= 0.72 and (tot is None or r > tot[0]):
+                tot = (r, vung[i][1], vung[min(len(vung) - 1, i + n - 1)][1] + 1)
+        return (tot[1], tot[2]) if tot else None
+
+    def chi_so_tai(t):
+        return next((k for k, x in enumerate(tu_all) if x["bat"] >= t - 0.05), len(tu_all))
 
     def mau(m, md="cyan"):
         m = str(m or "").strip().lower().replace(" ", "_")
         m = MAU_3DV_GAN.get(m, m)
         return m if m in MAU_3DV else md
 
-    buoc, t_truoc = [], -1.0
+    # hết phần đọc đề: các cảnh mở đầu / đề liên tiếp từ đầu video
+    t_het_de = 0.0
+    for c in canh_props:
+        if re.search(r"mo_dau|hook|de_bai|dat_van_de", str(c.get("loai") or "")):
+            t_het_de = het_canh[int(c["so"])]
+        else:
+            break
     ds_buoc = [b for b in k4["buoc"] if isinstance(b, dict)]
+    nb = len(ds_buoc)
+    # ---- mốc bước ----
+    t_buoc, con_tro = [], 0
     for j, b in enumerate(ds_buoc):
-        t = moc(b, 0.0 if j == 0 else t_truoc + max(1.5, tong / max(1, len(ds_buoc))))
-        t = max(t, t_truoc + 0.6) if j else 0.0   # bước đầu luôn hiện từ giây 0
-        the = []
+        if j == 0:
+            t_buoc.append(0.0)
+            continue
+        try:
+            so_c = int(b.get("canh")) if b.get("canh") is not None else None
+        except (TypeError, ValueError):
+            so_c = None
+        lo, hi = con_tro, len(tu_all)
+        if so_c in pham_vi and con_tro < pham_vi[so_c][1]:
+            lo, hi = max(con_tro, pham_vi[so_c][0]), pham_vi[so_c][1]
+        kq = tim(str(b.get("khi_noi") or ""), lo, hi) if b.get("khi_noi") else None
+        if kq is None and so_c in pham_vi and b.get("khi_noi"):
+            kq = tim(str(b.get("khi_noi")), con_tro)   # khi_noi lệch cảnh: vẫn chỉ tìm TIẾN
+        if kq:
+            con_tro = kq[1]
+            thong_ke["khop"] += 1
+            t = tu_all[kq[0]]["bat"]
+        elif so_c in dau_canh:
+            thong_ke["uoc"] += 1
+            t = dau_canh[so_c]
+        else:
+            thong_ke["uoc"] += 1
+            t = None
+        if t is not None and t < t_het_de - 0.05 and not (so_c in het_canh and het_canh[so_c] <= t_het_de):
+            t = t_het_de   # cấm nhảy sang bước giải khi chưa đọc xong đề
+        t_buoc.append(t)
+    du_tru = min(6.0, max(2.0, tong * 0.08))
+    t_buoc = _trai_deu(t_buoc, t_het_de, max(t_het_de + 1, tong - du_tru))
+    gian = 2.5 if tong > nb * 4 else max(0.8, tong / max(1, nb) * 0.5)
+    for j in range(1, nb):
+        t_buoc[j] = max(t_buoc[j], t_buoc[j - 1] + gian)
+    if nb > 1 and t_buoc[-1] > tong - du_tru:   # bước cuối không bị đẩy sát Outro
+        t_buoc[-1] = max(t_buoc[-2] + 0.8, tong - du_tru)
+        for j in range(nb - 2, 0, -1):
+            t_buoc[j] = min(t_buoc[j], t_buoc[j + 1] - min(gian, (t_buoc[j + 1] - t_buoc[0]) / (j + 1)))
+    t_buoc = [round(max(0.0, x), 3) for x in t_buoc]
+
+    dap_an = str(kb.get("dap_an_cuoi") or kb.get("dap_an") or "")
+    so_dap = re.findall(r"\d+(?:[.,]\d+)?", dap_an)
+    de_txt = str(kb.get("de_bai") or "")
+    so_lo = [x for x in so_dap if not re.search(r"(?<![\d.,])" + re.escape(x) + r"(?![\d.,])", de_txt)]
+    cac_canh = [c for c in (kb.get("canh") or []) if isinstance(c, dict)]
+    toi_uu = bool(re.search(r"lớn nhất|nhỏ nhất|tối đa|tối thiểu|ít nhất|nhiều nhất", de_txt, re.I))
+    # tên hàm cho bảng biến thiên: ký hiệu đạo hàm hay gặp nhất trong lời thoại / màn hình / thẻ (V'(x), S'(r)...)
+    van_kb = json.dumps([[c.get("loi_thoai"), c.get("noi_dung_man_hinh")] for c in cac_canh] + [k4.get("buoc")], ensure_ascii=False)
+    dem_ham = {}
+    for m in re.finditer(r"([A-Za-z])'\s*\(\s*([a-z])\s*\)", van_kb):
+        dem_ham[m.groups()] = dem_ham.get(m.groups(), 0) + 1
+    ham_bbt = max(dem_ham, key=dem_ham.get) if dem_ham else None
+
+    def _chuan_dong(x):
+        return re.sub(r"\\[,;:! ]|\\left|\\right|\s+|\{,\}", "", str(x)).replace("\\dfrac", "\\frac")
+
+    def canh_cua_the(th, t0, t1):
+        """Thẻ không có khi_noi: tìm cảnh (bắt đầu trong bước) có noi_dung_man_hinh trùng dòng của thẻ -> mốc đầu cảnh đó."""
+        dong = {_chuan_dong(x) for x in (th.get("dong") or ([th.get("noi_dung")] if th.get("noi_dung") else []))}
+        dong.discard("")
+        if not dong:
+            return None
+        for i, c in enumerate(canh_props):
+            ts = dau_canh[int(c["so"])]
+            if t0 - 0.5 <= ts < t1 and i < len(cac_canh):
+                man = {_chuan_dong(x) for x in (cac_canh[i].get("noi_dung_man_hinh") or []) if isinstance(x, str)}
+                if dong & man or any(a in b or b in a for a in dong for b in man if len(a) >= 6 and len(b) >= 6):
+                    return ts + 0.3
+        return None
+
+    def the_tu_canh(t0, t1):
+        """Thẻ công thức lấy từ noi_dung_man_hinh của các cảnh BẮT ĐẦU trong [t0, t1)."""
+        ra = []
+        for i, c in enumerate(canh_props):
+            ts = dau_canh[int(c["so"])]
+            if t0 <= ts < t1 and i < len(cac_canh):
+                dong = [str(x) for x in (cac_canh[i].get("noi_dung_man_hinh") or []) if isinstance(x, str) and str(x).strip()][:3]
+                if dong:
+                    ra.append({"loai": "cong_thuc", "dong": dong, "t": round(ts + 0.3, 3), "tu_dong": True})
+        return ra
+
+    buoc = []
+    for j, b in enumerate(ds_buoc):
+        t = t_buoc[j]
+        t_sau = t_buoc[j + 1] if j + 1 < nb else tong
+        vao = t + 0.45   # tiêu đề cũ ra (0,2 s) rồi mới tới thẻ
+        tran = max(vao, t_sau - 1.2)
+        w1 = chi_so_tai(t_sau)
+        ct = chi_so_tai(t - 0.3)
+        the, moc_the = [], []
         for th in b.get("the") or []:
             if not isinstance(th, dict) or th.get("loai") not in ("cong_thuc", "casio", "bang_bien_thien", "chu"):
                 continue
             th = dict(th)
-            if th.get("khi_noi"):
-                th["t"] = max(t, moc(th, t))
             if th["loai"] == "cong_thuc":
                 th["dong"] = [str(d) for d in th.get("dong") or [] if str(d).strip()][:4]
                 if not th["dong"]:
                     continue
-                kd = th.pop("khi_noi_dong", None)
-                if isinstance(kd, list) and kd:
-                    th["moc"] = [max(t, moc({"khi_noi": s}, t + 0.45 * i)) for i, s in enumerate(kd[:len(th["dong"])])]
+            # GTLN/GTNN bằng SHIFT SOLVE ra thẳng cực trị là sai cách bấm -> bảng giá trị MENU 8 (như Auto-fix KiemTraHinh.gs)
+            if th["loai"] == "casio" and toi_uu and "SOLVE" in " ".join(map(str, th.get("phim") or [])).upper() \
+                    and not re.search(r"=\s*0|'\(", json.dumps(th, ensure_ascii=False)):
+                th["phim"] = ["MENU", "8", "f(X)", "="]
+            if th["loai"] == "bang_bien_thien" and not th.get("ham") and ham_bbt:
+                th["ham"], th["bien"] = ham_bbt[0], th.get("bien") or ham_bbt[1]
+            kq = tim(str(th.get("khi_noi") or ""), ct, max(w1, ct)) if th.get("khi_noi") else None
+            if kq:
+                ct = kq[1]
+                thong_ke["khop"] += 1
+                moc_the.append(min(tran, max(vao, tu_all[kq[0]]["bat"])))
+            else:
+                if th.get("khi_noi"):
+                    thong_ke["uoc"] += 1
+                tc = canh_cua_the(th, t, t_sau)
+                moc_the.append(min(tran, max(vao, tc)) if tc is not None else None)
             th.pop("khi_noi", None)
             the.append(th)
-        buoc.append({"t": t, "nhan": str(b.get("nhan") or "Bước %d" % (j + 1))[:24], "tieu_de": str(b.get("tieu_de") or "")[:60],
+        if moc_the and moc_the[0] is None:
+            moc_the[0] = vao   # thẻ đầu không khớp: hiện ngay khi vào bước (không để T3 trống đầu bước)
+        moc_the = _trai_deu(moc_the, vao, tran + (tran - vao) / max(1, len(moc_the)))
+        for k, th in enumerate(the):
+            th["t"] = round(min(tran, max(vao, moc_the[k])), 3)
+            if k:
+                th["t"] = round(max(th["t"], the[k - 1]["t"] + 0.6), 3)
+        # dòng công thức theo khi_noi_dong (tìm trong khung bước), thiếu thì cách đều
+        for th in the:
+            kd = th.pop("khi_noi_dong", None)
+            if th["loai"] != "cong_thuc":
+                continue
+            moc, cd = [], chi_so_tai(th["t"])
+            for k in range(len(th["dong"])):
+                kq = tim(str(kd[k]), cd, max(w1, cd)) if isinstance(kd, list) and k < len(kd) and kd[k] else None
+                if kq:
+                    cd = kq[1]
+                    moc.append(max(th["t"], tu_all[kq[0]]["bat"]))
+                else:
+                    moc.append(None)
+            if moc and moc[0] is None:
+                moc[0] = th["t"] + 0.15
+            moc = _trai_deu(moc, th["t"], th["t"] + 0.9 * (len(th["dong"]) + 1))
+            for k in range(1, len(moc)):
+                moc[k] = max(moc[k], moc[k - 1] + 0.45)
+            th["moc"] = [round(min(x, tran), 3) for x in moc]
+
+        def lo_hong():
+            mocs = sorted([vao] + [x["t"] for x in the] + [t_sau])
+            return max(b2 - a2 for a2, b2 in zip(mocs, mocs[1:]))
+        # lấp chỗ trống: bước < 2 thẻ hoặc hở > 14 s không có thẻ mới -> thẻ từ màn hình của cảnh đang đọc
+        if len(the) < 2 or lo_hong() > 14:
+            da_co = {_chuan_dong(d) for x in the for d in (x.get("dong") or [])}
+            for x in the_tu_canh(t - 0.5, t_sau - 1.0):
+                if any(_chuan_dong(d) in da_co for d in x["dong"]) or len(the) >= 6:
+                    continue
+                mocs = sorted([vao] + [y["t"] for y in the] + [t_sau])
+                if len(the) >= 2 and not any(a2 < x["t"] < b2 and b2 - a2 > 14 for a2, b2 in zip(mocs, mocs[1:])):
+                    continue
+                x["t"] = max(x["t"], vao)
+                x["moc"] = [round(x["t"] + 0.15 + 0.5 * i, 3) for i in range(len(x["dong"]))]
+                the.append(x)
+                da_co.update(_chuan_dong(d) for d in x["dong"])
+            the.sort(key=lambda x: x["t"])
+        # bước cuối: thẻ đáp số giữ tới Outro (không còn khoảng trống giữa bước cuối và màn kết)
+        if j == nb - 1 and so_dap and not any(any(sd in json.dumps(x, ensure_ascii=False) for sd in so_dap) for x in the):
+            the.append({"loai": "chu", "nhan": "Đáp số", "noi_dung": dap_an[:60], "t": round(min(tran, max(vao, the[-1]["t"] + 1.2 if the else vao)), 3)})
+        if not the:
+            the.append({"loai": "chu", "noi_dung": str(b.get("tieu_de") or b.get("nhan") or "")[:60], "t": round(vao, 3)})
+        tieu_de = str(b.get("tieu_de") or "")[:60]
+        for x in so_lo:   # chống lộ đáp số ở tiêu đề bước (tiêu đề hiện TRƯỚC khi tính xong)
+            tieu_de = re.sub(r"(?<![\d.,])" + re.escape(x) + r"(?![\d.,])", "?", tieu_de)
+        tieu_de = re.sub(r"\?(?:\s*[/:,.]\s*\?)+", "?", tieu_de)   # "31/44" -> "?" (không thành "?/?")
+        tieu_de = re.sub(r"(?i)(biến cố đối)\s+([A-Z])(?![\w'])", r"\1 \\overline{\2}", tieu_de)   # ký hiệu biến cố đối đúng
+        buoc.append({"t": t, "nhan": str(b.get("nhan") or "Bước %d" % (j + 1))[:24], "tieu_de": tieu_de,
                      "mau": mau(b.get("mau"), ["cyan", "vang", "hong", "ngoc"][j % 4]),
                      "du_kien": [str(x) for x in b.get("du_kien") or []], "the": the})
-        t_truoc = t
     if not buoc:
         return None
     de_ghim = [{"id": str(d.get("id") or "d%d" % i), "nhan": str(d.get("nhan") or "")[:28], **({"mau": mau(d["mau"])} if d.get("mau") else {})}
                for i, d in enumerate(k4.get("de_ghim") or []) if isinstance(d, dict) and str(d.get("nhan") or "").strip()][:5]
+
+    # ---- 3D: khuôn tham số (ưu tiên) / đặc tả tự do có chuyển động / khuôn suy từ đề ----
     c3 = k4.get("canh_3d_vector")
     c3 = json.loads(json.dumps(c3)) if isinstance(c3, dict) else None
-    if c3:
-        vt[0] = 0
-        t3 = -1.0
-        for i, b in enumerate(c3.get("buoc") or []):
-            if not isinstance(b, dict):
+    suy = suy_khuon(kb)
+    if c3 and ten_khuon(c3.get("khuon")):
+        c3["khuon"] = ten_khuon(c3["khuon"])
+        c3.pop("doi_tuong", None)
+        nguon_3d = "khuôn " + c3["khuon"]
+    elif c3 and _hop_le_3dv(c3) and _dong_3dv(c3):
+        nguon_3d = "đặc tả tự do (%d đối tượng)" % _hop_le_3dv(c3)
+    elif suy:
+        print("Auto-fix 3D: %s -> khuôn %s %s" % ("đặc tả 3D thiếu/hỏng" if not c3 or not _hop_le_3dv(c3) else "đặc tả 3D đứng im",
+                                                  suy["khuon"], json.dumps(suy["tham_so"], ensure_ascii=False)))
+        c3 = dict(suy)
+        nguon_3d = "khuôn suy từ đề " + suy["khuon"]
+    else:
+        nguon_3d = "đặc tả tự do" if c3 and _hop_le_3dv(c3) else "KHÔNG CÓ (tầng 2 có thể trống)"
+    if c3 is not None and suy and not c3.get("khuon"):
+        c3["khuon_du_phong"] = suy
+    if c3 and c3.get("khuon"):
+        ct, ds_pha = 0, []
+        for ph in c3.get("pha") or []:
+            if not isinstance(ph, dict):
                 continue
-            b["t"] = 0.0 if i == 0 else max(moc(b, t3 + 1.2), t3 + 0.4)
+            ph = dict(ph)
+            kq = tim(str(ph.get("khi_noi") or ""), ct) if ph.get("khi_noi") else None
+            if kq:
+                ct = kq[1]
+                ph["t"] = round(tu_all[kq[0]]["bat"], 3)
+            elif ph.get("buoc") is not None:
+                try:
+                    ph["t"] = round(t_buoc[max(0, min(nb - 1, int(ph["buoc"]) - 1))] + 0.5, 3)
+                except (TypeError, ValueError):
+                    pass
+            ph.pop("khi_noi", None)
+            ds_pha.append(ph)
+        if ds_pha:
+            c3["pha"] = ds_pha
+    elif c3:
+        ds3 = [b for b in (c3.get("buoc") or []) if isinstance(b, dict)]
+        n3 = len(ds3)
+        ct, t3 = 0, []
+        for i, b in enumerate(ds3):
+            kq = tim(str(b.get("khi_noi") or ""), ct) if i and b.get("khi_noi") else None
+            if kq:
+                ct = kq[1]
+            t3.append(0.0 if i == 0 else (tu_all[kq[0]]["bat"] if kq else None))
+        # không khớp: trải theo mốc các bước khung 4 tầng (trước đây +1,2 s -> mọi thay đổi dồn vào vài giây đầu rồi đứng im)
+        for i in range(n3):
+            if t3[i] is None:
+                u = i * nb / max(1, n3)
+                k = int(u)
+                a2 = t_buoc[min(k, nb - 1)]
+                b2 = t_buoc[k + 1] if k + 1 < nb else tong
+                t3[i] = a2 + (u - k) * (b2 - a2) + (0.6 if u == k else 0)
+        for i, b in enumerate(ds3):
+            b["t"] = round(max(t3[i], ds3[i - 1]["t"] + 0.4) if i else 0.0, 3)
             for h in b.get("hanh_dong") or []:
-                if isinstance(h, dict) and h.get("khi_noi"):
-                    h["t"] = max(b["t"], moc(h, b["t"] + 0.2))
+                if isinstance(h, dict):
+                    kq = tim(str(h.get("khi_noi") or ""), chi_so_tai(b["t"])) if h.get("khi_noi") else None
+                    h["t"] = round(max(b["t"], tu_all[kq[0]]["bat"]) if kq else b["t"] + 0.3, 3)
+                    h.pop("khi_noi", None)
             for kh in ("khi_noi", "canh"):
                 b.pop(kh, None)
-            t3 = b["t"]
-    print("Khung 4 tầng: %d bước, %d mốc khớp lời đọc, %d mốc ước lượng" % (len(buoc), thong_ke["khop"], thong_ke["uoc"]))
+    print("Khung 4 tầng: %d bước (mốc %s s), %d mốc khớp lời đọc, %d mốc ước lượng, 3D: %s" % (
+        len(buoc), ", ".join("%.1f" % x for x in t_buoc), thong_ke["khop"], thong_ke["uoc"], nguon_3d))
     return {"tongFrame": int(round(tong * fps)), "fps": fps,
-            "boCuc": {"anToanTikTok": True, "phuDe": "tat" if k4.get("phu_de") == "tat" else "gon"},
+            # v92: phụ đề MẶC ĐỊNH TẮT trên khung 4 tầng (chỉ bật khi kịch bản ghi rõ phu_de: "gon")
+            # (kịch bản cũ do prompt v91 luôn ghi "gon" -> bỏ qua; muốn bật lại: env PHU_DE_4TANG=BAT)
+            "boCuc": {"anToanTikTok": True, "phuDe": "gon" if str(os.environ.get("PHU_DE_4TANG") or "").upper() in ("1", "BAT", "GON") else "tat"},
             "deGhim": de_ghim, "buoc": buoc, "canh3dv": c3}
 
 
@@ -1476,6 +1930,27 @@ def tim_thuong_hieu(public, th):
                 pass
         outro = {"tep": "thuong_hieu/" + ten, "loai": "video" if video else "anh", "soFrame": int(round(giay * FPS))}
     return hien, outro
+
+
+def la_chuyen_muc_xac_suat(kb):
+    mon = str(kb.get("mon") or kb.get("loai_cau_hoi") or kb.get("chuyen_muc") or "")
+    chu = (mon + " " + str(kb.get("chu_de") or "") + " " + str(kb.get("tieu_de") or "")).lower()
+    return mon.upper() == "XAC_SUAT" or bool(re.search(r"xac_suat|xác suất|xac suat", chu))
+
+
+def logo_theo_chuyen_muc(thuong_hieu, public, kb):
+    """v92: logo.png của kênh in sẵn chữ "Tư duy Xác suất" -> bài Toán (thực tế/tối ưu/tích phân/Oxyz) dùng logo_toan.*,
+    không có thì bỏ ảnh để LogoTron vẽ chữ ĐỘNG theo tên chuyên mục. Bài xác suất ưu tiên logo_xac_suat.*, rồi logo.*."""
+    th = dict(thuong_hieu or {})
+    thu_muc = os.path.join(public, "thuong_hieu")
+    xs = la_chuyen_muc_xac_suat(kb)
+    th["chuyenMuc"] = "xac_suat" if xs else "toan"
+    rieng = tim_tep(thu_muc, "logo_xac_suat" if xs else "logo_toan", (".png", ".webp", ".jpg", ".jpeg")) if os.path.isdir(thu_muc) else None
+    if rieng:
+        th["logo"] = "thuong_hieu/" + os.path.basename(rieng)
+    elif not xs:
+        th["logo"] = None
+    return th
 
 
 def ten_kenh_theo_chuyen_muc(thuong_hieu, th, kb):
@@ -2452,6 +2927,8 @@ def main():
                 pc[k] = goi[k]
         print("Gói phong cách edit: %s" % kb.get("phong_cach_edit"))
     thuong_hieu, outro = tim_thuong_hieu(args.public, th)
+    # v92: tên + logo theo chuyên mục TRƯỚC khi dựng intro / màn kết (trước đây logo tròn "Tư duy Xác suất" cho mọi bài)
+    thuong_hieu = logo_theo_chuyen_muc(ten_kenh_theo_chuyen_muc(thuong_hieu, th, kb), args.public, kb)
     bai_hoc = [str(x).strip()[:90] for x in (kb.get("bai_hoc_rut_ra") or []) if str(x).strip()][:3]
     # Tự động chèn màn kết/outro thương hiệu chuyên nghiệp vào cuối video (tóm tắt bài học + kênh + nút Thích / Theo dõi).
     co_man_ket = bool(th.get("coManKet", True))

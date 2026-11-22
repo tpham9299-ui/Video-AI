@@ -161,7 +161,9 @@ t('prompt: chèn hướng dẫn khung 4 tầng cho thực tế, không cho hình
   cauHinh = {};
   const p = ctx.huongDanKhung4Tang_({lop: '11'});
   assert.ok(/"khung4tang"/.test(p) && /canh_3d_vector/.test(p) && /tach_vector/.test(p) && /KHÔNG dùng hệ tọa độ Oxyz/.test(p));
-  assert.ok(/CHỈ lớp 12/.test(p));
+  // v92: lớp 11 không được gợi ý khuôn Oxyz; lớp 12 có
+  assert.ok(!/hai_mat_cau_oxyz/.test(p) && /tam_bia_gap_hop/.test(p));
+  assert.ok(/hai_mat_cau_oxyz \(CHỈ lớp 12/.test(ctx.huongDanKhung4Tang_({lop: '12'})));
 });
 t('cảnh báo nhẹ khi thiếu khung4tang (không bao giờ nặng)', () => {
   const kb = kbMau();
@@ -169,6 +171,71 @@ t('cảnh báo nhẹ khi thiếu khung4tang (không bao giờ nặng)', () => {
   assert.ok(nhe.some((x) => x.startsWith('THIEU_KHUNG4TANG')));
   kb.khung4tang = {buoc: [{nhan: 'a'}, {khi_noi: 'không có trong lời'}]};
   assert.ok(ctx.loiKhung4Tang_(kb).some((x) => x.startsWith('KHUNG4TANG_KHI_NOI_LECH')));
+});
+
+console.log('v92: Auto-fix 3D khuôn tham số, tiêu đề, Casio, BBT, phụ đề');
+t('suy khuôn từ đề: 12 thẻ / lon 512 cm³ / bìa 12×12 / 8 viên bi / ô tô tích phân', () => {
+  assert.deepEqual(J(ctx.suyKhuon_({mon: 'XAC_SUAT', de_bai: 'Có 12 thẻ đánh số từ 1 đến 12. Rút ngẫu nhiên 3 thẻ. Tính xác suất tích chia hết cho 4.'})), {khuon: 'luoi_the_bi_xac_suat', tham_so: {vat: 'the', N: 12, k: 3}});
+  const lon = ctx.suyKhuon_({mon: 'THUC_TE', de_bai: 'Một lon nước hình trụ có thể tích 512 cm³.'});
+  assert.equal(lon.khuon, 'tru_non_toi_uu');
+  assert.equal(lon.tham_so.V, 512);
+  assert.deepEqual(J(ctx.suyKhuon_({mon: 'THUC_TE', de_bai: 'Từ tấm bìa hình vuông 12×12 cm, cắt 4 góc rồi gấp thành hộp.'}).tham_so), {a: 12, b: 12});
+  assert.equal(ctx.suyKhuon_({mon: 'XAC_SUAT', de_bai: 'Hộp có 5 viên bi đỏ và 3 viên bi xanh, xác suất lấy 2 bi'}).tham_so.vat, 'bi');
+  assert.equal(ctx.suyKhuon_({mon: 'THUC_TE', de_bai: 'Ô tô đang chạy thì hãm phanh, v(t) = -5t + 20 (m/s). Tính quãng đường.'}).tham_so.ham, '-5t + 20');
+});
+t('đặc tả 3D kiểu cũ hỏng (nhom_lap thiếu so) -> khuôn suy từ đề; 3D tĩnh -> khuôn; da_giac "dinh" -> "diem"', () => {
+  const kb = {luong: 'thuc_te_xac_suat', mon: 'XAC_SUAT', de_bai: 'Có 12 thẻ đánh số từ 1 đến 12, rút 3 thẻ.', canh: [{loi_thoai: 'Rút ba thẻ.'}],
+    khung4tang: {buoc: [{nhan: 'Đề', tieu_de: 'Đề', the: []}], canh_3d_vector: {doi_tuong: [{id: 'the', loai: 'nhom_lap'}], buoc: []}}};
+  const sua = ctx.tuSuaKhung4Tang_(kb, {mon: 'XAC_SUAT', lop: '11'});
+  assert.equal(kb.khung4tang.canh_3d_vector.khuon, 'luoi_the_bi_xac_suat', sua.join('; '));
+  const kb2 = {luong: 'thuc_te_xac_suat', mon: 'THUC_TE', de_bai: 'Tấm bìa 12×12 gấp hộp', canh: [],
+    khung4tang: {buoc: [{nhan: 'a', the: []}], canh_3d_vector: {doi_tuong: [{id: 'h', loai: 'hinh_hop', kich_thuoc: [2, 2, 1]}], buoc: [{t: 0}]}}};
+  ctx.tuSuaKhung4Tang_(kb2, {mon: 'THUC_TE', lop: '12'});
+  assert.equal(kb2.khung4tang.canh_3d_vector.khuon, 'tam_bia_gap_hop');
+  const c3 = {doi_tuong: [{id: 'v', loai: 'da_giac', dinh: [[0, 0, 0], [1, 0, 0], [1, 1, 0]]}, {id: 'n', loai: 'nhom_lap', ds: ['1', '2']}]};
+  assert.equal(ctx.suaTruong3DV_(c3), 2);
+  assert.ok(Array.isArray(c3.doi_tuong[0].diem) && c3.doi_tuong[1].so === 2);
+});
+t('không suy được khuôn + 3D rỗng -> lỗi cứng KHUNG4TANG_3D_RONG', () => {
+  const kb = {luong: 'thuc_te_xac_suat', mon: 'THUC_TE', de_bai: 'Bác An gửi tiết kiệm 100 triệu lãi 6%/năm.', canh: [{loi_thoai: 'a'}],
+    khung4tang: {buoc: [{nhan: 'a', the: []}]}};
+  ctx.tuSuaKhung4Tang_(kb, {mon: 'THUC_TE', lop: '12'});
+  assert.ok(ctx.loiKhung4Tang_(kb).some((x) => /^KHUNG4TANG_3D_RONG/.test(x)));
+  assert.ok(ctx.LOI_CUNG_RE_.test('KHUNG4TANG_3D_RONG: x'));
+});
+t('tiêu đề dính đáp số -> "?", phụ đề tắt, Casio SHIFT SOLVE (tối ưu) -> MENU 8, BBT tên hàm động, bước tự gắn cảnh', () => {
+  const kb = {luong: 'thuc_te_xac_suat', mon: 'THUC_TE', de_bai: 'Từ tấm bìa 12×12 cm cắt 4 góc gấp hộp. Tìm x để thể tích lớn nhất.', dap_an_cuoi: '128',
+    canh: [{loi_thoai: 'Đề cho tấm bìa.'}, {loi_thoai: "Lập hàm V'(x) và xét dấu. Vậy thể tích lớn nhất."}],
+    khung4tang: {buoc: [
+      {nhan: 'Lập hàm', tieu_de: 'Lập hàm', khi_noi: 'lập hàm', the: [{loai: 'casio', phim: ['SHIFT', 'SOLVE'], ket_qua: '2'}, {loai: 'bang_bien_thien', moc_x: ['0', '2', '6'], dau: ['+', '-'], gia_tri: ['0', '128', '0']}]},
+      {nhan: 'Kết luận', tieu_de: 'V lớn nhất bằng 128', the: []}],
+      canh_3d_vector: {khuon: 'tam_bia', tham_so: {a: 12}}}};
+  ctx.tuSuaKhung4Tang_(kb, {mon: 'THUC_TE', lop: '12'});
+  const k = kb.khung4tang;
+  assert.equal(k.phu_de, 'tat');
+  assert.equal(k.buoc[1].tieu_de, 'V lớn nhất bằng ?');
+  assert.deepEqual(J(k.buoc[0].the[0].phim), ['MENU', '8', 'f(X)', '=']);
+  assert.equal(k.buoc[0].the[1].ham, 'V');
+  assert.equal(k.buoc[0].canh, 2);
+  assert.equal(k.canh_3d_vector.khuon, 'tam_bia_gap_hop');
+});
+t('prompt v92: khuôn, cấm đáp số tiêu đề, Casio MENU 8, \\overline{A}, hook khớp đáp án, khuôn theo lớp', () => {
+  const p = ctx.huongDanKhung4Tang_({lop: '12', mon: 'THUC_TE'});
+  assert.ok(/"khuon"/.test(p) && /MENU 8/.test(p) && /KHÔNG ghi đáp số/.test(p) && /"phu_de":"tat"/.test(p) && /2-3 thẻ/.test(p));
+  assert.ok(!/"phim":\["SHIFT","SOLVE"\]/.test(p));
+  const v = ctx.vanDeDe_({kiem_chung: ''});
+  assert.ok(/\\overline\{A\}/.test(v) && /ĐÚNG đại lượng/.test(v));
+  assert.deepEqual(J(ctx.dsKhuonTheoLop_('10', 'THUC_TE')), ['parabol_quy_dao']);
+  assert.deepEqual(J(ctx.dsKhuonTheoLop_('11', 'XAC_SUAT')), ['luoi_the_bi_xac_suat']);
+  assert.ok(!ctx.dsKhuonTheoLop_('11', 'THUC_TE').includes('hai_mat_cau_oxyz'));
+});
+t('sinh đề: xoay vòng khuôn theo lớp và chèn yêu cầu khuôn vào prompt', () => {
+  const kho = {};
+  ctx.PropertiesService = {getScriptProperties: () => ({getProperty: (k) => kho[k] || null, setProperty: (k, v) => { kho[k] = v; }})};
+  const a = ctx.chonKhuonSinhDe_('12', 'THUC_TE'), b = ctx.chonKhuonSinhDe_('12', 'THUC_TE');
+  assert.notEqual(a, b);
+  assert.equal(ctx.chonKhuonSinhDe_('10', 'THUC_TE'), 'parabol_quy_dao');
+  assert.ok(/KHUÔN HÌNH 3D/.test(ctx.yeuCauKhuonSinhDe_('11', 'XAC_SUAT')));
 });
 
 console.log(`\n${dat} test đạt`);

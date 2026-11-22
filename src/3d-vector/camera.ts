@@ -85,6 +85,9 @@ export function gocTai(ds: MocMay[], t: number, quayNhe: boolean): {n: number; c
   const L = (x: number, y: number) => x + (y - x) * a;
   // trôi nhẹ quanh trục đứng (giảm dần khi nhìn từ trên xuống để không làm lệch hình chiếu bằng)
   const c = L(A.c, B.c);
-  const troi = quayNhe ? 2.2 * Math.sin((t * 2 * Math.PI) / 10) * Math.max(0, 1 - c / 80) : 0;
-  return {n: L(A.n, B.n) + troi, c, zoom: L(A.zoom, B.zoom)};
+  // v92 AMBIENT DRIFT: máy "thở" ±2° quanh trục đứng + ±0,8° góc cao suốt video (kể cả nhìn từ trên) -> không khung nào đóng băng
+  void quayNhe;
+  const troi = 2 * Math.sin((t * 2 * Math.PI) / 9);
+  const tho = 0.8 * Math.sin((t * 2 * Math.PI) / 13 + 1.1);
+  return {n: L(A.n, B.n) + troi, c: Math.min(89.5, c + tho), zoom: L(A.zoom, B.zoom) * (1 + 0.006 * Math.sin((t * 2 * Math.PI) / 11))};
 }

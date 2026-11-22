@@ -7,3 +7,7 @@ export {dungCanh, NguCanh} from './canh';
 export {biChe, chuanBiChe, xuLyKhuat} from './khuat';
 export {tinhKhung, mayTai, TI_LE_KHUNG} from './khung_tu_dong';
 export {datNhan, rongNhan} from './nhan';
+export {dungKhuon, mocPha, tenKhuon, soPhaKhuon, TEN_KHUON} from './khuon';
+export {suyBien} from './khung_tu_dong';
+export {netDan} from './nhan';
+export {tachChuToan, tachHam} from '../khung4tang/chu_tron';

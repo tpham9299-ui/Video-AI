@@ -1,0 +1,46 @@
+{
+  "_ghi_chu": "v92 — tái hiện lỗi bài 'tấm bìa 12×12 gập hộp': 3D tự do chỉ có hình hộp kín (nap mặc định) + vạt bìa ghi 'dinh' (prompt cũ) bị bỏ -> hộp kín đứng im; khi_noi 3D không khớp lời -> mọi bước dồn vào 5 s đầu; tiêu đề kết luận lộ 128; BBT không tên hàm.",
+  "id": "LQD-BIA12",
+  "mon": "THUC_TE",
+  "luong": "thuc_te_xac_suat",
+  "lop": "12",
+  "tieu_de": "Gập hộp từ tấm bìa 12×12",
+  "chu_de": "Tối ưu hộp không nắp",
+  "de_bai": "Từ một tấm bìa hình vuông cạnh 12 cm, người ta cắt bỏ 4 hình vuông bằng nhau cạnh x ở 4 góc rồi gập thành một cái hộp không nắp. Tìm x để thể tích hộp lớn nhất.",
+  "dap_an_cuoi": "x = 2 cm, V lớn nhất = 128 cm³",
+  "hook": "Cắt góc bao nhiêu thì hộp gập từ tấm bìa chứa được nhiều nhất?",
+  "canh": [
+    {"so": 1, "loai": "mo_dau", "loi_thoai": "Cắt góc bao nhiêu thì hộp gập từ tấm bìa chứa được nhiều nhất?", "noi_dung_man_hinh": []},
+    {"so": 2, "loai": "de_bai", "loi_thoai": "Tấm bìa vuông cạnh mười hai xăng-ti-mét, cắt bốn hình vuông cạnh x ở bốn góc rồi gập thành hộp không nắp.", "noi_dung_man_hinh": []},
+    {"so": 3, "loai": "y_do", "loi_thoai": "Sau khi gập, đáy hộp là hình vuông cạnh mười hai trừ hai x, chiều cao chính là x.", "noi_dung_man_hinh": ["\\text{đáy}: 12 - 2x", "\\text{cao}: x"]},
+    {"so": 4, "loai": "tinh_toan", "loi_thoai": "Thể tích V(x) bằng x nhân mười hai trừ hai x bình phương, với x từ không đến sáu.", "noi_dung_man_hinh": ["V(x) = x(12 - 2x)^2", "0 < x < 6"]},
+    {"so": 5, "loai": "tinh_toan", "loi_thoai": "Đạo hàm V'(x) bằng mười hai trừ hai x nhân mười hai trừ sáu x.", "noi_dung_man_hinh": ["V'(x) = (12 - 2x)(12 - 6x)"]},
+    {"so": 6, "loai": "tinh_toan", "loi_thoai": "Cho V'(x) = 0, trong khoảng đang xét chỉ nhận x bằng hai.", "noi_dung_man_hinh": ["V'(x) = 0 \\Rightarrow x = 2"]},
+    {"so": 7, "loai": "tinh_toan", "loi_thoai": "Bảng biến thiên: V tăng rồi giảm, đạt lớn nhất tại x bằng hai.", "noi_dung_man_hinh": []},
+    {"so": 8, "loai": "dap_an", "loi_thoai": "Vậy cắt góc hai xăng-ti-mét, thể tích lớn nhất là một trăm hai mươi tám xăng-ti-mét khối.", "noi_dung_man_hinh": ["V(2) = 2 \\cdot 8^2 = 128"]},
+    {"so": 9, "loai": "kiem_tra", "loi_thoai": "Thử x bằng một được một trăm, x bằng ba được một trăm linh tám, đều nhỏ hơn.", "noi_dung_man_hinh": ["V(1) = 100", "V(3) = 108"]},
+    {"so": 10, "loai": "bai_hoc", "loi_thoai": "Bài gập hộp luôn đặt ẩn là cạnh cắt, nhớ điều kiện để đáy còn dương.", "noi_dung_man_hinh": []}
+  ],
+  "khung4tang": {
+    "phu_de": "gon",
+    "de_ghim": [{"id": "a", "nhan": "a = 12"}, {"id": "V", "nhan": "V_{max} = ?", "mau": "đỏ"}],
+    "buoc": [
+      {"canh": 1, "nhan": "Đề bài", "tieu_de": "Tấm bìa 12 × 12", "du_kien": ["a"], "the": [{"loai": "chu", "noi_dung": "Cắt 4 góc cạnh x"}]},
+      {"khi_noi": "sau khi gập", "nhan": "Lập hàm", "tieu_de": "Thể tích theo x", "the": [{"loai": "cong_thuc", "dong": ["V(x) = x(12 - 2x)^2"], "khi_noi": "thể tích"}]},
+      {"khi_noi": "đạo hàm", "nhan": "Đạo hàm", "tieu_de": "Cho V'(x) = 0", "the": [{"loai": "cong_thuc", "dong": ["V'(x) = (12 - 2x)(12 - 6x)"]}]},
+      {"khi_noi": "bảng biến thiên", "nhan": "Xét dấu", "tieu_de": "V tăng rồi giảm", "the": [{"loai": "bang_bien_thien", "moc_x": ["0", "2", "6"], "dau": ["+", "-"], "gia_tri": ["0", "128", "0"]}]},
+      {"khi_noi": "vậy cắt góc", "nhan": "Kết luận", "tieu_de": "V lớn nhất bằng 128", "the": [{"loai": "cong_thuc", "dong": ["V_{max} = V(2) = 128"]}]}
+    ],
+    "canh_3d_vector": {
+      "phien_ban": 1,
+      "doi_tuong": [
+        {"id": "hop", "loai": "hinh_hop", "tam": [0, 0, 0], "kich_thuoc": [3, 3, 1], "mau": "cyan"},
+        {"id": "vat1", "loai": "da_giac", "dinh": [[-1.5, -1.5, 0], [1.5, -1.5, 0], [1.5, -2.5, 0], [-1.5, -2.5, 0]], "ban_le": [[-1.5, -1.5, 0], [1.5, -1.5, 0]]}
+      ],
+      "buoc": [
+        {"camera": [30, 22, 1], "hien": ["hop"]},
+        {"khi_noi": "gập từng vạt lên", "hanh_dong": [{"loai": "gap_mat", "vat": "vat1", "den": 90}]}
+      ]
+    }
+  }
+}

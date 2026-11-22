@@ -9,6 +9,7 @@
 import {Buoc3D, Camera, Canh3DV, DoiTuong, HanhDong, KieuNet, LoaiKhoi, TenMau, ThamChieu, V3} from './kieu';
 import {CAMERA_MAC_DINH, GOC_TEN} from './camera';
 import {laV3} from './toan3d';
+import {dungKhuon} from './khuon';
 
 const LOAI: LoaiKhoi[] = ['diem', 'doan_thang', 'vector', 'da_giac', 'hinh_hop', 'mat_cau', 'hinh_tru', 'hinh_non', 'hinh_chop', 'duong_cong', 'goc', 'nhom_lap'];
 const MAU: TenMau[] = ['cyan', 'vang', 'hong', 'ngoc', 'trang', 'xam'];
@@ -70,7 +71,9 @@ function docDoiTuong(r: R, loi: string[]): DoiTuong | null {
       break;
     }
     case 'da_giac': {
-      const ds = Array.isArray(r.diem) ? r.diem.map(thamChieu).filter((x): x is ThamChieu => !!x) : [];
+      // v92: prompt cũ dạy "dinh" -> nhận cả hai tên (trước đây vạt bìa bị bỏ âm thầm)
+      const nguon = Array.isArray(r.diem) ? r.diem : Array.isArray(r.dinh) ? r.dinh : [];
+      const ds = nguon.map(thamChieu).filter((x): x is ThamChieu => !!x);
       if (!can(ds.length >= 3, 'diem (>= 3 điểm)')) return null;
       d.diem = ds.slice(0, 24);
       if (Array.isArray(r.ban_le) && r.ban_le.length === 2) {
@@ -100,9 +103,9 @@ function docDoiTuong(r: R, loi: string[]): DoiTuong | null {
     }
     case 'hinh_tru':
     case 'hinh_non': {
-      d.day = thamChieu(r.day) ?? [0, 0, 0];
-      d.banKinh = so(r.ban_kinh, 0);
-      d.cao = so(r.cao, 0);
+      d.day = thamChieu(r.day) ?? thamChieu(r.tam_day) ?? thamChieu(r.tam) ?? [0, 0, 0];
+      d.banKinh = so(r.ban_kinh ?? r.r, 0);
+      d.cao = so(r.cao ?? r.h, 0);
       if (!can(d.banKinh > 0 && d.cao !== 0, 'ban_kinh/cao')) return null;
       d.tenDinh = dsTen(r.ten_dinh, 2);
       break;
@@ -144,7 +147,9 @@ function docDoiTuong(r: R, loi: string[]): DoiTuong | null {
     case 'nhom_lap': {
       const vat = chuoi(r.vat);
       d.vat = vat === 'the' || vat === 'khoi' ? vat : 'bi';
-      d.so = Math.round(so(r.so, 0, 0, 40));
+      // v92: prompt cũ dạy {ds:[...]} -> số phần tử = độ dài ds, nhãn/màu từng phần tử lấy từ ds
+      const dsP = Array.isArray(r.ds) ? r.ds.slice(0, 40) : [];
+      d.so = Math.round(so(r.so ?? r.N ?? (dsP.length || undefined), 0, 0, 40));
       if (!can(d.so > 0, 'so')) return null;
       const x = chuoi(r.xep);
       d.xep = x === 'luoi' || x === 'vong' ? x : 'hang';
@@ -152,6 +157,12 @@ function docDoiTuong(r: R, loi: string[]): DoiTuong | null {
       d.khoang = so(r.khoang, 1, 0.05, 100);
       d.nhanTung = dsChuoi(r.nhan_tung).slice(0, 40);
       d.mauTung = Array.isArray(r.mau_tung) ? r.mau_tung.map((m) => tenMau(m, d.mau)).slice(0, 40) : [];
+      if (dsP.length) {
+        if (!d.nhanTung.length) d.nhanTung = dsP.map((x) => (laDT(x) ? chuoi(x.nhan ?? x.so, 6) : chuoi(x, 6)));
+        if (!d.mauTung.length) d.mauTung = dsP.map((x) => tenMau(laDT(x) ? x.mau : undefined, d.mau));
+        if (!chuoi(r.vat) && dsP.some((x) => laDT(x) && /bi/.test(chuoi(x.loai)))) d.vat = 'bi';
+      }
+      if (!chuoi(r.xep)) d.xep = d.so > 6 ? 'luoi' : 'hang';
       break;
     }
   }
@@ -161,10 +172,19 @@ function docDoiTuong(r: R, loi: string[]): DoiTuong | null {
 function hanhDong(r: R, tBuoc: number, ids: Set<string>, loi: string[]): HanhDong | null {
   const loai = chuoi(r.loai);
   const vat = chuoi(r.vat, 32);
-  if (loai !== 'truot_diem' && loai !== 'tach_vector' && loai !== 'gap_mat') return loi.push(`hành động "${loai}" không hỗ trợ`), null;
+  if (!['truot_diem', 'tach_vector', 'gap_mat', 'dich', 've_dan', 'nang'].includes(loai)) return loi.push(`hành động "${loai}" không hỗ trợ`), null;
   if (!ids.has(vat)) return loi.push(`hành động ${loai}: không có vật "${vat}"`), null;
-  const h: HanhDong = {loai, vat, t: so(r.t, tBuoc, 0), d: so(r.d, loai === 'gap_mat' ? 1.6 : 1.2, 0.1, 30), khiNoi: chuoi(r.khi_noi, 80) || undefined};
-  if (loai === 'truot_diem') {
+  const h: HanhDong = {loai: loai as HanhDong['loai'], vat, t: so(r.t, tBuoc, 0), d: so(r.d, loai === 'gap_mat' ? 1.6 : 1.2, 0.1, 30), khiNoi: chuoi(r.khi_noi, 80) || undefined};
+  if (loai === 'dich') {
+    h.vec = v3(r.vec) ?? [0, 0, 0];
+  } else if (loai === 've_dan') {
+    h.tu = so(r.tu, 0, 0, 1);
+    h.den = so(r.den, 1, 0, 1);
+  } else if (loai === 'nang') {
+    h.chiSo = Array.isArray(r.chi_so) ? r.chi_so.filter((x): x is number => typeof x === 'number' && isFinite(x)).map((x) => Math.round(x)).slice(0, 40) : [];
+    if (r.mau !== undefined) h.mauNang = tenMau(r.mau, 'vang');
+    h.cao = so(r.cao, 0.4, 0, 3);
+  } else if (loai === 'truot_diem') {
     h.tu = so(r.tu, NaN, 0, 1);
     h.den = so(r.den, 1, 0, 1);
   } else if (loai === 'gap_mat') {
@@ -179,9 +199,21 @@ function hanhDong(r: R, tBuoc: number, ids: Set<string>, loi: string[]): HanhDon
 
 export type KetQuaDacTa = {canh: Canh3DV | null; loi: string[]};
 
-export function chuanHoaCanh3DV(raw: unknown): KetQuaDacTa {
+// v92: mocBuoc/tong = mốc các bước của khung 4 tầng (giây) để trải pha của khuôn tham số; khuon_du_phong = khuôn Auto-fix
+// suy từ đề, dùng khi đặc tả tự do không còn đối tượng hợp lệ (KHÔNG BAO GIỜ để tầng sân khấu trống).
+export function chuanHoaCanh3DV(raw0: unknown, mocBuoc: number[] = [], tong = 0): KetQuaDacTa {
   const loi: string[] = [];
-  if (!laDT(raw) || !Array.isArray(raw.doi_tuong)) return {canh: null, loi: ['thiếu doi_tuong']};
+  let raw = raw0;
+  if (laDT(raw) && raw.khuon !== undefined && !Array.isArray(raw.doi_tuong)) {
+    const k = dungKhuon(raw, mocBuoc, tong);
+    if (k) raw = k;
+    else loi.push(`khuôn "${String(raw.khuon)}" không có`);
+  }
+  if (!laDT(raw) || !Array.isArray(raw.doi_tuong)) {
+    const du = laDT(raw0) ? dungKhuon(raw0.khuon_du_phong, mocBuoc, tong) : null;
+    if (du) return chuanHoaCanh3DV(du, mocBuoc, tong);
+    return {canh: null, loi: [...loi, 'thiếu doi_tuong']};
+  }
   const doiTuong: DoiTuong[] = [];
   const ids = new Set<string>();
   for (const x of raw.doi_tuong.slice(0, 80)) {
@@ -195,7 +227,11 @@ export function chuanHoaCanh3DV(raw: unknown): KetQuaDacTa {
     ids.add(d.id);
     doiTuong.push(d);
   }
-  if (!doiTuong.length) return {canh: null, loi: [...loi, 'không còn đối tượng hợp lệ']};
+  if (!doiTuong.length) {
+    const du = laDT(raw0) ? dungKhuon(raw0.khuon_du_phong, mocBuoc, tong) : null;
+    if (du) return {canh: chuanHoaCanh3DV(du, mocBuoc, tong).canh, loi: [...loi, 'không còn đối tượng hợp lệ -> dùng khuôn dự phòng']};
+    return {canh: null, loi: [...loi, 'không còn đối tượng hợp lệ']};
+  }
   // tên đỉnh cũng là id hợp lệ để hiện/nhấn mạnh và tham chiếu
   const tenHopLe = new Set(ids);
   for (const d of doiTuong) for (const t of d.tenDinh || []) tenHopLe.add(t);

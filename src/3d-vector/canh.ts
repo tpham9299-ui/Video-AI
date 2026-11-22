@@ -1,6 +1,6 @@
 // v90 — NGỮ CẢNH CẢNH tại một thời điểm: trạng thái hiện/ẩn, nhấn mạnh, hành động (trượt điểm, gập mặt, tách vector)
 // và bộ giải tham chiếu điểm ("A", "khung.dinh[4]", "cau1.tam", tọa độ). Hàm thuần của (đặc tả, t) -> chạy song song an toàn.
-import {Canh3DV, DoiTuong, HanhDong, Manh, ThamChieu, V3, VatChe} from './kieu';
+import {Canh3DV, DoiTuong, HanhDong, Manh, TenMau, ThamChieu, V3, VatChe} from './kieu';
 import {catmullRom, chuan, coSoMatPhang, cong, diemTheoDoDai, emRa, emVaoRa, kep01, nhan, quayQuanhTruc, RAD, tru, trungBinh} from './toan3d';
 import {phanTichBieuThuc} from '../sankhau/bieuthuc';
 import {dungKhoi} from './khoi';
@@ -72,7 +72,7 @@ export class NguCanh {
   // hệ số độ đục do nhấn mạnh (vật khác bị làm mờ) và mức sáng (vật được nhấn mạnh)
   private muc(tap: Set<string>, id: string) {
     if (!tap.size) return {op: 1, sang: 0};
-    return tap.has(id) ? {op: 1, sang: 1} : {op: 0.32, sang: 0};
+    return tap.has(id) ? {op: 1, sang: 1} : {op: 0.3, sang: 0}; // v92 cross-layer focus: nền hạ về 30%
   }
   doDuc(id: string): number {
     if (this.bo) return 1;
@@ -107,6 +107,32 @@ export class NguCanh {
   }
   gocGap(id: string, goc: number) {
     return this.giaTri(id, 'gap_mat', goc);
+  }
+  // v92: độ dời hiện tại của vật (cộng dồn các hành động "dich" đã chạy)
+  doi(id: string): V3 {
+    let v: V3 = [0, 0, 0];
+    for (const h of this.hanhDongCua(id, 'dich')) {
+      if (this.t < h.t || !h.vec) break;
+      v = cong(v, nhan(h.vec, emVaoRa((this.t - h.t) / h.d)));
+    }
+    return v;
+  }
+  // v92: tiến độ vẽ (0..1) của đường cong có "ve_dan"; không có hành động thì vẽ đủ
+  tienVe(id: string): number {
+    const ds = this.hanhDongCua(id, 've_dan');
+    if (!ds.length) return 1;
+    return kep01(this.giaTri(id, 've_dan', ds[0].tu !== undefined && isFinite(ds[0].tu) ? ds[0].tu : 0));
+  }
+  // v92: phần tử i của nhom_lap đang được nhấc (hành động "nang" gần nhất thắng, chuyển mềm từ lần trước)
+  nangPhanTu(id: string, i: number): {h: number; mau?: TenMau; sang: number} {
+    const ds = this.hanhDongCua(id, 'nang').filter((h) => h.t <= this.t);
+    if (!ds.length) return {h: 0, sang: 0};
+    const nay = ds[ds.length - 1], truoc = ds.length > 1 ? ds[ds.length - 2] : null;
+    const a = emVaoRa((this.t - nay.t) / nay.d);
+    const co = (h: HanhDong | null) => (h && (h.chiSo || []).includes(i) ? 1 : 0);
+    const v = co(truoc) + (co(nay) - co(truoc)) * a;
+    const giu = co(nay) ? nay : co(truoc) ? truoc : null;
+    return {h: v * (nay.cao ?? 0.4), mau: giu?.mauNang, sang: v};
   }
   tienTach(id: string): number {
     const ds = this.hanhDongCua(id, 'tach_vector');
@@ -279,7 +305,22 @@ export function dungCanh(canh: Canh3DV, t: number, camPos: V3 | null, boQuaHien 
   for (const d of canh.doiTuong) {
     const a = ctx.alpha(d.id);
     if (a <= 0.001) continue;
+    const m0 = manh.length, c0 = che.length;
     dungKhoi(d, ctx, a, manh, che);
+    const v = ctx.doi(d.id);
+    if (v[0] || v[1] || v[2]) {
+      for (let i = m0; i < manh.length; i++) {
+        const m = manh[i];
+        if (m.k === 'net') { m.a = cong(m.a, v); m.b = cong(m.b, v); }
+        else if (m.k === 'mat') m.p = m.p.map((p) => cong(p, v));
+        else { m.p = cong(m.p, v); if (m.k === 'nhan' && m.tam) m.tam = cong(m.tam, v); if (m.k === 'nhan' && m.doan) m.doan = [cong(m.doan[0], v), cong(m.doan[1], v)]; }
+      }
+      for (let i = c0; i < che.length; i++) {
+        const c = che[i];
+        if (c.k === 'mat') che[i] = {...c, p: c.p.map((p) => cong(p, v))};
+        else che[i] = {...c, o: cong(c.o, v)};
+      }
+    }
   }
   return {manh, che};
 }

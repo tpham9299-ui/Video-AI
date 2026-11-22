@@ -359,29 +359,53 @@ function dungKhung4Tang_(r) {
   if (typeof laVideoDai_ === 'function' && laVideoDai_(r)) return false;      // chuyên đề 10 phút giữ đường dựng cũ
   return boDungMacDinh_() === '3d_vector';
 }
+// v92: 8 KHUÔN 3D THAM SỐ (src/3d-vector/khuon): AI chỉ ghi {khuon, tham_so, pha} -> máy dựng hình + chuyển động từng bước.
+var KHUON_3DV_ = {
+  tam_bia_gap_hop: {ts: '{"a":12,"b":12,"x":2,"ten_x":"x"}', pha: 'nguyen_ven, to_goc, an_goc, gap, nhan_canh, the_tich', dung: 'tấm bìa/tôn a×b cắt 4 góc vuông cạnh x rồi gập hộp không nắp'},
+  tru_non_toi_uu: {ts: '{"loai":"tru|non","V":512,"r":4,"h":8,"phoi":false}', pha: 'khoi, kich_thuoc, quet (nón: duong_sinh), phoi|be_mat, ket', dung: 'lon/cốc/bồn hình trụ, phễu hình nón tối ưu vật liệu (phoi:true khi đề cắt nắp/đáy từ tấm vuông)'},
+  luoi_the_bi_xac_suat: {ts: '{"vat":"the|bi","N":12,"nhom":[{"mau":"hong","so":5},{"mau":"cyan","so":3}],"chon":[[1,2,3],[4,8,12]],"k":3}', pha: 'hien, khong_gian_mau, chon_1, chon_2 ..., ket', dung: 'thẻ đánh số 1..N hoặc bi nhiều màu; mỗi pha chon_i nhấc nổi + tô sáng các phần tử được chọn (chon ghi SỐ trên thẻ / thứ tự bi, 1-based)'},
+  parabol_quy_dao: {ts: '{"ham":"20-4t","t":[0,5],"ten_ham":"v","ten_bien":"t","dien_tich":true}', pha: 'truc, ve, diem, dien_tich|dinh, ket', dung: 'đồ thị v(t), s(t), quỹ đạo ném, cổng parabol; dien_tich = tô vùng dưới đồ thị (quãng đường = tích phân, chỉ lớp 12)'},
+  hai_mat_cau_oxyz: {ts: '{"tam1":[1,2,3],"r1":3,"tam2":[4,0,1],"r2":2,"duong":{"qua":[0,0,0],"vtcp":[1,1,0]},"ten_m":"M"}', pha: 'truc, cau1, cau2, duong, truot, ket', dung: 'CHỈ lớp 12: hai mặt cầu, đường thẳng Δ, điểm M trượt trên Δ'},
+  khung_day_cap: {ts: '{"so_cap":4,"goc":30,"nhan_luc":"\\\\vec P"}', pha: 'dung, goc, luc, tach, tu_tren, ket', dung: 'vật treo bởi 3-4 dây cáp hợp với phương thẳng đứng góc α, tách lực căng (lớp 12)'},
+  mat_phang_cat_khoi: {ts: '{"khoi":"hop|tru","kich_thuoc":[4,3,3],"r":1.5,"h":3}', pha: 'khoi, mat_phang, truot, giao_tuyen, ket', dung: 'mặt phẳng song song đáy trượt cắt khối, tô sáng thiết diện'},
+  chop_lang_tru: {ts: '{"loai":"chop_tu_giac|chop_tam_giac|lang_tru_tam_giac","a":2,"h":3}', pha: 'khoi, duong_cao (lăng trụ: cheo), tam_giac, goc, ket', dung: 'chóp/lăng trụ: đường cao, tam giác vuông, góc giữa cạnh/mặt và đáy'}
+};
+function dsKhuonTheoLop_(lop, mon) {
+  if (String(mon || '').toUpperCase() === 'XAC_SUAT') return ['luoi_the_bi_xac_suat'];
+  if (String(lop) === '10') return ['parabol_quy_dao'];
+  if (String(lop) === '11') return ['tam_bia_gap_hop', 'tru_non_toi_uu', 'chop_lang_tru', 'mat_phang_cat_khoi', 'parabol_quy_dao'];
+  return ['tam_bia_gap_hop', 'tru_non_toi_uu', 'parabol_quy_dao', 'hai_mat_cau_oxyz', 'khung_day_cap', 'mat_phang_cat_khoi', 'chop_lang_tru'];
+}
+function moTaKhuon_(ten) {
+  var k = KHUON_3DV_[ten];
+  return k ? ten + ' (' + k.dung + '; tham_so ' + k.ts + '; pha: ' + k.pha + ')' : ten;
+}
 function huongDanKhung4Tang_(r) {
   var lop = String((r && r.lop) || '');
+  var dsK = dsKhuonTheoLop_(lop, r && r.mon);
   return 'KHUNG 4 TẦNG + SÂN KHẤU 3D VECTOR (BẮT BUỘC với bài này; video dựng bằng Remotion, không dùng Blender): thêm ở gốc JSON "khung4tang". ' +
-    'Màn hình chia cố định: T1 nhãn "BƯỚC n" + tiêu đề | T2 sân khấu 3D vector sống (hình, lực, mặt cầu, đồ thị không gian) | T3 thẻ giải (công thức / máy tính / bảng biến thiên) | T4 thanh ghim ĐỀ (các dữ kiện, bật sáng ở bước dùng tới). ' +
-    'Cấu trúc: {"phu_de":"gon","de_ghim":[{"id":"chu_khong_dau","nhan":"LaTeX ngắn ≤ 14 ký tự, ví dụ F = 4500, \\\\alpha = 60^\\\\circ, P = ?","mau":"hong nếu là ẩn cần tìm"}] (2-5 dữ kiện),' +
-    '"buoc":[{"khi_noi":"cụm 2-6 từ NGUYÊN VĂN trong loi_thoai lúc bắt đầu bước (bước đầu có thể ghi \\"canh\\":1)","nhan":"Dựng hình|Phân tích lực|Lập hàm|Tối ưu|Kết luận ≤ 3 từ","tieu_de":"≤ 8 từ","mau":"' + MAU_3DV_.join('|') + '","du_kien":["id trong de_ghim dùng ở bước này"],' +
-    '"the":[{"loai":"cong_thuc","nhan":"tùy chọn","dong":["1-3 dòng LaTeX"],"khi_noi_dong":["cụm nguyên văn lúc hiện từng dòng"]} | {"loai":"casio","phim":["SHIFT","SOLVE"],"ket_qua":"..."} | {"loai":"bang_bien_thien","moc_x":[...],"dau":[...],"gia_tri":[...]} | {"loai":"chu","noi_dung":"≤ 12 từ"}]}] (3-6 bước, bước sau mốc muộn hơn bước trước),' +
-    '"canh_3d_vector":{"phien_ban":1,"doi_tuong":[ ... ],"buoc":[{"khi_noi":"cụm nguyên văn (bước đầu bỏ trống)","camera":[goc_ngang -180..180, goc_cao 5..90, zoom 0.6..2] hoặc "tu_tren","hien":["id"],"an":["id"],"nhan_manh":["id"],"hanh_dong":[{"loai":"truot_diem|tach_vector|gap_mat","vat":"id","khi_noi":"cụm nguyên văn","d":giây}]}]}}. ' +
-    'Đối tượng (tọa độ 3D [x,y,z], z hướng lên, hình nằm trong khối ~[-3,3]³, mỗi id duy nhất): ' +
-    'diem {toa_do,nhan} | doan_thang {tu,den: id điểm/đỉnh hoặc [x,y,z], net:"lien|dut"} | vector {tu,den,nhan:"\\\\vec F_1"} | da_giac {dinh:[[x,y,z]...],ban_le?,nhan_canh?} | ' +
-    'hinh_hop {tam,kich_thuoc:[dai,rong,cao],ten_dinh:[8 tên, 4 đáy rồi 4 nắp],nap:true|false} | mat_cau {tam,ban_kinh} | hinh_tru/hinh_non {tam_day,ban_kinh,cao} | hinh_chop {day:[[x,y,z]...],dinh:[x,y,z]} | ' +
-    'duong_cong {diem:[[x,y,z]...] hoặc ham:{x:"t",y:"t^2",z:"0",t:[a,b]}} | goc {dinh,canh:[id,id],nhan:"60^\\\\circ"} | nhom_lap {ds:[...]}. Thuộc tính chung: mau (' + MAU_3DV_.join(', ') + '), nhan (LaTeX, "" = không nhãn), mo (0..1 độ đục mặt). ' +
-    'Nét khuất máy tự tính, không cần khai báo. Hành động: truot_diem {vat: id điểm, tu, den hoặc tren:{duong:id}} = điểm M trượt trên đường; tach_vector {vat: id vector, thanh_phan:["ngang","dung"]} = tách lực thành phần; gap_mat {vat: id da_giac có ban_le} = gập tấm bìa / mặt. ' +
-    'Màu mang nghĩa: cyan = đề cho, vàng = đang xét/kết quả, hồng = ẩn cần tìm, ngọc = đã kiểm chứng. ' +
-    'Camera: bắt đầu góc nghiêng [30,22,1]; đổi góc ("tu_tren" hoặc goc_ngang khác) đúng lúc lời giảng cần nhìn rõ quan hệ; tối đa 3 lần đổi. ' +
-    'Dùng cho: tọa độ Oxyz (CHỈ lớp 12), tối ưu thực tế (hộp/bể/rào: hình + đại lượng x trượt), vector lực, xác suất (đối tượng mô hình hóa: lưới ô, cây trường hợp vẽ bằng đoạn thẳng + nhãn). ' +
-    (lop === '10' ? 'Lớp 10: chỉ hình PHẲNG (camera "tu_tren", z = 0). ' : lop === '11' ? 'Lớp 11: KHÔNG dùng hệ tọa độ Oxyz, không ghi tọa độ lên nhãn. ' : '') +
-    'Mọi khi_noi phải trích NGUYÊN VĂN loi_thoai; số liệu trên de_ghim và thẻ phải khớp đề và đáp án.\n';
+    'Màn hình chia cố định: T1 nhãn "BƯỚC n" + tiêu đề | T2 sân khấu 3D vector sống | T3 thẻ giải (công thức / máy tính / bảng biến thiên) | T4 thanh ghim ĐỀ. KHÔNG có phụ đề chạy chữ. ' +
+    'Cấu trúc: {"phu_de":"tat","de_ghim":[{"id":"chu_khong_dau","nhan":"LaTeX ngắn ≤ 14 ký tự, ví dụ F = 4500, \\\\alpha = 60^\\\\circ, P = ?","mau":"hong nếu là ẩn cần tìm"}] (2-5 dữ kiện),' +
+    '"buoc":[{"canh":số thứ tự cảnh (1-based) nơi bước bắt đầu,"khi_noi":"cụm 3-6 từ NGUYÊN VĂN trong loi_thoai của đúng cảnh đó, ở câu MỞ ĐẦU bước","nhan":"Dựng hình|Lập hàm|Tối ưu|Kết luận ≤ 3 từ",' +
+    '"tieu_de":"≤ 8 từ; ký hiệu toán viết LaTeX (\\\\Omega, C_{12}^{3}, S_A, V\'(x)), TUYỆT ĐỐI KHÔNG ghi đáp số (kể cả bước kết luận: viết \\"Kết luận: V lớn nhất khi x = ?\\")","mau":"' + MAU_3DV_.join('|') + '","du_kien":["id trong de_ghim dùng ở bước này"],' +
+    '"the":[2-3 thẻ NỐI TIẾP đúng nhịp đọc, MỖI thẻ có "khi_noi" (cụm nguyên văn lúc đọc tới thẻ đó); thẻ đầu ngay câu đầu bước, không thẻ nào đứng một mình quá 12 giây: ' +
+    '{"loai":"cong_thuc","nhan":"tùy chọn","dong":["1-3 dòng LaTeX"],"khi_noi":"...","khi_noi_dong":["cụm nguyên văn lúc hiện từng dòng"]} | ' +
+    '{"loai":"casio","phim":[...],"ket_qua":"...","khi_noi":"..."} (tìm GTLN/GTNN: dùng MENU 8 (Table) nhập f(X) rồi đọc bảng, hoặc giải phương trình f\'(x) = 0 rồi CALC thế nghiệm; CẤM hướng dẫn SHIFT SOLVE ra thẳng cực trị) | ' +
+    '{"loai":"bang_bien_thien","ham":"tên hàm của bài: V, S, f...","bien":"x|r|t","moc_x":[...],"dau":[...],"gia_tri":[...],"khi_noi":"..."} | {"loai":"chu","noi_dung":"≤ 12 từ","khi_noi":"..."}]}] (3-6 bước theo đúng thứ tự lời giảng; bước 2 trở đi chỉ bắt đầu SAU khi đã đọc xong đề),' +
+    '"canh_3d_vector": ƯU TIÊN KHUÔN THAM SỐ {"khuon":"tên khuôn","tham_so":{...số liệu ĐÚNG của đề...},"pha":[{"ten":"tên pha","khi_noi":"cụm nguyên văn lúc chuyển sang pha đó"}]} (pha không ghi khi_noi thì máy tự trải theo các bước). ' +
+    'Khuôn dùng được cho bài lớp ' + (lop || '?') + ': ' + dsK.map(moTaKhuon_).join(' | ') + '. ' +
+    'CHỈ khi không khuôn nào hợp mới dùng đặc tả tự do {"phien_ban":1,"doi_tuong":[...],"buoc":[{"khi_noi","camera":[goc_ngang,goc_cao 5..90,zoom] hoặc "tu_tren","hien":[id],"an":[id],"nhan_manh":[id],"hanh_dong":[...]}]} ' +
+    '(≥ 3 bước có thay đổi; tọa độ [x,y,z], z hướng lên, khối ~[-3,3]³): diem {toa_do,nhan} | doan_thang/vector {tu,den} | da_giac {diem:[[x,y,z]...],ban_le?} | hinh_hop {tam,kich_thuoc,ten_dinh,nap} | mat_cau {tam,ban_kinh} | ' +
+    'hinh_tru/hinh_non {day:[x,y,z],ban_kinh,cao} | hinh_chop {day:[[x,y,z]...],dinh} | duong_cong {diem|ham} | goc {dinh,canh:[id,id]} | nhom_lap {vat:"the|bi|khoi",so:N,xep:"luoi|hang|vong",mau_tung:[...],nhan_tung:[...]}; ' +
+    'hành động: truot_diem, tach_vector, gap_mat, dich {vec}, ve_dan, nang {chi_so (0-based),mau}. Màu mang nghĩa: cyan = đề cho, vàng = đang xét/kết quả, hồng = ẩn cần tìm, ngọc = đã kiểm chứng. ' +
+    (lop === '10' ? 'Lớp 10: chỉ hình PHẲNG, không Oxyz, không đạo hàm/tích phân. ' : lop === '11' ? 'Lớp 11: KHÔNG dùng hệ tọa độ Oxyz, không bảng biến thiên/đạo hàm tìm cực trị (dùng Cauchy / tam thức bậc hai). ' : '') +
+    'Mọi khi_noi phải trích NGUYÊN VĂN loi_thoai (máy khớp từng từ); số liệu trên de_ghim, tham_so và thẻ phải khớp đề và đáp án.\n';
 }
 
 function vanDeDe_(r) {
   var m = /DE_CO_VAN_DE:\s*(.+)$/.exec(String(r.kiem_chung || ''));
-  var chung = 'MỌI PHÉP TÍNH TRÊN MÀN HÌNH ĐỀU ĐƯỢC MÁY TÍNH LẠI: chỉ cần một vế sai (ví dụ ghi 20·25/2 = 260 trong khi thực ra là 250) là kịch bản bị trả về. Đừng bao giờ "ép" phép tính cho ra số đẹp.\n';
+  var chung = 'CHUẨN TOÁN (v92): câu hỏi ở hook/mở bài phải hỏi ĐÚNG đại lượng mà đáp án cuối trả lời (hỏi thể tích thì đáp thể tích, hỏi x thì đáp x); biến cố đối của A luôn viết \\overline{A} (P(\\overline{A}) = 1 - P(A)), không viết nhầm thành A; bấm máy Casio tìm GTLN/GTNN dùng MENU 8 (Table) hoặc giải f\'(x) = 0 rồi CALC, cấm hướng dẫn SHIFT SOLVE ra thẳng cực trị.\n' +
+    'MỌI PHÉP TÍNH TRÊN MÀN HÌNH ĐỀU ĐƯỢC MÁY TÍNH LẠI: chỉ cần một vế sai (ví dụ ghi 20·25/2 = 260 trong khi thực ra là 250) là kịch bản bị trả về. Đừng bao giờ "ép" phép tính cho ra số đẹp.\n';
   if (!m) return chung;
   return chung + 'ĐỀ CÓ VẤN ĐỀ (bước giải đã thử ngược và phát hiện): ' + m[1] + '\n' +
     'Video PHẢI nói thật điều này một cách tích cực, như một phát hiện thú vị dạy học sinh biết THỬ LẠI đáp số (ví dụ: "Thử lại: 20 tầng chỉ có 250 ống, 21 tầng lại cần 273 ống, nên 260 ống không xếp vừa khít; xếp được 20 tầng trọn vẹn và còn dư 10 ống"). ' +
