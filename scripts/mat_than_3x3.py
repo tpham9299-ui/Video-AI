@@ -30,14 +30,19 @@ from concurrent.futures import ThreadPoolExecutor
 
 GOC = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 O_RONG, O_CAO = 360, 640
-LOAI_LOI = ("cat_chu", "chong_chu", "latex_tho", "lo_dap_an", "ma_tho", "logo_sai", "so_cat", "t2_trong", "hinh_dung_im")
-TEN_LOI = {"cat_chu": "Cắt chữ / tràn khung", "chong_chu": "Chồng nhãn / chồng chữ", "latex_tho": "Mã LaTeX thô", "lo_dap_an": "Lộ đáp án sớm",
+LOAI_LOI = ("cat_chu", "chong_chu", "latex_tho", "lo_dap_an", "ma_tho", "logo_sai", "so_cat", "t2_trong", "hinh_dung_im", "hinh_nho", "tran_day", "nhan_de")
+TEN_LOI = {"hinh_nho": "Hình học quá nhỏ trong khung", "tran_day": "Chữ tràn xuống đáy (vùng an toàn)", "nhan_de": "Nhãn điểm đè nhau / đè nét",
+           "cat_chu": "Cắt chữ / tràn khung", "chong_chu": "Chồng nhãn / chồng chữ", "latex_tho": "Mã LaTeX thô", "lo_dap_an": "Lộ đáp án sớm",
            "ma_tho": "Mã thô ở tiêu đề/thẻ", "logo_sai": "Logo/tên kênh sai chuyên mục", "so_cat": "Con số bị cắt lỗi",
            "t2_trong": "Tầng 2 trống đen (không có hình 3D)", "hinh_dung_im": "Hình 3D đứng im ở mọi khung"}
 # Khung 4 tầng (src/khung4tang/vung.ts, an toàn TikTok): tầng 2 = y 288..1036 trên 1920 -> tỉ lệ trong ô lưới
 T2_TREN, T2_DUOI = 288 / 1920.0, 1036 / 1920.0
 # v93: vùng mô hình 3D lúc Intro móc câu (src/khung4tang/IntroMocCau.tsx INTRO_SAN = y 540, cao 748)
 INTRO_TREN, INTRO_DUOI = 540 / 1920.0, 1288 / 1920.0
+# v94: hình phẳng chuẩn (scripts/manim/HinhPhangChuan.py, khung 9 x 16 đơn vị): vùng hình y 5,05..-0,75 -> tỉ lệ từ mép trên;
+# đáy an toàn 14% (TikTok) không được có chữ
+HP_HINH_TREN, HP_HINH_DUOI = (8 - 5.05) / 16.0, (8 + 0.75) / 16.0
+HP_DAY = 0.86
 
 
 def co_intro_moc_cau(p):
@@ -155,6 +160,8 @@ def kiem_tat_dinh(p, anh_o, o_da):
         loi.append({"o": 1, "loai": "logo_sai", "mo_ta": "bài Toán nhưng tên kênh là \"%s\"" % ten, "nang": True})
     if th.get("chuyenMuc") == "toan" and re.search(r"(^|/)logo\.(png|webp|jpe?g)$", str(th.get("logo") or "")):
         loi.append({"o": 1, "loai": "logo_sai", "mo_ta": "bài Toán dùng logo.png (logo Xác suất), cần logo_toan.png hoặc logo chữ", "nang": True})
+    if p.get("boCuc") == "hinh_phang" and anh_o:
+        return loi + kiem_hinh_phang(p, anh_o, o_da)
     if p.get("boCuc") != "4tang" or not anh_o:
         return loi
     from PIL import ImageChops, ImageStat
@@ -183,6 +190,30 @@ def kiem_tat_dinh(p, anh_o, o_da):
     return loi
 
 
+def kiem_hinh_phang(p, anh_o, o_da):
+    """v94: luồng hình phẳng chuẩn - hình nhỏ (hộp sáng < 45% vùng hình ở >= 2 ô giải), chữ tràn đáy 14%, nhãn đè (bộ giải báo)."""
+    loi = []
+    giai = [k for k in range(1, min(o_da, len(anh_o))) if anh_o[k] is not None]
+    nho, day = [], []
+    for k in giai:
+        im = anh_o[k].convert("L")
+        y0, y1 = int(O_CAO * HP_HINH_TREN), int(O_CAO * HP_HINH_DUOI)
+        hop = im.crop((0, y0, O_RONG, y1)).point(lambda v: 255 if v > 70 else 0).getbbox()
+        if hop is None or ((hop[2] - hop[0]) / float(O_RONG) < 0.45 and (hop[3] - hop[1]) / float(y1 - y0) < 0.45):
+            nho.append(k)
+        dd = im.crop((0, int(O_CAO * HP_DAY), O_RONG, O_CAO)).histogram()
+        if sum(dd[70:]) / float(max(1, sum(dd))) > 0.004:
+            day.append(k)
+    if len(nho) >= 2:
+        loi.append({"o": nho[0] + 1, "loai": "hinh_nho", "mo_ta": "hình chiếm dưới 45%% vùng sân khấu ở ô %s" % ", ".join(str(k + 1) for k in nho), "nang": True})
+    if day:
+        loi.append({"o": day[0] + 1, "loai": "tran_day", "mo_ta": "có chữ/nét trong 14%% đáy ở ô %s" % ", ".join(str(k + 1) for k in day), "nang": True})
+    vc = int((p.get("hinhPhangBoCuc") or {}).get("va_cham_nhan") or 0)
+    if vc:
+        loi.append({"o": 2, "loai": "nhan_de", "mo_ta": "bộ đặt nhãn báo %d nhãn chưa có chỗ trống" % vc, "nang": vc >= 2})
+    return loi
+
+
 def prompt_ai(p, o_da):
     dap = str(p.get("dapAn") or "").strip()
     chuyen = "Xác suất" if (p.get("thuongHieu") or {}).get("chuyenMuc") == "xac_suat" else "Toán (không phải Xác suất)"
@@ -192,6 +223,13 @@ def prompt_ai(p, o_da):
         "Ở ô 1 CHỈ bắt: cat_chu, chong_chu, latex_tho, ma_tho, lo_dap_an, và t2_trong khi vùng giữa màn hình đen không có hình 3D. "
         "KHÔNG báo lỗi ô 1 vì thiếu thẻ giải, thiếu thanh ĐỀ hay thiếu nhãn BƯỚC (intro không có các phần đó).\n"
     ) if co_intro_moc_cau(p) is not None else ""
+    if p.get("boCuc") == "hinh_phang":
+        ghi_chu_intro += (
+            "Video HÌNH HỌC PHẲNG nền tối: header (TOÁN 9 / HÌNH HỌC) trên cùng, hình vẽ ở nửa trên, các dòng chứng minh bên dưới. "
+            "KHÔNG có hình 3D: bỏ qua t2_trong và hinh_dung_im. Bắt thêm:\n"
+            "- hinh_nho: hình vẽ (đường tròn, tam giác) quá nhỏ, chiếm dưới một nửa bề ngang vùng hình.\n"
+            "- tran_day: dòng chứng minh tràn xuống sát đáy khung (14% dưới cùng) hoặc bị cắt ở đáy.\n"
+            "- nhan_de: nhãn tên điểm (A, B, C...) đè lên nhau, đè lên nét vẽ hoặc cung góc tới mức khó đọc.\n")
     return ghi_chu_intro + (
         "Bạn là người kiểm duyệt cuối của video toán dọc 9:16. Ảnh là lưới 3×3 gồm 9 khung hình theo thứ tự thời gian, "
         "mỗi ô có số 1..9 ở góc trên trái (dải nhãn đen-vàng đó là của người kiểm duyệt, KHÔNG phải lỗi video). "
@@ -207,7 +245,7 @@ def prompt_ai(p, o_da):
         "- t2_trong: video bố cục 4 tầng mà vùng sân khấu giữa (dưới tiêu đề, trên thẻ giải) trống đen ở ô giải.\n"
         "- hinh_dung_im: hình 3D giữa màn hình y hệt nhau ở mọi ô giải (không đổi góc, không có chi tiết mới).\n"
         "Chỉ báo khi thấy rõ. nang=true khi người xem chắc chắn nhận ra lỗi. "
-        "Trả JSON đúng mẫu: {\"loi\":[{\"o\":số ô,\"loai\":\"cat_chu|chong_chu|latex_tho|lo_dap_an|ma_tho|logo_sai|so_cat|t2_trong|hinh_dung_im\",\"mo_ta\":\"ngắn gọn tiếng Việt\",\"nang\":true}]} ; "
+        "Trả JSON đúng mẫu: {\"loi\":[{\"o\":số ô,\"loai\":\"cat_chu|chong_chu|latex_tho|lo_dap_an|ma_tho|logo_sai|so_cat|t2_trong|hinh_dung_im|hinh_nho|tran_day|nhan_de\",\"mo_ta\":\"ngắn gọn tiếng Việt\",\"nang\":true}]} ; "
         "không có lỗi thì {\"loi\":[]}."
     ) % (o_da, dap or "không rõ", dap or "không rõ", o_da, o_da)
 

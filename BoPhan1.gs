@@ -148,6 +148,8 @@ function chuanLop_(lop) {
 }
 
 function yeuCauKienThucLop_(lop, mon) {
+  // v94: hình học phẳng THCS (lớp 8/9) theo GDPT 2018 - chuanLop_ chỉ nhận 10|11|12 nên xét riêng ở đây
+  if (mon === 'HINH_HOC' && /^\s*(lớp\s*)?[89]\b/i.test(String(lop || '')) && typeof quyDinhThcsHinh_ === 'function') return quyDinhThcsHinh_(capLopHinhPhang_(lop));
   var l = chuanLop_(lop);
   if (!l || !CHUONG_TRINH_CHI_TIET_[l]) return '';
   var ct = CHUONG_TRINH_CHI_TIET_[l];
@@ -575,6 +577,9 @@ function sinhDeNeuCan_(sh, bc) {
   var lop = dsLop[chiSo];
   props.setProperty('LOP_KE', String(chiSo + 1));
   var mon = chonMon_();
+  // v94: CAU_HINH LOP_HINH_PHANG (vd 9) -> đề hình học tự sinh là hình phẳng lớp đó (ôn thi vào 10), không đổi lớp của các môn khác
+  var lopHP = String((typeof cauHinh_ === 'function' && cauHinh_('LOP_HINH_PHANG')) || '').trim();
+  if (mon === 'HINH_HOC' && /^(8|9)$/.test(lopHP)) lop = lopHP;
 
   var daCo = hang.slice(-40).map(function (r) { return '- ' + r.chu_de + ': ' + String(r.de_bai).slice(0, 100); }).join('\n');
   var n = Number(cauHinh_('SO_DE_MOI_MOI_LAN'));

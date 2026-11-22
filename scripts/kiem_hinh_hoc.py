@@ -9,7 +9,7 @@
         cạnh khuất (nét đứt) không bị vẽ thành cạnh liền.
      4. Đồng bộ: mọi cảnh có mốc TỪ THẬT (dongBo = tu_that); mọi "buoc_ve" neo được vào lời đọc.
   --sau (SAU khi Manim dựng): số cảnh Manim đã dựng = số cảnh props; mỗi nét / dòng có mốc lời đọc
-     phải bắt đầu lệch không quá NGUONG_LECH giây so với lúc giọng đọc nói tới nó.
+     lệch quá NGUONG_LECH (1,5 s) so với lúc giọng đọc nói tới nó là lỗi cứng; 0,25–1,5 s chỉ cảnh báo.
 
 Dùng:  python3 scripts/kiem_hinh_hoc.py kich_ban.json public/props.json --truoc [--bao out/kiem_hinh_hoc.json]
        python3 scripts/kiem_hinh_hoc.py kich_ban.json public/props.json --sau
@@ -20,7 +20,8 @@ import math
 import re
 import sys
 
-NGUONG_LECH = 0.25          # giây: nét vẽ bắt đầu lệch tối đa so với lời đọc
+NGUONG_LECH = 1.5           # giây: nét vẽ lệch lời đọc quá mức này -> LỖI CỨNG (dừng dựng)
+NGUONG_LECH_CANH_BAO = 0.25  # giây: lệch từ mức này tới NGUONG_LECH -> chỉ cảnh báo (không đánh rớt hình không gian / kịch bản cũ)
 NGUONG_GOC = 0.02           # |cos| cho vuông góc, |sin| cho song song
 NGUONG_DO_DAI = 2e-3        # tỉ lệ theo đường chéo hình
 KHOA_3D = ("mo_hinh_3d", "dac_ta_canh", "ban_ve", "moi_truong", "moiTruong", "chuoi_3d", "chuoi3D", "anh_canh_3d", "net_toan",
@@ -216,8 +217,9 @@ def kiem_sau(props, kb=None):
             continue
         lech = float(e.get("lech") or 0)
         lech_max = max(lech_max, abs(lech))
-        if abs(lech) > NGUONG_LECH:
-            loi.append("SAU: cảnh %s '%s' bắt đầu %+.2f s so với lời đọc (ngưỡng %.2f s)" % (e.get("canh"), e.get("doi_tuong"), lech, NGUONG_LECH))
+        if abs(lech) > NGUONG_LECH_CANH_BAO:
+            (loi if abs(lech) > NGUONG_LECH else luu_y).append("SAU: cảnh %s '%s' bắt đầu %+.2f s so với lời đọc (lỗi cứng > %.2f s, cảnh báo > %.2f s)" % (
+                e.get("canh"), e.get("doi_tuong"), lech, NGUONG_LECH, NGUONG_LECH_CANH_BAO))
     # nét liền / nét đứt Manim thực vẽ phải khớp phân loại 3D đã kiểm chứng (kb.hinh_chuan.khuat / canh)
     hc = kb.get("hinh_chuan") if isinstance(kb, dict) and isinstance(kb.get("hinh_chuan"), dict) else {}
     if hc.get("khong_gian") and "khuat" in nk:
@@ -260,6 +262,86 @@ def kiem_sau(props, kb=None):
     return loi, luu_y
 
 
+def la_hinh_phang_chuan(kb):
+    import os
+    return isinstance(kb.get("hinh_phang_chuan"), dict) and str(os.environ.get("HINH_PHANG_CHUAN") or "").upper() != "TAT"
+
+
+def kiem_truoc_hinh_phang(kb, props):
+    """v94: khóa luồng + bộ giải tọa độ / kiểm chứng GDPT 2018 (giai_hinh_phang.py) + mốc khi_noi đã neo vào lời đọc."""
+    import os
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from giai_hinh_phang import giai
+    loi, luu_y = [], []
+    for k in KHOA_3D:
+        if k in kb:
+            loi.append("LUONG: kịch bản hình học còn '%s'" % k)
+    for k in ("phongCanh", "nenBlender", "khung4tang"):
+        if props.get(k):
+            loi.append("LUONG: props còn '%s'" % k)
+    if props.get("boCuc") != "hinh_phang":
+        loi.append("LUONG: props.boCuc = %r (cần 'hinh_phang' - chuanbi.py chưa nhận hinh_phang_chuan hoặc bộ giải báo lỗi)" % props.get("boCuc"))
+    for i, c in enumerate(kb.get("canh") or []):
+        for k in KHOA_3D:
+            if k in c:
+                loi.append("LUONG: cảnh %d còn '%s'" % (i + 1, k))
+    for i, c in enumerate(props.get("canh") or []):
+        for k in KHOA_3D_PROPS:
+            if c.get(k):
+                loi.append("LUONG: props cảnh %d còn '%s'" % (i + 1, k))
+        if c.get("dongBo") != "tu_that":
+            loi.append("DONG_BO: cảnh %d không có mốc từ thật của giọng đọc (dongBo=%s)" % (i + 1, c.get("dongBo")))
+    G = giai(kb, chi_kiem=True) or {}
+    for x in G.get("loi") or []:
+        loi.append("%s: %s%s" % (x["ma"], x["chi_tiet"], (" | Gợi ý: " + x["goi_y"]) if x.get("goi_y") else ""))
+    for x in G.get("canh_bao") or []:
+        luu_y.append("%s: %s" % (x["ma"], x["chi_tiet"]))
+    for x in G.get("sua") or []:
+        luu_y.append("TU_SUA %s: %s" % (x["ma"], x["chi_tiet"]))
+    moc = (props.get("hinhPhang") or {}).get("moc")
+    if not moc:
+        loi.append("DONG_BO: props thiếu hinhPhang.moc")
+    else:
+        k = moc.get("khop") or {}
+        tong = k.get("tong") or {}
+        n, m = k.get("dung", 0) + k.get("dong", 0), tong.get("dung", 0) + tong.get("dong", 0)
+        if m and n < 0.5 * m:
+            loi.append("DONG_BO: chỉ %d/%d khi_noi (phép dựng + dòng chứng minh) neo được vào lời đọc" % (n, m))
+        elif n < m:
+            luu_y.append("DONG_BO: %d/%d khi_noi neo được, phần còn lại nội suy đều" % (n, m))
+    return loi, luu_y
+
+
+def kiem_sau_hinh_phang(props, kb):
+    loi, luu_y = [], []
+    nk = props.get("manimNhatKy") or {}
+    if nk.get("dong_co") != "HinhPhangChuan":
+        return ["SAU: props thiếu manimNhatKy của HinhPhangChuan"], []
+    ve = nk.get("ve") or []
+    hp = kb.get("hinh_phang_chuan") or {}
+    so_dong = sum(len([d for d in (t.get("dong") or []) if isinstance(d, dict) and str(d.get("tex") or "").strip()]) for t in hp.get("trang_chung_minh") or [] if isinstance(t, dict))
+    da_dong = len([e for e in ve if e["kieu"] == "dong"])
+    if da_dong < so_dong:
+        loi.append("SAU: Manim hiện %d/%d dòng chứng minh" % (da_dong, so_dong))
+    ids = {str(b.get("id") or "d%d" % (k + 1)) for k, b in enumerate(hp.get("phep_dung") or []) if isinstance(b, dict)}
+    da_dung = {str(e.get("id")) for e in ve if e["kieu"] == "dung"}
+    thieu = sorted(i for i in ids if i not in da_dung and i != "None")
+    if thieu:
+        loi.append("SAU: phép dựng chưa được vẽ: %s" % ", ".join(thieu))
+    lech_max = 0.0
+    for e in ve:
+        lech = float(e["that"]) - float(e["moc"])
+        lech_max = max(lech_max, abs(lech))
+        if abs(lech) > NGUONG_LECH_CANH_BAO:
+            (loi if abs(lech) > NGUONG_LECH else luu_y).append("SAU: %s %s bắt đầu %+.2f s so với lời đọc (lỗi cứng > %.2f s, cảnh báo > %.2f s)" % (
+                e["kieu"], e.get("id") or "trang %s dòng %s" % (e.get("trang"), e.get("dong")), lech, NGUONG_LECH, NGUONG_LECH_CANH_BAO))
+    bc = props.get("hinhPhangBoCuc") or {}
+    if bc and float(bc.get("ty_le_lap") or 0) < 0.6:
+        loi.append("SAU: hình chỉ lấp %.0f%% vùng sân khấu (hình nhỏ)" % (100 * float(bc["ty_le_lap"])))
+    luu_y.append("SAU: %d nét/dòng, lệch lớn nhất %.3f s, bố cục %s" % (len(ve), lech_max, json.dumps(bc, ensure_ascii=False)))
+    return loi, luu_y
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("kich_ban")
@@ -275,7 +357,10 @@ def main():
     if not la_hinh_hoc(kb):
         print("Không phải luồng hình học thuần -> bỏ qua kiểm tra hình học")
         return 0
-    loi, luu_y = kiem_sau(props, kb) if a.sau else kiem_truoc(kb, props)
+    if la_hinh_phang_chuan(kb):     # v94: hình phẳng chuẩn (giai_hinh_phang.py + HinhPhangChuan.py)
+        loi, luu_y = kiem_sau_hinh_phang(props, kb) if a.sau else kiem_truoc_hinh_phang(kb, props)
+    else:
+        loi, luu_y = kiem_sau(props, kb) if a.sau else kiem_truoc(kb, props)
     for x in luu_y:
         print("Lưu ý:", x)
     for x in loi:

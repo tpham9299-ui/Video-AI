@@ -294,7 +294,15 @@ jobs:
         if: steps.kb.outputs.hh == '1'
         run: |
           mkdir -p out /tmp/manim_tex_cache
-          /tmp/mv/bin/python scripts/manim_hinh.py public/props.json kich_ban.json out --public public
+          # v94: kịch bản có hinh_phang_chuan (props.boCuc = hinh_phang) -> động cơ chuẩn 3 lớp (tọa độ do giai_hinh_phang.py tính);
+          # còn lại (hình không gian / kịch bản cũ) -> manim_hinh.py như trước
+          BO_CUC=$(python3 -c "import json;print(json.load(open('public/props.json',encoding='utf8')).get('boCuc') or '')")
+          if [ "$BO_CUC" = "hinh_phang" ]; then
+            python3 scripts/giai_hinh_phang.py kich_ban.json --ra out/hinh_phang_giai.json
+            MANIM_TEX_DIR=/tmp/manim_tex_cache /tmp/mv/bin/python scripts/manim/HinhPhangChuan.py public/props.json kich_ban.json out --public public
+          else
+            /tmp/mv/bin/python scripts/manim_hinh.py public/props.json kich_ban.json out --public public
+          fi
           ID=$(python3 -c "import json;print(json.load(open('public/props.json',encoding='utf8'))['id'])")
           [ -s "out/${ID}_manim.mov" ] || { echo "Manim không ra video"; exit 1; }
           # đủ cảnh + từng nét vẽ khớp mốc lời đọc (lệch <= 0,25 s), không đạt -> dừng

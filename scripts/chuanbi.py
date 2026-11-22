@@ -1078,6 +1078,36 @@ def moc_buoc_ve(buoc_ve, tu):
     return kq
 
 
+def hinh_phang_chuan_props(kb, canh_props, fps, props):
+    """v94: bài hình phẳng có kb.hinh_phang_chuan -> props.boCuc='hinh_phang' + props.hinhPhang.moc (giây, từ khi_noi).
+    Tọa độ do scripts/giai_hinh_phang.py tính (không đọc tọa độ AI); Manim (scripts/manim/HinhPhangChuan.py) vẽ cả header,
+    Remotion chỉ giữ nền #121214 + giọng + nhạc + màn kết. Tắt: env HINH_PHANG_CHUAN=TAT (về manim_hinh.py cũ)."""
+    if not isinstance(kb.get("hinh_phang_chuan"), dict) or str(os.environ.get("HINH_PHANG_CHUAN") or "").upper() == "TAT":
+        return None
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from giai_hinh_phang import giai
+    from hinh_phang.thoi_gian import moc_hinh_phang
+    G = giai(kb)
+    if not G or not G.get("dat"):
+        for x in (G or {}).get("loi") or []:
+            print("Hình phẳng chuẩn - LỖI CỨNG [%s] %s" % (x["ma"], x["chi_tiet"]))
+        props["hinhPhang"] = {"loi": (G or {}).get("loi") or []}
+        return None
+    # Manim vẽ header thương hiệu ngay giây 0 -> bỏ intro thương hiệu im lặng phía trước
+    if props.get("intro"):
+        props["tongFrame"] -= int(props["intro"].get("lech") or 0)
+        props["intro"] = None
+    outro = props.get("outro") or {}
+    ket = (outro.get("batDau") or props["tongFrame"]) / fps
+    moc = moc_hinh_phang(G, canh_props, fps, ket)
+    props["boCuc"] = "hinh_phang"
+    props["hinhPhang"] = {"moc": moc, "header": G["header"], "capLop": G["cap_lop"], "boCuc": G["bo_cuc"]}
+    k = moc["khop"]
+    print("Hình phẳng chuẩn: %d cấu hình, khớp khi_noi dựng %d/%d, đề %d/%d, dòng %d/%d, mục tiêu %s" % (
+        G.get("so_mau", 0), k["dung"], k["tong"]["dung"], k["de"], k["tong"]["de"], k["dong"], k["tong"]["dong"], "có" if k["muc_tieu"] else "không"))
+    return props["hinhPhang"]
+
+
 def tu_tu_cau(cau):
     """Mốc từng từ ước lượng từ các câu phụ đề (khi giọng đọc không có WordBoundary): chia đều thời lượng câu theo số từ."""
     tu = []
@@ -3003,6 +3033,8 @@ def main():
             them = int(6.5 * FPS) - outro["soFrame"]
             outro["soFrame"] += them
             props["tongFrame"] += them
+    if luong_hh:
+        hinh_phang_chuan_props(kb, canh_props, FPS, props)
     cham("Thương hiệu, bìa, khung 4 tầng")
     if not args.gia_lap:
         print("Giọng đọc: %d cảnh bằng Gemini TTS (%s), %d đoạn bằng edge-tts (%s), %d đoạn bằng Google TTS dự phòng" % (

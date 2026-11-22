@@ -1,0 +1,120 @@
+{
+  "id": "THU-hp94-amde",
+  "lop": "9",
+  "mon": "HINH_HOC",
+  "luong": "hinh_hoc_thuan",
+  "giong": "Charon",
+  "gioi_tinh_giong": "nam",
+  "chu_de_ngan": "Hình học 9 - Ôn thi vào 10",
+  "tieu_de": "AM vuông góc DE tại I",
+  "hook": "Vì sao đường kính AM luôn vuông góc với DE?",
+  "hook_chu": "AM ⊥ DE ?",
+  "de_cho": ["△ABC nhọn (AB < AC) nội tiếp (O)", "Đường cao BD, CE", "Đường kính AM, DE cắt AM tại I"],
+  "can_tim": "Chứng minh AM ⊥ DE tại I",
+  "du_kien": [],
+  "dap_an_cuoi": "CM",
+  "dap_an": "CM",
+  "bai_hoc_rut_ra": ["Hai tam giác vuông chung cạnh huyền cho tứ giác nội tiếp", "Bắc cầu góc qua góc nội tiếp cùng chắn một cung"],
+  "de_bai": "Cho tam giác ABC nhọn (AB < AC) nội tiếp đường tròn (O). Hai đường cao BD, CE. Kẻ đường kính AM, DE cắt AM tại I. Chứng minh AM vuông góc với DE tại I.",
+  "hinh_phang_chuan": {
+    "phien_ban": 1,
+    "cap_lop": "lop_9",
+    "nhan_lop": "TOÁN 9",
+    "chuyen_muc": "HÌNH HỌC",
+    "phu_de": "Ôn thi Tuyển sinh 10",
+    "dieu_kien": [
+      {"loai": "tam_giac_nhon", "tg": "ABC"},
+      {"loai": "nho_hon", "a": "AB", "b": "AC"}
+    ],
+    "de_rut_gon": [
+      {"tex": "\\triangle ABC \\text{ nhọn } (AB<AC) \\text{ nội tiếp } (O)", "khi_noi": "Cho tam giác ABC nhọn"},
+      {"tex": "\\text{Đường cao } BD,\\ CE", "khi_noi": "Kẻ hai đường cao"},
+      {"tex": "\\text{Đường kính } AM;\\ DE \\cap AM = I", "khi_noi": "Vẽ đường kính AM"}
+    ],
+    "phep_dung": [
+      {"id": "d1", "loai": "tam_giac_noi_tiep", "dinh": ["A", "B", "C"], "tam": "O", "khi_noi": "tam giác ABC nhọn"},
+      {"id": "d2", "loai": "chan_duong_cao", "ten": "D", "tu": "B", "xuong": "AC", "khi_noi": "đường cao BD"},
+      {"id": "d3", "loai": "chan_duong_cao", "ten": "E", "tu": "C", "xuong": "AB", "khi_noi": "và CE"},
+      {"id": "d4", "loai": "duong_kinh", "ten": "M", "tu": "A", "duong_tron": "(O)", "khi_noi": "đường kính AM"},
+      {"id": "d5", "loai": "doan_noi", "doan": "DE", "khi_noi": "Đoạn DE cắt"},
+      {"id": "d6", "loai": "giao_diem", "ten": "I", "a": "AM", "b": "DE", "khi_noi": "AM tại I"}
+    ],
+    "muc_tieu": {
+      "tex": "AM \\perp DE \\text{ tại } I",
+      "khi_noi": "Mục tiêu là chứng minh",
+      "to_do": ["AM", "DE", "I"],
+      "menh_de": {"loai": "vuong_goc", "a": "AM", "b": "DE"}
+    },
+    "trang_chung_minh": [
+      {"tieu_de": "Tứ giác BEDC nội tiếp", "dong": [
+        {"khi_noi": "Góc BEC và góc BDC",
+         "tex": "\\mvang{\\angle BEC} = \\mvang{\\angle BDC} = 90^\\circ",
+         "menh_de": [{"loai": "goc_so_do", "goc": "BEC", "do": 90}, {"loai": "goc_so_do", "goc": "BDC", "do": 90}],
+         "hanh_dong_hinh": [{"loai": "ky_hieu_vuong", "goc": "BEC", "mau": "vang"}, {"loai": "ky_hieu_vuong", "goc": "BDC", "mau": "vang"}]},
+        {"khi_noi": "chung cạnh huyền BC",
+         "tex": "\\Rightarrow \\mngoc{BEDC} \\text{ nội tiếp đường tròn đường kính } \\mngoc{BC}",
+         "menh_de": [{"loai": "dong_vien", "diem": ["B", "E", "D", "C"]}],
+         "hanh_dong_hinh": [{"loai": "duong_tron_phu", "duong_kinh": "BC", "mau": "ngoc"}, {"loai": "to_da_giac", "dinh": ["B", "E", "D", "C"], "mau": "ngoc"}]}
+      ]},
+      {"tieu_de": "Góc ADE bằng góc ABC", "dong": [
+        {"khi_noi": "Góc ADE cộng góc EDC",
+         "tex": "\\mcam{\\angle ADE} + \\angle EDC = 180^\\circ \\ (\\text{kề bù})",
+         "hanh_dong_hinh": [{"loai": "to_goc", "goc": "ADE", "mau": "cam", "so_cung": 1}]},
+        {"khi_noi": "góc EBC cộng góc EDC",
+         "tex": "\\mdo{\\angle EBC} + \\angle EDC = 180^\\circ \\ (BEDC \\text{ nội tiếp})",
+         "hanh_dong_hinh": [{"loai": "to_goc", "goc": "EBC", "mau": "do", "so_cung": 2}]},
+        {"khi_noi": "Suy ra góc ADE",
+         "tex": "\\Rightarrow \\mcam{\\angle ADE} = \\mdo{\\angle ABC}",
+         "hanh_dong_hinh": [{"loai": "khung_bac_cau", "doan_tex": "\\angle EDC", "dong": [1, 2]}]}
+      ]},
+      {"tieu_de": "Góc ADI bằng góc AMC", "dong": [
+        {"khi_noi": "Góc ABC và góc AMC",
+         "tex": "\\mdo{\\angle ABC} = \\mla{\\angle AMC} \\ (\\text{cùng chắn cung } AC)",
+         "hanh_dong_hinh": [{"loai": "to_goc", "goc": "ABC", "mau": "do", "so_cung": 2}, {"loai": "to_goc", "goc": "AMC", "mau": "la", "so_cung": 2}]},
+        {"khi_noi": "Vậy góc ADI",
+         "tex": "\\Rightarrow \\mcam{\\angle ADI} = \\mla{\\angle AMC}",
+         "hanh_dong_hinh": [{"loai": "to_goc", "goc": "ADI", "mau": "cam", "so_cung": 2}]}
+      ]},
+      {"tieu_de": "△AID ∼ △ACM", "dong": [
+        {"khi_noi": "Góc ACM bằng chín mươi",
+         "tex": "\\mngoc{\\angle ACM} = 90^\\circ \\ (\\text{chắn nửa đường tròn})",
+         "hanh_dong_hinh": [{"loai": "ky_hieu_vuong", "goc": "ACM", "mau": "ngoc"}]},
+        {"khi_noi": "có chung góc A",
+         "tex": "\\angle IAD = \\angle CAM,\\ \\mcam{\\angle ADI} = \\mcam{\\angle AMC}",
+         "hanh_dong_hinh": [{"loai": "to_goc", "goc": "IAD", "mau": "vang", "so_cung": 1},
+                            {"loai": "to_goc", "goc": "ADI", "mau": "cam", "so_cung": 2}, {"loai": "to_goc", "goc": "AMC", "mau": "cam", "so_cung": 2}]},
+        {"khi_noi": "Nên tam giác AID đồng dạng",
+         "tex": "\\Rightarrow \\mvang{\\triangle AID} \\sim \\mla{\\triangle ACM} \\ (g.g)",
+         "menh_de": [{"loai": "dong_dang", "tg1": "AID", "tg2": "ACM"}],
+         "hanh_dong_hinh": [{"loai": "to_da_giac", "dinh": ["A", "I", "D"], "mau": "vang"}, {"loai": "to_da_giac", "dinh": ["A", "C", "M"], "mau": "la"}]}
+      ]},
+      {"tieu_de": "Kết luận", "dong": [
+        {"khi_noi": "Từ đó góc AID",
+         "tex": "\\Rightarrow \\angle AID = \\mngoc{\\angle ACM} = 90^\\circ"},
+        {"khi_noi": "Vậy AM vuông góc",
+         "tex": "\\Rightarrow AM \\perp DE \\text{ tại } I",
+         "hanh_dong_hinh": [{"loai": "ket_luan", "goc": "AID"}]}
+      ]}
+    ]
+  },
+  "canh": [
+    {"so": 1, "loai": "mo_dau", "tieu_de_canh": "Đề bài", "giu_san_khau": false, "giong_doc": "hào hứng",
+     "loi_thoai": "Chứng minh AM vuông góc với DE tại I, bài hình kinh điển ôn thi vào mười.", "noi_dung_man_hinh": []},
+    {"so": 2, "loai": "de_bai", "tieu_de_canh": "Đề bài", "giu_san_khau": true, "giong_doc": "rõ ràng",
+     "loi_thoai": "Cho tam giác ABC nhọn, AB nhỏ hơn AC, nội tiếp đường tròn tâm O. Kẻ hai đường cao BD và CE. Vẽ đường kính AM. Đoạn DE cắt AM tại I.", "noi_dung_man_hinh": []},
+    {"so": 3, "loai": "y_do", "tieu_de_canh": "Hướng đi", "giu_san_khau": true, "giong_doc": "gợi mở",
+     "loi_thoai": "Mục tiêu là chứng minh góc AID bằng chín mươi độ. Ta đi qua tứ giác nội tiếp rồi tới tam giác đồng dạng.", "noi_dung_man_hinh": []},
+    {"so": 4, "loai": "tinh_toan", "tieu_de_canh": "Tứ giác BEDC nội tiếp", "giu_san_khau": true, "giong_doc": "rõ ràng",
+     "loi_thoai": "Góc BEC và góc BDC cùng bằng chín mươi độ. Hai tam giác vuông BEC và BDC chung cạnh huyền BC, nên bốn điểm B, E, D, C cùng thuộc đường tròn đường kính BC.", "noi_dung_man_hinh": []},
+    {"so": 5, "loai": "tinh_toan", "tieu_de_canh": "Góc ADE bằng góc ABC", "giu_san_khau": true, "giong_doc": "rõ ràng",
+     "loi_thoai": "Góc ADE cộng góc EDC bằng một trăm tám mươi độ vì kề bù. Tứ giác BEDC nội tiếp nên góc EBC cộng góc EDC cũng bằng một trăm tám mươi độ. Suy ra góc ADE bằng góc ABC.", "noi_dung_man_hinh": []},
+    {"so": 6, "loai": "tinh_toan", "tieu_de_canh": "Góc ADI bằng góc AMC", "giu_san_khau": true, "giong_doc": "rõ ràng",
+     "loi_thoai": "Góc ABC và góc AMC là hai góc nội tiếp cùng chắn cung AC nên bằng nhau. Vậy góc ADI bằng góc AMC.", "noi_dung_man_hinh": []},
+    {"so": 7, "loai": "tinh_toan", "tieu_de_canh": "Hai tam giác đồng dạng", "giu_san_khau": true, "giong_doc": "rõ ràng",
+     "loi_thoai": "Góc ACM bằng chín mươi độ vì là góc nội tiếp chắn nửa đường tròn. Tam giác AID và tam giác ACM có chung góc A và góc ADI bằng góc AMC. Nên tam giác AID đồng dạng với tam giác ACM.", "noi_dung_man_hinh": []},
+    {"so": 8, "loai": "dap_an", "tieu_de_canh": "Kết luận", "giu_san_khau": true, "giong_doc": "chắc chắn",
+     "loi_thoai": "Từ đó góc AID bằng góc ACM bằng chín mươi độ. Vậy AM vuông góc với DE tại I.", "noi_dung_man_hinh": []},
+    {"so": 9, "loai": "bai_hoc", "tieu_de_canh": "Ghi nhớ", "giu_san_khau": true, "giong_doc": "ấm áp",
+     "loi_thoai": "Ghi nhớ: hai tam giác vuông chung cạnh huyền cho ta tứ giác nội tiếp, rồi bắc cầu góc để đi tới tam giác đồng dạng.", "noi_dung_man_hinh": []}
+  ]
+}

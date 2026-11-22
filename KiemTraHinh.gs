@@ -1199,6 +1199,11 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc, lop) {
   if (thucTe && soMoHinh < 1) nhe.push('THIEU_MO_HINH: video toán thực tế nên có ít nhất 1 cảnh hinh_hoc, do_thi hoặc hinh_tu_do để mô hình hóa.');
   var canDA = kb.canh[timCanhDapAn_(kb)];
   var dsDA = (canDA && canDA.noi_dung_man_hinh) || [];
+  if (!dsDA.length && kb.hinh_phang_chuan && Array.isArray(kb.hinh_phang_chuan.trang_chung_minh)) {
+    // v94: hình phẳng chuẩn -> dòng kết luận là dòng cuối của trang chứng minh cuối
+    var tHP = kb.hinh_phang_chuan.trang_chung_minh.filter(function (t) { return t && Array.isArray(t.dong) && t.dong.length; });
+    if (tHP.length) dsDA = tHP[tHP.length - 1].dong.map(function (d) { return String((d && d.tex) || ''); });
+  }
   if (laDapSo_(dapAn) && !coDapSo_(dsDA.length ? String(dsDA[dsDA.length - 1]) : '', dapAn)) nang.push('DAP_AN_SAI_TREN_MAN_HINH: dòng cuối của cảnh đáp án phải chứa đáp số ' + dapAn + '.');
   var psDA = cacPhanSo_(dsDA.length ? String(dsDA[dsDA.length - 1]) : '');
   var mDA = /^(\d+)\/(\d+)$/.exec(String(dapAn).replace(/\s/g, ''));
@@ -2568,7 +2573,7 @@ function kiemTraDaDangHinhThucTe_(kb, mon) {
 // Chỉ TỪ CHỐI CỨNG khi: kịch bản rỗng cảnh / lời đọc, sai kết quả toán học cốt lõi (đáp án, phép tính, vượt chương trình lớp),
 // vi phạm khóa luồng hinh_hoc_thuan hoặc hình học thiếu dữ kiện bắt buộc cho Manim. JSON hỏng đã bị chặn từ lúc đọc (BoPhan1.gs).
 // Tắt: CAU_HINH AUTO_FIX_KICH_BAN = TAT (quay về cách cũ).
-var LOI_CUNG_RE_ = /^(KHUNG4TANG_3D_RONG|KHONG_CO_CANH|QUA_IT_CANH|THIEU_LOI_THOAI_CANH_|DAP_AN_CUOI_SAI|DAP_AN_SAI_TREN_MAN_HINH|PHEP_TINH_SAI_CANH_|VI_PHAM_CHUONG_TRINH_LOP|LUONG_HINH_HOC|NOI_DUNG_LA|THOI_LUONG_CHUYEN_DE|SO_CANH_VIDEO_DAI_SAI|HINH_THIEU_DIEM_DE|HINH_THIEU_DIEM_CANH_|THIEU_TOA_DO_HINH|BUOC_VE_KHONG_KHOP_LOI_CANH_|BUOC_VE_DOI_TUONG_LA_CANH_)/;
+var LOI_CUNG_RE_ = /^(KHUNG4TANG_3D_RONG|KHONG_CO_CANH|QUA_IT_CANH|THIEU_LOI_THOAI_CANH_|DAP_AN_CUOI_SAI|DAP_AN_SAI_TREN_MAN_HINH|PHEP_TINH_SAI_CANH_|VI_PHAM_CHUONG_TRINH_LOP|LUONG_HINH_HOC|NOI_DUNG_LA|THOI_LUONG_CHUYEN_DE|SO_CANH_VIDEO_DAI_SAI|HINH_THIEU_DIEM_DE|HINH_THIEU_DIEM_CANH_|THIEU_TOA_DO_HINH|BUOC_VE_KHONG_KHOP_LOI_CANH_|BUOC_VE_DOI_TUONG_LA_CANH_|HP_VUOT_CHUONG_TRINH|HP_MENH_DE_SAI|HP_DONG_DANG_SAI_THU_TU|HP_DUNG_LOI|HP_DIEM_KHONG_TON_TAI|HP_THIEU_DAC_TA)/;
 var MAU_SAN_KHAU_ = ['do', 'xanh_duong', 'xanh_la', 'cam', 'vang', 'tim', 'hong', 'ngoc', 'trang', 'xam', 'nau'];
 var MAU_GAN_ = {'đỏ': 'do', red: 'do', xanh: 'xanh_duong', 'xanh dương': 'xanh_duong', xanh_lam: 'xanh_duong', lam: 'xanh_duong', blue: 'xanh_duong', cyan: 'xanh_duong',
   'xanh lá': 'xanh_la', xanh_luc: 'xanh_la', luc: 'xanh_la', green: 'xanh_la', orange: 'cam', 'vàng': 'vang', yellow: 'vang', 'tím': 'tim', purple: 'tim',
@@ -2609,9 +2614,122 @@ function thayDapSo_(s, mau, thay) {
   return s.replace(/\?\s*\?/g, '?');
 }
 
+// [GDPT2018_BAT_DAU] v94: khóa khung GDPT 2018 cho hình phẳng chuẩn (bản JS của scripts/hinh_phang/gdpt2018.py, test so khớp 2 bản).
+// Bắt ĐÚNG CỤM định lý / phương pháp (không chặn từ đơn sin/cos/tan của tỉ số lượng giác lớp 9), luôn kèm gợi ý cách chứng minh thay thế.
+var GOI_Y_NOI_TIEP_ = 'Chứng minh tứ giác nội tiếp theo GDPT 2018: (1) hai tam giác vuông chung cạnh huyền {xy} -> 4 điểm cách đều trung điểm của {xy}, cùng thuộc đường tròn đường kính {xy}; hoặc (2) chỉ ra 4 đỉnh cách đều một điểm; hoặc (3) tổng hai góc đối bằng 180°.';
+var GOI_Y_VECTO_ = 'Lớp 8/9 chưa học vectơ/tích vô hướng: chứng minh vuông góc bằng góc (góc nội tiếp chắn nửa đường tròn, tổng hai góc nhọn của tam giác vuông bằng 90°, tam giác đồng dạng có góc tương ứng 90°) hoặc định lý Pythagore đảo.';
+var GOI_Y_SIN_COS_ = 'Lớp 8/9 không dùng định lý sin/cosin: kẻ thêm đường cao để có tam giác vuông rồi dùng tỉ số lượng giác của góc nhọn (lớp 9), hệ thức về cạnh và góc trong tam giác vuông, định lý Pythagore hoặc tam giác đồng dạng.';
+var GOI_Y_PHUONG_TICH_ = 'Không dùng phương tích: chứng minh đẳng thức tích MA·MB = MC·MD bằng hai tam giác đồng dạng (vd △MAC ∼ △MDB theo trường hợp góc - góc nhờ góc nội tiếp cùng chắn một cung) rồi suy ra tỉ số.';
+var GOI_Y_LOP8_ = 'Lớp 8 chưa học đường tròn và tỉ số lượng giác (lớp 9): dùng tam giác đồng dạng, định lý Thalès, tính chất đường phân giác, đường trung bình, định lý Pythagore, tính chất các tứ giác đặc biệt.';
+var GOI_Y_SO_PHUC_ = 'Không dùng số phức ở mọi lớp: giải bằng hình học tổng hợp hoặc biến đổi đại số thực.';
+var KT_ = '(?![A-Za-z0-9_À-ỹ])';   // \b của Python (Unicode) - JS \b không hiểu chữ có dấu
+var QUY_TAC_GDPT_ = [
+  ['CUNG_CHUA_GOC', {lop_8: 'cung', lop_9: 'cung'}, 'cung\\s+ch[ứu]a\\s+g[óo]c', 0, 'cung chứa góc (chương trình 2006)', GOI_Y_NOI_TIEP_],
+  ['CUNG_NHIN_CANH', {lop_8: 'cung', lop_9: 'cung'}, '(?:c[ùu]ng\\s+nh[ìi]n|nh[ìi]n)\\s+(?:c[ạa]nh\\s+|đo[ạa]n\\s+(?:th[ẳa]ng\\s+)?|d[âa]y\\s+)?([A-Z]{2})\\s+(?:d[ưu][ớo]i|theo)\\s+(?:m[ộo]t\\s+|hai\\s+|c[áa]c\\s+)?g[óo]c', 1, 'hai đỉnh cùng nhìn một cạnh dưới các góc bằng nhau (chương trình 2006)', GOI_Y_NOI_TIEP_],
+  ['HAI_DINH_KE', {lop_8: 'cung', lop_9: 'cung'}, 'hai\\s+đ[ỉi]nh\\s+k[ềe]\\s+(?:c[ùu]ng\\s+)?nh[ìi]n', 0, 'hai đỉnh kề cùng nhìn một cạnh (chương trình 2006)', GOI_Y_NOI_TIEP_],
+  ['VECTO', {lop_8: 'cung', lop_9: 'cung'}, 'vect[ơo]' + KT_ + '|v[ée]c\\s*t[ơo]' + KT_ + '|\\\\vec\\s*\\{|\\\\overrightarrow|t[íi]ch\\s+v[ôo]\\s+h[ưu][ớo]ng', 0, 'vectơ / tích vô hướng', GOI_Y_VECTO_],
+  ['DINH_LY_SIN', {lop_8: 'cung', lop_9: 'cung'}, 'đ[ịi]nh\\s+l[ýíiy]\\s+(?:h[àa]m\\s+(?:s[ốo]\\s+)?)?sin(?:e)?' + KT_ + '|\\\\frac\\s*\\{[^{}]*\\}\\s*\\{\\s*\\\\sin', 0, 'định lý sin', GOI_Y_SIN_COS_],
+  ['DINH_LY_COS', {lop_8: 'cung', lop_9: 'cung'}, 'đ[ịi]nh\\s+l[ýíiy]\\s+(?:h[àa]m\\s+(?:s[ốo]\\s+)?)?c[ôo]sin|đ[ịi]nh\\s+l[ýíiy]\\s+cos' + KT_ + '|-\\s*2\\s*(?:\\\\cdot\\s*)?[A-Za-z]{1,2}\\s*(?:\\\\cdot\\s*)?[A-Za-z]{1,2}\\s*(?:\\\\cdot\\s*)?\\\\cos', 0, 'định lý cosin', GOI_Y_SIN_COS_],
+  ['PHUONG_TICH', {lop_8: 'cung', lop_9: 'cung', thpt: 'canh_bao'}, 'ph[ưu][ơo]ng\\s+t[íi]ch|tr[ụu]c\\s+đ[ẳa]ng\\s+ph[ưu][ơo]ng', 0, 'phương tích / trục đẳng phương', GOI_Y_PHUONG_TICH_],
+  ['LOP8_DUONG_TRON', {lop_8: 'cung'}, 'g[óo]c\\s+n[ộo]i\\s+ti[ếe]p|t[ứu]\\s+gi[áa]c\\s+n[ộo]i\\s+ti[ếe]p|ti[ếe]p\\s+tuy[ếe]n|g[óo]c\\s+[ởo]\\s+t[âa]m|\\\\(?:sin|cos|tan|cot)' + KT_ + '|t[ỉi]\\s+s[ốo]\\s+l[ưu][ợo]ng\\s+gi[áa]c', 0, 'kiến thức đường tròn / tỉ số lượng giác của lớp 9', GOI_Y_LOP8_],
+  ['SO_PHUC', {lop_8: 'cung', lop_9: 'cung', thpt: 'cung'}, 's[ốo]\\s+ph[ứu]c|(?<![A-Za-z0-9_À-ỹ])i\\s*\\^\\s*2\\s*=\\s*-\\s*1', 0, 'số phức', GOI_Y_SO_PHUC_],
+  ['TOA_DO', {lop_8: 'canh_bao', lop_9: 'canh_bao'}, 'h[ệe]\\s+tr[ụu]c\\s+t[ọo]a\\s+đ[ộo]|ph[ưu][ơo]ng\\s+ph[áa]p\\s+t[ọo]a\\s+đ[ộo]|g[ắa]n\\s+(?:h[ệe]\\s+)?t[ọo]a\\s+đ[ộo]', 0, 'phương pháp tọa độ trong chứng minh hình', 'Ưu tiên chứng minh tổng hợp (góc, tam giác đồng dạng, tính chất đường tròn).'],
+  ['GOC_TIEP_TUYEN_DAY', {lop_9: 'canh_bao'}, 'g[óo]c\\s+t[ạa]o\\s+b[ởo]i\\s+(?:tia\\s+)?ti[ếe]p\\s+tuy[ếe]n\\s+v[àa]\\s+d[âa]y', 0, 'góc tạo bởi tia tiếp tuyến và dây cung (⚠ cần đối chiếu SGK)', 'Có thể thay bằng: bán kính vuông góc tiếp tuyến + góc nội tiếp chắn nửa đường tròn, hoặc tam giác cân tạo bởi hai bán kính.'],
+  ['GOC_DINH_TRONG_NGOAI', {lop_9: 'canh_bao'}, 'g[óo]c\\s+c[óo]\\s+đ[ỉi]nh\\s+(?:[ởo]\\s+)?(?:b[êe]n\\s+)?(?:trong|ngo[àa]i)\\s+đ[ưu][ờo]ng\\s+tr[òo]n', 0, 'góc có đỉnh ở bên trong / bên ngoài đường tròn (⚠ cần đối chiếu SGK)', 'Có thể thay bằng: góc ngoài tam giác bằng tổng hai góc trong không kề + góc nội tiếp.'],
+  ['GOC_NGOAI_TU_GIAC', {lop_9: 'canh_bao'}, 'g[óo]c\\s+ngo[àa]i\\s+(?:t[ạa]i\\s+(?:m[ộo]t\\s+)?đ[ỉi]nh\\s+)?b[ằa]ng\\s+g[óo]c\\s+trong\\s+(?:c[ủu]a\\s+)?(?:đ[ỉi]nh\\s+)?đ[ốo]i', 0, 'góc ngoài bằng góc trong đối (⚠ cần đối chiếu SGK)', 'Thay bằng: tổng hai góc đối bằng 180° rồi dùng hai góc kề bù.']
+];
+function kiemVanBanGdpt_(s, cap, nguon) {
+  var kq = [];
+  s = String(s || '');
+  QUY_TAC_GDPT_.forEach(function (q) {
+    var muc = q[1][cap];
+    if (!muc) return;
+    var rx = new RegExp(q[2], 'gi'), m;
+    while ((m = rx.exec(s)) !== null) {
+      if (m[0] === '') { rx.lastIndex++; continue; }
+      if (q[3] && m[q[3]] !== m[q[3]].toUpperCase()) continue;
+      var xy = q[3] ? m[q[3]] : '';
+      if (!xy) { var mm = /\b([A-Z]{2})\b/.exec(s.slice(Math.max(0, m.index - 40), m.index + m[0].length + 40)); xy = mm ? mm[1] : 'XY'; }
+      kq.push({ ma: q[0], muc: muc, cum: m[0].slice(0, 60), nguon: nguon || '', ten: q[4], goi_y: q[5].replace(/\{xy\}/g, xy) });
+      break;
+    }
+  });
+  return kq;
+}
+function kiemGdpt2018_(kb, cap) {
+  var hp = (kb && kb.hinh_phang_chuan) || {};
+  cap = cap || (typeof capLopHinhPhang_ === 'function' ? capLopHinhPhang_(hp.cap_lop || kb.lop) : 'lop_9');
+  var ds = [];
+  (hp.trang_chung_minh || []).forEach(function (t, i) {
+    if (!t) return;
+    ds.push(['trang ' + (i + 1) + ' tiêu đề', String(t.tieu_de || '')]);
+    (t.dong || []).forEach(function (d, j) { if (d) ds.push(['trang ' + (i + 1) + ' dòng ' + (j + 1), [d.tex, d.khi_noi, d.ly_do].map(function (x) { return String(x || ''); }).join(' ')]); });
+  });
+  (kb.canh || []).forEach(function (c, i) {
+    if (!c) return;
+    var so = c.so || i + 1;
+    ds.push(['cảnh ' + so + ' lời thoại', String(c.loi_thoai || '')]);
+    ds.push(['cảnh ' + so + ' kiến thức', String(c.kien_thuc || '')]);
+    ds.push(['cảnh ' + so + ' màn hình', (c.noi_dung_man_hinh || []).join(' ')]);
+  });
+  var cung = [], canhBao = [], da = {};
+  ds.forEach(function (x) {
+    kiemVanBanGdpt_(x[1], cap, x[0]).forEach(function (y) {
+      var k = y.ma + '|' + y.nguon;
+      if (da[k]) return;
+      da[k] = 1;
+      (y.muc === 'cung' ? cung : canhBao).push(y);
+    });
+  });
+  return { cung: cung, canh_bao: canhBao };
+}
+// [GDPT2018_KET_THUC]
+
+// v94: Auto-fix nhẹ các trường phụ của kb.hinh_phang_chuan (không đụng phép dựng / mệnh đề: sai thì bộ kiểm chứng trả lại AI).
+var MAU_HP_ = ['vang', 'do', 'ngoc', 'cam', 'la'];
+var MAU_HP_GAN_ = { yellow: 'vang', 'vàng': 'vang', red: 'do', 'đỏ': 'do', coral: 'do', san_ho: 'do', hong: 'do', teal: 'ngoc', cyan: 'ngoc', xanh_ngoc: 'ngoc', turquoise: 'ngoc',
+  orange: 'cam', green: 'la', xanh_la: 'la', 'xanh lá': 'la', xanh: 'ngoc' };
+function tuSuaHinhPhangChuan_(kb, r) {
+  var sua = [];
+  var hp = kb && kb.hinh_phang_chuan;
+  if (!hp || typeof hp !== 'object') return sua;
+  if (typeof laHinhKhongGian_ === 'function' && laHinhKhongGian_(kb.de_bai || (r && r.de_bai))) { delete kb.hinh_phang_chuan; sua.push('gỡ hinh_phang_chuan (đề hình KHÔNG GIAN dùng hinh_hoc)'); return sua; }
+  var cap = typeof capLopHinhPhang_ === 'function' ? capLopHinhPhang_(hp.cap_lop || kb.lop || (r && r.lop)) : 'lop_9';
+  if (hp.cap_lop !== cap) { hp.cap_lop = cap; sua.push('cap_lop -> ' + cap); }
+  if (!Array.isArray(hp.dieu_kien)) hp.dieu_kien = [];
+  hp.phep_dung = (Array.isArray(hp.phep_dung) ? hp.phep_dung : []).filter(function (b) { return b && typeof b === 'object' && b.loai; });
+  var daId = {};
+  hp.phep_dung.forEach(function (b, i) { var id = String(b.id || ''); if (!id || daId[id]) { b.id = 'd' + (i + 1); sua.push('phep_dung[' + i + '].id -> ' + b.id); } daId[b.id] = 1; });
+  hp.de_rut_gon = (Array.isArray(hp.de_rut_gon) ? hp.de_rut_gon : []).map(function (x) { return typeof x === 'string' ? { tex: x } : x; }).filter(function (x) { return x && String(x.tex || '').trim(); });
+  if (hp.de_rut_gon.length > 3) { hp.de_rut_gon = hp.de_rut_gon.slice(0, 3); sua.push('de_rut_gon cắt còn 3 dòng'); }
+  if (typeof hp.muc_tieu === 'string') hp.muc_tieu = { tex: hp.muc_tieu };
+  var trangMoi = [];
+  (Array.isArray(hp.trang_chung_minh) ? hp.trang_chung_minh : []).forEach(function (t) {
+    if (!t || typeof t !== 'object') return;
+    var dong = (Array.isArray(t.dong) ? t.dong : []).map(function (d) { return typeof d === 'string' ? { tex: d } : d; }).filter(function (d) { return d && String(d.tex || '').trim(); });
+    dong.forEach(function (d) {
+      d.tex = String(d.tex).replace(/^\$+|\$+$/g, '').replace(/\\color\{(vang|do|ngoc|cam|la)\}\{([^{}]*)\}/g, '\\m$1{$2}');
+      (Array.isArray(d.hanh_dong_hinh) ? d.hanh_dong_hinh : (d.hanh_dong_hinh = [])).forEach(function (h) {
+        if (!h || h.loai === 'khung_bac_cau' || h.loai === 'ket_luan') return;
+        var m = String(h.mau || '').trim().toLowerCase().replace(/\s+/g, '_');
+        m = MAU_HP_GAN_[m] || MAU_HP_GAN_[m.replace(/_/g, ' ')] || m;
+        if (MAU_HP_.indexOf(m) < 0) m = 'vang';
+        if (m !== h.mau) { h.mau = m; sua.push('màu hành động -> ' + m); }
+      });
+    });
+    for (var k = 0; k < dong.length; k += 5) trangMoi.push({ tieu_de: String(t.tieu_de || '') + (k ? ' (tiếp)' : ''), dong: dong.slice(k, k + 5) });
+    if (dong.length > 5) sua.push('trang "' + t.tieu_de + '" > 5 dòng -> chia trang');
+  });
+  hp.trang_chung_minh = trangMoi;
+  // cảnh: công thức nằm trong trang chứng minh -> bỏ noi_dung_man_hinh / buoc_ve trùng lặp
+  kb.canh.forEach(function (c) { if (c && Array.isArray(c.noi_dung_man_hinh) && c.noi_dung_man_hinh.length) { c.noi_dung_man_hinh = []; c.moc_loi = []; } if (c) delete c.buoc_ve; });
+  return sua;
+}
+
 function tuSuaHinhThuc_(kb, r) {
   var sua = [];
   if (!batAutoFix_() || !kb || !Array.isArray(kb.canh)) return sua;
+  if (kb.hinh_phang_chuan) sua = sua.concat(tuSuaHinhPhangChuan_(kb, r));   // v94
   var dem = {tex: 0, mau: 0, nhan: 0, td: 0};
   var texMang = function (ds) { return Array.isArray(ds) ? ds.map(function (x) { var y = suaTexHienThi_(x); if (y !== x) dem.tex++; return y; }) : ds; };
   var chuanMau = function (m) {

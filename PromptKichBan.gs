@@ -265,6 +265,10 @@ function taoPromptKichBan_(r, c1, c2) {
     var loiThoaiHH = ['MỖI CẢNH CÓ: "loai"; "tieu_de_canh" (từ cảnh 2, 3-8 từ nói đúng ý chính); "tu_khoa" (1-3 từ nguyên văn trong tiêu đề); "giu_san_khau"; "giong_doc"; "loi_thoai"; "noi_dung_man_hinh"; "moc_loi"; "trinh_bay"; "buoc_ve"; "kien_thuc"; "nhan_manh_hinh"; "minh_hoa".\n',
       'LỜI THOẠI: câu ngắn (≤ 16 từ), mỗi cảnh ≤ 45 từ; số và công thức đọc thành LỜI, KHÔNG ký hiệu LaTeX, dấu / hay %; tên điểm viết in hoa liền (SA, ABCD) để máy đánh vần đúng.\n',
       'CÔNG THỨC "noi_dung_man_hinh": mảng LaTeX (không kèm $), tối đa 3 dòng ngắn, chữ tiếng Việt trong \text{}; "trinh_bay": "cong_don" | "bien_doi" | "xep".\n\n'];
+    // v94: hình phẳng chuẩn -> công thức nằm trong hinh_phang_chuan.trang_chung_minh (máy dựng + kiểm chứng), cảnh để noi_dung_man_hinh []
+    if (typeof dungHinhPhangChuan_ === 'function' && dungHinhPhangChuan_(r)) {
+      loiThoaiHH[2] = 'CÔNG THỨC: KHÔNG ghi vào "noi_dung_man_hinh" (để []); mọi dòng chứng minh viết trong hinh_phang_chuan.trang_chung_minh[].dong[].tex, mỗi dòng có khi_noi nguyên văn.\n\n';
+    }
     return taoPromptHinhHocThuan_(r, c1, c2, { moDau: moDau, nangCao: nangCao.filter(function (x) { return x && !/BÀI TÀI CHÍNH|GÓC NHÌN 3D|BỎ QUA mọi yêu cầu/.test(x); }),
       noiCanh: [noiCanh[0]].concat(noiCanh.slice(6)), loiThoai: loiThoaiHH, traVe: traVe });
   }

@@ -82,19 +82,94 @@ function loiLuongHinhHoc_(kb) {
   return loi;
 }
 var CHUONG_TRINH_HINH_HOC = {
+  // v94: THCS (GDPT 2018 - Kết nối tri thức / Chân trời sáng tạo) cho hình học phẳng chuẩn (hinh_phang_chuan)
+  '8': 'hình học phẳng lớp 8: tứ giác, hình thang cân, hình bình hành, hình chữ nhật, hình thoi, hình vuông; định lý Thalès, đường trung bình, tính chất đường phân giác; tam giác đồng dạng (c.c.c, c.g.c, g.g); định lý Pythagore',
+  '9': 'hình học phẳng lớp 9 ôn thi vào 10: hệ thức lượng và tỉ số lượng giác góc nhọn trong tam giác vuông; đường tròn (góc ở tâm, góc nội tiếp, góc nội tiếp chắn nửa đường tròn), tứ giác nội tiếp (tổng hai góc đối 180°, 4 đỉnh cách đều một điểm, hai tam giác vuông chung cạnh huyền), tiếp tuyến (dấu hiệu, tính chất hai tiếp tuyến cắt nhau), đường tròn ngoại tiếp / nội tiếp tam giác, tam giác đồng dạng',
   '10': 'hình học phẳng THCS nâng cao + lớp 10: tam giác đồng dạng, hệ thức lượng (định lý sin, cos), đường tròn (góc nội tiếp, tiếp tuyến, tứ giác nội tiếp, phương tích), véc tơ, diện tích',
   '11': 'hình học phẳng nâng cao (phương tích, trục đẳng phương, phép biến hình) VÀ hình học KHÔNG GIAN lớp 11: quan hệ song song, quan hệ vuông góc, góc giữa đường thẳng và mặt phẳng, góc giữa hai mặt phẳng, khoảng cách (điểm - mặt, hai đường chéo nhau), thiết diện',
   '12': 'hình học KHÔNG GIAN: thể tích khối chóp, khối lăng trụ, khối hộp; khoảng cách, góc trong không gian; mặt cầu ngoại tiếp; tọa độ Oxyz; và hình học phẳng nâng cao'
 };
 // mỗi lần sinh đề hình học xen kẽ PHẲNG / KHÔNG GIAN (lớp 10 chỉ học PHẲNG theo GDPT 2018)
 function chonKieuHinh_(lop) {
-  if (String(lop) === '10') return 'PHANG';
+  if (/^(8|9|10)$/.test(String(lop))) return 'PHANG';
   var p = PropertiesService.getScriptProperties();
   var k = Number(p.getProperty('HH_KE') || 0);
   p.setProperty('HH_KE', String(k + 1));
   return k % 2 ? 'KHONG_GIAN' : 'PHANG';
 }
-function chuongTrinhHinh_(lop) { return CHUONG_TRINH_HINH_HOC[String(lop)] || CHUONG_TRINH_HINH_HOC['10']; }
+function chuongTrinhHinh_(lop) { return CHUONG_TRINH_HINH_HOC[String(lop).replace(/\D/g, '')] || CHUONG_TRINH_HINH_HOC['10']; }
+
+// ===================== v94: HÌNH HỌC PHẲNG CHUẨN (kb.hinh_phang_chuan, 3 lớp chặn) =====================
+// Lớp 1: AI chỉ khai báo PHÉP DỰNG + trang chứng minh (không tọa độ, không mã Manim). Lớp 2: scripts/giai_hinh_phang.py giải tọa
+// độ, tối ưu bố cục, kiểm chứng mệnh đề + GDPT 2018. Lớp 3: scripts/manim/HinhPhangChuan.py. Không đổi chuanLop_ (10|11|12) để
+// các luồng khác không bị ảnh hưởng: cấp lớp hình phẳng đọc riêng ở đây. Tắt: CAU_HINH HINH_PHANG_CHUAN=TAT.
+function batHinhPhangChuan_() { return String((typeof cauHinh_ === 'function' && cauHinh_('HINH_PHANG_CHUAN')) || 'BAT').toUpperCase() !== 'TAT'; }
+function capLopHinhPhang_(lop) {
+  var s = String(lop || '').toLowerCase();
+  if (/^(lop_8|lop_9|thpt)$/.test(s)) return s;
+  var m = /\d+/.exec(s);
+  var n = m ? Number(m[0]) : 9;
+  return n <= 8 ? 'lop_8' : n === 9 ? 'lop_9' : 'thpt';
+}
+function quyDinhThcsHinh_(cap) {
+  var l9 = cap === 'lop_9';
+  return 'QUY ĐỊNH BẮT BUỘC KIẾN THỨC ' + (l9 ? 'LỚP 9 (ôn thi vào 10)' : 'LỚP 8') + ' - GDPT 2018 (Kết nối tri thức / Chân trời sáng tạo), VI PHẠM SẼ BỊ LOẠI NGAY:\n' +
+    '- Được dùng: ' + CHUONG_TRINH_HINH_HOC[l9 ? '9' : '8'] + '.\n' +
+    '- CẤM chương trình cũ 2006: "cung chứa góc", "hai đỉnh (kề) cùng nhìn một cạnh dưới các góc bằng nhau". Tứ giác nội tiếp CHỈ chứng minh bằng: hai tam giác vuông chung cạnh huyền (4 điểm cách đều trung điểm cạnh huyền), 4 đỉnh cách đều một điểm, hoặc tổng hai góc đối bằng 180°.\n' +
+    '- CẤM kiến thức THPT: vectơ, tích vô hướng, định lý sin, định lý cosin, phương tích, trục đẳng phương, số phức.' +
+    (l9 ? ' Được dùng tỉ số lượng giác sin/cos/tan của góc nhọn trong tam giác vuông.' : ' Lớp 8 CHƯA học đường tròn và tỉ số lượng giác.') + '\n';
+}
+// Mặc định áp dụng hình phẳng chuẩn cho bài hình PHẲNG (không gian vẫn dùng hinh_hoc + manim_hinh.py)
+function dungHinhPhangChuan_(r) { return batHinhPhangChuan_() && laMonHinhHoc_(r) && !laHinhKhongGian_(r && r.de_bai); }
+function huongDanHinhPhangChuan_(r) {
+  var cap = capLopHinhPhang_(r && r.lop);
+  return '\nHÌNH HỌC PHẲNG CHUẨN (BẮT BUỘC, thay cho hinh_hoc / buoc_ve / tọa độ): trả thêm trường "hinh_phang_chuan". TUYỆT ĐỐI KHÔNG ghi tọa độ [x,y], KHÔNG viết mã Manim: máy tự giải tọa độ từ phép dựng, tự chọn hình đẹp, tự kiểm chứng mọi mệnh đề bằng số (sai -> bị trả lại).\n' +
+    '"hinh_phang_chuan": {"cap_lop":"' + cap + '","nhan_lop":"' + (cap === 'lop_8' ? 'TOÁN 8' : cap === 'lop_9' ? 'TOÁN 9' : 'TOÁN ' + String(r.lop || '10').replace(/\D/g, '')) + '","chuyen_muc":"HÌNH HỌC","phu_de":"' + (cap === 'lop_9' ? 'Ôn thi Tuyển sinh 10' : 'Hình học phẳng') + '",\n' +
+    ' "dieu_kien":[{"loai":"tam_giac_nhon","tg":"ABC"},{"loai":"nho_hon","a":"AB","b":"AC"}] (giả thiết về hình dạng: tam_giac_nhon | tam_giac_tu{tg,tai} | tam_giac_vuong{tg,tai} | tam_giac_can{tg,tai} | tam_giac_deu{tg} | nho_hon{a,b} | lon_hon{a,b} | so_do_goc{goc:"BAC",do} | do_dai{doan:"AB",gia_tri}),\n' +
+    ' "de_rut_gon":[{"tex":"\\\\triangle ABC \\\\text{ nhọn } (AB<AC) \\\\text{ nội tiếp } (O)","khi_noi":"cụm nguyên văn lời thoại"}] (tối đa 3 dòng ngắn),\n' +
+    ' "phep_dung":[ ... ] THEO ĐÚNG THỨ TỰ ĐỀ, mỗi phần tử có "id" và "khi_noi" (2-5 từ NGUYÊN VĂN trong lời thoại lúc đọc tới đối tượng đó). Loại hỗ trợ:\n' +
+    '   tam_giac{dinh:["A","B","C"]} | tam_giac_noi_tiep{dinh,tam:"O"} | tu_giac{dinh[4],kieu:hinh_vuong|hinh_chu_nhat|hinh_binh_hanh|hinh_thoi|hinh_thang} | duong_tron{tam} |\n' +
+    '   chan_duong_cao{ten:"D",tu:"B",xuong:"AC"} | duong_kinh{ten:"M",tu:"A",duong_tron:"(O)"} | trung_diem{ten,doan} | giao_diem{ten,a:"AM",b:"DE" (đường thẳng "XY" hoặc đường tròn "(O)"), khac?:"A", gan?:"B"} |\n' +
+    '   duong_tron_ngoai_tiep{tg,tam} | duong_tron_duong_kinh{doan:"BC",tam?} | tiep_tuyen{tai:"A",duong_tron,cat:"BC",ten} hoặc {tu:"M",duong_tron,ten_tiep_diem:["A","B"]} | phan_giac{goc:"BAC",cat:"BC",ten} |\n' +
+    '   doi_xung{ten,diem,qua (điểm hoặc "XY")} | song_song{ten,qua,voi:"BC",cat} | vuong_goc{ten,qua,voi,cat?} | doan_noi{doan:"DE"} | diem_tren{ten,tren:"BC" hoặc "(O)"} | diem_ngoai{ten,duong_tron}. Điểm phụ không muốn hiện nhãn: "an_nhan":true.\n' +
+    ' "muc_tieu":{"tex":"AM \\\\perp DE \\\\text{ tại } I","khi_noi":"...","to_do":["AM","DE","I"],"menh_de":{"loai":"vuong_goc","a":"AM","b":"DE"}},\n' +
+    ' "trang_chung_minh":[{"tieu_de":"Tứ giác BEDC nội tiếp","dong":[{"khi_noi":"...","tex":"...","menh_de":[...],"hanh_dong_hinh":[...]}]}] - MỖI TRANG TỐI ĐA 4-5 DÒNG, mỗi trang một ý (thường 4-6 trang).\n' +
+    '   • tex: LaTeX, góc \\\\angle ABC, tam giác \\\\triangle ABC, lý do ngắn \\\\ (\\\\text{kề bù}). TÔ MÀU bằng đúng 5 macro \\\\mvang{..} \\\\mdo{..} \\\\mngoc{..} \\\\mcam{..} \\\\mla{..}; đối tượng tô màu nào trong chữ thì hanh_dong_hinh dùng ĐÚNG màu đó (vang|do|ngoc|cam|la).\n' +
+    '   • menh_de (máy kiểm bằng tọa độ trên mọi hình thỏa đề): vuong_goc{a,b} | song_song{a,b} | goc_bang{g1,g2} | goc_so_do{goc,do} | tong_goc{goc:[..],bang:180} | bang_doan{a,b} | tich_bang{ve_trai:["AE","AB"],ve_phai:["AD","AC"]} | dong_vien{diem:[4 điểm]} | thang_hang{diem} | thuoc{diem,a} | dong_dang{tg1,tg2} (ĐÚNG THỨ TỰ ĐỈNH TƯƠNG ỨNG) | bang_nhau{tg1,tg2} | trung_diem{diem,doan}.\n' +
+    '   • hanh_dong_hinh: to_da_giac{dinh:[..],mau} | duong_tron_phu{duong_kinh:"BC" hoặc qua:[..],mau} | to_goc{goc:"ADE",mau,so_cung:1|2} | ky_hieu_vuong{goc:"BEC",mau} | nhan_manh_doan{doan,mau} | khung_bac_cau{doan_tex:"\\\\angle EDC",dong:[1,2]} (khung cyan quanh góc trung gian ở các dòng được bắc cầu) | ket_luan{goc:"AID"} (chốt cuối bài).\n' +
+    '   • Dòng nêu điều SAI để minh họa bẫy thì thêm "kiem":false.\n' +
+    '- Khi có hinh_phang_chuan: mọi cảnh để "noi_dung_man_hinh":[], không cần buoc_ve, minh_hoa = {"loai":"san_khau","du_lieu":{"vat":[]}}; lời thoại vẫn đọc đủ đề và từng bước, các khi_noi phải là cụm NGUYÊN VĂN, theo đúng thứ tự đọc.\n' +
+    (cap === 'thpt' ? '' : quyDinhThcsHinh_(cap));
+}
+
+// Kiểm tra kịch bản có hinh_phang_chuan: cấu trúc + khi_noi nguyên văn + GDPT 2018 (JS) + kiểm chứng tọa độ (Python qua chay_bp1.js).
+function kiemHinhPhangChuan_(kb) {
+  var nang = [], nhe = [];
+  var hp = kb.hinh_phang_chuan;
+  loiLuongHinhHoc_(kb).forEach(function (x) { nang.push(x + ': video hình học thuần chỉ được có hình hình học (không canh_that, mo_hinh_3d, phong cảnh, vật đời sống).'); });
+  if (!Array.isArray(hp.phep_dung) || !hp.phep_dung.length) nang.push('HP_THIEU_DAC_TA: hinh_phang_chuan thiếu phep_dung (danh sách phép dựng theo thứ tự đề).');
+  if (!Array.isArray(hp.trang_chung_minh) || !hp.trang_chung_minh.length) nang.push('HP_THIEU_DAC_TA: hinh_phang_chuan thiếu trang_chung_minh.');
+  var loi = kb.canh.map(function (c) { return String((c && c.loi_thoai) || ''); }).join(' ').toLowerCase().replace(/\s+/g, ' ');
+  var khongKhop = [];
+  var xet = function (k, nguon) { var s = String(k || '').trim().toLowerCase().replace(/\s+/g, ' '); if (s && loi.indexOf(s) < 0) khongKhop.push(nguon + ' "' + k + '"'); };
+  (hp.phep_dung || []).forEach(function (b, i) { if (b) xet(b.khi_noi, 'phep_dung[' + i + ']'); });
+  (hp.trang_chung_minh || []).forEach(function (t, i) { ((t && t.dong) || []).forEach(function (d, j) { if (d) xet(d.khi_noi, 'trang ' + (i + 1) + ' dòng ' + (j + 1)); }); });
+  if (khongKhop.length) nhe.push('HP_KHI_NOI_KHONG_KHOP: ' + khongKhop.slice(0, 6).join('; ') + ' không phải cụm nguyên văn trong lời thoại (máy sẽ nội suy mốc, nét vẽ có thể lệch lời).');
+  if (typeof kiemGdpt2018_ === 'function') {
+    var g = kiemGdpt2018_(kb, capLopHinhPhang_(hp.cap_lop || kb.lop));
+    g.cung.forEach(function (x) { nang.push('HP_VUOT_CHUONG_TRINH: ' + x.nguon + ' dùng "' + x.cum + '" (' + x.ten + '). Sửa: ' + x.goi_y); });
+    g.canh_bao.forEach(function (x) { nhe.push('HP_CHUONG_TRINH_CANH_BAO: ' + x.nguon + ' "' + x.cum + '" (' + x.ten + '). ' + x.goi_y); });
+  }
+  if (typeof kiemHinhPhangMay_ === 'function') {
+    var m = null;
+    try { m = kiemHinhPhangMay_(kb); } catch (e) { m = null; }
+    if (m && Array.isArray(m.loi)) m.loi.forEach(function (x) {
+      if (x.ma === 'HP_VUOT_CHUONG_TRINH') return;   // đã báo bằng bản JS ở trên
+      nang.push(x.ma + ': ' + x.chi_tiet + (x.goi_y ? ' | Gợi ý: ' + x.goi_y : ''));
+    });
+  }
+  return { nang: nang, nhe: nhe };
+}
 
 var YEU_CAU_DE_HINH_ = '- Dựng được bằng TỌA ĐỘ (phẳng: Oxy; không gian: Oxyz). Đề tự đủ bằng chữ: nêu rõ cách dựng từng điểm (giao của..., trung điểm của..., chân đường vuông góc từ ... xuống ..., hình chiếu của ... lên mặt phẳng ...), độ dài/góc cụ thể khi cần.\n' +
   '- "loai" = "tinh": hỏi đúng MỘT đại lượng, đáp số là MỘT con số (độ dài, khoảng cách, số đo góc theo độ, diện tích, thể tích, tỉ số).\n' +
@@ -781,6 +856,15 @@ function taoPromptHinhHocThuan_(r, c1, c2, phan) {
     return String(s).replace(/3\. HÌNH VẼ CHÍNH XÁC:[^\n]*\n/, '3. HÌNH VẼ CHÍNH XÁC: chỉ dùng vật hinh_hoc; mọi điểm của đề có trong "diem"; buoc_ve neo đúng cụm nguyên văn của lời thoại.\n')
       .replace(/#toanthucte/g, '#hinhhoc').replace(/"giu_san_khau":false/, '"giu_san_khau":true,"buoc_ve":[{"ve":"","khi_noi":""}]');
   });
+  if (dungHinhPhangChuan_(r)) {
+    // v94: hình phẳng -> đặc tả phép dựng hinh_phang_chuan (bỏ hinh_hoc tọa độ / buoc_ve / ví dụ tọa độ của bản cũ)
+    var traVeHP = traVe.map(function (s) { return String(s).replace(/"buoc_ve":\[\{"ve":"","khi_noi":""\}\]/, '"noi_dung_man_hinh":[]'); });
+    var dauVaoHP = dauVao.map(function (s) {
+      return /Mỗi cảnh chỉ có đúng MỘT vật/.test(s) ? 'Hình vẽ, câu đề rút gọn và các trang chứng minh do máy dựng từ "hinh_phang_chuan" (một hình xuyên suốt, giu_san_khau: true từ cảnh 2).\n\n' : s;
+    });
+    return [].concat(dauVaoHP, quyTrinh, [huongDanHinhPhangChuan_(r)], phan.moDau || [], phan.nangCao || [], phan.noiCanh || [], phan.loiThoai || [], traVeHP,
+      ['\nNHẮC LẠI: JSON trả về PHẢI có "hinh_phang_chuan" như mô tả (không tọa độ, không mã Manim).\n']).join('');
+  }
   return [].concat(dauVao, [huongDanKichBanHinh_(r)], quyTrinh, dongBo, phan.moDau || [], phan.nangCao || [], phan.noiCanh || [], phan.loiThoai || [], viDu, traVe).join('');
 }
 
@@ -789,6 +873,7 @@ function taoPromptHinhHocThuan_(r, c1, c2, phan) {
 function kiemTraKichBanManim_(kb) {
   var nang = [], nhe = [];
   if (!kb || !Array.isArray(kb.canh)) return { nang: nang, nhe: nhe };
+  if (kb.hinh_phang_chuan && typeof kb.hinh_phang_chuan === 'object' && batHinhPhangChuan_()) return kiemHinhPhangChuan_(kb);   // v94
   var laBuoc = function (c) { return /tinh|giai|chung_minh|buoc|lap_luan|suy_luan/.test(String(c && c.loai)); };
   var buoc = kb.canh.filter(laBuoc);
   // (v86) KIỂM TRA CHÉO CỨNG đề <-> kịch bản <-> hình: luồng sạch, đủ điểm, buoc_ve neo đúng lời thoại

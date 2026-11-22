@@ -187,7 +187,39 @@ const VoiIntro: React.FC<Props> = (props) => {
   );
 };
 
-const NoiDungVideo: React.FC<Props & {coIntro?: boolean}> = (props) => (la4Tang(props) ? <NoiDung4Tang {...props} /> : <NoiDungCu {...props} />);
+const NoiDungVideo: React.FC<Props & {coIntro?: boolean}> = (props) =>
+  la4Tang(props) ? <NoiDung4Tang {...props} /> : props.boCuc === 'hinh_phang' && props.manimLop !== false ? <NoiDungHinhPhang {...props} /> : <NoiDungCu {...props} />;
+
+// v94: hình phẳng chuẩn - Manim (scripts/manim/HinhPhangChuan.py) vẽ TOÀN BỘ phần nhìn (header, đề, hình, trang chứng minh)
+// thành lớp trong suốt ghép đè sau; Remotion chỉ giữ nền #121214 + giọng từng cảnh + nhạc + tiếng hiệu ứng + màn kết.
+// Không tiêu đề / thanh bước / phụ đề của vỏ cũ để không đè lên header và trang chứng minh của Manim.
+const NoiDungHinhPhang: React.FC<Props & {coIntro?: boolean}> = (props) => {
+  const {canh, tongFrame, fps, nhac, thuongHieu, outro} = props;
+  const amNhac = React.useMemo(() => taoAmLuongNhac(props), [canh, tongFrame, fps, props.amLuongNhac]);
+  return (
+    <AbsoluteFill style={{fontFamily: FONT, background: '#121214'}}>
+      {nhac ? <Audio src={staticFile(nhac)} loop volume={amNhac} /> : null}
+      {canh.map((c) =>
+        c.audio ? (
+          <Sequence key={`am${c.so}`} from={c.batDau + (c.leadFrame || 0)} durationInFrames={c.soFrame} layout="none">
+            <Audio src={staticFile(c.audio)} volume={1} />
+          </Sequence>
+        ) : null
+      )}
+      {(props.suKienManim || []).slice(0, 80).map((e, i) => (
+        <Sequence key={`sfxhp${i}`} from={Math.max(0, e.f)} durationInFrames={e.kieu === 'khung' ? 70 : 20} layout="none">
+          <Audio src={staticFile(e.kieu === 'khung' ? 'sfx/ting.wav' : 'sfx/click.wav')} volume={e.kieu === 'khung' ? 0.4 : 0.1} />
+        </Sequence>
+      ))}
+      {outro ? (
+        <Sequence from={outro.batDau} durationInFrames={outro.soFrame}>
+          {outro.loai === 'tu_tao' ? <ManKetChuyenNghiep th={thuongHieu} baiHoc={props.baiHoc || []} dapAn={props.dapAn} tiepTheo={props.tiepTheo || ''} /> : <ManKet tep={outro.tep} loai={outro.loai} />}
+        </Sequence>
+      ) : null}
+      {props.kiemDuyet ? <KiemDuyet /> : null}
+    </AbsoluteFill>
+  );
+};
 
 const NoiDungCu: React.FC<Props & {coIntro?: boolean}> = (props) => {
   const {canh, tongFrame, fps, nhac, lop, tieuDe, nen, phongCach, hookChu, hookKieu, nhanManh, thuongHieu, outro} = props;
