@@ -514,7 +514,11 @@ function yeuCauSuaVideo_(chat, chu) {
     });
     try { CacheService.getScriptCache().put('SUA_MOI_' + r.id, String(Date.now()), 3600); } catch (eC) {}
     var ttTiep = r.dap_an ? 'DA_GIAI' : 'MOI';
-    ghi_(sh, r._row, { trang_thai: ttTiep, file_video: '', anh_kt: '', anh_bia: '', gop_y: t.con.slice(0, 1000), uu_tien: 1, zalo_chat: chat, duyet: '', so_lan_loi: 0, ghi_chu: 'Sửa theo góp ý: ' + t.con.slice(0, 200) });
+    var ghiSua = { trang_thai: ttTiep, file_video: '', anh_kt: '', anh_bia: '', gop_y: t.con.slice(0, 1000), uu_tien: 1, zalo_chat: chat, duyet: '', so_lan_loi: 0, ghi_chu: 'Sửa theo góp ý: ' + t.con.slice(0, 200) };
+    // v96: "/sua <mã> [chidao: dùng sơ đồ cây] ..." -> đổi ghi chú đạo diễn (sân khấu) cho lần viết lại
+    var cdSua = typeof tachChiDao_ === 'function' ? tachChiDao_(t.con) : {chi_dao: ''};
+    if (cdSua.chi_dao) ghiSua.chi_dao = cdSua.chi_dao;
+    ghi_(sh, r._row, ghiSua);
     SpreadsheetApp.flush();
     try { PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1'); } catch (eP) {}
     if (typeof ghiGopYDeHoc_ === 'function') ghiGopYDeHoc_(r.id, 'sua', t.con, chat);   // học góp ý -> quy tắc cho mọi video sau

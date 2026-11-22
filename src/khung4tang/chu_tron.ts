@@ -6,6 +6,8 @@ const HY_LAP = 'Omega|omega|Delta|delta|alpha|beta|gamma|varphi|lambda|sigma|Sig
 export type CumChu = {tex: boolean; s: string};
 
 export function texHoaCum(w: string): string | null {
+  // v96: cụm đã là ký hiệu Unicode (n(Ω), Ā, ⋮) mà không có lệnh TeX -> giữ chữ thường (KaTeX bỏ ký tự Unicode lạ trong chế độ toán)
+  if (/[^\x00-\x7F]/.test(w) && !/\\/.test(w)) return null;
   let x = w;
   const goc = x;
   x = x.replace(new RegExp(`(^|[^\\\\A-Za-z])(${HY_LAP})(?![A-Za-z])`, 'g'), '$1\\$2');

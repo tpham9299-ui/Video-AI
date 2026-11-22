@@ -3,7 +3,8 @@
 import {emRa} from '../3d-vector/toan3d';
 import type {MocCau} from './kieu';
 
-export const INTRO_SAN = {y: 540, h: 748}; // vùng mô hình 3D lúc intro (cùng cao T2 -> trượt về T2 không đổi tỉ lệ)
+// v96: cùng cao T2 mới (648) và nằm trọn vùng an toàn TikTok (top 11 %, đáy 18 %, phải 12 %)
+export const INTRO_SAN = {y: 560, h: 648}; // vùng mô hình lúc intro (cùng cao T2 -> trượt về T2 không đổi tỉ lệ)
 export const GIAY_INTRO_MD = 5;
 // thời lượng intro: trong [3,6 ; 5] giây và không quá 40% phần nội dung
 export const giayIntro = (m: MocCau | null | undefined, tong: number) =>
@@ -11,7 +12,9 @@ export const giayIntro = (m: MocCau | null | undefined, tong: number) =>
 // mức "ra" của intro (0 -> 1) trong 0,6 s cuối: chữ tan, sân khấu về tầng 2, các tầng khác hiện vào
 export const raIntro = (t: number, G: number) => (G > 0 ? emRa((t - (G - 0.6)) / 0.6) : 1);
 
-export const RONG_CHU = 1080 - 2 * 64;
+// v96: chữ intro/outro trong khung rộng RONG_ND (0..950) -> không lấn cột nút bên phải của TikTok
+export const RONG_ND_V93 = 950;
+export const RONG_CHU = RONG_ND_V93 - 2 * 48;
 // Be Vietnam Pro 900 IN HOA: bề rộng trung bình ~0,68 em/ký tự (kể cả khoảng trắng) -> cỡ chữ vừa một dòng
 export const coVua = (s: string, max: number, min: number, rong = RONG_CHU, he = 0.68) =>
   Math.max(min, Math.min(max, Math.floor(rong / (Math.max(1, s.length) * he))));
@@ -26,5 +29,5 @@ export function haiDong(s: string, motDong = 16): string[] {
 }
 export const coTieuDeIntro = (dong: string[]) => coVua(dong.reduce((a, b) => (b.length > a.length ? b : a), ''), 104, 56);
 
-// Outro: đáp án | mô hình 3D | 3 dòng tóm tắt | nút lưu (đáy nút <= 1650: chừa 14% đáy cho TikTok)
-export const VUNG_OUTRO = {dapAn: {y: 150, h: 230}, san: {y: 400, h: 600}, dong: {y: 1030, h: 120, cach: 16}, nut: {y: 1470}};
+// Outro: đáp án | mô hình 3D | 3 dòng tóm tắt | nút lưu. v96: trọn vùng an toàn TikTok (đỉnh >= 212, đáy nút <= 1574)
+export const VUNG_OUTRO = {dapAn: {y: 216, h: 220}, san: {y: 450, h: 560}, dong: {y: 1024, h: 116, cach: 14}, nut: {y: 1440}};

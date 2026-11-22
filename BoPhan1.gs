@@ -45,7 +45,8 @@ var COT = ['id', 'trang_thai', 'lop', 'chu_de', 'de_bai', 'nguon', 'diem_tu_duy'
   'lich_dang', 'link_dang',    // 2 cột lần 16
   'mo_ta_hinh',                // lần 17: mô tả chi tiết hình vẽ kèm đề (đọc từ ảnh) để video vẽ lại đúng hình
   'duyet', 'gop_y', 'san_pham', // lần 19: trạng thái duyệt video, góp ý khi duyệt, sản phẩm trong bài (JSON)
-  'anh_kt', 'anh_bia', 'ai_kiem_tra', 'series'];   // lần 20: ảnh kiểm tra/ảnh bìa (Drive), kết quả AI xem video, series (hẹn giờ đăng, link đã đăng). Cột mới luôn nối vào CUỐI nên dữ liệu cũ không lệch
+  'anh_kt', 'anh_bia', 'ai_kiem_tra', 'series',   // lần 20: ảnh kiểm tra/ảnh bìa (Drive), kết quả AI xem video, series (hẹn giờ đăng, link đã đăng). Cột mới luôn nối vào CUỐI nên dữ liệu cũ không lệch
+  'chi_dao'];   // v96: ghi chú đạo diễn (dùng lưới Bayes / vẽ đồ thị lợi nhuận / chỉ dùng sơ đồ tư duy) -> ưu tiên chọn sân khấu (SanKhau.gs)
 
 var PHIEN_BAN_EDIT = 52;                    // phiên bản chuẩn edit mới nhất (tự động nâng cấp các video cũ/đang chờ dưới mức này)
 // Tên model nằm trong CAU_HINH vì Google đổi tên/ngừng model thường xuyên; hệ thống tự động đổi model dự phòng khi gặp lỗi.
@@ -632,6 +633,8 @@ function chonKhuonSinhDe_(lop, mon) {
 }
 function yeuCauKhuonSinhDe_(lop, mon) {
   if (typeof dungKhung4Tang_ === 'function' && !dungKhung4Tang_({lop: lop, mon: mon})) return '';
+  // v96: xác suất -> xoay vòng kho bối cảnh đời thực + mô-đun 2D; thực tế -> xen kẽ khuôn 3D với Kinh tế / Chuyển động 2D / Tăng trưởng
+  if (typeof yeuCauDaDangSinhDe_ === 'function') { var dd = yeuCauDaDangSinhDe_(lop, mon); if (dd !== null) return dd; }
   var ten = chonKhuonSinhDe_(lop, mon);
   if (!ten) return '';
   return '\nKHUÔN HÌNH 3D CỦA LẦN NÀY (BẮT BUỘC): mọi đề sáng tác phải dựng minh họa được bằng khuôn "' + ten + '" — ' +
@@ -646,10 +649,17 @@ function chonMon_() {
   var cd = String(cauHinh_('CHU_DE_VIDEO') || 'XEN_KE').toUpperCase();
   if (cd === 'XAC_SUAT' || cd === 'THUC_TE' || cd === 'HINH_HOC') return cd;
   var p = PropertiesService.getScriptProperties();
-  var vong = typeof batHinhHoc_ === 'function' && batHinhHoc_() ? ['XAC_SUAT', 'THUC_TE', 'HINH_HOC'] : ['XAC_SUAT', 'THUC_TE'];   // xen kẽ, có hình học khó (HinhHoc.gs)
-  var k = Number(p.getProperty('MON_KE') || 0);
-  p.setProperty('MON_KE', String((k + 1) % 6));
-  return vong[k % vong.length];
+  var vong = typeof batHinhHoc_ === 'function' && batHinhHoc_() ? ['THUC_TE', 'HINH_HOC'] : ['THUC_TE'];   // các chủ đề còn lại (HinhHoc.gs)
+  // v96: TỶ TRỌNG XÁC SUẤT (CAU_HINH TY_LE_XAC_SUAT, mặc định 55 %): rải đều tất định trên vòng 20 lượt (kiểu Bresenham),
+  // các lượt còn lại luân phiên THUC_TE / HINH_HOC
+  var tl = Number(cauHinh_('TY_LE_XAC_SUAT'));
+  tl = isFinite(tl) && String(cauHinh_('TY_LE_XAC_SUAT') || '') !== '' ? Math.max(0, Math.min(100, tl)) : 55;
+  var k = Number(p.getProperty('MON_KE') || 0) % 20;
+  p.setProperty('MON_KE', String((k + 1) % 20));
+  if (Math.floor((k + 1) * tl / 100) > Math.floor(k * tl / 100)) return 'XAC_SUAT';
+  var k2 = Number(p.getProperty('MON_KE_KHAC') || 0);
+  p.setProperty('MON_KE_KHAC', String((k2 + 1) % 12));
+  return vong[k2 % vong.length];
 }
 // Dạng bài có nằm trong danh sách bộ dựng video làm được không (đề cũ chưa có "dang" thì cho qua).
 function dangDungDuoc_(mon, dang) {
@@ -3236,7 +3246,7 @@ function taoDeVideoDai10Phut_(goiYChuDe, chat, laTuDongNgay) {
 }
 
 // Tự động đồng bộ toàn bộ 10 tệp .gs (bao gồm KhoKey.gs) và tệp kê khai appsscript.json (giữ nguyên mọi Dịch vụ/Thư viện như YouTube, YouTubeAnalytics) từ nhánh master trên GitHub thẳng vào dự án Google Apps Script hiện tại
-var DANH_SACH_TEP_GS_ = ['BoPhan1', 'PromptKichBan', 'KiemTraHinh', 'HinhHoc', 'BoPhan2', 'NangCao', 'DangVideo', 'SanPham', 'ZaloDeBai', 'KhoKey'];
+var DANH_SACH_TEP_GS_ = ['BoPhan1', 'PromptKichBan', 'KiemTraHinh', 'HinhHoc', 'BoPhan2', 'NangCao', 'DangVideo', 'SanPham', 'ZaloDeBai', 'KhoKey', 'SanKhau'];   // v96: + SanKhau.gs (lần đầu cần bấm đồng bộ 2 lần)
 function capNhatMaAppsScriptTuGitHub() {
   Logger.log('🚀 [BƯỚC 1/4] Bắt đầu đồng bộ mã từ GitHub...');
   var p = PropertiesService.getScriptProperties();

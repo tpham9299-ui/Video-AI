@@ -6,6 +6,7 @@ import {MAU_3DV} from '../3d-vector/kieu';
 import {rongNhan} from '../3d-vector/nhan';
 import {emRa, emVaoRa} from '../3d-vector/toan3d';
 import {BuocGiai, DuKienGhim} from './kieu';
+import {RONG_ND} from './vung';
 
 const VANG = MAU_3DV.vang;
 const NGOC = MAU_3DV.ngoc || '#2EE6A8';
@@ -16,7 +17,7 @@ export const ThanhDe: React.FC<{ds: DuKienGhim[]; buoc: BuocGiai[]; i: number; t
   // cỡ chữ chung: co lại tới khi cả hàng vừa bề rộng
   let co = 30;
   const rongHang = (c: number) => 74 + pills.reduce((s, p) => s + Math.max(rongNhan(p.nhan, c), p.doi ? rongNhan(p.doi.nhan, c) : 0) + 40 + 12, 0);
-  while (co > 20 && rongHang(co) > 1080 - 2 * 36) co -= 1;
+  while (co > 20 && rongHang(co) > RONG_ND - 2 * 36) co -= 1;   // v96: trong vùng an toàn TikTok (phải 12 %)
   const sangCua = (id: string) => {
     const nay = i >= 0 && (buoc[i].du_kien || []).includes(id) ? 1 : 0;
     const truoc = i > 0 && (buoc[i - 1].du_kien || []).includes(id) ? 1 : 0;

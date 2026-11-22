@@ -137,6 +137,12 @@ export function suKienSfx4Tang(k: NonNullable<Props['khung4tang']>, tHet: number
   });
   const c3 = k.canh3dv as {pha?: {ten?: string; t?: number}[]} | null;
   for (const ph of c3?.pha || []) if (ph && /gap|gấp/.test(String(ph.ten || '')) && typeof ph.t === 'number') ds.push({t: ph.t + 0.25, tep: 'whoosh', vol: 0.18, dai: 0.6, uu: 2});
+  // v96: sân khấu 2D — thẻ bay vào khay (whoosh), dấu ✓/✕ kiểm chứng (pop), chốt kết quả (ding)
+  for (const ph of k.sanKhau?.pha || []) {
+    if (['thu', 'doi', 'ket'].includes(ph.ten) && ph.chon) ds.push({t: ph.t + 0.15, tep: 'whoosh', vol: 0.15, dai: 0.6, uu: 2});
+    if (['thu', 'doi'].includes(ph.ten) && ph.bt) ds.push({t: ph.t + 1.25, tep: 'pop', vol: 0.2, dai: 0.3, uu: 1});
+    if (ph.ten === 'ket') ds.push({t: ph.t + 1.6, tep: 'ding', vol: 0.22, dai: 0.95, uu: 3});
+  }
   const ra = ds.filter((e) => e.t >= G - 0.2 && e.t < tHet - 0.05).sort((a, b) => a.t - b.t);
   const giu: SuKienSfx[] = [];
   for (const e of ra) {
@@ -188,7 +194,7 @@ const NoiDung4Tang: React.FC<Props & {coIntro?: boolean}> = (props) => {
       {outro ? (
         <Sequence from={outro.batDau} durationInFrames={outro.soFrame}>
           {outro.loai === 'tu_tao' && tomTat ? (
-            <OutroTomTat dapAn={props.dapAn} tomTat={tomTat} canh={canhCuoi} tCuoi={Math.max(1, ketThuc) / fps} thuongHieu={k.thuongHieu ?? thuongHieu?.ten} cta={k.cta} />
+            <OutroTomTat dapAn={props.dapAn} tomTat={tomTat} canh={k.sanKhau ? null : canhCuoi} sanKhau={k.sanKhau || null} tCuoi={Math.max(1, ketThuc) / fps} thuongHieu={k.thuongHieu ?? thuongHieu?.ten} cta={k.cta} />
           ) : outro.loai === 'tu_tao' ? <ManKetChuyenNghiep th={thuongHieu} baiHoc={props.baiHoc || []} dapAn={props.dapAn} tiepTheo={props.tiepTheo || ''} /> : <ManKet tep={outro.tep} loai={outro.loai} />}
         </Sequence>
       ) : null}

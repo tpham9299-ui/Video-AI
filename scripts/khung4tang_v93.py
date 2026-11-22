@@ -35,6 +35,13 @@ BUOC_KHAO_SAT = re.compile(r"tối ưu|lớn nhất|nhỏ nhất|gtln|gtnn|cực
 def chu_sach(s, toi_da=0, hoa=True):
     """Bỏ mã TeX ($, \\lệnh, {}, ^, _) -> chữ thường in hoa, gọn khoảng trắng; cắt ở ranh giới từ nếu quá dài."""
     x = str(s or "")
+    # v96: đổi TeX -> Unicode GIỮ NGHĨA trước khi lọc (trước đây "\overline{A}: tích \not\vdots 4" thành "A: tích 4" ngược nghĩa,
+    # "n(\Omega)" thành "n( )")
+    try:
+        import khung4tang_v96 as _v96
+        x = _v96.tex_sang_chu(x)
+    except Exception:   # noqa: BLE001
+        pass
     x = re.sub(r"\\(?:text|mathrm|mathbf)\s*\{([^{}]*)\}", r"\1", x)
     x = re.sub(r"\\(times|cdot)", "×", x)
     x = re.sub(r"\\[a-zA-Z]+", " ", x)
@@ -48,7 +55,18 @@ def chu_sach(s, toi_da=0, hoa=True):
 def cat_tu(x, toi_da):
     if len(x) <= toi_da:
         return x
+    # v96: cụm "không ⋮ 4" là MỘT ý — không bao giờ cắt còn "tích không" (mất nghĩa) hay "tích ⋮ 4" (ngược nghĩa):
+    # bỏ bớt từ thường đứng ngay trước cụm cho tới khi vừa
+    m = re.search(r"(?i)không\s*⋮\s*\d+", x)
+    if m:
+        dau, cum, sau = x[:m.start()].split(), m.group(0), x[m.end():]
+        while dau and len(" ".join(dau + [cum]) + sau) > toi_da and not dau[-1].endswith(":"):
+            dau.pop()
+        y = (" ".join(dau + [cum]) + sau).strip()
+        if len(y) <= toi_da:
+            return y
     cat = x[:toi_da + 1].rsplit(" ", 1)[0].rstrip(" ,.;:·-")
+    cat = re.sub(r"(?i)\s+không$", "", cat)   # không để "không" treo cuối (mất vế chia hết)
     return cat if len(cat) >= toi_da * 0.5 else x[:toi_da].rstrip()
 
 

@@ -1,0 +1,196 @@
+{
+ "id": "V96-LOINHUAN",
+ "mon": "THUC_TE",
+ "luong": "thuc_te_xac_suat",
+ "lop": "12",
+ "tieu_de": "Giảm giá bao nhiêu để lãi nhất?",
+ "chu_de": "Tối ưu lợi nhuận",
+ "de_bai": "Một quán bán trà sữa giá 30 nghìn đồng mỗi ly, mỗi ngày bán được 200 ly, giá vốn 10 nghìn đồng. Cứ giảm giá 1 nghìn đồng thì bán thêm 20 ly. Giảm giá bao nhiêu để lợi nhuận lớn nhất?",
+ "dap_an_cuoi": "Giảm 5 nghìn đồng, lợi nhuận lớn nhất 4500 nghìn đồng",
+ "cta": "Bình luận nhé!",
+ "canh": [
+  {
+   "so": 1,
+   "loai": "de_bai",
+   "loi_thoai": "Trà sữa 30 nghìn, bán 200 ly, vốn 10 nghìn; giảm 1 nghìn bán thêm 20 ly. Giảm bao nhiêu thì lãi nhất?",
+   "noi_dung_man_hinh": []
+  },
+  {
+   "so": 2,
+   "loai": "tinh_toan",
+   "loi_thoai": "Gọi x là số nghìn đồng giảm giá. Giá bán còn 30 trừ x, số ly là 200 cộng 20x. Điều kiện: giảm không quá 20 nghìn để vẫn còn lãi. Mỗi ly còn lãi 20 trừ x nghìn sau khi trừ giá vốn 10 nghìn.",
+   "noi_dung_man_hinh": [
+    "0 \\le x \\le 20"
+   ]
+  },
+  {
+   "so": 3,
+   "loai": "tinh_toan",
+   "loi_thoai": "Hàm lợi nhuận bằng 20 trừ x nhân 200 cộng 20x. Nếu giảm ít thì bán ít, giảm nhiều thì lãi mỗi ly mỏng. Đây là cuộc giằng co giữa số ly bán được và tiền lãi mỗi ly. Giảm 2 nghìn thì lãi 18 nhân 240 bằng 4320; giảm 8 nghìn cũng chỉ 12 nhân 360 bằng 4320.",
+   "noi_dung_man_hinh": [
+    "L(x) = (20 - x)(200 + 20x)"
+   ]
+  },
+  {
+   "so": 4,
+   "loai": "tinh_toan",
+   "loi_thoai": "L là hàm bậc hai có hệ số âm, đạt lớn nhất tại đỉnh x bằng 5. Hệ số a bằng âm 20, b bằng 200, nên đỉnh tại x bằng âm b chia 2a, bằng 5.",
+   "noi_dung_man_hinh": [
+    "L(x) = -20x^2 + 200x + 4000",
+    "x = -\\dfrac{b}{2a} = 5"
+   ]
+  },
+  {
+   "so": 5,
+   "loai": "dap_an",
+   "loi_thoai": "Vậy giảm 5 nghìn đồng, lợi nhuận lớn nhất 4500 nghìn đồng mỗi ngày. Khi đó giá bán 25 nghìn, bán 300 ly, mỗi ly lãi 15 nghìn, cao hơn hẳn mức 4000 nghìn lúc chưa giảm giá.",
+   "noi_dung_man_hinh": [
+    "L(5) = 4500"
+   ]
+  },
+  {
+   "so": 6,
+   "loai": "ket_luan",
+   "loi_thoai": "Tóm lại: đặt ẩn là mức giảm, lập hàm lợi nhuận bậc hai, rồi tìm đỉnh. Nếu giá vốn tăng lên 12 nghìn thì sao? Bình luận nhé!",
+   "noi_dung_man_hinh": []
+  }
+ ],
+ "khung4tang": {
+  "de_ghim": [
+   {
+    "id": "g",
+    "nhan": "30k \\to 200"
+   },
+   {
+    "id": "v",
+    "nhan": "v = 10k"
+   },
+   {
+    "id": "x",
+    "nhan": "x = ?",
+    "mau": "hong"
+   }
+  ],
+  "buoc": [
+   {
+    "canh": 1,
+    "nhan": "Đề bài",
+    "tieu_de": "Giảm giá để lãi nhất?",
+    "the": [
+     {
+      "loai": "chu",
+      "noi_dung": "Giảm 1k, thêm 20 ly"
+     }
+    ]
+   },
+   {
+    "canh": 2,
+    "khi_noi": "gọi x là số",
+    "nhan": "Đặt ẩn",
+    "tieu_de": "Giá bán và số ly theo x",
+    "du_kien": [
+     "x"
+    ],
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "0 \\le x \\le 20"
+      ]
+     }
+    ]
+   },
+   {
+    "canh": 3,
+    "khi_noi": "hàm lợi nhuận",
+    "nhan": "Lập hàm",
+    "tieu_de": "Lợi nhuận L(x)",
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "L(x) = (20 - x)(200 + 20x)"
+      ]
+     }
+    ]
+   },
+   {
+    "canh": 4,
+    "khi_noi": "hàm bậc hai",
+    "nhan": "Tối ưu",
+    "tieu_de": "Đỉnh của hàm bậc hai",
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "x = -\\dfrac{b}{2a} = 5"
+      ]
+     }
+    ]
+   },
+   {
+    "canh": 5,
+    "khi_noi": "vậy giảm",
+    "nhan": "Kết luận",
+    "tieu_de": "Lãi lớn nhất khi x = ?",
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "L_{max} = L(5) = 4500"
+      ]
+     }
+    ]
+   }
+  ],
+  "san_khau": {
+   "loai": "kinh_te_do_thi",
+   "tham_so": {
+    "ham": "(20-x)(200+20x)",
+    "bien": "x",
+    "mien": [
+     0,
+     20
+    ],
+    "kieu": "max",
+    "ten_ham": "L",
+    "nhan_bien": "Giảm giá x (nghìn đồng)",
+    "nhan_ham": "lợi nhuận (nghìn đồng)",
+    "don_vi": "nghìn đồng",
+    "phu": [
+     {
+      "ten": "Giá bán",
+      "ham": "30-x",
+      "don_vi": "k"
+     },
+     {
+      "ten": "Số ly",
+      "ham": "200+20x",
+      "don_vi": "ly"
+     }
+    ]
+   },
+   "pha": [
+    {
+     "ten": "truc"
+    },
+    {
+     "ten": "ve",
+     "khi_noi": "hàm lợi nhuận"
+    },
+    {
+     "ten": "keo",
+     "khi_noi": "nếu giảm ít"
+    },
+    {
+     "ten": "toi_uu",
+     "khi_noi": "đạt lớn nhất"
+    },
+    {
+     "ten": "ket",
+     "khi_noi": "vậy giảm"
+    }
+   ]
+  }
+ }
+}

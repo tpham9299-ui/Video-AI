@@ -62,7 +62,9 @@ def kiem_bai(ten):
     kiem(k["boCuc"]["phuDe"] == "gon", "%s: v95 phụ đề gọn 1 dòng mặc định BẬT" % ten)
     so = [s for s in __import__("re").findall(r"\d+", kb["dap_an_cuoi"]) if s not in kb["de_bai"]]
     kiem(not any(s in x["tieu_de"] for x in b for s in so), "%s: tiêu đề bước không lộ đáp số" % ten, [x["tieu_de"] for x in b])
-    kiem(bool(k["canh3dv"] and (k["canh3dv"].get("khuon") or k["canh3dv"].get("khuon_du_phong"))), "%s: 3D luôn có khuôn tham số" % ten, k["canh3dv"])
+    # v96: bài xác suất -> sân khấu 2D (sanKhau) thay khuôn 3D lưới thẻ; bài vật thể vẫn có khuôn 3D tham số
+    kiem(bool(k.get("sanKhau")) or bool(k["canh3dv"] and (k["canh3dv"].get("khuon") or k["canh3dv"].get("khuon_du_phong"))),
+         "%s: tầng 2 luôn có sân khấu (khuôn 3D hoặc sân khấu 2D v96)" % ten, k["canh3dv"])
     return k
 
 
@@ -71,7 +73,8 @@ def main():
     k1 = kiem_bai("the_12.json")
     k2 = kiem_bai("lon_512.json")
     k3 = kiem_bai("bia_12.json")
-    kiem(k1["canh3dv"]["khuon"] == "luoi_the_bi_xac_suat" and k1["canh3dv"]["tham_so"].get("N") == 12, "12 thẻ -> lưới 12 thẻ")
+    sk1 = k1.get("sanKhau") or {}
+    kiem(sk1.get("loai") == "rut_mau" and len(sk1.get("phan_tu") or []) == 12 and not k1["canh3dv"], "v96: 12 thẻ -> sân khấu rút mẫu 12 thẻ (thay lưới thẻ 3D)")
     kiem(k2["canh3dv"]["khuon"] == "tru_non_toi_uu" and k2["canh3dv"]["tham_so"].get("V") == 512, "lon 512 cm³ -> khuôn trụ V = 512")
     kiem(k3["canh3dv"]["khuon"] == "tam_bia_gap_hop" and k3["canh3dv"]["tham_so"].get("a") == 12, "bìa 12×12 -> khuôn gập hộp a = 12")
     bbt2 = [t for x in k2["buoc"] for t in x["the"] if t["loai"] == "bang_bien_thien"]

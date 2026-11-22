@@ -120,10 +120,13 @@ def dong_khai_bao(ds_the):
 def phan_dap_an(dap_an):
     """'x = 2 cm, V lớn nhất = 144 cm³' -> {'x': ('2', 'cm'), 'V': ('144', 'cm³')} (chữ cái đầu của vế trái)."""
     ra = {}
-    for phan in re.split(r"[,;]|\bvà\b", str(dap_an or "")):
+    for phan in re.split(r",(?!\d)|;|\bvà\b|\bhoặc\b", str(dap_an or "")):   # v96: "≈ 0,1667" không bị chẻ ở dấu phẩy thập phân
         m = re.search(r"([A-Za-z])[^=≈]*[=≈]\s*(-?\d+(?:[.,]\d+)?)\s*([a-zA-Zµ]*[²³]?(?:\^\{?[23]\}?)?)", phan)
         if m and m.group(1) not in ra:
             ra[m.group(1)] = (m.group(2), m.group(3))
+        elif m and m.group(2) not in ra[m.group(1)][0].split(";\\ "):
+            # v96: nhiều nghiệm của CÙNG ẩn ("x = 0 hoặc x = 1") -> giữ đủ "0; 1" (trước đây chỉ còn nghiệm đầu)
+            ra[m.group(1)] = (ra[m.group(1)][0] + ";\\ " + m.group(2), ra[m.group(1)][1] or m.group(3))
     return ra
 
 

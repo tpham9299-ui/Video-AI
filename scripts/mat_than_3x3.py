@@ -36,9 +36,9 @@ TEN_LOI = {"hinh_nho": "Hình học quá nhỏ trong khung", "tran_day": "Chữ 
            "ma_tho": "Mã thô ở tiêu đề/thẻ", "logo_sai": "Logo/tên kênh sai chuyên mục", "so_cat": "Con số bị cắt lỗi",
            "t2_trong": "Tầng 2 trống đen (không có hình 3D)", "hinh_dung_im": "Hình 3D đứng im ở mọi khung"}
 # Khung 4 tầng (src/khung4tang/vung.ts, an toàn TikTok): tầng 2 = y 288..1036 trên 1920 -> tỉ lệ trong ô lưới
-T2_TREN, T2_DUOI = 288 / 1920.0, 1036 / 1920.0
+T2_TREN, T2_DUOI = 398 / 1920.0, 1046 / 1920.0   # v96: bố cục an toàn TikTok 4 cạnh (src/khung4tang/vung.ts)
 # v93: vùng mô hình 3D lúc Intro móc câu (src/khung4tang/IntroMocCau.tsx INTRO_SAN = y 540, cao 748)
-INTRO_TREN, INTRO_DUOI = 540 / 1920.0, 1288 / 1920.0
+INTRO_TREN, INTRO_DUOI = 560 / 1920.0, 1208 / 1920.0   # v96: INTRO_SAN = y 560, cao 648
 # v94: hình phẳng chuẩn (scripts/manim/HinhPhangChuan.py, khung 9 x 16 đơn vị): vùng hình y 5,05..-0,75 -> tỉ lệ từ mép trên;
 # đáy an toàn 14% (TikTok) không được có chữ
 HP_HINH_TREN, HP_HINH_DUOI = (8 - 5.05) / 16.0, (8 + 0.75) / 16.0

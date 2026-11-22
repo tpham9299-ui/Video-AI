@@ -1,0 +1,194 @@
+{
+ "id": "V96-BAYES",
+ "mon": "XAC_SUAT",
+ "luong": "thuc_te_xac_suat",
+ "lop": "12",
+ "tieu_de": "Xét nghiệm dương tính",
+ "chu_de": "Công thức Bayes",
+ "de_bai": "Một bệnh có tỉ lệ mắc 1%. Xét nghiệm cho kết quả dương tính với 99% người mắc bệnh và 5% người không mắc bệnh. Một người xét nghiệm dương tính. Tính xác suất người đó thật sự mắc bệnh.",
+ "dap_an_cuoi": "P(A|B) ≈ 0,1667",
+ "cta": "Lưu lại kẻo quên!",
+ "canh": [
+  {
+   "so": 1,
+   "loai": "de_bai",
+   "loi_thoai": "Bệnh tỉ lệ 1%, xét nghiệm đúng 99% với người bệnh, nhầm 5% với người khỏe. Dương tính thì bao nhiêu phần trăm là bệnh thật?",
+   "noi_dung_man_hinh": []
+  },
+  {
+   "so": 2,
+   "loai": "tinh_toan",
+   "loi_thoai": "Gọi A là mắc bệnh, B là dương tính. Tỉ lệ mắc bệnh chỉ 1 phần trăm, một dải rất hẹp. Trên lưới vuông, cột A chỉ rộng 1 phần trăm, cột A ngang chiếm 99 phần trăm còn lại.",
+   "noi_dung_man_hinh": [
+    "P(A) = 0{,}01"
+   ]
+  },
+  {
+   "so": 3,
+   "loai": "tinh_toan",
+   "loi_thoai": "Trong số người bệnh, 99% dương tính; trong số người khỏe vẫn có 5% dương tính. Ở cột A phần dương tính gần như phủ kín, còn ở cột A ngang chỉ là một dải mỏng dưới đáy, nhưng dải đó rất dài.",
+   "noi_dung_man_hinh": [
+    "P(B \\mid A) = 0{,}99"
+   ]
+  },
+  {
+   "so": 4,
+   "loai": "tinh_toan",
+   "loi_thoai": "Phần giao: vừa mắc bệnh vừa dương tính là 0,0099; khỏe mà dương tính là 0,0495. Cộng lại P của B bằng 0,0594. Vậy trong số người dương tính, phần lớn lại là người khỏe, vì người khỏe đông hơn rất nhiều.",
+   "noi_dung_man_hinh": [
+    "P(B) = 0{,}0099 + 0{,}0495 = 0{,}0594"
+   ]
+  },
+  {
+   "so": 5,
+   "loai": "dap_an",
+   "loi_thoai": "Vậy xác suất mắc bệnh khi dương tính chỉ khoảng 0,1667, tức chưa tới 17%. Công thức Bayes: lấy phần giao 0,0099 chia cho tổng dương tính 0,0594. Tức là chưa tới 17 trên 100 người dương tính thật sự mắc bệnh, nên cần xét nghiệm lại lần hai.",
+   "noi_dung_man_hinh": [
+    "P(A \\mid B) \\approx 0{,}1667"
+   ]
+  },
+  {
+   "so": 6,
+   "loai": "ket_luan",
+   "loi_thoai": "Tóm lại: chia lưới theo tỉ lệ mắc bệnh, cắt theo tỉ lệ dương tính, rồi lấy phần giao chia tổng. Lưu lại kẻo quên công thức này!",
+   "noi_dung_man_hinh": []
+  }
+ ],
+ "khung4tang": {
+  "de_ghim": [
+   {
+    "id": "a",
+    "nhan": "P(A) = 1\\%"
+   },
+   {
+    "id": "b",
+    "nhan": "P(B|A) = 99\\%"
+   },
+   {
+    "id": "c",
+    "nhan": "P(B|\\overline{A}) = 5\\%"
+   },
+   {
+    "id": "q",
+    "nhan": "P(A|B) = ?",
+    "mau": "hong"
+   }
+  ],
+  "buoc": [
+   {
+    "canh": 1,
+    "nhan": "Đề bài",
+    "tieu_de": "Dương tính có chắc mắc bệnh?",
+    "the": [
+     {
+      "loai": "chu",
+      "noi_dung": "Tỉ lệ mắc bệnh 1%"
+     }
+    ]
+   },
+   {
+    "canh": 2,
+    "khi_noi": "gọi a là mắc bệnh",
+    "nhan": "Chia lưới",
+    "tieu_de": "Cắt theo P(A)",
+    "du_kien": [
+     "a"
+    ],
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "P(A) = 0{,}01"
+      ]
+     }
+    ]
+   },
+   {
+    "canh": 3,
+    "khi_noi": "trong số người bệnh",
+    "nhan": "Cắt ngang",
+    "tieu_de": "Tỉ lệ dương tính mỗi nhóm",
+    "du_kien": [
+     "b",
+     "c"
+    ],
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "P(B \\mid A) = 0{,}99",
+       "P(B \\mid \\overline{A}) = 0{,}05"
+      ]
+     }
+    ]
+   },
+   {
+    "canh": 4,
+    "khi_noi": "phần giao",
+    "nhan": "Toàn phần",
+    "tieu_de": "Tính P(B)",
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "P(B) = 0{,}0594"
+      ]
+     }
+    ]
+   },
+   {
+    "canh": 5,
+    "khi_noi": "vậy xác suất mắc bệnh",
+    "nhan": "Bayes",
+    "tieu_de": "P(A|B) = ?",
+    "du_kien": [
+     "q"
+    ],
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "P(A \\mid B) = \\dfrac{0{,}0099}{0{,}0594} \\approx 0{,}1667"
+      ]
+     }
+    ]
+   }
+  ],
+  "san_khau": {
+   "loai": "luoi_bayes",
+   "tham_so": {
+    "A": {
+     "nhan": "mắc bệnh",
+     "p": "1%"
+    },
+    "B": {
+     "nhan": "dương tính"
+    },
+    "p_B_A": "99%",
+    "p_B_khong_A": "5%",
+    "hoi": "A|B"
+   },
+   "pha": [
+    {
+     "ten": "vuong"
+    },
+    {
+     "ten": "cat_doc",
+     "khi_noi": "tỉ lệ mắc bệnh chỉ"
+    },
+    {
+     "ten": "cat_ngang",
+     "khi_noi": "trong số người bệnh"
+    },
+    {
+     "ten": "giao",
+     "khi_noi": "phần giao"
+    },
+    {
+     "ten": "ket",
+     "khi_noi": "vậy xác suất mắc bệnh"
+    }
+   ]
+  }
+ }
+}

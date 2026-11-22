@@ -11,12 +11,14 @@ import {TheCasio} from './TheCasio';
 import {BuocGiai, TheGiai} from './kieu';
 import {RA_TIEU_DE} from './TangTieuDe';
 import {ChuTron} from './ChuTron';
+import {RONG_ND} from './vung';
 import {tachHam} from './chu_tron';
 
 const TOI_DA_THE = 3;
 const VANG = '#FACC15';
 const NGOC = '#2EE6A8';
-const RONG_TRONG = 1080 - 2 * 44 - 2 * 28;
+// v96: khung nội dung dừng ở ranh phải 12 % (vùng an toàn TikTok)
+const RONG_TRONG = RONG_ND - 2 * 44 - 2 * 28;
 
 // mốc xuất hiện của thẻ j trong bước b
 export const tTheCua = (b: BuocGiai, j: number) => (b.the[j].t !== undefined ? b.the[j].t! : b.t + 0.35 + j * 0.7);
@@ -54,7 +56,7 @@ function NoiDung({th, t0, t, mau, co = 42}: {th: TheGiai; t0: number; t: number;
 
 // Cụm thẻ căn GIỮA tầng 3 theo chiều dọc. Thẻ chưa tới lượt vẫn giữ chỗ (ẩn) nên cụm không nhảy khi thẻ mới vào.
 // v92: chiều cao ước lượng của thẻ -> cửa sổ thẻ theo NGÂN SÁCH CHIỀU CAO tầng 3 (3 thẻ nhiều dòng không còn tràn/cắt mép)
-const CAO_T3 = 450;
+const CAO_T3 = 380;   // v96: T3 426 px (vùng an toàn TikTok) trừ dải phụ đề 56 px
 export const caoThe = (th: TheGiai) => {
   const vo = 38 + (th.nhan || th.loai !== 'chu' ? 46 : 0);
   if (th.loai === 'cong_thuc') return vo + (th.chot ? 14 : 0) + th.dong.slice(0, 5).reduce((s, d) => s + (/\\d?frac/.test(d) ? 84 : th.chot ? 68 : 58), 0);

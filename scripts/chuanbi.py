@@ -225,6 +225,8 @@ def so_chu_sang_so(text):
         # v92: "tích không chia hết" -> giữ chữ (trước đây "tích"/"tổng"/"được" làm "không" thành 0)
         if cum == ["không"] and not (KHONG_LA_SO.match(truoc) or sau in ("phẩy", "<", ">")):
             v = None
+        if len(cum) == 1 and cum[0] in ("nghìn", "ngàn", "trăm", "mươi", "linh", "lẻ"):   # v96: "5 nghìn đồng" không thành "5 1000 đồng"
+            v = None
         doi = v is not None and (len(cum) >= 2 or DON_VI_SAU_SO.match(sau) or TU_TOAN_TRUOC.match(truoc) or cum[0] == "zero")
         if not doi:
             ra.append(w)
@@ -321,8 +323,15 @@ def doc_toan_v95(s):
     return re.sub(r"[ \t]+", " ", s)
 
 
+def doc_toan_v96(text):
+    """v96: phiên âm Tổ hợp – Xác suất (C_{10}^3, A_n^k, n(Ω), P(Ā), P(A|B), ⋮, ∤) — xem khung4tang_v96.doc_toan_v96."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import khung4tang_v96 as v96_k4
+    return v96_k4.doc_toan_v96(text)
+
+
 def chuan_hoa_doc(text):
-    s = doc_ky_hieu_ham(sua_chinh_ta_tieng_viet(doc_toan_v95(text)))
+    s = doc_ky_hieu_ham(sua_chinh_ta_tieng_viet(doc_toan_v95(doc_toan_v96(text))))
     # v89: đơn vị sau số đọc thành lời (lời thoại nay viết "10 cm", "54π m³" cho phụ đề; giọng vẫn đọc tự nhiên)
     for ky, doc in (("cm²", "xăng-ti-mét vuông"), ("cm³", "xăng-ti-mét khối"), ("m²", "mét vuông"), ("m³", "mét khối"),
                     ("cm", "xăng-ti-mét"), ("mm", "mi-li-mét"), ("km", "ki-lô-mét"), ("m", "mét")):
@@ -1820,12 +1829,52 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None):
     moc_cau = v93.moc_cau(kb, buoc, so_lo)
     moc_cau["tieu_de"] = v95_k4.tieu_de_intro_dung(kb, moc_cau["tieu_de"])
     tom_tat = v93.tom_tat(kb, buoc)
-    return {"tongFrame": int(round(tong * fps)), "fps": fps,
-            "mocCau": moc_cau, "tomTat": tom_tat,
-            # v95: phụ đề gọn 1 dòng MẶC ĐỊNH BẬT (tắt: env PHU_DE_4TANG=TAT hoặc CAU_HINH PHU_DE_4TANG=TAT)
-            "boCuc": {"anToanTikTok": True, "phuDe": "tat" if str(os.environ.get("PHU_DE_4TANG") or "").upper() in ("0", "TAT", "OFF")
-                      or str(k4.get("phu_de") or "").lower() == "tat" and str(os.environ.get("PHU_DE_4TANG") or "").upper() != "BAT" else "gon"},
-            "deGhim": de_ghim, "buoc": buoc, "canh3dv": c3, **({"tChot": round(t_chot, 3)} if t_chot is not None else {})}
+    # ---- v96: SÂN KHẤU 2D (4 mô-đun Xác suất / nhánh 2D thực tế / sơ đồ tư duy). Định tuyến một lần (chon_san_khau);
+    # có sân khấu 2D thì tầng 2 KHÔNG vẽ khuôn 3D (không còn nhét lưới thẻ / hình hộp sai ngữ cảnh) ----
+    import khung4tang_v96 as v96_k4
+
+    def tim_moc(cum, tu_tu=0, t_tu=None):
+        lo = max(tu_tu, chi_so_tai(t_tu)) if t_tu is not None else tu_tu
+        kq = tim(cum, lo)
+        return (kq[0], kq[1], round(tu_all[kq[0]]["bat"], 3)) if kq else None
+    khuon_suy = ((c3.get("khuon") or ("__tu_do__" if _hop_le_3dv(c3) and _dong_3dv(c3) else None)) if isinstance(c3, dict) else None)
+    def loi_tai(t0, t1):
+        return " ".join(x["w"] for x in tu_all if t0 <= x["bat"] < t1)
+    san_khau, sua_sk, quyet = v96_k4.gan_san_khau(kb, k4, buoc, t_buoc, t_het_de, tong, tim_moc, None,
+                                                  khuon_suy if khuon_suy != "luoi_the_bi_xac_suat" else None, loi_tai)
+    if san_khau:
+        print("Sân khấu 2D v96: %s (%s%s), %d pha (mốc %s s)%s" % (
+            san_khau["loai"], quyet["nguon"], ", chỉ đạo: " + quyet["chi_dao"] if quyet.get("chi_dao") else "", len(san_khau["pha"]),
+            ", ".join("%.1f" % p["t"] for p in san_khau["pha"]), (" | " + "; ".join(sua_sk[:6])) if sua_sk else ""))
+        c3 = None
+    out = {"tongFrame": int(round(tong * fps)), "fps": fps,
+           "mocCau": moc_cau, "tomTat": tom_tat,
+           # v95: phụ đề gọn 1 dòng MẶC ĐỊNH BẬT (tắt: env PHU_DE_4TANG=TAT hoặc CAU_HINH PHU_DE_4TANG=TAT)
+           "boCuc": {"anToanTikTok": True, "phuDe": "tat" if str(os.environ.get("PHU_DE_4TANG") or "").upper() in ("0", "TAT", "OFF")
+                     or str(k4.get("phu_de") or "").lower() == "tat" and str(os.environ.get("PHU_DE_4TANG") or "").upper() != "BAT" else "gon"},
+           "deGhim": de_ghim, "buoc": buoc, "canh3dv": c3, **({"tChot": round(t_chot, 3)} if t_chot is not None else {})}
+    if san_khau:
+        out["sanKhau"] = san_khau
+        # v96: ô ghim 'x = ?' đổi sang nghiệm tối ưu máy tính đúng lúc sân khấu 2D chốt đỉnh (đồng bộ thanh gạt + lời đọc)
+        pt = next((p for p in san_khau["pha"] if p["ten"] == "toi_uu"), None)
+        if san_khau["loai"] in ("kinh_te_do_thi", "so_do_2d") and san_khau.get("x_tot") is not None and pt:
+            bien = str(san_khau.get("bien") or "x")
+            out["deGhim"] = v95_k4.de_ghim_doi(out["deGhim"], "", round(pt["t"] + 1.1, 3), {bien: round(pt["t"] + 1.1, 3)},
+                                                {bien: (v95_k4.so_viet(san_khau["x_tot"]).replace("{,}", ","), "")})
+    # v96: cảnh báo (Apps Script đã chặn bằng lỗi cứng KB_DOC_LAP_DE / KB_CUT_CONG_THUC; ở đây chỉ ghi nhật ký)
+    lap = v96_k4.canh_lap_de(kb)
+    if lap:
+        print("⚠ v96 đọc lặp đề ở cảnh %s (Auto-fix Apps Script sẽ bỏ)" % ", ".join(str(i + 1) for i in lap))
+    for i, c in enumerate(cac_canh):
+        for d in c.get("noi_dung_man_hinh") or []:
+            so = v96_k4.so_ket_qua_dong(d)
+            if so and not re.search(r"ket_luan|bai_hoc|cta", str(c.get("loai") or "")) and not v96_k4.loi_noi_so(c.get("loi_thoai"), so.replace("\\frac{", "").replace("}{", "/").rstrip("}")):
+                print("⚠ v96 câu cụt công thức ở cảnh %d: lời không đọc ra %s" % (i + 1, so))
+    # v96: quét mã TeX thô ở trường chữ thường (Intro / Outro / CTA) + chuẩn ký hiệu "không chia hết" (không ⋮)
+    da_sua = v96_k4.sua_ma_tho_props(out)
+    if da_sua:
+        print("v96 quét mã thô: sửa %d chỗ (%s)" % (len(da_sua), ", ".join(sorted(set(da_sua)))))
+    return out
 
 
 def ghep(cac_tep, dich):

@@ -74,7 +74,7 @@ const d2 = I.haiDong(dai);
 const co = I.coTieuDeIntro(d2);
 thu('tiêu đề 44 ký tự -> 2 dòng, mỗi dòng vừa 952 px', d2.length === 2 && d2.every((x) => x.length * co * 0.68 <= 952), `${d2} @${co}`);
 thu('tiêu đề 2 dòng không chạm vùng mô hình (236 + 220 <= 470 < INTRO_SAN.y)', 236 + Math.max(...[co * 1.04 * 2]) <= 456 && 470 + 44 < I.INTRO_SAN.y);
-thu('hook + CTA nằm dưới vùng mô hình và trên 14% đáy TikTok', I.INTRO_SAN.y + I.INTRO_SAN.h + 182 + 96 <= 1650 && /INTRO_SAN\.y \+ INTRO_SAN\.h \+ 24/.test(src));
+thu('hook + CTA nằm dưới vùng mô hình và trên 18% đáy TikTok (v96)', I.INTRO_SAN.y + I.INTRO_SAN.h + 172 + 92 <= 1574 && /INTRO_SAN\.y \+ INTRO_SAN\.h \+ 20/.test(src));
 thu('thời lượng intro trong [3,6 ; 5] s', I.giayIntro({}, 60) === 5 && I.giayIntro({}, 9) === 3.6 && I.giayIntro(null, 60) === 0);
 const V = I.VUNG_OUTRO;
 thu('outro: đáp án | mô hình | 3 dòng | nút không chồng nhau, trên 14% đáy',

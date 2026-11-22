@@ -397,13 +397,17 @@ function huongDanKhung4Tang_(r) {
     '{"loai":"casio","phim":[...],"ket_qua":"...","khi_noi":"..."} (tìm GTLN/GTNN: dùng MENU 8 (Table) nhập f(X) rồi đọc bảng, hoặc giải phương trình f\'(x) = 0 rồi CALC thế nghiệm; CẤM hướng dẫn SHIFT SOLVE ra thẳng cực trị) | ' +
     '{"loai":"bang_bien_thien","ham":"tên hàm của bài: V, S, f...","bien":"x|r|t","moc_x":[...],"dau":[...],"gia_tri":[...],"khi_noi":"..."} | {"loai":"chu","noi_dung":"≤ 12 từ","khi_noi":"..."}]}] (3-6 bước theo đúng thứ tự lời giảng; bước 2 trở đi chỉ bắt đầu SAU khi đã đọc xong đề),' +
     '"canh_3d_vector": ƯU TIÊN KHUÔN THAM SỐ {"khuon":"tên khuôn","tham_so":{...số liệu ĐÚNG của đề...},"pha":[{"ten":"tên pha","khi_noi":"cụm nguyên văn lúc chuyển sang pha đó"}]} (pha không ghi khi_noi thì máy tự trải theo các bước). ' +
-    'Khuôn dùng được cho bài lớp ' + (lop || '?') + ': ' + dsK.map(moTaKhuon_).join(' | ') + '. ' +
+    (String((r && r.mon) || '').toUpperCase() === 'XAC_SUAT'
+      ? 'BÀI XÁC SUẤT (v96): KHÔNG ghi "canh_3d_vector" — tầng 2 dùng "san_khau" 2D (rut_mau | so_do_cay | luoi_bayes | cot_phan_phoi), xem hướng dẫn SÂN KHẤU 2D bên dưới. '
+      : 'Khuôn dùng được cho bài lớp ' + (lop || '?') + ': ' + dsK.map(moTaKhuon_).join(' | ') + '. ' +
+        'Đề KHÔNG có vật thể khối thật (kinh tế / chuyển động 2D / tăng trưởng / đại số thuần) thì KHÔNG ghi canh_3d_vector mà ghi "san_khau" 2D (xem bên dưới). ') +
     'CHỈ khi không khuôn nào hợp mới dùng đặc tả tự do {"phien_ban":1,"doi_tuong":[...],"buoc":[{"khi_noi","camera":[goc_ngang,goc_cao 5..90,zoom] hoặc "tu_tren","hien":[id],"an":[id],"nhan_manh":[id],"hanh_dong":[...]}]} ' +
     '(≥ 3 bước có thay đổi; tọa độ [x,y,z], z hướng lên, khối ~[-3,3]³): diem {toa_do,nhan} | doan_thang/vector {tu,den} | da_giac {diem:[[x,y,z]...],ban_le?} | hinh_hop {tam,kich_thuoc,ten_dinh,nap} | mat_cau {tam,ban_kinh} | ' +
     'hinh_tru/hinh_non {day:[x,y,z],ban_kinh,cao} | hinh_chop {day:[[x,y,z]...],dinh} | duong_cong {diem|ham} | goc {dinh,canh:[id,id]} | nhom_lap {vat:"the|bi|khoi",so:N,xep:"luoi|hang|vong",mau_tung:[...],nhan_tung:[...]}; ' +
     'hành động: truot_diem, tach_vector, gap_mat, dich {vec}, ve_dan, nang {chi_so (0-based),mau}. Màu mang nghĩa: cyan = đề cho, vàng = đang xét/kết quả, hồng = ẩn cần tìm, ngọc = đã kiểm chứng. ' +
     (lop === '10' ? 'Lớp 10: chỉ hình PHẲNG, không Oxyz, không đạo hàm/tích phân. ' : lop === '11' ? 'Lớp 11: KHÔNG dùng hệ tọa độ Oxyz, không bảng biến thiên/đạo hàm tìm cực trị (dùng Cauchy / tam thức bậc hai). ' : '') +
     'Mọi khi_noi phải trích NGUYÊN VĂN loi_thoai (máy khớp từng từ); số liệu trên de_ghim, tham_so và thẻ phải khớp đề và đáp án.\n' +
+    (typeof huongDanSanKhau_ === 'function' ? huongDanSanKhau_(r) : '') +
     huongDanMocCau_(r);
 }
 // v93: INTRO "3 GIÂY MÓC CÂU" + OUTRO "TÓM TẮT 3 BƯỚC" + ĐỐI CHIẾU HÌNH ↔ ĐỒ THỊ (đều TÙY CHỌN; thiếu thì Auto-fix tự sinh)
@@ -445,8 +449,10 @@ var GIAY_4TANG_ = '50-68';
 function quyTrinhGon4Tang_(tt, r) {
   return 'NHỊP VIDEO GỌN (BẮT BUỘC, video khung 4 tầng): 8-12 cảnh, TỔNG ' + GIAY_4TANG_ + ' GIÂY, toàn bài 200-270 TIẾNG (âm tiết) lời thoại, mỗi cảnh 1 ý, 12-30 tiếng. ' +
     'Đi THẲNG vào bài toán, mỗi câu phải mang thông tin. CẤM câu rào / sáo rỗng: "Muốn tìm ..., trước hết ta cần ...", "thật tuyệt vời", "khoan chốt vội", "hãy cùng nhau khám phá", "các bạn có biết không", "rất đơn giản thôi". ' +
-    'Thứ tự cảnh: mo_dau (câu hỏi của đề, ≤ 12 tiếng) -> de_bai (1 cảnh: đủ dữ kiện + hỏi gì) -> giải 4-6 cảnh (đặt ẩn + điều kiện; lập hàm; đạo hàm / biến đổi; giải nghiệm; CĂN CỨ CỰC TRỊ) -> dap_an (đáp số + ý nghĩa thực tế 1 câu) -> ket_luan (tóm tắt 3 bước + CTA). ' +
-    'Cảnh cuối có loai "ket_luan" (hoặc "bai_hoc"): đọc lần lượt 3 bước tóm tắt (khớp "tom_tat_3_buoc") rồi kết thúc bằng ĐÚNG MỘT câu kêu gọi trùng nghĩa nút "cta" (ví dụ cta "LƯU LẠI NGAY!" thì đọc "Lưu lại ngay để ôn nhé!"; "ĐĂNG KÝ KÊNH!" thì đọc "Đăng ký kênh để học mẹo mới!"). Phép tính chốt đáp án KHÔNG đặt ở cảnh ket_luan. ' +
+    'Thứ tự cảnh: de_bai (ĐÚNG 1 CẢNH, 5-7 giây, 1-2 câu gọn: đủ dữ kiện + hỏi gì) -> giải 4-6 cảnh (đặt ẩn + điều kiện; lập hàm; đạo hàm / biến đổi; giải nghiệm; CĂN CỨ CỰC TRỊ) -> dap_an (đáp số + ý nghĩa thực tế 1 câu) -> ket_luan (tóm tắt 3 bước + CTA). ' +
+    'ĐỌC ĐỀ ĐÚNG 1 LẦN (v96, máy kiểm, lỗi cứng KB_DOC_LAP_DE): không có cảnh mo_dau / nhac_lai đọc lại đề; câu hook intro chỉ là câu hỏi ≤ 8 từ, không nhắc lại dữ kiện (thanh ĐỀ đã ghim dữ kiện). ' +
+    'ĐỌC ĐỦ CÔNG THỨC (v96, lỗi cứng KB_CUT_CONG_THUC): cảnh có dòng màn hình "... = số" thì lời thoại phải đọc ra ĐÚNG số đó (vd "số phần tử không gian mẫu là C(10, 3) = 120"), cấm câu cụt "ta có số phần tử không gian mẫu." rồi im. ' +
+    'Cảnh cuối có loai "ket_luan" (hoặc "bai_hoc"): đọc lần lượt 3 bước tóm tắt (khớp "tom_tat_3_buoc") rồi kết thúc bằng ĐÚNG MỘT câu CTA NGẮN < 2 GIÂY kiểu TikTok, ƯU TIÊN kích thích bình luận / lưu bài: "Đổi thành chia hết cho 3 thì ra mấy? Bình luận nhé!" (cta "BÌNH LUẬN NGAY!") hoặc "Lưu lại kẻo quên công thức này!" (cta "LƯU LẠI NGAY!"); TRÁNH câu "đăng ký kênh..." dài dòng cuối video. Phép tính chốt đáp án KHÔNG đặt ở cảnh ket_luan. ' +
     'CHUẨN TOÁN (v95, máy kiểm): (1) chỉ gọi "parabol" / "đỉnh parabol" khi hàm THẬT SỰ bậc hai ax^2+bx+c; hàm bậc ba (V = x(16-2x)(10-2x)), phân thức, chứa căn thì nói "điểm cực đại / cực tiểu của đồ thị". ' +
     '(2) Tìm cực trị bằng đạo hàm: sau "' + "V'(x) = 0" + ' -> x = ..." PHẢI nêu căn cứ xác nhận: "đạo hàm đổi dấu từ dương sang âm qua x = ..." (hoặc bảng biến thiên / so sánh giá trị tại đầu mút và nghiệm / bất đẳng thức Cauchy / đỉnh hàm bậc hai), không nhảy thẳng từ đạo hàm bằng 0 sang kết luận lớn nhất. ' +
     '(3) Tiêu đề intro đúng bản chất (bài hộp cắt 4 góc như nhau: hỏi "CẮT CẠNH BAO NHIÊU ĐỂ HỘP LỚN NHẤT?", không hỏi "cắt góc nào"). ' +

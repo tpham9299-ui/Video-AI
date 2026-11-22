@@ -167,9 +167,11 @@ function nhanZalo_(e) {
     var truoc = hang.filter(function (r) { return laUuTien_(r) && ['CHO_DOC', 'MOI', 'DA_GIAI', 'CO_KICH_BAN', 'DANG_DUNG'].indexOf(r.trang_thai) >= 0; }).length;
     var lop = (/lớp\s*(10|11|12)/i.exec(chu) || [])[1] || '';
     var id = 'ZL' + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd-HHmmss') + '-' + Math.floor(Math.random() * 90 + 10);
+    // v96: thẻ chỉ đạo sân khấu "[chidao: dùng lưới Bayes]" -> tách khỏi đề, lưu cột chi_dao (SanKhau.gs ưu tiên tuyệt đối)
+    var tdCd = typeof tachChiDao_ === 'function' ? tachChiDao_(chu) : {de: chu, chi_dao: ''};
     themHang_(sh, {
-      id: id, trang_thai: 'CHO_DOC', lop: lop, chu_de: 'Đề gửi qua Zalo', de_bai: chu, nguon: 'ZALO|' + String((m.from && m.from.display_name) || '').slice(0, 30),
-      uu_tien: 1, zalo_chat: chat, file_anh: anh, so_lan_loi: 0, cap_nhat: new Date()
+      id: id, trang_thai: 'CHO_DOC', lop: lop, chu_de: 'Đề gửi qua Zalo', de_bai: tdCd.de, nguon: 'ZALO|' + String((m.from && m.from.display_name) || '').slice(0, 30),
+      uu_tien: 1, zalo_chat: chat, file_anh: anh, so_lan_loi: 0, cap_nhat: new Date(), chi_dao: tdCd.chi_dao
     });
     nhatKy_('ZALO_DE', id + ': nhận ' + (anh ? 'ảnh đề' : 'đề dạng chữ') + ' từ ' + chat);
     guiZaloToi_(chat, '📥 Đã nhận đề (' + id + ')! Hệ thống ƯU TIÊN làm video cho bài này ngay, các bài khác tạm dừng.\n' +

@@ -1,0 +1,204 @@
+{
+ "_ghi_chu": "v96 — tái hiện lỗi VD261122-153504-0 (dựng lại, không phải JSON thật): nhóm thẻ ghi SỐ LƯỢNG {so:2,3,5} -> bản cũ tô theo chỉ số ô {1,2},{3,4,5},{6..10}; tiêu đề '\\overline{A}: Tích 3 số \\not\\vdots 4' (KaTeX mất gạch chéo -> ngược nghĩa); đọc lặp đề 3 lần (mo_dau + de_bai + nhac_lai); câu cụt 'ta có số phần tử không gian mẫu.' không đọc 120; Outro chiến thuật lộ \\overline / C_.",
+ "id": "V96-THE10",
+ "mon": "XAC_SUAT",
+ "luong": "thuc_te_xac_suat",
+ "lop": "11",
+ "tieu_de": "Rút 3 thẻ, tích chia hết cho 4",
+ "chu_de": "Biến cố đối",
+ "de_bai": "Rút ngẫu nhiên đồng thời 3 thẻ từ 10 thẻ đánh số từ 1 đến 10. Tính xác suất để tích 3 số trên 3 thẻ rút được chia hết cho 4.",
+ "dap_an_cuoi": "P(A) = 2/3",
+ "tieu_de_intro": "TÍCH CHIA HẾT CHO 4?",
+ "cta": "Bình luận nhé!",
+ "tom_tat_3_buoc": [
+  {
+   "chien_thuat": "Đếm n(\\Omega)",
+   "cong_thuc": "C_{10}^{3} = 120"
+  },
+  {
+   "chien_thuat": "Xét \\overline{A}: tích \\not\\vdots 4",
+   "cong_thuc": "n(\\overline{A}) = 10 + 30 = 40"
+  },
+  {
+   "chien_thuat": "Lấy phần bù",
+   "cong_thuc": "P(A) = 1 - \\dfrac{40}{120} = \\dfrac{2}{3}"
+  }
+ ],
+ "canh": [
+  {
+   "so": 1,
+   "loai": "mo_dau",
+   "loi_thoai": "Rút ngẫu nhiên đồng thời 3 thẻ từ 10 thẻ đánh số từ 1 đến 10, xác suất tích chia hết cho 4 là bao nhiêu?",
+   "noi_dung_man_hinh": []
+  },
+  {
+   "so": 2,
+   "loai": "de_bai",
+   "loi_thoai": "Đề bài: rút ngẫu nhiên đồng thời 3 thẻ từ 10 thẻ đánh số từ 1 đến 10. Tính xác suất để tích 3 số trên 3 thẻ rút được chia hết cho 4.",
+   "noi_dung_man_hinh": []
+  },
+  {
+   "so": 3,
+   "loai": "nhac_lai",
+   "loi_thoai": "Nhắc lại: rút ngẫu nhiên đồng thời 3 thẻ từ 10 thẻ đánh số từ 1 đến 10, tính xác suất tích 3 số trên 3 thẻ chia hết cho 4.",
+   "noi_dung_man_hinh": []
+  },
+  {
+   "so": 4,
+   "loai": "tinh_toan",
+   "loi_thoai": "Trước hết ta có số phần tử không gian mẫu.",
+   "noi_dung_man_hinh": [
+    "n(\\Omega) = C_{10}^{3} = 120"
+   ]
+  },
+  {
+   "so": 5,
+   "loai": "tinh_toan",
+   "loi_thoai": "Ta chia các số thành ba nhóm: chia hết cho 4 gồm 4 và 8, chẵn mà không chia hết cho 4 gồm 2, 6, 10, còn lại là 5 số lẻ. Vì tích chia hết cho 4 cần đủ hai thừa số 2, nên chỉ cần xem mỗi số góp mấy thừa số 2.",
+   "noi_dung_man_hinh": []
+  },
+  {
+   "so": 6,
+   "loai": "tinh_toan",
+   "loi_thoai": "Xét biến cố đối: tích không chia hết cho 4. Thử rút 1, 2 và 3: tích bằng 6, không chia hết cho 4.",
+   "noi_dung_man_hinh": []
+  },
+  {
+   "so": 7,
+   "loai": "tinh_toan",
+   "loi_thoai": "Biến cố đối xảy ra khi ba số đều lẻ, có 10 cách, hoặc đúng một số chẵn không chia hết cho 4 và hai số lẻ, có 30 cách. Vậy n của A ngang bằng 40. Cụ thể, chọn 3 trong 5 số lẻ có 10 cách; chọn 1 trong 3 số 2, 6, 10 rồi 2 trong 5 số lẻ có 3 nhân 10 bằng 30 cách.",
+   "noi_dung_man_hinh": [
+    "n(\\overline{A}) = C_5^3 + 3 \\cdot C_5^2 = 40"
+   ]
+  },
+  {
+   "so": 8,
+   "loai": "dap_an",
+   "loi_thoai": "Vậy xác suất cần tìm bằng 1 trừ 40 phần 120, bằng 2/3. Thử rút 2, 3, 4: tích 24 chia hết cho 4. Nghĩa là cứ 3 lần rút thì khoảng 2 lần tích chia hết cho 4.",
+   "noi_dung_man_hinh": [
+    "P(A) = 1 - \\dfrac{40}{120} = \\dfrac{2}{3}"
+   ]
+  },
+  {
+   "so": 9,
+   "loai": "ket_luan",
+   "loi_thoai": "Tóm lại: đếm không gian mẫu, đếm biến cố đối, rồi lấy phần bù. Đổi thành chia hết cho 3 thì ra mấy? Bình luận nhé!",
+   "noi_dung_man_hinh": []
+  }
+ ],
+ "khung4tang": {
+  "de_ghim": [
+   {
+    "id": "n",
+    "nhan": "1 \\dots 10"
+   },
+   {
+    "id": "k",
+    "nhan": "k = 3"
+   },
+   {
+    "id": "p",
+    "nhan": "P(A) = ?",
+    "mau": "hong"
+   }
+  ],
+  "buoc": [
+   {
+    "canh": 1,
+    "nhan": "Đề bài",
+    "tieu_de": "Tích 3 thẻ chia hết cho 4?",
+    "du_kien": [
+     "n",
+     "k"
+    ],
+    "the": [
+     {
+      "loai": "chu",
+      "noi_dung": "Rút 3 thẻ từ 1..10"
+     }
+    ]
+   },
+   {
+    "canh": 4,
+    "khi_noi": "số phần tử không gian",
+    "nhan": "Đếm",
+    "tieu_de": "Không gian mẫu \\Omega",
+    "du_kien": [
+     "n",
+     "k"
+    ],
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "n(\\Omega) = C_{10}^{3} = 120"
+      ],
+      "khi_noi": "không gian mẫu"
+     }
+    ]
+   },
+   {
+    "canh": 6,
+    "khi_noi": "xét biến cố đối",
+    "nhan": "Biến cố đối",
+    "tieu_de": "\\overline{A}: Tích 3 số \\not\\vdots 4",
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "n(\\overline{A}) = C_5^3 + 3 \\cdot C_5^2 = 40"
+      ],
+      "khi_noi": "biến cố đối xảy ra"
+     }
+    ]
+   },
+   {
+    "canh": 8,
+    "khi_noi": "vậy xác suất cần tìm",
+    "nhan": "Kết luận",
+    "tieu_de": "P(A) = ?",
+    "du_kien": [
+     "p"
+    ],
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "P(A) = 1 - \\dfrac{40}{120} = \\dfrac{2}{3}"
+      ],
+      "khi_noi": "vậy xác suất"
+     }
+    ]
+   }
+  ],
+  "canh_3d_vector": {
+   "khuon": "luoi_the_bi_xac_suat",
+   "tham_so": {
+    "vat": "the",
+    "N": 10,
+    "k": 3,
+    "nhom": [
+     {
+      "mau": "vang",
+      "so": 2
+     },
+     {
+      "mau": "cyan",
+      "so": 3
+     },
+     {
+      "mau": "xam",
+      "so": 5
+     }
+    ],
+    "chon": [
+     [
+      1,
+      3,
+      5
+     ]
+    ]
+   }
+  }
+ }
+}

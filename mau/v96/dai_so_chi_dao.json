@@ -1,0 +1,124 @@
+{
+ "id": "V96-DAISO",
+ "mon": "THUC_TE",
+ "luong": "thuc_te_xac_suat",
+ "lop": "12",
+ "tieu_de": "Phương trình mũ",
+ "chu_de": "Đại số",
+ "chi_dao": "[chidao: chỉ dùng sơ đồ tư duy]",
+ "de_bai": "Giải phương trình 4^x - 3 \\cdot 2^x + 2 = 0.",
+ "dap_an_cuoi": "x = 0 hoặc x = 1",
+ "cta": "Lưu lại kẻo quên!",
+ "canh": [
+  {
+   "so": 1,
+   "loai": "de_bai",
+   "loi_thoai": "Giải phương trình 4 mũ x trừ 3 nhân 2 mũ x cộng 2 bằng 0.",
+   "noi_dung_man_hinh": []
+  },
+  {
+   "so": 2,
+   "loai": "tinh_toan",
+   "loi_thoai": "Nhận ra 4 mũ x là bình phương của 2 mũ x, đặt t bằng 2 mũ x lớn hơn 0.",
+   "noi_dung_man_hinh": [
+    "t = 2^x > 0"
+   ]
+  },
+  {
+   "so": 3,
+   "loai": "tinh_toan",
+   "loi_thoai": "Phương trình thành t bình phương trừ 3t cộng 2 bằng 0, nên t bằng 1 hoặc t bằng 2.",
+   "noi_dung_man_hinh": [
+    "t^2 - 3t + 2 = 0"
+   ]
+  },
+  {
+   "so": 4,
+   "loai": "dap_an",
+   "loi_thoai": "Vậy x bằng 0 hoặc x bằng 1.",
+   "noi_dung_man_hinh": [
+    "x = 0;\\ x = 1"
+   ]
+  },
+  {
+   "so": 5,
+   "loai": "ket_luan",
+   "loi_thoai": "Lưu lại kẻo quên cách đặt ẩn phụ này!",
+   "noi_dung_man_hinh": []
+  }
+ ],
+ "khung4tang": {
+  "de_ghim": [
+   {
+    "id": "p",
+    "nhan": "4^x - 3 \\cdot 2^x + 2 = 0"
+   },
+   {
+    "id": "x",
+    "nhan": "x = ?",
+    "mau": "hong"
+   }
+  ],
+  "buoc": [
+   {
+    "canh": 1,
+    "nhan": "Đề bài",
+    "tieu_de": "Phương trình mũ",
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "4^x - 3 \\cdot 2^x + 2 = 0"
+      ]
+     }
+    ]
+   },
+   {
+    "canh": 2,
+    "khi_noi": "đặt t bằng",
+    "nhan": "Đặt ẩn phụ",
+    "tieu_de": "Đưa về ẩn t",
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "t = 2^x > 0"
+      ]
+     }
+    ]
+   },
+   {
+    "canh": 3,
+    "khi_noi": "phương trình thành",
+    "nhan": "Bậc hai",
+    "tieu_de": "Giải theo t",
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "t^2 - 3t + 2 = 0 \\Rightarrow t = 1;\\ t = 2"
+      ]
+     }
+    ]
+   },
+   {
+    "canh": 4,
+    "khi_noi": "vậy x bằng",
+    "nhan": "Trả biến",
+    "tieu_de": "Tìm x",
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "2^x = 1 \\Rightarrow x = 0;\\ 2^x = 2 \\Rightarrow x = 1"
+      ]
+     }
+    ]
+   }
+  ],
+  "canh_3d_vector": {
+   "khuon": "tam_bia_gap_hop",
+   "tham_so": {}
+  }
+ }
+}

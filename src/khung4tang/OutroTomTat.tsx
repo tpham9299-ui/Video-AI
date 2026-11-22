@@ -11,7 +11,10 @@ import {Canh3DV, MAU_3DV} from '../3d-vector/kieu';
 import {emRa, kep01} from '../3d-vector/toan3d';
 import {NenTramToanHoc} from './NenTramToanHoc';
 import type {DongTomTat} from './kieu';
-import {VUNG_OUTRO} from './bo_cuc_v93';
+import {RONG_ND_V93, VUNG_OUTRO} from './bo_cuc_v93';
+import {ChuTron} from './ChuTron';
+import {SanKhau2D} from '../sankhau2d/SanKhau2D';
+import type {SanKhau2DVao} from '../sankhau2d/kieu';
 
 const NGOC = '#2EE6A8';
 const SAN_HO = '#FF5A5F';
@@ -29,7 +32,7 @@ const IconCta: React.FC<{cta: string}> = ({cta}) => {
   return <svg width={36} height={36} viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z" fill="#fff" /></svg>;
 };
 
-export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: Canh3DV | null; tCuoi: number; thuongHieu?: string; cta?: string}> = ({dapAn, tomTat, canh: canhVao, tCuoi, thuongHieu, cta = 'LƯU LẠI NGAY!'}) => {
+export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: Canh3DV | null; sanKhau?: SanKhau2DVao | null; tCuoi: number; thuongHieu?: string; cta?: string}> = ({dapAn, tomTat, canh: canhVao, sanKhau, tCuoi, thuongHieu, cta = 'LƯU LẠI NGAY!'}) => {
   // v95: Outro không làm mờ phần nào của mô hình (bỏ nhấn mạnh 30 %) -> mọi nhãn kích thước sáng rõ
   const canh = React.useMemo(() => (canhVao ? {...canhVao, buoc: canhVao.buoc.map((b) => ({...b, nhanManh: []}))} : null), [canhVao]);
   const f = useCurrentFrame();
@@ -48,6 +51,8 @@ export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: C
       <KieuToan />
       <NapPhongToan />
       <NenTramToanHoc t={tCuoi + t} mauNhan={MAU_3DV.ngoc} tamSanKhau={V.san.y + V.san.h / 2} />
+      {/* v96: nội dung trong khung 0..950 (vùng an toàn TikTok: phải 12 %, trên 11 %, đáy 18 %) */}
+      <div style={{position: 'absolute', left: 0, top: 0, width: RONG_ND_V93, height: '100%'}}>
       {thuongHieu ? <div data-kd-bo="1" style={{position: 'absolute', top: 60, right: 44, fontWeight: 800, fontSize: 22, color: 'rgba(230,237,245,0.5)'}}>{thuongHieu}</div> : null}
 
       {/* đáp án phát sáng */}
@@ -55,14 +60,22 @@ export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: C
         opacity: kep01(aDap * 1.5), transform: `scale(${0.88 + 0.12 * aDap})`}}>
         <div style={{height: 44, padding: '0 22px', borderRadius: 22, display: 'flex', alignItems: 'center', color: NGOC, border: `1.5px solid ${NGOC}`, background: `${NGOC}18`, fontWeight: 900, fontSize: 24, letterSpacing: 1.2}}>ĐÁP ÁN</div>
         <div style={{padding: '12px 34px', borderRadius: 24, background: `${NGOC}12`, border: `2px solid ${NGOC}AA`, boxShadow: `0 0 ${30 * sang}px ${NGOC}55, inset 0 0 24px ${NGOC}18`, textShadow: `0 0 18px ${NGOC}88`}}>
-          <Toan tex={texDapAn(dapAn || '?')} size={64} color="#F4FFFB" maxWidth={880} />
+          <Toan tex={texDapAn(dapAn || '?')} size={64} color="#F4FFFB" maxWidth={780} />
         </div>
       </div>
 
+      {/* v96: sân khấu 2D ở trạng thái cuối (thu nhỏ vừa vùng giữa) */}
+      {sanKhau ? (
+        <div data-vung="outro_san" style={{position: 'absolute', left: 0, top: V.san.y, width: RONG_ND_V93, height: V.san.h, overflow: 'hidden', opacity: vao(0.3, 0.6)}}>
+          <div style={{position: 'absolute', left: 0, top: 0, width: RONG_ND_V93, height: 648, transform: `scale(${V.san.h / 648})`, transformOrigin: 'center top', marginLeft: 0}}>
+            <SanKhau2D sk={sanKhau} t={tCuoi + t} rong={RONG_ND_V93} cao={648} mauNhan={MAU_3DV.ngoc} />
+          </div>
+        </div>
+      ) : null}
       {/* mô hình 3D gọn, trạng thái cuối */}
       {canh ? (
-        <div data-vung="outro_san" style={{position: 'absolute', left: 0, top: V.san.y, width: 1080, height: V.san.h, overflow: 'hidden', opacity: vao(0.3, 0.6)}}>
-          <SanKhau3DVector canh={canh} t={tCuoi + t} rong={1080} cao={V.san.h} tongGiay={tCuoi} lechMay={{n: 6 * Math.sin((t * 2 * Math.PI) / 7), k: 0.86}} />
+        <div data-vung="outro_san" style={{position: 'absolute', left: 0, top: V.san.y, width: RONG_ND_V93, height: V.san.h, overflow: 'hidden', opacity: vao(0.3, 0.6)}}>
+          <SanKhau3DVector canh={canh} t={tCuoi + t} rong={RONG_ND_V93} cao={V.san.h} tongGiay={tCuoi} lechMay={{n: 6 * Math.sin((t * 2 * Math.PI) / 7), k: 0.86}} />
         </div>
       ) : null}
 
@@ -71,13 +84,13 @@ export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: C
         const a = vao(tDong(k));
         const mau = MAU_3DV[d.mau || (['cyan', 'vang', 'hong'] as const)[k]] || MAU_3DV.cyan;
         return (
-          <div key={k} data-tom-tat style={{position: 'absolute', left: 44, right: 44, top: V.dong.y + k * (V.dong.h + V.dong.cach), height: V.dong.h, display: 'flex', alignItems: 'center', gap: 22,
+          <div key={k} data-tom-tat style={{position: 'absolute', left: 40, right: 40, top: V.dong.y + k * (V.dong.h + V.dong.cach), height: V.dong.h, display: 'flex', alignItems: 'center', gap: 22,
             padding: '0 26px', borderRadius: 20, background: 'rgba(20,24,32,0.92)', border: `1px solid ${mau}66`, boxShadow: `0 0 18px ${mau}1F`,
             opacity: a, transform: `translateX(${(1 - a) * -26}px)`}}>
             <span style={{width: 54, height: 54, flexShrink: 0, borderRadius: 27, background: mau, color: NEN, fontWeight: 900, fontSize: 28, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>{k + 1}</span>
-            <span style={{width: 300, flexShrink: 0, color: mau, fontWeight: 800, fontSize: d.chien_thuat.length > 14 ? 28 : 32, lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{d.chien_thuat}</span>
+            <span style={{width: 270, flexShrink: 0, color: mau, fontWeight: 800, fontSize: d.chien_thuat.length > 14 ? 28 : 32, lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}><ChuTron s={d.chien_thuat} co={d.chien_thuat.length > 14 ? 28 : 32} mau={mau} dam={800} /></span>
             <span style={{flex: 1, minWidth: 0, display: 'flex', justifyContent: 'flex-end', overflow: 'hidden'}}>
-              {d.cong_thuc ? <Toan tex={d.cong_thuc} size={38} color="#F4F7FB" maxWidth={520} /> : null}
+              {d.cong_thuc ? <Toan tex={d.cong_thuc} size={38} color="#F4F7FB" maxWidth={440} /> : null}
             </span>
           </div>
         );
@@ -92,6 +105,7 @@ export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: C
         </div>
       </div>
       {/* v95: whoosh gọn khi bật Outro + chime sáng lúc đáp án nổi lên (SFX ~ -13 dB so với giọng) */}
+      </div>
       <Sequence from={0} durationInFrames={20} layout="none"><Audio src={staticFile('sfx/whoosh.wav')} volume={0.2} /></Sequence>
       <Sequence from={4} durationInFrames={70} layout="none"><Audio src={staticFile('sfx/ting.wav')} volume={0.24} /></Sequence>
       <Sequence from={Math.round(tNut * fps)} durationInFrames={20} layout="none"><Audio src={staticFile('sfx/pop.wav')} volume={0.22} /></Sequence>
