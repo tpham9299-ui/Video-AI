@@ -1,0 +1,404 @@
+{
+ "id": "V97-GIAO-DIEM-MNP",
+ "mon": "HINH_HOC",
+ "luong": "hinh_hoc_thuan",
+ "lop": "11",
+ "tieu_de": "SD cắt mặt phẳng (MNP) ở đâu?",
+ "chu_de_ngan": "Giao điểm đường – mặt",
+ "hook": "M chạy trên SC, vậy SD đâm xuyên (MNP) ở đâu?",
+ "de_bai": "Cho hình chóp S.ABCD có đáy ABCD là hình bình hành. Gọi M là điểm bất kỳ trên cạnh SC, N và P lần lượt là trung điểm của AB và AD. Tìm giao điểm E của đường thẳng SD với mặt phẳng (MNP).",
+ "can_tim": "Giao điểm E của SD và (MNP)",
+ "dap_an_cuoi": "E = KM ∩ SD với K = NP ∩ CD",
+ "dap_an": "E = KM ∩ SD",
+ "gioi_tinh_giong": "nam",
+ "cta": "Lưu lại",
+ "canh": [
+  {
+   "so": 1,
+   "loai": "mo_dau",
+   "tieu_de_canh": "Câu hỏi",
+   "loi_thoai": "Điểm M chạy trên cạnh SC. Mặt phẳng MNP sẽ cắt đường SD ở đâu?",
+   "noi_dung_man_hinh": []
+  },
+  {
+   "so": 2,
+   "loai": "de_bai",
+   "tieu_de_canh": "Đề bài",
+   "loi_thoai": "Cho hình chóp S.ABCD có đáy là hình bình hành. M là điểm bất kỳ trên cạnh SC, N và P lần lượt là trung điểm của AB và AD. Tìm giao điểm E của SD với mặt phẳng MNP.",
+   "noi_dung_man_hinh": []
+  },
+  {
+   "so": 3,
+   "loai": "phan_tich",
+   "tieu_de_canh": "Hướng đi",
+   "loi_thoai": "Mẹo là chọn một mặt phẳng phụ chứa SD, ở đây là mặt phẳng SCD, rồi tìm giao tuyến của nó với mặt phẳng MNP.",
+   "noi_dung_man_hinh": [
+    "SD \\subset (SCD)"
+   ]
+  },
+  {
+   "so": 4,
+   "loai": "giai",
+   "tieu_de_canh": "Giao tuyến ở đáy",
+   "loi_thoai": "Trước hết xét mặt đáy ABCD. Hai đường NP và CD cùng nằm trong đáy, kéo dài NP cắt CD tại điểm K.",
+   "noi_dung_man_hinh": [
+    "NP \\cap CD = K"
+   ]
+  },
+  {
+   "so": 5,
+   "loai": "giai",
+   "tieu_de_canh": "Giao tuyến KM",
+   "loi_thoai": "K thuộc NP nên K thuộc mặt phẳng MNP. Đồng thời K thuộc CD nên K thuộc mặt phẳng SCD. Vậy giao tuyến của hai mặt là đường KM.",
+   "noi_dung_man_hinh": [
+    "(MNP) \\cap (SCD) = KM"
+   ]
+  },
+  {
+   "so": 6,
+   "loai": "giai",
+   "tieu_de_canh": "Đâm xuyên",
+   "loi_thoai": "Trong mặt phẳng SCD, đường KM cắt SD tại E. Bung rộng mặt phẳng MNP rồi nhìn dọc theo mặt, ta thấy SD đâm xuyên mặt đúng tại điểm E.",
+   "noi_dung_man_hinh": [
+    "KM \\cap SD = E"
+   ]
+  },
+  {
+   "so": 7,
+   "loai": "dap_an",
+   "tieu_de_canh": "Kết luận",
+   "loi_thoai": "Vậy giao điểm cần tìm là E, giao của KM với SD, và E luôn nằm trên mặt phẳng MNP.",
+   "noi_dung_man_hinh": [
+    "E = SD \\cap (MNP)"
+   ]
+  },
+  {
+   "so": 8,
+   "loai": "bai_hoc",
+   "tieu_de_canh": "Ghi nhớ",
+   "loi_thoai": "Tìm giao điểm đường với mặt: chọn mặt phẳng phụ chứa đường, tìm giao tuyến rồi cắt. Lưu lại để làm bài nhanh hơn nhé!",
+   "noi_dung_man_hinh": []
+  }
+ ],
+ "hinh_khong_gian": {
+  "khoi": {
+   "loai": "chop_tu_giac",
+   "dinh": "S",
+   "day": "ABCD",
+   "day_kieu": "binh_hanh"
+  },
+  "diem": [
+   {
+    "ten": "N",
+    "loai": "trung_diem",
+    "doan": "AB"
+   },
+   {
+    "ten": "P",
+    "loai": "trung_diem",
+    "doan": "AD"
+   },
+   {
+    "ten": "M",
+    "loai": "tren_canh",
+    "canh": "SC"
+   },
+   {
+    "ten": "K",
+    "loai": "giao",
+    "duong": [
+     "NP",
+     "CD"
+    ]
+   },
+   {
+    "ten": "E",
+    "loai": "giao",
+    "duong": [
+     "KM",
+     "SD"
+    ]
+   }
+  ],
+  "doan": [
+   {
+    "doan": "BD",
+    "vai": "phu"
+   },
+   {
+    "doan": "KM",
+    "vai": "dich"
+   }
+  ],
+  "mat_cat": [
+   {
+    "mat": "MNP",
+    "bung": true
+   }
+  ],
+  "menh_de": [
+   {
+    "loai": "song_song",
+    "a": "NP",
+    "b": "BD"
+   },
+   {
+    "loai": "thuoc",
+    "diem": "K",
+    "mat": "MNP"
+   },
+   {
+    "loai": "thuoc",
+    "diem": "K",
+    "mat": "SCD"
+   },
+   {
+    "loai": "thuoc",
+    "diem": "E",
+    "mat": "MNP"
+   },
+   {
+    "loai": "thuoc",
+    "diem": "E",
+    "duong": "SD"
+   }
+  ],
+  "truot": {
+   "diem": "M"
+  },
+  "de_ghim": [
+   {
+    "id": "d1",
+    "nhan": "ABCD hình bình hành"
+   },
+   {
+    "id": "d2",
+    "nhan": "M ∈ SC bất kỳ"
+   },
+   {
+    "id": "d3",
+    "nhan": "E = SD ∩ (MNP) = ?"
+   }
+  ],
+  "buoc": [
+   {
+    "canh": 1,
+    "nhan": "Đề bài",
+    "tieu_de": "SD cắt (MNP) ở đâu?",
+    "xoay": [
+     {
+      "goc_nhin": "toan_canh"
+     }
+    ],
+    "hien": [
+     "S",
+     "A",
+     "B",
+     "C",
+     "D",
+     "M",
+     "N",
+     "P"
+    ],
+    "the": [
+     {
+      "loai": "chu",
+      "noi_dung": "M chạy trên SC"
+     }
+    ]
+   },
+   {
+    "canh": 3,
+    "khi_noi": "chọn một mặt phẳng phụ",
+    "nhan": "Hướng đi",
+    "tieu_de": "Mặt phẳng phụ chứa SD",
+    "nhan_manh": [
+     "SD",
+     "SC",
+     "CD"
+    ],
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "SD \\subset (SCD)"
+      ],
+      "khi_noi": "mặt phẳng SCD"
+     }
+    ]
+   },
+   {
+    "canh": 4,
+    "khi_noi": "xét mặt đáy ABCD",
+    "nhan": "Đáy",
+    "tieu_de": "Giao tuyến ở đáy",
+    "xoay": [
+     {
+      "goc_nhin": "nhin_day",
+      "moc_xoay": "xét mặt đáy ABCD"
+     }
+    ],
+    "hien": [
+     {
+      "id": "NP",
+      "khi_noi": "hai đường NP và CD"
+     },
+     {
+      "id": "PK",
+      "khi_noi": "kéo dài NP"
+     },
+     {
+      "id": "DK",
+      "khi_noi": "kéo dài NP"
+     },
+     {
+      "id": "K",
+      "khi_noi": "cắt CD tại điểm K"
+     }
+    ],
+    "nhan_manh": [
+     "NP",
+     "CD",
+     "K",
+     "PK",
+     "DK"
+    ],
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "NP \\cap CD = K"
+      ],
+      "khi_noi": "cắt CD tại điểm K"
+     }
+    ]
+   },
+   {
+    "canh": 5,
+    "khi_noi": "K thuộc NP",
+    "nhan": "Giao tuyến",
+    "tieu_de": "Giao tuyến của (MNP) và (SCD)",
+    "xoay": [
+     {
+      "goc_nhin": "truc_dien_mat",
+      "doi_tuong": [
+       "S",
+       "C",
+       "D"
+      ],
+      "moc_xoay": "K thuộc mặt phẳng SCD"
+     }
+    ],
+    "hien": [
+     {
+      "id": "KM",
+      "khi_noi": "đường KM"
+     }
+    ],
+    "nhan_manh": [
+     "K",
+     "M",
+     "KM",
+     "SD",
+     "SC",
+     "CD"
+    ],
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "K \\in NP \\subset (MNP)",
+       "K \\in CD \\subset (SCD)"
+      ],
+      "khi_noi": "K thuộc NP"
+     },
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "(MNP) \\cap (SCD) = KM"
+      ],
+      "khi_noi": "giao tuyến của hai mặt"
+     }
+    ]
+   },
+   {
+    "canh": 6,
+    "khi_noi": "đường KM cắt SD",
+    "nhan": "Đâm xuyên",
+    "tieu_de": "SD đâm xuyên (MNP)",
+    "xoay": [
+     {
+      "goc_nhin": "ep_mep_mat",
+      "doi_tuong": [
+       "M",
+       "N",
+       "P"
+      ],
+      "moc_xoay": "nhìn dọc theo mặt"
+     }
+    ],
+    "hien": [
+     {
+      "id": "E",
+      "khi_noi": "cắt SD tại E"
+     },
+     {
+      "id": "(MNP)",
+      "khi_noi": "bung rộng mặt phẳng MNP"
+     }
+    ],
+    "hanh_dong": [
+     {
+      "loai": "bung_mat",
+      "id": "(MNP)",
+      "khi_noi": "bung rộng mặt phẳng MNP"
+     }
+    ],
+    "nhan_manh": [
+     "E",
+     "SD",
+     "KM",
+     "(MNP)"
+    ],
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "KM \\cap SD = E"
+      ],
+      "khi_noi": "cắt SD tại E"
+     }
+    ]
+   },
+   {
+    "canh": 7,
+    "khi_noi": "giao điểm cần tìm",
+    "nhan": "Đáp án",
+    "tieu_de": "Giao điểm E",
+    "xoay": [
+     {
+      "goc_nhin": "can_canh",
+      "doi_tuong": [
+       "E"
+      ],
+      "moc_xoay": "giao điểm cần tìm là E"
+     }
+    ],
+    "nhan_manh": [
+     "E",
+     "SD"
+    ],
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "E = SD \\cap (MNP)"
+      ],
+      "khi_noi": "giao điểm cần tìm",
+      "chot": true
+     }
+    ]
+   }
+  ]
+ }
+}

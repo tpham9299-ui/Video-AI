@@ -1115,6 +1115,52 @@ def tim_cum_tu(cum, tu, tu_vi_tri=0):
     return None
 
 
+class LoiCamera(SystemExit):
+    """v97: lỗi cứng đồng bộ giọng nói <-> xoay camera (CAM_MAT_MOC / CAM_DE_GIO) -> dừng lượt dựng, không bỏ qua cú xoay."""
+
+
+def hinh_khong_gian_k4(kb, canh_props, fps, tong_toi_da=None):
+    """v97: bài hình KHÔNG GIAN có kb.hinh_khong_gian -> props.khung4tang (vỏ 4 tầng: tiêu đề bước, thẻ giải, thanh ĐỀ,
+    Intro móc câu, Outro tóm tắt) + khung4tang.khongGian (tọa độ do giai_hinh_khong_gian.py tính, lịch xoay theo moc_xoay).
+    Bộ giải lỗi (KG_*) -> None (giữ Manim cũ; Apps Script đã chặn lỗi cứng). Lỗi camera (CAM_*) -> dừng (LoiCamera).
+    Tắt: env HINH_KHONG_GIAN_CHUAN=TAT."""
+    hkg = kb.get("hinh_khong_gian")
+    if not isinstance(hkg, dict) or str(os.environ.get("HINH_KHONG_GIAN_CHUAN") or "").upper() == "TAT":
+        return None
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from giai_hinh_khong_gian import giai as giai_kg
+    from hinh_khong_gian.thoi_gian import lich_khong_gian
+    G = giai_kg(kb)
+    if not G or not G.get("dat"):
+        for x in (G or {}).get("loi") or []:
+            print("Hình không gian v97 - LỖI CỨNG [%s] %s" % (x["ma"], x["chi_tiet"]))
+        return None
+    kb2 = json.loads(json.dumps(kb))
+    kb2["khung4tang"] = {"de_ghim": hkg.get("de_ghim") or [], "phu_de": hkg.get("phu_de"),
+                         "buoc": [{k: b.get(k) for k in ("canh", "khi_noi", "nhan", "tieu_de", "mau", "the", "du_kien") if b.get(k) is not None}
+                                  for b in hkg.get("buoc") or [] if isinstance(b, dict)]}
+    k4 = khung_4_tang(kb2, canh_props, fps, tong_toi_da, khong_gian=True)
+    if not k4:
+        return None
+    tong = k4["tongFrame"] / float(fps)
+    lich, loi, tk = lich_khong_gian(hkg, G["dung"], canh_props, fps, [b["t"] for b in k4["buoc"]], tong)
+    for x in tk["chi_tiet"]:
+        if x.get("d"):
+            print("  xoay %-14s mốc lời %6.2fs -> xoay %.2f-%.2fs (%s, cảnh %s) \"%s\"" % (
+                x["goc_nhin"], x["moc"], x["t"], x["t"] + x["d"], x.get("khop"), x.get("canh"), x.get("khi_noi")))
+    if loi:
+        for x in loi:
+            print("Hình không gian v97 - LỖI CỨNG [%s] %s -> %s" % (x["ma"], x["chi_tiet"], x.get("goi_y", "")))
+        raise LoiCamera("::error::v97 đồng bộ camera: " + "; ".join(x["ma"] for x in loi))
+    k4["canh3dv"] = None
+    k4.pop("sanKhau", None)
+    k4["khongGian"] = lich
+    print("Hình không gian v97: %d điểm, %d đoạn, %d mặt cắt, %d/%d cú xoay khớp lời (%d Auto-fix cụm con), tỷ lệ %s" % (
+        len(G["dung"]["diem"]), len(G["dung"]["doan"]), len(G["dung"]["kinh"]), tk["khop"], tk["xoay"], tk["auto_fix"],
+        json.dumps(G["cau_hinh"]["ty_le_bat_ky"])))
+    return k4
+
+
 def moc_buoc_ve(buoc_ve, tu):
     """Mốc vẽ từng nét theo "buoc_ve" kịch bản: [{"ve","khi_noi","t","khop"}] (t: giây tính từ đầu cảnh, lúc giọng đọc bắt đầu cụm)."""
     kq, vt = [], 0
@@ -1434,7 +1480,7 @@ def het_giong_canh(c, fps):
     return c["batDau"] / float(fps) + (float(cau[-1]["ket"]) if cau else c["soFrame"] / float(fps))
 
 
-def khung_4_tang(kb, canh_props, fps, tong_toi_da=None):
+def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
     """v92: kb.khung4tang (AI viết, mốc theo lời `khi_noi`) -> props.khung4tang (mốc `t` giây từ đầu phần nội dung).
     - Khớp `khi_noi` CHỈ TIẾN, trong đúng cảnh `canh` của bước (không quay lại tìm từ đầu -> hết nhảy bước sớm vì cụm trùng
       câu đọc đề); so phần chữ, bỏ số (lời thoại ghi chữ, mốc ước lượng từ phụ đề ghi số); khớp gần >= 72% số từ.
@@ -1442,8 +1488,9 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None):
     - Thẻ: con trỏ riêng trong khung thời gian của bước; thẻ không khớp trải đều trong bước; thẻ đầu hiện ngay khi vào bước;
       bước < 2 thẻ / hở > 14 s lấy thêm thẻ từ noi_dung_man_hinh của cảnh đang đọc; bước cuối luôn có thẻ đáp số.
     - 3D: luôn có khuôn tham số (khuon) hoặc mang khuon_du_phong; mốc 3D không khớp trải theo mốc các bước.
-    Khóa luồng hình học thuần: luôn trả None (bài hình học dựng bằng Manim)."""
-    if str(kb.get("luong") or "") == "hinh_hoc_thuan" or str(kb.get("mon") or "").upper() == "HINH_HOC":
+    Khóa luồng hình học thuần: luôn trả None (bài hình học dựng bằng Manim) - TRỪ v97 khong_gian=True: vỏ 4 tầng dựng từ
+    kb.hinh_khong_gian (hinh_khong_gian_k4), tầng 2 là động cơ hình không gian (không khuôn 3D / sân khấu 2D / đối chiếu)."""
+    if not khong_gian and (str(kb.get("luong") or "") == "hinh_hoc_thuan" or str(kb.get("mon") or "").upper() == "HINH_HOC"):
         return None
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import khung4tang_v95 as v95_k4
@@ -1698,8 +1745,8 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None):
 
     # ---- 3D: khuôn tham số (ưu tiên) / đặc tả tự do có chuyển động / khuôn suy từ đề ----
     c3 = k4.get("canh_3d_vector")
-    c3 = json.loads(json.dumps(c3)) if isinstance(c3, dict) else None
-    suy = suy_khuon(kb)
+    c3 = json.loads(json.dumps(c3)) if isinstance(c3, dict) and not khong_gian else None
+    suy = suy_khuon(kb) if not khong_gian else None
     if c3 and ten_khuon(c3.get("khuon")):
         c3["khuon"] = ten_khuon(c3["khuon"])
         c3.pop("doi_tuong", None)
@@ -1712,7 +1759,7 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None):
         c3 = dict(suy)
         nguon_3d = "khuôn suy từ đề " + suy["khuon"]
     else:
-        nguon_3d = "đặc tả tự do" if c3 and _hop_le_3dv(c3) else "KHÔNG CÓ (tầng 2 có thể trống)"
+        nguon_3d = "hình không gian v97" if khong_gian else "đặc tả tự do" if c3 and _hop_le_3dv(c3) else "KHÔNG CÓ (tầng 2 có thể trống)"
     if c3 is not None and suy and not c3.get("khuon"):
         c3["khuon_du_phong"] = suy
     if c3 and c3.get("khuon"):
@@ -1785,7 +1832,7 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None):
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import khung4tang_v93 as v93
     t_dap = next((c["batDau"] / fps for c in canh_props if re.search(r"dap_an|ket_qua", str(c.get("loai") or ""))), None)
-    j_dc = v93.gan_doi_chieu(kb, ds_buoc[:len(buoc)], buoc, c3, t_dap)
+    j_dc = v93.gan_doi_chieu(kb, ds_buoc[:len(buoc)], buoc, c3, t_dap) if not khong_gian else None
     if j_dc is not None:
         print("Đối chiếu Hình động ↔ Đồ thị: bước %d (%s, hàm %s)" % (j_dc + 1, buoc[j_dc]["nhan"], buoc[j_dc]["doi_chieu"]["ham"]))
     t_chot, tot = None, None
@@ -1841,7 +1888,7 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None):
     def loi_tai(t0, t1):
         return " ".join(x["w"] for x in tu_all if t0 <= x["bat"] < t1)
     san_khau, sua_sk, quyet = v96_k4.gan_san_khau(kb, k4, buoc, t_buoc, t_het_de, tong, tim_moc, None,
-                                                  khuon_suy if khuon_suy != "luoi_the_bi_xac_suat" else None, loi_tai)
+                                                  khuon_suy if khuon_suy != "luoi_the_bi_xac_suat" else None, loi_tai)         if not khong_gian else (None, [], {})
     if san_khau:
         print("Sân khấu 2D v96: %s (%s%s), %d pha (mốc %s s)%s" % (
             san_khau["loai"], quyet["nguon"], ", chỉ đạo: " + quyet["chi_dao"] if quyet.get("chi_dao") else "", len(san_khau["pha"]),
@@ -3157,7 +3204,8 @@ def main():
     cham("Mốc phụ đề / công thức / góc máy")
     nhac = chon_nhac(args.public, id_an_toan)
     # v95: luồng khung 4 tầng (thực tế / tối ưu / Oxyz / xác suất) mặc định nhạc lo-fi 112 BPM ấm, có nhịp (NHAC_LOFI=0 để tắt)
-    la_k4_kb = isinstance(kb.get("khung4tang"), dict) and str(kb.get("luong") or "") != "hinh_hoc_thuan"
+    la_kg = luong_hh and isinstance(kb.get("hinh_khong_gian"), dict) and str(os.environ.get("HINH_KHONG_GIAN_CHUAN") or "").upper() != "TAT"
+    la_k4_kb = (isinstance(kb.get("khung4tang"), dict) and str(kb.get("luong") or "") != "hinh_hoc_thuan") or la_kg
     tep_lofi = os.path.join(args.public, "nhac", "lofi.wav")
     if nhac == "nhac/nen.wav" and la_k4_kb and not os.path.exists(tep_lofi) and os.environ.get("NHAC_LOFI", "1") != "0":
         try:   # *.wav bị .gitignore -> máy dựng tự sinh (~2 s, tất định, không bản quyền)
@@ -3257,7 +3305,8 @@ def main():
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import khung4tang_v95 as v95_k4
     k_outro = vi_tri_outro_4tang(canh_props) if la_k4_kb and outro and outro.get("loai") == "tu_tao" else None
-    k4 = khung_4_tang(kb, canh_props, FPS, canh_props[k_outro]["batDau"] / FPS if k_outro is not None else None)
+    t_outro = canh_props[k_outro]["batDau"] / FPS if k_outro is not None else None
+    k4 = hinh_khong_gian_k4(kb, canh_props, FPS, t_outro) if la_kg else khung_4_tang(kb, canh_props, FPS, t_outro)
     if k4:
         props["boCuc"] = "4tang"
         props["khung4tang"] = k4

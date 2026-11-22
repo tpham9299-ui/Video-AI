@@ -1,0 +1,415 @@
+{
+ "id": "V97-SA-VUONG-GOC",
+ "mon": "HINH_HOC",
+ "luong": "hinh_hoc_thuan",
+ "lop": "11",
+ "tieu_de": "SA vuông góc đáy: góc và khoảng cách",
+ "chu_de_ngan": "Quan hệ vuông góc",
+ "hook": "Một đường vuông góc đáy mở khóa cả góc lẫn khoảng cách!",
+ "de_bai": "Cho hình chóp S.ABCD có đáy ABCD là hình vuông cạnh a, SA vuông góc với mặt phẳng (ABCD) và SA = a\\sqrt{2}. Chứng minh BD vuông góc với (SAC), tính góc giữa SC và mặt đáy, và khoảng cách từ A đến mặt phẳng (SBC).",
+ "can_tim": "BD ⊥ (SAC); góc (SC, (ABCD)); d(A, (SBC))",
+ "dap_an_cuoi": "45° và a√6/3",
+ "dap_an": "45°; a√6/3",
+ "gioi_tinh_giong": "nu",
+ "cta": "Lưu lại",
+ "canh": [
+  {
+   "so": 1,
+   "loai": "mo_dau",
+   "tieu_de_canh": "Câu hỏi",
+   "loi_thoai": "Chỉ một cạnh SA vuông góc đáy mà mở khóa được cả góc lẫn khoảng cách. Xem nhé!",
+   "noi_dung_man_hinh": []
+  },
+  {
+   "so": 2,
+   "loai": "de_bai",
+   "tieu_de_canh": "Đề bài",
+   "loi_thoai": "Hình chóp S.ABCD có đáy là hình vuông cạnh a, SA vuông góc với đáy và SA bằng a căn hai. Chứng minh BD vuông góc mặt phẳng SAC, tính góc giữa SC và đáy, và khoảng cách từ A đến mặt phẳng SBC.",
+   "noi_dung_man_hinh": []
+  },
+  {
+   "so": 3,
+   "loai": "giai",
+   "tieu_de_canh": "BD vuông góc (SAC)",
+   "loi_thoai": "Nhìn từ trên xuống đáy, hai đường chéo của hình vuông vuông góc nên BD vuông góc AC. Mặt khác SA vuông góc đáy nên SA vuông góc BD. Ép mép mặt phẳng SAC lại, ta thấy BD vuông góc với cả mặt phẳng.",
+   "noi_dung_man_hinh": [
+    "BD \\perp AC,\\ BD \\perp SA",
+    "\\Rightarrow BD \\perp (SAC)"
+   ]
+  },
+  {
+   "so": 4,
+   "loai": "giai",
+   "tieu_de_canh": "Góc giữa SC và đáy",
+   "loi_thoai": "Xét mặt phẳng SAC. Hình chiếu của SC lên đáy là AC, nên góc cần tìm là góc SCA. Tam giác SAC vuông tại A có SA bằng AC bằng a căn hai, nên tang góc SCA bằng 1, góc bằng bốn mươi lăm độ.",
+   "noi_dung_man_hinh": [
+    "\\tan\\widehat{SCA} = \\dfrac{SA}{AC} = 1",
+    "\\widehat{SCA} = 45^\\circ"
+   ]
+  },
+  {
+   "so": 5,
+   "loai": "giai",
+   "tieu_de_canh": "Khoảng cách từ A",
+   "loi_thoai": "Chuyển sang mặt phẳng SAB. Kẻ AH vuông góc SB tại H. Vì BC vuông góc mặt phẳng SAB nên AH vuông góc BC, suy ra AH vuông góc mặt phẳng SBC.",
+   "noi_dung_man_hinh": [
+    "AH \\perp SB,\\ AH \\perp BC",
+    "\\Rightarrow AH \\perp (SBC)"
+   ]
+  },
+  {
+   "so": 6,
+   "loai": "dap_an",
+   "tieu_de_canh": "Kết quả",
+   "loi_thoai": "Phóng to vào đoạn AH. Trong tam giác vuông SAB, AH bằng SA nhân AB chia SB, bằng a căn sáu phần ba.",
+   "noi_dung_man_hinh": [
+    "AH = \\dfrac{SA \\cdot AB}{SB} = \\dfrac{a\\sqrt{6}}{3}"
+   ]
+  },
+  {
+   "so": 7,
+   "loai": "bai_hoc",
+   "tieu_de_canh": "Ghi nhớ",
+   "loi_thoai": "Có đường vuông góc đáy thì góc là hình chiếu, khoảng cách là đường cao trong mặt bên. Lưu lại để ôn thi nhé!",
+   "noi_dung_man_hinh": []
+  }
+ ],
+ "hinh_khong_gian": {
+  "khoi": {
+   "loai": "chop_tu_giac",
+   "dinh": "S",
+   "day": "ABCD",
+   "day_kieu": "vuong",
+   "chan_duong_cao": "A",
+   "kich_thuoc": {
+    "AB": 1,
+    "SA": 1.4142135623730951
+   }
+  },
+  "diem": [
+   {
+    "ten": "O",
+    "loai": "giao",
+    "duong": [
+     "AC",
+     "BD"
+    ]
+   },
+   {
+    "ten": "H",
+    "loai": "chan_vuong_goc",
+    "tu": "A",
+    "xuong": "SB"
+   }
+  ],
+  "doan": [
+   {
+    "doan": "AC",
+    "vai": "phu"
+   },
+   {
+    "doan": "BD",
+    "vai": "dich"
+   },
+   {
+    "doan": "AH",
+    "vai": "dich"
+   }
+  ],
+  "goc": [
+   {
+    "dinh": "O",
+    "canh": "BA",
+    "vuong": true
+   },
+   {
+    "dinh": "A",
+    "canh": "SB",
+    "vuong": true
+   },
+   {
+    "dinh": "H",
+    "canh": "AS",
+    "vuong": true
+   },
+   {
+    "dinh": "C",
+    "canh": "SA",
+    "nhan": "45^\\circ"
+   }
+  ],
+  "menh_de": [
+   {
+    "loai": "vuong_goc",
+    "a": "BD",
+    "b": "AC"
+   },
+   {
+    "loai": "vuong_goc_mat",
+    "duong": "SA",
+    "mat": "ABCD"
+   },
+   {
+    "loai": "vuong_goc_mat",
+    "duong": "BD",
+    "mat": "SAC"
+   },
+   {
+    "loai": "vuong_goc_mat",
+    "duong": "BC",
+    "mat": "SAB"
+   },
+   {
+    "loai": "vuong_goc_mat",
+    "duong": "AH",
+    "mat": "SBC"
+   }
+  ],
+  "so_do": [
+   {
+    "loai": "goc_duong_mat",
+    "duong": "SC",
+    "mat": "ABCD",
+    "gia_tri": "45°"
+   },
+   {
+    "loai": "khoang_cach_diem_mat",
+    "diem": "A",
+    "mat": "SBC",
+    "gia_tri": "\\dfrac{a\\sqrt{6}}{3}"
+   }
+  ],
+  "de_ghim": [
+   {
+    "id": "d1",
+    "nhan": "SA ⊥ (ABCD)"
+   },
+   {
+    "id": "d2",
+    "nhan": "SA = a√2"
+   },
+   {
+    "id": "d3",
+    "nhan": "d(A, (SBC)) = ?"
+   }
+  ],
+  "buoc": [
+   {
+    "canh": 1,
+    "nhan": "Đề bài",
+    "tieu_de": "SA vuông góc đáy",
+    "xoay": [
+     {
+      "goc_nhin": "toan_canh"
+     }
+    ],
+    "hien": [
+     "S",
+     "A",
+     "B",
+     "C",
+     "D"
+    ],
+    "the": [
+     {
+      "loai": "chu",
+      "noi_dung": "SA ⊥ (ABCD), SA = a√2"
+     }
+    ]
+   },
+   {
+    "canh": 3,
+    "khi_noi": "nhìn từ trên xuống đáy",
+    "nhan": "Vuông góc",
+    "tieu_de": "Chứng minh BD ⊥ (SAC)",
+    "xoay": [
+     {
+      "goc_nhin": "nhin_day",
+      "moc_xoay": "nhìn từ trên xuống đáy"
+     },
+     {
+      "goc_nhin": "ep_mep_mat",
+      "doi_tuong": [
+       "S",
+       "A",
+       "C"
+      ],
+      "moc_xoay": "ép mép mặt phẳng SAC"
+     }
+    ],
+    "hien": [
+     {
+      "id": "AC",
+      "khi_noi": "hai đường chéo"
+     },
+     {
+      "id": "BD",
+      "khi_noi": "hai đường chéo"
+     },
+     {
+      "id": "O",
+      "khi_noi": "hai đường chéo"
+     },
+     {
+      "id": "goc_OBA",
+      "khi_noi": "BD vuông góc AC"
+     },
+     {
+      "id": "goc_ASB",
+      "khi_noi": "SA vuông góc đáy nên"
+     }
+    ],
+    "nhan_manh": [
+     "AC",
+     "BD",
+     "SA",
+     "O"
+    ],
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "BD \\perp AC,\\ BD \\perp SA"
+      ],
+      "khi_noi": "BD vuông góc AC"
+     },
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "\\Rightarrow BD \\perp (SAC)"
+      ],
+      "khi_noi": "vuông góc với cả mặt phẳng"
+     }
+    ]
+   },
+   {
+    "canh": 4,
+    "khi_noi": "xét mặt phẳng SAC",
+    "nhan": "Góc",
+    "tieu_de": "Góc giữa SC và đáy",
+    "xoay": [
+     {
+      "goc_nhin": "truc_dien_mat",
+      "doi_tuong": [
+       "S",
+       "A",
+       "C"
+      ],
+      "moc_xoay": "xét mặt phẳng SAC"
+     }
+    ],
+    "hien": [
+     {
+      "id": "goc_CSA",
+      "khi_noi": "góc cần tìm là góc SCA"
+     }
+    ],
+    "nhan_manh": [
+     "SC",
+     "AC",
+     "SA",
+     "goc_CSA"
+    ],
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "\\tan\\widehat{SCA} = \\dfrac{SA}{AC} = 1"
+      ],
+      "khi_noi": "tam giác SAC vuông tại A"
+     },
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "\\widehat{SCA} = 45^\\circ"
+      ],
+      "khi_noi": "bốn mươi lăm độ"
+     }
+    ]
+   },
+   {
+    "canh": 5,
+    "khi_noi": "chuyển sang mặt phẳng SAB",
+    "nhan": "Khoảng cách",
+    "tieu_de": "Khoảng cách từ A đến (SBC)",
+    "xoay": [
+     {
+      "goc_nhin": "truc_dien_mat",
+      "doi_tuong": [
+       "S",
+       "A",
+       "B"
+      ],
+      "moc_xoay": "chuyển sang mặt phẳng SAB"
+     }
+    ],
+    "hien": [
+     {
+      "id": "H",
+      "khi_noi": "kẻ AH vuông góc SB"
+     },
+     {
+      "id": "AH",
+      "khi_noi": "kẻ AH vuông góc SB"
+     },
+     {
+      "id": "goc_HAS",
+      "khi_noi": "vuông góc SB tại H"
+     }
+    ],
+    "nhan_manh": [
+     "AH",
+     "SB",
+     "BC",
+     "H"
+    ],
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "AH \\perp SB,\\ AH \\perp BC"
+      ],
+      "khi_noi": "kẻ AH vuông góc SB"
+     },
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "\\Rightarrow AH \\perp (SBC)"
+      ],
+      "khi_noi": "suy ra AH vuông góc"
+     }
+    ]
+   },
+   {
+    "canh": 6,
+    "khi_noi": "phóng to vào đoạn AH",
+    "nhan": "Đáp án",
+    "tieu_de": "Độ dài AH",
+    "xoay": [
+     {
+      "goc_nhin": "can_canh",
+      "doi_tuong": [
+       "A",
+       "H"
+      ],
+      "moc_xoay": "phóng to vào đoạn AH"
+     }
+    ],
+    "nhan_manh": [
+     "AH",
+     "goc_HAS"
+    ],
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "AH = \\dfrac{SA \\cdot AB}{SB} = \\dfrac{a\\sqrt{6}}{3}"
+      ],
+      "khi_noi": "trong tam giác vuông SAB",
+      "chot": true
+     }
+    ]
+   }
+  ]
+ }
+}

@@ -14,6 +14,8 @@ import type {DongTomTat} from './kieu';
 import {RONG_ND_V93, VUNG_OUTRO} from './bo_cuc_v93';
 import {ChuTron} from './ChuTron';
 import {SanKhau2D} from '../sankhau2d/SanKhau2D';
+import {SanKhauKhongGian} from '../khonggian/SanKhauKhongGian';
+import type {KhongGianVao} from '../khonggian/kieu';
 import type {SanKhau2DVao} from '../sankhau2d/kieu';
 
 const NGOC = '#2EE6A8';
@@ -32,7 +34,7 @@ const IconCta: React.FC<{cta: string}> = ({cta}) => {
   return <svg width={36} height={36} viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z" fill="#fff" /></svg>;
 };
 
-export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: Canh3DV | null; sanKhau?: SanKhau2DVao | null; tCuoi: number; thuongHieu?: string; cta?: string}> = ({dapAn, tomTat, canh: canhVao, sanKhau, tCuoi, thuongHieu, cta = 'LƯU LẠI NGAY!'}) => {
+export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: Canh3DV | null; sanKhau?: SanKhau2DVao | null; khongGian?: KhongGianVao | null; tCuoi: number; thuongHieu?: string; cta?: string}> = ({dapAn, tomTat, canh: canhVao, sanKhau, khongGian, tCuoi, thuongHieu, cta = 'LƯU LẠI NGAY!'}) => {
   // v95: Outro không làm mờ phần nào của mô hình (bỏ nhấn mạnh 30 %) -> mọi nhãn kích thước sáng rõ
   const canh = React.useMemo(() => (canhVao ? {...canhVao, buoc: canhVao.buoc.map((b) => ({...b, nhanManh: []}))} : null), [canhVao]);
   const f = useCurrentFrame();
@@ -72,6 +74,12 @@ export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: C
           </div>
         </div>
       ) : null}
+      {/* v97: hình không gian ở trạng thái cuối (góc khóa cuối, không thở) */}
+      {khongGian ? (
+        <div data-vung="outro_san" style={{position: 'absolute', left: 0, top: V.san.y, width: RONG_ND_V93, height: V.san.h, overflow: 'hidden', opacity: vao(0.3, 0.6)}}>
+          <SanKhauKhongGian kg={khongGian} t={tCuoi} rong={RONG_ND_V93} cao={V.san.h} lechMay={{k: 0.92}} />
+        </div>
+      ) : null}
       {/* mô hình 3D gọn, trạng thái cuối */}
       {canh ? (
         <div data-vung="outro_san" style={{position: 'absolute', left: 0, top: V.san.y, width: RONG_ND_V93, height: V.san.h, overflow: 'hidden', opacity: vao(0.3, 0.6)}}>
@@ -79,8 +87,28 @@ export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: C
         </div>
       ) : null}
 
+      {/* v97 hình không gian: 3 ý tóm tắt trên MỘT tấm nền mờ, ngăn bằng đường kẻ siêu mảnh, căn giữa (không 3 hộp rời) */}
+      {khongGian ? (
+        <div data-tom-tat-gop style={{position: 'absolute', left: 40, right: 40, top: V.dong.y, height: 3 * V.dong.h + 2 * V.dong.cach, display: 'flex', flexDirection: 'column',
+          borderRadius: 26, background: 'linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.03))', opacity: vao(tDong(0))}}>
+          {tomTat.slice(0, 3).map((d, k) => {
+            const a = vao(tDong(k));
+            const mau = MAU_3DV[d.mau || (['cyan', 'vang', 'hong'] as const)[k]] || MAU_3DV.cyan;
+            return (
+              <div key={k} data-tom-tat style={{flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, padding: '0 26px', opacity: a,
+                borderTop: k ? '1px solid rgba(255,255,255,0.09)' : 'none', transform: `translateY(${(1 - a) * 10}px)`}}>
+                <span style={{color: mau, fontWeight: 900, fontSize: 30, fontVariantNumeric: 'tabular-nums'}}>{String(k + 1).padStart(2, '0')}</span>
+                <span style={{color: mau, fontWeight: 800, fontSize: d.chien_thuat.length > 14 ? 28 : 32, whiteSpace: 'nowrap', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis'}}>
+                  <ChuTron s={d.chien_thuat} co={d.chien_thuat.length > 14 ? 28 : 32} mau={mau} dam={800} />
+                </span>
+                {d.cong_thuc ? <Toan tex={d.cong_thuc} size={36} color="#F4F7FB" maxWidth={420} /> : null}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
       {/* 3 dòng tóm tắt */}
-      {tomTat.slice(0, 3).map((d, k) => {
+      {(khongGian ? [] : tomTat.slice(0, 3)).map((d, k) => {
         const a = vao(tDong(k));
         const mau = MAU_3DV[d.mau || (['cyan', 'vang', 'hong'] as const)[k]] || MAU_3DV.cyan;
         return (

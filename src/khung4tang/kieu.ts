@@ -60,4 +60,5 @@ export type Khung4TangVao = {
   cta?: string; // v95: nhãn nút CTA của Outro (khớp ngữ nghĩa lời đọc)
   tChot?: number; // v95: mốc chốt đáp án (giây) -> SFX chime, thanh đề đổi số
   sanKhau?: import('../sankhau2d/kieu').SanKhau2DVao | null; // v96: sân khấu 2D đã tính sẵn (chuanbi.py khung4tang_v96)
+  khongGian?: import('../khonggian/kieu').KhongGianVao | null; // v97: hình học không gian (tọa độ bộ giải + lịch xoay moc_xoay)
 };

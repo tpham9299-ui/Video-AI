@@ -130,6 +130,20 @@ const ctx = {
   khoGoiSong_: (_nhom, model, bodies) => goiTho(model, bodies),
   // v94: kiểm chứng hình phẳng chuẩn bằng tọa độ số thật (scripts/giai_hinh_phang.py --chi-kiem) ngay trong vòng duyệt BP2
   // -> lỗi HP_* kèm gợi ý quay lại cho AI sửa ở lượt retry. Không có Python -> null (BP3 vẫn chặn cứng).
+  // v97: bộ giải hình không gian (KG_*) chạy thật bằng Python trên máy GitHub (Apps Script thật không có -> chuanbi.py chặn lại)
+  kiemKhongGianMay_: (kb) => {
+    for (const py of ['python3', 'python']) {
+      try {
+        const ra = execFileSync(py, [path.join(GOC, 'scripts', 'giai_hinh_khong_gian.py'), '-', '--chi-kiem'],
+          {input: JSON.stringify(kb), timeout: 60000, stdio: ['pipe', 'pipe', 'pipe'], env: {...process.env, PYTHONIOENCODING: 'utf-8'}});
+        return JSON.parse(ra.toString('utf8'));
+      } catch (e) {
+        if (e && e.status === 2 && e.stdout) { try { return JSON.parse(e.stdout.toString('utf8')); } catch (e2) { return null; } }
+        if (e && e.status === 3) return null;
+      }
+    }
+    return null;
+  },
   kiemHinhPhangMay_: (kb) => {
     for (const py of ['python3', 'python']) {
       try {

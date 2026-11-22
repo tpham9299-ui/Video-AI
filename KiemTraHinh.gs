@@ -1125,7 +1125,8 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc, lop) {
   kiemTraBaCham_(kb).forEach(function (x) { nang.push(x); });
   kiemTraCuPhapTex_(kb).forEach(function (x) { nang.push(x); });
   if (String(kb.mon || '').toUpperCase() === 'HINH_HOC' && typeof kiemTraKichBanManim_ === 'function') {   // hình học dựng bằng Manim (HinhHoc.gs)
-    var kM = kiemTraKichBanManim_(kb);
+    // v97: hình KHÔNG GIAN chuẩn (hinh_khong_gian) -> kiểm riêng (đặc tả + moc_xoay + bộ giải máy), không đòi tọa độ hinh_hoc / buoc_ve
+    var kM = kb.hinh_khong_gian && typeof kiemKhongGian_ === 'function' && (typeof batHinhKhongGian_ !== 'function' || batHinhKhongGian_()) ? kiemKhongGian_(kb) : kiemTraKichBanManim_(kb);
     kM.nang.forEach(function (x) { nang.push(x); });
     kM.nhe.forEach(function (x) { nhe.push(x); });
   }
@@ -2577,7 +2578,7 @@ function kiemTraDaDangHinhThucTe_(kb, mon) {
 // Chỉ TỪ CHỐI CỨNG khi: kịch bản rỗng cảnh / lời đọc, sai kết quả toán học cốt lõi (đáp án, phép tính, vượt chương trình lớp),
 // vi phạm khóa luồng hinh_hoc_thuan hoặc hình học thiếu dữ kiện bắt buộc cho Manim. JSON hỏng đã bị chặn từ lúc đọc (BoPhan1.gs).
 // Tắt: CAU_HINH AUTO_FIX_KICH_BAN = TAT (quay về cách cũ).
-var LOI_CUNG_RE_ = /^(XS_SAI_DAP_SO|KB_DOC_LAP_DE|KB_CUT_CONG_THUC|MA_THO_HIEN_THI|KHUNG4TANG_3D_RONG|TOAN_GOI_SAI_PARABOL|TOAN_THIEU_CAN_CU_CUC_TRI|KHONG_CO_CANH|QUA_IT_CANH|THIEU_LOI_THOAI_CANH_|DAP_AN_CUOI_SAI|DAP_AN_SAI_TREN_MAN_HINH|PHEP_TINH_SAI_CANH_|VI_PHAM_CHUONG_TRINH_LOP|LUONG_HINH_HOC|NOI_DUNG_LA|THOI_LUONG_CHUYEN_DE|SO_CANH_VIDEO_DAI_SAI|HINH_THIEU_DIEM_DE|HINH_THIEU_DIEM_CANH_|THIEU_TOA_DO_HINH|BUOC_VE_KHONG_KHOP_LOI_CANH_|BUOC_VE_DOI_TUONG_LA_CANH_|HP_VUOT_CHUONG_TRINH|HP_MENH_DE_SAI|HP_DONG_DANG_SAI_THU_TU|HP_DUNG_LOI|HP_DIEM_KHONG_TON_TAI|HP_THIEU_DAC_TA)/;
+var LOI_CUNG_RE_ = /^(XS_SAI_DAP_SO|KB_DOC_LAP_DE|KB_CUT_CONG_THUC|MA_THO_HIEN_THI|KHUNG4TANG_3D_RONG|TOAN_GOI_SAI_PARABOL|TOAN_THIEU_CAN_CU_CUC_TRI|KHONG_CO_CANH|QUA_IT_CANH|THIEU_LOI_THOAI_CANH_|DAP_AN_CUOI_SAI|DAP_AN_SAI_TREN_MAN_HINH|PHEP_TINH_SAI_CANH_|VI_PHAM_CHUONG_TRINH_LOP|LUONG_HINH_HOC|NOI_DUNG_LA|THOI_LUONG_CHUYEN_DE|SO_CANH_VIDEO_DAI_SAI|HINH_THIEU_DIEM_DE|HINH_THIEU_DIEM_CANH_|THIEU_TOA_DO_HINH|BUOC_VE_KHONG_KHOP_LOI_CANH_|BUOC_VE_DOI_TUONG_LA_CANH_|HP_VUOT_CHUONG_TRINH|HP_MENH_DE_SAI|HP_DONG_DANG_SAI_THU_TU|HP_DUNG_LOI|HP_DIEM_KHONG_TON_TAI|HP_THIEU_DAC_TA|KG_VUOT_CHUONG_TRINH|KG_MENH_DE_SAI|KG_SAI_SO_DO|KG_DUNG_LOI|KG_DIEM_KHONG_TON_TAI|KG_THIEU_DAC_TA|KG_KHOI_LOI|KG_DINH_CHUM|CAM_MAT_MOC|CAM_DE_GIO)/;
 var MAU_SAN_KHAU_ = ['do', 'xanh_duong', 'xanh_la', 'cam', 'vang', 'tim', 'hong', 'ngoc', 'trang', 'xam', 'nau'];
 var MAU_GAN_ = {'đỏ': 'do', red: 'do', xanh: 'xanh_duong', 'xanh dương': 'xanh_duong', xanh_lam: 'xanh_duong', lam: 'xanh_duong', blue: 'xanh_duong', cyan: 'xanh_duong',
   'xanh lá': 'xanh_la', xanh_luc: 'xanh_la', luc: 'xanh_la', green: 'xanh_la', orange: 'cam', 'vàng': 'vang', yellow: 'vang', 'tím': 'tim', purple: 'tim',
@@ -2734,6 +2735,7 @@ function tuSuaHinhThuc_(kb, r) {
   var sua = [];
   if (!batAutoFix_() || !kb || !Array.isArray(kb.canh)) return sua;
   if (kb.hinh_phang_chuan) sua = sua.concat(tuSuaHinhPhangChuan_(kb, r));   // v94
+  if (kb.hinh_khong_gian && typeof tuSuaKhongGian_ === 'function') sua = sua.concat(tuSuaKhongGian_(kb, r));   // v97
   var dem = {tex: 0, mau: 0, nhan: 0, td: 0};
   var texMang = function (ds) { return Array.isArray(ds) ? ds.map(function (x) { var y = suaTexHienThi_(x); if (y !== x) dem.tex++; return y; }) : ds; };
   var chuanMau = function (m) {
@@ -3370,4 +3372,111 @@ function phanLoaiLoiCung_(nang, nhe, kb) {
   if (ha.length && typeof nhatKy_ === 'function') { try { nhatKy_('AUTO_FIX', (kb && kb.id ? kb.id + ': ' : '') + 'hạ ' + ha.length + ' lỗi hình thức thành cảnh báo: ' + ha.map(function (x) { return String(x).split(':')[0]; }).slice(0, 8).join(', ')); } catch (e) {} }
   // giữ nguyên mã lỗi ở đầu chuỗi (moTaLoiKichBan_ / bộ lọc gợi ý tra theo mã), chỉ đánh dấu ở cuối
   return {nang: cung, nhe: ha.map(function (x) { return x + ' [cảnh báo: không chặn kịch bản]'; }).concat(nhe)};
+}
+
+
+/* ===================== v97: HÌNH HỌC KHÔNG GIAN CHUẨN — Auto-fix + lỗi cứng (bản JS của hinh_khong_gian/thoi_gian.py) ===================== */
+// Chữ gốc chuẩn hóa để đối chiếu moc_xoay (khớp tok() Python): bỏ lệnh TeX, ngoặc, dấu chấm trong S.ABCD, ký hiệu toán; chữ thường
+function tokKG_(s) {
+  var x = String(s || '').replace(/\\[A-Za-z]+/g, ' ').replace(/[()\[\]{}$^_\\=+\-*\/<>|⊥∥∩∪∈⊂°'’′.,;:!?"“”…–—]/g, ' ').toLowerCase();
+  return x.split(/\s+/).filter(function (w) { return w; });
+}
+// -> {i, n, kieu: dung|con} trong toks[lo..] hoặc null. KHÔNG BAO GIỜ trả vị trí đầu cảnh mặc định (chống xoay sớm)
+function timCumKG_(cum, toks, lo) {
+  var can = tokKG_(cum), n = can.length;
+  if (!n) return null;
+  var bang = function (i, ds) { for (var k = 0; k < ds.length; k++) if (toks[i + k] !== ds[k]) return false; return true; };
+  for (var i = lo || 0; i + n <= toks.length; i++) if (bang(i, can)) return {i: i, n: n, kieu: 'dung'};
+  if (n >= 3) for (var m = n - 1; m >= 3; m--) for (var k = 0; k + m <= n; k++) {
+    var con = can.slice(k, k + m);
+    for (var j = lo || 0; j + m <= toks.length; j++) if (bang(j, con)) return {i: j, n: m, kieu: 'con', cum: con.join(' ')};
+  }
+  return null;
+}
+var BI_DANH_CAMERA_KG_ = {truc_dien: 'truc_dien_mat', nhin_thang_mat: 'truc_dien_mat', ep_mep: 'ep_mep_mat', edge_on: 'ep_mep_mat', nhin_doc_mat: 'ep_mep_mat',
+  tren_xuong: 'nhin_day', nhin_tu_tren: 'nhin_day', zoom: 'can_canh', phong_to: 'can_canh', tong_quan: 'toan_canh', mac_dinh: 'toan_canh'};
+
+// Auto-fix nhẹ: tên chế độ camera, bước 1 có toan_canh, nhãn bước "Bước n" -> nhãn ngắn, moc_xoay lệch chữ -> cụm con >= 3 từ NGUYÊN VĂN
+// trong đúng cảnh (giữ vị trí giữa câu). Không tìm được -> để nguyên cho loiKhongGian_ báo CAM_MAT_MOC (KHÔNG dời về đầu cảnh).
+function tuSuaKhongGian_(kb, r) {
+  var sua = [], hkg = kb && kb.hinh_khong_gian;
+  if (!hkg || typeof hkg !== 'object' || !Array.isArray(hkg.buoc)) return sua;
+  var canhSo = {};
+  (kb.canh || []).forEach(function (c, i) { if (c) canhSo[String(c.so || i + 1)] = c; });
+  var conTro = {};
+  hkg.buoc.forEach(function (b, j) {
+    if (!b || typeof b !== 'object') return;
+    if (/^\s*bước\s*\d+\s*$/i.test(String(b.nhan || ''))) { b.nhan = String(b.tieu_de || '').split(/\s+/).slice(0, 2).join(' ') || 'Giải'; sua.push('bước ' + (j + 1) + ': nhãn "Bước n" -> "' + b.nhan + '"'); }
+    if (!Array.isArray(b.xoay)) b.xoay = b.xoay && typeof b.xoay === 'object' ? [b.xoay] : [];
+    if (j === 0 && !b.xoay.length) { b.xoay = [{goc_nhin: 'toan_canh'}]; sua.push('bước 1: thêm góc toan_canh mở đề'); }
+    var c = canhSo[String(b.canh)];
+    var toks = c ? tokKG_(c.loi_thoai) : [];
+    var so = String(b.canh);
+    b.xoay.forEach(function (x) {
+      if (!x || typeof x !== 'object') return;
+      var g = String(x.goc_nhin || x.che_do || 'toan_canh').trim().toLowerCase();
+      if (BI_DANH_CAMERA_KG_[g]) { sua.push('bước ' + (j + 1) + ': goc_nhin "' + g + '" -> ' + BI_DANH_CAMERA_KG_[g]); g = BI_DANH_CAMERA_KG_[g]; }
+      if (CHE_DO_CAMERA_KG_.indexOf(g) < 0) { sua.push('bước ' + (j + 1) + ': goc_nhin lạ "' + g + '" -> toan_canh'); g = 'toan_canh'; }
+      x.goc_nhin = g; delete x.che_do;
+      if (!x.moc_xoay || !toks.length) return;
+      var kq = timCumKG_(x.moc_xoay, toks, conTro[so] || 0);
+      if (kq && kq.kieu === 'con') { sua.push('bước ' + (j + 1) + ': moc_xoay "' + x.moc_xoay + '" -> cụm nguyên văn "' + kq.cum + '"'); x.moc_xoay = kq.cum; }
+      if (kq) conTro[so] = kq.i + kq.n;
+    });
+  });
+  return sua;
+}
+
+// Lỗi cứng bài không gian chuẩn (thay kiemTraKichBanManim_ khi có hinh_khong_gian): đặc tả, moc_xoay, đọc lặp đề / cụt công thức (v96),
+// bộ giải máy (KG_* từ scripts/giai_hinh_khong_gian.py qua chay_bp1.js; Apps Script thật không có Python -> chuanbi.py chặn lại).
+function kiemKhongGian_(kb) {
+  var nang = [], nhe = [], hkg = (kb && kb.hinh_khong_gian) || {};
+  if (typeof loiLuongHinhHoc_ === 'function') loiLuongHinhHoc_(kb).forEach(function (x) { nang.push(x + ': video hình học thuần chỉ có hình học (không vật đời sống / 3D trang trí).'); });
+  if (!hkg.khoi || typeof hkg.khoi !== 'object' || !hkg.khoi.loai) nang.push('KG_THIEU_DAC_TA: hinh_khong_gian thiếu "khoi" (loại khối, đáy, chân đường cao).');
+  if (!Array.isArray(hkg.buoc) || hkg.buoc.length < 2) nang.push('KG_THIEU_DAC_TA: hinh_khong_gian cần >= 2 bước (bước 1 mở đề toan_canh + các bước giải có xoay).');
+  var canhSo = {};
+  (kb.canh || []).forEach(function (c, i) { if (c) canhSo[String(c.so || i + 1)] = c; });
+  var conTro = {}, viTri = [];
+  (hkg.buoc || []).forEach(function (b, j) {
+    if (!b) return;
+    var c = canhSo[String(b.canh)];
+    if (!c) { nang.push('KG_THIEU_DAC_TA: bước ' + (j + 1) + ' trỏ tới cảnh ' + b.canh + ' không tồn tại.'); return; }
+    var toks = tokKG_(c.loi_thoai), so = String(b.canh);
+    (Array.isArray(b.xoay) ? b.xoay : []).forEach(function (x) {
+      if (!x) return;
+      if (j === 0 && !x.moc_xoay) return;
+      if (!x.moc_xoay) { nang.push('CAM_MAT_MOC: bước ' + (j + 1) + ' cú xoay ' + x.goc_nhin + ' thiếu moc_xoay (cụm nguyên văn lời đọc mở đầu ý chứng minh).'); return; }
+      var kq = timCumKG_(x.moc_xoay, toks, conTro[so] || 0);
+      if (!kq) { nang.push('CAM_MAT_MOC: bước ' + (j + 1) + ' moc_xoay "' + x.moc_xoay + '" không có trong lời cảnh ' + so + ' (sau cú xoay trước). Chép đúng cụm, không dời về đầu cảnh.'); return; }
+      conTro[so] = kq.i + kq.n;
+      viTri.push({canh: so, i: kq.i, g: x.goc_nhin, j: j});
+      if (['truc_dien_mat', 'ep_mep_mat'].indexOf(x.goc_nhin) >= 0 && (!Array.isArray(x.doi_tuong) || x.doi_tuong.length < 3)) nang.push('KG_THIEU_DAC_TA: bước ' + (j + 1) + ' ' + x.goc_nhin + ' cần doi_tuong = 3 điểm của mặt phẳng.');
+    });
+  });
+  for (var k = 1; k < viTri.length; k++) {
+    var a = viTri[k - 1], b2 = viTri[k];
+    if (a.canh === b2.canh && b2.i - a.i < 4) nang.push('CAM_DE_GIO: hai cú xoay ' + a.g + ' và ' + b2.g + ' (cảnh ' + a.canh + ') cách nhau < 4 từ lời đọc (cần >= ~1 s).');
+  }
+  if (typeof canhLapDe_ === 'function') {
+    var lap = canhLapDe_(kb);
+    if (lap.length) nang.push('KB_DOC_LAP_DE: cảnh ' + lap.map(function (i) { return i + 1; }).join(', ') + ' đọc lại đề lần nữa. Chỉ đọc đề ĐÚNG 1 lần.');
+  }
+  if (typeof soKetQuaDong_ === 'function' && typeof loiNoiSo_ === 'function') {
+    var cut = [];
+    (kb.canh || []).forEach(function (c, i) {
+      (c && Array.isArray(c.noi_dung_man_hinh) ? c.noi_dung_man_hinh : []).forEach(function (d) {
+        var so = soKetQuaDong_(d);
+        if (so && !loiNoiSo_(c.loi_thoai, so) && !/ket_luan|bai_hoc|cta/.test(String(c.loai || ''))) cut.push('cảnh ' + (i + 1) + ' (' + so + ')');
+      });
+    });
+    if (cut.length) nang.push('KB_CUT_CONG_THUC: lời thoại không đọc ra kết quả ' + cut.slice(0, 3).join(', ') + '. Đọc đủ biểu thức và đáp số.');
+  }
+  if ((kb.canh || []).length > 12) nhe.push('KG_NHIP_DAI: ' + kb.canh.length + ' cảnh (nên 7-10 cảnh, 50-68 s).');
+  if (typeof kiemKhongGianMay_ === 'function') {
+    var m = null;
+    try { m = kiemKhongGianMay_(kb); } catch (e) { m = null; }
+    if (m && Array.isArray(m.loi)) m.loi.forEach(function (x) { nang.push(x.ma + ': ' + x.chi_tiet + (x.goi_y ? ' | Gợi ý: ' + x.goi_y : '')); });
+    if (m && Array.isArray(m.canh_bao)) m.canh_bao.forEach(function (x) { nhe.push('KG_CANH_BAO: ' + x); });
+  }
+  return {nang: nang, nhe: nhe};
 }

@@ -290,6 +290,11 @@ jobs:
         if: steps.kb.outputs.hh == '1'
         run: |
           mkdir -p out
+          # v97: hình KHÔNG GIAN chuẩn (props.boCuc = 4tang + khongGian) dựng 100% Remotion SVG: đã kiểm bằng giai_hinh_khong_gian.py
+          # (mệnh đề / số đo / GDPT) + lịch camera moc_xoay trong chuanbi.py (CAM_* dừng ở bước chuẩn bị) -> không chạy kiểm tra chéo Manim
+          if python3 -c "import json,sys;p=json.load(open('public/props.json',encoding='utf8'));sys.exit(0 if p.get('boCuc')=='4tang' and (p.get('khung4tang') or {}).get('khongGian') else 1)"; then
+            echo "Hình không gian v97 (Remotion): bỏ kiểm tra chéo Manim"; exit 0
+          fi
           python3 scripts/kiem_hinh_hoc.py kich_ban.json public/props.json --truoc --bao out/kiem_hinh_hoc.json
 
       - name: Dựng video hình học bằng Manim
@@ -300,6 +305,8 @@ jobs:
           # v94: kịch bản có hinh_phang_chuan (props.boCuc = hinh_phang) -> động cơ chuẩn 3 lớp (tọa độ do giai_hinh_phang.py tính);
           # còn lại (hình không gian / kịch bản cũ) -> manim_hinh.py như trước
           BO_CUC=$(python3 -c "import json;print(json.load(open('public/props.json',encoding='utf8')).get('boCuc') or '')")
+          # v97: hình không gian chuẩn -> Remotion vẽ cả hình (nét khuất giải tích từng khung) -> không có lớp Manim (manim=0)
+          if [ "$BO_CUC" = "4tang" ]; then echo "Hình không gian v97: không dựng Manim"; exit 0; fi
           if [ "$BO_CUC" = "hinh_phang" ]; then
             python3 scripts/giai_hinh_phang.py kich_ban.json --ra out/hinh_phang_giai.json
             MANIM_TEX_DIR=/tmp/manim_tex_cache /tmp/mv/bin/python scripts/manim/HinhPhangChuan.py public/props.json kich_ban.json out --public public
