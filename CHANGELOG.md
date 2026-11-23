@@ -500,3 +500,10 @@
 - Google khai tử 2.0-flash / 2.5-flash / 2.5-pro (HTTP 404): mọi tầng (goi_gemini.js, kiem_duyet.mjs, kiem_tra_key.mjs, mat_than_3x3.py, tao_mo_hinh.py, .gs) lấy model từ ListModels + xếp hạng phiên bản theo chế độ nang/nhe (`model_gemini.cjs` ↔ `BoPhan1.gs danhSachModel_`).
 - Cache ListModels: tệp tạm theo key/ngày (Node), CacheService 6 giờ (Apps Script); lỗi mạng -> dự phòng sạch, nghỉ 10 phút.
 - 404 nhớ theo cặp (model, key) trong ngày PT; gợi ý `models/<x>` trong lỗi 404 được thử ngay. Test: `scripts/test_model_gemini.cjs`.
+
+
+### Lần 71 (v98.3) -- Giữ chân Shorts/TikTok: nhịp 45-55 s, giọng gọn không lặng chết, cây Bayes thoáng
+- `.gs`: `PromptKichBan.gs` (`quyTrinhGon4Tang_`: 45-55 s, 170-220 tiếng, hook < 12 chữ, câu 10-18 chữ, nhấn bẫy, khóa đuôi mẹo + CTA ≤ 6 s, cấm đọc lại tóm tắt), `KiemTraHinh.gs` (`tuSuaDuoiV983_` cắt đuôi + bỏ cảnh thừa sau đáp án + đánh số lại; cảnh báo > 240 tiếng). Không có tệp .gs mới.
+- `chuanbi.py`: nghỉ quanh cảnh khung 4 tầng ~0,18 s (`NHIP_GON`, tắt `NHIP_GON=0`), giọng năng lượng `PHONG_CACH_GIONG_4TANG`, `chia_moc_theo_lang` (mốc câu Gemini đo trên tệp đã xử lý), phiên âm mềm `phien_am_tts` (chỉ chuỗi TTS). atempo 1,14 / edge +14 % / rút lặng giữa câu 0,18 s đã có từ v95, giữ nguyên.
+- Cây: cây bóng + chấm bi tầng 1 từ khung 0, nhãn nhánh một dòng `a/b`, bỏ dòng kết quả dưới chân cây, nút co theo khe dọc, `kieu_so` đồng nhất cây ↔ T3, `nut[].bi`.
+- Mẫu `mau/v98_3/cay_bayes.json` (41,5 s giả lập), `mau/v98_3/cay_bayes_3hop.json` (H1/H2/H3, P = 18/29, 40,0 s giả lập); lưới `out/v98_3/*/luoi.png`. Test mới `test_v98_3.py` (40), `test_v98_3.mjs` (24), `test_v98_3_gs.cjs` (15); `test_v95.py` / `test_v96.py` nới ngưỡng thời lượng 55-70 -> 40-70 s (mẫu cũ ngắn lại do nghỉ quanh cảnh), `test_v95_gs.cjs` / `test_v96_gs.cjs` đổi khẳng định chữ prompt (7-10 cảnh, 45-55 s, CTA siêu ngắn). Khóa đuôi giữ cảnh `kiem_tra` sau đáp án, không tự bịa CTA (để `tuSuaMocCau_` thêm). Toàn bộ 35 tệp test + tsc đạt. Chưa chạy GitHub Actions, chưa thử giọng Gemini thật / render MP4.

@@ -124,7 +124,7 @@ for tep, loai in MAU:
     kiem(sk.get("pha") and sk["pha"][0]["t"] <= 0.5, "%s: hook 2 s (pha đầu %.1f s)" % (ten, sk["pha"][0]["t"] if sk.get("pha") else -1))
     if ten in ("vd_153504", "bayes_xet_nghiem", "loi_nhuan_tra_sua"):
         tong = p["tongFrame"] / 30.0
-        kiem(55 <= tong <= 70, "%s: thời lượng %.1f s trong 55-70 s" % (ten, tong))
+        kiem(40 <= tong <= 70, "%s: thời lượng %.1f s trong 40-70 s (v98.3: nghỉ quanh cảnh ~0,18 s)" % (ten, tong))
     van = json.dumps(k4, ensure_ascii=False)
     kiem(not any(v.co_ma_tho(x) for x in [json.dumps(k4.get("mocCau"), ensure_ascii=False)]) and "\\\\not" not in van, "%s: không lộ mã thô ở Intro, không còn \\not" % ten)
 print("\nKẾT QUẢ: %d đạt, %d hỏng" % (dat, hong))

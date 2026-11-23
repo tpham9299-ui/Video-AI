@@ -450,21 +450,26 @@ function giayMucTieu_() {
 }
 // v95: QUY TRÌNH GỌN cho luồng khung 4 tầng (thực tế / tối ưu / Oxyz / xác suất): 50-68 giây, giữ chân người xem.
 // Nguyên nhân video 102 s (TT261122-133524-0): prompt cũ ép 15-20 cảnh, 100-160 giây cho MỌI video ngắn.
-var GIAY_4TANG_ = '50-68';
+// v98.3: siết 45-55 giây (giữ chân Shorts/TikTok): hook < 12 chữ, câu 10-18 chữ, đuôi sau đáp án <= 6 giây (mẹo + CTA).
+var GIAY_4TANG_ = '45-55';
+var TIENG_4TANG_ = '170-220';
 function quyTrinhGon4Tang_(tt, r) {
-  return 'NHỊP VIDEO GỌN (BẮT BUỘC, video khung 4 tầng): 8-12 cảnh, TỔNG ' + GIAY_4TANG_ + ' GIÂY, toàn bài 200-270 TIẾNG (âm tiết) lời thoại, mỗi cảnh 1 ý, 12-30 tiếng. ' +
+  return 'NHỊP VIDEO GỌN (BẮT BUỘC, video khung 4 tầng): 7-10 cảnh, TỔNG ' + GIAY_4TANG_ + ' GIÂY, toàn bài ' + TIENG_4TANG_ + ' TIẾNG (âm tiết) lời thoại, mỗi cảnh 1 ý, 10-26 tiếng. ' +
+    'MỖI CÂU 10-18 CHỮ, văn nói tự nhiên, câu chủ động ("Lấy ra 2 bi, không hoàn lại."), không câu ghép dài. NHẤN vào BẪY đề thi bằng một câu riêng ngắn khi gặp: "không hoàn lại", "tổ hợp C chứ không phải chỉnh hợp A", "chia cho xác suất toàn phần", "đơn vị", "điều kiện của ẩn". ' +
     'Đi THẲNG vào bài toán, mỗi câu phải mang thông tin. CẤM câu rào / sáo rỗng: "Muốn tìm ..., trước hết ta cần ...", "thật tuyệt vời", "khoan chốt vội", "hãy cùng nhau khám phá", "các bạn có biết không", "rất đơn giản thôi". ' +
-    'Thứ tự cảnh: de_bai (ĐÚNG 1 CẢNH, 5-7 giây, 1-2 câu gọn: đủ dữ kiện + hỏi gì) -> giải 4-6 cảnh (đặt ẩn + điều kiện; lập hàm; đạo hàm / biến đổi; giải nghiệm; CĂN CỨ CỰC TRỊ) -> dap_an (đáp số + ý nghĩa thực tế 1 câu) -> ket_luan (tóm tắt 3 bước + CTA). ' +
+    '0-3 GIÂY ĐẦU = HOOK: câu đầu tiên của cảnh de_bai là MỘT câu hỏi ngắn < 12 chữ gây tò mò, đi thẳng vào điều cần tìm ("Bi đỏ này đến từ hộp nào?"). CẤM đọc lê thê lại toàn bộ đề: con số / dữ kiện đã có thanh ĐỀ ghim trên màn hình và hình minh họa gánh, lời chỉ nói 1 câu "hỏi gì". ' +
+    'Thứ tự cảnh: de_bai (ĐÚNG 1 CẢNH, 3-5 giây: câu hook + 1 câu hỏi gì) -> giải 4-6 cảnh (đặt ẩn + điều kiện; lập hàm; đạo hàm / biến đổi; giải nghiệm; CĂN CỨ CỰC TRỊ) -> dap_an (đáp số + ý nghĩa thực tế ≤ 1 câu ngắn) -> ket_luan (ĐUÔI ≤ 6 GIÂY). ' +
     'ĐỌC ĐỀ ĐÚNG 1 LẦN (v96, máy kiểm, lỗi cứng KB_DOC_LAP_DE): không có cảnh mo_dau / nhac_lai đọc lại đề; câu hook intro chỉ là câu hỏi ≤ 8 từ, không nhắc lại dữ kiện (thanh ĐỀ đã ghim dữ kiện). ' +
     'ĐỌC ĐỦ CÔNG THỨC (v96, lỗi cứng KB_CUT_CONG_THUC): cảnh có dòng màn hình "... = số" thì lời thoại phải đọc ra ĐÚNG số đó (vd "số phần tử không gian mẫu là C(10, 3) = 120"), cấm câu cụt "ta có số phần tử không gian mẫu." rồi im. ' +
-    'Cảnh cuối có loai "ket_luan" (hoặc "bai_hoc"): đọc lần lượt 3 bước tóm tắt (khớp "tom_tat_3_buoc") rồi kết thúc bằng ĐÚNG MỘT câu CTA NGẮN < 2 GIÂY kiểu TikTok, ƯU TIÊN kích thích bình luận / lưu bài: "Đổi thành chia hết cho 3 thì ra mấy? Bình luận nhé!" (cta "BÌNH LUẬN NGAY!") hoặc "Lưu lại kẻo quên công thức này!" (cta "LƯU LẠI NGAY!"); TRÁNH câu "đăng ký kênh..." dài dòng cuối video. Phép tính chốt đáp án KHÔNG đặt ở cảnh ket_luan. ' +
+    'KHÓA ĐUÔI SAU ĐÁP ÁN (v98.3, máy tự cắt nếu dài): cảnh cuối loai "ket_luan" (hoặc "bai_hoc") CHỈ gồm TỐI ĐA 2 CÂU, tổng ≤ 6 giây (≤ 25 tiếng): (1) MỘT câu mẹo nhớ nhanh ≤ 14 chữ ("Gặp chữ biết rằng: chia cho toàn phần.") và (2) ĐÚNG MỘT câu CTA siêu ngắn kích thích bình luận / lưu bài: "Bình luận đáp án nếu đổi thành 3 bi đỏ!" (cta "BÌNH LUẬN NGAY!") hoặc "Lưu lại kẻo quên mẹo này!" (cta "LƯU LẠI NGAY!"). ' +
+    'CẤM sau khi đã lộ đáp án: đọc lại 3 bước tóm tắt (Outro tự HIỆN "tom_tat_3_buoc" bằng hình, KHÔNG đọc), giải thích vòng vo lại bản chất, liên hệ thực tế dài, cảnh lien_he_thuc_te / bay, câu "đăng ký kênh..." dài. Phép tính chốt đáp án KHÔNG đặt ở cảnh ket_luan. ' +
     'CHUẨN TOÁN (v95, máy kiểm): (1) chỉ gọi "parabol" / "đỉnh parabol" khi hàm THẬT SỰ bậc hai ax^2+bx+c; hàm bậc ba (V = x(16-2x)(10-2x)), phân thức, chứa căn thì nói "điểm cực đại / cực tiểu của đồ thị". ' +
     '(2) Tìm cực trị bằng đạo hàm: sau "' + "V'(x) = 0" + ' -> x = ..." PHẢI nêu căn cứ xác nhận: "đạo hàm đổi dấu từ dương sang âm qua x = ..." (hoặc bảng biến thiên / so sánh giá trị tại đầu mút và nghiệm / bất đẳng thức Cauchy / đỉnh hàm bậc hai), không nhảy thẳng từ đạo hàm bằng 0 sang kết luận lớn nhất. ' +
     '(3) Tiêu đề intro đúng bản chất (bài hộp cắt 4 góc như nhau: hỏi "CẮT CẠNH BAO NHIÊU ĐỂ HỘP LỚN NHẤT?", không hỏi "cắt góc nào"). ' +
     'Lời thoại viết biểu thức gọn để máy đọc chuẩn: "V(x) = x(16 - 2x)(10 - 2x)", "V\'(x) = 0", "x = 2", "144 cm³" (máy tự đọc "vê ích bằng ích nhân 16 trừ 2 ích...", "xăng-ti-mét khối"); không viết LaTeX trong loi_thoai.\n';
 }
 function quyTrinh6Phan_(tt, r) {
-  if (r && dungKhung4Tang_(r)) return quyTrinhGon4Tang_(tt, r);   // v95: luồng khung 4 tầng: video gọn 50-68 giây
+  if (r && dungKhung4Tang_(r)) return quyTrinhGon4Tang_(tt, r);   // v98.3: luồng khung 4 tầng: video gọn 45-55 giây
   return 'QUY TRÌNH CỐ ĐỊNH 6 PHẦN (BẮT BUỘC cho mọi video, đúng thứ tự, không được bỏ phần nào). VIDEO NHIỀU CẢNH, CHI TIẾT: 15-20 cảnh, mỗi cảnh 5-10 giây (lời thoại 12-30 từ, MỘT ý), tổng ' + giayMucTieu_() + ' giây. ' +
     'Nhiều cảnh nghĩa là chia nhỏ từng ý cho người học dễ theo, KHÔNG phải nói dài dòng hay lặp lại.\n' +
     'PHẦN 1 - ĐỀ BÀI (2-3 cảnh, luôn đi đầu, KHÔNG nhảy thẳng vào mô phỏng):\n' +

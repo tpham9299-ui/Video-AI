@@ -101,7 +101,7 @@ for ten, nguong in (("hop", False), ("lon", True)):
     p = json.load(open(props_p, encoding="utf8"))
     k = p["khung4tang"]
     tong = p["tongFrame"] / 30.0
-    kiem(55 <= tong <= 70, "%s: tổng thời lượng %.1f s trong 55-70 s" % (ten, tong))
+    kiem(40 <= tong <= 70, "%s: tổng thời lượng %.1f s trong 40-70 s (v98.3)" % (ten, tong))
     o = p["outro"]
     c_ket = next(c for c in p["canh"] if c["batDau"] == o["batDau"])
     kiem(o.get("giongCung") and cb.LOAI_OUTRO_4TANG.search(c_ket["loai"]) and not cb.LOAI_CHOT_4TANG.search(c_ket["loai"]),

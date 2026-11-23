@@ -123,7 +123,7 @@ t('chỉ đạo người dùng đưa thẳng vào prompt', () => assert.ok(/CH�
 t('lớp 11 không được dạy luoi_bayes', () => assert.ok(!/"loai":"luoi_bayes"/.test(pXS)));
 const qt = ctx.quyTrinhGon4Tang_(false, {lop: '12', mon: 'THUC_TE'});
 t('quy trình: đọc đề đúng 1 lần + đọc đủ công thức', () => assert.ok(/ĐỌC ĐỀ ĐÚNG 1 LẦN/.test(qt) && /KB_CUT_CONG_THUC/.test(qt) && !/mo_dau \(câu hỏi của đề/.test(qt)));
-t('CTA ngắn < 2 giây ưu tiên bình luận / lưu, tránh "đăng ký kênh"', () => assert.ok(/CTA NGẮN < 2 GIÂY/.test(qt) && /Bình luận nhé/.test(qt) && /TRÁNH câu "đăng ký kênh/.test(qt)));
+t('CTA siêu ngắn ưu tiên bình luận / lưu, cấm "đăng ký kênh" dài (v98.3 khóa đuôi)', () => assert.ok(/CTA siêu ngắn/.test(qt) && /Bình luận đáp án/.test(qt) && /câu "đăng ký kênh\.\.\." dài/.test(qt)));
 t('tỷ trọng sinh đề: TY_LE_XAC_SUAT 55 -> 11/20 lượt là Xác suất', () => {
   cauHinh.TY_LE_XAC_SUAT = '55'; props.MON_KE = '0';
   const ds = Array.from({length: 20}, () => ctx.chonMon_());

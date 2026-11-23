@@ -94,10 +94,10 @@ t('lời cuối không có câu kêu gọi -> thêm câu khớp nút', () => {
   assert.ok(/Lưu lại ngay/.test(k.canh[k.canh.length - 1].loi_thoai), k.canh[k.canh.length - 1].loi_thoai);
 });
 
-console.log('Prompt gọn 50-68 s cho khung 4 tầng');
-t('quyTrinh6Phan_ luồng 4 tầng: 8-12 cảnh, 50-68 giây, cấm câu rào, chuẩn parabol / căn cứ cực trị', () => {
+console.log('Prompt gọn 45-55 s cho khung 4 tầng (v98.3)');
+t('quyTrinh6Phan_ luồng 4 tầng: 7-10 cảnh, 45-55 giây (v98.3), cấm câu rào, chuẩn parabol / căn cứ cực trị', () => {
   const p = ctx.quyTrinh6Phan_(true, {lop: '12', mon: 'THUC_TE'});
-  for (const k of ['8-12 cảnh', '50-68', 'thật tuyệt vời', 'parabol', 'đổi dấu', 'CẮT CẠNH BAO NHIÊU']) assert.ok(p.includes(k), k);
+  for (const k of ['7-10 cảnh', '45-55', 'thật tuyệt vời', 'parabol', 'đổi dấu', 'CẮT CẠNH BAO NHIÊU']) assert.ok(p.includes(k), k);
 });
 t('luồng hình học thuần vẫn giữ quy trình 6 phần cũ', () => {
   const p = ctx.quyTrinh6Phan_(true, {lop: '9', mon: 'HINH_HOC'});

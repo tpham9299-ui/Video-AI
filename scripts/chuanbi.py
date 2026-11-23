@@ -330,8 +330,26 @@ def doc_toan_v96(text):
     return v96_k4.doc_toan_v96(text)
 
 
+# v98.3: TỪ ĐIỂN PHIÊN ÂM MỀM — CHỈ áp cho chuỗi đưa vào bộ đọc TTS (chuan_hoa_doc); phụ đề / màn hình dùng chữ gốc (hien_phu_de)
+# nên KHÔNG bao giờ hiện "Bây-ét". Khớp theo ranh giới từ, không phân biệt hoa thường; chạy TRƯỚC mọi luật khác (để "x" trong
+# Oxyz không bị đọc "ích" rời, "cos" không bị đánh vần).
+PHIEN_AM_TTS = [
+    (r"Bayes", "Bây-ét"), (r"Oxyz", "Ô-ích-i-dét"), (r"Oxy", "Ô-ích-i"),
+    (r"vect(?:ơ|o|or)", "véc-tơ"), (r"véc[\s-]?tơ", "véc-tơ"), (r"parabol", "pa-ra-bôn"), (r"elip", "ê-líp"),
+    (r"cos", "cốt"), (r"sin", "sin"),
+]
+_RE_PHIEN_AM = [(re.compile(r"(?<![\wÀ-ỹ])" + k + r"(?![\wÀ-ỹ])", re.I), v) for k, v in PHIEN_AM_TTS]
+
+
+def phien_am_tts(text):
+    s = str(text or "")
+    for re_, v in _RE_PHIEN_AM:
+        s = re_.sub(lambda m: (v[0].upper() + v[1:]) if m.group(0)[:1].isupper() else v, s)
+    return s
+
+
 def chuan_hoa_doc(text):
-    s = doc_ky_hieu_ham(sua_chinh_ta_tieng_viet(doc_toan_v95(doc_toan_v96(text))))
+    s = doc_ky_hieu_ham(sua_chinh_ta_tieng_viet(doc_toan_v95(doc_toan_v96(phien_am_tts(re.sub(r"\\(cos|sin)(?![A-Za-z])", lambda m: " " + m.group(1), str(text or "")))))))
     # v89: đơn vị sau số đọc thành lời (lời thoại nay viết "10 cm", "54π m³" cho phụ đề; giọng vẫn đọc tự nhiên)
     for ky, doc in (("cm²", "xăng-ti-mét vuông"), ("cm³", "xăng-ti-mét khối"), ("m²", "mét vuông"), ("m³", "mét khối"),
                     ("cm", "xăng-ti-mét"), ("mm", "mi-li-mét"), ("km", "ki-lô-mét"), ("m", "mét")):
@@ -565,6 +583,17 @@ def _gtts(text, tep, toc):
 
 THONG_KE_GIONG = {"edge": 0, "gtts": 0, "gemini": 0}
 
+# v98.3: video khung 4 tầng (Shorts/TikTok) — giọng năng lượng, nhịp nhanh gọn; luồng hình học giữ giọng kể chuyện mặc định
+PHONG_CACH_GIONG_4TANG = (
+    "Đọc bằng tiếng Việt chuẩn, giọng giáo viên toán trẻ, năng lượng, nhịp nhanh gọn kiểu TikTok/Shorts: tự tin, dứt khoát, "
+    "như đang nói chuyện trực tiếp với học sinh chứ không đọc văn bản. Không ngừng nghỉ thừa giữa các câu, không kéo dài cuối câu. "
+    "Nhấn rõ con số, đáp số và từ khóa bẫy (không hoàn lại, tổ hợp, chia cho toàn phần, điều kiện), nhưng KHÔNG gào, KHÔNG lên giọng quá đà. "
+    "Câu hỏi thì cuối câu hơi lên giọng; lúc ra đáp án thì vui và chắc chắn. "
+    "Đọc ký hiệu toán theo cách giáo viên Việt Nam nói (ví dụ: 'pi', 'r bình phương', 'phần'). "
+    "Chỉ đọc đúng lời văn bản dưới đây, không thêm bớt từ."
+)
+NHIP_GON = {"bat": False}   # v98.3: True ở khung 4 tầng (không phải hình không gian) -> nghỉ quanh cảnh ~0,18 s
+
 PHONG_CACH_GIONG_MAC_DINH = (
     "Đọc bằng tiếng Việt chuẩn, giọng của một người anh/chị dạy toán đang kể chuyện cho em nghe: tự nhiên, ấm, gần gũi, "
     "như nói chuyện thật chứ không như đọc văn bản hay quảng cáo. Tốc độ nói vừa phải, đều tay; câu dài thì ngắt hơi ở dấu phẩy. "
@@ -607,6 +636,17 @@ def nghi_canh(canh, i):
     c = canh[i]
     loai = str(c.get("loai") or "").lower()
     sau = canh[i + 1] if i + 1 < len(canh) else None
+    if NHIP_GON["bat"]:
+        # v98.3: khung 4 tầng — cắt khoảng lặng chết giữa cảnh (trước 0,57 s, trước đáp án 0,84 s) còn ~0,18 s; trước đáp án giữ
+        # MỘT nhịp ~0,34 s cho kịch tính; cảnh cuối giữ TAIL (Outro phát cùng giọng).
+        lead = 0.10 if i == 0 else (0.16 if re.search(r"dap_an|ket_qua", loai) else 0.06)
+        if sau is None:
+            tail = TAIL
+        elif re.search(r"dap_an|ket_qua", str(sau.get("loai") or "").lower()):
+            tail = 0.18
+        else:
+            tail = 0.12
+        return lead, tail
     if i == 0:
         lead = LEAD
     elif c.get("giu_san_khau"):
@@ -858,8 +898,10 @@ def _doc_khuc_gemini_mot_lan(ds_canh, chi_so_bat_dau, thu_muc, args):
     phong_cach = (
         args.phong_cach_giong +
         " Đây là toàn bộ lời giảng liền mạch của một người thầy duy nhất. "
-        "BẮT BUỘC giữ đồng nhất 100% một chất giọng, một âm sắc xuyên suốt từ đầu đến cuối; "
-        "nhấn nhẹ vào con số, từ khóa; lên xuống ngữ điệu tự nhiên như đang kể chuyện, không cường điệu. "
+        "BẮT BUỘC giữ đồng nhất 100% một chất giọng, một âm sắc xuyên suốt từ đầu đến cuối; " +
+        ("nhấn rõ con số, từ khóa bẫy; nhịp nhanh gọn, không ngừng thừa giữa các câu. " if NHIP_GON["bat"] else
+         "nhấn nhẹ vào con số, từ khóa; lên xuống ngữ điệu tự nhiên như đang kể chuyện, không cường điệu. ") +
+        # khoảng ngừng 1,2 s CHỈ là mốc để máy tách cảnh; cat_lang cắt sạch nên không lọt vào video
         "Giữa hai đoạn (cách nhau một dòng trống) hãy ngắt nghỉ rõ khoảng 1,2 giây.\nLời giảng:"
     )
     ky_tu = [max(1, len(v)) for v in van]
@@ -1023,6 +1065,30 @@ def cat_lang(tep_vao, tep_ra):
            "silenceremove=start_periods=1:start_threshold=-48dB:start_silence=0.03,areverse")
     codec = ["-c:a", "pcm_s16le"] if str(tep_ra).lower().endswith(".wav") else ["-c:a", "libmp3lame", "-b:a", "96k"]
     chay(["ffmpeg", "-y", "-loglevel", "error", "-i", tep_vao, "-af", loc] + codec + [tep_ra])
+
+
+def chia_moc_theo_lang(tep, ky_tu, tong=None):
+    """v98.3: chia thời lượng một tệp giọng (ĐÃ cắt lặng + tăng tốc) thành len(ky_tu) đoạn câu. Mốc dự kiến theo tỉ lệ ký tự,
+    rồi hút về TÂM khoảng lặng thật gần nhất (>= 0,06 s, trong cửa sổ ±40 % độ dài câu trung bình, không lùi mốc trước) ->
+    phụ đề / thẻ đổi đúng lúc giọng chuyển câu. Không thấy khoảng lặng thì giữ mốc tỉ lệ. Tổng các đoạn = tong (đo thật)."""
+    tong = float(tong if tong is not None else do_thoi_luong(tep))
+    n = len(ky_tu)
+    if n <= 1:
+        return [tong] * n
+    S = float(sum(ky_tu))
+    lang = [((b + e) / 2.0) for b, e in tim_khoang_lang(tep, nguong_db=-40, toi_thieu=0.06)] if os.path.exists(tep) else []
+    cua_so = 0.4 * tong / n
+    moc, tich, truoc = [], 0.0, 0.0
+    for k in range(n - 1):
+        tich += ky_tu[k]
+        du = tong * tich / S
+        ung = [m for m in lang if truoc + 0.15 < m < tong - 0.15 and abs(m - du) <= cua_so]
+        m = min(ung, key=lambda x: abs(x - du)) if ung else du
+        m = max(m, truoc + 0.05)
+        moc.append(m)
+        truoc = m
+    bien = [0.0] + moc + [tong]
+    return [round(bien[k + 1] - bien[k], 4) for k in range(n)]
 
 
 def doc_tu_edge(tep):
@@ -2974,6 +3040,11 @@ def main():
         args.giong = "vi-VN-NamMinhNeural"
     print("Giọng của video này: Gemini %s (dự phòng edge %s)" % (args.giong_gemini, args.giong))
     luong_hh = str(kb.get("luong") or "") == "hinh_hoc_thuan" or str(kb.get("mon") or "").upper() == "HINH_HOC"
+    NHIP_GON["bat"] = (isinstance(kb.get("khung4tang"), dict) and not luong_hh and not kb.get("hinh_khong_gian")
+                       and str(kb.get("kieu_video") or "") != "DAI_10_PHUT" and os.environ.get("NHIP_GON") != "0")
+    if NHIP_GON["bat"] and not os.environ.get("PHONG_CACH_GIONG") and args.phong_cach_giong == PHONG_CACH_GIONG_MAC_DINH:
+        args.phong_cach_giong = PHONG_CACH_GIONG_4TANG
+        print("v98.3: khung 4 tầng -> giọng năng lượng nhịp Shorts, nghỉ quanh cảnh ~0,18 s (tắt: NHIP_GON=0)")
     if luong_hh and args.may_giong != "edge" and os.environ.get("HH_GIONG_GEMINI") != "1":
         # Gemini TTS không trả mốc từng từ -> bài hình học dùng edge-tts (WordBoundary) để từng nét vẽ khớp đúng lời đọc
         args.may_giong = "edge"
@@ -3095,7 +3166,8 @@ def main():
                     cat_lang(nguon_gem, gon)
                 tong = do_thoi_luong(gon)
                 ky_tu = [max(1, len(d)) for d in cac_doan]
-                do_dai = [tong * k / sum(ky_tu) for k in ky_tu]
+                # v98.3: ranh giới câu đo TRÊN tệp đã cắt lặng + tăng tốc (khoảng lặng thật gần mốc tỉ lệ ký tự)
+                do_dai = chia_moc_theo_lang(gon, ky_tu, tong)
                 gap_c = 0
                 vao_loc = gon
                 tu_doan = None

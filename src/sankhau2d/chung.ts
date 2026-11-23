@@ -75,19 +75,51 @@ export function boCucRutMau(sk: RutMauVao, W: number, H: number) {
 }
 
 /* ---------------- sơ đồ cây (ngang: gốc trái -> lá phải; tích xác suất cuối nhánh) ---------------- */
+/* ---------------- sơ đồ cây (v98.3: hình học Bézier dùng chung cho vẽ + kiểm va chạm) ---------------- */
+export type Diem2 = {x: number; y: number};
+export type Bz = [Diem2, Diem2, Diem2, Diem2];
+// nhánh chữ S: hai điểm điều khiển nằm ngang ở 55 % khoảng cách -> rời nút cha và vào nút con theo phương ngang
+export const dieuKhienBz = (a: Diem2, b: Diem2): Bz => {
+  const dx = (b.x - a.x) * 0.55;
+  return [a, {x: a.x + dx, y: a.y}, {x: b.x - dx, y: b.y}, b];
+};
+export const diemBz = ([p0, p1, p2, p3]: Bz, u: number): Diem2 => {
+  const v = 1 - u;
+  return {
+    x: v * v * v * p0.x + 3 * v * v * u * p1.x + 3 * v * u * u * p2.x + u * u * u * p3.x,
+    y: v * v * v * p0.y + 3 * v * v * u * p1.y + 3 * v * u * u * p2.y + u * u * u * p3.y,
+  };
+};
+// v98.3: phân số TeX -> một dòng ngang "a/b" (viên nhãn mảnh, cao ~ nửa phân số xếp tầng)
+export const phangTex = (s?: string) => String(s || '').replace(/\\[dt]?frac\{([^{}]+)\}\{([^{}]+)\}/g, '$1/$2');
+// bề rộng ước lượng viên nhãn ngang (Be Vietnam đậm ~0,6 cỡ chữ / ký tự hiển thị + đệm)
+export const CO_NHAN_CAY = 19;
+export const CAO_VIEN_CAY = 28;
+export const rongVienCay = (tex: string) => {
+  const hien = phangTex(tex).replace(/\\[a-zA-Z]+|[{}\\]/g, '').replace(/\s+/g, '');
+  return Math.round(hien.length * CO_NHAN_CAY * 0.6 + 20);
+};
+export const NHAN_U_CAY = 0.62; // vị trí viên nhãn dọc nhánh (62 % về phía nút con)
+// >= 3 nhánh anh em (vd 4 hộp x 3 kết quả): ở 62 % các nhánh còn sát nhau -> đẩy viên nhãn ra 76 % (nhánh đã tách hẳn)
+export const NHAN_U_CAY_DAY = 0.76;
+
 export function boCucCay(sk: SoDoCayVao, W: number, H: number) {
   const soTang = Math.max(1, ...sk.nut.map((n) => n.tang));
   const la = sk.nut.filter((n) => n.la);
-  const yTren = LE.tren + (sk.tang.length ? 44 : 10), yDuoi = H - LE.duoi - CAO_DONG_KQ - 12;
+  // v98.3: KHÔNG còn dải kết quả dưới chân cây (thẻ T3 đã trình bày) -> cây cao thêm ~108 px
+  const yTren = LE.tren + (sk.tang.length ? 44 : 10), yDuoi = H - LE.duoi - 16;
   const rongTich = 150;
   const xGoc = LE.trai + 40;
   const xCuoi = W - LE.phai - rongTich - 70;
-  // v98.1: các tầng chia ĐỀU khoảng từ mép gốc tới mép phải nút cuối (khe giữa các cột đủ rộng cho nhánh cong chữ S + viên nhãn
-  // xác suất; trước đây tầng 1 dính sát gốc -> nhánh gần như dựng đứng, nhãn chen vào khe ~2 px)
-  const khe = (xCuoi + 62 - (xGoc + 26) - soTang * 124) / soTang;
-  const xTang = (k: number) => (k === 0 ? xGoc : xGoc + 26 + k * khe + (k - 1) * 124 + 62);
-  const viTri = new Map<number, {x: number; y: number}>();
   const buocY = (yDuoi - yTren) / Math.max(1, la.length);
+  // nút co theo khe dọc giữa các lá (3-4 hộp tầng 1 -> nhiều lá) để nút / viên nhãn không bao giờ chạm nhau
+  const caoNut = Math.round(kep(buocY - 14, 34, 48));
+  const rongNut = Math.round(kep(caoNut * 2.6, 100, 124));
+  const nua = rongNut / 2;
+  // v98.1: các tầng chia ĐỀU khoảng từ mép gốc tới mép phải nút cuối
+  const khe = (xCuoi + nua - (xGoc + 26) - soTang * rongNut) / soTang;
+  const xTang = (k: number) => (k === 0 ? xGoc : xGoc + 26 + k * khe + (k - 1) * rongNut + nua);
+  const viTri = new Map<number, Diem2>();
   la.forEach((n, j) => viTri.set(n.id, {x: xTang(n.tang), y: yTren + buocY * (j + 0.5)}));
   for (let k = soTang - 1; k >= 1; k--) {
     sk.nut.filter((n) => n.tang === k && !n.la).forEach((n) => {
@@ -96,14 +128,26 @@ export function boCucCay(sk: SoDoCayVao, W: number, H: number) {
     });
   }
   const goc = {x: xGoc, y: (yTren + yDuoi) / 2};
+  const vt = (id: number) => (id < 0 ? goc : viTri.get(id)!);
+  const nhanh = new Map<number, Bz>();
+  sk.canh.forEach((c) => {
+    const a = vt(c.tu), d = vt(c.den);
+    nhanh.set(c.den, dieuKhienBz({x: a.x + (c.tu < 0 ? 24 : nua), y: a.y}, {x: d.x - nua, y: d.y}));
+  });
+  const uNhan = new Map<number, number>();
+  sk.nut.forEach((n) => uNhan.set(n.id, sk.nut.filter((x) => x.cha === n.cha).length >= 3 ? NHAN_U_CAY_DAY : NHAN_U_CAY));
   const hop: Hop[] = [{ten: 'goc', x: goc.x - 26, y: goc.y - 26, w: 52, h: 52}];
   sk.nut.forEach((n) => {
     const v = viTri.get(n.id)!;
-    hop.push({ten: `nut_${n.id}`, x: v.x - 62, y: v.y - 24, w: 124, h: 48});
-    if (n.la && n.tich) hop.push({ten: `tich_${n.id}`, x: v.x + 76, y: v.y - 22, w: rongTich, h: 44});
+    hop.push({ten: `nut_${n.id}`, x: v.x - nua, y: v.y - caoNut / 2, w: rongNut, h: caoNut});
+    if (n.la && n.tich) hop.push({ten: `tich_${n.id}`, x: v.x + nua + 14, y: v.y - CAO_VIEN_CAY / 2, w: Math.min(rongTich, rongVienCay(`= ${n.tich}`)), h: CAO_VIEN_CAY});
+    const bz = nhanh.get(n.id);
+    if (bz) {
+      const g = diemBz(bz, uNhan.get(n.id)!), w = rongVienCay(n.p);
+      hop.push({ten: `nhan_${n.id}`, x: g.x - w / 2, y: g.y - CAO_VIEN_CAY / 2, w, h: CAO_VIEN_CAY});
+    }
   });
-  hop.push({ten: 'ket_qua', x: LE.trai, y: H - LE.duoi - CAO_DONG_KQ, w: W - LE.trai - LE.phai, h: CAO_DONG_KQ});
-  return {viTri, goc, xTang, hop, yTren};
+  return {viTri, goc, xTang, hop, yTren, nhanh, caoNut, rongNut, uNhan};
 }
 
 /* ---------------- lưới Bayes (hình vuông đơn vị) ---------------- */

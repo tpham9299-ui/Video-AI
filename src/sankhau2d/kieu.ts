@@ -12,8 +12,8 @@ export type RutMauVao = Chung & {
   n_omega: number; n_a?: number; n_doi?: number; p?: string; bien_co: string; omega_tex?: string;
 };
 // v98.1: mau = nút thuộc MẪU SỐ (đường dẫn tới biến cố điều kiện, bước xác suất toàn phần); sang = TỬ SỐ / đường thỏa
-export type NutCay = {id: number; nhan: string; tang: number; cha: number; duong: number[]; p: string; tich: string | null; la: boolean; sang: boolean; mau?: boolean};
-export type SoDoCayVao = Chung & {loai: 'so_do_cay'; tang: string[]; nut: NutCay[]; canh: {tu: number; den: number}[]; tong?: string; bt_tong?: string; p?: string; mau_so?: string; bayes?: boolean; bt_mau?: string};
+export type NutCay = {id: number; nhan: string; tang: number; cha: number; duong: number[]; p: string; tich: string | null; la: boolean; sang: boolean; mau?: boolean; bi?: string};
+export type SoDoCayVao = Chung & {loai: 'so_do_cay'; tang: string[]; nut: NutCay[]; canh: {tu: number; den: number}[]; tong?: string; bt_tong?: string; p?: string; mau_so?: string; bayes?: boolean; bt_mau?: string; kieu_so?: "phan_so" | "thap_phan"};
 export type LuoiBayesVao = Chung & {
   loai: 'luoi_bayes'; nhan_a: string; nhan_b: string; pa: number; pba: number; pbna: number; hoi?: 'B';
   tex: {pa: string; pna: string; pba: string; pbna: string; pab: string; pnab: string; pb: string}; p?: string;

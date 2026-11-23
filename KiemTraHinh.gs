@@ -2981,6 +2981,7 @@ function tuSuaKhung4Tang_(kb, r) {
   }
   if (!k4.buoc.length) { delete kb.khung4tang; kb.bo_dung = 'blender'; sua.push('khung4tang không còn bước -> đường dựng cũ'); return sua; }
   sua = sua.concat(tuSuaToanV95_(kb));
+  sua = sua.concat(tuSuaDuoiV983_(kb));   // v98.3: đuôi sau đáp án <= 6 s TRƯỚC khi suy CTA từ lời
   sua = sua.concat(tuSuaMocCau_(kb, r));
   kb.bo_dung = '3d_vector';
   return sua;
@@ -3293,6 +3294,62 @@ function tuSuaToanV95_(kb) {
   }
   return sua;
 }
+// v98.3: KHÓA ĐUÔI SAU ĐÁP ÁN (giữ chân Shorts/TikTok): sau cảnh dap_an cuối cùng chỉ còn MỘT cảnh ket_luan gồm tối đa
+// 1 câu mẹo nhớ (<= 18 chữ) + 1 câu CTA; tổng <= DUOI_TOI_DA_TIENG_ tiếng (~6 s). Cảnh liên hệ thực tế / tóm tắt đọc lại bị bỏ,
+// đánh số lại cảnh + bước khung 4 tầng (cùng cách tuSuaDocLapDe_). Bài hình không gian / Lego và video 10 phút không đụng.
+var DUOI_TOI_DA_TIENG_ = 25;
+var RE_MEO_DUOI_ = /mẹo|nhớ|gặp|dấu hiệu|chìa khóa|bí quyết|luôn|đừng quên|cứ thấy|hễ|thấy chữ|bẫy/i;
+function cauLoi_(s) {
+  return (String(s || '').match(/[^.!?…]+[.!?…]*/g) || []).map(function (x) { return x.trim(); }).filter(String);
+}
+function demTieng_(s) { return String(s || '').split(/\s+/).filter(String).length; }
+function tuSuaDuoiV983_(kb) {
+  if (!kb || !Array.isArray(kb.canh) || !kb.khung4tang || kb.kieu_video === 'DAI_10_PHUT' || kb.hinh_khong_gian) return [];
+  var iDA = -1;
+  // cảnh kiem_tra (thử lại / căn cứ cực trị) ngay sau đáp án là TOÁN, không phải đuôi -> giữ, khóa đuôi tính sau nó
+  kb.canh.forEach(function (c, i) { if (c && /dap_an|ket_qua/.test(String(c.loai || ''))) iDA = i; });
+  if (iDA >= 0) while (iDA + 1 < kb.canh.length - 1 && /kiem_tra/.test(String((kb.canh[iDA + 1] || {}).loai || ''))) iDA++;
+  if (iDA < 0 || iDA >= kb.canh.length - 1) return [];
+  var sau = kb.canh.slice(iDA + 1);
+  var cau = [];
+  sau.forEach(function (c) { cau = cau.concat(cauLoi_(c && c.loi_thoai)); });
+  var tong = cau.reduce(function (s, x) { return s + demTieng_(x); }, 0);
+  if (sau.length === 1 && cau.length <= 2 && tong <= DUOI_TOI_DA_TIENG_) return [];
+  var laCta = function (x) { return CTA_NGHIA_.some(function (p) { return p[0].test(x); }); };
+  var cta = null;
+  for (var k = cau.length - 1; k >= 0; k--) if (laCta(cau[k]) && demTieng_(cau[k]) <= 16) { cta = cau[k]; break; }
+  // không có câu kêu gọi: KHÔNG bịa — tuSuaMocCau_ (chạy ngay sau) thêm đúng một câu CTA khớp nút
+  var meo = null;
+  cau.forEach(function (x) { if (!meo && x !== cta && !laCta(x) && RE_MEO_DUOI_.test(x) && demTieng_(x) <= 18) meo = x; });
+  if (!meo && !cta) cau.forEach(function (x) { if (!meo && demTieng_(x) <= 18) meo = x; });
+  if (meo && cta && demTieng_(meo) + demTieng_(cta) > DUOI_TOI_DA_TIENG_) meo = null;
+  if (!meo && !cta) return [];
+  var cuoi = sau[sau.length - 1];
+  var loiMoi = [meo, cta].filter(Boolean).join(' ');
+  if (sau.length === 1 && loiMoi === String(cuoi.loi_thoai || '').trim()) return [];
+  cuoi.loi_thoai = loiMoi;
+  if (!/ket_luan|bai_hoc|cta/.test(String(cuoi.loai || ''))) cuoi.loai = 'ket_luan';
+  var xoa = sau.length - 1;
+  if (xoa) {
+    var moi = {}, giu = [];
+    kb.canh.forEach(function (c, i) { if (i <= iDA || c === cuoi) { moi[i + 1] = giu.length + 1; giu.push(c); } });
+    giu.forEach(function (c, i) { c.so = i + 1; });
+    kb.canh = giu;
+    (kb.khung4tang.buoc || []).forEach(function (b) {
+      if (b && b.canh !== undefined) {
+        var c = +b.canh, t = c;
+        while (t > 1 && moi[t] === undefined) t--;
+        b.canh = moi[t] || 1;
+        if (c && moi[c] === undefined && b.khi_noi) delete b.khi_noi;
+      }
+    });
+  }
+  var lc = loiMoi.toLowerCase();
+  (kb.khung4tang.buoc || []).forEach(function (b) {
+    if (b && +b.canh === cuoi.so && b.khi_noi && lc.indexOf(String(b.khi_noi).toLowerCase()) < 0) delete b.khi_noi;
+  });
+  return ['v98.3: khóa đuôi sau đáp án ' + tong + ' -> ' + demTieng_(loiMoi) + ' tiếng' + (xoa ? ', bỏ ' + xoa + ' cảnh thừa' : '') + ' (mẹo + CTA)'];
+}
 // Lỗi CỨNG v95: (a) gọi "parabol" với hàm không bậc hai (khi Auto-fix tắt / còn sót); (b) nhảy cóc từ đạo hàm = 0 sang kết luận
 // lớn nhất/nhỏ nhất mà THIẾU MỌI căn cứ hợp lệ (đổi dấu, bảng biến thiên, so sánh đầu mút/biên, bất đẳng thức/Cauchy, đỉnh bậc hai).
 function loiToanV95_(kb) {
@@ -3313,10 +3370,10 @@ function loiToanV95_(kb) {
   (k4.buoc || []).forEach(function (b) { (b && b.the || []).forEach(function (th) { (th && th.dong || []).forEach(function (d) { noiDung.push(String(d)); }); }); });
   var canCu = coBbt || /đổi\s*dấu|xét\s*dấu|bảng\s*biến\s*thiên|dương\s*sang\s*âm|âm\s*sang\s*dương|đầu\s*mút|so\s*sánh\s*(?:các\s*)?giá\s*trị|tại\s*(?:hai\s*)?biên|bất\s*đẳng\s*thức|cauchy|am-gm|cô-?si|đỉnh\s*(?:của\s*)?(?:hàm\s*)?(?:bậc\s*hai|parabol)|đạo\s*hàm\s*cấp\s*hai|[A-Za-z]''\s*\(/i.test(noiDung.join(' | '));
   if (daoHam0 && ketLuan && !canCu) nang.push('TOAN_THIEU_CAN_CU_CUC_TRI: lời giảng đi thẳng từ "đạo hàm bằng 0" sang kết luận lớn nhất/nhỏ nhất mà không có căn cứ. Thêm MỘT câu căn cứ (ví dụ "đạo hàm đổi dấu từ dương sang âm qua x = 2 nên V đạt cực đại", hoặc bảng biến thiên / so sánh giá trị tại đầu mút và nghiệm).');
-  // độ dài khung 4 tầng: mục tiêu 50-68 s (cảnh báo, không chặn)
+  // độ dài khung 4 tầng: mục tiêu 45-55 s (v98.3; cảnh báo, không chặn)
   if (kb.khung4tang && kb.kieu_video !== 'DAI_10_PHUT') {
     var tieng = kb.canh.reduce(function (s, c) { return s + String((c && c.loi_thoai) || '').split(/\s+/).filter(String).length; }, 0);
-    if (tieng > 300) nhe.push('KICH_BAN_DAI_4TANG: lời thoại ' + tieng + ' tiếng (~' + Math.round(tieng / 4.4) + ' s), mục tiêu 200-270 tiếng cho video 50-68 giây. Cắt câu rào, gộp ý trùng.');
+    if (tieng > 240) nhe.push('KICH_BAN_DAI_4TANG: lời thoại ' + tieng + ' tiếng (~' + Math.round(tieng / 4.4) + ' s), mục tiêu 170-220 tiếng cho video 45-55 giây. Cắt câu rào, gộp ý trùng, không đọc lại đề.');
   }
   return {nang: nang, nhe: nhe};
 }

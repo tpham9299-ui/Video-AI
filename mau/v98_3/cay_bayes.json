@@ -1,0 +1,275 @@
+{
+ "id": "V983-CAYBAYES",
+ "mon": "XAC_SUAT",
+ "luong": "thuc_te_xac_suat",
+ "lop": "12",
+ "tieu_de": "Bi đỏ đến từ hộp nào?",
+ "chu_de": "Xác suất toàn phần và công thức Bayes",
+ "de_bai": "Hộp 1 có 3 bi đỏ và 2 bi xanh, hộp 2 có 2 bi đỏ và 4 bi xanh. Chọn ngẫu nhiên một hộp rồi lấy ra 2 bi thì được 2 bi đỏ. Tính xác suất 2 bi đó lấy từ hộp 1.",
+ "dap_an_cuoi": "P = 9/11",
+ "cta": "BÌNH LUẬN NGAY!",
+ "canh": [
+  {
+   "so": 1,
+   "loai": "de_bai",
+   "loi_thoai": "Bi đỏ này đến từ hộp nào? Lấy 2 bi, được 2 bi đỏ, tìm khả năng từ hộp một.",
+   "noi_dung_man_hinh": []
+  },
+  {
+   "so": 2,
+   "loai": "tinh_toan",
+   "loi_thoai": "Đầu tiên ta chọn hộp. Hai hộp như nhau, mỗi nhánh một phần hai.",
+   "noi_dung_man_hinh": [
+    "P(H_1) = P(H_2) = \\dfrac{1}{2}"
+   ]
+  },
+  {
+   "so": 3,
+   "loai": "tinh_toan",
+   "loi_thoai": "Tiếp theo là lấy 2 bi, không hoàn lại. Hộp một: tổ hợp chập 2 của 3 chia tổ hợp chập 2 của 5, bằng ba phần mười. Hộp hai là một phần mười lăm.",
+   "noi_dung_man_hinh": [
+    "P(D \\mid H_1) = \\dfrac{3}{10}",
+    "P(D \\mid H_2) = \\dfrac{1}{15}"
+   ]
+  },
+  {
+   "so": 4,
+   "loai": "tinh_toan",
+   "loi_thoai": "Nhân xác suất dọc mỗi nhánh: hộp một ba phần hai mươi, hộp hai một phần ba mươi.",
+   "noi_dung_man_hinh": [
+    "\\dfrac{1}{2} \\cdot \\dfrac{3}{10} = \\dfrac{3}{20}",
+    "\\dfrac{1}{2} \\cdot \\dfrac{1}{15} = \\dfrac{1}{30}"
+   ]
+  },
+  {
+   "so": 5,
+   "loai": "tinh_toan",
+   "loi_thoai": "Theo công thức xác suất toàn phần, cộng hai nhánh 2 đỏ: P của D bằng mười một phần sáu mươi.",
+   "noi_dung_man_hinh": [
+    "P(D) = \\dfrac{3}{20} + \\dfrac{1}{30} = \\dfrac{11}{60}"
+   ]
+  },
+  {
+   "so": 6,
+   "loai": "tinh_toan",
+   "loi_thoai": "Giờ áp dụng công thức Bayes. Bẫy ở đây: phải chia cho toàn phần P của D.",
+   "noi_dung_man_hinh": [
+    "P(H_1 \\mid D) = \\dfrac{3/20}{11/60}"
+   ]
+  },
+  {
+   "so": 7,
+   "loai": "dap_an",
+   "loi_thoai": "Vậy xác suất hai bi đỏ đến từ hộp một là chín phần mười một.",
+   "noi_dung_man_hinh": [
+    "P(H_1 \\mid D) = \\dfrac{9}{11}"
+   ]
+  },
+  {
+   "so": 8,
+   "loai": "ket_luan",
+   "loi_thoai": "Mẹo nhớ: thấy chữ biết rằng, chia cho toàn phần. Bình luận đáp án nếu đổi thành hộp hai nhé!",
+   "noi_dung_man_hinh": []
+  }
+ ],
+ "khung4tang": {
+  "de_ghim": [
+   {
+    "id": "h1",
+    "nhan": "H_1: 3Đ\\,2X"
+   },
+   {
+    "id": "h2",
+    "nhan": "H_2: 2Đ\\,4X"
+   },
+   {
+    "id": "q",
+    "nhan": "P(H_1 \\mid D) = ?"
+   }
+  ],
+  "buoc": [
+   {
+    "canh": 1,
+    "nhan": "Đề bài",
+    "tieu_de": "Bi đỏ đến từ hộp nào?",
+    "the": [
+     {
+      "loai": "chu",
+      "noi_dung": "Lấy 2 bi được 2 bi đỏ"
+     }
+    ]
+   },
+   {
+    "canh": 2,
+    "khi_noi": "đầu tiên ta chọn hộp",
+    "nhan": "Nhánh 1",
+    "tieu_de": "Chọn hộp",
+    "du_kien": [
+     "h1",
+     "h2"
+    ],
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "P(H_1) = P(H_2) = \\dfrac{1}{2}"
+      ]
+     }
+    ]
+   },
+   {
+    "canh": 3,
+    "khi_noi": "tiếp theo là lấy 2 bi",
+    "nhan": "Nhánh 2",
+    "tieu_de": "Lấy 2 bi đỏ",
+    "du_kien": [
+     "h1",
+     "h2"
+    ],
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "P(D \\mid H_1) = \\dfrac{3}{10}",
+       "P(D \\mid H_2) = \\dfrac{1}{15}"
+      ]
+     }
+    ]
+   },
+   {
+    "canh": 5,
+    "khi_noi": "theo công thức xác suất toàn phần",
+    "nhan": "Toàn phần",
+    "tieu_de": "Tính P(D)",
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "P(D) = \\dfrac{3}{20} + \\dfrac{1}{30} = \\dfrac{11}{60}"
+      ]
+     }
+    ]
+   },
+   {
+    "canh": 6,
+    "khi_noi": "giờ áp dụng công thức",
+    "nhan": "Bayes",
+    "tieu_de": "Chỉ giữ nhánh hộp 1",
+    "du_kien": [
+     "q"
+    ],
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "P(H_1 \\mid D) = \\dfrac{3/20}{11/60}"
+      ]
+     }
+    ]
+   },
+   {
+    "canh": 7,
+    "khi_noi": "vậy xác suất hai bi đỏ",
+    "nhan": "Kết luận",
+    "tieu_de": "Đáp số",
+    "mau": "vang",
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "chot": true,
+      "dong": [
+       "P(H_1 \\mid D) = \\dfrac{9}{11}"
+      ]
+     }
+    ]
+   }
+  ],
+  "san_khau": {
+   "loai": "so_do_cay",
+   "tham_so": {
+    "tang": [
+     "Chọn hộp",
+     "Lấy 2 bi"
+    ],
+    "goc": {
+     "con": [
+      {
+       "nhan": "Hộp 1",
+       "p": "1/2",
+       "con": [
+        {
+         "nhan": "2 đỏ",
+         "p": "3/10"
+        },
+        {
+         "nhan": "Khác",
+         "p": "7/10"
+        }
+       ]
+      },
+      {
+       "nhan": "Hộp 2",
+       "p": "1/2",
+       "con": [
+        {
+         "nhan": "2 đỏ",
+         "p": "1/15"
+        },
+        {
+         "nhan": "Khác",
+         "p": "14/15"
+        }
+       ]
+      }
+     ]
+    },
+    "duong": [
+     [
+      0,
+      0
+     ]
+    ],
+    "mau": [
+     [
+      0,
+      0
+     ],
+     [
+      1,
+      0
+     ]
+    ],
+    "hoi": "dieu_kien"
+   },
+   "pha": [
+    {
+     "ten": "goc"
+    },
+    {
+     "ten": "tang_1",
+     "khi_noi": "đầu tiên ta chọn hộp"
+    },
+    {
+     "ten": "tang_2",
+     "khi_noi": "tiếp theo là lấy 2 bi"
+    },
+    {
+     "ten": "tich",
+     "khi_noi": "nhân xác suất dọc mỗi nhánh"
+    },
+    {
+     "ten": "toan_phan",
+     "khi_noi": "theo công thức xác suất toàn phần"
+    },
+    {
+     "ten": "bayes",
+     "khi_noi": "giờ áp dụng công thức"
+    },
+    {
+     "ten": "ket",
+     "khi_noi": "vậy xác suất hai bi đỏ"
+    }
+   ]
+  }
+ }
+}

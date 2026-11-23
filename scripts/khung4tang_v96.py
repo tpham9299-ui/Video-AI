@@ -736,9 +736,41 @@ def gan_bo_mau_rut(sk, pha_ds, buoc, loi_tai=None):
 # ====================================================================================================================
 # 5. SƠ ĐỒ CÂY / LƯỚI BAYES / CỘT PHÂN PHỐI
 # ====================================================================================================================
+# v98.3: chữ màu viết tắt trong ô ghim ĐỀ ("H_1: 3Đ\,2X") -> "3 đỏ 2 xanh" (chấm màu bi dưới nút tầng 1 của cây mờ)
+_MAU_TAT = {"đ": "đỏ", "x": "xanh", "v": "vàng", "t": "trắng", "đe": "đen"}
+
+
+def bi_tu_ghim(nhan):
+    s = re.sub(r"\[,;:! ]|\text\{([^}]*)\}", lambda m: " " + (m.group(1) or ""), str(nhan or ""))
+    s = s.split(":", 1)[1] if ":" in s else s
+    ra = []
+    for so, chu in re.findall(r"(\d+)\s*(đỏ|xanh|vàng|trắng|đen|Đ|X|V|T)(?![a-zà-ỹ])", s, flags=re.I):
+        ra.append("%s %s" % (so, _MAU_TAT.get(chu.lower(), chu.lower())))
+    return " ".join(ra)
+
+
+def kieu_so_cay(ps, kb):
+    """v98.3: MỘT cách viết số cho cả cây + thẻ T3: 'phan_so' khi có giá trị không ra thập phân hữu hạn ngắn hoặc thẻ / màn hình
+    của kịch bản viết phân số (\frac, a/b); ngược lại 'thap_phan'. Tránh trộn 0,15 trên nhánh với 3/20 ở thẻ T3."""
+    for x in ps:
+        if isinstance(x, Fraction) and x.denominator > 1 and "frac" in so_tex(x):
+            return "phan_so"
+    van = json.dumps(((kb or {}).get("khung4tang") or {}).get("buoc") or [], ensure_ascii=False)
+    if re.search(r"\\[dt]?frac|\d\s*/\s*\d", van):
+        return "phan_so"
+    return "thap_phan"
+
+
+def so_cay(x, kieu):
+    if kieu == "phan_so" and isinstance(x, Fraction) and x.denominator > 1:
+        return "\dfrac{%d}{%d}" % (x.numerator, x.denominator)
+    return so_tex(x)
+
+
 def dung_so_do_cay(ts, kb, sua, lop):
-    """ts = {tang:[nhãn tầng], goc:{con:[{nhan, p, con:[...]}]}, duong:[[i,j,...],...], hoi:'tong'|'dieu_kien', tu:[...], mau:[...]}.
-    Máy: đọc xác suất từng nhánh, bù nhánh còn thiếu (1 - tổng), kiểm tổng = 1, nhân theo đường, cộng các đường tô sáng."""
+    """ts = {tang:[nhãn tầng], goc:{con:[{nhan, p, bi?, con:[...]}]}, duong:[[i,j,...],...], hoi:'tong'|'dieu_kien', tu:[...], mau:[...]}.
+    Máy: đọc xác suất từng nhánh, bù nhánh còn thiếu (1 - tổng), kiểm tổng = 1, nhân theo đường, cộng các đường tô sáng.
+    v98.3: một kiểu số cho cả cây (kieu_so_cay), nút tầng 1 có `bi` (thành phần hộp, từ con[].bi hoặc ô ghim ĐỀ)."""
     goc = ts.get("goc") if isinstance(ts.get("goc"), dict) else {"con": ts.get("nhanh") or ts.get("con") or []}
     nut, canh = [], []
 
@@ -755,47 +787,61 @@ def dung_so_do_cay(ts, kb, sua, lop):
             i = len(nut)
             tich = None if p is None or p_tich is None else p_tich * p
             nut.append({"id": i, "nhan": str(c.get("nhan") or ""), "tang": sau, "cha": cha, "duong": duong + [j],
-                        "p": so_tex(p) if p is not None else str(c.get("p") or "?"), "tich": so_tex(tich) if tich is not None and not c.get("con") else None,
-                        "_tich": tich, "la": not c.get("con")})
+                        "_p": p, "_p_tho": str(c.get("p") or "?"), "_tich": tich, "la": not c.get("con"),
+                        "_bi": str(c.get("bi") or "")})
             canh.append({"tu": cha, "den": i})
             if sau < 3:
                 duyet(c, i, sau + 1, duong + [j], tich)
     duyet(goc, -1, 1, [], Fraction(1))
     duong_sang = [list(d) for d in (ts.get("duong") or []) if isinstance(d, list)]
     la_sang = [n for n in nut if n["la"] and any(n["duong"] == d for d in duong_sang)]
-    if not la_sang and nut:
-        # AI không chỉ đường: chọn lá có nhãn chứa chữ của biến cố cần tìm, không thì để trống (không bịa)
-        pass
     for n in nut:
         n["sang"] = any(n["duong"] == d[:len(n["duong"])] for d in duong_sang)
     tong = sum((n["_tich"] for n in la_sang if n["_tich"] is not None), Fraction(0)) if la_sang else None
-    kq = {"loai": "so_do_cay", "tang": [str(x) for x in (ts.get("tang") or [])][:3], "nut": nut, "canh": canh}
     p = tong
+    mau_s, la_mau = None, []
     if ts.get("hoi") == "dieu_kien" and tong is not None:
         mau_d = [list(d) for d in (ts.get("mau") or []) if isinstance(d, list)]
         la_mau = [n for n in nut if n["la"] and any(n["duong"] == d for d in mau_d)]
         mau_s = sum((n["_tich"] for n in la_mau if n["_tich"] is not None), Fraction(0))
         if str(lop) != "12":
             sua.append("so_do_cay: lớp %s chưa học xác suất có điều kiện -> chỉ cộng các nhánh" % lop)
+            mau_s = None
         elif mau_s:
             p = tong / mau_s
-            kq["mau_so"] = so_tex(mau_s)
-            # v98.1: Remotion "cây dòng chảy" cần biết nút nào thuộc MẪU SỐ (bước toàn phần) và nút nào thuộc TỬ SỐ (sang)
-            kq["bayes"] = True
             for n in nut:
                 n["mau"] = any(n["duong"] == d[:len(n["duong"])] for d in mau_d)
-            kq["bt_mau"] = " + ".join(n["tich"] for n in la_mau if n["tich"]) + " = " + so_tex(mau_s)
+        else:
+            mau_s = None
+    ks = kieu_so_cay([n["_p"] for n in nut] + [n["_tich"] for n in nut if n["la"]] + [tong, mau_s, p], kb)
+    f = lambda x: so_cay(x, ks)
+    tang1 = [n for n in nut if n["tang"] == 1]
+    ghim = [g for g in (((kb or {}).get("khung4tang") or {}).get("de_ghim") or []) if isinstance(g, dict) and bi_tu_ghim(g.get("nhan"))]
+    for k, n in enumerate(tang1):
+        bi = n["_bi"] or (bi_tu_ghim(ghim[k].get("nhan")) if len(ghim) == len(tang1) else "")
+        if bi:
+            n["bi"] = bi
+    for n in nut:
+        n["p"] = f(n["_p"]) if n["_p"] is not None else n["_p_tho"]
+        n["tich"] = f(n["_tich"]) if n["_tich"] is not None and n["la"] else None
+    kq = {"loai": "so_do_cay", "tang": [str(x) for x in (ts.get("tang") or [])][:3], "nut": nut, "canh": canh, "kieu_so": ks}
+    if mau_s:
+        kq["mau_so"] = f(mau_s)
+        # v98.1: Remotion "cây dòng chảy" cần biết nút nào thuộc MẪU SỐ (bước toàn phần) và nút nào thuộc TỬ SỐ (sang)
+        kq["bayes"] = True
+        kq["bt_mau"] = " + ".join(n["tich"] for n in la_mau if n["tich"]) + " = " + f(mau_s)
     if tong is not None:
-        kq["tong"] = so_tex(tong)
-        kq["bt_tong"] = " + ".join(n["tich"] for n in la_sang if n["tich"]) + " = " + so_tex(tong)
+        kq["tong"] = f(tong)
+        kq["bt_tong"] = " + ".join(n["tich"] for n in la_sang if n["tich"]) + " = " + f(tong)
     if p is not None:
-        kq["p"], kq["p_so"] = so_tex(p), float(p)
+        kq["p"], kq["p_so"] = f(p), float(p)
         dung = khop_dap_an(p, kb.get("dap_an_cuoi") or kb.get("dap_an"))
         kq["khop_dap_an"] = dung
         if dung is False:
             sua.append("XS_SAI_DAP_SO: sơ đồ cây cho %s khác đáp án '%s'" % (p, kb.get("dap_an_cuoi") or kb.get("dap_an")))
     for n in nut:
-        n.pop("_tich", None)
+        for k in ("_tich", "_p", "_p_tho", "_bi"):
+            n.pop(k, None)
     return kq if nut else None
 
 
