@@ -65,5 +65,17 @@ for (const [ten, theme] of [['koch_dao', 'deep_ocean'], ['gia_ve_parabol', 'emer
   kiem((k.tuSinh?.lop || []).every((l, i, ds) => !i || ds[i - 1].t <= l.t), `${ten}: lớp tự sinh sắp theo thời gian`);
 }
 
+console.log('5. Outro giữ sân khấu tự sinh + nền theme');
+const vid = fs.readFileSync('src/Video.tsx', 'utf8'), out = fs.readFileSync('src/khung4tang/OutroTomTat.tsx', 'utf8');
+kiem(vid.includes('tuSinh={k.tuSinh || null}') && vid.includes('theme={k.theme}'), 'Video.tsx truyền tuSinh + theme vào OutroTomTat');
+kiem(out.includes('<SanKhauTuSinh ts={tuSinh}') && out.includes('<NenKhiQuyen th={th}'), 'OutroTomTat dựng bước cuối SanKhauTuSinh + nền khí quyển');
+kiem(!/textOverflow: 'ellipsis'}}><ChuTron s=\{d\.chien_thuat\} co=\{d\.chien_thuat\.length > 14 \? 28/.test(out), 'nhãn tóm tắt 3 hộp không còn cắt "..." (xuống 2 dòng)');
+for (const ten of ['koch_dao', 'gia_ve_parabol']) {
+  const p = `out/v99_1/${ten}/props.json`;
+  if (!fs.existsSync(p)) continue;
+  const tt = JSON.parse(fs.readFileSync(p, 'utf8')).khung4tang.tomTat || [];
+  kiem(tt.length === 3 && tt.every((d) => d.chien_thuat.length <= 18 && d.cong_thuc), `${ten}: Outro 3 nhãn trọn (<= 18 ký tự) + đủ công thức`);
+}
+
 console.log(`\nKẾT QUẢ: ${dat} đạt, ${hong} hỏng`);
 process.exit(hong ? 1 : 0);

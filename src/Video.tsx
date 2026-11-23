@@ -197,7 +197,7 @@ const NoiDung4Tang: React.FC<Props & {coIntro?: boolean}> = (props) => {
       {outro ? (
         <Sequence from={outro.batDau} durationInFrames={outro.soFrame}>
           {outro.loai === 'tu_tao' && tomTat ? (
-            <OutroTomTat dapAn={props.dapAn} tomTat={tomTat} canh={k.sanKhau || k.khongGian ? null : canhCuoi} sanKhau={k.sanKhau || null} khongGian={k.khongGian || null} tCuoi={Math.max(1, ketThuc) / fps} thuongHieu={k.thuongHieu ?? thuongHieu?.ten} cta={k.cta} />
+            <OutroTomTat dapAn={props.dapAn} tomTat={tomTat} canh={k.tuSinh || k.sanKhau || k.khongGian ? null : canhCuoi} sanKhau={k.tuSinh ? null : k.sanKhau || null} khongGian={k.khongGian || null} tCuoi={Math.max(1, ketThuc) / fps} thuongHieu={k.thuongHieu ?? thuongHieu?.ten} cta={k.cta} tuSinh={k.tuSinh || null} theme={k.theme} />
           ) : outro.loai === 'tu_tao' ? <ManKetChuyenNghiep th={thuongHieu} baiHoc={props.baiHoc || []} dapAn={props.dapAn} tiepTheo={props.tiepTheo || ''} /> : <ManKet tep={outro.tep} loai={outro.loai} />}
         </Sequence>
       ) : null}
