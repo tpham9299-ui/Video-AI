@@ -485,6 +485,12 @@ def bao_ve_apps_script(id_video, ket_qua):
 
 def main():
     meta = json.loads(env("DANG_JSON") or "{}")
+    try:   # v99.2 Evergreen: gỡ năm sinh / khóa học / năm thi khỏi tiêu đề, mô tả, hashtag (phòng metadata cũ)
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import evergreen
+        evergreen.ve_sinh_meta(meta)
+    except Exception as e:   # noqa: BLE001 - lớp chặn phụ, không làm hỏng việc đăng
+        print("Evergreen bỏ qua:", str(e)[:120])
     id_video = env("ID_VIDEO") or meta.get("ten", "")
     nen_tang = [n for n in meta.get("nen_tang", []) if n in DANG]
     ket_qua = {}

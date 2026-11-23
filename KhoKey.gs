@@ -133,6 +133,7 @@ function khoGhiNhanLoi_(key, tq, code, raw) {
   }
   return false;
 }
+function khoLa403Model_(code, raw) { return code === 403 && !/API_KEY_INVALID|API key not valid|API_KEY_EXPIRED|API key expired|SERVICE_DISABLED|has not been used in project|API_KEY_SERVICE_BLOCKED|API_KEY_HTTP_REFERRER_BLOCKED|billing/i.test(String(raw || '')); }
 
 // GỌI GEMINI QUA KHO KEY. he: 'VIDEO' | 'DIEMDANH' | tên bất kỳ. body: đối tượng hoặc chuỗi JSON.
 // tuyChon: { hanChoMs: tổng thời gian chờ tối đa khi mọi key đang nghỉ ngắn (mặc định 45000; 0 = không chờ),
@@ -145,7 +146,9 @@ function khoGoi_(he, model, body, tuyChon) {
   var url = KHO_API_ + model + ':generateContent';
   var payload = typeof body === 'string' ? body : JSON.stringify(body);
   if (!khoDanhSachKey_().length) return { ok: false, code: 0, het: false, raw: 'THIEU_GEMINI_API_KEY' };
-  var bat = Date.now(), loiMang = 0, loi5xx = 0;
+  // v99.2b: model đã bị chặn vì 403 (BoPhan1.gs chanModel403_) -> trả ngay, không gọi mạng
+  if (typeof modelBiChan403_ === 'function' && modelBiChan403_(model)) return { ok: false, code: 403, het: false, raw: 'MODEL_TU_CHOI (đã chặn): ' + model };
+  var bat = Date.now(), loiMang = 0, loi5xx = 0, so403 = 0;
   for (var vong = 0; vong < 60; vong++) {
     var tt = khoXep_(he, tq);
     if (!tt.dung.length) {
@@ -168,7 +171,12 @@ function khoGoi_(he, model, body, tuyChon) {
     var code = res.getResponseCode(), raw = res.getContentText();
     if (code === 200) return { ok: true, code: 200, het: false, raw: raw, key: key };
     if (khoLa404_(code, raw)) { khoGhi404_(key, model); return { ok: false, code: code, het: false, raw: raw, key: key }; }   // v98.2: nhớ trong ngày, để nơi gọi đổi model
-    if (khoGhiNhanLoi_(key, tq, code, raw)) continue;
+    var la403 = khoLa403Model_(code, raw);
+    if (khoGhiNhanLoi_(key, tq, code, raw)) {
+      // v99.2b: 2 key khác nhau cùng bị model từ chối (403) -> model không cho dùng, trả ngay (goiGemini_ chặn 12 giờ) thay vì thử hết key
+      if (la403 && ++so403 >= 2) return { ok: false, code: 403, het: false, raw: 'MODEL_TU_CHOI: ' + String(raw).slice(0, 200), key: key };
+      continue;
+    }
     if (code >= 500) {
       if (++loi5xx > 4) return { ok: false, code: code, het: false, raw: raw };
       Utilities.sleep(Math.min(3000 * loi5xx, 12000));

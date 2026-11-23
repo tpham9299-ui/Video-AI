@@ -284,7 +284,7 @@ function docKetQuaDang_(r) {
 }
 
 // Tiêu đề, mô tả, thẻ cho bài đăng (lấy từ kịch bản).
-function noiDungDang_(r, tap, td) {
+function noiDungDangGoc_(r, tap, td) {
   var kb = {};
   try { kb = JSON.parse(DriveApp.getFileById(r.file_kich_ban).getBlob().getDataAsString()); } catch (e) {}
   var the = (kb.hashtag || []).map(function (h) { return String(h).replace(/^#+/, '').replace(/\s+/g, ''); }).filter(Boolean);
@@ -292,7 +292,7 @@ function noiDungDang_(r, tap, td) {
   the = the.slice(0, 10);
   var tieuDe = String(kb.tieu_de || r.chu_de || 'Bài toán hay').replace(/\s+/g, ' ').trim().slice(0, 90);
   var de = latexDoc_(String(kb.de_bai || r.de_bai || '')).replace(/\s+/g, ' ').trim();
-  var baiHoc = (kb.bai_hoc_rut_ra || []).map(function (x) { return '• ' + x; }).join('\n');
+  var baiHoc = (typeof mangBaiHoc_ === 'function' ? mangBaiHoc_(kb.bai_hoc_rut_ra) : (Array.isArray(kb.bai_hoc_rut_ra) ? kb.bai_hoc_rut_ra : [])).map(function (x) { return '• ' + x; }).join('\n');
   var sp = kb.san_pham || null;
   if (sp && the.indexOf('quangcao') < 0) the.push('quangcao');
   if (kb.loai_cau_hoi) { var tl = kb.loai_cau_hoi.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]/g, ''); if (tl && the.indexOf(tl) < 0) the.push(tl); }
@@ -674,4 +674,10 @@ function nhanMaTikTok_(p) {
   CacheService.getScriptCache().remove('TIKTOK_STATE');
   nhatKy_('TIKTOK', 'Đã kết nối TikTok (quyền: ' + d.scope + ')');
   return trangHtml_('✅ Đã kết nối TikTok (quyền: ' + d.scope + '). Có thể đóng trang này.');
+}
+
+// v99.2 Evergreen: mọi tiêu đề / mô tả / hashtag đăng bài đi qua lớp gỡ năm sinh - khóa học - năm thi (KiemTraHinh.gs veSinhMetaDang_)
+function noiDungDang_(r, tap, td) {
+  var meta = noiDungDangGoc_(r, tap, td);
+  return typeof veSinhMetaDang_ === 'function' ? veSinhMetaDang_(meta, r && r.lop) : meta;
 }

@@ -194,6 +194,15 @@ const hang = de.hang || {};
 sheets[vm.runInContext('TEN_HANG_DOI', ctx)] = taoSheet('HANG_DOI', [COT.slice(), COT.map((k) => (hang[k] === undefined || hang[k] === null ? '' : hang[k]))]);
 sheets[vm.runInContext('TEN_CAU_HINH', ctx)] = taoSheet('CAU_HINH', [['khoa', 'gia_tri'], ...Object.entries(de.cau_hinh || {}).map(([k, v]) => [k, v])]);
 Object.assign(props, de.thong_ke || {}); // TB_*_MS... (ước lượng thời gian) nếu có
+// v99.2b: danh sách model đã bị chặn vì 403 (Apps Script MODEL_CHAN_403) -> .gs (props) + goi_gemini.js (tệp tạm) bỏ qua ngay
+const TEP_MODEL_CHAN = path.join(os.tmpdir(), 'gemini_model_chan_403.json');
+const docChanTep = () => { try { return JSON.parse(fs.readFileSync(TEP_MODEL_CHAN, 'utf8')) || {}; } catch (e) { return {}; } };
+if (de.model_chan && typeof de.model_chan === 'object') {
+  const gop = {...docChanTep(), ...de.model_chan};
+  try { fs.writeFileSync(TEP_MODEL_CHAN, JSON.stringify(gop)); } catch (e) { /* bỏ */ }
+  props.MODEL_CHAN_403 = JSON.stringify(gop);
+  if (Object.keys(gop).length) console.log('MODEL_CHAN_403: bỏ qua ' + Object.keys(gop).join(', '));
+}
 if (de.nhap && hang.id) tep['nhap_' + hang.id + '.json'] = String(de.nhap); // bản nháp đang sửa dở (vd. sửa theo góp ý /sua)
 
 ctx.__out = out;
@@ -276,6 +285,12 @@ if (tep[tenKb]) { out.kich_ban = tep[tenKb]; delete out.hang.file_kich_ban; }
 const nhap = tep['nhap_' + out.id + '.json'];
 if (nhap && !out.kich_ban) out.nhap = nhap; // bản nháp (nếu dừng giữa chừng) để Apps Script giữ lại
 out.thong_ke = Object.fromEntries(Object.entries(props).filter(([k]) => /^TB_/.test(k)));
+try {   // v99.2b: trả danh sách chặn 403 (gộp tệp goi_gemini.js + props của .gs) để Apps Script ghi lại
+  let gs = {};
+  try { gs = JSON.parse(props.MODEL_CHAN_403 || '{}') || {}; } catch (e) { gs = {}; }
+  const bay = Date.now();
+  out.model_chan = Object.fromEntries(Object.entries({...gs, ...docChanTep()}).filter(([, h]) => Number(h) > bay));
+} catch (e) { /* bỏ */ }
 out.bao_cao = bc;
 try { out.het_ngay = (fs.existsSync(TEP_HET_NGAY) ? fs.readFileSync(TEP_HET_NGAY, 'utf8') : '').split('\n').filter(Boolean).map((x) => { const i = x.indexOf('|'); return x.slice(0, i) + '|' + maKeyBp1(x.slice(i + 1)); }); } catch (e) { /* bỏ */ }
 fs.writeFileSync(RA, JSON.stringify(out));

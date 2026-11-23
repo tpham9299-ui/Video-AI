@@ -1,0 +1,180 @@
+{
+ "id": "V992-GAPNHAU",
+ "mon": "XAC_SUAT",
+ "luong": "thuc_te_xac_suat",
+ "lop": "11",
+ "san_khau_dich": "tu_sinh_svg",
+ "kich_ban_hinh": [
+  "Hình vuông 60 x 60 phút",
+  "Mỗi cặp giờ đến là một điểm",
+  "Tô dải |x − y| ≤ 15",
+  "Dải gặp nhau sáng hổ phách"
+ ],
+ "nut_that": "Gặp nhau khi điểm (x; y) nằm trong dải |x − y| ≤ 15 - đổi xác suất thành tỉ số diện tích",
+ "tieu_de": "Hẹn nhau 1 tiếng, chờ 15 phút - gặp được không?",
+ "tieu_de_intro": "Chờ 15 phút – gặp được không?",
+ "chu_de": "Xác suất hình học",
+ "de_bai": "An và Bình hẹn gặp ở quán trà sữa trong khoảng 17 giờ đến 18 giờ. Mỗi bạn đến vào một thời điểm ngẫu nhiên trong khoảng đó, ai đến trước chỉ chờ 15 phút rồi về. Tính xác suất hai bạn gặp nhau.",
+ "dap_an_cuoi": "P = 7/16",
+ "cta": "Lưu lại mẹo đổi xác suất thành diện tích nhé!",
+ "canh": [
+  {
+   "so": 1,
+   "loai": "de_bai",
+   "loi_thoai": "Hẹn nhau trong một giờ, chỉ chờ 15 phút. Cơ hội gặp là bao nhiêu?",
+   "noi_dung_man_hinh": []
+  },
+  {
+   "so": 2,
+   "loai": "tinh_toan",
+   "loi_thoai": "Gọi x, y là số phút sau 17 giờ An và Bình đến. Mỗi cặp giờ đến là một điểm trong hình vuông cạnh 60.",
+   "noi_dung_man_hinh": [
+    "0 \\le x, y \\le 60"
+   ]
+  },
+  {
+   "so": 3,
+   "loai": "tinh_toan",
+   "loi_thoai": "Hai bạn gặp nhau khi hiệu hai giờ đến không quá 15 phút. Đó là dải chéo giữa hình vuông.",
+   "noi_dung_man_hinh": [
+    "|x - y| \\le 15"
+   ]
+  },
+  {
+   "so": 4,
+   "loai": "tinh_toan",
+   "loi_thoai": "Bẫy là đi đếm từng phút. Mẹo: lấy phần bù, hai tam giác góc không gặp, mỗi tam giác cạnh 45.",
+   "noi_dung_man_hinh": [
+    "S_{\\text{không gặp}} = 2 \\cdot \\dfrac{45^2}{2} = 2025"
+   ]
+  },
+  {
+   "so": 5,
+   "loai": "dap_an",
+   "loi_thoai": "Vậy xác suất gặp nhau bằng 1 trừ 2025 phần 3600, bằng 7 phần 16.",
+   "noi_dung_man_hinh": [
+    "P = 1 - \\dfrac{2025}{3600} = \\dfrac{7}{16}"
+   ]
+  },
+  {
+   "so": 6,
+   "loai": "ket_luan",
+   "loi_thoai": "Mẹo: đổi xác suất thành tỉ số diện tích. Lưu lại nhé!",
+   "noi_dung_man_hinh": []
+  }
+ ],
+ "tom_tat_3_buoc": [
+  {
+   "chien_thuat": "Giờ đến là 1 điểm",
+   "cong_thuc": "0 \\le x, y \\le 60"
+  },
+  {
+   "chien_thuat": "Bù 2 tam giác góc",
+   "cong_thuc": "2 \\cdot \\dfrac{45^2}{2} = 2025"
+  },
+  {
+   "chien_thuat": "Tỉ số diện tích",
+   "cong_thuc": "P = \\dfrac{7}{16}"
+  }
+ ],
+ "khung4tang": {
+  "de_ghim": [
+   {
+    "id": "t",
+    "nhan": "60 \\text{ phút}"
+   },
+   {
+    "id": "c",
+    "nhan": "\\text{chờ } 15"
+   },
+   {
+    "id": "p",
+    "nhan": "P = ?"
+   }
+  ],
+  "buoc": [
+   {
+    "canh": 1,
+    "nhan": "Đề bài",
+    "tieu_de": "Hẹn gặp trong 1 giờ",
+    "the": [
+     {
+      "loai": "chu",
+      "noi_dung": "Chờ 15 phút có gặp?"
+     }
+    ]
+   },
+   {
+    "canh": 2,
+    "khi_noi": "mỗi cặp giờ đến",
+    "nhan": "Mô hình",
+    "tieu_de": "Mỗi cặp giờ là một điểm",
+    "du_kien": [
+     "t"
+    ],
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "0 \\le x, y \\le 60"
+      ]
+     }
+    ]
+   },
+   {
+    "canh": 3,
+    "khi_noi": "gặp nhau khi",
+    "nhan": "Điều kiện",
+    "tieu_de": "Dải gặp nhau",
+    "du_kien": [
+     "c"
+    ],
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "|x - y| \\le 15"
+      ]
+     }
+    ]
+   },
+   {
+    "canh": 4,
+    "khi_noi": "hai tam giác góc",
+    "nhan": "Phần bù",
+    "tieu_de": "Lấy phần bù",
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "dong": [
+       "2 \\cdot \\dfrac{45^2}{2} = 2025"
+      ]
+     }
+    ]
+   },
+   {
+    "canh": 5,
+    "khi_noi": "vậy xác suất",
+    "nhan": "Kết luận",
+    "tieu_de": "Tỉ số diện tích",
+    "mau": "vang",
+    "du_kien": [
+     "p"
+    ],
+    "the": [
+     {
+      "loai": "cong_thuc",
+      "chot": true,
+      "dong": [
+       "P = \\dfrac{7}{16}"
+      ]
+     }
+    ]
+   }
+  ],
+  "tu_sinh": {
+   "ma": "import math\nimport ve25d as v\n\nX, Y, C = 225.0, 60.0, 380.0          # hình vuông thời gian 60 x 60 phút (to, giữa sân khấu)\n\ndef ve():\n    khung, f = v.he_truc(X, Y, C, C, 60, 60, vach=(15, 45, 60), co=24)\n    def da(ds):\n        return [f(u, w) for u, w in ds]\n    vuong = da([(0, 0), (60, 0), (60, 60), (0, 60)])\n    dai = da([(0, 0), (15, 0), (60, 45), (60, 60), (45, 60), (0, 15)])\n    tg1, tg2 = da([(15, 0), (60, 0), (60, 45)]), da([(0, 15), (0, 60), (45, 60)])\n    goc = list(vuong)\n    p = f(40, 20)\n    # hình: lớp KHÔNG nhóm (tích lũy); nhãn: nhóm \"nhan\" (nhãn bước sau THAY nhãn bước trước, không chồng chữ)\n    return [\n        v.lop(0, v.mien_to(vuong, \"mat\", 0.9, vien=\"cu\", w=2.2) + khung\n              + v.chu(X + C + 34, Y + C + 8, \"An\", co=26, mau=\"chu_mo\", neo=\"start\")\n              + v.chu(X - 6, Y - 30, \"Bình\", co=26, mau=\"chu_mo\", neo=\"end\"), \"no\", khi_noi=\"trong một giờ\", nhan_lop=\"khung giờ\"),\n        v.lop(1, v.cham(p[0], p[1], 9, \"nhan\"), \"moc\", khi_noi=\"mỗi cặp giờ đến\", nhan_lop=\"một điểm\", nhom=\"diem\"),\n        v.lop(1, v.nhan(p[0], p[1], \"An 40, Bình 20\", tranh=goc + dai, co=24, uu_tien=(1, 1)), \"moc\", khi_noi=\"mỗi cặp giờ đến\", nhan_lop=\"nhãn điểm\", nhom=\"nhan\"),\n        v.lop(2, v.mien_to(dai, \"nhan\", 0.42, vien=\"nhan\", w=2.6), \"ve\", khi_noi=\"gặp nhau khi\", nhan_lop=\"dải gặp nhau\", nhom=\"dai\"),\n        v.lop(2, v.nhan(f(30, 30)[0], f(30, 30)[1], \"|x − y| ≤ 15\", tranh=goc, co=28, kc=0, giong=False), \"moc\", khi_noi=\"gặp nhau khi\", nhan_lop=\"nhãn dải\", nhom=\"nhan\"),\n        v.lop(3, v.mien_to(tg1, \"cu\", 0.55) + v.mien_to(tg2, \"cu\", 0.55), \"sang\", khi_noi=\"hai tam giác góc\", nhan_lop=\"phần không gặp\"),\n        v.lop(3, v.nhan(f(47, 13)[0], f(47, 13)[1], \"45²/2\", tranh=goc, co=26, kc=0, giong=False)\n              + v.nhan(f(13, 47)[0], f(13, 47)[1], \"45²/2\", tranh=goc, co=26, kc=0, giong=False), \"moc\", khi_noi=\"hai tam giác góc\", nhan_lop=\"nhãn bù\", nhom=\"nhan\"),\n        v.lop(4, v.mien_to(dai, \"ket\", 0.5, vien=\"ket\", w=3), \"no\", khi_noi=\"vậy xác suất\", nhan_lop=\"dải kết quả\", nhom=\"dai\"),\n        v.lop(4, v.nhan(f(30, 30)[0], f(30, 30)[1], \"P = 7/16\", tranh=goc, co=32, mau=\"ket\", kc=0, giong=False), \"no\", khi_noi=\"vậy xác suất\", nhan_lop=\"kết quả\", nhom=\"nhan\"),\n    ]\n",
+   "mo_ta": "Hình vuông thời gian, dải gặp nhau tô dần"
+  }
+ }
+}

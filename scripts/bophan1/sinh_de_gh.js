@@ -11,12 +11,32 @@ const RA = process.env.SD_RA || path.join(GOC, 'ket_qua_sinh_de.json');
 const dl = process.env.SD_DU_LIEU ? JSON.parse(process.env.SD_DU_LIEU) : {};
 const GIA_LAP = process.env.BP0_GIA_LAP === '1';
 const keys = String(process.env.GEMINI_KEYS || process.env.GEMINI_API_KEY || '').split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean);
-const out = {ok: false, de: [], lop_ke: null, mon_ke: null, ngay_10p: '', lop_10p: null, nhat_ky: [], loi: ''};
+const out = {ok: false, de: [], lop_ke: null, mon_ke: null, ngay_10p: '', lop_10p: null, dem: {}, nhat_ky: [], loi: ''};
 
 if (!GIA_LAP && !keys.length) {
   out.loi = 'THIEU_GEMINI_KEYS';
   fs.writeFileSync(RA, JSON.stringify(out));
   process.exit(1);
+}
+
+// v99.2 giả lập (BP0_GIA_LAP=1): trả đề theo ĐÚNG mảng prompt đang xin (để test xoay vòng 4 mảng) + 1 đề SGK cũ phải bị chặn.
+// Chuỗi đề có số ngẫu nhiên nhỏ để mã băm khác nhau giữa các lượt.
+function giaLapDe(p) {
+  const n = Math.floor(Math.random() * 1e6);
+  const sgk = {dang: 'toi_uu_hop', chu_de: 'Hộp chữ nhật', de_bai: 'Cắt 4 góc hình vuông cạnh x từ tấm bìa vuông 60cm để gấp hộp không nắp thể tích lớn nhất.', dap_an: '10', diem_tu_duy: 9};
+  let d;
+  if (/HÌNH HỌC KHÔNG GIAN/.test(p)) {
+    d = {dang: 'kg_khoang_cach', loai: 'tinh', chu_de: 'Chóp đều', de_bai: `Cho hình chóp tứ giác đều S.ABCD có cạnh đáy a = 2, cạnh bên bằng 3. Tính khoảng cách từ A đến (SCD). (#${n})`, dap_an: '1.73', diem_tu_duy: 9, san_khau_dich: 'khong_gian_3d'};
+  } else if (/HÌNH HỌC PHẲNG/.test(p)) {
+    d = {dang: 'tu_giac_noi_tiep', loai: 'chung_minh', chu_de: 'Tứ giác nội tiếp', de_bai: `Cho tam giác ABC nhọn, đường cao BE, CF. Chứng minh tứ giác BCEF nội tiếp. (#${n})`, diem_tu_duy: 8, san_khau_dich: 'hinh_phang'};
+  } else if (/XÁC SUẤT/.test(p)) {
+    d = {dang: 'sang_tao', chu_de: 'Hẹn gặp ở quán', de_bai: `Hai bạn hẹn gặp nhau trong khoảng 12h-13h, mỗi bạn đến một thời điểm ngẫu nhiên và chờ 15 phút. Tính xác suất hai bạn gặp nhau. (#${n})`, dap_an: '7/16', diem_tu_duy: 9, san_khau_dich: 'tu_sinh_svg',
+      kich_ban_hinh: ['Hình vuông 60x60 phút', 'Tô dải |x-y|<=15', 'Hai tam giác góc', 'Phần tô chốt'], nut_that: 'Gặp nhau <=> điểm (x, y) nằm trong dải |x - y| <= 15', goi_y_hinh_anh: 'Dải chéo tô dần trên hình vuông'};
+  } else {
+    d = {dang: 'sang_tao', chu_de: 'Kiến bò trên hộp', de_bai: `Một hộp quà kích thước 30 x 20 x 10 cm, con kiến ở đỉnh A muốn bò tới đỉnh đối diện G trên mặt hộp. Quãng đường ngắn nhất bao nhiêu cm? (#${n})`, dap_an: '41.23', diem_tu_duy: 9, san_khau_dich: 'tu_sinh_svg',
+      kich_ban_hinh: ['Hộp 2.5D, kiến ở A', 'Trải phẳng 2 mặt', 'Nối thẳng A-G', 'Đường ngắn nhất sáng'], nut_that: 'Trải phẳng hai mặt kề nhau thành một hình chữ nhật rồi nối thẳng', goi_y_hinh_anh: 'Hộp mở ra thành lưới phẳng'};
+  }
+  return [sgk, d];
 }
 
 const addedRows = [];
@@ -25,7 +45,7 @@ const chMap = Object.assign({}, dl.cau_hinh || {});
 if (process.env.SD_MON && /^(XEN_KE|XAC_SUAT|THUC_TE|HINH_HOC)$/i.test(process.env.SD_MON.trim())) {
   chMap.CHU_DE_VIDEO = process.env.SD_MON.trim().toUpperCase();
 }
-const fakeHang = (dl.gan_day || []).map((x) => ({chu_de: x.chu_de || '', de_bai: x.de_bai || '', ma_bam: x.ma_bam || '', trang_thai: x.trang_thai || 'MOI', id: x.id || ''}));
+const fakeHang = (dl.gan_day || []).map((x) => ({chu_de: x.chu_de || '', de_bai: x.de_bai || '', ma_bam: x.ma_bam || '', trang_thai: x.trang_thai || 'MOI', id: x.id || '', mon: x.mon || '', nguon: x.nguon || ''}));   // v99.2: mon / nguon cho chonMang_
 
 const fakeSheet = {
   getName: () => 'HANG_DOI',
@@ -69,7 +89,7 @@ const ctx = {
       const p = ((body.contents && body.contents[0] && body.contents[0].parts && body.contents[0].parts[0] && body.contents[0].parts[0].text) || '');
       const payload = /CHUYÊN ĐỀ DÀI 10 PHÚT/i.test(p)
         ? {lop: '12', mon: 'THUC_TE', chu_de: 'Chuyên đề 10 phút: Tối ưu bể', de_bai: 'Xây bể chứa nước không nắp đáy vuông thể tích 32m3. Tìm diện tích nhỏ nhất.', dap_an: '48', yeu_to_tu_duy: 'Cô-si', bay_thuong_gap: 'Quên bỏ nắp'}
-        : [{dang: 'toi_uu_hop', chu_de: 'Hộp chữ nhật', de_bai: 'Cắt 4 góc hình vuông cạnh x từ tấm bìa vuông 60cm để gấp hộp không nắp thể tích lớn nhất.', dap_an: '10', diem_tu_duy: 9, yeu_to_tu_duy: 'Cực trị', bay_thuong_gap: 'Điều kiện 0<x<30'}];
+        : giaLapDe(p);
       return {ok: true, code: 200, raw: JSON.stringify({candidates: [{content: {parts: [{text: JSON.stringify(payload)}]}}]})};
     }
     const danhSach = String(chMap.DANH_SACH_MODEL || '').split(/[\s,;]+/).filter(Boolean);
@@ -88,7 +108,7 @@ const ctx = {
 };
 
 vm.createContext(ctx);
-for (const f of ['BoPhan1.gs', 'PromptKichBan.gs', 'KiemTraHinh.gs', 'HinhHoc.gs', 'NangCao.gs', 'SanPham.gs', 'ZaloDeBai.gs']) {
+for (const f of ['BoPhan1.gs', 'PromptKichBan.gs', 'KiemTraHinh.gs', 'HinhHoc.gs', 'NangCao.gs', 'SanPham.gs', 'ZaloDeBai.gs', 'SanKhau.gs']) {   // v99.2: + SanKhau.gs (yeuCauDaDangSinhDe_)
   const p = path.join(GOC, f);
   if (fs.existsSync(p)) vm.runInContext(fs.readFileSync(p, 'utf8'), ctx, {filename: f});
 }
@@ -116,6 +136,8 @@ try {
   out.mon_ke = props.MON_KE || null;
   out.ngay_10p = props.DA_SINH_10P_NGAY || '';
   out.lop_10p = props.LOP_10P_KE || null;
+  // v99.2: trả MỌI bộ đếm xoay vòng BP0 để Apps Script ghi lại (v99.1 làm rơi MON_KE_KHAC / HH_KE / KHUON_KE_* -> không bao giờ ra HINH_HOC)
+  Object.keys(props).forEach((k) => { if (ctx.laKhoaDemBP0_(k)) out.dem[k] = props[k]; });
   console.log(`SINH_DE xong: ${out.de.length} đề mới`);
 } catch (e) {
   out.loi = String(e && e.message || e).slice(0, 300);

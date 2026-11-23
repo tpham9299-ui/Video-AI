@@ -578,10 +578,19 @@ function sinhDeNeuCan_(sh, bc) {
   var chiSo = Number(props.getProperty('LOP_KE') || 0) % 3;
   var lop = dsLop[chiSo];
   props.setProperty('LOP_KE', String(chiSo + 1));
-  var mon = chonMon_();
+  // v99.2: chọn MẢNG theo lịch sử thật 20 đề gần nhất (THUC_TE | XAC_SUAT | HINH_PHANG | HINH_KHONG_GIAN) - không phụ thuộc bộ đếm
+  var mang = typeof chonMang_ === 'function' ? chonMang_(hang) : null;
+  var mon = mang ? monCuaMang_(mang) : chonMon_();
+  var kieuHinh = mang === 'HINH_KHONG_GIAN' ? 'KHONG_GIAN' : mang === 'HINH_PHANG' ? 'PHANG' : null;
   // v94: CAU_HINH LOP_HINH_PHANG (vd 9) -> đề hình học tự sinh là hình phẳng lớp đó (ôn thi vào 10), không đổi lớp của các môn khác
   var lopHP = String((typeof cauHinh_ === 'function' && cauHinh_('LOP_HINH_PHANG')) || '').trim();
-  if (mon === 'HINH_HOC' && /^(8|9)$/.test(lopHP)) lop = lopHP;
+  if (mon === 'HINH_HOC' && kieuHinh !== 'KHONG_GIAN' && /^(8|9)$/.test(lopHP)) lop = lopHP;
+  if (kieuHinh === 'KHONG_GIAN' && !/^(11|12)$/.test(lop)) lop = '11';   // lớp 10: chỉ hình phẳng (GDPT 2018)
+  if (!mang) mang = mon === 'HINH_HOC' ? (kieuHinh === 'KHONG_GIAN' ? 'HINH_KHONG_GIAN' : 'HINH_PHANG') : mon;
+  var st = typeof yeuCauSangTaoV992_ === 'function' ? yeuCauSangTaoV992_(mang, lop) : {chu: '', nhom: null, ep: false};
+  nhatKy_('SINH_DE_MANG', 'Mảng ' + mang + ' (lớp ' + lop + ')' + (st.nhom ? ', nhóm sáng tạo ' + st.nhom.id : ''));
+  var tagNguon = kieuHinh ? '|HINH_' + kieuHinh : '';
+  var hopDong = function (d) { return st.ep && typeof hopDongTuDe_ === 'function' ? ganHopDong_(d.yeu_to_tu_duy, hopDongTuDe_(d, mang, st.nhom)) : d.yeu_to_tu_duy; };
 
   var daCo = hang.slice(-40).map(function (r) { return '- ' + r.chu_de + ': ' + String(r.de_bai).slice(0, 100); }).join('\n');
   var n = Number(cauHinh_('SO_DE_MOI_MOI_LAN'));
@@ -590,15 +599,17 @@ function sinhDeNeuCan_(sh, bc) {
   // Ưu tiên đề có thật trên internet; chỉ khi không tìm được đề nào đạt yêu cầu mới để AI sáng tác.
   if (che === 'UU_TIEN_INTERNET' || che === 'CHI_INTERNET') {
     var them = 0;
-    try { them = timDeInternet_(sh, hang, lop, n, bc, mon); }
+    try { them = timDeInternet_(sh, hang, lop, n, bc, mon, {kieuHinh: kieuHinh, st: st, tagNguon: tagNguon, hopDong: hopDong}); }
     catch (e) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(e.message))) throw e; nhatKy_('TIM_INTERNET_LOI', String(e.message)); }
     if (them > 0) { nhatKy_('TIM_INTERNET', 'Đã lấy ' + them + ' đề ' + mon + ' có thật từ internet (lớp ' + lop + ')'); return; }
     if (che === 'CHI_INTERNET') { nhatKy_('TIM_INTERNET', 'Không tìm được đề phù hợp trên internet (chế độ chỉ internet nên không nhờ AI sáng tác)'); return; }
     nhatKy_('TIM_INTERNET', 'Không tìm được đề phù hợp trên internet, chuyển sang AI sáng tác (' + mon + ', lớp ' + lop + ')');
   }
-  var prompt = mon === 'HINH_HOC' ? promptSangTacHinhHoc_(lop, n, daCo) : mon === 'THUC_TE' ? promptSangTacThucTe_(lop, n, daCo) : promptSangTacXacSuat_(lop, n, daCo);
+  var prompt = mon === 'HINH_HOC' ? promptSangTacHinhHoc_(lop, n, daCo, kieuHinh) : mon === 'THUC_TE' ? promptSangTacThucTe_(lop, n, daCo) : promptSangTacXacSuat_(lop, n, daCo);
   // v92: chọn KHUÔN 3D trước (xoay vòng theo lớp) rồi mới sáng tác đề khớp khuôn -> video luôn có hình 3D động đúng đề
-  if (mon !== 'HINH_HOC') prompt += yeuCauKhuonSinhDe_(lop, mon);
+  // v99.2: nhóm sáng tạo + hợp đồng hình thay chỉ thị khuôn 3D (tắt: CAU_HINH SANG_TAO_V992 = TAT -> giữ v92/v96)
+  if (st.ep) prompt += st.chu;
+  else if (mon !== 'HINH_HOC') prompt += yeuCauKhuonSinhDe_(lop, mon);
   var kq = goiGemini_(prompt, 0.9, { suyNghi: mon === 'HINH_HOC' ? 'medium' : cauHinh_('MUC_SUY_NGHI_KICH_BAN') });
   capNhatTb_('TB_SINH_DE_MS', Date.now() - tSinh);
   if (kq && !Array.isArray(kq) && Array.isArray(kq.de)) kq = kq.de;
@@ -609,14 +620,16 @@ function sinhDeNeuCan_(sh, bc) {
   var nguong = Number(cauHinh_('DIEM_TU_DUY_TOI_THIEU'));
   kq.forEach(function (d, i) {
     if (!d || !d.de_bai || Number(d.diem_tu_duy) < nguong) return;
-    if (!dangDungDuoc_(mon, d.dang)) { nhatKy_('BO_DANG_LA', 'Bỏ đề dạng "' + d.dang + '" (bộ dựng video chưa minh họa tốt): ' + String(d.de_bai).slice(0, 80)); return; }
+    var sgk = typeof laDeSgkNhamChan_ === 'function' ? laDeSgkNhamChan_(d.de_bai) : '';
+    if (sgk) { nhatKy_('BO_DE_SGK', 'Bỏ đề mô-típ SGK cũ (' + sgk + '): ' + String(d.de_bai).slice(0, 80)); return; }
+    if (!dangDungDuoc_(mon, d.dang) && !(st.ep && mon !== 'HINH_HOC' && d.san_khau_dich === 'tu_sinh_svg')) { nhatKy_('BO_DANG_LA', 'Bỏ đề dạng "' + d.dang + '" (bộ dựng video chưa minh họa tốt): ' + String(d.de_bai).slice(0, 80)); return; }
     var b = bam_(d.de_bai);
     if (daBam[b]) return;
     daBam[b] = true;
     var id = (mon === 'HINH_HOC' ? 'HH' : mon === 'THUC_TE' ? 'TT' : 'VD') + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd-HHmmss') + '-' + i;
     themHang_(sh, {
-      id: id, trang_thai: 'MOI', lop: lop, chu_de: d.chu_de, de_bai: d.de_bai, nguon: 'AI_SANG_TAC', mon: mon,
-      diem_tu_duy: d.diem_tu_duy, yeu_to_tu_duy: d.yeu_to_tu_duy, bay_thuong_gap: d.bay_thuong_gap,
+      id: id, trang_thai: 'MOI', lop: lop, chu_de: d.chu_de, de_bai: d.de_bai, nguon: 'AI_SANG_TAC' + tagNguon + (st.nhom ? '|NHOM_' + st.nhom.id : ''), mon: mon,
+      diem_tu_duy: d.diem_tu_duy, yeu_to_tu_duy: hopDong(d), bay_thuong_gap: d.bay_thuong_gap,
       so_lan_loi: 0, cap_nhat: new Date(), ma_bam: b, kiem_chung: duKienDapAn_(d)
     });
     bc.moi++;
@@ -792,12 +805,12 @@ function vietSo_(x) {
 function giaiThucTe_(r) {
   var t0 = Date.now();
   var luuY = yeuCauKienThucLop_(r.lop, 'THUC_TE');
-  var de = 'Bài toán thực tế (lớp ' + r.lop + '):\n' + r.de_bai + (luuY ? '\n\n' + luuY : '');
+  var de = 'Bài toán thực tế (lớp ' + r.lop + '):\n' + r.de_bai + (luuY ? '\n\n' + luuY : '') + khoaNgoNhanDe_(r.de_bai, 'THUC_TE');   // v99.2
   var dinhDang = 'Đáp số cuối là MỘT con số (đại lượng đề hỏi). Nếu đề yêu cầu làm tròn thì "gia_tri" là số ĐÃ làm tròn đúng yêu cầu; nếu không thì giữ ít nhất 4 chữ số có nghĩa. ' +
     'BẮT BUỘC THỬ NGƯỢC: thay đáp số vào lại TẤT CẢ dữ kiện của đề và tính lại (ví dụ đề cho tổng 260 thì tính lại tổng với đáp số tìm được xem có đúng 260 không). ' +
     'Nếu đề KHÔNG có đáp số thỏa mãn chính xác mọi dữ kiện (cần số nguyên mà phương trình không có nghiệm nguyên, dữ kiện mâu thuẫn, thiếu dữ kiện) thì ghi rõ vào "de_co_van_de" ' +
     'và chọn CÁCH HIỂU HỢP LÝ NHẤT để vẫn trả lời được (ví dụ: xếp được tối đa bao nhiêu tầng trọn vẹn và còn dư bao nhiêu), ghi cách hiểu đó trong "de_co_van_de"; đề bình thường thì để "de_co_van_de" rỗng. ' +
-    'Trả JSON: {"mo_hinh":"đặt ẩn, điều kiện, hàm/biểu thức cần xét","cac_buoc":["..."],"gia_tri":0,"don_vi":"","dap_an_hien":"câu trả lời ngắn có đơn vị, ví dụ x = 4 m; S = 48 m²","thu_nguoc":"phép thử lại với đáp số","de_co_van_de":""}\n\n';
+    'Trả JSON: {"mo_hinh":"đặt ẩn, điều kiện, hàm/biểu thức cần xét","cac_buoc":["..."],"gia_tri":0,"don_vi":"","dap_an_hien":"câu trả lời ngắn có đơn vị, ví dụ x = 4 m; S = 48 m²","thu_nguoc":"phép thử lại với đáp số","de_co_van_de":"","nut_that":"bước đột phá 1 câu","do_gon":1-10}\n\n';
   var kq3 = goiGeminiSong_([
     { nhiet: 0.2, prompt: 'Bạn là giáo viên Toán giỏi. Giải bài toán thực tế sau thật cẩn thận: đặt ẩn, nêu điều kiện của ẩn, lập biểu thức, giải và kiểm tra điều kiện; soát kỹ đơn vị. ' + dinhDang + de },
     { nhiet: 0.5, prompt: 'Bạn là giáo viên Toán giỏi, dạy bằng SUY LUẬN. Giải bài toán thực tế sau bằng cách GỌN và DỄ HIỂU nhất: nhận ra đại lượng cố định để khử ẩn, đối xứng, bất đẳng thức, hình học trực quan... Mỗi bước nói rõ VÌ SAO làm vậy. ' +
@@ -805,7 +818,7 @@ function giaiThucTe_(r) {
     { nhiet: 0.1, prompt: 'Viết MỘT hàm JavaScript thuần tên kiemChung() (không dùng thư viện, không gọi mạng) để tự kiểm chứng đáp số bài toán thực tế sau bằng TÍNH SỐ trên máy (Google Apps Script, chậm hơn máy thường ~10 lần). ' +
       'Cài đặt trực tiếp từ ĐỀ BÀI, không dựa vào lời giải: ví dụ bài cực trị thì quét lưới thật mịn trên miền xác định rồi thu hẹp quanh điểm tốt nhất (tổng không quá 1 triệu phép tính); bài tích phân thì tính số bằng Simpson; bài lãi suất thì mô phỏng từng kỳ. ' +
       'Mọi vòng lặp phải chắc chắn dừng; không tạo mảng quá 100000 phần tử. Nếu đề yêu cầu làm tròn thì làm tròn đúng như đề. ' +
-      'Hàm trả về {"kieu":"gia_tri","gia_tri":số_thực}. Trả JSON: {"ma":"function kiemChung(){...}"}\n\n' + de }
+      'Hàm trả về {"kieu":"gia_tri","gia_tri":số_thực}. ' + YEU_CAU_HAI_CHIEU_ + 'Trả JSON: {"ma":"function kiemChung(){...}"}\n\n' + de }
   ]);
   var c1 = kq3[0], c2 = kq3[1], kc = kq3[2];
   nhatKy_('THOI_GIAN', 'Giải toán thực tế + mã kiểm chứng (3 yêu cầu Gemini) mất ' + Math.round((Date.now() - t0) / 1000) + ' giây');
@@ -823,7 +836,7 @@ function giaiThucTe_(r) {
     },
     promptMa: 'Viết MỘT hàm JavaScript thuần tên kiemChung() (không thư viện, không gọi mạng) tự tính đáp số bài toán thực tế sau bằng TÍNH SỐ, cài đặt trực tiếp từ ĐỀ BÀI (đọc kỹ đơn vị, điều kiện, yêu cầu làm tròn). ' +
       'Bài cực trị: quét lưới mịn trên miền xác định rồi thu hẹp quanh điểm tốt nhất; tích phân: Simpson; lãi suất/dãy: mô phỏng từng kỳ; hình học: tính tọa độ. Tổng không quá 1 triệu phép tính, vòng lặp phải dừng. ' +
-      'Trả về {"kieu":"gia_tri","gia_tri":số_thực}. Trả JSON: {"ma":"function kiemChung(){...}"}\n\n' + de
+      'Trả về {"kieu":"gia_tri","gia_tri":số_thực}. ' + YEU_CAU_HAI_CHIEU_ + 'Trả JSON: {"ma":"function kiemChung(){...}"}\n\n' + de
   });
   if (!tt.dat) return { dat: false, c1: c1, c2: c2, ly_do: tt.ly_do };
   c1 = tt.c1; c2 = tt.c2;
@@ -849,10 +862,12 @@ function catDapAnHien_(s, max) {
 
 /* ===================== BƯỚC A2: TÌM ĐỀ CÓ THẬT TRÊN INTERNET ===================== */
 
-function timDeInternet_(sh, hang, lop, n, bc, mon) {
+function timDeInternet_(sh, hang, lop, n, bc, mon, o) {
   mon = mon || 'XAC_SUAT';
+  o = o || {};
   var daCo = hang.slice(-60).map(function (r) { return '- ' + String(r.de_bai).slice(0, 90); }).join('\n');
-  var prompt = mon === 'HINH_HOC' ? promptTimHinhHoc_(lop, n, daCo) : mon === 'THUC_TE' ? promptTimThucTe_(lop, n, daCo) : promptTimXacSuat_(lop, n, daCo);
+  var prompt = mon === 'HINH_HOC' ? promptTimHinhHoc_(lop, n, daCo, o.kieuHinh) : mon === 'THUC_TE' ? promptTimThucTe_(lop, n, daCo) : promptTimXacSuat_(lop, n, daCo);
+  if (o.st && o.st.ep) prompt += o.st.chu;   // v99.2: nhóm sáng tạo + hợp đồng hình (đề internet cũng phải có san_khau_dich)
 
   var kq = goiGeminiTimKiem_(prompt);
   if (!kq) return 0;
@@ -868,7 +883,9 @@ function timDeInternet_(sh, hang, lop, n, bc, mon) {
     if (them >= n) return;
     if (!d || !d.de_bai || String(d.de_bai).length < 30) return;
     if (Number(d.diem_tu_duy) < nguong) return;
-    if (!dangDungDuoc_(mon, d.dang)) { nhatKy_('BO_DANG_LA', 'Bỏ đề internet dạng "' + d.dang + '": ' + String(d.de_bai).slice(0, 80)); return; }
+    var sgk = typeof laDeSgkNhamChan_ === 'function' ? laDeSgkNhamChan_(d.de_bai) : '';
+    if (sgk) { nhatKy_('BO_DE_SGK', 'Bỏ đề internet mô-típ SGK cũ (' + sgk + '): ' + String(d.de_bai).slice(0, 80)); return; }
+    if (!dangDungDuoc_(mon, d.dang) && !(o.st && o.st.ep && mon !== 'HINH_HOC' && d.san_khau_dich === 'tu_sinh_svg')) { nhatKy_('BO_DANG_LA', 'Bỏ đề internet dạng "' + d.dang + '": ' + String(d.de_bai).slice(0, 80)); return; }
     var url = String(d.nguon_url || '').trim();
     if (!/^https?:\/\//i.test(url)) return;              // không rõ nguồn thì không nhận
     var b = bam_(d.de_bai);
@@ -880,8 +897,8 @@ function timDeInternet_(sh, hang, lop, n, bc, mon) {
     var id = (mon === 'HINH_HOC' ? 'HI' : mon === 'THUC_TE' ? 'TI' : 'VT') + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd-HHmmss') + '-' + i;
     themHang_(sh, {
       id: id, trang_thai: 'MOI', lop: lop, chu_de: d.chu_de, de_bai: d.de_bai, mon: mon,
-      nguon: 'INTERNET|' + host + (khop ? '' : ' (chưa đối chiếu)') + '|' + url,
-      diem_tu_duy: d.diem_tu_duy, yeu_to_tu_duy: d.yeu_to_tu_duy, bay_thuong_gap: d.bay_thuong_gap,
+      nguon: 'INTERNET' + (o.tagNguon || '') + '|' + host + (khop ? '' : ' (chưa đối chiếu)') + '|' + url,
+      diem_tu_duy: d.diem_tu_duy, yeu_to_tu_duy: o.hopDong ? o.hopDong(d) : d.yeu_to_tu_duy, bay_thuong_gap: d.bay_thuong_gap,
       so_lan_loi: 0, cap_nhat: new Date(), ma_bam: b, kiem_chung: duKienDapAn_(d)
     });
     them++;
@@ -1065,20 +1082,20 @@ function giaiVaKiemChung_(r) {
 function giaiXacSuat_(r) {
   var t0 = Date.now();
   var luuY = yeuCauKienThucLop_(r.lop, 'XAC_SUAT');
-  var de = 'Bài toán (lớp ' + r.lop + '):\n' + r.de_bai + (luuY ? '\n\n' + luuY : '');
+  var de = 'Bài toán (lớp ' + r.lop + '):\n' + r.de_bai + (luuY ? '\n\n' + luuY : '') + khoaNgoNhanDe_(r.de_bai, 'XAC_SUAT');   // v99.2
   var dinhDang = 'Đáp án cuối là MỘT xác suất dạng phân số với tử và mẫu là số nguyên dương. Soát lại: đếm trùng/đếm sót, có hoàn lại không, có phân biệt thứ tự không. ' +
-    'Nếu đề mơ hồ hoặc mâu thuẫn, ghi rõ vào "de_co_van_de" cách hiểu hợp lý nhất đã dùng (đề bình thường để rỗng). Trả JSON: {"cac_buoc":["..."],"tu":0,"mau":0,"de_co_van_de":""}\n\n';
+    'Nếu đề mơ hồ hoặc mâu thuẫn, ghi rõ vào "de_co_van_de" cách hiểu hợp lý nhất đã dùng (đề bình thường để rỗng). Trả JSON: {"cac_buoc":["..."],"tu":0,"mau":0,"de_co_van_de":"","nut_that":"bước đột phá 1 câu","do_gon":1-10}\n\n';
   // Ba việc độc lập nhau (hai cách giải + mã kiểm chứng) nên gọi đồng thời.
   var kq3 = goiGeminiSong_([
     { nhiet: 0.2, prompt: 'Bạn là giáo viên Toán giỏi. Giải bài toán xác suất sau thật cẩn thận, từng bước, ' +
       'soát kỹ lỗi đếm trùng/đếm sót. ' + dinhDang + de },
     { nhiet: 0.5, prompt: 'Bạn là giáo viên Toán giỏi, nổi tiếng vì dạy bằng SUY LUẬN. Giải bài toán xác suất sau bằng cách THÔNG MINH NHẤT, ít tính toán nhất: ưu tiên nhận ra cấu trúc của bài (đối xứng, đếm bù, biến cố đối, quy về bài đơn giản hơn, thử trường hợp nhỏ để tìm quy luật, đổi góc nhìn); CHỈ dùng công thức khi suy luận đã đưa tới đó. Mỗi bước phải nói rõ VÌ SAO làm vậy. Nếu bài không có cách thông minh hơn thì chia trường hợp thật rõ ràng. ' +
-    'Đáp án cuối là MỘT xác suất dạng phân số với tử và mẫu là số nguyên dương. Trả JSON: {"y_tuong":"điều mấu chốt cần nhận ra, 1-2 câu","cac_buoc":["..."],"tu":0,"mau":0}\n\n' + de },
+    'Đáp án cuối là MỘT xác suất dạng phân số với tử và mẫu là số nguyên dương. Trả JSON: {"y_tuong":"điều mấu chốt cần nhận ra, 1-2 câu","nut_that":"bước đột phá 1 câu","do_gon":1-10,"cac_buoc":["..."],"tu":0,"mau":0}\n\n' + de },
     { nhiet: 0.1, prompt: 'Viết MỘT hàm JavaScript thuần tên kiemChung() (không dùng thư viện, không gọi mạng) để tự kiểm chứng đáp án bài toán xác suất sau ' +
       'bằng máy tính (chạy trên Google Apps Script, CHẬM hơn máy tính thường khoảng 10 lần). Ưu tiên ĐẾM VÉT CẠN (liệt kê toàn bộ không gian mẫu) nếu không quá khoảng 1 triệu phép lặp; ' +
       'nếu không thì MÔ PHỎNG với đúng n = 200000 lần dùng Math.random. Mọi vòng lặp phải chắc chắn dừng; không tạo mảng quá 100000 phần tử. ' +
       'Hàm trả về: đếm vét cạn -> {"kieu":"chinh_xac","tu":số_nguyên,"mau":số_nguyên}; ' +
-      'mô phỏng -> {"kieu":"mo_phong","gia_tri":số_thực,"n":200000}. ' +
+      'mô phỏng -> {"kieu":"mo_phong","gia_tri":số_thực,"n":200000}. ' + YEU_CAU_HAI_CHIEU_ +
       'Hãy cài đặt trực tiếp từ ĐỀ BÀI, không dựa vào lời giải. Trả JSON: {"ma":"function kiemChung(){...}"}\n\n' + de }
   ]);
   var c1 = kq3[0], c2 = kq3[1], kc = kq3[2];
@@ -1103,7 +1120,7 @@ function giaiXacSuat_(r) {
     },
     promptMa: 'Viết MỘT hàm JavaScript thuần tên kiemChung() (không thư viện, không gọi mạng) kiểm chứng đáp án bài xác suất sau bằng máy. ' +
       'Ưu tiên ĐẾM VÉT CẠN toàn bộ không gian mẫu (tối đa ~1 triệu phép lặp), nếu không được thì MÔ PHỎNG đúng n = 200000 lần. Mọi vòng lặp phải dừng; mảng không quá 100000 phần tử. ' +
-      'Trả về {"kieu":"chinh_xac","tu":số_nguyên,"mau":số_nguyên} hoặc {"kieu":"mo_phong","gia_tri":số_thực,"n":200000}. Cài đặt trực tiếp từ ĐỀ BÀI, đọc đề thật kỹ từng chữ (có hoàn lại không, phân biệt thứ tự không, "ít nhất"/"đúng"...). Trả JSON: {"ma":"function kiemChung(){...}"}\n\n' + de
+      'Trả về {"kieu":"chinh_xac","tu":số_nguyên,"mau":số_nguyên} hoặc {"kieu":"mo_phong","gia_tri":số_thực,"n":200000}. Cài đặt trực tiếp từ ĐỀ BÀI, đọc đề thật kỹ từng chữ (có hoàn lại không, phân biệt thứ tự không, "ít nhất"/"đúng"...). ' + YEU_CAU_HAI_CHIEU_ + 'Trả JSON: {"ma":"function kiemChung(){...}"}\n\n' + de
   });
   if (!tt.dat) return { dat: false, c1: c1, c2: c2, ly_do: tt.ly_do };
   return { dat: true, c1: tt.c1, c2: tt.c2, dap_an: tt.chu, dap_an_hien: tt.chu, mo_ta: tt.mo, de_co_van_de: tt.de_co_van_de };
@@ -1125,8 +1142,24 @@ function trongTai_(r, o) {
   };
   var chayMa = function (kc, ten) {
     if (!kc || !kc.ma) return;
-    try { var k = o.kiem(chayKiemChung_(kc.ma)); if (k) ma.push(k); }
-    catch (e) { nhatKy_('GIAI', r.id + ': mã kiểm chứng ' + ten + ' lỗi (' + String(e.message).slice(0, 80) + ')'); }
+    try {
+      var raw = chayKiemChung_(kc.ma);
+      // v99.2 KIỂM 2 CHIỀU: mo_phong (tính trực tiếp theo quy luật đề) phải khớp giai_tich (công thức) trong 1e-4 -> lệch: phản hồi
+      // Gemini sửa mã ĐÚNG 1 lần (kèm số lệch + 4 bẫy ngộ nhận); vẫn lệch -> mã này KHÔNG được bỏ phiếu trong trọng tài.
+      var hc = kiemHaiChieu_(raw);
+      if (hc && !hc.ok && o.promptMa && typeof goiGemini_ === 'function') {
+        nhatKy_('GIAI', r.id + ': mã kiểm chứng ' + ten + ' lệch 2 chiều (' + hc.mo + '), phản hồi sửa 1 lần');
+        try {
+          var kcSua = goiGemini_(o.promptMa + '\n\nMÃ TRƯỚC TỰ MÂU THUẪN: ' + hc.mo + '. Một trong hai cách tính SAI (hay gặp: nhầm hữu hạn n lần với tổng vô hạn, ' +
+            'sai đơn vị, nhầm có / không hoàn lại, nghiệm tối ưu ngoài miền). Đọc lại đề, sửa để hai giá trị khớp.\nMÃ TRƯỚC:\n' + String(kc.ma).slice(0, 6000), 0.1, { suyNghi: cauHinh_('MUC_SUY_NGHI_GIAI') });
+          if (kcSua && kcSua.ma) { var raw2 = chayKiemChung_(kcSua.ma); var hc2 = kiemHaiChieu_(raw2); raw = raw2; hc = hc2; }
+        } catch (eS) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(eS.message))) throw eS; }
+      }
+      if (hc && !hc.ok) { nhatKy_('GIAI', r.id + ': mã kiểm chứng ' + ten + ' vẫn lệch 2 chiều (' + hc.mo + ') -> không tính phiếu'); return; }
+      var k = o.kiem(raw);
+      if (k) { if (hc && hc.ok) k.mo += ' | 2 chiều khớp'; ma.push(k); }
+    }
+    catch (e) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(e.message))) throw e; nhatKy_('GIAI', r.id + ': mã kiểm chứng ' + ten + ' lỗi (' + String(e.message).slice(0, 80) + ')'); }
   };
   var diem = function (v) {
     var d = 0;
@@ -1176,7 +1209,11 @@ function trongTai_(r, o) {
         vanDeLop = 'Lời giải vượt chương trình lớp ' + r.lop + ' (' + lyDoVp + ')';
       }
     }
-    // c2 đã được chọn theo khopSach ở trên
+    // c2 đã được chọn theo khopSach ở trên. v99.2: trong các lời giải ĐÚNG + sạch, đưa cách GỌN / trực quan nhất (do_gon, nut_that)
+    // vào chỗ "LỜI GIẢI GỌN" (c2) của BP2 - Shorts 45-55 s cần 1 nút thắt, không biến đổi dài.
+    var gon = chonCachGon_(khopSach.map(function (u) { return u.c; }));
+    if (gon && gon !== c2) { if (gon === c1 && c2) { c1 = c2; } c2 = gon; }
+    if (c2 && !c2.y_tuong && c2.nut_that) c2.y_tuong = c2.nut_that;
     var mo = ma.filter(function (k) { return k.khop(v); }).map(function (k) { return k.mo; }).join('; ') || 'các lời giải độc lập khớp nhau';
     if (vong) nhatKy_('GIAI', r.id + ': trọng tài vòng ' + vong + ' chốt ' + o.chu(v) + ' (' + tomTat() + ')');
     var vanDe = '';
@@ -1363,7 +1400,9 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       if (kb && typeof dungLego_ === 'function' && dungLego_(r) && !laLegoKb_(kb) && conDuGoiGemini_()) {
         try { lapLego_(kb, r, sn); } catch (eLg) { luuNhapKichBan_(r.id, kb); throw eLg; }
       }
-      // v99.1: đề thực tế giàu hình ảnh / dạng lạ -> sân khấu tự sinh 2.5D (mã Python sinh SVG, kiểm hộp cát, vá tối đa 1 lần)
+      // v99.2: hợp đồng hình của BP0 (san_khau_dich / kich_ban_hinh / nut_that) -> kb để SanKhau.gs + chuanbi.py cùng đọc
+      if (kb && typeof apHopDongVaoKb_ === 'function') apHopDongVaoKb_(kb, r);
+      // v99.1: đề thực tế giàu hình ảnh / dạng lạ -> sân khấu tự sinh 2.5D (mã Python sinh SVG, kiểm hộp cát, vá tối đa 1 lần; v99.2: 2 lần khi hợp đồng tu_sinh_svg)
       if (kb && kb.khung4tang && typeof dungTuSinh_ === 'function' && dungTuSinh_(r, kb) && !(kb.khung4tang.tu_sinh || {}).ma && !kb.tu_sinh_da_thu && conDuGoiGemini_()) {
         try { lapTuSinh_(kb, r, sn); } catch (eTs) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(eTs.message))) { luuNhapKichBan_(r.id, kb); throw eTs; } }
       }
@@ -1759,7 +1798,7 @@ function model404HomNay_(m) {
 function modelConSong_(m) {
   m = tenModelGon_(m);
   if (!m) return false;
-  if (CacheService.getScriptCache().get('MODEL_HONG_' + m) || model404HomNay_(m)) return false;
+  if (CacheService.getScriptCache().get('MODEL_HONG_' + m) || model404HomNay_(m) || modelBiChan403_(m)) return false;
   var song = layModelSong_();
   return !song.length || song.indexOf(m) >= 0;
 }
@@ -1779,7 +1818,7 @@ function danhSachModel_(cheDo) {
       .forEach(function (m) { m = m.trim(); if (/^gemini-/i.test(m) && cauHinhDs.indexOf(m) < 0) cauHinhDs.push(m); });
     ds = xepHangModel_(cauHinhDs.concat(MODEL_CHUAN_DU_PHONG_), cheDo);
   }
-  var hopLe = ds.filter(function (m) { return !cache.get('MODEL_HONG_' + m) && !model404HomNay_(m); });
+  var hopLe = ds.filter(function (m) { return !cache.get('MODEL_HONG_' + m) && !model404HomNay_(m) && !modelBiChan403_(m); });
   if (!hopLe.length) hopLe = ds.slice();
   var totNhat = cache.get('MODEL_TOT_NHAT_' + cheDo);
   if (totNhat && hopLe.indexOf(totNhat) > 0 && !cache.get('QUA_TAI_' + totNhat) && !cache.get('HET_NGAY_MODEL_' + totNhat)) {
@@ -1831,7 +1870,8 @@ function goiGemini_(prompt, nhiet, opts) {
     var coTheThuLai = false;
     for (var m = 0; m < models.length; m++) {
       var tenModel = models[m];
-      if (cache.get('MODEL_HONG_' + tenModel)) continue;
+      if (cache.get('MODEL_HONG_' + tenModel) || modelBiChan403_(tenModel)) continue;   // v99.2b: model 403 đã chặn 12 giờ
+      if (opts.hanChotMs && Date.now() > opts.hanChotMs) throw new Error('HET_GIO');   // trần thời gian riêng của nơi gọi (DOC_DE < 4 phút)
       if (!conDuGoiGemini_()) throw new Error(soQuaTai && soQuaTai === soLoi ? 'QUA_TAI' : 'HET_GIO');
       var dsAnh = opts.anhs || (opts.anh ? [opts.anh] : []);
       var phan = dsAnh.map(function (a) { return { inline_data: { mime_type: a.mime, data: a.data } }; }).concat([{ text: prompt }]);
@@ -1859,6 +1899,10 @@ function goiGemini_(prompt, nhiet, opts) {
       soLoi++;
       lyDo = tenModel + ' HTTP ' + kq.code + ': ' + String(kq.raw).replace(/\s+/g, ' ').slice(0, 160);
       nhatKy_('GEMINI_DOI_MODEL', lyDo);
+      if (la403TuChoi_(kq.code, kq.raw)) {   // v99.2b: model từ chối quyền -> chặn 12 giờ, mọi lượt sau bỏ qua ngay
+        if (chanModel403_(tenModel)) nhatKy_('GEMINI_CHAN_MODEL', tenModel + ' trả HTTP 403 (MODEL_TU_CHOI) -> chặn ' + GIO_CHAN_MODEL_403_ + ' giờ');
+        continue;
+      }
       if (laModelKhongCo_(kq)) {
         cache.put('MODEL_HONG_' + tenModel, '1', 21600);
         // v98.2: Google gợi ý 'Please update your code to use models/<ten>' -> chèn <ten> ngay sau model vừa lỗi
@@ -1948,6 +1992,8 @@ function goiGeminiSong_(ds) {
         cache.put('MODEL_TOT_NHAT_nang', r.model || modelChon, 1800);
         return parsed;
       } catch (e) { /* rơi xuống gọi lại bằng chuỗi model dự phòng */ }
+    } else if (r && la403TuChoi_(r.code, r.raw)) {
+      chanModel403_(r.model || modelChon);
     } else if (r && laModelKhongCo_(r)) {
       cache.put('MODEL_HONG_' + modelChon, '1', 21600);
     } else if (r && laQuaTai_(r)) {
@@ -2200,6 +2246,7 @@ function goiDeChoGitHub_(r, viec) {
     if (nhap) goi.nhap = JSON.stringify(nhap);
   }
   goi.het_ngay = docKeyHetNgay_();
+  goi.model_chan = dsModelChan403_();   // v99.2b: GitHub bỏ qua ngay model 403 đã biết
   var s = JSON.stringify(goi);
   if (s.length > 60000) { goi.cau_noi = Array.isArray(goi.cau_noi) ? goi.cau_noi.slice(-15) : goi.cau_noi; goi.goi_y = ''; goi.hoc_edit = ''; s = JSON.stringify(goi); }
   if (s.length > 60000) {
@@ -2295,6 +2342,7 @@ function nhanKetQuaBoPhan1_(sh, d) {
   var cu = m ? m[1] : 'MOI';
   (d.nhat_ky || []).slice(-30).forEach(function (x) { nhatKy_(x[1], '[GitHub] ' + x[2]); });
   try { ghiKeyHetNgay_(d.het_ngay); } catch (eHN) {}
+  try { ghiModelChan403_(d.model_chan); } catch (eMC) {}
   // Hai kho độc lập: trả bản nháp cho Apps Script tiếp tục bằng khoGoi_ của VIDEO.
   if (cu === 'DA_GIAI' && !d.kich_ban && /^(HET_HAN_MUC|QUA_TAI|THIEU_GEMINI_API_KEY|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(d.loi))) {
     if (d.nhap) luuNhapKichBan_(r.id, JSON.parse(d.nhap));
@@ -2549,10 +2597,12 @@ function guiZalo_(noiDung, muc, khoa) {
     id = String(id).trim();
     if (!id) return;
     try {
-      UrlFetchApp.fetch('https://bot-api.zaloplatforms.com/bot' + token + '/sendMessage', {
-        method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-        payload: JSON.stringify({ chat_id: id, text: String(noiDung).slice(0, 2000) })
-      });
+      thuLaiBroker_(function () {
+        return UrlFetchApp.fetch('https://bot-api.zaloplatforms.com/bot' + token + '/sendMessage', {
+          method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+          payload: JSON.stringify({ chat_id: id, text: String(noiDung).slice(0, 2000) })
+        });
+      }, 'guiZalo');
     } catch (e) { Logger.log('Loi gui Zalo: ' + e.message); }
   });
 }
@@ -2577,19 +2627,23 @@ function guiAnhZalo_(fileId, noiDung, chatRieng) {
     var daGuiAnh = false;
     if (linkAnh) {
       try {
-        var res = UrlFetchApp.fetch('https://bot-api.zaloplatforms.com/bot' + token + '/sendPhoto', {
-          method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-          payload: JSON.stringify({ chat_id: id, photo: linkAnh, caption: String(noiDung).slice(0, 900) })
-        });
+        var res = thuLaiBroker_(function () {
+          return UrlFetchApp.fetch('https://bot-api.zaloplatforms.com/bot' + token + '/sendPhoto', {
+            method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+            payload: JSON.stringify({ chat_id: id, photo: linkAnh, caption: String(noiDung).slice(0, 900) })
+          });
+        }, 'guiAnhZalo');
         daGuiAnh = res.getResponseCode() === 200 && /"ok"\s*:\s*true/.test(res.getContentText());
       } catch (eP) { daGuiAnh = false; }
     }
     if (!daGuiAnh || chu.length > 900) {
       try {
-        UrlFetchApp.fetch('https://bot-api.zaloplatforms.com/bot' + token + '/sendMessage', {
-          method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-          payload: JSON.stringify({ chat_id: id, text: chu.slice(0, 2000) })   // ảnh lỗi, hoặc chú thích bị cắt -> gửi đủ chữ
-        });
+        thuLaiBroker_(function () {
+          return UrlFetchApp.fetch('https://bot-api.zaloplatforms.com/bot' + token + '/sendMessage', {
+            method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+            payload: JSON.stringify({ chat_id: id, text: chu.slice(0, 2000) })   // ảnh lỗi, hoặc chú thích bị cắt -> gửi đủ chữ
+          });
+        }, 'guiAnhZalo chữ');
       } catch (eM) { Logger.log('Loi gui Zalo: ' + eM.message); }
     }
   });
@@ -3584,17 +3638,15 @@ function sinhDeQuaGitHub_(sh, bc) {
     var k = String(x[0] || '').trim();
     if (k && String(x[1]) !== '' && !/TOKEN|SECRET|KEY|MAT_KHAU|PASS|CLIENT/i.test(k)) ch[k] = String(x[1]).slice(0, 1000);
   });
-  var propsGui = {
-    LOP_KE: p.getProperty('LOP_KE') || '0',
-    MON_KE: p.getProperty('MON_KE') || '0',
-    DA_SINH_10P_NGAY: p.getProperty('DA_SINH_10P_NGAY') || '',
-    LOP_10P_KE: p.getProperty('LOP_10P_KE') || '0',
-    KD_THEO_NGAY: p.getProperty('KD_THEO_NGAY') || ''
-  };
+  // v99.2: gửi ĐỦ mọi bộ đếm xoay vòng của BP0 (MON_KE_KHAC / HH_KE / KHUON_KE_* / NHOM_KE_* bị bỏ quên ở v99.1 -> không bao giờ ra HINH_HOC)
+  var propsGui = {};
+  var tatCaP = p.getProperties ? p.getProperties() : {};
+  Object.keys(tatCaP).forEach(function (k) { if (laKhoaDemBP0_(k)) propsGui[k] = String(tatCaP[k]); });
+  KHOA_DEM_BP0_.forEach(function (k) { if (propsGui[k] === undefined && p.getProperty(k) !== null) propsGui[k] = String(p.getProperty(k)); });
   var duLieu = JSON.stringify({
     cau_hinh: ch,
     props: propsGui,
-    gan_day: hang.slice(-40).map(function (r) { return { id: r.id, trang_thai: r.trang_thai, chu_de: String(r.chu_de || '').slice(0, 60), de_bai: String(r.de_bai || '').slice(0, 120), ma_bam: r.ma_bam || '' }; }),
+    gan_day: hang.slice(-40).map(function (r) { return { id: r.id, trang_thai: r.trang_thai, chu_de: String(r.chu_de || '').slice(0, 60), de_bai: String(r.de_bai || '').slice(0, 120), ma_bam: r.ma_bam || '', mon: r.mon || '', nguon: String(r.nguon || '').slice(0, 60) }; }),
     ma_bam: hang.map(function (r) { return r.ma_bam; }).filter(Boolean).slice(-120)
   });
   if (duLieu.length <= 60000 && typeof guiWorkflowGitHub_ === 'function') {
@@ -3619,6 +3671,10 @@ function nhanThemDeTuGitHub_(sh, d) {
   if (d.lop_ke !== null && d.lop_ke !== undefined) p.setProperty('LOP_KE', String(d.lop_ke));
   if (d.mon_ke !== null && d.mon_ke !== undefined) p.setProperty('MON_KE', String(d.mon_ke));
   if (d.lop_10p !== null && d.lop_10p !== undefined) p.setProperty('LOP_10P_KE', String(d.lop_10p));
+  // v99.2: ghi lại MỌI bộ đếm BP0 GitHub trả về (trừ DA_SINH_10P_NGAY: chỉ ghi khi thật sự nhận đề 10 phút, xem dưới)
+  if (d.dem && typeof d.dem === 'object') Object.keys(d.dem).forEach(function (k) {
+    if (k !== 'DA_SINH_10P_NGAY' && typeof laKhoaDemBP0_ === 'function' && laKhoaDemBP0_(k) && d.dem[k] !== null && d.dem[k] !== undefined) p.setProperty(k, String(d.dem[k]).slice(0, 40));
+  });
   var dsDe = Array.isArray(d.de) ? d.de : [];
   if (!dsDe.length) return { ok: true, them: 0 };
   var daBam = docMaBamLuuTru_();
@@ -3732,15 +3788,29 @@ function lapTuSinh_(kb, r, sn) {
   var may = typeof kiemTuSinhMay_ === 'function' ? kiemTuSinhMay_ : null;
   var m = null;
   try { m = may ? may(kb) : null; } catch (e1) { m = null; }
-  if (m && !m.ok && conDuGoiGemini_()) {
-    var sua = goi(huongDanTuSinh_(kb, r) + '\n\nMÃ TRƯỚC BỊ MÁY TỪ CHỐI: ' + String(m.loi || '').slice(0, 300) + '\nMÃ TRƯỚC:\n' + ts.ma.slice(0, 12000) + '\nSửa đúng lỗi đó, giữ phần còn lại.');
-    if (sua) { kb.khung4tang.tu_sinh = {ma: sua.ma, mo_ta: String(sua.mo_ta || ts.mo_ta || '').slice(0, 160)}; try { m = may(kb); } catch (e2) { m = null; } }
+  // v99.2: hợp đồng BP0 san_khau_dich = tu_sinh_svg -> vá tối đa 2 lần (kèm log lỗi từng lần); còn lại 1 lần như v99.1
+  var ep = kb.san_khau_dich === 'tu_sinh_svg';
+  var soVa = ep ? 2 : 1, nhatKyLoi = [];
+  for (var lanVa = 0; lanVa < soVa && m && !m.ok && conDuGoiGemini_(); lanVa++) {
+    nhatKyLoi.push('lần ' + (lanVa + 1) + ': ' + String(m.loi || '').slice(0, 200));
+    var maTruoc = kb.khung4tang.tu_sinh.ma;
+    var sua = goi(huongDanTuSinh_(kb, r) + '\n\nMÃ TRƯỚC BỊ MÁY TỪ CHỐI. NHẬT KÝ LỖI:\n' + nhatKyLoi.join('\n') + '\nMÃ TRƯỚC:\n' + String(maTruoc).slice(0, 12000) +
+      '\nSửa đúng lỗi đó, giữ phần còn lại (ưu tiên dùng hàm ve25d có sẵn: nhan() tự tránh nét, chu() đủ cỡ, MAU[...] theo theme).');
+    if (!sua) break;
+    kb.khung4tang.tu_sinh = {ma: sua.ma, mo_ta: String(sua.mo_ta || ts.mo_ta || '').slice(0, 160)};
+    try { m = may(kb); } catch (e2) { m = null; }
   }
   if (m && !m.ok) {
-    delete kb.khung4tang.tu_sinh;
-    nhatKy_('TU_SINH_SVG', ((r && r.id) || '') + ': mã vẫn lỗi sau 1 lần vá (' + String(m.loi || '').slice(0, 120) + ') -> giữ sân khấu cũ');
+    if (!ep) delete kb.khung4tang.tu_sinh;   // hợp đồng tu_sinh_svg: giữ mã lỗi để chuanbi.py vá tiếp (Gemini, có log lỗi)
+    var lyDoTs = 'mã vẫn lỗi sau ' + soVa + ' lần vá (' + String(m.loi || '').slice(0, 120) + ')';
+    if (ep) {
+      // KHÔNG rơi ngầm về sân khấu chữ: ghi cảnh báo rõ (chuanbi.py -> props tuSinhHong -> Mắt thần lỗi cứng tu_sinh_hong -> Auto-Heal / Zalo)
+      kb.tu_sinh_hong = lyDoTs;
+      nhatKy_('TU_SINH_HONG', ((r && r.id) || '') + ': hợp đồng tu_sinh_svg nhưng ' + lyDoTs + ' -> cảnh báo, chuanbi.py thử lại hộp cát');
+    } else nhatKy_('TU_SINH_SVG', ((r && r.id) || '') + ': ' + lyDoTs + ' -> giữ sân khấu cũ');
     return false;
   }
+  delete kb.tu_sinh_hong;
   nhatKy_('TU_SINH_SVG', ((r && r.id) || '') + ': gắn sân khấu tự sinh' + (m ? ' (' + m.so_lop + ' lớp)' : ' (chưa kiểm máy - chuanbi.py kiểm lại)'));
   return true;
 }
@@ -3779,4 +3849,302 @@ function lapLego_(kb, r, sn) {
   }
   nhatKy_('LEGO_3D', ((r && r.id) || '') + ': gắn đặc tả Lego ' + hkg.doi_tuong.length + ' khối, ' + hkg.buoc.length + ' bước');
   return true;
+}
+
+/* ===================== v99.2: BỘ PHẬN 0 — XOAY VÒNG 4 MẢNG, CHẶN ĐỀ SGK, 6 NHÓM SÁNG TẠO, HỢP ĐỒNG HÌNH ===================== */
+// Nguyên nhân v99.1 không bao giờ ra HINH_HOC: chonMon_ chọn THUC_TE/HINH_HOC theo MON_KE_KHAC, nhưng sinh-de.yml (GitHub) không
+// nhận và không trả bộ đếm này -> mỗi lượt trên GitHub đều bắt đầu từ 0 = THUC_TE. v99.2 chọn mảng theo LỊCH SỬ THẬT của HANG_DOI
+// (không phụ thuộc bộ đếm) và gửi / ghi lại đủ mọi bộ đếm BP0 (KHOA_DEM_BP0_).
+var MANG_V992_ = ['THUC_TE', 'XAC_SUAT', 'HINH_PHANG', 'HINH_KHONG_GIAN'];
+var KHOA_DEM_BP0_ = ['LOP_KE', 'MON_KE', 'MON_KE_KHAC', 'HH_KE', 'NHOM_KE_THUC_TE', 'NHOM_KE_XAC_SUAT', 'NHOM_KE_HINH_PHANG', 'NHOM_KE_HINH_KHONG_GIAN',
+  'BOI_CANH_XS_KE', 'NHOM_TT_KE', 'DA_SINH_10P_NGAY', 'LOP_10P_KE', 'KD_THEO_NGAY'];
+function laKhoaDemBP0_(k) { return KHOA_DEM_BP0_.indexOf(k) >= 0 || /^KHUON_KE_/.test(String(k)); }
+function sangTaoV992Bat_() { return String((typeof cauHinh_ === 'function' && cauHinh_('SANG_TAO_V992')) || 'BAT').toUpperCase() !== 'TAT'; }
+
+// Mảng của một dòng HANG_DOI (đề cũ không có nhãn mảng -> suy từ mon / mã / nguồn / chữ đề)
+function mangCuaDong_(r) {
+  r = r || {};
+  var id = String(r.id || ''), mon = String(r.mon || '').toUpperCase(), ng = String(r.nguon || '');
+  if (!mon) mon = /^H[HI]/.test(id) ? 'HINH_HOC' : /^T[TI]/.test(id) ? 'THUC_TE' : /^V[DT]|^XS/.test(id) ? 'XAC_SUAT' : '';
+  if (mon === 'HINH_HOC') {
+    if (/HINH_KHONG_GIAN/.test(ng)) return 'HINH_KHONG_GIAN';
+    if (/HINH_PHANG/.test(ng)) return 'HINH_PHANG';
+    return typeof laHinhKhongGian_ === 'function' && laHinhKhongGian_(r.de_bai) ? 'HINH_KHONG_GIAN' : 'HINH_PHANG';
+  }
+  return mon === 'THUC_TE' || mon === 'XAC_SUAT' ? mon : '';
+}
+// Tỷ lệ mục tiêu: TY_LE_MON "THUC_TE:30,XAC_SUAT:30,HINH_PHANG:20,HINH_KHONG_GIAN:20" (HINH_HOC:40 = chia đôi) thắng; không có ->
+// 25 % đều, TY_LE_XAC_SUAT (nếu đã đặt) giữ phần xác suất; HINH_HOC_KHO = TAT -> bỏ 2 mảng hình. CHU_DE_VIDEO cố định -> chỉ mảng đó.
+function tyLeMon_() {
+  var cd = String(cauHinh_('CHU_DE_VIDEO') || 'XEN_KE').toUpperCase();
+  var co = {THUC_TE: 25, XAC_SUAT: 25, HINH_PHANG: 25, HINH_KHONG_GIAN: 25};
+  var tlm = String(cauHinh_('TY_LE_MON') || '').trim();
+  if (tlm) {
+    var moi = {}, tong = 0;
+    tlm.split(/[,;]+/).forEach(function (x) {
+      var m = /^\s*([A-Za-z_]+)\s*[:=]\s*(\d+(?:[.,]\d+)?)\s*%?\s*$/.exec(x);
+      if (!m) return;
+      var k = m[1].toUpperCase(), v = Number(m[2].replace(',', '.'));
+      if (k === 'HINH_HOC') { moi.HINH_PHANG = v / 2; moi.HINH_KHONG_GIAN = v / 2; tong += v; }
+      else if (MANG_V992_.indexOf(k) >= 0) { moi[k] = v; tong += v; }
+    });
+    if (tong > 0) { co = {THUC_TE: 0, XAC_SUAT: 0, HINH_PHANG: 0, HINH_KHONG_GIAN: 0}; for (var k2 in moi) co[k2] = moi[k2]; }
+  } else if (String(cauHinh_('TY_LE_XAC_SUAT') || '') !== '' && isFinite(Number(cauHinh_('TY_LE_XAC_SUAT')))) {
+    var xs = Math.max(0, Math.min(100, Number(cauHinh_('TY_LE_XAC_SUAT'))));
+    co = {THUC_TE: (100 - xs) / 3, XAC_SUAT: xs, HINH_PHANG: (100 - xs) / 3, HINH_KHONG_GIAN: (100 - xs) / 3};
+  }
+  if (typeof batHinhHoc_ === 'function' && !batHinhHoc_()) { co.HINH_PHANG = 0; co.HINH_KHONG_GIAN = 0; }
+  if (cd === 'THUC_TE' || cd === 'XAC_SUAT') { var a = {}; MANG_V992_.forEach(function (m) { a[m] = m === cd ? 1 : 0; }); co = a; }
+  if (cd === 'HINH_HOC') { co.THUC_TE = 0; co.XAC_SUAT = 0; if (!co.HINH_PHANG && !co.HINH_KHONG_GIAN) { co.HINH_PHANG = 1; co.HINH_KHONG_GIAN = 1; } }
+  var s = 0;
+  MANG_V992_.forEach(function (m) { s += Math.max(0, co[m] || 0); });
+  if (!s) { co = {THUC_TE: 1, XAC_SUAT: 0, HINH_PHANG: 0, HINH_KHONG_GIAN: 0}; s = 1; }
+  var ra = {};
+  MANG_V992_.forEach(function (m) { ra[m] = Math.max(0, co[m] || 0) / s; });
+  return ra;
+}
+// Chọn mảng THIẾU NHIỀU NHẤT so với tỷ lệ trên 20 đề gần nhất (bỏ đề 10 phút); hòa -> xoay theo số đề đã có (tất định).
+function chonMang_(hang) {
+  var tl = tyLeMon_();
+  var gan = (hang || []).filter(function (r) { return r && String(r.de_bai || '').trim() && !(typeof laVideoDai_ === 'function' && laVideoDai_(r)); }).slice(-20);
+  var dem = {THUC_TE: 0, XAC_SUAT: 0, HINH_PHANG: 0, HINH_KHONG_GIAN: 0};
+  gan.forEach(function (r) { var m = mangCuaDong_(r); if (m) dem[m]++; });
+  var n = gan.length + 1, best = null, bd = -1e9;
+  for (var i = 0; i < MANG_V992_.length; i++) {
+    var m = MANG_V992_[(i + gan.length) % MANG_V992_.length];
+    if (!(tl[m] > 0)) continue;
+    var thieu = tl[m] * n - dem[m];
+    if (thieu > bd + 1e-9) { bd = thieu; best = m; }
+  }
+  return best || 'THUC_TE';
+}
+function monCuaMang_(mang) { return /^HINH_/.test(String(mang)) ? 'HINH_HOC' : String(mang); }
+
+// ---- danh sách đen mô-típ SGK (CHỈ đề tự sinh / tìm internet; đề Zalo không đi qua hàm này)
+var DE_SGK_DEN_ = [
+  ['cat_goc_gap_hop', function (t) { return /cắt\s*(?:bỏ\s*|đi\s*)?(?:ở\s*)?(?:4|bốn)\s*góc|cắt\s*(?:bỏ\s*)?(?:4|bốn)\s*hình\s*vuông/.test(t) && /(gấp|gập|hộp|thùng)/.test(t); }],
+  ['gia_ve_rap', function (t) { return /vé/.test(t) && /(rạp|xem phim|nhà hát|ca nhạc|buổi diễn|chiếu phim)/.test(t) && /(tăng|giảm|hạ)\s*(?:giá|thêm|đi|\d)/.test(t); }],
+  ['rut_bi_don_gian', function (t) {
+    return /(viên bi|quả bi|\bbi\b|quả cầu)/.test(t) && /(hộp|túi|bình|giỏ)/.test(t) && /(lấy|rút|bốc|chọn)/.test(t) && t.length < 260 &&
+      !/(biết rằng|với điều kiện|lần lượt[^.]*đến khi|đổi|chuyển|bỏ lại|hai hộp|2 hộp|ba hộp|3 hộp|nghịch lý|bất ngờ|ít nhất bao nhiêu|trò chơi|cược)/.test(t);
+  }],
+  ['nang_suat_voi_nuoc', function (t) {
+    return (/vòi/.test(t) && /(chảy|đầy bể|bể)/.test(t)) || /(làm chung|làm riêng|năng suất)[^.]{0,80}(công việc|xong việc|hoàn thành)/.test(t) ||
+      /(hai|2|ba|3)\s*(đội|người|công nhân|máy)[^.]{0,60}(cùng làm|làm chung)[^.]{0,60}(ngày|giờ)/.test(t);
+  }]
+];
+function laDeSgkNhamChan_(de) {
+  var t = String(de || '').toLowerCase().replace(/\s+/g, ' ');
+  for (var i = 0; i < DE_SGK_DEN_.length; i++) if (DE_SGK_DEN_[i][1](t)) return DE_SGK_DEN_[i][0];
+  return '';
+}
+
+// ---- 6 nhóm sáng tạo (45-55 s) + sân khấu đích hợp lệ theo nhóm
+var NHOM_SANG_TAC_ = [
+  {id: 'fractal', ten: 'FRACTAL & LẶP HỮU HẠN / VÔ HẠN', vi_du: 'đảo bông tuyết Koch (hữu hạn đến lần thứ n HOẶC vô hạn - nói RÕ), tam giác Sierpinski, hình vuông / đường tròn lồng nhau, gấp giấy chạm Mặt Trăng',
+    mang: ['THUC_TE'], san_khau: ['tu_sinh_svg'], luu_y: 'tổng VÔ HẠN (cấp số nhân lùi) chỉ từ lớp 11; lớp 10 chỉ hữu hạn, cộng dồn từng bước'},
+  {id: 'nghich_ly_xs', ten: 'NGHỊCH LÝ & BẪY XÁC SUẤT ĐỜI THỰC', vi_du: 'Monty Hall biến thể, nghịch lý ngày sinh, bẫy xét nghiệm dương tính giả, hai người hẹn gặp trong một khoảng thời gian (xác suất hình học bằng tỉ số diện tích)',
+    mang: ['XAC_SUAT'], san_khau: ['tu_sinh_svg', 'cay_bayes'], luu_y: 'Monty Hall / dương tính giả là xác suất có điều kiện -> CHỈ lớp 12; lớp 10-11 dùng nghịch lý ngày sinh (biến cố đối) hoặc đếm vét cạn; xác suất hình học giải bằng tỉ số diện tích, KHÔNG tích phân'},
+  {id: 'kien_truc', ten: 'KIẾN TRÚC, KỸ THUẬT & TỐI ƯU LẠ MẮT', vi_du: 'cầu vòm parabol, kiến bò đường ngắn nhất trên mặt hộp / trụ (trải phẳng), thang trượt, góc nhìn lớn nhất, cắt vật liệu lạ',
+    mang: ['THUC_TE'], san_khau: ['tu_sinh_svg'], luu_y: 'lớp 10-11 tối ưu bằng tam thức bậc 2 / Cauchy / trải phẳng + Pythago, không đạo hàm'},
+  {id: 'cap_so', ten: 'CẤP SỐ & TĂNG TRƯỞNG GÂY BẤT NGỜ', vi_du: 'bàn cờ hạt thóc biến thể, chọn lương theo ngày (cộng đều vs nhân đôi), bèo phủ mặt hồ, lan truyền / phân rã',
+    mang: ['THUC_TE'], san_khau: ['tu_sinh_svg'], luu_y: 'cấp số cộng / nhân từ lớp 11; lớp 10 chỉ cộng dồn bảng số nhỏ'},
+  {id: 'hinh_truc_quan', ten: 'HÌNH HỌC TRỰC QUAN & OXYZ THỰC TẾ', vi_du: 'ghép hình tính diện tích phần tô màu lạ mắt (miền cong, cánh hoa), drone / radar / cáp treo / tia sáng trong không gian',
+    mang: ['THUC_TE', 'HINH_PHANG', 'HINH_KHONG_GIAN'], san_khau: ['tu_sinh_svg', 'hinh_phang', 'khong_gian_3d'], luu_y: 'Oxyz CHỈ lớp 12'},
+  {id: 'van_dung_cao', ten: 'VẬN DỤNG CAO THPT / ĐGNL CHỌN LỌC', vi_du: 'bối cảnh mới lạ, kết quả có cú "quay xe" trái trực giác',
+    mang: ['THUC_TE', 'XAC_SUAT', 'HINH_PHANG', 'HINH_KHONG_GIAN'], san_khau: ['tu_sinh_svg', 'cay_bayes', 'hinh_phang', 'khong_gian_3d'], luu_y: ''}
+];
+var SAN_KHAU_DICH_ = ['tu_sinh_svg', 'cay_bayes', 'hinh_phang', 'khong_gian_3d'];
+function chonNhomSangTac_(mang) {
+  var ds = NHOM_SANG_TAC_.filter(function (g) { return g.mang.indexOf(mang) >= 0; });
+  if (!ds.length) return null;
+  var p = PropertiesService.getScriptProperties(), k = 'NHOM_KE_' + mang;
+  var v = Number(p.getProperty(k) || 0);
+  p.setProperty(k, String((v + 1) % 600));
+  return ds[v % ds.length];
+}
+function sanKhauDichCuaMang_(mang, g) {
+  if (mang === 'HINH_PHANG') return ['hinh_phang'];
+  if (mang === 'HINH_KHONG_GIAN') return ['khong_gian_3d'];
+  var ds = ((g && g.san_khau) || ['tu_sinh_svg']).filter(function (s) { return s !== 'hinh_phang' && s !== 'khong_gian_3d'; });
+  if (mang === 'THUC_TE') ds = ds.filter(function (s) { return s !== 'cay_bayes'; });
+  return ds.length ? ds : ['tu_sinh_svg'];
+}
+// Chỉ thị thêm vào prompt sáng tác / tìm đề: nhóm sáng tạo + danh sách đen + HỢP ĐỒNG HÌNH bắt buộc. -> {chu, nhom, ep, dich}
+// Mảng hình học: luôn có nhóm 5/6 (chỉ để gợi ý bối cảnh), không xoay bộ đếm nhóm của mảng khác.
+function yeuCauSangTaoV992_(mang, lop) {
+  if (!sangTaoV992Bat_()) return {chu: '', nhom: null, ep: false, dich: []};
+  var g = chonNhomSangTac_(mang);
+  var dich = sanKhauDichCuaMang_(mang, g);
+  var chu = '\n=== v99.2 ĐỀ SÁNG TẠO CHO SHORTS 45-55 GIÂY (BẮT BUỘC) ===\n';
+  if (g) chu += 'NHÓM CHỦ ĐỀ LẦN NÀY: ' + g.ten + ' — ví dụ: ' + g.vi_du + '.' + (g.luu_y ? ' Lưu ý chương trình: ' + g.luu_y + ' (đề đang ra cho lớp ' + lop + ').' : '') + '\n';
+  if (mang === 'HINH_PHANG') chu += 'MẢNG HÌNH PHẲNG CHUẨN (v94): CHỈ ra đề dựng được bằng PHÉP DỰNG điểm từ tam giác / tứ giác / đường tròn (trung điểm, giao điểm, chân đường vuông góc, tiếp tuyến...) và mệnh đề kiểm được trên tọa độ. KHÔNG ra miền cong tô màu, kiến bò, xác suất hình học (những bài đó thuộc mảng thực tế).\n';
+  if (mang === 'HINH_KHONG_GIAN') chu += 'MẢNG HÌNH KHÔNG GIAN CHUẨN (v97/v98): CHỈ khối chóp / lăng trụ / hộp / tứ diện (đỉnh, đáy, chân đường cao, điểm trên cạnh, giao, thiết diện); bài Oxyz CHỈ lớp 12. KHÔNG ra trải phẳng hình hộp / drone ngoài đa diện chuẩn (thuộc mảng thực tế).\n';
+  chu += 'CẤM mô-típ SGK cũ: cắt 4 góc tấm bìa gấp hộp, tăng / giảm giá vé rạp phim cơ bản, rút bi đơn giản không có yếu tố bất ngờ, năng suất / vòi nước chảy truyền thống.\n' +
+    'Đề phải có MỘT nút thắt thông minh ("à ra thế") và một hình ảnh biến đổi được trong 3-4 bước. Không dùng năm sinh / khóa học / năm thi trong đề.\n' +
+    (/^HINH_/.test(mang) ? '' : 'Đề có san_khau_dich "tu_sinh_svg" ghi "dang":"sang_tao" (chỉ thị v99.2 này THẮNG các mục TRÁNH / danh sách dạng ở trên cho riêng đề đó; vẫn đúng chương trình lớp).\n') +
+    'HỢP ĐỒNG HÌNH (mỗi phần tử JSON BẮT BUỘC thêm): "san_khau_dich": ' + dich.map(function (x) { return '"' + x + '"'; }).join(' | ') +
+    ', "kich_ban_hinh": ["(1) trạng thái gốc nhìn thấy được", "(2) thao tác cắt / trải / tô / phóng đúng nút thắt", "(3) ...", "(4) hình chốt đáp án (không ghi số đáp án)"], ' +
+    '"nut_that": "1 câu nêu bước đột phá", "goi_y_hinh_anh": "1 câu: thứ sẽ chuyển động ở tầng 2".\n';
+  return {chu: chu, nhom: g, ep: true, dich: dich};
+}
+// Hợp đồng hình lưu ở cuối cột sẵn có yeu_to_tu_duy: "... [hop_dong]{json}" (KHÔNG dùng mo_ta_hinh: cột đó bật luồng "đề có hình")
+function hopDongTuDe_(d, mang, nhom) {
+  if (!d) return null;
+  var dich = String(d.san_khau_dich || '').trim();
+  var hop = sanKhauDichCuaMang_(mang, nhom);
+  if (hop.indexOf(dich) < 0) dich = hop[0];
+  var kbh = Array.isArray(d.kich_ban_hinh) ? d.kich_ban_hinh : String(d.kich_ban_hinh || '').split(/\n|\s*\(\d\)\s*/);
+  kbh = kbh.map(function (x) { return String(x || '').trim().slice(0, 140); }).filter(Boolean).slice(0, 4);
+  return {san_khau_dich: dich, kich_ban_hinh: kbh, nut_that: String(d.nut_that || d.y_tuong_then_chot || '').slice(0, 160),
+    goi_y_hinh_anh: String(d.goi_y_hinh_anh || '').slice(0, 160), mang: mang, nhom: nhom ? nhom.id : ''};
+}
+function boHopDong_(s) { return String(s || '').replace(/\s*\[hop_dong\]\{[\s\S]*\}\s*$/, ''); }
+function ganHopDong_(yt, hd) {
+  var goc = boHopDong_(yt);
+  return hd ? (goc ? goc + ' ' : '') + '[hop_dong]' + JSON.stringify(hd) : goc;
+}
+function docHopDongHinh_(r) {
+  var s = String((r && r.yeu_to_tu_duy) || ''), i = s.indexOf('[hop_dong]');
+  if (i < 0) return null;
+  try { var o = JSON.parse(s.slice(i + 10)); return o && typeof o === 'object' ? o : null; } catch (e) { return null; }
+}
+// Chỉ thị cho BP2 (viết kịch bản) theo hợp đồng hình của BP0
+function huongDanHopDongV992_(r) {
+  var hd = docHopDongHinh_(r);
+  if (!hd) return '';
+  return '\nHỢP ĐỒNG HÌNH TỪ BỘ PHẬN 0 (bắt buộc giữ): sân khấu đích "' + hd.san_khau_dich + '". Các bước hình: ' +
+    (hd.kich_ban_hinh || []).map(function (x, i) { return (i + 1) + ') ' + x; }).join(' ') +
+    (hd.nut_that ? ' Nút thắt: ' + hd.nut_that + ' (bước giải trọng tâm phải khớp đúng thao tác hình tương ứng).' : '') +
+    (hd.goi_y_hinh_anh ? ' Tầng 2: ' + hd.goi_y_hinh_anh + '.' : '') +
+    (hd.san_khau_dich === 'tu_sinh_svg' ? ' Mỗi bước khung4tang.buoc ứng với MỘT bước hình ở trên (cùng thứ tự).' : '') + '\n';
+}
+// Gắn hợp đồng vào kịch bản (BP2) để JS (SanKhau.gs) và Python (chuanbi / khung4tang_v96) cùng đọc kb.san_khau_dich
+function apHopDongVaoKb_(kb, r) {
+  var hd = docHopDongHinh_(r);
+  if (!kb || !hd || SAN_KHAU_DICH_.indexOf(hd.san_khau_dich) < 0) return false;
+  kb.san_khau_dich = hd.san_khau_dich;
+  if (hd.kich_ban_hinh && hd.kich_ban_hinh.length) kb.kich_ban_hinh = hd.kich_ban_hinh;
+  if (hd.nut_that && !kb.nut_that) kb.nut_that = hd.nut_that;
+  return true;
+}
+
+/* ===================== v99.2: BỘ PHẬN 1 — KHÓA NGỘ NHẬN ĐỀ, KIỂM CHỨNG 2 CHIỀU, CHỌN CÁCH GỌN ===================== */
+var YEU_CAU_HAI_CHIEU_ = 'KIỂM CHỨNG 2 CHIỀU (bắt buộc): đối tượng trả về có THÊM "mo_phong" = giá trị tính TRỰC TIẾP theo đúng quy luật của đề ' +
+  '(cộng dồn từng bước k = 1..n, liệt kê / đếm vét cạn, mô phỏng từng kỳ - KHÔNG dùng công thức đóng) và "giai_tich" = giá trị theo công thức giải tích ' +
+  '(tổng cấp số, công thức tổ hợp, đỉnh parabol...). Hai giá trị phải khớp nhau (sai lệch <= 1e-4); "gia_tri" / "tu,mau" là đáp số theo ĐÚNG đề ' +
+  '(đề hữu hạn đến lần thứ n thì là tổng HỮU HẠN). ';
+// -> null (mã không trả đủ 2 chiều) | {ok, lech, mo}
+function kiemHaiChieu_(kq) {
+  if (!kq || typeof kq !== 'object') return null;
+  var mp = Number(kq.mo_phong), gt = Number(kq.giai_tich);
+  if (kq.mo_phong === undefined || kq.giai_tich === undefined || kq.mo_phong === null || kq.giai_tich === null || !isFinite(mp) || !isFinite(gt)) return null;
+  var lech = Math.abs(mp - gt);
+  // ngưỡng TUYỆT ĐỐI 1e-4 (Koch 10 lần ≈ 138,551 tỷ vs vô hạn ≈ 138,564 tỷ chỉ lệch ~9e-5 TƯƠNG ĐỐI -> ngưỡng tương đối bỏ lọt);
+  // số rất lớn (đơn vị đồng ~1e11) nới theo sai số làm tròn của số thực: 1e-9 · |giá trị|
+  var tran = Math.max(1e-4, 1e-9 * Math.abs(gt));
+  var n = Number(kq.n_mo_phong || (kq.kieu === 'mo_phong' ? kq.n : 0));
+  if (n > 0 && gt >= 0 && gt <= 1) tran = Math.max(tran, 5 * Math.sqrt(gt * (1 - gt) / n) + 1e-4);   // mô phỏng ngẫu nhiên xác suất: 5 sigma
+  var ok = lech <= tran;
+  return {ok: ok, lech: lech, mo: 'mô phỏng ' + mp + ' vs giải tích ' + gt + ' (lệch ' + Number(lech.toPrecision(3)) + (ok ? ' <= ' : ' > ') + Number(tran.toPrecision(2)) + ')'};
+}
+// 4 bẫy ngộ nhận hay gặp của LLM: (a) hữu hạn n lần vs vô hạn, (b) đơn vị, (c) có / không hoàn lại, (d) điều kiện biên nghiệm tối ưu.
+// Trả chỉ thị chèn vào ĐỀ của mọi lời gọi giải + mã kiểm chứng (nêu cụ thể điều đề đã nói, không đoán thay đề).
+function khoaNgoNhanDe_(de, mon) {
+  var t = String(de || '').toLowerCase();
+  var dong = [];
+  var huuHan = /lần\s*thứ\s*\d+|lần\s*thứ\s*(mười|chín|tám|bảy|sáu|năm|tư|ba|hai)|sau\s*\d+\s*(lần|bước|năm|ngày|tháng|tuần|kỳ|giờ)|đến\s*(bước|lần)\s*(thứ\s*)?\d+|bước\s*thứ\s*\d+|(\d+)\s*lần\s*(lặp|biến đổi|gấp|chia)/.exec(t);
+  var voHan = /vô\s*hạn|mãi\s*mãi|vô\s*số\s*lần|cứ\s*tiếp\s*tục\s*(như\s*vậy\s*)?mãi|khi\s*n\s*(dần\s*)?(tới|ra)\s*vô\s*cùng|giới\s*hạn/.test(t);
+  var lap = /koch|bông tuyết|sierpinski|fractal|lặp|cấp số|lồng nhau|gấp (đôi|giấy)|mỗi (bước|lần|ngày|năm|tháng)|nhân đôi|hạt thóc|bàn cờ|bèo|phân rã|lan truyền/.test(t);
+  if (huuHan && !voHan) dong.push('(a) ĐỀ NÓI HỮU HẠN ("' + huuHan[0] + '"): chỉ tính đúng tới lần đó (cộng dồn từng bước), TUYỆT ĐỐI không dùng tổng vô hạn / giới hạn.');
+  else if (voHan && !huuHan) dong.push('(a) ĐỀ NÓI VÔ HẠN: dùng tổng vô hạn / giới hạn, không dừng ở một số bước.');
+  else if (lap) dong.push('(a) Bài có quá trình lặp: xác định CHÍNH XÁC đề hỏi hữu hạn (đến lần thứ n) hay vô hạn lần trước khi tính; đếm đúng bước 0 / bước 1.');
+  var dv = (t.match(/\b(km|cm|mm|m²|m2|m³|m3|ha|lít|ml|kg|tấn|triệu|nghìn|ngàn|tỷ|tỉ|đồng|usd|giờ|phút|giây|ngày|tháng|năm|%)/g) || []);
+  var dvKhac = dv.filter(function (x, i) { return dv.indexOf(x) === i; });
+  if (dvKhac.length) dong.push('(b) ĐƠN VỊ trong đề: ' + dvKhac.slice(0, 8).join(', ') + ' -> đổi về cùng hệ trước khi tính; đáp số đúng đơn vị đề hỏi (vd diện tích m² x giá triệu/m² = triệu đồng, đổi ra tỷ nếu đề hỏi).');
+  if (mon === 'XAC_SUAT' || /xác suất|ngẫu nhiên|rút|bốc|lấy ra/.test(t)) {
+    if (/không\s*(hoàn|trả)\s*lại|không\s*bỏ\s*lại|lấy\s*(đồng\s*thời|cùng\s*lúc)/.test(t)) dong.push('(c) KHÔNG HOÀN LẠI (hoặc lấy đồng thời): không gian mẫu giảm sau mỗi lần lấy.');
+    else if (/hoàn\s*lại|trả\s*lại|bỏ\s*lại\s*vào/.test(t)) dong.push('(c) CÓ HOÀN LẠI: mỗi lần lấy độc lập, không gian mẫu giữ nguyên.');
+    else dong.push('(c) Xác định rõ có hoàn lại / không hoàn lại, có phân biệt thứ tự không, các vật giống hay khác nhau - theo đúng chữ của đề.');
+  }
+  if (/lớn\s*nhất|nhỏ\s*nhất|tối\s*đa|tối\s*thiểu|tối\s*ưu|ngắn\s*nhất|ít\s*nhất|nhiều\s*nhất|cực\s*(đại|tiểu)/.test(t)) {
+    dong.push('(d) TỐI ƯU: nghiệm phải nằm TRONG miền xác định (độ dài > 0, số lượng nguyên không âm, giá không âm...); so sánh với giá trị ở BIÊN miền; đại lượng đếm được thì nghiệm nguyên.');
+  }
+  return dong.length ? '\n\nKHÓA CHỐNG NGỘ NHẬN ĐỀ (bắt buộc kiểm trước khi trả lời):\n' + dong.join('\n') : '';
+}
+// Cách giải gọn nhất cho Shorts trong các lời giải đúng: điểm = 2·do_gon + 3·(có nút thắt) - số bước
+function chonCachGon_(ds) {
+  var tot = null, bd = -1e9;
+  (ds || []).forEach(function (c) {
+    if (!c) return;
+    var dg = Number(c.do_gon);
+    var d = (isFinite(dg) ? 2 * dg : 0) + (String(c.nut_that || c.y_tuong || '').trim().length > 8 ? 3 : 0) - ((c.cac_buoc || []).length || 0);
+    if (d > bd + 1e-9) { bd = d; tot = c; }
+  });
+  return tot;
+}
+
+/* ===================== v99.2b: CHẶN MODEL TRẢ HTTP 403 (MODEL_TU_CHOI) 12 GIỜ ===================== */
+// Model bị từ chối quyền (preview / thử nghiệm: gemini-4-*, pro-latest, *-customtools...) trước đây bị thử lại MỖI lượt, mỗi key
+// một lần -> tốn cả phút, DOC_DE dính BI_NGAT_QUA_6_PHUT. Nay 403 (không phải key hỏng) -> chặn TOÀN BỘ model 12 giờ trong Script
+// Property MODEL_CHAN_403 = {model: hết hạn ms} (CacheService chỉ giữ tối đa 6 giờ); GitHub (chay_bp1.js) nhận / trả danh sách này.
+var GIO_CHAN_MODEL_403_ = 12;
+var _chan403_ = null;
+function tenModelGoc_(m) { return String(m || '').replace(/\+.*$/, '').trim(); }
+// 403 do KEY / dự án (key hỏng, API chưa bật, dịch vụ bị khóa, thanh toán) KHÔNG phải model từ chối -> không chặn model
+var RE_403_LOI_KEY_ = /API_KEY_INVALID|API key not valid|API_KEY_EXPIRED|API key expired|SERVICE_DISABLED|has not been used in project|API_KEY_SERVICE_BLOCKED|API_KEY_HTTP_REFERRER_BLOCKED|billing/i;
+function la403TuChoi_(code, raw) { return Number(code) === 403 && !RE_403_LOI_KEY_.test(String(raw || '')); }
+function dsModelChan403_() {
+  if (_chan403_ && _chan403_.luc > Date.now() - 30000) return _chan403_.ds;
+  var o = {};
+  try { o = JSON.parse(PropertiesService.getScriptProperties().getProperty('MODEL_CHAN_403') || '{}') || {}; } catch (e) { o = {}; }
+  var bay = Date.now(), ds = {};
+  Object.keys(o).forEach(function (m) { if (Number(o[m]) > bay) ds[m] = Number(o[m]); });
+  _chan403_ = {luc: Date.now(), ds: ds};
+  return ds;
+}
+function modelBiChan403_(model) { return !!dsModelChan403_()[tenModelGoc_(model)]; }
+function luuModelChan403_(ds) {
+  try { PropertiesService.getScriptProperties().setProperty('MODEL_CHAN_403', JSON.stringify(ds)); } catch (e) { /* bỏ qua */ }
+  _chan403_ = {luc: Date.now(), ds: ds};
+}
+function chanModel403_(model, gio) {
+  var m = tenModelGoc_(model);
+  if (!m) return false;
+  var ds = dsModelChan403_(), het = Date.now() + (Number(gio) || GIO_CHAN_MODEL_403_) * 3600000;
+  if (ds[m] && ds[m] >= het - 600000) return false;
+  ds[m] = het;
+  luuModelChan403_(ds);
+  return true;
+}
+// Gộp danh sách chặn GitHub trả về (lấy hạn xa hơn)
+function ghiModelChan403_(moi) {
+  if (!moi || typeof moi !== 'object') return 0;
+  var ds = dsModelChan403_(), bay = Date.now(), n = 0;
+  Object.keys(moi).forEach(function (m) {
+    var h = Number(moi[m]), k = tenModelGoc_(m);
+    if (k && h > bay && !(ds[k] >= h)) { ds[k] = Math.min(h, bay + 24 * 3600000); n++; }
+  });
+  if (n) luuModelChan403_(ds);
+  return n;
+}
+
+// v99.2b: "bai_hoc_rut_ra" Gemini đôi khi trả CHUỖI thay vì mảng -> (kb.bai_hoc_rut_ra || []).map nổ "is not a function" (DangVideo.gs).
+// Mảng -> giữ; chuỗi không rỗng -> [chuỗi]; còn lại -> [].
+function mangBaiHoc_(x) {
+  if (Array.isArray(x)) return x;
+  if (typeof x === 'string' && x.trim()) return [x.trim()];
+  return [];
+}
+
+// v99.2b: lỗi TẠM của Apps Script "Đã xảy ra lỗi với người môi giới" / "broker" làm rớt lệnh Zalo -> nghỉ 2 giây, thử lại tối đa 2 lần.
+function laLoiBroker_(e) { return /người môi giới|broker/i.test(String((e && e.message) || e || '')); }
+function thuLaiBroker_(fn, ten) {
+  for (var lan = 0; ; lan++) {
+    try { return fn(); } catch (e) {
+      if (!laLoiBroker_(e) || lan >= 2) throw e;
+      try { nhatKy_('ZALO_THU_LAI', (ten || 'Zalo') + ': lỗi tạm "' + String(e.message).slice(0, 80) + '" -> nghỉ 2 giây, thử lại lần ' + (lan + 1) + '/2'); } catch (e2) { /* bỏ */ }
+      Utilities.sleep(2000);
+    }
+  }
 }

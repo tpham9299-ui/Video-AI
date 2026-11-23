@@ -433,6 +433,14 @@ function doPost(e) {
       // v91 MẮT THẦN 3×3 phát hiện lỗi nặng: giữ ở CHO (không giao AI xem, không xếp lịch), đánh dấu chặn trong link_dang
       // (DangVideo.gs bỏ qua cho tới khi chính bạn /duyet sau thời điểm chặn) và gửi ảnh lưới + danh sách lỗi qua Zalo.
       var matThanChan = d.mat_than && d.mat_than.dat === false;
+      // v99.2 AUTO-HEAL: lỗi CỨNG do kịch bản (cắt / chồng chữ, TeX thô, lộ đáp án, lệch pha, đứng hình, tự sinh hỏng) và còn lượt
+      // (tối đa 2 / mã đề) -> trả về BP2 sửa đúng lỗi rồi BP3 tự dựng lại; video lỗi bỏ vào thùng rác. Hết lượt / lỗi khác -> CHO + Zalo như cũ.
+      var tuSua = matThanChan && typeof xuLyTuSuaMatThan_ === 'function' ? xuLyTuSuaMatThan_(sh, r, d) : null;
+      if (tuSua && tuSua.tu_sua) {
+        [d.file_id, d.anh_kt, d.anh_bia].forEach(function (fid) { if (fid) { try { DriveApp.getFileById(String(fid)).setTrashed(true); } catch (eTr) {} } });
+        PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1');
+        return tra({ ok: true, tu_sua: true, lan: tuSua.da_sua + 1 });
+      }
       if (matThanChan) {
         var kqMT = {};
         try { kqMT = JSON.parse(String(r.link_dang || '{}')) || {}; } catch (eMT) { kqMT = {}; }
@@ -446,6 +454,8 @@ function doPost(e) {
         var dsLoiMT = (d.mat_than.loi || []).filter(function (x) { return x && x.nang !== false; }).slice(0, 6)
           .map(function (x) { return '• Ô ' + x.o + ' – ' + ({cat_chu: 'cắt chữ/tràn khung', chong_chu: 'chồng nhãn/chữ', latex_tho: 'mã LaTeX thô', lo_dap_an: 'lộ đáp án sớm'}[x.loai] || x.loai) + (x.mo_ta ? ': ' + x.mo_ta : ''); });
         var tinMT = '🛑 Mắt thần 3×3 CHẶN ĐĂNG video ' + r.id + (r.chu_de ? ' (' + r.chu_de + ')' : '') + ':\n' + dsLoiMT.join('\n') +
+          (tuSua && tuSua.het_luot ? '\n🔧 Đã tự sửa ' + tuSua.da_sua + '/' + TRAN_TU_SUA_ + ' lần mà vẫn lỗi' + (function () { var g = docAiKT_(r).ghi_chu_sua_tu_dong; return g && g.length ? ' (lần cuối sửa: ' + [].concat(g).join('; ').slice(0, 200) + ')' : ''; })() + ' -> dừng tự sửa.' :
+            tuSua && !tuSua.cung.length ? '\n(Lỗi không do kịch bản / chỉ cảnh báo nhẹ -> không tự dựng lại để tiết kiệm quota.)' : '') +
           '\nVideo: https://drive.google.com/file/d/' + d.file_id + '/view' +
           '\nXem kỹ rồi /duyet ' + r.id + ' (vẫn cho đăng) hoặc /sua ' + r.id + ' <góp ý> để dựng lại.';
         var cMT = CacheService.getScriptCache();

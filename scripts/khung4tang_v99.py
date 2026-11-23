@@ -188,10 +188,12 @@ def khoa_dap_an(out, t_cb, so_dap=()):
     if t_cb is None or not out:
         return []
     sua = []
+    lech_max = 0.0
     buoc = out.get("buoc") or []
     for j, b in enumerate(buoc):
         if j and LA_KET_LUAN.search(str(b.get("nhan") or "") + " " + str(b.get("tieu_de") or "")) and b["t"] < t_cb - 0.05:
             lech = t_cb - b["t"]
+            lech_max = max(lech_max, lech)
             b["t"] = round(t_cb, 3)
             for th in b.get("the") or []:
                 th["t"] = round(max(th.get("t", 0) + lech, t_cb + 0.45), 3)
@@ -205,6 +207,7 @@ def khoa_dap_an(out, t_cb, so_dap=()):
         for th in b.get("the") or []:
             if th.get("chot") and th.get("t", 0) < t_cb:
                 lech = t_cb - th["t"]
+                lech_max = max(lech_max, lech)
                 th["t"] = round(t_cb, 3)
                 if th.get("moc"):
                     th["moc"] = [round(x + lech, 3) for x in th["moc"]]
@@ -229,7 +232,33 @@ def khoa_dap_an(out, t_cb, so_dap=()):
     if out.get("tChot") is not None and out["tChot"] < t_cb:
         out["tChot"] = round(t_cb, 3)
     out["tCongBo"] = round(t_cb, 3)
+    khoa_dap_an.lech_max = lech_max
     return sua
+
+
+NGUONG_LECH_PHA = 3.0
+
+
+def canh_bao_dong_bo(out, t_cb, sua, tu_all=(), canh_props=(), fps=30, so_dap=(), doi_so=None):
+    """v99.2 — cờ LỆCH PHA hình - tiếng (props.khung4tang.canhBaoDongBo -> Mắt thần lỗi cứng `lech_pha` -> Auto-Heal):
+    (1) kịch bản đặt bước kết luận / thẻ chốt TRƯỚC giây giọng công bố đáp án >= 3 s (đã bị khóa dời lại, nhưng lời và hình
+        lệch nhịp rõ - phải sửa kịch bản); (2) có cảnh đáp án + có số đáp án nhưng giọng KHÔNG đọc ra số đó (mốc phải đoán)."""
+    ra = []
+    if t_cb is None or not out:
+        return ra
+    lech = getattr(khoa_dap_an, "lech_max", 0.0) if sua else 0.0
+    if lech >= NGUONG_LECH_PHA:
+        ra.append("mốc đáp án trên hình sớm hơn giọng công bố %.1f s (bước kết luận / thẻ chốt bị kéo trước tCongBo)" % lech)
+    if so_dap and canh_props:
+        canh = [c for c in canh_props if re.search(r"dap_an|ket_qua|chot", str(c.get("loai") or ""))]
+        if canh:
+            c = canh[0]
+            t0 = c["batDau"] / float(fps)
+            dau = round(t0 + c.get("leadFrame", 0) / float(fps), 3)
+            co_tu = any(t0 - 0.05 <= w["bat"] < t0 + c["soFrame"] / float(fps) for w in tu_all or [])
+            if co_tu and abs(t_cb - dau) < 1e-6:
+                ra.append("giọng cảnh đáp án không đọc ra số %s (mốc công bố phải đoán = đầu cảnh)" % ", ".join(str(x) for x in list(so_dap)[:2]))
+    return ra
 
 
 # ---------------------------------------------------------------- chống đứng hình > 6 s ở T2
@@ -331,3 +360,39 @@ def chon_theme(kb):
             return ten
     h = int(hashlib.md5(str(kb.get("id") or van).encode("utf8")).hexdigest(), 16)
     return THEMES[h % len(THEMES)]
+
+
+# ---------------------------------------------------------------- v99.2: nhãn phụ bước không lặp "BƯỚC n"
+# T1 (src/khung4tang/TangTieuDe.tsx) luôn vẽ viên thuốc "BƯỚC n" rồi mới tới nhãn phụ -> kịch bản ghi nhan = "Bước 1" gây
+# "BƯỚC 2 | BƯỚC 1". Bản đôi: src/khung4tang/nhan_buoc.ts nhanPhuBuoc + KiemTraHinh.gs nhanPhuBuoc_ (test so khớp).
+RE_TIEN_TO_BUOC = re.compile(r"^\s*(?:bước|buoc|step)\s*\d*\s*[:.\-–—·|/]*\s*", re.I)
+
+
+def nhan_phu_buoc(nhan, j=0, n=0):
+    """Nhãn phụ sau viên thuốc "BƯỚC n": bỏ tiền tố "Bước n" (kể cả "Bước 2: Lập hàm" -> "Lập hàm"); rỗng -> tên pha ngắn
+    (bước đầu "Đề bài", bước cuối "Kết luận", giữa để trống). Không bao giờ còn chữ "Bước" đứng đầu."""
+    s = str(nhan or "").strip()
+    if not re.match(r"^(?:bước|buoc|step)\s*(?:\d|[:.\-–—·|/]|$)", s, re.I):   # "Bước ngoặt" là cụm có nghĩa -> giữ
+        return s
+    s = RE_TIEN_TO_BUOC.sub("", s).strip()
+    if s:
+        return s[0].upper() + s[1:]
+    if n and j == 0:
+        return "Đề bài"
+    if n and j == n - 1:
+        return "Kết luận"
+    return ""
+
+
+def chuan_nhan_buoc(out):
+    """Áp nhan_phu_buoc cho props.khung4tang.buoc. Trả số bước đã sửa."""
+    buoc = (out or {}).get("buoc") or []
+    dem = 0
+    for j, b in enumerate(buoc):
+        if not isinstance(b, dict):
+            continue
+        moi = nhan_phu_buoc(b.get("nhan"), j, len(buoc))
+        if moi != str(b.get("nhan") or "").strip():
+            b["nhan"] = moi
+            dem += 1
+    return dem

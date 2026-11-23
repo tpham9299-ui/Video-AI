@@ -28,6 +28,22 @@ const bo404 = catalog.doc404();       // v98.2: cặp "model|băm key" đã tr�
 const model404 = new Set();            // model đã 404 trong tiến trình này -> bỏ qua ngay
 const TEP_TU_CHOI = path.join(os.tmpdir(), 'gemini_key_tu_choi.txt');   // "model|key" bị từ chối
 const tuChoi = new Set(docDong(TEP_TU_CHOI));
+// v99.2b: model trả HTTP 403 (không phải lỗi key) -> chặn CẢ model 12 giờ, dùng chung giữa các lần gọi trong job + gửi về Apps Script
+// (chay_bp1.js nạp / trả danh sách MODEL_CHAN_403 qua tệp này)
+const TEP_MODEL_CHAN = path.join(os.tmpdir(), 'gemini_model_chan_403.json');
+const GIO_CHAN_403 = 12;
+const RE_403_LOI_KEY = /API_KEY_INVALID|API key not valid|API_KEY_EXPIRED|API key expired|SERVICE_DISABLED|has not been used in project|API_KEY_SERVICE_BLOCKED|API_KEY_HTTP_REFERRER_BLOCKED|billing/i;
+function docModelChan() {
+  try { const o = JSON.parse(fs.readFileSync(TEP_MODEL_CHAN, 'utf8')); const bay = Date.now(); return Object.fromEntries(Object.entries(o || {}).filter(([, h]) => Number(h) > bay)); } catch (e) { return {}; }
+}
+const modelChan = docModelChan();
+function chanModel403(md) {
+  if (!md || modelChan[md]) return;
+  modelChan[md] = Date.now() + GIO_CHAN_403 * 3600e3;
+  try { fs.writeFileSync(TEP_MODEL_CHAN, JSON.stringify({...docModelChan(), ...modelChan})); } catch (e) { /* bỏ */ }
+  process.stderr.write(`MODEL_CHAN_403: ${md} từ chối quyền (HTTP 403) -> chặn ${GIO_CHAN_403} giờ, bỏ qua ở mọi lượt sau
+`);
+}
 const hetNgay = new Set(docDong(TEP_HET_NGAY));   // dạng "model|key"
 const tatCa = [...new Set(cauHinh.keys || [])];
 const nghiDen = new Map();
@@ -46,7 +62,7 @@ function phanLoai(code, raw) {
   return 'khac';
 }
 // model coi như chết: đã 404 trong tiến trình này, hoặc >= 2 key đã 404 trong ngày
-const chet = (md) => model404.has(md) || catalog.chet404(md, tatCa.filter((k) => !hong.has(k)), bo404);
+const chet = (md) => model404.has(md) || !!modelChan[md] || catalog.chet404(md, tatCa.filter((k) => !hong.has(k)), bo404);
 function ghiModel404(md, k) {
   if (!md) return;
   if (k) catalog.ghi404(md, k, bo404);
@@ -109,8 +125,10 @@ function ghiHetNgay(k, model) {
 }
 
 async function motModel(model, body, i, huy, soVong = 2) {
+  if (modelChan[model]) return {ok: false, code: 403, raw: 'MODEL_TU_CHOI (đã chặn): ' + model, het: false, model};
   if (chet(model)) return {ok: false, code: 404, raw: 'MODEL_KHONG_CO: ' + model, het: false};
   let bodyGui = chuanBodyChoModel(model, body);
+  let so403 = 0;
   let cuoi = {ok: false, code: 0, raw: 'KHONG_CO_KEY', het: false};
   for (let vong = 0; vong < soVong; vong++) {
     const dung = tatCa.filter((k) => !hong.has(k) && !hetNgay.has(model + '|' + k) && !tuChoi.has(model + '|' + k));
@@ -147,7 +165,12 @@ async function motModel(model, body, i, huy, soVong = 2) {
         }
         if (loai === 'het_ngay') { ghiHetNgay(k, model); continue; }
         if (loai === 'hong') { ghiKeyHong(k, res.status, raw); continue; }
-        if (loai === 'tu_choi') { ghiTuChoi(k, res.status, model); continue; }
+        if (loai === 'tu_choi') {
+          ghiTuChoi(k, res.status, model);
+          // v99.2b: 2 key cùng bị 403 -> model không cho dùng: chặn 12 giờ, chuyển model ngay (không thử hết key)
+          if (res.status === 403 && !RE_403_LOI_KEY.test(raw) && ++so403 >= 2) { chanModel403(model); return {ok: false, code: 403, raw: 'MODEL_TU_CHOI', het: false, model}; }
+          continue;
+        }
         if (loai === 'phut') {
           const m = /"retryDelay":\s*"(\d+)/.exec(raw);
           const cho = ((m ? Number(m[1]) : 12) + 1) * 1000;
@@ -169,7 +192,10 @@ async function motModel(model, body, i, huy, soVong = 2) {
   }
   const conKey = tatCa.filter((k) => !hong.has(k) && !tuChoi.has(model + '|' + k));
   if (conKey.length && conKey.every((k) => hetNgay.has(model + '|' + k))) return {ok: false, code: 429, raw: 'HET_HAN_MUC_NGAY', het: true, model};
-  if (!conKey.length && tatCa.some((k) => !hong.has(k))) return {ok: false, code: 403, raw: 'MODEL_TU_CHOI', het: false, model};
+  if (!conKey.length && tatCa.some((k) => !hong.has(k))) {
+    if (so403) chanModel403(model);   // mọi key còn lại đều từ chối (có ít nhất một 403 thật)
+    return {ok: false, code: 403, raw: 'MODEL_TU_CHOI', het: false, model};
+  }
   if (tatCa.length && tatCa.every((k) => hong.has(k))) cuoi = {ok: false, code: 401, raw: 'MOI_KEY_DEU_HONG', het: false, model};
   return cuoi;
 }

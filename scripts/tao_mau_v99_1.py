@@ -114,7 +114,7 @@ def ve():
             + "".join('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" stroke-width="1.5"/>' % (X0 + KX * k, Y0, X0 + KX * k, Y0 + 8, XAM) for k in range(10))
             + "".join(chu(X0 + KX * k, Y0 + 34, str(k), XAM, 26, 600) for k in range(0, 10, 3))
             + '<path d="M %.1f %.1f L %.1f %.1f M %.1f %.1f L %.1f %.1f" stroke="%s" stroke-width="2"/>' % (X0 - 9, Y0 - 22, X0 + 9, Y0 - 28, X0 - 9, Y0 - 32, X0 + 9, Y0 - 38, XAM)
-            + chu(X0 + 16, Y0 - 24, "L (nghìn đồng)", XAM, 26, 700, "start"))
+            + chu(X0 + 16, 58, "L (nghìn đồng)", XAM, 26, 700, "start"))   # v99.2: đầu trục (không cắt đường gióng đỉnh)
     nen = '<rect x="%.1f" y="60" width="%.1f" height="%.1f" rx="18" fill="%s" fill-opacity="0.35"/>' % (X0 + 6, 760 - X0 - 12, Y0 - 66, NEN)
     cong = duong(0, 9)
     bong = duong(0, 9).replace("M ", "M ").replace(" L ", " L ")

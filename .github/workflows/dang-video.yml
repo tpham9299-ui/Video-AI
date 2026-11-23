@@ -50,6 +50,7 @@ jobs:
         with:
           sparse-checkout: |
             scripts/dang_video.py
+            scripts/evergreen.py
             public/fonts
           sparse-checkout-cone-mode: false
 

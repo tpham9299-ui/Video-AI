@@ -137,8 +137,9 @@ function ghiAiKT_(sh, r, them, cot) {
   r.ai_kiem_tra = f.ai_kiem_tra;
 }
 // gửi kịch bản về Bộ phận 1 viết lại theo góp ý (giống lệnh /sua), giữ bản cũ làm bản nháp để sửa đúng chỗ
-function traVeSuaKichBan_(sh, r, gopY, ghiChu, them) {
+function traVeSuaKichBan_(sh, r, gopY, ghiChu, them, suaKb) {
   var kb = JSON.parse(DriveApp.getFileById(r.file_kich_ban).getBlob().getDataAsString());
+  if (typeof suaKb === 'function') suaKb(kb);   // v99.2: Auto-Heal dọn cờ trong kịch bản (vd cho phép lập lại sân khấu tự sinh)
   luuNhapKichBan_(r.id, kb);
   ghiAiKT_(sh, r, them, { trang_thai: 'DA_GIAI', duyet: '', uu_tien: 1, so_lan_loi: 0, gop_y: String(gopY).slice(0, 1500), ghi_chu: String(ghiChu).slice(0, 200) });
   henUuTien_(20);
@@ -158,14 +159,83 @@ function xuLyKiemDuyetBoCuc_(sh, r, kd) {
     }
     return {ok: true};
   }
-  var lan = (Number(docAiKT_(r).kd_lan) || 0) + 1;
+  var akt = docAiKT_(r);
+  var lan = (Number(akt.kd_lan) || 0) + 1;
   nhatKy_('KIEM_DUYET', r.id + ' lần ' + lan + ': ' + nang.length + ' lỗi bố cục | ' + nang.slice(0, 4).join(' | ').slice(0, 400));
   if (!r.file_kich_ban) { baoLoiDung_(sh, r, 'KIEM_DUYET: ' + nang.slice(0, 2).join('; ')); return { ok: true }; }
+  // v99.2: chung trần tự sửa TRAN_TU_SUA_ (2) với Mắt thần - trước đây kd_lan không có trần (lặp vô hạn, đốt quota)
+  var daSua = Number(akt.so_lan_tu_sua) || 0;
+  if (daSua >= TRAN_TU_SUA_) {
+    var lyDoKD = 'Kiểm duyệt bố cục vẫn lỗi sau ' + daSua + ' lần tự sửa: ' + nang.slice(0, 3).join(' | ');
+    ghi_(sh, r._row, { trang_thai: 'LOI', ghi_chu: lyDoKD.slice(0, 300) });
+    nhatKy_('TU_SUA_HET_LUOT', r.id + ': ' + lyDoKD.slice(0, 300));
+    guiZaloMotLan_('KD_HET_' + r.id + '_' + daSua, '🛑 ' + r.id + (r.chu_de ? ' (' + r.chu_de + ')' : '') + ': ' + lyDoKD.slice(0, 600) +
+      '\nĐã dừng tự sửa (tối đa ' + TRAN_TU_SUA_ + ' lần). /sua ' + r.id + ' <góp ý> để sửa tay hoặc /bo ' + r.id + '.');
+    return { ok: true, het_luot: true };
+  }
   traVeSuaKichBan_(sh, r,
     'KIỂM DUYỆT BỐ CỤC TỰ ĐỘNG (đo trên khung hình thật) KHÔNG ĐẠT, PHẢI SỬA HẾT: ' + nang.slice(0, 10).join(' || ') +
     '. Cách sửa chung: bớt vật/chữ trong cảnh bị lỗi, đặt các vật cách xa nhau (x, y), nhãn ngắn ≤ 22 ký tự, công thức LaTeX đúng cú pháp.',
-    'Kiểm duyệt bố cục lần ' + lan + ' chưa đạt: tự sửa kịch bản', { kd_lan: lan, kd_loi: nang.slice(0, 5) });
+    'Kiểm duyệt bố cục lần ' + lan + ' chưa đạt: tự sửa kịch bản (' + (daSua + 1) + '/' + TRAN_TU_SUA_ + ')',
+    { kd_lan: lan, kd_loi: nang.slice(0, 5), so_lan_tu_sua: daSua + 1, ghi_chu_sua_tu_dong: ['bo_cuc: ' + nang.slice(0, 3).join(' | ').slice(0, 300)] });
   return { ok: true, sua: true };
+}
+
+/* ===================== v99.2: VÒNG MẮT THẦN TỰ SỬA (AUTO-HEAL) — CHỈ LỖI CỨNG, TỐI ĐA 2 LẦN / MÃ ĐỀ ===================== */
+// Mắt thần 3×3 (dung-video.yml -> doPost) chặn đăng: lỗi CỨNG do kịch bản gây ra -> trả về BP2 kèm chỉ thị sửa từng lỗi
+// (viết lại -> CO_KICH_BAN -> BP3 tự dựng lại). Góp ý thẩm mỹ / ô nang:false / lỗi hệ thống (logo) KHÔNG dựng lại (không đốt quota).
+// Bộ đếm so_lan_tu_sua + ghi_chu_sua_tu_dong nằm trong JSON ai_kiem_tra (không thêm cột). Tắt: CAU_HINH TU_SUA_MAT_THAN = TAT.
+var TRAN_TU_SUA_ = 2;
+var LOI_TU_SUA_ = {
+  cat_chu: 'chữ bị cắt / tràn khung: rút ngắn tiêu đề / nhãn / dòng công thức của cảnh đó (tiêu đề ≤ 34 ký tự, nhãn ≤ 22 ký tự), tách công thức dài thành 2 dòng',
+  chong_chu: 'chữ / nhãn chồng nhau: bớt số dòng trên màn hình của cảnh đó, nhãn ngắn hơn, đặt các nhãn xa nhau',
+  latex_tho: 'mã LaTeX hiện thô: sửa cú pháp TeX (ngoặc nhọn đủ cặp, lệnh viết hai gạch chéo trong JSON), không để TeX trong trường chữ thường',
+  ma_tho: 'mã thô ở tiêu đề / thẻ: viết tiêu đề / thẻ bằng chữ thường, ký hiệu Unicode, không chứa \\lệnh hay _ ^',
+  so_cat: 'con số bị cắt / tách đôi: không xuống dòng giữa một số, rút ngắn dòng chứa số',
+  lo_dap_an: 'lộ đáp án sớm: bỏ số đáp án khỏi hook / tiêu đề / thẻ / ô ghim / bước trước cảnh dap_an (chỉ ghi x* hay ?)',
+  t2_trong: 'tầng 2 trống: khai báo đủ sân khấu (canh_3d_vector / san_khau / tu_sinh) có hình cho MỌI bước giải',
+  hinh_dung_im: 'hình đứng im: mỗi bước giải phải đổi hình (pha / lớp mới gắn khi_noi khớp lời từng bước)',
+  lech_pha: 'lệch pha hình - tiếng: bước "Kết luận / Đáp số" và thẻ chốt phải gắn khi_noi đúng cụm lời ĐỌC RA đáp số trong cảnh dap_an; lời cảnh dap_an phải đọc rõ con số đáp án',
+  tu_sinh_hong: 'sân khấu tự sinh hỏng: viết lại mã tu_sinh (import ve25d; chữ >= 24 px, nhãn bằng ve25d.nhan đặt ngoài hình, màu ve25d.MAU) cho đúng hợp đồng hình'
+};
+function batTuSuaMatThan_() { return String((typeof cauHinh_ === 'function' && cauHinh_('TU_SUA_MAT_THAN')) || 'BAT').toUpperCase() !== 'TAT'; }
+// -> {cung: [{o, loai, mo_ta}], nhe: [...]}: chỉ lỗi nặng thuộc LOI_TU_SUA_ là lỗi cứng tự sửa được
+function phanLoaiLoiTuSua_(mt) {
+  var cung = [], nhe = [];
+  ((mt && mt.loi) || []).forEach(function (x) {
+    if (!x || !x.loai) return;
+    if (x.nang !== false && LOI_TU_SUA_[x.loai]) cung.push(x); else nhe.push(x);
+  });
+  return {cung: cung, nhe: nhe};
+}
+function chiThiSuaLoi_(cung) {
+  var da = {};
+  return 'MẮT THẦN 3×3 (đo trên video thật) BẮT LỖI CỨNG, PHẢI SỬA ĐÚNG TỪNG LỖI (giữ nguyên phần không lỗi):\n' + cung.slice(0, 8).map(function (x) {
+    var dong = '- Ô ' + (x.o || '?') + ' [' + x.loai + ']' + (x.mo_ta ? ' ' + String(x.mo_ta).slice(0, 160) : '');
+    if (!da[x.loai]) { da[x.loai] = 1; dong += ' -> Cách sửa: ' + LOI_TU_SUA_[x.loai]; }
+    return dong;
+  }).join('\n');
+}
+// Trả {tu_sua: true} khi đã đẩy về BP2; {tu_sua: false, het_luot, cung, nhe} khi để chủ kênh quyết định (CHO + Zalo)
+function xuLyTuSuaMatThan_(sh, r, d) {
+  var pl = phanLoaiLoiTuSua_(d && d.mat_than);
+  var akt = docAiKT_(r);
+  var daSua = Number(akt.so_lan_tu_sua) || 0;
+  var kq = {tu_sua: false, het_luot: false, cung: pl.cung, nhe: pl.nhe, da_sua: daSua};
+  if (!batTuSuaMatThan_() || !pl.cung.length || !r.file_kich_ban) return kq;
+  if (daSua >= TRAN_TU_SUA_) { kq.het_luot = true; return kq; }
+  var ghiChu = pl.cung.slice(0, 6).map(function (x) { return x.loai + (x.mo_ta ? ': ' + String(x.mo_ta).slice(0, 80) : ''); });
+  var coTuSinh = pl.cung.some(function (x) { return x.loai === 'tu_sinh_hong'; });
+  traVeSuaKichBan_(sh, r, chiThiSuaLoi_(pl.cung), 'Mắt thần tự sửa lần ' + (daSua + 1) + '/' + TRAN_TU_SUA_,
+    {so_lan_tu_sua: daSua + 1, ghi_chu_sua_tu_dong: ghiChu, mt_file: String((d && d.file_id) || '')},
+    function (kb) {
+      if (!coTuSinh) return;
+      delete kb.tu_sinh_da_thu; delete kb.tu_sinh_hong;   // cho BP2 lập lại sân khấu tự sinh (vá tối đa 2 lần)
+      if (kb.khung4tang && kb.khung4tang.tu_sinh) delete kb.khung4tang.tu_sinh;
+    });
+  nhatKy_('TU_SUA_MAT_THAN', r.id + ' lần ' + (daSua + 1) + '/' + TRAN_TU_SUA_ + ': ' + ghiChu.join(' | ').slice(0, 300));
+  kq.tu_sua = true;
+  return kq;
 }
 
 function xuLyKetQuaAiXem_(sh, d) {
@@ -865,6 +935,8 @@ function ghiKyThuat_(ds, nguon) {
   var moi = [], canLapTrinh = [];
   ds.slice(0, 6).forEach(function (k) {
     if (!k || !k.ten) return;
+    // v99.2 Evergreen: mẫu hook / kỹ thuật học từ video khác mà chứa năm sinh / khóa học / năm thi -> không lưu (video hết hạn sau 1 năm)
+    if (typeof coNamSinh_ === 'function' && coNamSinh_([k.ten, k.mo_ta, k.cach_ap_dung].join(' '))) { nhatKy_('HOC_EDIT', 'Bỏ kỹ thuật chứa năm sinh / năm thi: ' + String(k.ten).slice(0, 60)); return; }
     var ten = String(k.ten).trim().slice(0, 60), khoa = ten.toLowerCase();
     var kn = /can_lap_trinh/.test(k.kha_nang) ? 'can_lap_trinh' : /qua_kich_ban/.test(k.kha_nang) ? 'qua_kich_ban' : 'co_san';
     var diem = Math.max(1, Math.min(10, Number(k.diem) || 5));
@@ -1021,6 +1093,7 @@ function hocMotGopY_(ma, loai, gopY) {
   try { var vAll = sh.getDataRange().getValues().slice(1); vAll.forEach(function (x) { soLonNhat = Math.max(soLonNhat, Number(x[0]) || 0); }); } catch (e) {}
   j.quy_tac.slice(0, 3).forEach(function (q) {
     if (!q || !String(q.quy_tac || '').trim()) return;
+    if (typeof coNamSinh_ === 'function' && coNamSinh_(String(q.quy_tac) + ' ' + String(q.cach_kiem || ''))) { nhatKy_('QUY_TAC_HOC', 'Bỏ quy tắc chứa năm sinh / năm thi: ' + String(q.quy_tac).slice(0, 80)); return; }   // v99.2 Evergreen
     var cuQ = Number(q.trung) > 0 ? tatCa.filter(function (x) { return Number(x.so) === Number(q.trung); })[0] : null;
     if (cuQ) {
       sh.getRange(cuQ._row, 3, 1, 6).setValues([[String(q.quy_tac).slice(0, 400), String(q.cach_kiem || cuQ.cach_kiem).slice(0, 300), String(j.y_do || cuQ.y_do).slice(0, 300), (Number(cuQ.so_lan) || 1) + 1, cuQ.lan_dau, bayGio]]);

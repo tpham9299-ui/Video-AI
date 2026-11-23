@@ -128,7 +128,8 @@ t('chuẩn hóa: màu, du_kien lạ, thẻ rỗng, đối tượng trùng/sai lo
   assert.equal(k.buoc[0].the.length, 1);
   assert.equal(k.buoc[0].the[0].dong[0], 'C_{4}^{2}');
   assert.equal(k.buoc[1].the.length, 0);
-  assert.equal(k.buoc[1].nhan, 'Bước 2');
+  assert.equal(k.buoc[1].nhan, '');   // v99.2: không tự điền "Bước 2" (viên thuốc T1 đã ghi "BƯỚC 2")
+  assert.equal(k.buoc[1].tieu_de, 'Tách một lực');
   assert.deepEqual(J(k.canh_3d_vector.doi_tuong.map((d) => d.id)), ['E', 'v']);
   assert.equal(k.canh_3d_vector.doi_tuong[0].mau, 'vang');
   assert.deepEqual(J(k.canh_3d_vector.buoc[0].hien), ['E', 'v']);

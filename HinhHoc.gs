@@ -192,8 +192,8 @@ function promptSangTacHinhHoc_(lop, n, daCo, kieuEp) {
     '- "dang" là một trong: ' + DANG_HINH_ + '.\n- Không trùng các đề đã có:\n' + (daCo || '(chưa có)') + '\n\n' +
     'Trả về MỘT mảng JSON, mỗi phần tử: {"dang":"","loai":"tinh|chung_minh","chu_de":"","de_bai":"","menh_de":"","dap_an":"(bài tính) con số","diem_tu_duy":1-10,"y_tuong_then_chot":"","yeu_to_tu_duy":"","bay_thuong_gap":""}. Có thể dùng LaTeX trong $...$.';
 }
-function promptTimHinhHoc_(lop, n, daCo) {
-  var kieu = chonKieuHinh_(lop);
+function promptTimHinhHoc_(lop, n, daCo, kieuEp) {
+  var kieu = kieuEp || chonKieuHinh_(lop);   // v99.2: mảng HINH_PHANG / HINH_KHONG_GIAN ép kiểu
   return 'Hãy dùng Google Search để TÌM TRÊN INTERNET ' + (n + 2) + ' bài ' + (kieu === 'KHONG_GIAN' ? 'HÌNH HỌC KHÔNG GIAN' : 'HÌNH HỌC PHẲNG') + ' DẠNG KHÓ CÓ THẬT (đề thi vào lớp 10 chuyên, đề học sinh giỏi, câu hình cuối đề thi THPT, bài chứng minh khó) cho học sinh lớp ' + lop + ' (Việt Nam).\n' +
     (typeof yeuCauKienThucLop_ === 'function' ? yeuCauKienThucLop_(lop, 'HINH_HOC') + '\n' : '') +
     (kieu === 'KHONG_GIAN' ? YEU_CAU_KHONG_GIAN_ : YEU_CAU_PHANG_) +

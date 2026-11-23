@@ -2673,6 +2673,8 @@ function tuSuaHinhPhangChuan_(kb, r) {
 
 function tuSuaHinhThuc_(kb, r) {
   var sua = [];
+  if (kb && kb.bai_hoc_rut_ra !== undefined && !Array.isArray(kb.bai_hoc_rut_ra) && typeof mangBaiHoc_ === 'function') kb.bai_hoc_rut_ra = mangBaiHoc_(kb.bai_hoc_rut_ra);   // v99.2b: chuỗi -> mảng
+  if (kb && typeof veSinhKb_ === 'function') sua = sua.concat(veSinhKb_(kb, r));   // v99.2 Evergreen: luôn chạy (kể cả tắt Auto-fix)
   if (!batAutoFix_() || !kb || !Array.isArray(kb.canh)) return sua;
   if (kb.hinh_phang_chuan) sua = sua.concat(tuSuaHinhPhangChuan_(kb, r));   // v94
   if (kb.hinh_khong_gian && typeof tuSuaKhongGian_ === 'function') sua = sua.concat(tuSuaKhongGian_(kb, r));   // v97
@@ -2846,10 +2848,15 @@ function tuSuaKhung4Tang_(kb, r) {
   var toiUu = /lớn nhất|nhỏ nhất|tối đa|tối thiểu|ít nhất|nhiều nhất|gtln|gtnn/i.test(deTxt);
   var tenHam = (JSON.stringify(kb).match(/([A-Za-z])'\s*\(\s*([a-z])\s*\)/) || []);
   var truoc = k4.buoc.length, demThe = 0, demTd = 0, demCasio = 0;
+  var soBuocK4 = k4.buoc.filter(function (b) { return b && typeof b === 'object'; }).length;
   k4.buoc = k4.buoc.filter(function (b) { return b && typeof b === 'object'; }).map(function (b, j) {
     b.mau = mau3(b.mau, ['cyan', 'vang', 'hong', 'ngoc'][j % 4]);
-    if (!String(b.nhan || '').trim()) b.nhan = 'Bước ' + (j + 1);
-    if (!String(b.tieu_de || '').trim()) b.tieu_de = String(b.nhan);
+    // v99.2: T1 đã có viên thuốc "BƯỚC n" -> nhãn phụ KHÔNG lặp "Bước n" (từng hiện "BƯỚC 2 | BƯỚC 1"); rỗng -> tên pha ngắn / trống
+    var nhanGoc = String(b.nhan || '').trim();
+    b.nhan = nhanPhuBuoc_(nhanGoc, j, soBuocK4);
+    // tiêu đề dự phòng KHÔNG dùng "Bước n" (viên thuốc đã ghi số): nhãn pha -> cụm lời đọc khi_noi -> "Kết luận" / "Lời giải"
+    var kn = String(b.khi_noi || '').trim();
+    if (!String(b.tieu_de || '').trim()) b.tieu_de = b.nhan || (kn ? kn.charAt(0).toUpperCase() + kn.slice(1) : (j === soBuocK4 - 1 ? 'Kết luận' : 'Lời giải'));
     soDap.forEach(function (x) {
       var re = new RegExp('(^|[^\\d.,])' + x.replace(/[.]/g, '\\.') + '(?![\\d.,])', 'g');
       if (re.test(b.tieu_de)) { b.tieu_de = b.tieu_de.replace(re, '$1?'); demTd++; }
@@ -3502,4 +3509,75 @@ function kiemKhongGian_(kb) {
     if (m && Array.isArray(m.canh_bao)) m.canh_bao.forEach(function (x) { nhe.push('KG_CANH_BAO: ' + x); });
   }
   return {nang: nang, nhe: nhe};
+}
+
+/* ===================== v99.2: NỘI DUNG BỀN VỮNG (EVERGREEN) — GỠ NĂM SINH / KHÓA HỌC / NĂM THI ===================== */
+// Gemini hay bịa theo thói quen TikTok ("2k9 ơi", "sĩ tử 2008", "#2k8", "THPT 2027") -> video hết hạn sau 1 năm. Lớp chặn đầu ra
+// dùng chung cho kịch bản (tuSuaHinhThuc_), metadata đăng (DangVideo.gs) và HOC_EDIT / QUY_TAC_HOC. Bản Python đôi:
+// scripts/dang_video.py ve_sinh_nam_sinh (test so khớp test_v99_2_gs.cjs <-> test_v99_2.py).
+var RE_NAM_SINH_ = /2k(?:0?[5-9]|1[0-5])(?![0-9])|(?:học sinh|sĩ tử|teen|team|khóa|khoá|thế hệ)\s+20(?:0[5-9]|1[0-5])(?![0-9])|#20(?:0[5-9]|1[0-5])(?![0-9])|(?:thpt|kỳ thi|kì thi|đề thi|thi vào 10|tốt nghiệp)(?:\s+quốc gia)?\s+(?:năm\s+)?20(?:2[5-9]|3[0-9])(?![0-9])|#[a-z]*20(?:2[5-9]|3[0-9])(?![0-9])/i;
+function coNamSinh_(s) { return RE_NAM_SINH_.test(String(s || '')); }
+function nhanLop_(lop) { var l = String(lop || '').replace(/\D/g, ''); return /^(8|9|10|11|12)$/.test(l) ? 'lớp ' + l : ''; }
+// -> chuỗi đã gỡ năm sinh / năm thi (giữ nghĩa, thay bằng lớp hoặc "bạn")
+function veSinhNamSinh_(s, lop) {
+  if (s === null || s === undefined) return s;
+  var t = String(s), nl = nhanLop_(lop);
+  if (!coNamSinh_(t)) return t;
+  t = t.replace(/#2k(?:0?[5-9]|1[0-5])(?![0-9A-Za-z])/gi, '#toanhoc')
+    .replace(/#20(?:0[5-9]|1[0-5])(?![0-9])/g, '#toanhoc')
+    .replace(/#([a-z]*?)20(?:2[5-9]|3[0-9])(?![0-9])/gi, function (m, a) { return a ? '#' + a : '#toanhoc'; })
+    .replace(/(học sinh|sĩ tử|teen)\s+(?:2k(?:0?[5-9]|1[0-5])|20(?:0[5-9]|1[0-5]))(?![0-9])/gi, function (m, a) { return a + (nl ? ' ' + nl : ''); })
+    .replace(/(?:team|khóa|khoá|thế hệ)\s+(?:2k(?:0?[5-9]|1[0-5])|20(?:0[5-9]|1[0-5]))(?![0-9])/gi, nl ? 'các bạn ' + nl : 'các bạn')
+    .replace(/((?:THPT|kỳ thi|kì thi|đề thi|thi vào 10|tốt nghiệp)(?:\s+quốc gia)?)\s+(?:năm\s+)?20(?:2[5-9]|3[0-9])(?![0-9])/gi, '$1')
+    .replace(/(^|[^0-9A-Za-zÀ-ỹ])(các\s+)?2k(?:0?[5-9]|1[0-5])(?![0-9A-Za-z])/gi, function (m, a, cac) { return a + (cac ? 'các bạn' : 'bạn'); })
+    .replace(/(^|[.!?]\s+)(các bạn|bạn)(?=[\s,!?.])/g, function (m, a, b) { return a + b.charAt(0).toUpperCase() + b.slice(1); })
+    .replace(/[ \t]{2,}/g, ' ').replace(/\s+([,.!?])/g, '$1');
+  var daThe = {};   // hashtag trùng sau khi thay (#2k8 #toanhoc -> một #toanhoc)
+  t = t.replace(/(^|\s)#([0-9A-Za-zÀ-ỹ_]+)/g, function (m, a, the) { var k = the.toLowerCase(); if (daThe[k]) return ''; daThe[k] = 1; return m; });
+  return t;
+}
+var KHOA_BO_VE_SINH_ = {ma: 1, svg: 1, de_bai: 1, file_kich_ban: 1, id: 1};
+// Gỡ năm sinh trong MỌI trường chữ của kịch bản (đệ quy; bỏ mã tự sinh / SVG / đề gốc). Trả danh sách sửa.
+function veSinhKb_(kb, r) {
+  var lop = (kb && kb.lop) || (r && r.lop) || '';
+  var dem = 0;
+  var di = function (o, sau) {
+    if (sau > 8 || !o || typeof o !== 'object') return;
+    Object.keys(o).forEach(function (k) {
+      if (KHOA_BO_VE_SINH_[k]) return;
+      var v = o[k];
+      if (typeof v === 'string') { var w = veSinhNamSinh_(v, lop); if (w !== v) { o[k] = w; dem++; } }
+      else if (v && typeof v === 'object') di(v, sau + 1);
+    });
+  };
+  di(kb, 0);
+  return dem ? ['EVERGREEN: gỡ năm sinh / năm thi ở ' + dem + ' trường chữ (thay bằng lớp / "bạn")'] : [];
+}
+// Metadata đăng bài (tiêu đề / mô tả / hashtag mọi nền tảng)
+function veSinhMetaDang_(meta, lop) {
+  if (!meta) return meta;
+  ['tieu_de', 'yt_tieu_de', 'tt_tieu_de', 'mo_ta', 'yt_dau', 'fb_dau', 'yt_mo_ta', 'fb_mo_ta'].forEach(function (k) {
+    if (typeof meta[k] === 'string') meta[k] = veSinhNamSinh_(meta[k], lop);
+  });
+  if (Array.isArray(meta.the)) {
+    var da = {};
+    meta.the = meta.the.map(function (t) {
+      var x = String(t || '').replace(/^#/, '');
+      if (/^2k\d{1,2}$/i.test(x) || /^20(?:0[5-9]|1[0-5])$/.test(x)) return 'toanhoc';
+      return coNamSinh_('#' + x) ? (x.replace(/20(?:2[5-9]|3[0-9])$/, '') || 'toanhoc') : x;
+    }).filter(function (t) { if (!t || da[t]) return false; da[t] = 1; return true; });
+  }
+  return meta;
+}
+
+/* ===================== v99.2: NHÃN PHỤ BƯỚC KHÔNG LẶP "BƯỚC n" ===================== */
+// Bản đôi: scripts/khung4tang_v99.py nhan_phu_buoc + src/khung4tang/nhan_buoc.ts nhanPhuBuoc (test so khớp test_v99_2_gs.cjs).
+function nhanPhuBuoc_(nhan, j, n) {
+  var s = String(nhan === null || nhan === undefined ? '' : nhan).trim();
+  if (!/^(?:bước|buoc|step)\s*(?:\d|[:.\-–—·|/]|$)/i.test(s)) return s;   // "Bước ngoặt" là cụm có nghĩa -> giữ
+  var con = s.replace(/^\s*(?:bước|buoc|step)\s*\d*\s*[:.\-–—·|/]*\s*/i, '').trim();
+  if (con) return con.charAt(0).toUpperCase() + con.slice(1);
+  if (n && j === 0) return 'Đề bài';
+  if (n && j === n - 1) return 'Kết luận';
+  return '';
 }

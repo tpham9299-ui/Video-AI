@@ -19,7 +19,7 @@ function taoPromptKichBan_(r, c1, c2) {
     'ĐÁP SỐ (đã kiểm chứng bằng máy, KHÔNG được đổi): ' + r.dap_an + (r.dap_an_hien ? ' (trình bày: ' + r.dap_an_hien + ')' : '') + '\n',
     vanDeDe_(r),
     banVeChoPrompt_(r),
-    'Yếu tố cần suy nghĩ: ' + r.yeu_to_tu_duy + '\nBẫy học sinh hay sai: ' + r.bay_thuong_gap + '\n' +
+    'Yếu tố cần suy nghĩ: ' + (typeof boHopDong_ === 'function' ? boHopDong_(r.yeu_to_tu_duy) + huongDanHopDongV992_(r) : r.yeu_to_tu_duy) + '\nBẫy học sinh hay sai: ' + r.bay_thuong_gap + '\n' +
     (typeof yeuCauKienThucLop_ === 'function' && yeuCauKienThucLop_(r.lop, r.mon) ? yeuCauKienThucLop_(r.lop, r.mon) + '\n(BẮT BUỘC giảng đúng phương pháp của lớp ' + r.lop + '; KHÔNG dùng kiến thức lớp trên hoặc số phức).\n' : ''),
     'MÔ HÌNH HÓA: ' + (c1.mo_hinh || c2.mo_hinh || '(tự nêu từ lời giải)') + '\n',
     'LỜI GIẢI GỌN (ưu tiên dùng để dạy): ' + (c2.y_tuong ? 'Ý tưởng then chốt: ' + c2.y_tuong + '\n' : '\n') + buocC2 + '\n',
@@ -47,7 +47,7 @@ function taoPromptKichBan_(r, c1, c2) {
     'ĐỀ: ' + r.de_bai + '\n',
     'ĐÁP ÁN CUỐI CÙNG (đã kiểm chứng bằng máy, KHÔNG được đổi): ' + r.dap_an + '\n',
     vanDeDe_(r),
-    'Yếu tố cần suy nghĩ: ' + r.yeu_to_tu_duy + '\nBẫy học sinh hay sai: ' + r.bay_thuong_gap + '\n' +
+    'Yếu tố cần suy nghĩ: ' + (typeof boHopDong_ === 'function' ? boHopDong_(r.yeu_to_tu_duy) + huongDanHopDongV992_(r) : r.yeu_to_tu_duy) + '\nBẫy học sinh hay sai: ' + r.bay_thuong_gap + '\n' +
     (typeof yeuCauKienThucLop_ === 'function' && yeuCauKienThucLop_(r.lop, r.mon) ? yeuCauKienThucLop_(r.lop, r.mon) + '\n(BẮT BUỘC giảng đúng phương pháp của lớp ' + r.lop + '; KHÔNG dùng kiến thức lớp trên hoặc số phức).\n' : ''),
     'LỜI GIẢI BẰNG SUY LUẬN (ưu tiên dùng để dạy): ' + (c2.y_tuong ? 'Ý tưởng then chốt: ' + c2.y_tuong + '\n' : '\n') + buocC2 + '\n',
     'LỜI GIẢI TÍNH TOÁN (để đối chiếu số liệu): ' + buocC1 + '\n\n',
@@ -78,6 +78,8 @@ function taoPromptKichBan_(r, c1, c2) {
     chao ? 'Được phép mở bằng MỘT lời chào cực ngắn có năng lượng (tối đa 3 từ, ví dụ "Chào bạn!") rồi vào hook ngay trong cùng câu thoại; KHÔNG "hôm nay", "các bạn ơi", "mọi người". '
          : 'KHÔNG chào hỏi, KHÔNG "hôm nay", "các bạn ơi", "mọi người": vào thẳng câu móc. ',
     '"hook_kieu": sai_lam | thach_thuc | bat_ngo | cau_hoi. Không bịa thống kê kiểu "90% học sinh sai". ',
+    'XƯNG HÔ BỀN VỮNG (v99.2): CẤM năm sinh / khóa học / năm thi ở hook, tiêu đề, ảnh bìa, phụ đề, mô tả, hashtag (cấm "2k9", "học sinh 2009", "sĩ tử 2008", "#2k8", "THPT 2027"). ' +
+      'Bài gắn chương trình gọi theo lớp ("Học sinh lớp ' + r.lop + '", "Ôn thi vào 10", "Ôn thi THPT"); bài tư duy / thực tế sáng tạo gọi mở ("Đố bạn", "Nhiều bạn vẫn nhầm", "Mẹo tư duy Toán"). ',
     'CHỐNG LỘ ĐÁP ÁN (vi phạm = kịch bản bị loại): TUYỆT ĐỐI không nêu đáp số hay kết quả trung gian (ví dụ "xác suất là 1/4", "r = 3", "lãi 16000") trong loi_thoai cảnh 1, "hook", "hook_chu", "hook_ung_vien", "tieu_de_bia", "tieu_de", "chu_de_ngan"; mở bài là CÂU HỎI. Kết quả của một bước chỉ xuất hiện (lời, chữ, nhãn, đồ thị) ở đúng cảnh giảng tới bước đó; mỗi khung hình hiện đáp số tối đa MỘT chỗ. ',
     'CHỮ HIỂN THỊ & KÝ HIỆU (phụ đề lấy từ loi_thoai): KHÔNG phiên âm ký hiệu (cấm "ít-sờ", "ích-xì", "vê tại 2": viết x, V(2) - máy tự đọc); mỗi kết quả chỉ nói MỘT lần (cấm "bằng 144 bằng 144"); trong "loi_thoai" viết CHỮ SỐ và KÝ HIỆU chuẩn ("54π m³", "1/4", "10 cm", "0 < x < 30", "x = 10", "V\'(x) = 0", "29,5"), KHÔNG phiên âm ("năm mươi tư", "một phần bốn", "xăng-ti-mét", "zero") - máy tự đọc thành lời. "tieu_de_canh", "nhan", dòng danh_sach: viết kiểu toán ("V\'(x) = 0", "10 cm", "Tích ⋮ 4"), không phiên âm, không bắt đầu bằng ":" "," "?". ',
     'LATEX trong JSON: mọi lệnh viết HAI gạch chéo ("\\\\vdots", "\\\\cdot", "\\\\dfrac", "\\\\times"); chia hết viết "a \\\\vdots b"; phép nhân dùng "\\\\cdot", KHÔNG dùng dấu chấm câu "." ("4x \\\\cdot (30-x)^2", "(u \\\\cdot v)\'"); số thập phân dấu phẩy "{,}" (29{,}5), tiền dấu chấm nghìn (500.000 đồng). Mọi đáp số kèm đơn vị ("r = 3 m", "x = 10 cm"). ',
@@ -373,7 +375,7 @@ function huongDanKhung4Tang_(r) {
   return 'KHUNG 4 TẦNG + SÂN KHẤU 3D VECTOR (BẮT BUỘC với bài này; video dựng bằng Remotion, không dùng Blender): thêm ở gốc JSON "khung4tang". ' +
     'Màn hình chia cố định: T1 nhãn "BƯỚC n" + tiêu đề | T2 sân khấu 3D vector sống | T3 thẻ giải (công thức / máy tính / bảng biến thiên) | T4 thanh ghim ĐỀ. KHÔNG có phụ đề chạy chữ. ' +
     'Cấu trúc: {"phu_de":"tat","de_ghim":[{"id":"chu_khong_dau","nhan":"LaTeX ngắn ≤ 14 ký tự, ví dụ F = 4500, \\\\alpha = 60^\\\\circ, P = ?","mau":"hong nếu là ẩn cần tìm"}] (2-5 dữ kiện),' +
-    '"buoc":[{"canh":số thứ tự cảnh (1-based) nơi bước bắt đầu,"khi_noi":"cụm 3-6 từ NGUYÊN VĂN trong loi_thoai của đúng cảnh đó, ở câu MỞ ĐẦU bước","nhan":"Dựng hình|Lập hàm|Tối ưu|Kết luận ≤ 3 từ",' +
+    '"buoc":[{"canh":số thứ tự cảnh (1-based) nơi bước bắt đầu,"khi_noi":"cụm 3-6 từ NGUYÊN VĂN trong loi_thoai của đúng cảnh đó, ở câu MỞ ĐẦU bước","nhan":"Dựng hình|Lập hàm|Tối ưu|Kết luận ≤ 3 từ - tên PHA ngắn, TUYỆT ĐỐI không ghi \\"Bước 1\\" / \\"Bước 2\\" (máy tự đánh số BƯỚC n)",' +
     '"tieu_de":"≤ 8 từ; ký hiệu toán viết LaTeX (\\\\Omega, C_{12}^{3}, S_A, V\'(x)), TUYỆT ĐỐI KHÔNG ghi đáp số (kể cả bước kết luận: viết \\"Kết luận: V lớn nhất khi x = ?\\")","mau":"' + MAU_3DV_.join('|') + '","du_kien":["id trong de_ghim dùng ở bước này"],' +
     '"the":[2-3 thẻ NỐI TIẾP đúng nhịp đọc, MỖI thẻ có "khi_noi" (cụm nguyên văn lúc đọc tới thẻ đó); thẻ đầu ngay câu đầu bước, không thẻ nào đứng một mình quá 12 giây: ' +
     '{"loai":"cong_thuc","nhan":"tùy chọn","dong":["1-3 dòng LaTeX"],"khi_noi":"...","khi_noi_dong":["cụm nguyên văn lúc hiện từng dòng"]} | ' +

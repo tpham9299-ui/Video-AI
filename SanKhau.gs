@@ -79,6 +79,7 @@ function chonSanKhau_(kb, r) {
   var van = [kb.de_bai, r.de_bai, kb.can_tim, kb.chu_de].filter(Boolean).join(' ');
   var cd = docChiDao_(kb.chi_dao || r.chi_dao || '');
   if (cd.loai) return {loai: cd.loai === 'luoi_bayes' && lop !== '12' ? 'so_do_cay' : cd.loai, nguon: 'chi_dao', chi_dao: cd.loi};
+  if (kb.san_khau_dich === 'cay_bayes') return {loai: 'so_do_cay', nguon: 'hop_dong', chi_dao: cd.loi};   // v99.2: hợp đồng hình BP0
   var k4 = kb.khung4tang && typeof kb.khung4tang === 'object' ? kb.khung4tang : {};
   var sk = k4.san_khau && typeof k4.san_khau === 'object' ? k4.san_khau : {};
   if (LOAI_SAN_KHAU_.indexOf(sk.loai) >= 0) return {loai: sk.loai === 'luoi_bayes' && lop !== '12' ? 'so_do_cay' : sk.loai, nguon: 'ai', chi_dao: cd.loi};
@@ -104,6 +105,10 @@ function dungTuSinh_(r, kb) {
   if (typeof laLegoKb_ === 'function' && laLegoKb_(kb)) return false;
   var cd = String(kb.chi_dao || r.chi_dao || '');
   if (/tự sinh|tu_sinh|svg/i.test(cd)) return true;
+  // v99.2: hợp đồng hình BP0 (kb.san_khau_dich, apHopDongVaoKb_) thắng - kể cả đề xác suất (Monty Hall, xác suất hình học)
+  var dich = String(kb.san_khau_dich || ((typeof docHopDongHinh_ === 'function' && docHopDongHinh_(r)) || {}).san_khau_dich || '');
+  if (dich === 'tu_sinh_svg') return true;
+  if (dich && dich !== 'tu_sinh_svg') return false;
   if (String(kb.mon || r.mon || '').toUpperCase() === 'XAC_SUAT') return false;   // 4 mô-đun xác suất v96 đã đủ
   return RE_TU_SINH_.test(String(r.de_bai || kb.de_bai || ''));
 }
@@ -114,11 +119,19 @@ function huongDanTuSinh_(kb, r) {
     'ĐỀ: ' + String((r && r.de_bai) || kb.de_bai || '') + '\nĐÁP ÁN: ' + String((r && r.dap_an) || kb.dap_an_cuoi || '') + '\n' +
     'CÁC BƯỚC GIẢI (chỉ số: nhãn — tiêu đề):\n' + buoc.join('\n') + '\nLỜI ĐỌC TỪNG CẢNH:\n' + loi + '\n\n' +
     'HỢP ĐỒNG MÃ (máy chạy trong hộp cát, sai là bị loại):\n' +
-    '- Chỉ `import math`. Định nghĩa `def ve():` trả list lớp {"buoc": <chỉ số bước>, "svg": "<g>...</g>", "hieu_ung": "moc|no|ve|sang", "khi_noi": "cụm 3-6 từ NGUYÊN VĂN trong lời đọc lúc lớp này hiện", "nhan": "tên lớp"}.\n' +
+    '- Chỉ `import math` và `import ve25d` (thư viện vẽ dựng sẵn, xem dưới). Định nghĩa `def ve():` trả list lớp {"buoc": <chỉ số bước>, "svg": "<g>...</g>", "hieu_ung": "moc|no|ve|sang", "khi_noi": "cụm 3-6 từ NGUYÊN VĂN trong lời đọc lúc lớp này hiện", "nhan": "tên lớp"}.\n' +
     '- Mọi tọa độ TÍNH trong Python, nằm trong viewBox 0 0 800 540 (chừa lề 24 px). path chỉ lệnh TUYỆT ĐỐI M L C Q A Z. Không filter, không transform (trừ translate <= 40 px), không href / ảnh / script, không chuỗi chứa "__".\n' +
     '- Thẻ được dùng: g path polygon polyline line circle ellipse rect text tspan defs linearGradient radialGradient stop. Chữ: font-family "Be Vietnam Pro", cỡ >= 22, tô #E9EEF5.\n' +
     '- PHONG CÁCH 2.5D vector hiện đại trên nền TỐI: mỗi mảng có mặt bên đậm hơn lệch xuống 6-10 px (độ dày nổi), bóng mềm = bản sao rgba(0,0,0,.28) lệch xuống-phải 10 px; lớp MỚI tô màu nhấn #5CE1E6 (cyan) hoặc #FFB547 (hổ phách, chỉ cho lớp kết quả), viền sáng 2-3 px; lớp cũ dịu xám xanh #7C8DA6.\n' +
     '- Mỗi bước giải phải có ít nhất 1 lớp mới (tối thiểu 3 bước khác nhau) - hình đổi theo đúng lời đang giảng; KHÔNG ghi đáp số trước bước đáp án.\n' +
+    // v99.2: luật thẩm mỹ CỨNG (hộp cát --chi-kiem chặn: TS_CHU_NHO / TS_MAU_LA / TS_NHAN_DE_NET) + thư viện ve25d dựng sẵn
+    '- LUẬT THẨM MỸ CỨNG (máy đo, sai là bị loại): (1) MỌI chữ có font-size >= 24 (sàn 22) - màn hình dọc điện thoại; (2) nhãn KHÔNG đè lên nét vẽ / đỉnh hình: đặt NGOÀI hình kèm đường gióng mảnh, hoặc nằm trọn trong hộp nền đặc (rect fill-opacity >= 0.6); ' +
+    '(3) màu CHỈ dùng biến theme ve25d.MAU (nhan = cyan nhấn, nhan_dam, nhan_toi, ket = hổ phách kết quả, ket_toi, cu = xám lớp cũ, chu, chu_mo, mat, mat_toi, nen, dung, sai) - máy tự đổi họ màu nhấn theo theme nền của video.\n' +
+    '- THƯ VIỆN ve25d (được `import ve25d as v`, khuyên dùng): v.chu(x, y, s, co=28, mau) | v.nhan(x, y, s, tranh=[điểm cần tránh], co=26) tự chọn 1 trong 8 hướng không đè đỉnh + đường gióng + hộp nền | ' +
+    'v.da_giac(pts, mau, day=7) mảng nổi 2.5D | v.hop(x, y, a, b, c, mau) -> (svg, P đỉnh A..H) | v.tru(cx, cy, r, h, mau) | v.trai_phang_2mat(x, y, rong1, rong2, cao) -> (svg, P A/G) | ' +
+    'v.luoi(...), v.ban_co(x, y, o, n, to=[(i, j)]) | v.he_truc(x, y, w, h, u_max, v_max, nhan_x, nhan_y, vach) -> (svg, f(u, v)) | v.do_thi(x, y, w, h, ham, a, b, cuc_tri=t) -> (svg, f, P) | ' +
+    'v.cua(x, y, w, h, so, mo, ben_trong) cánh cửa Monty Hall | v.the_bai | v.mien_to(pts, mau, mo) | v.cung(cx, cy, r, a0, a1, to=mau) | v.mui_ten | v.duong(pts, net_dut) | v.cham | v.lop(buoc, svg, hieu_ung, khi_noi, nhan_lop, nhom).\n' +
+    (kb.kich_ban_hinh && kb.kich_ban_hinh.length ? '- HỢP ĐỒNG HÌNH TỪ BỘ PHẬN 0 (bám đúng thứ tự, mỗi bước hình ứng một bước giải): ' + kb.kich_ban_hinh.map(function (x, i) { return (i + 1) + ') ' + x; }).join(' ') + (kb.nut_that ? ' | Nút thắt: ' + kb.nut_that : '') + '\n' : '') +
     '- Bám đúng số liệu đề (ví dụ bông tuyết Koch: tam giác đều cạnh a, mỗi cạnh chia 3 bật tam giác đều ra ngoài, lớp n+1 = các tam giác mới; parabol: trục, đỉnh nổi bật, điểm chạy).\n' +
     'Chỉ trả JSON {"ma": "<mã Python>", "mo_ta": "1 câu"}.';
 }

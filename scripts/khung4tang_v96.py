@@ -1172,6 +1172,8 @@ def chon_san_khau(kb, r=None, khuon_suy=None):
         if loai_cd in LOAI_XS and mon != "XAC_SUAT" and not re.search(r"xác suất|ngẫu nhiên", van, re.I):
             loai_cd = loai_cd   # người dùng chỉ định rõ -> vẫn tôn trọng
         return {"loai": loai_cd, "nguon": "chi_dao", "chi_dao": loi_cd}
+    if str(kb.get("san_khau_dich") or "") == "cay_bayes":   # v99.2: hợp đồng hình BP0 (bản đôi SanKhau.gs chonSanKhau_)
+        return {"loai": "so_do_cay", "nguon": "hop_dong", "chi_dao": loi_cd}
     k4 = kb.get("khung4tang") if isinstance(kb.get("khung4tang"), dict) else {}
     sk = k4.get("san_khau") if isinstance(k4.get("san_khau"), dict) else {}
     if sk.get("loai") in LOAI_SAN_KHAU:

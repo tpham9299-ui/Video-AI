@@ -2027,18 +2027,34 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
             print("v99.1 sân khấu tự sinh: %d lớp SVG (mốc %s s)%s" % (len(ts["lop"]), ", ".join("%.1f" % l["t"] for l in ts["lop"]), (" | " + ghi_ts) if ghi_ts else ""))
         elif ghi_ts:
             print("v99.1 sân khấu tự sinh: %s -> giữ sân khấu dự phòng" % ghi_ts)
+        hong = tu_sinh_svg.tu_sinh_hong(kb, ts, ghi_ts)   # v99.2: hợp đồng tu_sinh_svg mà không dựng được -> cảnh báo rõ (Mắt thần lỗi cứng)
+        if hong:
+            out["tuSinhHong"] = hong
+            print("⚠ v99.2 " + hong)
     t_cb = v99_k4.moc_cong_bo(tu_all, canh_props, fps, so_dap, so_chu_sang_so)
     sua_cb = v99_k4.khoa_dap_an(out, t_cb, so_dap)
     if sua_cb:
         print("v99.1 khóa mốc đáp án (giọng công bố %.2f s): %s" % (t_cb, "; ".join(sua_cb[:6])))
+    cb_db = v99_k4.canh_bao_dong_bo(out, t_cb, sua_cb, tu_all, canh_props, fps, so_dap, so_chu_sang_so)   # v99.2: cờ lệch pha hình - tiếng
+    if cb_db:
+        out["canhBaoDongBo"] = cb_db
+        print("⚠ v99.2 lệch pha hình - tiếng: " + "; ".join(cb_db))
     moc_cau = sorted(round(c["batDau"] / float(fps) + x["bat"], 3) for c in canh_props for x in (c.get("cau") or []))
     out["nhipT2"] = v99_k4.nhip_chong_dung(out, moc_cau, tong)
     if not khong_gian:
         out["theme"] = v99_k4.chon_theme(kb)
+        if out.get("tuSinh"):   # v99.2: họ màu nhấn của lớp tự sinh ăn theo theme nền
+            n_mau = tu_sinh_svg.doi_mau_theme(out["tuSinh"], out["theme"])
+            if n_mau:
+                print("v99.2 sân khấu tự sinh: đổi %d màu nhấn theo theme %s" % (n_mau, out["theme"]))
     # v96: quét mã TeX thô ở trường chữ thường (Intro / Outro / CTA) + chuẩn ký hiệu "không chia hết" (không ⋮)
     da_sua = v96_k4.sua_ma_tho_props(out)
     if da_sua:
         print("v96 quét mã thô: sửa %d chỗ (%s)" % (len(da_sua), ", ".join(sorted(set(da_sua)))))
+    # v99.2: nhãn phụ bước KHÔNG lặp "BƯỚC n" (T1 đã có viên thuốc "BƯỚC n") - chạy CUỐI (LA_KET_LUAN / khoa_dap_an đã dùng nhan xong)
+    n_nhan = v99_k4.chuan_nhan_buoc(out)
+    if n_nhan:
+        print("v99.2 nhãn bước: bỏ tiền tố 'Bước n' trùng ở %d bước" % n_nhan)
     return out
 
 
@@ -3386,7 +3402,9 @@ def main():
     thuong_hieu, outro = tim_thuong_hieu(args.public, th)
     # v92: tên + logo theo chuyên mục TRƯỚC khi dựng intro / màn kết (trước đây logo tròn "Tư duy Xác suất" cho mọi bài)
     thuong_hieu = logo_theo_chuyen_muc(ten_kenh_theo_chuyen_muc(thuong_hieu, th, kb), args.public, kb)
-    bai_hoc = [str(x).strip()[:90] for x in (kb.get("bai_hoc_rut_ra") or []) if str(x).strip()][:3]
+    bhr = kb.get("bai_hoc_rut_ra")   # v99.2b: Gemini đôi khi trả chuỗi -> bọc thành mảng (không lặp từng ký tự)
+    bhr = bhr if isinstance(bhr, list) else ([bhr] if isinstance(bhr, str) and bhr.strip() else [])
+    bai_hoc = [str(x).strip()[:90] for x in bhr if str(x).strip()][:3]
     # Tự động chèn màn kết/outro thương hiệu chuyên nghiệp vào cuối video (tóm tắt bài học + kênh + nút Thích / Theo dõi).
     co_man_ket = bool(th.get("coManKet", True))
     # v89: video đã có cảnh bai_hoc (chốt kiến thức) -> màn kết KHÔNG lặp lại 3 gạch đầu dòng, chỉ đáp án + kênh (ngắn hơn, bớt đuôi im lặng)

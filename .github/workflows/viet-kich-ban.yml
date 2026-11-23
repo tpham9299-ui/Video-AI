@@ -38,6 +38,12 @@ jobs:
           sparse-checkout: |
             /*.gs
             scripts/bophan1
+            scripts/tu_sinh_svg.py
+            scripts/ve25d.py
+            scripts/giai_hinh_phang.py
+            scripts/hinh_phang
+            scripts/giai_hinh_khong_gian.py
+            scripts/hinh_khong_gian
             mau
           sparse-checkout-cone-mode: false
 

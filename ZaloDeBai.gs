@@ -78,9 +78,11 @@ function layUrlWebApp_() {
 
 function goiZaloApi_(token, phuongThuc, than) {
   try {
-    var res = UrlFetchApp.fetch(ZALO_API_ + token + '/' + phuongThuc, {
-      method: 'post', contentType: 'application/json', muteHttpExceptions: true, payload: JSON.stringify(than || {})
-    });
+    var res = thuLaiBroker_(function () {
+      return UrlFetchApp.fetch(ZALO_API_ + token + '/' + phuongThuc, {
+        method: 'post', contentType: 'application/json', muteHttpExceptions: true, payload: JSON.stringify(than || {})
+      });
+    }, 'goiZaloApi ' + phuongThuc);
     try { return JSON.parse(res.getContentText()); } catch (e) { return { ok: false, ma: res.getResponseCode(), raw: res.getContentText().slice(0, 200) }; }
   } catch (e2) { return { ok: false, loi: e2.message }; }
 }
@@ -119,7 +121,8 @@ function dsNhanThongBao_() {
 
 /* ===================== NHẬN TIN (gọi từ doPost) ===================== */
 
-function nhanZalo_(e) {
+function nhanZalo_(e, lanThu) {
+  lanThu = Number(lanThu) || 0;   // v99.2b: > 0 = lần thử lại sau lỗi tạm "người môi giới" / broker
   var tra = ContentService.createTextOutput(JSON.stringify({ ok: true })).setMimeType(ContentService.MimeType.JSON);
   try {
     var p = PropertiesService.getScriptProperties();
@@ -134,8 +137,9 @@ function nhanZalo_(e) {
     // Chống xử lý lặp: Zalo có thể gửi lại cùng một tin (Apps Script trả lời bằng chuyển hướng 302).
     var cache = CacheService.getScriptCache();
     var maTin = 'ZTIN_' + String(m.message_id || bam_(JSON.stringify(m)));
-    if (cache.get(maTin)) return tra;
+    if (!lanThu && cache.get(maTin)) return tra;
     cache.put(maTin, '1', 21600);
+    if (lanThu && cache.get('ZXONG_' + maTin)) return tra;   // lần trước đã ghi đề xong, chỉ lỗi ở bước sau -> không thêm trùng
 
     var choPhep = dsNguoiGuiDe_();
     var chu = String(m.text || m.caption || '').trim();
@@ -173,12 +177,19 @@ function nhanZalo_(e) {
       id: id, trang_thai: 'CHO_DOC', lop: lop, chu_de: 'Đề gửi qua Zalo', de_bai: tdCd.de, nguon: 'ZALO|' + String((m.from && m.from.display_name) || '').slice(0, 30),
       uu_tien: 1, zalo_chat: chat, file_anh: anh, so_lan_loi: 0, cap_nhat: new Date(), chi_dao: tdCd.chi_dao
     });
+    cache.put('ZXONG_' + maTin, '1', 21600);
     nhatKy_('ZALO_DE', id + ': nhận ' + (anh ? 'ảnh đề' : 'đề dạng chữ') + ' từ ' + chat);
     guiZaloToi_(chat, '📥 Đã nhận đề (' + id + ')! Hệ thống ƯU TIÊN làm video cho bài này ngay, các bài khác tạm dừng.\n' +
       'Các bước: đọc đề → giải 2 cách + kiểm chứng bằng máy → viết kịch bản → dựng video → KIỂM DUYỆT tự động. Thường 15-30 phút; mình chỉ nhắn khi video đã đạt kiểm duyệt (hoặc khi cần bạn giúp).' +
       (truoc ? '\n⏳ Trước bài này còn ' + truoc + ' đề ưu tiên đang làm.' : '') + '\nNhắn /tt để xem tiến độ.');
     henUuTien_(20);
   } catch (err) {
+    // v99.2b: lỗi tạm "người môi giới" / broker -> nghỉ 2 giây, xử lý lại tin này (tối đa 2 lần) thay vì rớt lệnh
+    if (laLoiBroker_(err) && lanThu < 2) {
+      try { nhatKy_('ZALO_THU_LAI', 'nhận tin: lỗi tạm "' + String(err.message).slice(0, 80) + '" -> thử lại lần ' + (lanThu + 1) + '/2'); } catch (e3) {}
+      Utilities.sleep(2000);
+      return nhanZalo_(e, lanThu + 1);
+    }
     try { nhatKy_('ZALO_LOI', String(err.message).slice(0, 300)); } catch (e2) {}
   }
   return tra;
@@ -270,9 +281,12 @@ function xuLyDocDe_(sh, bc, bat) {
   for (var i = 0; i < ds.length; i++) {
     if (!duThoiGianViec_(bat, uocGoiMs_() + 20000)) { nhatKy_('DUNG_SOM', 'Không đủ thời gian đọc đề ưu tiên, để lần sau'); return; }
     var r = ds[i];
-    if (!batDauViec_(sh, r, 'DOC_DE', bc)) { baoZaloDe_(r, '⚠️ Không đọc được đề ' + r.id + ' sau nhiều lần thử. Bạn gửi lại ảnh rõ hơn nhé.', 'cao'); continue; }
+    // v99.2b: trần vòng gọi API đọc đề < 4 phút tính từ đầu lần chạy (Apps Script ngắt cứng ở 6 phút)
+    if (Date.now() > Number(bat || Date.now()) + TRAN_DOC_DE_MS_) { nhatKy_('DUNG_SOM', 'Đọc đề: đã dùng ' + Math.round((Date.now() - bat) / 1000) + ' giây, để lần chạy sau'); return; }
+    var ghiTruoc = String(r.ghi_chu || '');
+    if (!batDauViec_(sh, r, 'DOC_DE', bc)) { baoZaloDe_(r, loiDocDeChoZalo_(r, ghiTruoc), 'cao'); continue; }
     try {
-      var j = docDe_(sh, r);
+      var j = docDe_(sh, r, Number(bat || Date.now()) + TRAN_DOC_DE_MS_);
       if (!j || j.doc_duoc === false || !j.de_bai || String(j.de_bai).length < 15) {
         ghi_(sh, r._row, { trang_thai: 'LOAI', ghi_chu: 'KHONG_DOC_DUOC: ' + String((j && j.ly_do) || '').slice(0, 200) });
         baoZaloDe_(r, '🤔 Mình chưa đọc được đề này' + (j && j.ly_do ? ': ' + j.ly_do : '') + '.\nBạn chụp lại thẳng, đủ sáng, rõ số (hoặc gõ đề) rồi gửi lại nhé.', 'cao');
@@ -304,12 +318,24 @@ function xuLyDocDe_(sh, bc, bat) {
       var daLoiTruoc = Number(r.so_lan_loi) || 0;
       xuLyLoiHang_(sh, r, e, bc);
       if (daLoiTruoc >= Number(cauHinh_('MAX_LAN_LOI')) && !laUuTien_(r)) baoZaloDe_(r, '⚠️ Đọc đề ' + r.id + ' bị lỗi: ' + String(e.message).slice(0, 150), 'cao');
+      if (/^QUA_THOI_GIAN_DOC_ANH/.test(String(e.message))) return;   // hết quỹ thời gian của lần chạy này
     }
   }
 }
 
 // Đọc đề bằng Gemini (nhìn ảnh nếu có). Ảnh tải về Drive ngay (link ảnh của Zalo có hạn dùng).
-function docDe_(sh, r) {
+var TRAN_DOC_DE_MS_ = 210000;   // v99.2b: 3,5 phút cho cả vòng đọc đề (lần gọi cuối vẫn xong trước mốc ngắt 6 phút)
+// Lý do thật khi hết lượt đọc đề: quá thời gian / quá tải / hết hạn mức Gemini KHÔNG phải lỗi ảnh -> không bảo "gửi lại ảnh rõ hơn"
+function loiDocDeChoZalo_(r, ghiTruoc) {
+  var g = String(ghiTruoc || '');
+  if (/^DANG_|QUA_THOI_GIAN|HET_GIO|hết thời gian|BI_NGAT/i.test(g)) return '⏱ Đề ' + r.id + ': Gemini đọc ảnh quá chậm nên lần chạy bị ngắt nhiều lần (không phải do ảnh). Hệ thống tạm dừng đề này; bạn gửi lại sau ít phút hoặc gõ đề bằng chữ nhé.';
+  if (/QUA_TAI|quá tải|503|UNAVAILABLE/i.test(g)) return '⏳ Đề ' + r.id + ': Gemini đang quá tải (HTTP 503) nên chưa đọc được đề (không phải do ảnh). Bạn gửi lại sau ít phút nhé.';
+  if (/HET_HAN_MUC|hạn mức|429/i.test(g)) return '⏳ Đề ' + r.id + ': kho key Gemini đã hết hạn mức nên chưa đọc được đề. Hệ thống sẽ làm khi có hạn mức mới.';
+  if (/GEMINI_LOI|HTTP \d{3}|MODEL_TU_CHOI/i.test(g)) return '⚠️ Đề ' + r.id + ': lỗi gọi Gemini khi đọc đề (' + g.slice(0, 120) + '). Bạn gửi lại sau ít phút nhé.';
+  return '⚠️ Không đọc được đề ' + r.id + ' sau nhiều lần thử' + (g ? ' (' + g.slice(0, 100) + ')' : '') + '. Bạn gửi lại ảnh rõ hơn hoặc gõ đề nhé.';
+}
+
+function docDe_(sh, r, hanChot) {
   var anh = null;
   var f = String(r.file_anh || '');
   if (/^https?:\/\//i.test(f)) {
@@ -341,9 +367,16 @@ function docDe_(sh, r) {
     '- "doc_duoc": false nếu không phải đề toán hoặc ảnh mờ không chắc chắn các con số; ghi "ly_do" ngắn gọn bằng tiếng Việt.\n' +
        '- "mo_ta_hinh": nếu ảnh có HÌNH VẼ (hình học, sơ đồ, hình minh họa, chuỗi hình theo bước...) thì mô tả thật chi tiết để vẽ lại y hệt: hình gì, bao nhiêu hình, xếp thế nào, hình dạng từng hình (tam giác đều, ngôi sao sáu cánh, bông tuyết Koch...), màu, các điểm và nhãn số đo trên hình, hình sau biến đổi từ hình trước ra sao. Nếu hình có dấu ba chấm ("…", "⋮", "⋯") thì PHẢI ghi rõ nó thay cho cái gì (vd "⋮ ở giữa = các tầng 4 đến 18 bị lược, mỗi tầng hơn tầng trên 1 ống") chứ không ghi "có ba chấm". Tách rõ đâu là VẬT THẬT (cột cờ, tòa nhà, ngân hàng, cây, người quan sát, ống, mảnh đất...) và đâu là CHÚ THÍCH (nhãn, số đo, mũi tên, ngoặc); đề chỉ có chữ mà nói tới vật thật thì vẫn mô tả cảnh: vật gì, đứng ở đâu, nhìn từ đâu, số đo nằm ở đâu. Không có hình thì để "".\n' +
     'Trả JSON: {"doc_duoc":true,"ly_do":"","mon":"","lop":"","dang":"","chu_de":"2-6 từ","de_bai":"","mo_ta_hinh":"","cau_da_chon":"","ghi_chu_doi":"","diem_tu_duy":1-10,"yeu_to_tu_duy":"vì sao cần suy nghĩ","bay_thuong_gap":"học sinh hay sai ở đâu"}';
-  var opts = { suyNghi: 'mac_dinh' };
+  // v99.2b: đọc ảnh = việc nhanh -> chế độ 'nhe' (Flash ổn định xếp trước pro / preview), có hạn chót riêng (< 4 phút)
+  var opts = { suyNghi: 'mac_dinh', cheDo: 'nhe' };
+  if (hanChot) opts.hanChotMs = hanChot;
   if (anh) opts.anh = { mime: anh.getContentType() || 'image/jpeg', data: Utilities.base64Encode(anh.getBytes()) };
-  var j = goiGemini_(prompt, 0.1, opts);
+  var j;
+  try { j = goiGemini_(prompt, 0.1, opts); }
+  catch (e) {
+    if (String(e.message) === 'HET_GIO' && hanChot && Date.now() >= hanChot) throw new Error('QUA_THOI_GIAN_DOC_ANH: Gemini đọc ảnh quá ' + Math.round(TRAN_DOC_DE_MS_ / 1000) + ' giây');
+    throw e;
+  }
   if (Array.isArray(j)) j = j[0];
   return j;
 }

@@ -30,8 +30,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 GOC = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 O_RONG, O_CAO = 360, 640
-LOAI_LOI = ("cat_chu", "chong_chu", "latex_tho", "lo_dap_an", "ma_tho", "logo_sai", "so_cat", "t2_trong", "hinh_dung_im", "hinh_nho", "tran_day", "nhan_de")
-TEN_LOI = {"hinh_nho": "Hình học quá nhỏ trong khung", "tran_day": "Chữ tràn xuống đáy (vùng an toàn)", "nhan_de": "Nhãn điểm đè nhau / đè nét",
+LOAI_LOI = ("cat_chu", "chong_chu", "latex_tho", "lo_dap_an", "ma_tho", "logo_sai", "so_cat", "t2_trong", "hinh_dung_im", "hinh_nho", "tran_day", "nhan_de", "lech_pha", "tu_sinh_hong")
+TEN_LOI = {"lech_pha": "Lệch pha hình - tiếng (đáp án hiện sớm / giọng không đọc đáp số)", "tu_sinh_hong": "Sân khấu tự sinh hỏng (rơi về hộp chữ)","hinh_nho": "Hình học quá nhỏ trong khung", "tran_day": "Chữ tràn xuống đáy (vùng an toàn)", "nhan_de": "Nhãn điểm đè nhau / đè nét",
            "cat_chu": "Cắt chữ / tràn khung", "chong_chu": "Chồng nhãn / chồng chữ", "latex_tho": "Mã LaTeX thô", "lo_dap_an": "Lộ đáp án sớm",
            "ma_tho": "Mã thô ở tiêu đề/thẻ", "logo_sai": "Logo/tên kênh sai chuyên mục", "so_cat": "Con số bị cắt lỗi",
            "t2_trong": "Tầng 2 trống đen (không có hình 3D)", "hinh_dung_im": "Hình 3D đứng im ở mọi khung"}
@@ -154,6 +154,11 @@ def tao_luoi(video, moc, dich):
 def kiem_tat_dinh(p, anh_o, o_da):
     """v92: lỗi nặng đo được bằng điểm ảnh / props (không cần AI). Chỉ áp dụng video khung 4 tầng."""
     loi = []
+    k4p = p.get("khung4tang") or {}
+    for x in (k4p.get("canhBaoDongBo") or [])[:2]:   # v99.2: cờ do chuanbi.py gắn (khung4tang_v99.canh_bao_dong_bo)
+        loi.append({"o": o_da, "loai": "lech_pha", "mo_ta": str(x)[:150], "nang": True})
+    if k4p.get("tuSinhHong"):
+        loi.append({"o": 2, "loai": "tu_sinh_hong", "mo_ta": str(k4p["tuSinhHong"])[:150], "nang": True})
     th = p.get("thuongHieu") or {}
     ten = str(th.get("ten") or "")
     if th.get("chuyenMuc") == "toan" and re.search(r"xác suất", ten, re.I):
