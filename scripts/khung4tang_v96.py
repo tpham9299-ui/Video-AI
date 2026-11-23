@@ -1005,6 +1005,11 @@ def dung_tu_duy(kb, k4, buoc=None):
     """Đường lui vạn năng: hộp dữ kiện (từ de_ghim) -> chuỗi suy luận (tiêu đề từng bước) -> dòng biến đổi chính khóa màu
     (dòng công thức đầu của mỗi bước) + đồ thị mini nếu đề có hàm số một biến đọc được."""
     du = [str(d.get("nhan") or "") for d in (k4.get("de_ghim") or k4.get("deGhim") or []) if isinstance(d, dict) and d.get("nhan")][:4]
+    try:   # v98: hộp dữ kiện không chép nghiệm AI ghi sẵn trong de_ghim ('x = 6,07' -> 'x = ?')
+        import khung4tang_v98 as v98_k4
+        du = v98_k4.che_dap_an_chuoi(du, kb.get("dap_an_cuoi") or kb.get("dap_an"))
+    except ImportError:
+        pass
     ds = buoc if buoc is not None else [b for b in (k4.get("buoc") or []) if isinstance(b, dict)]
     nut = []
     for j, b in enumerate(ds[:5]):
@@ -1102,6 +1107,9 @@ def chon_san_khau(kb, r=None, khuon_suy=None):
     r = r or {}
     mon = str(kb.get("mon") or r.get("mon") or "").upper()
     lop = str(kb.get("lop") or r.get("lop") or "")
+    hkg = kb.get("hinh_khong_gian")   # v98: đặc tả Lego (phien_ban 2) thắng mọi sân khấu — bản đôi SanKhau.gs chonSanKhau_
+    if isinstance(hkg, dict) and (str(hkg.get("phien_ban") or "") == "2" or isinstance(hkg.get("doi_tuong"), list)):
+        return {"loai": "lego_3d", "nguon": "lego", "chi_dao": ""}
     if str(kb.get("luong") or "") == "hinh_hoc_thuan" or mon == "HINH_HOC":
         return {"loai": "hinh_hoc", "nguon": "khoa_luong", "chi_dao": ""}
     van = " ".join(str(x or "") for x in (kb.get("de_bai"), r.get("de_bai"), kb.get("can_tim"), kb.get("chu_de")))
@@ -1226,7 +1234,7 @@ def gan_san_khau(kb, k4, buoc, t_buoc, t_het_de, tong, tim_moc, r=None, khuon_su
     sua = []
     quyet = chon_san_khau(kb, r, khuon_suy)
     loai = quyet["loai"]
-    if loai in ("hinh_hoc", "3d_vector"):
+    if loai in ("hinh_hoc", "3d_vector", "lego_3d"):
         return None, sua, quyet
     sk_ai = k4.get("san_khau") if isinstance(k4.get("san_khau"), dict) else {}
     ts = sk_ai.get("tham_so") if isinstance(sk_ai.get("tham_so"), dict) and sk_ai.get("loai") == loai else {}

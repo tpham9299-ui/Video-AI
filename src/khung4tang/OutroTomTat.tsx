@@ -11,7 +11,7 @@ import {Canh3DV, MAU_3DV} from '../3d-vector/kieu';
 import {emRa, kep01} from '../3d-vector/toan3d';
 import {NenTramToanHoc} from './NenTramToanHoc';
 import type {DongTomTat} from './kieu';
-import {RONG_ND_V93, VUNG_OUTRO} from './bo_cuc_v93';
+import {LE_ND_V93, RONG_ND_V93, VUNG_OUTRO} from './bo_cuc_v93';
 import {ChuTron} from './ChuTron';
 import {SanKhau2D} from '../sankhau2d/SanKhau2D';
 import {SanKhauKhongGian} from '../khonggian/SanKhauKhongGian';
@@ -54,7 +54,7 @@ export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: C
       <NapPhongToan />
       <NenTramToanHoc t={tCuoi + t} mauNhan={MAU_3DV.ngoc} tamSanKhau={V.san.y + V.san.h / 2} />
       {/* v96: nội dung trong khung 0..950 (vùng an toàn TikTok: phải 12 %, trên 11 %, đáy 18 %) */}
-      <div style={{position: 'absolute', left: 0, top: 0, width: RONG_ND_V93, height: '100%'}}>
+      <div style={{position: 'absolute', left: LE_ND_V93, top: 0, width: RONG_ND_V93, height: '100%'}}>
       {thuongHieu ? <div data-kd-bo="1" style={{position: 'absolute', top: 60, right: 44, fontWeight: 800, fontSize: 22, color: 'rgba(230,237,245,0.5)'}}>{thuongHieu}</div> : null}
 
       {/* đáp án phát sáng */}
@@ -62,7 +62,7 @@ export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: C
         opacity: kep01(aDap * 1.5), transform: `scale(${0.88 + 0.12 * aDap})`}}>
         <div style={{height: 44, padding: '0 22px', borderRadius: 22, display: 'flex', alignItems: 'center', color: NGOC, border: `1.5px solid ${NGOC}`, background: `${NGOC}18`, fontWeight: 900, fontSize: 24, letterSpacing: 1.2}}>ĐÁP ÁN</div>
         <div style={{padding: '12px 34px', borderRadius: 24, background: `${NGOC}12`, border: `2px solid ${NGOC}AA`, boxShadow: `0 0 ${30 * sang}px ${NGOC}55, inset 0 0 24px ${NGOC}18`, textShadow: `0 0 18px ${NGOC}88`}}>
-          <Toan tex={texDapAn(dapAn || '?')} size={64} color="#F4FFFB" maxWidth={780} />
+          <Toan tex={texDapAn(dapAn || '?')} size={64} color="#F4FFFB" maxWidth={690} />
         </div>
       </div>
 
@@ -89,7 +89,7 @@ export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: C
 
       {/* v97 hình không gian: 3 ý tóm tắt trên MỘT tấm nền mờ, ngăn bằng đường kẻ siêu mảnh, căn giữa (không 3 hộp rời) */}
       {khongGian ? (
-        <div data-tom-tat-gop style={{position: 'absolute', left: 40, right: 40, top: V.dong.y, height: 3 * V.dong.h + 2 * V.dong.cach, display: 'flex', flexDirection: 'column',
+        <div data-tom-tat-gop style={{position: 'absolute', left: 0, right: 0, top: V.dong.y, height: 3 * V.dong.h + 2 * V.dong.cach, display: 'flex', flexDirection: 'column',
           borderRadius: 26, background: 'linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.03))', opacity: vao(tDong(0))}}>
           {tomTat.slice(0, 3).map((d, k) => {
             const a = vao(tDong(k));
@@ -98,10 +98,10 @@ export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: C
               <div key={k} data-tom-tat style={{flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, padding: '0 26px', opacity: a,
                 borderTop: k ? '1px solid rgba(255,255,255,0.09)' : 'none', transform: `translateY(${(1 - a) * 10}px)`}}>
                 <span style={{color: mau, fontWeight: 900, fontSize: 30, fontVariantNumeric: 'tabular-nums'}}>{String(k + 1).padStart(2, '0')}</span>
-                <span style={{color: mau, fontWeight: 800, fontSize: d.chien_thuat.length > 14 ? 28 : 32, whiteSpace: 'nowrap', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis'}}>
+                <span style={{color: mau, fontWeight: 800, fontSize: d.chien_thuat.length > 14 ? 28 : 32, whiteSpace: 'nowrap', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis'}}>
                   <ChuTron s={d.chien_thuat} co={d.chien_thuat.length > 14 ? 28 : 32} mau={mau} dam={800} />
                 </span>
-                {d.cong_thuc ? <Toan tex={d.cong_thuc} size={36} color="#F4F7FB" maxWidth={420} /> : null}
+                {d.cong_thuc ? <Toan tex={d.cong_thuc} size={36} color="#F4F7FB" maxWidth={380} /> : null}
               </div>
             );
           })}
@@ -112,13 +112,13 @@ export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: C
         const a = vao(tDong(k));
         const mau = MAU_3DV[d.mau || (['cyan', 'vang', 'hong'] as const)[k]] || MAU_3DV.cyan;
         return (
-          <div key={k} data-tom-tat style={{position: 'absolute', left: 40, right: 40, top: V.dong.y + k * (V.dong.h + V.dong.cach), height: V.dong.h, display: 'flex', alignItems: 'center', gap: 22,
+          <div key={k} data-tom-tat style={{position: 'absolute', left: 0, right: 0, top: V.dong.y + k * (V.dong.h + V.dong.cach), height: V.dong.h, display: 'flex', alignItems: 'center', gap: 22,
             padding: '0 26px', borderRadius: 20, background: 'rgba(20,24,32,0.92)', border: `1px solid ${mau}66`, boxShadow: `0 0 18px ${mau}1F`,
             opacity: a, transform: `translateX(${(1 - a) * -26}px)`}}>
             <span style={{width: 54, height: 54, flexShrink: 0, borderRadius: 27, background: mau, color: NEN, fontWeight: 900, fontSize: 28, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>{k + 1}</span>
-            <span style={{width: 270, flexShrink: 0, color: mau, fontWeight: 800, fontSize: d.chien_thuat.length > 14 ? 28 : 32, lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}><ChuTron s={d.chien_thuat} co={d.chien_thuat.length > 14 ? 28 : 32} mau={mau} dam={800} /></span>
+            <span style={{width: 236, flexShrink: 0, color: mau, fontWeight: 800, fontSize: d.chien_thuat.length > 14 ? 28 : 32, lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}><ChuTron s={d.chien_thuat} co={d.chien_thuat.length > 14 ? 28 : 32} mau={mau} dam={800} /></span>
             <span style={{flex: 1, minWidth: 0, display: 'flex', justifyContent: 'flex-end', overflow: 'hidden'}}>
-              {d.cong_thuc ? <Toan tex={d.cong_thuc} size={38} color="#F4F7FB" maxWidth={440} /> : null}
+              {d.cong_thuc ? <Toan tex={d.cong_thuc} size={38} color="#F4F7FB" maxWidth={380} /> : null}
             </span>
           </div>
         );

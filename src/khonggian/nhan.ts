@@ -4,7 +4,7 @@
 //  (2) khử va chạm lặp: hộp nhãn đụng nhãn khác / đụng cạnh / đụng chấm / chạm biên vùng an toàn -> thử khe trống kế tiếp
 //      (và khoảng đẩy xa hơn), lặp tới khi sạch;
 //  (3) giảm xóc: khi máy đang xoay, vị trí nhãn nội suy giữa nghiệm ở tư thế đầu và tư thế đích (ve.ts) -> không giật chữ.
-export type DiemNhan = {ten: string; x: number; y: number; huongCanh: number[]; uuTien: number};
+export type DiemNhan = {ten: string; x: number; y: number; huongCanh: number[]; uuTien: number; chu?: string}; // v98 chu: nhãn hiển thị dài (Flycam)
 export type HopNhan = {ten: string; x: number; y: number; w: number; h: number; dx: number; dy: number};
 export type DoanCan = {x1: number; y1: number; x2: number; y2: number; a?: string; b?: string};
 
@@ -55,7 +55,7 @@ export function datNhanKG(ds: DiemNhan[], doan: DoanCan[], cham: {x: number; y: 
   const da: (HopNhan & {b: Hop})[] = [];
   const thuTu = [...ds].sort((a, b) => b.uuTien - a.uuTien || b.huongCanh.length - a.huongCanh.length);
   for (const p of thuTu) {
-    const {w, h} = kichNhan(p.ten, co);
+    const {w, h} = kichNhan(p.chu || p.ten, p.chu && p.chu.length > 3 ? co * 0.72 : co);
     const ra = Math.atan2(p.y - tam.y, p.x - tam.x);
     const khe = kheTrong(p.huongCanh);
     // ứng viên: phân giác các khe (rộng trước) + lệch ±25° trong khe rộng; 3 khoảng đẩy

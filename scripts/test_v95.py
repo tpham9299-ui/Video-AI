@@ -108,7 +108,7 @@ for ten, nguong in (("hop", False), ("lon", True)):
          "%s: Outro bật NGAY đầu cảnh '%s' (cùng giọng tóm tắt/CTA)" % (ten, c_ket["loai"]))
     du = (o["batDau"] + o["soFrame"]) / 30.0 - cb.het_giong_canh(p["canh"][-1], 30)
     kiem(0.8 <= du <= 1.25 or o["soFrame"] == round(3.5 * 30), "%s: chỉ dư %.2f s đuôi nhạc sau câu cuối" % (ten, du))
-    kiem(p["nhac"] == "nhac/lofi.wav", "%s: nhạc nền lo-fi 112 BPM" % ten, p["nhac"])
+    kiem(p["nhac"] in ("nhac/lofi.wav", "nhac/v98_marimba_tech.wav"), "%s: nhạc nền tự tổng hợp (v98: marimba_tech cho khuôn 3D thực tế)" % ten, p["nhac"])
     kiem(k["boCuc"]["phuDe"] == "gon", "%s: phụ đề gọn 1 dòng mặc định bật" % ten)
     kiem(len(k["tomTat"]) == 3, "%s: Outro đủ 3 dòng tóm tắt" % ten)
     kiem(k.get("cta") in [x[1] for x in v95.CTA_NGHIA], "%s: nhãn CTA ngữ nghĩa '%s'" % (ten, k.get("cta")))

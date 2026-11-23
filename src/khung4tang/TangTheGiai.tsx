@@ -13,26 +13,30 @@ import {RA_TIEU_DE} from './TangTieuDe';
 import {ChuTron} from './ChuTron';
 import {RONG_ND} from './vung';
 import {tachHam} from './chu_tron';
+import {caoDongTex, coVuaCao} from './do_tex';
 
 const TOI_DA_THE = 3;
 const VANG = '#FACC15';
 const NGOC = '#2EE6A8';
-// v96: khung nội dung dừng ở ranh phải 12 % (vùng an toàn TikTok)
-const RONG_TRONG = RONG_ND - 2 * 44 - 2 * 28;
+// v96: khung nội dung dừng ở ranh phải 12 % (vùng an toàn TikTok); v98: tầng đối xứng 130..950, thẻ cách mép tầng 12 px
+const LE_THE = 12;
+const RONG_TRONG = RONG_ND - 2 * LE_THE - 2 * 28;
 
 // mốc xuất hiện của thẻ j trong bước b
 export const tTheCua = (b: BuocGiai, j: number) => (b.the[j].t !== undefined ? b.the[j].t! : b.t + 0.35 + j * 0.7);
 
-function NoiDung({th, t0, t, mau, co = 42}: {th: TheGiai; t0: number; t: number; mau: string; co?: number}) {
+function NoiDung({th, t0, t, mau, co = 42, coDong}: {th: TheGiai; t0: number; t: number; mau: string; co?: number; coDong?: number}) {
   if (th.loai === 'cong_thuc') {
     return (
-      <div style={{display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start'}}>
+      <div style={{display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center'}}>
         {th.dong.slice(0, 5).map((d, k) => {
           const tk = th.moc?.[k] ?? t0 + k * 0.45;
           const a = emRa((t - tk) / 0.35);
+          // v98: căn GIỮA + co theo chiều cao (phân số nhiều tầng không bao giờ bị cắt nửa tử / mẫu)
+          const coD = coDong ?? co;
           return (
-            <div key={k} style={{opacity: a, transform: `translateX(${(1 - a) * -12}px)`}}>
-              <Toan tex={d} size={co} color={k === th.dong.length - 1 && (th.dong.length > 1 || co > 42) ? mau : '#F4F7FB'} maxWidth={RONG_TRONG} can="trai" style={co > 42 ? {fontWeight: 800} : undefined} />
+            <div key={k} style={{opacity: a, transform: `translateY(${(1 - a) * 8}px)`}}>
+              <Toan tex={d} size={coD} color={k === th.dong.length - 1 && (th.dong.length > 1 || co > 42) ? mau : '#F4F7FB'} maxWidth={RONG_TRONG} maxHeight={caoDongTex(d, coD) + 6} can="giua" style={co > 42 ? {fontWeight: 800} : undefined} />
             </div>
           );
         })}
@@ -45,21 +49,31 @@ function NoiDung({th, t0, t, mau, co = 42}: {th: TheGiai; t0: number; t: number;
     const [ham, bien] = tachHam(th.ham, th.bien);
     const v = {bbtMoc: th.moc_x, bbtDau: th.dau, bbtGiaTri: th.gia_tri, bbtHam: ham, bbtBien: bien, mocDong: [t0 + 0.6, t0 + 1.4], noiDung: ''} as unknown as Vat;
     return (
-      <div style={{transform: 'scale(0.96)', transformOrigin: 'left top'}}>
+      <div style={{transform: 'scale(0.96)', transformOrigin: 'center top', alignSelf: 'center'}}>
         <BangBienThien v={v} st={{t, ta: t0} as unknown as TrangThai} />
       </div>
     );
   }
   const cc = co > 42 ? 48 : 38, mc = co > 42 ? '#F4FFFB' : '#DCE3EC';
-  return <div style={{color: mc, fontFamily: FONT, fontWeight: co > 42 ? 800 : 600, fontSize: cc, lineHeight: 1.3}}><ChuTron s={th.noi_dung} co={cc} mau={mc} dam={co > 42 ? 800 : 600} /></div>;
+  return <div style={{color: mc, fontFamily: FONT, fontWeight: co > 42 ? 800 : 600, fontSize: cc, lineHeight: 1.3, textAlign: 'center'}}><ChuTron s={th.noi_dung} co={cc} mau={mc} dam={co > 42 ? 800 : 600} /></div>;
 }
 
 // Cụm thẻ căn GIỮA tầng 3 theo chiều dọc. Thẻ chưa tới lượt vẫn giữ chỗ (ẩn) nên cụm không nhảy khi thẻ mới vào.
 // v92: chiều cao ước lượng của thẻ -> cửa sổ thẻ theo NGÂN SÁCH CHIỀU CAO tầng 3 (3 thẻ nhiều dòng không còn tràn/cắt mép)
 const CAO_T3 = 380;   // v96: T3 426 px (vùng an toàn TikTok) trừ dải phụ đề 56 px
+export const caoCongThuc = (dong: string[], co: number) => dong.reduce((s, d) => s + caoDongTex(d, co), 0) + 10 * Math.max(0, dong.length - 1);
+// cỡ dòng công thức để MỘT thẻ vừa ngân sách T3 (thẻ một mình vẫn cao quá -> co chữ, tối thiểu 28 px)
+export const coDongVua = (th: TheGiai, caoToiDa = CAO_T3): number | undefined => {
+  if (th.loai !== 'cong_thuc') return undefined;
+  const co = th.chot ? 52 : 42;
+  const vo = 38 + 46 + (th.chot ? 14 : 0);
+  const c = coVuaCao(th.dong.slice(0, 5), co, caoToiDa - vo, 10, 28);
+  return c < co ? c : undefined;
+};
 export const caoThe = (th: TheGiai) => {
   const vo = 38 + (th.nhan || th.loai !== 'chu' ? 46 : 0);
-  if (th.loai === 'cong_thuc') return vo + (th.chot ? 14 : 0) + th.dong.slice(0, 5).reduce((s, d) => s + (/\\d?frac/.test(d) ? 84 : th.chot ? 68 : 58), 0);
+  // v98: chiều cao dòng theo ĐỘ SÂU phân số thật (frac lồng frac, dfrac) thay cho 84 px cố định
+  if (th.loai === 'cong_thuc') return vo + (th.chot ? 14 : 0) + caoCongThuc(th.dong.slice(0, 5), coDongVua(th) ?? (th.chot ? 52 : 42));
   if (th.chot) return vo + 14 + 64 * Math.max(1, Math.ceil(String((th as {noi_dung?: string}).noi_dung || '').length / 28));
   if (th.loai === 'casio') return vo + 110;
   if (th.loai === 'bang_bien_thien') return vo + 300;
@@ -78,7 +92,7 @@ function DanhSachThe({b, t, mau, aChung}: {b: BuocGiai; t: number; mau: string; 
   while (het < b.the.length && het - dau < TOI_DA_THE && tong + 16 + caoThe(b.the[het]) <= CAO_T3) tong += 16 + caoThe(b.the[het++]);
   const cuaSo = b.the.map((th, j) => ({th, j})).slice(dau, het);
   return (
-    <div style={{position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 16, padding: '0 44px', opacity: aChung}}>
+    <div style={{position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 16, padding: `0 ${LE_THE}px`, opacity: aChung}}>
       {cuaSo.map(({th, j}) => {
         const t0 = tTheCua(b, j);
         const a = emRa((t - t0) / 0.38);
@@ -91,11 +105,11 @@ function DanhSachThe({b, t, mau, aChung}: {b: BuocGiai; t: number; mau: string; 
             <div key={j} data-the-giai data-the-chot style={{opacity: a, transform: `translateY(${(1 - a) * 18}px) scale(${nay})`, background: 'linear-gradient(180deg, rgba(46,230,168,0.12), rgba(20,24,32,0.94) 70%)', borderRadius: 20,
               border: `2px solid ${NGOC}`, boxShadow: `0 0 ${26 * sang + 20 * loe}px ${NGOC}55, inset 0 0 22px ${NGOC}1A`,
               padding: '18px 30px 22px', display: 'flex', flexDirection: 'column', gap: 12, flexShrink: 0}}>
-              <div style={{display: 'flex', alignItems: 'center', gap: 12}}>
+              <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12}}>
                 <span style={{height: 34, padding: '0 14px', borderRadius: 17, background: VANG, color: '#0E1014', fontFamily: FONT, fontWeight: 900, fontSize: 20, display: 'flex', alignItems: 'center', letterSpacing: 0.6}}>{j + 1} · ĐÁP ÁN</span>
                 {th.nhan ? <span style={{color: VANG, fontFamily: FONT, fontWeight: 800, fontSize: 28}}><ChuTron s={th.nhan} co={28} mau={VANG} dam={800} /></span> : null}
               </div>
-              <NoiDung th={th} t0={t0 + 0.15} t={t} mau={NGOC} co={52} />
+              <NoiDung th={th} t0={t0 + 0.15} t={t} mau={NGOC} co={52} coDong={coDongVua(th)} />
             </div>
           );
         }
@@ -103,11 +117,11 @@ function DanhSachThe({b, t, mau, aChung}: {b: BuocGiai; t: number; mau: string; 
           <div key={j} data-the-giai style={{opacity: a, transform: `translateY(${(1 - a) * 18}px)`, background: 'rgba(20,24,32,0.92)', borderRadius: 18,
             border: `1px solid ${mau}${loe > 0 ? 'CC' : '73'}`, boxShadow: `0 0 ${14 + 18 * loe}px ${mau}${loe > 0.3 ? '40' : '1F'}, inset 0 1px 0 rgba(255,255,255,0.04)`,
             padding: '18px 28px 20px', display: 'flex', flexDirection: 'column', gap: 12, flexShrink: 0}}>
-            <div style={{display: 'flex', alignItems: 'center', gap: 12}}>
+            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12}}>
               <span style={{width: 34, height: 34, borderRadius: 17, background: mau, color: '#0E1014', fontFamily: FONT, fontWeight: 900, fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>{j + 1}</span>
               {th.nhan ? <span style={{color: mau, fontFamily: FONT, fontWeight: 700, fontSize: 26}}><ChuTron s={th.nhan} co={26} mau={mau} dam={700} /></span> : null}
             </div>
-            <NoiDung th={th} t0={t0 + 0.15} t={t} mau={mau} />
+            <NoiDung th={th} t0={t0 + 0.15} t={t} mau={mau} coDong={coDongVua(th)} />
           </div>
         );
       })}

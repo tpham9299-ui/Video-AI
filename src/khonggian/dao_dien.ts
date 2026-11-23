@@ -9,7 +9,7 @@
 import {CheDoMay, KhongGianVao, TuThe, V3, XoayVao} from './kieu';
 import {chieu, emXoay, gocTuHuong, heMay, huongNhin, noiTuThe} from './may';
 import {cham, cheo, chuan, cong, doDai, kep01, nhan, RAD, tru, trungBinh} from '../3d-vector/toan3d';
-import {matVo, NGUONG_SUOT, doTruoc} from './hlr';
+import {matVo, matVoNhieu, NGUONG_SUOT, doTruoc} from './hlr';
 import {khoaId, tachTen} from './canh';
 
 export const GOC_TOAN_CANH = {n: 28, c: 22};
@@ -110,7 +110,8 @@ export function danhGia(m: TuThe, bc: BoiCanh, diem: [string, V3][], doan: [stri
     if (d < kcDinhCanh) { kcDinhCanh = d; diemDe = [x.t, a + b]; }
   }
   let suot = 1;
-  for (const f of bc.vo) suot = Math.min(suot, Math.abs(doTruoc(f, h.viTri)));
+  // v98: mặt xấp xỉ mặt cong (trụ / nón / cầu) LUÔN có mặt sượt ở đường viền -> không tính phạt sượt
+  for (const f of bc.vo) if (!f.cong) suot = Math.min(suot, Math.abs(doTruoc(f, h.viTri)));
   return {kcDinh, kcDinhCanh, suot, capDinh, diemDe};
 }
 
@@ -165,7 +166,12 @@ export function tinhTuThe(bc: BoiCanh, che: CheDoMay, doi: string[], truoc: TuTh
   const luoiQuanh = (n: number, c: number) => {
     for (const a of LUOI) for (const b of LUOI) ung.push({n: n + a, c: Math.max(4, Math.min(80, c + b)), lech: Math.hypot(a, b)});
   };
-  if (che === 'toan_canh' || (che !== 'nhin_day' && che !== 'can_canh' && doi.length < 3)) {
+  if (che === 'phang_2d') {
+    // v98: nhìn thẳng từ trên (bản đồ 2D), gần trực giao (xa = 14) -> xoay ra 3D bằng nội suy cầu + mở phối cảnh
+    const m = khungTuThe(0, 88.5, bc, vt.khung);
+    const m2: TuThe = {...m, xa: 14};
+    return khungTuThe2(m2, bc, vt.khung);
+  } else if (che === 'toan_canh' || (che !== 'nhin_day' && che !== 'can_canh' && doi.length < 3)) {
     luoiQuanh(truoc && che !== 'toan_canh' ? truoc.n : GOC_TOAN_CANH.n, GOC_TOAN_CANH.c);
   } else if (che === 'nhin_day') {
     luoiQuanh(nTruoc, GOC_NHIN_DAY_C);
@@ -239,11 +245,28 @@ export function tinhTuThe(bc: BoiCanh, che: CheDoMay, doi: string[], truoc: TuTh
 
 export function boiCanh(kg: KhongGianVao, W: number, H: number): BoiCanh {
   const d = kg.dung;
-  const muc = trungBinh(d.khoi.dinh.map((x) => d.diem[x]));
   const tat: V3[] = Object.values(d.diem);
   for (const k of d.kinh) tat.push(...k.da_giac, ...(k.bung || []));
+  // v98 Lego: tâm nhìn = tâm hộp bao mọi vật (không có "khối gốc" duy nhất); vỏ = mặt của MỌI khối
+  let muc: V3;
+  if (d.lego || !d.khoi.dinh.length) {
+    const lo = [0, 1, 2].map((i) => Math.min(...tat.map((p) => p[i]))), hi = [0, 1, 2].map((i) => Math.max(...tat.map((p) => p[i])));
+    muc = [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2];
+  } else muc = trungBinh(d.khoi.dinh.map((x) => d.diem[x]));
   const R = Math.max(1e-3, ...tat.map((p) => doDai(tru(p, muc))));
-  return {kg, W, H, R, muc, vo: matVo(d.diem, d.khoi.mat)};
+  const vo = d.khoiDs && d.khoiDs.length ? matVoNhieu(d.diem, d.khoiDs) : matVo(d.diem, d.khoi.mat);
+  return {kg, W, H, R, muc, vo};
+}
+
+// v98: khung lại một tư thế có xa ≠ 1 (phối cảnh khác) cho vừa sân khấu
+function khungTuThe2(m: TuThe, bc: BoiCanh, khung: V3[]): TuThe {
+  const m0: TuThe = {...m, k: 1, ox: 0, oy: 0};
+  const h = heMay(m0);
+  const ps = khung.map((p) => chieu(p, m0, h));
+  const xs = ps.map((p) => p.x), ys = ps.map((p) => p.y);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const k = Math.min((bc.W * KHUNG_RONG) / Math.max(1e-6, x1 - x0), (bc.H * KHUNG_CAO) / Math.max(1e-6, y1 - y0));
+  return {...m, k, ox: bc.W / 2 - ((x0 + x1) / 2) * k, oy: bc.H / 2 - ((y0 + y1) / 2) * k};
 }
 
 export function lapLich(kg: KhongGianVao, W: number, H: number): LichMay {

@@ -1,5 +1,5 @@
 // v96 — BỘ CHỌN SÂN KHẤU 2D cho tầng 2 khung 4 tầng. Dữ liệu đã tính sẵn (chuanbi.py khung4tang_v96); loại lạ -> không vẽ
-// (khung 4 tầng giữ nền lưới, không bao giờ vỡ video). Mọi sân khấu nằm trong bề rộng `rong` (0..950: vùng an toàn TikTok).
+// (khung 4 tầng giữ nền lưới, không bao giờ vỡ video). Mọi sân khấu nằm trong bề rộng `rong` (v98: T2 đối xứng 130..950, rộng 820 — vùng an toàn TikTok).
 import React from 'react';
 import {FONT} from '../theme';
 import type {SanKhau2DVao} from './kieu';

@@ -1254,7 +1254,10 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc, lop) {
     if (kb.canh.length < 6) nang.push('IT_CANH_HINH_HOC: bài hình học cần ít nhất 6 cảnh (mở đầu, đề bài, ý tưởng, các bước giải, kết luận).');
   }
   // v92: tầng 3D rỗng/đứng im mà Auto-fix không suy được khuôn -> LỖI CỨNG (bắt AI viết lại), còn lại là cảnh báo
-  if (!laLuongHH) loiKhung4Tang_(kb).forEach(function (x) { (/^KHUNG4TANG_3D_RONG/.test(x) ? nang : nhe).push(x); });
+  // v98: có đặc tả Lego (hinh_khong_gian v2) -> hình 3D do động cơ Lego dựng: bỏ yêu cầu khuôn canh_3d_vector, kiểm đặc tả Lego
+  var laLegoKT = typeof laLegoKb_ === 'function' && laLegoKb_(kb);
+  if (!laLuongHH) loiKhung4Tang_(kb).forEach(function (x) { if (laLegoKT && /^KHUNG4TANG_3D_RONG/.test(x)) return; (/^KHUNG4TANG_3D_RONG/.test(x) ? nang : nhe).push(x); });
+  if (laLegoKT && !laLuongHH && typeof kiemKhongGian_ === 'function') { var kLg = kiemKhongGian_(kb); kLg.nang.forEach(function (x) { nang.push(x); }); kLg.nhe.forEach(function (x) { nhe.push(x); }); }
   // v95: chuẩn Toán (parabol / căn cứ cực trị = lỗi cứng) + độ dài khung 4 tầng (cảnh báo)
   if (!laLuongHH) { var tv95 = loiToanV95_(kb); nang = nang.concat(tv95.nang); nhe = nhe.concat(tv95.nhe); }
   // v96: xác suất sai đáp số / đọc lặp đề / cụt công thức / mã TeX thô ở trường chữ thường = lỗi cứng (SanKhau.gs)
@@ -3393,6 +3396,11 @@ function timCumKG_(cum, toks, lo) {
   }
   return null;
 }
+// v98: bí danh động tác Lego + hình khối (Gemini không schema / model cũ hay viết tên gần đúng)
+var BI_DANH_DONG_TAC_ = {doi_xung: 'doi_xung_mat', lay_doi_xung: 'doi_xung_mat', phan_xa: 'doi_xung_mat', dich_chuyen: 'tinh_tien', tinh_tien_vector: 'tinh_tien',
+  xoay_quanh: 'quay', quay_quanh: 'quay', lam_mo: 'co_lap', tap_trung: 'co_lap', lam_noi: 'co_lap', truot: 'truot_toi_uu', truot_diem: 'truot_toi_uu', toi_uu: 'truot_toi_uu'};
+var BI_DANH_HINH_LEGO_ = {hinh_tru: 'tru', tru_tron: 'tru', hinh_non: 'non', mat_cau: 'cau', qua_cau: 'cau', hinh_cau: 'cau', hinh_hop: 'hop', hop_chu_nhat: 'hop',
+  lap_phuong: 'hop', hinh_chop: 'chop', hinh_lang_tru: 'lang_tru', duong_tron: 'tron', quy_dao_bay: 'quy_dao', san: 'san_oxy', mat_dat: 'san_oxy'};
 var BI_DANH_CAMERA_KG_ = {truc_dien: 'truc_dien_mat', nhin_thang_mat: 'truc_dien_mat', ep_mep: 'ep_mep_mat', edge_on: 'ep_mep_mat', nhin_doc_mat: 'ep_mep_mat',
   tren_xuong: 'nhin_day', nhin_tu_tren: 'nhin_day', zoom: 'can_canh', phong_to: 'can_canh', tong_quan: 'toan_canh', mac_dinh: 'toan_canh'};
 
@@ -3404,6 +3412,9 @@ function tuSuaKhongGian_(kb, r) {
   var canhSo = {};
   (kb.canh || []).forEach(function (c, i) { if (c) canhSo[String(c.so || i + 1)] = c; });
   var conTro = {};
+  (Array.isArray(hkg.doi_tuong) ? hkg.doi_tuong : []).forEach(function (o) {
+    if (o && o.hinh && BI_DANH_HINH_LEGO_[String(o.hinh).toLowerCase()]) { sua.push('khối ' + (o.id || '') + ': hình "' + o.hinh + '" -> ' + BI_DANH_HINH_LEGO_[String(o.hinh).toLowerCase()]); o.hinh = BI_DANH_HINH_LEGO_[String(o.hinh).toLowerCase()]; }
+  });
   hkg.buoc.forEach(function (b, j) {
     if (!b || typeof b !== 'object') return;
     if (/^\s*bước\s*\d+\s*$/i.test(String(b.nhan || ''))) { b.nhan = String(b.tieu_de || '').split(/\s+/).slice(0, 2).join(' ') || 'Giải'; sua.push('bước ' + (j + 1) + ': nhãn "Bước n" -> "' + b.nhan + '"'); }
@@ -3412,6 +3423,16 @@ function tuSuaKhongGian_(kb, r) {
     var c = canhSo[String(b.canh)];
     var toks = c ? tokKG_(c.loi_thoai) : [];
     var so = String(b.canh);
+    // v98 Lego: bí danh động tác + moc_hanh_dong lệch chữ -> cụm con nguyên văn (giống moc_xoay)
+    (Array.isArray(b.hanh_dong) ? b.hanh_dong : []).forEach(function (h) {
+      if (!h || typeof h !== 'object') return;
+      var l = String(h.loai || '').trim().toLowerCase();
+      if (BI_DANH_DONG_TAC_[l]) { sua.push('bước ' + (j + 1) + ': động tác "' + l + '" -> ' + BI_DANH_DONG_TAC_[l]); h.loai = BI_DANH_DONG_TAC_[l]; }
+      if (!h.moc_hanh_dong && h.khi_noi && typeof LEGO_DONG_TAC_ !== 'undefined' && LEGO_DONG_TAC_.indexOf(h.loai) >= 0) { h.moc_hanh_dong = h.khi_noi; }
+      if (!h.moc_hanh_dong || !toks.length) return;
+      var kqh = timCumKG_(h.moc_hanh_dong, toks, 0);
+      if (kqh && kqh.kieu === 'con') { sua.push('bước ' + (j + 1) + ': moc_hanh_dong "' + h.moc_hanh_dong + '" -> "' + kqh.cum + '"'); h.moc_hanh_dong = kqh.cum; }
+    });
     b.xoay.forEach(function (x) {
       if (!x || typeof x !== 'object') return;
       var g = String(x.goc_nhin || x.che_do || 'toan_canh').trim().toLowerCase();
@@ -3431,8 +3452,16 @@ function tuSuaKhongGian_(kb, r) {
 // bộ giải máy (KG_* từ scripts/giai_hinh_khong_gian.py qua chay_bp1.js; Apps Script thật không có Python -> chuanbi.py chặn lại).
 function kiemKhongGian_(kb) {
   var nang = [], nhe = [], hkg = (kb && kb.hinh_khong_gian) || {};
-  if (typeof loiLuongHinhHoc_ === 'function') loiLuongHinhHoc_(kb).forEach(function (x) { nang.push(x + ': video hình học thuần chỉ có hình học (không vật đời sống / 3D trang trí).'); });
-  if (!hkg.khoi || typeof hkg.khoi !== 'object' || !hkg.khoi.loai) nang.push('KG_THIEU_DAC_TA: hinh_khong_gian thiếu "khoi" (loại khối, đáy, chân đường cao).');
+  var laLegoK = typeof laLegoKb_ === 'function' && laLegoKb_(kb);   // v98: đặc tả Lego (6 khối) — không có "khoi" đơn
+  if (typeof loiLuongHinhHoc_ === 'function' && String(kb.luong || '') === 'hinh_hoc_thuan') loiLuongHinhHoc_(kb).forEach(function (x) { nang.push(x + ': video hình học thuần chỉ có hình học (không vật đời sống / 3D trang trí).'); });
+  if (laLegoK) {
+    if (!Array.isArray(hkg.doi_tuong) || !hkg.doi_tuong.length) nang.push('KG_THIEU_DAC_TA: đặc tả Lego thiếu "doi_tuong" (6 khối: khoi | doan | duong_cong | mat | diem | he_truc).');
+    (hkg.buoc || []).forEach(function (b, j) {
+      (b && Array.isArray(b.hanh_dong) ? b.hanh_dong : []).forEach(function (h) {
+        if (h && LEGO_DONG_TAC_.indexOf(h.loai) >= 0 && !String(h.moc_hanh_dong || '').trim()) nang.push('CAM_MAT_MOC: bước ' + (j + 1) + ' động tác ' + h.loai + ' thiếu moc_hanh_dong (cụm nguyên văn lời đọc).');
+      });
+    });
+  } else if (!hkg.khoi || typeof hkg.khoi !== 'object' || !hkg.khoi.loai) nang.push('KG_THIEU_DAC_TA: hinh_khong_gian thiếu "khoi" (loại khối, đáy, chân đường cao).');
   if (!Array.isArray(hkg.buoc) || hkg.buoc.length < 2) nang.push('KG_THIEU_DAC_TA: hinh_khong_gian cần >= 2 bước (bước 1 mở đề toan_canh + các bước giải có xoay).');
   var canhSo = {};
   (kb.canh || []).forEach(function (c, i) { if (c) canhSo[String(c.so || i + 1)] = c; });

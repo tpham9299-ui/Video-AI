@@ -26,6 +26,16 @@ export function matVo(diem: Record<string, V3>, mat: string[][]): MatVo[] {
   });
 }
 
+// v98: mặt vỏ của NHIỀU khối lồi (Lego: tháp trụ, nón, cầu, hộp...) — pháp tuyến ngoài so với trọng tâm TỪNG khối
+export function matVoNhieu(diem: Record<string, V3>, khoi: {mat: string[][]; cong?: boolean}[]): MatVo[] {
+  const ra: MatVo[] = [];
+  khoi.forEach((k, i) => {
+    if (!k.mat.length || !k.mat.every((f) => f.every((t) => diem[t]))) return;
+    for (const f of matVo(diem, k.mat)) ra.push({...f, khoi: i, cong: !!k.cong});
+  });
+  return ra;
+}
+
 // dấu "trước" tức thời của mặt so với vị trí máy C: s = n · (C - g)/|C - g|
 export const doTruoc = (m: MatVo, C: V3) => {
   const v = tru(C, m.g);
@@ -81,7 +91,9 @@ export function diemKhuat(X: V3, C: V3, vo: MatVo[], truoc: boolean[], R: number
       if (truoc[i]) thay = true;
     }
   }
-  if (trenMat) return !thay;
+  if (trenMat && !thay) return true;
+  // v98 nhiều khối: điểm trên mặt trước của khối này vẫn có thể bị KHỐI KHÁC che -> luôn bắn tia tới mặt trước còn lại
+  // (một khối lồi không tự che mặt trước của nó, và tia bỏ qua mặt chứa X nhờ ε -> kết quả một khối giữ nguyên như v97)
   for (let i = 0; i < vo.length; i++) if (truoc[i] && tiaCat(C, X, vo[i].p, vo[i].n)) return true;
   return false;
 }

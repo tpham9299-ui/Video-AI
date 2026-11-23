@@ -72,6 +72,9 @@ function loaiThucTe_(van, khuon) {
 function chonSanKhau_(kb, r) {
   kb = kb || {}; r = r || {};
   var mon = String(kb.mon || r.mon || '').toUpperCase(), lop = String(kb.lop || r.lop || '');
+  // v98: đặc tả Lego (hinh_khong_gian phien_ban 2) thắng mọi sân khấu (Oxyz lớp 12 / thực tế 3D không khớp khuôn)
+  var hkgL = kb.hinh_khong_gian;
+  if (hkgL && typeof hkgL === 'object' && (String(hkgL.phien_ban) === '2' || Array.isArray(hkgL.doi_tuong))) return {loai: 'lego_3d', nguon: 'lego', chi_dao: ''};
   if (kb.luong === 'hinh_hoc_thuan' || mon === 'HINH_HOC') return {loai: 'hinh_hoc', nguon: 'khoa_luong', chi_dao: ''};
   var van = [kb.de_bai, r.de_bai, kb.can_tim, kb.chu_de].filter(Boolean).join(' ');
   var cd = docChiDao_(kb.chi_dao || r.chi_dao || '');

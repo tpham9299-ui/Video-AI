@@ -8,7 +8,7 @@ import {AbsoluteFill, Audio, random, Sequence, spring, staticFile, useVideoConfi
 import {FONT} from '../theme';
 import {emRa, kep01} from '../3d-vector/toan3d';
 import type {MocCau} from './kieu';
-import {coTieuDeIntro, coVua, haiDong, INTRO_SAN, RONG_CHU, RONG_ND_V93, raIntro} from './bo_cuc_v93';
+import {coTieuDeIntro, coVua, haiDong, INTRO_SAN, LE_ND_V93, RONG_CHU, RONG_ND_V93, raIntro} from './bo_cuc_v93';
 
 export {giayIntro, INTRO_SAN, raIntro} from './bo_cuc_v93';
 
@@ -17,7 +17,7 @@ const CYAN = '#3FD8F2';
 const SAN_HO = '#FF5A5F';
 
 const HatSang: React.FC<{t: number; a: number}> = ({t, a}) => (
-  <svg width={1080} height={1920} style={{position: 'absolute', inset: 0, opacity: a}}>
+  <svg width={1080} height={1920} style={{position: 'absolute', left: -LE_ND_V93, top: 0, opacity: a}}>
     {Array.from({length: 36}, (_, i) => {
       const x = random(`hx${i}`) * 1080;
       const v = 14 + random(`hv${i}`) * 26; // px/giây trôi lên
@@ -64,7 +64,7 @@ export const IntroMocCau: React.FC<{m: MocCau; t: number; G: number}> = ({m, t, 
   return (
     <AbsoluteFill data-vung="intro" style={{pointerEvents: 'none', fontFamily: FONT}}>
       {/* v96: toàn bộ chữ / nút trong khung 0..950 (vùng an toàn TikTok bên phải 12 %) */}
-      <div style={{position: 'absolute', left: 0, top: 0, width: RONG_ND_V93, height: '100%'}}>
+      <div style={{position: 'absolute', left: LE_ND_V93, top: 0, width: RONG_ND_V93, height: '100%'}}>
       {/* nền phủ tối nhẹ che lưới tầng (khung 4 tầng chưa vào) + quầng sáng dịu sau mô hình */}
       <AbsoluteFill style={{opacity: con, background: `radial-gradient(ellipse 560px 430px at ${RONG_ND_V93 / 2}px ${tamSan}px, rgba(63,216,242,${0.16 * tho}) 0%, rgba(245,197,66,0.07) 45%, rgba(14,16,20,0) 75%)`}} />
       <HatSang t={t} a={con} />
@@ -72,7 +72,7 @@ export const IntroMocCau: React.FC<{m: MocCau; t: number; G: number}> = ({m, t, 
       {/* 1. viên thuốc ngữ cảnh thi */}
       <div style={{position: 'absolute', left: 0, right: 0, top: 216, display: 'flex', justifyContent: 'center', opacity: aPill * con, transform: `translateY(${(1 - aPill) * -14 - ra * 30}px)`}}>
         <div style={{height: 54, padding: '0 28px', borderRadius: 27, display: 'flex', alignItems: 'center', background: 'rgba(245,197,66,0.12)', border: `1.5px solid ${VANG}`,
-          color: VANG_SANG, fontWeight: 800, fontSize: coVua(m.nhan_thi, 28, 20, 900, 0.64), letterSpacing: 1.4, whiteSpace: 'nowrap', boxShadow: '0 0 24px rgba(245,197,66,0.18)'}}>
+          color: VANG_SANG, fontWeight: 800, fontSize: coVua(m.nhan_thi, 28, 20, RONG_CHU, 0.64), letterSpacing: 1.4, whiteSpace: 'nowrap', boxShadow: '0 0 24px rgba(245,197,66,0.18)'}}>
           {m.nhan_thi}
         </div>
       </div>
@@ -82,8 +82,8 @@ export const IntroMocCau: React.FC<{m: MocCau; t: number; G: number}> = ({m, t, 
         opacity: kep01(sTD * 1.4) * con, transform: `scale(${0.9 + 0.1 * sTD}) translateY(${-ra * 40}px)`}}>
         {dongTD.map((d, i) => (
           <div key={i} style={{position: 'relative', fontWeight: 900, fontSize: coTD, lineHeight: 1.04, letterSpacing: -0.5, whiteSpace: 'nowrap'}}>
-            <span style={{position: 'absolute', inset: 0, color: VANG, textShadow: `0 0 18px rgba(245,197,66,0.55), 0 0 42px rgba(245,197,66,0.25), 0 4px 0 #5A3D06`}}>{d}</span>
-            <span style={{position: 'relative', background: `linear-gradient(180deg, ${VANG_SANG} 8%, ${VANG} 52%, ${VANG_DAM} 96%)`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent'}}>{d}</span>
+            <span style={{position: 'absolute', inset: 0, whiteSpace: 'nowrap', textWrap: 'nowrap' as React.CSSProperties['textWrap'], color: VANG, textShadow: `0 0 18px rgba(245,197,66,0.55), 0 0 42px rgba(245,197,66,0.25), 0 4px 0 #5A3D06`}}>{d}</span>
+            <span style={{position: 'relative', whiteSpace: 'nowrap', textWrap: 'nowrap' as React.CSSProperties['textWrap'], background: `linear-gradient(180deg, ${VANG_SANG} 8%, ${VANG} 52%, ${VANG_DAM} 96%)`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent'}}>{d}</span>
           </div>
         ))}
       </div>

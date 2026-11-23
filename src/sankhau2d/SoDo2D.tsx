@@ -70,8 +70,8 @@ function dungHinh(sk: SoDo2DVao, x: number, r: {x: number; y: number; w: number;
 
 export const SoDo2D: React.FC<{sk: SoDo2DVao; t: number; W: number; H: number; mauNhan: string}> = ({sk, t, W, H, mauNhan}) => {
   const coDoThi = !!(sk.ham && sk.mien);
-  const rH = {x: LE.trai + 10, y: LE.tren + 20, w: (coDoThi ? 560 : W - LE.trai - LE.phai) - 20, h: H - LE.tren - LE.duoi - CAO_DONG_KQ - 50};
-  const rD = React.useMemo(() => ({x: LE.trai + 620, y: LE.tren + 60, w: W - LE.phai - (LE.trai + 620) - 10, h: 260}), [W]);
+  const rH = {x: LE.trai + 10, y: LE.tren + 20, w: (coDoThi ? Math.round((W - LE.trai - LE.phai) * 0.6) : W - LE.trai - LE.phai) - 20, h: H - LE.tren - LE.duoi - CAO_DONG_KQ - 50};
+  const rD = React.useMemo(() => ({x: LE.trai + Math.round((W - LE.trai - LE.phai) * 0.64), y: LE.tren + 60, w: W - LE.phai - (LE.trai + Math.round((W - LE.trai - LE.phai) * 0.64)) - 6, h: 260}), [W]);
   const f = React.useMemo(() => (sk.ham ? hamMotBien(sk.ham, sk.bien) : null), [sk.ham, sk.bien]);
   const [a, b] = sk.mien || [0, Math.max(1, sk.tham_so.dai || sk.tham_so.d || (sk.tham_so.rong || 8) / 2 || 10)];
   const th = React.useMemo(() => (f && coDoThi ? thangDoThi(f, a, b, rD) : null), [f, coDoThi, a, b, rD]);

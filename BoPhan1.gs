@@ -1358,11 +1358,21 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       if (kb && typeof kb === 'object') kb.lop = chuanLop_(r.lop) || String(r.lop || '');
       var dg = null, lanSua = 0, hetGio = false;
       var maxSua = Number(cauHinh_('SO_LAN_SUA_KICH_BAN')) || 2;
+      // v98: Oxyz lớp 12 -> đặc tả hình 3D Lego ở lời gọi riêng có responseSchema (sau khi đã có lời các cảnh)
+      if (kb && typeof dungLego_ === 'function' && dungLego_(r) && !laLegoKb_(kb) && conDuGoiGemini_()) {
+        try { lapLego_(kb, r, sn); } catch (eLg) { luuNhapKichBan_(r.id, kb); throw eLg; }
+      }
       for (;;) {
         try { boSungBanVeMoDau_(kb, r, sn); }
         catch (eBV) { if (kb && kb.canh) luuNhapKichBan_(r.id, kb); throw eBV; }
         chuanBiKichBan_(kb, r, ctxSua);
         dg = danhGiaKichBan_(kb, r.dap_an, r.mon, hinhDe, spham, r.de_bai, r.lop);
+        // v98: thực tế 3D không suy được khuôn (KHUNG4TANG_3D_RONG) -> thử động cơ Lego 1 lần trước khi bắt Gemini viết lại cả kịch bản
+        if (dg.nang.some(function (x) { return /^KHUNG4TANG_3D_RONG/.test(String(x)); }) && typeof lapLego_ === 'function' && batLego_() && !laLegoKb_(kb) && !kb.lego_da_thu && conDuGoiGemini_()) {
+          var coLego = false;
+          try { coLego = lapLego_(kb, r, sn); } catch (eLg2) { luuNhapKichBan_(r.id, kb); throw eLg2; }
+          if (coLego) continue;
+        }
         // Hết lỗi nặng thì đi tiếp ngay sang cửa AI chấm tiêu chí (gộp sửa các lưu ý nhẹ vào cùng 1 vòng nếu AI chấm cần sửa, tiết kiệm 1-2 lượt Gemini).
         if (!dg.nang.length) break;
         if (lanSua >= maxSua) break;
@@ -1738,10 +1748,16 @@ function goiGemini_(prompt, nhiet, opts) {
       if (!conDuGoiGemini_()) throw new Error(soQuaTai && soQuaTai === soLoi ? 'QUA_TAI' : 'HET_GIO');
       var dsAnh = opts.anhs || (opts.anh ? [opts.anh] : []);
       var phan = dsAnh.map(function (a) { return { inline_data: { mime_type: a.mime, data: a.data } }; }).concat([{ text: prompt }]);
-      var kq = khoGoiCoSuyNghi_(tenModel, {
-        contents: [{ parts: phan }],
-        generationConfig: { temperature: nhiet, responseMimeType: 'application/json' }
-      }, opts.suyNghi, { hanChoMs: 20000, tungModel: !!opts.modelUuTien });
+      // v98: opts.schema -> responseSchema (enum cố định cho đặc tả Lego); model không nhận (400) -> nhớ 6 giờ, gọi lại không schema
+      var gcG = { temperature: nhiet, responseMimeType: 'application/json' };
+      var coSchema = !!opts.schema && !cache.get('KHONG_SCHEMA_' + tenModel);
+      if (coSchema) gcG.responseSchema = opts.schema;
+      var kq = khoGoiCoSuyNghi_(tenModel, { contents: [{ parts: phan }], generationConfig: gcG }, opts.suyNghi, { hanChoMs: 20000, tungModel: !!opts.modelUuTien });
+      if (coSchema && !kq.ok && kq.code === 400 && /schema|response_?schema|enum|Unknown name|Invalid JSON payload/i.test(String(kq.raw))) {
+        cache.put('KHONG_SCHEMA_' + tenModel, '1', 21600);
+        nhatKy_('GEMINI', tenModel + ' không nhận responseSchema -> gọi lại không schema (Python vẫn kiểm chặt)');
+        kq = khoGoiCoSuyNghi_(tenModel, { contents: [{ parts: phan }], generationConfig: { temperature: nhiet, responseMimeType: 'application/json' } }, opts.suyNghi, { hanChoMs: 20000, tungModel: !!opts.modelUuTien });
+      }
       if (kq.ok) {
         try {
           var parsed = docKetQua_(kq.raw);
@@ -3536,4 +3552,110 @@ function nhanThemDeTuGitHub_(sh, d) {
     p.setProperty('CAN_DONG_BO', '1');
   }
   return { ok: true, them: them };
+}
+
+/* ===================== v98: ĐỘNG CƠ LEGO — lời gọi có responseSchema + 1 vòng tự vá (Lớp 1 + Lớp 3) ===================== */
+// schema chỉ dùng cho lời gọi riêng (đặc tả hình 3D); model không nhận responseSchema (400) -> nhớ 6 giờ, gọi lại không schema
+// (Lớp 2 Python vẫn chặn mọi sai tên trường / kiểu dữ liệu).
+function goiGeminiSchema_(prompt, nhiet, schema, opts) {
+  var o = {};
+  for (var k in (opts || {})) o[k] = opts[k];
+  delete o.anh; delete o.anhs;
+  o.schema = schema;
+  var kq = goiGemini_(prompt, nhiet, o);
+  return kq && kq.hinh_khong_gian && !Array.isArray(kq.doi_tuong) ? kq.hinh_khong_gian : kq;
+}
+
+function laLegoKb_(kb) {
+  var h = kb && kb.hinh_khong_gian;
+  return !!(h && typeof h === 'object' && (String(h.phien_ban) === '2' || Array.isArray(h.doi_tuong)));
+}
+
+// Tìm ĐÚNG mục JSON gây lỗi (điểm theo tên, khối theo id, mệnh đề / số đo theo loại) để gửi Gemini vá — không gửi lại cả kịch bản
+function timMucLoiLego_(hkg, loi) {
+  var ra = [], da = {};
+  var them = function (nhom, khoa, muc) { var k = nhom + '|' + khoa; if (!da[k] && muc) { da[k] = 1; ra.push({nhom: nhom, khoa: khoa, muc: muc}); } };
+  var co = function (s, tu) { return new RegExp('(^|[^A-Za-z0-9_])' + String(tu).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '($|[^A-Za-z0-9_])').test(s); };
+  (loi || []).forEach(function (x) {
+    var s = String(x.chi_tiet || '') + ' ' + String(x.ma || '');
+    (hkg.diem || []).forEach(function (d) { if (d && d.ten && (co(s, 'điểm ' + d.ten) || co(s, "'" + d.ten + "'"))) them('diem', d.ten, d); });
+    (hkg.doi_tuong || []).forEach(function (o) { if (o && o.id && co(s, o.id)) them('doi_tuong', o.id, o); });
+    if (/^KG_SAI_SO_DO/.test(x.ma)) (hkg.so_do || []).forEach(function (d, i) { if (d && s.indexOf(String(d.loai)) >= 0) them('so_do', String(i), d); });
+    if (/^KG_MENH_DE_SAI/.test(x.ma)) (hkg.menh_de || []).forEach(function (d, i) { if (d && s.indexOf(String(d.loai)) >= 0 && (!d.diem || co(s, d.diem))) them('menh_de', String(i), d); });
+  });
+  return ra.slice(0, 6);
+}
+
+function schemaVaLego_() {
+  return {type: 'OBJECT', properties: {sua: {type: 'ARRAY', items: {type: 'OBJECT', properties: {
+    nhom: {type: 'STRING', enum: ['diem', 'doi_tuong', 'menh_de', 'so_do']}, khoa: {type: 'STRING'}, moi_json: {type: 'STRING'}}, required: ['nhom', 'khoa', 'moi_json']}}}, required: ['sua']};
+}
+
+// Lớp 3: gửi đúng các mục lỗi + thông báo ngắn -> Gemini trả bản thay thế từng mục (moi_json; "" = xóa) -> ghép vào đặc tả
+function vaLego_(kb, r, sn, loi) {
+  var hkg = kb.hinh_khong_gian;
+  var muc = timMucLoiLego_(hkg, loi);
+  var prompt = 'Máy kiểm chứng đặc tả hình 3D (động cơ Lego) của bài toán sau báo lỗi. Sửa ĐÚNG các mục JSON lỗi dưới đây, không đụng phần khác.\n' +
+    'ĐỀ: ' + String((r && r.de_bai) || kb.de_bai || '') + '\nĐÁP ÁN: ' + String((r && r.dap_an) || kb.dap_an_cuoi || '') + '\n' +
+    'LỖI:\n' + loi.slice(0, 6).map(function (x) { return '- ' + x.ma + ': ' + String(x.chi_tiet).slice(0, 220) + (x.goi_y ? ' (gợi ý: ' + String(x.goi_y).slice(0, 160) + ')' : ''); }).join('\n') + '\n' +
+    'MỤC JSON LỖI (nhom | khoa | json):\n' + (muc.length ? muc.map(function (m) { return m.nhom + ' | ' + m.khoa + ' | ' + JSON.stringify(m.muc); }).join('\n') : '(không xác định được mục: kiểm lại so_do / menh_de)\n' +
+      'so_do | * | ' + JSON.stringify(hkg.so_do || []) + '\nmenh_de | * | ' + JSON.stringify(hkg.menh_de || [])) + '\n' +
+    'Tên điểm đã khai báo: ' + (hkg.diem || []).map(function (d) { return d && d.ten; }).filter(Boolean).join(', ') + '. Điểm suy diễn chỉ ghi QUAN HỆ (không tọa độ). ' +
+    'Trả {"sua":[{"nhom","khoa","moi_json":"JSON của mục thay thế (giữ nguyên khóa ten / id)" hoặc "" để xóa mục}]}.';
+  var kq = null;
+  try { kq = goiGeminiSchema_(prompt, 0.2, schemaVaLego_(), sn); }
+  catch (e) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(e.message))) throw e; return null; }
+  if (!kq || !Array.isArray(kq.sua) || !kq.sua.length) return null;
+  var moi = JSON.parse(JSON.stringify(hkg)), dem = 0;
+  kq.sua.forEach(function (s) {
+    var ds = moi[s.nhom];
+    if (!Array.isArray(ds)) return;
+    var i = -1;
+    if (s.nhom === 'diem') ds.forEach(function (d, j) { if (d && d.ten === s.khoa) i = j; });
+    else if (s.nhom === 'doi_tuong') ds.forEach(function (d, j) { if (d && d.id === s.khoa) i = j; });
+    else if (/^\d+$/.test(String(s.khoa))) i = Number(s.khoa);
+    var m = null;
+    if (String(s.moi_json || '').trim()) { try { m = JSON.parse(s.moi_json); } catch (e) { return; } }
+    if (i < 0 && m) { ds.push(m); dem++; return; }
+    if (i < 0) return;
+    if (m) ds[i] = m; else ds.splice(i, 1);
+    dem++;
+  });
+  return dem ? moi : null;
+}
+
+// Lập đặc tả Lego cho kịch bản đã có lời (pass 2, schema) + Auto-fix + kiểm máy + vá tối đa 1 lần. Trả true nếu gắn được.
+function lapLego_(kb, r, sn) {
+  if (!kb || !Array.isArray(kb.canh) || kb.lego_da_thu || typeof schemaLego_ !== 'function') return false;
+  kb.lego_da_thu = true;
+  var hkg = null;
+  try { hkg = goiGeminiSchema_(huongDanLego_(kb, r), 0.3, schemaLego_(), sn); }
+  catch (e) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(e.message))) throw e; hkg = null; }
+  if (!hkg || !Array.isArray(hkg.doi_tuong) || !Array.isArray(hkg.buoc)) { nhatKy_('LEGO_3D', ((r && r.id) || '') + ': Gemini không trả đặc tả Lego hợp lệ'); return false; }
+  hkg.phien_ban = 2;
+  var cu = kb.hinh_khong_gian;
+  kb.hinh_khong_gian = hkg;
+  if (typeof tuSuaKhongGian_ === 'function') tuSuaKhongGian_(kb, r);
+  var may = typeof kiemKhongGianMay_ === 'function' ? kiemKhongGianMay_ : null;
+  var m = null;
+  try { m = may ? may(kb) : null; } catch (e1) { m = null; }
+  var laLoi = function (x) { return x && Array.isArray(x.loi) && x.loi.length; };
+  if (laLoi(m) && conDuGoiGemini_()) {
+    var va = vaLego_(kb, r, sn, m.loi);
+    if (va) {
+      va.phien_ban = 2;
+      kb.hinh_khong_gian = va;
+      if (typeof tuSuaKhongGian_ === 'function') tuSuaKhongGian_(kb, r);
+      try { m = may ? may(kb) : null; } catch (e2) { m = null; }
+      nhatKy_('LEGO_3D', ((r && r.id) || '') + ': đã tự vá 1 lần (' + (laLoi(m) ? 'còn ' + m.loi.length + ' lỗi' : 'hết lỗi') + ')');
+    }
+  }
+  if (laLoi(m) && !(typeof laMonHinhHoc_ === 'function' && laMonHinhHoc_(r))) {
+    // luồng thực tế: lõi Lego vẫn lỗi sau 1 lần vá -> bỏ Lego, giữ khung 4 tầng (khuôn / sân khấu 2D) để video không vỡ
+    if (cu) kb.hinh_khong_gian = cu; else delete kb.hinh_khong_gian;
+    nhatKy_('LEGO_3D', ((r && r.id) || '') + ': lõi Lego còn lỗi (' + m.loi.map(function (x) { return x.ma; }).join(', ') + ') -> giữ khung 4 tầng cũ');
+    return false;
+  }
+  nhatKy_('LEGO_3D', ((r && r.id) || '') + ': gắn đặc tả Lego ' + hkg.doi_tuong.length + ' khối, ' + hkg.buoc.length + ' bước');
+  return true;
 }

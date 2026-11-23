@@ -3,7 +3,7 @@
 // xác suất toàn phần / có điều kiện (lớp 12).
 import React from 'react';
 import type {SoDoCayVao} from './kieu';
-import {boCucCay, daQua, em, nhipNhan, phaTai, tho, tienDo} from './chung';
+import {boCucCay, daQua, em, LE, nhipNhan, phaTai, tho, tienDo} from './chung';
 import {CHU, DongKetQua, mau, MO, NhanTex, ThanhTienDo, VienTex} from './GiaoDien';
 import {ChuTron} from '../khung4tang/ChuTron';
 
@@ -78,7 +78,7 @@ export const SoDoCay: React.FC<{sk: SoDoCayVao; t: number; W: number; H: number;
           </React.Fragment>
         );
       })}
-      <DongKetQua x={16} y={H - 18 - 84} w={W - 46} h={84} tex={tex} a={aKq} mau={pn.ten === 'ket' ? mau('vang') : CHU} nhan={nh * 0.6} co={38} />
+      <DongKetQua x={LE.trai} y={H - 18 - 84} w={W - LE.trai - LE.phai} h={84} tex={tex} a={aKq} mau={pn.ten === 'ket' ? mau('vang') : CHU} nhan={nh * 0.6} co={38} />
       <ThanhTienDo W={W} H={H} u={tienDo(sk.pha, t)} mau={mauNhan} />
     </div>
   );

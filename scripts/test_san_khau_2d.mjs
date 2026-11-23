@@ -30,16 +30,17 @@ const thu = (ten, dk, them = '') => {
 };
 
 console.log('— Vùng an toàn TikTok');
-thu('AN_TOAN = trái 44 | phải 950 (12 %) | trên 212 (11 %) | đáy 1574 (18 %)', V.AN_TOAN.x0 === 44 && V.AN_TOAN.x1 === 950 && V.AN_TOAN.y0 === 212 && V.AN_TOAN.y1 === 1574, JSON.stringify(V.AN_TOAN));
+thu('AN_TOAN = trái 130 (12 %, v98 đối xứng) | phải 950 (12 %) | trên 212 (11 %) | đáy 1574 (18 %)', V.AN_TOAN.x0 === 130 && V.AN_TOAN.x1 === 950 && V.AN_TOAN.y0 === 212 && V.AN_TOAN.y1 === 1574, JSON.stringify(V.AN_TOAN));
 const bc = V.boCuc4Tang(true);
 thu('T1 bắt đầu >= 11 % (tiêu đề góc trên không bị thanh tìm kiếm che)', bc.t1.y >= 0.11 * 1920);
 thu('T4 kết thúc <= 82 % (không đè caption + thanh nhạc)', bc.t4.y + bc.t4.h <= 0.82 * 1920);
 thu('4 tầng liền nhau, không chồng', bc.t1.y + bc.t1.h === bc.t2.y && bc.t2.y + bc.t2.h === bc.t3.y && bc.t3.y + bc.t3.h === bc.t4.y);
 thu('bề rộng nội dung <= 88 % (tránh cột Tim / Bình luận / Lưu / Chia sẻ)', bc.rong <= 0.88 * 1080, String(bc.rong));
+thu('v98: khung ĐỐI XỨNG — lề trái = lề phải = 130 px, tâm 540', bc.le === 130 && 1080 - (bc.le + bc.rong) === 130 && bc.le + bc.rong / 2 === 540, `${bc.le} + ${bc.rong}`);
 thu('Intro: vùng mô hình + hook + nút CTA trong vùng an toàn', B.INTRO_SAN.y >= 212 && B.INTRO_SAN.y + B.INTRO_SAN.h + 172 + 92 <= 1574 && B.INTRO_SAN.h === bc.t2.h);
 const O = B.VUNG_OUTRO;
 thu('Outro: đáp án >= 11 %, nút lưu <= 82 %', O.dapAn.y >= 212 && O.nut.y + 96 <= 1574);
-thu('Intro/Outro chữ trong khung 0..950', B.RONG_ND_V93 <= V.AN_TOAN.x1 && B.RONG_CHU + 96 <= B.RONG_ND_V93);
+thu('Intro/Outro chữ trong khung đối xứng 130..950', B.LE_ND_V93 === V.AN_TOAN.x0 && B.LE_ND_V93 + B.RONG_ND_V93 === V.AN_TOAN.x1 && B.RONG_CHU + 96 <= B.RONG_ND_V93);
 const src4 = fs.readFileSync('src/khung4tang/Khung4Tang.tsx', 'utf8');
 thu('Khung4Tang: mọi tầng dùng bề rộng an toàn bc.rong', (src4.match(/rong=\{bc\.rong\}/g) || []).length >= 6, String((src4.match(/rong=\{bc\.rong\}/g) || []).length));
 thu('phụ đề 1 dòng có viền tối + không tự xuống dòng', /textShadow: '0 2px 0 #000/.test(src4) && /textWrap: 'nowrap'/.test(src4) && /Math\.min\(42/.test(src4));
@@ -54,11 +55,11 @@ for (const ten of MAU) {
   const sk = p.khung4tang?.sanKhau;
   if (!sk) { thu(`${ten}: có sanKhau`, false); continue; }
   const hop = C.hopQuanTrong(sk, W, H);
-  const ngoai = (y0) => hop.filter((h) => !V.trongAnToan(h.x, y0 + h.y, h.w, h.h));
+  const ngoai = (y0) => hop.filter((h) => !V.trongAnToan(bc.le + h.x, y0 + h.y, h.w, h.h));
   const n1 = ngoai(bc.t2.y), n2 = ngoai(B.INTRO_SAN.y);
   thu(`${ten} (${sk.loai}): ${hop.length} phần tử trong vùng an toàn ở tầng 2`, !n1.length, n1.map((h) => `${h.ten}@${Math.round(h.x)},${Math.round(h.y)} ${Math.round(h.w)}x${Math.round(h.h)}`).slice(0, 3).join('; '));
   thu(`${ten}: vẫn an toàn lúc Intro (sân khấu giữa màn hình)`, !n2.length, n2.map((h) => h.ten).slice(0, 3).join(', '));
-  thu(`${ten}: mép phải mọi phần tử <= 950 px`, hop.every((h) => h.x + h.w <= V.AN_TOAN.x1 + 0.5));
+  thu(`${ten}: mép phải mọi phần tử <= 950 px`, hop.every((h) => bc.le + h.x + h.w <= V.AN_TOAN.x1 + 0.5));
   thu(`${ten}: mép trên mọi phần tử >= 11 % màn hình`, hop.every((h) => bc.t2.y + h.y >= 212));
   thu(`${ten}: hook 2 giây — pha đầu ${sk.pha[0].t} s`, sk.pha[0].t <= 0.5);
   const tong = p.khung4tang.tongFrame / 30;

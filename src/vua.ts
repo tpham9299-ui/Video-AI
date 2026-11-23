@@ -19,7 +19,20 @@ const veRongNhat = (el: HTMLElement) => {
   return m;
 };
 
-export function khopVua(el: HTMLElement, maxWidth: number): void {
+// v98: maxHeight (tùy chọn) — phân số nhiều tầng cao hơn hộp -> co tiếp theo CHIỀU CAO (tối thiểu 0,5), không bao giờ cắt nửa tử/mẫu
+export function khopVua(el: HTMLElement, maxWidth: number, maxHeight?: number): void {
+  khopRong(el, maxWidth);
+  if (!maxHeight) return;
+  const h = el.offsetHeight;
+  if (h > maxHeight + 1) {
+    const m = /\(([\d.]+)px/.exec(el.style.fontSize || '');
+    const goc = Number(el.dataset.co || 0);
+    const kNay = m && goc > 0 ? Number(m[1]) / goc : 1;
+    datCo(el, Math.max(0.5, (kNay * maxHeight) / h));
+  }
+}
+
+function khopRong(el: HTMLElement, maxWidth: number): void {
   el.style.transform = '';
   el.style.maxWidth = '';
   el.classList.remove('toan-ngat');

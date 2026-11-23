@@ -72,6 +72,10 @@ def giai(kb, chi_kiem=False):
     hkg = kb.get("hinh_khong_gian") if isinstance(kb, dict) else None
     if not isinstance(hkg, dict):
         return None
+    # v98: động cơ Lego 6 khối (Oxyz lớp 12 / thực tế 3D) — phien_ban 2 hoặc có doi_tuong
+    if str(hkg.get("phien_ban") or "") == "2" or isinstance(hkg.get("doi_tuong"), list):
+        from hinh_khong_gian.lego import giai_lego
+        return giai_lego(kb, chi_kiem=chi_kiem)
     loi, canh_bao = [], []
     for ma, ct, gy in kiem.kiem_gdpt(hkg, kb.get("lop")):
         loi.append(_loi(ma, ct, gy))

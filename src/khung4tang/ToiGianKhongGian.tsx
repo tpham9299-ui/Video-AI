@@ -73,12 +73,12 @@ function Khoi({th, t0, t, mau, a}: {th: TheGiai; t0: number; t: number; mau: str
         const ak = k === 0 ? 1 : emRa((t - tk) / 0.35);
         return (
           <div key={k} style={{opacity: ak, transform: `translateY(${(1 - ak) * 8}px)`}}>
-            <Toan tex={d} size={co} color={k === tex.length - 1 && (tex.length > 1 || chot) ? mauNhan : '#F6F8FB'} maxWidth={820} can="giua" style={{fontWeight: chot ? 800 : 600}} />
+            <Toan tex={d} size={co} color={k === tex.length - 1 && (tex.length > 1 || chot) ? mauNhan : '#F6F8FB'} maxWidth={RONG_ND - 40} maxHeight={Math.round(co * 1.38 + 0.78 * co * 2)} can="giua" style={{fontWeight: chot ? 800 : 600}} />
           </div>
         );
       })}
       {chu ? (
-        <div style={{color: chot ? '#F4FFFB' : '#EEF2F7', fontFamily: FONT, fontWeight: 800, fontSize: 44, lineHeight: 1.2, textAlign: 'center', maxWidth: 820}}>
+        <div style={{color: chot ? '#F4FFFB' : '#EEF2F7', fontFamily: FONT, fontWeight: 800, fontSize: 44, lineHeight: 1.2, textAlign: 'center', maxWidth: RONG_ND - 40}}>
           <ChuTron s={chu} co={44} mau={chot ? '#F4FFFB' : '#EEF2F7'} dam={800} />
         </div>
       ) : null}

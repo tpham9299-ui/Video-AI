@@ -22,7 +22,7 @@ export function heMay(m: TuThe): HeMay {
   const ve = huongNhin(m.n, c);
   const phai: V3 = [Math.cos(m.n * RAD), Math.sin(m.n * RAD), 0];
   const len = cheo(phai, nhan(ve, -1));
-  const D = m.R * KHOANG_MAY;
+  const D = m.R * KHOANG_MAY * (m.xa && m.xa > 0 ? m.xa : 1);
   return {phai, len, ve, viTri: cong(m.muc, nhan(ve, D)), D};
 }
 
@@ -55,8 +55,11 @@ export function noiTuThe(A: TuThe, B: TuThe, u: number): TuThe {
   const nGoi = A.n + (B.n - A.n) * u;
   const g = gocTuHuong(v, nGoi);
   const L = (x: number, y: number) => x + (y - x) * u;
-  return {n: g.n, c: g.c, muc: [L(A.muc[0], B.muc[0]), L(A.muc[1], B.muc[1]), L(A.muc[2], B.muc[2])], R: A.R,
+  const ra: TuThe = {n: g.n, c: g.c, muc: [L(A.muc[0], B.muc[0]), L(A.muc[1], B.muc[1]), L(A.muc[2], B.muc[2])], R: A.R,
     k: L(A.k, B.k), ox: L(A.ox, B.ox), oy: L(A.oy, B.oy)};
+  // v98: phang_2d -> 3D: khoảng cách máy nội suy theo log (trực giao "mở" dần thành phối cảnh, không giật)
+  if ((A.xa ?? 1) !== 1 || (B.xa ?? 1) !== 1) ra.xa = Math.exp(L(Math.log(A.xa ?? 1), Math.log(B.xa ?? 1)));
+  return ra;
 }
 
 // nhịp xoay êm (ease in-out bậc 3 mềm đầu/cuối)

@@ -181,3 +181,126 @@ def lich_khong_gian(hkg, dung, canh_props, fps, t_buoc, tong):
     if dung.get("truot"):
         ra["truotGio"] = {"t": 0.25, "d": 1.75}   # hook 2 s đầu: điểm "bất kỳ" trượt nhẹ trên cạnh
     return ra, loi, {**tk, "chi_tiet": xoay}
+
+
+# ======================================================================================================================
+# v98 — LEGO: 5 phép biến hình đồng bộ giọng (moc_hanh_dong) + vật chuyển động + cô lập
+# ======================================================================================================================
+DONG_TAC = ("tinh_tien", "doi_xung_mat", "quay", "co_lap", "truot_toi_uu")
+THOI_BIEN = 1.4
+
+
+def lich_lego(hkg, dung, canh_props, fps, t_buoc, tong, L=None):
+    """lich_khong_gian (xoay / hiện / nhấn mạnh) + bienHinh / chuyen / co_lap theo moc_hanh_dong -> (lịch, lỗi, thống kê)."""
+    from .lego import Lego
+    import math as _m
+    ra, loi, tk = lich_khong_gian(hkg, dung, canh_props, fps, t_buoc, tong)
+    ds, pham_vi = phang_tu(canh_props, fps)
+    if L is None:
+        L = Lego(hkg)
+        for d in hkg.get("diem") or []:
+            if isinstance(d, dict):
+                try:
+                    L.dung_diem(d)
+                except Exception:   # noqa: BLE001 - bộ giải đã báo lỗi trước đó
+                    pass
+    S = 1.0 / float(dung.get("tiLe") or 1.0)
+    sc = lambda p: [round(c * S, 6) for c in p]  # noqa: E731
+    nguon = {str(d.get("ten")): d for d in hkg.get("diem") or [] if isinstance(d, dict)}
+    hien = ra["hien"]
+    bien, chuyen, nm = [], [], ra["nhanManh"]
+    buoc = [b for b in hkg.get("buoc") or [] if isinstance(b, dict)]
+    tk["hanh_dong"] = 0
+    for j, b in enumerate(buoc):
+        try:
+            so = int(b.get("canh"))
+        except (TypeError, ValueError):
+            so = None
+        lo, hi = pham_vi.get(so, (0, len(ds)))
+        tb = t_buoc[j] if j < len(t_buoc) else 0.0
+        t_sau = t_buoc[j + 1] if j + 1 < len(t_buoc) else tong
+        i_tb = next((k for k, x in enumerate(ds) if x[1] >= tb - 0.05), len(ds))
+        ct = max(lo, i_tb) if j else lo
+        for h in b.get("hanh_dong") or []:
+            if not isinstance(h, dict) or h.get("loai") not in DONG_TAC:
+                continue
+            tk["hanh_dong"] += 1
+            cum = str(h.get("moc_hanh_dong") or h.get("khi_noi") or "").strip()
+            t = tb + 0.6
+            if cum:
+                kq = tim_cum(cum, ds, ct, hi)
+                if kq is None:
+                    loi.append({"ma": "CAM_MAT_MOC", "chi_tiet": "bước %d: moc_hanh_dong \"%s\" (%s) không có trong lời đọc cảnh %s" % (j + 1, cum, h["loai"], so),
+                                "goi_y": "chép đúng cụm 3-5 từ NGUYÊN VĂN lời đọc lúc động tác bắt đầu"})
+                    continue
+                t = ds[kq[0]][1] - TRUOC_MOC
+                ct = kq[1]
+            t = round(max(0.0, t), 3)
+            l = h["loai"]
+            ids = [str(x) for x in (h.get("doi_tuong") or [])]
+            if l == "co_lap":
+                nm.append({"t": t, "ids": ids, "coLap": True})
+                het = round(max(t + 1.5, t_sau - 0.05), 3)   # cô lập kết thúc ở hết bước (trừ khi bước có nhấn mạnh riêng sớm hơn)
+                if not any(t < x["t"] <= het for x in nm[:-1]):
+                    nm.append({"t": het, "ids": []})
+                continue
+            if l == "truot_toi_uu":
+                ten = str(h.get("diem") or (ids[0] if ids else ""))
+                d0 = dict(nguon.get(ten) or {}, **{k: v for k, v in h.items() if k in ("tren", "toi")})
+                try:
+                    M, a, bb, u = L.toi_uu(d0, "truot_toi_uu")
+                except Exception as e:   # noqa: BLE001
+                    loi.append({"ma": "KG_THIEU_DAC_TA", "chi_tiet": "truot_toi_uu %s: %s" % (ten, getattr(e, "chi_tiet", e))})
+                    continue
+                u0, u1 = (0.12, 0.88) if u > 0.5 else (0.88, 0.12)
+                chuyen.append({"diem": ten, "duong": [sc(a), sc(bb)],
+                               "moc": [{"t": t, "u": u0}, {"t": round(t + 1.3, 3), "u": u1}, {"t": round(t + 2.6, 3), "u": round(u, 6)}],
+                               "doc": {"ds": [str(x) for x in d0.get("toi") or []], "heSo": float(dung.get("tiLe") or 1.0),
+                                       "dv": str(h.get("don_vi") or (hkg["he_truc"].get("don_vi") if isinstance(hkg.get("he_truc"), dict) else "") or "")}})
+                hien[ten] = min(hien.get(ten, t), t) if ten in hien else t
+                continue
+            cap = []
+            for dst in ids:
+                nd = nguon.get(dst) or {}
+                src = str(nd.get("nguon") or h.get("nguon") or "")
+                if not src or src not in dung["diem"] or dst not in dung["diem"]:
+                    loi.append({"ma": "KG_DIEM_KHONG_TON_TAI", "chi_tiet": "%s: %s cần là ảnh của một điểm (quan hệ %s, nguon)" % (l, dst, l)})
+                    continue
+                cap.append([src, dst])
+                hien[dst] = t
+                if l == "doi_xung_mat":
+                    did = "dx_%s_%s" % (src, dst)
+                    dung["doan"].append({"id": did, "a": src, "b": dst, "vai": "phu", "dut": True})
+                    hien[did] = t
+            if not cap:
+                continue
+            x = {"loai": l, "t": t, "d": float(h.get("giay") or THOI_BIEN), "cap": cap}
+            if l == "quay":
+                nd = nguon.get(cap[0][1]) or {}
+                try:
+                    o, v = L.duong(nd.get("truc") or h.get("truc"), "quay")
+                    x["truc"] = {"o": sc(o), "v": [v[i] - o[i] for i in range(3)], "goc": _m.radians(float(nd.get("goc") or h.get("goc") or 90))}
+                except Exception:   # noqa: BLE001
+                    x["loai"] = "tinh_tien"
+            bien.append(x)
+    # vật chuyển động khai báo trong doi_tuong.diem.chuyen_dong (Flycam, Tàu A...)
+    for c in dung.get("chuyenDs") or []:
+        t0 = hien.get(c["diem"], hien.get(c["id"], None))
+        if c.get("khi_noi"):
+            kq = tim_cum(c["khi_noi"], ds, 0, len(ds))
+            if kq:
+                t0 = ds[kq[0]][1]
+        if t0 is None:
+            t0 = t_buoc[1] if len(t_buoc) > 1 else 1.0
+        chuyen.append({"diem": c["diem"], "duong": c["duong"], "moc": [{"t": round(t0, 3), "u": 0.0}, {"t": round(t0 + c["giay"], 3), "u": 1.0}]})
+    # mảnh của một khối (cạnh trụ, đường dóng, vạch trục) hiện CÙNG khối của nó (lich_khong_gian chỉ biết điểm đầu mút)
+    for d in dung["doan"]:
+        if d.get("nhom") and hien.get(d["nhom"], 0) > 0:
+            hien[d["id"]] = hien[d["nhom"]]
+        elif d.get("nhom") and d["id"] in hien and d["nhom"] not in hien and not d["id"].startswith("dx_"):
+            hien.pop(d["id"], None)
+    ra["nhanManh"] = sorted(nm, key=lambda x: x["t"])
+    ra["bienHinh"] = bien
+    ra["chuyen"] = chuyen
+    ra["phienBan"] = 2
+    return ra, loi, tk

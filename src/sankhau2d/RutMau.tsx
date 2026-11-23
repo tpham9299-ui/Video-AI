@@ -4,7 +4,7 @@
 import React from 'react';
 import {FONT, SO_DEU} from '../theme';
 import type {RutMauVao} from './kieu';
-import {boCucRutMau, daQua, em, emVR, Hop, kep, nhipNhan, noi, phaTai, tho, tienDo} from './chung';
+import {boCucRutMau, daQua, em, emVR, Hop, kep, nhacSong, nhipNhan, noi, phaTai, songQuet, tHienNhom, tho, tienDo} from './chung';
 import {CHU, DongKetQua, mau, NEN_THE, SAI, ThanhTienDo, VienTex} from './GiaoDien';
 
 const TRUNG = 'rgba(230,237,245,0.55)';
@@ -63,6 +63,9 @@ export const RutMau: React.FC<{sk: RutMauVao; t: number; W: number; H: number; m
   const treVe = truoc ? VE : 0;
   const ha = nay ? (nay.chon!.length - 1) * TRE + BAY + treVe : 0; // lúc thẻ cuối hạ khay
   const pn = phaTai(sk.pha, t);
+  // v98: thẻ hiện THEO NHÓM (~3 nhóm, cách 0,8 s) + sóng quét ở mỗi mốc nhịp -> không còn màn "10 tấm thẻ" đứng yên > 4 s
+  const nhomHien = Math.max(3, Math.ceil(sk.phan_tu.length / 3));
+  const song = songQuet(sk.nhip, t);
 
   const viTriThe = (i: number) => {
     const o = b.o[i];
@@ -131,12 +134,12 @@ export const RutMau: React.FC<{sk: RutMauVao; t: number; W: number; H: number; m
       ) : null))}
       {/* thẻ */}
       {sk.phan_tu.map((p, i) => {
-        const aVao = em((t - tHien - i * 0.05) / 0.4);
+        const aVao = em((t - tHienNhom(i, tHien, nhomHien)) / 0.4);
         if (aVao <= 0) return null;
         const v = viTriThe(i);
         const aMau = p.nhom >= 0 ? em((dNhom - p.nhom * 0.35) / 0.35) : 0;
         // nhịp chống đứng hình: thẻ nhóm đích (hoặc thẻ trên khay) nhấn nhẹ ở mốc nhịp
-        const nhan = v.trongKhay ? 0 : p.nhom === nhomDich && aMau > 0 && !nay ? 0.25 * nh : 0;
+        const nhan = v.trongKhay ? 0 : (p.nhom === nhomDich && aMau > 0 && !nay ? 0.25 * nh : 0) + 0.55 * nhacSong(song, i, sk.phan_tu.length);
         return <The key={i} sk={sk} i={i} hop={v.hop} mauNhom={nhomNhan(p.nhom)} aMau={aMau} nang={v.nang + nhan} lat={0.15 + 0.85 * aVao} />;
       })}
       <DongKetQua x={b.ketQua.x} y={b.ketQua.y} w={b.ketQua.w} h={b.ketQua.h} tex={tex} a={aKq} mau={mauKq} dau={dau} nhan={nh * (dau === null ? 0.5 : 1) + 0.15 * tho(t)} co={40} />

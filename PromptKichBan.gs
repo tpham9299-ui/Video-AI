@@ -274,6 +274,7 @@ function taoPromptKichBan_(r, c1, c2) {
     if (kgChuan) loiThoaiHH[2] = 'CÔNG THỨC: dòng chính của mỗi bước viết trong hinh_khong_gian.buoc[].the (LaTeX, mỗi thẻ có khi_noi nguyên văn); "noi_dung_man_hinh" của cảnh lặp lại đúng dòng đó (tối đa 2 dòng), "moc_loi": [].\n\n';
     var pHH = taoPromptHinhHocThuan_(r, c1, c2, { moDau: moDau, nangCao: nangCao.filter(function (x) { return x && !/BÀI TÀI CHÍNH|GÓC NHÌN 3D|BỎ QUA mọi yêu cầu/.test(x); }).concat(kgChuan ? [huongDanKhongGian_(r)] : []),
       noiCanh: [noiCanh[0]].concat(noiCanh.slice(6)), loiThoai: loiThoaiHH, traVe: traVe });
+    if (typeof dungLego_ === 'function' && dungLego_(r)) return pHH + nhacLoiLego_();   // v98 Oxyz lớp 12: hình 3D xin ở lời gọi riêng có schema
     return kgChuan ? gonPromptKhongGian_(pHH, r) : pHH;
   }
   return [].concat(
@@ -860,9 +861,10 @@ function lapKichBanDai10Phut_(r, c1, c2, sn, nhap) {
 // Tắt: CAU_HINH HINH_KHONG_GIAN_CHUAN = TAT (về Manim manim_hinh.py cũ). Bản Python: scripts/giai_hinh_khong_gian.py + hinh_khong_gian/.
 function batHinhKhongGian_() { return String((typeof cauHinh_ === 'function' && cauHinh_('HINH_KHONG_GIAN_CHUAN')) || 'BAT').toUpperCase() !== 'TAT'; }
 function dungHinhKhongGian_(r) {
+  if (typeof dungLego_ === 'function' && dungLego_(r)) return false;   // v98: Oxyz lớp 12 -> động cơ Lego (đặc tả riêng có schema)
   return batHinhKhongGian_() && typeof laMonHinhHoc_ === 'function' && laMonHinhHoc_(r) && typeof laHinhKhongGian_ === 'function' && laHinhKhongGian_(r && r.de_bai);
 }
-var CHE_DO_CAMERA_KG_ = ['toan_canh', 'truc_dien_mat', 'ep_mep_mat', 'nhin_day', 'can_canh'];
+var CHE_DO_CAMERA_KG_ = ['toan_canh', 'truc_dien_mat', 'ep_mep_mat', 'nhin_day', 'can_canh', 'phang_2d'];   // v98: + phang_2d (cảnh dẫn 2D -> 3D)
 function huongDanKhongGian_(r) {
   return '\nHÌNH HỌC KHÔNG GIAN CHUẨN (BẮT BUỘC, thay cho hinh_hoc tọa độ / buoc_ve): trả thêm trường "hinh_khong_gian". TUYỆT ĐỐI KHÔNG ghi tọa độ (x, y, z): máy tự tính tọa độ từ cấu trúc, ' +
     'tự chọn tỷ lệ đẹp (điểm "bất kỳ" tránh trung điểm), tự kiểm chứng MỌI mệnh đề / số đo bằng số (sai -> bị trả lại), tự tính nét liền / nét đứt ở mọi khung khi xoay.\n' +
@@ -907,4 +909,83 @@ function gonPromptKhongGian_(s, r) {
   s = s.replace(/"giu_san_khau":true,"buoc_ve":\[\{"ve":"","khi_noi":""\}\]/g, '"giu_san_khau":true');
   s = s.replace(/4\. ĐỦ BƯỚC VÀ CẢNH: 15-20 cảnh chi tiết;/, '4. ĐỦ BƯỚC VÀ CẢNH: 7-10 cảnh gọn (50-68 giây);');
   return s + '\nNHẮC LẠI: JSON trả về PHẢI có "hinh_khong_gian" như mô tả (không tọa độ); mọi moc_xoay là cụm nguyên văn trong lời của đúng cảnh.\n';
+}
+
+/* ===================== v98: ĐỘNG CƠ LEGO 6 KHỐI (Oxyz lớp 12 + Toán thực tế 3D) — Lớp 1: responseSchema enum cố định ===================== */
+// Kịch bản (lời 8-12 cảnh) vẫn viết như cũ (không schema: hàng chục trường tùy chọn). Hình 3D xin ở MỘT lời gọi riêng có
+// responseSchema chặt (lapLego_, BoPhan1.gs): Gemini KHÔNG thể bịa tên khối / động tác / chế độ máy ngoài enum.
+// Lớp 2: Python (scripts/hinh_khong_gian/lego.py) tính MỌI tọa độ suy diễn + kiểm mệnh đề / số đo.
+// Lớp 3: khối trang_tri lỗi -> bỏ riêng; lỗi lõi -> gửi đúng mục JSON lỗi cho Gemini vá tối đa 1 lần.
+// Tắt: CAU_HINH LEGO_3D = TAT.
+var LEGO_LOAI_ = ['khoi', 'doan', 'duong_cong', 'mat', 'diem', 'he_truc'];
+var LEGO_HINH_ = ['hop', 'lang_tru', 'chop', 'tru', 'non', 'cau', 'tron', 'cung', 'parabol', 'elip', 'quy_dao', 'san_oxy', 'mat_phang', 'da_giac'];
+var LEGO_DONG_TAC_ = ['tinh_tien', 'doi_xung_mat', 'quay', 'co_lap', 'truot_toi_uu'];
+var LEGO_QUAN_HE_ = ['toa_do', 'trung_diem', 'tren_doan', 'doi_xung_mat', 'doi_xung_diem', 'tinh_tien', 'quay', 'giao_duong_mat', 'chan_vuong_goc', 'toi_uu_tong'];
+var LEGO_MAU_ = ['cyan', 'vang', 'hong', 'ngoc', 'trang', 'xam', 'cam', 'tim', 'la'];
+var LEGO_CAMERA_ = ['toan_canh', 'truc_dien_mat', 'ep_mep_mat', 'nhin_day', 'can_canh', 'phang_2d'];
+var LEGO_MENH_DE_ = ['thuoc_mat', 'thang_hang', 'cung_phia_mat', 'toi_uu', 'vuong_goc', 'song_song', 'thuoc'];
+var LEGO_SO_DO_ = ['tong_do_dai', 'do_dai', 'toa_do', 'goc_hai_duong', 'goc_duong_mat', 'khoang_cach_diem_mat', 'the_tich'];
+
+function batLego_() { return String((typeof cauHinh_ === 'function' && cauHinh_('LEGO_3D')) || 'BAT').toUpperCase() !== 'TAT'; }
+// Định tuyến: Oxyz lớp 12 (mọi luồng) | chỉ đạo người dùng nhắc lego / 3d tự do. Thực tế 3D không suy được khuôn
+// (KHUNG4TANG_3D_RONG) được lapLego_ cứu ở vòng sửa (BoPhan1.gs) — 8 khuôn v92 giữ nguyên khi khớp.
+function dungLego_(r) {
+  if (!batLego_() || !r) return false;
+  var de = String(r.de_bai || ''), lop = String(r.lop || '').replace(/\D/g, '');
+  var cd = String(r.chi_dao || '') + ' ' + ((de.match(/\[\s*chi\s*_?dao\s*:\s*([^\]]+)\]/i) || [])[1] || '');
+  if (/lego|3d tự do|khối tự do/i.test(cd)) return true;
+  return lop === '12' && /oxyz|hệ (trục )?tọa độ\s*O\s*x\s*y\s*z|\(\s*-?\d+(?:[.,]\d+)?\s*;\s*-?\d+(?:[.,]\d+)?\s*;\s*-?\d+(?:[.,]\d+)?\s*\)/i.test(de);
+}
+
+function schemaLego_() {
+  var S = function (e) { return e ? {type: 'STRING', enum: e} : {type: 'STRING'}; };
+  var N = {type: 'NUMBER'}, B = {type: 'BOOLEAN'}, I = {type: 'INTEGER'};
+  var AS = {type: 'ARRAY', items: {type: 'STRING'}}, AN = {type: 'ARRAY', items: N};
+  var O = function (p, req) { var o = {type: 'OBJECT', properties: p}; if (req) o.required = req; return o; };
+  var A = function (x) { return {type: 'ARRAY', items: x}; };
+  return O({
+    phien_ban: I,
+    he_truc: O({loai: S(['oxyz', 'oxy', 'khong']), don_vi: S(), vach: N, huong: B}, ['loai']),
+    diem: A(O({ten: S(), loai: S(LEGO_QUAN_HE_), toa_do: AN, nguon: S(), mat: S(), doan: S(), duong: S(), vec: S(), tam: S(), truc: S(), goc: N,
+      ti_le: N, tu: S(), tren: S(), toi: AS, trang_tri: B}, ['ten', 'loai'])),
+    doi_tuong: A(O({id: S(), loai: S(LEGO_LOAI_), hinh: S(LEGO_HINH_), kieu: S(['thang', 'vector', 'tia', 'gion']), doan: S(), tam: S(), ban_kinh: N, cao: N,
+      kich_thuoc: AN, goc: S(), day: AS, dinh: S(), dinh_ten: AS, tu: S(), den: S(), a: N, b: N, goc_dau: N, goc_cuoi: N, diem: S(), mau: S(LEGO_MAU_),
+      nhan: S(), lech: AN, luoi: B, trang_tri: B, chuyen_dong: O({theo: S(), giay: N, khi_noi: S()})}, ['id', 'loai'])),
+    goc: A(O({dinh: S(), canh: S(), vuong: B, nhan: S()}, ['dinh', 'canh'])),
+    menh_de: A(O({loai: S(LEGO_MENH_DE_), diem: S(), mat: S(), tren: S(), toi: AS, a: S(), b: S(), duong: S()}, ['loai'])),
+    so_do: A(O({loai: S(LEGO_SO_DO_), doan: AS, diem: S(), truc: S(['x', 'y', 'z']), gia_tri: S()}, ['loai', 'gia_tri'])),
+    de_ghim: A(O({id: S(), nhan: S()}, ['id', 'nhan'])),
+    buoc: A(O({canh: I, khi_noi: S(), nhan: S(), tieu_de: S(),
+      xoay: A(O({goc_nhin: S(LEGO_CAMERA_), doi_tuong: AS, moc_xoay: S()}, ['goc_nhin'])),
+      hien: A(O({id: S(), khi_noi: S()}, ['id'])),
+      nhan_manh: AS,
+      hanh_dong: A(O({loai: S(LEGO_DONG_TAC_), doi_tuong: AS, diem: S(), tren: S(), toi: AS, don_vi: S(), moc_hanh_dong: S()}, ['loai', 'moc_hanh_dong'])),
+      the: A(O({loai: S(['cong_thuc', 'chu']), dong: AS, noi_dung: S(), khi_noi: S(), chot: B}, ['loai']))}, ['canh', 'nhan', 'tieu_de']))
+  }, ['he_truc', 'diem', 'doi_tuong', 'buoc', 'de_ghim']);
+}
+
+// Lời nhắc cho lời gọi riêng (có schema): đề + đáp án + lời từng cảnh (để moc_* là cụm NGUYÊN VĂN)
+function huongDanLego_(kb, r) {
+  var canh = (kb && kb.canh || []).map(function (c, i) { return '  cảnh ' + (c.so || i + 1) + ' [' + (c.loai || '') + ']: ' + String(c.loi_thoai || '').replace(/\s+/g, ' ').trim(); }).join('\n');
+  var lop = String((r && r.lop) || (kb && kb.lop) || '');
+  return 'Bạn là đạo diễn hình 3D cho video Toán dọc 9:16. Dựng hình bằng 6 KHỐI LEGO, máy tính mọi tọa độ suy diễn và tự kiểm chứng. Trả JSON đúng schema (đặc tả hinh_khong_gian).\n' +
+    'ĐỀ: ' + String((r && r.de_bai) || kb.de_bai || '') + '\nĐÁP ÁN: ' + String((r && r.dap_an) || kb.dap_an_cuoi || '') + '\nLỚP: ' + lop + '\nLỜI ĐỌC CÁC CẢNH:\n' + canh + '\n\n' +
+    'QUY TẮC:\n' +
+    '1. "diem": điểm DỮ KIỆN của đề dùng {"ten","loai":"toa_do","toa_do":[x,y,z]} (chỉ số đề cho, đơn vị của đề; đặt gốc O hợp lý, z hướng lên); điểm SUY DIỄN chỉ khai báo QUAN HỆ, KHÔNG ghi tọa độ: ' +
+    'doi_xung_mat {"nguon","mat":"Oxy"} | tinh_tien {"nguon","vec":"OH"} | quay {"nguon","truc":"AB","goc":90} | trung_diem {"doan":"AB"} | tren_doan {"doan","ti_le"} | giao_duong_mat {"duong","mat":"Oxy"} | chan_vuong_goc {"tu","mat" hoặc "duong"} | toi_uu_tong {"tren":"Oxy","toi":["A","B"]}.\n' +
+    '2. "doi_tuong" (6 khối): khoi {"hinh":"hop|lang_tru|chop|tru|non|cau","tam","ban_kinh","cao","kich_thuoc","day","dinh","dinh_ten","luoi"} (tòa tháp = trụ, bể nước = trụ / hộp, radar = cầu) | ' +
+    'doan {"doan":"AM","kieu":"thang|vector|tia|gion","nhan":"200\\\\,\\\\text{m}","mau"} (gion = đường gióng kích thước có số đo) | duong_cong {"hinh":"tron|cung|parabol|elip|quy_dao","tam","ban_kinh","tu","den","cao"} | ' +
+    'mat {"hinh":"san_oxy|mat_phang|da_giac","diem"} (san_oxy = mặt đất bán trong suốt, nhìn xuyên xuống z < 0) | diem {"diem":"F","nhan":"Flycam","chuyen_dong":{"theo":"id quỹ đạo","giay":3}} | he_truc.\n' +
+    '   Khối chỉ để minh họa (cây, mây, quỹ đạo gợi ý, vật bay) BẮT BUỘC "trang_tri": true; khối của lời giải KHÔNG có cờ này. Màu: đoạn bằng nhau cùng màu; đoạn đáp số "vang".\n' +
+    '3. "buoc" khớp các cảnh: mỗi bước MỘT ý; "xoay" chọn trong ' + LEGO_CAMERA_.join(' | ') + ' (phang_2d = nhìn từ trên như bản đồ 2D ở bước 1, bước 2 xoay "toan_canh" để hình nổi 3D); mọi cú xoay trừ bước 1 có "moc_xoay" = cụm 3-5 từ NGUYÊN VĂN lời cảnh đó.\n' +
+    '4. "hanh_dong" (5 động tác, mỗi cái có "moc_hanh_dong" = cụm 3-5 từ NGUYÊN VĂN lời đọc lúc động tác bắt đầu): tinh_tien / doi_xung_mat / quay {"doi_tuong":["tên ẢNH đã khai báo bằng quan hệ"]} | ' +
+    'co_lap {"doi_tuong":[2-5 điểm / đoạn trọng tâm]} (nền mờ 80 %) | truot_toi_uu {"diem":"M","tren":"Oxy","toi":["A","B"],"don_vi":"m"} (M trượt qua lại rồi dừng ở cực trị, số đọc trực tiếp).\n' +
+    '5. "the": công thức LaTeX của bước (khi_noi nguyên văn); thẻ cuối "chot": true. "de_ghim" 2-4 ô, ô hỏi ghi "= ?" (KHÔNG ghi đáp số). "menh_de" + "so_do" (gia_tri đúng như lời giải) để máy kiểm chứng.\n' +
+    '6. GDPT 2018: Oxyz chỉ lớp 12; lớp 10-11 dùng "he_truc":{"loai":"khong"} và mô tả bằng độ dài / độ cao. Cấm số phức.\n';
+}
+
+// Câu nhắc thêm cho prompt kịch bản chính khi bài đi động cơ Lego (lời đọc phải có các cụm mốc rõ ràng cho máy bám)
+function nhacLoiLego_() {
+  return '\nHÌNH 3D (ĐỘNG CƠ LEGO): hình do máy dựng ở bước riêng từ lời của bạn — KHÔNG viết "canh_3d_vector" / "hinh_khong_gian". Lời đọc nói rõ từng thao tác bằng cụm ngắn ' +
+    '("Đặt hệ trục Oxyz", "lấy đối xứng B qua mặt phẳng Oxy", "tịnh tiến A theo vectơ OH", "thử trượt điểm M"), mỗi cảnh một thao tác, 8-12 cảnh, 50-68 giây.\n';
 }

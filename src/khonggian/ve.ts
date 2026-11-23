@@ -24,18 +24,30 @@ export const MAU_KG = {
   goc: '#F472B6',
   vuong: '#FACC15',
   nen: '#0E1014',
+  // v98 Lego
+  truc: '#A3ADBD',
+  truc_vach: '#6B7585',
+  gion: '#FACC15',
+  gion_phu: '#FACC15',
+  cong: '#34D399',
+  vector: '#38BDF8',
+  luoi: '#8CC8FF',
 };
 // v97 tối giản: nét chính dày hơn ~28 % để đọc rõ trên điện thoại nhỏ
-const W_NET: Record<VaiDoan, number> = {khoi: 4.0, phu: 2.9, dich: 4.5, keo_dai: 2.4, giao_tuyen: 3.6};
+const W_NET: Record<VaiDoan, number> = {khoi: 4.0, phu: 2.9, dich: 4.5, keo_dai: 2.4, giao_tuyen: 3.6, truc: 2.2, truc_vach: 1.8, gion: 2.2, gion_phu: 1.3, cong: 3.4, vector: 3.8, luoi: 1.5};
 
 export type NetVe = {id: string; x1: number; y1: number; x2: number; y2: number; mau: string; w: number; dut: boolean; op: number; sang: number; lop: 0 | 1};
 export type MatVe = {id: string; d: string; mau: string; op: number; bung: boolean};
 export type ChamVe = {ten: string; x: number; y: number; r: number; mau: string; khuat: boolean; op: number; sang: number};
 export type GocVe = {id: string; d: string; mau: string; op: number; vuong: boolean; nhan?: {x: number; y: number; tex: string}};
 export type NhanVe = HopNhan & {op: number; mau: string; khuat: boolean};
-export type KhungVe = {may: TuThe; luoi: {d: string; op: number}[]; net: NetVe[]; mat: MatVe[]; cham: ChamVe[]; goc: GocVe[]; nhan: NhanVe[]; manh: ManhNet[]; truoc: boolean[]};
+// v98: mũi tên (vector / trục / đường gióng), nhãn tự do (số đo, tên trục, hướng), số đọc trực tiếp khi trượt tối ưu, mặt khối tô
+export type MuiVe = {x: number; y: number; goc: number; mau: string; op: number; co: number};
+export type NhanTuVe = {id: string; x: number; y: number; tex: string; mau: string; op: number; co: number; chu: boolean};
+export type KhungVe = {may: TuThe; luoi: {d: string; op: number}[]; net: NetVe[]; mat: MatVe[]; cham: ChamVe[]; goc: GocVe[]; nhan: NhanVe[]; manh: ManhNet[]; truoc: boolean[];
+  mui: MuiVe[]; nhanTu: NhanTuVe[]; to: MatVe[]};
 
-export type ChuanBi = {bc: BoiCanh; lich: LichMay; vo: MatVo[]; quaDiem: Map<string, string[]>};
+export type ChuanBi = {bc: BoiCanh; lich: LichMay; vo: MatVo[]; quaDiem: Map<string, string[]>; batDauMat: number[]};
 
 const tren3D = (P: V3, A: V3, B: V3) => {
   const L = doDai(tru(B, A));
@@ -52,7 +64,17 @@ export function chuanBi(kg: KhongGianVao, W: number, H: number): ChuanBi {
     for (const x of d.doan) if (x.a !== ten && x.b !== ten && d.diem[x.a] && d.diem[x.b] && tren3D(d.diem[ten], d.diem[x.a], d.diem[x.b])) ds.push(x.a + '|' + x.b);
     quaDiem.set(ten, ds);
   }
-  return {bc, lich: lapLich(kg, W, H), vo: bc.vo, quaDiem};
+  // chỉ số mặt đầu tiên của từng khối Lego trong bc.vo (đường viền: so mặt trước/sau theo chỉ số cục bộ)
+  const batDauMat: number[] = [];
+  if (d.khoiDs) {
+    let k = 0;
+    d.khoiDs.forEach((x) => {
+      const ok = x.mat.length > 0 && x.mat.every((f) => f.every((tn) => d.diem[tn]));
+      batDauMat.push(ok ? k : -1);
+      if (ok) k += x.mat.length;
+    });
+  }
+  return {bc, lich: lapLich(kg, W, H), vo: bc.vo, quaDiem, batDauMat};
 }
 
 export type Lech = {n?: number; k?: number};
@@ -66,7 +88,8 @@ function apLech(m: TuThe, l: Lech | undefined, W: number, H: number): TuThe {
 // lưới sàn Oxy mờ dưới đáy (mắt cảm nhận hướng xoay)
 function luoiSan(m: TuThe, h: HeMay, bc: BoiCanh): {d: string; op: number}[] {
   const d = bc.kg.dung;
-  const zs = d.khoi.dinh.map((x) => d.diem[x][2]);
+  if (d.lego && d.kinh.some((k) => k.san)) return []; // v98: đã có mặt sàn Oxy bán trong suốt
+  const zs = (d.khoi.dinh.length ? d.khoi.dinh : Object.keys(d.diem)).map((x) => d.diem[x][2]);
   const z = Math.min(...zs) - 0.002;
   const L = Math.ceil(bc.R * 1.35), buoc = Math.max(0.5, Math.round(bc.R / 4 * 2) / 2);
   const ra: {d: string; op: number}[] = [];
@@ -111,7 +134,7 @@ function nhanTaiTuThe(m: TuThe, tt: ReturnType<typeof trangThai>, cb: ChuanBi, v
       if (!tt.doan.some((d) => d.tenA && ((d.tenA === a && d.tenB === b) || (d.tenA === b && d.tenB === a)) && d.alpha * d.ve >= 0.3)) continue;
       for (const o of [q.get(a)!, q.get(b)!]) if (Math.hypot(o.x - p.x, o.y - p.y) > 2) huong.push(Math.atan2(o.y - p.y, o.x - p.x));
     }
-    ds.push({ten: x.ten, x: p.x, y: p.y, huongCanh: huong, uuTien: (cb.bc.kg.dung.khoi.dinh.includes(x.ten) ? 1 : 2) + x.sang});
+    ds.push({ten: x.ten, x: p.x, y: p.y, huongCanh: huong, uuTien: (cb.bc.kg.dung.khoi.dinh.includes(x.ten) ? 1 : 2) + x.sang, chu: cb.bc.kg.dung.nhanTen?.[x.ten]});
   }
   const tam = chieu(cb.bc.muc, m, h);
   const ra = datNhanKG(ds, doan, cham2, vung, tam);
@@ -134,32 +157,84 @@ export function veKhung(kg: KhongGianVao, cb: ChuanBi, t: number, W: number, H: 
   const sauTam = chieu(cb.bc.muc, m, h).sau;
   const net: NetVe[] = [];
   const manhAll: ManhNet[] = [];
-  for (const x of tt.doan) {
+  const mui: MuiVe[] = [];
+  const dsDoan = [...tt.doan];
+  // v98: đường viền khối cong (đường sinh biên của trụ / nón, viền cầu): cạnh giữa mặt trước và mặt sau, tính lại mỗi khung
+  const d0 = kg.dung;
+  if (d0.khoiDs) {
+    d0.khoiDs.forEach((k, ki) => {
+      const off = cb.batDauMat[ki];
+      if (off < 0 || !k.vien.length) return;
+      const thk = (kg.hien || {})[k.id];
+      const a = thk === undefined ? 1 : kep01((t - thk) / 0.6);
+      if (a <= 0.001) return;
+      const nmK = tt.doan.find((x) => x.id.startsWith(k.id + ':'))?.nm ?? 1;
+      for (const [ta, tb, fi, fj] of k.vien) {
+        if (truoc[off + fi] === truoc[off + fj] || !tt.diem[ta] || !tt.diem[tb]) continue;
+        dsDoan.push({id: k.id + ':v', a: tt.diem[ta], b: tt.diem[tb], vai: 'khoi', tenA: ta, tenB: tb, key: k.id, alpha: a, ve: 1, nm: nmK, sang: 0, mau: k.mau});
+      }
+    });
+  }
+  for (const x of dsDoan) {
     const a = x.alpha;
     if (a <= 0.001 || x.ve <= 0.001) continue;
     const b = x.ve < 1 ? noi(x.a, x.b, x.ve) : x.b;
     const manh = tachDoan({id: x.id, a: x.a, b, vai: x.vai}, C, cb.vo, truoc, kinhHLR, R);
     manhAll.push(...manh);
     const moMat = x.vai === 'giao_tuyen' ? mo() : mo(x.tenA, x.tenB);
+    const mauNet = x.mau || MAU_KG[x.vai] || MAU_KG.phu;
+    const lego = !!kg.dung.lego;
     for (const p of manh) {
       const pa = chieu(p.a, m, h), pb = chieu(p.b, m, h);
       const xa = kep01(((pa.sau + pb.sau) / 2 - sauTam) / R * 0.5 + 0.5);
       const w = W_NET[x.vai] * (1.06 - 0.16 * xa) * (1 + 0.25 * x.sang);
-      net.push({id: x.id, x1: pa.x, y1: pa.y, x2: pb.x, y2: pb.y, mau: MAU_KG[x.vai], w: p.khuat ? Math.max(1.8, w * 0.5) : w, dut: p.khuat,
-        op: a * x.nm * moMat * (p.khuat ? 0.66 : 1) * (x.vai === 'khoi' && !p.khuat ? 1 - 0.12 * xa : 1), sang: x.sang, lop: p.khuat || p.sauKinh ? 0 : 1});
+      const dut = p.khuat || !!x.dut;
+      // v98: phần nằm DƯỚI sàn Oxy (sau mặt sàn bán trong suốt) dịu đi -> mắt thấy rõ miền z < 0
+      const sauSan = lego && p.sauKinh ? 0.62 : 1;
+      net.push({id: x.id, x1: pa.x, y1: pa.y, x2: pb.x, y2: pb.y, mau: mauNet, w: p.khuat ? Math.max(1.6, w * 0.5) : x.dut ? w * 0.7 : w, dut,
+        op: a * x.nm * moMat * sauSan * (p.khuat ? 0.66 : 1) * (x.vai === 'khoi' && !p.khuat ? 1 - 0.12 * xa : 1), sang: x.sang, lop: p.khuat || p.sauKinh ? 0 : 1});
+    }
+    // mũi tên ở đầu mút (đoạn vẽ xong mới có mũi)
+    if (x.mui && x.ve > 0.96 && manh.length) {
+      const pa = chieu(x.a, m, h), pb = chieu(b, m, h);
+      const goc2 = Math.atan2(pb.y - pa.y, pb.x - pa.x);
+      const co = x.vai === 'truc' ? 15 : x.vai === 'gion' ? 11 : 17;
+      mui.push({x: pb.x, y: pb.y, goc: goc2, mau: mauNet, op: a * x.nm * (manh[manh.length - 1].khuat ? 0.6 : 1), co});
+      if (x.mui === 'hai') mui.push({x: pa.x, y: pa.y, goc: goc2 + Math.PI, mau: mauNet, op: a * x.nm * (manh[0].khuat ? 0.6 : 1), co});
     }
   }
   const mat: MatVe[] = tt.kinh.map((k) => {
     const ps = k.p.map((p) => chieu(p, m, h));
-    return {id: k.id, d: 'M' + ps.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('L') + 'Z', mau: MAU_KG.kinh, op: k.op * mo(), bung: k.bung};
+    return {id: k.id, d: 'M' + ps.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('L') + 'Z', mau: /^#/.test(k.mau) ? k.mau : MAU_KG.kinh, op: k.op * mo(), bung: k.bung};
   });
+  // v98: mặt trước của khối Lego tô rất nhẹ theo ánh sáng (đặc khối; vẽ dưới lớp nét nên không che nét khuất)
+  const to: MatVe[] = [];
+  if (d0.khoiDs) {
+    const Lg: V3 = [0.35, -0.55, 0.76];
+    d0.khoiDs.forEach((k, ki) => {
+      const off = cb.batDauMat[ki];
+      if (off < 0 || !k.to) return;
+      const thk = (kg.hien || {})[k.id];
+      const a = thk === undefined ? 1 : kep01((t - thk) / 0.6);
+      if (a <= 0.001) return;
+      const nmK = tt.doan.find((x) => x.id.startsWith(k.id + ':'))?.nm ?? 1;
+      for (let i = 0; i < k.mat.length; i++) {
+        if (!truoc[off + i]) continue;
+        const f = cb.vo[off + i];
+        const sang = Math.max(0, cham(f.n, Lg));
+        const ps = f.p.map((p) => chieu(p, m, h));
+        to.push({id: k.id + '#' + i, d: 'M' + ps.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('L') + 'Z', mau: k.mau, op: a * nmK * (0.05 + 0.13 * sang), bung: false});
+      }
+    });
+  }
   const cham2: ChamVe[] = [];
   for (const x of tt.diemVe) {
     if (x.alpha <= 0.001) continue;
     const p = chieu(x.p, m, h);
     const kh = diemKhuat(x.p, C, cb.vo, truoc, R);
     const laDinh = kg.dung.khoi.dinh.includes(x.ten);
-    cham2.push({ten: x.ten, x: p.x, y: p.y, r: laDinh ? 5.6 : 6.4, mau: x.sang > 0.5 && !laDinh ? MAU_KG.chot : laDinh ? MAU_KG.diem : MAU_KG.diemDung, khuat: kh,
+    const mauRieng = kg.dung.mauDiem?.[x.ten];
+    cham2.push({ten: x.ten, x: p.x, y: p.y, r: laDinh ? 5.6 : 6.4, mau: x.sang > 0.5 && !laDinh ? MAU_KG.chot : mauRieng || (laDinh ? MAU_KG.diem : MAU_KG.diemDung), khuat: kh,
       op: x.alpha * x.nm * mo(x.ten), sang: x.sang});
   }
   const goc: GocVe[] = [];
@@ -203,7 +278,30 @@ export function veKhung(kg: KhongGianVao, cb: ChuanBi, t: number, W: number, H: 
     if (!l) continue;
     nhan.push({...l, x: c.x + l.dx, y: c.y + l.dy, op: c.op, mau: c.mau === MAU_KG.chot ? MAU_KG.chot : '#F5F7FA', khuat: c.khuat});
   }
-  return {may: m, luoi: luoiSan(m, h, cb.bc), net, mat, cham: cham2, goc, nhan, manh: manhAll, truoc};
+  // v98: nhãn tự do (số đo đường gióng, tên trục, hướng) + số đọc trực tiếp khi trượt điểm tối ưu
+  const nhanTu: NhanTuVe[] = [];
+  const hienD = kg.hien || {};
+  for (const x of kg.dung.nhanTu || []) {
+    const th = x.hien !== undefined ? hienD[x.hien] : hienD[x.id];
+    const a = th === undefined ? 1 : kep01((t - th - 0.25) / 0.5);
+    if (a <= 0.001) continue;
+    const p = chieu(x.p, m, h);
+    const nmX = x.hien && kg.nhanManh?.length ? (tt.doan.find((d) => d.id === x.hien || d.nhom === x.hien)?.nm ?? 1) : 1;
+    nhanTu.push({id: x.id, x: p.x, y: p.y, tex: x.tex, mau: x.mau, op: a * nmX * mo(), co: x.co || 26, chu: !!x.chu});
+  }
+  for (const c of kg.chuyen || []) {
+    if (!c.doc || !c.moc.length || !tt.diem[c.diem]) continue;
+    const t0 = c.moc[0].t, t1 = c.moc[c.moc.length - 1].t;
+    const a = kep01((t - t0) / 0.3) * (1 - kep01((t - t1 - 3.5) / 0.5));
+    if (a <= 0.001) continue;
+    const v = c.doc.ds.reduce((s2, x) => s2 + (tt.diem[x] ? doDai(tru(tt.diem[x], tt.diem[c.diem])) : 0), 0) * c.doc.heSo;
+    const so = (v >= 100 ? v.toFixed(0) : v.toFixed(2)).replace('.', '{,}');
+    // số đọc đặt cố định ở đáy sân khấu (không đè nhãn điểm trượt)
+    const ten = c.doc.ds.map((x, i) => (i === 0 ? x + c.diem : c.diem + x)).join(' + ');
+    nhanTu.push({id: 'doc_' + c.diem, x: W / 2, y: H - 40, tex: ten + ' = ' + so + (c.doc.dv ? '\\,\\text{' + c.doc.dv + '}' : ''),
+      mau: '#FACC15', op: a, co: 30, chu: false});
+  }
+  return {may: m, luoi: luoiSan(m, h, cb.bc), net, mat, cham: cham2, goc, nhan, manh: manhAll, truoc, mui, nhanTu, to};
 }
 
 export const noiMay = noiTuThe;

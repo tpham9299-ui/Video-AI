@@ -12,8 +12,9 @@ export const giayIntro = (m: MocCau | null | undefined, tong: number) =>
 // mức "ra" của intro (0 -> 1) trong 0,6 s cuối: chữ tan, sân khấu về tầng 2, các tầng khác hiện vào
 export const raIntro = (t: number, G: number) => (G > 0 ? emRa((t - (G - 0.6)) / 0.6) : 1);
 
-// v96: chữ intro/outro trong khung rộng RONG_ND (0..950) -> không lấn cột nút bên phải của TikTok
-export const RONG_ND_V93 = 950;
+// v96: chữ intro/outro trong khung an toàn TikTok; v98: khung ĐỐI XỨNG 130..950 (lề 12 % hai bên, tâm 540)
+export const LE_ND_V93 = 130;
+export const RONG_ND_V93 = 820;
 export const RONG_CHU = RONG_ND_V93 - 2 * 48;
 // Be Vietnam Pro 900 IN HOA: bề rộng trung bình ~0,68 em/ký tự (kể cả khoảng trắng) -> cỡ chữ vừa một dòng
 export const coVua = (s: string, max: number, min: number, rong = RONG_CHU, he = 0.68) =>
@@ -27,7 +28,8 @@ export function haiDong(s: string, motDong = 16): string[] {
   for (let i = 0; i < x.length; i++) if (x[i] === ' ' && (tot < 0 || Math.abs(i - x.length / 2) < Math.abs(tot - x.length / 2))) tot = i;
   return [x.slice(0, tot), x.slice(tot + 1)];
 }
-export const coTieuDeIntro = (dong: string[]) => coVua(dong.reduce((a, b) => (b.length > a.length ? b : a), ''), 104, 56);
+// v98: khung đối xứng hẹp hơn (724 px chữ) -> cho co tới 44 px để dòng dài vẫn MỘT dòng (không tự xuống dòng chồng chữ)
+export const coTieuDeIntro = (dong: string[]) => coVua(dong.reduce((a, b) => (b.length > a.length ? b : a), ''), 104, 44);
 
 // Outro: đáp án | mô hình 3D | 3 dòng tóm tắt | nút lưu. v96: trọn vùng an toàn TikTok (đỉnh >= 212, đáy nút <= 1574)
 export const VUNG_OUTRO = {dapAn: {y: 216, h: 220}, san: {y: 450, h: 560}, dong: {y: 1024, h: 116, cach: 14}, nut: {y: 1440}};

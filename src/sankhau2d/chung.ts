@@ -41,7 +41,7 @@ export function tienDo(pha: Pha2D[], t: number, tong?: number) {
 }
 
 export type Hop = {ten: string; x: number; y: number; w: number; h: number};
-export const LE = {trai: 48, phai: 30, tren: 22, duoi: 18}; // lề trong sân khấu (tọa độ trong T2 rộng 950): trái >= 44 px (4 %), phải dừng ở 920 < 950 (12 %)
+export const LE = {trai: 24, phai: 24, tren: 22, duoi: 18}; // v98: lề trong ĐỐI XỨNG (T2 đặt 130..950, rộng 820) -> nội dung 154..926, tâm 540
 export const CAO_DONG_KQ = 96; // dải kết quả (biểu thức kiểm chứng / P(A)) ở đáy sân khấu
 
 /* ---------------- rút mẫu ---------------- */
@@ -106,11 +106,11 @@ export function boCucCay(sk: SoDoCayVao, W: number, H: number) {
 /* ---------------- lưới Bayes (hình vuông đơn vị) ---------------- */
 export const MIN_COT_BAYES = 0.1; // cột A quá hẹp (vd 1 %) -> phóng lên 10 % bề rộng, có nhãn "phóng to"
 export function boCucBayes(sk: LuoiBayesVao, W: number, H: number) {
-  const S = Math.min(H - LE.tren - LE.duoi - CAO_DONG_KQ - 70, 440);
-  const x = LE.trai + 30, y = LE.tren + 46;
+  const S = Math.min(H - LE.tren - LE.duoi - CAO_DONG_KQ - 70, 400);
+  const x = LE.trai + 16, y = LE.tren + 46;
   const ua = Math.max(MIN_COT_BAYES, Math.min(1 - MIN_COT_BAYES, sk.pa));
   const vuong: Hop = {ten: 'vuong', x, y, w: S, h: S};
-  const bang: Hop = {ten: 'bang_cong_thuc', x: x + S + 46, y, w: W - LE.phai - (x + S + 46), h: S};
+  const bang: Hop = {ten: 'bang_cong_thuc', x: x + S + 34, y, w: W - LE.phai - (x + S + 34), h: S};
   const ketQua: Hop = {ten: 'ket_qua', x: LE.trai, y: H - LE.duoi - CAO_DONG_KQ, w: W - LE.trai - LE.phai, h: CAO_DONG_KQ};
   return {vuong, bang, ketQua, ua, phongTo: ua !== sk.pa, S, hop: [vuong, bang, ketQua]};
 }
@@ -185,4 +185,56 @@ export function bienTheoPha(pha: Pha2D[], t: number, a: number, b: number, xTot:
 // khóa màu ẩn số (sơ đồ tư duy): mọi chữ ẩn đứng riêng (không thuộc lệnh TeX) tô cùng một màu ở MỌI bước
 export function khoaMauAn(tex: string, an = 'x', m = '#FACC15') {
   return tex.replace(new RegExp(`(?<![A-Za-z\\\\])${an}(?![A-Za-z])`, 'g'), `{\\color{${m}}${an}}`);
+}
+
+/* ---------------- v98: CHỐNG ĐỨNG HÌNH THẬT (không chỉ "thở") ---------------- */
+// Lỗi thực chiến: màn "10 tấm thẻ / x = ?" đứng yên tới hết phần đọc đề (nhịp `nhip` chỉ nhấn nhóm đích, mà nhóm chưa tô -> không gì đổi).
+// (1) phần tử hiện dần THEO NHÓM (mỗi hàng / nhóm cách nhau <= 1 s); (2) mỗi mốc nhịp chạy MỘT SÓNG QUÉT nhìn thấy được
+// (thẻ nhấc lần lượt / nút suy luận sáng lần lượt) -> giữa hai thay đổi hình học thật không bao giờ quá 4 s.
+export const SONG_QUET = 1.3; // giây một sóng quét
+
+// mốc hiện của phần tử i khi hiện theo nhóm cỡ `nhom`, bắt đầu t0, nhóm cách nhau `cach` giây
+export const tHienNhom = (i: number, t0: number, nhom: number, cach = 0.8) => t0 + Math.floor(i / Math.max(1, nhom)) * cach + (i % Math.max(1, nhom)) * 0.06;
+
+// tiến độ sóng quét (0..1) của mốc nhịp gần nhất đã qua (null = không có sóng đang chạy)
+export function songQuet(nhip: number[] | undefined, t: number): number | null {
+  let u: number | null = null;
+  for (const x of nhip || []) {
+    const d = t - x;
+    if (d >= 0 && d < SONG_QUET) u = d / SONG_QUET;
+  }
+  return u;
+}
+// độ nhấc của phần tử thứ i/N trong sóng quét (bướu sin chạy từ trái sang phải)
+export const nhacSong = (u: number | null, i: number, N: number) => {
+  if (u === null) return 0;
+  const vt = u * (N + 2) - 1 - i;
+  return vt > 0 && vt < 1.6 ? Math.sin((vt / 1.6) * Math.PI) : 0;
+};
+
+// lịch sơ đồ tư duy: cảnh mở (đề lớn) tối đa 2,6 s -> dữ kiện hiện lần lượt -> KHUNG chuỗi suy luận (tiêu đề từng bước, mờ) hiện
+// ngay ở Bước 1 -> mỗi nút bật công thức đúng mốc bước giải (pha nut_j). Trả các mốc để TuDuyDaiSo và test dùng chung.
+export function lichTuDuy(sk: {du_kien: string[]; nut: {dong: string}[]; pha: Pha2D[]}) {
+  const tNut1 = sk.pha.find((q) => q.ten === 'nut_1')?.t ?? 4.5;
+  const coDe = !!(sk.du_kien[0] || sk.nut[0]?.dong);
+  const tHeroRa = coDe ? Math.max(1.6, Math.min(tNut1 - 0.5, 2.6)) : 0;
+  const tDK = sk.du_kien.map((_, k) => tHeroRa + 0.3 + k * 0.55);
+  const t0Khung = (tDK.length ? tDK[tDK.length - 1] : tHeroRa) + 0.5;
+  const tKhung = sk.nut.map((_, j) => t0Khung + j * 0.8);
+  const tNut = sk.nut.map((_, j) => sk.pha.find((q) => q.ten === `nut_${j}`)?.t ?? tKhung[j] + 1.2);
+  return {tHeroRa, tDK, tKhung, tNut};
+}
+
+// mọi mốc "đổi hình thật" của một sân khấu 2D (pha + hiện nhóm + sóng quét) -> test kiểm khoảng hở <= 4 s
+export function mocDoiHinh(sk: SanKhau2DVao): number[] {
+  const m: number[] = [...sk.pha.map((p) => p.t), ...(sk.nhip || [])];
+  if (sk.loai === 'tu_duy_dai_so') {
+    const l = lichTuDuy(sk);
+    m.push(0.2, l.tHeroRa, ...l.tDK, ...l.tKhung, ...l.tNut);
+  } else if (sk.loai === 'rut_mau') {
+    const tHien = sk.pha.find((p) => p.ten === 'hien')?.t ?? 0.3;
+    const nhom = Math.max(3, Math.ceil(sk.phan_tu.length / 3));
+    sk.phan_tu.forEach((_, i) => m.push(tHienNhom(i, tHien, nhom)));
+  }
+  return [...new Set(m.map((x) => Math.round(x * 100) / 100))].sort((a, b) => a - b);
 }

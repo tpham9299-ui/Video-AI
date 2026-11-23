@@ -94,9 +94,10 @@ export const Toan: React.FC<{
   color?: string;
   style?: React.CSSProperties;
   maxWidth?: number;
+  maxHeight?: number;
   chuThuong?: boolean;
   can?: 'trai' | 'giua';
-}> = ({tex, size = 52, color = '#ffffff', style, maxWidth, chuThuong, can}) => {
+}> = ({tex, size = 52, color = '#ffffff', style, maxWidth, maxHeight, chuThuong, can}) => {
   tex = chuanTex(tex);
   const nhom = useContext(NhomVuaCtx);
   const trai = can ? can === 'trai' : nhom;
@@ -108,14 +109,14 @@ export const Toan: React.FC<{
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el || !maxWidth || nhom) return;
-    const khop = () => khopVua(el, maxWidth);
+    const khop = () => khopVua(el, maxWidth, maxHeight);
     khop();
     let con = true;
     napPhong().then(() => con && khop());
     return () => {
       con = false;
     };
-  }, [tex, size, maxWidth, thuong, html, nhom]);
+  }, [tex, size, maxWidth, maxHeight, thuong, html, nhom]);
 
   const chung: React.CSSProperties = {
     display: 'inline-block',

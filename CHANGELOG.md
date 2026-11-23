@@ -470,3 +470,16 @@
 - Vá sau soi lưới (v97): bố cục tối giản riêng hình không gian (`ToiGianKhongGian.tsx`, `toi_gian.ts`): bỏ khung kính T2, sân khấu 16 %..62 %, T1 một dòng, T3 một khối công thức căn giữa, ẩn thanh ĐỀ, Outro 1 tấm tóm tắt; nét +28 %, mặt cắt vàng đậm hơn, khung hình 86 % x 80 %. Lỗi thẻ trống (mẫu 2 khung 1140): vỏ thẻ hiện ở `the.t` trước dòng đầu `moc[0]` -> khối mới chỉ hiện từ `max(t, moc[0])`; test quét mọi khung (`test_hinh_3d_chat_luong.mjs` 116).
 - Kiểm duyệt bố cục (kiem_duyet.mjs) với bố cục tối giản: 16/16 và 14/14 khung, không phụ thuộc t4 / thanh ĐỀ. Bắt được lỗi phụ đề có từ v96: ước lượng bề rộng chữ 0,52 x cỡ chữ (Be Vietnam 800 thật ~0,6) làm câu ~38 ký tự bị cắt chữ cuối ở 42 px (lỗi nặng CAT_CHU) -> hệ số 0,6 + chia đoạn <= 40 ký tự; sau sửa 0 lỗi nặng ở cả 2 mẫu.
 - Thu nhỏ 50 % ký hiệu góc vuông 3D, cung góc và nhãn góc (14 px, nét 1,5-1,7 px); nhãn góc gắn data-kd-bo (cố ý nhỏ) nên kiem_duyet không báo CHU_NHO.
+
+### Lần 69 (v98) -- Căn giữa đối xứng + vá 3 lỗi thực chiến, nhạc 3 phong cách tự tổng hợp, động cơ Lego 6 khối + 5 động tác, khóa 3 lớp chống lỗi Gemini
+- Căn giữa: `SAFE_ZONE_TIKTOK.trai` 4 % -> 12 %; mọi tầng / phụ đề / Intro / Outro đặt 130..950 (tâm 540, trước đây 0..950 tâm 475 = lệch trái 65 px); T3 và sơ đồ tư duy căn giữa; lưới nghiệm thu đo lệch tâm nội dung -1..0 px (3 mẫu v96).
+- Phân số: `do_tex.ts` (độ sâu \frac -> chiều cao), `coDongVua` co chữ thẻ quá cao, `Toan maxHeight` (vua.ts); ô tư duy đại số cao theo phân số.
+- Lộ đáp án: `khung4tang_v98.che_dap_an_ghim` (gọi ở `khung_4_tang` + nhánh nghiệm máy tính sân khấu 2D + hộp dữ kiện `dung_tu_duy`); mẫu tái hiện `mau/v98/lo_dap_an_tra_sua.json` (AI ghi sẵn `x = 5`; video thật `x = 6,07`, không có JSON gốc trong repo).
+- Đứng hình: `lichTuDuy` (cảnh mở <= 2,6 s, khung suy luận ngay Bước 1), rút thẻ hiện theo nhóm, sóng quét ở mốc nhịp (trước đây nhịp chỉ nhấn nhóm đích chưa tô -> màn "10 tấm thẻ" đứng yên).
+- Nhạc: `nhac_nen_v98.py` chillhop_upbeat 118 / cyber_study 122 / marimba_tech 120 BPM, chọn theo luồng sau khi có khung 4 tầng; dưới giọng -19 dB.
+- Lego: `hinh_khong_gian/lego.py`, `mau_tex.py`, `thoi_gian.lich_lego`; Remotion nhiều khối + viền mặt cong + mũi tên + nhãn tự do + `phang_2d`; mẫu nghiệm thu `mau/v98/thap_flycam_oxyz.json` (2 tháp 200 m / 300 m cách 600 m, đối xứng qua Oxy xuyên sàn, tịnh tiến A theo OH, cô lập A–M–B', trượt tối ưu có số đọc, AM + MB ≈ 781,02 m).
+- `.gs`: PromptKichBan.gs (schemaLego_, huongDanLego_, dungLego_, nhacLoiLego_, phang_2d), BoPhan1.gs (goiGemini_ opts.schema + gọi lại không schema khi 400, lapLego_, vaLego_), KiemTraHinh.gs (Auto-fix bí danh, kiểm đặc tả v2, bỏ KHUNG4TANG_3D_RONG khi có Lego), SanKhau.gs (lego_3d). Không có tệp .gs mới.
+- Sửa kèm: tiêu đề Intro dài tự xuống dòng chồng chữ khi khung hẹp (span kế thừa text-wrap: balance) -> nowrap + co tới 44 px.
+- Test mới: test_v98.mjs (18), test_v98.py (7), test_nhac_v98.py (33), test_lego_v98.py (37), test_lego_v98.mjs (33), test_v98_gs.cjs (20); cập nhật test_san_khau_2d.mjs (lề đối xứng), test_v95.py (nhạc v98). Toàn bộ test v91–v97 + tsc đạt. Chưa chạy GitHub Actions, chưa render MP4, chưa thử lời gọi Gemini thật có responseSchema.
+- Còn tồn (có từ v96, không do v98): kiem_duyet báo công thức cụt `L_{max} = 4500\ \text{` ở cảnh dap_an / ket_luan của mẫu loi_nhuan_tra_sua.
+

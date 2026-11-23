@@ -1143,7 +1143,16 @@ def hinh_khong_gian_k4(kb, canh_props, fps, tong_toi_da=None):
     if not k4:
         return None
     tong = k4["tongFrame"] / float(fps)
-    lich, loi, tk = lich_khong_gian(hkg, G["dung"], canh_props, fps, [b["t"] for b in k4["buoc"]], tong)
+    if G.get("phien_ban") == 2:   # v98 Lego: + 5 phép biến hình (moc_hanh_dong), vật chuyển động, cô lập
+        from hinh_khong_gian.thoi_gian import lich_lego
+        lich, loi, tk = lich_lego(hkg, G["dung"], canh_props, fps, [b["t"] for b in k4["buoc"]], tong)
+        # khớp màu KaTeX <-> 3D: tên đoạn / điểm trong công thức T3 tô đúng màu đối tượng trên hình
+        from hinh_khong_gian.mau_tex import khop_mau_buoc
+        n_to = khop_mau_buoc(k4["buoc"], G["dung"].get("bangMau") or {})
+        if n_to:
+            print("v98 khớp màu KaTeX ↔ 3D: %d dòng công thức" % n_to)
+    else:
+        lich, loi, tk = lich_khong_gian(hkg, G["dung"], canh_props, fps, [b["t"] for b in k4["buoc"]], tong)
     for x in tk["chi_tiet"]:
         if x.get("d"):
             print("  xoay %-14s mốc lời %6.2fs -> xoay %.2f-%.2fs (%s, cảnh %s) \"%s\"" % (
@@ -1871,6 +1880,11 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
         if tot:
             gia_tri_bien[dc["bien"]] = (v95_k4.so_viet(tot[0]).replace("{,}", ","), "")
             gia_tri_bien[str(dc.get("ten_ham") or "V")[:1]] = (v95_k4.so_viet(tot[1]).replace("{,}", ","), "")
+    # v98: ô ghim lộ nghiệm ('x = 6,07' AI ghi sẵn) -> 'x = ?' rồi mới đổi sang đáp số đúng mốc chốt (không bao giờ lộ sớm)
+    import khung4tang_v98 as v98_k4
+    de_ghim, n_che = v98_k4.che_dap_an_ghim(de_ghim, dap_an, gia_tri_bien)
+    if n_che:
+        print("v98: che %d ô ghim ĐỀ lộ đáp số trước bước chốt" % n_che)
     de_ghim = v95_k4.de_ghim_doi(de_ghim, dap_an, t_dap_so, moc_bien, gia_tri_bien)
     t_chot = t_dap_so
     moc_cau = v93.moc_cau(kb, buoc, so_lo)
@@ -1906,6 +1920,9 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
         pt = next((p for p in san_khau["pha"] if p["ten"] == "toi_uu"), None)
         if san_khau["loai"] in ("kinh_te_do_thi", "so_do_2d") and san_khau.get("x_tot") is not None and pt:
             bien = str(san_khau.get("bien") or "x")
+            out["deGhim"], n_che = v98_k4.che_dap_an_ghim(out["deGhim"], "", {bien: (v95_k4.so_viet(san_khau["x_tot"]).replace("{,}", ","), "")})
+            if n_che:
+                print("v98: che %d ô ghim ĐỀ trùng nghiệm máy tính %s = %s" % (n_che, bien, san_khau["x_tot"]))
             out["deGhim"] = v95_k4.de_ghim_doi(out["deGhim"], "", round(pt["t"] + 1.1, 3), {bien: round(pt["t"] + 1.1, 3)},
                                                 {bien: (v95_k4.so_viet(san_khau["x_tot"]).replace("{,}", ","), "")})
     # v96: cảnh báo (Apps Script đã chặn bằng lỗi cứng KB_DOC_LAP_DE / KB_CUT_CONG_THUC; ở đây chỉ ghi nhật ký)
@@ -2080,11 +2097,12 @@ def _muc_db(tep):
 
 def muc_tron_nhac(public, nhac, canh_props, duoi_db=None):
     """v95: mức trộn nhạc nền theo ĐỘ TO THẬT của giọng và nhạc (không đoán): lúc có giọng nhạc nằm dưới giọng `duoi_db`
-    (mặc định -16 dB, env NHAC_DUOI_GIONG_DB, kẹp -17..-15 theo yêu cầu, cho phép chỉnh ngoài khoảng), quãng nghỉ +5 dB,
+    (v98: mặc định -19 dB; v95 cũ -16 dB, env NHAC_DUOI_GIONG_DB, kẹp -17..-15 theo yêu cầu, cho phép chỉnh ngoài khoảng), quãng nghỉ +5 dB,
     3 s đầu (intro) và 2 s cuối (outro) +4 dB. Trả gain tuyến tính cho Remotion <Audio volume>."""
     if not nhac:
         return None
-    duoi_db = float(duoi_db if duoi_db is not None else (os.environ.get("NHAC_DUOI_GIONG_DB") or -16))
+    # v98: dưới giọng mặc định -19 dB (yêu cầu -18..-20 dB: giọng Gemini trong rõ), quãng nghỉ / đầu-cuối vẫn nâng nhẹ
+    duoi_db = float(duoi_db if duoi_db is not None else (os.environ.get("NHAC_DUOI_GIONG_DB") or -19))
     m_nhac = _muc_db(os.path.join(public, nhac))
     ds = [os.path.join(public, c["audio"]) for c in canh_props if c.get("audio")][:4]
     m_giong = [x for x in (_muc_db(t) for t in ds) if x is not None and x > -60]
@@ -3204,7 +3222,10 @@ def main():
     cham("Mốc phụ đề / công thức / góc máy")
     nhac = chon_nhac(args.public, id_an_toan)
     # v95: luồng khung 4 tầng (thực tế / tối ưu / Oxyz / xác suất) mặc định nhạc lo-fi 112 BPM ấm, có nhịp (NHAC_LOFI=0 để tắt)
-    la_kg = luong_hh and isinstance(kb.get("hinh_khong_gian"), dict) and str(os.environ.get("HINH_KHONG_GIAN_CHUAN") or "").upper() != "TAT"
+    hkg_v = kb.get("hinh_khong_gian") if isinstance(kb.get("hinh_khong_gian"), dict) else None
+    # v98: động cơ Lego (phien_ban 2: Oxyz lớp 12 / Toán thực tế 3D) chạy ở MỌI luồng; v97 tổng hợp chỉ ở luồng hình học thuần
+    la_lego = bool(hkg_v) and (str(hkg_v.get("phien_ban") or "") == "2" or isinstance(hkg_v.get("doi_tuong"), list))
+    la_kg = (luong_hh or la_lego) and bool(hkg_v) and str(os.environ.get("HINH_KHONG_GIAN_CHUAN") or "").upper() != "TAT"
     la_k4_kb = (isinstance(kb.get("khung4tang"), dict) and str(kb.get("luong") or "") != "hinh_hoc_thuan") or la_kg
     tep_lofi = os.path.join(args.public, "nhac", "lofi.wav")
     if nhac == "nhac/nen.wav" and la_k4_kb and not os.path.exists(tep_lofi) and os.environ.get("NHAC_LOFI", "1") != "0":
@@ -3336,6 +3357,19 @@ def main():
             props["tongFrame"] += outro["batDau"] + outro["soFrame"] - ket_cu
             print("Outro tóm tắt: bật %.1fs, dài %.1fs (%s)" % (outro["batDau"] / FPS, outro["soFrame"] / FPS,
                                                                 "cùng lời tóm tắt/CTA" if k_outro is not None else "sau giọng"))
+    # v98: 3 phong cách nhạc tự tổng hợp theo luồng (chillhop_upbeat | cyber_study | marimba_tech) thay lo-fi chung;
+    # nhạc riêng Drive (NHAC_RIENG=BAT) hoặc NHAC_PRESET=TAT giữ đường cũ
+    if k4 and nhac in ("nhac/lofi.wav", "nhac/nen.wav") and str(os.environ.get("NHAC_PRESET") or "").upper() not in ("TAT", "0"):
+        import nhac_nen_v98
+        preset = nhac_nen_v98.chon_preset(k4, kb)
+        try:
+            nhac = nhac_nen_v98.dam_bao(args.public, preset) if not args.gia_lap else "nhac/v98_%s.wav" % preset
+            props["nhac"] = nhac
+            props["nhacPreset"] = preset
+            props["amLuongNhac"] = float(os.environ.get("AM_LUONG_NHAC") or 0.18)
+            print("Nhạc nền v98: %s (%d BPM, tự tổng hợp, 0 %% bản quyền)" % (preset, nhac_nen_v98.PRESET[preset]["bpm"]))
+        except Exception as e:   # noqa: BLE001
+            print("Không sinh được nhạc v98 (%s) -> giữ %s" % (str(e)[:120], nhac))
     if k4 and not args.gia_lap:
         props["nhacTron"] = muc_tron_nhac(args.public, nhac, canh_props)   # v95: mức nhạc đo theo độ to thật của giọng
     if luong_hh:

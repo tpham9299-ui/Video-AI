@@ -9,8 +9,8 @@ import {ChuTron} from '../khung4tang/ChuTron';
 
 export const KinhTeDoThi: React.FC<{sk: KinhTeVao; t: number; W: number; H: number; mauNhan: string}> = ({sk, t, W, H, mauNhan}) => {
   const [a, b] = sk.mien;
-  const trai = {x: LE.trai, y: LE.tren + 10, w: 290};
-  const r = React.useMemo(() => ({x: LE.trai + 290 + 80, y: LE.tren + 46, w: W - LE.phai - (LE.trai + 290 + 80) - 14, h: H - LE.tren - LE.duoi - CAO_DONG_KQ - 110}), [W, H]);
+  const trai = {x: LE.trai, y: LE.tren + 10, w: 250};
+  const r = React.useMemo(() => ({x: LE.trai + 250 + 64, y: LE.tren + 46, w: W - LE.phai - (LE.trai + 250 + 64) - 14, h: H - LE.tren - LE.duoi - CAO_DONG_KQ - 110}), [W, H]);
   const f = React.useMemo(() => hamMotBien(sk.ham, sk.bien), [sk.ham, sk.bien]);
   const phu = React.useMemo(() => sk.phu.map((p) => ({...p, f: hamMotBien(p.ham, sk.bien)})), [sk.phu, sk.bien]);
   const th = React.useMemo(() => (f ? thangDoThi(f, a, b, r, [sk.y_tot]) : null), [f, a, b, r, sk.y_tot]);

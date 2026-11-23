@@ -1,6 +1,6 @@
 // v97 — TRẠNG THÁI CẢNH tại thời điểm t (hàm thuần của props + t): vị trí điểm (kể cả điểm trượt ở hook), hiện dần,
 // nhấn mạnh, bung mặt phẳng cắt (tam giác MNP -> thiết diện -> mặt phẳng cắt xuyên khối), cạnh giao tuyến của thiết diện.
-import {DoanVe, DungKG, KhongGianVao, V3, VaiDoan} from './kieu';
+import {ChuyenDong, DoanVe, DungKG, KhongGianVao, V3, VaiDoan} from './kieu';
 import {cham, chuan, cheo, cong, emRa, kep01, nhan, noi, tru, trungBinh} from '../3d-vector/toan3d';
 import {emXoay} from './may';
 
@@ -17,10 +17,11 @@ export const khoaId = (id: string): string => {
 export const THOI_HIEN = 0.6;
 export const THOI_NHAN = 0.4;
 export const MO_NEN = 0.32; // vật ngoài trọng tâm (nhấn mạnh / mặt đang xét) còn ~32 % độ đục (làm mờ ~68 %)
+export const MO_CO_LAP = 0.2; // v98 co_lap: dìm mờ 80 % nền, chỉ sáng 2-3 đối tượng trọng tâm
 
-export type DoanTT = DoanVe & {key: string; alpha: number; ve: number; nm: number; sang: number};
+export type DoanTT = DoanVe & {key: string; alpha: number; ve: number; nm: number; sang: number; mau?: string; mui?: 'cuoi' | 'hai'; dut?: boolean; nhom?: string};
 export type DiemTT = {ten: string; p: V3; alpha: number; nm: number; sang: number};
-export type KinhTT = {id: string; p: V3[]; n: V3; op: number; bung: boolean; mau: string};
+export type KinhTT = {id: string; p: V3[]; n: V3; op: number; bung: boolean; mau: string; san?: boolean};
 export type GocTT = {id: string; dinh: V3; a: V3; b: V3; vuong: boolean; nhan: string; alpha: number; sang: number; tenDinh: string};
 export type TrangThai = {diem: Record<string, V3>; doan: DoanTT[]; diemVe: DiemTT[]; kinh: KinhTT[]; goc: GocTT[]; bung: Record<string, number>};
 
@@ -40,6 +41,50 @@ export function diemTai(kg: KhongGianVao, t: number): Record<string, V3> {
   return ra;
 }
 
+// v98: vị trí trên đường gấp khúc theo tham số độ dài u ∈ [0, 1]
+export function diemTrenDuong(ds: V3[], u: number): V3 {
+  if (ds.length === 1) return ds[0];
+  const L: number[] = [0];
+  for (let i = 1; i < ds.length; i++) L.push(L[i - 1] + Math.hypot(ds[i][0] - ds[i - 1][0], ds[i][1] - ds[i - 1][1], ds[i][2] - ds[i - 1][2]));
+  const s = kep01(u) * L[L.length - 1];
+  let i = 1;
+  while (i < L.length - 1 && L[i] < s) i++;
+  const w = L[i] > L[i - 1] ? (s - L[i - 1]) / (L[i] - L[i - 1]) : 0;
+  return noi(ds[i - 1], ds[i], kep01(w));
+}
+
+// tham số u của chuyển động tại t (khóa hình giữa các mốc, êm vào/ra)
+export function uChuyen(c: ChuyenDong, t: number): number {
+  const m = c.moc;
+  if (!m.length) return 0;
+  if (t <= m[0].t) return m[0].u;
+  for (let i = 1; i < m.length; i++) if (t < m[i].t) return m[i - 1].u + (m[i].u - m[i - 1].u) * emXoay((t - m[i - 1].t) / Math.max(0.05, m[i].t - m[i - 1].t));
+  return m[m.length - 1].u;
+}
+
+const quayQuanh = (p: V3, o: V3, v: V3, g: number): V3 => {
+  const k = chuan(v), r = tru(p, o);
+  const c = Math.cos(g), s = Math.sin(g);
+  return cong(o, cong(cong(nhan(r, c), nhan(cheo(k, r), s)), nhan(k, cham(k, r) * (1 - c))));
+};
+
+// v98: điểm sau chuyển động (truot_toi_uu, vật bay) + phép biến hình (ảnh chạy từ gốc tới đích đúng mốc lời)
+export function diemLego(kg: KhongGianVao, P0: Record<string, V3>, t: number): Record<string, V3> {
+  if (!kg.chuyen?.length && !kg.bienHinh?.length) return P0;
+  const P: Record<string, V3> = {...P0};
+  for (const c of kg.chuyen || []) if (c.duong.length) P[c.diem] = diemTrenDuong(c.duong, uChuyen(c, t));
+  for (const b of kg.bienHinh || []) {
+    for (const [src, dst] of b.cap) {
+      if (!P[src] || !P0[dst]) continue;
+      if (t < b.t) { P[dst] = P[src]; continue; }
+      if (t >= b.t + b.d) continue;
+      const u = emXoay((t - b.t) / Math.max(0.1, b.d));
+      P[dst] = b.loai === 'quay' && b.truc ? quayQuanh(P[src], b.truc.o, b.truc.v, b.truc.goc * u) : noi(P[src], P0[dst], u);
+    }
+  }
+  return P;
+}
+
 export function tienDoBung(kg: KhongGianVao, id: string, t: number): number {
   const h = (kg.hanhDong || []).find((x) => x.loai === 'bung_mat' && x.id === id);
   if (!h) return 1;
@@ -47,32 +92,35 @@ export function tienDoBung(kg: KhongGianVao, id: string, t: number): number {
 }
 
 // tập nhấn mạnh hiện tại + mức chuyển (mềm 0,4 s)
-function nhanManhTai(kg: KhongGianVao, t: number): {nay: Set<string>; truoc: Set<string>; a: number} {
+function nhanManhTai(kg: KhongGianVao, t: number): {nay: Set<string>; truoc: Set<string>; a: number; moNay: number; moTruoc: number} {
   const ds = [...(kg.nhanManh || [])].sort((x, y) => x.t - y.t);
   let i = -1;
   ds.forEach((x, j) => x.t <= t && (i = j));
   const lay = (j: number) => new Set((j >= 0 ? ds[j].ids : []).map(khoaId));
-  return {nay: lay(i), truoc: lay(i - 1), a: i >= 0 ? emRa((t - ds[i].t) / THOI_NHAN) : 1};
+  const mo = (j: number) => (j >= 0 && ds[j].coLap ? MO_CO_LAP : 0.45);
+  return {nay: lay(i), truoc: lay(i - 1), a: i >= 0 ? emRa((t - ds[i].t) / THOI_NHAN) : 1, moNay: mo(i), moTruoc: mo(i - 1)};
 }
 
 export function trangThai(kg: KhongGianVao, t: number): TrangThai {
   const d: DungKG = kg.dung;
-  const P = diemTai(kg, t);
+  const P = diemLego(kg, diemTai(kg, t), t);
   const hien = kg.hien || {};
   const hienKhoa: Record<string, number> = {};
   for (const [id, th] of Object.entries(hien)) hienKhoa[khoaId(id)] = th;
-  const alpha = (key: string, tre = 0) => {
-    const th = hienKhoa[key];
+  // v98: tra mốc hiện theo khóa đoạn -> id -> nhóm khối (mảnh của trụ / đường dóng / vạch trục hiện cùng khối)
+  const thHien = (key: string, id?: string, nhom?: string) => hienKhoa[key] ?? (id !== undefined ? hien[id] : undefined) ?? (nhom ? hien[nhom] : undefined);
+  const alpha = (key: string, tre = 0, id?: string, nhom?: string) => {
+    const th = thHien(key, id, nhom);
     return th === undefined ? 1 : emRa((t - th - tre) / THOI_HIEN);
   };
-  const ve = (key: string) => {
-    const th = hienKhoa[key];
-    return th === undefined ? 1 : emXoay((t - th) / THOI_HIEN);
+  const ve = (key: string, id?: string, nhom?: string, tre = 0) => {
+    const th = thHien(key, id, nhom);
+    return th === undefined ? 1 : emXoay((t - th - tre) / THOI_HIEN);
   };
   const nm = nhanManhTai(kg, t);
   const muc = (key: string) => {
-    const f = (s: Set<string>) => (!s.size ? {op: 1, sang: 0} : s.has(key) ? {op: 1, sang: 1} : {op: 0.45, sang: 0});
-    const A = f(nm.truoc), B = f(nm.nay);
+    const f = (s: Set<string>, mo: number) => (!s.size ? {op: 1, sang: 0} : s.has(key) ? {op: 1, sang: 1} : {op: mo, sang: 0});
+    const A = f(nm.truoc, nm.moTruoc), B = f(nm.nay, nm.moNay);
     return {op: A.op + (B.op - A.op) * nm.a, sang: A.sang + (B.sang - A.sang) * nm.a};
   };
   const doan: DoanTT[] = [];
@@ -80,7 +128,13 @@ export function trangThai(kg: KhongGianVao, t: number): TrangThai {
     const key = khoaDoan(x.a, x.b);
     if (!P[x.a] || !P[x.b]) continue;
     const m = muc(key);
-    doan.push({id: x.id, a: P[x.a], b: P[x.b], vai: x.vai, tenA: x.a, tenB: x.b, key, alpha: alpha(key), ve: ve(key), nm: m.op, sang: m.sang});
+    // đường cong lấy mẫu: vẽ dần nối tiếp từng đoạn (0,025 s / đoạn) khi khối hiện
+    const j = x.vai === 'cong' ? Number(x.id.split('#')[1] || 0) : 0;
+    const tre = x.vai === 'cong' ? j * 0.025 : 0;
+    const nhom = x.nhom || (x.vai === 'cong' ? x.id.split('#')[0] : undefined);
+    const mn = nhom && kg.nhanManh?.length && !m.sang ? muc(nhom) : m;
+    doan.push({id: x.id, a: P[x.a], b: P[x.b], vai: x.vai, tenA: x.a, tenB: x.b, key, alpha: alpha(key, tre, x.id, nhom), ve: ve(key, x.id, nhom, tre),
+      nm: Math.max(m.op, mn.op), sang: Math.max(m.sang, mn.sang), mau: x.mau, mui: x.mui, dut: x.dut, nhom});
   }
   const kinh: KinhTT[] = [];
   const bung: Record<string, number> = {};
@@ -96,6 +150,10 @@ export function trangThai(kg: KhongGianVao, t: number): TrangThai {
     // pha 1: tam giác 3 điểm xác định mặt (MNP) -> pha 2: thiết diện bung từ tâm -> pha 3: mặt phẳng cắt xuyên khối
     const a1 = 1 - kep01(b / 0.4), a2 = kep01((b - 0.05) / 0.45), a3 = kep01((b - 0.5) / 0.5);
     if (a1 > 0.01 && tam.length >= 3) kinh.push({id: k.id + '#tg', p: tam, n, op: 0.42 * a * a1 * m.op, bung: false, mau: k.mau || 'vang'});
+    if (k.san) { // v98: mặt sàn Oxy bán trong suốt (nhìn xuyên xuống miền z < 0), không bung
+      kinh.push({id: k.id, p: k.da_giac, n: [0, 0, 1], op: 0.12 * a * m.op, bung: false, mau: k.mau || 'cyan', san: true});
+      continue;
+    }
     if (a2 > 0.01) {
       const s = 0.45 + 0.55 * emRa(a2);
       kinh.push({id: k.id, p: k.da_giac.map((p) => cong(g, nhan(tru(p, g), s))), n, op: 0.44 * a * a2 * m.op, bung: false, mau: k.mau || 'vang'});
