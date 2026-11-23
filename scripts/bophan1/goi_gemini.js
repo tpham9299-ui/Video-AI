@@ -11,17 +11,21 @@ const {model, bodies, batDauKey = 0, gioiHanGiay = 300} = cauHinh;
 //    hệ thống tự động chuyển ngay sang model tiếp theo trong chuỗi mà không cố định 1 model.
 //  - Model chính chưa trả lời sau "hedgeGiay" giây -> gọi song song model dự phòng bằng key khác, lấy kết quả nào về trước.
 const duPhong = (cauHinh.duPhong || []).filter((m) => m && m !== model);
-const chuoiModel = cauHinh.tungModel ? [model] : [...new Set([model, ...(cauHinh.models || []), ...duPhong, 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-flash-lite-latest'].filter(Boolean))];
+// v98.2: KHÔNG còn danh sách model cố định - chuỗi = model chỉ định (nếu còn sống) + xếp hạng tự động từ ListModels (model_gemini.cjs).
+//  cheDo: 'nang' (giải toán, kịch bản, Lego - mặc định) | 'nhe' (kiểm duyệt, sửa nhanh). Chuỗi được lập trong chayLo().
+const cheDo = cauHinh.cheDo === 'nhe' ? 'nhe' : 'nang';
+let chuoiModel = cauHinh.tungModel ? [model] : [];
 const hedgeGiay = Number(cauHinh.hedgeGiay) || 0;
 const TEP_KEY_HONG = path.join(os.tmpdir(), 'gemini_key_hong.txt');
 const TEP_KEY_HONG_JSON = path.join(os.tmpdir(), 'gemini_key_hong.json');
 const TEP_HET_NGAY = path.join(os.tmpdir(), 'gemini_key_het_ngay.txt');
-const TEP_MODEL_404 = path.join(os.tmpdir(), 'gemini_model_khong_co.txt');
 const TEP_MODEL_TOT = path.join(os.tmpdir(), 'gemini_model_tot_nhat.txt');
 const maKey = (k) => k.slice(0, 6) + '_' + k.slice(-4);   // nhận diện key: 6 ký tự đầu + 4 cuối (nhiều key chung phần đầu)
 const docDong = (t) => (fs.existsSync(t) ? fs.readFileSync(t, 'utf8') : '').split('\n').filter(Boolean);
 const hong = new Set(docDong(TEP_KEY_HONG));   // key hỏng thật (đã xác nhận)
-const model404 = new Set(docDong(TEP_MODEL_404)); // model không tồn tại (HTTP 404) -> bỏ qua ngay
+const catalog = require('./model_gemini.cjs');
+const bo404 = catalog.doc404();       // v98.2: cặp "model|băm key" đã trả 404 trong NGÀY (giống HET_HAN_MUC_NGAY)
+const model404 = new Set();            // model đã 404 trong tiến trình này -> bỏ qua ngay
 const TEP_TU_CHOI = path.join(os.tmpdir(), 'gemini_key_tu_choi.txt');   // "model|key" bị từ chối
 const tuChoi = new Set(docDong(TEP_TU_CHOI));
 const hetNgay = new Set(docDong(TEP_HET_NGAY));   // dạng "model|key"
@@ -41,11 +45,20 @@ function phanLoai(code, raw) {
   if (code === 403) return 'tu_choi';
   return 'khac';
 }
-function ghiModel404(md) {
-  if (!md || model404.has(md)) return;
+// model coi như chết: đã 404 trong tiến trình này, hoặc >= 2 key đã 404 trong ngày
+const chet = (md) => model404.has(md) || catalog.chet404(md, tatCa.filter((k) => !hong.has(k)), bo404);
+function ghiModel404(md, k) {
+  if (!md) return;
+  if (k) catalog.ghi404(md, k, bo404);
+  if (model404.has(md)) return;
   model404.add(md);
-  try { fs.appendFileSync(TEP_MODEL_404, md + '\n'); } catch (e) { /* bỏ */ }
-  process.stderr.write(`MODEL_KHONG_CO: model ${md} không tồn tại/không hỗ trợ (HTTP 404) -> tự động đổi sang model khác\n`);
+  process.stderr.write(`MODEL_KHONG_CO: model ${md} không tồn tại/không hỗ trợ (HTTP 404) -> nhớ cặp (model, key) tới hết ngày, đổi sang model khác\n`);
+}
+// model gợi ý thay thế còn dùng được (chưa 404, chưa hết hạn mức ngày ở mọi key)
+function goiYDung(md) {
+  if (!md || chet(md)) return false;
+  const con = tatCa.filter((k) => !hong.has(k) && !tuChoi.has(md + '|' + k));
+  return !con.length || !con.every((k) => hetNgay.has(md + '|' + k));
 }
 function ghiModelTot(md) {
   try { fs.writeFileSync(TEP_MODEL_TOT, String(md || '').trim()); } catch (e) { /* bỏ */ }
@@ -54,21 +67,15 @@ function chuanBodyChoModel(md, body) {
   if (!body || !body.generationConfig || !body.generationConfig.thinkingConfig) return body;
   const config = body.generationConfig.thinkingConfig;
   if (/^gemini-2\.5/i.test(md) && config.thinkingBudget != null && !(config.thinkingBudget === 0 && /pro/i.test(md))) return body;
-  if (/^gemini-3/i.test(md) && config.thinkingLevel) return body;
+  if (/^gemini-([3-9]|[1-9]\d)|latest/i.test(md) && config.thinkingLevel) return body;
   const b = JSON.parse(JSON.stringify(body));
   if (b.generationConfig) delete b.generationConfig.thinkingConfig;
   return b;
 }
-const {modelVanBan} = require('./model_gemini.cjs');
 let danhMuc;
-function tuTimModelTrenApi() {
-  if (!danhMuc) danhMuc = (async () => {
-    for (const k of tatCa.filter((k) => !hong.has(k))) {
-      const ds = await modelVanBan(k, GOC_API).catch(() => []);
-      if (ds.length) return ds;
-    }
-    return [];
-  })();
+function tuTimModelTrenApi() {   // danh sách model sống (cache theo key / theo ngày), xếp theo chế độ gọi
+  if (!danhMuc) danhMuc = catalog.layModelSong(tatCa.filter((k) => !hong.has(k)), {goc: GOC_API})
+    .then((ds) => catalog.xepHang(ds, cheDo), () => []);
   return danhMuc;
 }
 function lyDoHong(code, raw) {
@@ -102,7 +109,7 @@ function ghiHetNgay(k, model) {
 }
 
 async function motModel(model, body, i, huy, soVong = 2) {
-  if (model404.has(model)) return {ok: false, code: 404, raw: 'MODEL_KHONG_CO: ' + model, het: false};
+  if (chet(model)) return {ok: false, code: 404, raw: 'MODEL_KHONG_CO: ' + model, het: false};
   let bodyGui = chuanBodyChoModel(model, body);
   let cuoi = {ok: false, code: 0, raw: 'KHONG_CO_KEY', het: false};
   for (let vong = 0; vong < soVong; vong++) {
@@ -130,7 +137,7 @@ async function motModel(model, body, i, huy, soVong = 2) {
         if (res.ok) { ghiModelTot(model); return {ok: true, code: res.status, raw, model}; }
         cuoi = {ok: false, code: res.status, raw, het: false, model};
         const loai = phanLoai(res.status, raw);
-        if (loai === 'model_404') { ghiModel404(model); return cuoi; }
+        if (loai === 'model_404') { ghiModel404(model, k); cuoi.goiY = catalog.goiY404(raw); return cuoi; }
         // Nếu lỗi 400 do thinkingConfig không tương thích với model này -> bỏ thinkingConfig và thử lại ngay
         if (res.status === 400 && /thinking/i.test(raw) && bodyGui.generationConfig && bodyGui.generationConfig.thinkingConfig) {
           bodyGui = JSON.parse(JSON.stringify(bodyGui));
@@ -170,19 +177,19 @@ async function motModel(model, body, i, huy, soVong = 2) {
 // Thử lần lượt các model trong chuỗi linh hoạt: hễ model hiện tại lỗi (404, 400, 429 hết hạn mức, 500, 503, lỗi mạng)
 // thì TỰ ĐỘNG chuyển ngay sang model kế tiếp (kể cả tự dò danh sách model từ Google API nếu cần).
 async function motChuoiModel(dsModel, body, i, huy) {
-  if (cauHinh.tungModel && model404.has(model)) return {ok: false, code: 404, raw: 'MODEL_KHONG_CO', het: false};
-  let ds = dsModel.filter((m) => m && !model404.has(m));
+  let ds = dsModel.filter((m) => m && !chet(m));
   const modelTot = fs.existsSync(TEP_MODEL_TOT) ? fs.readFileSync(TEP_MODEL_TOT, 'utf8').trim() : '';
-  if (!cauHinh.tungModel && modelTot && !model404.has(modelTot) && ds.includes(modelTot) && ds[0] !== modelTot) {
+  if (!cauHinh.tungModel && modelTot && !chet(modelTot) && ds.includes(modelTot) && ds[0] !== modelTot) {
     ds = [modelTot, ...ds.filter((m) => m !== modelTot)];
   }
-  if (!ds.length && !cauHinh.tungModel) ds = (await tuTimModelTrenApi()).filter((m) => !model404.has(m)).slice(0, 6);
+  if (!ds.length && !cauHinh.tungModel) ds = (await tuTimModelTrenApi()).filter((m) => !chet(m)).slice(0, 6);
+  if (!ds.length) return {ok: false, code: 404, raw: 'MODEL_KHONG_CO', het: false};
   let cuoi = {ok: false, code: 0, raw: 'KHONG_CO_MODEL', het: false};
   let canDoModel = false;
   for (let mIdx = 0; mIdx < ds.length; mIdx++) {
     if (huy && huy.xong) return {ok: false, code: 0, raw: 'DA_CO_KET_QUA', het: false};
     const md = ds[mIdx];
-    if (model404.has(md)) continue;
+    if (chet(md)) continue;
     const kq = await motModel(md, body, i + mIdx * 2, huy, mIdx === 0 ? 2 : 1);
     if (kq && kq.ok) {
       if (mIdx > 0) process.stderr.write(`DOI_MODEL_TU_DONG: đã tự động đổi sang model ${md} và gọi thành công\n`);
@@ -190,6 +197,12 @@ async function motChuoiModel(dsModel, body, i, huy) {
     }
     cuoi = kq || cuoi;
     if (cuoi.raw === 'MOI_KEY_DEU_HONG') return cuoi;
+    // 404 kèm "Please update your code to use models/<ten>": chèn <ten> ngay sau model vừa lỗi (kể cả khi tungModel)
+    const gy = cuoi.goiY;
+    if (gy && gy !== md && !ds.slice(0, mIdx + 1).includes(gy) && goiYDung(gy)) {
+      ds = [...ds.slice(0, mIdx + 1), gy, ...ds.slice(mIdx + 1).filter((m) => m !== gy)];
+      process.stderr.write(`GOI_Y_MODEL: Google gợi ý ${gy} thay cho ${md} -> thử ngay\n`);
+    }
     if ([403, 404].includes(cuoi.code)) canDoModel = true;
     if (mIdx + 1 < ds.length) {
       process.stderr.write(`DOI_MODEL_TU_DONG: ${md} lỗi (HTTP ${cuoi.code || 0}) -> thử model kế tiếp ${ds[mIdx + 1]}\n`);
@@ -198,7 +211,7 @@ async function motChuoiModel(dsModel, body, i, huy) {
   // Nếu mọi model cấu hình đều 404 -> tự hỏi API Google lấy danh sách model thật sự khả dụng và thử ngay
   if (canDoModel && !cauHinh.tungModel) {
     const dsMoi = await tuTimModelTrenApi();
-    for (const md of dsMoi.filter((m) => !ds.includes(m) && !model404.has(m)).slice(0, 6)) {
+    for (const md of dsMoi.filter((m) => !ds.includes(m) && !chet(m)).slice(0, 6)) {
       process.stderr.write(`TU_DO_MODEL: thử model tự phát hiện từ API: ${md}\n`);
       const kq = await motModel(md, body, i + 3, huy, 2);
       if (kq && kq.ok) return kq;
@@ -210,7 +223,7 @@ async function motChuoiModel(dsModel, body, i, huy) {
 
 // một yêu cầu: chạy chuỗi model linh hoạt; quá hedgeGiay giây chưa xong thì chạy song song nhánh dự phòng từ model thứ 2 trở đi.
 function mot(body, i) {
-  const ds = chuoiModel.filter((m) => m && !model404.has(m));
+  const ds = chuoiModel.filter((m) => m && !chet(m));
   if (ds.length <= 1 || hedgeGiay <= 0) return motChuoiModel(chuoiModel, body, i, null);
   const huy = {xong: false, ds: []};
   return new Promise((giai) => {
@@ -240,6 +253,11 @@ function mot(body, i) {
   });
 }
 async function chayLo() {
+  if (!cauHinh.tungModel) {
+    const song = await tuTimModelTrenApi().catch(() => []);
+    chuoiModel = catalog.hopNhat({song, chiDinh: model, cauHinh: [...(cauHinh.models || []), ...duPhong], cheDo});
+    if (!song.length) process.stderr.write(`MODEL_DU_PHONG: không lấy được ListModels -> dùng danh sách dự phòng ${chuoiModel.slice(0, 5).join(', ')}\n`);
+  }
   const kq = new Array(bodies.length);
   let tiep = 0;
   async function xuLy() {

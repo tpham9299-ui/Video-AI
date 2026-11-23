@@ -359,7 +359,7 @@ function tieuDeHapDan_(r) {
     'CẤM: lộ đáp án; giật tít sai sự thật hoặc hứa điều video không có; viết hoa toàn bộ; dấu chấm than liên tiếp.\n' +
     'Trả JSON: {"youtube":"tiêu đề YouTube Shorts ≤ 70 ký tự","youtube_mo_dau":"câu mở đầu mô tả YouTube ≤ 150 ký tự",' +
     '"tiktok":"câu mở đầu chú thích TikTok ≤ 120 ký tự","facebook":"câu mở đầu bài Facebook Reels ≤ 160 ký tự"}';
-  var j = goiGemini_(prompt, 0.9, { suyNghi: 'low' });
+  var j = goiGemini_(prompt, 0.9, { suyNghi: 'low', cheDo: 'nhe' });
   var sach = function (x, n) { return String(x || '').replace(/\s+/g, ' ').replace(/!{2,}/g, '!').trim().slice(0, n); };
   var td = { youtube: sach(j && j.youtube, 90), youtube_mo_dau: sach(j && j.youtube_mo_dau, 200), tiktok: sach(j && j.tiktok, 150), facebook: sach(j && j.facebook, 200) };
   // không được lộ đáp án trong tiêu đề (dùng ranh giới số để tránh xóa nhầm khi đáp án là "12" xuất hiện trong "Lớp 12")

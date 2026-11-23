@@ -75,15 +75,16 @@ const thuMuc = {
 
 /* ---------------- gọi Gemini: tiến trình phụ gọi song song, đồng bộ với mã .gs ---------------- */
 let vongKey = 0;
-function goiTho(model, bodies, tungModel = false) {
+function goiTho(model, bodies, tungModel = false, cheDo = 'nang') {
   if (GIA_LAP) return bodies.map(giaLapGemini);
   const t = path.join(os.tmpdir(), `bp1_${process.pid}_${Date.now()}.json`);
   // Danh sách model linh hoạt: tự động đổi model ngay trong tiến trình gọi khi gặp lỗi (404, 400, 429 hết ngày, 500, 503, mạng)
   const ch = de.cau_hinh || {};
   const dsCauHinh = typeof ctx.danhSachModel_ === 'function' ? ctx.danhSachModel_() : [];
-  const models = [...new Set([model, ...dsCauHinh, ch.MODEL_CHINH, ch.MODEL_DU_PHONG, 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-flash-lite-latest'].map((x) => String(x || '').trim()).filter(Boolean))];
+  // v98.2: không nối model cố định - goi_gemini.js tự ghép danh sách sống (ListModels) + dự phòng sạch
+  const models = [...new Set([model, ...dsCauHinh].map((x) => String(x || '').trim()).filter(Boolean))];
   const hedgeGiay = String(ch.GOI_DU_PHONG_SONG_SONG).toUpperCase() === 'TAT' ? 0 : Number(ch.GIAY_GOI_DU_PHONG) || 0;
-  fs.writeFileSync(t, JSON.stringify({model, models, bodies, keys, batDauKey: vongKey, hedgeGiay, tungModel}), {mode: 0o600});
+  fs.writeFileSync(t, JSON.stringify({model, models, bodies, keys, batDauKey: vongKey, hedgeGiay, tungModel, cheDo}), {mode: 0o600});
   vongKey = (vongKey + bodies.length) % Math.max(1, keys.length);
   try {
     return JSON.parse(execFileSync(process.execPath, [path.join(__dirname, 'goi_gemini.js'), t], {maxBuffer: 64 * 1024 * 1024, timeout: 330000}).toString());
@@ -126,7 +127,7 @@ const ctx = {
   ScriptApp: {getProjectTriggers: () => [], newTrigger: () => new Proxy({}, {get: () => () => ({})}), deleteTrigger() {}},
   // kho key (thay tệp KhoKey.gs của Apps Script)
   khoDanhSachKey_: () => (GIA_LAP ? ['gia_lap'] : keys),
-  khoGoi_: (_nhom, model, body, opts) => goiTho(model, [body], !!opts?.tungModel)[0],
+  khoGoi_: (_nhom, model, body, opts) => goiTho(model, [body], !!opts?.tungModel, opts?.cheDo)[0],
   khoGoiSong_: (_nhom, model, bodies) => goiTho(model, bodies),
   // v94: kiểm chứng hình phẳng chuẩn bằng tọa độ số thật (scripts/giai_hinh_phang.py --chi-kiem) ngay trong vòng duyệt BP2
   // -> lỗi HP_* kèm gợi ý quay lại cho AI sửa ở lượt retry. Không có Python -> null (BP3 vẫn chặn cứng).
@@ -164,6 +165,16 @@ vm.createContext(ctx);
 for (const f of ['BoPhan1.gs', 'PromptKichBan.gs', 'KiemTraHinh.gs', 'NangCao.gs', 'SanPham.gs', 'HinhHoc.gs', 'SanKhau.gs']) {
   const p = path.join(GOC, f);
   if (fs.existsSync(p)) vm.runInContext(fs.readFileSync(p, 'utf8'), ctx, {filename: f});
+}
+// v98.2: lấy danh sách model sống MỘT lần cho cả job (cache tệp theo key/ngày) rồi nạp sẵn cho danhSachModel_() của mã .gs
+// (mã .gs trên GitHub không gọi mạng được). Lỗi -> đánh dấu để .gs dùng danh sách dự phòng sạch.
+if (!GIA_LAP && keys.length) {
+  try {
+    const ds = JSON.parse(execFileSync(process.execPath, [path.join(__dirname, 'model_gemini.cjs'), '--ds'],
+      {env: {...process.env, GEMINI_KEYS: keys.join(',')}, timeout: 40000, stdio: ['ignore', 'pipe', 'inherit']}).toString() || '[]');
+    if (Array.isArray(ds) && ds.length) { cache.DS_MODEL_SONG = JSON.stringify(ds); console.log('MODEL_SONG: ' + ds.slice(0, 8).join(', ')); }
+    else cache.DS_MODEL_SONG_LOI = '1';
+  } catch (e) { cache.DS_MODEL_SONG_LOI = '1'; }
 }
 const COT = vm.runInContext('COT', ctx);
 const hang = de.hang || {};

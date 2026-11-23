@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import {openBrowser, renderStill, selectComposition} from '@remotion/renderer';
+import catalog from './bophan1/model_gemini.cjs';
 
 // --- key Gemini hỏng (dùng chung với Bộ phận 1 / giọng đọc): khai báo TRƯỚC khi chạy kiểm duyệt ---
 var TEP_KEY_HONG_JSON = path.join(os.tmpdir(), 'gemini_key_hong.json');
@@ -174,15 +175,18 @@ async function aiNhinHinh(anh) {
     'CHỈ trả "dung": false khi có lỗi NGHIÊM TRỌNG làm hỏng video hoặc sai toán học (sai đáp án, sai phép tính, vẽ sai hẳn vật của đề, hoặc chữ đè che khuất hoàn toàn). Các chi tiết thẩm mỹ nhỏ, khoảng cách hơi sát nhưng vẫn đọc rõ, hoặc cảnh mở đầu/chốt bài chỉ có chữ thì ĐẶT "dung": true. Trả JSON: {"dung": true|false, "van_de": ["ẢNH n (cảnh ...): lỗi gì, phải sửa thế nào"]}';
   const parts = [{text: prompt}, ...anh.map((a) => ({inline_data: {mime_type: 'image/jpeg', data: fs.readFileSync(a.tep).toString('base64')}}))];
   // cùng bộ model linh hoạt với Bộ phận 1: tự động đổi model nếu một model lỗi / 404 / hết hạn mức
-  const models = [...new Set([process.env.MODEL_AI_NHIN, 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-flash-lite-latest'].filter(Boolean))];
+  // v98.2: danh sách model sống (ListModels, cache theo ngày) xếp hạng chế độ 'nhe'; lỗi -> dự phòng sạch
+  const models = catalog.hopNhat({song: await catalog.layModelSong(keys).catch(() => []), chiDinh: process.env.MODEL_AI_NHIN || '', cheDo: 'nhe'});
+  const bo404 = catalog.doc404();
   const hetNgay = new Set();
   const model404 = new Set();
   const loiModel = {};
   let lyDo = 'mọi lần gọi Gemini đều lỗi';
   for (let vong = 0; vong < 3; vong++) {
     let choMs = 0;
-    for (const model of models) {
-      if (model404.has(model)) continue;
+    for (let mi = 0; mi < models.length; mi++) {
+      const model = models[mi];
+      if (model404.has(model) || catalog.chet404(model, keys, bo404)) continue;
       for (const k of keys) {
         if (hetNgay.has(model + '|' + k)) continue;
         const conLai = hanKiemDuyet - Date.now();
@@ -197,7 +201,16 @@ async function aiNhinHinh(anh) {
           const raw = await res.text().catch(() => '');
           loiModel[model] = `HTTP ${res.status}${res.status === 429 ? (/PerDay|per day|daily/i.test(raw) ? ' hết hạn mức ngày' : ' giới hạn phút') : ''}`;
           lyDo = Object.entries(loiModel).map(([m, l]) => `${m} ${l}`).join('; ');
-          if (res.status === 404) { model404.add(model); break; } // model không tồn tại -> đổi sang model kế ngay, không thử key khác
+          if (res.status === 404) {   // model không tồn tại -> nhớ cặp (model, key) trong ngày, đổi model kế ngay; Google gợi ý model mới -> chèn kế tiếp
+            model404.add(model); catalog.ghi404(model, k, bo404);
+            const gy = catalog.goiY404(raw);
+            if (gy && !models.slice(0, mi + 1).includes(gy) && !catalog.chet404(gy, keys, bo404)) {
+              const cu = models.indexOf(gy);
+              if (cu > mi) models.splice(cu, 1);
+              models.splice(mi + 1, 0, gy);
+            }
+            break;
+          }
           if (res.status === 429 && /PerDay|per day|daily/i.test(raw)) { hetNgay.add(model + '|' + k); continue; }   // hết hạn mức ngày: key kế
           if (res.status === 429) { const m = /"retryDelay":\s*"(\d+)/.exec(raw); const c = Math.min(60, (m ? Number(m[1]) : 15) + 1) * 1000; choMs = choMs ? Math.min(choMs, c) : c; continue; }
           if (res.status >= 500) break; // máy chủ model này đang lỗi -> thử ngay model kế tiếp

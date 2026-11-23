@@ -36,7 +36,8 @@ def hoi_json(prompt, anh=None):
         import base64
         mime = "image/jpeg" if str(anh).lower().endswith((".jpg", ".jpeg")) else "image/png"
         parts.append({"inline_data": {"mime_type": mime, "data": base64.b64encode(Path(anh).read_bytes()).decode()}})
-    request = {"keys": keys, "model": "gemini-2.5-flash", "gioiHanGiay": 60,
+    # v98.2: model = "" -> goi_gemini.js tự chọn model sống (ListModels, chế độ 'nang')
+    request = {"keys": keys, "model": os.getenv("MO_HINH_MODEL", ""), "cheDo": "nang", "gioiHanGiay": 60,
                "bodies": [{"contents": [{"parts": parts}],
                            "generationConfig": {"temperature": 0.1, "responseMimeType":"application/json"}}]}
     # delete=False: Windows không cho tiến trình khác mở tệp tạm đang mở.

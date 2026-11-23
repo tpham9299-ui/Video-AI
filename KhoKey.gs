@@ -20,6 +20,29 @@ function khoParse_(raw) {
 // Tên khóa lưu trạng thái "hết hạn mức ngày" của (key, model)
 function khoTenKhoa_(id, tq) { return tq === KHO_MODEL_CU_ ? 'kd_' + id : 'kdm_' + id + '_' + tq; }
 
+// v98.2: cặp (model, key) trả HTTP 404 trong NGÀY (giờ Thái Bình Dương, cùng mốc reset với HET_HAN_MUC_NGAY).
+// Một Script Property duy nhất MODEL_404_NGAY = {ngay, cap: {'model|id': 1}} - sang ngày mới tự bỏ.
+function khoModelGoc_(tq) { return String(tq || '').replace(/\+.*$/, ''); }
+function kho404Ngay_(all) {
+  try {
+    var raw = all ? all.MODEL_404_NGAY : khoProps_().getProperty('MODEL_404_NGAY');
+    var o = JSON.parse(raw || '{}');
+    if (o && o.ngay === khoNgayPT_()) return o.cap || {};
+  } catch (e) { /* hỏng -> coi như trống */ }
+  return {};
+}
+function khoGhi404_(key, model) {
+  try {
+    var cap = kho404Ngay_(), k = khoModelGoc_(model) + '|' + khoId_(key);
+    if (cap[k]) return;
+    cap[k] = 1;
+    khoProps_().setProperty('MODEL_404_NGAY', JSON.stringify({ ngay: khoNgayPT_(), cap: cap }));
+  } catch (e) { /* bỏ qua */ }
+}
+function khoLa404_(code, raw) {
+  return code === 404 || (code === 400 && /not found|not supported for generateContent|model .* does not exist|invalid model/i.test(String(raw || '')));
+}
+
 function khoUrl_() {
   var p = khoProps_();
   var url = (p.getProperty('KHO_URL') || p.getProperty('NH_URL') || '').trim();
@@ -54,15 +77,16 @@ function khoXep_(he, tq) {
   var quyenCache = thuTu.map(function (k) { return 'kdb_' + khoId_(k) + '_' + tq; });
   var nghiMap = {};
   try { nghiMap = CacheService.getScriptCache().getAll(tenCache.concat(quyenCache)); } catch (e) { nghiMap = {}; }
-  var dung = [], nghi = [], coHetNgay = false;
+  var dung = [], nghi = [], coHetNgay = false, co404 = false, cap404 = kho404Ngay_(all), md404 = khoModelGoc_(tq);
   thuTu.forEach(function (k, i) {
     var id = khoId_(k);
     if (all['kd_' + id] === 'BAD') return;
+    if (cap404[md404 + '|' + id]) { co404 = true; return; }   // v98.2: cặp này đã 404 hôm nay
     if (all[khoTenKhoa_(id, tq)] === homNay) { coHetNgay = true; return; }
     if (nghiMap[quyenCache[i]]) return;
     (nghiMap[tenCache[i]] ? nghi : dung).push(k);
   });
-  return { dung: dung, nghi: nghi, coHetNgay: coHetNgay };
+  return { dung: dung, nghi: nghi, coHetNgay: coHetNgay, co404: co404 };
 }
 
 function khoNghiNgan_(id, tq) {
@@ -125,6 +149,7 @@ function khoGoi_(he, model, body, tuyChon) {
   for (var vong = 0; vong < 60; vong++) {
     var tt = khoXep_(he, tq);
     if (!tt.dung.length) {
+      if (!tt.nghi.length && !tt.coHetNgay && tt.co404) return { ok: false, code: 404, het: false, raw: 'MODEL_KHONG_CO_HOM_NAY: ' + model };
       if (!tt.nghi.length && !tt.coHetNgay) return { ok: false, code: 403, het: false, raw: 'KHONG_CO_KEY_CO_QUYEN' };
       if (!tt.nghi.length) return { ok: false, code: 429, het: true, raw: 'HET_HAN_MUC_NGAY' };
       if (Date.now() - bat + 8000 > hanCho) return { ok: false, code: 429, het: false, raw: 'GIOI_HAN_TOC_DO' };
@@ -142,6 +167,7 @@ function khoGoi_(he, model, body, tuyChon) {
     }
     var code = res.getResponseCode(), raw = res.getContentText();
     if (code === 200) return { ok: true, code: 200, het: false, raw: raw, key: key };
+    if (khoLa404_(code, raw)) { khoGhi404_(key, model); return { ok: false, code: code, het: false, raw: raw, key: key }; }   // v98.2: nhớ trong ngày, để nơi gọi đổi model
     if (khoGhiNhanLoi_(key, tq, code, raw)) continue;
     if (code >= 500) {
       if (++loi5xx > 4) return { ok: false, code: code, het: false, raw: raw };
@@ -169,6 +195,7 @@ function khoGoiSong_(he, model, bodies) {
   return kq.map(function (r, i) {
     var code = r.getResponseCode(), raw = r.getContentText(), key = keys[i % keys.length];
     if (code === 200) return { ok: true, code: 200, het: false, raw: raw, key: key };
+    if (khoLa404_(code, raw)) { khoGhi404_(key, model); return { ok: false, code: code, het: false, raw: raw, key: key }; }
     if (code === 400 || code === 404) {
       if (!khoGhiNhanLoi_(key, model, code, raw)) return { ok: false, code: code, het: false, raw: raw };
     } else khoGhiNhanLoi_(key, model, code, raw);

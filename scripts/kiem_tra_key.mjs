@@ -8,7 +8,8 @@
 import fs from 'node:fs';
 import catalog from './bophan1/model_gemini.cjs';
 
-const MODELS = (process.env.MODELS || 'gemini-2.5-flash,gemini-flash-latest,gemini-2.5-pro,gemini-2.0-flash,gemini-flash-lite-latest').split(',').map((x) => x.trim()).filter(Boolean);
+// v98.2: mặc định = danh sách dự phòng sạch; khi ListModels trả lời thì dùng danh sách sống xếp hạng 'nhe' của từng key
+const MODELS = (process.env.MODELS || catalog.DU_PHONG.join(',')).split(',').map((x) => x.trim()).filter(Boolean);
 const tach = (s) => String(s || '').split(/[\s,;]+/).filter(Boolean);
 const dsKey = tach(process.env.GEMINI_KEYS).map((k, i) => ({k, ten: `GEMINI_KEYS #${i + 1}`}));
 for (const k of tach(process.env.GEMINI_API_KEY)) if (!dsKey.some((x) => x.k === k)) dsKey.push({k, ten: 'GEMINI_API_KEY'});
@@ -43,9 +44,9 @@ if (!dsKey.length) { console.log('Không có key nào trong GEMINI_KEYS / GEMINI
 const ketQua = [];
 for (const {k, ten} of dsKey) {
   const theoModel = {}, lyDo = {};
-  const danhMuc = process.env.MODELS ? [] : await catalog.modelVanBan(k).catch(() => []);
+  const danhMuc = process.env.MODELS ? [] : catalog.xepHang(await catalog.modelVanBan(k).catch(() => []), 'nhe');
   const models = danhMuc.length
-    ? [...new Set([...MODELS.filter((m) => danhMuc.includes(m)), ...danhMuc])].slice(0, 5)
+    ? danhMuc.slice(0, 5)
     : MODELS;
   for (const m of models) {
     const r = await thu(k, m);

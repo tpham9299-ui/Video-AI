@@ -281,7 +281,7 @@ function aiChamVideo_(r) {
     'TIÊU CHÍ CỦA CHỦ KÊNH (chấm mỗi tiêu chí 0-10; 9-10 khi chính xác và hiển thị rõ; 8 khi tốt chỉ còn góp ý nhỏ; <= 6 khi có lỗi sai toán, sai đáp án, chữ đè che khuất hoặc sai vật của đề):\n' + moTaTieuChi_(ds) + '\n' +
     'Đối chiếu phương pháp từng bước với kiến thức được phép của lớp và các điều kiện áp dụng. Nếu vượt lớp, nêu cảnh, công thức và phương pháp thay thế. Tự kiểm lại từng phép tính nhìn thấy. "van_de": mỗi vấn đề một câu, nói rõ khung/cảnh nào. "gop_y": chỉ dẫn sửa cụ thể theo từng cảnh của kịch bản.\n' +
     'Trả JSON: {"diem":{' + ds.map(function (t) { return '"' + t.id + '":0'; }).join(',') + '},"van_de":[],"gop_y":""}';
-  var j = goiGemini_(prompt, 0.1, { suyNghi: 'low', anhs: anhs });
+  var j = goiGemini_(prompt, 0.1, { suyNghi: 'low', anhs: anhs, cheDo: 'nhe' });
   if (!j || !j.diem || typeof j.diem !== 'object') throw new Error('AI không trả điểm');
   if (vuotLop.length) {
     j.diem.loi_giai = 0;
@@ -806,7 +806,8 @@ function loiNhacHocEdit_() {
 
 // Gemini xem video: YouTube dùng thẳng URL; video Drive tải lên Gemini Files API (xoay key nếu key đầu lỗi/hết hạn mức).
 function xemVideoHocEdit_(v) {
-  var model = cauHinh_('MODEL_CHINH') || 'gemini-2.5-flash';
+  var model = String(cauHinh_('MODEL_CHINH') || '').trim();   // v98.2: model cấu hình đã khai tử -> model sống xếp hạng 'nhe'
+  if (!model || (typeof modelConSong_ === 'function' && !modelConSong_(model))) model = danhSachModel_('nhe')[0] || MODEL_CHUAN_DU_PHONG_[1];
   var keys = typeof khoXep_ === 'function' ? khoXep_('VIDEO', model).dung : khoDanhSachKey_();
   if (!keys.length) keys = khoDanhSachKey_();
   if (!keys.length) throw new Error('THIEU_GEMINI_API_KEY');
@@ -1012,7 +1013,7 @@ function hocMotGopY_(ma, loai, gopY) {
     'CÁC QUY TẮC ĐÃ CÓ:\n' + (cu.length ? cu.map(function (q) { return q.so + '. [' + q.nhom + '] ' + q.quy_tac; }).join('\n') : '(chưa có)') + '\n' +
     'Nhóm: hinh (hình minh họa / vật), loi_giai (lời giải, công thức), loi_thoai (câu chữ, giọng văn), bo_cuc (bố cục, chữ, màu), nhip (tốc độ, độ dài), am_thanh, noi_dung (chọn đề, chủ đề), khac.\n' +
     'Trả JSON: {"y_do":"","quy_tac":[{"nhom":"","quy_tac":"","cach_kiem":"","trung":0}]}';
-  var j = goiGemini_(prompt, 0.2, { suyNghi: 'low' });
+  var j = goiGemini_(prompt, 0.2, { suyNghi: 'low', cheDo: 'nhe' });
   if (!j || !Array.isArray(j.quy_tac)) return null;
   var sh = shQTH_(), bayGio = new Date(), tom = [];
   var tatCa = docQuyTacHoc_();

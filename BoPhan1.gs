@@ -55,10 +55,11 @@ var MAC_DINH = {
   // | THEO_MON (toán thực tế = nam, xác suất = nữ) | CHI_NAM | CHI_NU. Tên giọng Gemini: GIONG_NAM (Puck/Charon/Fenrir), GIONG_NU (Aoede/Kore).
   QUY_TAC_GIONG: 'CHU_KY', CHU_KY_GIONG: '3', GIONG_NAM: 'Puck', GIONG_NU: 'Aoede',
   VIDEO_10P_MOI_NGAY: 'BAT',
-  DANH_SACH_MODEL: 'gemini-2.5-flash,gemini-flash-latest,gemini-2.5-pro,gemini-2.0-flash,gemini-flash-lite-latest',
-  MODEL_CHINH: 'gemini-2.5-flash',
+  // v98.2: model do ListModels quyết định (danhSachModel_). Các khóa dưới chỉ là gợi ý khi ListModels lỗi; tên đã khai tử bị bỏ qua.
+  DANH_SACH_MODEL: 'gemini-3.1-pro,gemini-3.0-flash,gemini-pro-latest,gemini-flash-latest,gemini-flash-lite-latest',
+  MODEL_CHINH: '',
   MODEL_DU_PHONG: 'gemini-flash-latest',
-  MODEL_DU_PHONG_2: 'gemini-2.5-pro', // model dự phòng thứ 3 (tùy chọn, có thể để trống)
+  MODEL_DU_PHONG_2: '', // model dự phòng thứ 3 (tùy chọn, có thể để trống)
   MODEL_DU_PHONG_3: 'gemini-flash-lite-latest', // model dự phòng thứ 4: bản "lite" thường ít bị quá tải (503) hơn
   PHUT_NGHI_QUA_TAI: '20',     // mọi model đều báo quá tải (503) thì tạm nghỉ ngần này phút rồi tự chạy lại
   SO_DE_MOI_MOI_LAN: '2',
@@ -83,7 +84,7 @@ var MAC_DINH = {
   SO_DE_GITHUB_CUNG_LUC: '3',  // số đề GitHub xử lý song song mỗi luồng
   SO_GIAI_DE_CUNG_LUC: '3',    // luồng 1A (Giải đề MOI -> DA_GIAI): số đề giải song song trên GitHub
   SO_KICH_BAN_CUNG_LUC: '5',   // luồng 1B (Xây kịch bản DA_GIAI -> CO_KICH_BAN): tăng lên 5 luồng song song để cấp kịch bản nhanh cho bộ dựng video
-  MODEL_BIEN_KICH: 'gemini-2.5-pro',
+  MODEL_BIEN_KICH: '',          // v98.2: trống = model 'nang' xếp hạng cao nhất đang sống (pro mới nhất)
   SUY_NGHI_BIEN_KICH: 'high',
   MUC_SUY_NGHI_KICH_BAN: 'low', // mức "suy nghĩ" của Gemini khi viết kịch bản/tìm đề: low (nhanh, khuyên dùng) | high | tat (không gửi tham số)
   MUC_SUY_NGHI_GIAI: 'mac_dinh', // khi GIẢI đề: mac_dinh (để Gemini tự quyết, chính xác hơn) | low | high
@@ -1639,81 +1640,175 @@ function deCoHinh_(r) {
 
 /* ===================== GỌI GEMINI: TỰ ĐỘNG ĐỔI MODEL KHI GẶP LỖI ===================== */
 
-var MODEL_CHUAN_DU_PHONG_ = [
-  'gemini-2.5-flash',
-  'gemini-flash-latest',
-  'gemini-2.5-pro',
-  'gemini-2.0-flash',
-  'gemini-flash-lite-latest',
-  'gemini-2.0-flash-lite'
-];
+// v98.2 MODEL ĐỘNG: KHÔNG phụ thuộc danh sách model cố định.
+//  ListModels (CacheService 6 giờ) -> lọc model văn bản -> bỏ trùng snapshot -> xếp hạng theo số phiên bản + chế độ gọi:
+//  'nang' (giải toán, kịch bản, Lego): pro mới nhất -> flash mới nhất -> pro-latest -> flash-latest -> flash-lite
+//  'nhe'  (kiểm duyệt, sửa nhanh)     : flash mới nhất -> flash-latest -> flash-lite -> pro
+//  Bản Node tương đương: scripts/bophan1/model_gemini.cjs (test so khớp: scripts/test_model_gemini.cjs).
+// Danh sách dự phòng khi ListModels lỗi mạng / bị chặn (đã bỏ 2.0-flash, 2.5-flash, 2.5-pro):
+var MODEL_CHUAN_DU_PHONG_ = ['gemini-3.1-pro', 'gemini-3.0-flash', 'gemini-pro-latest', 'gemini-flash-latest', 'gemini-flash-lite-latest'];
+var MODEL_LOAI_BO_RE_ = /embedding|imagen|veo|tts|audio|aqa|bisheng|robotics|computer-use|learnlm|gemma|image|live|vision/i;
+var MODEL_DUOI_SNAP_RE_ = /-(\d{3}|exp(-[\w.-]*)?|preview(-[\w.-]*)?|\d{2}-\d{2}(-\d{2,4})?|\d{4}(-\d{2}){0,2})$/i;
 
-// Danh sách model động: không cố định vào một model duy nhất.
-// Ưu tiên model vừa chạy tốt gần nhất (MODEL_TOT_NHAT), loại bỏ model bị lỗi 404/không tồn tại (MODEL_HONG_<m>),
-// đẩy model hết hạn mức ngày (HET_NGAY_MODEL_<m>) hoặc quá tải 503 (QUA_TAI_<m>) xuống cuối.
-function danhSachModel_() {
-  var ds = [], cache = CacheService.getScriptCache();
-  var chuoiDS = String(cauHinh_('DANH_SACH_MODEL') || '').trim();
-  if (chuoiDS) {
-    chuoiDS.split(/[,;\s|]+/).forEach(function (m) {
-      m = m.trim();
-      if (m && ds.indexOf(m) < 0) ds.push(m);
-    });
+function tenModelGon_(m) { return String((m && m.name) || m || '').trim().replace(/^models\//, ''); }
+
+// Phản hồi ListModels [{name, supportedGenerationMethods}] -> [tên] model văn bản gọi được generateContent
+function locModelGemini_(dsTho) {
+  var ra = [];
+  (dsTho || []).forEach(function (m) {
+    var ten = tenModelGon_(m), ph = (m && m.supportedGenerationMethods) || [];
+    if (!/^gemini-/i.test(ten) || ph.indexOf('generateContent') < 0 || MODEL_LOAI_BO_RE_.test(ten)) return;
+    if (ra.indexOf(ten) < 0) ra.push(ten);
+  });
+  return ra;
+}
+
+function phanTichModel_(ten) {
+  var t = String(ten).toLowerCase();
+  var mb = /^gemini-(\d+)(?:\.(\d+))?-/.exec(t);
+  var hang = /flash-lite|lite/.test(t) ? 'lite' : /flash/.test(t) ? 'flash' : /pro/.test(t) ? 'pro' : 'khac';
+  var goc = t, snap = 0;
+  for (var i = 0; i < 4 && MODEL_DUOI_SNAP_RE_.test(goc); i++) {
+    var d = MODEL_DUOI_SNAP_RE_.exec(goc)[0];
+    snap = Math.max(snap, /preview/.test(d) && !/\d/.test(d) ? 1 : 2);   // 0 ổn định | 1 preview trơn | 2 có ngày / -001 / -exp
+    goc = goc.slice(0, -d.length);
   }
-  ['MODEL_CHINH', 'MODEL_DU_PHONG', 'MODEL_DU_PHONG_2', 'MODEL_DU_PHONG_3'].forEach(function (k) {
-    var m = String(cauHinh_(k) || '').trim();
-    if (m && ds.indexOf(m) < 0) ds.push(m);
-  });
-  MODEL_CHUAN_DU_PHONG_.forEach(function (m) {
-    if (ds.indexOf(m) < 0) ds.push(m);
-  });
-  // Bổ sung các model tìm thấy động từ Google API (nếu đã từng dò)
-  try {
-    var tuTim = JSON.parse(cache.get('DS_MODEL_TU_TIM') || '[]');
-    if (Array.isArray(tuTim)) tuTim.forEach(function (m) { if (m && ds.indexOf(m) < 0) ds.push(m); });
-  } catch (e0) {}
+  return { ten: ten, ban: mb ? [Number(mb[1]), Number(mb[2] || 0)] : null, hang: hang, latest: /latest/.test(t), goc: goc, snap: snap };
+}
+function soBanModel_(a, b) { return (b[0] - a[0]) || (b[1] - a[1]); }
 
-  // Lọc bỏ các model đã xác nhận không tồn tại / ngừng hỗ trợ (HTTP 404)
-  var hopLe = ds.filter(function (m) { return !cache.get('MODEL_HONG_' + m); });
+// Mỗi gốc (vd gemini-2.5-flash) giữ MỘT bản: ổn định > preview trơn > snapshot có ngày
+function boTrungSnapshot_(ds) {
+  var tot = {};
+  ds.forEach(function (ten) {
+    var p = phanTichModel_(ten), cu = tot[p.goc];
+    if (!cu || p.snap < cu.snap || (p.snap === cu.snap && p.ten > cu.ten)) tot[p.goc] = p;
+  });
+  return ds.filter(function (ten) { return Object.keys(tot).some(function (g) { return tot[g].ten === ten; }); });
+}
+
+function xepHangModel_(ds, cheDo) {
+  var nhe = cheDo === 'nhe', sach = [];
+  (ds || []).forEach(function (m) { m = tenModelGon_(m); if (m && sach.indexOf(m) < 0) sach.push(m); });
+  var ps = boTrungSnapshot_(sach).map(phanTichModel_);
+  var coBan = function (h) {
+    return ps.filter(function (p) { return p.hang === h && p.ban && !p.latest; })
+      .sort(function (a, b) { return soBanModel_(a.ban, b.ban) || a.snap - b.snap; });
+  };
+  var biDanh = function (h) { return ps.filter(function (p) { return p.hang === h && p.latest; }); };
+  var pro = coBan('pro'), flash = coBan('flash'), lite = coBan('lite'), dau = [];
+  var them = function (p) { if (p && dau.indexOf(p) < 0) dau.push(p); };
+  var moiNhat = [pro[0], flash[0]].filter(Boolean);
+  if (moiNhat.length === 2) {
+    var s = soBanModel_(pro[0].ban, flash[0].ban);
+    moiNhat = s < 0 || (s === 0 && !nhe) ? [pro[0], flash[0]] : [flash[0], pro[0]];
+  }
+  if (nhe) {
+    them(flash[0]); biDanh('flash').forEach(them); them(lite[0]); biDanh('lite').forEach(them);
+    them(pro[0]); biDanh('pro').forEach(them);
+  } else {
+    moiNhat.forEach(them); biDanh('pro').forEach(them); biDanh('flash').forEach(them);
+    them(lite[0]); biDanh('lite').forEach(them);
+  }
+  var thuTu = nhe ? { flash: 0, lite: 1, pro: 2, khac: 3 } : { pro: 0, flash: 1, lite: 2, khac: 3 };
+  var conLai = ps.filter(function (p) { return dau.indexOf(p) < 0; }).sort(function (a, b) {
+    return (a.ban && b.ban ? soBanModel_(a.ban, b.ban) : (a.ban ? -1 : b.ban ? 1 : 0)) || (thuTu[a.hang] - thuTu[b.hang]) || a.snap - b.snap || (a.ten < b.ten ? -1 : 1);
+  });
+  return dau.concat(conLai).map(function (p) { return p.ten; });
+}
+
+// "... Please update your code to use models/<ten_model> ..." -> <ten_model>
+function goiYModel404_(raw) {
+  var m = /(?:update your code to use|use|migrate to|switch to)\s+(?:the\s+)?(?:model\s+)?[`'"]?models\/(gemini-[\w.-]*\w)[`'".,;)\s]/i.exec(String(raw || '') + ' ');
+  return m ? m[1] : '';
+}
+
+// Danh sách model sống (đã lọc, xếp 'nang'), cache 6 giờ. Trên GitHub chay_bp1.js nạp sẵn DS_MODEL_SONG / DS_MODEL_SONG_LOI.
+// lamMoi = true: bỏ qua cache để dò lại (không xóa danh sách cũ nếu dò lỗi).
+function layModelSong_(lamMoi) {
+  var cache = CacheService.getScriptCache();
+  if (!lamMoi) {
+    try { var c = JSON.parse(cache.get('DS_MODEL_SONG') || '[]'); if (c && c.length) return c; } catch (e0) {}
+    if (cache.get('DS_MODEL_SONG_LOI')) return [];
+  }
+  var keys = typeof khoDanhSachKey_ === 'function' ? khoDanhSachKey_() : [];
+  if (!keys.length || typeof UrlFetchApp === 'undefined') return [];
+  for (var i = 0; i < Math.min(keys.length, 3); i++) {
+    try {
+      var tho = [], token = '', trang = 0, hong = false;
+      do {
+        var res = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=100' + (token ? '&pageToken=' + encodeURIComponent(token) : ''),
+          { headers: { 'x-goog-api-key': keys[i] }, muteHttpExceptions: true });
+        if (res.getResponseCode() !== 200) { hong = true; break; }
+        var j = JSON.parse(res.getContentText());
+        tho = tho.concat(j.models || []);
+        token = j.nextPageToken || '';
+      } while (token && ++trang < 5);
+      if (hong) continue;
+      var ds = xepHangModel_(locModelGemini_(tho), 'nang');
+      if (ds.length) {
+        cache.put('DS_MODEL_SONG', JSON.stringify(ds), 21600);
+        cache.remove('DS_MODEL_SONG_LOI');
+        nhatKy_('GEMINI_MODEL', 'ListModels: ' + ds.length + ' model sống, ưu tiên ' + ds.slice(0, 5).join(', '));
+        return ds;
+      }
+    } catch (e) { /* key kế */ }
+  }
+  if (!lamMoi) cache.put('DS_MODEL_SONG_LOI', '1', 600);   // lỗi mạng / bị chặn: 10 phút dùng danh sách dự phòng
+  return [];
+}
+
+// 404 theo NGÀY (giờ Thái Bình Dương) cho từng cặp (model, key): KhoKey.gs kho404Ngay_ ghi khi gọi; ở đây chỉ đọc.
+// Model coi như chết hôm nay khi >= 2 key (hoặc mọi key nếu ít hơn) đã 404.
+function model404HomNay_(m) {
+  if (typeof kho404Ngay_ !== 'function' || typeof khoId_ !== 'function') return false;
+  var cap = kho404Ngay_(), keys = khoDanhSachKey_(), n = 0;
+  keys.forEach(function (k) { if (cap[m + '|' + khoId_(k)]) n++; });
+  return keys.length > 0 && n >= Math.min(2, keys.length);
+}
+
+// Model còn dùng được: chưa 404 (6 giờ / trong ngày) và có trong danh sách sống (nếu biết)
+function modelConSong_(m) {
+  m = tenModelGon_(m);
+  if (!m) return false;
+  if (CacheService.getScriptCache().get('MODEL_HONG_' + m) || model404HomNay_(m)) return false;
+  var song = layModelSong_();
+  return !song.length || song.indexOf(m) >= 0;
+}
+
+// Danh sách model động theo chế độ ('nang' mặc định | 'nhe'). Biết danh sách sống -> chỉ dùng model sống (tên cũ trong
+// CAU_HINH bị bỏ qua). Không biết -> CAU_HINH + dự phòng sạch, xếp hạng như nhau. Loại model 404, đưa model vừa chạy tốt
+// (MODEL_TOT_NHAT_<cheDo>) lên đầu, đẩy model hết hạn mức ngày / quá tải 503 xuống cuối.
+function danhSachModel_(cheDo) {
+  cheDo = cheDo === 'nhe' ? 'nhe' : 'nang';
+  var cache = CacheService.getScriptCache();
+  var song = layModelSong_(), ds;
+  if (song.length) ds = xepHangModel_(song, cheDo);
+  else {
+    var cauHinhDs = [];
+    String(cauHinh_('DANH_SACH_MODEL') || '').split(/[,;\s|]+/).concat(
+      ['MODEL_CHINH', 'MODEL_DU_PHONG', 'MODEL_DU_PHONG_2', 'MODEL_DU_PHONG_3'].map(function (k) { return String(cauHinh_(k) || ''); }))
+      .forEach(function (m) { m = m.trim(); if (/^gemini-/i.test(m) && cauHinhDs.indexOf(m) < 0) cauHinhDs.push(m); });
+    ds = xepHangModel_(cauHinhDs.concat(MODEL_CHUAN_DU_PHONG_), cheDo);
+  }
+  var hopLe = ds.filter(function (m) { return !cache.get('MODEL_HONG_' + m) && !model404HomNay_(m); });
   if (!hopLe.length) hopLe = ds.slice();
-
-  // Đưa model vừa chạy thành công gần nhất lên đầu để không tốn thời gian thử lại model lỗi
-  var totNhat = cache.get('MODEL_TOT_NHAT');
+  var totNhat = cache.get('MODEL_TOT_NHAT_' + cheDo);
   if (totNhat && hopLe.indexOf(totNhat) > 0 && !cache.get('QUA_TAI_' + totNhat) && !cache.get('HET_NGAY_MODEL_' + totNhat)) {
     hopLe = [totNhat].concat(hopLe.filter(function (m) { return m !== totNhat; }));
   }
-
   var khoe = hopLe.filter(function (m) { return !cache.get('QUA_TAI_' + m) && !cache.get('HET_NGAY_MODEL_' + m); });
   var tai = hopLe.filter(function (m) { return cache.get('QUA_TAI_' + m) && !cache.get('HET_NGAY_MODEL_' + m); });
   var het = hopLe.filter(function (m) { return cache.get('HET_NGAY_MODEL_' + m); });
   return khoe.concat(tai, het);
 }
 
-// Tự động dò danh sách model hiện có trên tài khoản Google Gemini API khi các model cấu hình bị đổi tên / 404
-function tuTimModelGemini_() {
+// Mọi model trong chuỗi đều 404: dò lại ListModels ngay (bỏ cache, tối đa 1 lần/giờ) rồi xếp theo chế độ
+function tuTimModelGemini_(cheDo) {
   var cache = CacheService.getScriptCache();
   if (cache.get('DA_DO_MODEL_API')) return [];
   cache.put('DA_DO_MODEL_API', '1', 3600);
-  try {
-    var keys = typeof khoDanhSachKey_ === 'function' ? khoDanhSachKey_() : [];
-    if (!keys.length || typeof UrlFetchApp === 'undefined') return [];
-    for (var i = 0; i < Math.min(keys.length, 3); i++) {
-      var res = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' + encodeURIComponent(keys[i]), { muteHttpExceptions: true });
-      if (res.getResponseCode() !== 200) continue;
-      var j = JSON.parse(res.getContentText());
-      var tim = (j.models || []).filter(function (m) {
-        var ten = String(m.name || '').replace(/^models\//, '');
-        var methods = m.supportedGenerationMethods || [];
-        return /^gemini-(2|3|4|flash|pro)/i.test(ten) && !/tts|embedding|imagen|veo|vision|audio/i.test(ten) && methods.indexOf('generateContent') >= 0;
-      }).map(function (m) { return String(m.name || '').replace(/^models\//, ''); });
-      if (tim.length) {
-        cache.put('DS_MODEL_TU_TIM', JSON.stringify(tim.slice(0, 8)), 21600);
-        nhatKy_('GEMINI_MODEL', 'Đã tự động dò thấy ' + tim.length + ' model khả dụng: ' + tim.slice(0, 6).join(', '));
-        return tim.slice(0, 8);
-      }
-    }
-  } catch (e) {}
-  return [];
+  return xepHangModel_(layModelSong_(true), cheDo);
 }
 
 function laQuaTai_(kq) {
@@ -1725,17 +1820,21 @@ function laModelKhongCo_(kq) {
 
 // opts.suyNghi: mức suy nghĩ ('low' | 'high' | 'mac_dinh' | 'tat'). Gọi có hạn chót: không đủ thời gian thì ném 'HET_GIO'.
 // Tự động chuyển sang model kế tiếp ngay lập tức khi gặp bất kỳ lỗi nào (404, 400, 429, 503, JSON hỏng...).
+// v98.2: MODEL_BIEN_KICH trống / đã khai tử -> model 'nang' xếp hạng cao nhất đang sống
 function tuyChonBienKich_() {
-  return { modelUuTien: String(cauHinh_('MODEL_BIEN_KICH') || 'gemini-2.5-pro').trim(),
-           suyNghi: cauHinh_('SUY_NGHI_BIEN_KICH') || 'high' };
+  var m = String(cauHinh_('MODEL_BIEN_KICH') || '').trim();
+  if (!m || !modelConSong_(m)) m = danhSachModel_('nang')[0] || '';
+  return { modelUuTien: m, suyNghi: cauHinh_('SUY_NGHI_BIEN_KICH') || 'high', cheDo: 'nang' };
 }
 
+// opts.cheDo: 'nang' (mặc định: giải toán, kịch bản, Lego) | 'nhe' (kiểm duyệt, sửa nhanh) -> thứ tự model xếp hạng tự động
 function goiGemini_(prompt, nhiet, opts) {
   opts = opts || {};
   if (!khoDanhSachKey_().length) throw new Error('THIEU_GEMINI_API_KEY');
-  var models = danhSachModel_();
+  var cheDo = opts.cheDo === 'nhe' ? 'nhe' : 'nang';
+  var models = danhSachModel_(cheDo);
   var cache = CacheService.getScriptCache();
-  if (opts.modelUuTien && !cache.get('MODEL_HONG_' + opts.modelUuTien) &&
+  if (opts.modelUuTien && modelConSong_(opts.modelUuTien) &&
       !cache.get('QUA_TAI_' + opts.modelUuTien) && !cache.get('HET_NGAY_MODEL_' + opts.modelUuTien)) {
     models = [opts.modelUuTien].concat(models.filter(function (md) { return md !== opts.modelUuTien; }));
   }
@@ -1752,16 +1851,16 @@ function goiGemini_(prompt, nhiet, opts) {
       var gcG = { temperature: nhiet, responseMimeType: 'application/json' };
       var coSchema = !!opts.schema && !cache.get('KHONG_SCHEMA_' + tenModel);
       if (coSchema) gcG.responseSchema = opts.schema;
-      var kq = khoGoiCoSuyNghi_(tenModel, { contents: [{ parts: phan }], generationConfig: gcG }, opts.suyNghi, { hanChoMs: 20000, tungModel: !!opts.modelUuTien });
+      var kq = khoGoiCoSuyNghi_(tenModel, { contents: [{ parts: phan }], generationConfig: gcG }, opts.suyNghi, { hanChoMs: 20000, tungModel: !!opts.modelUuTien, cheDo: cheDo });
       if (coSchema && !kq.ok && kq.code === 400 && /schema|response_?schema|enum|Unknown name|Invalid JSON payload/i.test(String(kq.raw))) {
         cache.put('KHONG_SCHEMA_' + tenModel, '1', 21600);
         nhatKy_('GEMINI', tenModel + ' không nhận responseSchema -> gọi lại không schema (Python vẫn kiểm chặt)');
-        kq = khoGoiCoSuyNghi_(tenModel, { contents: [{ parts: phan }], generationConfig: { temperature: nhiet, responseMimeType: 'application/json' } }, opts.suyNghi, { hanChoMs: 20000, tungModel: !!opts.modelUuTien });
+        kq = khoGoiCoSuyNghi_(tenModel, { contents: [{ parts: phan }], generationConfig: { temperature: nhiet, responseMimeType: 'application/json' } }, opts.suyNghi, { hanChoMs: 20000, tungModel: !!opts.modelUuTien, cheDo: cheDo });
       }
       if (kq.ok) {
         try {
           var parsed = docKetQua_(kq.raw);
-          cache.put('MODEL_TOT_NHAT', tenModel, 1800);
+          cache.put('MODEL_TOT_NHAT_' + cheDo, tenModel, 1800);
           return parsed;
         } catch (e) {
           lyDo = tenModel + ' ' + e.message; soLoi++; coTheThuLai = true;
@@ -1774,9 +1873,15 @@ function goiGemini_(prompt, nhiet, opts) {
       nhatKy_('GEMINI_DOI_MODEL', lyDo);
       if (laModelKhongCo_(kq)) {
         cache.put('MODEL_HONG_' + tenModel, '1', 21600);
+        // v98.2: Google gợi ý 'Please update your code to use models/<ten>' -> chèn <ten> ngay sau model vừa lỗi
+        var gy = goiYModel404_(kq.raw);
+        if (gy && gy !== tenModel && models.slice(0, m + 1).indexOf(gy) < 0 && !cache.get('MODEL_HONG_' + gy) && !model404HomNay_(gy) && !cache.get('HET_NGAY_MODEL_' + gy)) {
+          models = models.slice(0, m + 1).concat([gy], models.slice(m + 1).filter(function (x) { return x !== gy; }));
+          nhatKy_('GEMINI_MODEL', 'Google gợi ý ' + gy + ' thay cho ' + tenModel + ' -> thử ngay');
+        }
         if (!daDoThem && m === models.length - 1) {
           daDoThem = true;
-          tuTimModelGemini_().forEach(function (nm) { if (models.indexOf(nm) < 0) models.push(nm); });
+          tuTimModelGemini_(cheDo).forEach(function (nm) { if (models.indexOf(nm) < 0) models.push(nm); });
         }
         continue;
       }
@@ -1835,8 +1940,8 @@ function docKetQua_(noiDungPhanHoi) {
 function goiGeminiSong_(ds) {
   if (!khoDanhSachKey_().length) throw new Error('THIEU_GEMINI_API_KEY');
   var muc = cauHinh_('MUC_SUY_NGHI_GIAI');
-  var models = danhSachModel_();
-  var modelChon = models[0] || 'gemini-2.5-flash';
+  var models = danhSachModel_('nang');
+  var modelChon = models[0] || MODEL_CHUAN_DU_PHONG_[0];
   var ts = thamSoSuyNghi_(modelChon, muc);
   var bodies = ds.map(function (d) {
     var gc = { temperature: d.nhiet, responseMimeType: 'application/json' };
@@ -1852,7 +1957,7 @@ function goiGeminiSong_(ds) {
     if (r && r.ok) {
       try {
         var parsed = docKetQua_(r.raw);
-        cache.put('MODEL_TOT_NHAT', r.model || modelChon, 1800);
+        cache.put('MODEL_TOT_NHAT_nang', r.model || modelChon, 1800);
         return parsed;
       } catch (e) { /* rơi xuống gọi lại bằng chuỗi model dự phòng */ }
     } else if (r && laModelKhongCo_(r)) {

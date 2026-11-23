@@ -596,7 +596,7 @@ function moTaAnhSanPham_(r, ten) {
   if (!anhs.length) return [];
   var j = goiGemini_('Đây là ' + anhs.length + ' ảnh THẬT của sản phẩm "' + ten + '" (theo thứ tự ảnh 0, 1, 2...). Với MỖI ảnh, mô tả ngắn gọn, chỉ điều NHÌN THẤY (không đoán công dụng): ' +
     'góc chụp (chính diện / nghiêng / cận chi tiết / đang sử dụng / bao bì / bảng thông số), sản phẩm chiếm bao nhiêu khung, nền (trơn/rối), chữ/số đọc được trên ảnh (dung tích, kích thước...), ' +
-    'ảnh này hợp dùng làm ảnh lớn mở đầu không. Trả JSON {"anh":[{"so":0,"goc":"","mo_ta":"","chu_tren_anh":"","nen_tron":true,"hop_mo_dau":true}]}', 0.1, { suyNghi: 'low', anhs: anhs });
+    'ảnh này hợp dùng làm ảnh lớn mở đầu không. Trả JSON {"anh":[{"so":0,"goc":"","mo_ta":"","chu_tren_anh":"","nen_tron":true,"hop_mo_dau":true}]}', 0.1, { suyNghi: 'low', anhs: anhs, cheDo: 'nhe' });
   var a = (j && Array.isArray(j.anh)) ? j.anh : [];
   return a.slice(0, ds.length).map(function (x, k) { return { so: k, goc: String(x.goc || '').slice(0, 40), mo_ta: String(x.mo_ta || '').slice(0, 160), chu: String(x.chu_tren_anh || '').slice(0, 100), hop_mo_dau: x.hop_mo_dau === true }; });
 }
@@ -688,7 +688,7 @@ function timHieuSanPham_(sh, r) {
     }
     if (anhNhan) {
       var nd = goiGemini_('Ảnh này là một sản phẩm đang bán trên mạng. Cho biết tên sản phẩm chính xác nhất có thể (thương hiệu, dòng, dung tích/kích thước nếu thấy). Trả JSON {"ten":""}', 0.1,
-        { suyNghi: 'low', anh: anhNhan });
+        { suyNghi: 'low', anh: anhNhan, cheDo: 'nhe' });
       ten = String((nd && nd.ten) || '').trim();
     }
     if (!ten) throw new Error('Không nhận diện được sản phẩm từ ảnh, hãy gửi kèm tên sản phẩm');

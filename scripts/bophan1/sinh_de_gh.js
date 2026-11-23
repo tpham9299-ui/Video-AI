@@ -73,9 +73,9 @@ const ctx = {
       return {ok: true, code: 200, raw: JSON.stringify({candidates: [{content: {parts: [{text: JSON.stringify(payload)}]}}]})};
     }
     const danhSach = String(chMap.DANH_SACH_MODEL || '').split(/[\s,;]+/).filter(Boolean);
-    const models = danhSach.length ? danhSach : [model, chMap.MODEL_CHINH, chMap.MODEL_DU_PHONG, chMap.MODEL_DU_PHONG_2, 'gemini-2.5-flash'].filter(Boolean);
+    const models = danhSach.length ? danhSach : [model, chMap.MODEL_CHINH, chMap.MODEL_DU_PHONG, chMap.MODEL_DU_PHONG_2].filter(Boolean);   // v98.2: goi_gemini.js tự xếp hạng model sống
     const t = path.join(os.tmpdir(), 'sd_gem_' + Date.now() + '.json');
-    fs.writeFileSync(t, JSON.stringify({model, models, bodies: [body], keys}));
+    fs.writeFileSync(t, JSON.stringify({model, models, bodies: [body], keys, cheDo: 'nang'}));
     try {
       const s = execFileSync(process.execPath, [path.join(__dirname, 'goi_gemini.js'), t], {encoding: 'utf8', maxBuffer: 50 * 1024 * 1024, timeout: 480000, stdio: ['ignore', 'pipe', 'inherit']});
       return JSON.parse(s)[0];

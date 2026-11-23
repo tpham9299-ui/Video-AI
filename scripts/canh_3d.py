@@ -110,7 +110,7 @@ def canh_tu_kich_ban(kb, mh):
     return None
 
 
-MET = {"km": 1000, "m": 1, "mét": 1, "cm": 0.01, "mm": 0.001}
+MET = {"km": 1000, "m": 1, "mét": 1, "dm": 0.1, "cm": 0.01, "mm": 0.001}
 DO_DAI = r"(\d+(?:[.,]\d+)?)\s*(km|cm|mm|mét|m)"
 
 
@@ -237,6 +237,89 @@ def chuan_trich_dan(text):
     return " ".join(unicodedata.normalize("NFC", str(text or "")).casefold().split())
 
 
+# --- Khớp tu_de "mềm câu chữ, chặt số liệu" ---------------------------------
+_DON_VI_KHOP = [
+    (r"ki\s*-?\s*lô\s*-?\s*mét|kilô\s*mét|kilomet|kilômét", "km"),
+    (r"xăng\s*-?\s*ti\s*-?\s*mét|xen\s*-?\s*ti\s*-?\s*mét|centimet|xentimét|centimét", "cm"),
+    (r"mi\s*-?\s*li\s*-?\s*mét|milimét|milimet", "mm"),
+    (r"đề\s*-?\s*xi\s*-?\s*mét|đêximét|decimet", "dm"),
+    (r"mét|met", "m"),
+]
+NGUONG_KHOP_TU_DE = 0.8
+
+
+def chuan_khop(text):
+    """Chuẩn hóa để so khớp mềm: hoa/thường, khoảng trắng, dấu câu, $...$ / lệnh LaTeX, 2,5 = 2.5, mét = m."""
+    t = unicodedata.normalize("NFC", str(text or "")).casefold()
+    t = re.sub(r"\\(?:text|mathrm|mbox|textbf|textit|operatorname)\s*\{([^{}]*)\}", r" \1 ", t)
+    t = t.replace("{,}", ",").replace("{.}", ".")
+    t = re.sub(r"\\[a-z]+|\\.", " ", t)
+    t = re.sub(r"(\d)\s*[,.]\s*(?=\d)", r"\1.", t)  # dấu thập phân: 2,5 | 2{,}5 | 2.5 -> 2.5
+    for pattern, unit in _DON_VI_KHOP:
+        t = re.sub(r"(?<!\w)(?:" + pattern + r")(?!\w)", unit, t)
+    t = re.sub(r"(\d)(?=[^\W\d_])", r"\1 ", t)  # 2,5m -> 2.5 m
+    t = re.sub(r"(?<!\d)\.|\.(?!\d)", " ", t)
+    t = re.sub(r"[^\w.]+|_", " ", t)
+    return " ".join(t.split())
+
+
+def so_trong(text):
+    """Tập số (float) xuất hiện trong văn bản đã chuẩn hóa."""
+    return {float(x) for x in re.findall(r"\d+(?:\.\d+)?", chuan_khop(text))}
+
+
+def khop_tu_de(quote, de_goc):
+    """Trả đoạn NGUYÊN VĂN đề khớp mờ với quote (>= NGUONG_KHOP_TU_DE) và chứa đủ mọi số của quote, không khớp -> None."""
+    import difflib
+    q = chuan_khop(quote)
+    if len(q) < 2:
+        return None
+    de_goc = unicodedata.normalize("NFC", str(de_goc or ""))
+    toks = [(n, m.start(), m.end()) for m in re.finditer(r"\S+", de_goc) for n in [chuan_khop(m[0])] if n]
+    if not toks:
+        return None
+    nq = len(q.split())
+    so_q = so_trong(quote)
+    best = (0.0, None)
+    for i in range(len(toks)):
+        for size in range(max(1, nq - 3), nq + 4):
+            if i + size > len(toks):
+                break
+            cand = " ".join(t[0] for t in toks[i:i + size])
+            ratio = difflib.SequenceMatcher(None, q, cand, autojunk=False).ratio()
+            if ratio > best[0] and so_q <= so_trong(cand):
+                best = (ratio, (toks[i][1], toks[i + size - 1][2]))
+                if ratio == 1.0:
+                    break
+        if best[0] == 1.0:
+            break
+    if best[0] < NGUONG_KHOP_TU_DE:
+        return None
+    span = de_goc[best[1][0]:best[1][1]].strip(" ,;:!?()[]\"'“”")
+    if span.count("$") % 2:
+        span = span.strip("$").strip()
+    return span or None
+
+
+TRUONG_SO_LIEU = ("nhan", "ten", "mo_ta", "chu", "do_dai", "so_lieu", "gia_tri", "so_luong")
+
+
+def so_bia(item, de_goc):
+    """Số trong các trường dữ kiện / hiển thị của chi tiết không có trong đề.
+    tam/co/xoay/dich_chuyen là tọa độ dựng (mét, tỉ lệ mỹ thuật) và id/the là mã nội bộ: không xét."""
+    so_de = so_trong(de_goc)
+    bia = set()
+    for key in TRUONG_SO_LIEU:
+        value = item.get(key)
+        if isinstance(value, (str, int, float)) and not isinstance(value, bool):
+            bia |= so_trong(str(value)) - so_de
+    return sorted(bia)
+
+
+def canh_bao_mo_hinh(message):
+    print(f"WARN mo_hinh_3d: {message}", file=sys.stderr)
+
+
 def mo_hinh_tu_de(kb, loi=None):
     # Mô hình tự do gồm các chi tiết ghép chung một hệ tọa độ. Chỉ nhận dữ liệu khai báo.
     def invalid(message):
@@ -250,15 +333,35 @@ def mo_hinh_tu_de(kb, loi=None):
     parts = mo.get("chi_tiet")
     if not isinstance(parts, list) or not 1 <= len(parts) <= 80:
         return invalid("chi_tiet cần từ 1 đến 80 phần")
-    de = chuan_trich_dan(kb.get("de_bai"))
+    de_goc = str(kb.get("de_bai") or "")
+    de = chuan_trich_dan(de_goc)
+    lines = mo.get("doan_toan", [])
+    # Chi tiết cốt lõi: được đoạn đo tham chiếu, hoặc khai báo vai_tro chinh/cot_loi.
+    cot_loi = {
+        pt.get("vat") for raw in (lines if isinstance(lines, list) else []) if isinstance(raw, dict)
+        for pt in (raw.get("a"), raw.get("b")) if isinstance(pt, dict)
+    }
+    kept = []
     for index, item in enumerate(parts, 1):
         if not isinstance(item, dict):
             return invalid(f"chi_tiet[{index}] phải là đối tượng")
-        source = chuan_trich_dan(item.get("tu_de"))
-        if len(source) < 2 or source not in de:
-            return invalid(f"chi_tiet[{index}].tu_de phải trích nguyên văn đề")
         if not bo_ba(item.get("tam")) or not bo_ba(item.get("co")) or min(item["co"]) <= 0:
             return invalid(f"chi_tiet[{index}] cần tam và co gồm ba số, kích thước co phải dương")
+        # Mềm câu chữ: tu_de khớp mờ với đề -> gán lại nguyên văn đề. Chặt số liệu: số bịa -> không khớp.
+        span = khop_tu_de(item.get("tu_de"), de_goc)
+        bia = so_bia(item, de_goc)
+        if span is None or bia:
+            ly_do = (f"số {', '.join(f'{x:g}' for x in bia)} không có trong đề" if bia and span is not None
+                     else f"tu_de '{item.get('tu_de')}' không khớp đề")
+            core = item.get("vai_tro") in ("chinh", "cot_loi") or item.get("id") in cot_loi
+            if core:
+                return invalid(f"chi_tiet[{index}] là dữ kiện cốt lõi nhưng {ly_do}")
+            canh_bao_mo_hinh(f"bỏ chi_tiet[{index}] ({item.get('id') or item.get('hinh')}): {ly_do} - không vẽ chi tiết bịa")
+            continue
+        if span != item.get("tu_de"):
+            item = dict(item, tu_de=span)
+        kept.append(item)
+        source = chuan_trich_dan(span)
         if (
             item.get("hinh")
             not in ("hop", "tru", "cau", "non", "lon", "bon_vom", "thuyen", "bang_chuyen", "lang_tru", "khoi_tiet_dien", "luoi_tam_giac")
@@ -272,10 +375,12 @@ def mo_hinh_tu_de(kb, loi=None):
             or not bo_ba(item.get("xoay", [0, 0, 0]))
         ):
             return invalid(f"chi_tiet[{index}] sai hình, thuộc tính hoặc chuyển động")
+    parts = kept
+    if not parts:
+        return invalid("thiếu dữ kiện cốt lõi: không còn chi_tiet nào bám đề sau khi bỏ chi tiết bịa")
     if re.search(r"bể.{0,80}hình hộp.{0,40}không (?:có )?nắp", de):
         if not be_khong_nap(parts, de):
             return invalid("Bể không nắp cần đáy và bốn vách bao đúng thể tích trong đề")
-    lines = mo.get("doan_toan", [])
     if not isinstance(lines, list) or len(lines) > 12:
         return invalid("doan_toan cần danh sách tối đa 12 đoạn")
     centers = {}
@@ -300,18 +405,26 @@ def mo_hinh_tu_de(kb, loi=None):
                 line[key] = [a + b for a, b in zip(centers[name], offset)]
             if not bo_ba(line.get(key)):
                 return invalid(f"doan_toan[{index}].{key} cần ba tọa độ")
-        segments.append(line)
-        quote = chuan_trich_dan(line.get("tu_de"))
         length = math.dist(line["a"], line["b"])
-        if len(quote) < 2 or quote not in de or length < 1e-6:
-            return invalid(f"doan_toan[{index}] sai trích dẫn hoặc hai đầu trùng nhau")
+        if length < 1e-6:
+            return invalid(f"doan_toan[{index}] có hai đầu trùng nhau")
+        span = khop_tu_de(line.get("tu_de"), de_goc)
+        if span is None:
+            canh_bao_mo_hinh(f"bỏ doan_toan[{index}]: tu_de '{line.get('tu_de')}' không khớp đề - không vẽ đoạn đo bịa")
+            continue
+        line["tu_de"] = span
         if "do_dai" in line:
-            m = re.fullmatch(DO_DAI, str(line["do_dai"]).casefold())
-            if not m or not re.search(r"(?<![\d.,])" + re.escape(m[0]) + r"(?!\w)", quote):
-                return invalid(f"doan_toan[{index}].do_dai và đơn vị phải khớp dữ kiện")
-            meters = float(m[1].replace(",", ".")) * MET[m[2]]
+            m = re.fullmatch(r"(\d+(?:\.\d+)?) (km|dm|cm|mm|m)", chuan_khop(line["do_dai"]))
+            if not m:
+                return invalid(f"doan_toan[{index}].do_dai cần dạng số + đơn vị (km, m, dm, cm, mm)")
+            if not re.search(r"(?<![\d.])" + re.escape(m[0]) + r"(?!\w)", chuan_khop(span)):
+                # Số đo không có trong câu đề được trích -> số bịa, không vẽ.
+                canh_bao_mo_hinh(f"bỏ doan_toan[{index}]: do_dai '{line['do_dai']}' không có trong '{span}'")
+                continue
+            meters = float(m[1]) * MET[m[2]]
             if not math.isclose(length, meters, rel_tol=0.002):
                 return invalid(f"doan_toan[{index}] dài {length:g} m theo tọa độ, dữ kiện ghi {meters:g} m")
+        segments.append(line)
     return {"loai": "lap_ghep", "chi_tiet": parts, "doan_toan": segments}
 
 

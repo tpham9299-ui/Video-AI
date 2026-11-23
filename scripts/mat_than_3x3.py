@@ -262,11 +262,12 @@ def goi_gemini(anh, p, o_da):
         "generationConfig": {"temperature": 0.1, "responseMimeType": "application/json", "maxOutputTokens": 1024,
                              "thinkingConfig": {"thinkingBudget": 0}},
     }
-    model = os.environ.get("MAT_THAN_MODEL") or "gemini-2.5-flash"
+    # v98.2: không ghi cứng model - goi_gemini.js tự lấy ListModels + xếp hạng chế độ 'nhe' (flash mới nhất trước)
+    model = os.environ.get("MAT_THAN_MODEL") or ""
     tep = os.path.join(tempfile.gettempdir(), "mat_than_%d.json" % os.getpid())
     with open(tep, "w", encoding="utf8") as f:
-        json.dump({"model": model, "models": [model, "gemini-flash-latest", "gemini-2.0-flash"], "bodies": [body], "keys": keys,
-                   "gioiHanGiay": 120}, f)
+        json.dump({"model": model, "models": [model] if model else [], "bodies": [body], "keys": keys,
+                   "gioiHanGiay": 120, "cheDo": "nhe"}, f)
     try:
         r = subprocess.run(["node", os.path.join(GOC, "scripts", "bophan1", "goi_gemini.js"), tep],
                            capture_output=True, text=True, encoding="utf8", timeout=180)
