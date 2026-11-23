@@ -111,7 +111,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: pip-chuanbi-${{ runner.os }}-v1
+          key: pip-chuanbi-${{ runner.os }}-v2
 
       - name: Cài công cụ (chạy song song)
         run: |
@@ -121,7 +121,7 @@ jobs:
             ( sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends $THIEU ) > /tmp/apt.log 2>&1 &
             APT=$!
           fi
-          ( pip install -q "edge-tts>=7.2" gTTS numpy ) > /tmp/pip.log 2>&1 &
+          ( pip install -q "edge-tts>=7.2" gTTS numpy scipy ) > /tmp/pip.log 2>&1 &
           PIP=$!
           if [ -n "$RCLONE_CONF" ] && ! command -v rclone >/dev/null 2>&1; then
             ( curl -fsSL https://rclone.org/install.sh | sudo bash ) > /tmp/rclone.log 2>&1 &
