@@ -68,7 +68,7 @@ var MAC_DINH = {
   DIEM_TU_DUY_TOI_THIEU: '7',  // thang 1-10
   MAX_LAN_LOI: '3',
   SO_LAN_SUA_KICH_BAN: '2',    // số vòng sửa kịch bản tối đa (tự sửa bằng máy trước, chỉ gọi AI khi còn lỗi nặng)
-  BO_DUNG_MAC_DINH: '3d_vector',  // v91: luồng thực tế & xác suất dựng bằng Khung 4 tầng + 3D Vector (Remotion); 'blender' = đường cũ
+  BO_DUNG_MAC_DINH: '3d_vector',  // v91: Khung 4 tầng + 3D Vector (Remotion); v99.1: 'blender' không còn tác dụng
   AUTO_FIX_KICH_BAN: 'BAT',       // v91: lỗi hình thức tự chuẩn hóa + chỉ cảnh báo; TAT = từ chối như cũ
   MAT_THAN_3X3: 'BAT',            // v91: chốt ảnh lưới 3×3 trước khi đăng (GitHub gửi kết quả về doPost)
   CHE_DO_NGUON: 'UU_TIEN_INTERNET', // UU_TIEN_INTERNET: tìm đề có thật trên internet trước, không có mới để AI sáng tác | CHI_INTERNET | SANG_TAC (chỉ AI) | KHO_DE (bạn tự thêm dòng MOI có de_bai)
@@ -1363,6 +1363,10 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       if (kb && typeof dungLego_ === 'function' && dungLego_(r) && !laLegoKb_(kb) && conDuGoiGemini_()) {
         try { lapLego_(kb, r, sn); } catch (eLg) { luuNhapKichBan_(r.id, kb); throw eLg; }
       }
+      // v99.1: đề thực tế giàu hình ảnh / dạng lạ -> sân khấu tự sinh 2.5D (mã Python sinh SVG, kiểm hộp cát, vá tối đa 1 lần)
+      if (kb && kb.khung4tang && typeof dungTuSinh_ === 'function' && dungTuSinh_(r, kb) && !(kb.khung4tang.tu_sinh || {}).ma && !kb.tu_sinh_da_thu && conDuGoiGemini_()) {
+        try { lapTuSinh_(kb, r, sn); } catch (eTs) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(eTs.message))) { luuNhapKichBan_(r.id, kb); throw eTs; } }
+      }
       for (;;) {
         try { boSungBanVeMoDau_(kb, r, sn); }
         catch (eBV) { if (kb && kb.canh) luuNhapKichBan_(r.id, kb); throw eBV; }
@@ -1574,31 +1578,15 @@ function chuanBiKichBan_(kb, r, ctxSua) {
   if (!laHH && r._banVe && typeof chenBanVe_ === 'function') { sua = sua.concat(chenBanVe_(kb, r._banVe)); kb.ban_ve = r._banVe; }
   // v91 AUTO-FIX: chuẩn hóa lỗi hình thức (TeX, màu, nhãn thừa, tiêu đề, trường hook, đáp số lộ ở hook) + khung4tang / bo_dung
   if (typeof tuSuaHinhThuc_ === 'function') sua = sua.concat(tuSuaHinhThuc_(kb, r) || []);
-  if (!laHH && !kb.bo_dung) kb.bo_dung = kb.khung4tang ? '3d_vector' : 'blender';
+  if (!laHH && !kb.bo_dung && kb.khung4tang) kb.bo_dung = '3d_vector';   // v99.1: không còn bo_dung = blender
   kb._phien_ban_edit = PHIEN_BAN_EDIT;
   suaDapAn_(kb, r.dap_an);   // sau khi tự sửa (có thể vừa thêm/đổi cảnh) để cảnh đáp án luôn đúng
   if (sua.length) nhatKy_('KICH_BAN_TU_SUA', r.id + ': ' + sua.slice(0, 8).join('; ').slice(0, 450));
 }
 
 // Bổ sung riêng vật chính trước khi người duyệt đọc kịch bản, dùng cùng kho key với biên kịch.
-function boSungBanVeMoDau_(kb, r, sn) {
-  if (laMonHinhHoc_(r) || !kb || !Array.isArray(kb.canh) || !kb.canh.length || kb.mo_hinh_3d) return;
-  var c = kb.canh[0], tiep = kb.canh[1];
-  if (!c || c.mo_hinh_3d || (tiep && tiep.loai === 'de_bai' && tiep.mo_hinh_3d)) return;
-  var mh = c.minh_hoa || {}, du = mh.du_lieu || {};
-  var vat = (Array.isArray(du.vat) ? du.vat : []).filter(function(v) {
-    return v && ['nhan','chu','mui_ten','so_dem'].indexOf(v.loai) < 0;
-  });
-  if (mh.loai === 'bi_hop' || mh.loai === 'thuc_te_theo_de' ||
-      (vat.length === 1 && ['hop_bi','xuc_xac','dong_xu','cua','xe','canh_that'].indexOf(vat[0].loai) >= 0)) return;
-  if (!conDuGoiGemini_()) throw new Error('HET_GIO');
-  var model = goiGemini_('Bạn phụ trách tạo mô hình Blender. Dựa trên đề gốc và lời dẫn sau, tự thiết kế vật chính; trả đối tượng JSON có chi_tiet và doan_toan. ' +
-    'Mỗi chi tiết có id riêng, tu_de trích nguyên văn đề, tam và co [x,y,z] theo mét, xoay theo độ, vat_lieu, dich_chuyen nếu vật chuyển động. ' +
-    'Ghép hop, tru, cau, non, lon (lon nước thật, co=[đường kính,đường kính,cao]), bon_vom (bồn trụ có mái vòm bán cầu), lang_tru (day là đa giác lồi), khoi_tiet_dien (tang là các hàng [z,cx,cy,rx,ry] tăng theo z) hoặc luoi_tam_giac (dinh và mat là bộ ba chỉ số từ 0). ' +
-    'Dựng đặc điểm nhận dạng, số lượng và quan hệ đúng đề. Đoạn đo có a,b,tu_de và do_dai nếu đề cho số đo. Không ghi kích thước mỹ thuật thành số liệu toán. ' +
-    'Chỉ trả bản vẽ. Đề: ' + r.de_bai + '\nCảnh: ' + JSON.stringify(c), 0.15, sn);
-  if (model && Array.isArray(model.chi_tiet) && model.chi_tiet.length) c.mo_hinh_3d = model;
-}
+// v99.1: mô hình Blender (mo_hinh_3d) đã gỡ -> không gọi Gemini dựng vật mở đầu nữa (giữ tên hàm cho nơi gọi cũ).
+function boSungBanVeMoDau_(kb, r, sn) { return; }
 
 // Nhờ Gemini sửa ĐÚNG các lỗi còn lại (gửi kèm toàn bộ quy tắc + kịch bản hiện tại), giữ nguyên phần đã đúng.
 function suaKichBanBangGemini_(kb, dsLoi, prompt, sn) {
@@ -3727,6 +3715,34 @@ function vaLego_(kb, r, sn, loi) {
     dem++;
   });
   return dem ? moi : null;
+}
+
+// v99.1: sân khấu tự sinh 2.5D: xin mã Python (lời gọi riêng, JSON) -> kiểm hộp cát (kiemTuSinhMay_) -> lỗi thì gửi lại ĐÚNG
+// thông báo lỗi để Gemini sửa 1 lần -> vẫn lỗi: bỏ tu_sinh, giữ sân khấu 2D / khuôn 3D cũ. Trả true nếu gắn được.
+function lapTuSinh_(kb, r, sn) {
+  kb.tu_sinh_da_thu = true;
+  var goi = function (p) {
+    var kq = goiGemini_(p, 0.35, {cheDo: 'nang'});
+    if (typeof kq === 'string') { try { kq = JSON.parse(String(kq).replace(/^```(?:json)?|```$/g, '')); } catch (e) { kq = null; } }
+    return kq && typeof kq.ma === 'string' && kq.ma.trim() ? kq : null;
+  };
+  var ts = goi(huongDanTuSinh_(kb, r));
+  if (!ts) { nhatKy_('TU_SINH_SVG', ((r && r.id) || '') + ': Gemini không trả mã'); return false; }
+  kb.khung4tang.tu_sinh = {ma: ts.ma, mo_ta: String(ts.mo_ta || '').slice(0, 160)};
+  var may = typeof kiemTuSinhMay_ === 'function' ? kiemTuSinhMay_ : null;
+  var m = null;
+  try { m = may ? may(kb) : null; } catch (e1) { m = null; }
+  if (m && !m.ok && conDuGoiGemini_()) {
+    var sua = goi(huongDanTuSinh_(kb, r) + '\n\nMÃ TRƯỚC BỊ MÁY TỪ CHỐI: ' + String(m.loi || '').slice(0, 300) + '\nMÃ TRƯỚC:\n' + ts.ma.slice(0, 12000) + '\nSửa đúng lỗi đó, giữ phần còn lại.');
+    if (sua) { kb.khung4tang.tu_sinh = {ma: sua.ma, mo_ta: String(sua.mo_ta || ts.mo_ta || '').slice(0, 160)}; try { m = may(kb); } catch (e2) { m = null; } }
+  }
+  if (m && !m.ok) {
+    delete kb.khung4tang.tu_sinh;
+    nhatKy_('TU_SINH_SVG', ((r && r.id) || '') + ': mã vẫn lỗi sau 1 lần vá (' + String(m.loi || '').slice(0, 120) + ') -> giữ sân khấu cũ');
+    return false;
+  }
+  nhatKy_('TU_SINH_SVG', ((r && r.id) || '') + ': gắn sân khấu tự sinh' + (m ? ' (' + m.so_lop + ' lớp)' : ' (chưa kiểm máy - chuanbi.py kiểm lại)'));
+  return true;
 }
 
 // Lập đặc tả Lego cho kịch bản đã có lời (pass 2, schema) + Auto-fix + kiểm máy + vá tối đa 1 lần. Trả true nếu gắn được.

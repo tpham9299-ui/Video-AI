@@ -91,6 +91,38 @@ function chonSanKhau_(kb, r) {
   return {loai: 'tu_duy_dai_so', nguon: 'lui', chi_dao: cd.loi};
 }
 
+/* ===================== v99.1: SÂN KHẤU TỰ SINH 2.5D (tu_sinh_svg) ===================== */
+// Đề thực tế giàu hình ảnh / dạng lạ không có mẫu cứng (bông tuyết Koch, parabol giá vé, gấp hình, cầu vòm, bánh răng...)
+// -> BP2 xin thêm MỘT lời gọi riêng (lapTuSinh_, BoPhan1.gs) viết mã Python thuần toán học sinh lớp SVG theo bước;
+// máy kiểm bằng hộp cát scripts/tu_sinh_svg.py (kiemTuSinhMay_ của chay_bp1.js). Tắt: CAU_HINH TU_SINH_SVG = TAT.
+var RE_TU_SINH_ = /bông tuyết|koch|fractal|phân hình|cầu vòm|mái vòm|cổng vòm|bánh răng|gấp (?:giấy|hình|tờ)|origami|giá vé|parabol|quỹ đạo|đường đi của|hòn đảo|cánh đồng|thửa ruộng|vòi phun|cầu treo|cánh quạt|hoa văn|lát gạch|xếp gạch/i;
+function dungTuSinh_(r, kb) {
+  r = r || {}; kb = kb || {};
+  if (typeof cauHinh_ === 'function' && String(cauHinh_('TU_SINH_SVG') || '').toUpperCase() === 'TAT') return false;
+  if ((typeof laMonHinhHoc_ === 'function' && laMonHinhHoc_(r)) || kb.luong === 'hinh_hoc_thuan') return false;
+  if ((typeof laVideoDai_ === 'function' && laVideoDai_(r)) || kb.kieu_video === 'DAI_10_PHUT') return false;
+  if (typeof laLegoKb_ === 'function' && laLegoKb_(kb)) return false;
+  var cd = String(kb.chi_dao || r.chi_dao || '');
+  if (/tự sinh|tu_sinh|svg/i.test(cd)) return true;
+  if (String(kb.mon || r.mon || '').toUpperCase() === 'XAC_SUAT') return false;   // 4 mô-đun xác suất v96 đã đủ
+  return RE_TU_SINH_.test(String(r.de_bai || kb.de_bai || ''));
+}
+function huongDanTuSinh_(kb, r) {
+  var buoc = ((kb.khung4tang || {}).buoc || []).map(function (b, i) { return i + ': ' + String(b.nhan || '') + ' — ' + String(b.tieu_de || '') + (b.khi_noi ? ' (khi_noi: "' + b.khi_noi + '")' : ''); });
+  var loi = (kb.canh || []).map(function (c, i) { return (i + 1) + '. ' + String(c.loi_thoai || ''); }).join('\n');
+  return 'Bạn là họa sĩ minh họa toán 2.5D. Viết MỘT đoạn Python ngắn, thuần toán học, vẽ hình minh họa cho tầng 2 của video toán dọc.\n' +
+    'ĐỀ: ' + String((r && r.de_bai) || kb.de_bai || '') + '\nĐÁP ÁN: ' + String((r && r.dap_an) || kb.dap_an_cuoi || '') + '\n' +
+    'CÁC BƯỚC GIẢI (chỉ số: nhãn — tiêu đề):\n' + buoc.join('\n') + '\nLỜI ĐỌC TỪNG CẢNH:\n' + loi + '\n\n' +
+    'HỢP ĐỒNG MÃ (máy chạy trong hộp cát, sai là bị loại):\n' +
+    '- Chỉ `import math`. Định nghĩa `def ve():` trả list lớp {"buoc": <chỉ số bước>, "svg": "<g>...</g>", "hieu_ung": "moc|no|ve|sang", "khi_noi": "cụm 3-6 từ NGUYÊN VĂN trong lời đọc lúc lớp này hiện", "nhan": "tên lớp"}.\n' +
+    '- Mọi tọa độ TÍNH trong Python, nằm trong viewBox 0 0 800 540 (chừa lề 24 px). path chỉ lệnh TUYỆT ĐỐI M L C Q A Z. Không filter, không transform (trừ translate <= 40 px), không href / ảnh / script, không chuỗi chứa "__".\n' +
+    '- Thẻ được dùng: g path polygon polyline line circle ellipse rect text tspan defs linearGradient radialGradient stop. Chữ: font-family "Be Vietnam Pro", cỡ >= 22, tô #E9EEF5.\n' +
+    '- PHONG CÁCH 2.5D vector hiện đại trên nền TỐI: mỗi mảng có mặt bên đậm hơn lệch xuống 6-10 px (độ dày nổi), bóng mềm = bản sao rgba(0,0,0,.28) lệch xuống-phải 10 px; lớp MỚI tô màu nhấn #5CE1E6 (cyan) hoặc #FFB547 (hổ phách, chỉ cho lớp kết quả), viền sáng 2-3 px; lớp cũ dịu xám xanh #7C8DA6.\n' +
+    '- Mỗi bước giải phải có ít nhất 1 lớp mới (tối thiểu 3 bước khác nhau) - hình đổi theo đúng lời đang giảng; KHÔNG ghi đáp số trước bước đáp án.\n' +
+    '- Bám đúng số liệu đề (ví dụ bông tuyết Koch: tam giác đều cạnh a, mỗi cạnh chia 3 bật tam giác đều ra ngoài, lớp n+1 = các tam giác mới; parabol: trục, đỉnh nổi bật, điểm chạy).\n' +
+    'Chỉ trả JSON {"ma": "<mã Python>", "mo_ta": "1 câu"}.';
+}
+
 /* ===================== KÝ HIỆU "KHÔNG CHIA HẾT" & MÃ THÔ ===================== */
 var RE_KHONG_CHIA_HET_ = /\\not\s*\\vdots|\\nmid|∤|\\not\s*⋮|(^|[^\wÀ-ỹ])not\s*⋮/g;
 // kieu: 'tex' (công thức KaTeX) -> \text{ không } \vdots ; 'tron' (tiêu đề / nhãn ChuTron) -> không \vdots ; 'chu' -> không ⋮
@@ -139,9 +171,23 @@ function cacDangDocSo_(s) {
   if (/^\d+$/.test(s)) return [s, doc(+s)];
   return [s];
 }
+// v99.1: biến thể cách đọc số tiếng Việt ("mươi tư", "mươi mốt", "mươi lăm", "linh" ↔ "lẻ", "nghìn" ↔ "ngàn") + nhóm
+// nghìn "4.500" ↔ "4500" ↔ "4 500" -> câu đã đọc kết quả bằng chữ không bị Auto-fix nối thêm "bằng 144" (lỗi đọc lặp số)
+function bienTheDocSo_(ds) {
+  var ra = [];
+  ds.forEach(function (d) {
+    var v = [d];
+    v.push(d.replace(/mươi bốn/g, 'mươi tư'), d.replace(/mươi một/g, 'mươi mốt'), d.replace(/(mươi|mười) năm/g, '$1 lăm'),
+      d.replace(/ linh /g, ' lẻ '), d.replace(/nghìn/g, 'ngàn'));
+    if (/^\d{4,}$/.test(d)) { var nh = d.replace(/\B(?=(\d{3})+(?!\d))/g, '.'); v.push(nh, nh.replace(/\./g, ' ')); }
+    if (/^\d{1,3}(\.\d{3})+$/.test(d)) v.push(d.replace(/\./g, ''));
+    v.forEach(function (x) { if (ra.indexOf(x) < 0) ra.push(x); });
+  });
+  return ra;
+}
 function loiNoiSo_(loi, so) {
   var l = ' ' + String(loi || '').toLowerCase().replace(/\{,\}/g, ',').replace(/\s+/g, ' ') + ' ';
-  return cacDangDocSo_(so).some(function (d) {
+  return bienTheDocSo_(cacDangDocSo_(so)).some(function (d) {
     d = d.toLowerCase().replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&');
     return new RegExp('(^|[^\\d.,/])' + d + '(?![\\d/]|[.,]\\d)').test(l);
   });
@@ -406,6 +452,8 @@ function tuSuaCutCongThuc_(kb) {
     c.noi_dung_man_hinh.forEach(function (d) {
       var so = soKetQuaDong_(d);
       if (!so || loiNoiSo_(c.loi_thoai, so)) return;
+      // v99.1: câu đã kết bằng "bằng / là <một con số>" (AI đọc kết quả theo cách khác) -> không nối thêm vế lặp
+      if (/(?:bằng|=|là|được)\s*[\d.,/]+\s*[^\s\d]{0,12}\s*[.!…]*\s*$/i.test(String(c.loi_thoai || ''))) return;
       var hien = so.replace(/\\frac\{(\d+)\}\{(\d+)\}/, '$1/$2');
       c.loi_thoai = String(c.loi_thoai || '').replace(/\s*[.!…]*\s*$/, '') + ' bằng ' + hien + '.';
       dem++;

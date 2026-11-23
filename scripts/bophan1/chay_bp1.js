@@ -145,6 +145,19 @@ const ctx = {
     }
     return null;
   },
+  // v99.1: hộp cát sân khấu tự sinh (scripts/tu_sinh_svg.py --chi-kiem): {ok, loi, so_lop}; không có Python -> null
+  kiemTuSinhMay_: (kb) => {
+    for (const py of ['python3', 'python']) {
+      try {
+        const ra = execFileSync(py, [path.join(GOC, 'scripts', 'tu_sinh_svg.py'), '-', '--chi-kiem'],
+          {input: JSON.stringify(kb), timeout: 30000, stdio: ['pipe', 'pipe', 'pipe'], env: {...process.env, PYTHONIOENCODING: 'utf-8'}});
+        return JSON.parse(ra.toString('utf8'));
+      } catch (e) {
+        if (e && e.status === 2 && e.stdout) { try { return JSON.parse(e.stdout.toString('utf8')); } catch (e2) { return null; } }
+      }
+    }
+    return null;
+  },
   kiemHinhPhangMay_: (kb) => {
     for (const py of ['python3', 'python']) {
       try {

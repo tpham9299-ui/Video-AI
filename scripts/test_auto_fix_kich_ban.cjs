@@ -134,11 +134,11 @@ t('chuẩn hóa: màu, du_kien lạ, thẻ rỗng, đối tượng trùng/sai lo
   assert.deepEqual(J(k.canh_3d_vector.buoc[0].hien), ['E', 'v']);
   assert.equal(k.canh_3d_vector.buoc[0].hanh_dong.length, 1);
 });
-t('khung4tang hỏng -> quay về đường dựng cũ (không từ chối)', () => {
+t('v99.1: khung4tang hỏng -> gỡ, không còn bo_dung = blender', () => {
   const kb = {luong: 'thuc_te_xac_suat', canh: [], khung4tang: {buoc: 'x'}};
   ctx.tuSuaKhung4Tang_(kb, {mon: 'THUC_TE'});
   assert.ok(!kb.khung4tang);
-  assert.equal(kb.bo_dung, 'blender');
+  assert.equal(kb.bo_dung, undefined);
 });
 t('KHÓA LUỒNG: bài hình học thuần bị gỡ khung4tang / canh_3d_vector / bo_dung', () => {
   const kb = {luong: 'hinh_hoc_thuan', mon: 'HINH_HOC', canh: [{minh_hoa: {loai: 'san_khau', du_lieu: {vat: []}}}], khung4tang: k4Mau(), canh_3d_vector: {}, bo_dung: '3d_vector'};
@@ -150,14 +150,14 @@ t('KHÓA LUỒNG: bài hình học thuần bị gỡ khung4tang / canh_3d_vector
   ctx.tuSuaKhung4Tang_(kb2, {mon: 'HINH_HOC'});
   assert.ok(!kb2.khung4tang);
 });
-t('prompt: chèn hướng dẫn khung 4 tầng cho thực tế, không cho hình học / 10 phút / BO_DUNG_MAC_DINH=blender', () => {
+t('prompt: chèn hướng dẫn khung 4 tầng cho thực tế, không cho hình học / 10 phút / BO_DUNG_MAC_DINH=blender bị bỏ qua (v99.1)', () => {
   ctx.laMonHinhHoc_ = (r) => String(r.mon).toUpperCase() === 'HINH_HOC';
   ctx.laVideoDai_ = (r) => /-10P$/.test(String(r.id || ''));
   assert.equal(ctx.dungKhung4Tang_({mon: 'THUC_TE', id: 'A1'}), true);
   assert.equal(ctx.dungKhung4Tang_({mon: 'HINH_HOC', id: 'A2'}), false);
   assert.equal(ctx.dungKhung4Tang_({mon: 'THUC_TE', id: 'A3-10P'}), false);
   cauHinh = {BO_DUNG_MAC_DINH: 'blender'};
-  assert.equal(ctx.dungKhung4Tang_({mon: 'THUC_TE', id: 'A1'}), false);
+  assert.equal(ctx.dungKhung4Tang_({mon: 'THUC_TE', id: 'A1'}), true);
   cauHinh = {};
   const p = ctx.huongDanKhung4Tang_({lop: '11'});
   assert.ok(/"khung4tang"/.test(p) && /canh_3d_vector/.test(p) && /tach_vector/.test(p) && /KHÔNG dùng hệ tọa độ Oxyz/.test(p));
@@ -165,10 +165,10 @@ t('prompt: chèn hướng dẫn khung 4 tầng cho thực tế, không cho hình
   assert.ok(!/hai_mat_cau_oxyz/.test(p) && /tam_bia_gap_hop/.test(p));
   assert.ok(/hai_mat_cau_oxyz \(CHỈ lớp 12/.test(ctx.huongDanKhung4Tang_({lop: '12'})));
 });
-t('cảnh báo nhẹ khi thiếu khung4tang (không bao giờ nặng)', () => {
+t('v99.1: thiếu khung4tang -> KHUNG4TANG_BAT_BUOC', () => {
   const kb = kbMau();
   const nhe = ctx.loiKhung4Tang_(kb);
-  assert.ok(nhe.some((x) => x.startsWith('THIEU_KHUNG4TANG')));
+  assert.ok(nhe.some((x) => x.startsWith('KHUNG4TANG_BAT_BUOC')));
   kb.khung4tang = {buoc: [{nhan: 'a'}, {khi_noi: 'không có trong lời'}]};
   assert.ok(ctx.loiKhung4Tang_(kb).some((x) => x.startsWith('KHUNG4TANG_KHI_NOI_LECH')));
 });

@@ -37,6 +37,7 @@ export type DoiChieuVao = {
   t_giai?: number;
   t_chot?: number;
   badge?: 'nguong' | 'cuc_dai' | 'cuc_tieu'; // ✓ ĐẠT CHUẨN/✕ VƯỢT NGƯỠNG chỉ khi đề có ngưỡng thật; còn lại ★ CỰC ĐẠI/TIỂU
+  t_huy_hieu?: number; // v99.1: huy hiệu (★ CỰC ĐẠI / ✓) chỉ hiện từ lúc giọng đọc CÔNG BỐ đáp án
 };
 
 // v93: Intro "3 giây móc câu" + Outro "tóm tắt 3 bước" (chuanbi.py luôn điền đủ; thiếu -> giữ intro/màn kết v92)
@@ -61,4 +62,8 @@ export type Khung4TangVao = {
   tChot?: number; // v95: mốc chốt đáp án (giây) -> SFX chime, thanh đề đổi số
   sanKhau?: import('../sankhau2d/kieu').SanKhau2DVao | null; // v96: sân khấu 2D đã tính sẵn (chuanbi.py khung4tang_v96)
   khongGian?: import('../khonggian/kieu').KhongGianVao | null; // v97: hình học không gian (tọa độ bộ giải + lịch xoay moc_xoay)
+  theme?: import('./nen_v99').TenTheme; // v99.1: nền khí quyển (thiếu -> nền v98.1)
+  tuSinh?: import('../sankhau2d/SanKhauTuSinh').TuSinhVao | null; // v99.1: sân khấu tự sinh 2.5D (lớp SVG hộp cát)
+  nhipT2?: number[]; // v99.1: mốc nhịp chống đứng hình T2 (mỗi câu thoại trong khoảng > 6 s không đổi hình)
+  tCongBo?: number; // v99.1: giây giọng đọc công bố đáp án
 };

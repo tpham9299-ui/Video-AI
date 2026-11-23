@@ -25,6 +25,9 @@ import hashlib
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import khung4tang_v99 as v99_k4  # noqa: E402  (v99.1: phiên âm -> ký hiệu, chống lặp số, khóa mốc đáp án, nền theme)
+
 CACHE_TTS_DIR = os.environ.get("CACHE_TTS_DIR") or os.path.join(tempfile.gettempdir(), "video_ai_tts_cache")
 try:
     os.makedirs(CACHE_TTS_DIR, exist_ok=True)
@@ -251,7 +254,8 @@ def hien_phu_de(text):
     s = re.sub(r"(\d+)\s+phần\s+(\d+)", r"\1/\2", s)
     s = re.sub(r"(\S)\s+bình phương\b", r"\1²", s)
     s = re.sub(r"(\S)\s+lập phương\b", r"\1³", s)
-    toan = r"(?:[a-zA-Z]'?\([a-z]\)|[\d.,]+[π²³%]?|[a-zA-Z]'?[²³]?|\)[²³]?)"
+    # v99.1: V(2), f(1,5) và "2x" (sau tra_ky_hieu) cũng là toán hạng -> "V(2) bằng 144" -> "V(2) = 144", "16 trừ 2x" -> "16 − 2x"
+    toan = r"(?:[a-zA-Z]'?\([a-z0-9.,]+\)|\d+(?:[.,]\d+)?[a-z][²³]?(?![\wÀ-ỹ])|[\d.,]+[π²³%]?|[a-zA-Z]'?[²³]?|\)[²³]?)"
     # v92: so sánh < > chỉ khi một vế là BIẾN chữ (x, r, V(x)) -> câu văn "4 lớn hơn 384!" không thành ký hiệu
     bien = r"(?:[a-zA-Z]'?\([a-z]\)|[a-zA-Z]'?[²³]?)"
     for doc, ky in (("lớn hơn hoặc bằng", "≥"), ("nhỏ hơn hoặc bằng", "≤"), ("nhỏ hơn", "<"), ("lớn hơn", ">")):
@@ -1294,7 +1298,7 @@ def tu_tu_cau(cau):
 def quay_canh(kb, so, cau, tu):
     """Giai đoạn D (luồng thực tế & xác suất): dac_ta_canh.quay[] của cảnh `so` -> props.canh[i].quay.
     Mỗi hành động mang mốc t (giây từ đầu cảnh) = lúc giọng đọc bắt đầu cụm khi_noi (mốc từ thật nếu có, không thì ước lượng
-    theo câu). canh_3d.py ghép mốc này vào kế hoạch Blender / Three.js; Remotion chạy hành động đúng lúc nói."""
+    theo câu). Remotion chạy hành động đúng lúc nói (v99.1: đường dựng Blender / Three.js cũ đã gỡ)."""
     if str(kb.get("luong") or "") == "hinh_hoc_thuan" or str(kb.get("mon") or "").upper() == "HINH_HOC":
         return None   # khóa luồng hình học thuần: không có cảnh thật / góc máy 3D
     spec = kb.get("dac_ta_canh")
@@ -1624,21 +1628,30 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
     ds_buoc = [b for b in k4["buoc"] if isinstance(b, dict)]
     nb = len(ds_buoc)
     # ---- mốc bước ----
-    t_buoc, con_tro = [], 0
+    # v99.1: mỗi bước GẮN với một cảnh lời đọc (khai báo `canh` hoặc suy từ lời / thứ tự cảnh) -> không còn bước rơi vào
+    # nội suy chia đều thời gian (nguồn lỗi hình chạy trước giọng ~15 s)
+    so_theo_vt = [int(c["so"]) for c in canh_props]
+    canh_suy = v99_k4.suy_canh_buoc(ds_buoc, [c for c in (kb.get("canh") or []) if isinstance(c, dict)][:len(canh_props)] or [{}])
+    t_buoc, con_tro, khop_buoc = [], 0, []
     for j, b in enumerate(ds_buoc):
         if j == 0:
             t_buoc.append(0.0)
+            khop_buoc.append(True)
             continue
         try:
             so_c = int(b.get("canh")) if b.get("canh") is not None else None
         except (TypeError, ValueError):
             so_c = None
+        khai_bao = so_c in pham_vi
+        if not khai_bao and j < len(canh_suy) and 1 <= canh_suy[j] <= len(so_theo_vt):
+            so_c = so_theo_vt[canh_suy[j] - 1]
         lo, hi = con_tro, len(tu_all)
         if so_c in pham_vi and con_tro < pham_vi[so_c][1]:
             lo, hi = max(con_tro, pham_vi[so_c][0]), pham_vi[so_c][1]
         kq = tim(str(b.get("khi_noi") or ""), lo, hi) if b.get("khi_noi") else None
         if kq is None and so_c in pham_vi and b.get("khi_noi"):
             kq = tim(str(b.get("khi_noi")), con_tro)   # khi_noi lệch cảnh: vẫn chỉ tìm TIẾN
+        khop_buoc.append(bool(kq))
         if kq:
             con_tro = kq[1]
             thong_ke["khop"] += 1
@@ -1649,7 +1662,7 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
         else:
             thong_ke["uoc"] += 1
             t = None
-        if t is not None and t < t_het_de - 0.05 and not (so_c in het_canh and het_canh[so_c] <= t_het_de):
+        if t is not None and t < t_het_de - 0.05 and not (khai_bao and so_c in het_canh and het_canh[so_c] <= t_het_de):
             t = t_het_de   # cấm nhảy sang bước giải khi chưa đọc xong đề
         t_buoc.append(t)
     du_tru = min(6.0, max(2.0, tong * 0.08))
@@ -1657,7 +1670,8 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
     gian = 2.5 if tong > nb * 4 else max(0.8, tong / max(1, nb) * 0.5)
     for j in range(1, nb):
         t_buoc[j] = max(t_buoc[j], t_buoc[j - 1] + gian)
-    if nb > 1 and t_buoc[-1] > tong - du_tru:   # bước cuối không bị đẩy sát Outro
+    # bước cuối không bị đẩy sát Outro - v99.1: CHỈ khi mốc là ước lượng (mốc khớp lời đọc không bao giờ bị kéo sớm hơn giọng)
+    if nb > 1 and t_buoc[-1] > tong - du_tru and not khop_buoc[-1]:
         t_buoc[-1] = max(t_buoc[-2] + 0.8, tong - du_tru)
         for j in range(nb - 2, 0, -1):
             t_buoc[j] = min(t_buoc[j], t_buoc[j + 1] - min(gian, (t_buoc[j + 1] - t_buoc[0]) / (j + 1)))
@@ -1956,6 +1970,8 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
     moc_cau = v93.moc_cau(kb, buoc, so_lo)
     moc_cau["tieu_de"] = v95_k4.tieu_de_intro_dung(kb, moc_cau["tieu_de"])
     tom_tat = v93.tom_tat(kb, buoc)
+    if tom_tat:   # v99.1: 3 dòng Outro luôn có công thức / kết quả bên phải (trước đây dòng "Kết luận" trống cột phải)
+        tom_tat = v99_k4.du_cong_thuc_tom_tat(tom_tat, buoc, kb, v93.cong_thuc_gon, v93._cong_thuc_buoc)
     # ---- v96: SÂN KHẤU 2D (4 mô-đun Xác suất / nhánh 2D thực tế / sơ đồ tư duy). Định tuyến một lần (chon_san_khau);
     # có sân khấu 2D thì tầng 2 KHÔNG vẽ khuôn 3D (không còn nhét lưới thẻ / hình hộp sai ngữ cảnh) ----
     import khung4tang_v96 as v96_k4
@@ -2000,6 +2016,25 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
             so = v96_k4.so_ket_qua_dong(d)
             if so and not re.search(r"ket_luan|bai_hoc|cta", str(c.get("loai") or "")) and not v96_k4.loi_noi_so(c.get("loi_thoai"), so.replace("\\frac{", "").replace("}{", "/").rstrip("}")):
                 print("⚠ v96 câu cụt công thức ở cảnh %d: lời không đọc ra %s" % (i + 1, so))
+    # ---- v99.1: sân khấu tự sinh 2.5D (mã Python của BP2 chạy trong hộp cát), khóa mốc đáp án, nhịp chống đứng hình, theme ----
+    if not khong_gian:
+        import tu_sinh_svg
+        ts, ghi_ts = tu_sinh_svg.gan_tu_sinh(kb, k4, buoc, tim_moc, t_het_de, tong)
+        if ts:
+            out["tuSinh"] = ts
+            out.pop("sanKhau", None)
+            out["canh3dv"] = None
+            print("v99.1 sân khấu tự sinh: %d lớp SVG (mốc %s s)%s" % (len(ts["lop"]), ", ".join("%.1f" % l["t"] for l in ts["lop"]), (" | " + ghi_ts) if ghi_ts else ""))
+        elif ghi_ts:
+            print("v99.1 sân khấu tự sinh: %s -> giữ sân khấu dự phòng" % ghi_ts)
+    t_cb = v99_k4.moc_cong_bo(tu_all, canh_props, fps, so_dap, so_chu_sang_so)
+    sua_cb = v99_k4.khoa_dap_an(out, t_cb, so_dap)
+    if sua_cb:
+        print("v99.1 khóa mốc đáp án (giọng công bố %.2f s): %s" % (t_cb, "; ".join(sua_cb[:6])))
+    moc_cau = sorted(round(c["batDau"] / float(fps) + x["bat"], 3) for c in canh_props for x in (c.get("cau") or []))
+    out["nhipT2"] = v99_k4.nhip_chong_dung(out, moc_cau, tong)
+    if not khong_gian:
+        out["theme"] = v99_k4.chon_theme(kb)
     # v96: quét mã TeX thô ở trường chữ thường (Intro / Outro / CTA) + chuẩn ký hiệu "không chia hết" (không ⋮)
     da_sua = v96_k4.sua_ma_tho_props(out)
     if da_sua:
@@ -3092,6 +3127,10 @@ def main():
     for i, c in enumerate(canh):
         so = int(c.get("so") or i + 1)
         loi_thoai = sua_chinh_ta_tieng_viet(str(c.get("loi_thoai") or "").strip())
+        if str(kb.get("luong") or "") != "hinh_hoc_thuan":
+            # v99.1: phiên âm AI lỡ viết ("ít-sờ", "vê tại 2") -> ký hiệu (giọng vẫn đọc "ích", phụ đề hiện "x");
+            # bỏ vế lặp cùng giá trị ("bằng một trăm bốn mươi tư bằng 144")
+            loi_thoai = v99_k4.bo_lap_bang(v99_k4.tra_ky_hieu(loi_thoai), so_chu_sang_so)
         c["loi_thoai"] = loi_thoai
         if c.get("tieu_de_canh"):
             c["tieu_de_canh"] = sua_chinh_ta_tieng_viet(c.get("tieu_de_canh"))

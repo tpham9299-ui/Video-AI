@@ -216,11 +216,12 @@ function DoThi({d, x, W, H, tt, hienSo, t, dung, tDung}: {d: DoiChieu; x: number
   );
 }
 
-export const DoiChieu2Cot: React.FC<{d: DoiChieu; dt: number; dai: number; t: number; rong: number; cao: number; hienSo: boolean; a: number; dtGiai?: number}> = ({d, dt, dai, t, rong, cao, hienSo, a, dtGiai}) => {
+export const DoiChieu2Cot: React.FC<{d: DoiChieu; dt: number; dai: number; t: number; rong: number; cao: number; hienSo: boolean; a: number; dtGiai?: number; tHuyHieu?: number}> = ({d, dt, dai, t, rong, cao, hienSo, a, dtGiai, tHuyHieu}) => {
   const {x, pha} = nhipTheoLoi(d, dt, dai, dtGiai);
   // mốc (giây toàn cục) điểm sáng đứng ở tối ưu: theo lời đọc (+0,8 s lướt) hoặc nhịp cũ
   const tDung = t - dt + (dtGiai !== undefined ? dtGiai + 0.8 : 0.6 + Math.max(1.6, Math.min(4.2, 0.45 * dai)) + Math.max(0.8, Math.min(1.6, 0.18 * dai)));
-  const tt = trangThaiDoiChieu(d, x, pha);
+  // v99.1: huy hiệu ★ CỰC ĐẠI / ✓ chỉ bật khi giọng đọc đã công bố đáp án (trước đó giữ trạng thái đang dò)
+  const tt = trangThaiDoiChieu(d, x, tHuyHieu !== undefined && t < tHuyHieu && pha === 'dung' ? 've' : pha);
   const W = rong / 2;
   const vao = emRa(a);
   const mauHinh = tt.dat === false ? VUOT : tt.dat ? DAT : VANG;

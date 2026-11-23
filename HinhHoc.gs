@@ -24,7 +24,7 @@ function batHinhHoc_() { return String(cauHinh_('HINH_HOC_KHO') || 'BAT').toUppe
 // Hai luồng TÁCH BIỆT TUYỆT ĐỐI, quyết định MỘT lần từ r.mon và ghi vào kịch bản (kb.luong):
 //   hinh_hoc_thuan   : 100% khung hình thuần toán (Manim + KaTeX), KHÔNG Blender/Three.js/canh_that/phong cảnh.
 //   thuc_te_xac_suat : được dùng cảnh đời sống Blender / mô phỏng phép thử.
-// BP3 (dung-video.yml, canh_3d.py, kiem_hinh_hoc.py) đọc kb.luong và DỪNG nếu kịch bản còn dấu vết của luồng kia.
+// BP3 (dung-video.yml, kiem_hinh_hoc.py) đọc kb.luong và DỪNG nếu kịch bản còn dấu vết của luồng kia.
 var LUONG_HINH_HOC_ = 'hinh_hoc_thuan';
 var LUONG_THUC_TE_ = 'thuc_te_xac_suat';
 function xacDinhLuong_(r) { return laMonHinhHoc_(r) ? LUONG_HINH_HOC_ : LUONG_THUC_TE_; }

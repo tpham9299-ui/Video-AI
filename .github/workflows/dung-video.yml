@@ -5,7 +5,7 @@ run-name: "Dựng video ${{ inputs.id || inputs.mau || github.run_number }}"
 #  - Apps Script (BoPhan2.gs) gửi "workflow_dispatch" kèm ref = nhánh trong CAU_HINH > GITHUB_NHANH: GitHub chạy ĐÚNG mã của
 #    nhánh đó (mặc định nhánh claude/... mới nhất), không còn dựng bằng mã cũ của nhánh master.
 #  - "repository_dispatch" (cách cũ) vẫn nhận, để không hỏng khi token chưa có quyền Actions; cách này luôn chạy mã nhánh mặc định.
-#  - viec = dang: đăng video đã dựng lên Facebook / TikTok / YouTube (DangVideo.gs hẹn giờ gọi).
+#  - Đăng video: dang-video.yml (BP5, DangVideo.gs gọi trực tiếp; job "dang" trùng lặp ở đây đã gỡ v99.1).
 #  - Chạy thử tay: Actions > Dựng video > Run workflow (chọn nhánh, chọn kịch bản mẫu; không báo kết quả về Apps Script).
 on:
   repository_dispatch:
@@ -15,12 +15,12 @@ on:
       mau:
         description: 'Kịch bản mẫu để dựng thử (khi không có kich_ban)'
         type: choice
-        options: [kich_ban_4tang_luc, kich_ban_thuc_te, kich_ban_koch, kich_ban_koch_moi, kich_ban_ong_thep, kich_ban_cot_co, kich_ban_rao_vuon, kich_ban_toa_nha, kich_ban_san_pham, kich_ban_hinh_hoc, kich_ban_hinh_khong_gian, kich_ban_hinh_manim, kich_ban_hinh_dong_bo, kich_ban_mau]
-        default: kich_ban_thuc_te
+        options: [v99_1/koch_dao, v99_1/gia_ve_parabol, kich_ban_4tang_luc, kich_ban_v95_hop_16x10, v98_3/cay_bayes_3hop, v98/thap_flycam_oxyz, v97/giao_diem_mnp, kich_ban_hinh_hoc, kich_ban_hinh_khong_gian, kich_ban_hinh_manim, kich_ban_hinh_dong_bo]
+        default: v99_1/koch_dao
       viec:
-        description: 'dung = dựng video | dang = đăng video lên mạng xã hội'
+        description: 'dung = dựng video (v99.1: đăng video chạy ở dang-video.yml)'
         type: choice
-        options: [dung, dang]
+        options: [dung]
         default: dung
       id:
         description: 'Mã đề (Apps Script tự điền)'
@@ -34,11 +34,6 @@ on:
         description: 'Thông tin đăng bài JSON (Apps Script tự điền)'
         type: string
         default: ''
-      blender:
-        description: 'v91: 1 = ép dựng cảnh mở đầu bằng Blender 5.3 (mặc định: Khung 4 tầng + 3D Vector trong Remotion)'
-        type: choice
-        options: ['0', '1']
-        default: '0'
 
 # Mỗi đề một nhóm: đề ưu tiên (gửi qua Zalo) được dựng SONG SONG với video đang dựng, không phải xếp hàng chờ;
 # cùng một đề gửi lặp thì chỉ dựng/đăng một lần.
@@ -94,7 +89,6 @@ jobs:
       # v91: số luồng edge-tts song song / số luồng chuẩn âm ffmpeg (chuanbi.py in bảng thời gian từng khâu)
       EDGE_SONG_SONG: ${{ vars.EDGE_SONG_SONG || '8' }}
       THU_MUC_RA: out
-      EP_BLENDER: ${{ github.event.inputs.blender || vars.EP_BLENDER || '0' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -163,7 +157,7 @@ jobs:
           echo "Nhánh mã đang dựng: $GITHUB_REF_NAME ($GITHUB_SHA)"
           if [ -z "$KICH_BAN" ] || [ "$KICH_BAN" = "null" ]; then
             echo "Không có kịch bản gửi kèm -> dùng kịch bản mẫu"
-            cp "mau/${{ github.event.inputs.mau || 'kich_ban_mau' }}.json" kich_ban.json
+            cp "mau/${{ github.event.inputs.mau || 'v99_1/koch_dao' }}.json" kich_ban.json
           else
             printf '%s' "$KICH_BAN" > kich_ban.json
           fi
@@ -202,29 +196,22 @@ jobs:
               kb["mon"] = "HINH_HOC"
               with open("kich_ban.json", "w", encoding="utf8") as f:
                   json.dump(kb, f, ensure_ascii=False)
-          # v91: khung 4 tầng + 3D Vector (Remotion) là bộ dựng MẶC ĐỊNH của luồng thực tế & xác suất -> bỏ qua Blender.
-          # Blender chỉ chạy khi kịch bản không có khung4tang hợp lệ, kb.bo_dung = blender, hoặc ép tay (input blender = 1).
+          # v99.1: luồng thực tế & xác suất LUÔN dựng bằng Khung 4 tầng (Remotion); đường dựng Blender đã gỡ hoàn toàn.
           if hh and ("khung4tang" in kb or "bo_dung" in kb):   # khóa luồng hình học thuần: gỡ mọi lớp 3D Vector
               kb.pop("khung4tang", None); kb.pop("bo_dung", None)
               with open("kich_ban.json", "w", encoding="utf8") as f:
                   json.dump(kb, f, ensure_ascii=False)
           k4 = kb.get("khung4tang")
-          v3d = (not hh and isinstance(k4, dict) and isinstance(k4.get("buoc"), list) and len(k4["buoc"]) > 0
-                 and str(kb.get("bo_dung") or "3d_vector") != "blender" and os.environ.get("EP_BLENDER") != "1")
-          print("Luồng dựng:", "hinh_hoc_thuan (Manim, không Blender)" if hh else
-                ("thuc_te_xac_suat - Khung 4 tầng + 3D Vector (Remotion, bỏ qua Blender)" if v3d else "thuc_te_xac_suat - đường dựng cũ (Blender khi cần)"))
+          v3d = not hh and isinstance(k4, dict) and isinstance(k4.get("buoc"), list) and len(k4["buoc"]) > 0
+          dai = kb.get("kieu_video") == "DAI_10_PHUT" or str(kb.get("id", "")).upper().endswith("-10P")
+          if not hh and not v3d and not dai:
+              raise SystemExit("::error::v99.1: bài thực tế / xác suất bắt buộc có khung4tang (đường dựng Blender cũ đã gỡ)")
+          print("Luồng dựng:", "hinh_hoc_thuan (Manim)" if hh else
+                ("thuc_te_xac_suat - Khung 4 tầng (Remotion)" if v3d else "video 10 phút - giao diện cảnh (Remotion)"))
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
               print(f"hh={int(hh)}", file=f)
               print(f"v3d={int(v3d)}", file=f)
           PY_HINH
-
-      - name: Đối chiếu kịch bản và thử lập cảnh trước giọng đọc
-        id: kich_ban_canh
-        if: steps.kb.outputs.hh != '1' && steps.kb.outputs.v3d != '1'
-        run: |
-          pip install -q jsonschema pillow
-          python3 scripts/canh_3d.py kich_ban.json --kiem-kich-ban --tu-tao
-          node scripts/kiem_tra_kich_ban.cjs kich_ban.json
 
       - name: Cache âm thanh giọng đọc TTS
         uses: actions/cache@v4
@@ -320,47 +307,12 @@ jobs:
           ls -la out
           echo "ok=1" >> "$GITHUB_OUTPUT"
 
-      # v91: khung 4 tầng + 3D Vector -> chỉ chạy test động cơ 3D Vector (vài giây), không lập kế hoạch / cài / dựng Blender
+      # v91: khung 4 tầng + 3D Vector -> chỉ chạy test động cơ 3D Vector (vài giây)
       - name: Kiểm tra động cơ 3D Vector (khung 4 tầng)
         if: steps.kb.outputs.v3d == '1'
         run: |
           node scripts/test_canh_3d_vector.mjs
-          python3 -c "import json;p=json.load(open('public/props.json',encoding='utf8'));k=p.get('khung4tang');print('Khung 4 tầng:',len(k['buoc']),'bước') if p.get('boCuc')=='4tang' and k else print('::warning::chuanbi.py không sinh được khung4tang -> dựng giao diện cũ (không Blender)')"
-
-      - name: Kiểm tra dữ kiện và chọn bộ dựng 3D
-        id: bo_dung_3d
-        if: steps.kb.outputs.hh != '1' && steps.kb.outputs.v3d != '1'
-        run: |
-          python3 scripts/test_canh_3d.py
-          python3 scripts/test_dac_ta_canh.py
-          SO_CANH=$(python3 scripts/canh_3d.py kich_ban.json public/props.json --chuan-bi)
-          echo "so_canh_blender=$SO_CANH" >> "$GITHUB_OUTPUT"
-
-      - name: Cache Blender 5.3 (ghim cùng bản với máy dựng thử)
-        if: steps.bo_dung_3d.outputs.so_canh_blender != '' && steps.bo_dung_3d.outputs.so_canh_blender != '0'
-        uses: actions/cache@v4
-        with:
-          path: ~/blender-5.3
-          key: blender-5.3.0-linux-x64
-
-      - name: Cài Blender và Manim cho cảnh có bản vẽ
-        if: steps.bo_dung_3d.outputs.so_canh_blender != '' && steps.bo_dung_3d.outputs.so_canh_blender != '0'
-        run: |
-          # Blender chính thức 5.3.0 (apt của Ubuntu 24.04 chỉ có 4.0 -> ảnh lệch so với máy dựng thử).
-          if [ ! -x ~/blender-5.3/blender ]; then
-            curl -fsSL --retry 3 https://download.blender.org/release/Blender5.3/blender-5.3.0-linux-x64.tar.xz -o /tmp/blender.tar.xz
-            mkdir -p ~/blender-5.3
-            tar -xJf /tmp/blender.tar.xz -C ~/blender-5.3 --strip-components=1
-            rm /tmp/blender.tar.xz
-          fi
-          sudo apt-get install -y -qq --no-install-recommends libxi6 libxkbcommon0 libsm6 libxrender1 libxxf86vm1 libxfixes3 libgl1 libegl1 >/dev/null
-          sudo ln -sf ~/blender-5.3/blender /usr/local/bin/blender
-          blender --version | head -1
-          bash scripts/cai_manim.sh
-
-      - name: Dựng bối cảnh Blender và lớp hình toán
-        if: steps.bo_dung_3d.outputs.so_canh_blender != '' && steps.bo_dung_3d.outputs.so_canh_blender != '0'
-        run: python3 scripts/canh_3d.py kich_ban.json public/props.json
+          python3 -c "import json;p=json.load(open('public/props.json',encoding='utf8'));k=p.get('khung4tang');print('Khung 4 tầng:',len(k['buoc']),'bước') if p.get('boCuc')=='4tang' and k else print('::warning::chuanbi.py không sinh được khung4tang')"
 
       - name: Gọn tài nguyên & đóng gói Remotion + ảnh bìa
         run: |
@@ -787,66 +739,3 @@ jobs:
             sleep 20
           done
           echo "Không báo được kết quả về Apps Script"; exit 1
-
-  # ĐĂNG VIDEO lên Facebook / TikTok / YouTube (DangVideo.gs trên Apps Script hẹn giờ rồi gọi việc này).
-  # Secrets cần (thêm cái nào thì nền tảng đó mới đăng; xem SUA_CODE_LAN_16.md):
-  #   Facebook: FB_PAGE_ID, FB_PAGE_TOKEN
-  #   TikTok:   TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET, TIKTOK_REFRESH_TOKEN (mã làm mới mới nhất được lưu vào Drive VIDEO_XACSUAT/bi_mat)
-  #   YouTube (chỉ khi CAU_HINH YOUTUBE_CACH = github): YT_CLIENT_ID, YT_CLIENT_SECRET, YT_REFRESH_TOKEN
-  dang:
-    if: ${{ github.event.inputs.viec == 'dang' }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    env:
-      RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
-      APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
-      DUNG_VIDEO_SECRET: ${{ secrets.DUNG_VIDEO_SECRET }}
-      DANG_JSON: ${{ github.event.inputs.dang }}
-      ID_VIDEO: ${{ github.event.inputs.id }}
-      DRIVE_THU_MUC: ${{ vars.DRIVE_THU_MUC }}
-      DRIVE_BI_MAT: ${{ vars.DRIVE_BI_MAT }}
-      FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
-      FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
-      TIKTOK_CLIENT_KEY: ${{ secrets.TIKTOK_CLIENT_KEY }}
-      TIKTOK_CLIENT_SECRET: ${{ secrets.TIKTOK_CLIENT_SECRET }}
-      TIKTOK_REFRESH_TOKEN: ${{ secrets.TIKTOK_REFRESH_TOKEN }}
-      TIKTOK_CHE_DO: ${{ vars.TIKTOK_CHE_DO }}
-      TIKTOK_QUYEN: ${{ vars.TIKTOK_QUYEN }}
-      YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
-      YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
-      YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
-      YT_CHE_DO: ${{ vars.YT_CHE_DO }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Cài công cụ
-        run: |
-          pip install -q requests
-          command -v ffmpeg >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)   # in số tập vào video lúc đăng
-          command -v rclone >/dev/null || (curl -fsSL --retry 3 --retry-delay 5 https://rclone.org/install.sh | sudo bash || (sudo apt-get update -qq && sudo apt-get install -y -qq rclone))
-          mkdir -p ~/.config/rclone
-          printf '%s' "$RCLONE_CONF" > ~/.config/rclone/rclone.conf
-      - name: Đăng video
-        id: dang_py
-        run: python3 scripts/dang_video.py
-      - name: Báo lỗi đăng về Apps Script nếu workflow gặp sự cố
-        if: ${{ failure() && env.APPS_SCRIPT_URL != '' && env.ID_VIDEO != '' }}
-        run: |
-          python3 - <<'PY'
-          import json, os, urllib.request
-          p = {
-              "token": os.environ["DUNG_VIDEO_SECRET"],
-              "loai": "dang",
-              "id": os.environ["ID_VIDEO"],
-              "ket_qua": {"_github_loi": "GitHub workflow dang gap loi: https://github.com/%s/actions/runs/%s" % (os.environ.get("GITHUB_REPOSITORY", ""), os.environ.get("GITHUB_RUN_ID", ""))},
-          }
-          json.dump(p, open("bao_loi_dang.json", "w"))
-          PY
-          for lan in 1 2 3 4; do
-            KQ=$(curl -sS -L -H 'Content-Type: application/json' --data @bao_loi_dang.json "$APPS_SCRIPT_URL" || true)
-            echo "Báo lỗi đăng lần $lan: $KQ"
-            if echo "$KQ" | grep -Eq '"ok" *: *true|KHONG_TIM_THAY'; then exit 0; fi
-            sleep 15
-          done

@@ -8,6 +8,9 @@ import {SanKhau3DVector} from '../3d-vector/SanKhau3DVector';
 import {chuanHoaCanh3DV} from '../3d-vector/dac_ta';
 import {MAU_3DV} from '../3d-vector/kieu';
 import {NenTramToanHoc} from './NenTramToanHoc';
+import {NenKhiQuyen} from './NenKhiQuyen';
+import {layTheme, xungNhip} from './nen_v99';
+import {SanKhauTuSinh} from '../sankhau2d/SanKhauTuSinh';
 import {TangTieuDe} from './TangTieuDe';
 import {TangTheGiai} from './TangTheGiai';
 import {ThanhDe} from './ThanhDe';
@@ -77,6 +80,22 @@ const Tang: React.FC<{ten: string; v: Vung; rong?: number; le?: number; co?: num
   </div>
 );
 
+// v99.1: xung nhịp chống đứng hình ở T2 (mỗi câu thoại trong khoảng > 6 s không đổi hình): một vệt sáng mảnh quét ngang
+// + khung góc sáng lên rồi tắt trong 0,9 s - nhìn thấy được nhưng không che hình (mix-blend screen, độ đục <= 0,22)
+const XungT2: React.FC<{u: number; rong: number; cao: number; mau: string}> = ({u, rong, cao, mau}) => {
+  const a = Math.sin(Math.PI * u);
+  return (
+    <div data-xung-t2 style={{position: 'absolute', inset: 0, pointerEvents: 'none', mixBlendMode: 'screen'}}>
+      <div style={{position: 'absolute', top: 0, bottom: 0, left: -160 + u * (rong + 320), width: 160, opacity: 0.22 * a,
+        background: `linear-gradient(90deg, transparent, ${mau}, transparent)`}} />
+      {[[0, 0], [1, 0], [0, 1], [1, 1]].map(([x, y], k) => (
+        <div key={k} style={{position: 'absolute', width: 34, height: 34, opacity: 0.55 * a, left: x ? rong - 46 : 12, top: y ? cao - 46 : 12,
+          borderColor: mau, borderStyle: 'solid', borderWidth: `${y ? 0 : 2}px ${x ? 2 : 0}px ${y ? 2 : 0}px ${x ? 0 : 2}px`}} />
+      ))}
+    </div>
+  );
+};
+
 export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
   const f = useCurrentFrame();
   const fps = p.fps || 30;
@@ -89,7 +108,10 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
   // v92: khuôn tham số trải pha theo mốc các bước giải (mỗi bước có hình đổi); tongFrame = hết phần nội dung (sát Outro)
   const canh = useMemo(() => chuanHoaCanh3DV(p.canh3dv, buoc.map((b) => b.t), p.tongFrame / fps).canh, [p.canh3dv, buoc, p.tongFrame, fps]);
   // v96: sân khấu 2D (4 mô-đun Xác suất / 2D thực tế / sơ đồ tư duy) thay khuôn 3D khi chuanbi.py định tuyến ra
-  const sk2 = p.sanKhau || null;
+  const sk2 = p.tuSinh ? null : p.sanKhau || null;
+  // v99.1: sân khấu tự sinh 2.5D (mã Python hộp cát) thắng sân khấu 2D / khuôn 3D; nền khí quyển theo theme; xung chống đứng hình
+  const ts = !p.khongGian && p.tuSinh && p.tuSinh.lop?.length ? p.tuSinh : null;
+  const th = !p.khongGian ? layTheme(p.theme) : null;
   // v97: hình học không gian (động cơ riêng src/khonggian: nét khuất giải tích từng khung + đạo diễn camera theo moc_xoay)
   const kg = p.khongGian || null;
   let i = -1;
@@ -127,6 +149,7 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
   const cauNay = gon ? dsCau.find((c) => t >= c.bat && t < c.ket) : undefined;
   // v92: phụ đề MẶC ĐỊNH TẮT (chỉ bật khi boCuc.phuDe === 'gon'); phụ đề gọn có dải riêng 56 px lấy từ đáy T3 (không chồng lên thẻ giải)
   const t3: Vung = gon && !toiGian ? {y: bc.t3.y, h: bc.t3.h - 56} : bc.t3;
+  const xung = xungNhip(t, p.nhipT2);
 
   return (
     <AbsoluteFill className="k4t" style={{fontFamily: FONT, background: '#0E1014'}}>
@@ -134,7 +157,8 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
       {/* bù nghiêng (italic correction) của KaTeX đo theo phông KaTeX, không hợp với Be Vietnam nghiêng -> "V  =" hở thừa */}
       <style>{'div, span { text-wrap: balance; } .katex, .katex * { text-wrap: nowrap; } .k4t .katex .mathnormal:not(:has(+ .msupsub)):not(:has(+ .msupsub) *) { margin-right: 0 !important; }'}</style>
       <NapPhongToan />
-      <NenTramToanHoc t={t} mauNhan={mauNhan} tamSanKhau={bc.t2.y + bc.t2.h / 2} kieu={toiGian ? 'v95' : 'v981'} />
+      {th ? <NenKhiQuyen th={th} t={t} mocBuoc={buoc.map((b) => b.t)} tamSanKhau={bc.t2.y + bc.t2.h / 2} mauNhan={mauNhan} />
+        : <NenTramToanHoc t={t} mauNhan={mauNhan} tamSanKhau={bc.t2.y + bc.t2.h / 2} kieu={toiGian ? 'v95' : 'v981'} />}
       {/* v98.1: T2 KHÔNG KHUNG — hình / sơ đồ thở trực tiếp trên nền (bỏ thẻ kính bao T2 của v95) */}
       {p.thuongHieu ? (
         <div data-kd-bo="1" style={{position: 'absolute', top: Math.max(24, bc.t1.y - 58), right: 44, fontFamily: FONT, fontWeight: 800, fontSize: 22, color: 'rgba(230,237,245,0.5)', letterSpacing: 0.4, opacity: ra}}>{p.thuongHieu}</div>
@@ -155,12 +179,18 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
             <SanKhauKhongGian kg={kg} t={t} rong={bc.rong} cao={bc.t2.h} lechMay={G > 0 && t < G ? {k: 1 + 0.22 * (1 - emRa(t / 1.6)), n: 18 * (1 - emRa(t / 2.2))} : undefined} />
           </div>
         ) : null}
-        {!kg && !sk2 && canh && a3D > 0 ? (
+        {ts && a3D > 0 ? (
+          <div style={{position: 'absolute', inset: 0, opacity: a3D}}>
+            <SanKhauTuSinh ts={ts} t={t} fps={fps} rong={bc.rong} cao={bc.t2.h} xung={xung} />
+          </div>
+        ) : null}
+        {!ts && xung >= 0 && !kg ? <XungT2 u={xung} rong={bc.rong} cao={bc.t2.h} mau={mauNhan} /> : null}
+        {!kg && !sk2 && !ts && canh && a3D > 0 ? (
           <div style={{position: 'absolute', inset: 0, opacity: a3D}}>
             <SanKhau3DVector canh={canh} t={t3d} rong={bc.rong} cao={bc.t2.h} tongGiay={tong} lechMay={lechMay} />
           </div>
         ) : null}
-        {dc && aDc2 > 0 ? <DoiChieu2Cot d={dc} dt={t - tDau} dai={tCuoi - tDau} t={t} rong={bc.rong} cao={bc.t2.h} hienSo={!!buoc[i].doi_chieu?.hien_so} a={aDc2} dtGiai={dtGiai} /> : null}
+        {dc && aDc2 > 0 ? <DoiChieu2Cot d={dc} dt={t - tDau} dai={tCuoi - tDau} t={t} rong={bc.rong} cao={bc.t2.h} hienSo={!!buoc[i].doi_chieu?.hien_so} a={aDc2} dtGiai={dtGiai} tHuyHieu={buoc[i].doi_chieu?.t_huy_hieu} /> : null}
       </Tang>
       <div style={{opacity: ra}}>
         <Tang ten="t3" v={t3} rong={bc.rong} le={bc.le}>

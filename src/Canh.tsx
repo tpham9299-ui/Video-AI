@@ -1,7 +1,4 @@
 import {BoiCanh} from './NenCauChuyen';
-import {CanhMoiTruong} from './CanhMoiTruong';
-import {UngDungThucTe} from './UngDungThucTe';
-import {CanhBlender, ChuyenLayNet, dichMay, khungThuc, NenKhungBlender, tienChuyen} from './CanhBlender';
 import {CanhThucTe, DuLieuThucTe} from './CanhThucTe';
 import {BangPhanCong} from './BangPhanCong';
 import {BiaGap} from './BiaGap';
@@ -144,18 +141,12 @@ export const Canh: React.FC<{
   const bangPhanCong = !lopManim && canh.minhHoa.loai === 'bang_phan_cong';
   const thucTe = !lopManim && canh.minhHoa.loai === 'thuc_te_theo_de' ? canh.minhHoa.duLieu as DuLieuThucTe : null;
   const anh3D = !lopManim && canh.anhCanh3D;
-  // Ba pha của bài thực tế / xác suất: 'thuc' = cảnh Blender giống thật; 'chuyen' = ảnh thật mờ dần + lấy nét sang hình 2D;
-  // 'toan' = lời giải dựng bằng Remotion (sân khấu, KaTeX), riêng hình khối (trụ, nón, cầu, hộp) dùng bản vẽ Manim.
-  const pha = lopManim ? undefined : canh.phaMinhHoa;
-  // cảnh ứng dụng / liên hệ thực tế không dùng lại bản vẽ Manim của phần giải (trước đây chỉ hiện 2 hình trụ nét mảnh):
-  // thay bằng thẻ minh họa từng vật đời thật mà lời đọc nhắc tới (lon, bồn, silo, ống...)
-  const ungDungKhoi = pha === 'toan' && !!canh.chuoi3D?.hinhGiai && /ung_dung|lien_he|thuc_te|doi_song|van_dung/.test(canh.loai || '');
-  const hinhKhoi = pha === 'toan' && canh.chuoi3D?.hinhGiai && !ungDungKhoi ? canh.chuoi3D.hinhGiai : null;
-  const chuyen3D = pha === 'chuyen' && canh.chuoi3D ? canh.chuoi3D : null;
-  const clip = !lopManim && pha !== 'toan' && pha !== 'chuyen' && canh.chuoi3D;
-  const pChuyen = chuyen3D ? tienChuyen(canh, t) : 1;
-  const moiTruong = !lopManim && canh.moiTruong;
-  const coHinh = !!moiTruong || !!clip || !!hinhKhoi || ungDungKhoi || !!anh3D || !!thucTe || bangPhanCong || veBia || kieu !== null;
+  // v99.1: đường dựng Blender / Three.js (chuoi3D, phaMinhHoa, moiTruong) đã gỡ -> giao diện cảnh chỉ còn sân khấu Remotion
+  const clip = false as const;
+  const moiTruong = false as const;
+  const chuyen3D = null;
+  const pChuyen = 1;
+  const coHinh = !!anh3D || !!thucTe || bangPhanCong || veBia || kieu !== null;
   const coHook = laMoDau && !!hook.chu;
 
   // ----- công thức -----
@@ -303,14 +294,6 @@ export const Canh: React.FC<{
 
   return (
     <>
-    {clip && !canh.phaMinhHoa && !phongCanh && clip.nenDung && !clip.giuNet && <div style={{position:'absolute',inset:0}}>
-      <Img src={staticFile(clip.nenDung)} style={{width:'100%',height:'100%'}} />
-      <div style={{position:'absolute',inset:0,background:'linear-gradient(to bottom,rgba(12,23,28,.75),transparent 38%,transparent 57%,rgba(12,23,28,.78))'}}/>
-    </div>}
-    {/* cảnh thật mở đầu: nền Blender chuyển động cùng góc máy với vật (thị sai thật), phủ toàn khung dọc */}
-    {clip && pha === 'thuc' && clip.nenKhung ? <NenKhungBlender canh={canh} k={(clip.nenKhung - 1) * khungThuc(canh, t) / Math.max(1, (clip.khungThat ?? 16) - 1)}
-      style={{transform: dichMay(t, canh.soFrame / fps)}} /> : null}
-    {moiTruong && <CanhMoiTruong canh={canh} plan={moiTruong} time={t} />}
     {coCuaTron ? <DiaCuaTron f={frame} /> : null}
     {/* chuyển cảnh "quét sáng": một vệt sáng màu nhấn chạy ngang khung đúng lúc nội dung lộ ra */}
     {kieuCC === 'quet_sang' && !giuTruoc && frame < 14 ? (
@@ -321,7 +304,7 @@ export const Canh: React.FC<{
       {/* Sân khấu */}
       {coHinh && !clip && !moiTruong ? (
         <NhoeHuong nx={ccSan.nx} ny={ccSan.ny} style={{position: 'absolute', left: 0, right: 0, top: yNoiDung, height: caoSan, display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: (veBia ? 1 : ccSan.mo) * (chuyen3D ? kep(pChuyen * 1.4 - 0.25) : 1), filter: chuyen3D && pChuyen < 1 ? `blur(${(1 - pChuyen) * 10}px)` : undefined, transform: veBia ? undefined : `perspective(1600px) translate(${ccSan.x}px, ${ccSan.y}px) rotateX(${ccSan.rx}deg) rotateY(${ccSan.ry}deg) rotateZ(${ccSan.rz}deg) scale(${ccSan.s})`, clipPath: veBia ? undefined : ccSan.clip}}>
-          {hinhKhoi ? <HinhKhoi src={hinhKhoi} cao={caoSan} t={t} /> : ungDungKhoi ? <UngDungThucTe cau={canh.cau} cao={caoSan} /> : thucTe ? <CanhThucTe du={thucTe} cao={caoSan}/> : bangPhanCong ? <BangPhanCong cao={caoSan} caTruc={/trực|chia ca/i.test(canh.cau.map(c => c.text).join(' '))}
+          {thucTe ? <CanhThucTe du={thucTe} cao={caoSan}/> : bangPhanCong ? <BangPhanCong cao={caoSan} caTruc={/trực|chia ca/i.test(canh.cau.map(c => c.text).join(' '))}
             moc={canh.cau.find(c => /phân công|chia|trực|phân bổ/i.test(c.text))?.bat ?? 0.5} /> : veBia ? <BiaGap cao={caoSan} dai={giayAm} ungDung={ungDung && !laMoDau} kienTruc={canh.cau.some(c => /kiến trúc/i.test(c.text))}
             batCat={Math.min(giayAm * 0.35, canh.cau.find(c => /cắt/i.test(c.text))?.bat ?? giayAm * 0.25)}
             batGap={Math.min(giayAm * 0.75, Math.max(giayAm * 0.45, canh.cau.find(c => /gấp/i.test(c.text))?.bat ?? giayAm * 0.55))} /> : <>
@@ -363,10 +346,6 @@ export const Canh: React.FC<{
         </NhoeHuong>
       ) : null}
 
-      {clip ? <div style={clip.nenDung && !clip.giuNet ? {position:'absolute', top: '50%', width:'100%', aspectRatio:'1.6', transform:'translateY(-50%)', opacity:canh.phaMinhHoa ? 1 : ra} : {position: 'absolute', top: Math.max(425, yNoiDung), left: 38, right: 38, height: Math.min(775, yNoiDung + caoSan - Math.max(425, yNoiDung)), opacity: ra}}>
-        <CanhBlender canh={canh} truoc={truoc} frame={frame} fps={fps} />
-      </div> : null}
-      {chuyen3D ? <ChuyenLayNet canh={canh} truoc={truoc} p={pChuyen} time={t} /> : null}
       {anh3D && !clip && !moiTruong ? (
         <div style={{position: 'absolute', top: yNoiDung, left: 40, right: 40, height: caoSan,
           borderRadius: 26, overflow: 'hidden', display: 'grid', placeItems: 'center',
