@@ -495,3 +495,8 @@
 ## Sửa nóng — `tu_de` "mềm câu chữ, chặt số liệu" (canh_3d.py)
 - `mo_hinh_tu_de`: bỏ đòi trích nguyên văn. `chuan_khop` (hoa/thường, khoảng trắng, dấu câu, `$...$`/lệnh LaTeX, `2{,}5` = `2,5` = `2.5`, `mét` = `m`, `xăng-ti-mét` = `cm`...) + `khop_tu_de` (khớp mờ cửa sổ từ >= 0,8, gán lại nguyên văn đề). Mọi số trong `tu_de` phải có trong đoạn đề khớp; số trong trường dữ kiện (`TRUONG_SO_LIEU`: nhan/ten/mo_ta/...) phải có trong đề.
 - Chi tiết bịa: phụ -> bỏ riêng + `WARN mo_hinh_3d` (stderr); cốt lõi (`vai_tro` chinh/cot_loi hoặc được `doan_toan` tham chiếu) hay hết chi tiết -> lỗi. `doan_toan` bịa / `do_dai` không có trong câu đề -> bỏ + WARN; tọa độ lệch số đo vẫn lỗi cứng. Test `scripts/test_tu_de_mem.py` (8).
+
+## v98.2 — Model Gemini động (bỏ danh sách model cố định)
+- Google khai tử 2.0-flash / 2.5-flash / 2.5-pro (HTTP 404): mọi tầng (goi_gemini.js, kiem_duyet.mjs, kiem_tra_key.mjs, mat_than_3x3.py, tao_mo_hinh.py, .gs) lấy model từ ListModels + xếp hạng phiên bản theo chế độ nang/nhe (`model_gemini.cjs` ↔ `BoPhan1.gs danhSachModel_`).
+- Cache ListModels: tệp tạm theo key/ngày (Node), CacheService 6 giờ (Apps Script); lỗi mạng -> dự phòng sạch, nghỉ 10 phút.
+- 404 nhớ theo cặp (model, key) trong ngày PT; gợi ý `models/<x>` trong lỗi 404 được thử ngay. Test: `scripts/test_model_gemini.cjs`.

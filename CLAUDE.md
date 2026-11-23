@@ -72,8 +72,8 @@
      * Tránh dùng `filter: blur(...)` lặp theo phần tử hoặc `<feTurbulence>` toàn màn hình trong `src/` để giữ tốc độ render Chromium.
 
 3. **Kịch bản, Model & Giọng đọc:**
-   * Biên kịch (`MODEL_BIEN_KICH = gemini-2.5-pro`, `SUY_NGHI_BIEN_KICH = high`) viết lời dẫn xoay quanh một quyết định (`cau_chuyen`), duyệt từng cảnh thực tế/xác suất trước khi giao dựng.
-   * Luôn dùng hệ thống **Model Động** (`DANH_SACH_MODEL`, bỏ qua model 404, tra `ListModels` khi cần, tách lỗi quyền theo cặp `key|model`).
+   * Biên kịch (`MODEL_BIEN_KICH` trống = pro sống mới nhất, `SUY_NGHI_BIEN_KICH = high`) viết lời dẫn xoay quanh một quyết định (`cau_chuyen`), duyệt từng cảnh thực tế/xác suất trước khi giao dựng.
+   * Luôn dùng hệ thống **Model Động v98.2** — KHÔNG ghi cứng tên model: `ListModels` lọc model văn bản (`generateContent`, bỏ embedding/imagen/veo/tts/audio/aqa/gemma/...) -> bỏ trùng snapshot -> xếp hạng theo số phiên bản + chế độ `nang` (pro mới nhất -> flash mới nhất -> pro-latest -> flash-latest -> flash-lite; giải toán / kịch bản / Lego, mặc định) | `nhe` (flash -> flash-latest -> flash-lite -> pro; kiểm duyệt, sửa nhanh, `goiGemini_(…, {cheDo: 'nhe'})`). Node: `scripts/bophan1/model_gemini.cjs` (cache tệp theo key/ngày, `goi_gemini.js` nhận `cheDo`; `chay_bp1.js` nạp sẵn `DS_MODEL_SONG` cho .gs); Apps Script: `danhSachModel_(cheDo)` / `layModelSong_` (BoPhan1.gs, CacheService 6 giờ) - hai bản phải khớp (`test_model_gemini.cjs`). ListModels lỗi -> `DU_PHONG` / `MODEL_CHUAN_DU_PHONG_` (3.1-pro, 3.0-flash, pro-latest, flash-latest, flash-lite-latest). 404 nhớ theo cặp (model, key) tới hết ngày PT (`MODEL_404_NGAY` KhoKey.gs / tệp tạm Node; model chết khi >= 2 key 404), gợi ý `Please update your code to use models/<x>` -> thử `<x>` ngay sau. Tên model cũ trong CAU_HINH bị bỏ qua khi không có trong ListModels; vẫn tách lỗi quyền theo cặp `key|model`.
    * Giọng đọc Gemini TTS mặc định chế độ `mot_lan` (hoặc theo chặng đồng nhất 100% âm sắc, không đổi cao độ `asetrate`), fallback `edge-tts` cùng giới tính.
 
 4. **Kiểm duyệt & Lịch đăng:**
@@ -132,6 +132,7 @@ python scripts/test_v98.py                              # v98: che ô ghim lộ 
 python scripts/test_nhac_v98.py                         # v98: 3 preset nhạc (BPM, 16 ô nhịp, nối vòng, nhịp phách, chọn theo luồng, -19 dB)
 python scripts/test_lego_v98.py                         # v98: bộ giải Lego 6 khối (quan hệ, số đo, KG_*, trang_tri, khớp màu)
 node scripts/test_lego_v98.mjs                          # v98: nét khuất nhiều khối = bắn tia, viền trụ, phang_2d, 5 động tác, co_lap, số đọc
+node scripts/test_model_gemini.cjs                       # v98.2: lọc ListModels, xếp hạng nang/nhe, snapshot, cache 1 lần/key, 404 theo ngày + gợi ý, so khớp .gs <-> Node (máy chủ giả)
 node scripts/test_v98_gs.cjs                            # v98: responseSchema enum + bỏ schema khi 400, tự vá đúng mục lỗi 1 lần, định tuyến, Auto-fix
 python scripts/chuanbi.py mau/v98/thap_flycam_oxyz.json --gia-lap --props-ra out/v98/oxyz_thap/props.json   # mẫu Oxyz thực tế 3D (2 tháp + flycam)
 python scripts/nghiem_thu_v98.py out/v98/oxyz_thap/props.json   # lưới ảnh nghiệm thu có vạch trục giữa 540 / lề 130-950
