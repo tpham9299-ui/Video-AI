@@ -44,7 +44,7 @@ function Luoi({tren, t}: {tren: boolean; t: number}) {
   );
 }
 
-export const NenTramToanHoc: React.FC<{t: number; mauNhan: string; tamSanKhau: number}> = ({t, mauNhan, tamSanKhau}) => (
+const NenV95: React.FC<{t: number; mauNhan: string; tamSanKhau: number}> = ({t, mauNhan, tamSanKhau}) => (
   <div style={{position: 'absolute', inset: 0, background: 'linear-gradient(180deg, #0E1014 0%, #12141A 45%, #12141A 70%, #0E1014 100%)'}}>
     {/* v95: spotlight trắng cực dịu + quầng màu nhấn sau sân khấu 3D -> chiều sâu, hết mảng đen phẳng */}
     <div style={{position: 'absolute', left: 0, right: 0, top: tamSanKhau - 560, height: 1120, background: 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.018) 45%, transparent 78%)'}} />
@@ -75,3 +75,32 @@ export const NenTramToanHoc: React.FC<{t: number; mauNhan: string; tamSanKhau: n
     </svg>
   </div>
 );
+
+// v98.1 — NỀN CÓ CHIỀU SÂU cho luồng 2D / Xác suất / Đại số / khuôn 3D: bỏ 2 lưới phối cảnh (sọc ngang) + lưới ô 144 px;
+// chỉ còn lưới chấm siêu mờ phai hẳn về 4 góc + một quầng sáng trắng ấm cực nhẹ sau tâm T2 (+ vệt màu bước rất mảnh).
+// Chỉ gradient + pattern SVG (không blur / feTurbulence) để render Chromium nhanh.
+const NenV981: React.FC<{t: number; mauNhan: string; tamSanKhau: number}> = ({t, mauNhan, tamSanKhau}) => (
+  <div style={{position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 120% 80% at 50% 42%, #14171E 0%, #101218 55%, #0B0D11 100%)'}}>
+    <div style={{position: 'absolute', left: 0, right: 0, top: tamSanKhau - 620, height: 1240,
+      background: 'radial-gradient(ellipse 58% 48% at 50% 50%, rgba(255,240,220,0.075) 0%, rgba(255,240,220,0.028) 42%, transparent 74%)'}} />
+    <div style={{position: 'absolute', left: 0, right: 0, top: tamSanKhau - 360, height: 720,
+      background: `radial-gradient(ellipse 44% 40% at 50% 50%, ${mauNhan}10 0%, transparent 70%)`}} />
+    <svg width={RONG} height={CAO} style={{position: 'absolute', inset: 0}}>
+      <defs>
+        <pattern id="cham-v981" width={34} height={34} patternUnits="userSpaceOnUse" patternTransform={`translate(0 ${(t * 2.4) % 34})`}>
+          <circle cx={17} cy={17} r={1.25} fill="#E6EDF5" />
+        </pattern>
+        <radialGradient id="phai-v981" cx="50%" cy="44%" r="62%">
+          <stop offset="0" stopColor="#fff" stopOpacity={1} />
+          <stop offset="0.55" stopColor="#fff" stopOpacity={0.55} />
+          <stop offset="1" stopColor="#fff" stopOpacity={0} />
+        </radialGradient>
+        <mask id="mask-v981"><rect width={RONG} height={CAO} fill="url(#phai-v981)" /></mask>
+      </defs>
+      <rect width={RONG} height={CAO} fill="url(#cham-v981)" opacity={0.07} mask="url(#mask-v981)" />
+    </svg>
+  </div>
+);
+
+export const NenTramToanHoc: React.FC<{t: number; mauNhan: string; tamSanKhau: number; kieu?: 'v95' | 'v981'}> = ({kieu = 'v981', ...p}) =>
+  kieu === 'v95' ? <NenV95 {...p} /> : <NenV981 {...p} />;

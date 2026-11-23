@@ -16,8 +16,7 @@ import {tachHam} from './chu_tron';
 import {caoDongTex, coVuaCao} from './do_tex';
 
 const TOI_DA_THE = 3;
-const VANG = '#FACC15';
-const NGOC = '#2EE6A8';
+const CHOT = '#FBBF24';   // v98.1: hổ phách (kỷ luật 2 màu nhấn; trước đây viền ngọc)
 // v96: khung nội dung dừng ở ranh phải 12 % (vùng an toàn TikTok); v98: tầng đối xứng 130..950, thẻ cách mép tầng 12 px
 const LE_THE = 12;
 const RONG_TRONG = RONG_ND - 2 * LE_THE - 2 * 28;
@@ -80,6 +79,13 @@ export const caoThe = (th: TheGiai) => {
   return vo + 52 * Math.max(1, Math.ceil(String(th.noi_dung || '').length / 34));
 };
 
+// v98.1: vạch nhấn cạnh trên thẻ kính — mảnh, glow nhẹ, lóe khi thẻ vừa vào (không filter: blur)
+function VachNhan({mau, day, sang, loe}: {mau: string; day: number; sang: number; loe: number}) {
+  return <div style={{position: 'absolute', left: 22, right: 22, top: 0, height: day, borderRadius: day,
+    background: `linear-gradient(90deg, ${mau}00, ${mau} 18%, ${mau} 82%, ${mau}00)`, opacity: 0.7 + 0.3 * Math.max(loe, sang - 0.75),
+    boxShadow: `0 0 ${8 + 10 * loe}px ${mau}${loe > 0.3 ? '99' : '66'}`}} />;
+}
+
 function DanhSachThe({b, t, mau, aChung}: {b: BuocGiai; t: number; mau: string; aChung: number}) {
   // v95: số thẻ đã hiện = chỉ số thẻ CUỐI đã tới mốc + 1 (không đếm: mốc không đơn điệu từng làm cửa sổ trượt sai thẻ)
   let daHien = 0;
@@ -98,27 +104,32 @@ function DanhSachThe({b, t, mau, aChung}: {b: BuocGiai; t: number; mau: string; 
         const a = emRa((t - t0) / 0.38);
         const loe = 1 - kep01((t - t0) / 0.9); // viền lóe khi thẻ vừa vào
         if (th.chot) {
-          // v95: THẺ CHỐT ĐÁP ÁN — điểm cao trào: viền vàng→ngọc sáng 2 px, nền ngọc rất nhẹ, công thức lớn 52 px, nảy nhẹ khi vào
+          // v98.1: THẺ CHỐT — kính mỏng ánh hổ phách, KHÔNG viền 4 cạnh; vạch sáng 3 px cạnh trên thở nhẹ; công thức lớn 52 px, nảy nhẹ khi vào
           const nay = 1 + 0.05 * Math.sin(Math.PI * kep01((t - t0) / 0.5));
           const sang = 0.75 + 0.25 * Math.sin(((t - t0) * 2 * Math.PI) / 2.4);
           return (
-            <div key={j} data-the-giai data-the-chot style={{opacity: a, transform: `translateY(${(1 - a) * 18}px) scale(${nay})`, background: 'linear-gradient(180deg, rgba(46,230,168,0.12), rgba(20,24,32,0.94) 70%)', borderRadius: 20,
-              border: `2px solid ${NGOC}`, boxShadow: `0 0 ${26 * sang + 20 * loe}px ${NGOC}55, inset 0 0 22px ${NGOC}1A`,
+            <div key={j} data-the-giai data-the-chot style={{position: 'relative', opacity: a, transform: `translateY(${(1 - a) * 18}px) scale(${nay})`, borderRadius: 20,
+              background: 'linear-gradient(180deg, rgba(251,191,36,0.085), rgba(255,255,255,0.035) 60%)',
+              boxShadow: `0 22px 48px rgba(0,0,0,0.40), 0 0 ${30 * sang + 20 * loe}px ${CHOT}1F, inset 0 1px 0 rgba(255,255,255,0.06)`,
               padding: '18px 30px 22px', display: 'flex', flexDirection: 'column', gap: 12, flexShrink: 0}}>
+              <VachNhan mau={CHOT} day={3} sang={sang} loe={loe} />
               <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12}}>
-                <span style={{height: 34, padding: '0 14px', borderRadius: 17, background: VANG, color: '#0E1014', fontFamily: FONT, fontWeight: 900, fontSize: 20, display: 'flex', alignItems: 'center', letterSpacing: 0.6}}>{j + 1} · ĐÁP ÁN</span>
-                {th.nhan ? <span style={{color: VANG, fontFamily: FONT, fontWeight: 800, fontSize: 28}}><ChuTron s={th.nhan} co={28} mau={VANG} dam={800} /></span> : null}
+                <span style={{height: 34, padding: '0 14px', borderRadius: 17, background: CHOT, color: '#0E1014', fontFamily: FONT, fontWeight: 900, fontSize: 20, display: 'flex', alignItems: 'center', letterSpacing: 0.6}}>{j + 1} · ĐÁP ÁN</span>
+                {th.nhan ? <span style={{color: CHOT, fontFamily: FONT, fontWeight: 800, fontSize: 28}}><ChuTron s={th.nhan} co={28} mau={CHOT} dam={800} /></span> : null}
               </div>
-              <NoiDung th={th} t0={t0 + 0.15} t={t} mau={NGOC} co={52} coDong={coDongVua(th)} />
+              <NoiDung th={th} t0={t0 + 0.15} t={t} mau={CHOT} co={52} coDong={coDongVua(th)} />
             </div>
           );
         }
+        // v98.1: thẻ thường = tấm kính mờ mỏng rgba(255,255,255,0.04) + bóng mềm, bỏ viền 4 cạnh; chỉ 1 vạch sáng 2,5 px cạnh trên theo màu bước
         return (
-          <div key={j} data-the-giai style={{opacity: a, transform: `translateY(${(1 - a) * 18}px)`, background: 'rgba(20,24,32,0.92)', borderRadius: 18,
-            border: `1px solid ${mau}${loe > 0 ? 'CC' : '73'}`, boxShadow: `0 0 ${14 + 18 * loe}px ${mau}${loe > 0.3 ? '40' : '1F'}, inset 0 1px 0 rgba(255,255,255,0.04)`,
+          <div key={j} data-the-giai style={{position: 'relative', opacity: a, transform: `translateY(${(1 - a) * 18}px)`, borderRadius: 18,
+            background: 'linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.03))',
+            boxShadow: '0 18px 40px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.05)',
             padding: '18px 28px 20px', display: 'flex', flexDirection: 'column', gap: 12, flexShrink: 0}}>
+            <VachNhan mau={mau} day={2.5} sang={1} loe={loe} />
             <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12}}>
-              <span style={{width: 34, height: 34, borderRadius: 17, background: mau, color: '#0E1014', fontFamily: FONT, fontWeight: 900, fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>{j + 1}</span>
+              <span style={{width: 34, height: 34, borderRadius: 17, background: `${mau}26`, color: mau, fontFamily: FONT, fontWeight: 900, fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>{j + 1}</span>
               {th.nhan ? <span style={{color: mau, fontFamily: FONT, fontWeight: 700, fontSize: 26}}><ChuTron s={th.nhan} co={26} mau={mau} dam={700} /></span> : null}
             </div>
             <NoiDung th={th} t0={t0 + 0.15} t={t} mau={mau} coDong={coDongVua(th)} />

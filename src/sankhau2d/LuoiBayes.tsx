@@ -2,6 +2,7 @@
 // pha giao tô sáng hai mảng thuộc B, pha kết tách mảng A∩B sang phải và dựng P(A|B) = P(A∩B) / P(B).
 // Cột A quá hẹp (vd tỉ lệ mắc bệnh 1 %) được phóng lên 10 % bề rộng và gắn nhãn "phóng to" (không giả vờ đúng tỉ lệ).
 import React from 'react';
+import {CYAN as CYAN_, HO_PHACH, XAM} from '../khung4tang/mau_v981';
 import {FONT} from '../theme';
 import type {LuoiBayesVao} from './kieu';
 import {boCucBayes, daQua, em, nhipNhan, noi, tho, tienDo} from './chung';
@@ -17,7 +18,8 @@ export const LuoiBayes: React.FC<{sk: LuoiBayesVao; t: number; W: number; H: num
   const aV = em(dV / 0.6), uD = em(dD / 0.8), uN = em(dN / 0.8), aG = em(dG / 0.5), aK = em(dK / 0.7);
   const xCat = x + S * ua * uD;
   const hA = S * sk.pba * uN, hNA = S * sk.pbna * uN;
-  const HONG = mau('hong'), CYAN = mau('cyan'), VANG = mau('vang');
+  // v98.1: 2 màu nhấn — A = cyan, Ā = xám trung tính, B / A∩B (mục tiêu) = hổ phách
+  const HONG = CYAN_, CYAN = XAM, VANG = HO_PHACH;
   const mo = (laB: boolean) => (laB ? 1 : 1 - 0.65 * aG);
   const nhanA = sk.nhan_a, nhanB = sk.nhan_b;
   const congThuc = [
@@ -59,8 +61,8 @@ export const LuoiBayes: React.FC<{sk: LuoiBayesVao; t: number; W: number; H: num
       </> : null}
       {/* mảng A∩B tách ra ở pha kết */}
       {aK > 0 ? <div data-sk2d="tach_giao" style={{position: 'absolute', left: noi(x, b.bang.x + 8, aK), top: noi(y + S - hA, b.bang.y + b.bang.h - 70, aK), width: Math.max(26, S * ua), height: Math.max(26, Math.min(hA, 60)),
-        transform: `scale(${1 + 0.05 * nh})`, background: HONG, borderRadius: 6, boxShadow: `0 0 ${18 + 10 * tho(t)}px ${HONG}88`}} /> : null}
-      {aK > 0.6 ? <NhanTex x={b.bang.x + 8 + Math.max(26, S * ua) + 14} y={b.bang.y + b.bang.h - 70 + Math.max(26, Math.min(hA, 60)) / 2} tex={`A \\cap B = ${sk.tex.pab}`} mau={HONG} co={24} neo="trai" a={em((aK - 0.6) / 0.4)} /> : null}
+        transform: `scale(${1 + 0.05 * nh})`, background: VANG, borderRadius: 6, boxShadow: `0 0 ${18 + 10 * tho(t)}px ${VANG}88`}} /> : null}
+      {aK > 0.6 ? <NhanTex x={b.bang.x + 8 + Math.max(26, S * ua) + 14} y={b.bang.y + b.bang.h - 70 + Math.max(26, Math.min(hA, 60)) / 2} tex={`A \\cap B = ${sk.tex.pab}`} mau={VANG} co={24} neo="trai" a={em((aK - 0.6) / 0.4)} /> : null}
       {/* bảng công thức bên phải */}
       <div data-sk2d="bang_cong_thuc" style={{position: 'absolute', left: b.bang.x, top: b.bang.y, width: b.bang.w, display: 'flex', flexDirection: 'column', gap: 18}}>
         <div style={{color: MO, fontWeight: 800, fontSize: 22, fontFamily: FONT, whiteSpace: 'nowrap', overflow: 'hidden'}}>

@@ -82,7 +82,10 @@ export function boCucCay(sk: SoDoCayVao, W: number, H: number) {
   const rongTich = 150;
   const xGoc = LE.trai + 40;
   const xCuoi = W - LE.phai - rongTich - 70;
-  const xTang = (k: number) => (k === 0 ? xGoc : noi(xGoc + 90, xCuoi, soTang === 1 ? 1 : (k - 1) / (soTang - 1)));
+  // v98.1: các tầng chia ĐỀU khoảng từ mép gốc tới mép phải nút cuối (khe giữa các cột đủ rộng cho nhánh cong chữ S + viên nhãn
+  // xác suất; trước đây tầng 1 dính sát gốc -> nhánh gần như dựng đứng, nhãn chen vào khe ~2 px)
+  const khe = (xCuoi + 62 - (xGoc + 26) - soTang * 124) / soTang;
+  const xTang = (k: number) => (k === 0 ? xGoc : xGoc + 26 + k * khe + (k - 1) * 124 + 62);
   const viTri = new Map<number, {x: number; y: number}>();
   const buocY = (yDuoi - yTren) / Math.max(1, la.length);
   la.forEach((n, j) => viTri.set(n.id, {x: xTang(n.tang), y: yTren + buocY * (j + 0.5)}));

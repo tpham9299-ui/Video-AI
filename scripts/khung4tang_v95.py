@@ -121,7 +121,7 @@ def phan_dap_an(dap_an):
     """'x = 2 cm, V lớn nhất = 144 cm³' -> {'x': ('2', 'cm'), 'V': ('144', 'cm³')} (chữ cái đầu của vế trái)."""
     ra = {}
     for phan in re.split(r",(?!\d)|;|\bvà\b|\bhoặc\b", str(dap_an or "")):   # v96: "≈ 0,1667" không bị chẻ ở dấu phẩy thập phân
-        m = re.search(r"([A-Za-z])[^=≈]*[=≈]\s*(-?\d+(?:[.,]\d+)?)\s*([a-zA-Zµ]*[²³]?(?:\^\{?[23]\}?)?)", phan)
+        m = re.search(r"([A-Za-z])[^=≈]*[=≈]\s*(-?\d+(?:[.,]\d+)?(?:/\d+)?)\s*([a-zA-Zµ]*[²³]?(?:\^\{?[23]\}?)?)", phan)
         if m and m.group(1) not in ra:
             ra[m.group(1)] = (m.group(2), m.group(3))
         elif m and m.group(2) not in ra[m.group(1)][0].split(";\\ "):
@@ -203,6 +203,9 @@ def so_viet(x):
 
 
 def _tex_so_dv(so, dv):
+    ph = re.fullmatch(r"(-?\d+)/(\d+)", str(so))   # v98.1: đáp án phân số "9/11" -> \tfrac{9}{11} (trước đây chỉ còn "9")
+    if ph and not dv:
+        return r"\tfrac{%s}{%s}" % (ph.group(1), ph.group(2))
     so = str(so).replace(".", "{,}").replace(",", "{,}")
     dv = str(dv or "").replace("³", "^3").replace("²", "^2")
     if not dv:

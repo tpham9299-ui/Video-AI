@@ -2,6 +2,7 @@
 // hình chữ nhật dưới cổng parabol, rào sát tường, thang dựa tường). Điểm di động theo biến x (quét qua lại rồi về tối ưu),
 // nhãn độ dài cập nhật theo thời gian thực; có hàm thì đồ thị mini bên phải đi cùng.
 import React from 'react';
+import {CYAN as CYAN_, HO_PHACH, XAM} from '../khung4tang/mau_v981';
 import {Toan} from '../Toan';
 import type {SoDo2DVao} from './kieu';
 import {bienTheoPha, CAO_DONG_KQ, daQua, em, hamMotBien, LE, nhipNhan, soVN, thangDoThi, tho, tienDo} from './chung';
@@ -14,7 +15,7 @@ const so = (ts: Record<string, number>, k: string, md: number) => (Number.isFini
 
 // dựng hình của mẫu tại giá trị biến x, trong khung r (tọa độ màn hình); an = true -> nhãn số thay bằng ký hiệu
 function dungHinh(sk: SoDo2DVao, x: number, r: {x: number; y: number; w: number; h: number}, an: boolean): Hinh {
-  const ts = sk.tham_so, C = mau('cyan'), V = mau('vang'), H_ = mau('hong'), N = mau('ngoc');
+  const ts = sk.tham_so, C = mau('cyan'), V = mau('vang'), H_ = CYAN_, N = HO_PHACH;   // v98.1: 2 màu nhấn
   const sv = (v: number) => (an ? '?' : soVN(v, 1));
   const dv = sk.don_vi ? `\\,\\text{${sk.don_vi}}` : '';
   if (sk.mau === 'song_bo') {
@@ -56,7 +57,7 @@ function dungHinh(sk: SoDo2DVao, x: number, r: {x: number; y: number; w: number;
     const y0 = r.y + 24, xm = r.x + r.w / 2;
     const a: [number, number] = [xm - (dai * s) / 2, y0], b: [number, number] = [xm + (dai * s) / 2, y0];
     const c: [number, number] = [b[0], y0 + x * s], d: [number, number] = [a[0], y0 + x * s];
-    return {vung: [{d: `M${a[0]} ${a[1]} L${b[0]} ${b[1]} L${c[0]} ${c[1]} L${d[0]} ${d[1]} Z`, mau: `${mau('ngoc')}22`}],
+    return {vung: [{d: `M${a[0]} ${a[1]} L${b[0]} ${b[1]} L${c[0]} ${c[1]} L${d[0]} ${d[1]} Z`, mau: `${CYAN_}22`}],
       net: [{a: [r.x, y0], b: [r.x + r.w, y0], mau: CHU, day: 6, nhan: 'tường'}, {a: b, b: c, mau: V, day: 3, nhan: `${sk.bien} = ${sv(x)}`}, {a: c, b: d, mau: C, day: 3, nhan: sv(dai)}, {a: d, b: a, mau: V, day: 3}],
       diem: []};
   }
@@ -81,7 +82,7 @@ export const SoDo2D: React.FC<{sk: SoDo2DVao; t: number; W: number; H: number; m
   const dT = daQua(sk.pha, 'toi_uu', t), dK = daQua(sk.pha, 'ket', t);
   const an = dT > 1.1 && dK < 0;
   const hinh = dungHinh(sk, x, rH, an);
-  const VANG = mau('vang'), NGOC = mau('ngoc');
+  const VANG = mau('vang'), NGOC = HO_PHACH;
   const tex = dK >= 0 && sk.x_tot !== undefined && sk.y_tot !== undefined
     ? `${sk.bien} = ${soVN(sk.x_tot)} \\Rightarrow ${sk.ten_ham}_{${sk.kieu || 'min'}} = ${soVN(sk.y_tot)}` : '';
   return (

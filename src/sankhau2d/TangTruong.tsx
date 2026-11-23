@@ -1,6 +1,7 @@
 // v96 — TĂNG TRƯỞNG / LÃI SUẤT / HÀM MŨ – LOGARIT (nhánh 2d_thuc_te): đường cong vẽ dần theo t, mốc đầu – mốc đích bật thẻ
 // giá trị, pha so sánh nối hai mốc bằng ngoặc "gấp k lần"; ngưỡng (nếu có) là đường ngang nét đứt.
 import React from 'react';
+import {CYAN as CYAN_, HO_PHACH, XAM} from '../khung4tang/mau_v981';
 import {FONT} from '../theme';
 import type {TangTruongVao} from './kieu';
 import {CAO_DONG_KQ, daQua, em, hamMotBien, LE, nhipNhan, soVN, thangDoThi, tho, tienDo} from './chung';
@@ -21,7 +22,7 @@ export const TangTruong: React.FC<{sk: TangTruongVao; t: number; W: number; H: n
   const n = Math.max(2, Math.round(th.mau.length * uVe));
   const duong = th.mau.slice(0, n).map(([u, v], i) => `${i ? 'L' : 'M'}${th.X(u).toFixed(1)} ${th.Y(v).toFixed(1)}`).join(' ');
   const dau = th.mau[n - 1];
-  const VANG = mau('vang'), CYAN = mau('cyan'), HONG = mau('hong');
+  const VANG = mau('vang'), CYAN = mau('cyan'), HONG = HO_PHACH;   // v98.1: ngưỡng / hệ số tăng = mục tiêu (hổ phách)
   const m0 = sk.moc[0], m1 = sk.moc[sk.moc.length - 1];
   const tiLe = m0 && m1 && Math.abs(m0.y) > 1e-9 ? m1.y / m0.y : null;
   const dv = sk.don_vi ? `\\ \\text{${sk.don_vi}}` : '';

@@ -20,6 +20,7 @@ import {emRa, kep01} from '../3d-vector/toan3d';
 import {SanKhau2D} from '../sankhau2d/SanKhau2D';
 import {SanKhauKhongGian} from '../khonggian/SanKhauKhongGian';
 import {KhoiCongThuc, TieuDeMotDong, VUNG_TOI_GIAN} from './ToiGianKhongGian';
+import {mauBuocV981} from './mau_v981';
 
 const mauBuoc = (b: BuocGiai) => MAU_3DV[b.mau || 'cyan'] || MAU_3DV.cyan;
 
@@ -94,7 +95,9 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
   let i = -1;
   buoc.forEach((b, j) => b.t <= t && (i = j));
   if (i < 0 && buoc.length) i = 0;
-  const mauNhan = i >= 0 ? mauBuoc(buoc[i]) : MAU_3DV.cyan;
+  // v98.1: luồng 2D / Xác suất / Đại số / khuôn 3D -> tối đa 2 màu nhấn (cyan | hổ phách); hình không gian giữ màu bước v97
+  const mauB = toiGian ? mauBuoc : mauBuocV981;
+  const mauNhan = i >= 0 ? mauB(buoc[i]) : MAU_3DV.cyan;
   const tong = p.tongFrame / fps;
   // v93: Intro móc câu phủ G giây đầu; sân khấu 3D nằm giữa màn hình (zoom-out + xoay mở) rồi trượt về T2, các tầng khác vào sau
   const G = giayIntro(p.mocCau, tong);
@@ -131,17 +134,14 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
       {/* bù nghiêng (italic correction) của KaTeX đo theo phông KaTeX, không hợp với Be Vietnam nghiêng -> "V  =" hở thừa */}
       <style>{'div, span { text-wrap: balance; } .katex, .katex * { text-wrap: nowrap; } .k4t .katex .mathnormal:not(:has(+ .msupsub)):not(:has(+ .msupsub) *) { margin-right: 0 !important; }'}</style>
       <NapPhongToan />
-      <NenTramToanHoc t={t} mauNhan={mauNhan} tamSanKhau={bc.t2.y + bc.t2.h / 2} />
-      {/* v95: thẻ kính tối bo góc viền sáng mảnh gom mắt vào sân khấu (không backdrop-filter: giữ tốc độ render) */}
-      {toiGian ? null : <div data-kd-bo="1" style={{position: 'absolute', left: bc.le - 18, width: bc.rong + 36, top: yT2 + 6, height: bc.t2.h - 12, borderRadius: 34, opacity: 0.35 + 0.65 * ra,
-        background: 'linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015) 40%, rgba(255,255,255,0.025))',
-        border: '1px solid rgba(255,255,255,0.10)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 24px 60px rgba(0,0,0,0.35)'}} />}
+      <NenTramToanHoc t={t} mauNhan={mauNhan} tamSanKhau={bc.t2.y + bc.t2.h / 2} kieu={toiGian ? 'v95' : 'v981'} />
+      {/* v98.1: T2 KHÔNG KHUNG — hình / sơ đồ thở trực tiếp trên nền (bỏ thẻ kính bao T2 của v95) */}
       {p.thuongHieu ? (
         <div data-kd-bo="1" style={{position: 'absolute', top: Math.max(24, bc.t1.y - 58), right: 44, fontFamily: FONT, fontWeight: 800, fontSize: 22, color: 'rgba(230,237,245,0.5)', letterSpacing: 0.4, opacity: ra}}>{p.thuongHieu}</div>
       ) : null}
       <div style={{opacity: ra}}>
         <Tang ten="t1" v={bc.t1} rong={bc.rong} le={bc.le}>
-          {toiGian ? <TieuDeMotDong buoc={buoc} i={i} t={t} mau={mauBuoc} /> : <TangTieuDe buoc={buoc} i={i} t={t} mau={mauBuoc} />}
+          {toiGian ? <TieuDeMotDong buoc={buoc} i={i} t={t} mau={mauBuoc} /> : <TangTieuDe buoc={buoc} i={i} t={t} mau={mauB} />}
         </Tang>
       </div>
       <Tang ten="t2" v={{y: yT2, h: bc.t2.h}} rong={bc.rong} le={bc.le} co={coT2}>
@@ -164,7 +164,7 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
       </Tang>
       <div style={{opacity: ra}}>
         <Tang ten="t3" v={t3} rong={bc.rong} le={bc.le}>
-          {toiGian ? <KhoiCongThuc buoc={buoc} i={i} t={t} mau={mauBuoc} /> : <TangTheGiai buoc={buoc} i={i} t={t} mau={mauBuoc} />}
+          {toiGian ? <KhoiCongThuc buoc={buoc} i={i} t={t} mau={mauBuoc} /> : <TangTheGiai buoc={buoc} i={i} t={t} mau={mauB} />}
         </Tang>
         {toiGian ? null : (
           <Tang ten="t4" v={bc.t4} rong={bc.rong} le={bc.le}>

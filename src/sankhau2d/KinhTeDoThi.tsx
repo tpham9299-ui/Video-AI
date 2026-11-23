@@ -1,11 +1,16 @@
 // v96 — KINH TẾ & TỐI ƯU GIÁ (nhánh 2d_thuc_te): thanh gạt biến chạy qua lại, đại lượng phụ (giá bán, số khách) cập nhật
 // sống, điểm sáng trên đồ thị lợi nhuận; pha tối ưu trượt về điểm máy đã tính. Số cụ thể chỉ ghi ở pha kết (trước đó x*).
 import React from 'react';
+import {CYAN as CYAN_, HO_PHACH, XAM} from '../khung4tang/mau_v981';
 import {Toan} from '../Toan';
 import type {KinhTeVao} from './kieu';
 import {bienTheoPha, CAO_DONG_KQ, daQua, em, hamMotBien, LE, nhipNhan, soVN, thangDoThi, tho, tienDo} from './chung';
 import {CHU, DongKetQua, mau, MO, NEN_THE, NhanTex, ThanhTienDo} from './GiaoDien';
 import {ChuTron} from '../khung4tang/ChuTron';
+
+// v98.1: đơn vị tiếng Việt có dấu ("nghìn đồng") để Toan tự tách thành chữ thường; bọc \text{} thì bocChuViet chẻ đôi
+// lệnh -> KaTeX lỗi, hiện cụt "L_{max} = 4500\ \text{" (lỗi tồn từ v96). Đơn vị ASCII (k, ly) giữ \text{}.
+const dvTex = (dv?: string) => (!dv ? '' : /^[\x00-\x7F]*$/.test(dv) ? `\\ \\text{${dv}}` : ` ${dv}`);
 
 export const KinhTeDoThi: React.FC<{sk: KinhTeVao; t: number; W: number; H: number; mauNhan: string}> = ({sk, t, W, H, mauNhan}) => {
   const [a, b] = sk.mien;
@@ -23,11 +28,11 @@ export const KinhTeDoThi: React.FC<{sk: KinhTeVao; t: number; W: number; H: numb
   const y = f(x);
   const dT = daQua(sk.pha, 'toi_uu', t), dK = daQua(sk.pha, 'ket', t);
   const chot = dT > 1.1;
-  const VANG = mau('vang'), CYAN = mau('cyan'), NGOC = mau('ngoc');
+  const VANG = mau('vang'), CYAN = mau('cyan'), NGOC = HO_PHACH;   // v98.1: chốt tối ưu = hổ phách (2 màu nhấn)
   const nVe = Math.max(2, Math.round(th.mau.length * uVe));
   const duong = th.mau.slice(0, nVe).map(([u, v], i) => `${i ? 'L' : 'M'}${th.X(u).toFixed(1)} ${th.Y(v).toFixed(1)}`).join(' ');
   const ten = `${sk.ten_ham}(${sk.bien})`;
-  const tex = dK >= 0 ? `${sk.bien} = ${soVN(sk.x_tot)} \\Rightarrow ${sk.ten_ham}_{${sk.kieu}} = ${soVN(sk.y_tot)}${sk.don_vi ? `\\ \\text{${sk.don_vi}}` : ''}` : '';
+  const tex = dK >= 0 ? `${sk.bien} = ${soVN(sk.x_tot)} \\Rightarrow ${sk.ten_ham}_{${sk.kieu}} = ${soVN(sk.y_tot)}${dvTex(sk.don_vi)}` : '';
   const u = (x - a) / (b - a);
   // v96: từ pha chốt đỉnh (lời đọc đã nói ra nghiệm) ghi ĐÚNG số tối ưu (x = 5, 25 k, 300 ly), không còn x* / ? giữ chỗ
   const xHien = chot || dK >= 0 ? sk.x_tot : x;
@@ -44,7 +49,7 @@ export const KinhTeDoThi: React.FC<{sk: KinhTeVao; t: number; W: number; H: numb
         {phu.map((p, k) => (p.f ? (
           <div key={k} style={{marginTop: 16, padding: '10px 16px', borderRadius: 16, background: NEN_THE, border: '1px solid rgba(255,255,255,0.10)', opacity: em((uVe - 0.2 - 0.2 * k) / 0.3)}}>
             <div style={{color: MO, fontWeight: 700, fontSize: 20, whiteSpace: 'nowrap', overflow: 'hidden'}}>{p.ten}</div>
-            <Toan tex={`${soVN(p.f(xHien), 1)}${p.don_vi ? `\\ \\text{${p.don_vi}}` : ''}`} size={32} color={CYAN} />
+            <Toan tex={`${soVN(p.f(xHien), 1)}${dvTex(p.don_vi)}`} size={32} color={CYAN} />
           </div>
         ) : null))}
       </div>

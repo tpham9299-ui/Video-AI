@@ -32,12 +32,18 @@ def so_bang(a, b):
     return abs(x - y) <= 0.5 * 10 ** (-d) + 1e-9
 
 
+def _ps(x):
+    """v98.1: "9/11" -> "0.818182" để so số như mọi đáp án thập phân."""
+    m = re.fullmatch(r"\s*(-?\d+)/(\d+)\s*", str(x))
+    return ("%.6f" % (int(m.group(1)) / int(m.group(2)))) if m and int(m.group(2)) else x
+
+
 def _so_dap(dap_an, gia_tri_theo_bien=None):
     """{đại lượng: [số...]} từ chuỗi đáp án + giá trị máy tính."""
     from khung4tang_v95 import phan_dap_an
     ra = {}
     for k, (so, _dv) in phan_dap_an(dap_an).items():
-        ra.setdefault(k, []).extend(x for x in re.split(r";\\?\s*", str(so)) if x.strip())
+        ra.setdefault(k, []).extend(_ps(x) for x in re.split(r";\\?\s*", str(so)) if x.strip())
     for k, v in (gia_tri_theo_bien or {}).items():
         so = v[0] if isinstance(v, (list, tuple)) else v
         ra.setdefault(str(k)[:1], []).append(str(so))

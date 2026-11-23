@@ -5,6 +5,7 @@
 // màn "x = ?" đứng yên tới hết phần đọc đề; (2) ô cao THEO PHÂN SỐ (caoDongTex) + Toan maxHeight -> không cắt nửa tử / mẫu;
 // (3) sóng quét ở mốc nhịp chạy dọc chuỗi; (4) nội dung căn giữa trục sân khấu.
 import React from 'react';
+import {CYAN as CYAN_, HO_PHACH, XAM} from '../khung4tang/mau_v981';
 import {Toan} from '../Toan';
 import type {TuDuyVao} from './kieu';
 import {em, hamMotBien, khoaMauAn, lichTuDuy, LE, nhacSong, nhipNhan, songQuet, thangDoThi, tho, tienDo} from './chung';
@@ -60,7 +61,7 @@ export const TuDuyDaiSo: React.FC<{sk: TuDuyVao; t: number; W: number; H: number
           <div style={{width: 120, height: 4, borderRadius: 2, background: VANG, opacity: 0.85, transform: `scaleX(${em((t - 0.5) / 0.6)})`}} />
           <Toan tex={khoaMauAn(de, an, VANG)} size={70} color={CHU} maxWidth={W - LE.trai - LE.phai - 40} maxHeight={H - 200} style={{fontWeight: 800}} />
           <div style={{opacity: em((t - 1.0) / 0.4), transform: `translateY(${(1 - em((t - 1.0) / 0.4)) * 10}px)`}}>
-            <VienTex tex={`${an} = \\;?`} mau={mau('hong')} co={30} />
+            <VienTex tex={`${an} = \\;?`} mau={HO_PHACH} co={30} />
           </div>
         </div>
       ) : null}
@@ -68,7 +69,7 @@ export const TuDuyDaiSo: React.FC<{sk: TuDuyVao; t: number; W: number; H: number
         <div data-sk2d="du_kien" style={{position: 'absolute', left: LE.trai, top: LE.tren, width: W - LE.trai - LE.phai, display: 'flex', gap: 12, flexWrap: 'nowrap', overflow: 'hidden', justifyContent: 'center'}}>
           {sk.du_kien.map((d, k) => {
             const a = em((t - L.tDK[k]) / 0.35);
-            return a > 0 ? <div key={k} style={{opacity: a, transform: `translateY(${(1 - a) * -12}px)`}}><VienTex tex={d} mau={k === 0 ? mau('hong') : mau('cyan')} co={24} /></div> : null;
+            return a > 0 ? <div key={k} style={{opacity: a, transform: `translateY(${(1 - a) * -12}px)`}}><VienTex tex={d} mau={CYAN_} co={24} /></div> : null;
           })}
         </div>
         {sk.nut.slice(dau, het).map((n, k) => {
@@ -78,7 +79,7 @@ export const TuDuyDaiSo: React.FC<{sk: TuDuyVao; t: number; W: number; H: number
           const daBat = t >= L.tNut[j];
           const aBat = em((t - L.tNut[j]) / 0.45);
           const yj = viTri[j];
-          const m = mau(n.mau);
+          const m = j === sk.nut.length - 1 ? HO_PHACH : CYAN_;   // v98.1: nút kết luận hổ phách, còn lại cyan
           const laNay = j === nay;
           const quet = nhacSong(song, j - dau, het - dau);
           return (

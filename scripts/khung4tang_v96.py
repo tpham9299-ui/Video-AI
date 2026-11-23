@@ -780,6 +780,11 @@ def dung_so_do_cay(ts, kb, sua, lop):
         elif mau_s:
             p = tong / mau_s
             kq["mau_so"] = so_tex(mau_s)
+            # v98.1: Remotion "cây dòng chảy" cần biết nút nào thuộc MẪU SỐ (bước toàn phần) và nút nào thuộc TỬ SỐ (sang)
+            kq["bayes"] = True
+            for n in nut:
+                n["mau"] = any(n["duong"] == d[:len(n["duong"])] for d in mau_d)
+            kq["bt_mau"] = " + ".join(n["tich"] for n in la_mau if n["tich"]) + " = " + so_tex(mau_s)
     if tong is not None:
         kq["tong"] = so_tex(tong)
         kq["bt_tong"] = " + ".join(n["tich"] for n in la_sang if n["tich"]) + " = " + so_tex(tong)
@@ -1160,7 +1165,8 @@ GOI_Y_PHA_2D = {
                 "thu": ["thử rút", "thử bốc", "ví dụ", "chẳng hạn", "giả sử rút"], "doi": ["biến cố đối", "ngược lại", "không chia hết"],
                 "ket": ["vậy xác suất", "xác suất cần tìm", "xác suất bằng", "xác suất của a"]},
     "so_do_cay": {"tang_1": ["lần thứ nhất", "lần đầu", "đầu tiên"], "tang_2": ["lần thứ hai", "tiếp theo", "sau đó"], "duong": ["đường đi", "nhánh", "trường hợp"],
-                  "tich": ["nhân", "nhân các xác suất"], "ket": ["cộng lại", "vậy xác suất"]},
+                  "tich": ["nhân", "nhân các xác suất"], "ket": ["cộng lại", "vậy xác suất"],
+                  "toan_phan": ["xác suất toàn phần", "toàn phần", "tổng các nhánh dẫn"], "bayes": ["công thức bay", "định lý bay", "bay-ét", "bayes", "biết rằng"]},
     "luoi_bayes": {"cat_doc": ["tỉ lệ", "mắc bệnh", "phần trăm"], "cat_ngang": ["dương tính", "trong số"], "giao": ["vừa", "cả hai", "giao"], "ket": ["vậy xác suất", "chỉ khoảng"]},
     "cot_phan_phoi": {"cot": ["mỗi giá trị", "phân phối", "lần lượt"], "dich": ["đúng", "ít nhất"], "cong": ["cộng", "tổng"], "ket": ["vậy xác suất"]},
     "kinh_te_do_thi": {"ve": ["hàm lợi nhuận", "lợi nhuận bằng", "doanh thu bằng"], "keo": ["nếu giảm", "nếu tăng", "khi giá"], "toi_uu": ["lớn nhất", "cực đại", "đỉnh"]},
@@ -1257,6 +1263,8 @@ def gan_san_khau(kb, k4, buoc, t_buoc, t_het_de, tong, tim_moc, r=None, khuon_su
         ten_md = [x for x in ten_md if x != "doi" or _co_bien_co_doi(kb)]
     if loai == "so_do_cay" and not any(n.get("tang") == 2 for n in sk.get("nut") or []):
         ten_md = [x for x in ten_md if x != "tang_2"]
+    if loai == "so_do_cay" and sk.get("bayes"):   # v98.1: cây Bayes -> thêm bước toàn phần P(D) và bước Bayes P(H|D) trước pha chốt
+        ten_md = [x for x in ten_md if x != "ket"] + ["toan_phan", "bayes", "ket"]
     ds = pha_ai or [{"ten": x} for x in ten_md]
     if loai == "tu_duy_dai_so":   # mỗi nút suy luận bật đúng lúc bước giải tương ứng bắt đầu
         ds = [{"ten": "du_kien", "t": 0.3}] + [{"ten": "nut_%d" % j, "t": round(max(t_het_de, t_buoc[j] if j < len(t_buoc) else tong) + 0.5, 3)}
