@@ -83,6 +83,10 @@ const OxyCong: React.FC<{sk: SoDo2DVao; t: number; W: number; H: number; mauNhan
   const y1 = Math.min(h * 0.98, so(ts, 'y', h / 2)), y2 = Number.isFinite(ts.y2) && ts.y2 > 0 ? Math.min(h * 0.98, ts.y2) : y1;
   const y = dT >= 0 && y2 !== y1 ? y1 + (y2 - y1) * em(dT / 0.9) : y1;
   const aBar = em(dK / 0.5);
+  const t0 = sk.pha[0]?.t ?? 0.3;
+  const uOx = em((t - t0) / 0.6), uOy = em((t - t0 - 0.15) / 0.6), uCong = em((t - t0 - 0.35) / 0.9);
+  // nhãn luôn nằm gọn trong khung vẽ (không cắt chữ ở mép)
+  const kx = (v: number, bien = 120) => Math.min(W - LE.phai - bien, Math.max(LE.trai + bien, v));
   const u = (w / 2) * Math.sqrt(Math.max(0, 1 - y / h));
   const V = mau('vang'), C = mau('cyan');
   const cong = Array.from({length: 61}, (_, i) => { const a = -w / 2 + (w * i) / 60; return `${i ? 'L' : 'M'}${X(a).toFixed(1)} ${Y(h * (1 - (2 * a / w) ** 2)).toFixed(1)}`; }).join(' ');
@@ -93,27 +97,34 @@ const OxyCong: React.FC<{sk: SoDo2DVao; t: number; W: number; H: number; mauNhan
     <div style={{position: 'absolute', inset: 0, opacity: aT}}>
       <svg width={W} height={H} style={{position: 'absolute', inset: 0}}>
         <defs><marker id="mui-oxy" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill={CHU} /></marker></defs>
-        <line x1={xa} y1={y0} x2={xb} y2={y0} stroke={CHU} strokeWidth={2.4} markerEnd="url(#mui-oxy)" />
-        <line x1={xm} y1={y0 + 24} x2={xm} y2={yt} stroke={CHU} strokeWidth={2.4} markerEnd="url(#mui-oxy)" />
-        <path d={cong} fill="none" stroke={C} strokeWidth={3.4 + nh} strokeLinecap="round" />
+        {/* v99.5: vẽ nét động — pathLength=1 + strokeDashoffset theo frame (Ox, Oy, parabol), mũi tên chỉ hiện khi nét tới đích */}
+        <line x1={xa} y1={y0} x2={xb} y2={y0} stroke={CHU} strokeWidth={2.4} pathLength={1} strokeDasharray={1} strokeDashoffset={1 - uOx} markerEnd={uOx > 0.97 ? 'url(#mui-oxy)' : undefined} />
+        <line x1={xm} y1={y0 + 24} x2={xm} y2={yt} stroke={CHU} strokeWidth={2.4} pathLength={1} strokeDasharray={1} strokeDashoffset={1 - uOy} markerEnd={uOy > 0.97 ? 'url(#mui-oxy)' : undefined} />
+        <path d={cong} fill="none" stroke={C} strokeWidth={3.4 + nh} strokeLinecap="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - uCong} />
         {aBar > 0 ? <>
-          <line x1={X(-u)} y1={Y(y)} x2={X(-u) + 2 * u * s * aBar} y2={Y(y)} stroke={V} strokeWidth={3.6 + nh} strokeLinecap="round" />
-          <line x1={xm - 12} y1={Y(y)} x2={xm + 12} y2={Y(y)} stroke={V} strokeOpacity={0.6} strokeWidth={2} />
-          {[-u, u].map((a, k) => <circle key={k} cx={X(a)} cy={Y(y)} r={7} fill={V} stroke="#0E1014" strokeWidth={2} opacity={aBar} />)}
+          <line x1={X(-u)} y1={Y(y)} x2={X(-u) + 2 * u * s} y2={Y(y)} stroke={V} strokeWidth={3.6 + nh} strokeLinecap="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - aBar} />
+          <line x1={xm - 12} y1={Y(y)} x2={xm + 12} y2={Y(y)} stroke={V} strokeOpacity={0.6 * aBar} strokeWidth={2} />
+          {[-u, u].map((a, k) => <g key={k} opacity={aBar}>
+            <circle cx={X(a)} cy={Y(y)} r={13 + 3 * nh} fill={V} opacity={0.25} />
+            <circle cx={X(a)} cy={Y(y)} r={7} fill={V} stroke="#0E1014" strokeWidth={2} />
+            <circle cx={X(a) - 2} cy={Y(y) - 2} r={2.2} fill="#FFFFFF" opacity={0.85} />
+          </g>)}
         </> : null}
-        {[[0, 0], [-w / 2, 0], [w / 2, 0], [0, h]].map(([a, b], k) => <circle key={k} cx={X(a)} cy={Y(b)} r={7} fill={k === 3 ? HO_PHACH : CHU} stroke="#0E1014" strokeWidth={2} />)}
+        {[[0, 0], [-w / 2, 0], [w / 2, 0], [0, h]].map(([a, b], k) => <circle key={k} cx={X(a)} cy={Y(b)} r={7} fill={k === 3 ? HO_PHACH : CHU} stroke="#0E1014" strokeWidth={2} opacity={k === 3 ? uCong : uOx} />)}
       </svg>
       <NhanTex x={xb - 14} y={y0 + 22} tex="x" mau={CHU} co={24} />
       <NhanTex x={xm + 22} y={yt + 4} tex="y" mau={CHU} co={24} neo="trai" />
       <NhanTex x={xm - 36} y={y0 + 14} tex="O(0;0)" mau={CHU} co={22} />
-      <NhanTex x={X(-w / 2)} y={y0 + 40} tex={`A(-${f(w / 2)};0)`} mau={CHU} co={22} />
-      <NhanTex x={X(w / 2)} y={y0 + 40} tex={`B(${f(w / 2)};0)`} mau={CHU} co={22} />
-      <NhanTex x={xm + 20} y={Y(h) - 26} tex={`S(0;${f(h)})`} mau={HO_PHACH} co={22} neo="trai" />
-      {aBar > 0.6 ? <>
-        <NhanTex x={X(-u) - 14} y={Y(y) - 34} tex={`M(-${f(u)};${f(y)})`} mau={V} co={22} neo="phai" />
-        <NhanTex x={X(u) + 14} y={Y(y) - 34} tex={`N(${f(u)};${f(y)})`} mau={V} co={22} neo="trai" />
-        <NhanTex x={xm} y={Y(y) + 14} tex={`MN = ${f(2 * u)}${dv}`} mau={V} co={24} />
-      </> : null}
+      <div style={{opacity: uOx}}>
+        <NhanTex x={kx(X(-w / 2), 90)} y={y0 + 40} tex={`A(-${f(w / 2)};0)`} mau={CHU} co={22} />
+        <NhanTex x={kx(X(w / 2), 90)} y={y0 + 40} tex={`B(${f(w / 2)};0)`} mau={CHU} co={22} />
+      </div>
+      <div style={{opacity: uCong}}><NhanTex x={Math.min(xm + 20, W - LE.phai - 150)} y={Y(h) - 26} tex={`S(0;${f(h)})`} mau={HO_PHACH} co={22} neo="trai" /></div>
+      {aBar > 0.6 ? <div style={{opacity: em((aBar - 0.6) / 0.4), transform: `scale(${1 + 0.05 * nh})`, transformOrigin: `${xm}px ${Y(y)}px`}}>
+        <NhanTex x={kx(X(-u) - 14, 130)} y={Y(y) - 34} tex={`M(-${f(u)};${f(y)})`} mau={V} co={24} neo="phai" />
+        <NhanTex x={kx(X(u) + 14, 130)} y={Y(y) - 34} tex={`N(${f(u)};${f(y)})`} mau={V} co={24} neo="trai" />
+        <NhanTex x={xm} y={Y(y) + 14} tex={`MN = ${f(2 * u)}${dv}`} mau={V} co={26} />
+      </div> : null}
       <DongKetQua x={LE.trai} y={H - LE.duoi - CAO_DONG_KQ} w={W - LE.trai - LE.phai} h={CAO_DONG_KQ} tex={dK >= 0 ? `y = ${f(h)}\\left(1-\\dfrac{4x^2}{${f(w * w)}}\\right)` : ''} a={em(dK / 0.4)} mau={C} nhan={nh * 0.6} co={34} />
       <ThanhTienDo W={W} H={H} u={tienDo(sk.pha, t)} mau={mauNhan} />
     </div>

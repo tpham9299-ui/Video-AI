@@ -2,6 +2,7 @@
 // nhóm {phan_tu: [4, 8]} hoặc từ bản chất biến cố) — không bao giờ tô theo chỉ số ô. Pha thu/doi/ket: thẻ được chọn nhấc khỏi
 // tập, bay vào khay rồi hiện biểu thức kiểm chứng (2 × 3 × 4 = 24 ⋮ 4 ✓ | 1 × 3 × 5 = 15 không ⋮ 4 ✕); pha chốt luôn là bộ thỏa A.
 import React from 'react';
+import {spring} from 'remotion';
 import {FONT, SO_DEU} from '../theme';
 import type {RutMauVao} from './kieu';
 import {boCucRutMau, daQua, em, emVR, Hop, kep, nhacSong, nhipNhan, noi, phaTai, songQuet, tHienNhom, tho, tienDo} from './chung';
@@ -10,6 +11,7 @@ import {CHU, DongKetQua, mau, NEN_THE, SAI, ThanhTienDo, VienTex} from './GiaoDi
 const TRUNG = 'rgba(230,237,245,0.55)';
 const PHA_KHAY = ['thu', 'doi', 'ket'];
 const BAY = 0.7, TRE = 0.12, VE = 0.45;
+const FPS_THE = 30;
 
 const Cham: React.FC<{n: number; w: number; m: string}> = ({n, w, m}) => {
   const p: Record<number, [number, number][]> = {1: [[0.5, 0.5]], 2: [[0.28, 0.28], [0.72, 0.72]], 3: [[0.26, 0.26], [0.5, 0.5], [0.74, 0.74]],
@@ -18,11 +20,13 @@ const Cham: React.FC<{n: number; w: number; m: string}> = ({n, w, m}) => {
   return <>{(p[n] || []).map(([x, y], i) => <span key={i} style={{position: 'absolute', left: x * w - w * 0.09, top: y * w - w * 0.09, width: w * 0.18, height: w * 0.18, borderRadius: w, background: m}} />)}</>;
 };
 
-function The({sk, i, hop, mauNhom, aMau, nang, lat}: {sk: RutMauVao; i: number; hop: Hop; mauNhom: string; aMau: number; nang: number; lat: number}) {
+function The({sk, i, hop, mauNhom, aMau, nang, lat, dam, mo}: {sk: RutMauVao; i: number; hop: Hop; mauNhom: string; aMau: number; nang: number; lat: number; dam: number; mo: number}) {
   const p = sk.phan_tu[i];
   const vien = aMau > 0 ? mauNhom : TRUNG;
-  const boc = {position: 'absolute' as const, left: hop.x, top: hop.y, width: hop.w, height: hop.h,
-    transform: `scaleX(${lat}) translateY(${-6 * nang}px) scale(${1 + 0.06 * nang})`, zIndex: nang > 0 ? 5 : 1};
+  // v99.5: thẻ thuộc nhóm nhấn mạnh nâng nhẹ + viền sáng rõ; thẻ còn lại dịu xuống
+  const boc = {position: 'absolute' as const, left: hop.x, top: hop.y, width: hop.w, height: hop.h, opacity: mo * (1 - 0.28 * (aMau > 0 && dam === 0 ? aMau : 0)),
+    transform: `scaleX(${lat}) translateY(${-6 * nang - 4 * dam}px) scale(${(1 + 0.06 * nang) * (1 + 0.07 * dam)})`, zIndex: nang > 0 || dam > 0 ? 5 : 1,
+    outline: dam > 0 ? `${(2.5 * dam).toFixed(1)}px solid ${mauNhom}` : undefined, outlineOffset: 2};
   if (sk.vat === 'bi') {
     return (
       <div style={{...boc, borderRadius: hop.w, background: aMau > 0 ? mauNhom : '#3A4252', border: `2px solid ${aMau > 0 ? mauNhom : TRUNG}`,
@@ -134,13 +138,17 @@ export const RutMau: React.FC<{sk: RutMauVao; t: number; W: number; H: number; m
       ) : null))}
       {/* thẻ */}
       {sk.phan_tu.map((p, i) => {
-        const aVao = em((t - tHienNhom(i, tHien, nhomHien)) / 0.4);
+        // v99.5: lệch 1-2 frame mỗi thẻ trong cùng nhóm, nảy bằng spring() gọn
+        const tVao = tHienNhom(i, tHien, nhomHien) + (i % nhomHien) * (1.5 / FPS_THE);
+        const aVao = em((t - tVao) / 0.4);
         if (aVao <= 0) return null;
+        const sp = spring({frame: Math.max(0, Math.round((t - tVao) * FPS_THE)), fps: FPS_THE, config: {damping: 14, stiffness: 190, mass: 0.6}});
         const v = viTriThe(i);
         const aMau = p.nhom >= 0 ? em((dNhom - p.nhom * 0.35) / 0.35) : 0;
         // nhịp chống đứng hình: thẻ nhóm đích (hoặc thẻ trên khay) nhấn nhẹ ở mốc nhịp
         const nhan = v.trongKhay ? 0 : (p.nhom === nhomDich && aMau > 0 && !nay ? 0.25 * nh : 0) + 0.55 * nhacSong(song, i, sk.phan_tu.length);
-        return <The key={i} sk={sk} i={i} hop={v.hop} mauNhom={nhomNhan(p.nhom)} aMau={aMau} nang={v.nang + nhan} lat={0.15 + 0.85 * aVao} />;
+        const dam = p.nhom === nhomDich && aMau > 0 && !v.trongKhay ? aMau : 0;
+        return <The key={i} sk={sk} i={i} hop={v.hop} mauNhom={nhomNhan(p.nhom)} aMau={aMau} nang={v.nang + nhan} lat={0.15 + 0.85 * sp} dam={dam} mo={aVao} />;
       })}
       <DongKetQua x={b.ketQua.x} y={b.ketQua.y} w={b.ketQua.w} h={b.ketQua.h} tex={tex} a={aKq} mau={mauKq} dau={dau} nhan={nh * (dau === null ? 0.5 : 1) + 0.15 * tho(t)} co={40} />
       <ThanhTienDo W={W} H={H} u={tienDo(sk.pha, t)} mau={mauNhan} />
