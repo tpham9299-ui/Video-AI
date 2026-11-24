@@ -1423,6 +1423,102 @@ function caiTriggerDonRacTuan() {
   try { nhatKy_('DON_RAC', m2); } catch (e2) {}
   return { da_co: 0, tao_moi: true };
 }
+/* ===================== v101.7: GIÁM SÁT VẬN HÀNH RẢNH TAY ===================== */
+var GIOI_HAN_SCRIPT_PROPS_ = 50, CANH_BAO_SCRIPT_PROPS_ = 35;
+
+// Báo cáo sức khỏe hệ thống (tiếng Việt, ngắn gọn). Chỉ đọc dữ liệu có sẵn: HANG_DOI (COT), NHAT_KY (muc, thoi_gian), kho key (khoDanhSachKey_).
+function taoBaoCaoSucKhoe_() {
+  var tz = 'Asia/Ho_Chi_Minh', homNay = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var dong = ['BAO CAO SUC KHOE HE THONG - ' + Utilities.formatDate(new Date(), tz, 'HH:mm dd/MM/yyyy')];
+  var ngayCua = function (v) {
+    if (!v) return '';
+    var d = v instanceof Date ? v : new Date(v);
+    return isNaN(d.getTime()) ? '' : Utilities.formatDate(d, tz, 'yyyy-MM-dd');
+  };
+
+  // 1) Thống kê trong ngày từ HANG_DOI
+  var xong = 0, lan1 = 0, cho = 0, loi = 0;
+  try {
+    var shHd = ss.getSheetByName(TEN_HANG_DOI);
+    if (shHd) {
+      docHang_(shHd).forEach(function (r) {
+        if (!r.id) return;
+        var ts = String(r.trang_thai || ''), du = String(r.duyet || '');
+        if (ts === 'LOI') loi++;
+        if (ts === 'CO_VIDEO' && du === 'CHO') cho++;
+        if (r.file_video && ngayCua(r.cap_nhat) === homNay && (ts === 'CO_VIDEO' || ts === 'DA_XONG')) {
+          xong++;
+          if (!(Number(docAiKT_(r).so_lan_tu_sua) > 0)) lan1++;
+        }
+      });
+    }
+  } catch (e1) { dong.push('(Khong doc duoc HANG_DOI: ' + e1.message + ')'); }
+
+  // 2) Số lượt Auto-Heal hôm nay từ NHAT_KY (muc TU_SUA_MAT_THAN)
+  var heal = 0;
+  try {
+    var shNk = ss.getSheetByName('NHAT_KY');
+    if (shNk && shNk.getLastRow() > 1) {
+      shNk.getRange(2, 1, shNk.getLastRow() - 1, 2).getValues().forEach(function (v) {
+        if (String(v[1]) === 'TU_SUA_MAT_THAN' && ngayCua(v[0]) === homNay) heal++;
+      });
+    }
+  } catch (e2) { dong.push('(Khong doc duoc NHAT_KY: ' + e2.message + ')'); }
+
+  dong.push('');
+  dong.push('VIDEO HOM NAY: dung xong ' + xong + ' | qua Mat than ngay lan 1: ' + lan1 + ' | Auto-Heal da chay: ' + heal + ' luot');
+  dong.push('DANG TON DONG: cho duyet ' + cho + ' | loi ' + loi);
+
+  // 3) Kho key Gemini
+  try {
+    var all = PropertiesService.getScriptProperties().getProperties(), ngayPt = khoNgayPT_();
+    var cache = CacheService.getScriptCache(), khoe = 0, nghi = 0, hong = 0, ds = khoDanhSachKey_();
+    ds.forEach(function (k) {
+      var id = khoId_(k), tam = false, het = false;
+      try { tam = !!cache.get('kdx_' + id); } catch (e3) {}
+      if (all['kd_' + id] === 'BAD' || tam) { hong++; return; }
+      if (all['kd_' + id] === ngayPt) het = true;
+      Object.keys(all).forEach(function (n) { if (n.indexOf('kdm_' + id + '_') === 0 && all[n] === ngayPt) het = true; });
+      if (het) nghi++; else khoe++;
+    });
+    dong.push('KHO KEY GEMINI (' + ds.length + ' key): khoe ' + khoe + ' | nghi tam (het han muc ngay) ' + nghi + ' | loi ' + hong);
+  } catch (e4) { dong.push('(Khong doc duoc kho key: ' + e4.message + ')'); }
+
+  // 4) Dung lượng Script Properties
+  var nKhoa = PropertiesService.getScriptProperties().getKeys().length;
+  dong.push('SCRIPT PROPERTIES: ' + nKhoa + '/' + GIOI_HAN_SCRIPT_PROPS_ + ' thuoc tinh' +
+    (nKhoa >= CANH_BAO_SCRIPT_PROPS_ ? ' - CANH BAO: sap day, chay donRacScriptProperties' : ''));
+  return dong.join('\n');
+}
+
+// Trigger hằng ngày: gửi báo cáo qua Zalo; lỗi chỉ ghi NHAT_KY, không làm sập trigger.
+function guiBaoCaoSucKhoeNgay() {
+  try {
+    guiZalo_(taoBaoCaoSucKhoe_(), 'cao');
+  } catch (e) {
+    try { nhatKy_('BAO_CAO_SUC_KHOE_LOI', e.message); } catch (e2) {}
+  }
+}
+
+// Gom mọi trigger bảo trì: chạy tay MỘT lần, gọi lại không tạo trùng.
+function caiTriggerBaoTriHeThong() {
+  var log = [];
+  var kq = caiTriggerDonRacTuan();
+  log.push('donRacScriptProperties (tuan): ' + (kq && kq.tao_moi ? 'DA CAI MOI' : 'DA TON TAI'));
+  var ten = 'guiBaoCaoSucKhoeNgay';
+  var co = ScriptApp.getProjectTriggers().filter(function (t) { return t.getHandlerFunction() === ten; });
+  if (co.length) log.push(ten + ' (hang ngay 21:00): DA TON TAI (' + co.length + ')');
+  else {
+    ScriptApp.newTrigger(ten).timeBased().everyDays(1).atHour(21).nearMinute(0).create();
+    log.push(ten + ' (hang ngay 21:00): DA CAI MOI');
+  }
+  var msg = 'Trigger bao tri: ' + log.join(' | ');
+  Logger.log(msg);
+  try { nhatKy_('TRIGGER_BAO_TRI', msg); } catch (e) {}
+  return log;
+}
+
 function donRacScriptProperties() {
   var p = PropertiesService.getScriptProperties();
   var all = p.getProperties(), xoa = 0;
