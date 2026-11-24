@@ -1402,6 +1402,22 @@ function heSoSanXuat_() {
 
 // v99.7: dọn rác Script Properties — CHỈ xóa khóa HE_yt_* có giá trị "loi" (video YouTube học edit bị lỗi).
 // Giữ nguyên khóa có ngày hợp lệ, key Gemini và mọi cấu hình hệ thống. Còn <= 50 khóa -> cờ CAI_DAT_KHOA = '0' (Cài đặt tự mở khóa chỉnh sửa).
+// v101.4: cài trigger dọn rác hằng tuần (Chủ nhật ~03:00 giờ VN). Chạy tay MỘT lần; gọi lại không tạo trùng.
+function caiTriggerDonRacTuan() {
+  var ten = 'donRacScriptProperties';
+  var co = ScriptApp.getProjectTriggers().filter(function (t) { return t.getHandlerFunction() === ten; });
+  if (co.length) {
+    var m1 = 'Trigger ' + ten + ' đã tồn tại (' + co.length + ') - không tạo thêm.';
+    Logger.log(m1);
+    try { nhatKy_('DON_RAC', m1); } catch (e) {}
+    return { da_co: co.length, tao_moi: false };
+  }
+  ScriptApp.newTrigger(ten).timeBased().onWeekDay(ScriptApp.WeekDay.SUNDAY).atHour(3).nearMinute(0).create();
+  var m2 = 'Đã tạo trigger ' + ten + ': mỗi Chủ nhật khoảng 03:00 (múi giờ dự án Apps Script).';
+  Logger.log(m2);
+  try { nhatKy_('DON_RAC', m2); } catch (e2) {}
+  return { da_co: 0, tao_moi: true };
+}
 function donRacScriptProperties() {
   var p = PropertiesService.getScriptProperties();
   var all = p.getProperties(), xoa = 0;

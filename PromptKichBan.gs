@@ -6,6 +6,8 @@
  */
 
 function taoPromptKichBan_(r, c1, c2) {
+  // v101.4: đề thiếu hợp đồng hình (đề Zalo bỏ qua BP0...) -> tự suy hợp đồng gọn ngay trước khi viết kịch bản
+  if (typeof damBaoHopDongHinh_ === 'function') damBaoHopDongHinh_(r, (c2 && c2.cac_buoc && c2.cac_buoc.length ? c2.cac_buoc : (c1 && c1.cac_buoc)) || []);
   var hh = typeof laMonHinhHoc_ === 'function' && laMonHinhHoc_(r);
   var tt = (typeof laMonThucTe_ === 'function' && laMonThucTe_(r)) || hh;   // bài hình học dùng khung "đáp số / thử lại" của toán thực tế + hướng dẫn hình học riêng
   var buocC1 = (c1.cac_buoc || []).map(function (b, i) { return (i + 1) + '. ' + b; }).join('\n');

@@ -112,6 +112,64 @@ function dungTuSinh_(r, kb) {
   if (String(kb.mon || r.mon || '').toUpperCase() === 'XAC_SUAT') return false;   // 4 mô-đun xác suất v96 đã đủ
   return RE_TU_SINH_.test(String(r.de_bai || kb.de_bai || ''));
 }
+/* ===================== v101.4: HỢP ĐỒNG HÌNH TỰ SUY TẠI BP2 (đề Zalo / đề thiếu hợp đồng của BP0) ===================== */
+// Đề có ngữ cảnh hình ảnh / dãy số - đệ quy / xác suất mô hình lạ mà các sân khấu v96 không phủ -> ưu tiên tu_sinh_svg.
+var RE_DAY_DEQUY_ = /dãy số|cấp số|truy hồi|đệ quy|số hạng|lặp lại|lồng nhau|lần thứ \d+|bước thứ \d+|sau \d+ (?:lần|bước)|nhân đôi|chia (?:ba|ba phần|đôi) rồi|tam giác sierpinski|sierpinski/i;
+var RE_NGU_CANH_HINH_ = /hình vẽ|bản vẽ|sơ đồ|miền (?:tô|gạch)|phần tô|diện tích phần|lát|xếp|tô màu|vòng tròn|đường tròn|tam giác đều|lục giác|ngũ giác|đa giác|bàn cờ|lưới ô|ô vuông|trục số|tập hợp|giao của|hợp của|venn|góc|cung|đoạn thẳng|chia đoạn/i;
+var RE_XS_MO_HINH_LA_ = /monty hall|ba cánh cửa|cánh cửa|nghịch lý|ngày sinh|hẹn gặp|gặp nhau|điểm ngẫu nhiên|rơi ngẫu nhiên|chọn ngẫu nhiên một điểm|xác suất hình học|kim buffon|ném (?:phi tiêu|kim)|bàn cờ|mê cung|đường đi|bước ngẫu nhiên|đi bộ ngẫu nhiên|hình vuông|đường tròn|tam giác/i;
+// -> {san_khau_dich, kich_ban_hinh[4-6], nut_that, goi_y_hinh_anh, mang, nhom: ''} | null (không cần hợp đồng: sân khấu v96 / hình chuẩn tự phủ)
+// buoc = mảng câu bước giải (c2.cac_buoc / c1.cac_buoc) để bám sát thứ tự giải.
+function suyHopDongHinh_(r, buoc) {
+  r = r || {};
+  var tach = tachChiDao_(r.de_bai), de = tach.de || String(r.de_bai || '');
+  var chiDao = String(r.chi_dao || tach.chi_dao || '');
+  var mon = String(r.mon || '').toUpperCase(), lop = String(r.lop || '');
+  if (/^HINH_/.test(mon)) return null;                                  // hình phẳng / không gian chuẩn có luồng riêng (v94 / v97)
+  if (typeof laVideoDai_ === 'function' && laVideoDai_(r)) return null;  // video -10P không dùng Khung 4 tầng ngắn
+  if (typeof cauHinh_ === 'function' && String(cauHinh_('TU_SINH_SVG') || '').toUpperCase() === 'TAT') return null;
+  var cd = docChiDao_(chiDao), dich = '';
+  var t = de.toLowerCase();
+  if (/tự sinh|tu_sinh|svg/i.test(chiDao)) dich = 'tu_sinh_svg';
+  else if (cd.loai) return null;                                         // chỉ đạo đã chỉ rõ sân khấu -> chonSanKhau_ tự tôn trọng, không cần hợp đồng
+  else {
+    var q = chonSanKhau_({mon: mon, lop: lop, de_bai: de}, r);           // CÙNG bộ định tuyến với Python chon_san_khau (không thêm nhánh mới)
+    var la = RE_TU_SINH_.test(t) || RE_DAY_DEQUY_.test(t);
+    if (mon === 'XAC_SUAT') {
+      if (q.loai === 'luoi_bayes' || /bayes|xét nghiệm|dương tính/.test(t)) return null;   // xác suất có điều kiện đã có lưới Bayes / sơ đồ cây
+      if (RE_XS_MO_HINH_LA_.test(t) && !/thẻ|tấm thẻ|xúc xắc|viên bi/.test(t)) dich = 'tu_sinh_svg';
+    } else if (q.loai === 'tu_duy_dai_so' && q.nguon === 'lui') {
+      // đề rơi về sơ đồ chữ: có ngữ cảnh hình / dãy lặp / bối cảnh thực tế -> hộp cát hình thay vì sơ đồ tư duy chữ
+      if (la || RE_NGU_CANH_HINH_.test(t) || mon === 'THUC_TE') dich = 'tu_sinh_svg';
+    } else if (la && (q.loai === '3d_vector' ? RE_TU_SINH_.test(t) : true) && q.nguon !== 'chi_dao') {
+      if (q.loai === 'kinh_te_do_thi' || q.loai === 'tang_truong' || q.loai === 'so_do_2d') { if (RE_TU_SINH_.test(t)) dich = 'tu_sinh_svg'; }
+      else dich = 'tu_sinh_svg';
+    }
+  }
+  if (!dich) return null;
+  var gt = (buoc || []).map(function (b) { return String(b || '').replace(/\s+/g, ' ').trim(); }).filter(Boolean);
+  var kbh = [];
+  if (gt.length) {
+    // chọn đều 4-6 bước giải: đầu (dựng đối tượng) - giữa (biến đổi) - cuối (kết quả)
+    var n = Math.max(4, Math.min(6, gt.length));
+    for (var i = 0; i < n; i++) {
+      var s = gt[Math.min(gt.length - 1, Math.round(i * (gt.length - 1) / Math.max(1, n - 1)))];
+      kbh.push('(' + (i + 1) + ') ' + (i === 0 ? 'dựng đúng đối tượng / thông số đề: ' : i === n - 1 ? 'hình chốt đáp án (không ghi số đáp án trước câu công bố): ' : 'biến đổi / thêm yếu tố / tô nhấn: ') + s.slice(0, 100));
+    }
+  } else kbh = ['(1) dựng đúng đối tượng và số liệu của đề', '(2) thêm / tách yếu tố then chốt của lời giải', '(3) biến đổi hình theo bước tính', '(4) hình chốt đáp án (không ghi số đáp án)'];
+  return {san_khau_dich: dich, kich_ban_hinh: kbh.map(function (x) { return x.replace(/^\(\d\)\s*/, ''); }).slice(0, 6),
+    nut_that: String((gt.length && gt[Math.floor(gt.length / 2)]) || 'bước đột phá của lời giải').slice(0, 160),
+    goi_y_hinh_anh: 'hình tự sinh bám đề, mỗi bước giải thêm / đổi một lớp đúng lúc lời đọc nhắc tới', mang: mon, nhom: ''};
+}
+// Gắn hợp đồng suy ra vào r.yeu_to_tu_duy (trong bộ nhớ) khi thiếu -> docHopDongHinh_ / apHopDongVaoKb_ / dungTuSinh_ đều thấy.
+function damBaoHopDongHinh_(r, buoc) {
+  if (!r || (typeof docHopDongHinh_ === 'function' && docHopDongHinh_(r))) return null;
+  var hd = null;
+  try { hd = suyHopDongHinh_(r, buoc); } catch (e) { hd = null; }
+  if (!hd || typeof ganHopDong_ !== 'function') return null;
+  r.yeu_to_tu_duy = ganHopDong_(r.yeu_to_tu_duy, hd);
+  try { Logger.log('v101.4: hợp đồng hình tự suy (' + hd.san_khau_dich + ') cho đề ' + String(r.id || '')); } catch (e2) {}
+  return hd;
+}
 function huongDanTuSinh_(kb, r) {
   var buoc = ((kb.khung4tang || {}).buoc || []).map(function (b, i) { return i + ': ' + String(b.nhan || '') + ' — ' + String(b.tieu_de || '') + (b.khi_noi ? ' (khi_noi: "' + b.khi_noi + '")' : ''); });
   var loi = (kb.canh || []).map(function (c, i) { return (i + 1) + '. ' + String(c.loi_thoai || ''); }).join('\n');
@@ -131,6 +189,14 @@ function huongDanTuSinh_(kb, r) {
     'v.da_giac(pts, mau, day=7) mảng nổi 2.5D | v.hop(x, y, a, b, c, mau) -> (svg, P đỉnh A..H) | v.tru(cx, cy, r, h, mau) | v.trai_phang_2mat(x, y, rong1, rong2, cao) -> (svg, P A/G) | ' +
     'v.luoi(...), v.ban_co(x, y, o, n, to=[(i, j)]) | v.he_truc(x, y, w, h, u_max, v_max, nhan_x, nhan_y, vach) -> (svg, f(u, v)) | v.do_thi(x, y, w, h, ham, a, b, cuc_tri=t) -> (svg, f, P) | ' +
     'v.cua(x, y, w, h, so, mo, ben_trong) cánh cửa Monty Hall | v.the_bai | v.mien_to(pts, mau, mo) | v.cung(cx, cy, r, a0, a1, to=mau) | v.mui_ten | v.duong(pts, net_dut) | v.cham | v.lop(buoc, svg, hieu_ung, khi_noi, nhan_lop, nhom).\n' +
+    // v101.4: hàm chuẩn mới của ve25d (ưu tiên gọi thay vì tự tính chuỗi <path> thô)
+    '- HÀM CHUẨN MỚI (ƯU TIÊN GỌI, KHÔNG tự tính <path> thô khi đã có hàm): v.tam_nhan(x, y, "chữ", mau, co=24) nhãn viên thuốc nền đặc | v.da_giac_deu(cx, cy, r, so_canh, goc_bd=-90, mau, to_nen) -> (svg, đỉnh) | ' +
+    'v.mui_ten_kich_thuoc(x1, y1, x2, y2, "5 cm", lech=26) đoạn đo kích thước | v.cung_goc(ox, oy, x1, y1, x2, y2, r=36, text="60°") cung góc (~90° = góc vuông) | ' +
+    'v.truc_so(x1, x2, y, [0, (2, "a"), 5], mien_to=(a, b)) trục số + dải khoảng | v.luoi_o(x, y, cot, hang, kich_thuoc=56, o_to={(i, j): "ket"}, nhan_o={(i, j): "3"}) lưới ô vuông | ' +
+    'v.so_do_venn([("A", "12"), ("B", "9")], nhan_giao="5") Venn 2-3 tập | v.phan_nhanh_de_quy(cx, cy, r, bac=0..3, kieu="koch|tam_giac_chia|cay_nhi_phan") - gọi lại với bac TĂNG DẦN ở từng bước, cùng (cx, cy, r).\n' +
+    '- CHIA LỚP BÁM CÂU THOẠI (bắt buộc): (a) bước ĐẦU dựng đúng đối tượng với thông số của đề (số đo, số phần tử, số bậc); (b) các bước GIỮA tách / biến đổi / thêm yếu tố / tô nhấn đúng lúc câu thoại đang giảng ý đó; (c) bước CHỐT bật hình kết quả (màu hổ phách) với "khi_noi" đặt ĐÚNG câu công bố đáp án, tuyệt đối không hiện sớm hơn. ' +
+    '"khi_noi" của mỗi lớp là cụm 3-6 từ lấy NGUYÊN VĂN trong lời đọc của đúng bước đó (không bịa cụm, không ghi giây). Không để quá 4-5 giây không có lớp mới hay chuyển động (nhiều lớp nhỏ nối nhau thay vì một lớp to đứng yên).\n' +
+    '- DÙNG `nhom` cho các nhãn / lớp THAY THẾ nhau (cùng một vị trí, bước sau thay bước trước): đặt cùng chuỗi nhom để máy ẩn lớp cũ khi lớp mới hiện, tránh chồng chữ; lớp cộng dồn (hình nền, khung) thì không đặt nhom.\n' +
     (kb.kich_ban_hinh && kb.kich_ban_hinh.length ? '- HỢP ĐỒNG HÌNH TỪ BỘ PHẬN 0 (bám đúng thứ tự, mỗi bước hình ứng một bước giải): ' + kb.kich_ban_hinh.map(function (x, i) { return (i + 1) + ') ' + x; }).join(' ') + (kb.nut_that ? ' | Nút thắt: ' + kb.nut_that : '') + '\n' : '') +
     '- Bám đúng số liệu đề (ví dụ bông tuyết Koch: tam giác đều cạnh a, mỗi cạnh chia 3 bật tam giác đều ra ngoài, lớp n+1 = các tam giác mới; parabol: trục, đỉnh nổi bật, điểm chạy).\n' +
     'Chỉ trả JSON {"ma": "<mã Python>", "mo_ta": "1 câu"}.';

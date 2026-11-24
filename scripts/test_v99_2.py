@@ -327,7 +327,7 @@ def _chan_tu_sinh_hong_workflow():
     yml = open(os.path.join(GOC, ".github", "workflows", "dung-video.yml"), encoding="utf8").read()
     i = yml.index("id: tu_sinh")
     assert_true("tuSinhHong" in yml[i:i + 800] and "KIEM_DUYET_BO_CUC" in yml[i:i + 3000] and "exit 1" in yml[i:i + 3600], "thiếu bước chặn tu_sinh_hong")
-    assert_true(yml.index("id: tu_sinh") < yml.index("npx remotion bundle") < yml.index("dung_khuc:"), "bước chặn phải chạy TRƯỚC bundle / dựng khúc")
+    assert_true(yml.index("id: tu_sinh") < yml.index("npx remotion bundle") < yml.index("\n  dung_khuc:\n"),"bước chặn phải chạy TRƯỚC bundle / dựng khúc")
     assert_true("steps.tu_sinh.outputs.da_bao" in yml, "output chan chưa gộp da_bao của tu_sinh")
 
 
