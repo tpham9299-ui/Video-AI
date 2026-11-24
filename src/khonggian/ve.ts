@@ -5,15 +5,18 @@ import {KhongGianVao, ManhNet, TuThe, V3, VaiDoan} from './kieu';
 import {chieu, heMay, HeMay, noiTuThe} from './may';
 import {diemKhuat, phanLoaiMat, tachDoan} from './hlr';
 import {MatVo} from './kieu';
-import {cungGoc3D, oVuong3D, trangThai, MO_NEN} from './canh';
+import {cungGoc3D, hienDiemPhu, oVuong3D, trangThai, MO_NEN} from './canh';
 import {boiCanh, BoiCanh, lapLich, LichMay, mayTai} from './dao_dien';
 import {datNhanKG, DiemNhan, DoanCan, HopNhan, VungAn} from './nhan';
 import {cham, cheo, doDai, kep01, noi, tru} from '../3d-vector/toan3d';
-import {BAT_QUET_MAT_PHANG_KG, BAT_XUNG_NHIP_DIEM, DO_MO_CANH_PHU_KG} from '../khung4tang/cauHinhTinhChinh';
+import {BAT_QUET_MAT_PHANG_KG, BAT_XUNG_NHIP_DIEM, DO_MO_CANH_PHU_KG, DO_MO_KHUNG_CHINH_KG, DO_MO_KHUNG_KHI_NHAN_KG, DO_MO_NET_KHUAT_KG} from '../khung4tang/cauHinhTinhChinh';
 
-// v101.2: phân cấp 3 tầng nét — trọng tâm (hổ phách, dày) | khung khối (trắng xanh dịu) | khuất + đường phụ (mảnh, mờ)
+// v102: phân cấp 3 tầng nét — trọng tâm (hổ phách / cyan, 4,2–4,8 px, có viền tối phía sau) | khung khối chính (trắng ánh xanh, ~3 px,
+// KHÔNG dịu dưới 0,62; cạnh khuất #9BB3CC nét đứt 8 6, 1,9 px, >= 0,52) | đường phụ (mảnh, chỉ riêng chúng dịu 0,35–0,42)
 const MAU_TAM = '#FBBF24';
-const MAU_KHUNG = '#D6E6F7';
+const MAU_TAM_DICH = '#22D3EE';
+const MAU_KHUNG = '#E6F1FF';
+const MAU_KHUNG_KHUAT = '#9BB3CC';
 const NET_PHU = new Set<string>(['phu', 'keo_dai', 'gion', 'gion_phu']);
 
 // khóa màu trực quan (GeoGebra 3D trên nền tối)
@@ -42,9 +45,10 @@ export const MAU_KG = {
 // v97 tối giản: nét chính dày hơn ~28 % để đọc rõ trên điện thoại nhỏ
 const W_NET: Record<VaiDoan, number> = {khoi: 4.0, phu: 2.9, dich: 4.5, keo_dai: 2.4, giao_tuyen: 3.6, truc: 2.2, truc_vach: 1.8, gion: 2.2, gion_phu: 1.3, cong: 3.4, vector: 3.8, luoi: 1.5};
 
-export type NetVe = {id: string; x1: number; y1: number; x2: number; y2: number; mau: string; w: number; dut: boolean; op: number; sang: number; lop: 0 | 1};
+// v102: tang = 'tam' (đoạn trọng tâm) | 'khung' (khung khối chính) | 'phu' (đường phụ / còn lại) — SanKhauKhongGian chọn nét đứt + viền tối theo tầng
+export type NetVe = {id: string; x1: number; y1: number; x2: number; y2: number; mau: string; w: number; dut: boolean; op: number; sang: number; lop: 0 | 1; tang?: 'tam' | 'khung' | 'phu'};
 // v101.2: act = độ "đang giảng" 0..1 (nhấn mạnh / mới bung); quet = tiến độ dải sáng 0..1 (-1: tắt); bb = hộp bao cho dải sáng
-export type MatVe = {id: string; d: string; mau: string; op: number; bung: boolean; act?: number; quet?: number; bb?: [number, number, number, number]};
+export type MatVe = {id: string; d: string; mau: string; op: number; bung: boolean; san?: boolean; act?: number; quet?: number; bb?: [number, number, number, number]};
 export type ChamVe = {ten: string; x: number; y: number; r: number; mau: string; khuat: boolean; op: number; sang: number; song?: number};
 export type GocVe = {id: string; d: string; mau: string; op: number; vuong: boolean; nhan?: {x: number; y: number; tex: string}};
 export type NhanVe = HopNhan & {op: number; mau: string; khuat: boolean};
@@ -201,22 +205,34 @@ export function veKhung(kg: KhongGianVao, cb: ChuanBi, t: number, W: number, H: 
     const moMat = x.vai === 'giao_tuyen' ? mo() : mo(x.tenA, x.tenB);
     const tamN = x.vai === 'giao_tuyen' || x.sang > 0.5; // tầng trọng tâm
     const phuN = NET_PHU.has(x.vai) && !tamN;
-    const mauNet = x.mau || (tamN && (x.vai === 'khoi' || x.vai === 'phu' || x.vai === 'keo_dai') ? MAU_TAM : x.vai === 'khoi' ? MAU_KHUNG : MAU_KG[x.vai] || MAU_KG.phu);
+    const khungN = x.vai === 'khoi' && !tamN; // khung khối chính
+    const mauNet = x.mau || (tamN && (x.vai === 'khoi' || x.vai === 'phu' || x.vai === 'keo_dai' || x.vai === 'giao_tuyen') ? MAU_TAM : tamN && x.vai === 'dich' ? MAU_TAM_DICH : x.vai === 'khoi' ? MAU_KHUNG : MAU_KG[x.vai] || MAU_KG.phu);
+    // v102: mức "đang nhấn" 0..1 của riêng đoạn này (mặt phẳng đang giảng, hoặc đoạn nằm ngoài tập nhấn mạnh) -> chỉ dùng nội suy khung 0,85 -> 0,65
+    const nhanE = Math.max(actMax, kep01((1 - x.nm) / Math.max(1e-6, 1 - DO_MO_CANH_PHU_KG)));
     const lego = !!kg.dung.lego;
     // dịu cạnh phụ / khung khi có mặt phẳng đang giảng; đường phụ đã xong ở bước trước còn ~0,25
-    const diu = tamN ? 1 : phuN ? 1 - (1 - DO_MO_CANH_PHU_KG) * actMax : x.vai === 'khoi' ? 1 - (1 - DO_MO_CANH_PHU_KG) * 0.5 * actMax : 1;
+    const diu = tamN || khungN ? 1 : phuN ? 1 - (1 - DO_MO_CANH_PHU_KG) * actMax : 1;
     const phuCu = phuN && x.nm < 0.99 ? 0.72 : 1;
+    // v102: độ đục theo tầng. Khung chính KHÔNG nhân chồng x.nm / moMat / diu (chỉ nội suy 0,85 -> 0,65); đường phụ dịu 1 lần, sàn 0,38.
+    const opKhung = DO_MO_KHUNG_CHINH_KG + (DO_MO_KHUNG_KHI_NHAN_KG - DO_MO_KHUNG_CHINH_KG) * nhanE;
+    const opPhu = Math.max(DO_MO_CANH_PHU_KG, Math.min(x.nm, diu, moMat) * phuCu);
     for (const p of manh) {
       const pa = chieu(p.a, m, h), pb = chieu(p.b, m, h);
       const xa = kep01(((pa.sau + pb.sau) / 2 - sauTam) / R * 0.5 + 0.5);
       const ds = 1.03 - 0.1 * xa;
-      const w = tamN ? (3.6 + 0.8 * Math.max(x.sang, x.vai === 'giao_tuyen' ? 1 : 0)) * ds
-        : x.vai === 'khoi' ? 2.5 * ds : phuN ? 1.5 : W_NET[x.vai] * (1.06 - 0.16 * xa) * (1 + 0.25 * x.sang);
+      const w = tamN ? (4.2 + 0.6 * Math.max(x.sang, x.vai === 'giao_tuyen' ? 1 : 0)) * ds
+        : khungN ? 3.0 * ds : phuN ? 1.5 : W_NET[x.vai] * (1.06 - 0.16 * xa) * (1 + 0.25 * x.sang);
       const dut = p.khuat || !!x.dut;
       // v98: phần nằm DƯỚI sàn Oxy (sau mặt sàn bán trong suốt) dịu đi -> mắt thấy rõ miền z < 0
       const sauSan = lego && p.sauKinh ? 0.62 : 1;
+      if (khungN) {
+        // khung khối chính: cạnh thấy trắng ánh xanh dày ~3 px; cạnh khuất #9BB3CC nét đứt 8 6 dày 1,9 px
+        net.push({id: x.id, x1: pa.x, y1: pa.y, x2: pb.x, y2: pb.y, mau: x.mau || (p.khuat ? MAU_KHUNG_KHUAT : mauNet), w: p.khuat ? 1.9 : w, dut,
+          op: a * sauSan * (p.khuat ? Math.max(0.52, DO_MO_NET_KHUAT_KG * (1 - 0.06 * nhanE)) : Math.max(0.62, opKhung)), sang: x.sang, lop: p.khuat || p.sauKinh ? 0 : 1, tang: 'khung'});
+        continue;
+      }
       net.push({id: x.id, x1: pa.x, y1: pa.y, x2: pb.x, y2: pb.y, mau: mauNet, w: p.khuat ? 1.5 : x.dut && !tamN ? Math.min(w * 0.7, phuN ? 1.5 : w) : w, dut,
-        op: a * x.nm * moMat * sauSan * (p.khuat ? 0.42 : 1) * diu * phuCu * (x.vai === 'khoi' && !p.khuat ? 1 - 0.12 * xa : 1), sang: x.sang, lop: p.khuat || p.sauKinh ? 0 : 1});
+        op: phuN ? a * sauSan * (p.khuat ? 0.42 : 1) * opPhu : a * x.nm * moMat * sauSan * (p.khuat ? 0.42 : 1) * diu * phuCu, sang: x.sang, lop: p.khuat || p.sauKinh ? 0 : 1, tang: tamN ? 'tam' : 'phu'});
     }
     // mũi tên ở đầu mút (đoạn vẽ xong mới có mũi)
     if (x.mui && x.ve > 0.96 && manh.length) {
@@ -230,7 +246,7 @@ export function veKhung(kg: KhongGianVao, cb: ChuanBi, t: number, W: number, H: 
   const mat: MatVe[] = tt.kinh.map((k, ki) => {
     const ps = k.p.map((p) => chieu(p, m, h));
     const xs = ps.map((p) => p.x), ys = ps.map((p) => p.y);
-    return {id: k.id, d: 'M' + ps.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('L') + 'Z', mau: /^#/.test(k.mau) ? k.mau : MAU_KG.kinh, op: k.op * mo(), bung: k.bung,
+    return {id: k.id, d: 'M' + ps.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('L') + 'Z', mau: /^#/.test(k.mau) ? k.mau : MAU_KG.kinh, op: k.op * mo(), bung: k.bung, san: !!k.san,
       act: actMat[ki].act, quet: actMat[ki].quet, bb: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]};
   });
   // v98: mặt trước của khối Lego tô rất nhẹ theo ánh sáng (đặc khối; vẽ dưới lớp nét nên không che nét khuất)
@@ -253,10 +269,11 @@ export function veKhung(kg: KhongGianVao, cb: ChuanBi, t: number, W: number, H: 
       }
     });
   }
+  const hienPhu = hienDiemPhu(kg);
   const cham2: ChamVe[] = [];
   // v101.2: điểm mới hiện ở bước này phát 1 nhịp vòng sóng (~18 frame = 0,6 s) rồi tắt
   const songDiem = (ten: string) => {
-    const th = hienKG[ten];
+    const th = hienKG[ten] ?? hienPhu[ten];
     if (!BAT_XUNG_NHIP_DIEM || th === undefined) return -1;
     const q = (t - th - 0.15) / 0.6;
     return q > 0 && q < 1 ? q : -1;
@@ -309,7 +326,10 @@ export function veKhung(kg: KhongGianVao, cb: ChuanBi, t: number, W: number, H: 
   for (const c of cham2) {
     const l = lechNhan.get(c.ten);
     if (!l) continue;
-    nhan.push({...l, x: c.x + l.dx, y: c.y + l.dy, op: c.op, mau: c.mau === MAU_KG.chot ? MAU_KG.chot : '#F5F7FA', khuat: c.khuat});
+    // v102: đỉnh chính trắng #FFFFFF; điểm trọng tâm đang giảng cyan sáng; điểm dựng thêm hổ phách (không chìm vào nền)
+    const dinhChinh = kg.dung.khoi.dinh.includes(c.ten);
+    const mauChu = c.mau === MAU_KG.chot || c.sang > 0.5 ? MAU_TAM_DICH : dinhChinh ? '#FFFFFF' : MAU_TAM;
+    nhan.push({...l, x: c.x + l.dx, y: c.y + l.dy, op: c.op, mau: mauChu, khuat: c.khuat});
   }
   // v98: nhãn tự do (số đo đường gióng, tên trục, hướng) + số đọc trực tiếp khi trượt điểm tối ưu
   const nhanTu: NhanTuVe[] = [];

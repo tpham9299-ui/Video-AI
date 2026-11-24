@@ -17,8 +17,13 @@ export const BAT_QUET_MAT_PHANG = true;
 // v100.2: đầu bút phát sáng chạy theo đầu mút nét đang kẻ (0 < tiến độ < 1).
 export const BAT_DAU_BUT_VE = true;
 // v101.2: hình không gian — độ tô mặt phẳng đang giảng (0.22–0.26), độ mờ cạnh/mặt phụ ngoài trọng tâm (0.30–0.42), dải sáng quét mặt phẳng.
-export const DO_TO_MAT_PHANG_KG = 0.24;
-export const DO_MO_CANH_PHU_KG = 0.35;
+export const DO_TO_MAT_PHANG_KG = 0.18; // v102: tô mặt phẳng phụ 0.16–0.20 (0.12–0.15 khi >= 2 mặt chồng nhau)
+export const DO_MO_CANH_PHU_KG = 0.38; // v102: CHỈ đường phụ / mặt phụ cũ dịu xuống 0.35–0.42 (không nhân chồng lên khung khối chính)
+// v102: khung khối chính (vỏ chóp / lăng trụ) sáng rõ: cạnh thấy >= 0.85 bình thường, KHÔNG BAO GIỜ dưới 0.62 khi đang tô nhấn mạnh;
+// cạnh khuất nét đứt rõ >= 0.52.
+export const DO_MO_KHUNG_CHINH_KG = 0.85;
+export const DO_MO_KHUNG_KHI_NHAN_KG = 0.65;
+export const DO_MO_NET_KHUAT_KG = 0.55;
 export const BAT_QUET_MAT_PHANG_KG = true;
 // v100.3: ThanhDe — ~1 giây trước mốc mở khóa đáp án: ô "?" nhấp sáng 1 nhịp + nhãn "Bạn ra mấy?" (biến mất đúng mốc mở khóa).
 export const BAT_NHIP_HOI_HOP_DAP_AN = true;

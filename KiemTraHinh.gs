@@ -570,7 +570,10 @@ function tuSuaKichBan_(kb, ctx, r) {
   }
   if (r && r.dap_an) {
     var daTho = String(r.dap_an).replace(/\s/g, '');
-    if (!kb.dap_an_cuoi || String(kb.dap_an_cuoi).replace(/\s/g, '') !== daTho) {
+    // v102: đáp án kịch bản có THAM SỐ chữ (2a/√11, 0,603a) mà kết quả máy là số trần -> giữ dạng có tham số, không cắt cụt thành "0,603"
+    var coThamSo_ = function (s) { return /(?:^|[^A-Za-zÀ-ỹ])[A-Za-z](?![A-Za-zÀ-ỹ])/.test(String(s || '').replace(/\\[A-Za-z]+/g, ' ').replace(/[{}^_$]/g, ' ')); };
+    var giuThamSo = kb.dap_an_cuoi && coThamSo_(kb.dap_an_cuoi) && !coThamSo_(r.dap_an);
+    if (!giuThamSo && (!kb.dap_an_cuoi || String(kb.dap_an_cuoi).replace(/\s/g, '') !== daTho)) {
       kb.dap_an_cuoi = r.dap_an;
     }
   }
@@ -2998,6 +3001,36 @@ function congThucGonMocCau_(tex) {
   s = ve.join(' = ');
   return s.length <= DAI_MOC_CAU_.cong_thuc ? s : ve[ve.length - 1].slice(0, DAI_MOC_CAU_.cong_thuc);
 }
+// v102: gắn ĐÚNG nhãn chuyên đề ở dòng phụ Intro (phu_de_intro) / chu_de_ngan theo bản chất đề:
+//  - "TỐI ƯU" CHỈ khi đề thật sự tìm GTLN / GTNN / cực trị / "nhất"; bài tốc độ biến thiên / thang trượt -> "TỐC ĐỘ BIẾN THIÊN";
+//  - bài hình không gian hỏi khoảng cách d(A, (P)) -> "KHOẢNG CÁCH" (không gắn nhầm "SONG SONG").
+function loaiChuyenDe_(kb) {
+  var van = [kb && kb.de_bai, kb && kb.can_tim, kb && kb.chu_de].map(function (x) { return String(x || ''); }).join(' ');
+  var toiUu = /lớn\s*nhất|nhỏ\s*nhất|GTLN|GTNN|cực\s*(?:đại|tiểu|trị)|tối\s*ưu|ngắn\s*nhất|dài\s*nhất|tiết\s*kiệm\s*nhất|nhiều\s*nhất|ít\s*nhất|rẻ\s*nhất|lợi\s*nhuận\s*cao\s*nhất/i.test(van);
+  var tocDo = /tốc\s*độ|vận\s*tốc|biến\s*thiên|đang\s*(?:trượt|giảm|tăng|chảy|rơi)|trượt\s*xuống|tại\s*thời\s*điểm|thang\s*(?:dài|trượt|dựa)/i.test(van);
+  var khoangCach = /khoảng\s*cách|d\s*\(\s*[A-Z]+\s*,/i.test(van);
+  var khongGian = /hình\s*chóp|lăng\s*trụ|hình\s*hộp|tứ\s*diện|mặt\s*phẳng|\(\s*[A-Z]{3,4}\s*\)|hình\s*lập\s*phương/i.test(van);
+  var ten = '';
+  if (khongGian && khoangCach) ten = 'KHOẢNG CÁCH';
+  else if (tocDo && !toiUu) ten = 'TỐC ĐỘ BIẾN THIÊN';
+  return {toiUu: toiUu, tocDo: tocDo, khoangCach: khoangCach, khongGian: khongGian, ten: ten};
+}
+function chuanNhanChuyenDe_(kb) {
+  var lc = loaiChuyenDe_(kb), sua = [];
+  ['phu_de_intro', 'chu_de_ngan'].forEach(function (k) {
+    var s = kb[k];
+    if (typeof s !== 'string' || !s) return;
+    var m = s;
+    if (!lc.toiUu && /TỐI\s*ƯU/i.test(m)) {
+      var thay = lc.ten === 'KHOẢNG CÁCH' ? 'KHOẢNG CÁCH' : lc.tocDo ? 'TỐC ĐỘ BIẾN THIÊN' : 'ỨNG DỤNG ĐẠO HÀM';
+      m = m.replace(/TỐI\s*ƯU(?:\s*(?:ĐỜI\s*THƯỜNG|HÓA))?/i, thay);
+    }
+    if (lc.ten === 'KHOẢNG CÁCH' && /SONG\s*SONG/i.test(m) && !/chứng\s*minh[^.?]*song\s*song/i.test(String(kb.de_bai || ''))) m = m.replace(/SONG\s*SONG/i, 'KHOẢNG CÁCH');
+    if (k === 'phu_de_intro') m = m.replace(/(KHOẢNG CÁCH)(?:\s*·\s*\1)+/g, '$1').replace(/(TỐC ĐỘ BIẾN THIÊN)(?:\s*·\s*\1)+/g, '$1');
+    if (m !== s) { kb[k] = m.slice(0, k === 'phu_de_intro' ? DAI_MOC_CAU_.phu_de_intro : 40); sua.push('v102: nhãn chuyên đề ' + k + ' -> "' + kb[k] + '"'); }
+  });
+  return sua;
+}
 function tuSuaMocCau_(kb, r) {
   var sua = [];
   var k4 = kb.khung4tang || {};
@@ -3034,6 +3067,7 @@ function tuSuaMocCau_(kb, r) {
     if (pd) sua.push('tự điền phu_de_intro');
   }
   kb.phu_de_intro = pd;
+  sua = sua.concat(chuanNhanChuyenDe_(kb));   // v102: nhãn TỐI ƯU / SONG SONG đúng bản chất đề
   // 4. câu hook tâm lý + 5. CTA
   var hk = chuSachMocCau_(cheDapSoMocCau_(kb.cau_hook, kb), DAI_MOC_CAU_.cau_hook);
   if (hk.length < 6) {

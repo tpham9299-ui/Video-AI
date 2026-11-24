@@ -16,6 +16,9 @@ export type NutCay = {id: number; nhan: string; tang: number; cha: number; duong
 export type SoDoCayVao = Chung & {loai: 'so_do_cay'; tang: string[]; nut: NutCay[]; canh: {tu: number; den: number}[]; tong?: string; bt_tong?: string; p?: string; mau_so?: string; bayes?: boolean; bt_mau?: string; kieu_so?: "phan_so" | "thap_phan"};
 export type LuoiBayesVao = Chung & {
   loai: 'luoi_bayes'; nhan_a: string; nhan_b: string; pa: number; pba: number; pbna: number; hoi?: 'B';
+  // v102: ký hiệu biến cố đúng như đề / thẻ giải (vd B, K) — mặc định A, B; tan_so = cách giải "tần số tự nhiên" (số người thật, chuỗi đã định dạng VN)
+  ky_a?: string; ky_b?: string;
+  tan_so?: {n: string; a: string; na: string; ab: string; nab: string; b: string; don_vi?: string};
   tex: {pa: string; pna: string; pba: string; pbna: string; pab: string; pnab: string; pb: string}; p?: string;
 };
 export type CotPhanPhoiVao = Chung & {loai: 'cot_phan_phoi'; cot: {nhan: string; p: string; gia_tri: number}[]; dich: number[]; truc_x?: string; nhan_x?: string; p?: string; bt_tong?: string};

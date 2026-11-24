@@ -2,7 +2,7 @@
 // (không còn intro thương hiệu im lặng phía trước). Mô hình 3D chính KHÔNG vẽ ở đây: Khung4Tang giữ đúng một sân khấu
 // 3D Vector, đặt nó giữa màn hình (zoom-out + xoay mở) rồi trượt về tầng 2 khi intro tan -> một hình liền mạch.
 // Bố cục cố định (chữ không bao giờ đè mô hình): viên thuốc nhan_thi | tiêu đề vàng ánh kim tối đa 2 dòng | dòng phụ cyan
-// | [vùng mô hình INTRO_SAN] | câu hook | nút CTA san hô. Cỡ chữ tự co theo độ dài (ước lượng tất định, không đo DOM).
+// | [vùng mô hình INTRO_SAN] | câu hook. (v102: đã gỡ nút CTA đăng ký sớm ở 3 giây đầu — CTA chỉ ở Outro.) Cỡ chữ tự co theo độ dài (ước lượng tất định, không đo DOM).
 import React from 'react';
 import {AbsoluteFill, Audio, random, Sequence, spring, staticFile, useVideoConfig} from 'remotion';
 import {FONT} from '../theme';
@@ -14,7 +14,6 @@ export {giayIntro, INTRO_SAN, raIntro} from './bo_cuc_v93';
 
 const VANG_SANG = '#FFF1B8', VANG = '#F5C542', VANG_DAM = '#D99A1E';
 const CYAN = '#3FD8F2';
-const SAN_HO = '#FF5A5F';
 
 const HatSang: React.FC<{t: number; a: number}> = ({t, a}) => (
   <svg width={1080} height={1920} style={{position: 'absolute', left: -LE_ND_V93, top: 0, opacity: a}}>
@@ -41,7 +40,7 @@ export const IntroMocCau: React.FC<{m: MocCau; t: number; G: number}> = ({m, t, 
   const ra = raIntro(t, G);
   const con = 1 - ra;
   if (con <= 0.001) return null;
-  const tHook = G * 0.6, tCta = G * 0.66;
+  const tHook = G * 0.6;
   const lo = (tu: number, d = 0.35) => emRa((t - tu) / d);
   const lo_lo = (tu: number) => spring({frame: f - Math.round(tu * fps), fps, config: {damping: 14, stiffness: 150, mass: 0.7}});
 
@@ -50,14 +49,11 @@ export const IntroMocCau: React.FC<{m: MocCau; t: number; G: number}> = ({m, t, 
   const coPhu = coVua(m.phu_de, 40, 26, RONG_CHU, 0.62);
   const dongHook = haiDong(m.cau_hook, 22);
   const coHook = Math.min(60, coVua(dongHook.reduce((a, b) => (b.length > a.length ? b : a), ''), 60, 38, RONG_CHU, 0.66));
-  const coCta = coVua(m.cta, 40, 28, 640, 0.66);
 
   const aPill = lo(0, 0.25);
   const sTD = lo_lo(0.12);
   const aPhu = lo(0.45, 0.4);
   const sHook = lo_lo(tHook);
-  const sCta = lo_lo(tCta);
-  const nhun = t > tCta + 0.4 ? 1 + 0.045 * Math.max(0, Math.sin(((t - tCta - 0.4) * 2 * Math.PI) / 0.9)) : 1;
   const tamSan = INTRO_SAN.y + INTRO_SAN.h / 2;
   const tho = 0.85 + 0.15 * Math.sin((t * 2 * Math.PI) / 2.6);
 
@@ -104,21 +100,6 @@ export const IntroMocCau: React.FC<{m: MocCau; t: number; G: number}> = ({m, t, 
         </div>
       ) : null}
 
-      {/* 5. nút CTA san hô, nhịp nhún spring */}
-      {t >= tCta - 0.05 ? (
-        <div style={{position: 'absolute', left: 0, right: 0, top: INTRO_SAN.y + INTRO_SAN.h + 172, display: 'flex', justifyContent: 'center', opacity: kep01(sCta * 2) * con, transform: `translateY(${ra * 40}px)`}}>
-          <div style={{height: 92, minWidth: 420, padding: '0 44px', borderRadius: 46, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16,
-            background: `linear-gradient(180deg, #FF7A7E, ${SAN_HO} 55%, #E2393F)`, boxShadow: `0 7px 0 #9E1F25, 0 0 34px rgba(255,90,95,0.45)`,
-            transform: `scale(${(0.6 + 0.4 * sCta) * nhun})`, color: '#FFFFFF', fontWeight: 900, fontSize: coCta, letterSpacing: 0.8, whiteSpace: 'nowrap'}}>
-            <svg width={34} height={34} viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z" fill="#fff" /></svg>
-            {m.cta}
-          </div>
-        </div>
-      ) : null}
-
-      <Sequence from={Math.round(tCta * fps)} durationInFrames={20} layout="none">
-        <Audio src={staticFile('sfx/pop.wav')} volume={0.35} />
-      </Sequence>
       <Sequence from={Math.round(tHook * fps)} durationInFrames={20} layout="none">
         <Audio src={staticFile('sfx/swoosh.wav')} volume={0.25} />
       </Sequence>

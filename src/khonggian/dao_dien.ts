@@ -87,10 +87,17 @@ const tren3D = (P: V3, A: V3, B: V3) => {
   return doDai(cheo(tru(B, A), tru(P, A))) / Math.max(1e-9, L) < 1e-5 * (1 + L) && cham(tru(P, A), tru(P, B)) <= 1e-9;
 };
 
-export type DanhGia = {kcDinh: number; kcDinhCanh: number; suot: number; capDinh: [string, string] | null; diemDe: [string, string] | null};
+// v102: matNhan = min |n·v| (diện tích chiếu tương đối) của các mặt phẳng đang nhấn mạnh (1 = nhìn thẳng góc, 0 = sượt);
+// thang = độ thẳng hàng nhỏ nhất của bộ ba điểm trọng tâm (diện tích tam giác chuẩn hóa theo cạnh dài², 0 = thẳng hàng);
+// chum = độ trải (px) của cụm điểm trọng tâm.
+export type DanhGia = {kcDinh: number; kcDinhCanh: number; suot: number; capDinh: [string, string] | null; diemDe: [string, string] | null; matNhan: number; thang: number; chum: number};
+export type MatNhan = {n: V3; g: V3};
+export const MAT_NHAN_MIN = 0.22; // |n·v| nhỏ hơn mức này = mặt đang giảng bị chiếu sượt
+export const THANG_HANG_MIN = 0.09; // tỉ lệ diện tích tam giác / cạnh dài² nhỏ hơn mức này = 3 điểm gần thẳng hàng
+export const CHUM_MIN = 110; // px: cụm >= 3 điểm trọng tâm trải nhỏ hơn mức này = chụm lại
 
 // chấm điểm rõ ràng một tư thế: khoảng cách 2D nhỏ nhất giữa các đỉnh, đỉnh–cạnh không đi qua nó, mặt vỏ sượt tia nhìn
-export function danhGia(m: TuThe, bc: BoiCanh, diem: [string, V3][], doan: [string, string][], mienPhang: Set<string> | null): DanhGia {
+export function danhGia(m: TuThe, bc: BoiCanh, diem: [string, V3][], doan: [string, string][], mienPhang: Set<string> | null, matNhanDs: MatNhan[] = [], cum: [string, V3][] = []): DanhGia {
   const h = heMay(m);
   const P = bc.kg.dung.diem;
   const s = diem.map(([t, p]) => ({t, p, q: chieu(p, m, h)}));
@@ -112,11 +119,30 @@ export function danhGia(m: TuThe, bc: BoiCanh, diem: [string, V3][], doan: [stri
   let suot = 1;
   // v98: mặt xấp xỉ mặt cong (trụ / nón / cầu) LUÔN có mặt sượt ở đường viền -> không tính phạt sượt
   for (const f of bc.vo) if (!f.cong) suot = Math.min(suot, Math.abs(doTruoc(f, h.viTri)));
-  return {kcDinh, kcDinhCanh, suot, capDinh, diemDe};
+  // v102: mặt đang nhấn mạnh bị chiếu sượt (|n·v| nhỏ <=> diện tích chiếu hẹp)
+  let matNhan = 1;
+  for (const f of matNhanDs) matNhan = Math.min(matNhan, Math.abs(cham(f.n, chuan(tru(h.viTri, f.g)))));
+  // cụm điểm trọng tâm (H, I, M, N...): gần thẳng hàng hoặc chụm lại trên màn hình
+  let thang = 1, chum = Infinity;
+  if (cum.length >= 3) {
+    const q = cum.map(([, p]) => chieu(p, m, h));
+    chum = 0;
+    for (let i = 0; i < q.length; i++) for (let j = i + 1; j < q.length; j++) {
+      chum = Math.max(chum, Math.hypot(q[i].x - q[j].x, q[i].y - q[j].y));
+      for (let k = j + 1; k < q.length; k++) {
+        const a = Math.abs((q[j].x - q[i].x) * (q[k].y - q[i].y) - (q[k].x - q[i].x) * (q[j].y - q[i].y)) / 2;
+        const L = Math.max(Math.hypot(q[j].x - q[i].x, q[j].y - q[i].y), Math.hypot(q[k].x - q[i].x, q[k].y - q[i].y), Math.hypot(q[k].x - q[j].x, q[k].y - q[j].y), 1e-6);
+        thang = Math.min(thang, a / (L * L));
+      }
+    }
+  }
+  return {kcDinh, kcDinhCanh, suot, capDinh, diemDe, matNhan, thang, chum};
 }
 
 const diemPhat = (g: DanhGia, mienSuot: boolean) =>
-  Math.max(0, KC_DINH_MIN - g.kcDinh) * 4 + Math.max(0, KC_DINH_CANH_MIN - g.kcDinhCanh) * 3 + (mienSuot ? 0 : Math.max(0, 0.07 - g.suot) * 900);
+  Math.max(0, KC_DINH_MIN - g.kcDinh) * 4 + Math.max(0, KC_DINH_CANH_MIN - g.kcDinhCanh) * 3 + (mienSuot ? 0 : Math.max(0, 0.07 - g.suot) * 900)
+  // v102: phạt NẶNG mặt nhấn mạnh bị chiếu sượt, và cụm điểm trọng tâm thẳng hàng / chụm
+  + Math.max(0, MAT_NHAN_MIN - g.matNhan) * 1400 + Math.max(0, THANG_HANG_MIN - g.thang) * 900 + (Number.isFinite(g.chum) ? Math.max(0, CHUM_MIN - g.chum) * 3 : 0);
 
 function phapMat(bc: BoiCanh, ten: string[]): {n: V3; g: V3; laVo: boolean} | null {
   const P = bc.kg.dung.diem;
@@ -233,10 +259,28 @@ export function tinhTuThe(bc: BoiCanh, che: CheDoMay, doi: string[], truoc: TuTh
     const gg = tuHuong(v, 0);
     luoiQuanh(gg.n, Math.max(8, Math.min(76, gg.c)));
   }
+  // v102: mặt phẳng đang nhấn (mặt cắt / thiết diện đã hiện tới tMax + mặt đích của truc_dien_mat) và cụm điểm dựng thêm (không phải đỉnh khối).
+  // ep_mep_mat CỐ Ý nhìn song song mặt -> không phạt sượt cho chế độ đó.
+  const matNhanDs: MatNhan[] = [];
+  if (che !== 'ep_mep_mat' ) {
+    const hienMat = bc.kg.hien || {};
+    for (const k of bc.kg.dung.kinh) {
+      if (k.san || k.da_giac.length < 3 || (hienMat[k.id] !== undefined && hienMat[k.id] > tMax)) continue;
+      let n = cheo(tru(k.da_giac[1], k.da_giac[0]), tru(k.da_giac[2], k.da_giac[0]));
+      if (doDai(n) < 1e-9) continue;
+      matNhanDs.push({n: chuan(n), g: trungBinh(k.da_giac)});
+    }
+    if (che === 'truc_dien_mat') {
+      const pm = phapMat(bc, doi);
+      if (pm) matNhanDs.push({n: pm.n, g: pm.g});
+    }
+  }
+  const dinhKhoi = new Set(bc.kg.dung.khoi.dinh);
+  const cum = vt.diem.filter(([t]) => !dinhKhoi.has(t));
   let tot: {m: TuThe; diem: number} | null = null;
   for (const u of ung) {
     const m = khungTuThe(u.n, u.c, bc, vt.khung, tam, phong);
-    const dg = danhGia(m, bc, vt.diem, vt.doan, mien);
+    const dg = danhGia(m, bc, vt.diem, vt.doan, mien, matNhanDs, cum);
     const diem = -diemPhat(dg, mienSuot) - u.lech * 0.12;
     if (!tot || diem > tot.diem + 1e-9) tot = {m, diem};
   }

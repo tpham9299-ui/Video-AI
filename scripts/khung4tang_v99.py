@@ -28,6 +28,7 @@ def tra_ky_hieu(text):
     s = str(text or "")
     if not s:
         return s
+    s = giu_ky_hieu_giao(s)   # v102: \cap / ∩ không bao giờ thành chữ "n"
     s = re.sub(r"(?<![\wÀ-ỹ])" + _X + r"(?![\wÀ-ỹ])", "x", s, flags=re.I)
 
     def _ham(m):
@@ -50,6 +51,72 @@ def tra_ky_hieu(text):
     s = re.sub(r"(?<=" + "bằng " + r")ích(?![\wÀ-ỹ])|(?<=trừ )ích(?![\wÀ-ỹ])|(?<=cộng )ích(?![\wÀ-ỹ])|(?<=nhân )ích(?![\wÀ-ỹ])", _ich, s)
     s = re.sub(r"(?<![\wÀ-ỹ])ích(?=\s+" + _NGU_CANH_ICH + r"(?![\wÀ-ỹ]))", _ich, s)
     return s
+
+
+# ---------------------------------------------------------------- v102: số mũ chỉ sau biến / biểu thức toán, ký hiệu giao, số thập phân, tham số của đáp án
+_MU_TOAN_HANG = r"(?:(?<![\wÀ-ỹ'])(?:[A-Za-z]|[A-Z]{2,4}|\d+(?:[.,]\d+)?|π)'?|\))"
+_RE_BINH_PHUONG = re.compile(r"(" + _MU_TOAN_HANG + r")\s+bình phương(?![\wÀ-ỹ])")
+_RE_LAP_PHUONG = re.compile(r"(" + _MU_TOAN_HANG + r")\s+lập phương(?![\wÀ-ỹ])")
+
+
+def ky_hieu_mu(text):
+    """"x bình phương" -> "x²", "(a + b) bình phương" -> "(a + b)²", "AB bình phương" -> "AB²", "2 lập phương" -> "2³" — NHƯNG
+    từ tiếng Việt thông thường đứng trước ("tổng bình phương", "hiệu lập phương", "diện tích hình vuông bình phương") GIỮ NGUYÊN:
+    trước đây luật "mọi ký tự + bình phương" biến "tổng bình phương" thành "tổng²"."""
+    s = str(text or "")
+    s = _RE_BINH_PHUONG.sub(lambda m: m.group(1) + "²", s)
+    return _RE_LAP_PHUONG.sub(lambda m: m.group(1) + "³", s)
+
+
+_RE_CAP = re.compile(r"\\{1,2}cap(?![A-Za-z])")
+_RE_TRONG_NGOAC_XS = re.compile(r"((?<![A-Za-zÀ-ỹ])[Pn]\s*\()([^()]*)(\))")
+_RE_N_GIUA = re.compile(r"(?<=[\wÀ-ỹ)}])\s+n\s+(?=[A-ZÀ-Ỵ\\(])")
+
+
+def giu_ky_hieu_giao(text):
+    """Bảo toàn ký hiệu giao: "\\cap" (cả bản thừa gạch chéo "\\\\cap") -> "∩"; và trong P(...) / n(...) một chữ "n" thường lạc giữa hai
+    toán hạng ("P(Bệnh n Dương)") -> "P(Bệnh ∩ Dương)". Giữ nguyên "∩" có sẵn."""
+    s = _RE_CAP.sub("∩", str(text or ""))
+    return _RE_TRONG_NGOAC_XS.sub(lambda m: m.group(1) + _RE_N_GIUA.sub(" ∩ ", m.group(2)) + m.group(3), s)
+
+
+_CHU_SO_VN = ["không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín"]
+_RE_THAP_PHAN_0 = re.compile(r"(?<![\d.,])(?:(\d+)\s*(?:\{,\}|,)|(0)\.)\s*(0\d*)(?!\d)")
+
+
+def doc_thap_phan_viet(text):
+    """Số thập phân có số 0 ngay sau dấu phẩy ("0,0095", "0{,}05", "0.0095") -> đọc HOÀN TOÀN tiếng Việt từng chữ số phần thập phân:
+    "không phẩy không không chín năm" (giọng AI hay rơi ra "zero point ..."). "1,000" kiểu nghìn của Anh (phần lẻ đúng 3 số 0) giữ nguyên."""
+    def thay(m):
+        a = m.group(1) if m.group(1) is not None else m.group(2)
+        b = m.group(3)
+        if a != "0" and len(b) == 3 and set(b) == {"0"}:
+            return m.group(0)
+        return "%s phẩy %s" % ("không" if a == "0" else a, " ".join(_CHU_SO_VN[int(c)] for c in b))
+    return _RE_THAP_PHAN_0.sub(thay, str(text or ""))
+
+
+def co_tham_so(dap):
+    """Đáp án có tham số chữ (a, m...) ngoài lệnh LaTeX? "\\frac{2a}{\\sqrt{11}}" / "0,603a" / "a\\sqrt{3}" -> True; "0,603" -> False."""
+    s = re.sub(r"\\[A-Za-z]+", " ", str(dap or ""))
+    return bool(re.search(r"(?<![A-Za-zÀ-ỹ])[A-Za-z](?![A-Za-zÀ-ỹ])", re.sub(r"[{}^_$]", " ", s)))
+
+
+def chon_dap_an_hien(kb):
+    """Chuỗi đáp án hiển thị (ô đáp án + Outro). Giữ NGUYÊN dạng có tham số `a` ("\\frac{2a}{\\sqrt{11}}", "0,603a") khi bất kỳ trường đáp án
+    nào của kịch bản còn giữ nó — không cắt cụt thành số trần "0,603"."""
+    kb = kb or {}
+    cac = [str(kb.get(k) or "") for k in ("dap_an_cuoi", "dap_an", "dap_an_hien", "dap_an_chinh_xac", "dap_an_tex")]
+    chinh = next((x for x in cac if x.strip()), "")
+    if co_tham_so(chinh):
+        return chinh
+    # đáp án chính là số trần: tìm bản có tham số mà phần số khớp (vd "0,603" ~ "0,603a" / "2a/\\sqrt{11}" ≈ 0,603a)
+    so = re.findall(r"\d+(?:[.,]\d+)?", chinh)
+    for x in cac:
+        if x.strip() and co_tham_so(x):
+            if not so or any(t in x.replace("{,}", ",") for t in so) or re.search(r"\\sqrt|\\frac|/", x):
+                return x
+    return chinh
 
 
 # ---------------------------------------------------------------- không đọc lặp "bằng X bằng X"

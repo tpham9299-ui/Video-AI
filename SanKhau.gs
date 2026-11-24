@@ -530,6 +530,18 @@ function tuSuaDocLapDe_(kb) {
   });
   return ['v96: bỏ ' + xoa.length + ' cảnh đọc lặp đề (đọc đề đúng 1 lần)'];
 }
+// v102: câu CUỐI của lời thoại chỉ là GIẢI THÍCH KHÁI NIỆM / LÝ THUYẾT (vd "Đạo hàm theo thời gian cho mình mối liên hệ giữa hai vận tốc")
+// -> KHÔNG phải vế trái của một phép tính, tuyệt đối không nối "bằng <số>" (trước đây Auto-fix chèn "bằng 0" vô nghĩa vào loại câu này).
+// Chỉ coi là câu giải thích khi có dấu hiệu giảng khái niệm và KHÔNG có dấu hiệu đang tính ("ta có", thay, nhân, cộng, trừ, chia, tính, bằng, được).
+function laCauGiaiThichKhaiNiem_(loi) {
+  var cau = String(loi || '').split(/[.!?…]+/).map(function (x) { return x.trim(); }).filter(Boolean);
+  var cuoi = cau.length ? cau[cau.length - 1] : '';
+  if (!cuoi) return false;
+  var tinh = /(?:^|\s)(?:ta\s+có|thay|nhân|cộng|trừ|chia|tính|bằng|được|ra\s*$|suy\s+ra|vậy)(?:\s|$)/i.test(cuoi) || /\d/.test(cuoi) || /bằng\s*$/i.test(cuoi);
+  var khaiNiem = /mối\s+liên\s+hệ|liên\s+hệ\s+giữa|quan\s+hệ\s+giữa|cho\s+(?:mình|ta|chúng\s+ta|bạn|biết)|nghĩa\s+là|tức\s+là|giúp|thể\s+hiện|biểu\s+diễn|mô\s+tả|áp\s+dụng|dùng\s+khi|khi\s+nào|vì\s+sao|tại\s+sao|bản\s+chất|ý\s+nghĩa|khái\s+niệm|quy\s+tắc|định\s+lý|nguyên\s+lý|hiểu\s+rằng|nhớ\s+rằng|lưu\s+ý/i.test(cuoi);
+  if (tinh) return false;
+  return khaiNiem || cuoi.split(/\s+/).length >= 16;
+}
 // đọc đủ công thức: lời thoại phải nói ra số kết quả của dòng màn hình "... = số"
 function tuSuaCutCongThuc_(kb) {
   var dem = 0;
@@ -538,6 +550,7 @@ function tuSuaCutCongThuc_(kb) {
     c.noi_dung_man_hinh.forEach(function (d) {
       var so = soKetQuaDong_(d);
       if (!so || loiNoiSo_(c.loi_thoai, so)) return;
+      if (laCauGiaiThichKhaiNiem_(c.loi_thoai)) return;   // v102: câu giải thích khái niệm không bị nối "bằng <số>"
       // v99.1: câu đã kết bằng "bằng / là <một con số>" (AI đọc kết quả theo cách khác) -> không nối thêm vế lặp
       if (/(?:bằng|=|là|được)\s*[\d.,/]+\s*[^\s\d]{0,12}\s*[.!…]*\s*$/i.test(String(c.loi_thoai || ''))) return;
       var hien = so.replace(/\\frac\{(\d+)\}\{(\d+)\}/, '$1/$2');
@@ -557,7 +570,7 @@ function loiSanKhau_(kb) {
   (kb.canh || []).forEach(function (c, i) {
     (c && Array.isArray(c.noi_dung_man_hinh) ? c.noi_dung_man_hinh : []).forEach(function (d) {
       var so = soKetQuaDong_(d);
-      if (so && !loiNoiSo_(c.loi_thoai, so) && !/ket_luan|bai_hoc|cta/.test(String(c.loai || ''))) cut.push('cảnh ' + (i + 1) + ' (' + so + ')');
+      if (so && !loiNoiSo_(c.loi_thoai, so) && !laCauGiaiThichKhaiNiem_(c.loi_thoai) && !/ket_luan|bai_hoc|cta/.test(String(c.loai || ''))) cut.push('cảnh ' + (i + 1) + ' (' + so + ')');
     });
   });
   if (cut.length) nang.push('KB_CUT_CONG_THUC: lời thoại không đọc ra kết quả ' + cut.slice(0, 3).join(', ') + '. Đọc đủ biểu thức và đáp số.');

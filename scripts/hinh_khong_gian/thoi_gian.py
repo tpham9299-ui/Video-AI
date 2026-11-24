@@ -176,6 +176,35 @@ def lich_khong_gian(hkg, dung, canh_props, fps, t_buoc, tong):
             t = max(t_diem(p) for p in (g["dinh"], g["a"], g["b"]))
             if t > 0:
                 hien[g["id"]] = t
+    # v102: ĐIỂM dựng thêm (H, I, O, chân vuông góc, giao điểm phụ) KHÔNG hiện sẵn ở giây 0 — hiện đúng lúc đoạn / mặt / góc đầu tiên
+    # chứa nó xuất hiện (cùng quy tắc với src/khonggian/canh.ts `hienDiemPhu`). Đỉnh khối, điểm khối Lego, điểm trượt hook, điểm chuyển động giữ nguyên.
+    giu_tu_dau = set(dinh)
+    for kl in dung.get("khoiDs") or []:
+        giu_tu_dau.update(kl.get("dinh") or [])
+    if (dung.get("truot") or {}).get("diem"):
+        giu_tu_dau.add(dung["truot"]["diem"])
+    for d in dung["doan"]:
+        if d["vai"] == "khoi":
+            giu_tu_dau.update((d["a"], d["b"]))
+    for p in dung.get("nhan") or []:
+        if p in giu_tu_dau or p in hien:
+            continue
+        ts_ = []
+        for d in dung["doan"]:
+            if p in (d["a"], d["b"]):
+                v = hien.get(d["id"])
+                if v is None:
+                    v = next((hien[k] for k in (d["a"] + d["b"], d["b"] + d["a"]) if k in hien), None)
+                if v is not None:
+                    ts_.append(v)
+        for k in dung["kinh"]:
+            if p in k["diem"] and k["id"] in hien:
+                ts_.append(hien[k["id"]])
+        for g in dung["goc"]:
+            if p in (g["dinh"], g["a"], g["b"]) and g["id"] in hien:
+                ts_.append(hien[g["id"]])
+        if ts_ and min(ts_) > 0:
+            hien[p] = round(min(ts_), 3)
     ra = {"phienBan": 1, "dung": dung, "xoay": [{k: v for k, v in x.items() if k not in ("khop", "canh")} for x in xoay],
           "hien": hien, "nhanManh": nhan_manh, "hanhDong": hanh_dong, "tongGiay": round(float(tong), 3)}
     if dung.get("truot"):

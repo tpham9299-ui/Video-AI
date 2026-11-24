@@ -25,6 +25,7 @@ import {BAT_CTA_THONG_MINH_OUTRO} from './cauHinhTinhChinh';
 const NGOC = '#2EE6A8';
 const SAN_HO = '#FF5A5F';
 const NEN = '#0E1014';
+const KHOANG_HO = 20; // v102: khoảng hở tối thiểu (px) giữa đáy sân khấu thu nhỏ và dải nhãn phía trên 3 hộp tóm tắt
 
 // đáp án dạng "a/b" -> phân số
 const texDapAn = (s0: string) => { const s = s0.replace(/(\d),(\d)/g, '$1{,}$2'); return (/^\s*-?\d+(?:[.,]\d+)?\s*\/\s*-?\d+(?:[.,]\d+)?\s*$/.test(s) ? `\\frac{${s.split('/')[0].trim()}}{${s.split('/')[1].trim()}}` : s); };
@@ -69,8 +70,13 @@ export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: C
   const nhun = t > tNut + 0.5? 1 + 0.04 * Math.max(0, Math.sin(((t - tNut - 0.5) * 2 * Math.PI) / 0.9)) : 1;
   const sang = 0.8 + 0.2 * Math.sin((t * 2 * Math.PI) / 2.2);
   const V = VUNG_OUTRO;
+  // v102: một sân khấu chính duy nhất + khoảng hở cứng giữa đáy sân khấu và nhãn "LƯU LẠI ÔN NHANH" (đỉnh nhãn = V.dong.y - 46)
+  const chon: 'tu_sinh' | 'khong_gian' | 'san_khau' | 'canh' | null = tuSinh && tuSinh.lop?.length ? 'tu_sinh' : khongGian ? 'khong_gian' : sanKhau ? 'san_khau' : canh ? 'canh' : null;
+  const coNhanLuu = BAT_CTA_THONG_MINH_OUTRO && tomTat.length > 0;
+  const caoSan = coNhanLuu ? Math.min(V.san.h, V.dong.y - 46 - KHOANG_HO - V.san.y) : V.san.h;
+  // v102: vào Outro nối liền Khung4Tang (khung cuối còn 35 % độ đậm: 1 - 0,65 * thoat) -> không còn nháy nền đen 1-2 khung
   return (
-    <AbsoluteFill data-vung="outro" style={{fontFamily: FONT, background: NEN, opacity: kep01(f / 8), ...SO_DEU}}>
+    <AbsoluteFill data-vung="outro" style={{fontFamily: FONT, background: NEN, opacity: 0.35 + 0.65 * kep01(f / 6), ...SO_DEU}}>
       <KieuToan />
       <NapPhongToan />
       {/* v99.1: Outro dùng cùng nền khí quyển với phần giải (đứng yên, không vệt quét) */}
@@ -89,30 +95,18 @@ export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: C
         </div>
       </div>
 
-      {/* v96: sân khấu 2D ở trạng thái cuối (thu nhỏ vừa vùng giữa) */}
-      {sanKhau ? (
-        <div data-vung="outro_san" style={{position: 'absolute', left: 0, top: V.san.y, width: RONG_ND_V93, height: V.san.h, overflow: 'hidden', opacity: vao(0.3, 0.6)}}>
-          <div style={{position: 'absolute', left: 0, top: 0, width: RONG_ND_V93, height: 648, transform: `scale(${V.san.h / 648})`, transformOrigin: 'center top', marginLeft: 0}}>
-            <SanKhau2D sk={sanKhau} t={tCuoi + t} rong={RONG_ND_V93} cao={648} mauNhan={MAU_3DV.ngoc} />
-          </div>
-        </div>
-      ) : null}
-      {/* v99.1: sân khấu tự sinh ở trạng thái cuối (mọi lớp đã hiện, nhóm thay nhau giữ lớp cuối), thu vừa vùng giữa */}
-      {tuSinh && tuSinh.lop?.length && !sanKhau ? (
-        <div data-vung="outro_san" style={{position: 'absolute', left: 0, top: V.san.y, width: RONG_ND_V93, height: V.san.h, overflow: 'hidden', opacity: vao(0.3, 0.6)}}>
-          <SanKhauTuSinh ts={tuSinh} t={tCuoi + 30 + t} fps={fps} rong={RONG_ND_V93} cao={V.san.h} />
-        </div>
-      ) : null}
-      {/* v97: hình không gian ở trạng thái cuối (góc khóa cuối, không thở) */}
-      {khongGian ? (
-        <div data-vung="outro_san" style={{position: 'absolute', left: 0, top: V.san.y, width: RONG_ND_V93, height: V.san.h, overflow: 'hidden', opacity: vao(0.3, 0.6)}}>
-          <SanKhauKhongGian kg={khongGian} t={tCuoi} rong={RONG_ND_V93} cao={V.san.h} lechMay={{k: 0.92}} />
-        </div>
-      ) : null}
-      {/* mô hình 3D gọn, trạng thái cuối */}
-      {canh ? (
-        <div data-vung="outro_san" style={{position: 'absolute', left: 0, top: V.san.y, width: RONG_ND_V93, height: V.san.h, overflow: 'hidden', opacity: vao(0.3, 0.6)}}>
-          <SanKhau3DVector canh={canh} t={tCuoi + t} rong={RONG_ND_V93} cao={V.san.h} tongGiay={tCuoi} lechMay={{n: 6 * Math.sin((t * 2 * Math.PI) / 7), k: 0.86}} />
+      {/* v102: Outro chỉ dựng ĐÚNG MỘT sân khấu chính (ưu tiên tự sinh hợp lệ > hình không gian > sân khấu 2D > khuôn 3D), thu vừa vùng giữa
+          và chừa >= KHOANG_HO px trên nhãn "LƯU LẠI ÔN NHANH" -> không bao giờ ghép chồng hai sân khấu hay đè nhãn. */}
+      {chon ? (
+        <div data-vung="outro_san" data-outro-san-khau={chon} style={{position: 'absolute', left: 0, top: V.san.y, width: RONG_ND_V93, height: caoSan, overflow: 'hidden', opacity: vao(0.3, 0.6)}}>
+          {chon === 'tu_sinh' && tuSinh ? <SanKhauTuSinh ts={tuSinh} t={tCuoi + 30 + t} fps={fps} rong={RONG_ND_V93} cao={caoSan} /> : null}
+          {chon === 'khong_gian' && khongGian ? <SanKhauKhongGian kg={khongGian} t={tCuoi} rong={RONG_ND_V93} cao={caoSan} lechMay={{k: 0.92}} /> : null}
+          {chon === 'san_khau' && sanKhau ? (
+            <div style={{position: 'absolute', left: 0, top: 0, width: RONG_ND_V93, height: 648, transform: `scale(${caoSan / 648})`, transformOrigin: 'center top', marginLeft: 0}}>
+              <SanKhau2D sk={sanKhau} t={tCuoi + t} rong={RONG_ND_V93} cao={648} mauNhan={MAU_3DV.ngoc} />
+            </div>
+          ) : null}
+          {chon === 'canh' && canh ? <SanKhau3DVector canh={canh} t={tCuoi + t} rong={RONG_ND_V93} cao={caoSan} tongGiay={tCuoi} lechMay={{n: 6 * Math.sin((t * 2 * Math.PI) / 7), k: 0.86}} /> : null}
         </div>
       ) : null}
 

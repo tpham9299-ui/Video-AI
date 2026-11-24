@@ -17,18 +17,30 @@ export const LuoiBayes: React.FC<{sk: LuoiBayesVao; t: number; W: number; H: num
   const dV = daQua(sk.pha, 'vuong', t), dD = daQua(sk.pha, 'cat_doc', t), dN = daQua(sk.pha, 'cat_ngang', t), dG = daQua(sk.pha, 'giao', t), dK = daQua(sk.pha, 'ket', t);
   const aV = em(dV / 0.6), uD = em(dD / 0.8), uN = em(dN / 0.8), aG = em(dG / 0.5), aK = em(dK / 0.7);
   const xCat = x + S * ua * uD;
-  const hA = S * sk.pba * uN, hNA = S * sk.pbna * uN;
+  // v102: dải dương tính (B | Ā) luôn cao tối thiểu MIN_DAI px khi P > 0 (vd 2 % x 400 = 8 px quá mảnh) + ghi chú "phóng to" thật thà
+  const MIN_DAI = 16;
+  const hNAThat = S * sk.pbna;
+  const hNAHien = sk.pbna > 0 ? Math.max(hNAThat, MIN_DAI) : 0;
+  const daiPhongTo = hNAHien > hNAThat + 0.5;
+  const hA = S * sk.pba * uN, hNA = hNAHien * uN;
   // v98.1: 2 màu nhấn — A = cyan, Ā = xám trung tính, B / A∩B (mục tiêu) = hổ phách
   const HONG = CYAN_, CYAN = XAM, VANG = HO_PHACH;
   const mo = (laB: boolean) => (laB ? 1 : 1 - 0.65 * aG);
   const nhanA = sk.nhan_a, nhanB = sk.nhan_b;
+  // v102: ký hiệu biến cố đọc từ tham số sân khấu (hình và chữ khớp 100 % với đề / thẻ giải); chỉ nhận 1 chữ cái
+  const kyHop = (v: string | undefined, mac: string) => (v && /^[A-Za-z]$/.test(v.trim()) ? v.trim() : mac);
+  const kA = kyHop(sk.ky_a, 'A'), kB = kyHop(sk.ky_b, 'B');
+  const kNA = `\\overline{${kA}}`;
+  const ts = sk.tan_so;
+  // tần số tự nhiên: số người thật thay cho số thập phân siêu nhỏ (0,0095 -> 95 người)
+  const sPab = ts ? ts.ab : sk.tex.pab, sPnab = ts ? ts.nab : sk.tex.pnab, sPb = ts ? ts.b : sk.tex.pb;
   const congThuc = [
-    {tex: `P(A) = ${sk.tex.pa}`, m: HONG, a: em((dD - 0.4) / 0.4)},
-    {tex: `P(B \\mid A) = ${sk.tex.pba}`, m: VANG, a: em((dN - 0.3) / 0.4)},
-    {tex: `P(B \\mid \\overline{A}) = ${sk.tex.pbna}`, m: CYAN, a: em((dN - 0.7) / 0.4)},
-    {tex: `P(B) = ${sk.tex.pab} + ${sk.tex.pnab}`, m: CHU, a: em((dG - 0.4) / 0.4)},
+    {tex: `P(${kA}) = ${sk.tex.pa}`, m: HONG, a: em((dD - 0.4) / 0.4)},
+    {tex: `P(${kB} \\mid ${kA}) = ${sk.tex.pba}`, m: VANG, a: em((dN - 0.3) / 0.4)},
+    {tex: `P(${kB} \\mid ${kNA}) = ${sk.tex.pbna}`, m: CYAN, a: em((dN - 0.7) / 0.4)},
+    {tex: `P(${kB}) = ${sPab} + ${sPnab}`, m: CHU, a: em((dG - 0.4) / 0.4)},
   ];
-  const tex = dK >= 0 && sk.p ? (sk.hoi === 'B' ? `P(B) = ${sk.tex.pab} + ${sk.tex.pnab} = ${sk.tex.pb}` : `P(A \\mid B) = \\dfrac{${sk.tex.pab}}{${sk.tex.pb}} \\approx ${sk.p}`) : '';
+  const tex = dK >= 0 && sk.p ? (sk.hoi === 'B' ? `P(${kB}) = ${sPab} + ${sPnab} = ${sPb}` : `P(${kA} \\mid ${kB}) = \\dfrac{${sPab}}{${sPb}} \\approx ${sk.p}`) : '';
   return (
     <div style={{position: 'absolute', inset: 0}}>
       <div data-sk2d="vuong" style={{position: 'absolute', left: x, top: y, width: S, height: S, opacity: aV, transform: `scale(${0.92 + 0.08 * aV})`, transformOrigin: 'left top'}}>
@@ -50,24 +62,32 @@ export const LuoiBayes: React.FC<{sk: LuoiBayesVao; t: number; W: number; H: num
       </div>
       {/* nhãn cột + phóng to */}
       {uD > 0.3 ? <>
-        <NhanTex x={x + (S * ua) / 2} y={y - 22} tex="A" mau={HONG} co={28} a={em((dD - 0.3) / 0.3)} />
-        <NhanTex x={x + S * ua + (S * (1 - ua)) / 2} y={y - 22} tex="\overline{A}" mau={CYAN} co={28} a={em((dD - 0.3) / 0.3)} />
+        <NhanTex x={x + (S * ua) / 2} y={y - 22} tex={kA} mau={HONG} co={28} a={em((dD - 0.3) / 0.3)} />
+        <NhanTex x={x + S * ua + (S * (1 - ua)) / 2} y={y - 22} tex={kNA} mau={CYAN} co={28} a={em((dD - 0.3) / 0.3)} />
         {b.phongTo && aK <= 0 ? <div style={{position: 'absolute', left: b.bang.x, top: y + S - 26, color: MO, fontFamily: FONT, fontWeight: 700, fontSize: 19, whiteSpace: 'nowrap'}}>cột A phóng to cho dễ nhìn ({sk.tex.pa.replace('{,}', ',')})</div> : null}
       </> : null}
+      {daiPhongTo && uN > 0.9 && aK <= 0 ? <div style={{position: 'absolute', left: b.bang.x, top: y + S - 52, color: MO, fontFamily: FONT, fontWeight: 700, fontSize: 19, whiteSpace: 'nowrap'}}>dải dương giả phóng to cho dễ nhìn</div> : null}
       {uN > 0.4 && aK < 0.5 ? <>
         {/* v96: nhãn tách khỏi nét khung — cột A hẹp: nhãn đặt bên phải cột (trong vùng Ā, cách nét 14 px); Ā ∩ B: ngay TRÊN dải dương tính */}
-        <NhanTex x={ua < 0.25 ? x + S * ua + 14 : x + (S * ua) / 2} y={y + S - Math.max(hA * 0.5, 40)} tex="A \cap B" mau={ua < 0.25 ? HONG : '#fff'} co={22} neo={ua < 0.25 ? 'trai' : 'giua'} a={em((dG + 0.2) / 0.3) || 0.001} dam={800} />
-        <NhanTex x={x + S * ua + (S * (1 - ua)) / 2} y={y + S - hNA - 22} tex="\overline{A} \cap B" mau={CYAN} co={22} a={em((dG + 0.2) / 0.3) || 0.001} dam={800} />
+        <NhanTex x={ua < 0.25 ? x + S * ua + 14 : x + (S * ua) / 2} y={y + S - Math.max(hA * 0.5, 40)} tex={`${kA} \\cap ${kB}`} mau={ua < 0.25 ? HONG : '#fff'} co={22} neo={ua < 0.25 ? 'trai' : 'giua'} a={em((dG + 0.2) / 0.3) || 0.001} dam={800} />
+        <NhanTex x={x + S * ua + (S * (1 - ua)) / 2} y={y + S - hNA - 22} tex={`${kNA} \\cap ${kB}`} mau={CYAN} co={22} a={em((dG + 0.2) / 0.3) || 0.001} dam={800} />
       </> : null}
       {/* mảng A∩B tách ra ở pha kết */}
       {aK > 0 ? <div data-sk2d="tach_giao" style={{position: 'absolute', left: noi(x, b.bang.x + 8, aK), top: noi(y + S - hA, b.bang.y + b.bang.h - 70, aK), width: Math.max(26, S * ua), height: Math.max(26, Math.min(hA, 60)),
         transform: `scale(${1 + 0.05 * nh})`, background: VANG, borderRadius: 6, boxShadow: `0 0 ${18 + 10 * tho(t)}px ${VANG}88`}} /> : null}
-      {aK > 0.6 ? <NhanTex x={b.bang.x + 8 + Math.max(26, S * ua) + 14} y={b.bang.y + b.bang.h - 70 + Math.max(26, Math.min(hA, 60)) / 2} tex={`A \\cap B = ${sk.tex.pab}`} mau={VANG} co={24} neo="trai" a={em((aK - 0.6) / 0.4)} /> : null}
+      {aK > 0.6 ? <NhanTex x={b.bang.x + 8 + Math.max(26, S * ua) + 14} y={b.bang.y + b.bang.h - 70 + Math.max(26, Math.min(hA, 60)) / 2} tex={`${kA} \\cap ${kB} = ${sPab}`} mau={VANG} co={24} neo="trai" a={em((aK - 0.6) / 0.4)} /> : null}
       {/* bảng công thức bên phải */}
       <div data-sk2d="bang_cong_thuc" style={{position: 'absolute', left: b.bang.x, top: b.bang.y, width: b.bang.w, display: 'flex', flexDirection: 'column', gap: 18}}>
         <div style={{color: MO, fontWeight: 800, fontSize: 22, fontFamily: FONT, whiteSpace: 'nowrap', overflow: 'hidden'}}>
-          <ChuTron s={`A: ${nhanA}`} co={22} mau={HONG} /> <span style={{margin: '0 6px'}}>·</span> <ChuTron s={`B: ${nhanB}`} co={22} mau={VANG} />
+          <ChuTron s={`${kA}: ${nhanA}`} co={22} mau={HONG} /> <span style={{margin: '0 6px'}}>·</span> <ChuTron s={`${kB}: ${nhanB}`} co={22} mau={VANG} />
         </div>
+        {ts && dG > 0 ? (
+          <div data-sk2d="tan_so" style={{opacity: em((dG - 0.1) / 0.4), display: 'flex', flexDirection: 'column', gap: 4, fontFamily: FONT, fontWeight: 800, lineHeight: 1.18}}>
+            <div style={{color: CHU, fontSize: 24, whiteSpace: 'nowrap'}}>Trong {ts.n} {ts.don_vi || 'người'}:</div>
+            <div style={{color: VANG, fontSize: 30, whiteSpace: 'nowrap'}}>{ts.ab} {kA} ∩ {kB} (thật)</div>
+            <div style={{color: CYAN, fontSize: 30, whiteSpace: 'nowrap'}}>{ts.nab} dương giả</div>
+          </div>
+        ) : null}
         {congThuc.map((c, k) => (c.a > 0 ? <div key={k} style={{opacity: c.a, transform: `translateX(${(1 - c.a) * 14}px)`}}><Toan tex={c.tex} size={28} color={c.m} maxWidth={b.bang.w} can="trai" /></div> : null))}
       </div>
       <DongKetQua x={b.ketQua.x} y={b.ketQua.y} w={b.ketQua.w} h={b.ketQua.h} tex={tex} a={em(dK / 0.4)} mau={VANG} nhan={nh * 0.6} co={38} />

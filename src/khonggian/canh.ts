@@ -102,6 +102,34 @@ function nhanManhTai(kg: KhongGianVao, t: number): {nay: Set<string>; truoc: Set
   return {nay: lay(i), truoc: lay(i - 1), a: i >= 0 ? emRa((t - ds[i].t) / THOI_NHAN) : 1, moNay: mo(i), moTruoc: mo(i - 1)};
 }
 
+// v102: ĐIỂM dựng thêm (H, I, O, chân vuông góc, giao điểm phụ) không hiện sẵn từ giây 0 — nếu props không khai `hien[điểm]`,
+// hiện đúng lúc đoạn / mặt / góc ĐẦU TIÊN chứa nó xuất hiện (cùng quy tắc scripts/hinh_khong_gian/thoi_gian.py). Đỉnh khối, điểm Lego,
+// điểm trượt hook và điểm chuyển động giữ nguyên (hiện từ đầu / theo khối).
+const BO_NHO_HIEN_PHU = new WeakMap<KhongGianVao, Record<string, number>>();
+export function hienDiemPhu(kg: KhongGianVao): Record<string, number> {
+  const co = BO_NHO_HIEN_PHU.get(kg);
+  if (co) return co;
+  const d = kg.dung, hien = kg.hien || {};
+  const ra: Record<string, number> = {};
+  const giu = new Set<string>(d.khoi.dinh);
+  (d.khoiDs || []).forEach((k) => k.dinh.forEach((x) => giu.add(x)));
+  if (d.truot?.diem) giu.add(d.truot.diem);
+  (kg.chuyen || []).forEach((c) => giu.add(c.diem));
+  (kg.bienHinh || []).forEach((b) => b.cap.forEach(([a, z]) => { giu.add(a); giu.add(z); }));
+  for (const x of d.doan) if (x.vai === 'khoi') { giu.add(x.a); giu.add(x.b); }
+  const lay = (id: string, ...them: string[]) => [id, ...them].map((k) => hien[k]).find((v) => v !== undefined);
+  for (const ten of d.nhan) {
+    if (giu.has(ten) || hien[ten] !== undefined || !d.diem[ten]) continue;
+    const ts: number[] = [];
+    for (const x of d.doan) if (x.a === ten || x.b === ten) { const v = lay(x.id, x.a + x.b, x.b + x.a, khoaDoan(x.a, x.b), x.nhom || ''); if (v !== undefined) ts.push(v); }
+    for (const k of d.kinh) if (k.diem.includes(ten) && hien[k.id] !== undefined) ts.push(hien[k.id]);
+    for (const g of d.goc) if ((g.dinh === ten || g.a === ten || g.b === ten) && hien[g.id] !== undefined) ts.push(hien[g.id]);
+    if (ts.length && Math.min(...ts) > 0) ra[ten] = Math.min(...ts);
+  }
+  BO_NHO_HIEN_PHU.set(kg, ra);
+  return ra;
+}
+
 export function trangThai(kg: KhongGianVao, t: number): TrangThai {
   const d: DungKG = kg.dung;
   const P = diemLego(kg, diemTai(kg, t), t);
@@ -171,9 +199,11 @@ export function trangThai(kg: KhongGianVao, t: number): TrangThai {
       }
     }
   }
+  const hienPhu = hienDiemPhu(kg);
   const diemVe: DiemTT[] = d.nhan.filter((x) => P[x]).map((ten) => {
     const m = muc(ten);
-    return {ten, p: P[ten], alpha: alpha(ten), nm: m.op, sang: m.sang};
+    const thPhu = hienPhu[ten];
+    return {ten, p: P[ten], alpha: thPhu !== undefined ? emRa((t - thPhu) / THOI_HIEN) : alpha(ten), nm: m.op, sang: m.sang};
   });
   const goc: GocTT[] = d.goc.filter((g) => P[g.dinh] && P[g.a] && P[g.b]).map((g) => {
     const m = muc(g.id);

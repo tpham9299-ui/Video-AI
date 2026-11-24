@@ -17,11 +17,17 @@ export const gocTuHuong = (v: V3, nGoi = 0): {n: number; c: number} => {
 
 export type HeMay = {phai: V3; len: V3; ve: V3; viTri: V3; D: number};
 
+// v102: KHÓA vector `up` theo trục thẳng đứng thế giới (+Z): trục `phai` luôn nằm ngang (z = 0) nên `len = phai × (-ve)` có z = cos(c) >= 0
+// -> máy KHÔNG BAO GIỜ nghiêng roll; đường cao dạng SA ⊥ đáy luôn đứng thẳng trên màn hình ở mọi chế độ (kể cả cận cảnh / ép mép).
+// Ngoại lệ duy nhất: phang_2d (c = 88,5° nhìn thẳng từ trên xuống) — bản đồ 2D, trục đứng thế giới trùng hướng nhìn nên chiếu thành +Y màn hình.
+export const UP_THE_GIOI: V3 = [0, 0, 1];
+export const GOC_CAO_MAX = 88.5;
+
 export function heMay(m: TuThe): HeMay {
-  const c = Math.min(88.5, Math.max(-60, m.c));
+  const c = Math.min(GOC_CAO_MAX, Math.max(-60, m.c));
   const ve = huongNhin(m.n, c);
   const phai: V3 = [Math.cos(m.n * RAD), Math.sin(m.n * RAD), 0];
-  const len = cheo(phai, nhan(ve, -1));
+  const len = cheo(phai, nhan(ve, -1)); // luôn cùng nửa không gian với UP_THE_GIOI (len[2] = cos c > 0)
   const D = m.R * KHOANG_MAY * (m.xa && m.xa > 0 ? m.xa : 1);
   return {phai, len, ve, viTri: cong(m.muc, nhan(ve, D)), D};
 }

@@ -873,6 +873,81 @@ def dung_so_do_cay(ts, kb, sua, lop):
     return kq if nut else None
 
 
+def _chu_kb(kb):
+    """Gom chữ của kịch bản (đề + thẻ giải + lời đọc) theo thứ tự xuất hiện — để đọc ký hiệu biến cố / số người."""
+    kb = kb or {}
+    k4 = kb.get("khung4tang") or {}
+    parts = [str(kb.get("de_bai") or "")]
+    for g in (k4.get("de_ghim") or []):
+        if isinstance(g, dict):
+            parts.append(str(g.get("nhan") or "") + " " + str(g.get("gia_tri") or ""))
+    for b in (k4.get("buoc") or []):
+        if not isinstance(b, dict):
+            continue
+        parts.append(str(b.get("khi_noi") or ""))
+        for th in (b.get("the") or []):
+            if isinstance(th, dict):
+                parts.append(" ".join(str(x) for x in (th.get("dong") or [])) if isinstance(th.get("dong"), list) else str(th.get("dong") or ""))
+                parts.append(str(th.get("noi_dung") or ""))
+    return " ".join(parts)
+
+
+_RE_PXY = re.compile(r"P\s*\(\s*([A-Za-z])\s*(?:\\mid|\\vert|\||∣)\s*(?:\\overline\{|\\bar\{)?\s*([A-Za-z])\s*\}?\s*\)")
+
+
+def ky_hieu_bayes(ts, A, B, kb):
+    """v102: ký hiệu biến cố ĐÚNG như đề / thẻ giải (vd B = bệnh, K = dương tính) thay vì gán cứng A, B.
+    Ưu tiên tham số rõ (ky_hieu_A / ky_hieu_B hoặc A.ky_hieu / B.ky_hieu); không có thì lấy mệnh đề P(X | Y) ĐẦU TIÊN trong chữ
+    (đề thường cho P(chứng cứ | nguyên nhân) trước): B(sân khấu) = X (chứng cứ), A(sân khấu) = Y (nguyên nhân)."""
+    def mot(x):
+        x = str(x or "").strip()
+        return x if re.fullmatch(r"[A-Za-z]", x) else None
+    ka = mot(ts.get("ky_hieu_A")) or mot(A.get("ky_hieu")) or mot(ts.get("ky_A"))
+    kb_ = mot(ts.get("ky_hieu_B")) or mot(B.get("ky_hieu")) or mot(ts.get("ky_B"))
+    if ka and kb_ and ka != kb_:
+        return ka, kb_
+    for m in _RE_PXY.finditer(_chu_kb(kb)):
+        x, y = m.group(1), m.group(2)
+        if x != y:
+            return (ka or y), (kb_ or x)
+    return (ka or "A"), (kb_ or "B")
+
+
+def _so_nguyen_vn(n):
+    return "{:,}".format(int(n)).replace(",", ".")
+
+
+def tan_so_bayes(ts, kb, pa, pab, pnab, pb):
+    """v102: cách giải "tần số tự nhiên" — dân số mẫu N (vd 10.000 người) -> số ca A∩B, Ā∩B thật. N lấy từ ts (tan_so / tong / N)
+    hoặc tự nhận từ chữ khi N·P(A∩B) và N·P(Ā∩B) ĐỀU xấp xỉ số nguyên (vd 10.000 -> 95 và 198)."""
+    N, don_vi = None, "người"
+    for k in ("tan_so", "tong", "N", "so_nguoi"):
+        v = ts.get(k)
+        if isinstance(v, dict):
+            v = v.get("n") or v.get("tong")
+        if isinstance(v, (int, float)) and not isinstance(v, bool) and v >= 10:
+            N = int(v)
+            break
+        if isinstance(v, str) and re.fullmatch(r"[\d.\s]+", v.strip() or "x"):
+            N = int(re.sub(r"\D", "", v))
+            break
+    chu = _chu_kb(kb)
+    if N is None:
+        for m in re.finditer(r"(\d{1,3}(?:[.\s]\d{3})+|\d{3,7})\s*(người|ca|sản phẩm|chiếc|học sinh|bệnh nhân)", chu):
+            n = int(re.sub(r"\D", "", m.group(1)))
+            if n >= 100 and abs(n * pab - round(n * pab)) < 0.05 and abs(n * pnab - round(n * pnab)) < 0.05 and round(n * pab) >= 1:
+                N, don_vi = n, m.group(2)
+                break
+    if N is None:
+        return None
+    ab, nab = N * pab, N * pnab
+    if abs(ab - round(ab)) > 0.05 or abs(nab - round(nab)) > 0.05:
+        return None
+    ab, nab = int(round(ab)), int(round(nab))
+    return {"n": _so_nguyen_vn(N), "a": _so_nguyen_vn(round(N * pa)), "na": _so_nguyen_vn(N - round(N * pa)),
+            "ab": _so_nguyen_vn(ab), "nab": _so_nguyen_vn(nab), "b": _so_nguyen_vn(ab + nab), "don_vi": don_vi}
+
+
 def dung_luoi_bayes(ts, kb, sua):
     """ts = {A:{nhan, p}, B:{nhan}, p_B_A, p_B_khong_A, hoi:'A|B'}: hình vuông đơn vị cắt dọc theo P(A), cắt ngang theo P(B|A)
     và P(B|Ā); hậu nghiệm P(A|B) = P(A∩B) / P(B)."""
@@ -885,9 +960,15 @@ def dung_luoi_bayes(ts, kb, sua):
     pab, pnab = pa * pba, (1 - pa) * pbna
     pb = pab + pnab
     p = pab / pb if pb else None
+    ky_a, ky_b = ky_hieu_bayes(ts, A, B, kb)
+    tan_so = tan_so_bayes(ts, kb, pa, pab, pnab, pb)
     kq = {"loai": "luoi_bayes", "nhan_a": str(A.get("nhan") or "A"), "nhan_b": str(B.get("nhan") or "B"),
           "pa": float(pa), "pba": float(pba), "pbna": float(pbna),
           "tex": {"pa": so_tex(pa), "pna": so_tex(1 - pa), "pba": so_tex(pba), "pbna": so_tex(pbna), "pab": so_tex(pab), "pnab": so_tex(pnab), "pb": so_tex(pb)}}
+    if ky_a != "A" or ky_b != "B":
+        kq["ky_a"], kq["ky_b"] = ky_a, ky_b
+    if tan_so:
+        kq["tan_so"] = tan_so
     if p is not None:
         kq["p"], kq["p_so"] = so_viet(float(p), 4), float(p)   # hậu nghiệm ghi thập phân 0,1667 (khớp cách đọc), không 1/6
         dung = khop_dap_an(p, kb.get("dap_an_cuoi") or kb.get("dap_an"))

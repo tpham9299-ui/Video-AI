@@ -109,7 +109,7 @@ LOI_CHINH_TA_VIET = [
 
 
 def sua_chinh_ta_tieng_viet(text):
-    s = re.sub(r"(\d)\s*[xX]\s*(?=\d)", r"\1 × ", str(text or ""))
+    s = re.sub(r"(\d)\s*[xX]\s*(?=\d)", r"\1 × ", v99_k4.giu_ky_hieu_giao(text))   # v102: bảo toàn \cap / ∩ trước khi xóa lệnh TeX
     # Đổi các lệnh LaTeX bị sót sang chữ đọc tự nhiên trước khi hiển thị phụ đề
     for _ in range(3):
         s_cu = s
@@ -252,8 +252,7 @@ def hien_phu_de(text):
     s = re.sub(r"\s+mỗi\s+(mét vuông|m²)(?![\wÀ-ỹ])", "/m²", s)
     s = re.sub(r"\s+mỗi\s+(mét khối|m³)(?![\wÀ-ỹ])", "/m³", s)
     s = re.sub(r"(\d+)\s+phần\s+(\d+)", r"\1/\2", s)
-    s = re.sub(r"(\S)\s+bình phương\b", r"\1²", s)
-    s = re.sub(r"(\S)\s+lập phương\b", r"\1³", s)
+    s = v99_k4.ky_hieu_mu(s)   # v102: số mũ CHỈ sau biến / biểu thức toán (không còn "tổng bình phương" -> "tổng²")
     # v99.1: V(2), f(1,5) và "2x" (sau tra_ky_hieu) cũng là toán hạng -> "V(2) bằng 144" -> "V(2) = 144", "16 trừ 2x" -> "16 − 2x"
     toan = r"(?:[a-zA-Z]'?\([a-z0-9.,]+\)|\d+(?:[.,]\d+)?[a-z][²³]?(?![\wÀ-ỹ])|[\d.,]+[π²³%]?|[a-zA-Z]'?[²³]?|\)[²³]?)"
     # v92: so sánh < > chỉ khi một vế là BIẾN chữ (x, r, V(x)) -> câu văn "4 lớn hơn 384!" không thành ký hiệu
@@ -353,6 +352,8 @@ def phien_am_tts(text):
 
 
 def chuan_hoa_doc(text):
+    # v102: số thập phân có số 0 sau dấu phẩy (0,0095) đọc hoàn toàn tiếng Việt; \cap giữ thành "giao" (không thành "n")
+    text = v99_k4.giu_ky_hieu_giao(v99_k4.doc_thap_phan_viet(text))
     s = doc_ky_hieu_ham(sua_chinh_ta_tieng_viet(doc_toan_v95(doc_toan_v96(phien_am_tts(re.sub(r"\\(cos|sin)(?![A-Za-z])", lambda m: " " + m.group(1), str(text or "")))))))
     # v89: đơn vị sau số đọc thành lời (lời thoại nay viết "10 cm", "54π m³" cho phụ đề; giọng vẫn đọc tự nhiên)
     for ky, doc in (("cm²", "xăng-ti-mét vuông"), ("cm³", "xăng-ti-mét khối"), ("m²", "mét vuông"), ("m³", "mét khối"),
@@ -3427,7 +3428,7 @@ def main():
         "id": id_an_toan,
         "tieuDe": str(kb.get("tieu_de") or kb.get("chu_de") or ""),
         "hook": str(kb.get("hook") or ""),
-        "dapAn": str(kb.get("dap_an_cuoi") or kb.get("dap_an") or ""),
+        "dapAn": v99_k4.chon_dap_an_hien(kb),   # v102: giữ tham số `a` của đáp án (2a/√11, 0,603a) trên ô đáp án + Outro
         "lop": str(kb.get("lop") or ""),
         "fps": FPS,
         "tongFrame": bat_dau + (intro["lech"] if intro else 0),

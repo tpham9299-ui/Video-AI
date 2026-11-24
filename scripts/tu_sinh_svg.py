@@ -20,7 +20,7 @@ khấu 2D / 3D dự phòng).
 v99.2:
   * mã được `import ve25d` (thư viện vẽ 2.5D dựng sẵn, scripts/ve25d.py - chạy cùng builtins rút gọn trong hộp cát);
   * kiểm THẨM MỸ cứng (`kiem_tham_my`): chữ >= 22 px (TS_CHU_NHO), màu chỉ thuộc họ màu theme (TS_MAU_LA), nhãn không
-    đè nét / đỉnh của mọi lớp cùng hiện (TS_NHAN_DE_NET);
+    đè nét / đỉnh của mọi lớp cùng hiện (TS_NHAN_DE_NET); v102: hộp chữ / công thức chồng lên đỉnh hoặc >= 30 % thân đa giác chính (TS_HOP_DE_HINH);
   * `doi_mau_theme`: xoay họ màu nhấn cyan của lớp SVG theo theme nền của video (chuanbi gọi sau chon_theme);
   * hợp đồng BP0 `kb.san_khau_dich = tu_sinh_svg`: vá tối đa 2 lần (kèm nhật ký lỗi); vẫn hỏng -> `tu_sinh_hong` (chuanbi ghi
     props.khung4tang.tuSinhHong -> Mắt thần lỗi cứng `tu_sinh_hong`), KHÔNG âm thầm rơi về sân khấu chữ.
@@ -487,9 +487,29 @@ def _cat_hop(p, q, x0, y0, x1, y1):
     return True
 
 
+DIEN_TICH_HINH_CHINH = 6000.0   # px² (viewBox 800x540): đa giác nhỏ hơn là ký hiệu phụ (ô góc vuông, mũi tên), không phải hình trọng tâm
+
+
+def _dien_tich(pts):
+    return abs(sum(pts[i][0] * pts[(i + 1) % len(pts)][1] - pts[(i + 1) % len(pts)][0] * pts[i][1] for i in range(len(pts)))) / 2.0
+
+
+def _trong_da_giac(px, py, pts):
+    """Điểm (px, py) nằm trong đa giác (tia ngang)."""
+    trong = False
+    j = len(pts) - 1
+    for i in range(len(pts)):
+        xi, yi, xj, yj = pts[i][0], pts[i][1], pts[j][0], pts[j][1]
+        if (yi > py) != (yj > py) and px < (xj - xi) * (py - yi) / ((yj - yi) or 1e-12) + xi:
+            trong = not trong
+        j = i
+    return trong
+
+
 def kiem_tham_my(ds):
     """Ném LoiTuSinh nếu: chữ < 22 px, màu ngoài họ màu theme, hộp chữ chứa đỉnh / cắt nét của lớp cùng hiện."""
     hinh, chu, hop = [], [], []
+    hop_nen, da_giac = [], []   # v102: mọi rect nền có màu (cho kiểm hộp chữ đè hình) + đa giác trọng tâm (tam giác, thang, tường...)
     # khoảng hiện (theo chỉ số bước) của từng lớp: từ bước của nó tới lớp KẾ TIẾP cùng nhóm (lớp đó thay nó); không nhóm -> tới hết
     het = []
     for li, l in enumerate(ds):
@@ -504,8 +524,11 @@ def kiem_tham_my(ds):
         return max(ds[i]["buoc"], ds[j]["buoc"]) < min(het[i], het[j])
     for li, l in enumerate(ds):
         for ten, a, st, co, mo, el in _phan_tu(l):
-            if ten == "rect" and str(a.get("fill") or "none") != "none":
+            if ten == "rect" and str(a.get("fill") or st.get("fill") or "none") != "none":
                 try:
+                    if mo * float(a.get("fill-opacity") or 1) >= 0.15:
+                        rx0, ry0 = float(a.get("x") or 0), float(a.get("y") or 0)
+                        hop_nen.append((li, (rx0, ry0, rx0 + float(a.get("width") or 0), ry0 + float(a.get("height") or 0))))
                     if mo * float(a.get("fill-opacity") or 1) >= 0.6:
                         rx, ry = float(a.get("x") or 0), float(a.get("y") or 0)
                         hop.append((li, (rx, ry, rx + float(a.get("width") or 0), ry + float(a.get("height") or 0))))
@@ -538,6 +561,24 @@ def kiem_tham_my(ds):
                 dinh, doan = _diem_doan(ten, a, mo)
                 if dinh or doan:
                     hinh.append((li, dinh, doan))
+                if ten == "polygon" and len(dinh) >= 3 and _dien_tich(dinh) >= DIEN_TICH_HINH_CHINH and mo >= 0.3:
+                    da_giac.append((li, dinh))
+    # v102: hộp chữ / công thức (rect nền chứa chữ dài) KHÔNG được chồng lên vùng chính của đa giác / hình trọng tâm đang cùng hiện
+    for lr, (bx0, by0, bx1, by1) in hop_nen:
+        chu_trong = [noi for lk, noi, (cx0, cy0, cx1, cy1) in chu if lk == lr and cx0 >= bx0 - 6 and cx1 <= bx1 + 6 and cy0 >= by0 - 6 and cy1 <= by1 + 6]
+        if not chu_trong:
+            continue
+        if max(len(x) for x in chu_trong) < 6 and (bx1 - bx0) < 130:
+            continue   # nhãn tên đỉnh nhỏ (A, B, S'...) có hộp nền riêng - được phép đè đỉnh (đã kiểm ở TS_NHAN_DE_NET)
+        for lp, pts in da_giac:
+            if not cung_hien(lr, lp):
+                continue
+            dinh_trong = [p for p in pts if bx0 - 3 <= p[0] <= bx1 + 3 and by0 - 3 <= p[1] <= by1 + 3]
+            luoi = [(bx0 + (bx1 - bx0) * (i + 0.5) / 5.0, by0 + (by1 - by0) * (j + 0.5) / 5.0) for i in range(5) for j in range(5)]
+            ti_le = sum(1 for p in luoi if _trong_da_giac(p[0], p[1], pts)) / 25.0
+            if dinh_trong or ti_le >= 0.3:
+                raise LoiTuSinh("TS_HOP_DE_HINH: hộp chữ '%s' (%.0f,%.0f)-(%.0f,%.0f) chồng lên %s của hình chính - tách vùng: hình một bên / trên, nhãn gọn đặt bên thoáng, KHÔNG vẽ hộp công thức đè lên đỉnh hay thân hình" % (
+                    chu_trong[0][:22], bx0, by0, bx1, by1, "đỉnh" if dinh_trong else "%d %% thân" % round(ti_le * 100)))
     # chữ đè chữ giữa các lớp CÙNG HIỆN (lớp cùng nhóm thay nhau thì bỏ qua) - lớp cũ chỉ dịu 82 %, không biến mất
     for a_ in range(len(chu)):
         la, na, ba = chu[a_]
@@ -597,6 +638,7 @@ GOI_Y_SUA = {
     "TS_CHU_NHO": "dùng v.chu / v.tam_nhan / v.nhan (cỡ chữ >= 24 px), không viết thẻ <text> thủ công",
     "TS_MAU_LA": "chỉ dùng màu qua v.MAU[...] (nhan / ket / cu / chu / mat / dung / sai), không tự đặt mã màu",
     "TS_NHAN_DE_NET": "đặt chữ bằng v.tam_nhan (hộp nền đặc) hoặc v.nhan(x, y, chữ, tranh=[các điểm]) thay vì v.chu sát nét / đỉnh",
+    "TS_HOP_DE_HINH": "tách vùng: hình vẽ một bên / nửa trên (viewBox 0 0 800 540), hộp công thức / nhãn dài đặt ở vùng trống bên cạnh (v.tam_nhan ở nửa dưới hoặc bên phải), nhãn đỉnh gọn ngoài hình; không đặt hộp chữ lên đỉnh tam giác",
     "TS_CHONG_CHU": "dời nhãn xa nhau hoặc cho 2 lớp cùng nhom=... để lớp sau thay lớp trước",
     "TS_TRAN_VIEWBOX": "co hình / dời tâm: mọi tọa độ trong 0 0 800 540 (các hàm v.da_giac_deu / v.so_do_venn / v.phan_nhanh_de_quy tự co cho vừa)",
     "TS_QUA_GIO": "bớt vòng lặp / bậc đệ quy (bac <= 3), không tính toán nặng",

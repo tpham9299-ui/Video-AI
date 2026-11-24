@@ -8,6 +8,7 @@ import {Toan} from '../Toan';
 import {KhongGianVao} from './kieu';
 import {chuanBi, Lech, MAU_KG, veKhung} from './ve';
 import {DO_TO_MAT_PHANG_KG} from '../khung4tang/cauHinhTinhChinh';
+import {CO_NHAN} from './nhan';
 
 const NEN = MAU_KG.nen;
 
@@ -20,7 +21,7 @@ const NhanChu: React.FC<{ten: string; x: number; y: number; mau: string; op: num
     <g opacity={op}>
       {/* v101.2: viên tối đặc phía sau nhãn -> độ tương phản cao, không bị nét xuyên qua */}
       <rect x={x - rong / 2} y={y - cao / 2} width={rong} height={cao} rx={cao / 2} fill={NEN} fillOpacity={0.74} />
-      <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fill={mau} stroke={NEN} strokeWidth={5.5} strokeLinejoin="round"
+      <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fill={mau} stroke={NEN} strokeWidth={4.5} strokeLinejoin="round"
         style={{paintOrder: 'stroke', fontFamily: FONT, fontWeight: 800, fontSize: co, letterSpacing: 0.2}} data-nhan-kg={ten}>
         {chinh}
         {chiSo ? <tspan fontSize={co * 0.62} dy={co * 0.22}>{chiSo}</tspan> : null}
@@ -36,17 +37,23 @@ export const SanKhauKhongGian: React.FC<{kg: KhongGianVao; t: number; rong: numb
   const vung = useMemo(() => ({x0: 8, y0: 6, x1: rong - 8, y1: cao - 6}), [rong, cao]);
   const f = veKhung(kg, cb, t, rong, cao, vung, lechMay);
   const nhip = 0.78 + 0.22 * Math.sin((t * 2 * Math.PI) / 1.8);
+  // v102: đoạn trọng tâm có viền tối phía sau dày hơn nét >= 2,5 px (không blur) để cắt nổi qua mặt phẳng đang tô; cạnh khuất khung chính nét đứt 8 6
   const ve = (lop: 0 | 1) =>
     f.net.filter((n) => n.lop === lop).map((n, i) => {
+      const tam = n.tang === 'tam';
       const dark = lop === 1 && !n.dut && n.w >= 2.2;
+      const vienDay = tam ? n.w + 5.5 : n.w + 3.2;
       return (
         <g key={`${lop}-${i}`} opacity={n.op}>
-          {dark ? <line x1={n.x1} y1={n.y1} x2={n.x2} y2={n.y2} stroke={NEN} strokeWidth={n.w + 3.2} strokeOpacity={0.6} strokeLinecap="round" /> : null}
+          {dark ? <line x1={n.x1} y1={n.y1} x2={n.x2} y2={n.y2} stroke={NEN} strokeWidth={vienDay} strokeOpacity={tam ? 0.88 : 0.6} strokeLinecap="round" /> : null}
           {lop === 1 && n.sang > 0.05 ? <line x1={n.x1} y1={n.y1} x2={n.x2} y2={n.y2} stroke={n.mau} strokeWidth={n.w * 2.6} strokeOpacity={0.17 * n.sang * nhip} strokeLinecap="round" /> : null}
-          <line x1={n.x1} y1={n.y1} x2={n.x2} y2={n.y2} stroke={n.mau} strokeWidth={n.w} strokeLinecap={n.dut ? 'butt' : 'round'} strokeDasharray={n.dut ? '7 5' : undefined} />
+          <line x1={n.x1} y1={n.y1} x2={n.x2} y2={n.y2} stroke={n.mau} strokeWidth={n.w} strokeLinecap={n.dut ? 'butt' : 'round'} strokeDasharray={n.dut ? (n.tang === 'khung' ? '8 6' : '7 5') : undefined} />
         </g>
       );
     });
+  // v102: tô mặt phẳng phụ 0,16–0,20 (0,12–0,15 khi >= 2 mặt cùng chồng nhau) để không che mờ cạnh / điểm bên trong
+  const nMat = f.mat.filter((m) => !m.san && !m.bung && (m.act || 0) + m.op > 0.12).length;
+  const tranTo = nMat >= 2 ? 0.14 : 0.19;
   return (
     <div style={{position: 'absolute', inset: 0}} data-san-khau-kg="1">
       <svg width={rong} height={cao} viewBox={`0 0 ${rong} ${cao}`} style={{position: 'absolute', inset: 0, overflow: 'hidden'}}>
@@ -57,9 +64,9 @@ export const SanKhauKhongGian: React.FC<{kg: KhongGianVao; t: number; rong: numb
         {f.mat.map((m, i) => {
           // v101.2: mặt phẳng đang giảng — viền hổ phách dày 3,2–3,8 px, tô rõ 0,22–0,26, dải sáng nghiêng quét 1 lượt theo clipPath
           const act = m.act || 0, fade = Math.min(1, m.op / 0.2), id = 'kgq' + m.id.replace(/[^\w]/g, '_') + i;
-          const fo = m.op + (DO_TO_MAT_PHANG_KG * fade - m.op) * act;
+          const fo = m.san ? m.op : Math.min(tranTo, m.op + (DO_TO_MAT_PHANG_KG * fade - m.op) * act);
           const so = Math.min(0.9, m.op * (m.bung ? 3 : 2)) * (1 - act) + 0.95 * fade * act;
-          const sw = (m.bung ? 1.8 : 1.6) * (1 - act) + 3.5 * act;
+          const sw = (m.bung ? 1.8 : 1.6) * (1 - act) + 3.3 * act;
           const [bx0, by0, bx1, by1] = m.bb || [0, 0, 0, 0];
           const q = m.quet ?? -1, bw = bx1 - bx0, bh = by1 - by0, dai = bh * 0.5 + 0.3 * bw;
           const xq = bx0 - dai + (bw + 2 * dai) * q, bro = 0.3 * bw + 20;
@@ -106,7 +113,7 @@ export const SanKhauKhongGian: React.FC<{kg: KhongGianVao; t: number; rong: numb
         )}
         {f.nhan.map((n) => {
           const chu = kg.dung.nhanTen?.[n.ten];
-          return <NhanChu key={n.ten} ten={chu || n.ten} x={n.x} y={n.y} mau={chu ? (kg.dung.mauDiem?.[n.ten] || n.mau) : n.mau} op={n.op * (n.khuat ? 0.82 : 1)} co={chu && chu.length > 3 ? 25 : 34} />;
+          return <NhanChu key={n.ten} ten={chu || n.ten} x={n.x} y={n.y} mau={chu ? (kg.dung.mauDiem?.[n.ten] || n.mau) : n.mau} op={n.op * (n.khuat ? 0.82 : 1)} co={chu && chu.length > 3 ? Math.round(CO_NHAN * 0.86) : CO_NHAN} />;
         })}
       </svg>
       {/* v98: nhãn tự do — số đo đường gióng (200 m), tên trục x y z, vạch số, hướng; số đọc trực tiếp khi trượt tối ưu */}

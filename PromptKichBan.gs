@@ -437,6 +437,10 @@ var GIAY_4TANG_ = '45-55';
 var TIENG_4TANG_ = '170-220';
 function quyTrinhGon4Tang_(tt, r) {
   return 'NHỊP VIDEO GỌN (BẮT BUỘC, video khung 4 tầng): 7-10 cảnh, TỔNG ' + GIAY_4TANG_ + ' GIÂY, toàn bài ' + TIENG_4TANG_ + ' TIẾNG (âm tiết) lời thoại, mỗi cảnh 1 ý, 10-26 tiếng. ' +
+    'Giữ nhịp 45–55 giây: mỗi bước chỉ 1–2 câu ngắn gắn trực tiếp với thao tác tính. Cấm chen đoạn giảng lý thuyết trừu tượng dài 20–30 giây kiểu "Các bạn áp dụng dạng này khi...". ' +
+    'Trong cùng một bước, cấm tạo hai thẻ công thức trình bày cùng một phép tính, kể cả khi đổi cách viết. ' +
+    'Đồng nhất 100% ký hiệu biến cố và ẩn số giữa đề, thẻ giải và sân khấu. Hình mỗi bước chỉ hiện dữ kiện và kết quả đã có đến bước đó; cấm lộ kết quả bước sau (vd "y = 8m" ở hình bước đầu). ' +
+    'Bài chuyển động hoặc tốc độ biến thiên dùng tu_sinh_svg. Vẽ rõ bối cảnh (tường và sàn với bài thang trượt) cùng mũi tên vận tốc hoặc hai vị trí thể hiện chuyển động; cấm chỉ vẽ tam giác đứng im. ' +
     'MỖI CÂU 10-18 CHỮ, văn nói tự nhiên, câu chủ động ("Lấy ra 2 bi, không hoàn lại."), không câu ghép dài. NHẤN vào BẪY đề thi bằng một câu riêng ngắn khi gặp: "không hoàn lại", "tổ hợp C chứ không phải chỉnh hợp A", "chia cho xác suất toàn phần", "đơn vị", "điều kiện của ẩn". ' +
     'Đi THẲNG vào bài toán, mỗi câu phải mang thông tin. CẤM câu rào / sáo rỗng: "Muốn tìm ..., trước hết ta cần ...", "thật tuyệt vời", "khoan chốt vội", "hãy cùng nhau khám phá", "các bạn có biết không", "rất đơn giản thôi". ' +
     '0-3 GIÂY ĐẦU = HOOK: câu đầu tiên của cảnh de_bai là MỘT câu hỏi ngắn < 12 chữ gây tò mò, đi thẳng vào điều cần tìm ("Bi đỏ này đến từ hộp nào?"). CẤM đọc lê thê lại toàn bộ đề: con số / dữ kiện đã có thanh ĐỀ ghim trên màn hình và hình minh họa gánh, lời chỉ nói 1 câu "hỏi gì". ' +
