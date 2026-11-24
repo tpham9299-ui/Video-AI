@@ -66,9 +66,24 @@ const PhuDeMotDong: React.FC<{cau: {text: string; bat: number; ket: number}; t: 
       <div style={{maxWidth: RONG_ND, padding: '2px 18px 4px', borderRadius: 14, background: 'rgba(8,10,14,0.80)', border: '1px solid rgba(255,255,255,0.08)',
         fontFamily: FONT, fontWeight: 800, fontSize: co, lineHeight: 1.16, color: '#FFFFFF', whiteSpace: 'nowrap', textWrap: 'nowrap' as React.CSSProperties['textWrap'], overflow: 'visible',
         textShadow: '0 2px 0 #000, 0 -1px 0 #000, 1.5px 0 0 #000, -1.5px 0 0 #000, 0 0 8px rgba(0,0,0,0.85)'}}>
-        {chu.split(' ').map((w, k) => (
-          <span key={k} style={{whiteSpace: 'pre', textWrap: 'nowrap' as React.CSSProperties['textWrap'], ...(TU_KHOA.test(w.replace(/[,.!?;:]/g, '')) ? {color: mau, fontWeight: 800} : {})}}>{(k ? ' ' : '') + w}</span>
-        ))}
+        {(() => {
+          // Karaoke: nội suy theo tỷ lệ số ký tự giữa bat..ket; từ đang đọc sáng vàng nhạt (đổi màu + bóng, không đổi cỡ/đậm)
+          const p = kep01((t - cau.bat) / Math.max(0.2, cau.ket - cau.bat));
+          const tong = Math.max(1, chu.length);
+          let da = 0;
+          return chu.split(' ').map((w, k) => {
+            const dau = da / tong;
+            da += w.length + 1;
+            const cuoi = Math.min(1, da / tong);
+            const dang = p >= dau && p < cuoi;
+            const kk = TU_KHOA.test(w.replace(/[,.!?;:]/g, ''));
+            return (
+              <span key={k} style={{whiteSpace: 'pre', textWrap: 'nowrap' as React.CSSProperties['textWrap'], fontWeight: 800,
+                color: dang ? '#FFE97A' : kk ? mau : '#FFFFFF',
+                ...(dang ? {textShadow: '0 2px 0 #000, 0 -1px 0 #000, 1.5px 0 0 #000, -1.5px 0 0 #000, 0 0 10px rgba(255,233,122,0.55)'} : {})}}>{(k ? ' ' : '') + w}</span>
+            );
+          });
+        })()}
       </div>
     </div>
   );

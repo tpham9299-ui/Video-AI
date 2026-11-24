@@ -380,7 +380,8 @@ const NoiDungCu: React.FC<Props & {coIntro?: boolean}> = (props) => {
         return moc.length >= 2 ? <DuongTienTrinh cacPha={dsPha} mocPha={moc} mau={GIAO_DIEN.nhan} tu={canh[1].batDau} den={ketThuc - 6} /> : null;
       })() : null}
       <ThuongHieu th={thuongHieu} canh={canh} ketThuc={ketThuc} tuDau={canh.length > 1 ? canh[1].batDau : 1e9} boLoiMoi={phongCach.loiMoiGiuaVideo !== true} anDau={!!props.coIntro} />
-      {phongCach.thanhTienDo ? <ThanhTienDo tongFrame={tongFrame} lop={lop} mon={props.bia?.loai} /> : null}
+      {phongCach.thanhTienDo ? <ThanhTienDo tongFrame={tongFrame} lop={lop} mon={props.bia?.loai}
+        moc={la4Tang(props) && props.khung4tang?.buoc?.length ? props.khung4tang.buoc.map((b) => Math.round(b.t * fps)) : canh.map((c) => c.batDau)} /> : null}
       {outro ? (
         <Sequence from={outro.batDau} durationInFrames={outro.soFrame}>
           {outro.loai === 'tu_tao' ? <ManKetChuyenNghiep th={thuongHieu} baiHoc={props.baiHoc || []} dapAn={props.dapAn} tiepTheo={props.tiepTheo || ''} /> : <ManKet tep={outro.tep} loai={outro.loai} />}
