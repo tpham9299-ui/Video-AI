@@ -64,7 +64,7 @@ const HinhMoi: React.FC<{dang: DangBai; p: number; mau: string; phu: string}> = 
   if (dang === 'HÌNH HỌC') {
     return (
       <g fill="none" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M -300 200 L 40 -220 L 300 200 Z" stroke="#fff" strokeWidth={6} style={n(1500)} />
+        <path d="M -300 200 L 40 -220 L 300 200 Z" fill={mau} fillOpacity={0.18 * p} stroke="#fff" strokeWidth={8} style={n(1500)} />
         <path d="M 40 -220 L 40 200" stroke={phu} strokeWidth={4} strokeDasharray="14 12" opacity={p} />
         <circle cx={0} cy={50} r={230} stroke={mau} strokeWidth={5} style={n(1450)} />
         <path d="M 40 160 h 40 v 40" stroke="#fff" strokeWidth={4} opacity={p} />
@@ -184,7 +184,7 @@ export const Intro: React.FC<{it: IntroProps; th: ThuongHieuProps; goiY?: string
       </svg>
 
       {/* v99.6: hình mồi vector theo dạng bài, opacity 0,17, trôi / phóng cực nhẹ, nằm sau chữ (không blur) */}
-      <svg width={1080} height={1920} style={{position: 'absolute', inset: 0, opacity: 0.17 * mo, overflow: 'visible'}}>
+      <svg width={1080} height={1920} style={{position: 'absolute', inset: 0, opacity: 0.3 * mo, overflow: 'visible'}}>
         <g transform={`translate(${CX + 10 * troi} ${1010 + 6 * Math.cos(f / 45)}) scale(${0.9 + 0.05 * kep(f / Math.max(1, it.soFrame))})`}>
           <HinhMoi dang={dang} p={pMoi} mau={nhan} phu={phu} />
         </g>

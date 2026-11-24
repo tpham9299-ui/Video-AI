@@ -129,7 +129,8 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
   const sk2 = p.tuSinh ? null : p.sanKhau || null;
   // v99.1: sân khấu tự sinh 2.5D (mã Python hộp cát) thắng sân khấu 2D / khuôn 3D; nền khí quyển theo theme; xung chống đứng hình
   // v99.8: kèm chữ đề + chữ từng bước cho bộ dựng hình tổng quát của SanKhauTuSinh (chỉ đọc, không đổi mốc)
-  const tsVao = !p.khongGian && p.tuSinh && p.tuSinh.lop?.length ? p.tuSinh : null;
+  // v99.9: có `tuSinh` (kể cả lớp rỗng / hỏng) hoặc không còn sân khấu nào khác -> LUÔN dựng tầng hình (hình minh họa theo dạng bài), không để T2 trống
+  const tsVao = !p.khongGian ? (p.tuSinh ? {...p.tuSinh, lop: p.tuSinh.lop || []} : !sk2 && !p.canh3dv ? {lop: []} : null) : null;
   const ts = useMemo(() => tsVao ? {
     ...tsVao,
     de_bai: tsVao.de_bai || [...(p.deGhim || []).map((d) => d.nhan), (p.cau || [])[0]?.text || ''].join('. '),

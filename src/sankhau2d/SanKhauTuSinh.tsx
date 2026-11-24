@@ -114,6 +114,121 @@ export function suyHinhTongQuat(de: string, buoc: {t: number; text: string}[]): 
 
 const CYAN = '#5EEAD4', AMBER = '#FBBF24', XAM = '#9CA3AF', NEN = '#0B1220';
 
+// ───────── v99.9: hình minh họa theo DẠNG bài khi đề không có đỉnh chữ cái (Koch / tự đồng dạng / cấp số theo bước) ─────────
+type Pt = {x: number; y: number};
+const RE_KOCH = /koch|bông tuyết|fractal|tự đồng dạng/i;
+const poly = (ps: Pt[]) => ps.map((q, i) => `${i ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`).join(' ') + ' Z';
+
+// 4 mức bông tuyết Koch từ tam giác đều cạnh 380, tâm (400, 270): poly[k] = đường viền mức k, bump[k] = các tam giác mới thêm ở mức k
+export function taoKoch(L = 380, cx = 400, cy = 270): {poly: Pt[][]; bump: Pt[][][]} {
+  const R = L / Math.sqrt(3);
+  const p0: Pt[] = [-90, 30, 150].map((g) => ({x: cx + R * Math.cos((g * Math.PI) / 180), y: cy + R * Math.sin((g * Math.PI) / 180)}));
+  const ps: Pt[][] = [p0], bs: Pt[][][] = [[]];
+  for (let k = 1; k <= 3; k++) {
+    const prev = ps[k - 1], nx: Pt[] = [], bm: Pt[][] = [];
+    prev.forEach((a, i) => {
+      const b = prev[(i + 1) % prev.length];
+      const p1 = {x: a.x + (b.x - a.x) / 3, y: a.y + (b.y - a.y) / 3}, p2 = {x: a.x + (2 * (b.x - a.x)) / 3, y: a.y + (2 * (b.y - a.y)) / 3};
+      const vx = p2.x - p1.x, vy = p2.y - p1.y, c = Math.cos(Math.PI / 3), sn = Math.sin(Math.PI / 3);
+      const c1 = {x: p1.x + vx * c - vy * sn, y: p1.y + vx * sn + vy * c}, c2 = {x: p1.x + vx * c + vy * sn, y: p1.y - vx * sn + vy * c};
+      const d = (q: Pt) => Math.hypot(q.x - cx, q.y - cy);
+      const peak = d(c1) > d(c2) ? c1 : c2;
+      nx.push(a, p1, peak, p2);
+      bm.push([p1, peak, p2]);
+    });
+    ps.push(nx); bs.push(bm);
+  }
+  return {poly: ps, bump: bs};
+}
+const KOCH = taoKoch();
+
+const Pill: React.FC<{x: number; y: number; ten: string; mau?: string; sp: number}> = ({x, y, ten, mau = AMBER, sp}) => {
+  const w = Math.max(120, ten.length * 15 + 34);
+  const cx = Math.min(W - 6 - w / 2, Math.max(6 + w / 2, x));
+  return (
+    <g opacity={Math.min(1, sp * 1.2)} transform={`translate(0 ${12 * (1 - Math.min(1, sp))})`}>
+      <rect x={cx - w / 2} y={y - 22} width={w} height={44} rx={22} fill={NEN} stroke={mau} strokeWidth={2} />
+      <text x={cx} y={y + 8} fontSize={24} fontWeight={700} fill={mau} textAnchor="middle">{ten}</text>
+    </g>
+  );
+};
+
+// chỉ số bước đang giảng + tiến độ trong bước
+function tienDo(bs: {t: number}[], t: number): {i: number; n: number; u: number; dt: number} {
+  const n = bs.length;
+  let i = -1;
+  bs.forEach((b, j) => b.t <= t && (i = j));
+  if (i < 0) return {i: 0, n, u: 0, dt: 0};
+  const han = bs[i + 1] ? bs[i + 1].t - bs[i].t : 6;
+  const dt = t - bs[i].t;
+  return {i, n, u: Math.min(1, dt / Math.max(1.2, han * 0.7)), dt};
+}
+
+const LopKoch: React.FC<{de: string; bs: {t: number}[]; t: number; fps: number}> = ({de, bs, t, fps}) => {
+  const b = bs.length >= 1 ? bs : [0, 5, 10, 15].map((x) => ({t: x}));
+  const {i, n, u, dt} = tienDo(b, t);
+  const muc = i <= 0 ? 0 : n >= 4 ? Math.min(3, i) : Math.min(3, Math.round((i * 3) / Math.max(1, n - 1)));
+  const cuoi = n > 1 && i >= n - 1;
+  const sp = spring({frame: Math.max(0, dt * fps), fps, config: {damping: 16, stiffness: 120, mass: 0.8}});
+  const canh = (chuanKyHieu(de).match(/(\d+(?:[.,]\d+)?)\s*(km|cm|dm|mm|m)\b/i) || [])[0] || 'a';
+  const so = KOCH.bump[muc] ? Math.ceil(u * KOCH.bump[muc].length) : 0;
+  const nenMuc = Math.max(0, muc - 1);
+  return (
+    <g data-lop="koch">
+      {muc === 0 ? (
+        <path d={poly(KOCH.poly[0])} fill={CYAN} fillOpacity={0.12 * Math.min(1, dt / 1.1)} stroke={CYAN} strokeWidth={5} strokeLinejoin="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - Math.min(1, dt / 1.1)} />
+      ) : (
+        <>
+          <path d={poly(KOCH.poly[nenMuc])} fill={CYAN} fillOpacity={cuoi ? 0.3 : 0.16} stroke={CYAN} strokeWidth={4} strokeLinejoin="round" />
+          {KOCH.bump[muc].slice(0, so).map((tg, j) => (
+            <path key={j} d={poly(tg)} fill={AMBER} fillOpacity={cuoi ? 0.32 : 0.55} stroke={AMBER} strokeWidth={muc === 3 ? 2 : 3} strokeLinejoin="round" />
+          ))}
+          {u >= 1 || cuoi ? <path d={poly(KOCH.poly[muc])} fill="none" stroke={CYAN} strokeWidth={muc === 3 ? 2.5 : 4} strokeLinejoin="round" /> : null}
+        </>
+      )}
+      {muc === 0 ? (
+        <g opacity={Math.min(1, sp * 1.2)}>
+          <text x={400} y={298} fontSize={44} fontWeight={800} fill="#F8FAFC" textAnchor="middle" stroke={NEN} strokeWidth={6} paintOrder="stroke">S₀</text>
+          <line x1={210} y1={412} x2={590} y2={412} stroke={AMBER} strokeWidth={3} />
+          <line x1={210} y1={400} x2={210} y2={424} stroke={AMBER} strokeWidth={3} />
+          <line x1={590} y1={400} x2={590} y2={424} stroke={AMBER} strokeWidth={3} />
+          <Pill x={400} y={412} ten={canh} sp={sp} />
+        </g>
+      ) : null}
+      {muc >= 1 ? <Pill x={110} y={150} ten="cạnh × 1/3" sp={sp} /> : null}
+      {muc >= 2 ? <Pill x={690} y={150} ten="thêm × 4/9" sp={sp} /> : null}
+      {cuoi ? <Pill x={100} y={400} ten="Σ cộng dồn" mau={CYAN} sp={sp} /> : null}
+    </g>
+  );
+};
+
+// dự phòng cuối: đề không nhận ra hình nào -> luôn có đồ họa tiến trình theo bước (cột tăng dần + nút bước đang giảng)
+const LopTienTrinh: React.FC<{bs: {t: number}[]; t: number; fps: number}> = ({bs, t, fps}) => {
+  const b = bs.length ? bs.slice(0, 6) : [0, 5, 10, 15].map((x) => ({t: x}));
+  const {i, dt} = tienDo(b, t);
+  const n = b.length, gap = 560 / Math.max(1, n - 1);
+  return (
+    <g data-lop="tien-trinh">
+      {b.map((bb, j) => {
+        const x = n === 1 ? 400 : 120 + gap * j;
+        const sp = spring({frame: Math.max(0, (t - bb.t) * fps), fps, config: {damping: 16, stiffness: 120, mass: 0.8}});
+        const hien = bb.t <= t;
+        const h = (50 + 36 * j) * Math.min(1, sp);
+        const hienTai = j === i;
+        const mau = hienTai ? AMBER : hien ? CYAN : XAM;
+        return (
+          <g key={j} opacity={hien ? (hienTai ? 1 : 0.82) : 0.35}>
+            {j > 0 ? <line x1={x - gap + 40} y1={330} x2={x - 40} y2={330} stroke={XAM} strokeWidth={3} /> : null}
+            <rect x={x - 28} y={290 - h} width={56} height={h} rx={10} fill={mau} fillOpacity={0.35} stroke={mau} strokeWidth={3} />
+            <circle cx={x} cy={330} r={30 + (hienTai ? 4 * Math.min(1, dt) : 0)} fill={NEN} stroke={mau} strokeWidth={4} />
+            <text x={x} y={341} fontSize={30} fontWeight={800} fill="#F8FAFC" textAnchor="middle">{j + 1}</text>
+          </g>
+        );
+      })}
+    </g>
+  );
+};
+
 const LopTongQuat: React.FC<{ps: TP[]; t: number; fps: number; cong: number}> = ({ps, t, fps, cong}) => {
   const hien = ps.filter((p) => p.t <= t);
   if (!hien.length || cong <= 0.001) return null;
@@ -182,8 +297,11 @@ export const SanKhauTuSinh: React.FC<{ts: TuSinhVao; t: number; fps: number; ron
   const zoom = xung >= 0 ? 1 + 0.018 * Math.sin(Math.PI * xung) : 1;
   // bộ dựng tổng quát chỉ lấp khoảng trống: khi lớp mới nhất đã đứng > 2,5 s mới hiện dần (không đè hợp đồng lớp / quét 1,1 s)
   const tq = React.useMemo(() => (ts.de_bai || ts.buoc?.length ? suyHinhTongQuat(ts.de_bai || '', ts.buoc || []) : []), [ts.de_bai, ts.buoc]);
+  // v99.9: dạng bài -> hình minh họa luôn có (Koch / tiến trình); lớp tự sinh vẫn thắng: đứng yên > 2,5 s mới hiện dần, không có lớp nào thì hiện ngay
+  const dang: 'tq' | 'koch' | 'tt' = RE_KOCH.test(chuanKyHieu(ts.de_bai || '')) ? 'koch' : tq.length ? 'tq' : 'tt';
   const tuoi = daHien.length ? t - daHien[daHien.length - 1].t : 0;
-  const cong = tq.length ? Math.min(1, Math.max(0, (tuoi - 2.5) / 0.6)) : 0;
+  const cong = !lop.length ? 1 : daHien.length ? Math.min(1, Math.max(0, (tuoi - 2.5) / 0.6)) : 0;
+  const bsT = React.useMemo(() => (ts.buoc || []).slice().sort((a, b) => a.t - b.t), [ts.buoc]);
   return (
     <div data-tu-sinh style={{position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
       <svg viewBox={ts.viewBox || '0 0 800 540'} width={W * k} height={H * k} style={{overflow: 'visible', scale: String(zoom), fontFamily: FONT}}>
@@ -206,7 +324,11 @@ export const SanKhauTuSinh: React.FC<{ts: TuSinhVao; t: number; fps: number; ron
             </g>
           );
         })}
-        {tq.length ? <LopTongQuat ps={tq} t={t} fps={fps} cong={cong} /> : null}
+        {cong > 0.001 ? (
+          <g data-lop="minh-hoa" opacity={cong}>
+            {dang === 'koch' ? <LopKoch de={ts.de_bai || ''} bs={bsT} t={t} fps={fps} /> : dang === 'tq' ? <LopTongQuat ps={tq} t={t} fps={fps} cong={1} /> : <LopTienTrinh bs={bsT} t={t} fps={fps} />}
+          </g>
+        ) : null}
       </svg>
     </div>
   );
