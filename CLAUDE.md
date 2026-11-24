@@ -1,6 +1,6 @@
-# VIDEO-AI — HƯỚNG DẪN KIẾN TRÚC & QUY TẮC LÀM VIỆC (v100.3)
+# VIDEO-AI — HƯỚNG DẪN KIẾN TRÚC & QUY TẮC LÀM VIỆC (v101.6)
 
-> **Lưu ý tiết kiệm token:** Tệp này chỉ chứa quy tắc bắt buộc, bản đồ tệp và kiến trúc hiện hành (v100.3). Toàn bộ lịch sử nâng cấp (v1–v99.2, gồm bản đồ tệp & nguyên tắc chi tiết đã lưu trữ) được lưu riêng trong `CHANGELOG.md` và chỉ đọc khi người dùng yêu cầu tra cứu lịch sử.
+> **Lưu ý tiết kiệm token:** Tệp này chỉ chứa quy tắc bắt buộc, bản đồ tệp và kiến trúc hiện hành (v101.6). Toàn bộ lịch sử nâng cấp (v1–v99.2, gồm bản đồ tệp & nguyên tắc chi tiết đã lưu trữ) được lưu riêng trong `CHANGELOG.md` và chỉ đọc khi người dùng yêu cầu tra cứu lịch sử.
 
 ## 1. QUY TẮC BẮT BUỘC KHI LÀM VIỆC LOCAL (`e:\Video-AI`)
 
@@ -31,7 +31,7 @@
    * `dang-video.yml` (**BP5**): Gắn số tập/bìa và đăng đa nền tảng (`scripts/dang_video.py`) - đường đăng DUY NHẤT (v99.1 gỡ job `dang` trùng trong `dung-video.yml` và nhánh dự phòng 404 ở `DangVideo.gs`).
    * *(Phụ trợ)* `kiem-tra-key.yml`: Kiểm tra sức khỏe kho `GEMINI_KEYS` (`scripts/kiem_tra_key.mjs`).
 
-## 3. BẢN ĐỒ TỆP TRỌNG TÂM (v100.3)
+## 3. BẢN ĐỒ TỆP TRỌNG TÂM (v101.6)
 
 > Chi tiết từng hàm/tệp v85–v99.2 đã chuyển xuống cuối `CHANGELOG.md` (mục "Lưu trữ từ CLAUDE.md v99.2").
 
@@ -41,7 +41,7 @@
 | **Scripts (`/scripts/`)** | `bophan1/chay_bp1.js` (chạy `.gs` trong Node `vm`), `bophan1/goi_gemini.js` + `model_gemini.cjs` (xoay key, ListModels, 404/429), `chuanbi.py` (TTS, mốc, `props.json`), `khung4tang_v93/v95/v96/v98/v99.py` (suy & kiểm thẻ, mốc, sân khấu 2D, che đáp án, đồng bộ Hình ↔ Tiếng), `tu_sinh_svg.py` + `ve25d.py` (hộp cát sân khấu tự sinh), `evergreen.py`, `giai_hinh_phang.py` + `hinh_phang/` (hình phẳng chuẩn), `giai_hinh_khong_gian.py` + `hinh_khong_gian/` (không gian + Lego), `manim_hinh.py` + `manim/HinhPhangChuan.py` (Manim 0.22.1; KHÔNG thêm `__init__.py` vào `scripts/manim/`), `nhac_nen_v98.py`, `kiem_duyet.mjs`, `dung_khuc.mjs`, `ghep_khuc.mjs`, `mat_than_3x3.py`, `kiem_tra_video_gh.js`, `dang_video.py`, `kiem_tra_key.mjs`. |
 | **Remotion (`/src/`)** | `Root.tsx` (`Video` 1080x1920 30fps, `AnhBia`, `Khung4Tang`), `Video.tsx`, `Intro.tsx`, **`AnhBia.tsx` (ảnh bìa DUY NHẤT, v101.1 gộp từ `Thumbnail.tsx`)**, `Canh.tsx` + `NenChieuSau.tsx` + `CanhThucTe.tsx` (giao diện `NoiDungCu`, chỉ cho `-10P` / hình không gian cũ), `chu.ts`, `theme.ts`, `khung4tang/` (`Khung4Tang.tsx`, `kieu.ts`, `vung.ts` `SAFE_ZONE_TIKTOK`/`AN_TOAN`, `nen_v99.ts` + `NenKhiQuyen.tsx` 5 theme, `IntroMocCau`, `OutroTomTat`, `DoiChieu`, `ThanhDe`, `ToiGianKhongGian`, `mau_v981.ts`, **`cauHinhTinhChinh.ts`** (v99.7+: công tắc hiệu ứng `BAT_*`, `SFX_VOLUME`, `CAMERA_ZOOM_MAX`, `HIEN_SAFE_ZONE_DEBUG` — render thật PHẢI `false`), **`LopSafeZoneDebug.tsx`** (khung nét đứt vùng nút TikTok/Shorts, chỉ hiện khi bật debug trong Studio)), `3d-vector/` (8 khuôn 3D), `sankhau2d/` (`SanKhau2D`, `SanKhauTuSinh`, `SoDoCay`...), `khonggian/` (hình không gian + Lego, nét liền/đứt giải tích). |
 
-## 4. NGUYÊN TẮC KỸ THUẬT ĐANG ÁP DỤNG (v100.3)
+## 4. NGUYÊN TẮC KỸ THUẬT ĐANG ÁP DỤNG (v101.6)
 
 1. **GDPT 2018 (cấm giải vượt lớp):** Lớp 10 chỉ hình phẳng, không đạo/nguyên hàm. Lớp 11: tam thức bậc 2 / Cauchy / lượng giác, cấm bảng biến thiên, tích phân, Oxyz, Bayes. Oxyz chỉ lớp 12. Mọi lớp cấm số phức. Vượt lớp = 0 điểm lời giải. Bản JS `kiemGdpt2018_` phải khớp `gdpt2018.py`.
 
@@ -60,6 +60,16 @@
 6. **BP0 → BP1 → BP2 sáng tạo & chống sai:** `chonMang_` chọn mảng THIẾU NHẤT trong 20 đề gần nhất (`THUC_TE | XAC_SUAT | HINH_PHANG | HINH_KHONG_GIAN`; `TY_LE_MON` thắng), chặn đề SGK (`laDeSgkNhamChan_`, đề Zalo không qua), hợp đồng hình lưu `[hop_dong]{json}` trong `yeu_to_tu_duy`. BP1 `khoaNgoNhanDe_` + kiểm hai chiều `kiemHaiChieu_` (ngưỡng tuyệt đối). Evergreen: `veSinhKb_` ↔ `evergreen.py` gỡ năm sinh / năm thi. Auto-fix hình thức `tuSuaHinhThuc_` (tắt `AUTO_FIX_KICH_BAN=TAT`); `phanLoaiLoiCung_` chỉ giữ lỗi cứng.
 
 7. **Kiểm duyệt, Auto-Heal & Lịch đăng:** Cửa kiểm duyệt: đo bố cục + AI nhìn hình (`kiem_duyet.mjs`) → kiểm MP4 → **Mắt thần 3×3** (`mat_than_3x3.py`; tắt `MAT_THAN_3X3=TAT`; không chạy được thì không chặn) → AI chấm cuối (`kiem-tra-video.yml`). Chỉ `DA_DUYET` mới vào hàng đăng. **Auto-Heal** (`xuLyTuSuaMatThan_`): CHỈ lỗi cứng `LOI_TU_SUA_` (`cat_chu chong_chu latex_tho ma_tho so_cat lo_dap_an t2_trong hinh_dung_im lech_pha tu_sinh_hong`) → `traVeSuaKichBan_` → BP2 sửa → BP3 dựng lại; trần `TRAN_TU_SUA_ = 2` chung với `xuLyKiemDuyetBoCuc_`; hết lượt → giữ CHO + ảnh lưới Zalo, `/duyet` để mở. Tắt: `TU_SUA_MAT_THAN=TAT`. Lịch đăng `chayLichDangDinhKy` (15 phút/lần, giờ VN 11:30 & 19:30) + `kiemTraDangSauDuyet`, giữ chỗ 2 pha (`dang_cho`), lưu kết quả theo nền tảng. BP5 (`dang-video.yml`) là đường đăng DUY NHẤT. Video `-10P` chỉ đăng **YouTube** (nén < 44 MB).
+
+## 4b. NÂNG CẤP v101.2–v101.6 (tóm tắt)
+
+* `src/khonggian/`: phân cấp nét (liền/đứt/phụ) và làm nổi mặt phẳng trong động cơ không gian.
+* `ve25d.py`: mở rộng bộ hàm vẽ cho mọi dạng đề, chặn dựng MP4 nhúng trong hình.
+* BP2: Hợp đồng hình cũng áp dụng cho đề Zalo.
+* `tuSinhHong` chặn sớm, trước `bundle` / `dung_khuc` (không đổi thứ tự bước).
+* Auto-Heal tách hạn mức `bo_cuc` và `mat_than` (không dùng chung trần).
+* CI: cache npm/pip/Chromium Remotion (khóa theo phiên bản + `package-lock.json`); `.gitattributes` ép `eol=lf`.
+* `npm run kiem-tra` gộp tsc + test Node + `python -X utf8` test_v99_1 / test_v99_2.
 
 ## 5. LỆNH KIỂM TRA NHANH KHI CHẠY LOCAL (WINDOWS)
 

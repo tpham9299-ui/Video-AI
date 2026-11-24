@@ -105,7 +105,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: pip-chuanbi-${{ runner.os }}-v2
+          key: pip-chuanbi-${{ runner.os }}-py312-v2
 
       - name: Cài công cụ (chạy song song)
         run: |
@@ -130,7 +130,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: node_modules/.remotion
-          key: remotion-chrome-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          key: remotion-chrome-${{ runner.os }}-4.0.543-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            remotion-chrome-${{ runner.os }}-4.0.543-
 
       - name: Lấy tài nguyên thương hiệu / phông / nhạc (và nền nếu bật) từ Google Drive
         if: ${{ env.RCLONE_CONF != '' }}
@@ -558,7 +560,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: node_modules/.remotion
-          key: remotion-chrome-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          key: remotion-chrome-${{ runner.os }}-4.0.543-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            remotion-chrome-${{ runner.os }}-4.0.543-
 
       - uses: actions/download-artifact@v4
         with:
@@ -611,6 +615,13 @@ jobs:
         if: ${{ env.DA_DUNG == 'true' }}
         with:
           python-version: '3.12'
+
+      - name: Cache pip cho bước đẩy Drive
+        if: ${{ env.DA_DUNG == 'true' }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-ghep-${{ runner.os }}-py312-v1
 
       - name: Cài thư viện
         if: ${{ env.DA_DUNG == 'true' }}
