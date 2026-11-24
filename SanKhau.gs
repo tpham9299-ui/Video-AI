@@ -452,6 +452,13 @@ function tuSuaSanKhau_(kb, r) {
   if (r && r.chi_dao && !kb.chi_dao) kb.chi_dao = String(r.chi_dao).slice(0, 200);
   var q = chonSanKhau_(kb, r);
   kb._v96_loi = [];
+  // v101.5: đã định tuyến vào sân khấu 2D chuyên dụng (chỉ đạo / AI chọn rõ) -> đồng bộ hợp đồng, không để sót san_khau_dich = tu_sinh_svg
+  // (nếu sót, dungTuSinh_ vẫn đòi mã tu_sinh và Mắt thần báo nhầm tu_sinh_hong dù sân khấu chuyên dụng đã dựng hợp lệ)
+  if (kb.san_khau_dich === 'tu_sinh_svg' && (q.nguon === 'chi_dao' || q.nguon === 'ai') && LOAI_SAN_KHAU_.indexOf(q.loai) >= 0) {
+    kb.san_khau_dich = q.loai;
+    delete kb.tu_sinh_hong;
+    sua.push('san_khau_dich tu_sinh_svg -> ' + q.loai + ' (khớp định tuyến ' + q.nguon + ')');
+  }
   if (q.loai !== 'hinh_hoc' && q.loai !== '3d_vector') {
     var cu = k4.san_khau && typeof k4.san_khau === 'object' ? k4.san_khau : {};
     var ts = cu.loai === q.loai && cu.tham_so && typeof cu.tham_so === 'object' ? cu.tham_so : {};

@@ -288,7 +288,7 @@ t('webhook BoPhan2.gs gọi Auto-Heal trước khi chặn CHO; kiểm duyệt b�
   const b2 = fs.readFileSync(path.join(GOC, 'BoPhan2.gs'), 'utf8');
   assert.ok(b2.indexOf('xuLyTuSuaMatThan_(sh, r, d)') > 0 && b2.indexOf('xuLyTuSuaMatThan_(sh, r, d)') < b2.indexOf('kqMT._mat_than_chan'));
   const r = dongR();
-  r.ai_kiem_tra = JSON.stringify({so_lan_tu_sua: 2, kd_lan: 2});
+  r.ai_kiem_tra = JSON.stringify({so_lan_tu_sua: 1, so_lan_bo_cuc: 1, kd_lan: 2});   // v101.5: bo_cuc có trần riêng = 1
   ghiSheet.length = 0; zalo.length = 0;
   const kq = ctx.xuLyKiemDuyetBoCuc_({}, r, {loai: 'bo_cuc', nang: ['chữ tràn mép cảnh 3']});
   assert.equal(kq.het_luot, true);
@@ -298,6 +298,28 @@ t('webhook BoPhan2.gs gọi Auto-Heal trước khi chặn CHO; kiểm duyệt b�
   ghiSheet.length = 0;
   ctx.xuLyKiemDuyetBoCuc_({}, r2, {loai: 'bo_cuc', nang: ['chữ tràn mép cảnh 3']});
   assert.equal(JSON.parse(capNhat(r2).ai_kiem_tra).so_lan_tu_sua, 1);
+});
+
+t('v101.5: bo_cuc 1 lượt không đốt lượt Mắt thần (vẫn đủ 2); catGonTex_ không cắt ngang \\text{...}', () => {
+  const r = dongR();
+  r.ai_kiem_tra = JSON.stringify({so_lan_tu_sua: 1, so_lan_bo_cuc: 1, kd_lan: 1});
+  ghiSheet.length = 0;
+  const kq = ctx.xuLyTuSuaMatThan_({}, r, {file_id: 'v1', mat_than: {dat: false, loi: [{o: 4, loai: 'cat_chu', mo_ta: 'x', nang: true}]}});
+  assert.ok(kq.tu_sua, 'lượt bố cục đã dùng không được chặn Mắt thần');
+  const ai = JSON.parse(capNhat(r).ai_kiem_tra);
+  assert.equal(ai.so_lan_mat_than, 1);
+  assert.equal(ai.so_lan_tu_sua, 2);
+  const goc = '\\Omega:\\ \\text{chọn 3 trong 20 thẻ (1 ... 20) rồi tính xác suất}';
+  const gon = ctx.catGonTex_(goc, 40);
+  assert.ok(!/\\text\{[^}]*$/.test(gon) && (gon.match(/\{/g) || []).length === (gon.match(/\}/g) || []).length && !/\\$/.test(gon), gon);
+  assert.equal(ctx.catGonTex_('A:\\ \\text{Tổng } \\vdots 3', 60), 'A:\\ \\text{Tổng } \\vdots 3');
+});
+t('v101.5: tuSuaSanKhau_ đồng bộ san_khau_dich tu_sinh_svg -> rut_mau khi chỉ đạo chọn sân khấu chuyên dụng', () => {
+  const kb = {san_khau_dich: 'tu_sinh_svg', tu_sinh_hong: 'x', mon: 'XAC_SUAT', lop: '11', chi_dao: 'rút thẻ số', de_bai: 'Rút 3 thẻ từ 20 thẻ', khung4tang: {buoc: [], de_ghim: []}};
+  try { ctx.tuSuaSanKhau_(kb, {}); } catch (e) { /* các bước sau không liên quan */ }
+  assert.equal(kb.san_khau_dich, 'rut_mau');
+  assert.ok(!kb.tu_sinh_hong);
+  assert.equal(ctx.dungTuSinh_({}, kb), false);
 });
 
 console.log('6. lapTuSinh_ — hợp đồng tu_sinh_svg vá tối đa 2 lần');

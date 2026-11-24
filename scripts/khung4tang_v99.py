@@ -161,26 +161,124 @@ LA_KET_LUAN = re.compile(r"kết\s*luận|đáp\s*(?:số|án)|chốt", re.I)
 def moc_cong_bo(tu_all, canh_props, fps, so_dap, doi_so=None):
     """Giây giọng đọc công bố đáp án: từ đầu tiên (trong cảnh dap_an / ket_qua / chot) mang số đáp án (so khớp GIÁ TRỊ,
     kể cả số đọc bằng chữ); không thấy -> đầu cảnh đáp án; không có cảnh đáp án -> None."""
+    moc_cong_bo.uoc_luong = False   # v101.5: True khi KHÔNG dò được mốc thật, phải ước lượng = đầu cảnh đáp án
     canh = [c for c in canh_props if re.search(r"dap_an|ket_qua|chot", str(c.get("loai") or ""))]
     if not canh:
         return None
     c = canh[0]
-    t0 = c["batDau"] / float(fps)
-    t1 = t0 + c["soFrame"] / float(fps)
     dich = []
     for x in so_dap or []:
+        s = str(x).strip()
         try:
-            dich.append(float(str(x).replace(".", "").replace(",", ".") if re.fullmatch(r"\d{1,3}(?:\.\d{3})+", str(x)) else str(x).replace(",", ".")))
+            dich.append(float(s.replace(".", "").replace(",", ".") if re.fullmatch(r"\d{1,3}(?:\.\d{3})+", s) else s.replace(",", ".")))
         except ValueError:
-            pass
-    tu = [w for w in tu_all if t0 - 0.05 <= w["bat"] < t1]
-    for i in range(len(tu)):
-        for n in (1, 2, 3, 4, 5, 6):
-            cum = " ".join(w["w"] for w in tu[i:i + n])
-            v = _gia_tri(re.sub(r"[^\w\s,./%À-ỹ]", "", cum), doi_so)
-            if v is not None and any(abs(v - d) < 1e-6 * max(1, abs(d)) for d in dich):
+            m = re.fullmatch(r"(\d+)\s*/\s*(\d+)", s)   # phân số a/b
+            if m and int(m.group(2)):
+                dich.append(int(m.group(1)) / float(int(m.group(2))))
+    # cảnh dò: cảnh đáp án trước; không có số trực tiếp -> lùi sang cảnh tinh_toan / chot liền kề trước đó
+    ds_canh = [c]
+    try:
+        i0 = [k for k, x in enumerate(canh_props) if x is c][0]
+        if i0 > 0 and re.search(r"tinh_toan|tinh|chot|ket_qua", str(canh_props[i0 - 1].get("loai") or "")):
+            ds_canh.append(canh_props[i0 - 1])
+    except IndexError:
+        pass
+    for cc in ds_canh:
+        t0 = cc["batDau"] / float(fps)
+        t1 = t0 + cc["soFrame"] / float(fps)
+        tu = [w for w in tu_all if t0 - 0.05 <= w["bat"] < t1]
+        for i in range(len(tu)):
+            if _cum_la_dap_an([w["w"] for w in tu[i:i + 8]], dich, doi_so):
                 return round(tu[i]["bat"], 3)
+    moc_cong_bo.uoc_luong = True
+    t0 = c["batDau"] / float(fps)
     return round(t0 + c.get("leadFrame", 0) / float(fps), 3)
+
+
+_CHU_SO_DON = {"không": 0, "linh": 0, "lẻ": 0, "một": 1, "mốt": 1, "hai": 2, "ba": 3, "bốn": 4, "tư": 4, "năm": 5, "lăm": 5,
+               "sáu": 6, "bảy": 7, "bẩy": 7, "tám": 8, "chín": 9}
+_RE_TRONG = re.compile(r"\s*(?:phần|trên|chia)\s*")
+
+
+def _doc_chu_so(ws, doi_so):
+    """Dãy từ -> số: 'ba mươi hai' (qua doi_so) hoặc đọc từng chữ số 'ba hai' / 'chín lăm' (mọi từ là 1 chữ số)."""
+    ws = [w for w in ws if w]
+    if not ws:
+        return None
+    if all(re.fullmatch(r"\d+", w) for w in ws):
+        return float("".join(ws))
+    v = _gia_tri(" ".join(ws), doi_so)
+    if v is not None:
+        return v
+    if len(ws) >= 2 and all(w in _CHU_SO_DON for w in ws):
+        return float("".join(str(_CHU_SO_DON[w]) for w in ws))
+    return _so_tu_chu(ws)
+
+
+def _so_tu_chu(ws):
+    """Dự phòng khi không có bộ đổi số của chuanbi: 'ba mươi hai' -> 32, 'một trăm linh năm' -> 105, 'mười lăm' -> 15."""
+    tong = tram = 0
+    chuc = dv = None
+    thay = False
+    for w in ws:
+        if w == "trăm":
+            tram, dv, thay = (dv if dv is not None else 1) * 100, None, True
+        elif w == "mười":
+            chuc, thay = 1, True
+        elif w == "mươi":
+            if dv is None:
+                return None
+            chuc, dv, thay = dv, None, True
+        elif w in ("linh", "lẻ"):
+            thay = True
+        elif w in _CHU_SO_DON and w not in ("linh", "lẻ"):
+            if dv is not None:
+                return None
+            dv, thay = _CHU_SO_DON[w], True
+        else:
+            return None
+    if not thay:
+        return None
+    tong = tram + (chuc * 10 if chuc is not None else 0) + (dv or 0)
+    return float(tong)
+
+
+def _cum_la_dap_an(ws, dich, doi_so):
+    """Cụm từ ĐẦU `ws` (thử độ dài 1..8) có đọc ra một giá trị trong `dich` không? Hỗ trợ: số / "a/b" / "a phần b" /
+    "a trên b" / chữ đầy đủ hoặc đọc từng chữ số / "gấp đôi" "bằng hai" (2) / "một nửa" (1/2). Đặt `_cum_la_dap_an.n` = số từ khớp."""
+    _cum_la_dap_an.n = 0
+    ws = [re.sub(r"[^\w,./%À-ỹ]", "", str(w)).lower().rstrip(".,") for w in ws]
+    ws = [w for w in ws if w]
+    if not ws or not dich:
+        return False
+
+    def khop(v):
+        return v is not None and any(abs(v - d) < 1e-6 * max(1, abs(d)) for d in dich)
+    chuoi = " ".join(ws)
+    if any(abs(d - 2) < 1e-9 for d in dich) and re.match(r"gấp đôi|bằng hai\b|gấp hai\b", chuoi):
+        _cum_la_dap_an.n = 2
+        return True
+    if any(abs(d - 0.5) < 1e-9 for d in dich) and re.match(r"một nửa|nửa\b|phân nửa", chuoi):
+        _cum_la_dap_an.n = 2 if chuoi.startswith("một") else 1
+        return True
+    for n in range(1, min(len(ws), 8) + 1):
+        cum = ws[:n]
+        # nhánh phân số: tách theo phần / trên / chia
+        t = _RE_TRONG.split(" ".join(cum), maxsplit=1)
+        if len(t) == 2 and t[0].strip() and t[1].strip():
+            tu_, mau_ = _doc_chu_so(t[0].split(), doi_so), _doc_chu_so(t[1].split(), doi_so)
+            if tu_ is not None and mau_:
+                if khop(tu_ / mau_):
+                    _cum_la_dap_an.n = n
+                    return True
+                continue
+        v = _gia_tri(" ".join(cum), doi_so)
+        if v is None and n >= 2:
+            v = _doc_chu_so(cum, doi_so)
+        if khop(v):
+            _cum_la_dap_an.n = n
+            return True
+    return False
 
 
 def khoa_dap_an(out, t_cb, so_dap=()):
@@ -244,6 +342,7 @@ def canh_bao_dong_bo(out, t_cb, sua, tu_all=(), canh_props=(), fps=30, so_dap=()
     (1) kịch bản đặt bước kết luận / thẻ chốt TRƯỚC giây giọng công bố đáp án >= 3 s (đã bị khóa dời lại, nhưng lời và hình
         lệch nhịp rõ - phải sửa kịch bản); (2) có cảnh đáp án + có số đáp án nhưng giọng KHÔNG đọc ra số đó (mốc phải đoán)."""
     ra = []
+    canh_bao_dong_bo.nhe = []   # v101.5: cảnh báo NHẸ (ước lượng mốc = đầu cảnh) - KHÔNG chặn đăng, KHÔNG kích Auto-Heal
     if t_cb is None or not out:
         return ra
     lech = getattr(khoa_dap_an, "lech_max", 0.0) if sua else 0.0
@@ -257,8 +356,28 @@ def canh_bao_dong_bo(out, t_cb, sua, tu_all=(), canh_props=(), fps=30, so_dap=()
             dau = round(t0 + c.get("leadFrame", 0) / float(fps), 3)
             co_tu = any(t0 - 0.05 <= w["bat"] < t0 + c["soFrame"] / float(fps) for w in tu_all or [])
             if co_tu and abs(t_cb - dau) < 1e-6:
-                ra.append("giọng cảnh đáp án không đọc ra số %s (mốc công bố phải đoán = đầu cảnh)" % ", ".join(str(x) for x in list(so_dap)[:2]))
+                canh_bao_dong_bo.nhe.append("giọng cảnh đáp án không dò được số %s (mốc công bố ước lượng = đầu cảnh)" % ", ".join(str(x) for x in list(so_dap)[:2]))
     return ra
+
+
+# v101.5: sân khấu chuyên dụng thay thế hộp cát tự sinh -> KHÔNG báo tuSinhHong
+SAN_KHAU_CHUYEN_DUNG = ("rut_mau", "so_do_cay", "luoi_bayes", "cot_phan_phoi", "kinh_te_do_thi", "so_do_2d", "tang_truong")
+
+
+def tu_sinh_hong_that(hong, out, kb=None):
+    """Giữ cờ `tuSinhHong` (chuỗi) CHỈ khi video không có sân khấu chuyên dụng / 3D / không gian nào dựng thay; ngược lại ''."""
+    if not hong:
+        return ""
+    out = out or {}
+    sk = out.get("sanKhau") or {}
+    if str(sk.get("loai") or "") in SAN_KHAU_CHUYEN_DUNG:
+        return ""
+    if out.get("canh3dv") or out.get("canh3DVector") or out.get("khongGian"):
+        return ""
+    k4 = (kb or {}).get("khung4tang") or {}
+    if str((k4.get("san_khau") or {}).get("loai") or "") in SAN_KHAU_CHUYEN_DUNG and not out.get("tuSinh") and sk:
+        return ""
+    return hong
 
 
 # ---------------------------------------------------------------- chống đứng hình > 6 s ở T2

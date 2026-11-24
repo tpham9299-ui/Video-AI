@@ -7,6 +7,7 @@ import path from 'node:path';
 import os from 'node:os';
 import {openBrowser, renderStill, selectComposition} from '@remotion/renderer';
 import catalog from './bophan1/model_gemini.cjs';
+import katex from 'katex';
 
 // --- key Gemini hỏng (dùng chung với Bộ phận 1 / giọng đọc): khai báo TRƯỚC khi chạy kiểm duyệt ---
 var TEP_KEY_HONG_JSON = path.join(os.tmpdir(), 'gemini_key_hong.json');
@@ -80,6 +81,14 @@ const aiKq = await aiNhinHinh(anhAi.filter(Boolean)).catch((e) => ({chay: false,
 fs.rmSync(tam, {recursive: true, force: true});
 ghiBaoCao(aiKq, true);
 
+// v101.5: kiểm lại cú pháp bằng chính KaTeX (chấp nhận "\ ", \vdots, \text{...}, \Omega...). Chuỗi bị cắt (>= 60 ký tự) không thể
+// kết luận -> coi như chưa chắc sai thì GIỮ báo cáo; chuỗi đủ ngắn mà KaTeX dựng được -> bỏ báo nhầm.
+function texHopLe(s) {
+  const t = String(s || '').trim().replace(/^\$+|\$+$/g, '');
+  if (!t || t.length >= 60) return false;
+  try { katex.renderToString(t, {throwOnError: true, strict: false}); return true; } catch (e) { return false; }
+}
+
 function ghiBaoCao(aiKq, hoanTat) {
   const khung = tho.filter(Boolean);
   const aiLoi = aiKq.loi || [];
@@ -112,7 +121,8 @@ function ghiBaoCao(aiKq, hoanTat) {
   const gop = new Map();
   for (const k of khung) {
     for (const l of k.loi || []) {
-      const khoa = `${k.canh}|${l.kieu}|${l.chu}|${l.chu2 || ''}`;
+      if (l.kieu === 'KATEX_LOI' && texHopLe(l.chu)) continue;   // v101.5: báo nhầm - KaTeX chuẩn (\ , \vdots, \text{...}) dựng được
+      const khoa =`${k.canh}|${l.kieu}|${l.chu}|${l.chu2 || ''}`;
       const cu = gop.get(khoa);
       if (cu) { cu.so++; continue; }
       gop.set(khoa, {...l, canh: k.canh, frame: k.frame, so: 1});

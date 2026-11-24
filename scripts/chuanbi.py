@@ -2028,6 +2028,7 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
         elif ghi_ts:
             print("v99.1 sân khấu tự sinh: %s -> giữ sân khấu dự phòng" % ghi_ts)
         hong = tu_sinh_svg.tu_sinh_hong(kb, ts, ghi_ts)   # v99.2: hợp đồng tu_sinh_svg mà không dựng được -> cảnh báo rõ (Mắt thần lỗi cứng)
+        hong = v99_k4.tu_sinh_hong_that(hong, out, kb)    # v101.5: đã có sân khấu chuyên dụng (rut_mau...) / 3D thay thế -> xóa cờ
         if hong:
             out["tuSinhHong"] = hong
             print("⚠ v99.2 " + hong)
@@ -2039,6 +2040,10 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
     if cb_db:
         out["canhBaoDongBo"] = cb_db
         print("⚠ v99.2 lệch pha hình - tiếng: " + "; ".join(cb_db))
+    cb_nhe = list(getattr(v99_k4.canh_bao_dong_bo, "nhe", []) or [])   # v101.5: ước lượng mốc = đầu cảnh -> chỉ cảnh báo nhẹ
+    if cb_nhe:
+        out["canhBaoNhe"] = cb_nhe
+        print("ℹ v101.5 cảnh báo nhẹ (không chặn đăng): " + "; ".join(cb_nhe))
     moc_cau = sorted(round(c["batDau"] / float(fps) + x["bat"], 3) for c in canh_props for x in (c.get("cau") or []))
     out["nhipT2"] = v99_k4.nhip_chong_dung(out, moc_cau, tong)
     if not khong_gian:

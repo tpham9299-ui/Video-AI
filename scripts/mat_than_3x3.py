@@ -157,7 +157,11 @@ def kiem_tat_dinh(p, anh_o, o_da):
     k4p = p.get("khung4tang") or {}
     for x in (k4p.get("canhBaoDongBo") or [])[:2]:   # v99.2: cờ do chuanbi.py gắn (khung4tang_v99.canh_bao_dong_bo)
         loi.append({"o": o_da, "loai": "lech_pha", "mo_ta": str(x)[:150], "nang": True})
-    if k4p.get("tuSinhHong"):
+    for x in (k4p.get("canhBaoNhe") or [])[:2]:   # v101.5: mốc ước lượng = đầu cảnh -> cảnh báo nhẹ (nang False: không chặn đăng, không Auto-Heal)
+        loi.append({"o": o_da, "loai": "lech_pha", "mo_ta": str(x)[:150], "nang": False})
+    sk_cd = (k4p.get("sanKhau") or {}).get("loai") if isinstance(k4p.get("sanKhau"), dict) else None
+    if k4p.get("tuSinhHong") and sk_cd not in ("rut_mau", "so_do_cay", "luoi_bayes", "cot_phan_phoi", "kinh_te_do_thi", "so_do_2d", "tang_truong") \
+            and not (p.get("canh3dv") or k4p.get("canh3dv") or k4p.get("khongGian")):   # v101.5: có sân khấu chuyên dụng thay thế -> bỏ cờ giả
         loi.append({"o": 2, "loai": "tu_sinh_hong", "mo_ta": str(k4p["tuSinhHong"])[:150], "nang": True})
     th = p.get("thuongHieu") or {}
     ten = str(th.get("ten") or "")

@@ -164,20 +164,23 @@ function xuLyKiemDuyetBoCuc_(sh, r, kd) {
   nhatKy_('KIEM_DUYET', r.id + ' lần ' + lan + ': ' + nang.length + ' lỗi bố cục | ' + nang.slice(0, 4).join(' | ').slice(0, 400));
   if (!r.file_kich_ban) { baoLoiDung_(sh, r, 'KIEM_DUYET: ' + nang.slice(0, 2).join('; ')); return { ok: true }; }
   // v99.2: chung trần tự sửa TRAN_TU_SUA_ (2) với Mắt thần - trước đây kd_lan không có trần (lặp vô hạn, đốt quota)
+  // v101.5: hạn mức RIÊNG: bo_cuc tối đa TRAN_BO_CUC_ (1) lượt, Mắt thần tối đa TRAN_TU_SUA_ (2) lượt (so_lan_mat_than) - lỗi bố cục
+  // ban đầu không đốt sạch lượt tự sửa của Mắt thần về sau. so_lan_tu_sua vẫn là TỔNG để đọc nhật ký.
   var daSua = Number(akt.so_lan_tu_sua) || 0;
-  if (daSua >= TRAN_TU_SUA_) {
-    var lyDoKD = 'Kiểm duyệt bố cục vẫn lỗi sau ' + daSua + ' lần tự sửa: ' + nang.slice(0, 3).join(' | ');
+  var daBoCuc = Number(akt.so_lan_bo_cuc) || 0;
+  if (daBoCuc >= TRAN_BO_CUC_) {
+    var lyDoKD = 'Kiểm duyệt bố cục vẫn lỗi sau ' + daBoCuc + ' lần tự sửa bố cục: ' + nang.slice(0, 3).join(' | ');
     ghi_(sh, r._row, { trang_thai: 'LOI', ghi_chu: lyDoKD.slice(0, 300) });
     nhatKy_('TU_SUA_HET_LUOT', r.id + ': ' + lyDoKD.slice(0, 300));
     guiZaloMotLan_('KD_HET_' + r.id + '_' + daSua, '🛑 ' + r.id + (r.chu_de ? ' (' + r.chu_de + ')' : '') + ': ' + lyDoKD.slice(0, 600) +
-      '\nĐã dừng tự sửa (tối đa ' + TRAN_TU_SUA_ + ' lần). /sua ' + r.id + ' <góp ý> để sửa tay hoặc /bo ' + r.id + '.');
+      '\nĐã dừng tự sửa bố cục (tối đa ' + TRAN_BO_CUC_ + ' lần). /sua ' + r.id + ' <góp ý> để sửa tay hoặc /bo ' + r.id + '.');
     return { ok: true, het_luot: true };
   }
   traVeSuaKichBan_(sh, r,
     'KIỂM DUYỆT BỐ CỤC TỰ ĐỘNG (đo trên khung hình thật) KHÔNG ĐẠT, PHẢI SỬA HẾT: ' + nang.slice(0, 10).join(' || ') +
     '. Cách sửa chung: bớt vật/chữ trong cảnh bị lỗi, đặt các vật cách xa nhau (x, y), nhãn ngắn ≤ 22 ký tự, công thức LaTeX đúng cú pháp.',
-    'Kiểm duyệt bố cục lần ' + lan + ' chưa đạt: tự sửa kịch bản (' + (daSua + 1) + '/' + TRAN_TU_SUA_ + ')',
-    { kd_lan: lan, kd_loi: nang.slice(0, 5), so_lan_tu_sua: daSua + 1, ghi_chu_sua_tu_dong: ['bo_cuc: ' + nang.slice(0, 3).join(' | ').slice(0, 300)] });
+    'Kiểm duyệt bố cục lần ' + lan + ' chưa đạt: tự sửa kịch bản (bố cục ' + (daBoCuc + 1) + '/' + TRAN_BO_CUC_ + ')',
+    { kd_lan: lan, kd_loi: nang.slice(0, 5), so_lan_tu_sua: daSua + 1, so_lan_bo_cuc: daBoCuc + 1, ghi_chu_sua_tu_dong: ['bo_cuc: ' + nang.slice(0, 3).join(' | ').slice(0, 300)] });
   return { ok: true, sua: true };
 }
 
@@ -185,7 +188,8 @@ function xuLyKiemDuyetBoCuc_(sh, r, kd) {
 // Mắt thần 3×3 (dung-video.yml -> doPost) chặn đăng: lỗi CỨNG do kịch bản gây ra -> trả về BP2 kèm chỉ thị sửa từng lỗi
 // (viết lại -> CO_KICH_BAN -> BP3 tự dựng lại). Góp ý thẩm mỹ / ô nang:false / lỗi hệ thống (logo) KHÔNG dựng lại (không đốt quota).
 // Bộ đếm so_lan_tu_sua + ghi_chu_sua_tu_dong nằm trong JSON ai_kiem_tra (không thêm cột). Tắt: CAU_HINH TU_SUA_MAT_THAN = TAT.
-var TRAN_TU_SUA_ = 2;
+var TRAN_TU_SUA_ = 2;    // lượt tự sửa của Mắt thần (so_lan_mat_than)
+var TRAN_BO_CUC_ = 1;    // v101.5: lượt tự sửa riêng của kiểm duyệt bố cục (so_lan_bo_cuc)
 var LOI_TU_SUA_ = {
   cat_chu: 'chữ bị cắt / tràn khung: rút ngắn tiêu đề / nhãn / dòng công thức của cảnh đó (tiêu đề ≤ 34 ký tự, nhãn ≤ 22 ký tự), tách công thức dài thành 2 dòng',
   chong_chu: 'chữ / nhãn chồng nhau: bớt số dòng trên màn hình của cảnh đó, nhãn ngắn hơn, đặt các nhãn xa nhau',
@@ -220,14 +224,15 @@ function chiThiSuaLoi_(cung) {
 function xuLyTuSuaMatThan_(sh, r, d) {
   var pl = phanLoaiLoiTuSua_(d && d.mat_than);
   var akt = docAiKT_(r);
-  var daSua = Number(akt.so_lan_tu_sua) || 0;
+  var tong = Number(akt.so_lan_tu_sua) || 0;
+  var daSua = Number(akt.so_lan_mat_than) || 0;   // v101.5: đếm RIÊNG lượt Mắt thần (không tính lượt bố cục)
   var kq = {tu_sua: false, het_luot: false, cung: pl.cung, nhe: pl.nhe, da_sua: daSua};
   if (!batTuSuaMatThan_() || !pl.cung.length || !r.file_kich_ban) return kq;
   if (daSua >= TRAN_TU_SUA_) { kq.het_luot = true; return kq; }
   var ghiChu = pl.cung.slice(0, 6).map(function (x) { return x.loai + (x.mo_ta ? ': ' + String(x.mo_ta).slice(0, 80) : ''); });
   var coTuSinh = pl.cung.some(function (x) { return x.loai === 'tu_sinh_hong'; });
   traVeSuaKichBan_(sh, r, chiThiSuaLoi_(pl.cung), 'Mắt thần tự sửa lần ' + (daSua + 1) + '/' + TRAN_TU_SUA_,
-    {so_lan_tu_sua: daSua + 1, ghi_chu_sua_tu_dong: ghiChu, mt_file: String((d && d.file_id) || '')},
+    {so_lan_tu_sua: tong + 1, so_lan_mat_than: daSua + 1, ghi_chu_sua_tu_dong: ghiChu, mt_file: String((d && d.file_id) || '')},
     function (kb) {
       if (!coTuSinh) return;
       delete kb.tu_sinh_da_thu; delete kb.tu_sinh_hong;   // cho BP2 lập lại sân khấu tự sinh (vá tối đa 2 lần)
