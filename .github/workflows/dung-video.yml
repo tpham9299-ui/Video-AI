@@ -62,7 +62,7 @@ jobs:
       so_khuc: ${{ steps.chia.outputs.so_khuc }}
       khuc: ${{ steps.chia.outputs.khuc }}
       manim: ${{ steps.chia.outputs.manim }}
-      chan: ${{ steps.kd.outputs.chan == 'true' || steps.bao_sua.outputs.da_bao == 'true' }}
+      chan: ${{ steps.kd.outputs.chan == 'true' || steps.bao_sua.outputs.da_bao == 'true' || steps.tu_sinh.outputs.da_bao == 'true' }}
     env:
       RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
       DRIVE_NEN: ${{ vars.DRIVE_NEN }}
@@ -268,6 +268,45 @@ jobs:
               exit 1
             fi
           fi
+
+      # v101.3: sân khấu tự sinh HỎNG (props.khung4tang.tuSinhHong: đã vá hết lượt, không có sân khấu dự phòng) -> lỗi cứng
+      # tu_sinh_hong: DỪNG SỚM (không bundle / kiểm duyệt / dựng khúc MP4 vô ích) nhưng vẫn báo về Apps Script (doPost -> d.kiem_duyet)
+      # để kịch bản được trả về BP2 sửa (xuLyKiemDuyetBoCuc_, chung trần TRAN_TU_SUA_) rồi BP3 dựng lại.
+      - name: Chặn dựng khi sân khấu tự sinh hỏng (lỗi cứng tu_sinh_hong)
+        id: tu_sinh
+        run: |
+          python3 - <<'PY'
+          import json, os
+          p = json.load(open('public/props.json', encoding='utf8'))
+          hong = str((p.get('khung4tang') or {}).get('tuSinhHong') or '').strip()
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write('hong=%s\n' % ('true' if hong else 'false'))
+          if hong:
+              os.makedirs('out', exist_ok=True)
+              nang = ["tu_sinh_hong: " + hong[:260] + " -> viết lại kb.khung4tang.tu_sinh (mã ve() dùng ve25d, chữ >= 24 px, nhãn trong v.tam_nhan, mỗi bước đổi hình) hoặc bỏ san_khau_dich = tu_sinh_svg"]
+              json.dump({"nang": nang, "nhe": [], "hong": False}, open('out/tu_sinh_hong.json', 'w', encoding='utf8'), ensure_ascii=False)
+              print("::error::Lỗi cứng tu_sinh_hong - dừng sớm, không dựng MP4: " + hong[:200])
+          PY
+          [ -f out/tu_sinh_hong.json ] || exit 0
+          if [ -z "$APPS_SCRIPT_URL" ] || [ -z "$ID_VIDEO" ]; then
+            echo "Chạy tay (không có mã đề / Apps Script): chỉ dừng, không báo về"; exit 1
+          fi
+          python3 - <<'PY'
+          import json, os
+          b = json.load(open('out/tu_sinh_hong.json', encoding='utf8'))
+          d = {"token": os.environ["DUNG_VIDEO_SECRET"], "id": os.environ["ID_VIDEO"], "ok": False, "loi": "KIEM_DUYET_BO_CUC",
+               "kiem_duyet": {"loai": "bo_cuc", "nang": b["nang"], "nhe": []}}
+          json.dump(d, open("bao_tu_sinh_hong.json", "w", encoding="utf8"), ensure_ascii=False)
+          PY
+          for lan in 1 2 3 4 5 6; do
+            KQ=$(curl -sS -L --max-time 45 -H 'Content-Type: application/json' --data @bao_tu_sinh_hong.json "$APPS_SCRIPT_URL" || true)
+            echo "Lần $lan: $KQ"
+            if echo "$KQ" | grep -Eq '"ok" *: *true|KHONG_TIM_THAY'; then echo "da_bao=true" >> "$GITHUB_OUTPUT"; break; fi
+            if echo "$KQ" | grep -q 'SAI_TOKEN'; then echo "SAI_TOKEN"; break; fi
+            if echo "$KQ" | grep -q 'BAN'; then sleep 60; continue; fi
+            sleep 20
+          done
+          echo "Sân khấu tự sinh hỏng: dừng dựng (Apps Script sẽ trả BP2 sửa kịch bản rồi dựng lại)"; exit 1
 
       # BÀI HÌNH HỌC: phần toán (hình, công thức, chuyển động, hiệu ứng) dựng 100% bằng MANIM (scripts/manim_hinh.py) thành
       # một lớp trong suốt; Remotion vẫn dựng PHẦN VỎ CHUNG như mọi video (nền, tiêu đề, thanh bước, phụ đề, giọng, nhạc, tiếng

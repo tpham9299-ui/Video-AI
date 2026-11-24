@@ -40,6 +40,7 @@ DUNG_SAI = 2.0
 TIMEOUT = 5.0
 TOI_DA_LOP = 14
 TOI_DA_SVG = 220_000
+TOI_DA_BUOC_TRONG = 3   # v101.3: số bước liền không có lớp mới tối đa được phép giữa lớp đầu và lớp cuối
 
 TEN_CAM = {"open", "eval", "exec", "compile", "getattr", "setattr", "delattr", "globals", "locals", "vars", "input",
            "breakpoint", "help", "exit", "quit", "memoryview", "type", "object", "super", "classmethod", "staticmethod",
@@ -258,6 +259,8 @@ def chuan_lop(kq, so_buoc):
             raise LoiTuSinh("TS_LOP_HONG: lớp %d không phải dict" % k)
         svg = l.get("svg")
         kiem_svg(svg)
+        if not re.search(r"<\s*(path|polygon|polyline|line|circle|ellipse|rect|text)\b", svg):
+            raise LoiTuSinh("TS_LOP_RONG: lớp %d chỉ có <g> / <defs> rỗng, không vẽ gì (ve25d trả chuỗi rỗng? kiểm lại tham số / điều kiện)" % k)
         tong += len(svg)
         try:
             b = int(l.get("buoc", 0))
@@ -275,6 +278,11 @@ def chuan_lop(kq, so_buoc):
         raise LoiTuSinh("TS_QUA_LON: tổng SVG %d > %d byte" % (tong, TOI_DA_SVG))
     if len({l["buoc"] for l in ra}) < min(3, so_buoc):
         raise LoiTuSinh("TS_DUNG_IM: lớp phải gắn ít nhất %d bước khác nhau (mỗi bước đổi hình)" % min(3, so_buoc))
+    # v101.3: khoảng trống không đổi hình quá lâu giữa lớp đầu và lớp cuối (>= 3 bước liền không có lớp mới)
+    co_lop = sorted({l["buoc"] for l in ra})
+    for a, b in zip(co_lop, co_lop[1:]):
+        if b - a - 1 >= TOI_DA_BUOC_TRONG:
+            raise LoiTuSinh("TS_KHOANG_TRONG: bước %d..%d không có lớp nào đổi hình (đứng im %d bước liền) - thêm lớp (ve25d.lop(buoc, ...)) cho các bước này" % (a + 1, b - 1, b - a - 1))
     return ra
 
 
@@ -580,7 +588,31 @@ def doi_mau_theme(ts, theme):
     return dem[0]
 
 
-# ---------------------------------------------------------------- tự sửa 1 lần bằng Gemini
+# ---------------------------------------------------------------- tự sửa bằng Gemini (v101.3: gợi ý sửa đúng trọng tâm theo mã lỗi)
+GOI_Y_SUA = {
+    "TS_LOP_RONG": "lớp không vẽ gì: kiểm tra tham số / điều kiện gọi hàm ve25d (đa giác, nhãn, lưới) và chỉ trả lớp có svg thật",
+    "TS_KHOANG_TRONG": "có >= 3 bước liền không đổi hình: gắn thêm lớp (v.lop(buoc, ...)) cho các bước bị bỏ trống, vd. nhấn mạnh bằng v.tam_nhan / v.mui_ten_kich_thuoc / v.cung_goc hoặc gọi v.phan_nhanh_de_quy với bac tăng dần",
+    "TS_DUNG_IM": "lớp phải trải ra >= 3 bước khác nhau: mỗi bước thêm 1 lớp đổi hình",
+    "TS_KHONG_LOP": "ve() phải trả list lớp KHÔNG rỗng: [v.lop(0, svg, 'no', khi_noi='...'), ...]",
+    "TS_CHU_NHO": "dùng v.chu / v.tam_nhan / v.nhan (cỡ chữ >= 24 px), không viết thẻ <text> thủ công",
+    "TS_MAU_LA": "chỉ dùng màu qua v.MAU[...] (nhan / ket / cu / chu / mat / dung / sai), không tự đặt mã màu",
+    "TS_NHAN_DE_NET": "đặt chữ bằng v.tam_nhan (hộp nền đặc) hoặc v.nhan(x, y, chữ, tranh=[các điểm]) thay vì v.chu sát nét / đỉnh",
+    "TS_CHONG_CHU": "dời nhãn xa nhau hoặc cho 2 lớp cùng nhom=... để lớp sau thay lớp trước",
+    "TS_TRAN_VIEWBOX": "co hình / dời tâm: mọi tọa độ trong 0 0 800 540 (các hàm v.da_giac_deu / v.so_do_venn / v.phan_nhanh_de_quy tự co cho vừa)",
+    "TS_QUA_GIO": "bớt vòng lặp / bậc đệ quy (bac <= 3), không tính toán nặng",
+    "TS_LOI_CHAY": "mã chạy lỗi: chỉ dùng builtins an toàn (range, len, min, max, round, sorted, zip, enumerate, sum, abs...), không print / open",
+}
+
+
+def goi_y_sua(loi):
+    """Mã lỗi (TS_...) trong chuỗi lỗi -> gợi ý sửa đúng trọng tâm cho vòng tự vá ('' nếu không có)."""
+    ra = []
+    for ma in re.findall(r"TS_[A-Z_]+", str(loi)):
+        if ma in GOI_Y_SUA and GOI_Y_SUA[ma] not in ra:
+            ra.append(GOI_Y_SUA[ma])
+    return "; ".join(ra)
+
+
 def nho_gemini_sua(ma, loi, de, so_buoc):
     keys = [k for k in re.split(r"[\s,;]+", os.environ.get("GEMINI_KEYS") or os.environ.get("GEMINI_API_KEY") or "") if k]
     if not keys or os.environ.get("VIDEO_AI_GIA_LAP") == "1":
@@ -591,8 +623,11 @@ def nho_gemini_sua(ma, loi, de, so_buoc):
           "M L C Q A Z; không filter, không transform ngoài translate nhỏ; thẻ: g path polygon polyline line circle ellipse rect "
           "text defs linearGradient radialGradient stop; phong cách 2.5D (mặt bên tối hơn lệch 6-10 px, bóng mềm = bản sao "
           "rgba(0,0,0,.25) lệch xuống). Được `import ve25d as v` (v.MAU[...] màu theo theme, v.chu cỡ >= 24, v.nhan(x, y, chữ, tranh=[điểm]) "
-          "tự đặt nhãn ngoài hình có đường gióng, v.hop / v.tru / v.trai_phang_2mat / v.he_truc / v.do_thi / v.cua / v.mien_to / v.lop). "
-          "Chữ >= 22 px, nhãn không đè nét / đỉnh, chỉ màu họ cyan / hổ phách / xám / tối.\nĐề: %s\nLỗi: %s\nMã:\n%s") % (so_buoc - 1, str(de)[:600], loi, ma[:12000])
+          "tự đặt nhãn ngoài hình có đường gióng, v.hop / v.tru / v.trai_phang_2mat / v.he_truc / v.do_thi / v.cua / v.mien_to / v.lop; "
+          "v101.3: v.tam_nhan(x, y, chữ) nhãn viên thuốc nền đặc, v.da_giac_deu(cx, cy, r, số_cạnh) -> (svg, đỉnh), v.mui_ten_kich_thuoc, "
+          "v.cung_goc, v.truc_so, v.luoi_o, v.so_do_venn, v.phan_nhanh_de_quy(cx, cy, r, bac, kieu)). "
+          "Chữ >= 22 px, nhãn không đè nét / đỉnh, chỉ màu họ cyan / hổ phách / xám / tối.\nĐề: %s\nLỗi: %s\nHướng sửa trọng tâm: %s\nMã:\n%s") % (
+              so_buoc - 1, str(de)[:600], loi, goi_y_sua(loi) or "sửa đúng mục lỗi trên", ma[:12000])
     body = {"contents": [{"role": "user", "parts": [{"text": yc}]}],
             "generationConfig": {"temperature": 0.2, "responseMimeType": "application/json", "maxOutputTokens": 8192}}
     tep = os.path.join(tempfile.gettempdir(), "tu_sinh_%d.json" % os.getpid())

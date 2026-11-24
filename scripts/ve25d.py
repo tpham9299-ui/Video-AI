@@ -306,6 +306,333 @@ def nhan(ax, ay, s, tranh=(), co=26, mau="chu", nen=True, kc=30.0, uu_tien=None,
     return out
 
 
+# ---------------------------------------------------------------- v101.3: bộ lắp ghép chuẩn chống đè chữ
+# Mọi hàm dưới đây: tọa độ kẹp trong viewBox, chữ >= 24 px, chữ gần nét luôn nằm trong hộp nền tối ĐẶC của chính lớp (qua kiểm
+# thẩm mỹ TS_CHU_NHO / TS_MAU_LA / TS_NHAN_DE_NET / TS_CHONG_CHU), màu chỉ qua token MAU. Chỉ dùng builtins được hộp cát cho phép.
+def _dinh_deu(cx, cy, r, n, goc):
+    return [(cx + r * math.cos(math.radians(goc + 360.0 * k / n)), cy + r * math.sin(math.radians(goc + 360.0 * k / n))) for k in range(n)]
+
+
+def _trong_khung(pts, le=None):
+    le = LE / 2 if le is None else le
+    return all(le <= px <= W - le and le <= py <= H - le for px, py in pts)
+
+
+def _don_vi(dx, dy):
+    n = math.hypot(dx, dy) or 1.0
+    return dx / n, dy / n
+
+
+def _kich_pill(s, co):
+    return rong_chu(s, co) + 26.0, co + 14.0
+
+
+def tam_nhan(x, y, text, mau=None, co=24):
+    """Nhãn viên thuốc: hộp nền tối đặc viền màu theme, rộng theo độ dài chữ (không bao giờ bị nét cắt). (x, y) = tâm hộp."""
+    co = max(int(co), CO_CHU_MIN)
+    s = str(text)
+    toi_da = max(1, int((W - LE - 26.0) / (0.56 * co)))
+    s = s[:toi_da]
+    w, h = _kich_pill(s, co)
+    x0 = min(max(x - w / 2, LE / 2), W - LE / 2 - w)
+    y0 = min(max(y - h / 2, LE / 2), H - LE / 2 - h)
+    out = '<rect x="%s" y="%s" width="%s" height="%s" rx="%s" fill="%s" fill-opacity="0.96" stroke="%s" stroke-width="2.2"/>' % (
+        _f(x0), _f(y0), _f(w), _f(h), _f(h / 2), m("nen"), m(mau or "nhan"))
+    return out + chu(x0 + w / 2, y0 + h / 2 + co * 0.36, s, co=co, mau="chu")
+
+
+def da_giac_deu(cx, cy, r, so_canh, goc_bd=-90, mau=None, to_nen=False):
+    """Đa giác đều (3..12 cạnh) tâm (cx, cy), đỉnh đầu ở góc `goc_bd` độ. Tự co bán kính cho vừa viewBox.
+    Trả (svg, danh_sach_dinh) - các lớp sau dùng ĐÚNG tọa độ đỉnh này (nối đỉnh, gắn nhãn, cung góc)."""
+    n = max(3, min(int(so_canh), 12))
+    rr = float(r)
+    pts = _dinh_deu(cx, cy, rr, n, goc_bd)
+    for _ in range(60):
+        if _trong_khung(pts):
+            break
+        rr *= 0.95
+        pts = _dinh_deu(cx, cy, rr, n, goc_bd)
+    pts = [kep(px, py, LE / 2) for px, py in pts]
+    mc = mau or "nhan"
+    if to_nen:
+        s = '<polygon points="%s" fill="%s" fill-opacity="0.38" stroke="%s" stroke-width="2.4" stroke-linejoin="round"/>' % (diem(pts), m(mc), m("chu"))
+    else:
+        s = '<polygon points="%s" fill="none" stroke="%s" stroke-width="3.2" stroke-linejoin="round"/>' % (diem(pts), m(mc))
+    return s, pts
+
+
+def mui_ten_kich_thuoc(x1, y1, x2, y2, text, lech=26, mau=None):
+    """Đoạn đo kích thước: 2 đường gióng mảnh + đường đo song song cách `lech` px, 2 đầu mũi tên, nhãn viên thuốc ở giữa.
+    Tự đẩy sang PHÍA THOÁNG (còn đủ lề trong viewBox; ưu tiên phía dấu của `lech`)."""
+    mc = mau or "chu_mo"
+    ux, uy = _don_vi(x2 - x1, y2 - y1)
+    pnx, pny = -uy, ux
+    d0 = abs(float(lech)) or 26.0
+    s_txt = str(text)
+    w, h = _kich_pill(s_txt[:max(1, int((W - LE - 26.0) / (0.56 * CO_CHU_MIN)))], CO_CHU_MIN) if s_txt else (0.0, 0.0)
+    dai = math.hypot(x2 - x1, y2 - y1)
+    xa = h / 2 + 10.0 if (s_txt and dai < w + 70.0) else 0.0
+    uu = 1.0 if float(lech) >= 0 else -1.0
+
+    def hinh(sg):
+        a = (x1 + pnx * sg * d0, y1 + pny * sg * d0)
+        b = (x2 + pnx * sg * d0, y2 + pny * sg * d0)
+        c = ((a[0] + b[0]) / 2 + pnx * sg * xa, (a[1] + b[1]) / 2 + pny * sg * xa)
+        le = min([min(px - LE / 2, W - LE / 2 - px, py - LE / 2, H - LE / 2 - py) for px, py in (a, b, c)])
+        return a, b, c, le
+    h1, h2 = hinh(uu), hinh(-uu)
+    sg = uu
+    kq = h1
+    if h1[3] < 0 and h2[3] > h1[3]:
+        sg, kq = -uu, h2
+    a, b, c, _ = kq
+    a, b = kep(a[0], a[1], LE / 2), kep(b[0], b[1], LE / 2)
+    mx, my = (a[0] + b[0]) / 2, (a[1] + b[1]) / 2
+    out = ""
+    for (px, py), (qx, qy) in (((x1, y1), a), ((x2, y2), b)):
+        out += '<line x1="%s" y1="%s" x2="%s" y2="%s" stroke="%s" stroke-width="1.6" stroke-opacity="0.8"/>' % (
+            _f(px + pnx * sg * 6), _f(py + pny * sg * 6), _f(qx + pnx * sg * 8), _f(qy + pny * sg * 8), m(mc))
+    out += mui_ten(mx, my, a[0], a[1], mc, 2.4, 12.0) + mui_ten(mx, my, b[0], b[1], mc, 2.4, 12.0)
+    if s_txt:
+        out += tam_nhan(c[0], c[1], s_txt, mc)
+    return out
+
+
+def cung_goc(ox, oy, x1, y1, x2, y2, r=36, text="", mau=None):
+    """Cung góc tại đỉnh (ox, oy) giữa tia tới (x1, y1) và tia tới (x2, y2) (góc <= 180°); ~90° -> ký hiệu góc vuông.
+    `text` -> nhãn góc viên thuốc đặt ngoài cung theo phân giác."""
+    mc = mau or "ket"
+    a0 = math.degrees(math.atan2(y1 - oy, x1 - ox))
+    a1 = math.degrees(math.atan2(y2 - oy, x2 - ox))
+    dl = (a1 - a0 + 180.0) % 360.0 - 180.0
+    lo = a0 if dl >= 0 else a1
+    ang = abs(dl)
+    rr = max(18.0, min(float(r), 90.0))
+    if abs(ang - 90.0) <= 4.0:
+        k = 0.75 * min(rr, 40.0)
+        ux, uy = _don_vi(x1 - ox, y1 - oy)
+        vx, vy = _don_vi(x2 - ox, y2 - oy)
+        s = duong([(ox + ux * k, oy + uy * k), (ox + (ux + vx) * k, oy + (uy + vy) * k), (ox + vx * k, oy + vy * k)], mc, 3.0)
+        trong = k * 1.4142
+    else:
+        s = cung(ox, oy, rr, lo, lo + ang, mc, 3.2)
+        trong = rr
+    if text:
+        gm = math.radians(lo + ang / 2)
+        dx, dy = math.cos(gm), math.sin(gm)
+        w, h = _kich_pill(str(text), CO_CHU_MIN)
+        kc = trong + 16.0 + 0.5 * w * abs(dx) + 0.5 * h * abs(dy)
+        s += tam_nhan(ox + dx * kc, oy + dy * kc, text, mc)
+    return s
+
+
+def truc_so(x1, x2, y, cac_moc, mien_to=None, mau=None):
+    """Trục số nằm ngang từ x1 tới x2 tại độ cao y. cac_moc = [giá_trị | (giá_trị, 'nhãn'), ...] (vạch + nhãn dưới trục, nhãn
+    chồng nhau tự bỏ). mien_to = (a, b) -> dải tô khoảng nghiệm / tỉ lệ (a hoặc b = None: kéo tới đầu trục), kèm chấm đầu mút."""
+    mc = mau or "ket"
+    xa, xb = min(float(x1), float(x2)), max(float(x1), float(x2))
+    xa, xb = max(xa, LE), min(xb, W - LE)
+    yy = min(max(float(y), 40.0), H - 70.0)
+    ds = []
+    for it in cac_moc or ():
+        if isinstance(it, (list, tuple)) and len(it) >= 2:
+            ds.append((float(it[0]), str(it[1])))
+        else:
+            ds.append((float(it), "%g" % float(it)))
+    if len(ds) < 2:
+        ds = ds + [(ds[0][0] + 1.0, "%g" % (ds[0][0] + 1.0))] if ds else [(0.0, "0"), (1.0, "1")]
+    ds = sorted(ds, key=lambda p: p[0])
+    lo, hi = ds[0][0], ds[-1][0]
+    if hi - lo < 1e-12:
+        hi = lo + 1.0
+
+    def px(v):
+        return xa + 30.0 + (xb - xa - 60.0) * (v - lo) / (hi - lo)
+    out = ""
+    if mien_to:
+        a, b = mien_to[0], mien_to[1]
+        xl = px(float(a)) if a is not None else xa + 8.0
+        xr = px(float(b)) if b is not None else xb - 16.0
+        xl, xr = min(xl, xr), max(xl, xr)
+        out += '<polygon points="%s" fill="%s" fill-opacity="0.55"/>' % (diem([(xl, yy - 8), (xr, yy - 8), (xr, yy + 8), (xl, yy + 8)]), m(mc))
+    out += mui_ten(xa, yy, xb, yy, "chu_mo", 2.6)
+    cuoi = -1e9
+    for v, ten in ds:
+        p = px(v)
+        out += '<line x1="%s" y1="%s" x2="%s" y2="%s" stroke="%s" stroke-width="2.4"/>' % (_f(p), _f(yy - 9), _f(p), _f(yy + 9), m("chu"))
+        nua = 0.56 * CO_CHU_MIN * len(ten) / 2
+        if ten and p - nua >= cuoi + 6.0:
+            out += chu(p, yy + 40, ten, co=CO_CHU_MIN, mau="chu", dam=600)
+            cuoi = p + nua
+    if mien_to:
+        for e in (mien_to[0], mien_to[1]):
+            if e is not None:
+                out += cham(px(float(e)), yy, 7, mc)
+    return out
+
+
+def luoi_o(x, y, cot, hang, kich_thuoc=56, o_to=None, nhan_o=None):
+    """Lưới cot x hang ô vuông, góc trên trái (x, y). o_to = {(i, j): 'token'} | [(i, j[, 'token'])] (i = cột, j = hàng, từ 0);
+    nhan_o = {(i, j): 'chữ'} | [(i, j, 'chữ')] căn giữa ô (chữ dài hơn ô tự cắt). Ô tự co để lưới nằm trong viewBox."""
+    cot, hang = max(1, min(int(cot), 20)), max(1, min(int(hang), 14))
+    x = min(max(float(x), LE / 2), W - LE / 2 - 24.0 * cot)
+    y = min(max(float(y), LE / 2), H - LE / 2 - 24.0 * hang)
+    k = max(24.0, min(float(kich_thuoc), (W - LE / 2 - x) / cot, (H - LE / 2 - y) / hang))
+    to, nh = {}, {}
+    if isinstance(o_to, dict):
+        for kk, vv in o_to.items():
+            to[(int(kk[0]), int(kk[1]))] = vv if isinstance(vv, str) and vv else "ket"
+    else:
+        for it in o_to or ():
+            to[(int(it[0]), int(it[1]))] = it[2] if len(it) > 2 and it[2] else "ket"
+    if isinstance(nhan_o, dict):
+        for kk, vv in nhan_o.items():
+            nh[(int(kk[0]), int(kk[1]))] = str(vv)
+    else:
+        for it in nhan_o or ():
+            nh[(int(it[0]), int(it[1]))] = str(it[2])
+    out = ""
+    for j in range(hang):
+        for i in range(cot):
+            out += '<rect x="%s" y="%s" width="%s" height="%s" fill="%s" stroke="%s" stroke-width="1.6"/>' % (
+                _f(x + i * k), _f(y + j * k), _f(k), _f(k), m("mat"), m("chu_mo"))
+    for (i, j), tk in to.items():
+        if 0 <= i < cot and 0 <= j < hang:
+            out += '<rect x="%s" y="%s" width="%s" height="%s" fill="%s" fill-opacity="0.85" stroke="%s" stroke-width="1.6"/>' % (
+                _f(x + i * k + 2), _f(y + j * k + 2), _f(k - 4), _f(k - 4), m(tk), m("chu_mo"))
+    toi_da = max(1, int((k - 6.0) / (0.56 * CO_CHU_MIN)))
+    for (i, j), ten in nh.items():
+        if 0 <= i < cot and 0 <= j < hang and ten:
+            out += chu(x + i * k + k / 2, y + j * k + k / 2 + CO_CHU_MIN * 0.36, ten[:toi_da], co=CO_CHU_MIN, mau="nen" if (i, j) in to else "chu")
+    return out
+
+
+def so_do_venn(cac_tap, nhan_giao="", cx=400, cy=270, r=115):
+    """Sơ đồ Venn 2 hoặc 3 tập: vòng tròn bán trong suốt, tên tập (viên thuốc) ngoài vòng, nhãn phần chỉ-thuộc-một-tập (tùy chọn)
+    và `nhan_giao` ở giao chung. cac_tap = ['A', 'B'] hoặc [('A', '12'), ('B', '9')] (phần tử 2 = nhãn phần chỉ thuộc tập đó)."""
+    tap = []
+    for it in list(cac_tap)[:3]:
+        if isinstance(it, (list, tuple)):
+            tap.append((str(it[0]), str(it[1]) if len(it) > 1 and it[1] is not None else ""))
+        else:
+            tap.append((str(it), ""))
+    while len(tap) < 2:
+        tap.append(("B", ""))
+    n = len(tap)
+    mau = ("nhan", "ket", "dung")
+    huong = [(-0.8, -0.6), (0.8, -0.6)] if n == 2 else [(0.0, -1.0), (0.866, 0.5), (-0.866, 0.5)]
+    cx, cy = float(cx), float(cy)
+
+    def hinh(rr):
+        if n == 2:
+            ct = [(cx - 0.55 * rr, cy), (cx + 0.55 * rr, cy)]
+            vung = [(ct[0][0] - 0.45 * rr, cy), (ct[1][0] + 0.45 * rr, cy)]
+        else:
+            ct = [(cx + 0.58 * rr * hx, cy + 0.58 * rr * hy) for hx, hy in huong]
+            vung = [(ct[k][0] + huong[k][0] * 0.82 * rr, ct[k][1] + huong[k][1] * 0.82 * rr) for k in range(3)]
+        hop_ = []
+        for k in range(n):
+            w, h = _kich_pill(tap[k][0], CO_CHU_MIN)
+            dx, dy = _don_vi(huong[k][0], huong[k][1])
+            kc = rr + 16.0 + 0.5 * w * abs(dx) + 0.5 * h * abs(dy)
+            px, py = ct[k][0] + dx * kc, ct[k][1] + dy * kc
+            hop_.append((px, py, w, h))
+        return ct, vung, hop_
+    rr = float(r)
+    ct, vung, hop_ = hinh(rr)
+    for _ in range(40):
+        diemx = [(c[0] - rr, c[1] - rr) for c in ct] + [(c[0] + rr, c[1] + rr) for c in ct] + \
+                [(px - w / 2, py - h / 2) for px, py, w, h in hop_] + [(px + w / 2, py + h / 2) for px, py, w, h in hop_]
+        if _trong_khung(diemx):
+            break
+        rr *= 0.94
+        ct, vung, hop_ = hinh(rr)
+    out = ""
+    for k in range(n):
+        out += '<circle cx="%s" cy="%s" r="%s" fill="%s" fill-opacity="0.26" stroke="%s" stroke-width="3.2"/>' % (
+            _f(ct[k][0]), _f(ct[k][1]), _f(rr), m(mau[k]), m(mau[k]))
+    for k in range(n):
+        if tap[k][1]:
+            out += chu(vung[k][0], vung[k][1] + 9, tap[k][1], co=26, mau="chu")
+    if nhan_giao:
+        out += chu(cx, cy + 9, str(nhan_giao), co=26, mau="chu")
+    for k in range(n):
+        out += tam_nhan(hop_[k][0], hop_[k][1], tap[k][0], mau[k])
+    return out
+
+
+def phan_nhanh_de_quy(cx, cy, r, bac=1, kieu="koch", mau=None):
+    """Hình đệ quy chuẩn theo bậc bac = 0..3: 'koch' (bông tuyết 3 cạnh đối xứng), 'tam_giac_chia' (Sierpinski), 'cay_nhi_phan'.
+    Gọi lại với bac tăng dần ở từng bước để hình biến đổi; cùng (cx, cy, r) -> các bậc khớp nhau."""
+    bac = max(0, min(int(bac), 3))
+    mc = mau or "nhan"
+    cx, cy, r = float(cx), float(cy), float(r)
+    if kieu == "koch":
+        rr = max(20.0, min(r, cx - LE / 2 - 2, W - LE / 2 - 2 - cx, cy - LE / 2 - 2, H - LE / 2 - 2 - cy))
+        goc = _dinh_deu(cx, cy, rr, 3, -90)
+
+        def koch(p, q, sg, n):
+            if n == 0:
+                return [p]
+            dx, dy = q[0] - p[0], q[1] - p[1]
+            b1 = (p[0] + dx / 3, p[1] + dy / 3)
+            b2 = (p[0] + 2 * dx / 3, p[1] + 2 * dy / 3)
+            dinh = (p[0] + dx / 2 - sg * dy * 0.28868, p[1] + dy / 2 + sg * dx * 0.28868)
+            return koch(p, b1, sg, n - 1) + koch(b1, dinh, sg, n - 1) + koch(dinh, b2, sg, n - 1) + koch(b2, q, sg, n - 1)
+        pts = []
+        for k in range(3):
+            p, q = goc[k], goc[(k + 1) % 3]
+            mid = ((p[0] + q[0]) / 2 - cx, (p[1] + q[1]) / 2 - cy)
+            sg = 1.0 if (-(q[1] - p[1]) * mid[0] + (q[0] - p[0]) * mid[1]) > 0 else -1.0
+            pts += koch(p, q, sg, bac)
+        pts = [kep(px, py, LE / 2) for px, py in pts]
+        return '<polygon points="%s" fill="%s" fill-opacity="0.30" stroke="%s" stroke-width="%.1f" stroke-linejoin="round"/>' % (
+            diem(pts), m(mc), m(mc), max(1.6, 3.6 - 0.6 * bac))
+    if kieu == "tam_giac_chia":
+        rr = max(20.0, min(r, (cx - LE / 2 - 2) / 0.866, (W - LE / 2 - 2 - cx) / 0.866, cy - LE / 2 - 2, (H - LE / 2 - 2 - cy) * 2.0))
+        a, b, c = _dinh_deu(cx, cy, rr, 3, -90)
+
+        def chia(a_, b_, c_, n):
+            if n == 0:
+                return [(a_, b_, c_)]
+            ab = ((a_[0] + b_[0]) / 2, (a_[1] + b_[1]) / 2)
+            ac = ((a_[0] + c_[0]) / 2, (a_[1] + c_[1]) / 2)
+            bc = ((b_[0] + c_[0]) / 2, (b_[1] + c_[1]) / 2)
+            return chia(a_, ab, ac, n - 1) + chia(ab, b_, bc, n - 1) + chia(ac, bc, c_, n - 1)
+        out = ""
+        if bac:
+            out += '<polygon points="%s" fill="none" stroke="%s" stroke-width="1.8" stroke-opacity="0.7"/>' % (diem([a, b, c]), m("cu"))
+        for t in chia(a, b, c, bac):
+            out += '<polygon points="%s" fill="%s" fill-opacity="0.82" stroke="%s" stroke-width="1.4" stroke-linejoin="round"/>' % (diem(t), m(mc), m("nen"))
+        return out
+    if kieu == "cay_nhi_phan":
+        ds = []
+
+        def nhanh(px, py, g, dai, sau):
+            qx, qy = px + dai * math.cos(math.radians(g)), py + dai * math.sin(math.radians(g))
+            ds.append((px, py, qx, qy, sau))
+            if sau < bac:
+                nhanh(qx, qy, g - 28.0, dai * 0.72, sau + 1)
+                nhanh(qx, qy, g + 28.0, dai * 0.72, sau + 1)
+        nhanh(cx, cy + 0.7 * r, -90.0, 0.62 * r, 0)
+        xs = [p for d in ds for p in (d[0], d[2])]
+        ys = [p for d in ds for p in (d[1], d[3])]
+        kk = 1.0
+        for lim, v, c0 in ((W - LE / 2 - 4, max(xs), cx), (LE / 2 + 4, min(xs), cx), (H - LE / 2 - 4, max(ys), cy), (LE / 2 + 4, min(ys), cy)):
+            if abs(v - c0) > 1e-9 and (v - c0) * (lim - c0) > 0 and abs(v - c0) > abs(lim - c0):
+                kk = min(kk, abs(lim - c0) / abs(v - c0))
+        out = ""
+        for px, py, qx, qy, sau in ds:
+            ax, ay = kep(cx + kk * (px - cx), cy + kk * (py - cy), LE / 2)
+            bx, by = kep(cx + kk * (qx - cx), cy + kk * (qy - cy), LE / 2)
+            out += '<line x1="%s" y1="%s" x2="%s" y2="%s" stroke="%s" stroke-width="%.1f" stroke-linecap="round"/>' % (
+                _f(ax), _f(ay), _f(bx), _f(by), m(mc), max(2.0, 4.6 - 0.9 * sau))
+            if sau == bac:
+                out += cham(bx, by, 6, "ket")
+        return out
+    raise ValueError("kieu phai la koch / tam_giac_chia / cay_nhi_phan")
+
+
 def lop(buoc, svg, hieu_ung="moc", khi_noi=None, nhan_lop=None, nhom=None):
     d = {"buoc": int(buoc), "svg": "<g>" + svg + "</g>", "hieu_ung": hieu_ung}
     if khi_noi:

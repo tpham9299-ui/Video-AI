@@ -5,6 +5,8 @@
   3. đổi họ màu nhấn theo theme; vá tối đa 2 lần khi hợp đồng tu_sinh_svg -> vẫn hỏng: tuSinhHong;
   4. cờ lệch pha hình - tiếng canhBaoDongBo; Mắt thần thêm lỗi cứng lech_pha / tu_sinh_hong;
   5. Evergreen bản Python; định tuyến cay_bayes; 2 mẫu mau/v99_2 chạy chuanbi --gia-lap (tự sinh, theme, không cờ hỏng).
+  6. v101.3: bộ hàm lắp ghép mới của ve25d (tam_nhan, da_giac_deu, mui_ten_kich_thuoc, cung_goc, truc_so, luoi_o, so_do_venn,
+     phan_nhanh_de_quy) chạy trong hộp cát và qua kiểm thẩm mỹ; mã lỗi TS_LOP_RONG / TS_KHOANG_TRONG; chặn dựng khi tuSinhHong.
 """
 import colorsys
 import json
@@ -239,6 +241,97 @@ def _mau(ten, thoi_min=20):
 
 t("mẫu gap_nhau_xs (xác suất + tự sinh + theme indigo đổi màu nhấn)", lambda: assert_true(_mau("gap_nhau_xs")["khung4tang"]["theme"] == "cosmic_indigo"))
 t("mẫu kien_bo_hop (thực tế + tự sinh, lớp kết quả không trước giọng công bố)", lambda: _mau("kien_bo_hop"))
+
+print("6. v101.3 - bộ lắp ghép chuẩn ve25d chạy TRONG hộp cát + kiểm thẩm mỹ")
+
+MA_V1013_A = '''import math
+import ve25d as v
+
+
+def ve():
+    ds = []
+    ds.append(v.lop(0, v.tam_nhan(400, 270, "Điểm M", "ket") + v.tam_nhan(120, 60, "A") + v.tam_nhan(5, 535, "góc dưới trái dài"), "no", nhom="n"))
+    s, P = v.da_giac_deu(400, 270, 150, 6, to_nen=True)
+    ds.append(v.lop(1, s + v.nhan(P[0][0], P[0][1], "A", tranh=P), "no", nhom="n"))
+    s5, P5 = v.da_giac_deu(400, 270, 900, 5)
+    ds.append(v.lop(2, s5, "ve", nhom="n"))
+    ds.append(v.lop(3, v.duong([(200, 400), (600, 400)], "nhan") + v.mui_ten_kich_thuoc(200, 400, 600, 400, "8 cm", 30), "ve", nhom="n"))
+    ds.append(v.lop(4, v.duong([(300, 400), (600, 400)], "nhan") + v.duong([(300, 400), (300, 150)], "nhan")
+                    + v.cung_goc(300, 400, 600, 400, 300, 150, 36, "90°"), "moc", nhom="n"))
+    ds.append(v.lop(5, v.duong([(300, 400), (600, 400)], "nhan") + v.duong([(300, 400), (500, 200)], "nhan")
+                    + v.cung_goc(300, 400, 600, 400, 500, 200, 50, "45°"), "moc", nhom="n"))
+    ds.append(v.lop(6, v.truc_so(60, 740, 300, [-3, -1, 0, 2, 5], mien_to=(-1, 2)), "ve", nhom="n"))
+    ds.append(v.lop(7, v.luoi_o(100, 100, 6, 4, 56, {(1, 1): "ket", (2, 2): "nhan"}, {(0, 0): "1", (1, 1): "A", (3, 2): "12"}), "no", nhom="n"))
+    ds.append(v.lop(8, v.so_do_venn(["A", "B"], "A∩B"), "no", nhom="n"))
+    ds.append(v.lop(9, v.so_do_venn([("A", "12"), ("B", "9"), ("C", "7")], "3"), "no", nhom="n"))
+    for b in range(4):
+        ds.append(v.lop(10 + b, v.phan_nhanh_de_quy(400, 270, 190, b, "koch"), "ve", nhom="n"))
+    return ds
+'''
+
+MA_V1013_B = '''import math
+import ve25d as v
+
+
+def ve():
+    ds = []
+    for b in range(4):
+        ds.append(v.lop(b, v.phan_nhanh_de_quy(400, 270, 200, b, "tam_giac_chia"), "no", nhom="n"))
+    for b in range(4):
+        ds.append(v.lop(4 + b, v.phan_nhanh_de_quy(400, 270, 200, b, "cay_nhi_phan", "ket"), "ve", nhom="n"))
+    ds.append(v.lop(8, v.phan_nhanh_de_quy(60, 60, 400, 3, "koch"), "ve", nhom="n"))
+    return ds
+'''
+
+
+def _v1013(ma, n):
+    ds = ts.dung(ma, n)
+    assert_true(len(ds) == n, "thiếu lớp: %d/%d" % (len(ds), n))
+
+
+t("tam_nhan / da_giac_deu / mui_ten_kich_thuoc / cung_goc / truc_so / luoi_o / so_do_venn / koch qua hộp cát + thẩm mỹ", lambda: _v1013(MA_V1013_A, 14))
+t("tam_giac_chia / cay_nhi_phan 4 bậc + biên cực (tâm sát góc, bán kính quá lớn) qua hộp cát + thẩm mỹ", lambda: _v1013(MA_V1013_B, 9))
+
+
+def _pill_chua_chu():
+    import re
+    s = v.tam_nhan(400, 270, "Một nhãn khá dài", "nhan", 24)
+    x, y, w, h = (float(n) for n in re.search(r'<rect x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)"', s).groups())
+    assert_true(w >= 0.52 * 24 * len("Một nhãn khá dài") + 6, "hộp hẹp hơn chữ")
+    assert_true(0 <= x and x + w <= 800 and 0 <= y and y + h <= 540)
+    sv, dinh = v.da_giac_deu(400, 270, 150, 6)
+    assert_true(len(dinh) == 6 and all(0 <= px <= 800 and 0 <= py <= 540 for px, py in dinh), "đỉnh ngoài viewBox")
+    assert_true(abs(dinh[0][0] - 400) < 1e-6 and abs(dinh[0][1] - 120) < 1e-6, "đỉnh đầu phải ở trên cùng (góc -90)")
+    k = v.mui_ten_kich_thuoc(200, 400, 600, 400, "8 cm")
+    assert_true(k.count("<polygon") == 2 and k.count("<line") >= 4, "thiếu 2 mũi tên / 2 đường gióng")
+    for bac in range(4):
+        n_dinh = v.phan_nhanh_de_quy(400, 270, 190, bac, "koch").count(",")
+        assert_true(n_dinh == 3 * 4 ** bac, "Koch bậc %d phải có %d đỉnh, có %d" % (bac, 3 * 4 ** bac, n_dinh))
+
+
+t("tam_nhan hộp chứa chữ; đa giác đều đỉnh đúng; đoạn đo 2 mũi tên + gióng; Koch 3·4^bậc đỉnh", _pill_chua_chu)
+
+
+def _loi_moi():
+    phai_loi("TS_LOP_RONG", [lop(0, ""), lop(1, v.chu(300, 100, "B", 26)), lop(2, v.chu(500, 100, "C", 26))], 3)
+    ds_trong = [lop(0, v.chu(100, 100, "A", 26)), lop(1, v.chu(300, 100, "B", 26)), lop(5, v.chu(500, 100, "C", 26))]
+    phai_loi("TS_KHOANG_TRONG", ds_trong, 6)
+    ts.dung(ma_ve([lop(0, v.chu(100, 100, "A", 26)), lop(1, v.chu(300, 100, "B", 26)), lop(4, v.chu(500, 100, "C", 26))]), 5)   # trống 2 bước < 3: được phép
+    assert_true("lớp" in ts.goi_y_sua("TS_KHOANG_TRONG: bước 3..4") and ts.goi_y_sua("không có mã") == "")
+
+
+t("mã lỗi mới: TS_LOP_RONG, TS_KHOANG_TRONG (>= 3 bước liền) + gợi ý sửa đúng trọng tâm", _loi_moi)
+
+
+def _chan_tu_sinh_hong_workflow():
+    yml = open(os.path.join(GOC, ".github", "workflows", "dung-video.yml"), encoding="utf8").read()
+    i = yml.index("id: tu_sinh")
+    assert_true("tuSinhHong" in yml[i:i + 800] and "KIEM_DUYET_BO_CUC" in yml[i:i + 3000] and "exit 1" in yml[i:i + 3600], "thiếu bước chặn tu_sinh_hong")
+    assert_true(yml.index("id: tu_sinh") < yml.index("npx remotion bundle") < yml.index("dung_khuc:"), "bước chặn phải chạy TRƯỚC bundle / dựng khúc")
+    assert_true("steps.tu_sinh.outputs.da_bao" in yml, "output chan chưa gộp da_bao của tu_sinh")
+
+
+t("dung-video.yml: tuSinhHong dừng sớm trước bundle / dựng khúc, vẫn báo về Apps Script (chan)", _chan_tu_sinh_hong_workflow)
 
 print("\nKẾT QUẢ: %d đạt, %d hỏng" % (dat, loi))
 sys.exit(1 if loi else 0)
