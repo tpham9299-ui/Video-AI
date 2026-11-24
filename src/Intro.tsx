@@ -4,6 +4,7 @@ import {napPhong} from './phong';
 import {easeInOut, easeOut, kep} from './sankhau/donghieu';
 import {FONT, FONT_TIEU_DE} from './theme';
 import {IntroProps, ThuongHieuProps} from './types';
+import {TEN_KENH} from './ThuongHieu';
 
 // INTRO THƯƠNG HIỆU "NÉT VẼ HÌNH HỌC" (chèn TRƯỚC cảnh hook, cấu hình ở phong_cach.json -> "intro"):
 //  1. Nét sáng tự vẽ đường tròn rồi tam giác nội tiếp (kiểu Manim), các đỉnh lóe màu phụ.
@@ -37,7 +38,7 @@ export const Intro: React.FC<{it: IntroProps; th: ThuongHieuProps}> = ({it, th})
   const nhan = it.mauNhan || '#3BF29A';
   const phu = it.mauPhu || '#FF8A3D';
   const nen = it.mauNen || '#071513';
-  const ten = (it.ten || th.ten || th.handle || '').trim();
+  const ten = TEN_KENH; // khóa cứng thương hiệu, không đổi theo mảng kiến thức
   const khau = (it.khauHieu ?? th.khauHieu ?? '').trim();
 
   // 1. vẽ hình

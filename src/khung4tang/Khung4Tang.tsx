@@ -15,7 +15,8 @@ import {TangTieuDe} from './TangTieuDe';
 import {TangTheGiai} from './TangTheGiai';
 import {ThanhDe} from './ThanhDe';
 import {boCuc4Tang, LE_ND, RONG_ND, Vung} from './vung';
-import {BuocGiai, Khung4TangVao} from './kieu';
+import {BuocGiai, Khung4TangVao, MocCau} from './kieu';
+import {TEN_KENH} from '../ThuongHieu';
 import {docDoiChieu} from './doi_chieu';
 import {DoiChieu2Cot} from './DoiChieu';
 import {giayIntro, INTRO_SAN, IntroMocCau, raIntro} from './IntroMocCau';
@@ -63,7 +64,7 @@ const PhuDeMotDong: React.FC<{cau: {text: string; bat: number; ket: number}; t: 
   return (
     <div data-vung="phu_de" style={{position: 'absolute', left: LE_ND, width: RONG_ND, top: y, height: 50, display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: a}}>
       <div style={{maxWidth: RONG_ND, padding: '2px 18px 4px', borderRadius: 14, background: 'rgba(8,10,14,0.80)', border: '1px solid rgba(255,255,255,0.08)',
-        fontFamily: FONT, fontWeight: 800, fontSize: co, lineHeight: 1.16, color: '#FFFFFF', whiteSpace: 'nowrap', textWrap: 'nowrap' as React.CSSProperties['textWrap'], overflow: 'hidden',
+        fontFamily: FONT, fontWeight: 800, fontSize: co, lineHeight: 1.16, color: '#FFFFFF', whiteSpace: 'nowrap', textWrap: 'nowrap' as React.CSSProperties['textWrap'], overflow: 'visible',
         textShadow: '0 2px 0 #000, 0 -1px 0 #000, 1.5px 0 0 #000, -1.5px 0 0 #000, 0 0 8px rgba(0,0,0,0.85)'}}>
         {chu.split(' ').map((w, k) => (
           <span key={k} style={{whiteSpace: 'pre', textWrap: 'nowrap' as React.CSSProperties['textWrap'], ...(TU_KHOA.test(w.replace(/[,.!?;:]/g, '')) ? {color: mau, fontWeight: 800} : {})}}>{(k ? ' ' : '') + w}</span>
@@ -75,7 +76,7 @@ const PhuDeMotDong: React.FC<{cau: {text: string; bat: number; ket: number}; t: 
 
 // v98: mỗi tầng đặt ĐỐI XỨNG: left bc.le (130), rộng bc.rong (820) -> tâm 540; vẫn tránh cột nút Tim/Bình luận/Lưu (phải 12 %)
 const Tang: React.FC<{ten: string; v: Vung; rong?: number; le?: number; co?: number; children: React.ReactNode}> = ({ten, v, rong = 1080, le = 0, co = 1, children}) => (
-  <div data-vung={ten} style={{position: 'absolute', left: le, width: rong, top: v.y, height: v.h, overflow: 'hidden', ...(co !== 1 ? {transform: `scale(${co})`, transformOrigin: 'center center'} : {})}}>
+  <div data-vung={ten} style={{position: 'absolute', left: le, width: rong, top: v.y, height: v.h, overflow: 'visible', ...(co !== 1 ? {transform: `scale(${co})`, transformOrigin: 'center center'} : {})}}>
     {children}
   </div>
 );
@@ -122,7 +123,14 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
   const mauNhan = i >= 0 ? mauB(buoc[i]) : MAU_3DV.cyan;
   const tong = p.tongFrame / fps;
   // v93: Intro móc câu phủ G giây đầu; sân khấu 3D nằm giữa màn hình (zoom-out + xoay mở) rồi trượt về T2, các tầng khác vào sau
-  const G = giayIntro(p.mocCau, tong);
+  // Không để mất Intro: kịch bản thiếu `mocCau` (vd. bài xác suất 12 thẻ) -> dựng Intro dự phòng từ bước 1 + câu thoại đầu
+  const mocCau = useMemo<MocCau | null>(() => {
+    if (p.mocCau || p.khongGian) return p.mocCau || null;
+    const tieu = (buoc[0]?.tieu_de || '').replace(/\s+/g, ' ').trim();
+    const hook = ((p.cau || [])[0]?.text || '').replace(/\s+/g, ' ').trim();
+    return {nhan_thi: 'BÀI TOÁN HAY', tieu_de: tieu || 'Bài toán hôm nay', phu_de: TEN_KENH, cau_hook: hook || 'Bạn giải được không?', cta: 'Lưu bài để ôn'};
+  }, [p.mocCau, p.khongGian, p.cau, buoc]);
+  const G = giayIntro(mocCau, tong);
   const ra = raIntro(t, G);
   const lechMay = G > 0 && t < G ? {k: 1 + 0.35 * (1 - emRa(t / 1.6)), n: 32 * (1 - emRa(t / 2.2))} : undefined;
   // v97 tối giản: trong Intro sân khấu cao 883 px thu về đúng ô INTRO_SAN (scale 648/883, neo tâm) rồi giãn ra khi trượt về T2
@@ -202,7 +210,7 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
           </Tang>
         )}
       </div>
-      {G > 0 && t < G && p.mocCau ? <IntroMocCau m={p.mocCau} t={t} G={G} /> : null}
+      {G > 0 && t < G && mocCau ? <IntroMocCau m={mocCau} t={t} G={G} /> : null}
       {cauNay && ra > 0.5 ? <PhuDeMotDong cau={cauNay} t={t} y={toiGian ? VUNG_TOI_GIAN.phuDe : t3.y + t3.h + 6} mau={mauNhan} /> : null}
     </AbsoluteFill>
   );

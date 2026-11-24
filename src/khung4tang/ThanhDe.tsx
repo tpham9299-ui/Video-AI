@@ -12,9 +12,19 @@ import {CYAN, HO_PHACH} from './mau_v981';
 
 const CHU_MO = 'rgba(230,237,245,0.78)';
 
+// Chặn lộ đáp số: ô ghim (hoặc ô khác trùng đúng vế phải với ô đáp số `doi`) chưa tới mốc đổi chỉ được ghi "L = ?"
+const gon = (s: string) => s.replace(/\\[,;!:]|\\text\{[^}]*\}|\\mathrm\{[^}]*\}|\\\s|\s/g, '');
+const veTrai = (s: string) => (s.includes('=') ? s.slice(0, s.lastIndexOf('=')).trimEnd() : s);
+const vePhai = (s: string) => gon(s.includes('=') ? s.slice(s.lastIndexOf('=') + 1) : '');
+const nhanAn = (p: DuKienGhim, ds: DuKienGhim[], t: number): string => {
+  if (p.doi && t < p.doi.t) return p.nhan.includes('?') || !p.nhan.includes('=') ? p.nhan : `${veTrai(p.nhan)} = ?`;
+  const lo = ds.some((q) => q !== p && q.doi && t < q.doi.t && vePhai(q.doi.nhan) !== '' && vePhai(q.doi.nhan) === vePhai(p.nhan) && gon(veTrai(q.doi.nhan)) === gon(veTrai(p.nhan)));
+  return lo ? `${veTrai(p.nhan)} = ?` : p.nhan;
+};
+
 export const ThanhDe: React.FC<{ds: DuKienGhim[]; buoc: BuocGiai[]; i: number; t: number; cao: number}> = ({ds, buoc, i, t, cao}) => {
   if (!ds.length) return null;
-  const muc = ds.slice(0, 6);
+  const muc = ds.slice(0, 6).map((p) => ({...p, nhan: nhanAn(p, ds, t)}));
   // cỡ chữ chung: co lại tới khi cả dải vừa bề rộng (nhãn "ĐỀ" + dữ kiện + chấm ngăn)
   let co = 30;
   const rongHang = (c: number) => 64 + 44 + muc.reduce((s, p) => s + Math.max(rongNhan(p.nhan, c), p.doi ? rongNhan(p.doi.nhan, c) : 0) + 30, 0);

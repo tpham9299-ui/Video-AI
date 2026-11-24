@@ -14,7 +14,7 @@ function Mot({b, so, tong, mau, a, lech}: {b: BuocGiai; so: number; tong: number
   // v99.2: nhãn phụ không lặp "BƯỚC n" của viên thuốc (kịch bản cũ ghi nhan = "Bước 1"); rỗng -> chỉ còn viên thuốc
   const nhan = nhanPhuBuoc(b.nhan, so - 1, tong);
   // v96: T1 thấp hơn (186 px, vùng an toàn TikTok top 11 %) -> thang tiêu đề 70/58/50 để 2 dòng vẫn vừa
-  const co = tieuDe.length > 34 ? 50 : tieuDe.length > 24 ? 58 : Math.min(70, CO_CHU.tieuDe[0]);
+  const co = Math.max(34, Math.min(tieuDe.length > 34 ? 50 : tieuDe.length > 24 ? 58 : Math.min(70, CO_CHU.tieuDe[0]), Math.floor(1500 / Math.max(1, tieuDe.length * 0.62)))); // auto-fit tối đa 2 dòng trong 860 px
   return (
     <div style={{position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, opacity: a, transform: `translateY(${lech}px)`}}>
       <div style={{display: 'flex', alignItems: 'center', height: 50, borderRadius: 25, border: `1.5px solid ${mau}`, background: `${mau}1A`, padding: nhan ? '0 22px 0 6px' : '0 6px', gap: 14, boxShadow: `0 0 22px ${mau}33`}}>

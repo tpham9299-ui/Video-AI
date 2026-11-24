@@ -14,6 +14,9 @@ import {CanhProps, ThuongHieuProps} from './types';
 const XANH = '#3BF29A';
 const CAM = '#FF8A3D';
 
+// Khóa cứng thương hiệu: mọi mảng kiến thức (kể cả Hình học, Hàm số, Parabol) luôn hiện "Tư duy Xác suất"
+export const TEN_KENH = 'Tư duy Xác suất';
+
 const chuCai = (th: ThuongHieuProps) => {
   const s = (th.ten || th.handle || '').replace(/^@/, '').trim();
   const w = s.split(/\s+/).filter(Boolean);
@@ -33,11 +36,11 @@ export const LogoTron: React.FC<{th: ThuongHieuProps; co: number; goc?: number; 
       {th.logo ? (
         <Img src={staticFile(th.logo)} style={{width: '86%', height: '86%', objectFit: 'contain'}} />
       ) : (
-        co >= 96 && (th.ten || '').trim().split(/\s+/).length >= 2 ? (
+        co >= 96 ? (
           // v92: logo chữ ĐỘNG theo chuyên mục ("Tư duy" / "Toán" | "Xác suất"), không dùng ảnh in cứng tên chuyên mục khác
           <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.02, textAlign: 'center', padding: '0 8%'}}>
-            <span style={{fontFamily: FONT_DAM, fontWeight: 800, fontSize: co * 0.15, color: 'rgba(255,255,255,0.86)'}}>{dongLogo(th.ten)[0]}</span>
-            <span style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: co * (dongLogo(th.ten)[1].length > 6 ? 0.17 : 0.22), color: XANH}}>{dongLogo(th.ten)[1]}</span>
+            <span style={{fontFamily: FONT_DAM, fontWeight: 800, fontSize: co * 0.15, color: 'rgba(255,255,255,0.86)'}}>{dongLogo(TEN_KENH)[0]}</span>
+            <span style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: co * (dongLogo(TEN_KENH)[1].length > 6 ? 0.17 : 0.22), color: XANH}}>{dongLogo(TEN_KENH)[1]}</span>
           </div>
         ) : (
           <span style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: co * 0.38, color: '#fff'}}>{chuCai(th)}</span>
@@ -49,7 +52,7 @@ export const LogoTron: React.FC<{th: ThuongHieuProps; co: number; goc?: number; 
 
 // huy hiệu: mo = độ mở phần chữ (0 = chỉ còn logo)
 const HuyHieu: React.FC<{th: ThuongHieuProps; vao: number; mo: number; dong2: string; sang: number; goc: number}> = ({th, vao, mo, dong2, sang, goc}) => {
-  const ten = th.ten || th.handle;
+  const ten = TEN_KENH;
   const vetSang = ((goc * 2) % 360) / 360;
   return (
     <div style={{display: 'flex', alignItems: 'center', gap: 14, transform: `scale(${popOut(vao, 2)})`, transformOrigin: '32px 50%', opacity: kep(vao * 3)}}>
@@ -183,7 +186,7 @@ export const ManKetTuTao: React.FC<{th: ThuongHieuProps}> = ({th}) => {
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
   const a = kep(f / 12);
-  const ten = th.ten || th.handle;
+  const ten = TEN_KENH;
   const soChu = Math.round(kep((f - 8) / 18) * ten.length);
   const bam = kep((f - 1.4 * fps) / 8);
   const r = ngauNhien(3);
