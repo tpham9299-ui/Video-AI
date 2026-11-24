@@ -243,21 +243,35 @@ const LIST = [
     ctx.danhSachModel_('nang');
     assert.equal(fetchDem, 3, 'thử tối đa 3 key, lần 2 không thử lại');
   });
-  await t('KhoKey: 404 ghi cặp (model, key) trong ngày; key đó bị bỏ, hết key -> MODEL_KHONG_CO_HOM_NAY', () => {
+  await t('KhoKey: 404 nhớ MODEL trong CacheService 6 giờ; key KHÔNG bị đánh dấu hỏng / bỏ; model404HomNay_ đọc lại từ cache', () => {
     delete bo.DS_MODEL_SONG_LOI;
     props.GEMINI_API_KEY = 'gk1';
+    delete props.MODEL_404_NGAY;
     phanHoi = () => ({code: 404, text: raw404});
+    assert.ok(!ctx.model404HomNay_('gemini-2.5-pro'), 'trước đó chưa nhớ');
     const r1 = ctx.khoGoi_('VIDEO', 'gemini-2.5-pro', {contents: []}, {hanChoMs: 0});
     assert.equal(r1.code, 404);
-    assert.ok(JSON.parse(props.MODEL_404_NGAY).cap['gemini-2.5-pro|' + ctx.khoId_('gk1')]);
+    assert.ok(bo['kho404m_gemini-2.5-pro'], 'model được ghi vào CacheService');
+    assert.ok(!('MODEL_404_NGAY' in props), 'không ghi MODEL_404_NGAY vào ScriptProperties');
+    assert.ok(ctx.model404HomNay_('gemini-2.5-pro'), 'model404HomNay_ đọc đúng từ cache');
+    // key không bị đánh dấu hỏng / hết hạn mức, vẫn nằm trong hàng đợi key
+    const id = ctx.khoId_('gk1');
+    assert.ok(!Object.keys(bo).some((k) => k === 'kdx_' + id || k.startsWith('kdd_' + id) || k.startsWith('kdb_' + id)), 'key không bị đánh dấu');
+    assert.ok(!Object.keys(props).some((k) => k.startsWith('kd_' + id) || k.startsWith('kdm_' + id)), 'key không bị khóa trong ScriptProperties');
+    assert.ok(ctx.khoDanhSachKey_().includes('gk1'), 'key vẫn trong hàng đợi');
+    // model khác (không 404) vẫn dùng được key đó
+    const cacheTruoc = {...bo};
+    const tt = ctx.khoXep_('VIDEO', 'gemini-2.5-flash');
+    assert.ok(!tt.co404 && tt.dung.includes('gk1'), 'model khác vẫn xếp được key');
+    Object.keys(cacheTruoc).forEach((k) => assert.equal(bo[k], cacheTruoc[k]));
+    // lần 2: model đã 404 -> không gọi lại mạng
     const n = fetchDem;
     const r2 = ctx.khoGoi_('VIDEO', 'gemini-2.5-pro', {contents: []}, {hanChoMs: 0});
     assert.equal(r2.code, 404);
-    assert.ok(/MODEL_KHONG_CO_HOM_NAY/.test(r2.raw));
+    assert.ok(/MODEL_KHONG_CO/.test(r2.raw));
     assert.equal(fetchDem, n, 'không gọi lại');
-    assert.ok(ctx.model404HomNay_('gemini-2.5-pro'));
-    props.MODEL_404_NGAY = JSON.stringify({ngay: '2000-01-01', cap: {['gemini-2.5-pro|' + ctx.khoId_('gk1')]: 1}});
-    assert.ok(!ctx.model404HomNay_('gemini-2.5-pro'), 'sang ngày mới tự bỏ');
+    delete bo['kho404m_gemini-2.5-pro'];
+    assert.ok(!ctx.model404HomNay_('gemini-2.5-pro'), 'hết hạn cache -> tự bỏ');
   });
   await t('goiGemini_: 404 kèm gợi ý -> thử model gợi ý ngay sau', () => {
     const goi = [];
