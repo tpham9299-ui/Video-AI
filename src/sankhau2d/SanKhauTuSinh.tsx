@@ -30,7 +30,16 @@ export function chuanKyHieu(s: string): string {
     .replace(/\b(m|cm|km|dm|mm)3(?![0-9])/g, (_m, u) => u + '³');
 }
 
-type TP = {id: string; t: number; loai: 'doan' | 'diem' | 'hinh' | 'nhan'; d?: string; x?: number; y?: number; ten?: string; x2?: number; y2?: number; nhanh?: boolean};
+// v99.10: bước nhắc tới mặt phẳng -> làm nổi mặt phẳng đang xét, dịu phần còn lại
+export const RE_MAT_PHANG = /mặt phẳng|\bmp\b|\(\s*[A-Z]{3,4}\s*\)/i;
+export function buocHienTai(bs: {t: number; text: string}[] | undefined, t: number): string {
+  const ds = (bs || []).slice().sort((a, b) => a.t - b.t);
+  let r = '';
+  ds.forEach((b) => b.t <= t && (r = b.text));
+  return r;
+}
+
+type TP = {id: string; t: number; loai: 'doan' | 'diem' | 'hinh' | 'nhan' | 'mat'; d?: string; x?: number; y?: number; ten?: string; x2?: number; y2?: number; nhanh?: boolean};
 
 // giãn nhãn: đẩy cặp gần nhau ra xa, kẹp trong khung (chữ >= 22 px nên cần cách >= 30)
 function gianNhan(ps: {x: number; y: number}[], cach = 32): void {
@@ -97,6 +106,13 @@ export function suyHinhTongQuat(de: string, buoc: {t: number; text: string}[]): 
       if (toa(a) && toa(c) && !toa(p)) {
         dinh[p] = {x: (toa(a).x + toa(c).x) / 2, y: (toa(a).y + toa(c).y) / 2};
         ra.push({id: `tq-m-${p}`, t: slot(), loai: 'diem', x: dinh[p].x, y: dinh[p].y, ten: p, nhanh: true});
+      }
+    }
+    // mặt phẳng: "mặt phẳng (SAC)" / "mp(ABC)" khi mọi đỉnh đã biết -> đa giác tô sáng
+    for (const m of txt.matchAll(/(?:mặt phẳng|\bmp)\s*\(?\s*([A-Z]{3,4})\s*\)?/gi)) {
+      const vs = m[1].toUpperCase().split('');
+      if (vs.every((c) => toa(c)) && new Set(vs).size === vs.length) {
+        ra.push({id: `tq-mat-${i}-${m[1]}`, t: slot(), loai: 'mat', d: vs.map((c, j) => `${j ? 'L' : 'M'}${toa(c).x} ${toa(c).y}`).join(' ') + ' Z'});
       }
     }
     for (const m of txt.matchAll(/\b([A-Z])([A-Z])\b/g)) {
@@ -229,34 +245,80 @@ const LopTienTrinh: React.FC<{bs: {t: number}[]; t: number; fps: number}> = ({bs
   );
 };
 
-const LopTongQuat: React.FC<{ps: TP[]; t: number; fps: number; cong: number}> = ({ps, t, fps, cong}) => {
+const LopTongQuat: React.FC<{ps: TP[]; t: number; fps: number; cong: number; mp?: boolean}> = ({ps, t, fps, cong, mp = false}) => {
   const hien = ps.filter((p) => p.t <= t);
   if (!hien.length || cong <= 0.001) return null;
   const moiNhat = hien[hien.length - 1].id;
-  const nhan = hien.filter((p) => p.loai === 'diem').map((p) => ({x: (p.x || 0) + (p.x! < 400 ? -26 : 26), y: (p.y || 0) + (p.y! < 270 ? -22 : 28)}));
+  const matMoi = [...hien].reverse().find((p) => p.loai === 'mat')?.id;
+  const nhan = hien.filter((p) => p.loai === 'diem').map((p) => ({x: (p.x || 0) + (p.x! < 400 ? -28 : 28), y: (p.y || 0) + (p.y! < 270 ? -24 : 30)}));
   gianNhan(nhan);
   let vi = -1;
+  // đoạn cùng một đường thẳng: tách bằng lệch ngang 8 px + màu xen kẽ + nút chặn đầu, để đối chiếu tỉ số / độ dài
+  const doan = hien.filter((p) => p.loai === 'doan');
+  const nhomThang: number[][] = [];
+  const thuTu: Record<string, {g: number; k: number}> = {};
+  doan.forEach((p) => {
+    const dx = (p.x2 || 0) - (p.x || 0), dy = (p.y2 || 0) - (p.y || 0), len = Math.hypot(dx, dy) || 1;
+    let g = nhomThang.findIndex((m) => {
+      const q = doan[m[0]];
+      const qx = (q.x2 || 0) - (q.x || 0), qy = (q.y2 || 0) - (q.y || 0), ql = Math.hypot(qx, qy) || 1;
+      const song = Math.abs(dx * qy - dy * qx) / (len * ql) < 0.03;
+      const cung = Math.abs(((p.x || 0) - (q.x || 0)) * qy - ((p.y || 0) - (q.y || 0)) * qx) / ql < 4;
+      return song && cung;
+    });
+    if (g < 0) { nhomThang.push([]); g = nhomThang.length - 1; }
+    thuTu[p.id] = {g, k: nhomThang[g].length};
+    nhomThang[g].push(doan.indexOf(p));
+  });
   return (
     <g data-lop="tong-quat" opacity={cong}>
       {hien.map((p) => {
         const sp = spring({frame: Math.max(0, (t - p.t) * fps), fps, config: {damping: 16, stiffness: 120, mass: 0.8}});
         const moi = p.id === moiNhat;
         const mau = p.nhanh ? AMBER : CYAN;
-        const lang = moi ? 1 : 0.82;
+        // phân cấp: trọng tâm (mới, 1) > khung chính (0.9) > đường phụ cũ (0.5; khi đang giảng mặt phẳng còn 0.36)
+        const lang = moi ? 1 : mp ? 0.36 : 0.5;
+        if (p.loai === 'mat') {
+          const dang = p.id === matMoi;
+          const so = Math.min(1, sp * 1.2);
+          return (
+            <path key={p.id} d={p.d} fill={AMBER} fillOpacity={(dang ? 0.3 : 0.07) * so} stroke={AMBER} strokeWidth={dang ? 4.5 : 1.5} strokeLinejoin="round" strokeOpacity={dang ? 1 : 0.45} />
+          );
+        }
         if (p.loai === 'hinh') {
-          return <path key={p.id} d={p.d} fill="none" stroke={CYAN} strokeWidth={4} strokeLinejoin="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - Math.min(1, (t - p.t) / 1.1)} opacity={lang} />;
+          return <path key={p.id} d={p.d} fill="none" stroke={CYAN} strokeWidth={4.5} strokeLinejoin="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - Math.min(1, (t - p.t) / 1.1)} opacity={mp ? 0.8 : 0.95} />;
         }
         if (p.loai === 'doan') {
-          const dx = ((p.x2 || 0) - (p.x || 0)) * Math.min(1, sp), dy = ((p.y2 || 0) - (p.y || 0)) * Math.min(1, sp);
-          return <line key={p.id} x1={p.x} y1={p.y} x2={(p.x || 0) + dx} y2={(p.y || 0) + dy} stroke={mau} strokeWidth={moi ? 5 : 4} strokeLinecap="round" opacity={lang} />;
+          const tt = thuTu[p.id] || {g: 0, k: 0};
+          const dx0 = (p.x2 || 0) - (p.x || 0), dy0 = (p.y2 || 0) - (p.y || 0), len = Math.hypot(dx0, dy0) || 1;
+          const nhomLen = nhomThang[tt.g]?.length || 1;
+          const off = nhomLen > 1 ? (tt.k % 2 ? 1 : -1) * 8 * Math.ceil(tt.k / 2 + 0.01) * (tt.k ? 1 : 0) : 0;
+          const ox = (-dy0 / len) * off, oy = (dx0 / len) * off;
+          const mauD = nhomLen > 1 && tt.k % 2 ? '#F8FAFC' : mau;
+          const x1 = (p.x || 0) + ox, y1 = (p.y || 0) + oy;
+          const dx = dx0 * Math.min(1, sp), dy = dy0 * Math.min(1, sp);
+          const tx = (-dy0 / len) * 9, ty = (dx0 / len) * 9;
+          return (
+            <g key={p.id} opacity={lang}>
+              <line x1={x1} y1={y1} x2={x1 + dx} y2={y1 + dy} stroke={mauD} strokeWidth={moi ? 6 : 2.5} strokeLinecap="round" />
+              {nhomLen > 1 && sp > 0.95 ? (
+                <>
+                  <line x1={x1 - tx} y1={y1 - ty} x2={x1 + tx} y2={y1 + ty} stroke={mauD} strokeWidth={3} />
+                  <line x1={x1 + dx0 - tx} y1={y1 + dy0 - ty} x2={x1 + dx0 + tx} y2={y1 + dy0 + ty} stroke={mauD} strokeWidth={3} />
+                </>
+              ) : null}
+            </g>
+          );
         }
         if (p.loai === 'diem') {
           vi++;
           const np = nhan[vi];
+          const so = Math.min(1, sp * 1.2);
           return (
-            <g key={p.id} opacity={Math.min(1, sp * 1.2) * lang}>
-              <circle cx={p.x} cy={p.y} r={(moi ? 9 : 7) * (0.6 + 0.4 * Math.min(1, sp))} fill={mau} />
-              <text x={np.x} y={np.y} fontSize={26} fontWeight={700} fill="#F8FAFC" textAnchor="middle" stroke={NEN} strokeWidth={5} paintOrder="stroke">{p.ten}</text>
+            <g key={p.id} opacity={so}>
+              {p.nhanh ? <circle cx={p.x} cy={p.y} r={(moi ? 19 : 15) * (0.6 + 0.4 * Math.min(1, sp))} fill="none" stroke={AMBER} strokeWidth={moi ? 3 : 2} strokeOpacity={moi ? 1 : 0.6} /> : null}
+              <circle cx={p.x} cy={p.y} r={(p.nhanh ? 10 : 8) * (0.6 + 0.4 * Math.min(1, sp))} fill={mau} />
+              <text x={np.x} y={np.y} fontSize={moi || p.nhanh ? 30 : 26} fontWeight={800} fill="#F8FAFC" textAnchor="middle" stroke={NEN} strokeWidth={6} paintOrder="stroke">{p.ten}</text>
             </g>
           );
         }
@@ -293,7 +355,8 @@ export const SanKhauTuSinh: React.FC<{ts: TuSinhVao; t: number; fps: number; ron
   const daHien = lop.filter((l) => l.t <= t);
   const moiNhat = daHien.length ? daHien[daHien.length - 1].id : '';
   // hình vừa T2, giữ tỉ lệ 800:540, căn giữa; xung nhịp chống đứng hình = zoom rất nhẹ 1 -> 1,018 -> 1
-  const k = Math.min(rong / W, cao / H) * 0.96;
+  const k = Math.min(rong / W, cao / H) * 1.0;
+  const mp = RE_MAT_PHANG.test(chuanKyHieu(buocHienTai(ts.buoc, t)));
   const zoom = xung >= 0 ? 1 + 0.018 * Math.sin(Math.PI * xung) : 1;
   // bộ dựng tổng quát chỉ lấp khoảng trống: khi lớp mới nhất đã đứng > 2,5 s mới hiện dần (không đè hợp đồng lớp / quét 1,1 s)
   const tq = React.useMemo(() => (ts.de_bai || ts.buoc?.length ? suyHinhTongQuat(ts.de_bai || '', ts.buoc || []) : []), [ts.de_bai, ts.buoc]);
@@ -305,6 +368,7 @@ export const SanKhauTuSinh: React.FC<{ts: TuSinhVao; t: number; fps: number; ron
   return (
     <div data-tu-sinh style={{position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
       <svg viewBox={ts.viewBox || '0 0 800 540'} width={W * k} height={H * k} style={{overflow: 'visible', scale: String(zoom), fontFamily: FONT}}>
+        <style>{`.ts-cu [stroke-dasharray]{stroke-opacity:.55}.ts-moi [stroke-dasharray]{stroke-opacity:.8}${mp ? '.ts-moi polygon{stroke-width:3.5px;stroke-linejoin:round;paint-order:stroke}.ts-cu polygon{fill-opacity:.06}' : ''}`}</style>
         <defs>
           {lop.map((l) => (
             <clipPath key={l.id} id={`ts-quet-${l.id}`}>
@@ -316,8 +380,11 @@ export const SanKhauTuSinh: React.FC<{ts: TuSinhVao; t: number; fps: number; ron
           const s = trangThaiLop(l, t, fps, l.id === moiNhat);
           const thay = heSoThay(l, lop, t);
           if (s.hien * thay <= 0.001) return null;
+          // v99.10: lớp cũ dịu thêm (0,72 / 0,5 khi giảng mặt phẳng), lớp đang giảng giữ nguyên; nét đứt / khuất nhạt hơn nét liền
+          const cu = l.id !== moiNhat;
+          const dim = cu ? (mp ? 0.5 : 0.72) : 1;
           return (
-            <g key={l.id} data-lop={l.id} opacity={s.hien * thay} clipPath={s.quet < 1 ? `url(#ts-quet-${l.id})` : undefined}
+            <g key={l.id} data-lop={l.id} className={cu ? 'ts-cu' : 'ts-moi'} opacity={s.hien * thay * dim} clipPath={s.quet < 1 ? `url(#ts-quet-${l.id})` : undefined}
               style={{transformBox: 'view-box', transformOrigin: '400px 270px', scale: String(s.s), translate: `0px ${s.dy}px`,
                 filter: s.sang > 0.01 ? `brightness(${1 + 0.32 * s.sang})` : undefined}}>
               <g dangerouslySetInnerHTML={{__html: l.svg}} />
@@ -326,7 +393,7 @@ export const SanKhauTuSinh: React.FC<{ts: TuSinhVao; t: number; fps: number; ron
         })}
         {cong > 0.001 ? (
           <g data-lop="minh-hoa" opacity={cong}>
-            {dang === 'koch' ? <LopKoch de={ts.de_bai || ''} bs={bsT} t={t} fps={fps} /> : dang === 'tq' ? <LopTongQuat ps={tq} t={t} fps={fps} cong={1} /> : <LopTienTrinh bs={bsT} t={t} fps={fps} />}
+            {dang === 'koch' ? <LopKoch de={ts.de_bai || ''} bs={bsT} t={t} fps={fps} /> : dang === 'tq' ? <LopTongQuat ps={tq} t={t} fps={fps} cong={1} mp={mp} /> : <LopTienTrinh bs={bsT} t={t} fps={fps} />}
           </g>
         ) : null}
       </svg>
