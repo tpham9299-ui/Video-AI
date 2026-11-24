@@ -128,7 +128,13 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
   // v96: sân khấu 2D (4 mô-đun Xác suất / 2D thực tế / sơ đồ tư duy) thay khuôn 3D khi chuanbi.py định tuyến ra
   const sk2 = p.tuSinh ? null : p.sanKhau || null;
   // v99.1: sân khấu tự sinh 2.5D (mã Python hộp cát) thắng sân khấu 2D / khuôn 3D; nền khí quyển theo theme; xung chống đứng hình
-  const ts = !p.khongGian && p.tuSinh && p.tuSinh.lop?.length ? p.tuSinh : null;
+  // v99.8: kèm chữ đề + chữ từng bước cho bộ dựng hình tổng quát của SanKhauTuSinh (chỉ đọc, không đổi mốc)
+  const tsVao = !p.khongGian && p.tuSinh && p.tuSinh.lop?.length ? p.tuSinh : null;
+  const ts = useMemo(() => tsVao ? {
+    ...tsVao,
+    de_bai: tsVao.de_bai || [...(p.deGhim || []).map((d) => d.nhan), (p.cau || [])[0]?.text || ''].join('. '),
+    buoc: tsVao.buoc || buoc.map((b) => ({t: b.t, text: [b.tieu_de, ...(b.the || []).flatMap((x) => ('dong' in x ? x.dong : 'noi_dung' in x ? [x.noi_dung] : []))].join('. ')})),
+  } : null, [tsVao, p.deGhim, p.cau, buoc]);
   const th = !p.khongGian ? layTheme(p.theme) : null;
   // v97: hình học không gian (động cơ riêng src/khonggian: nét khuất giải tích từng khung + đạo diễn camera theo moc_xoay)
   const kg = p.khongGian || null;
