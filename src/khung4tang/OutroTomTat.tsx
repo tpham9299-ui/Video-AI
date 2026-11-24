@@ -49,6 +49,7 @@ export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: C
   const tDong = (k: number) => 0.9 + k * 0.45;
   const tNut = tDong(Math.min(3, tomTat.length)) + 0.3;
   const sNut = spring({frame: f - Math.round(tNut * fps), fps, config: {damping: 12, stiffness: 160, mass: 0.7}});
+  const sGoi = spring({frame: f - Math.round((tNut + 0.35) * fps), fps, config: {damping: 16, stiffness: 120, mass: 0.8}});
   const nhun = t > tNut + 0.5 ? 1 + 0.04 * Math.max(0, Math.sin(((t - tNut - 0.5) * 2 * Math.PI) / 0.9)) : 1;
   const sang = 0.8 + 0.2 * Math.sin((t * 2 * Math.PI) / 2.2);
   const V = VUNG_OUTRO;
@@ -139,7 +140,12 @@ export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: C
       })}
 
       {/* nút lưu */}
-      <div style={{position: 'absolute', left: 0, right: 0, top: V.nut.y, display: 'flex', justifyContent: 'center', opacity: kep01(sNut * 2)}}>
+      {/* v99.6: dòng gợi tương tác, nằm trọn trong vùng an toàn (đáy <= 1574, trái/phải 130..950); nút nhích lên 16 px nhường chỗ */}
+      <div data-goi-tuong-tac style={{position: 'absolute', left: 0, right: 0, top: V.nut.y + 98, height: 30, display: 'flex', justifyContent: 'center', alignItems: 'center',
+        opacity: kep01(sGoi * 1.6), transform: `translateY(${(1 - sGoi) * 12}px)`, color: 'rgba(230,237,245,0.82)', fontWeight: 700, fontSize: 24, whiteSpace: 'nowrap'}}>
+        Lưu lại ôn nhanh • Bình luận dạng bài bạn muốn giải tiếp!
+      </div>
+      <div style={{position: 'absolute', left: 0, right: 0, top: V.nut.y - 16, display: 'flex', justifyContent: 'center', opacity: kep01(sNut * 2)}}>
         <div style={{height: 96, padding: '0 54px', borderRadius: 48, display: 'flex', alignItems: 'center', gap: 16, background: `linear-gradient(180deg, #FF7A7E, ${SAN_HO} 55%, #E2393F)`,
           boxShadow: `0 7px 0 #9E1F25, 0 0 34px rgba(255,90,95,0.45)`, transform: `scale(${(0.6 + 0.4 * sNut) * nhun})`, color: '#fff', fontWeight: 900, fontSize: 38, letterSpacing: 0.8, whiteSpace: 'nowrap'}}>
           <IconCta cta={cta} />

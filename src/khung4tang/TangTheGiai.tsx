@@ -32,6 +32,25 @@ const loXo = (t: number, t0: number, delayKhung = 0) =>
 // v99.4: giả kính nổi khối (KHÔNG backdrop-filter): viền trên sáng 1px + viền dưới tối bằng inset shadow (không đổi kích thước)
 const VIEN_KINH = 'inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.45)';
 
+// v99.6: bảng màu đồng bộ với sân khấu (SoDo2D / RutMau): thanh giằng MN = cyan, đỉnh S = hổ phách, kết quả chốt = ngọc
+const MAU_MN = '#38BDF8';
+const MAU_S = '#FBBF24';
+const NGOC = '#2EE6A8';
+const SAN_HO = '#FF5A5F';
+// chỉ tô ký hiệu ĐỨNG ĐỘC LẬP (không dính lệnh TeX / tên môi trường / chữ khác); dòng đã có màu riêng thì giữ nguyên
+const DA_CO_MAU = /\\(?:textcolor|color|colorbox|m(?:vang|do|ngoc|cam|la))\b/;
+const toMauKyHieu = (tex: string): string => {
+  if (DA_CO_MAU.test(tex)) return tex;
+  return tex
+    .replace(/(?<![\\A-Za-z0-9_^'])MN(?![A-Za-z0-9])/g, `\\textcolor{${MAU_MN}}{MN}`)
+    .replace(/(?<![\\A-Za-z0-9_^'])(?<!\\[A-Za-z]+\{)S(?![A-Za-z0-9])/g, `\\textcolor{${MAU_S}}{S}`);
+};
+// v99.6: dòng rút gọn phân số đơn giản "a/b = c/d" (dạng \frac hoặc a/b) -> [vế trái, dấu, vế phải]
+const PS = String.raw`(?:\\d?frac\{\d+\}\{\d+\}|\d+\s*/\s*\d+)`;
+const RE_RUT_GON = new RegExp(String.raw`^\s*(${PS})\s*(=|\\to|\\rightarrow|\\Rightarrow|->)\s*(${PS})\s*$`);
+// v99.6: dòng giải thích mang cảnh báo sư phạm -> huy hiệu LƯU Ý
+const RE_LUU_Y = /chú ý|lưu ý|điều kiện|tránh|không lặp|bẫy|nhớ/i;
+
 function NoiDung({th, t0, t, mau, co = 42, coDong}: {th: TheGiai; t0: number; t: number; mau: string; co?: number; coDong?: number}) {
   if (th.loai === 'cong_thuc') {
     const dongs = th.dong.slice(0, 5);
@@ -40,6 +59,10 @@ function NoiDung({th, t0, t, mau, co = 42, coDong}: {th: TheGiai; t0: number; t:
         {dongs.map((d, k) => {
           const tk = th.moc?.[k] ?? t0 + k * 0.45;
           const a = emRa((t - tk) / 0.35);
+          // v99.6: rút gọn phân số -> nét gạch chéo ~12 khung lướt qua vế trái, rồi vế phải đổi ngọc
+          const rg = RE_RUT_GON.exec(d);
+          const pRut = rg ? kep01((t - tk - 0.3) / 0.4) : 0;
+          const dTex = rg && pRut >= 1 ? `${rg[1]} ${rg[2]} \\textcolor{${NGOC}}{${rg[3]}}` : d;
           // lò xo lệch nhịp 4-5 frame so với thẻ; dòng cũ hạ xuống ~0.62 khi dòng kế tiếp xuất hiện
           const sp = loXo(t, tk, 4 + (k % 2));
           const tkSau = k + 1 < dongs.length ? (th.moc?.[k + 1] ?? t0 + (k + 1) * 0.45) : null;
@@ -47,8 +70,13 @@ function NoiDung({th, t0, t, mau, co = 42, coDong}: {th: TheGiai; t0: number; t:
           // v98: căn GIỮA + co theo chiều cao (phân số nhiều tầng không bao giờ bị cắt nửa tử / mẫu)
           const coD = coDong ?? co;
           return (
-            <div key={k} style={{opacity: a * mo, transform: `translateY(${(1 - sp) * 14}px)`}}>
-              <Toan tex={co > 42 && k === dongs.length - 1 ? chaySo(d, t - tk) : d} size={coD} color={k === th.dong.length - 1 && (th.dong.length > 1 || co > 42) ? mau : '#F4F7FB'} maxWidth={RONG_TRONG} maxHeight={caoDongTex(d, coD) + 6} can="giua" style={co > 42 ? {fontWeight: 800} : undefined} />
+            <div key={k} style={{position: 'relative', opacity: a * mo, transform: `translateY(${(1 - sp) * 14}px)`}}>
+              <Toan tex={toMauKyHieu(co > 42 && k === dongs.length - 1 ? chaySo(dTex, t - tk) : dTex)} size={coD} color={k === th.dong.length - 1 && (th.dong.length > 1 || co > 42) ? mau : '#F4F7FB'} maxWidth={RONG_TRONG} maxHeight={caoDongTex(d, coD) + 6} can="giua" style={co > 42 ? {fontWeight: 800} : undefined} />
+              {rg && pRut > 0 && pRut < 1.0001 ? (
+                <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible', opacity: pRut < 1 ? 1 : 0}}>
+                  <path d="M 6 88 L 44 12" pathLength={1} fill="none" stroke={SAN_HO} strokeWidth={3} strokeLinecap="round" vectorEffect="non-scaling-stroke" strokeDasharray={1} strokeDashoffset={1 - pRut} />
+                </svg>
+              ) : null}
             </div>
           );
         })}
@@ -67,7 +95,11 @@ function NoiDung({th, t0, t, mau, co = 42, coDong}: {th: TheGiai; t0: number; t:
     );
   }
   const cc = co > 42 ? 48 : 38, mc = co > 42 ? '#F4FFFB' : '#DCE3EC';
-  return <div style={{color: mc, fontFamily: FONT, fontWeight: co > 42 ? 800 : 600, fontSize: cc, lineHeight: 1.3, textAlign: 'center'}}><ChuTron s={th.noi_dung} co={cc} mau={mc} dam={co > 42 ? 800 : 600} /></div>;
+  const luuY = RE_LUU_Y.test(String(th.noi_dung || ''));
+  const spLuuY = luuY ? loXo(t, t0, 3) : 1;
+  return <div style={{color: mc, fontFamily: FONT, fontWeight: co > 42 ? 800 : 600, fontSize: cc, lineHeight: 1.3, textAlign: 'center'}}>
+    {luuY ? <span style={{display: 'inline-block', verticalAlign: 'middle', marginRight: 12, padding: '2px 12px', borderRadius: 12, background: CHOT, color: '#0E1014', fontWeight: 900, fontSize: 22, letterSpacing: 0.6, lineHeight: 1.3, opacity: kep01(spLuuY * 1.5), transform: `scale(${0.6 + 0.4 * spLuuY})`}}>LƯU Ý</span> : null}
+    <ChuTron s={th.noi_dung} co={cc} mau={mc} dam={co > 42 ? 800 : 600} /></div>;
 }
 
 // Cụm thẻ căn GIỮA tầng 3 theo chiều dọc. Thẻ chưa tới lượt vẫn giữ chỗ (ẩn) nên cụm không nhảy khi thẻ mới vào.
@@ -131,7 +163,7 @@ function DanhSachThe({b, t, mau, aChung}: {b: BuocGiai; t: number; mau: string; 
                 <span style={{height: 34, padding: '0 14px', borderRadius: 17, background: CHOT, color: '#0E1014', fontFamily: FONT, fontWeight: 900, fontSize: 20, display: 'flex', alignItems: 'center', letterSpacing: 0.6}}>{j + 1} · ĐÁP ÁN</span>
                 {th.nhan ? <span style={{color: CHOT, fontFamily: FONT, fontWeight: 800, fontSize: 28}}><ChuTron s={th.nhan} co={28} mau={CHOT} dam={800} /></span> : null}
               </div>
-              <NoiDung th={th} t0={t0 + 0.15} t={t} mau={CHOT} co={52} coDong={coDongVua(th)} />
+              <NoiDung th={th} t0={t0 + 0.15} t={t} mau={NGOC} co={52} coDong={coDongVua(th)} />
             </div>
           );
         }

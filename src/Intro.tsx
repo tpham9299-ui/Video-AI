@@ -24,7 +24,73 @@ export const lechIntro = (it?: IntroProps | null) => (it && it.soFrame > 0 ? Mat
 
 const dinh = [-90, 30, 150].map((g) => [CX + R * Math.cos((g * Math.PI) / 180), R * Math.sin((g * Math.PI) / 180)] as const);
 
-export const Intro: React.FC<{it: IntroProps; th: ThuongHieuProps}> = ({it, th}) => {
+// v99.6: suy dạng bài từ chữ đề / chủ đề / loại sân khấu (không có -> TOÁN HỌC)
+type DangBai = 'XÁC SUẤT' | 'PARABOL' | 'HÌNH HỌC' | 'ĐẠI SỐ' | 'TOÁN HỌC';
+const suyDang = (s: string): DangBai => {
+  const x = s.toLowerCase();
+  if (/xác suất|xác xuất|tổ hợp|hoán vị|chỉnh hợp|rút (bi|thẻ|ngẫu nhiên)|biến cố|bayes|rut_mau|so_do_cay|luoi_bayes|cot_phan_phoi/.test(x)) return 'XÁC SUẤT';
+  if (/parabol|bậc hai|bậc 2|đồ thị|kinh_te_do_thi/.test(x)) return 'PARABOL';
+  if (/hình học|tam giác|đường tròn|tứ giác|hình chóp|lăng trụ|hình hộp|hình trụ|hình nón|hình cầu|khối|thiết diện/.test(x)) return 'HÌNH HỌC';
+  if (/phương trình|bất phương trình|biểu thức|đại số|bất đẳng thức|giá trị lớn nhất|giá trị nhỏ nhất|tu_duy_dai_so/.test(x)) return 'ĐẠI SỐ';
+  return 'TOÁN HỌC';
+};
+
+// v99.6: hình mồi vector mờ theo dạng bài (tâm 540, rộng ~760, cao ~560; vẽ dần theo p)
+const HinhMoi: React.FC<{dang: DangBai; p: number; mau: string; phu: string}> = ({dang, p, mau, phu}) => {
+  const n = (tong: number) => ({strokeDasharray: tong, strokeDashoffset: tong * (1 - p)});
+  if (dang === 'PARABOL') {
+    return (
+      <g fill="none" strokeLinecap="round">
+        <path d="M -330 0 H 330 M 0 -250 V 280" stroke="#fff" strokeWidth={4} style={n(1200)} />
+        <path d="M 330 0 l -22 -9 M 330 0 l -22 9 M 0 -250 l -9 22 M 0 -250 l 9 22" stroke="#fff" strokeWidth={4} opacity={p} />
+        <path d="M -250 -210 Q 0 560 250 -210" stroke={mau} strokeWidth={8} style={n(1100)} />
+        <circle cx={0} cy={175} r={12 * p} fill={phu} stroke="none" />
+        <text x={344} y={34} fill="#fff" fontSize={34} fontWeight={800} stroke="none" opacity={p}>x</text>
+        <text x={18} y={-236} fill="#fff" fontSize={34} fontWeight={800} stroke="none" opacity={p}>y</text>
+        <text x={-44} y={34} fill="#fff" fontSize={30} fontWeight={800} stroke="none" opacity={p}>O</text>
+      </g>
+    );
+  }
+  if (dang === 'XÁC SUẤT') {
+    const nut: [number, number][] = [[0, -200], [-190, 0], [190, 0], [-290, 200], [-90, 200], [90, 200], [290, 200]];
+    const canh: [number, number][] = [[0, 1], [0, 2], [1, 3], [1, 4], [2, 5], [2, 6]];
+    return (
+      <g fill="none" strokeLinecap="round">
+        {canh.map(([a, b], i) => <path key={i} d={`M ${nut[a][0]} ${nut[a][1]} C ${nut[a][0]} ${(nut[a][1] + nut[b][1]) / 2} ${nut[b][0]} ${(nut[a][1] + nut[b][1]) / 2} ${nut[b][0]} ${nut[b][1]}`} stroke={mau} strokeWidth={5} style={n(320)} />)}
+        {nut.map(([x, y], i) => <rect key={i} x={x - 38} y={y - 26} width={76} height={52} rx={14} stroke={i === 0 ? phu : '#fff'} strokeWidth={4} opacity={Math.min(1, p * 2)} />)}
+      </g>
+    );
+  }
+  if (dang === 'HÌNH HỌC') {
+    return (
+      <g fill="none" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M -300 200 L 40 -220 L 300 200 Z" stroke="#fff" strokeWidth={6} style={n(1500)} />
+        <path d="M 40 -220 L 40 200" stroke={phu} strokeWidth={4} strokeDasharray="14 12" opacity={p} />
+        <circle cx={0} cy={50} r={230} stroke={mau} strokeWidth={5} style={n(1450)} />
+        <path d="M 40 160 h 40 v 40" stroke="#fff" strokeWidth={4} opacity={p} />
+        {[[-300, 200], [40, -220], [300, 200]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r={10 * p} fill={phu} stroke="none" />)}
+      </g>
+    );
+  }
+  if (dang === 'ĐẠI SỐ') {
+    return (
+      <g fill="none" strokeLinecap="round">
+        <path d="M -330 0 H 330 M 0 -240 V 240" stroke="#fff" strokeWidth={4} style={n(1200)} />
+        <path d="M -300 200 L 300 -200" stroke={mau} strokeWidth={8} style={n(800)} />
+        <path d="M -300 -120 L 300 160" stroke={phu} strokeWidth={6} style={n(700)} />
+        <circle cx={43} cy={-29} r={13 * p} fill="#fff" stroke="none" />
+      </g>
+    );
+  }
+  return (
+    <g fill="none" strokeLinecap="round">
+      {[110, 200, 290].map((r, i) => <circle key={r} cx={0} cy={0} r={r} stroke={i === 1 ? mau : '#fff'} strokeWidth={4} style={n(2 * Math.PI * r)} />)}
+      <path d="M -300 0 H 300 M 0 -300 V 300" stroke="#fff" strokeWidth={3} opacity={p} />
+    </g>
+  );
+};
+
+export const Intro: React.FC<{it: IntroProps; th: ThuongHieuProps; goiY?: string}> = ({it, th, goiY = ''}) => {
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
   const [cho] = React.useState(() => delayRender('Nạp phông intro'));
@@ -87,6 +153,11 @@ export const Intro: React.FC<{it: IntroProps; th: ThuongHieuProps}> = ({it, th})
   const gach = easeOut(tien(1.45, 1.95));
   const pKhau = spring({frame: f - s(1.58), fps, config: {damping: 18, stiffness: 110}});
   const yTen = CY1 + R * tl + 70;
+  // v99.6: huy hiệu dạng bài (viên thuốc) + hình mồi vector mờ phía sau khung tiêu đề
+  const dang = suyDang(goiY);
+  const pHuy = spring({frame: f - s(1.0), fps, config: {damping: 14, stiffness: 170, mass: 0.7}});
+  const pMoi = easeOut(tien(0.2, 1.6));
+  const troi = Math.sin(f / 38);
 
   const net = (dash: number, tong: number) => ({strokeDasharray: tong, strokeDashoffset: tong * (1 - dash)});
   const dsTG = `M ${dinh[0][0]} ${dinh[0][1]} L ${dinh[1][0]} ${dinh[1][1]} L ${dinh[2][0]} ${dinh[2][1]} Z`;
@@ -112,7 +183,18 @@ export const Intro: React.FC<{it: IntroProps; th: ThuongHieuProps}> = ({it, th})
         <rect width={1080} height={1920} fill="url(#introLuoi)" mask="url(#introVung)" />
       </svg>
 
+      {/* v99.6: hình mồi vector theo dạng bài, opacity 0,17, trôi / phóng cực nhẹ, nằm sau chữ (không blur) */}
+      <svg width={1080} height={1920} style={{position: 'absolute', inset: 0, opacity: 0.17 * mo, overflow: 'visible'}}>
+        <g transform={`translate(${CX + 10 * troi} ${1010 + 6 * Math.cos(f / 45)}) scale(${0.9 + 0.05 * kep(f / Math.max(1, it.soFrame))})`}>
+          <HinhMoi dang={dang} p={pMoi} mau={nhan} phu={phu} />
+        </g>
+      </svg>
+
       <AbsoluteFill style={{transform: `scale(${day})`, transformOrigin: `${CX}px ${CY1}px`}}>
+        {/* huy hiệu dạng bài */}
+        <div style={{position: 'absolute', left: 0, right: 0, top: yTen - 66, display: 'flex', justifyContent: 'center', opacity: kep(pHuy * 1.5) * mo, transform: `scale(${0.7 + 0.3 * pHuy})`}}>
+          <div style={{height: 44, padding: '0 24px', borderRadius: 22, display: 'flex', alignItems: 'center', border: `2px solid ${phu}`, background: `${phu}22`, color: phu, fontFamily: FONT, fontWeight: 900, fontSize: 24, letterSpacing: 1.6, whiteSpace: 'nowrap'}}>{dang}</div>
+        </div>
         {/* biểu tượng hình học */}
         <svg width={1080} height={1920} style={{position: 'absolute', inset: 0, overflow: 'visible'}}>
           <g transform={`translate(${CX} ${cy}) scale(${tl}) translate(${-CX} 0)`}>

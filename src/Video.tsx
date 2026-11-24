@@ -243,7 +243,7 @@ const VoiIntro: React.FC<Props> = (props) => {
         <NoiDungVideo {...props} intro={null} coIntro tongFrame={props.tongFrame - lech} />
       </Sequence>
       <Sequence from={0} durationInFrames={it.soFrame}>
-        <Intro it={it} th={props.thuongHieu} />
+        <Intro it={it} th={props.thuongHieu} goiY={[props.tieuDe, props.chuDe, props.deGoc, props.khung4tang?.sanKhau?.loai].filter(Boolean).join(' ')} />
       </Sequence>
     </AbsoluteFill>
   );
