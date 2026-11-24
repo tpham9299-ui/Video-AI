@@ -483,6 +483,30 @@ def bieu_thuc_kiem(bo, bc):
     return "", ""
 
 
+def nhom_theo_du(van, gia_tri):
+    """v99.3: đề 'chia cho d dư r' (+ 'chia hết cho m') -> lưới thẻ tô theo số dư mod d, bội của m nổi bật (vàng).
+    Nhóm cụ thể hơn thắng khi chồng lấn (bội của m lấy trước). Chỉ dùng khi AI / biến cố không cho nhóm dùng được."""
+    t = str(van or "").lower()
+    ds = [v for v in gia_tri if isinstance(v, int)]
+    m = re.search(r"chia\s*(?:cho\s*)?(\d+)\s*(?:thì\s*)?dư\s*(\d+)", t)
+    if not ds or not m:
+        return []
+    d = int(m.group(1))
+    if d < 2 or d > 4:
+        return []
+    r0 = int(m.group(2))
+    nhom = []
+    bm = [x for x in re.findall(r"(?:chia hết cho|⋮|\\vdots)\s*(\d+)", t) if int(x) != d]
+    if bm:
+        k = int(bm[0])
+        nhom.append({"nhan": "\\vdots %d" % k, "mau": "vang", "phan_tu": [v for v in ds if v % k == 0]})
+    mau_du = ["cyan", "hong", "ngoc", "xam"]
+    thu_tu = [r0 % d] + [r for r in range(d) if r != r0 % d]
+    for i, r in enumerate(thu_tu):
+        nhom.append({"nhan": "\\text{chia %d dư %d}" % (d, r), "mau": mau_du[i], "phan_tu": [v for v in ds if v % d == r]})
+    return nhom
+
+
 def _nhom_ten(nhom):
     def tim(x):
         if isinstance(x, int) and 0 <= x < len(nhom):
@@ -590,6 +614,10 @@ def dung_rut_mau(ts, kb, sua):
             hop_le = [g for g in nhom_tu_bien_co([v for v in gt if isinstance(v, int)], bc) if g["phan_tu"]]
             if hop_le:
                 sua.append("rut_mau: dựng nhóm từ bản chất biến cố")
+        if not hop_le and vat == "the":
+            hop_le = [g for g in nhom_theo_du(de, gt) if g["phan_tu"]]
+            if hop_le:
+                sua.append("rut_mau: dựng lưới thẻ tô theo số dư (mod)")
         if hop_le and nhom_ai and any(isinstance(g.get("so"), (int, float)) for g in nhom_ai):
             cu = [int(g.get("so") or 0) for g in nhom_ai]
             moi = [len(g["phan_tu"]) for g in hop_le]

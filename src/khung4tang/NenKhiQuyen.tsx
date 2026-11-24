@@ -82,6 +82,38 @@ const HoaTietBanVe: React.FC<{th: ThemeV99; t: number}> = ({th, t}) => {
   );
 };
 
+// v99.3: 3 vầng sáng gradient trôi chậm (opacity 0.18-0.28) + lưới tọa độ mờ trôi chéo + hạt bokeh nổi lên. Chỉ gradient / SVG
+// (không blur), nằm SAU mọi tầng nên không đè chữ / phụ đề.
+const VANG_SANG: {x: number; y: number; r: number; ax: number; ay: number; v: number; ph: number; a: number}[] = [
+  {x: 220, y: 520, r: 560, ax: 90, ay: 60, v: 0.11, ph: 0.0, a: 0.2},
+  {x: 860, y: 1000, r: 620, ax: 110, ay: 80, v: 0.085, ph: 2.1, a: 0.26},
+  {x: 480, y: 1520, r: 520, ax: 80, ay: 70, v: 0.13, ph: 4.2, a: 0.18},
+];
+
+const LopDong: React.FC<{th: ThemeV99; t: number}> = ({th, t}) => {
+  const bokeh = useMemo(() => diemTatDinh(26, 9157), []);
+  const lech = (t * 6) % 90;
+  return (
+    <g>
+      {VANG_SANG.map((o, k) => {
+        const cx = o.x + o.ax * Math.sin(t * o.v + o.ph), cy = o.y + o.ay * Math.cos(t * o.v * 0.8 + o.ph);
+        return <circle key={k} cx={cx} cy={cy} r={o.r * (1 + 0.05 * Math.sin(t * 0.2 + o.ph))} fill="url(#vang-dong-v993)" opacity={o.a} />;
+      })}
+      {/* lưới tọa độ mờ trôi chéo chậm */}
+      <g stroke={th.net} strokeWidth={1} strokeOpacity={0.05} fill="none">
+        {Array.from({length: 13}, (_, k) => <line key={`h${k}`} x1={0} y1={-90 + k * 180 + lech * 2} x2={RONG} y2={-90 + k * 180 + lech * 2} />)}
+        {Array.from({length: 8}, (_, k) => <line key={`d${k}`} x1={-90 + k * 180 + lech} y1={0} x2={-90 + k * 180 + lech} y2={CAO} />)}
+      </g>
+      {/* hạt bokeh mờ nổi chậm lên trên */}
+      {bokeh.map((b, k) => {
+        const y = ((b.y - t * (6 + b.r * 4)) % (CAO + 80) + (CAO + 80)) % (CAO + 80) - 40;
+        const x = b.x + 18 * Math.sin(t * 0.3 + b.pha);
+        return <circle key={k} cx={x} cy={y} r={6 + b.r * 7} fill={th.quang} opacity={0.035 + 0.03 * (0.5 + 0.5 * Math.sin(t * 0.7 + b.pha))} />;
+      })}
+    </g>
+  );
+};
+
 export const NenKhiQuyen: React.FC<{th: ThemeV99; t: number; mocBuoc: number[]; tamSanKhau: number; mauNhan: string}> = ({th, t, mocBuoc, tamSanKhau, mauNhan}) => {
   const n = trangThaiNen(t, mocBuoc);
   const a = Math.round(th.quangMo * 255).toString(16).padStart(2, '0');
@@ -112,12 +144,18 @@ export const NenKhiQuyen: React.FC<{th: ThemeV99; t: number; mocBuoc: number[]; 
             <stop offset="0.5" stopColor="#ffffff" stopOpacity={0.07} />
             <stop offset="1" stopColor="#ffffff" stopOpacity={0} />
           </linearGradient>
+          <radialGradient id="vang-dong-v993">
+            <stop offset="0" stopColor={th.quang} stopOpacity={1} />
+            <stop offset="0.45" stopColor={th.quang} stopOpacity={0.35} />
+            <stop offset="1" stopColor={th.quang} stopOpacity={0} />
+          </radialGradient>
           <radialGradient id="toi-goc-v99" cx="50%" cy="46%" r="75%">
             <stop offset="0.55" stopColor="#000" stopOpacity={0} />
             <stop offset="1" stopColor="#000" stopOpacity={0.42} />
           </radialGradient>
         </defs>
-        {th.hoaTiet === 'song' ? <HoaTietSong th={th} t={t} /> : th.hoaTiet === 'tinh_van' ? <HoaTietTinhVan th={th} t={t} />
+        <LopDong th={th} t={t} />
+        {th.hoaTiet === 'song' ?<HoaTietSong th={th} t={t} /> : th.hoaTiet === 'tinh_van' ? <HoaTietTinhVan th={th} t={t} />
           : th.hoaTiet === 'studio' ? <HoaTietStudio th={th} /> : th.hoaTiet === 'phan' ? <HoaTietPhan th={th} t={t} /> : <HoaTietBanVe th={th} t={t} />}
         {/* vệt sáng lướt chéo khi đổi bước */}
         {n.quet >= 0 ? (

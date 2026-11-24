@@ -69,7 +69,62 @@ function dungHinh(sk: SoDo2DVao, x: number, r: {x: number; y: number; w: number;
     {a: G, b: [xt, y0], mau: C, nhan: `${sk.bien} = ${sv(x)}`}], diem: [{p: G, ten: '', mau: N}]};
 }
 
-export const SoDo2D: React.FC<{sk: SoDo2DVao; t: number; W: number; H: number; mauNhan: string}> = ({sk, t, W, H, mauNhan}) => {
+// v99.3: cổng chào / mái vòm / thanh giằng CỐ ĐỊNH (không có hàm tối ưu) -> hệ trục Oxy đầy đủ: Ox, Oy, O(0;0), hai chân A, B,
+// đỉnh S, thanh giằng ngang hiện ở pha 'keo' (y = tham_so.y), pha 'toi_uu' đổi sang y mới (tham_so.y2) nếu có. Mẫu "hình chữ nhật
+// nội tiếp co giãn" ở trên chỉ dùng khi đề tối ưu / cực trị (có ham + x_tot).
+const OxyCong: React.FC<{sk: SoDo2DVao; t: number; W: number; H: number; mauNhan: string}> = ({sk, t, W, H, mauNhan}) => {
+  const ts = sk.tham_so, w = so(ts, 'rong', 8), h = so(ts, 'cao', 6);
+  const r = {x: LE.trai + 30, y: LE.tren + 30, w: W - LE.trai - LE.phai - 60, h: H - LE.tren - LE.duoi - CAO_DONG_KQ - 70};
+  const s = Math.min(r.w / (w * 1.25), (r.h * 0.8) / h), xm = r.x + r.w / 2, y0 = r.y + r.h * 0.9;
+  const X = (u: number) => xm + u * s, Y = (v: number) => y0 - v * s;
+  const nh = nhipNhan(sk.nhip, sk.pha, t);
+  const aT = em((t - (sk.pha[0]?.t ?? 0.3)) / 0.5);
+  const dK = daQua(sk.pha, 'keo', t), dT = daQua(sk.pha, 'toi_uu', t);
+  const y1 = Math.min(h * 0.98, so(ts, 'y', h / 2)), y2 = Number.isFinite(ts.y2) && ts.y2 > 0 ? Math.min(h * 0.98, ts.y2) : y1;
+  const y = dT >= 0 && y2 !== y1 ? y1 + (y2 - y1) * em(dT / 0.9) : y1;
+  const aBar = em(dK / 0.5);
+  const u = (w / 2) * Math.sqrt(Math.max(0, 1 - y / h));
+  const V = mau('vang'), C = mau('cyan');
+  const cong = Array.from({length: 61}, (_, i) => { const a = -w / 2 + (w * i) / 60; return `${i ? 'L' : 'M'}${X(a).toFixed(1)} ${Y(h * (1 - (2 * a / w) ** 2)).toFixed(1)}`; }).join(' ');
+  const xa = r.x, xb = r.x + r.w, yt = Y(h) - 50;
+  const f = (v: number) => soVN(v, 1);
+  const dv = sk.don_vi ? `\\,\\text{${sk.don_vi}}` : '';
+  return (
+    <div style={{position: 'absolute', inset: 0, opacity: aT}}>
+      <svg width={W} height={H} style={{position: 'absolute', inset: 0}}>
+        <defs><marker id="mui-oxy" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill={CHU} /></marker></defs>
+        <line x1={xa} y1={y0} x2={xb} y2={y0} stroke={CHU} strokeWidth={2.4} markerEnd="url(#mui-oxy)" />
+        <line x1={xm} y1={y0 + 24} x2={xm} y2={yt} stroke={CHU} strokeWidth={2.4} markerEnd="url(#mui-oxy)" />
+        <path d={cong} fill="none" stroke={C} strokeWidth={3.4 + nh} strokeLinecap="round" />
+        {aBar > 0 ? <>
+          <line x1={X(-u)} y1={Y(y)} x2={X(-u) + 2 * u * s * aBar} y2={Y(y)} stroke={V} strokeWidth={3.6 + nh} strokeLinecap="round" />
+          <line x1={xm - 12} y1={Y(y)} x2={xm + 12} y2={Y(y)} stroke={V} strokeOpacity={0.6} strokeWidth={2} />
+          {[-u, u].map((a, k) => <circle key={k} cx={X(a)} cy={Y(y)} r={7} fill={V} stroke="#0E1014" strokeWidth={2} opacity={aBar} />)}
+        </> : null}
+        {[[0, 0], [-w / 2, 0], [w / 2, 0], [0, h]].map(([a, b], k) => <circle key={k} cx={X(a)} cy={Y(b)} r={7} fill={k === 3 ? HO_PHACH : CHU} stroke="#0E1014" strokeWidth={2} />)}
+      </svg>
+      <NhanTex x={xb - 14} y={y0 + 22} tex="x" mau={CHU} co={24} />
+      <NhanTex x={xm + 22} y={yt + 4} tex="y" mau={CHU} co={24} neo="trai" />
+      <NhanTex x={xm - 36} y={y0 + 14} tex="O(0;0)" mau={CHU} co={22} />
+      <NhanTex x={X(-w / 2)} y={y0 + 40} tex={`A(-${f(w / 2)};0)`} mau={CHU} co={22} />
+      <NhanTex x={X(w / 2)} y={y0 + 40} tex={`B(${f(w / 2)};0)`} mau={CHU} co={22} />
+      <NhanTex x={xm + 20} y={Y(h) - 26} tex={`S(0;${f(h)})`} mau={HO_PHACH} co={22} neo="trai" />
+      {aBar > 0.6 ? <>
+        <NhanTex x={X(-u) - 14} y={Y(y) - 34} tex={`M(-${f(u)};${f(y)})`} mau={V} co={22} neo="phai" />
+        <NhanTex x={X(u) + 14} y={Y(y) - 34} tex={`N(${f(u)};${f(y)})`} mau={V} co={22} neo="trai" />
+        <NhanTex x={xm} y={Y(y) + 14} tex={`MN = ${f(2 * u)}${dv}`} mau={V} co={24} />
+      </> : null}
+      <DongKetQua x={LE.trai} y={H - LE.duoi - CAO_DONG_KQ} w={W - LE.trai - LE.phai} h={CAO_DONG_KQ} tex={dK >= 0 ? `y = ${f(h)}\\left(1-\\dfrac{4x^2}{${f(w * w)}}\\right)` : ''} a={em(dK / 0.4)} mau={C} nhan={nh * 0.6} co={34} />
+      <ThanhTienDo W={W} H={H} u={tienDo(sk.pha, t)} mau={mauNhan} />
+    </div>
+  );
+};
+
+export const SoDo2D: React.FC<{sk: SoDo2DVao; t: number; W: number; H: number; mauNhan: string}> = (props) => (
+  props.sk.mau === 'cong_parabol' && !props.sk.ham && props.sk.x_tot === undefined ? <OxyCong {...props} /> : <SoDo2DChung {...props} />
+);
+
+const SoDo2DChung: React.FC<{sk: SoDo2DVao; t: number; W: number; H: number; mauNhan: string}> = ({sk, t, W, H, mauNhan}) => {
   const coDoThi = !!(sk.ham && sk.mien);
   const rH = {x: LE.trai + 10, y: LE.tren + 20, w: (coDoThi ? Math.round((W - LE.trai - LE.phai) * 0.6) : W - LE.trai - LE.phai) - 20, h: H - LE.tren - LE.duoi - CAO_DONG_KQ - 50};
   const rD = React.useMemo(() => ({x: LE.trai + Math.round((W - LE.trai - LE.phai) * 0.64), y: LE.tren + 60, w: W - LE.phai - (LE.trai + Math.round((W - LE.trai - LE.phai) * 0.64)) - 6, h: 260}), [W]);
