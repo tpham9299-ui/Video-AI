@@ -212,13 +212,16 @@ def _lech():
 t("canhBaoDongBo: kết luận sớm >= 3 s bị cờ (cứng), lệch nhỏ không cờ, mốc ước lượng = đầu cảnh chỉ là cảnh báo NHẸ", _lech)
 
 
-def _v1015():
+def _v1015_n1():
     # (1) rut_mau đã dựng hợp lệ -> xóa cờ tuSinhHong; không có sân khấu chuyên dụng -> giữ cờ
     assert_true(v99.tu_sinh_hong_that("Sân khấu tự sinh hỏng: x", {"sanKhau": {"loai": "rut_mau"}}) == "")
     assert_true(v99.tu_sinh_hong_that("Sân khấu tự sinh hỏng: x", {"canh3dv": {"khuon": "hop"}}) == "")
     assert_true(v99.tu_sinh_hong_that("Sân khấu tự sinh hỏng: x", {"sanKhau": {"loai": "hop_chu"}}).startswith("Sân khấu"))
     assert_true(v99.tu_sinh_hong_that("Sân khấu tự sinh hỏng: x", {}).startswith("Sân khấu"))
     assert_true(not [x for x in mt.kiem_tat_dinh({"khung4tang": {"tuSinhHong": "hỏng", "sanKhau": {"loai": "rut_mau"}}}, [], 7) if x["loai"] == "tu_sinh_hong"])
+
+
+def _v1015_n2():
     # (2) đọc phân số / gấp đôi / một nửa khớp moc_cong_bo
     canh = [{"loai": "dap_an", "batDau": 300, "soFrame": 300, "leadFrame": 0}]
 
@@ -228,7 +231,7 @@ def _v1015():
         return t, v99.moc_cong_bo.uoc_luong
     assert_true(moc("vậy xác suất là ba mươi hai phần chín mươi lăm", ["32/95"]) == (11.2, False), str(moc("vậy xác suất là ba mươi hai phần chín mươi lăm", ["32/95"])))
     assert_true(moc("vậy xác suất là ba hai phần chín lăm", ["32/95"])[1] is False)
-    assert_true(moc("vậy xác suất là 32/95 nhé", ["32/95"]) == (10.9, False))
+    assert_true(moc("vậy xác suất là 32/95 nhé", ["32/95"]) == (11.2, False), str(moc("vậy xác suất là 32/95 nhé", ["32/95"])))   # "32/95" là từ thứ 5 -> 10.0 + 4*0.3
     assert_true(moc("vậy xác suất là 3 trên 5", ["3/5"])[1] is False)
     assert_true(moc("kết quả gấp đôi ban đầu", ["2"]) == (10.6, False) or moc("kết quả gấp đôi ban đầu", ["2"])[1] is False)
     assert_true(moc("xác suất là một nửa", ["1/2"])[1] is False)
@@ -237,12 +240,17 @@ def _v1015():
     canh2 = [{"loai": "tinh_toan", "batDau": 0, "soFrame": 150, "leadFrame": 0}, {"loai": "dap_an", "batDau": 150, "soFrame": 150, "leadFrame": 0}]
     tu2 = [{"w": "ta", "bat": 1.0}, {"w": "được", "bat": 1.3}, {"w": "7/16", "bat": 1.6}, {"w": "xong", "bat": 6.0}]
     assert_true(v99.moc_cong_bo(tu2, canh2, 30, ["7/16"]) == 1.6 and v99.moc_cong_bo.uoc_luong is False)
+
+
+def _v1015_n3():
     # (3) lệch pha THẬT >= 3 s vẫn là lỗi cứng; ước lượng đầu cảnh KHÔNG vào canhBaoDongBo, chỉ vào danh sách nhẹ (Mắt thần nang False)
     nhe = mt.kiem_tat_dinh({"khung4tang": {"canhBaoNhe": ["mốc ước lượng"]}}, [], 7)
     assert_true([x for x in nhe if x["loai"] == "lech_pha"] and not any(x["nang"] for x in nhe if x["loai"] == "lech_pha"))
 
 
-t("v101.5: rut_mau không bị cờ tuSinhHong; phân số chữ / gấp đôi khớp moc_cong_bo; ước lượng đầu cảnh chỉ cảnh báo nhẹ", _v1015)
+t("v101.5 nhánh 1: rut_mau / 3D đã dựng hợp lệ thì KHÔNG bị cờ tuSinhHong", _v1015_n1)
+t("v101.5 nhánh 2: moc_cong_bo khớp phân số bằng chữ / số / 'gấp đôi' / 'một nửa' (và dò lùi cảnh tinh_toan)", _v1015_n2)
+t("v101.5 nhánh 3: ước lượng mốc = đầu cảnh chỉ là cảnh báo nhẹ (Mắt thần nang False)", _v1015_n3)
 t("Mắt thần: canhBaoDongBo -> lech_pha, tuSinhHong -> tu_sinh_hong (lỗi NẶNG, có tên)", lambda: (
     assert_true({x["loai"] for x in mt.kiem_tat_dinh({"khung4tang": {"canhBaoDongBo": ["sớm 4 s"], "tuSinhHong": "hỏng"}}, [], 7) if x["nang"]} >= {"lech_pha", "tu_sinh_hong"}),
     assert_true("lech_pha" in mt.TEN_LOI and "tu_sinh_hong" in mt.LOAI_LOI)))
