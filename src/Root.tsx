@@ -1,5 +1,6 @@
 import React from 'react';
-import {Composition} from 'remotion';
+import {Composition, Still} from 'remotion';
+import {Thumbnail} from './Thumbnail';
 import {AnhBia} from './AnhBia';
 import mau from '../mau/props_mau.json';
 import {Video} from './Video';
@@ -27,6 +28,8 @@ export const Root: React.FC = () => (
   {/* ẢNH BÌA: npx remotion still src/index.ts AnhBia out/bia.png --props=public/props.json --frame=<props.bia.khung> */}
   <Composition id="AnhBia" component={AnhBia} width={RONG} height={CAO} fps={FPS} durationInFrames={Math.max(30, propsMau.tongFrame)} defaultProps={propsMau}
     calculateMetadata={({props}: {props: Props}) => ({durationInFrames: Math.max(30, props.tongFrame)})} />
+  {/* v99.7 ẢNH BÌA TỰ ĐỘNG: npx remotion still src/index.ts Thumbnail out/thumbnail.png --props=public/props.json */}
+  <Still id="Thumbnail" component={Thumbnail} width={RONG} height={CAO} defaultProps={propsMau} />
   {/* v90 KHUNG 4 TẦNG + SÂN KHẤU 3D VECTOR (thử độc lập): node scripts/thu_canh_3d_vector.mjs mau/canh3dv_B_cau_4cap.json */}
   <Composition id="Khung4Tang" component={Khung4Tang} width={RONG} height={CAO} fps={FPS} durationInFrames={Math.max(30, (mau4Tang as unknown as Khung4TangVao).tongFrame)}
     defaultProps={mau4Tang as unknown as Khung4TangVao}

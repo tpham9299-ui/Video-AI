@@ -6,6 +6,7 @@ import {CYAN as CYAN_, HO_PHACH, XAM} from '../khung4tang/mau_v981';
 import {Toan} from '../Toan';
 import type {SoDo2DVao} from './kieu';
 import {bienTheoPha, CAO_DONG_KQ, daQua, em, hamMotBien, kep, LE, nhipNhan, soVN, thangDoThi, tho, tienDo} from './chung';
+import {CAMERA_ZOOM_MAX} from '../khung4tang/cauHinhTinhChinh';
 import {CHU, DongKetQua, mau, MO, NhanTex, ThanhTienDo} from './GiaoDien';
 
 type Net = {a: [number, number]; b: [number, number]; mau: string; nhan?: string; dut?: boolean; day?: number};
@@ -96,7 +97,7 @@ const OxyCong: React.FC<{sk: SoDo2DVao; t: number; W: number; H: number; mauNhan
   const phaSau = tToiUu !== undefined ? sk.pha.find((p) => p.t > tToiUu) : undefined;
   const tRa = phaSau ? phaSau.t : (Number.isFinite(tVao) ? Math.max(tToiUu ?? tVao, tVao) + 3.5 : 0);
   const muot = (x: number) => { const k = kep(x); return k * k * (3 - 2 * k); };
-  const kzMuon = Number.isFinite(tVao) ? 1 + 0.15 * muot((t - tVao) / 0.9) * (1 - muot((t - (tRa - 0.9)) / 0.9)) : 1;
+  const kzMuon = Number.isFinite(tVao) ? 1 + (CAMERA_ZOOM_MAX - 1) * muot((t - tVao) / 0.9) * (1 - muot((t - (tRa - 0.9)) / 0.9)) : 1;
   const bx0 = Math.max(0, Math.min(r.x, X(-w / 2) - 90, X(-u) - 150)), bx1 = Math.min(W, Math.max(r.x + r.w + 10, X(w / 2) + 90, X(u) + 150));
   const by0 = Math.max(0, Y(h) - 60), by1 = Math.min(H, y0 + 80);
   const kz = Math.max(1, Math.min(kzMuon, W / Math.max(1, bx1 - bx0), H / Math.max(1, by1 - by0)));

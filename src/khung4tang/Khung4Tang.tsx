@@ -25,6 +25,8 @@ import {SanKhau2D} from '../sankhau2d/SanKhau2D';
 import {SanKhauKhongGian} from '../khonggian/SanKhauKhongGian';
 import {KhoiCongThuc, TieuDeMotDong, VUNG_TOI_GIAN} from './ToiGianKhongGian';
 import {mauBuocV981} from './mau_v981';
+import {SFX_VOLUME} from './cauHinhTinhChinh';
+import {LopSafeZoneDebug} from './LopSafeZoneDebug';
 
 const mauBuoc = (b: BuocGiai) => MAU_3DV[b.mau || 'cyan'] || MAU_3DV.cyan;
 
@@ -190,24 +192,25 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
     const ds: {k: string; from: number; v: number; dai: number}[] = [];
     const tWhoosh = new Set<number>();
     buoc.forEach((b, j) => {
-      if (j > 0) { const f = fr(b.t); tWhoosh.add(f); ds.push({k: `w${j}`, from: f, v: 0.12, dai: 8}); }
+      if (j > 0) { const f = fr(b.t); tWhoosh.add(f); ds.push({k: `w${j}`, from: f, v: SFX_VOLUME.whoosh, dai: 8}); }
     });
     buoc.forEach((b, j) => (b.the || []).forEach((th, q) => {
       let f = fr(typeof th.t === 'number' ? th.t : b.t + 0.25);
       while ([...tWhoosh].some((w) => Math.abs(w - f) < 4)) f += 4;
-      ds.push({k: `p${j}_${q}`, from: f, v: 0.10, dai: 4});
+      ds.push({k: `p${j}_${q}`, from: f, v: SFX_VOLUME.pop, dai: 4});
     }));
     const tDing = new Set<number>();
     (p.deGhim || []).forEach((g, j) => {
       if (g.doi && typeof g.doi.t === 'number') tDing.add(fr(g.doi.t));
     });
-    [...tDing].forEach((f, j) => ds.push({k: `d${j}`, from: f, v: 0.16, dai: 12}));
+    [...tDing].forEach((f, j) => ds.push({k: `d${j}`, from: f, v: SFX_VOLUME.ding, dai: 12}));
     return ds;
   }, [buoc, p.deGhim, fps]);
 
   return (
     <AbsoluteFill className="k4t" style={{fontFamily: FONT, background: '#0E1014'}}>
       <KieuToan />
+      <LopSafeZoneDebug />
       {sfx.map((s) => (
         <Sequence key={s.k} from={s.from} durationInFrames={s.dai * 4} layout="none">
           <Audio src={staticFile(`sfx/${s.k[0] === 'w' ? 'whoosh' : s.k[0] === 'p' ? 'pop' : 'ding'}.wav`)} volume={s.v} />

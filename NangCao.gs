@@ -1399,3 +1399,19 @@ function heSoSanXuat_() {
   var tl = qua / (qua + bo);
   return { ty_le: Math.round(tl * 100), he_so: Math.max(1, Math.min(2.5, 0.6 / Math.max(0.24, tl))), them_song_song: tl < 0.5 ? 1 : 0 };
 }
+
+// v99.7: dọn rác Script Properties — CHỈ xóa khóa HE_yt_* có giá trị "loi" (video YouTube học edit bị lỗi).
+// Giữ nguyên khóa có ngày hợp lệ, key Gemini và mọi cấu hình hệ thống. Còn <= 50 khóa -> cờ CAI_DAT_KHOA = '0' (Cài đặt tự mở khóa chỉnh sửa).
+function donRacScriptProperties() {
+  var p = PropertiesService.getScriptProperties();
+  var all = p.getProperties(), xoa = 0;
+  Object.keys(all).forEach(function (k) {
+    if (/^HE_yt_/.test(k) && String(all[k]) === 'loi') { try { p.deleteProperty(k); xoa++; } catch (e) {} }
+  });
+  var conLai = Object.keys(p.getProperties()).length;
+  if (conLai <= 50) { try { p.setProperty('CAI_DAT_KHOA', '0'); } catch (e2) {} }
+  var msg = 'Dọn Script Properties: đã xóa ' + xoa + ' khóa HE_yt_* lỗi, còn lại ' + conLai + ' khóa' + (conLai <= 50 ? ' (<= 50: mở khóa chỉnh sửa Cài đặt)' : '');
+  try { nhatKy_('DON_RAC', msg); } catch (e3) {}
+  Logger.log(msg);
+  return { da_xoa: xoa, con_lai: conLai };
+}

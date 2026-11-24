@@ -365,6 +365,8 @@ jobs:
             echo "Không dựng được ảnh bìa, video vẫn dựng bình thường"
           fi
           rm -f out/*.png
+          # v99.7: ảnh bìa tự động (Remotion Still) - lỗi cũng KHÔNG làm hỏng bước dựng video
+          npx remotion still build Thumbnail out/thumbnail.png --props=public/props.json || true
 
       # KIỂM DUYỆT BỐ CỤC: chụp 2 khung mẫu mỗi cảnh, đo chữ tràn mép / đè nhau / bị cắt / mã TeX thô / công thức lỗi / chữ quá nhỏ.
       # Kịch bản từ Apps Script (_kiem_duyet = chan): có lỗi nặng thì KHÔNG dựng, gửi báo cáo về để Gemini sửa kịch bản rồi dựng lại.
