@@ -1,7 +1,7 @@
 // v90 — KHUNG 4 TẦNG CỐ ĐỊNH: T1 nhãn bước + tiêu đề | T2 sân khấu 3D Vector sống | T3 thẻ giải | T4 thanh ghim ĐỀ.
 // Mỗi tầng là một vùng cứng (overflow hidden, data-vung cho kiem_duyet.mjs) nên không thành phần nào lấn sang tầng khác.
 import React, {useMemo} from 'react';
-import {AbsoluteFill, useCurrentFrame} from 'remotion';
+import {AbsoluteFill, Audio, Sequence, staticFile, useCurrentFrame} from 'remotion';
 import {FONT} from '../theme';
 import {KieuToan, NapPhongToan} from '../Toan';
 import {SanKhau3DVector} from '../3d-vector/SanKhau3DVector';
@@ -174,9 +174,35 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
   const t3: Vung = gon && !toiGian ? {y: bc.t3.y, h: bc.t3.h - 56} : bc.t3;
   const xung = xungNhip(t, p.nhipT2);
 
+  // SFX dịu (tạo bằng scripts/tao_sfx.py): whoosh đầu bước 2+, pop khi thẻ hiện (lệch whoosh >= 4 frame), ding khi ô ĐỀ đổi đáp số
+  const sfx = useMemo(() => {
+    const fr = (s: number) => Math.max(0, Math.round(s * fps));
+    const ds: {k: string; from: number; v: number; dai: number}[] = [];
+    const tWhoosh = new Set<number>();
+    buoc.forEach((b, j) => {
+      if (j > 0) { const f = fr(b.t); tWhoosh.add(f); ds.push({k: `w${j}`, from: f, v: 0.12, dai: 8}); }
+    });
+    buoc.forEach((b, j) => (b.the || []).forEach((th, q) => {
+      let f = fr(typeof th.t === 'number' ? th.t : b.t + 0.25);
+      while ([...tWhoosh].some((w) => Math.abs(w - f) < 4)) f += 4;
+      ds.push({k: `p${j}_${q}`, from: f, v: 0.10, dai: 4});
+    }));
+    const tDing = new Set<number>();
+    (p.deGhim || []).forEach((g, j) => {
+      if (g.doi && typeof g.doi.t === 'number') tDing.add(fr(g.doi.t));
+    });
+    [...tDing].forEach((f, j) => ds.push({k: `d${j}`, from: f, v: 0.16, dai: 12}));
+    return ds;
+  }, [buoc, p.deGhim, fps]);
+
   return (
     <AbsoluteFill className="k4t" style={{fontFamily: FONT, background: '#0E1014'}}>
       <KieuToan />
+      {sfx.map((s) => (
+        <Sequence key={s.k} from={s.from} durationInFrames={s.dai * 4} layout="none">
+          <Audio src={staticFile(`sfx/${s.k[0] === 'w' ? 'whoosh' : s.k[0] === 'p' ? 'pop' : 'ding'}.wav`)} volume={s.v} />
+        </Sequence>
+      ))}
       {/* bù nghiêng (italic correction) của KaTeX đo theo phông KaTeX, không hợp với Be Vietnam nghiêng -> "V  =" hở thừa */}
       <style>{'div, span { text-wrap: balance; } .katex, .katex * { text-wrap: nowrap; } .k4t .katex .mathnormal:not(:has(+ .msupsub)):not(:has(+ .msupsub) *) { margin-right: 0 !important; }'}</style>
       <NapPhongToan />
