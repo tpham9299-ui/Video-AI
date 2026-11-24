@@ -7,6 +7,7 @@ import {FONT} from '../theme';
 import {Toan} from '../Toan';
 import {KhongGianVao} from './kieu';
 import {chuanBi, Lech, MAU_KG, veKhung} from './ve';
+import {DO_TO_MAT_PHANG_KG} from '../khung4tang/cauHinhTinhChinh';
 
 const NEN = MAU_KG.nen;
 
@@ -14,13 +15,18 @@ const NEN = MAU_KG.nen;
 const NhanChu: React.FC<{ten: string; x: number; y: number; mau: string; op: number; co: number}> = ({ten, x, y, mau, op, co}) => {
   const m = /^([A-Z])(?:_?(\d))?('*)$/.exec(ten);
   const chinh = m ? m[1] : ten, chiSo = m ? m[2] : '', phay = m ? m[3].replace(/'/g, '′') : '';
+  const rong = co * 0.62 * (chinh.length + (chiSo ? 0.6 : 0) + (phay ? 0.4 : 0)) + 12, cao = co + 4;
   return (
-    <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fill={mau} opacity={op} stroke={NEN} strokeWidth={5.5} strokeLinejoin="round"
-      style={{paintOrder: 'stroke', fontFamily: FONT, fontWeight: 800, fontSize: co, letterSpacing: 0.2}} data-nhan-kg={ten}>
-      {chinh}
-      {chiSo ? <tspan fontSize={co * 0.62} dy={co * 0.22}>{chiSo}</tspan> : null}
-      {phay ? <tspan dy={chiSo ? -co * 0.22 : 0}>{phay}</tspan> : null}
-    </text>
+    <g opacity={op}>
+      {/* v101.2: viên tối đặc phía sau nhãn -> độ tương phản cao, không bị nét xuyên qua */}
+      <rect x={x - rong / 2} y={y - cao / 2} width={rong} height={cao} rx={cao / 2} fill={NEN} fillOpacity={0.74} />
+      <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fill={mau} stroke={NEN} strokeWidth={5.5} strokeLinejoin="round"
+        style={{paintOrder: 'stroke', fontFamily: FONT, fontWeight: 800, fontSize: co, letterSpacing: 0.2}} data-nhan-kg={ten}>
+        {chinh}
+        {chiSo ? <tspan fontSize={co * 0.62} dy={co * 0.22}>{chiSo}</tspan> : null}
+        {phay ? <tspan dy={chiSo ? -co * 0.22 : 0}>{phay}</tspan> : null}
+      </text>
+    </g>
   );
 };
 
@@ -32,12 +38,12 @@ export const SanKhauKhongGian: React.FC<{kg: KhongGianVao; t: number; rong: numb
   const nhip = 0.78 + 0.22 * Math.sin((t * 2 * Math.PI) / 1.8);
   const ve = (lop: 0 | 1) =>
     f.net.filter((n) => n.lop === lop).map((n, i) => {
-      const dark = lop === 1 && !n.dut && n.w >= 2.6;
+      const dark = lop === 1 && !n.dut && n.w >= 2.2;
       return (
         <g key={`${lop}-${i}`} opacity={n.op}>
           {dark ? <line x1={n.x1} y1={n.y1} x2={n.x2} y2={n.y2} stroke={NEN} strokeWidth={n.w + 3.2} strokeOpacity={0.6} strokeLinecap="round" /> : null}
           {lop === 1 && n.sang > 0.05 ? <line x1={n.x1} y1={n.y1} x2={n.x2} y2={n.y2} stroke={n.mau} strokeWidth={n.w * 2.6} strokeOpacity={0.17 * n.sang * nhip} strokeLinecap="round" /> : null}
-          <line x1={n.x1} y1={n.y1} x2={n.x2} y2={n.y2} stroke={n.mau} strokeWidth={n.w} strokeLinecap={n.dut ? 'butt' : 'round'} strokeDasharray={n.dut ? '9 7' : undefined} />
+          <line x1={n.x1} y1={n.y1} x2={n.x2} y2={n.y2} stroke={n.mau} strokeWidth={n.w} strokeLinecap={n.dut ? 'butt' : 'round'} strokeDasharray={n.dut ? '7 5' : undefined} />
         </g>
       );
     });
@@ -48,10 +54,30 @@ export const SanKhauKhongGian: React.FC<{kg: KhongGianVao; t: number; rong: numb
         {/* v98: mặt trước khối Lego tô nhẹ theo ánh sáng (dưới mọi nét) */}
         {f.to.map((m) => <path key={m.id} d={m.d} fill={m.mau} fillOpacity={m.op} stroke="none" />)}
         {ve(0)}
-        {f.mat.map((m, i) => (
-          <path key={`m${i}`} d={m.d} fill={m.mau} fillOpacity={m.op} stroke={m.mau} strokeOpacity={Math.min(0.9, m.op * (m.bung ? 3 : 2))}
-            strokeWidth={m.bung ? 1.8 : 1.6} strokeDasharray={m.bung ? '2 5' : undefined} strokeLinejoin="round" />
-        ))}
+        {f.mat.map((m, i) => {
+          // v101.2: mặt phẳng đang giảng — viền hổ phách dày 3,2–3,8 px, tô rõ 0,22–0,26, dải sáng nghiêng quét 1 lượt theo clipPath
+          const act = m.act || 0, fade = Math.min(1, m.op / 0.2), id = 'kgq' + m.id.replace(/[^\w]/g, '_') + i;
+          const fo = m.op + (DO_TO_MAT_PHANG_KG * fade - m.op) * act;
+          const so = Math.min(0.9, m.op * (m.bung ? 3 : 2)) * (1 - act) + 0.95 * fade * act;
+          const sw = (m.bung ? 1.8 : 1.6) * (1 - act) + 3.5 * act;
+          const [bx0, by0, bx1, by1] = m.bb || [0, 0, 0, 0];
+          const q = m.quet ?? -1, bw = bx1 - bx0, bh = by1 - by0, dai = bh * 0.5 + 0.3 * bw;
+          const xq = bx0 - dai + (bw + 2 * dai) * q, bro = 0.3 * bw + 20;
+          return (
+            <g key={`m${i}`}>
+              <path d={m.d} fill={m.mau} fillOpacity={fo} stroke={act > 0.05 ? '#FBBF24' : m.mau} strokeOpacity={so} strokeWidth={sw}
+                strokeDasharray={m.bung && act < 0.05 ? '2 5' : undefined} strokeLinejoin="round" />
+              {q > 0 && q < 1 ? (
+                <>
+                  <clipPath id={id}><path d={m.d} /></clipPath>
+                  <g clipPath={`url(#${id})`}>
+                    <polygon points={`${xq},${by0 - 4} ${xq + bro},${by0 - 4} ${xq + bro - dai},${by1 + 4} ${xq - dai},${by1 + 4}`} fill="#FFFFFF" fillOpacity={0.32 * Math.sin(Math.PI * q) * fade} />
+                  </g>
+                </>
+              ) : null}
+            </g>
+          );
+        })}
         {ve(1)}
         {f.mui.map((u, i) => (
           <path key={`u${i}`} d={`M${u.x},${u.y} L${u.x - u.co * Math.cos(u.goc - 0.42)},${u.y - u.co * Math.sin(u.goc - 0.42)} L${u.x - u.co * Math.cos(u.goc + 0.42)},${u.y - u.co * Math.sin(u.goc + 0.42)} Z`}
@@ -66,7 +92,12 @@ export const SanKhauKhongGian: React.FC<{kg: KhongGianVao; t: number; rong: numb
             <circle key={c.ten} cx={c.x} cy={c.y} r={c.r * 0.82} fill={NEN} stroke={c.mau} strokeWidth={1.8} opacity={c.op * 0.8} />
           ) : (
             <g key={c.ten} opacity={c.op}>
-              {c.sang > 0.05 ? <circle cx={c.x} cy={c.y} r={c.r * (2.4 + 0.8 * nhip)} fill={c.mau} opacity={0.22 * c.sang} /> : null}
+              {/* v101.2: 2 vòng sóng đồng tâm lan tỏa ~18 frame khi điểm vừa xuất hiện */}
+              {(c.song ?? -1) > 0 ? [0, 0.25].map((lech) => {
+                const q = (c.song! - lech) / (1 - lech);
+                return q > 0 && q < 1 ? <circle key={lech} cx={c.x} cy={c.y} r={c.r * (1.3 + 4.6 * q)} fill="none" stroke={c.mau} strokeWidth={0.8 + 2.4 * (1 - q)} strokeOpacity={0.85 * (1 - q)} /> : null;
+              }) : null}
+              {c.sang > 0.05 ?<circle cx={c.x} cy={c.y} r={c.r * (2.4 + 0.8 * nhip)} fill={c.mau} opacity={0.22 * c.sang} /> : null}
               <circle cx={c.x} cy={c.y} r={c.r + 1.6} fill={NEN} opacity={0.7} />
               <circle cx={c.x} cy={c.y} r={c.r} fill={c.mau} />
               <circle cx={c.x} cy={c.y} r={c.r * 0.38} fill="#ffffff" opacity={0.85} />

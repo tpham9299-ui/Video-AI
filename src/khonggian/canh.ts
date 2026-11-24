@@ -3,6 +3,7 @@
 import {ChuyenDong, DoanVe, DungKG, KhongGianVao, V3, VaiDoan} from './kieu';
 import {cham, chuan, cheo, cong, emRa, kep01, nhan, noi, tru, trungBinh} from '../3d-vector/toan3d';
 import {emXoay} from './may';
+import {DO_MO_CANH_PHU_KG} from '../khung4tang/cauHinhTinhChinh';
 
 const TEN_DIEM = /[A-Z](?:_?\d)?'*/g;
 export const tachTen = (s: string): string[] => s.replace(/[()\s]/g, '').match(TEN_DIEM) || [];
@@ -21,7 +22,7 @@ export const MO_CO_LAP = 0.2; // v98 co_lap: dìm mờ 80 % nền, chỉ sáng 2
 
 export type DoanTT = DoanVe & {key: string; alpha: number; ve: number; nm: number; sang: number; mau?: string; mui?: 'cuoi' | 'hai'; dut?: boolean; nhom?: string};
 export type DiemTT = {ten: string; p: V3; alpha: number; nm: number; sang: number};
-export type KinhTT = {id: string; p: V3[]; n: V3; op: number; bung: boolean; mau: string; san?: boolean};
+export type KinhTT = {id: string; p: V3[]; n: V3; op: number; bung: boolean; mau: string; san?: boolean; sang?: number};
 export type GocTT = {id: string; dinh: V3; a: V3; b: V3; vuong: boolean; nhan: string; alpha: number; sang: number; tenDinh: string};
 export type TrangThai = {diem: Record<string, V3>; doan: DoanTT[]; diemVe: DiemTT[]; kinh: KinhTT[]; goc: GocTT[]; bung: Record<string, number>};
 
@@ -97,7 +98,7 @@ function nhanManhTai(kg: KhongGianVao, t: number): {nay: Set<string>; truoc: Set
   let i = -1;
   ds.forEach((x, j) => x.t <= t && (i = j));
   const lay = (j: number) => new Set((j >= 0 ? ds[j].ids : []).map(khoaId));
-  const mo = (j: number) => (j >= 0 && ds[j].coLap ? MO_CO_LAP : 0.45);
+  const mo = (j: number) => (j >= 0 && ds[j].coLap ? MO_CO_LAP : DO_MO_CANH_PHU_KG);
   return {nay: lay(i), truoc: lay(i - 1), a: i >= 0 ? emRa((t - ds[i].t) / THOI_NHAN) : 1, moNay: mo(i), moTruoc: mo(i - 1)};
 }
 
@@ -149,18 +150,18 @@ export function trangThai(kg: KhongGianVao, t: number): TrangThai {
     const g = trungBinh(k.da_giac);
     // pha 1: tam giác 3 điểm xác định mặt (MNP) -> pha 2: thiết diện bung từ tâm -> pha 3: mặt phẳng cắt xuyên khối
     const a1 = 1 - kep01(b / 0.4), a2 = kep01((b - 0.05) / 0.45), a3 = kep01((b - 0.5) / 0.5);
-    if (a1 > 0.01 && tam.length >= 3) kinh.push({id: k.id + '#tg', p: tam, n, op: 0.42 * a * a1 * m.op, bung: false, mau: k.mau || 'vang'});
+    if (a1 > 0.01 && tam.length >= 3) kinh.push({id: k.id + '#tg', p: tam, n, op: 0.42 * a * a1 * m.op, bung: false, mau: k.mau || 'vang', sang: m.sang});
     if (k.san) { // v98: mặt sàn Oxy bán trong suốt (nhìn xuyên xuống miền z < 0), không bung
       kinh.push({id: k.id, p: k.da_giac, n: [0, 0, 1], op: 0.12 * a * m.op, bung: false, mau: k.mau || 'cyan', san: true});
       continue;
     }
     if (a2 > 0.01) {
       const s = 0.45 + 0.55 * emRa(a2);
-      kinh.push({id: k.id, p: k.da_giac.map((p) => cong(g, nhan(tru(p, g), s))), n, op: 0.44 * a * a2 * m.op, bung: false, mau: k.mau || 'vang'});
+      kinh.push({id: k.id, p: k.da_giac.map((p) => cong(g, nhan(tru(p, g), s))), n, op: 0.44 * a * a2 * m.op, bung: false, mau: k.mau || 'vang', sang: m.sang});
     }
     if (k.bung && a3 > 0.01) {
       const s = 0.72 + 0.28 * emRa(a3);
-      kinh.push({id: k.id + '#bung', p: k.bung.map((p) => cong(g, nhan(tru(p, g), s))), n, op: 0.22 * a * a3 * m.op, bung: true, mau: k.mau || 'vang'});
+      kinh.push({id: k.id + '#bung', p: k.bung.map((p) => cong(g, nhan(tru(p, g), s))), n, op: 0.22 * a * a3 * m.op, bung: true, mau: k.mau || 'vang', sang: m.sang});
     }
     // giao tuyến (cạnh thiết diện) hiện cùng pha 2
     if (a2 > 0.01) {

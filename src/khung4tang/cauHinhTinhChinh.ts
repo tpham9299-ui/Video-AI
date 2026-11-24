@@ -16,6 +16,10 @@ export const BAT_XUNG_NHIP_DIEM = true;
 export const BAT_QUET_MAT_PHANG = true;
 // v100.2: đầu bút phát sáng chạy theo đầu mút nét đang kẻ (0 < tiến độ < 1).
 export const BAT_DAU_BUT_VE = true;
+// v101.2: hình không gian — độ tô mặt phẳng đang giảng (0.22–0.26), độ mờ cạnh/mặt phụ ngoài trọng tâm (0.30–0.42), dải sáng quét mặt phẳng.
+export const DO_TO_MAT_PHANG_KG = 0.24;
+export const DO_MO_CANH_PHU_KG = 0.35;
+export const BAT_QUET_MAT_PHANG_KG = true;
 // v100.3: ThanhDe — ~1 giây trước mốc mở khóa đáp án: ô "?" nhấp sáng 1 nhịp + nhãn "Bạn ra mấy?" (biến mất đúng mốc mở khóa).
 export const BAT_NHIP_HOI_HOP_DAP_AN = true;
 // v100.3: OutroTomTat — thẻ nhắc Lưu/Chụp màn hình + thanh CTA viên thuốc chọn câu gợi bình luận theo dạng bài.
