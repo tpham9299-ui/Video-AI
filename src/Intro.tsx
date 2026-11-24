@@ -5,6 +5,7 @@ import {easeInOut, easeOut, kep} from './sankhau/donghieu';
 import {FONT, FONT_TIEU_DE} from './theme';
 import {IntroProps, ThuongHieuProps} from './types';
 import {TEN_KENH} from './ThuongHieu';
+import {BAT_QUET_SANG_INTRO} from './khung4tang/cauHinhTinhChinh';
 
 // INTRO THƯƠNG HIỆU "NÉT VẼ HÌNH HỌC" (chèn TRƯỚC cảnh hook, cấu hình ở phong_cach.json -> "intro"):
 //  1. Nét sáng tự vẽ đường tròn rồi tam giác nội tiếp (kiểu Manim), các đỉnh lóe màu phụ.
@@ -151,11 +152,18 @@ export const Intro: React.FC<{it: IntroProps; th: ThuongHieuProps; goiY?: string
   });
   const gian = interpolate(tien(1.12, 1.9), [0, 1], [0.06, 0.01]);
   const gach = easeOut(tien(1.45, 1.95));
-  const pKhau = spring({frame: f - s(1.58), fps, config: {damping: 18, stiffness: 110}});
+  // v100.1: vào lệch tầng — huy hiệu (s(1.0)) -> khối tiêu đề (+3,5 khung) -> dòng khẩu hiệu (+7 khung)
+  const f0 = s(1.0);
+  const lxVao = {damping: 14, stiffness: 160};
+  const pTieuDe = spring({frame: f - f0 - 3.5, fps, config: lxVao});
+  const pKhau = spring({frame: f - f0 - 7, fps, config: lxVao});
+  const pXung = 0.5 + 0.5 * Math.sin(f / 4.5);
+  const pSheen = kep((f - 8) / 18);
+  const xSheen = -25 + 150 * easeInOut(pSheen);
   const yTen = CY1 + R * tl + 70;
   // v99.6: huy hiệu dạng bài (viên thuốc) + hình mồi vector mờ phía sau khung tiêu đề
   const dang = suyDang(goiY);
-  const pHuy = spring({frame: f - s(1.0), fps, config: {damping: 14, stiffness: 170, mass: 0.7}});
+  const pHuy = spring({frame: f - s(1.0), fps, config: {damping: 14, stiffness: 160}});
   const pMoi = easeOut(tien(0.2, 1.6));
   const troi = Math.sin(f / 38);
 
@@ -193,7 +201,13 @@ export const Intro: React.FC<{it: IntroProps; th: ThuongHieuProps; goiY?: string
       <AbsoluteFill style={{transform: `scale(${day})`, transformOrigin: `${CX}px ${CY1}px`}}>
         {/* huy hiệu dạng bài */}
         <div style={{position: 'absolute', left: 0, right: 0, top: yTen - 66, display: 'flex', justifyContent: 'center', opacity: kep(pHuy * 1.5) * mo, transform: `scale(${0.7 + 0.3 * pHuy})`}}>
-          <div style={{height: 44, padding: '0 24px', borderRadius: 22, display: 'flex', alignItems: 'center', border: `2px solid ${phu}`, background: `${phu}22`, color: phu, fontFamily: FONT, fontWeight: 900, fontSize: 24, letterSpacing: 1.6, whiteSpace: 'nowrap'}}>{dang}</div>
+          <div style={{height: 44, padding: '0 24px', borderRadius: 22, display: 'flex', alignItems: 'center', border: `2px solid ${phu}`, background: `${phu}22`, color: phu, fontFamily: FONT, fontWeight: 900, fontSize: 24, letterSpacing: 1.6, whiteSpace: 'nowrap', gap: 12}}>
+            <svg width={16} height={16} viewBox="0 0 16 16" style={{flexShrink: 0}}>
+              <circle cx={8} cy={8} r={4 + 3 * pXung} fill={phu} opacity={0.25} />
+              <circle cx={8} cy={8} r={4} fill={phu} opacity={0.65 + 0.35 * pXung} />
+            </svg>
+            {dang}
+          </div>
         </div>
         {/* biểu tượng hình học */}
         <svg width={1080} height={1920} style={{position: 'absolute', inset: 0, overflow: 'visible'}}>
@@ -227,7 +241,21 @@ export const Intro: React.FC<{it: IntroProps; th: ThuongHieuProps; goiY?: string
 
         {/* tên kênh */}
         <div style={{position: 'absolute', left: 50, right: 50, top: yTen, textAlign: 'center', opacity: mo}}>
-          <div style={{display: 'flex', justifyContent: 'center', whiteSpace: 'nowrap', fontFamily: FONT_TIEU_DE, fontWeight: 900, fontSize: coChu, lineHeight: 1.08, letterSpacing: `${gian}em`, textShadow: '0 6px 24px rgba(0,0,0,0.55)'}}>{chuTen}</div>
+          <div style={{position: 'relative', opacity: kep(pTieuDe * 1.6), transform: `translateY(${(1 - pTieuDe) * 30}px)`}}>
+            <div style={{display: 'flex', justifyContent: 'center', whiteSpace: 'nowrap', fontFamily: FONT_TIEU_DE, fontWeight: 900, fontSize: coChu, lineHeight: 1.08, letterSpacing: `${gian}em`, textShadow: '0 6px 24px rgba(0,0,0,0.55)'}}>{chuTen}</div>
+            {BAT_QUET_SANG_INTRO && f >= 8 && f <= 26 ? (
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, width: '100%', height: '100%', pointerEvents: 'none'}}>
+                <defs>
+                  <linearGradient id="introSheen" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#fff" stopOpacity={0} />
+                    <stop offset="50%" stopColor="#fff" stopOpacity={0.22} />
+                    <stop offset="100%" stopColor="#fff" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <polygon points={`${xSheen},0 ${xSheen + 14},0 ${xSheen + 8},100 ${xSheen - 6},100`} fill="url(#introSheen)" />
+              </svg>
+            ) : null}
+          </div>
           <div style={{margin: '26px auto 0', height: 5, width: 420 * gach, borderRadius: 3, background: `linear-gradient(90deg, transparent, ${nhan}, ${phu}, transparent)`}} />
           {khau ? (
             <div style={{marginTop: 30, fontFamily: FONT, fontWeight: 600, fontSize: 42, color: '#d3ebe4', letterSpacing: '0.02em', opacity: kep(pKhau * 1.4), transform: `translateY(${(1 - pKhau) * 34}px)`}}>

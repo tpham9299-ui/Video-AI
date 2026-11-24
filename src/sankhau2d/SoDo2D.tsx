@@ -7,6 +7,7 @@ import {Toan} from '../Toan';
 import type {SoDo2DVao} from './kieu';
 import {bienTheoPha, CAO_DONG_KQ, daQua, em, hamMotBien, kep, LE, nhipNhan, soVN, thangDoThi, tho, tienDo} from './chung';
 import {CAMERA_ZOOM_MAX} from '../khung4tang/cauHinhTinhChinh';
+import {XungSonar} from './SanKhauTuSinh';
 import {CHU, DongKetQua, mau, MO, NhanTex, ThanhTienDo} from './GiaoDien';
 
 type Net = {a: [number, number]; b: [number, number]; mau: string; nhan?: string; dut?: boolean; day?: number};
@@ -175,6 +176,11 @@ const SoDo2DChung: React.FC<{sk: SoDo2DVao; t: number; W: number; H: number; mau
         {(hinh.vung || []).map((v, k) => <path key={k} d={v.d} fill={v.mau} />)}
         {hinh.net.map((n, k) => <line key={k} x1={n.a[0]} y1={n.a[1]} x2={n.b[0]} y2={n.b[1]} stroke={n.mau} strokeWidth={(n.day || 2) + (n.day && n.day >= 3 ? nh : 0)} strokeDasharray={n.dut ? '7 7' : undefined} strokeLinecap="round" />)}
         {hinh.diem.map((d, k) => <circle key={k} cx={d.p[0]} cy={d.p[1]} r={8 + (d.ten === 'M' ? 2 * tho(t, 1.4) : 0)} fill={d.mau} stroke="#0E1014" strokeWidth={2} />)}
+        {/* v100.2: sonar 1 nhịp khi điểm trọng tâm được giới thiệu (lúc hình hiện; điểm tối ưu: lúc vào pha toi_uu) */}
+        {hinh.diem.filter((d) => /^[SGMN]$/.test(d.ten)).map((d, k) => (
+          <XungSonar key={`sn${k}`} cx={d.p[0]} cy={d.p[1]} f={(t - ((sk.pha[0]?.t ?? 0.3) + 0.4)) * 30} mau={d.mau} r0={11} />
+        ))}
+        {dT >= 0 ? hinh.diem.filter((d) => d.ten === 'M').map((d, k) => <XungSonar key={`so${k}`} cx={d.p[0]} cy={d.p[1]} f={dT * 30} mau="#5EEAD4" r0={11} />) : null}
       </svg>
       {hinh.net.filter((n) => n.nhan).map((n, k) => {
         const mx = (n.a[0] + n.b[0]) / 2, my = (n.a[1] + n.b[1]) / 2;

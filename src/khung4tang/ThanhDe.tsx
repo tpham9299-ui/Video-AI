@@ -11,6 +11,7 @@ import {BuocGiai, DuKienGhim} from './kieu';
 import {RONG_ND} from './vung';
 import {CYAN, HO_PHACH} from './mau_v981';
 import {chaySo} from './chay_so';
+import {BAT_NHIP_HOI_HOP_DAP_AN} from './cauHinhTinhChinh';
 
 const CHU_MO = 'rgba(230,237,245,0.78)';
 
@@ -38,6 +39,13 @@ export const ThanhDe: React.FC<{ds: DuKienGhim[]; buoc: BuocGiai[]; i: number; t
     return truoc + (nay - truoc) * a;
   };
   const caoDai = Math.min(60, cao - 18);
+  // v100.3: nhịp hồi hộp ~1 s (30 frame) trước mốc mở khóa đáp án cuối; chỉ bật khi trước mốc có đủ khoảng giảng >= 1,4 s
+  const tMo = ds.reduce((m, p) => (p.doi && p.doi.t > m ? p.doi.t : m), -1);
+  const tBuocTruoc = buoc.reduce((m, b) => (b.t < tMo && b.t > m ? b.t : m), -1);
+  const dtHoiHop = tMo > 0 ? t - (tMo - 1) : -1;
+  const hoiHop = BAT_NHIP_HOI_HOP_DAP_AN && tMo > 0 && tMo - tBuocTruoc >= 1.4 && dtHoiHop >= 0 && dtHoiHop < 1;
+  const nhipHH = hoiHop ? Math.sin(Math.PI * dtHoiHop) : 0;
+  const aNhan = hoiHop ? Math.min(1, dtHoiHop / 0.2, (1 - dtHoiHop) / 0.15) : 0;
   return (
     <div style={{position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
       <div style={{height: caoDai, maxWidth: RONG_ND - 8, padding: '0 22px', borderRadius: caoDai / 2, display: 'flex', alignItems: 'center', gap: 0,
@@ -56,11 +64,18 @@ export const ThanhDe: React.FC<{ds: DuKienGhim[]; buoc: BuocGiai[]; i: number; t
           const nay = daDoi ? 1 + 0.14 * Math.sin(Math.PI * Math.min(1, spDoi)) : 1;
           const quet = dtDoi >= 0 && dtDoi < 0.8 ? dtDoi / 0.8 : -1;
           const vienLoe = quet >= 0 ? Math.sin(Math.PI * quet) : 0;
+          const laOAn = hoiHop && !!p.doi && p.doi.t === tMo && !daDoi;
           return (
             <React.Fragment key={p.id}>
               {k ? <span style={{width: 5, height: 5, borderRadius: 3, margin: '0 13px', flexShrink: 0, background: 'rgba(56,189,248,0.45)'}} /> : null}
               <div data-du-kien={p.id} {...(p.doi ? {'data-da-doi': aDoi > 0.5 ? '1' : '0'} : {})} style={{position: 'relative', display: 'flex', alignItems: 'center', height: caoDai, transform: `scale(${nay})`, borderRadius: 10,
-                boxShadow: vienLoe > 0.01 ? `0 0 ${18 * vienLoe}px ${HO_PHACH}CC, inset 0 0 0 1.5px ${HO_PHACH}${Math.round(200 * vienLoe).toString(16).padStart(2, '0')}` : undefined}}>
+                boxShadow: vienLoe > 0.01 ? `0 0 ${18 * vienLoe}px ${HO_PHACH}CC, inset 0 0 0 1.5px ${HO_PHACH}${Math.round(200 * vienLoe).toString(16).padStart(2, '0')}`
+                  : laOAn ? `0 0 ${12 * nhipHH}px ${HO_PHACH}99, inset 0 0 0 1.5px ${HO_PHACH}${Math.round(220 * nhipHH).toString(16).padStart(2, '0')}` : undefined}}>
+                {laOAn ? (
+                  <span data-nhip-hoi-hop="1" style={{position: 'absolute', left: '50%', bottom: '100%', marginBottom: 2, transform: `translateX(-50%) translateY(${(1 - aNhan) * 6}px)`, opacity: aNhan,
+                    height: 24, padding: '0 12px', borderRadius: 12, display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', pointerEvents: 'none',
+                    background: 'rgba(10,12,18,0.88)', border: `1px solid ${HO_PHACH}AA`, color: HO_PHACH, fontFamily: FONT, fontWeight: 800, fontSize: 17}}>Bạn ra mấy?</span>
+                ) : null}
                 {quet >= 0 ? <span style={{position: 'absolute', top: 0, bottom: 0, left: `${-10 + 80 * quet}%`, width: '34%', pointerEvents: 'none',
                   background: 'linear-gradient(100deg, rgba(251,191,36,0), rgba(255,236,170,0.85), rgba(251,191,36,0))', opacity: 0.55 * vienLoe + 0.1}} /> : null}
                 <Toan tex={daDoi && aDoi >= 0.35 ? chaySo(p.doi!.nhan, dtDoi - 0.1) : p.nhan} size={co} color={mauChu} style={{fontWeight: daDoi || s > 0.5 ? 800 : 600}} />

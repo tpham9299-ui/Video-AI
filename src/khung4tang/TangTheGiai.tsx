@@ -16,6 +16,7 @@ import {RONG_ND} from './vung';
 import {tachHam} from './chu_tron';
 import {caoDongTex, coVuaCao} from './do_tex';
 import {chaySo} from './chay_so';
+import {BAT_THANH_TIEN_DO_THE} from './cauHinhTinhChinh';
 
 const TOI_DA_THE = 3;
 const CHOT = '#FBBF24';   // v98.1: hổ phách (kỷ luật 2 màu nhấn; trước đây viền ngọc)
@@ -97,8 +98,19 @@ function NoiDung({th, t0, t, mau, co = 42, coDong}: {th: TheGiai; t0: number; t:
   const cc = co > 42 ? 48 : 38, mc = co > 42 ? '#F4FFFB' : '#DCE3EC';
   const luuY = RE_LUU_Y.test(String(th.noi_dung || ''));
   const spLuuY = luuY ? loXo(t, t0, 3) : 1;
+  // v100.1: nhãn sư phạm có icon SVG 16x16 — BẪY HAY SAI (tam giác cảnh báo, san hô) / LƯU Ý (bóng đèn, hổ phách)
+  const bay = luuY && /bẫy/i.test(String(th.noi_dung || ''));
+  const mauNhan = bay ? SAN_HO : CHOT;
+  const chuNhan = bay ? '#FFFFFF' : '#0E1014';
   return <div style={{color: mc, fontFamily: FONT, fontWeight: co > 42 ? 800 : 600, fontSize: cc, lineHeight: 1.3, textAlign: 'center'}}>
-    {luuY ? <span style={{display: 'inline-block', verticalAlign: 'middle', marginRight: 12, padding: '2px 12px', borderRadius: 12, background: CHOT, color: '#0E1014', fontWeight: 900, fontSize: 22, letterSpacing: 0.6, lineHeight: 1.3, opacity: kep01(spLuuY * 1.5), transform: `scale(${0.6 + 0.4 * spLuuY})`}}>LƯU Ý</span> : null}
+    {luuY ? <span style={{display: 'inline-flex', alignItems: 'center', gap: 6, verticalAlign: 'middle', marginRight: 12, padding: '2px 12px', borderRadius: 12, background: mauNhan, color: chuNhan, fontWeight: 900, fontSize: 22, letterSpacing: 0.6, lineHeight: 1.3, opacity: kep01(spLuuY * 1.5), transform: `scale(${0.6 + 0.4 * spLuuY})`}}>
+      <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke={chuNhan} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{flexShrink: 0}}>
+        {bay
+          ? <><path d="M8 1.8 L15 14 H1 Z" /><path d="M8 6.2 V9.6" /><circle cx={8} cy={11.9} r={0.6} fill={chuNhan} /></>
+          : <><path d="M5.2 10.6 C3.6 9.4 3.2 7.2 4.2 5.5 C5.2 3.8 7.4 3.2 9.2 4 C11 4.8 11.8 6.9 11 8.6 C10.6 9.4 10.1 9.9 10.1 10.6 H5.2 Z" /><path d="M6 13 H10 M6.8 15 H9.2" /></>}
+      </svg>
+      {bay ? 'BẪY HAY SAI' : 'LƯU Ý'}
+    </span> : null}
     <ChuTron s={th.noi_dung} co={cc} mau={mc} dam={co > 42 ? 800 : 600} /></div>;
 }
 
@@ -131,7 +143,25 @@ function VachNhan({mau, day, sang, loe}: {mau: string; day: number; sang: number
     boxShadow: `0 0 ${8 + 10 * loe}px ${mau}${loe > 0.3 ? '99' : '66'}`}} />;
 }
 
-function DanhSachThe({b, t, mau, aChung}: {b: BuocGiai; t: number; mau: string; aChung: number}) {
+// v100.1: thanh viền trái 3,5 px chạy dài dần từ trên xuống theo tiến độ bước đang giảng (p 0..1); thẻ cũ: viền tĩnh dịu
+function ThanhTienDo({mau, p, hoatDong}: {mau: string; p: number; hoatDong: boolean}) {
+  if (!BAT_THANH_TIEN_DO_THE) return null;
+  return <div style={{position: 'absolute', left: 0, top: 16, bottom: 16, width: 3.5, borderRadius: 2, pointerEvents: 'none',
+    background: hoatDong ? 'rgba(255,255,255,0.08)' : `${mau}40`}}>
+    {hoatDong ? <div style={{width: '100%', height: `${Math.max(0, Math.min(1, p)) * 100}%`, borderRadius: 2, background: mau, boxShadow: `0 0 8px ${mau}99`}} /> : null}
+  </div>;
+}
+// v100.1: vệt sáng nền bán trong suốt lướt qua thẻ mới trong ~11 khung đầu (không blur)
+function VetMoThe({t, t0, r}: {t: number; t0: number; r: number}) {
+  const p = (t - t0) * 30 / 11;
+  if (!BAT_THANH_TIEN_DO_THE || p < 0 || p > 1) return null;
+  const x = -30 + 150 * p;
+  return <div style={{position: 'absolute', inset: 0, borderRadius: r, pointerEvents: 'none',
+    background: `linear-gradient(105deg, rgba(255,255,255,0) ${x - 14}%, rgba(255,255,255,0.12) ${x}%, rgba(255,255,255,0) ${x + 14}%)`}} />;
+}
+
+function DanhSachThe({b, t, mau, aChung, hoatDong = false, tHet}: {b: BuocGiai; t: number; mau: string; aChung: number; hoatDong?: boolean; tHet?: number}) {
+  const pBuoc = (t - b.t) / Math.max(1, (tHet ?? b.t + 8) - b.t);
   // v95: số thẻ đã hiện = chỉ số thẻ CUỐI đã tới mốc + 1 (không đếm: mốc không đơn điệu từng làm cửa sổ trượt sai thẻ)
   let daHien = 0;
   b.the.forEach((_, j) => { if (t >= tTheCua(b, j)) daHien = j + 1; });
@@ -159,6 +189,8 @@ function DanhSachThe({b, t, mau, aChung}: {b: BuocGiai; t: number; mau: string; 
               boxShadow: `0 22px 48px rgba(0,0,0,0.40), 0 0 ${30 * sang + 20 * loe}px ${CHOT}1F, ${VIEN_KINH}`,
               padding: '18px 30px 22px', display: 'flex', flexDirection: 'column', gap: 12, flexShrink: 0}}>
               <VachNhan mau={CHOT} day={3} sang={sang} loe={loe} />
+              <ThanhTienDo mau={CHOT} p={pBuoc} hoatDong={hoatDong} />
+              <VetMoThe t={t} t0={t0} r={20} />
               <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12}}>
                 <span style={{height: 34, padding: '0 14px', borderRadius: 17, background: CHOT, color: '#0E1014', fontFamily: FONT, fontWeight: 900, fontSize: 20, display: 'flex', alignItems: 'center', letterSpacing: 0.6}}>{j + 1} · ĐÁP ÁN</span>
                 {th.nhan ? <span style={{color: CHOT, fontFamily: FONT, fontWeight: 800, fontSize: 28}}><ChuTron s={th.nhan} co={28} mau={CHOT} dam={800} /></span> : null}
@@ -174,6 +206,8 @@ function DanhSachThe({b, t, mau, aChung}: {b: BuocGiai; t: number; mau: string; 
             boxShadow: `0 18px 40px rgba(0,0,0,0.34), ${VIEN_KINH}`,
             padding: '18px 28px 20px', display: 'flex', flexDirection: 'column', gap: 12, flexShrink: 0}}>
             <VachNhan mau={mau} day={2.5} sang={1} loe={loe} />
+            <ThanhTienDo mau={mau} p={pBuoc} hoatDong={hoatDong} />
+            <VetMoThe t={t} t0={t0} r={18} />
             <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12}}>
               <span style={{width: 34, height: 34, borderRadius: 17, background: `${mau}26`, color: mau, fontFamily: FONT, fontWeight: 900, fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>{j + 1}</span>
               {th.nhan ? <span style={{color: mau, fontFamily: FONT, fontWeight: 700, fontSize: 26}}><ChuTron s={th.nhan} co={26} mau={mau} dam={700} /></span> : null}
@@ -195,7 +229,7 @@ export const TangTheGiai: React.FC<{buoc: BuocGiai[]; i: number; t: number; mau:
     <>
       {truoc && ra > 0 ? <DanhSachThe b={truoc} t={t} mau={mau(truoc)} aChung={ra} /> : null}
       {/* bước mới chờ thẻ cũ mờ hết rồi mới vào */}
-      <DanhSachThe b={{...b, the: b.the.map((th, j) => ({...th, t: Math.max(tTheCua(b, j), b.t + (truoc ? RA_TIEU_DE : 0))}))}} t={t} mau={mau(b)} aChung={1} />
+      <DanhSachThe b={{...b, the: b.the.map((th, j) => ({...th, t: Math.max(tTheCua(b, j), b.t + (truoc ? RA_TIEU_DE : 0))}))}} t={t} mau={mau(b)} aChung={1} hoatDong tHet={i + 1 < buoc.length ? buoc[i + 1].t : undefined} />
     </>
   );
 };

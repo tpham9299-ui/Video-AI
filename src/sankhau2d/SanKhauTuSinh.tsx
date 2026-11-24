@@ -5,6 +5,48 @@
 import React from 'react';
 import {spring} from 'remotion';
 import {FONT} from '../theme';
+import {BAT_DAU_BUT_VE, BAT_QUET_MAT_PHANG, BAT_XUNG_NHIP_DIEM} from '../khung4tang/cauHinhTinhChinh';
+
+// v100.2: 2 vòng sonar đồng tâm nở +22 px, mờ 0,85 -> 0 trong ~18 frame rồi tắt (f = số frame kể từ lúc điểm xuất hiện)
+export const XungSonar: React.FC<{cx: number; cy: number; f: number; mau?: string; r0?: number}> = ({cx, cy, f, mau = '#FBBF24', r0 = 12}) => {
+  if (!BAT_XUNG_NHIP_DIEM || f < 0 || f >= 18 + 5) return null;
+  return (
+    <g data-sonar pointerEvents="none">
+      {[0, 1].map((i) => {
+        const q = (f - 5 * i) / 18;
+        if (q < 0 || q >= 1) return null;
+        return <circle key={i} cx={cx} cy={cy} r={r0 + 22 * q} fill="none" stroke={mau} strokeWidth={i ? 1.5 : 2} opacity={0.85 * (1 - q)} />;
+      })}
+    </g>
+  );
+};
+
+// v100.2: đầu bút = vòng ngoài mờ + lõi trắng, chỉ hiện khi nét đang vẽ (0 < tiến độ < 1)
+export const DauBut: React.FC<{x: number; y: number; u: number}> = ({x, y, u}) => {
+  if (!BAT_DAU_BUT_VE || !(u > 0 && u < 1)) return null;
+  return (
+    <g data-dau-but pointerEvents="none">
+      <circle cx={x} cy={y} r={9} fill="#FFFFFF" opacity={0.28} />
+      <circle cx={x} cy={y} r={3.5} fill="#FFFFFF" />
+    </g>
+  );
+};
+
+// v100.2: dải sáng nghiêng lướt qua đa giác `d` 1 lần (~16 frame), bị cắt đúng theo đa giác
+const QuetMat: React.FC<{id: string; d: string; f: number}> = ({id, d, f}) => {
+  if (!BAT_QUET_MAT_PHANG || f < 0 || f >= 16) return null;
+  const n = (d.match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
+  const xs = n.filter((_, i) => i % 2 === 0), ys = n.filter((_, i) => i % 2 === 1);
+  if (!xs.length) return null;
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys) - 10, y1 = Math.max(...ys) + 10;
+  const q = f / 16, bx = x0 - 70 + (x1 - x0 + 140) * q;
+  return (
+    <g data-quet-mat pointerEvents="none">
+      <clipPath id={`ts-qm-${id}`}><path d={d} /></clipPath>
+      <polygon clipPath={`url(#ts-qm-${id})`} points={`${bx},${y0} ${bx + 44},${y0} ${bx + 14},${y1} ${bx - 30},${y1}`} fill="#FEF3C7" opacity={0.28} />
+    </g>
+  );
+};
 
 export type LopTuSinh = {id: string; t: number; svg: string; hieu_ung: 'moc' | 'no' | 'sang' | 've'; buoc?: number; nhan?: string; nhom?: string};
 
@@ -282,7 +324,10 @@ const LopTongQuat: React.FC<{ps: TP[]; t: number; fps: number; cong: number; mp?
           const dang = p.id === matMoi;
           const so = Math.min(1, sp * 1.2);
           return (
-            <path key={p.id} d={p.d} fill={AMBER} fillOpacity={(dang ? 0.3 : 0.07) * so} stroke={AMBER} strokeWidth={dang ? 4.5 : 1.5} strokeLinejoin="round" strokeOpacity={dang ? 1 : 0.45} />
+            <g key={p.id}>
+              <path d={p.d} fill={AMBER} fillOpacity={(dang ? 0.3 : 0.07) * so} stroke={AMBER} strokeWidth={dang ? 4.5 : 1.5} strokeLinejoin="round" strokeOpacity={dang ? 1 : 0.45} />
+              {dang ? <QuetMat id={p.id} d={p.d || ''} f={(t - p.t) * fps} /> : null}
+            </g>
           );
         }
         if (p.loai === 'hinh') {
@@ -301,6 +346,7 @@ const LopTongQuat: React.FC<{ps: TP[]; t: number; fps: number; cong: number; mp?
           return (
             <g key={p.id} opacity={lang}>
               <line x1={x1} y1={y1} x2={x1 + dx} y2={y1 + dy} stroke={mauD} strokeWidth={moi ? 6 : 2.5} strokeLinecap="round" />
+              {moi || p.nhanh ? <DauBut x={x1 + dx} y={y1 + dy} u={sp} /> : null}
               {nhomLen > 1 && sp > 0.95 ? (
                 <>
                   <line x1={x1 - tx} y1={y1 - ty} x2={x1 + tx} y2={y1 + ty} stroke={mauD} strokeWidth={3} />
@@ -316,6 +362,7 @@ const LopTongQuat: React.FC<{ps: TP[]; t: number; fps: number; cong: number; mp?
           const so = Math.min(1, sp * 1.2);
           return (
             <g key={p.id} opacity={so}>
+              {p.nhanh || moi || /^[SGMN]$/.test(p.ten || '') ? <XungSonar cx={p.x || 0} cy={p.y || 0} f={(t - p.t) * fps} mau={p.nhanh ? AMBER : CYAN} /> : null}
               {p.nhanh ? <circle cx={p.x} cy={p.y} r={(moi ? 19 : 15) * (0.6 + 0.4 * Math.min(1, sp))} fill="none" stroke={AMBER} strokeWidth={moi ? 3 : 2} strokeOpacity={moi ? 1 : 0.6} /> : null}
               <circle cx={p.x} cy={p.y} r={(p.nhanh ? 10 : 8) * (0.6 + 0.4 * Math.min(1, sp))} fill={mau} />
               <text x={np.x} y={np.y} fontSize={moi || p.nhanh ? 30 : 26} fontWeight={800} fill="#F8FAFC" textAnchor="middle" stroke={NEN} strokeWidth={6} paintOrder="stroke">{p.ten}</text>

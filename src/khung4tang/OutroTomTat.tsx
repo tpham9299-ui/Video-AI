@@ -20,6 +20,7 @@ import type {SanKhau2DVao} from '../sankhau2d/kieu';
 import {SanKhauTuSinh, type TuSinhVao} from '../sankhau2d/SanKhauTuSinh';
 import {NenKhiQuyen} from './NenKhiQuyen';
 import {layTheme, type TenTheme} from './nen_v99';
+import {BAT_CTA_THONG_MINH_OUTRO} from './cauHinhTinhChinh';
 
 const NGOC = '#2EE6A8';
 const SAN_HO = '#FF5A5F';
@@ -37,6 +38,16 @@ const IconCta: React.FC<{cta: string}> = ({cta}) => {
   return <svg width={36} height={36} viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z" fill="#fff" /></svg>;
 };
 
+// v100.3: chọn câu gợi tương tác theo dạng bài (thứ tự: dãy số -> xác suất -> hàm số -> hình học -> mặc định)
+const cauGoiTheoDang = (van: string, khongGian: boolean, loai?: string): string => {
+  const s = van.toLowerCase();
+  if (/cấp số|dãy số|bông tuyết|koch|u_n|u_\{n/.test(s)) return 'Đổi số bước n lớn hơn thì sao? Bình luận suy nghĩ của bạn!';
+  if (/xác suất|tổ hợp|chỉnh hợp|hoán vị|đếm|binom|\\binom|\bc\(|\ba_n\^|p\(a/.test(s) || /rut_mau|so_do_cay|luoi_bayes|cot_phan_phoi/.test(loai || '')) return 'Có ai bị đếm lặp ở bước này không? Comment đáp án của bạn!';
+  if (/parabol|hàm số|đồ thị|bậc hai|y\s*=|f\(x\)/.test(s) || /kinh_te_do_thi/.test(loai || '')) return 'Bạn còn cách lập hàm nào nhanh hơn không? Bình luận bên dưới!';
+  if (khongGian || /mặt phẳng|hình chóp|lăng trụ|hình hộp|thiết diện|vuông góc|song song|tam giác|đường tròn/.test(s)) return 'Bạn nhìn ra mặt phẳng phụ trong mấy giây? Bình luận nhé!';
+  return 'Lưu lại ôn nhanh • Bình luận dạng bài bạn muốn giải tiếp!';
+};
+
 export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: Canh3DV | null; sanKhau?: SanKhau2DVao | null; khongGian?: KhongGianVao | null; tCuoi: number; thuongHieu?: string; cta?: string; tuSinh?: TuSinhVao | null; theme?: TenTheme}> = ({dapAn, tomTat, canh: canhVao, sanKhau, khongGian, tCuoi, thuongHieu, cta = 'LƯU LẠI NGAY!', tuSinh, theme}) => {
   const th = khongGian ? null : layTheme(theme);
   // v95: Outro không làm mờ phần nào của mô hình (bỏ nhấn mạnh 30 %) -> mọi nhãn kích thước sáng rõ
@@ -50,7 +61,12 @@ export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: C
   const tNut = tDong(Math.min(3, tomTat.length)) + 0.3;
   const sNut = spring({frame: f - Math.round(tNut * fps), fps, config: {damping: 12, stiffness: 160, mass: 0.7}});
   const sGoi = spring({frame: f - Math.round((tNut + 0.35) * fps), fps, config: {damping: 16, stiffness: 120, mass: 0.8}});
-  const nhun = t > tNut + 0.5 ? 1 + 0.04 * Math.max(0, Math.sin(((t - tNut - 0.5) * 2 * Math.PI) / 0.9)) : 1;
+  const sLuu = spring({frame: f - Math.round(0.6 * fps), fps, config: {damping: 16, stiffness: 130, mass: 0.8}});
+  // v100.3: câu gợi bình luận khớp dạng bài (suy từ đáp án + tóm tắt + loại sân khấu); 2 icon nảy 1 lần khi thanh vào
+  const cauGoi = React.useMemo(() => cauGoiTheoDang(`${dapAn} ${tomTat.map((d) => `${d.chien_thuat} ${d.cong_thuc || ''}`).join(' ')}`, !!khongGian, (sanKhau as {loai?: string} | null | undefined)?.loai), [dapAn, tomTat, khongGian, sanKhau]);
+  const tNayIcon = (t - (tNut + 0.35) - 0.25) / 0.5;
+  const nayIcon = tNayIcon > 0 && tNayIcon < 1 ? 1 + 0.28 * Math.sin(Math.PI * tNayIcon) : 1;
+  const nhun = t > tNut + 0.5? 1 + 0.04 * Math.max(0, Math.sin(((t - tNut - 0.5) * 2 * Math.PI) / 0.9)) : 1;
   const sang = 0.8 + 0.2 * Math.sin((t * 2 * Math.PI) / 2.2);
   const V = VUNG_OUTRO;
   return (
@@ -100,6 +116,17 @@ export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: C
         </div>
       ) : null}
 
+      {/* v100.3: thẻ nhắc Lưu / chụp màn hình phía trên cụm 3 hộp (không đổi vị trí 3 hộp) */}
+      {BAT_CTA_THONG_MINH_OUTRO && tomTat.length ? (
+        <div data-nhac-luu style={{position: 'absolute', left: 0, right: 0, top: V.dong.y - 46, height: 34, display: 'flex', justifyContent: 'center', alignItems: 'center',
+          opacity: kep01(sLuu * 1.6), transform: `translateY(${(1 - sLuu) * 10}px)`}}>
+          <div style={{height: 34, padding: '0 16px', borderRadius: 17, display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap', background: 'rgba(10,12,18,0.82)',
+            border: '1px solid rgba(251,191,36,0.55)', color: '#FBBF24', fontWeight: 800, fontSize: 18, letterSpacing: 0.6}}>
+            <svg width={18} height={18} viewBox="0 0 24 24" style={{flexShrink: 0}}><path d="M6 3h12v18l-6-4-6 4z" fill="#FBBF24" /></svg>
+            LƯU LẠI ÔN NHANH • CHỤP MÀN HÌNH CÔNG THỨC
+          </div>
+        </div>
+      ) : null}
       {/* v97 hình không gian: 3 ý tóm tắt trên MỘT tấm nền mờ, ngăn bằng đường kẻ siêu mảnh, căn giữa (không 3 hộp rời) */}
       {khongGian ? (
         <div data-tom-tat-gop style={{position: 'absolute', left: 0, right: 0, top: V.dong.y, height: 3 * V.dong.h + 2 * V.dong.cach, display: 'flex', flexDirection: 'column',
@@ -141,10 +168,23 @@ export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: C
 
       {/* nút lưu */}
       {/* v99.6: dòng gợi tương tác, nằm trọn trong vùng an toàn (đáy <= 1574, trái/phải 130..950); nút nhích lên 16 px nhường chỗ */}
+      {BAT_CTA_THONG_MINH_OUTRO ? (
+        <div data-goi-tuong-tac style={{position: 'absolute', left: 0, right: 0, top: V.nut.y + 88, height: 44, display: 'flex', justifyContent: 'center', alignItems: 'center',
+          opacity: kep01(sGoi * 1.6), transform: `translateY(${(1 - sGoi) * 12}px)`}}>
+          <div style={{height: 44, maxWidth: 780, padding: '0 20px', borderRadius: 22, display: 'flex', alignItems: 'center', gap: 10, boxSizing: 'border-box', whiteSpace: 'nowrap',
+            background: 'linear-gradient(180deg, rgba(34,40,52,0.9), rgba(12,14,20,0.94))', border: '1px solid rgba(56,189,248,0.5)', boxShadow: '0 0 16px rgba(56,189,248,0.18)',
+            color: '#F1F5FA', fontWeight: 800, fontSize: cauGoi.length > 50 ? 20 : 22}}>
+            <svg width={26} height={26} viewBox="0 0 24 24" style={{flexShrink: 0, transform: `scale(${nayIcon})`}}><path d="M4 4h16v12H9l-5 4z" fill="#38BDF8" /></svg>
+            <span>{cauGoi}</span>
+            <svg width={26} height={26} viewBox="0 0 24 24" style={{flexShrink: 0, transform: `scale(${nayIcon})`}}><path d="M6 3h12v18l-6-4-6 4z" fill="#FBBF24" /></svg>
+          </div>
+        </div>
+      ) : (
       <div data-goi-tuong-tac style={{position: 'absolute', left: 0, right: 0, top: V.nut.y + 98, height: 30, display: 'flex', justifyContent: 'center', alignItems: 'center',
         opacity: kep01(sGoi * 1.6), transform: `translateY(${(1 - sGoi) * 12}px)`, color: 'rgba(230,237,245,0.82)', fontWeight: 700, fontSize: 24, whiteSpace: 'nowrap'}}>
         Lưu lại ôn nhanh • Bình luận dạng bài bạn muốn giải tiếp!
       </div>
+      )}
       <div style={{position: 'absolute', left: 0, right: 0, top: V.nut.y - 16, display: 'flex', justifyContent: 'center', opacity: kep01(sNut * 2)}}>
         <div style={{height: 96, padding: '0 54px', borderRadius: 48, display: 'flex', alignItems: 'center', gap: 16, background: `linear-gradient(180deg, #FF7A7E, ${SAN_HO} 55%, #E2393F)`,
           boxShadow: `0 7px 0 #9E1F25, 0 0 34px rgba(255,90,95,0.45)`, transform: `scale(${(0.6 + 0.4 * sNut) * nhun})`, color: '#fff', fontWeight: 900, fontSize: 38, letterSpacing: 0.8, whiteSpace: 'nowrap'}}>
