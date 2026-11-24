@@ -1,6 +1,7 @@
 // v90 — TẦNG 3: KHU THẺ GIẢI TOÁN. Thẻ nền tối bo góc, viền 1px sáng theo màu nhấn của bước, đánh số theo thứ tự
 // trong bước (nội dung là chuỗi bước thật). Mỗi dòng công thức hiện đúng mốc; đổi bước thì thẻ cũ mờ đi trước.
 import React from 'react';
+import {spring} from 'remotion';
 import {FONT} from '../theme';
 import {Toan} from '../Toan';
 import {BangBienThien} from '../sankhau/BangBienThien';
@@ -24,17 +25,28 @@ const RONG_TRONG = RONG_ND - 2 * LE_THE - 2 * 28;
 // mốc xuất hiện của thẻ j trong bước b
 export const tTheCua = (b: BuocGiai, j: number) => (b.the[j].t !== undefined ? b.the[j].t! : b.t + 0.35 + j * 0.7);
 
+// v99.4: lò xo nảy gọn (damping 15, không rung thừa) theo giây -> khung (30 fps); pure, không phụ thuộc hook
+const loXo = (t: number, t0: number, delayKhung = 0) =>
+  spring({frame: Math.max(0, (t - t0) * 30 - delayKhung), fps: 30, config: {damping: 15, stiffness: 140, mass: 0.8}});
+// v99.4: giả kính nổi khối (KHÔNG backdrop-filter): viền trên sáng 1px + viền dưới tối bằng inset shadow (không đổi kích thước)
+const VIEN_KINH = 'inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.45)';
+
 function NoiDung({th, t0, t, mau, co = 42, coDong}: {th: TheGiai; t0: number; t: number; mau: string; co?: number; coDong?: number}) {
   if (th.loai === 'cong_thuc') {
+    const dongs = th.dong.slice(0, 5);
     return (
       <div style={{display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center'}}>
-        {th.dong.slice(0, 5).map((d, k) => {
+        {dongs.map((d, k) => {
           const tk = th.moc?.[k] ?? t0 + k * 0.45;
           const a = emRa((t - tk) / 0.35);
+          // lò xo lệch nhịp 4-5 frame so với thẻ; dòng cũ hạ xuống ~0.62 khi dòng kế tiếp xuất hiện
+          const sp = loXo(t, tk, 4 + (k % 2));
+          const tkSau = k + 1 < dongs.length ? (th.moc?.[k + 1] ?? t0 + (k + 1) * 0.45) : null;
+          const mo = tkSau === null ? 1 : 1 - 0.38 * emRa((t - tkSau) / 0.3);
           // v98: căn GIỮA + co theo chiều cao (phân số nhiều tầng không bao giờ bị cắt nửa tử / mẫu)
           const coD = coDong ?? co;
           return (
-            <div key={k} style={{opacity: a, transform: `translateY(${(1 - a) * 8}px)`}}>
+            <div key={k} style={{opacity: a * mo, transform: `translateY(${(1 - sp) * 14}px)`}}>
               <Toan tex={d} size={coD} color={k === th.dong.length - 1 && (th.dong.length > 1 || co > 42) ? mau : '#F4F7FB'} maxWidth={RONG_TRONG} maxHeight={caoDongTex(d, coD) + 6} can="giua" style={co > 42 ? {fontWeight: 800} : undefined} />
             </div>
           );
@@ -103,14 +115,15 @@ function DanhSachThe({b, t, mau, aChung}: {b: BuocGiai; t: number; mau: string; 
         const t0 = tTheCua(b, j);
         const a = emRa((t - t0) / 0.38);
         const loe = 1 - kep01((t - t0) / 0.9); // viền lóe khi thẻ vừa vào
+        const sp = loXo(t, t0);   // lò xo thẻ (nảy gọn)
         if (th.chot) {
           // v98.1: THẺ CHỐT — kính mỏng ánh hổ phách, KHÔNG viền 4 cạnh; vạch sáng 3 px cạnh trên thở nhẹ; công thức lớn 52 px, nảy nhẹ khi vào
           const nay = 1 + 0.05 * Math.sin(Math.PI * kep01((t - t0) / 0.5));
           const sang = 0.75 + 0.25 * Math.sin(((t - t0) * 2 * Math.PI) / 2.4);
           return (
-            <div key={j} data-the-giai data-the-chot style={{position: 'relative', opacity: a, transform: `translateY(${(1 - a) * 18}px) scale(${nay})`, borderRadius: 20,
-              background: 'linear-gradient(180deg, rgba(251,191,36,0.085), rgba(255,255,255,0.035) 60%)',
-              boxShadow: `0 22px 48px rgba(0,0,0,0.40), 0 0 ${30 * sang + 20 * loe}px ${CHOT}1F, inset 0 1px 0 rgba(255,255,255,0.06)`,
+            <div key={j} data-the-giai data-the-chot style={{position: 'relative', opacity: a, transform: `translateY(${(1 - sp) * 22}px) scale(${nay})`, borderRadius: 20,
+              background: 'linear-gradient(180deg, rgba(251,191,36,0.12), rgba(14,16,22,0.62) 55%, rgba(8,10,14,0.72))',
+              boxShadow: `0 22px 48px rgba(0,0,0,0.40), 0 0 ${30 * sang + 20 * loe}px ${CHOT}1F, ${VIEN_KINH}`,
               padding: '18px 30px 22px', display: 'flex', flexDirection: 'column', gap: 12, flexShrink: 0}}>
               <VachNhan mau={CHOT} day={3} sang={sang} loe={loe} />
               <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12}}>
@@ -123,9 +136,9 @@ function DanhSachThe({b, t, mau, aChung}: {b: BuocGiai; t: number; mau: string; 
         }
         // v98.1: thẻ thường = tấm kính mờ mỏng rgba(255,255,255,0.04) + bóng mềm, bỏ viền 4 cạnh; chỉ 1 vạch sáng 2,5 px cạnh trên theo màu bước
         return (
-          <div key={j} data-the-giai style={{position: 'relative', opacity: a, transform: `translateY(${(1 - a) * 18}px)`, borderRadius: 18,
-            background: 'linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.03))',
-            boxShadow: '0 18px 40px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.05)',
+          <div key={j} data-the-giai style={{position: 'relative', opacity: a, transform: `translateY(${(1 - sp) * 20}px)`, borderRadius: 18,
+            background: 'linear-gradient(180deg, rgba(34,40,52,0.62), rgba(12,14,20,0.70))',
+            boxShadow: `0 18px 40px rgba(0,0,0,0.34), ${VIEN_KINH}`,
             padding: '18px 28px 20px', display: 'flex', flexDirection: 'column', gap: 12, flexShrink: 0}}>
             <VachNhan mau={mau} day={2.5} sang={1} loe={loe} />
             <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12}}>
