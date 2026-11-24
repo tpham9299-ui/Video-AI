@@ -1,8 +1,20 @@
-// v99.1 — NỀN KHÍ QUYỂN ĐỘNG (5 theme) cho Khung 4 tầng không tối giản. Chỉ gradient + SVG nét mảnh (không blur /
-// feTurbulence) để render Chromium nhanh. Quầng sáng dịch nhẹ theo nhịp bước, vệt sáng lướt chéo khi đổi bước.
+// v99.1 / v99.3 — NỀN KHÍ QUYỂN ĐỘNG (5 theme) cho Khung 4 tầng. Chỉ gradient + SVG nét mảnh (không blur /
+// feTurbulence) để render Chromium nhanh. Chuyển động mượt theo useCurrentFrame(): 3 vầng sáng gradient trôi chậm
+// (opacity 0.18–0.28), lưới tọa độ trượt nhẹ (parallax), hạt bokeh / ký hiệu toán mờ nổi chậm theo mảng (Hình học vs Xác suất).
 import React, {useMemo} from 'react';
-import {CAO, RONG} from '../theme';
-import {diemTatDinh, ThemeV99, trangThaiNen} from './nen_v99';
+import {useCurrentFrame, useVideoConfig} from 'remotion';
+import {CAO, FONT, RONG} from '../theme';
+import {
+  diemTatDinh,
+  hatBokehToan,
+  luoiParallax,
+  MangNen,
+  suyMangNen,
+  ThemeV99,
+  trangThaiNen,
+  vangSangDong,
+  viTriHat,
+} from './nen_v99';
 
 const HoaTietSong: React.FC<{th: ThemeV99; t: number}> = ({th, t}) => {
   // lưới tọa độ uốn sóng trôi chậm (đại dương): 14 đường ngang uốn sin + đường dọc thưa
@@ -82,12 +94,141 @@ const HoaTietBanVe: React.FC<{th: ThemeV99; t: number}> = ({th, t}) => {
   );
 };
 
-export const NenKhiQuyen: React.FC<{th: ThemeV99; t: number; mocBuoc: number[]; tamSanKhau: number; mauNhan: string}> = ({th, t, mocBuoc, tamSanKhau, mauNhan}) => {
-  const n = trangThaiNen(t, mocBuoc);
+// v99.3: lớp nền động dùng chung cho mọi nền Khung 4 tầng (cả NenKhiQuyen và NenTramToanHoc):
+//  - 3 vầng sáng radial-gradient trôi chậm theo useCurrentFrame() (opacity 0.18-0.28);
+//  - lưới tọa độ 2 tầng trượt nhẹ (parallax);
+//  - hạt bokeh / ký hiệu toán / hình khối mờ (Hình học) / biểu đồ cột mờ (Xác suất) nổi chậm.
+export const LopNenDongV993: React.FC<{
+  frame: number;
+  fps: number;
+  tamSanKhau: number;
+  mauChinh: string;
+  mauPhu: string;
+  mauNet: string;
+  mang: MangNen;
+  lechBuocX?: number;
+}> = ({frame, fps, tamSanKhau, mauChinh, mauPhu, mauNet, mang, lechBuocX = 0}) => {
+  const vang = vangSangDong(frame, fps, tamSanKhau, mauChinh, mauPhu, lechBuocX);
+  const pl = luoiParallax(frame, fps);
+  const hat = useMemo(() => hatBokehToan(mang, 16), [mang]);
+  const laHH = mang === 'hinh_hoc';
+  const laXS = mang === 'xac_suat';
+  return (
+    <div data-nen-dong={mang} style={{position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden'}}>
+      {vang.map((v) => (
+        <div
+          key={v.id}
+          data-vang-sang={v.id}
+          style={{
+            position: 'absolute',
+            left: v.cx - v.rx,
+            top: v.cy - v.ry,
+            width: v.rx * 2,
+            height: v.ry * 2,
+            opacity: v.opacity,
+            background: `radial-gradient(ellipse 50% 50% at 50% 50%, ${v.mauTrong} 0%, ${v.mauGiua} 48%, transparent 76%)`,
+          }}
+        />
+      ))}
+      <svg width={RONG} height={CAO} style={{position: 'absolute', inset: 0}}>
+        <defs>
+          <pattern id={`pl-xa-${mang}`} width={120} height={120} patternUnits="userSpaceOnUse" patternTransform={`translate(${pl.xaX} ${pl.xaY})`}>
+            <path d="M120 0H0V120" fill="none" stroke={mauNet} strokeWidth={1.1} />
+            {laHH ? <circle cx={0} cy={0} r={2.2} fill={mauNet} /> : null}
+          </pattern>
+          <pattern id={`pl-gan-${mang}`} width={40} height={40} patternUnits="userSpaceOnUse" patternTransform={`translate(${pl.ganX} ${pl.ganY})`}>
+            {laHH ? (
+              <path d="M40 0H0V40" fill="none" stroke={mauNet} strokeWidth={0.65} />
+            ) : (
+              <circle cx={20} cy={20} r={1.3} fill={mauNet} />
+            )}
+          </pattern>
+          <radialGradient id={`pl-mask-grad-${mang}`} cx="50%" cy="46%" r="70%">
+            <stop offset="0%" stopColor="#fff" stopOpacity={1} />
+            <stop offset="65%" stopColor="#fff" stopOpacity={0.55} />
+            <stop offset="100%" stopColor="#fff" stopOpacity={0.12} />
+          </radialGradient>
+          <mask id={`pl-mask-${mang}`}>
+            <rect width={RONG} height={CAO} fill={`url(#pl-mask-grad-${mang})`} />
+          </mask>
+        </defs>
+        <g mask={`url(#pl-mask-${mang})`}>
+          <rect width={RONG} height={CAO} fill={`url(#pl-xa-${mang})`} opacity={laHH ? 0.055 : 0.038} />
+          <rect width={RONG} height={CAO} fill={`url(#pl-gan-${mang})`} opacity={laHH ? 0.042 : 0.052} />
+        </g>
+        {hat.map((h, idx) => {
+          const vt = viTriHat(h, frame, fps);
+          if (h.kieu === 'ky_hieu') {
+            return (
+              <text
+                key={idx}
+                x={vt.x}
+                y={vt.y}
+                fill={mauNet}
+                opacity={vt.opacity}
+                fontFamily={FONT}
+                fontWeight={700}
+                fontSize={Math.round(h.r * 1.15)}
+                textAnchor="middle"
+                transform={`rotate(${vt.xoay} ${vt.x} ${vt.y})`}
+              >
+                {h.kyHieu}
+              </text>
+            );
+          }
+          if (h.kieu === 'khoi_mo') {
+            const r = h.r * 1.25;
+            return (
+              <g key={idx} transform={`translate(${vt.x} ${vt.y}) rotate(${vt.xoay})`} stroke={mauNet} fill="none" strokeWidth={1.3} opacity={vt.opacity}>
+                <polygon points={`0,${-r} ${r * 0.9},${r * 0.7} ${-r * 0.9},${r * 0.7}`} />
+                <line x1={0} y1={-r} x2={0} y2={r * 0.7} strokeDasharray="3 3" />
+              </g>
+            );
+          }
+          if (h.kieu === 'cot_mo' || laXS && idx % 5 === 0) {
+            const w = h.r * 0.42;
+            return (
+              <g key={idx} transform={`translate(${vt.x} ${vt.y})`} fill={mauNet} opacity={vt.opacity * 0.85}>
+                <rect x={-w * 1.6} y={-h.r * 0.45} width={w} height={h.r * 0.45} rx={2} />
+                <rect x={-w * 0.3} y={-h.r * 0.85} width={w} height={h.r * 0.85} rx={2} />
+                <rect x={w} y={-h.r * 0.62} width={w} height={h.r * 0.62} rx={2} />
+              </g>
+            );
+          }
+          return (
+            <g key={idx} opacity={vt.opacity}>
+              <circle cx={vt.x} cy={vt.y} r={h.r * 1.45} fill={idx % 2 === 0 ? mauChinh : mauNet} opacity={0.38} />
+              <circle cx={vt.x} cy={vt.y} r={h.r * 0.72} fill={mauNet} opacity={0.72} />
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+};
+
+export const NenKhiQuyen: React.FC<{th: ThemeV99; t: number; mocBuoc: number[]; tamSanKhau: number; mauNhan: string; mang?: MangNen}> = ({th, t, mocBuoc, tamSanKhau, mauNhan, mang}) => {
+  const frame = useCurrentFrame();
+  const vc = useVideoConfig();
+  const fps = vc?.fps || 30;
+  const tDong = Math.max(t, frame / fps);
+  const frameDong = Math.max(frame, Math.round(t * fps));
+  const mangNen = mang || suyMangNen({theme: th.ten});
+  const n = trangThaiNen(tDong, mocBuoc);
   const a = Math.round(th.quangMo * 255).toString(16).padStart(2, '0');
   const a2 = Math.round(th.quangMo * 0.4 * 255).toString(16).padStart(2, '0');
   return (
     <div style={{position: 'absolute', inset: 0, background: `linear-gradient(180deg, ${th.tren} 0%, ${th.giua} 46%, ${th.duoi} 100%)`}}>
+      <LopNenDongV993
+        frame={frameDong}
+        fps={fps}
+        tamSanKhau={tamSanKhau}
+        mauChinh={th.quang}
+        mauPhu={mauNhan}
+        mauNet={th.net}
+        mang={mangNen}
+        lechBuocX={n.lechX}
+      />
       {/* quầng sáng chính sau T2 - dịch theo nhịp bước */}
       <div style={{position: 'absolute', left: -200 + n.lechX, width: RONG + 400, top: tamSanKhau - 640 + n.lechY, height: 1280,
         background: `radial-gradient(ellipse 46% 44% at 50% 50%, ${th.quang}${a} 0%, ${th.quang}${a2} 40%, transparent 72%)`}} />
@@ -117,8 +258,8 @@ export const NenKhiQuyen: React.FC<{th: ThemeV99; t: number; mocBuoc: number[]; 
             <stop offset="1" stopColor="#000" stopOpacity={0.42} />
           </radialGradient>
         </defs>
-        {th.hoaTiet === 'song' ? <HoaTietSong th={th} t={t} /> : th.hoaTiet === 'tinh_van' ? <HoaTietTinhVan th={th} t={t} />
-          : th.hoaTiet === 'studio' ? <HoaTietStudio th={th} /> : th.hoaTiet === 'phan' ? <HoaTietPhan th={th} t={t} /> : <HoaTietBanVe th={th} t={t} />}
+        {th.hoaTiet === 'song' ? <HoaTietSong th={th} t={tDong} /> : th.hoaTiet === 'tinh_van' ? <HoaTietTinhVan th={th} t={tDong} />
+          : th.hoaTiet === 'studio' ? <HoaTietStudio th={th} /> : th.hoaTiet === 'phan' ? <HoaTietPhan th={th} t={tDong} /> : <HoaTietBanVe th={th} t={tDong} />}
         {/* vệt sáng lướt chéo khi đổi bước */}
         {n.quet >= 0 ? (
           <g transform={`rotate(-18 540 960) translate(${-700 + n.quet * 2500} 0)`}>

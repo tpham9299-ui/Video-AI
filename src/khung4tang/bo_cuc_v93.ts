@@ -29,7 +29,9 @@ export function haiDong(s: string, motDong = 16): string[] {
   return [x.slice(0, tot), x.slice(tot + 1)];
 }
 // v98: khung đối xứng hẹp hơn (724 px chữ) -> cho co tới 44 px để dòng dài vẫn MỘT dòng (không tự xuống dòng chồng chữ)
-export const coTieuDeIntro = (dong: string[]) => coVua(dong.reduce((a, b) => (b.length > a.length ? b : a), ''), 104, 44);
+// v99.3: auto-fit linh hoạt xuống tới 28 px cho chuỗi rất dài + hàm coCauHookIntro để tiêu đề Intro và câu Hook không bao giờ bị cụt chữ
+export const coTieuDeIntro = (dong: string[]) => coVua(dong.reduce((a, b) => (b.length > a.length ? b : a), ''), 104, 28, RONG_CHU, 0.70);
+export const coCauHookIntro = (dong: string[]) => coVua(dong.reduce((a, b) => (b.length > a.length ? b : a), ''), 58, 24, RONG_CHU, 0.68);
 
 // Outro: đáp án | mô hình 3D | 3 dòng tóm tắt | nút lưu. v96: trọn vùng an toàn TikTok (đỉnh >= 212, đáy nút <= 1574)
 export const VUNG_OUTRO = {dapAn: {y: 216, h: 220}, san: {y: 450, h: 560}, dong: {y: 1024, h: 116, cach: 14}, nut: {y: 1440}};

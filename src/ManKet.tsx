@@ -3,7 +3,7 @@ import {AbsoluteFill, Audio, Sequence, staticFile, useCurrentFrame, useVideoConf
 import {NenToi} from './NenToi';
 import {expoOut} from './sankhau/chuyendong';
 import {easeOut, kep, popOut} from './sankhau/donghieu';
-import {LogoTron} from './ThuongHieu';
+import {chuanThuongHieu, LogoTron} from './ThuongHieu';
 import {BONG_CHU, FONT, FONT_DAM, FONT_TIEU_DE, vienChu} from './theme';
 import {Toan} from './Toan';
 import {ThuongHieuProps} from './types';
@@ -59,7 +59,7 @@ export const ManKetChuyenNghiep: React.FC<{th: ThuongHieuProps; baiHoc: string[]
   const tuNut = tuKenh + 16;
   const tuBam = tuNut + 26;
   const bam = kep((f - tuBam - 10) / 8);
-  const ten = th.ten || th.handle || '';
+  const ten = chuanThuongHieu(th.ten);
   return (
     <AbsoluteFill style={{opacity: kep(f / 6)}}>
       <NenToi />

@@ -170,9 +170,9 @@ export const SoDoCay: React.FC<{sk: SoDoCayVao; t: number; W: number; H: number;
         const cham = n.tang === 1 ? chamCua(n) : [];
         return (
           <React.Fragment key={`b${n.id}`}>
-            <div style={{position: 'absolute', left: v.x - nua, top: v.y - caoNut / 2, width: rongNut, height: caoNut, borderRadius: caoNut / 2, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              border: `1.5px solid ${CYAN}`, opacity: aBong * MO_BONG * (1 - a), color: '#EAF1F8', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden'}}>
-              <ChuTron s={n.nhan} co={n.nhan.length > 8 ? 17 : 21} mau="#EAF1F8" />
+            <div style={{position: 'absolute', left: v.x - nua, top: v.y - caoNut / 2, minWidth: rongNut, height: caoNut, padding: '0 8px', boxSizing: 'border-box', borderRadius: caoNut / 2, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: `1.5px solid ${CYAN}`, opacity: aBong * MO_BONG * (1 - a), color: '#EAF1F8', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'visible'}}>
+              <ChuTron s={n.nhan} co={Math.max(14, Math.min(21, Math.floor((rongNut - 14) / (Math.max(1, n.nhan.length) * 0.62))))} mau="#EAF1F8" />
             </div>
             {cham.length ? <ChamBi x={v.x} y={v.y + caoNut / 2 + 5} w={rongNut + 20} mau={cham} o={aBong * 0.7 * (1 - a)} /> : null}
           </React.Fragment>
@@ -198,11 +198,11 @@ export const SoDoCay: React.FC<{sk: SoDoCayVao; t: number; W: number; H: number;
         const chu = '#EAF1F8';
         return (
           <React.Fragment key={n.id}>
-            <div data-sk2d={`nut_${n.id}`} style={{position: 'absolute', left: v.x - nua, top: v.y - caoNut / 2, width: rongNut, height: caoNut, borderRadius: caoNut / 2, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            <div data-sk2d={`nut_${n.id}`} style={{position: 'absolute', left: v.x - nua, top: v.y - caoNut / 2, minWidth: rongNut, height: caoNut, padding: '0 8px', boxSizing: 'border-box', borderRadius: caoNut / 2, display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: hp > 0.5 ? 'rgba(251,191,36,0.10)' : 'rgba(22,27,36,0.92)', border: `1.5px solid ${m}${o > 0.6 ? 'CC' : '55'}`, opacity: a * Math.max(0.3, o),
               transform: `scale(${0.8 + 0.2 * a + (hp > 0.5 ? 0.05 * nh : 0)})`, boxShadow: hp > 0.5 ? `0 0 ${14 + 6 * tho(t)}px ${HO_PHACH}40` : '0 6px 16px rgba(0,0,0,0.35)',
-              color: hp > 0.5 ? HO_PHACH : chu, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden'}}>
-              <ChuTron s={n.nhan} co={Math.round((n.nhan.length > 8 ? 19 : 24) * Math.min(1, caoNut / 48))} mau={hp > 0.5 ? HO_PHACH : chu} />
+              color: hp > 0.5 ? HO_PHACH : chu, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'visible'}}>
+              <ChuTron s={n.nhan} co={Math.round(Math.max(15, Math.min(24, Math.floor((rongNut - 14) / (Math.max(1, n.nhan.length) * 0.62)))) * Math.min(1, caoNut / 48))} mau={hp > 0.5 ? HO_PHACH : chu} />
             </div>
             {cham.length ? <ChamBi x={v.x} y={v.y + caoNut / 2 + 5} w={rongNut + 20} mau={cham} o={a * Math.max(0.3, o)} /> : null}
             {aTich > 0 ? <VienXacSuat ten={`tich_${n.id}`} trai x={v.x + nua + 14} y={v.y} tex={`= ${n.tich}`} mau={hp > 0.5 ? HO_PHACH : o < 0.4 ? XAM : CHU} a={aTich} mo={Math.max(0.3, o)} /> : null}

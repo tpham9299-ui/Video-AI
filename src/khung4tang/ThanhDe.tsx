@@ -4,6 +4,7 @@
 import React from 'react';
 import {FONT} from '../theme';
 import {Toan} from '../Toan';
+import {texSangChu} from '../chu';
 import {rongNhan} from '../3d-vector/nhan';
 import {emRa, emVaoRa} from '../3d-vector/toan3d';
 import {BuocGiai, DuKienGhim} from './kieu';
@@ -12,38 +13,50 @@ import {CYAN, HO_PHACH} from './mau_v981';
 
 const CHU_MO = 'rgba(230,237,245,0.78)';
 
+// v99.3: ước lượng bề rộng thực của một mục trên thanh ĐỀ (kể cả khoảng trắng tiếng Việt trong \text{...}) để auto-fit không cắt chữ
+export function rongMucDe(tex: string, co: number): number {
+  const hien = texSangChu(String(tex || ''));
+  return Math.max(rongNhan(tex, co), Math.ceil(Math.max(1, hien.length) * co * 0.62 + 24));
+}
+
+export function coChuThanhDe(ds: DuKienGhim[], rongToiDa = RONG_ND - 56): number {
+  const muc = ds.slice(0, 6);
+  let co = 30;
+  const rongHang = (c: number) => 68 + 44 + muc.reduce((s, p) => s + Math.max(rongMucDe(p.nhan, c), p.doi ? rongMucDe(p.doi.nhan, c) : 0) + 28, 0);
+  while (co > 16 && rongHang(co) > rongToiDa) co -= 1;
+  return co;
+}
+
 export const ThanhDe: React.FC<{ds: DuKienGhim[]; buoc: BuocGiai[]; i: number; t: number; cao: number}> = ({ds, buoc, i, t, cao}) => {
   if (!ds.length) return null;
   const muc = ds.slice(0, 6);
-  // cỡ chữ chung: co lại tới khi cả dải vừa bề rộng (nhãn "ĐỀ" + dữ kiện + chấm ngăn)
-  let co = 30;
-  const rongHang = (c: number) => 64 + 44 + muc.reduce((s, p) => s + Math.max(rongNhan(p.nhan, c), p.doi ? rongNhan(p.doi.nhan, c) : 0) + 30, 0);
-  while (co > 20 && rongHang(co) > RONG_ND - 2 * 24) co -= 1;   // v96: trong vùng an toàn TikTok (phải 12 %)
+  const co = coChuThanhDe(muc);
   const sangCua = (id: string) => {
     const nay = i >= 0 && (buoc[i].du_kien || []).includes(id) ? 1 : 0;
     const truoc = i > 0 && (buoc[i - 1].du_kien || []).includes(id) ? 1 : 0;
     const a = i >= 0 ? emVaoRa((t - buoc[i].t) / 0.35) : 1;
     return truoc + (nay - truoc) * a;
   };
-  const caoDai = Math.min(60, cao - 18);
+  const caoDai = Math.min(62, cao - 14);
+  const maxWMuc = Math.max(180, Math.floor((RONG_ND - 110) / Math.max(1, Math.min(muc.length, 3))));
   return (
-    <div style={{position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-      <div style={{height: caoDai, maxWidth: RONG_ND - 8, padding: '0 22px', borderRadius: caoDai / 2, display: 'flex', alignItems: 'center', gap: 0,
-        background: 'linear-gradient(90deg, rgba(255,255,255,0.015), rgba(255,255,255,0.045) 50%, rgba(255,255,255,0.015))', boxSizing: 'border-box'}}>
-        <span style={{fontFamily: FONT, fontWeight: 800, fontSize: co - 6, color: 'rgba(230,237,245,0.42)', letterSpacing: 2.5, marginRight: 16}}>ĐỀ</span>
+    <div style={{position: 'absolute', inset: 0, padding: '4px 8px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'visible'}}>
+      <div style={{minHeight: caoDai, maxWidth: RONG_ND, padding: '6px 26px', borderRadius: Math.ceil(caoDai / 2), display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', rowGap: 4,
+        background: 'linear-gradient(90deg, rgba(255,255,255,0.018), rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.018))', boxSizing: 'border-box', overflow: 'visible'}}>
+        <span style={{fontFamily: FONT, fontWeight: 800, fontSize: Math.max(16, co - 5), color: 'rgba(230,237,245,0.46)', letterSpacing: 2.5, marginRight: 16, flexShrink: 0}}>ĐỀ</span>
         {muc.map((p, k) => {
           const s = sangCua(p.id);
           const aDoi = p.doi ? emRa((t - p.doi.t) / 0.45) : 0;
           const daDoi = aDoi > 0;
           const mauChu = daDoi ? HO_PHACH : s > 0.5 ? CYAN : CHU_MO;
           const vach = daDoi ? aDoi : s;
-          const nay = daDoi ? 1 + 0.12 * Math.sin(Math.PI * Math.min(1, aDoi)) : 1;
+          const nay = daDoi ? 1 + 0.10 * Math.sin(Math.PI * Math.min(1, aDoi)) : 1;
           return (
             <React.Fragment key={p.id}>
-              {k ? <span style={{width: 5, height: 5, borderRadius: 3, margin: '0 13px', flexShrink: 0, background: 'rgba(56,189,248,0.45)'}} /> : null}
-              <div data-du-kien={p.id} {...(p.doi ? {'data-da-doi': aDoi > 0.5 ? '1' : '0'} : {})} style={{position: 'relative', display: 'flex', alignItems: 'center', height: caoDai, transform: `scale(${nay})`}}>
-                <Toan tex={daDoi && aDoi >= 0.35 ? p.doi!.nhan : p.nhan} size={co} color={mauChu} style={{fontWeight: daDoi || s > 0.5 ? 800 : 600}} />
-                {vach > 0.02 ? <span style={{position: 'absolute', left: '12%', right: '12%', bottom: 9, height: 2, borderRadius: 1, opacity: vach,
+              {k ? <span style={{width: 5, height: 5, borderRadius: 3, margin: '0 12px', flexShrink: 0, background: 'rgba(56,189,248,0.45)'}} /> : null}
+              <div data-du-kien={p.id} {...(p.doi ? {'data-da-doi': aDoi > 0.5 ? '1' : '0'} : {})} style={{position: 'relative', display: 'flex', alignItems: 'center', minHeight: caoDai - 10, padding: '2px 6px', transform: `scale(${nay})`, overflow: 'visible'}}>
+                <Toan tex={daDoi && aDoi >= 0.35 ? p.doi!.nhan : p.nhan} size={co} color={mauChu} maxWidth={muc.length === 1 ? RONG_ND - 120 : maxWMuc} style={{fontWeight: daDoi || s > 0.5 ? 800 : 600}} />
+                {vach > 0.02 ? <span style={{position: 'absolute', left: '10%', right: '10%', bottom: 3, height: 2, borderRadius: 1, opacity: vach,
                   background: daDoi ? HO_PHACH : CYAN, boxShadow: `0 0 8px ${daDoi ? HO_PHACH : CYAN}88`}} /> : null}
               </div>
             </React.Fragment>

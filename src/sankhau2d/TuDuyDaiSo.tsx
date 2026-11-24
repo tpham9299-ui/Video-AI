@@ -88,14 +88,14 @@ export const TuDuyDaiSo: React.FC<{sk: TuDuyVao; t: number; W: number; H: number
                 <line x1={xMui} y1={yj - CACH + 2} x2={xMui} y2={yj - 6} stroke={daBat ? m : MO} strokeWidth={2.4} />
                 <path d={`M${xMui - 8} ${yj - 14} L${xMui} ${yj - 4} L${xMui + 8} ${yj - 14}`} fill="none" stroke={daBat ? m : MO} strokeWidth={2.4} />
               </svg> : null}
-              <div data-sk2d={`nut_${j}`} style={{position: 'absolute', left: LE.trai, top: yj, width: rongNut, height: kt[j].h, borderRadius: 18, background: NEN_THE,
+              <div data-sk2d={`nut_${j}`} style={{position: 'absolute', left: LE.trai, top: yj, width: rongNut, minHeight: kt[j].h, borderRadius: 18, background: NEN_THE,
                 opacity: daBat ? (laNay ? aBat : 0.6) : 0.42 * aKhung,
                 border: `${laNay ? 2 : 1}px ${daBat ? 'solid' : 'dashed'} ${laNay ? m : quet > 0.05 ? `${m}AA` : 'rgba(255,255,255,0.14)'}`,
                 boxShadow: laNay ? `0 0 ${14 + 10 * nh + 16 * quet}px ${m}33` : quet > 0.05 ? `0 0 ${16 * quet}px ${m}33` : 'none',
-                transform: `translateY(${(1 - aKhung) * 12 - 4 * quet}px) scale(${laNay ? 1 + 0.012 * tho(t, 2.2) : 1})`, padding: '10px 18px', overflow: 'hidden',
+                transform: `translateY(${(1 - aKhung) * 12 - 4 * quet}px) scale(${laNay ? 1 + 0.012 * tho(t, 2.2) : 1})`, padding: '10px 22px', overflow: 'visible',
                 display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
-                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, color: daBat ? m : MO, fontWeight: 800, fontSize: 21, whiteSpace: 'nowrap', maxWidth: rongNut - 36, height: DAU_NUT - 12}}>
-                  <span>{n.nhan}</span><span style={{color: MO, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis'}}><ChuTron s={n.tieu_de} co={21} mau={MO} /></span>
+                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, color: daBat ? m : MO, fontWeight: 800, fontSize: Math.max(16, Math.min(21, Math.floor((rongNut - 120) / (Math.max(1, (n.tieu_de || '').length) * 0.62)))), whiteSpace: 'nowrap', maxWidth: rongNut - 36, minHeight: DAU_NUT - 12, overflow: 'visible'}}>
+                  <span>{n.nhan}</span><span style={{color: MO, fontWeight: 700, overflow: 'visible'}}><ChuTron s={n.tieu_de} co={Math.max(16, Math.min(21, Math.floor((rongNut - 120) / (Math.max(1, (n.tieu_de || '').length) * 0.62))))} mau={MO} /></span>
                 </div>
                 {n.dong && daBat ? (
                   <div style={{marginTop: 4, opacity: em((t - L.tNut[j] - 0.4) / 0.4), display: 'flex', justifyContent: 'center', width: '100%'}}>

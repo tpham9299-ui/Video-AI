@@ -8,7 +8,7 @@ import {AbsoluteFill, Audio, random, Sequence, spring, staticFile, useVideoConfi
 import {FONT} from '../theme';
 import {emRa, kep01} from '../3d-vector/toan3d';
 import type {MocCau} from './kieu';
-import {coTieuDeIntro, coVua, haiDong, INTRO_SAN, LE_ND_V93, RONG_CHU, RONG_ND_V93, raIntro} from './bo_cuc_v93';
+import {coCauHookIntro, coTieuDeIntro, coVua, haiDong, INTRO_SAN, LE_ND_V93, RONG_CHU, RONG_ND_V93, raIntro} from './bo_cuc_v93';
 
 export {giayIntro, INTRO_SAN, raIntro} from './bo_cuc_v93';
 
@@ -47,10 +47,10 @@ export const IntroMocCau: React.FC<{m: MocCau; t: number; G: number}> = ({m, t, 
 
   const dongTD = haiDong(m.tieu_de);
   const coTD = coTieuDeIntro(dongTD);
-  const coPhu = coVua(m.phu_de, 40, 26, RONG_CHU, 0.62);
+  const coPhu = coVua(m.phu_de, 40, 20, RONG_CHU, 0.65);
   const dongHook = haiDong(m.cau_hook, 22);
-  const coHook = Math.min(60, coVua(dongHook.reduce((a, b) => (b.length > a.length ? b : a), ''), 60, 38, RONG_CHU, 0.66));
-  const coCta = coVua(m.cta, 40, 28, 640, 0.66);
+  const coHook = coCauHookIntro(dongHook);
+  const coCta = coVua(m.cta, 40, 22, 620, 0.68);
 
   const aPill = lo(0, 0.25);
   const sTD = lo_lo(0.12);
@@ -62,44 +62,44 @@ export const IntroMocCau: React.FC<{m: MocCau; t: number; G: number}> = ({m, t, 
   const tho = 0.85 + 0.15 * Math.sin((t * 2 * Math.PI) / 2.6);
 
   return (
-    <AbsoluteFill data-vung="intro" style={{pointerEvents: 'none', fontFamily: FONT}}>
+    <AbsoluteFill data-vung="intro" style={{pointerEvents: 'none', fontFamily: FONT, overflow: 'visible'}}>
       {/* v96: toàn bộ chữ / nút trong khung 0..950 (vùng an toàn TikTok bên phải 12 %) */}
-      <div style={{position: 'absolute', left: LE_ND_V93, top: 0, width: RONG_ND_V93, height: '100%'}}>
+      <div style={{position: 'absolute', left: LE_ND_V93, top: 0, width: RONG_ND_V93, height: '100%', overflow: 'visible'}}>
       {/* nền phủ tối nhẹ che lưới tầng (khung 4 tầng chưa vào) + quầng sáng dịu sau mô hình */}
       <AbsoluteFill style={{opacity: con, background: `radial-gradient(ellipse 560px 430px at ${RONG_ND_V93 / 2}px ${tamSan}px, rgba(63,216,242,${0.16 * tho}) 0%, rgba(245,197,66,0.07) 45%, rgba(14,16,20,0) 75%)`}} />
       <HatSang t={t} a={con} />
 
       {/* 1. viên thuốc ngữ cảnh thi */}
       <div style={{position: 'absolute', left: 0, right: 0, top: 216, display: 'flex', justifyContent: 'center', opacity: aPill * con, transform: `translateY(${(1 - aPill) * -14 - ra * 30}px)`}}>
-        <div style={{height: 54, padding: '0 28px', borderRadius: 27, display: 'flex', alignItems: 'center', background: 'rgba(245,197,66,0.12)', border: `1.5px solid ${VANG}`,
-          color: VANG_SANG, fontWeight: 800, fontSize: coVua(m.nhan_thi, 28, 20, RONG_CHU, 0.64), letterSpacing: 1.4, whiteSpace: 'nowrap', boxShadow: '0 0 24px rgba(245,197,66,0.18)'}}>
+        <div style={{minHeight: 54, padding: '6px 32px', borderRadius: 28, display: 'flex', alignItems: 'center', background: 'rgba(245,197,66,0.12)', border: `1.5px solid ${VANG}`,
+          color: VANG_SANG, fontWeight: 800, fontSize: coVua(m.nhan_thi, 28, 18, RONG_CHU, 0.66), letterSpacing: 1.4, whiteSpace: 'nowrap', overflow: 'visible', boxShadow: '0 0 24px rgba(245,197,66,0.18)'}}>
           {m.nhan_thi}
         </div>
       </div>
 
-      {/* 2. tiêu đề vàng ánh kim (lớp glow phía sau + lớp gradient phía trước) */}
-      <div style={{position: 'absolute', left: 48, right: 48, top: 282, height: 200, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        opacity: kep01(sTD * 1.4) * con, transform: `scale(${0.9 + 0.1 * sTD}) translateY(${-ra * 40}px)`}}>
+      {/* 2. tiêu đề vàng ánh kim (lớp glow phía sau + lớp gradient phía trước, đệm an toàn để không cắt dấu tiếng Việt) */}
+      <div style={{position: 'absolute', left: 24, right: 24, top: 280, minHeight: 196, padding: '4px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        overflow: 'visible', opacity: kep01(sTD * 1.4) * con, transform: `scale(${0.9 + 0.1 * sTD}) translateY(${-ra * 40}px)`}}>
         {dongTD.map((d, i) => (
-          <div key={i} style={{position: 'relative', fontWeight: 900, fontSize: coTD, lineHeight: 1.04, letterSpacing: -0.5, whiteSpace: 'nowrap'}}>
-            <span style={{position: 'absolute', inset: 0, whiteSpace: 'nowrap', textWrap: 'nowrap' as React.CSSProperties['textWrap'], color: VANG, textShadow: `0 0 18px rgba(245,197,66,0.55), 0 0 42px rgba(245,197,66,0.25), 0 4px 0 #5A3D06`}}>{d}</span>
+          <div key={i} style={{position: 'relative', fontWeight: 900, fontSize: coTD, lineHeight: 1.12, letterSpacing: -0.5, whiteSpace: 'nowrap', padding: '4px 12px', overflow: 'visible'}}>
+            <span style={{position: 'absolute', inset: 0, padding: '4px 12px', whiteSpace: 'nowrap', textWrap: 'nowrap' as React.CSSProperties['textWrap'], color: VANG, textShadow: `0 0 18px rgba(245,197,66,0.55), 0 0 42px rgba(245,197,66,0.25), 0 4px 0 #5A3D06`}}>{d}</span>
             <span style={{position: 'relative', whiteSpace: 'nowrap', textWrap: 'nowrap' as React.CSSProperties['textWrap'], background: `linear-gradient(180deg, ${VANG_SANG} 8%, ${VANG} 52%, ${VANG_DAM} 96%)`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent'}}>{d}</span>
           </div>
         ))}
       </div>
 
       {/* 3. dòng phụ chuyên đề */}
-      <div style={{position: 'absolute', left: 48, right: 48, top: 492, textAlign: 'center', color: CYAN, fontWeight: 800, fontSize: coPhu, letterSpacing: 2, whiteSpace: 'nowrap',
-        opacity: aPhu * con, transform: `translateY(${(1 - aPhu) * 12 - ra * 30}px)`, textShadow: '0 0 16px rgba(63,216,242,0.35)'}}>
+      <div style={{position: 'absolute', left: 24, right: 24, top: 492, padding: '0 16px', textAlign: 'center', color: CYAN, fontWeight: 800, fontSize: coPhu, letterSpacing: 1.8, whiteSpace: 'nowrap',
+        overflow: 'visible', opacity: aPhu * con, transform: `translateY(${(1 - aPhu) * 12 - ra * 30}px)`, textShadow: '0 0 16px rgba(63,216,242,0.35)'}}>
         {m.phu_de}
       </div>
 
       {/* 4. câu hook tâm lý (giây ~3) */}
       {t >= tHook - 0.05 ? (
-        <div style={{position: 'absolute', left: 48, right: 48, top: INTRO_SAN.y + INTRO_SAN.h + 20, height: 140, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          opacity: kep01(sHook * 1.5) * con, transform: `scale(${0.86 + 0.14 * sHook}) translateY(${ra * 30}px)`}}>
+        <div style={{position: 'absolute', left: 24, right: 24, top: INTRO_SAN.y + INTRO_SAN.h + 20, minHeight: 140, padding: '6px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          overflow: 'visible', opacity: kep01(sHook * 1.5) * con, transform: `scale(${0.86 + 0.14 * sHook}) translateY(${ra * 30}px)`}}>
           {dongHook.map((d, i) => (
-            <div key={i} style={{color: '#FFFFFF', fontWeight: 900, fontSize: coHook, lineHeight: 1.1, whiteSpace: 'nowrap', textShadow: '0 3px 0 rgba(0,0,0,0.6), 0 0 22px rgba(255,90,95,0.3)'}}>{d}</div>
+            <div key={i} style={{color: '#FFFFFF', fontWeight: 900, fontSize: coHook, lineHeight: 1.16, padding: '2px 10px', whiteSpace: 'nowrap', overflow: 'visible', textShadow: '0 3px 0 rgba(0,0,0,0.6), 0 0 22px rgba(255,90,95,0.3)'}}>{d}</div>
           ))}
         </div>
       ) : null}
@@ -107,9 +107,9 @@ export const IntroMocCau: React.FC<{m: MocCau; t: number; G: number}> = ({m, t, 
       {/* 5. nút CTA san hô, nhịp nhún spring */}
       {t >= tCta - 0.05 ? (
         <div style={{position: 'absolute', left: 0, right: 0, top: INTRO_SAN.y + INTRO_SAN.h + 172, display: 'flex', justifyContent: 'center', opacity: kep01(sCta * 2) * con, transform: `translateY(${ra * 40}px)`}}>
-          <div style={{height: 92, minWidth: 420, padding: '0 44px', borderRadius: 46, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16,
+          <div style={{minHeight: 92, minWidth: 420, padding: '10px 48px', borderRadius: 46, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16,
             background: `linear-gradient(180deg, #FF7A7E, ${SAN_HO} 55%, #E2393F)`, boxShadow: `0 7px 0 #9E1F25, 0 0 34px rgba(255,90,95,0.45)`,
-            transform: `scale(${(0.6 + 0.4 * sCta) * nhun})`, color: '#FFFFFF', fontWeight: 900, fontSize: coCta, letterSpacing: 0.8, whiteSpace: 'nowrap'}}>
+            transform: `scale(${(0.6 + 0.4 * sCta) * nhun})`, color: '#FFFFFF', fontWeight: 900, fontSize: coCta, letterSpacing: 0.8, whiteSpace: 'nowrap', overflow: 'visible'}}>
             <svg width={34} height={34} viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z" fill="#fff" /></svg>
             {m.cta}
           </div>

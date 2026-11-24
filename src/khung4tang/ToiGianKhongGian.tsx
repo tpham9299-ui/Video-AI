@@ -7,13 +7,14 @@
 import React from 'react';
 import {FONT} from '../theme';
 import {Toan} from '../Toan';
-import {chuanTieuDe} from '../chu';
+import {chuanTieuDe, texSangChu} from '../chu';
 import {emRa, kep01} from '../3d-vector/toan3d';
 import {BuocGiai, TheGiai} from './kieu';
 import {ChuTron} from './ChuTron';
 import {RONG_ND} from './vung';
 import {tHienThe, theDangGiang, VUNG_TOI_GIAN} from './toi_gian';
 import {RA_TIEU_DE, VAO_TIEU_DE} from './TangTieuDe';
+import {caoDongTex, coVuaCao} from './do_tex';
 
 export {VUNG_TOI_GIAN, tHienThe, theDangGiang};
 
@@ -22,13 +23,14 @@ const NGOC = '#2EE6A8';
 /* ---------------- T1: một dòng ---------------- */
 function DongTieuDe({b, so, mau, a, lech}: {b: BuocGiai; so: number; mau: string; a: number; lech: number}) {
   const td = chuanTieuDe(b.tieu_de || b.nhan || '');
-  const co = td.length > 30 ? 40 : td.length > 22 ? 46 : 52;
+  const n = Math.max(1, texSangChu(td).length);
+  const co = Math.max(24, Math.min(52, Math.floor((RONG_ND - 140) / (n * 0.62))));
   return (
-    <div data-tieu-de-toi-gian style={{position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, opacity: a, transform: `translateY(${lech}px)`,
-      fontFamily: FONT, whiteSpace: 'nowrap'}}>
-      <span style={{color: mau, fontWeight: 900, fontSize: co, letterSpacing: 1, fontVariantNumeric: 'tabular-nums'}}>{String(so).padStart(2, '0')}</span>
-      <span style={{color: 'rgba(244,247,251,0.35)', fontWeight: 700, fontSize: co * 0.8}}>·</span>
-      <span style={{color: '#F4F7FB', fontWeight: 800, fontSize: co, letterSpacing: -0.3, maxWidth: 760, overflow: 'hidden'}}><ChuTron s={td} co={co} mau="#F4F7FB" dam={800} /></span>
+    <div data-tieu-de-toi-gian style={{position: 'absolute', inset: 0, padding: '0 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, opacity: a, transform: `translateY(${lech}px)`,
+      fontFamily: FONT, whiteSpace: 'nowrap', overflow: 'visible'}}>
+      <span style={{color: mau, fontWeight: 900, fontSize: co, letterSpacing: 1, fontVariantNumeric: 'tabular-nums', flexShrink: 0}}>{String(so).padStart(2, '0')}</span>
+      <span style={{color: 'rgba(244,247,251,0.35)', fontWeight: 700, fontSize: co * 0.8, flexShrink: 0}}>·</span>
+      <span style={{color: '#F4F7FB', fontWeight: 800, fontSize: co, letterSpacing: -0.3, maxWidth: RONG_ND - 110, overflow: 'visible'}}><ChuTron s={td} co={co} mau="#F4F7FB" dam={800} /></span>
     </div>
   );
 }
@@ -57,7 +59,8 @@ function Khoi({th, t0, t, mau, a}: {th: TheGiai; t0: number; t: number; mau: str
   const {tex, chu} = dongCua(th);
   const chot = !!th.chot;
   const mauNhan = chot ? NGOC : mau;
-  const co = chot ? 58 : tex.length > 2 ? 44 : 52;
+  const co0 = chot ? 58 : tex.length > 2 ? 44 : 52;
+  const co = tex.length ? coVuaCao(tex, co0, VUNG_TOI_GIAN.t3.h - 56, 12, 26) : co0;
   const vao = emRa((t - t0) / 0.35);
   const vach = (tren: boolean) => (
     <div style={{position: 'absolute', left: '12%', right: '12%', [tren ? 'top' : 'bottom']: 0, height: chot ? 3 : 2,
@@ -65,21 +68,21 @@ function Khoi({th, t0, t, mau, a}: {th: TheGiai; t0: number; t: number; mau: str
   );
   return (
     <div data-the-giai data-khoi-cong-thuc {...(chot ? {'data-the-chot': '1'} : {})} style={{position: 'absolute', left: 0, right: 0, top: '50%', transform: `translateY(-50%) translateY(${(1 - vao) * 14}px)`,
-      opacity: a * vao, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: '26px 0 28px',
+      opacity: a * vao, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '22px 24px 24px', overflow: 'visible',
       background: `linear-gradient(90deg, transparent, ${chot ? 'rgba(46,230,168,0.10)' : 'rgba(255,255,255,0.05)'} 22%, ${chot ? 'rgba(46,230,168,0.10)' : 'rgba(255,255,255,0.05)'} 78%, transparent)`}}>
       {vach(true)}
       {tex.map((d, k) => {
         const tk = th.loai === 'cong_thuc' ? Math.max(t0, th.moc?.[k] ?? t0 + k * 0.45) : t0;
         const ak = k === 0 ? 1 : emRa((t - tk) / 0.35);
         return (
-          <div key={k} style={{opacity: ak, transform: `translateY(${(1 - ak) * 8}px)`}}>
-            <Toan tex={d} size={co} color={k === tex.length - 1 && (tex.length > 1 || chot) ? mauNhan : '#F6F8FB'} maxWidth={RONG_ND - 40} maxHeight={Math.round(co * 1.38 + 0.78 * co * 2)} can="giua" style={{fontWeight: chot ? 800 : 600}} />
+          <div key={k} style={{opacity: ak, transform: `translateY(${(1 - ak) * 8}px)`, overflow: 'visible'}}>
+            <Toan tex={d} size={co} color={k === tex.length - 1 && (tex.length > 1 || chot) ? mauNhan : '#F6F8FB'} maxWidth={RONG_ND - 48} maxHeight={caoDongTex(d, co) + 8} can="giua" style={{fontWeight: chot ? 800 : 600}} />
           </div>
         );
       })}
       {chu ? (
-        <div style={{color: chot ? '#F4FFFB' : '#EEF2F7', fontFamily: FONT, fontWeight: 800, fontSize: 44, lineHeight: 1.2, textAlign: 'center', maxWidth: RONG_ND - 40}}>
-          <ChuTron s={chu} co={44} mau={chot ? '#F4FFFB' : '#EEF2F7'} dam={800} />
+        <div style={{color: chot ? '#F4FFFB' : '#EEF2F7', fontFamily: FONT, fontWeight: 800, fontSize: Math.max(26, Math.min(44, Math.floor(((RONG_ND - 56) * 1.7) / (Math.max(1, texSangChu(chu).length) * 0.6)))), lineHeight: 1.24, textAlign: 'center', maxWidth: RONG_ND - 48, overflow: 'visible'}}>
+          <ChuTron s={chu} co={Math.max(26, Math.min(44, Math.floor(((RONG_ND - 56) * 1.7) / (Math.max(1, texSangChu(chu).length) * 0.6))))} mau={chot ? '#F4FFFB' : '#EEF2F7'} dam={800} />
         </div>
       ) : null}
       {vach(false)}

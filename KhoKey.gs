@@ -20,27 +20,92 @@ function khoParse_(raw) {
 // Tên khóa lưu trạng thái "hết hạn mức ngày" của (key, model)
 function khoTenKhoa_(id, tq) { return tq === KHO_MODEL_CU_ ? 'kd_' + id : 'kdm_' + id + '_' + tq; }
 
-// v98.2: cặp (model, key) trả HTTP 404 trong NGÀY (giờ Thái Bình Dương, cùng mốc reset với HET_HAN_MUC_NGAY).
-// Một Script Property duy nhất MODEL_404_NGAY = {ngay, cap: {'model|id': 1}} - sang ngày mới tự bỏ.
-function khoModelGoc_(tq) { return String(tq || '').replace(/\+.*$/, ''); }
+// v98.2 / v99.3: cặp (model, key) trả HTTP 404 trong NGÀY (giờ Thái Bình Dương) + chặn tạm 12 giờ cho mã 404 (MODEL_KHONG_CO).
+// Một Script Property duy nhất MODEL_404_NGAY = {ngay, cap: {'model|id': hạn_ms_hoặc_1}, chan: {'model': hạn_12h_ms}}.
+var KHO_GIO_CHAN_12H_ = 12 * 3600000;
+function khoModelGoc_(tq) { return String(tq || '').replace(/\+.*$/, '').trim(); }
 function kho404Ngay_(all) {
   try {
     var raw = all ? all.MODEL_404_NGAY : khoProps_().getProperty('MODEL_404_NGAY');
     var o = JSON.parse(raw || '{}');
-    if (o && o.ngay === khoNgayPT_()) return o.cap || {};
+    if (!o || typeof o !== 'object') return {};
+    var cap = o.cap || {}, cungNgay = o.ngay === khoNgayPT_(), bay = Date.now(), ra = {};
+    Object.keys(cap).forEach(function (k) {
+      var v = Number(cap[k]);
+      if (cungNgay || v > bay) ra[k] = v || 1;
+    });
+    return ra;
   } catch (e) { /* hỏng -> coi như trống */ }
   return {};
 }
 function khoGhi404_(key, model) {
   try {
-    var cap = kho404Ngay_(), k = khoModelGoc_(model) + '|' + khoId_(key);
-    if (cap[k]) return;
-    cap[k] = 1;
-    khoProps_().setProperty('MODEL_404_NGAY', JSON.stringify({ ngay: khoNgayPT_(), cap: cap }));
+    var p = khoProps_(), raw = p.getProperty('MODEL_404_NGAY');
+    var o = {};
+    try { o = JSON.parse(raw || '{}') || {}; } catch (e0) { o = {}; }
+    var cap = kho404Ngay_(), md = khoModelGoc_(model), id = khoId_(key), k = md + '|' + id;
+    var het = Date.now() + KHO_GIO_CHAN_12H_;
+    cap[k] = het;
+    var chan = (o && typeof o.chan === 'object' && o.chan) ? o.chan : {};
+    var dsKey = khoDanhSachKey_(), dem = 0;
+    dsKey.forEach(function ( ky ) { if (cap[md + '|' + khoId_(ky)]) dem++; });
+    if (dsKey.length > 0 && dem >= Math.min(2, dsKey.length)) chan[md] = het;
+    p.setProperty('MODEL_404_NGAY', JSON.stringify({ ngay: khoNgayPT_(), cap: cap, chan: chan }));
+    try { CacheService.getScriptCache().put('kdb404_' + id + '_' + md, '1', 21600); } catch (eC) {}
+    if (chan[md] && typeof chanModel404_ === 'function') chanModel404_(md);
   } catch (e) { /* bỏ qua */ }
 }
 function khoLa404_(code, raw) {
   return code === 404 || (code === 400 && /not found|not supported for generateContent|model .* does not exist|invalid model/i.test(String(raw || '')));
+}
+
+// v99.3: cache trạng thái HTTP 429 (HET_HAN_MUC_NGAY) theo từng cặp (key + model) trong CacheService + ScriptProperties 12h
+// để các lượt gọi sau bỏ qua ngay cặp (key, model) đó, không lặp lại vô ích.
+var _khoHet12h_ = null;
+function khoDocHetNgay12h_(all) {
+  if (!all && _khoHet12h_ && _khoHet12h_.luc > Date.now() - 20000) return _khoHet12h_.ds;
+  var o = {};
+  try {
+    var raw = all ? all.HET_HAN_MUC_NGAY_12H : khoProps_().getProperty('HET_HAN_MUC_NGAY_12H');
+    o = JSON.parse(raw || '{}') || {};
+  } catch (e) { o = {}; }
+  var bay = Date.now(), ds = {};
+  Object.keys(o).forEach(function (k) { if (Number(o[k]) > bay) ds[k] = Number(o[k]); });
+  _khoHet12h_ = { luc: Date.now(), ds: ds };
+  return ds;
+}
+function khoGhiHetNgay12h_(key, tq) {
+  var id = khoId_(key), md = khoModelGoc_(tq), het = Date.now() + KHO_GIO_CHAN_12H_;
+  try { CacheService.getScriptCache().put('kdh_' + id + '_' + tq, '1', 21600); } catch (eC) {}
+  try {
+    var ds = khoDocHetNgay12h_();
+    ds[md + '|' + id] = het;
+    if (tq !== md) ds[tq + '|' + id] = het;
+    khoProps_().setProperty('HET_HAN_MUC_NGAY_12H', JSON.stringify(ds));
+    _khoHet12h_ = { luc: Date.now(), ds: ds };
+  } catch (eP) {}
+  try {
+    if (typeof ghiKeyHetNgay_ === 'function' && key && key.length >= 10) {
+      ghiKeyHetNgay_([md + '|' + key.slice(0, 6) + '_' + key.slice(-4)]);
+    }
+  } catch (eG) {}
+}
+function khoCapDaHetNgay_(key, id, tq, all, homNay, nghiMap) {
+  var md = khoModelGoc_(tq);
+  if (all[khoTenKhoa_(id, tq)] === homNay || all[khoTenKhoa_(id, md)] === homNay) return true;
+  if (nghiMap && (nghiMap['kdh_' + id + '_' + tq] || nghiMap['kdh_' + id + '_' + md])) return true;
+  var ds12 = khoDocHetNgay12h_(all);
+  if (ds12[md + '|' + id] || ds12[tq + '|' + id]) return true;
+  if (all && all.KEY_HET_NGAY_GH && key && key.length >= 10) {
+    try {
+      var gh = JSON.parse(all.KEY_HET_NGAY_GH || '{}');
+      if (gh && gh.ngay === homNay && Array.isArray(gh.ds)) {
+        var ma = md + '|' + key.slice(0, 6) + '_' + key.slice(-4);
+        if (gh.ds.indexOf(ma) >= 0) return true;
+      }
+    } catch (e) {}
+  }
+  return false;
 }
 
 function khoUrl_() {
@@ -75,14 +140,15 @@ function khoXep_(he, tq) {
   for (var i = 0; i < n; i++) thuTu.push(ds[(((bd + buoc * i) % n) + n) % n]);
   var tenCache = thuTu.map(function (k) { return 'kdn_' + khoId_(k) + '_' + tq; });
   var quyenCache = thuTu.map(function (k) { return 'kdb_' + khoId_(k) + '_' + tq; });
+  var hetCache = thuTu.map(function (k) { return 'kdh_' + khoId_(k) + '_' + tq; });
   var nghiMap = {};
-  try { nghiMap = CacheService.getScriptCache().getAll(tenCache.concat(quyenCache)); } catch (e) { nghiMap = {}; }
+  try { nghiMap = CacheService.getScriptCache().getAll(tenCache.concat(quyenCache, hetCache)); } catch (e) { nghiMap = {}; }
   var dung = [], nghi = [], coHetNgay = false, co404 = false, cap404 = kho404Ngay_(all), md404 = khoModelGoc_(tq);
   thuTu.forEach(function (k, i) {
     var id = khoId_(k);
     if (all['kd_' + id] === 'BAD') return;
-    if (cap404[md404 + '|' + id]) { co404 = true; return; }   // v98.2: cặp này đã 404 hôm nay
-    if (all[khoTenKhoa_(id, tq)] === homNay) { coHetNgay = true; return; }
+    if (cap404[md404 + '|' + id]) { co404 = true; return; }   // v98.2 / v99.3: cặp này đã 404 hôm nay / trong 12h
+    if (khoCapDaHetNgay_(k, id, tq, all, homNay, nghiMap)) { coHetNgay = true; return; }
     if (nghiMap[quyenCache[i]]) return;
     (nghiMap[tenCache[i]] ? nghi : dung).push(k);
   });
@@ -96,9 +162,10 @@ function khoNghiNgan_(id, tq) {
 function khoDanhDau_(key, tq, loai) {   // loai: 'ngay' (hết hạn mức ngày) | 'bad' (key hỏng toàn phần) | 'bad_model' (lỗi quyền theo model)
   var p = khoProps_(), id = khoId_(key);
   if (loai === 'bad') { p.setProperty('kd_' + id, 'BAD'); return; }
-  if (loai === 'bad_model' && tq) { CacheService.getScriptCache().put('kdb_' + id + '_' + tq, 'BAD', 1800); return; }
+  if (loai === 'bad_model' && tq) { try { CacheService.getScriptCache().put('kdb_' + id + '_' + tq, 'BAD', 21600); } catch (e) {} return; }
   if (p.getProperty('kd_' + id) === 'BAD') return;
   p.setProperty(khoTenKhoa_(id, tq), khoNgayPT_());
+  khoGhiHetNgay12h_(key, tq);
 }
 
 // Máy khách báo cho A biết (không làm hỏng việc chính nếu A không trả lời)
@@ -111,6 +178,10 @@ function khoBaoChu_(key, tq, loai) {
   } catch (e) { Logger.log('Kho key: không báo được cho A: ' + e.message); }
 }
 
+function khoLaHetNgay429_(raw) {
+  return /PerDay|per day|daily|GenerateRequestsPerDay|free_tier_requests|HET_HAN_MUC_NGAY|exceeded your current quota.*day/i.test(String(raw || ''));
+}
+
 // Trả true nếu lỗi đã được xử lý bằng cách đánh dấu key (để vòng gọi đổi sang key khác)
 function khoGhiNhanLoi_(key, tq, code, raw) {
   raw = String(raw || '');
@@ -119,7 +190,7 @@ function khoGhiNhanLoi_(key, tq, code, raw) {
     return true;
   }
   if (code === 429) {
-    if (/PerDay|per day|daily/i.test(raw)) { khoDanhDau_(key, tq, 'ngay'); khoBaoChu_(key, tq, 'ngay'); }
+    if (khoLaHetNgay429_(raw)) { khoDanhDau_(key, tq, 'ngay'); khoBaoChu_(key, tq, 'ngay'); }
     else khoNghiNgan_(khoId_(key), tq);   // giới hạn theo phút: nghỉ 75 giây
     return true;
   }
@@ -146,8 +217,9 @@ function khoGoi_(he, model, body, tuyChon) {
   var url = KHO_API_ + model + ':generateContent';
   var payload = typeof body === 'string' ? body : JSON.stringify(body);
   if (!khoDanhSachKey_().length) return { ok: false, code: 0, het: false, raw: 'THIEU_GEMINI_API_KEY' };
-  // v99.2b: model đã bị chặn vì 403 (BoPhan1.gs chanModel403_) -> trả ngay, không gọi mạng
+  // v99.2b / v99.3: model đã bị chặn 12 giờ vì 403 hoặc 404 -> trả ngay, không gọi mạng
   if (typeof modelBiChan403_ === 'function' && modelBiChan403_(model)) return { ok: false, code: 403, het: false, raw: 'MODEL_TU_CHOI (đã chặn): ' + model };
+  if (typeof modelBiChan404_ === 'function' && modelBiChan404_(model)) return { ok: false, code: 404, het: false, raw: 'MODEL_KHONG_CO_HOM_NAY: ' + model };
   var bat = Date.now(), loiMang = 0, loi5xx = 0, so403 = 0;
   for (var vong = 0; vong < 60; vong++) {
     var tt = khoXep_(he, tq);

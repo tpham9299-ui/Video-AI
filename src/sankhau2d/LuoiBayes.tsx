@@ -65,8 +65,8 @@ export const LuoiBayes: React.FC<{sk: LuoiBayesVao; t: number; W: number; H: num
       {aK > 0.6 ? <NhanTex x={b.bang.x + 8 + Math.max(26, S * ua) + 14} y={b.bang.y + b.bang.h - 70 + Math.max(26, Math.min(hA, 60)) / 2} tex={`A \\cap B = ${sk.tex.pab}`} mau={VANG} co={24} neo="trai" a={em((aK - 0.6) / 0.4)} /> : null}
       {/* bảng công thức bên phải */}
       <div data-sk2d="bang_cong_thuc" style={{position: 'absolute', left: b.bang.x, top: b.bang.y, width: b.bang.w, display: 'flex', flexDirection: 'column', gap: 18}}>
-        <div style={{color: MO, fontWeight: 800, fontSize: 22, fontFamily: FONT, whiteSpace: 'nowrap', overflow: 'hidden'}}>
-          <ChuTron s={`A: ${nhanA}`} co={22} mau={HONG} /> <span style={{margin: '0 6px'}}>·</span> <ChuTron s={`B: ${nhanB}`} co={22} mau={VANG} />
+        <div style={{color: MO, fontWeight: 800, fontSize: Math.max(17, Math.min(22, Math.floor(b.bang.w / (Math.max(1, (nhanA + nhanB).length + 8) * 0.62)))), fontFamily: FONT, whiteSpace: 'nowrap', overflow: 'visible'}}>
+          <ChuTron s={`A: ${nhanA}`} co={Math.max(17, Math.min(22, Math.floor(b.bang.w / (Math.max(1, (nhanA + nhanB).length + 8) * 0.62))))} mau={HONG} /> <span style={{margin: '0 6px'}}>·</span> <ChuTron s={`B: ${nhanB}`} co={Math.max(17, Math.min(22, Math.floor(b.bang.w / (Math.max(1, (nhanA + nhanB).length + 8) * 0.62))))} mau={VANG} />
         </div>
         {congThuc.map((c, k) => (c.a > 0 ? <div key={k} style={{opacity: c.a, transform: `translateX(${(1 - c.a) * 14}px)`}}><Toan tex={c.tex} size={28} color={c.m} maxWidth={b.bang.w} can="trai" /></div> : null))}
       </div>

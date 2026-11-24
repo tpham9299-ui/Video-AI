@@ -57,7 +57,7 @@ def main():
 
     print("v92 kiểm tất định (khung 4 tầng):")
     from PIL import Image, ImageDraw
-    p4 = dict(props_gia(), boCuc="4tang", thuongHieu={"ten": "Tư duy Toán", "chuyenMuc": "toan", "logo": None})
+    p4 = dict(props_gia(), boCuc="4tang", thuongHieu={"ten": "Tư duy Xác suất", "chuyenMuc": "toan", "logo": None})
 
     def o_anh(sang, lech=0):
         im = Image.new("RGB", (mt.O_RONG, mt.O_CAO), (14, 16, 20))
@@ -73,8 +73,8 @@ def main():
     kiem(any(x["loai"] == "hinh_dung_im" for x in mt.kiem_tat_dinh(p4, im_lang, 8)), "hình 3D giống hệt mọi ô -> hinh_dung_im")
     dong = [o_anh(True, 12 * k) for k in range(9)]
     kiem(mt.kiem_tat_dinh(p4, dong, 8) == [], "hình đổi theo từng bước -> đạt")
-    sai = dict(p4, thuongHieu={"ten": "Tư duy Xác suất", "chuyenMuc": "toan", "logo": "thuong_hieu/logo.png"})
-    kiem(len([x for x in mt.kiem_tat_dinh(sai, dong, 8) if x["loai"] == "logo_sai"]) == 2, "bài Toán mang tên/logo Xác suất -> logo_sai")
+    sai = dict(p4, thuongHieu={"ten": "Tư duy Toán", "chuyenMuc": "toan", "logo": "thuong_hieu/logo.png"})
+    kiem(len([x for x in mt.kiem_tat_dinh(sai, dong, 8) if x["loai"] == "logo_sai"]) == 2, "tên Tư duy Toán / logo sai -> logo_sai")
     kiem(mt.kiem_tat_dinh(props_gia(), trong, 8) == [], "bố cục cũ (không 4 tầng) không áp kiểm tầng 2")
     kiem(all(k in mt.prompt_ai(p4, 8) for k in ("ma_tho", "logo_sai", "so_cat", "t2_trong", "hinh_dung_im", "Toán (không phải Xác suất)")), "prompt AI có 5 loại lỗi mới + chuyên mục")
 

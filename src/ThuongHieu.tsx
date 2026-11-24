@@ -14,30 +14,36 @@ import {CanhProps, ThuongHieuProps} from './types';
 const XANH = '#3BF29A';
 const CAM = '#FF8A3D';
 
+// v99.3: khóa cứng thương hiệu kênh cho MỌI mảng (Xác suất, Hình học, Hàm số, Parabol, Toán thực tế...)
+export const TEN_THUONG_HIEU = 'Tư duy Xác suất';
+export const chuanThuongHieu = (_ten?: string | null): string => TEN_THUONG_HIEU;
+
 const chuCai = (th: ThuongHieuProps) => {
-  const s = (th.ten || th.handle || '').replace(/^@/, '').trim();
+  const s = (chuanThuongHieu(th.ten) || th.handle || '').replace(/^@/, '').trim();
   const w = s.split(/\s+/).filter(Boolean);
   return (w.length >= 2 ? w[0][0] + w[w.length - 1][0] : s.slice(0, 2)).toUpperCase();
 };
 
 // "Tư duy Xác suất" -> ["Tư duy", "Xác suất"]: 2 từ đầu ở dòng trên, phần còn lại (chuyên mục) dòng dưới
 export const dongLogo = (ten: string): [string, string] => {
-  const w = String(ten || '').trim().split(/\s+/);
+  const w = String(chuanThuongHieu(ten) || '').trim().split(/\s+/);
   return w.length <= 2 ? [w[0] || '', w[1] || ''] : [w.slice(0, 2).join(' '), w.slice(2).join(' ')];
 };
 
-export const LogoTron: React.FC<{th: ThuongHieuProps; co: number; goc?: number; sang?: number}> = ({th, co, goc = 0, sang = 0}) => (
+export const LogoTron: React.FC<{th: ThuongHieuProps; co: number; goc?: number; sang?: number}> = ({th, co, goc = 0, sang = 0}) => {
+  const tenChuan = chuanThuongHieu(th.ten);
+  return (
   <div style={{position: 'relative', width: co, height: co, flexShrink: 0}}>
     <div style={{position: 'absolute', inset: -co * 0.08, borderRadius: '50%', background: `conic-gradient(from ${goc}deg, ${XANH}, ${CAM}, ${XANH}, transparent 70%, ${XANH})`, opacity: 0.92}} />
     <div style={{position: 'absolute', inset: 0, borderRadius: '50%', background: '#071513', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 ${12 + 24 * sang}px ${XANH}`}}>
       {th.logo ? (
         <Img src={staticFile(th.logo)} style={{width: '86%', height: '86%', objectFit: 'contain'}} />
       ) : (
-        co >= 96 && (th.ten || '').trim().split(/\s+/).length >= 2 ? (
-          // v92: logo chữ ĐỘNG theo chuyên mục ("Tư duy" / "Toán" | "Xác suất"), không dùng ảnh in cứng tên chuyên mục khác
+        co >= 96 && tenChuan.trim().split(/\s+/).length >= 2 ? (
+          // v99.3: logo chữ cố định "Tư duy Xác suất"
           <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.02, textAlign: 'center', padding: '0 8%'}}>
-            <span style={{fontFamily: FONT_DAM, fontWeight: 800, fontSize: co * 0.15, color: 'rgba(255,255,255,0.86)'}}>{dongLogo(th.ten)[0]}</span>
-            <span style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: co * (dongLogo(th.ten)[1].length > 6 ? 0.17 : 0.22), color: XANH}}>{dongLogo(th.ten)[1]}</span>
+            <span style={{fontFamily: FONT_DAM, fontWeight: 800, fontSize: co * 0.15, color: 'rgba(255,255,255,0.86)'}}>{dongLogo(tenChuan)[0]}</span>
+            <span style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: co * (dongLogo(tenChuan)[1].length > 6 ? 0.17 : 0.22), color: XANH}}>{dongLogo(tenChuan)[1]}</span>
           </div>
         ) : (
           <span style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: co * 0.38, color: '#fff'}}>{chuCai(th)}</span>
@@ -45,11 +51,12 @@ export const LogoTron: React.FC<{th: ThuongHieuProps; co: number; goc?: number; 
       )}
     </div>
   </div>
-);
+  );
+};
 
 // huy hiệu: mo = độ mở phần chữ (0 = chỉ còn logo)
 const HuyHieu: React.FC<{th: ThuongHieuProps; vao: number; mo: number; dong2: string; sang: number; goc: number}> = ({th, vao, mo, dong2, sang, goc}) => {
-  const ten = th.ten || th.handle;
+  const ten = chuanThuongHieu(th.ten);
   const vetSang = ((goc * 2) % 360) / 360;
   return (
     <div style={{display: 'flex', alignItems: 'center', gap: 14, transform: `scale(${popOut(vao, 2)})`, transformOrigin: '32px 50%', opacity: kep(vao * 3)}}>
@@ -84,7 +91,7 @@ const LoiMoi: React.FC<{th: ThuongHieuProps}> = ({th}) => {
     <div data-kd-bo="1" style={{position: 'absolute', right: 40, top: 215, transform: `translateX(${(1 - a) * 700 + r * 700}px)`, display: 'flex', alignItems: 'center', gap: 16, padding: '12px 18px 12px 12px', borderRadius: 50, background: 'rgba(6,18,16,0.92)', border: `3px solid ${XANH}`, boxShadow: `0 0 22px ${XANH}88`}}>
       <LogoTron th={th} co={64} goc={f * 4} />
       <div style={{fontFamily: FONT, color: '#fff'}}>
-        <div style={{fontWeight: 900, fontSize: 32}}>{th.handle || th.ten}</div>
+        <div style={{fontWeight: 900, fontSize: 32}}>{th.handle || chuanThuongHieu(th.ten)}</div>
         <div style={{fontWeight: 700, fontSize: 22, color: '#cfe'}}>{th.loiMoi || 'Học mẹo toán mỗi ngày cùng kênh'}</div>
       </div>
       <Chuong f={f} />
@@ -183,7 +190,7 @@ export const ManKetTuTao: React.FC<{th: ThuongHieuProps}> = ({th}) => {
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
   const a = kep(f / 12);
-  const ten = th.ten || th.handle;
+  const ten = chuanThuongHieu(th.ten);
   const soChu = Math.round(kep((f - 8) / 18) * ten.length);
   const bam = kep((f - 1.4 * fps) / 8);
   const r = ngauNhien(3);

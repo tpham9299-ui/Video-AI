@@ -17,7 +17,7 @@ import {FONT, FONT_DAM, BONG_CHU, vienChu, GIAO_DIEN, MAU, MAU_GOC, MAU_LOAI, ch
 import {DuongTienTrinh} from './dong/DiemNhan';
 import {LuoiSan} from './dong/KhongGian';
 import {smooth} from './manim';
-import {LogoTron, ManKetTuTao, moHuyHieu, ThuongHieu} from './ThuongHieu';
+import {chuanThuongHieu, LogoTron, ManKetTuTao, moHuyHieu, TEN_THUONG_HIEU, ThuongHieu} from './ThuongHieu';
 import {ThanhTienDo} from './ThanhTienDo';
 import {KieuToan, NapPhongToan} from './Toan';
 import {Props, ThuongHieuProps} from './types';
@@ -171,7 +171,7 @@ const NoiDung4Tang: React.FC<Props & {coIntro?: boolean}> = (props) => {
   return (
     <AbsoluteFill style={{fontFamily: FONT, background: '#0E1014'}}>
       <Sequence from={0} durationInFrames={Math.max(1, ketThuc)}>
-        <Khung4Tang {...k} fps={fps} tongFrame={Math.max(1, ketThuc)} thuongHieu={k.thuongHieu ?? thuongHieu?.ten} cau={k.boCuc?.phuDe === 'gon' ? cau : k.cau} />
+        <Khung4Tang {...k} fps={fps} tongFrame={Math.max(1, ketThuc)} thuongHieu={chuanThuongHieu(k.thuongHieu ?? thuongHieu?.ten)} cau={k.boCuc?.phuDe === 'gon' ? cau : k.cau} />
       </Sequence>
       {nhac ? <Audio src={staticFile(nhac)} loop volume={amNhac} /> : null}
       {canh.map((c) =>
@@ -197,8 +197,8 @@ const NoiDung4Tang: React.FC<Props & {coIntro?: boolean}> = (props) => {
       {outro ? (
         <Sequence from={outro.batDau} durationInFrames={outro.soFrame}>
           {outro.loai === 'tu_tao' && tomTat ? (
-            <OutroTomTat dapAn={props.dapAn} tomTat={tomTat} canh={k.tuSinh || k.sanKhau || k.khongGian ? null : canhCuoi} sanKhau={k.tuSinh ? null : k.sanKhau || null} khongGian={k.khongGian || null} tCuoi={Math.max(1, ketThuc) / fps} thuongHieu={k.thuongHieu ?? thuongHieu?.ten} cta={k.cta} tuSinh={k.tuSinh || null} theme={k.theme} />
-          ) : outro.loai === 'tu_tao' ? <ManKetChuyenNghiep th={thuongHieu} baiHoc={props.baiHoc || []} dapAn={props.dapAn} tiepTheo={props.tiepTheo || ''} /> : <ManKet tep={outro.tep} loai={outro.loai} />}
+            <OutroTomTat dapAn={props.dapAn} tomTat={tomTat} canh={k.tuSinh || k.sanKhau || k.khongGian ? null : canhCuoi} sanKhau={k.tuSinh ? null : k.sanKhau || null} khongGian={k.khongGian || null} tCuoi={Math.max(1, ketThuc) / fps} thuongHieu={chuanThuongHieu(k.thuongHieu ?? thuongHieu?.ten)} cta={k.cta} tuSinh={k.tuSinh || null} theme={k.theme} />
+          ) : outro.loai === 'tu_tao' ? <ManKetChuyenNghiep th={{...thuongHieu, ten: TEN_THUONG_HIEU}} baiHoc={props.baiHoc || []} dapAn={props.dapAn} tiepTheo={props.tiepTheo || ''} /> : <ManKet tep={outro.tep} loai={outro.loai} />}
         </Sequence>
       ) : null}
       {props.kiemDuyet ? <KiemDuyet /> : null}

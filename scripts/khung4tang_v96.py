@@ -981,10 +981,10 @@ def dung_kinh_te(ts, kb, sua):
     phu = []
     for c in ts.get("phu") or []:
         if isinstance(c, dict) and ham_an_toan(c.get("ham"), bien):
-            phu.append({"ten": str(c.get("ten") or "")[:18], "ham": str(c["ham"]), "don_vi": str(c.get("don_vi") or "")[:10]})
+            phu.append({"ten": str(c.get("ten") or "").strip(), "ham": str(c["ham"]), "don_vi": str(c.get("don_vi") or "").strip()})
     kq = {"loai": "kinh_te_do_thi", "ham": str(ts["ham"]), "bien": bien, "mien": [a, b], "kieu": kieu,
-          "ten_ham": str(ts.get("ten_ham") or "L")[:3], "nhan_bien": str(ts.get("nhan_bien") or bien)[:28],
-          "nhan_ham": str(ts.get("nhan_ham") or "")[:28], "don_vi": str(ts.get("don_vi") or "")[:14], "phu": phu[:3],
+          "ten_ham": str(ts.get("ten_ham") or "L")[:3], "nhan_bien": str(ts.get("nhan_bien") or bien).strip(),
+          "nhan_ham": str(ts.get("nhan_ham") or "").strip(), "don_vi": str(ts.get("don_vi") or "").strip(), "phu": phu[:3],
           "x_tot": round(tot[0], 4), "y_tot": round(tot[1], 4)}
     so = _so_dap(kb)
     kq["khop_dap_an"] = (any(abs(v - tot[0]) <= 0.02 * max(1, abs(tot[0])) or abs(v - tot[1]) <= 0.01 * max(1, abs(tot[1])) for v in so)) if so else None
@@ -1007,8 +1007,8 @@ def dung_so_do_2d(ts, kb, sua):
     bien = str(ts.get("bien") or "x")[:2]
     f = ham_an_toan(ts.get("ham"), bien) if ts.get("ham") else None
     mien = ts.get("mien") if isinstance(ts.get("mien"), list) and len(ts["mien"]) == 2 else None
-    kq = {"loai": "so_do_2d", "mau": mau, "tham_so": tham, "bien": bien, "nhan": {k: str(v)[:16] for k, v in (ts.get("nhan") or {}).items()},
-          "ten_ham": str(ts.get("ten_ham") or "f")[:3], "don_vi": str(ts.get("don_vi") or "")[:8]}
+    kq = {"loai": "so_do_2d", "mau": mau, "tham_so": tham, "bien": bien, "nhan": {k: str(v).strip() for k, v in (ts.get("nhan") or {}).items()},
+          "ten_ham": str(ts.get("ten_ham") or "f")[:3], "don_vi": str(ts.get("don_vi") or "").strip()}
     if f and mien:
         a, b = float(doc_ti_le(mien[0]) or 0), float(doc_ti_le(mien[1]) or 0)
         tot = toi_uu(f, a, b, "max" if str(ts.get("kieu")).lower() == "max" else "min") if b > a else None
@@ -1041,7 +1041,7 @@ def dung_tang_truong(ts, kb, sua):
         return None
     moc = [float(doc_ti_le(x)) for x in (ts.get("moc") or [a, b]) if doc_ti_le(x) is not None and a <= float(doc_ti_le(x)) <= b][:3] or [a, b]
     kq = {"loai": "tang_truong", "ham": str(ts["ham"]), "bien": bien, "mien": [a, b], "ten_ham": str(ts.get("ten_ham") or "y")[:3],
-          "don_vi": str(ts.get("don_vi") or "")[:10], "nhan_bien": str(ts.get("nhan_bien") or bien)[:20],
+          "don_vi": str(ts.get("don_vi") or "").strip(), "nhan_bien": str(ts.get("nhan_bien") or bien).strip(),
           "moc": [{"x": x, "y": round(f(x), 4)} for x in moc]}
     ng = doc_ti_le(ts.get("nguong"))
     if ng is not None:
@@ -1069,7 +1069,7 @@ def dung_tu_duy(kb, k4, buoc=None):
             if th.get("loai") == "cong_thuc" and th.get("dong"):
                 dong = str(th["dong"][0])
                 break
-        nut.append({"nhan": str(b.get("nhan") or "Bước %d" % (j + 1))[:22], "tieu_de": str(b.get("tieu_de") or "")[:60], "dong": dong[:90],
+        nut.append({"nhan": str(b.get("nhan") or "Bước %d" % (j + 1)).strip(), "tieu_de": str(b.get("tieu_de") or "").strip(), "dong": dong,
                     "mau": mau_chuan(b.get("mau"), MAU[j % 4])})
     kq = {"loai": "tu_duy_dai_so", "du_kien": du, "nut": nut}
     m = re.search(r"\b([fgyhP])\s*\(\s*([x])\s*\)\s*=\s*([-+*/^().0-9x ]{3,60})", str(kb.get("de_bai") or ""))

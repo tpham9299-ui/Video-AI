@@ -67,7 +67,10 @@ def cat_tu(x, toi_da):
             return y
     cat = x[:toi_da + 1].rsplit(" ", 1)[0].rstrip(" ,.;:·-")
     cat = re.sub(r"(?i)\s+không$", "", cat)   # không để "không" treo cuối (mất vế chia hết)
-    return cat if len(cat) >= toi_da * 0.5 else x[:toi_da].rstrip()
+    if cat:
+        return cat
+    # v99.3: tuyệt đối không cắt thô giữa một từ (giữ trọn từ đầu tiên nếu không có khoảng trắng trong giới hạn)
+    return x.split(" ", 1)[0].rstrip(" ,.;:·-")
 
 
 def che_so(s, so_lo):
@@ -122,7 +125,7 @@ def moc_cau(kb, buoc, so_lo):
 
 
 def cong_thuc_gon(tex):
-    """Công thức cốt lõi một dòng: dài quá thì giữ 2 vế cuối (vế = phần giữa các dấu '=')."""
+    """Công thức cốt lõi một dòng: dài quá thì giữ 2 vế cuối (vế = phần giữa các dấu '='); v99.3: không cắt thô [:56] giữa lệnh LaTeX."""
     s = re.sub(r"\s+", " ", str(tex or "")).strip().strip("$")
     if len(s) <= DAI_CONG_THUC:
         return s
@@ -130,7 +133,7 @@ def cong_thuc_gon(tex):
     while len(ve) > 2:
         ve.pop(0)
     s = " = ".join(ve)
-    return s if len(s) <= DAI_CONG_THUC else ve[-1][:DAI_CONG_THUC]
+    return s if len(s) <= DAI_CONG_THUC else ve[-1]
 
 
 def _cong_thuc_buoc(b):

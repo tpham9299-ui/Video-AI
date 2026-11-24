@@ -33,3 +33,22 @@ export function boCuc4Tang(anToanTikTok = true): BoCuc4Tang {
 // kiểm một hình chữ nhật (tọa độ toàn khung) có nằm trọn trong vùng an toàn không (test_san_khau_2d.mjs, kiem_duyet)
 export const trongAnToan = (x: number, y: number, w: number, h: number) =>
   x >= AN_TOAN.x0 - 0.5 && y >= AN_TOAN.y0 - 0.5 && x + w <= AN_TOAN.x1 + 0.5 && y + h <= AN_TOAN.y1 + 0.5;
+
+// v99.3: KHOẢNG CÁCH VÙNG AN TOÀN CỐ ĐỊNH tách rõ mép trên | T1 (tiêu đề) | T2 (hình minh họa) | T3 (khung công thức) | phụ đề | T4 (thanh ĐỀ)
+// để khi gỡ overflow:hidden tuyệt đối không xảy ra đè hộp hay dính mép trên.
+export const KHOANG_AN_TOAN = {
+  mepTren: 10,   // đệm cách mép trên vùng an toàn (y0 = 212)
+  t1_t2: 12,     // khoảng cách tối thiểu giữa đáy chữ T1 và đỉnh khu hình T2
+  t2_t3: 18,     // khoảng cách tách rõ khu hình minh họa T2 và khung công thức T3
+  t3_phuDe: 14,  // khoảng cách tách khung công thức T3 và dải phụ đề
+  phuDe_t4: 10,  // khoảng cách tách dải phụ đề và thanh ĐỀ chân màn hình T4
+  caoPhuDe: 50,
+} as const;
+
+export function vungAnToanT3PhuDe(bc: BoCuc4Tang, coPhuDe: boolean): {t3: Vung; yPhuDe: number; caoTheToiDa: number} {
+  const yT3 = bc.t3.y + KHOANG_AN_TOAN.t2_t3; // 1046 + 18 = 1064 (cách đáy T2 đúng 18 px)
+  const yPhuDe = bc.t4.y - KHOANG_AN_TOAN.phuDe_t4 - KHOANG_AN_TOAN.caoPhuDe; // 1472 - 10 - 50 = 1412
+  const dayT3 = coPhuDe ? yPhuDe - KHOANG_AN_TOAN.t3_phuDe : bc.t4.y - 12; // 1398 khi có phụ đề, 1460 khi tắt
+  const hT3 = Math.max(240, dayT3 - yT3);
+  return {t3: {y: yT3, h: hT3}, yPhuDe, caoTheToiDa: hT3 - 8};
+}

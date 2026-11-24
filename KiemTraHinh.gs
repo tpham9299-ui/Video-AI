@@ -2675,6 +2675,12 @@ function tuSuaHinhThuc_(kb, r) {
   var sua = [];
   if (kb && kb.bai_hoc_rut_ra !== undefined && !Array.isArray(kb.bai_hoc_rut_ra) && typeof mangBaiHoc_ === 'function') kb.bai_hoc_rut_ra = mangBaiHoc_(kb.bai_hoc_rut_ra);   // v99.2b: chuỗi -> mảng
   if (kb && typeof veSinhKb_ === 'function') sua = sua.concat(veSinhKb_(kb, r));   // v99.2 Evergreen: luôn chạy (kể cả tắt Auto-fix)
+  if (kb && typeof kb === 'object') {
+    if (kb.thuong_hieu && kb.thuong_hieu !== 'Tư duy Xác suất') sua.push('v99.3: khóa thương hiệu -> "Tư duy Xác suất"');
+    kb.thuong_hieu = 'Tư duy Xác suất';
+    delete kb.thuongHieu;
+    if (kb.khung4tang && typeof kb.khung4tang === 'object') { kb.khung4tang.thuong_hieu = 'Tư duy Xác suất'; delete kb.khung4tang.thuongHieu; }
+  }
   if (!batAutoFix_() || !kb || !Array.isArray(kb.canh)) return sua;
   if (kb.hinh_phang_chuan) sua = sua.concat(tuSuaHinhPhangChuan_(kb, r));   // v94
   if (kb.hinh_khong_gian && typeof tuSuaKhongGian_ === 'function') sua = sua.concat(tuSuaKhongGian_(kb, r));   // v97
@@ -2832,6 +2838,11 @@ function tuSuaKhung4Tang_(kb, r) {
   if (!k4 || typeof k4 !== 'object' || !Array.isArray(k4.buoc)) { delete kb.khung4tang; delete kb.bo_dung; sua.push('khung4tang hỏng -> phải viết lại (v99.1 không còn đường dựng cũ)'); return sua; }
   var dsMau = typeof MAU_3DV_ !== 'undefined' ? MAU_3DV_ : ['cyan', 'vang', 'hong', 'ngoc', 'trang', 'xam'];
   var mau3 = function (m, md) { var k = String(m || '').trim().toLowerCase().replace(/\s+/g, '_'); k = MAU_3DV_GAN_[k] || k; return dsMau.indexOf(k) >= 0 ? k : md; };
+  // v99.3: khóa cứng thương hiệu 'Tư duy Xác suất' cho mọi mảng (Xác suất, Hình học, Hàm số, Parabol...)
+  kb.thuong_hieu = 'Tư duy Xác suất';
+  delete kb.thuongHieu;
+  k4.thuong_hieu = 'Tư duy Xác suất';
+  delete k4.thuongHieu;
   // v95: phụ đề gọn 1 dòng MẶC ĐỊNH BẬT trên khung 4 tầng; chỉ tắt khi CAU_HINH PHU_DE_4TANG = TAT
   k4.phu_de = String((typeof cauHinh_ === 'function' && cauHinh_('PHU_DE_4TANG')) || '').toUpperCase() === 'TAT' ? 'tat' : 'gon';
   k4.de_ghim = (Array.isArray(k4.de_ghim) ? k4.de_ghim : []).filter(function (d) { return d && String(d.nhan || '').trim(); }).slice(0, 5).map(function (d, i) {
@@ -2952,7 +2963,11 @@ function catTuMocCau_(x, max) {
     if (y.length <= max) return y;
   }
   var cat = x.slice(0, max + 1).replace(/\s+\S*$/, '').replace(/[\s,.;:·-]+$/, '').replace(/\s+không$/i, '');
-  return cat.length >= max * 0.5 ? cat : x.slice(0, max).trim();
+  if (cat.length > 0 && cat.indexOf(' ') !== x.indexOf(' ')) return cat;
+  // v99.3: không bao giờ cắt thô giữa một từ bằng .slice(0, max) (giữ trọn từ đầu tiên nếu không có khoảng trắng trong giới hạn)
+  var iKhoang = x.lastIndexOf(' ', max);
+  if (iKhoang > 0) return x.slice(0, iKhoang).replace(/[\s,.;:·-]+$/, '');
+  return x.split(/\s+/)[0].replace(/[\s,.;:·-]+$/, '');
 }
 // bỏ mã TeX ($, \lệnh, {}, ^, _) -> chữ thường; hoa = in hoa
 function chuSachMocCau_(s, max, hoa) {
@@ -2976,7 +2991,8 @@ function congThucGonMocCau_(tex) {
   var ve = s.split('=').map(function (v) { return v.trim(); }).filter(function (v) { return v; });
   while (ve.length > 2) ve.shift();
   s = ve.join(' = ');
-  return s.length <= DAI_MOC_CAU_.cong_thuc ? s : ve[ve.length - 1].slice(0, DAI_MOC_CAU_.cong_thuc);
+  // v99.3: không cắt thô .slice(0, 56) giữa lệnh LaTeX (tránh cắt cụt \text{... hoặc \frac{...)
+  return s.length <= DAI_MOC_CAU_.cong_thuc ? s : ve[ve.length - 1];
 }
 function tuSuaMocCau_(kb, r) {
   var sua = [];

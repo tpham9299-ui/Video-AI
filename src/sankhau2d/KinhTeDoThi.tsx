@@ -39,7 +39,7 @@ export const KinhTeDoThi: React.FC<{sk: KinhTeVao; t: number; W: number; H: numb
   return (
     <div style={{position: 'absolute', inset: 0}}>
       <div data-sk2d="thanh_gat" style={{position: 'absolute', left: trai.x, top: trai.y, width: trai.w, opacity: aT}}>
-        <div style={{color: MO, fontWeight: 800, fontSize: 22, marginBottom: 10, whiteSpace: 'nowrap', overflow: 'hidden'}}><ChuTron s={sk.nhan_bien} co={22} mau={MO} /></div>
+        <div style={{color: MO, fontWeight: 800, fontSize: Math.max(17, Math.min(22, Math.floor(trai.w / (Math.max(1, (sk.nhan_bien || '').length) * 0.62)))), marginBottom: 10, whiteSpace: 'nowrap', overflow: 'visible'}}><ChuTron s={sk.nhan_bien} co={Math.max(17, Math.min(22, Math.floor(trai.w / (Math.max(1, (sk.nhan_bien || '').length) * 0.62))))} mau={MO} /></div>
         <div style={{position: 'relative', height: 44}}>
           <div style={{position: 'absolute', left: 0, right: 0, top: 18, height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.10)'}} />
           <div style={{position: 'absolute', left: 0, width: `${u * 100}%`, top: 18, height: 8, borderRadius: 4, background: VANG}} />
@@ -48,7 +48,7 @@ export const KinhTeDoThi: React.FC<{sk: KinhTeVao; t: number; W: number; H: numb
         <div style={{marginTop: 8}}><Toan tex={`${sk.bien} = ${soVN(xHien, 1)}`} size={38} color={VANG} /></div>
         {phu.map((p, k) => (p.f ? (
           <div key={k} style={{marginTop: 16, padding: '10px 16px', borderRadius: 16, background: NEN_THE, border: '1px solid rgba(255,255,255,0.10)', opacity: em((uVe - 0.2 - 0.2 * k) / 0.3)}}>
-            <div style={{color: MO, fontWeight: 700, fontSize: 20, whiteSpace: 'nowrap', overflow: 'hidden'}}>{p.ten}</div>
+            <div style={{color: MO, fontWeight: 700, fontSize: Math.max(16, Math.min(20, Math.floor((trai.w - 32) / (Math.max(1, (p.ten || '').length) * 0.62)))), whiteSpace: 'nowrap', overflow: 'visible'}}>{p.ten}</div>
             <Toan tex={`${soVN(p.f(xHien), 1)}${dvTex(p.don_vi)}`} size={32} color={CYAN} />
           </div>
         ) : null))}
@@ -66,7 +66,7 @@ export const KinhTeDoThi: React.FC<{sk: KinhTeVao; t: number; W: number; H: numb
         </> : null}
       </svg>
       <NhanTex x={r.x + 8} y={r.y - 26} tex={ten} mau={CYAN} co={24} neo="trai" a={aT} />
-      <div style={{position: 'absolute', left: r.x, width: r.w, top: r.y + r.h + 10, textAlign: 'right', color: MO, fontWeight: 700, fontSize: 20, opacity: aT, whiteSpace: 'nowrap', overflow: 'hidden'}}>
+      <div style={{position: 'absolute', left: r.x, width: r.w, top: r.y + r.h + 10, textAlign: 'right', color: MO, fontWeight: 700, fontSize: 20, opacity: aT, whiteSpace: 'nowrap', overflow: 'visible'}}>
         <ChuTron s={sk.nhan_ham || ten} co={20} mau={MO} />
       </div>
       {chot ? (

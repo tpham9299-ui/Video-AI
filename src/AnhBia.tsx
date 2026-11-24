@@ -1,7 +1,7 @@
 import React from 'react';
 import {AbsoluteFill, Img, staticFile} from 'remotion';
 import {FONT_DAM, FONT_TIEU_DE, vienChu} from './theme';
-import {LogoTron} from './ThuongHieu';
+import {chuanThuongHieu, LogoTron} from './ThuongHieu';
 import {Props} from './types';
 import {Video} from './Video';
 import {Xuc3D} from './sankhau/vat';
@@ -80,7 +80,7 @@ export const AnhBia: React.FC<Props> = (props) => {
       </div>
       {props.thuongHieu && (props.thuongHieu.ten || props.thuongHieu.handle) ? (
         <div style={{position: 'absolute', bottom: 70, left: 0, right: 0, textAlign: 'center', fontSize: 36, fontWeight: 800, color: 'rgba(255,255,255,0.85)'}}>
-          {props.thuongHieu.ten || ''} {props.thuongHieu.handle ? '· ' + props.thuongHieu.handle : ''}
+          {chuanThuongHieu(props.thuongHieu.ten)} {props.thuongHieu.handle ? '· ' + props.thuongHieu.handle : ''}
         </div>
       ) : null}
     </AbsoluteFill>
