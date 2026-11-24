@@ -333,8 +333,7 @@ def du_cong_thuc_tom_tat(ra, buoc, kb, cong_thuc_gon, cong_thuc_buoc):
         m = re.fullmatch(r"\s*bước\s*(\d+)\s*", str(d.get("chien_thuat") or ""), re.I)
         b = next((x for x in buoc if re.fullmatch(r"\s*bước\s*%s\s*" % (m.group(1) if m else "-"), str(x.get("nhan") or ""), re.I)), None) if m else None
         if b and str(b.get("tieu_de") or "").strip() and "?" not in str(b.get("tieu_de")):
-            td_s = str(b["tieu_de"]).strip()
-            d["chien_thuat"] = td_s if len(td_s) <= 24 else (td_s[:25].rsplit(" ", 1)[0].rstrip(" ,.;:·-") or td_s.split(" ", 1)[0])
+            d["chien_thuat"] = str(b["tieu_de"]).strip()[:28]
     return ra
 
 

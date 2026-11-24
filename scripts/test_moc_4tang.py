@@ -112,12 +112,12 @@ def main():
     doan = cb.chia_phu_de("Tổng số cách là một nghìn không trăm hai mươi tư cách chọn khác nhau cho bạn nhỏ tham gia trò chơi này nhé", 40)
     kiem(any("một nghìn không trăm hai mươi tư" in d for d in doan), "phụ đề: không chẻ đôi con số", doan)
 
-    print("Logo theo chuyên mục & khóa thương hiệu v99.3:")
+    print("Logo theo chuyên mục:")
     th = {"ten": "Tư duy Toán", "logo": "thuong_hieu/logo.png"}
     kiem(cb.logo_theo_chuyen_muc(th, "khong_co", {"mon": "THUC_TE"})["logo"] is None, "bài Toán không dùng logo.png in chữ Xác suất")
     kiem(cb.logo_theo_chuyen_muc(th, "khong_co", {"mon": "XAC_SUAT"})["chuyenMuc"] == "xac_suat", "bài xác suất giữ chuyên mục xác suất")
     pc = {"tenTheoChuyenMuc": {"Xác suất": "Tư duy Xác suất", "mac_dinh": "Tư duy Toán"}}
-    kiem(cb.ten_kenh_theo_chuyen_muc({"ten": "Tư duy Toán"}, pc, {"mon": "THUC_TE", "chu_de": "Tích phân quãng đường"})["ten"] == "Tư duy Xác suất", "v99.3: tên kênh mọi mảng khóa cứng Tư duy Xác suất")
+    kiem(cb.ten_kenh_theo_chuyen_muc({"ten": "Tư duy Xác suất"}, pc, {"mon": "THUC_TE", "chu_de": "Tích phân quãng đường"})["ten"] == "Tư duy Toán", "tên kênh bài tích phân: Tư duy Toán")
 
     print("v93 Intro móc câu / Outro tóm tắt / đối chiếu:")
     import khung4tang_v93 as v93

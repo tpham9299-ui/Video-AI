@@ -12,8 +12,6 @@
  */
 
 var TRAN_VET_CAN_ = 100000;
-var THUONG_HIEU_CO_DINH_ = 'Tư duy Xác suất';   // v99.3: khóa cứng thương hiệu góc trên phải cho MỌI mảng (Xác suất, Hình học, Hàm số, Parabol...)
-function chuanThuongHieu_(ten) { return THUONG_HIEU_CO_DINH_; }
 var LOAI_XS_2D_ = ['rut_mau', 'so_do_cay', 'luoi_bayes', 'cot_phan_phoi'];
 var LOAI_TT_2D_ = ['kinh_te_do_thi', 'so_do_2d', 'tang_truong'];
 var LOAI_SAN_KHAU_ = LOAI_XS_2D_.concat(LOAI_TT_2D_, ['tu_duy_dai_so']);
@@ -383,16 +381,8 @@ function kiemBayes_(ts, kb) {
 /* ===================== AUTO-FIX TỔNG ===================== */
 function tuSuaSanKhau_(kb, r) {
   var sua = [];
-  if (!kb || typeof kb !== 'object') return sua;
-  if (kb.thuong_hieu !== THUONG_HIEU_CO_DINH_ || kb.thuongHieu !== undefined) {
-    if (kb.thuong_hieu && kb.thuong_hieu !== THUONG_HIEU_CO_DINH_) sua.push('v99.3: khóa thương hiệu -> "' + THUONG_HIEU_CO_DINH_ + '"');
-    kb.thuong_hieu = THUONG_HIEU_CO_DINH_;
-    delete kb.thuongHieu;
-  }
-  if (!kb.khung4tang || typeof kb.khung4tang !== 'object') return sua;
+  if (!kb || !kb.khung4tang || typeof kb.khung4tang !== 'object') return sua;
   var k4 = kb.khung4tang;
-  k4.thuong_hieu = THUONG_HIEU_CO_DINH_;
-  delete k4.thuongHieu;
   if (r && r.chi_dao && !kb.chi_dao) kb.chi_dao = String(r.chi_dao).slice(0, 200);
   var q = chonSanKhau_(kb, r);
   kb._v96_loi = [];

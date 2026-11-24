@@ -161,8 +161,8 @@ def kiem_tat_dinh(p, anh_o, o_da):
         loi.append({"o": 2, "loai": "tu_sinh_hong", "mo_ta": str(k4p["tuSinhHong"])[:150], "nang": True})
     th = p.get("thuongHieu") or {}
     ten = str(th.get("ten") or "")
-    if re.search(r"tư duy toán", ten, re.I):
-        loi.append({"o": 1, "loai": "logo_sai", "mo_ta": "tên kênh phải cố định là \"Tư duy Xác suất\", không dùng \"%s\"" % ten, "nang": True})
+    if th.get("chuyenMuc") == "toan" and re.search(r"xác suất", ten, re.I):
+        loi.append({"o": 1, "loai": "logo_sai", "mo_ta": "bài Toán nhưng tên kênh là \"%s\"" % ten, "nang": True})
     if th.get("chuyenMuc") == "toan" and re.search(r"(^|/)logo\.(png|webp|jpe?g)$", str(th.get("logo") or "")):
         loi.append({"o": 1, "loai": "logo_sai", "mo_ta": "bài Toán dùng logo.png (logo Xác suất), cần logo_toan.png hoặc logo chữ", "nang": True})
     if p.get("boCuc") == "hinh_phang" and anh_o:
@@ -245,7 +245,7 @@ def prompt_ai(p, o_da):
         "- latex_tho: hiện nguyên mã LaTeX như \\\\frac, \\\\sqrt, \\\\cdot, $...$, ^{...}, _{...}, \\\\text thay vì công thức đã dựng.\n"
         "- lo_dap_an: đáp số cuối (%s) hiện rõ ở một ô TRƯỚC ô %d (hook, đề bài, các bước giải). Ô %d và ô 9 được phép có đáp số.\n"
         "- ma_tho: tiêu đề bước / tiêu đề thẻ / nhãn hiện chữ thô thay vì ký hiệu đã dựng: dấu gạch dưới (S_A, S_1), chữ Omega/Delta/alpha, C(12,3) thay cho tổ hợp, \\\\frac.\n"
-        "- logo_sai: tên kênh hoặc nhãn thương hiệu góc trên phải ghi \"Tư duy Toán\" thay vì thương hiệu cố định \"Tư duy Xác suất\" (bài thuộc chuyên mục \"" + chuyen + "\").\n"
+        "- logo_sai: logo hoặc tên kênh (intro, góc trên, màn kết) ghi chuyên mục SAI: bài này thuộc chuyên mục \"" + chuyen + "\".\n"
         "- so_cat: con số bị cắt cụt hoặc tách đôi giữa hai dòng/khung (1024 thành 1000 | 24), dấu so sánh chèn sai vào câu chữ.\n"
         "- t2_trong: video bố cục 4 tầng mà vùng sân khấu giữa (dưới tiêu đề, trên thẻ giải) trống đen ở ô giải.\n"
         "- hinh_dung_im: hình 3D giữa màn hình y hệt nhau ở mọi ô giải (không đổi góc, không có chi tiết mới).\n"

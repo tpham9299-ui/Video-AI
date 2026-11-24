@@ -325,40 +325,6 @@ function xuLyDocDe_(sh, bc, bat) {
 
 // Đọc đề bằng Gemini (nhìn ảnh nếu có). Ảnh tải về Drive ngay (link ảnh của Zalo có hạn dùng).
 var TRAN_DOC_DE_MS_ = 210000;   // v99.2b: 3,5 phút cho cả vòng đọc đề (lần gọi cuối vẫn xong trước mốc ngắt 6 phút)
-// v99.3: Danh sách ngắn 3–4 model chuyên đọc ảnh ổn định cho bước DOC_DE, loại trừ hẳn model không hỗ trợ ảnh (transcribe, tts...) và model 404/403 để không chạm trần 210 giây.
-var MODEL_DOC_DE_UU_TIEN_ = ['gemini-3.0-flash', 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
-var RE_MODEL_KHONG_DOC_ANH_ = /transcribe|tts|audio|speech|embedding|imagen|veo|aqa|bisheng|robotics|computer-use|learnlm|gemma|customtools|thinking/i;
-
-function dsModelDocDe_() {
-  var bo = null;
-  try { bo = CacheService.getScriptCache(); } catch (e) {}
-  var dsUngVien = MODEL_DOC_DE_UU_TIEN_.slice();
-  if (typeof danhSachModel_ === 'function') {
-    var tuDong = danhSachModel_('nhe') || [];
-    for (var i = 0; i < tuDong.length; i++) {
-      if (dsUngVien.indexOf(tuDong[i]) < 0) dsUngVien.push(tuDong[i]);
-    }
-  }
-  var kq = [];
-  for (var j = 0; j < dsUngVien.length; j++) {
-    var m = String(dsUngVien[j] || '').trim();
-    if (!m || RE_MODEL_KHONG_DOC_ANH_.test(m)) continue;
-    if (typeof modelBiChan404_ === 'function' && modelBiChan404_(m)) continue;
-    if (typeof model404HomNay_ === 'function' && model404HomNay_(m)) continue;
-    if (typeof modelBiChan403_ === 'function' && modelBiChan403_(m)) continue;
-    if (bo && bo.get('MODEL_HONG_' + m)) continue;
-    kq.push(m);
-    if (kq.length >= 4) break;
-  }
-  if (!kq.length) {
-    for (var k = 0; k < MODEL_DOC_DE_UU_TIEN_.length && kq.length < 4; k++) {
-      var mk = MODEL_DOC_DE_UU_TIEN_[k];
-      if (!RE_MODEL_KHONG_DOC_ANH_.test(mk)) kq.push(mk);
-    }
-  }
-  return kq.slice(0, 4);
-}
-
 // Lý do thật khi hết lượt đọc đề: quá thời gian / quá tải / hết hạn mức Gemini KHÔNG phải lỗi ảnh -> không bảo "gửi lại ảnh rõ hơn"
 function loiDocDeChoZalo_(r, ghiTruoc) {
   var g = String(ghiTruoc || '');
@@ -401,8 +367,8 @@ function docDe_(sh, r, hanChot) {
     '- "doc_duoc": false nếu không phải đề toán hoặc ảnh mờ không chắc chắn các con số; ghi "ly_do" ngắn gọn bằng tiếng Việt.\n' +
        '- "mo_ta_hinh": nếu ảnh có HÌNH VẼ (hình học, sơ đồ, hình minh họa, chuỗi hình theo bước...) thì mô tả thật chi tiết để vẽ lại y hệt: hình gì, bao nhiêu hình, xếp thế nào, hình dạng từng hình (tam giác đều, ngôi sao sáu cánh, bông tuyết Koch...), màu, các điểm và nhãn số đo trên hình, hình sau biến đổi từ hình trước ra sao. Nếu hình có dấu ba chấm ("…", "⋮", "⋯") thì PHẢI ghi rõ nó thay cho cái gì (vd "⋮ ở giữa = các tầng 4 đến 18 bị lược, mỗi tầng hơn tầng trên 1 ống") chứ không ghi "có ba chấm". Tách rõ đâu là VẬT THẬT (cột cờ, tòa nhà, ngân hàng, cây, người quan sát, ống, mảnh đất...) và đâu là CHÚ THÍCH (nhãn, số đo, mũi tên, ngoặc); đề chỉ có chữ mà nói tới vật thật thì vẫn mô tả cảnh: vật gì, đứng ở đâu, nhìn từ đâu, số đo nằm ở đâu. Không có hình thì để "".\n' +
     'Trả JSON: {"doc_duoc":true,"ly_do":"","mon":"","lop":"","dang":"","chu_de":"2-6 từ","de_bai":"","mo_ta_hinh":"","cau_da_chon":"","ghi_chu_doi":"","diem_tu_duy":1-10,"yeu_to_tu_duy":"vì sao cần suy nghĩ","bay_thuong_gap":"học sinh hay sai ở đâu"}';
-  // v99.3: đọc ảnh = khóa danh sách ngắn 3–4 model chuyên đọc ảnh ổn định (loại bỏ transcribe / model 404) + 1 vòng thử để không chạm trần 210 giây
-  var opts = { suyNghi: 'mac_dinh', cheDo: 'nhe', models: dsModelDocDe_(), soVongThu: 1 };
+  // v99.2b: đọc ảnh = việc nhanh -> chế độ 'nhe' (Flash ổn định xếp trước pro / preview), có hạn chót riêng (< 4 phút)
+  var opts = { suyNghi: 'mac_dinh', cheDo: 'nhe' };
   if (hanChot) opts.hanChotMs = hanChot;
   if (anh) opts.anh = { mime: anh.getContentType() || 'image/jpeg', data: Utilities.base64Encode(anh.getBytes()) };
   var j;

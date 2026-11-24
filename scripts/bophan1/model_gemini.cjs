@@ -12,8 +12,8 @@ const crypto = require('crypto');
 
 // Dự phòng khi ListModels lỗi mạng / bị chặn (đã bỏ 2.0-flash, 2.5-flash, 2.5-pro)
 const DU_PHONG = ['gemini-3.1-pro', 'gemini-3.0-flash', 'gemini-pro-latest', 'gemini-flash-latest', 'gemini-flash-lite-latest'];
-// Model chuyên dụng không hợp viết kịch bản / trả JSON / đọc ảnh đề
-const LOAI_BO_RE = /embedding|imagen|veo|tts|audio|transcribe|aqa|bisheng|robotics|computer-use|learnlm|gemma|image|live|vision/i;
+// Model chuyên dụng không hợp viết kịch bản / trả JSON
+const LOAI_BO_RE = /embedding|imagen|veo|tts|audio|aqa|bisheng|robotics|computer-use|learnlm|gemma|image|live|vision/i;
 
 function tenGon(m) { return String((m && m.name) || m || '').trim().replace(/^models\//, ''); }
 

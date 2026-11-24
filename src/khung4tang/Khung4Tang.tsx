@@ -9,12 +9,12 @@ import {chuanHoaCanh3DV} from '../3d-vector/dac_ta';
 import {MAU_3DV} from '../3d-vector/kieu';
 import {NenTramToanHoc} from './NenTramToanHoc';
 import {NenKhiQuyen} from './NenKhiQuyen';
-import {layTheme, suyMangNen, xungNhip} from './nen_v99';
+import {layTheme, xungNhip} from './nen_v99';
 import {SanKhauTuSinh} from '../sankhau2d/SanKhauTuSinh';
 import {TangTieuDe} from './TangTieuDe';
 import {TangTheGiai} from './TangTheGiai';
 import {ThanhDe} from './ThanhDe';
-import {boCuc4Tang, LE_ND, RONG_ND, Vung, vungAnToanT3PhuDe} from './vung';
+import {boCuc4Tang, LE_ND, RONG_ND, Vung} from './vung';
 import {BuocGiai, Khung4TangVao} from './kieu';
 import {docDoiChieu} from './doi_chieu';
 import {DoiChieu2Cot} from './DoiChieu';
@@ -24,7 +24,6 @@ import {SanKhau2D} from '../sankhau2d/SanKhau2D';
 import {SanKhauKhongGian} from '../khonggian/SanKhauKhongGian';
 import {KhoiCongThuc, TieuDeMotDong, VUNG_TOI_GIAN} from './ToiGianKhongGian';
 import {mauBuocV981} from './mau_v981';
-import {chuanThuongHieu} from '../ThuongHieu';
 
 const mauBuoc = (b: BuocGiai) => MAU_3DV[b.mau || 'cyan'] || MAU_3DV.cyan;
 
@@ -57,13 +56,14 @@ export const chiaCauPhuDe = (c: {text: string; bat: number; ket: number}, toiDa 
 
 const PhuDeMotDong: React.FC<{cau: {text: string; bat: number; ket: number}; t: number; y: number; mau: string}> = ({cau, t, y, mau}) => {
   const chu = cau.text.replace(/\s+/g, ' ').trim();
-  // v96/v99.3: auto-fit cỡ chữ tới 22..42 px + tăng đệm ngang an toàn + gỡ overflow:hidden để phụ đề 1 dòng không bao giờ cụt chữ
-  const co = Math.max(22, Math.min(42, Math.floor((RONG_ND - 48) / (Math.max(1, chu.length) * 0.62))));
+  // v96: chữ to hơn (tới 42 px) + viền tối 4 hướng để đọc rõ trên điện thoại nhỏ; vẫn 1 dòng trong khung an toàn
+  // v97: bề rộng trung bình Be Vietnam đậm 800 ~ 0,6 x cỡ chữ (0,52 cũ làm câu ~38 ký tự bị cắt chữ cuối ở 42 px)
+  const co = Math.max(28, Math.min(42, Math.floor((RONG_ND - 40) / (Math.max(1, chu.length) * 0.6))));
   const a = kep01((t - cau.bat) / 0.15) * (1 - kep01((t - (cau.ket - 0.1)) / 0.12));
   return (
-    <div data-vung="phu_de" style={{position: 'absolute', left: LE_ND, width: RONG_ND, top: y, height: 50, display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: a, overflow: 'visible'}}>
-      <div style={{maxWidth: RONG_ND, padding: '4px 22px 6px', borderRadius: 14, background: 'rgba(8,10,14,0.82)', border: '1px solid rgba(255,255,255,0.08)',
-        fontFamily: FONT, fontWeight: 800, fontSize: co, lineHeight: 1.18, color: '#FFFFFF', whiteSpace: 'nowrap', textWrap: 'nowrap' as React.CSSProperties['textWrap'], overflow: 'visible',
+    <div data-vung="phu_de" style={{position: 'absolute', left: LE_ND, width: RONG_ND, top: y, height: 50, display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: a}}>
+      <div style={{maxWidth: RONG_ND, padding: '2px 18px 4px', borderRadius: 14, background: 'rgba(8,10,14,0.80)', border: '1px solid rgba(255,255,255,0.08)',
+        fontFamily: FONT, fontWeight: 800, fontSize: co, lineHeight: 1.16, color: '#FFFFFF', whiteSpace: 'nowrap', textWrap: 'nowrap' as React.CSSProperties['textWrap'], overflow: 'hidden',
         textShadow: '0 2px 0 #000, 0 -1px 0 #000, 1.5px 0 0 #000, -1.5px 0 0 #000, 0 0 8px rgba(0,0,0,0.85)'}}>
         {chu.split(' ').map((w, k) => (
           <span key={k} style={{whiteSpace: 'pre', textWrap: 'nowrap' as React.CSSProperties['textWrap'], ...(TU_KHOA.test(w.replace(/[,.!?;:]/g, '')) ? {color: mau, fontWeight: 800} : {})}}>{(k ? ' ' : '') + w}</span>
@@ -73,9 +73,9 @@ const PhuDeMotDong: React.FC<{cau: {text: string; bat: number; ket: number}; t: 
   );
 };
 
-// v98: mỗi tầng đặt ĐỐI XỨNG: left bc.le (130), rộng bc.rong (820) -> tâm 540; v99.3: gỡ overflow:hidden để không cụt chữ ở T1/T3/T4
+// v98: mỗi tầng đặt ĐỐI XỨNG: left bc.le (130), rộng bc.rong (820) -> tâm 540; vẫn tránh cột nút Tim/Bình luận/Lưu (phải 12 %)
 const Tang: React.FC<{ten: string; v: Vung; rong?: number; le?: number; co?: number; children: React.ReactNode}> = ({ten, v, rong = 1080, le = 0, co = 1, children}) => (
-  <div data-vung={ten} style={{position: 'absolute', left: le, width: rong, top: v.y, height: v.h, overflow: 'visible', ...(co !== 1 ? {transform: `scale(${co})`, transformOrigin: 'center center'} : {})}}>
+  <div data-vung={ten} style={{position: 'absolute', left: le, width: rong, top: v.y, height: v.h, overflow: 'hidden', ...(co !== 1 ? {transform: `scale(${co})`, transformOrigin: 'center center'} : {})}}>
     {children}
   </div>
 );
@@ -147,12 +147,9 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
   const gon = p.boCuc?.phuDe === 'gon';
   const dsCau = useMemo(() => (p.cau || []).flatMap((c) => chiaCauPhuDe(c)), [p.cau]);
   const cauNay = gon ? dsCau.find((c) => t >= c.bat && t < c.ket) : undefined;
-  // v99.3: vùng an toàn tách rõ khu hình minh họa T2, khung công thức T3, vùng phụ đề và thanh ĐỀ T4
-  const vungT3 = vungAnToanT3PhuDe(bc, gon);
-  const t3: Vung = toiGian ? bc.t3 : vungT3.t3;
+  // v92: phụ đề MẶC ĐỊNH TẮT (chỉ bật khi boCuc.phuDe === 'gon'); phụ đề gọn có dải riêng 56 px lấy từ đáy T3 (không chồng lên thẻ giải)
+  const t3: Vung = gon && !toiGian ? {y: bc.t3.y, h: bc.t3.h - 56} : bc.t3;
   const xung = xungNhip(t, p.nhipT2);
-  const mangNen = suyMangNen({theme: p.theme, khongGian: p.khongGian, sanKhau: sk2, canh3dv: p.canh3dv});
-  const nhanThuongHieu = chuanThuongHieu(p.thuongHieu);
 
   return (
     <AbsoluteFill className="k4t" style={{fontFamily: FONT, background: '#0E1014'}}>
@@ -160,10 +157,12 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
       {/* bù nghiêng (italic correction) của KaTeX đo theo phông KaTeX, không hợp với Be Vietnam nghiêng -> "V  =" hở thừa */}
       <style>{'div, span { text-wrap: balance; } .katex, .katex * { text-wrap: nowrap; } .k4t .katex .mathnormal:not(:has(+ .msupsub)):not(:has(+ .msupsub) *) { margin-right: 0 !important; }'}</style>
       <NapPhongToan />
-      {th ? <NenKhiQuyen th={th} t={t} mocBuoc={buoc.map((b) => b.t)} tamSanKhau={bc.t2.y + bc.t2.h / 2} mauNhan={mauNhan} mang={mangNen} />
-        : <NenTramToanHoc t={t} mauNhan={mauNhan} tamSanKhau={bc.t2.y + bc.t2.h / 2} kieu={toiGian ? 'v95' : 'v981'} mang={mangNen} />}
-      {/* v99.3: thương hiệu góc trên phải khóa cứng 'Tư duy Xác suất' cho mọi mảng */}
-      <div data-kd-bo="1" data-thuong-hieu="goc-tren-phai" style={{position: 'absolute', top: Math.max(36, bc.t1.y - 58), right: 44, fontFamily: FONT, fontWeight: 800, fontSize: 22, color: 'rgba(230,237,245,0.5)', letterSpacing: 0.4, opacity: ra}}>{nhanThuongHieu}</div>
+      {th ? <NenKhiQuyen th={th} t={t} mocBuoc={buoc.map((b) => b.t)} tamSanKhau={bc.t2.y + bc.t2.h / 2} mauNhan={mauNhan} />
+        : <NenTramToanHoc t={t} mauNhan={mauNhan} tamSanKhau={bc.t2.y + bc.t2.h / 2} kieu={toiGian ? 'v95' : 'v981'} />}
+      {/* v98.1: T2 KHÔNG KHUNG — hình / sơ đồ thở trực tiếp trên nền (bỏ thẻ kính bao T2 của v95) */}
+      {p.thuongHieu ? (
+        <div data-kd-bo="1" style={{position: 'absolute', top: Math.max(24, bc.t1.y - 58), right: 44, fontFamily: FONT, fontWeight: 800, fontSize: 22, color: 'rgba(230,237,245,0.5)', letterSpacing: 0.4, opacity: ra}}>{p.thuongHieu}</div>
+      ) : null}
       <div style={{opacity: ra}}>
         <Tang ten="t1" v={bc.t1} rong={bc.rong} le={bc.le}>
           {toiGian ? <TieuDeMotDong buoc={buoc} i={i} t={t} mau={mauBuoc} /> : <TangTieuDe buoc={buoc} i={i} t={t} mau={mauB} />}
@@ -195,7 +194,7 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
       </Tang>
       <div style={{opacity: ra}}>
         <Tang ten="t3" v={t3} rong={bc.rong} le={bc.le}>
-          {toiGian ? <KhoiCongThuc buoc={buoc} i={i} t={t} mau={mauBuoc} /> : <TangTheGiai buoc={buoc} i={i} t={t} mau={mauB} caoToiDa={vungT3.caoTheToiDa} />}
+          {toiGian ? <KhoiCongThuc buoc={buoc} i={i} t={t} mau={mauBuoc} /> : <TangTheGiai buoc={buoc} i={i} t={t} mau={mauB} />}
         </Tang>
         {toiGian ? null : (
           <Tang ten="t4" v={bc.t4} rong={bc.rong} le={bc.le}>
@@ -204,7 +203,7 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
         )}
       </div>
       {G > 0 && t < G && p.mocCau ? <IntroMocCau m={p.mocCau} t={t} G={G} /> : null}
-      {cauNay && ra > 0.5 ? <PhuDeMotDong cau={cauNay} t={t} y={toiGian ? VUNG_TOI_GIAN.phuDe : vungT3.yPhuDe} mau={mauNhan} /> : null}
+      {cauNay && ra > 0.5 ? <PhuDeMotDong cau={cauNay} t={t} y={toiGian ? VUNG_TOI_GIAN.phuDe : t3.y + t3.h + 6} mau={mauNhan} /> : null}
     </AbsoluteFill>
   );
 };

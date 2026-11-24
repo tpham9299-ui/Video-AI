@@ -1,44 +1,27 @@
 // v90 — TẦNG 1: viên thuốc "BƯỚC n · NHÃN" + tiêu đề lớn không chân. Đổi bước: chữ cũ mờ lên, chữ mới trượt vào.
 import React from 'react';
 import {CO_CHU, FONT} from '../theme';
-import {chuanTieuDe, inHoaGiuToan, texSangChu} from '../chu';
+import {chuanTieuDe, inHoaGiuToan} from '../chu';
 import {emRa, kep01} from '../3d-vector/toan3d';
 import {BuocGiai} from './kieu';
 import {ChuTron} from './ChuTron';
 import {nhanPhuBuoc} from './nhan_buoc';
-import {RONG_ND} from './vung';
 
 const NOI = '#0E1014';
-
-// v99.3: auto-fit cỡ chữ cho viên thuốc nhãn BƯỚC và tiêu đề bước theo độ dài hiển thị thực (đã quy đổi ký hiệu TeX -> chữ)
-export function coNhanBuoc(nhan: string, rongToiDa = RONG_ND - 210): number {
-  const n = Math.max(1, texSangChu(nhan || '').length);
-  return Math.max(18, Math.min(26, Math.floor(rongToiDa / (n * 0.68))));
-}
-
-export function coTieuDeBuoc(tieuDe: string, rongToiDa = RONG_ND - 32): number {
-  const n = Math.max(1, texSangChu(tieuDe || '').length);
-  const max0 = Math.min(64, CO_CHU.tieuDe[0]);
-  // <= 1 dòng hoặc tối đa 2 dòng cân đối trong T1 (cao 186 px, trừ viên thuốc 52 px + đệm an toàn)
-  const motDong = Math.floor(rongToiDa / (n * 0.62));
-  if (motDong >= 52) return Math.min(max0, motDong);
-  const haiDong = Math.floor((rongToiDa * 1.82) / (n * 0.62));
-  return Math.max(26, Math.min(52, haiDong));
-}
 
 function Mot({b, so, tong, mau, a, lech}: {b: BuocGiai; so: number; tong: number; mau: string; a: number; lech: number}) {
   const tieuDe = chuanTieuDe(b.tieu_de || '');
   // v99.2: nhãn phụ không lặp "BƯỚC n" của viên thuốc (kịch bản cũ ghi nhan = "Bước 1"); rỗng -> chỉ còn viên thuốc
   const nhan = nhanPhuBuoc(b.nhan, so - 1, tong);
-  const coNhan = coNhanBuoc(nhan);
-  const co = coTieuDeBuoc(tieuDe);
+  // v96: T1 thấp hơn (186 px, vùng an toàn TikTok top 11 %) -> thang tiêu đề 70/58/50 để 2 dòng vẫn vừa
+  const co = tieuDe.length > 34 ? 50 : tieuDe.length > 24 ? 58 : Math.min(70, CO_CHU.tieuDe[0]);
   return (
-    <div style={{position: 'absolute', inset: 0, padding: '8px 16px 12px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, opacity: a, transform: `translateY(${lech}px)`, overflow: 'visible'}}>
-      <div style={{display: 'inline-flex', alignItems: 'center', minHeight: 50, maxWidth: RONG_ND - 16, borderRadius: 26, border: `1.5px solid ${mau}`, background: `${mau}1A`, padding: nhan ? '5px 24px 5px 8px' : '5px 10px', gap: 14, boxShadow: `0 0 22px ${mau}33`, overflow: 'visible'}}>
-        <span data-kd-bo="1" style={{minHeight: 38, padding: '2px 16px', borderRadius: 19, background: mau, color: NOI, fontFamily: FONT, fontWeight: 900, fontSize: 23, display: 'inline-flex', alignItems: 'center', flexShrink: 0, whiteSpace: 'nowrap', letterSpacing: 0.5}}>BƯỚC {so}</span>
-        {nhan ? <span style={{color: mau, fontFamily: FONT, fontWeight: 800, fontSize: coNhan, lineHeight: 1.18, padding: '0 4px', letterSpacing: 1.0, whiteSpace: 'nowrap', overflow: 'visible'}}><ChuTron s={nhan} co={coNhan} mau={mau} hoa={inHoaGiuToan} /></span> : null}
+    <div style={{position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, opacity: a, transform: `translateY(${lech}px)`}}>
+      <div style={{display: 'flex', alignItems: 'center', height: 50, borderRadius: 25, border: `1.5px solid ${mau}`, background: `${mau}1A`, padding: nhan ? '0 22px 0 6px' : '0 6px', gap: 14, boxShadow: `0 0 22px ${mau}33`}}>
+        <span data-kd-bo="1" style={{height: 38, padding: '0 14px', borderRadius: 19, background: mau, color: NOI, fontFamily: FONT, fontWeight: 900, fontSize: 24, display: 'flex', alignItems: 'center', letterSpacing: 0.5}}>BƯỚC {so}</span>
+        {nhan ? <span style={{color: mau, fontFamily: FONT, fontWeight: 800, fontSize: 26, letterSpacing: 1.2, whiteSpace: 'nowrap'}}><ChuTron s={nhan} co={26} mau={mau} hoa={inHoaGiuToan} /></span> : null}
       </div>
-      <div style={{color: '#F4F7FB', fontFamily: FONT, fontWeight: 900, fontSize: co, lineHeight: 1.12, padding: '2px 12px', textAlign: 'center', maxWidth: RONG_ND - 24, letterSpacing: -0.4, overflow: 'visible', textWrap: 'balance' as React.CSSProperties['textWrap']}}>
+      <div style={{color: '#F4F7FB', fontFamily: FONT, fontWeight: 900, fontSize: co, lineHeight: 1.08, textAlign: 'center', maxWidth: 860, letterSpacing: -0.5, textWrap: 'balance' as React.CSSProperties['textWrap']}}>
         <ChuTron s={tieuDe} co={co} mau="#F4F7FB" dam={900} />
       </div>
     </div>

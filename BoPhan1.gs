@@ -1674,7 +1674,7 @@ function deCoHinh_(r) {
 //  Bản Node tương đương: scripts/bophan1/model_gemini.cjs (test so khớp: scripts/test_model_gemini.cjs).
 // Danh sách dự phòng khi ListModels lỗi mạng / bị chặn (đã bỏ 2.0-flash, 2.5-flash, 2.5-pro):
 var MODEL_CHUAN_DU_PHONG_ = ['gemini-3.1-pro', 'gemini-3.0-flash', 'gemini-pro-latest', 'gemini-flash-latest', 'gemini-flash-lite-latest'];
-var MODEL_LOAI_BO_RE_ = /embedding|imagen|veo|tts|audio|transcribe|aqa|bisheng|robotics|computer-use|learnlm|gemma|image|live|vision/i;
+var MODEL_LOAI_BO_RE_ = /embedding|imagen|veo|tts|audio|aqa|bisheng|robotics|computer-use|learnlm|gemma|image|live|vision/i;
 var MODEL_DUOI_SNAP_RE_ = /-(\d{3}|exp(-[\w.-]*)?|preview(-[\w.-]*)?|\d{2}-\d{2}(-\d{2,4})?|\d{4}(-\d{2}){0,2})$/i;
 
 function tenModelGon_(m) { return String((m && m.name) || m || '').trim().replace(/^models\//, ''); }
@@ -1785,28 +1785,26 @@ function layModelSong_(lamMoi) {
   return [];
 }
 
-// 404 theo NGÀY (giờ Thái Bình Dương) + chặn tạm 12 giờ cho mã HTTP 404 (MODEL_KHONG_CO).
-// Model coi như chết hôm nay khi đã bị chặn 404 12 giờ hoặc >= 2 key (hoặc mọi key nếu ít hơn) đã 404.
+// 404 theo NGÀY (giờ Thái Bình Dương) cho từng cặp (model, key): KhoKey.gs kho404Ngay_ ghi khi gọi; ở đây chỉ đọc.
+// Model coi như chết hôm nay khi >= 2 key (hoặc mọi key nếu ít hơn) đã 404.
 function model404HomNay_(m) {
-  if (typeof modelBiChan404_ === 'function' && modelBiChan404_(m)) return true;
   if (typeof kho404Ngay_ !== 'function' || typeof khoId_ !== 'function') return false;
   var cap = kho404Ngay_(), keys = khoDanhSachKey_(), n = 0;
   keys.forEach(function (k) { if (cap[m + '|' + khoId_(k)]) n++; });
   return keys.length > 0 && n >= Math.min(2, keys.length);
 }
 
-// Model còn dùng được: chưa 404 (12 giờ / trong ngày), chưa 403 (12 giờ) và có trong danh sách sống (nếu biết)
+// Model còn dùng được: chưa 404 (6 giờ / trong ngày) và có trong danh sách sống (nếu biết)
 function modelConSong_(m) {
   m = tenModelGon_(m);
   if (!m) return false;
   if (CacheService.getScriptCache().get('MODEL_HONG_' + m) || model404HomNay_(m) || modelBiChan403_(m)) return false;
-  if (modelBiChan404_(m)) return false;
   var song = layModelSong_();
   return !song.length || song.indexOf(m) >= 0;
 }
 
 // Danh sách model động theo chế độ ('nang' mặc định | 'nhe'). Biết danh sách sống -> chỉ dùng model sống (tên cũ trong
-// CAU_HINH bị bỏ qua). Không biết -> CAU_HINH + dự phòng sạch, xếp hạng như nhau. Loại model 404/403, đưa model vừa chạy tốt
+// CAU_HINH bị bỏ qua). Không biết -> CAU_HINH + dự phòng sạch, xếp hạng như nhau. Loại model 404, đưa model vừa chạy tốt
 // (MODEL_TOT_NHAT_<cheDo>) lên đầu, đẩy model hết hạn mức ngày / quá tải 503 xuống cuối.
 function danhSachModel_(cheDo) {
   cheDo = cheDo === 'nhe' ? 'nhe' : 'nang';
@@ -1821,7 +1819,6 @@ function danhSachModel_(cheDo) {
     ds = xepHangModel_(cauHinhDs.concat(MODEL_CHUAN_DU_PHONG_), cheDo);
   }
   var hopLe = ds.filter(function (m) { return !cache.get('MODEL_HONG_' + m) && !model404HomNay_(m) && !modelBiChan403_(m); });
-  hopLe = hopLe.filter(function (m) { return !modelBiChan404_(m); });
   if (!hopLe.length) hopLe = ds.slice();
   var totNhat = cache.get('MODEL_TOT_NHAT_' + cheDo);
   if (totNhat && hopLe.indexOf(totNhat) > 0 && !cache.get('QUA_TAI_' + totNhat) && !cache.get('HET_NGAY_MODEL_' + totNhat)) {
@@ -1858,28 +1855,22 @@ function tuyChonBienKich_() {
 }
 
 // opts.cheDo: 'nang' (mặc định: giải toán, kịch bản, Lego) | 'nhe' (kiểm duyệt, sửa nhanh) -> thứ tự model xếp hạng tự động
-// v99.3: hỗ trợ opts.models (danh sách ngắn cố định cho DOC_DE) + opts.soVongThu + chặn 12 giờ cho cả HTTP 404 (MODEL_KHONG_CO)
 function goiGemini_(prompt, nhiet, opts) {
   opts = opts || {};
   if (!khoDanhSachKey_().length) throw new Error('THIEU_GEMINI_API_KEY');
   var cheDo = opts.cheDo === 'nhe' ? 'nhe' : 'nang';
+  var models = danhSachModel_(cheDo);
   var cache = CacheService.getScriptCache();
-  var khoaDs = Array.isArray(opts.models) && opts.models.length > 0;
-  var models = khoaDs
-    ? opts.models.filter(function (m) { return m && !cache.get('MODEL_HONG_' + m) && !model404HomNay_(m) && !modelBiChan403_(m) && !modelBiChan404_(m); })
-    : danhSachModel_(cheDo);
-  if (khoaDs && !models.length) models = opts.models.slice(0, 4);
-  if (!khoaDs && opts.modelUuTien && modelConSong_(opts.modelUuTien) &&
+  if (opts.modelUuTien && modelConSong_(opts.modelUuTien) &&
       !cache.get('QUA_TAI_' + opts.modelUuTien) && !cache.get('HET_NGAY_MODEL_' + opts.modelUuTien)) {
     models = [opts.modelUuTien].concat(models.filter(function (md) { return md !== opts.modelUuTien; }));
   }
-  var soVong = Number(opts.soVongThu) > 0 ? Number(opts.soVongThu) : (khoaDs ? 1 : 3);
   var hetHanMuc = false, lyDo = '', soLoi = 0, soQuaTai = 0, daDoThem = false;
-  for (var lan = 0; lan < soVong; lan++) {
+  for (var lan = 0; lan < 3; lan++) {
     var coTheThuLai = false;
     for (var m = 0; m < models.length; m++) {
       var tenModel = models[m];
-      if (cache.get('MODEL_HONG_' + tenModel) || modelBiChan403_(tenModel) || modelBiChan404_(tenModel)) continue;   // v99.2b/v99.3: model 403/404 đã chặn 12 giờ
+      if (cache.get('MODEL_HONG_' + tenModel) || modelBiChan403_(tenModel)) continue;   // v99.2b: model 403 đã chặn 12 giờ
       if (opts.hanChotMs && Date.now() > opts.hanChotMs) throw new Error('HET_GIO');   // trần thời gian riêng của nơi gọi (DOC_DE < 4 phút)
       if (!conDuGoiGemini_()) throw new Error(soQuaTai && soQuaTai === soLoi ? 'QUA_TAI' : 'HET_GIO');
       var dsAnh = opts.anhs || (opts.anh ? [opts.anh] : []);
@@ -1914,26 +1905,20 @@ function goiGemini_(prompt, nhiet, opts) {
       }
       if (laModelKhongCo_(kq)) {
         cache.put('MODEL_HONG_' + tenModel, '1', 21600);
-        if (chanModel404_(tenModel)) nhatKy_('GEMINI_CHAN_MODEL', tenModel + ' trả HTTP 404 (MODEL_KHONG_CO) -> chặn ' + GIO_CHAN_MODEL_403_ + ' giờ');
         // v98.2: Google gợi ý 'Please update your code to use models/<ten>' -> chèn <ten> ngay sau model vừa lỗi
         var gy = goiYModel404_(kq.raw);
-        if (gy && gy !== tenModel && models.slice(0, m + 1).indexOf(gy) < 0 && !cache.get('MODEL_HONG_' + gy) && !model404HomNay_(gy) && !modelBiChan404_(gy) && !cache.get('HET_NGAY_MODEL_' + gy)) {
+        if (gy && gy !== tenModel && models.slice(0, m + 1).indexOf(gy) < 0 && !cache.get('MODEL_HONG_' + gy) && !model404HomNay_(gy) && !cache.get('HET_NGAY_MODEL_' + gy)) {
           models = models.slice(0, m + 1).concat([gy], models.slice(m + 1).filter(function (x) { return x !== gy; }));
           nhatKy_('GEMINI_MODEL', 'Google gợi ý ' + gy + ' thay cho ' + tenModel + ' -> thử ngay');
         }
-        if (!khoaDs && !daDoThem && m === models.length - 1) {
+        if (!daDoThem && m === models.length - 1) {
           daDoThem = true;
           tuTimModelGemini_(cheDo).forEach(function (nm) { if (models.indexOf(nm) < 0) models.push(nm); });
         }
         continue;
       }
       if (laQuaTai_(kq)) { soQuaTai++; cache.put('QUA_TAI_' + tenModel, '1', 600); coTheThuLai = true; continue; }
-      if (kq.het || (kq.code === 429 && /HET_HAN_MUC_NGAY|PerDay|per day|daily/i.test(String(kq.raw || '')))) {
-        hetHanMuc = true;
-        cache.put('HET_NGAY_MODEL_' + tenModel, '1', 21600);
-        if (kq.key && typeof ghiCapHetNgay429_ === 'function') ghiCapHetNgay429_(kq.key, tenModel);
-        continue;
-      }
+      if (kq.het) { hetHanMuc = true; cache.put('HET_NGAY_MODEL_' + tenModel, '1', 7200); continue; }
       if (kq.code === 429 || kq.code >= 500 || kq.code === 0) { coTheThuLai = true; continue; }
     }
     if (!coTheThuLai) break;
@@ -2011,7 +1996,6 @@ function goiGeminiSong_(ds) {
       chanModel403_(r.model || modelChon);
     } else if (r && laModelKhongCo_(r)) {
       cache.put('MODEL_HONG_' + modelChon, '1', 21600);
-      chanModel404_(r.model || modelChon);
     } else if (r && laQuaTai_(r)) {
       cache.put('QUA_TAI_' + modelChon, '1', 600);
     }
@@ -4143,95 +4127,6 @@ function ghiModelChan403_(moi) {
   });
   if (n) luuModelChan403_(ds);
   return n;
-}
-
-// v99.3: mở rộng cache chặn tạm 12 giờ cho cả mã HTTP 404 (MODEL_KHONG_CO) + cache cặp (key + model) HTTP 429 (HET_HAN_MUC_NGAY)
-var _chan404_ = null;
-function dsModelChan404_() {
-  var raw = null;
-  try { raw = PropertiesService.getScriptProperties().getProperty('MODEL_404_NGAY'); } catch (e0) { raw = null; }
-  if (!raw || raw === '{}') { _chan404_ = { luc: Date.now(), ds: {} }; return {}; }
-  if (_chan404_ && _chan404_.raw === raw && _chan404_.luc > Date.now() - 30000) return _chan404_.ds;
-  var o = {};
-  try { o = JSON.parse(raw) || {}; } catch (e) { o = {}; }
-  var chan = (o && typeof o.chan === 'object' && o.chan) ? o.chan : {};
-  var bay = Date.now(), ds = {};
-  Object.keys(chan).forEach(function (m) { if (Number(chan[m]) > bay) ds[m] = Number(chan[m]); });
-  _chan404_ = { luc: Date.now(), raw: raw, ds: ds };
-  return ds;
-}
-function modelBiChan404_(model) {
-  var m = tenModelGoc_(model);
-  if (!m) return false;
-  var exp = Number(dsModelChan404_()[m] || 0);
-  if (!(exp > Date.now())) return false;
-  // Nếu cache vẫn còn hạn hoặc đã có ít nhất 1 cặp key|model ghi trong MODEL_404_NGAY thì chặn 12 giờ;
-  // nếu cache MODEL_HONG_<m> vừa bị xóa hoàn toàn và không có cap key|model (test reset) thì cho phép thử lại.
-  try { if (CacheService.getScriptCache().get('MODEL_HONG_' + m)) return true; } catch (eC) {}
-  try {
-    var o = JSON.parse(PropertiesService.getScriptProperties().getProperty('MODEL_404_NGAY') || '{}') || {};
-    var cap = o.cap || {};
-    var coCap = Object.keys(cap).some(function (k) { return k.indexOf(m + '|') === 0; });
-    if (coCap || o.epChan12h) return true;
-  } catch (eP) {}
-  return false;
-}
-function chanModel404_(model, gio) {
-  var m = tenModelGoc_(model);
-  if (!m) return false;
-  var het = Date.now() + (Number(gio) || GIO_CHAN_MODEL_403_) * 3600000;
-  try { CacheService.getScriptCache().put('MODEL_HONG_' + m, '1', 21600); } catch (eC) {}
-  try {
-    var p = PropertiesService.getScriptProperties(), o = {};
-    try { o = JSON.parse(p.getProperty('MODEL_404_NGAY') || '{}') || {}; } catch (e0) { o = {}; }
-    var chan = (o && typeof o.chan === 'object' && o.chan) ? o.chan : {};
-    var cap = (o && typeof o.cap === 'object' && o.cap) ? o.cap : {};
-    var daCo = Number(chan[m]) >= het - 600000;
-    chan[m] = het;
-    var ngay = typeof khoNgayPT_ === 'function' ? khoNgayPT_() : ngayPT_();
-    var nextObj = { ngay: o.ngay || ngay, cap: cap, chan: chan };
-    if (gio !== undefined) nextObj.epChan12h = true;
-    p.setProperty('MODEL_404_NGAY', JSON.stringify(nextObj));
-    _chan404_ = null;
-    return !daCo;
-  } catch (e) { return false; }
-}
-function idKeyNgan_(key) {
-  if (typeof khoId_ === 'function') return khoId_(key);
-  var s = String(key || '');
-  return s.length > 8 ? s.slice(0, 4) + s.slice(-4) : s;
-}
-function ghiCapHetNgay429_(key, model, gio) {
-  var m = tenModelGoc_(model);
-  if (!key || !m) return false;
-  if (typeof khoGhiHetNgay12h_ === 'function') { khoGhiHetNgay12h_(key, m); return true; }
-  var id = idKeyNgan_(key), het = Date.now() + (Number(gio) || GIO_CHAN_MODEL_403_) * 3600000;
-  try { CacheService.getScriptCache().put('kdh_' + id + '_' + m, '1', 21600); } catch (eC) {}
-  try {
-    var p = PropertiesService.getScriptProperties(), ds = {};
-    try { ds = JSON.parse(p.getProperty('HET_HAN_MUC_NGAY_12H') || '{}') || {}; } catch (e0) { ds = {}; }
-    ds[m + '|' + id] = het;
-    p.setProperty('HET_HAN_MUC_NGAY_12H', JSON.stringify(ds));
-  } catch (eP) {}
-  return true;
-}
-function capDaHetNgay429_(key, model) {
-  var m = tenModelGoc_(model);
-  if (!key || !m) return false;
-  var id = idKeyNgan_(key);
-  try { if (CacheService.getScriptCache().get('kdh_' + id + '_' + m)) return true; } catch (eC) {}
-  try {
-    var raw = PropertiesService.getScriptProperties().getProperty('HET_HAN_MUC_NGAY_12H');
-    var ds = JSON.parse(raw || '{}') || {};
-    if (Number(ds[m + '|' + id]) > Date.now()) return true;
-  } catch (eP) {}
-  if (typeof khoCapDaHetNgay_ === 'function') {
-    var all = {};
-    try { all = PropertiesService.getScriptProperties().getProperties(); } catch (eA) { all = {}; }
-    var homNay = typeof khoNgayPT_ === 'function' ? khoNgayPT_() : ngayPT_();
-    if (khoCapDaHetNgay_(key, id, m, all, homNay, {})) return true;
-  }
-  return false;
 }
 
 // v99.2b: "bai_hoc_rut_ra" Gemini đôi khi trả CHUỖI thay vì mảng -> (kb.bai_hoc_rut_ra || []).map nổ "is not a function" (DangVideo.gs).

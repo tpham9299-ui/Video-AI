@@ -113,7 +113,7 @@ export const RutMau: React.FC<{sk: RutMauVao; t: number; W: number; H: number; m
   return (
     <div style={{position: 'absolute', inset: 0}}>
       {/* chú giải nhóm (theo giá trị) */}
-      <div data-sk2d="chu_giai" style={{position: 'absolute', left: b.chuGiai.x, top: b.chuGiai.y, width: b.chuGiai.w, minHeight: b.chuGiai.h, display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', justifyContent: 'center', overflow: 'visible'}}>
+      <div data-sk2d="chu_giai" style={{position: 'absolute', left: b.chuGiai.x, top: b.chuGiai.y, width: b.chuGiai.w, height: b.chuGiai.h, display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'center', overflow: 'hidden'}}>
         {sk.nhom.map((g, k) => {
           const a = em((dNhom - k * 0.35) / 0.35);
           return a > 0 ? <div key={k} style={{opacity: a, transform: `translateY(${(1 - a) * -10}px) scale(${1 + (k === nhomDich ? 0.04 * nh : 0)})`}}><VienTex tex={g.nhan} mau={mau(g.mau)} co={sk.nhom.length > 3 ? 20 : 23} cham /></div> : null;

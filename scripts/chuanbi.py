@@ -1815,22 +1815,21 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
             the.sort(key=lambda x: x["t"])
         # bước cuối: thẻ đáp số giữ tới Outro (không còn khoảng trống giữa bước cuối và màn kết)
         if j == nb - 1 and so_dap and not any(any(sd in json.dumps(x, ensure_ascii=False) for sd in so_dap) for x in the):
-            the.append({"loai": "chu", "nhan": "Đáp số", "noi_dung": dap_an, "t": round(min(tran, max(vao, the[-1]["t"] + 1.2 if the else vao)), 3)})
+            the.append({"loai": "chu", "nhan": "Đáp số", "noi_dung": dap_an[:60], "t": round(min(tran, max(vao, the[-1]["t"] + 1.2 if the else vao)), 3)})
         if not the:
-            the.append({"loai": "chu", "noi_dung": str(b.get("tieu_de") or b.get("nhan") or ""), "t": round(vao, 3)})
+            the.append({"loai": "chu", "noi_dung": str(b.get("tieu_de") or b.get("nhan") or "")[:60], "t": round(vao, 3)})
         da_in_all |= {_chuan_dong(d) for x in the for d in (x.get("dong") or [])}
-        tieu_de = str(b.get("tieu_de") or "").strip()
+        tieu_de = str(b.get("tieu_de") or "")[:60]
         for x in so_lo:   # chống lộ đáp số ở tiêu đề bước (tiêu đề hiện TRƯỚC khi tính xong)
             tieu_de = re.sub(r"(?<![\d.,])" + re.escape(x) + r"(?![\d.,])", "?", tieu_de)
         tieu_de = re.sub(r"\?(?:\s*[/:,.]\s*\?)+", "?", tieu_de)   # "31/44" -> "?" (không thành "?/?")
         tieu_de = re.sub(r"(?i)(biến cố đối)\s+([A-Z])(?![\w'])", r"\1 \\overline{\2}", tieu_de)   # ký hiệu biến cố đối đúng
-        buoc.append({"t": t, "nhan": str(b.get("nhan") or "Bước %d" % (j + 1)).strip(), "tieu_de": tieu_de,
+        buoc.append({"t": t, "nhan": str(b.get("nhan") or "Bước %d" % (j + 1))[:24], "tieu_de": tieu_de,
                      "mau": mau(b.get("mau"), ["cyan", "vang", "hong", "ngoc"][j % 4]),
                      "du_kien": [str(x) for x in b.get("du_kien") or []], "the": the})
     if not buoc:
         return None
-    # v99.3: KHÔNG cắt thô [:28] ở de_ghim (từng làm đứt lệnh \text{...} thành "P(Tích | 3, te"); ThanhDe tự auto-fit cỡ chữ
-    de_ghim = [{"id": str(d.get("id") or "d%d" % i), "nhan": str(d.get("nhan") or "").strip(), **({"mau": mau(d["mau"])} if d.get("mau") else {})}
+    de_ghim = [{"id": str(d.get("id") or "d%d" % i), "nhan": str(d.get("nhan") or "")[:28], **({"mau": mau(d["mau"])} if d.get("mau") else {})}
                for i, d in enumerate(k4.get("de_ghim") or []) if isinstance(d, dict) and str(d.get("nhan") or "").strip()][:5]
 
     # ---- 3D: khuôn tham số (ưu tiên) / đặc tả tự do có chuyển động / khuôn suy từ đề ----
@@ -1992,7 +1991,6 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
             ", ".join("%.1f" % p["t"] for p in san_khau["pha"]), (" | " + "; ".join(sua_sk[:6])) if sua_sk else ""))
         c3 = None
     out = {"tongFrame": int(round(tong * fps)), "fps": fps,
-           "thuongHieu": TEN_THUONG_HIEU_CO_DINH,
            "mocCau": moc_cau, "tomTat": tom_tat,
            # v95: phụ đề gọn 1 dòng MẶC ĐỊNH BẬT (tắt: env PHU_DE_4TANG=TAT hoặc CAU_HINH PHU_DE_4TANG=TAT)
            "boCuc": {"anToanTikTok": True, "phuDe": "tat" if str(os.environ.get("PHU_DE_4TANG") or "").upper() in ("0", "TAT", "OFF")
@@ -2346,9 +2344,6 @@ def tim_tep(thu_muc, ten, duoi):
     return None
 
 
-TEN_THUONG_HIEU_CO_DINH = "Tư duy Xác suất"
-
-
 def tim_thuong_hieu(public, th):
     """Logo (public/thuong_hieu/logo.png|jpg|webp) và màn kết (outro.png|jpg|mp4|mov) do workflow chép từ Drive."""
     thu_muc = os.path.join(public, "thuong_hieu")
@@ -2359,8 +2354,8 @@ def tim_thuong_hieu(public, th):
     hien.pop("outroTuTao", None)
     hien.pop("dungOutroRieng", None)
     hien.pop("coManKet", None)
-    # v99.3: khóa cứng thương hiệu 'Tư duy Xác suất' cho mọi mảng, tuyệt đối không đổi sang 'Tư duy Toán'
-    hien["ten"] = TEN_THUONG_HIEU_CO_DINH
+    if not hien.get("ten") or "toán thầy trí" in str(hien.get("ten") or "").lower():
+        hien["ten"] = os.environ.get("KENH_TEN") or "Tư duy Xác suất"
     if not hien.get("handle") or "toanthaytri" in str(hien.get("handle") or "").lower():
         hien["handle"] = os.environ.get("KENH_HANDLE") or "@tuduyxacsuat"
     if not hien.get("khauHieu"):
@@ -2389,9 +2384,9 @@ def la_chuyen_muc_xac_suat(kb):
 
 
 def logo_theo_chuyen_muc(thuong_hieu, public, kb):
-    """v92/v99.3: giữ tên thương hiệu cố định 'Tư duy Xác suất' cho mọi chuyên mục."""
+    """v92: logo.png của kênh in sẵn chữ "Tư duy Xác suất" -> bài Toán (thực tế/tối ưu/tích phân/Oxyz) dùng logo_toan.*,
+    không có thì bỏ ảnh để LogoTron vẽ chữ ĐỘNG theo tên chuyên mục. Bài xác suất ưu tiên logo_xac_suat.*, rồi logo.*."""
     th = dict(thuong_hieu or {})
-    th["ten"] = TEN_THUONG_HIEU_CO_DINH
     thu_muc = os.path.join(public, "thuong_hieu")
     xs = la_chuyen_muc_xac_suat(kb)
     th["chuyenMuc"] = "xac_suat" if xs else "toan"
@@ -2404,9 +2399,22 @@ def logo_theo_chuyen_muc(thuong_hieu, public, kb):
 
 
 def ten_kenh_theo_chuyen_muc(thuong_hieu, th, kb):
-    """v99.3: khóa cứng tên thương hiệu 'Tư duy Xác suất' cho MỌI mảng (Xác suất, Hình học, Hàm số, Parabol, Thực tế...),
-    tuyệt đối không tự đổi sang 'Tư duy Toán'."""
-    return dict(thuong_hieu or {}, ten=TEN_THUONG_HIEU_CO_DINH)
+    """v89: tên kênh ở Intro / dấu nước / màn kết theo chuyên mục (phong_cach.json -> thuongHieu.tenTheoChuyenMuc,
+    ví dụ {"Xác suất": "Tư duy Xác suất", "mac_dinh": "Tư duy Toán"}) để bài Đạo hàm/Tối ưu không gắn cứng chữ "Xác suất"."""
+    bang = (th or {}).get("tenTheoChuyenMuc")
+    if not isinstance(bang, dict) or not bang:
+        return thuong_hieu
+    mon = str(kb.get("mon") or kb.get("loai_cau_hoi") or kb.get("chuyen_muc") or "")
+    chu = (mon + " " + str(kb.get("chu_de") or kb.get("tieu_de") or "")).lower()
+    ten = None
+    for k, v in bang.items():
+        if k != "mac_dinh" and k.lower() in chu:
+            ten = v
+            break
+    if ten is None and re.search(r"xac_suat|xác suất|xac suat", chu):
+        ten = bang.get("Xác suất")
+    ten = ten or bang.get("mac_dinh")
+    return dict(thuong_hieu, ten=ten) if ten else thuong_hieu
 
 
 def chon_man_ket(outro_tep, th, bai_hoc):
@@ -3327,9 +3335,9 @@ def main():
             "cau": cau,
             "trinhBay": trinh_bay(c, noi_dung),
             "chuThich": [str(x) for x in (c.get("chu_thich") or []) if str(x).strip()][:3],
-            "tieuDeCanh": str(c.get("tieu_de_canh") or "").strip(),
-            "tuKhoa": str(c.get("tu_khoa") or "").strip(),
-            "nhan": str(c.get("nhan") or "").strip(),
+            "tieuDeCanh": str(c.get("tieu_de_canh") or "").strip()[:70],
+            "tuKhoa": str(c.get("tu_khoa") or "").strip()[:30],
+            "nhan": str(c.get("nhan") or "").strip()[:16],
             "giuSanKhau": bool(c.get("giu_san_khau")) and i > 0,
             "chuyenCanh": str(c.get("chuyen_canh") or ""),
             "gocNhin": [str(x) for x in (c.get("goc_nhin") or [])][:4] if isinstance(c.get("goc_nhin"), list) else ([str(c.get("goc_nhin"))] if c.get("goc_nhin") else []),
@@ -3423,16 +3431,16 @@ def main():
         "nhanManh": [str(x) for x in (kb.get("nhan_manh") or [])][:5],
         "nhac": nhac,
         "amLuongNhac": float(os.environ.get("AM_LUONG_NHAC") or (0.2 if nhac and nhac.endswith("lofi.wav") else 0.16 if nhac and (nhac.endswith("nen.wav") or "/tron_" in nhac) else 0.12)),
-        "chuDe": str(kb.get("chu_de_ngan") or kb.get("chu_de") or "").strip(),
+        "chuDe": str(kb.get("chu_de_ngan") or kb.get("chu_de") or "")[:40],
         "baiHoc": bai_hoc,
         "bia": tao_bia(kb, canh, canh_props),
         # số tập KHÔNG in lúc dựng nữa (kể cả kịch bản cũ còn mang số): số tập đánh lúc đăng, theo số bài đã có trên kênh (dang_video.py)
         "series": None,
         "quangCao": the_san_pham(kb, anh_sp),
-        "duKien": [str(x).strip() for x in (kb.get("du_kien") or []) if str(x).strip()][:4],
+        "duKien": [str(x).strip()[:30] for x in (kb.get("du_kien") or []) if str(x).strip()][:4],
         "deBai": de_bai_the,
         "deGoc": str(kb.get("de_bai") or ""),
-        "tiepTheo": str(kb.get("video_tiep_theo") or "").strip(),
+        "tiepTheo": str(kb.get("video_tiep_theo") or "")[:70],
         "nen": ds_nen[0] if ds_nen else None,
         "dsNen": ds_nen,
         "nenTuTao": nen_tu_tao,
