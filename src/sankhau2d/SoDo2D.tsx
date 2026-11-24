@@ -5,7 +5,7 @@ import React from 'react';
 import {CYAN as CYAN_, HO_PHACH, XAM} from '../khung4tang/mau_v981';
 import {Toan} from '../Toan';
 import type {SoDo2DVao} from './kieu';
-import {bienTheoPha, CAO_DONG_KQ, daQua, em, hamMotBien, LE, nhipNhan, soVN, thangDoThi, tho, tienDo} from './chung';
+import {bienTheoPha, CAO_DONG_KQ, daQua, em, hamMotBien, kep, LE, nhipNhan, soVN, thangDoThi, tho, tienDo} from './chung';
 import {CHU, DongKetQua, mau, MO, NhanTex, ThanhTienDo} from './GiaoDien';
 
 type Net = {a: [number, number]; b: [number, number]; mau: string; nhan?: string; dut?: boolean; day?: number};
@@ -89,13 +89,28 @@ const OxyCong: React.FC<{sk: SoDo2DVao; t: number; W: number; H: number; mauNhan
   const kx = (v: number, bien = 120) => Math.min(W - LE.phai - bien, Math.max(LE.trai + bien, v));
   const u = (w / 2) * Math.sqrt(Math.max(0, 1 - y / h));
   const V = mau('vang'), C = mau('cyan');
+  // v99.5: camera zoom/pan bằng viewBox — phóng 1,15x vào thanh giằng khi vào pha 'keo' / 'toi_uu' (smoothstep 0,9 s), thu về toàn cảnh cuối bước.
+  // Biên an toàn: viewBox luôn chứa trọn khung O, A, B, S, M, N + nhãn (kz tự hạ nếu không đủ chỗ) và nằm trong [0,W] x [0,H].
+  const tKeo = sk.pha.find((p) => p.ten === 'keo')?.t, tToiUu = sk.pha.find((p) => p.ten === 'toi_uu')?.t;
+  const tVao = Math.min(tKeo ?? Infinity, tToiUu ?? Infinity);
+  const phaSau = tToiUu !== undefined ? sk.pha.find((p) => p.t > tToiUu) : undefined;
+  const tRa = phaSau ? phaSau.t : (Number.isFinite(tVao) ? Math.max(tToiUu ?? tVao, tVao) + 3.5 : 0);
+  const muot = (x: number) => { const k = kep(x); return k * k * (3 - 2 * k); };
+  const kzMuon = Number.isFinite(tVao) ? 1 + 0.15 * muot((t - tVao) / 0.9) * (1 - muot((t - (tRa - 0.9)) / 0.9)) : 1;
+  const bx0 = Math.max(0, Math.min(r.x, X(-w / 2) - 90, X(-u) - 150)), bx1 = Math.min(W, Math.max(r.x + r.w + 10, X(w / 2) + 90, X(u) + 150));
+  const by0 = Math.max(0, Y(h) - 60), by1 = Math.min(H, y0 + 80);
+  const kz = Math.max(1, Math.min(kzMuon, W / Math.max(1, bx1 - bx0), H / Math.max(1, by1 - by0)));
+  const vw = W / kz, vh = H / kz;
+  const kep2 = (v: number, lo: number, hi: number) => (lo > hi ? (lo + hi) / 2 : Math.min(hi, Math.max(lo, v)));
+  const vx = kep2(xm - vw / 2, Math.max(0, bx1 - vw), Math.min(W - vw, bx0));
+  const vy = kep2(Y(y) - vh / 2, Math.max(0, by1 - vh), Math.min(H - vh, by0));
   const cong = Array.from({length: 61}, (_, i) => { const a = -w / 2 + (w * i) / 60; return `${i ? 'L' : 'M'}${X(a).toFixed(1)} ${Y(h * (1 - (2 * a / w) ** 2)).toFixed(1)}`; }).join(' ');
   const xa = r.x, xb = r.x + r.w, yt = Y(h) - 50;
   const f = (v: number) => soVN(v, 1);
   const dv = sk.don_vi ? `\\,\\text{${sk.don_vi}}` : '';
   return (
     <div style={{position: 'absolute', inset: 0, opacity: aT}}>
-      <svg width={W} height={H} style={{position: 'absolute', inset: 0}}>
+      <svg width={W} height={H} viewBox={`${vx.toFixed(2)} ${vy.toFixed(2)} ${vw.toFixed(2)} ${vh.toFixed(2)}`} style={{position: 'absolute', inset: 0}}>
         <defs><marker id="mui-oxy" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill={CHU} /></marker></defs>
         {/* v99.5: vẽ nét động — pathLength=1 + strokeDashoffset theo frame (Ox, Oy, parabol), mũi tên chỉ hiện khi nét tới đích */}
         <line x1={xa} y1={y0} x2={xb} y2={y0} stroke={CHU} strokeWidth={2.4} pathLength={1} strokeDasharray={1} strokeDashoffset={1 - uOx} markerEnd={uOx > 0.97 ? 'url(#mui-oxy)' : undefined} />
@@ -112,6 +127,7 @@ const OxyCong: React.FC<{sk: SoDo2DVao; t: number; W: number; H: number; mauNhan
         </> : null}
         {[[0, 0], [-w / 2, 0], [w / 2, 0], [0, h]].map(([a, b], k) => <circle key={k} cx={X(a)} cy={Y(b)} r={7} fill={k === 3 ? HO_PHACH : CHU} stroke="#0E1014" strokeWidth={2} opacity={k === 3 ? uCong : uOx} />)}
       </svg>
+      <div style={{position: 'absolute', inset: 0, transformOrigin: '0 0', transform: `scale(${kz}) translate(${-vx}px, ${-vy}px)`}}>
       <NhanTex x={xb - 14} y={y0 + 22} tex="x" mau={CHU} co={24} />
       <NhanTex x={xm + 22} y={yt + 4} tex="y" mau={CHU} co={24} neo="trai" />
       <NhanTex x={xm - 36} y={y0 + 14} tex="O(0;0)" mau={CHU} co={22} />
@@ -125,7 +141,8 @@ const OxyCong: React.FC<{sk: SoDo2DVao; t: number; W: number; H: number; mauNhan
         <NhanTex x={kx(X(u) + 14, 130)} y={Y(y) - 34} tex={`N(${f(u)};${f(y)})`} mau={V} co={24} neo="trai" />
         <NhanTex x={xm} y={Y(y) + 14} tex={`MN = ${f(2 * u)}${dv}`} mau={V} co={26} />
       </div> : null}
-      <DongKetQua x={LE.trai} y={H - LE.duoi - CAO_DONG_KQ} w={W - LE.trai - LE.phai} h={CAO_DONG_KQ} tex={dK >= 0 ? `y = ${f(h)}\\left(1-\\dfrac{4x^2}{${f(w * w)}}\\right)` : ''} a={em(dK / 0.4)} mau={C} nhan={nh * 0.6} co={34} />
+      </div>
+      <DongKetQua x={LE.trai} y={H - LE.duoi - CAO_DONG_KQ} w={W - LE.trai - LE.phai} h={CAO_DONG_KQ} tex={dK >= 0 ? `y =${f(h)}\\left(1-\\dfrac{4x^2}{${f(w * w)}}\\right)` : ''} a={em(dK / 0.4)} mau={C} nhan={nh * 0.6} co={34} />
       <ThanhTienDo W={W} H={H} u={tienDo(sk.pha, t)} mau={mauNhan} />
     </div>
   );

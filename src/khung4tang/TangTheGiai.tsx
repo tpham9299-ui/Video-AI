@@ -15,6 +15,7 @@ import {ChuTron} from './ChuTron';
 import {RONG_ND} from './vung';
 import {tachHam} from './chu_tron';
 import {caoDongTex, coVuaCao} from './do_tex';
+import {chaySo} from './chay_so';
 
 const TOI_DA_THE = 3;
 const CHOT = '#FBBF24';   // v98.1: hổ phách (kỷ luật 2 màu nhấn; trước đây viền ngọc)
@@ -47,7 +48,7 @@ function NoiDung({th, t0, t, mau, co = 42, coDong}: {th: TheGiai; t0: number; t:
           const coD = coDong ?? co;
           return (
             <div key={k} style={{opacity: a * mo, transform: `translateY(${(1 - sp) * 14}px)`}}>
-              <Toan tex={d} size={coD} color={k === th.dong.length - 1 && (th.dong.length > 1 || co > 42) ? mau : '#F4F7FB'} maxWidth={RONG_TRONG} maxHeight={caoDongTex(d, coD) + 6} can="giua" style={co > 42 ? {fontWeight: 800} : undefined} />
+              <Toan tex={co > 42 && k === dongs.length - 1 ? chaySo(d, t - tk) : d} size={coD} color={k === th.dong.length - 1 && (th.dong.length > 1 || co > 42) ? mau : '#F4F7FB'} maxWidth={RONG_TRONG} maxHeight={caoDongTex(d, coD) + 6} can="giua" style={co > 42 ? {fontWeight: 800} : undefined} />
             </div>
           );
         })}

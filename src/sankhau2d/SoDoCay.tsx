@@ -9,6 +9,7 @@
 //  • diễn hoạt theo pha lời đọc: tầng 1 -> tầng 2 -> (Bayes) toàn phần: nhánh ngoài mẫu số ~25 % + hạt sáng chạy; Bayes: tử số
 //    hổ phách, phần còn lại mẫu số ~55 %; cây thường (lớp 11): pha `duong` tô đường thỏa, phần còn lại ~25 %.
 import React from 'react';
+import {spring} from 'remotion';
 import type {NutCay, SoDoCayVao} from './kieu';
 import {boCucCay, CAO_VIEN_CAY, CO_NHAN_CAY, daQua, diemBz, em, kep, NHAN_U_CAY, nhipNhan, phangTex, tho, tienDo} from './chung';
 import type {Bz} from './chung';
@@ -190,6 +191,8 @@ export const SoDoCay: React.FC<{sk: SoDoCayVao; t: number; W: number; H: number;
         const d = treNut(n);
         const a = em((d - 0.45) / 0.35);
         if (a <= 0) return null;
+        // v99.5: nút nảy lò xo (theo thứ tự tầng vì mốc `d` đã lệch theo tầng); hiện hình vẫn theo `a` như cũ
+        const nutNay = spring({frame: Math.max(0, (d - 0.45) * 30), fps: 30, config: {damping: 12, stiffness: 170, mass: 0.7}});
         const v = vt(n.id);
         const o = doSang(n), hp = hoPhach(n);
         const m = hp > 0.5 ? HO_PHACH : o < 0.4 ? XAM : CYAN;
@@ -200,7 +203,7 @@ export const SoDoCay: React.FC<{sk: SoDoCayVao; t: number; W: number; H: number;
           <React.Fragment key={n.id}>
             <div data-sk2d={`nut_${n.id}`} style={{position: 'absolute', left: v.x - nua, top: v.y - caoNut / 2, width: rongNut, height: caoNut, borderRadius: caoNut / 2, display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: hp > 0.5 ? 'rgba(251,191,36,0.10)' : 'rgba(22,27,36,0.92)', border: `1.5px solid ${m}${o > 0.6 ? 'CC' : '55'}`, opacity: a * Math.max(0.3, o),
-              transform: `scale(${0.8 + 0.2 * a + (hp > 0.5 ? 0.05 * nh : 0)})`, boxShadow: hp > 0.5 ? `0 0 ${14 + 6 * tho(t)}px ${HO_PHACH}40` : '0 6px 16px rgba(0,0,0,0.35)',
+              transform: `scale(${0.8 + 0.2 * Math.min(1.25, nutNay) + (hp > 0.5 ? 0.05 * nh : 0)})`, boxShadow: hp > 0.5 ? `0 0 ${14 + 6 * tho(t)}px ${HO_PHACH}40` : '0 6px 16px rgba(0,0,0,0.35)',
               color: hp > 0.5 ? HO_PHACH : chu, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden'}}>
               <ChuTron s={n.nhan} co={Math.round((n.nhan.length > 8 ? 19 : 24) * Math.min(1, caoNut / 48))} mau={hp > 0.5 ? HO_PHACH : chu} />
             </div>

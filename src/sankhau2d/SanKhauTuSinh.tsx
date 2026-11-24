@@ -28,8 +28,9 @@ export function trangThaiLop(l: LopTuSinh, t: number, fps: number, moiNhat: bool
   const lang = moiNhat ? 1 : 0.82;
   switch (l.hieu_ung) {
     case 'no': return {hien: Math.min(1, sp * 1.2) * lang, s: 0.82 + 0.18 * sp, dy: 0, quet: 1, sang};
-    case 've': return {hien: lang, s: 1, dy: 0, quet: Math.min(1, dtt / 1.1), sang};
-    case 'sang': return {hien: Math.min(1, sp * 1.3) * lang, s: 1, dy: 0, quet: 1, sang: Math.max(sang, moiNhat ? 0.35 : 0)};
+    // v99.5: nhấn chi tiết bằng lò xo (scale nảy nhẹ ~1,8 % khi lớp mới nhất vừa hiện); quét 1,1 s, độ dịu 82 %, hiện/ẩn giữ nguyên
+    case 've': return {hien: lang, s: 1 + (moiNhat ? 0.018 * Math.sin(Math.PI * Math.min(1, sp)) : 0), dy: 0, quet: Math.min(1, dtt / 1.1), sang};
+    case 'sang': return {hien: Math.min(1, sp * 1.3) * lang, s: 1 + (moiNhat ? 0.025 * Math.sin(Math.PI * Math.min(1, sp)) : 0), dy: 0, quet: 1, sang: Math.max(sang, moiNhat ? 0.35 : 0)};
     default: return {hien: Math.min(1, sp * 1.2) * lang, s: 0.97 + 0.03 * sp, dy: 14 * (1 - sp), quet: 1, sang};
   }
 }

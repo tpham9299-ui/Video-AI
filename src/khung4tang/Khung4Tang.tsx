@@ -1,7 +1,7 @@
 // v90 — KHUNG 4 TẦNG CỐ ĐỊNH: T1 nhãn bước + tiêu đề | T2 sân khấu 3D Vector sống | T3 thẻ giải | T4 thanh ghim ĐỀ.
 // Mỗi tầng là một vùng cứng (overflow hidden, data-vung cho kiem_duyet.mjs) nên không thành phần nào lấn sang tầng khác.
 import React, {useMemo} from 'react';
-import {AbsoluteFill, Audio, Sequence, staticFile, useCurrentFrame} from 'remotion';
+import {AbsoluteFill, Audio, Sequence, spring, staticFile, useCurrentFrame} from 'remotion';
 import {FONT} from '../theme';
 import {KieuToan, NapPhongToan} from '../Toan';
 import {SanKhau3DVector} from '../3d-vector/SanKhau3DVector';
@@ -147,6 +147,16 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
   }, [p.mocCau, p.khongGian, p.cau, buoc]);
   const G = giayIntro(mocCau, tong);
   const ra = raIntro(t, G);
+  // v99.5: chuyển hồi mượt (CHỈ hiệu ứng hình trong khung có sẵn, không đổi mốc): Intro -> Thân bài = lò xo 10 khung (scale 0.96 -> 1 + trượt lên);
+  // Thân bài -> Outro = 9 khung cuối thu nhẹ (scale 1 -> 0.97, trượt lên, mờ bớt) để Outro (tự vào mượt ở Video.tsx) tiếp nối.
+  const khungG = Math.round(G * fps);
+  const vaoThan = G > 0 ? spring({frame: Math.max(0, f - khungG + 3), fps, durationInFrames: 10, config: {damping: 16, stiffness: 150, mass: 0.7}}) : 1;
+  const thoat = Math.min(1, Math.max(0, (f - (p.tongFrame - 9)) / 9));
+  const thoatE = thoat * thoat * (3 - 2 * thoat);
+  const chuyenHoi: React.CSSProperties = {
+    transform: `translateY(${(1 - Math.min(1, vaoThan)) * 16 - 10 * thoatE}px) scale(${(0.96 + 0.04 * Math.min(1, vaoThan)) * (1 - 0.03 * thoatE)})`,
+    transformOrigin: '50% 50%', opacity: ra * (1 - 0.65 * thoatE),
+  };
   const lechMay = G > 0 && t < G ? {k: 1 + 0.35 * (1 - emRa(t / 1.6)), n: 32 * (1 - emRa(t / 2.2))} : undefined;
   // v97 tối giản: trong Intro sân khấu cao 883 px thu về đúng ô INTRO_SAN (scale 648/883, neo tâm) rồi giãn ra khi trượt về T2
   const yT2 = G > 0 ? (toiGian ? bc.t2.y + (INTRO_SAN.y + INTRO_SAN.h / 2 - bc.t2.h / 2 - bc.t2.y) * (1 - ra) : bc.t2.y + (INTRO_SAN.y - bc.t2.y) * (1 - ra)) : bc.t2.y;
@@ -212,7 +222,7 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
       {p.thuongHieu ? (
         <div data-kd-bo="1" style={{position: 'absolute', top: Math.max(24, bc.t1.y - 58), right: 44, fontFamily: FONT, fontWeight: 800, fontSize: 22, color: 'rgba(230,237,245,0.5)', letterSpacing: 0.4, opacity: ra}}>{p.thuongHieu}</div>
       ) : null}
-      <div style={{opacity: ra}}>
+      <div style={chuyenHoi}>
         <Tang ten="t1" v={bc.t1} rong={bc.rong} le={bc.le}>
           {toiGian ? <TieuDeMotDong buoc={buoc} i={i} t={t} mau={mauBuoc} /> : <TangTieuDe buoc={buoc} i={i} t={t} mau={mauB} />}
         </Tang>
@@ -241,7 +251,7 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
         ) : null}
         {dc && aDc2 > 0 ? <DoiChieu2Cot d={dc} dt={t - tDau} dai={tCuoi - tDau} t={t} rong={bc.rong} cao={bc.t2.h} hienSo={!!buoc[i].doi_chieu?.hien_so} a={aDc2} dtGiai={dtGiai} tHuyHieu={buoc[i].doi_chieu?.t_huy_hieu} /> : null}
       </Tang>
-      <div style={{opacity: ra}}>
+      <div style={chuyenHoi}>
         <Tang ten="t3" v={t3} rong={bc.rong} le={bc.le}>
           {toiGian ? <KhoiCongThuc buoc={buoc} i={i} t={t} mau={mauBuoc} /> : <TangTheGiai buoc={buoc} i={i} t={t} mau={mauB} />}
         </Tang>

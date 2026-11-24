@@ -10,6 +10,7 @@ import {emRa, emVaoRa} from '../3d-vector/toan3d';
 import {BuocGiai, DuKienGhim} from './kieu';
 import {RONG_ND} from './vung';
 import {CYAN, HO_PHACH} from './mau_v981';
+import {chaySo} from './chay_so';
 
 const CHU_MO = 'rgba(230,237,245,0.78)';
 
@@ -62,7 +63,14 @@ export const ThanhDe: React.FC<{ds: DuKienGhim[]; buoc: BuocGiai[]; i: number; t
                 boxShadow: vienLoe > 0.01 ? `0 0 ${18 * vienLoe}px ${HO_PHACH}CC, inset 0 0 0 1.5px ${HO_PHACH}${Math.round(200 * vienLoe).toString(16).padStart(2, '0')}` : undefined}}>
                 {quet >= 0 ? <span style={{position: 'absolute', top: 0, bottom: 0, left: `${-10 + 80 * quet}%`, width: '34%', pointerEvents: 'none',
                   background: 'linear-gradient(100deg, rgba(251,191,36,0), rgba(255,236,170,0.85), rgba(251,191,36,0))', opacity: 0.55 * vienLoe + 0.1}} /> : null}
-                <Toan tex={daDoi && aDoi >= 0.35 ? p.doi!.nhan : p.nhan} size={co} color={mauChu} style={{fontWeight: daDoi || s > 0.5 ? 800 : 600}} />
+                <Toan tex={daDoi && aDoi >= 0.35 ? chaySo(p.doi!.nhan, dtDoi - 0.1) : p.nhan} size={co} color={mauChu} style={{fontWeight: daDoi || s > 0.5 ? 800 : 600}} />
+                {/* v99.5: nét bút khoanh tay — đường cong mảnh vẽ bằng strokeDashoffset dưới ô đáp số (không che chữ, không overflow) */}
+                {daDoi && dtDoi >= 0.2 ? (
+                  <svg data-net-but="1" width="112%" height={16} viewBox="0 0 100 16" preserveAspectRatio="none" style={{position: 'absolute', left: '-6%', bottom: -9, pointerEvents: 'none', overflow: 'visible'}}>
+                    <path d="M2 10 C 16 3, 34 14, 52 7 S 86 4, 98 9" fill="none" stroke={HO_PHACH} strokeWidth={2.6} strokeLinecap="round" vectorEffect="non-scaling-stroke"
+                      pathLength={1} strokeDasharray={1} strokeDashoffset={1 - emRa((dtDoi - 0.2) / 0.5)} opacity={0.92} />
+                  </svg>
+                ) : null}
                 {vach > 0.02 ? <span style={{position: 'absolute', left: '12%', right: '12%', bottom: 9, height: 2, borderRadius: 1, opacity: vach,
                   background: daDoi ? HO_PHACH : CYAN, boxShadow: `0 0 8px ${daDoi ? HO_PHACH : CYAN}88`}} /> : null}
               </div>
