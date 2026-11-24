@@ -20,24 +20,32 @@ function khoParse_(raw) {
 // Tên khóa lưu trạng thái "hết hạn mức ngày" của (key, model)
 function khoTenKhoa_(id, tq) { return tq === KHO_MODEL_CU_ ? 'kd_' + id : 'kdm_' + id + '_' + tq; }
 
-// v98.2: cặp (model, key) trả HTTP 404 trong NGÀY (giờ Thái Bình Dương, cùng mốc reset với HET_HAN_MUC_NGAY).
-// Một Script Property duy nhất MODEL_404_NGAY = {ngay, cap: {'model|id': 1}} - sang ngày mới tự bỏ.
+// v99.3: 404 = MODEL không tồn tại -> chỉ nhớ MODEL trong CacheService 6 giờ, KHÔNG đụng tới key (không "cháy key ảo").
 function khoModelGoc_(tq) { return String(tq || '').replace(/\+.*$/, ''); }
-function kho404Ngay_(all) {
-  try {
-    var raw = all ? all.MODEL_404_NGAY : khoProps_().getProperty('MODEL_404_NGAY');
-    var o = JSON.parse(raw || '{}');
-    if (o && o.ngay === khoNgayPT_()) return o.cap || {};
-  } catch (e) { /* hỏng -> coi như trống */ }
-  return {};
+var KHO_TTL_404_ = 21600, KHO_TTL_RPM_ = 75, KHO_TTL_RPD_ = 21600, KHO_TTL_BAD_ = 21600;
+function kho404Model_(model) {
+  try { return !!CacheService.getScriptCache().get('kho404m_' + khoModelGoc_(model)); } catch (e) { return false; }
 }
-function khoGhi404_(key, model) {
-  try {
-    var cap = kho404Ngay_(), k = khoModelGoc_(model) + '|' + khoId_(key);
-    if (cap[k]) return;
-    cap[k] = 1;
-    khoProps_().setProperty('MODEL_404_NGAY', JSON.stringify({ ngay: khoNgayPT_(), cap: cap }));
-  } catch (e) { /* bỏ qua */ }
+function khoGhi404_(key, model) {   // giữ tham số key cho tương thích, KHÔNG dùng
+  try { CacheService.getScriptCache().put('kho404m_' + khoModelGoc_(model), '1', KHO_TTL_404_); } catch (e) { /* bỏ qua */ }
+}
+
+// Kho key 2 tầng: tầng 1 = GEMINI_KEYS_GITHUB (ưu tiên), tầng 2 = kho cũ. Khử trùng, giữ ưu tiên tầng 1.
+function khoKeyTang_() {
+  var p = khoProps_(), gh = khoParse_(String(p.getProperty('GEMINI_KEYS_GITHUB') || '').replace(/[\r\n]+/g, ','));
+  var cu = khoKeyCu_(), thay = {};
+  gh.forEach(function (k) { thay[k] = 1; });
+  return { gh: gh, gas: cu.filter(function (k) { return !thay[k]; }) };
+}
+// Nhãn an toàn để ghi log / Zalo: GH#1, GAS#2 (KHÔNG BAO GIỜ in nguyên key)
+function khoNhan_(key) {
+  var t = khoKeyTang_(), i = t.gh.indexOf(key);
+  if (i >= 0) return 'GH#' + (i + 1);
+  i = t.gas.indexOf(key);
+  return i >= 0 ? 'GAS#' + (i + 1) : '…' + String(key || '').slice(-4);
+}
+function khoLog_(loai, key, msg) {
+  try { if (typeof nhatKy_ === 'function') nhatKy_(loai, khoNhan_(key) + ': ' + msg); } catch (e) { /* bỏ qua */ }
 }
 function khoLa404_(code, raw) {
   return code === 404 || (code === 400 && /not found|not supported for generateContent|model .* does not exist|invalid model/i.test(String(raw || '')));
@@ -52,6 +60,10 @@ function khoUrl_() {
 
 // Danh sách key đang dùng: máy khách lấy bản sao từ A; kho chủ dùng GEMINI_API_KEY của chính nó
 function khoDanhSachKey_() {
+  var t = khoKeyTang_();
+  return t.gh.concat(t.gas);
+}
+function khoKeyCu_() {
   var p = khoProps_();
   if (khoUrl_()) {
     var ban = khoParse_(p.getProperty('KHO_BAN_SAO'));
@@ -68,37 +80,50 @@ function khoDanhSachKey_() {
 // Xếp các key dùng được cho (hệ thống, model): dung = sẵn sàng, nghi = đang nghỉ ngắn vì giới hạn theo phút
 function khoXep_(he, tq) {
   var all = khoProps_().getProperties(), homNay = khoNgayPT_();
-  var ds = khoDanhSachKey_(), n = ds.length, thuTu = [];
-  var bd = 0, buoc = 1;
-  if (he === 'VIDEO') { bd = n - 1; buoc = -1; }
-  else if (he === 'DIEMDANH') { bd = Math.floor(n / 2); }
-  for (var i = 0; i < n; i++) thuTu.push(ds[(((bd + buoc * i) % n) + n) % n]);
+  var tang = khoKeyTang_(), thuTu = [];
+  // Tầng 1 (GitHub) luôn đứng trước tầng 2 (kho cũ); xoay vòng chỉ diễn ra TRONG từng tầng
+  [tang.gh, tang.gas].forEach(function (ds) {
+    var n = ds.length, bd = 0, buoc = 1;
+    if (he === 'VIDEO') { bd = n - 1; buoc = -1; }
+    else if (he === 'DIEMDANH') { bd = Math.floor(n / 2); }
+    for (var i = 0; i < n; i++) thuTu.push(ds[(((bd + buoc * i) % n) + n) % n]);
+  });
+  var co404 = kho404Model_(tq);
+  if (co404) return { dung: [], nghi: [], coHetNgay: false, co404: true, n429: 0, n403: 0 };   // model đã 404: không đụng tới key
+  var cache = CacheService.getScriptCache();
   var tenCache = thuTu.map(function (k) { return 'kdn_' + khoId_(k) + '_' + tq; });
   var quyenCache = thuTu.map(function (k) { return 'kdb_' + khoId_(k) + '_' + tq; });
+  var ngayCache = thuTu.map(function (k) { return 'kdd_' + khoId_(k) + '_' + tq; });
+  var badCache = thuTu.map(function (k) { return 'kdx_' + khoId_(k); });
   var nghiMap = {};
-  try { nghiMap = CacheService.getScriptCache().getAll(tenCache.concat(quyenCache)); } catch (e) { nghiMap = {}; }
-  var dung = [], nghi = [], coHetNgay = false, co404 = false, cap404 = kho404Ngay_(all), md404 = khoModelGoc_(tq);
+  try { nghiMap = cache.getAll(tenCache.concat(quyenCache, ngayCache, badCache)); } catch (e) { nghiMap = {}; }
+  var dung = [], nghi = [], coHetNgay = false, n429 = 0, n403 = 0;
   thuTu.forEach(function (k, i) {
     var id = khoId_(k);
-    if (all['kd_' + id] === 'BAD') return;
-    if (cap404[md404 + '|' + id]) { co404 = true; return; }   // v98.2: cặp này đã 404 hôm nay
-    if (all[khoTenKhoa_(id, tq)] === homNay) { coHetNgay = true; return; }
-    if (nghiMap[quyenCache[i]]) return;
+    if (all['kd_' + id] === 'BAD' || nghiMap[badCache[i]]) { n403++; return; }
+    if (all[khoTenKhoa_(id, tq)] === homNay || nghiMap[ngayCache[i]]) { coHetNgay = true; n429++; return; }
+    if (nghiMap[quyenCache[i]]) { n403++; return; }
+    if (nghiMap[tenCache[i]]) n429++;
     (nghiMap[tenCache[i]] ? nghi : dung).push(k);
   });
-  return { dung: dung, nghi: nghi, coHetNgay: coHetNgay, co404: co404 };
+  return { dung: dung, nghi: nghi, coHetNgay: coHetNgay, co404: false, n429: n429, n403: n403, tong: thuTu.length };
+}
+// Tóm tắt ngắn (không lộ key) khi hết key: dùng cho nhật ký / Zalo
+function khoTomTat_(tt) {
+  return 'đã quét ' + (tt.tong || 0) + ' key (cả tầng GitHub lẫn tầng cũ): ' + (tt.n429 || 0) + ' key 429/hết hạn mức, ' + (tt.n403 || 0) + ' key 403/hỏng';
 }
 
 function khoNghiNgan_(id, tq) {
-  try { CacheService.getScriptCache().put('kdn_' + id + '_' + tq, '1', 75); } catch (e) { /* bỏ qua */ }
+  try { CacheService.getScriptCache().put('kdn_' + id + '_' + tq, '1', KHO_TTL_RPM_); } catch (e) { /* bỏ qua */ }
 }
 
-function khoDanhDau_(key, tq, loai) {   // loai: 'ngay' (hết hạn mức ngày) | 'bad' (key hỏng toàn phần) | 'bad_model' (lỗi quyền theo model)
-  var p = khoProps_(), id = khoId_(key);
-  if (loai === 'bad') { p.setProperty('kd_' + id, 'BAD'); return; }
-  if (loai === 'bad_model' && tq) { CacheService.getScriptCache().put('kdb_' + id + '_' + tq, 'BAD', 1800); return; }
-  if (p.getProperty('kd_' + id) === 'BAD') return;
-  p.setProperty(khoTenKhoa_(id, tq), khoNgayPT_());
+function khoDanhDau_(key, tq, loai) {   // loai: 'ngay' (hết hạn mức ngày, 6 giờ) | 'bad' (key hỏng/khóa, 6 giờ) | 'bad_model' (lỗi quyền theo model)
+  var id = khoId_(key), cache = CacheService.getScriptCache();
+  try {
+    if (loai === 'bad') { cache.put('kdx_' + id, '1', KHO_TTL_BAD_); return; }
+    if (loai === 'bad_model' && tq) { cache.put('kdb_' + id + '_' + tq, 'BAD', 1800); return; }
+    cache.put('kdd_' + id + '_' + tq, '1', KHO_TTL_RPD_);
+  } catch (e) { /* bỏ qua */ }
 }
 
 // Máy khách báo cho A biết (không làm hỏng việc chính nếu A không trả lời)
@@ -116,19 +141,22 @@ function khoGhiNhanLoi_(key, tq, code, raw) {
   raw = String(raw || '');
   if (code === 429 && /\blimit:\s*0\b|"quotaValue":\s*"?0\b/i.test(raw)) {
     khoDanhDau_(key, tq, 'bad_model');
+    khoLog_('KEY_429', key, 'limit 0 cho model ' + tq + ' -> bỏ qua key với model này');
     return true;
   }
-  if (code === 429) {
-    if (/PerDay|per day|daily/i.test(raw)) { khoDanhDau_(key, tq, 'ngay'); khoBaoChu_(key, tq, 'ngay'); }
-    else khoNghiNgan_(khoId_(key), tq);   // giới hạn theo phút: nghỉ 75 giây
+  if (code === 429 || /RESOURCE_EXHAUSTED/.test(raw)) {
+    if (/PerDay|per day|daily|RPD/i.test(raw)) { khoDanhDau_(key, tq, 'ngay'); khoBaoChu_(key, tq, 'ngay'); khoLog_('KEY_429', key, 'hết hạn mức NGÀY -> nghỉ 6 giờ'); }
+    else { khoNghiNgan_(khoId_(key), tq); khoLog_('KEY_429', key, 'chạm giới hạn phút -> nghỉ ' + KHO_TTL_RPM_ + ' giây'); }
     return true;
   }
   if (code === 401 || ((code === 400 || code === 403) && /API_KEY_INVALID|API key not valid|API_KEY_EXPIRED|API key expired/i.test(raw))) {
     khoDanhDau_(key, tq, 'bad'); khoBaoChu_(key, tq, 'bad');
+    khoLog_('KEY_HONG', key, 'HTTP ' + code + ' key hỏng/bị khóa -> bỏ qua 6 giờ');
     return true;
   }
   if (code === 403) {
     khoDanhDau_(key, tq, 'bad_model');
+    khoLog_('KEY_403', key, 'từ chối model ' + tq + ' -> bỏ qua key với model này 30 phút');
     return true;
   }
   return false;
@@ -152,10 +180,12 @@ function khoGoi_(he, model, body, tuyChon) {
   for (var vong = 0; vong < 60; vong++) {
     var tt = khoXep_(he, tq);
     if (!tt.dung.length) {
-      if (!tt.nghi.length && !tt.coHetNgay && tt.co404) return { ok: false, code: 404, het: false, raw: 'MODEL_KHONG_CO_HOM_NAY: ' + model };
-      if (!tt.nghi.length && !tt.coHetNgay) return { ok: false, code: 403, het: false, raw: 'KHONG_CO_KEY_CO_QUYEN' };
-      if (!tt.nghi.length) return { ok: false, code: 429, het: true, raw: 'HET_HAN_MUC_NGAY' };
-      if (Date.now() - bat + 8000 > hanCho) return { ok: false, code: 429, het: false, raw: 'GIOI_HAN_TOC_DO' };
+      var tomTat = khoTomTat_(tt);
+      try { CacheService.getScriptCache().put('KEY_TOM_TAT', tomTat, 600); } catch (eT) { /* bỏ qua */ }
+      if (tt.co404) return { ok: false, code: 404, het: false, raw: 'MODEL_KHONG_CO (404, nhớ 6 giờ): ' + model };
+      if (!tt.nghi.length && !tt.coHetNgay) return { ok: false, code: 403, het: false, raw: 'KHONG_CO_KEY_CO_QUYEN (' + tomTat + ')' };
+      if (!tt.nghi.length) return { ok: false, code: 429, het: true, raw: 'HET_HAN_MUC_NGAY (' + tomTat + ')' };
+      if (Date.now() - bat + 8000 > hanCho) return { ok: false, code: 429, het: false, raw: 'GIOI_HAN_TOC_DO (' + tomTat + ')' };
       Utilities.sleep(8000);
       continue;
     }
@@ -170,7 +200,7 @@ function khoGoi_(he, model, body, tuyChon) {
     }
     var code = res.getResponseCode(), raw = res.getContentText();
     if (code === 200) return { ok: true, code: 200, het: false, raw: raw, key: key };
-    if (khoLa404_(code, raw)) { khoGhi404_(key, model); return { ok: false, code: code, het: false, raw: raw, key: key }; }   // v98.2: nhớ trong ngày, để nơi gọi đổi model
+    if (khoLa404_(code, raw)) { khoGhi404_(key, model); khoLog_('MODEL_404', key, model + ' không tồn tại -> nhớ model 6 giờ (key vẫn tốt)'); return { ok: false, code: code, het: false, raw: raw, key: key }; }   // v99.3: chỉ model bị nhớ
     var la403 = khoLa403Model_(code, raw);
     if (khoGhiNhanLoi_(key, tq, code, raw)) {
       // v99.2b: 2 key khác nhau cùng bị model từ chối (403) -> model không cho dùng, trả ngay (goiGemini_ chặn 12 giờ) thay vì thử hết key
@@ -271,8 +301,9 @@ function khoXem() {
   dong.push('🔑 Chế độ: ' + (khoUrl_() ? 'MÁY KHÁCH (lấy key từ hệ thống A)' : 'KHO CHỦ / ĐỘC LẬP (dùng GEMINI_API_KEY của project này)') +
             ' · Tổng ' + ds.length + ' key · Ngày PT: ' + homNay);
   ds.forEach(function (k, i) {
-    var id = khoId_(k), tt = [];
-    if (all['kd_' + id] === 'BAD') {
+    var id = khoId_(k), tt = [], badTam = false;
+    try { badTam = !!CacheService.getScriptCache().get('kdx_' + id); } catch (eB) {}
+    if (all['kd_' + id] === 'BAD' || badTam) {
       tt.push('❌ BỊ TỪ CHỐI');
       demBiTuChoi++;
     } else {
@@ -284,7 +315,7 @@ function khoXem() {
       if (tt.length) demHetMotPhan++;
       else demTotHoanToan++;
     }
-    dong.push('• Key #' + (i + 1) + ' (…' + k.slice(-4) + '): ' + (tt.length ? tt.join('; ') : '✅ còn dùng được cho mọi model'));
+    dong.push('• ' + khoNhan_(k) + ' (…' + k.slice(-4) + '): ' + (tt.length ? tt.join('; ') : '✅ còn dùng được cho mọi model'));
   });
   var conXaiDuoc = demTotHoanToan + demHetMotPhan;
   dong.splice(1, 0, '📊 TỔNG KẾT: Còn ' + conXaiDuoc + '/' + ds.length + ' key xài được (' + demTotHoanToan + ' key khỏe 100% mọi model, ' +
@@ -298,7 +329,7 @@ function khoThu() {
   var model = khoProps_().getProperty('GEMINI_MODEL') || 'gemini-flash-lite-latest';
   var kq = khoGoi_('DIEMDANH', model, { contents: [{ parts: [{ text: 'Trả lời đúng một từ: OK' }] }],
                                         generationConfig: { maxOutputTokens: 20, temperature: 0 } }, { hanChoMs: 0 });
-  Logger.log(kq.ok ? '✔ Gọi Gemini được, dùng key …' + String(kq.key).slice(-4) + ' (model ' + model + ')'
+  Logger.log(kq.ok ? '✔ Gọi Gemini được, dùng key ' + khoNhan_(kq.key) + ' (model ' + model + ')'
                    : '✘ Lỗi ' + kq.code + (kq.het ? ' (mọi key đã hết hạn mức ngày cho model này)' : '') + ': ' + String(kq.raw).slice(0, 200));
 }
 

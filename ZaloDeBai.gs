@@ -330,7 +330,10 @@ function loiDocDeChoZalo_(r, ghiTruoc) {
   var g = String(ghiTruoc || '');
   if (/^DANG_|QUA_THOI_GIAN|HET_GIO|hết thời gian|BI_NGAT/i.test(g)) return '⏱ Đề ' + r.id + ': Gemini đọc ảnh quá chậm nên lần chạy bị ngắt nhiều lần (không phải do ảnh). Hệ thống tạm dừng đề này; bạn gửi lại sau ít phút hoặc gõ đề bằng chữ nhé.';
   if (/QUA_TAI|quá tải|503|UNAVAILABLE/i.test(g)) return '⏳ Đề ' + r.id + ': Gemini đang quá tải (HTTP 503) nên chưa đọc được đề (không phải do ảnh). Bạn gửi lại sau ít phút nhé.';
-  if (/HET_HAN_MUC|hạn mức|429/i.test(g)) return '⏳ Đề ' + r.id + ': kho key Gemini đã hết hạn mức nên chưa đọc được đề. Hệ thống sẽ làm khi có hạn mức mới.';
+  if (/HET_HAN_MUC|hạn mức|429/i.test(g)) {
+    var tt = ''; try { tt = CacheService.getScriptCache().get('KEY_TOM_TAT') || ''; } catch (eTt) {}
+    return '⏳ Đề ' + r.id + ': kho key Gemini đã hết hạn mức nên chưa đọc được đề' + (tt ? ' (' + tt + ')' : '') + '. Hệ thống sẽ làm khi có hạn mức mới.';
+  }
   if (/GEMINI_LOI|HTTP \d{3}|MODEL_TU_CHOI/i.test(g)) return '⚠️ Đề ' + r.id + ': lỗi gọi Gemini khi đọc đề (' + g.slice(0, 120) + '). Bạn gửi lại sau ít phút nhé.';
   return '⚠️ Không đọc được đề ' + r.id + ' sau nhiều lần thử' + (g ? ' (' + g.slice(0, 100) + ')' : '') + '. Bạn gửi lại ảnh rõ hơn hoặc gõ đề nhé.';
 }

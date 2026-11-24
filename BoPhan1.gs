@@ -1785,13 +1785,18 @@ function layModelSong_(lamMoi) {
   return [];
 }
 
-// 404 theo NGÀY (giờ Thái Bình Dương) cho từng cặp (model, key): KhoKey.gs kho404Ngay_ ghi khi gọi; ở đây chỉ đọc.
-// Model coi như chết hôm nay khi >= 2 key (hoặc mọi key nếu ít hơn) đã 404.
+// v99.3: 404 = model không tồn tại -> KhoKey.gs khoGhi404_ nhớ MODEL 6 giờ trong CacheService (không đụng tới key); ở đây chỉ đọc.
 function model404HomNay_(m) {
-  if (typeof kho404Ngay_ !== 'function' || typeof khoId_ !== 'function') return false;
-  var cap = kho404Ngay_(), keys = khoDanhSachKey_(), n = 0;
-  keys.forEach(function (k) { if (cap[m + '|' + khoId_(k)]) n++; });
-  return keys.length > 0 && n >= Math.min(2, keys.length);
+  return typeof kho404Model_ === 'function' && kho404Model_(m);
+}
+// v99.3: model đọc ảnh (DOC_DE): bỏ model không nhận ảnh / thử nghiệm; bản ổn định (không preview/exp) xếp trước
+function modelDocAnh_(ds) {
+  var ok = ds.filter(function (m) {
+    return !/exp|tts|audio|embed|imagen|veo|gemma|aqa|learnlm|live|robotics|computer-use|image-generation|thinking/i.test(m) && !model404HomNay_(m) && !CacheService.getScriptCache().get('MODEL_HONG_' + m);
+  });
+  if (!ok.length) return ds;
+  var onDinh = ok.filter(function (m) { return !/preview/i.test(m); }), thu = ok.filter(function (m) { return /preview/i.test(m); });
+  return onDinh.concat(thu);
 }
 
 // Model còn dùng được: chưa 404 (6 giờ / trong ngày) và có trong danh sách sống (nếu biết)
@@ -1861,6 +1866,7 @@ function goiGemini_(prompt, nhiet, opts) {
   var cheDo = opts.cheDo === 'nhe' ? 'nhe' : 'nang';
   var models = danhSachModel_(cheDo);
   var cache = CacheService.getScriptCache();
+  if (opts.anh || opts.anhs) models = modelDocAnh_(models);   // v99.3: đọc ảnh chỉ dùng model còn sống + hỗ trợ ảnh ổn định
   if (opts.modelUuTien && modelConSong_(opts.modelUuTien) &&
       !cache.get('QUA_TAI_' + opts.modelUuTien) && !cache.get('HET_NGAY_MODEL_' + opts.modelUuTien)) {
     models = [opts.modelUuTien].concat(models.filter(function (md) { return md !== opts.modelUuTien; }));
