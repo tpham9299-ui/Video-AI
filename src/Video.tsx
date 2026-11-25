@@ -259,7 +259,11 @@ const NoiDungHinhPhang: React.FC<Props & {coIntro?: boolean}> = (props) => {
   const {canh, tongFrame, fps, nhac, thuongHieu, outro} = props;
   const amNhac = React.useMemo(() => taoAmLuongNhac(props), [canh, tongFrame, fps, props.amLuongNhac]);
   return (
-    <AbsoluteFill style={{fontFamily: FONT, background: '#121214'}}>
+    <AbsoluteFill style={{fontFamily: FONT, backgroundColor: '#0a1725', backgroundImage: 'linear-gradient(#adcde30d 1px,transparent 1px),linear-gradient(90deg,#adcde30d 1px,transparent 1px),radial-gradient(ellipse at 50% 35%,#17364a,#0a1725 74%)', backgroundSize: '56px 56px,56px 56px,100% 100%'}}>
+      <div style={{position: 'absolute', top: '10.8%', left: '4%', right: '4%', height: '7.5%', borderRadius: 20, border: '1px solid #41647c', background: '#102332bb'}}>
+        <span style={{position: 'absolute', top: -13, left: 24, padding: '0 10px', background: '#12283a', color: '#a5dded', fontSize: 20, fontWeight: 700}}>Đề bài</span>
+      </div>
+      <div style={{position: 'absolute', inset: '55% 3% 12%', borderRadius: 24, border: '1px solid #48718a', background: '#102332bb'}} />
       {nhac ? <Audio src={staticFile(nhac)} loop volume={amNhac} /> : null}
       {canh.map((c) =>
         c.audio ? (
@@ -275,7 +279,7 @@ const NoiDungHinhPhang: React.FC<Props & {coIntro?: boolean}> = (props) => {
       ))}
       {outro ? (
         <Sequence from={outro.batDau} durationInFrames={outro.soFrame}>
-          {outro.loai === 'tu_tao' ? <ManKetChuyenNghiep th={thuongHieu} baiHoc={props.baiHoc || []} dapAn={props.dapAn} tiepTheo={props.tiepTheo || ''} /> : <ManKet tep={outro.tep} loai={outro.loai} />}
+          {outro.loai === 'tu_tao' ? <ManKetChuyenNghiep th={thuongHieu} baiHoc={props.baiHoc || []} dapAn={props.ketQuaHinhPhang?.tex ?? props.dapAn} nhanHinh={props.ketQuaHinhPhang?.nhan} tiepTheo={props.tiepTheo || ''} /> : <ManKet tep={outro.tep} loai={outro.loai} />}
         </Sequence>
       ) : null}
       {props.kiemDuyet ? <KiemDuyet /> : null}

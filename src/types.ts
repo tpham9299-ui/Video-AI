@@ -99,6 +99,7 @@ export type Props = {
   id: string;
   tieuDe: string;
   hook: string;
+  ketQuaHinhPhang?: {nhan: string; tex: string};
   dapAn: string;
   lop: string;
   fps: number;

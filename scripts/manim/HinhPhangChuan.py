@@ -193,7 +193,7 @@ class HinhPhang(Scene):
         anim = [a for a in anim if a is not None]
         if not anim:
             return
-        rt = run_time if toi_da is None else max(0.2, min(run_time, toi_da))
+        rt = run_time if toi_da is None else max(1 / self.camera.frame_rate, min(run_time, toi_da))
         self.play(*anim, run_time=rt)
 
     # ---------- dựng đối tượng ----------
@@ -332,6 +332,11 @@ class HinhPhang(Scene):
             ds.append(self.dong_tex(tex, co=CO_DE, mau=CHU_PHU))
         if not ds:
             return VGroup()
+        if len(ds) > 2:
+            # Chọn điểm xuống dòng giữ hai hàng giả thiết cân đối.
+            widths = [m.width + 0.18 for m in ds]
+            cut = min(range(1, len(ds)), key=lambda i: max(sum(widths[:i]), sum(widths[i:])))
+            ds = [VGroup(*row).arrange(RIGHT, buff=0.18) for row in (ds[:cut], ds[cut:])]
         g = VGroup(*ds).arrange(DOWN, buff=0.14, aligned_edge=ORIGIN)
         if g.height > 1.08:
             g.scale_to_fit_height(1.08)
@@ -373,7 +378,9 @@ class HinhPhang(Scene):
         tex = str(self.G["muc_tieu"].get("tex") or "").strip()
         if not tex:
             return None
-        nhan = Text("Chứng minh:", font=PHONG, weight=BOLD, font_size=30, color=MAU["cyan"])
+        if self.G["tinh"]:
+            tex = tex.split("=")[0] + " = ?"
+        nhan = Text("Tính:" if self.G["tinh"] else "Chứng minh:", font=PHONG, weight=BOLD, font_size=30, color=MAU["cyan"])
         bt = MathTex(chuan_so(tex), font_size=40, color=mau, tex_template=TEX)
         hang = VGroup(nhan, bt).arrange(RIGHT, buff=0.22)
         if hang.width > RONG_CHU:
@@ -491,41 +498,39 @@ class HinhPhang(Scene):
         ket = float(M["ket"])
         # header
         hd = self.header()
-        self.choi(FadeIn(hd, shift=DOWN * 0.15), run_time=0.6)
-        # lịch pha 1
         de = self.cham_de()
-        su = []
-        for k, t in enumerate(M["de"]):
-            if k < len(de):
-                su.append((t, 0, ("de", k)))
-        for b in G["phep_dung"]:
-            su.append((M["dung"].get(str(b["id"]), 0.5), 1, ("dung", b["id"])))
-        t_mt = float(M["muc_tieu"])
-        t_dung_cuoi = max([x[0] for x in su if x[2][0] == "dung"] or [0.5])
-        su.append((max(t_dung_cuoi + 1.1, t_mt - 0.9), 2, ("to_do",)))
-        su.append((max(t_dung_cuoi + 1.9, t_mt), 3, ("ghim",)))
-        trang_mob = []
+        ghim = self.dong_muc_tieu()
+        card = VGroup(de, *([ghim] if ghim is not None else [])).arrange(DOWN, buff=0.10)
+        if card.height > 1.08:
+            card.scale_to_fit_height(1.08)
+        card.move_to(p3((0, 5.65)))
+        self.add(hd, card)
+        su = [(M["dung"][str(b["id"])], 1, ("dung", b["id"])) for b in G["phep_dung"]]
+        if su:
+            dung_xong = max(e[0] for e in su)
+            dau_buoc = next((row[0] for row in M["trang"] if row), ket)
+            if dung_xong + 1.1 < dau_buoc:
+                su.append((max(dung_xong + 0.1, min(dung_xong + 1.1, M["muc_tieu"])), 2, ("to_do",)))
         for ti, t in enumerate(G["trang"]):
             tm = M["trang"][ti] if ti < len(M["trang"]) else []
             for di, d in enumerate(t["dong"]):
                 td = tm[di] if di < len(tm) else ket - 2
                 if di == 0:
-                    su.append((td - 0.55, 4, ("trang", ti)))
-                su.append((td, 5, ("dong", ti, di)))
+                    su.append((td, 4, ("trang", ti)))
+                next_line = tm[di + 1] if di + 1 < len(tm) else ket
+                delay = min(0.25, (next_line - td) / 2) if di == 0 else 0
+                su.append((td + delay, 5, ("dong", ti, di)))
         su.append((ket - 0.5, 9, ("het",)))
         su.sort(key=lambda x: (x[0], x[1]))
         do_muc = VGroup()
-        ghim = None
         lop_trang, chu_trang = VGroup(), VGroup()
         cur = None
         for i, (t, _, ev) in enumerate(su):
             sau = su[i + 1][0] if i + 1 < len(su) else ket
             self.den(t)
-            con = max(0.2, sau - self.bay_gio())
+            con = max(1 / fps, sau - self.bay_gio())
             kieu = ev[0]
-            if kieu == "de":
-                self.choi(FadeIn(de[ev[1]], shift=UP * 0.1), run_time=0.6, toi_da=con)
-            elif kieu == "dung":
+            if kieu == "dung":
                 anim = self.ve_buoc(ev[1])
                 self.nhat_ky.append({"kieu": "dung", "id": ev[1], "moc": round(t, 3), "that": round(self.bay_gio(), 3)})
                 if anim:
@@ -534,35 +539,28 @@ class HinhPhang(Scene):
                 do_muc = self.to_muc_tieu()
                 if len(do_muc):
                     self.choi(Create(do_muc), run_time=0.7, toi_da=con)
-                    self.choi(Indicate(do_muc, color=MAU["do"], scale_factor=1.04), run_time=0.6, toi_da=max(0.2, con - 0.7))
-            elif kieu == "ghim":
-                ghim = self.dong_muc_tieu()
-                anim = [FadeOut(de, shift=UP * 0.15)] if len(de) else []
-                if ghim is not None:
-                    anim.append(FadeIn(ghim, shift=UP * 0.1))
-                self.choi(*anim, run_time=0.6, toi_da=con)
+                    if sau - self.bay_gio() >= 1 / fps:
+                        self.choi(Indicate(do_muc, color=MAU["do"], scale_factor=1.04), run_time=0.6, toi_da=sau - self.bay_gio())
             elif kieu == "trang":
                 ti = ev[1]
-                ra = []
                 if len(chu_trang):
-                    ra.append(FadeOut(chu_trang, shift=UP * 0.2))
+                    self.remove(*chu_trang)
                 if len(lop_trang):
-                    ra.append(FadeOut(lop_trang))
+                    self.remove(*lop_trang)
                 if ti == 0 and len(do_muc):
-                    ra.append(FadeOut(do_muc))
-                if ra:
-                    self.choi(*ra, run_time=0.35, toi_da=con)
+                    self.remove(do_muc)
                 lop_trang, chu_trang = VGroup(), VGroup()
                 tieu, dong, phan = self.dung_trang(ti, G["trang"][ti])
                 cur = {"tieu": tieu, "dong": dong, "phan": phan}
                 chu_trang.add(tieu)
-                self.choi(FadeIn(tieu, shift=RIGHT * 0.15), run_time=0.35, toi_da=max(0.2, sau - self.bay_gio()))
+                self.nhat_ky.append({"kieu": "buoc", "trang": ti, "moc": round(t, 3), "that": round(self.bay_gio(), 3)})
+                self.choi(FadeIn(tieu, shift=UP * 0.15), run_time=0.25, toi_da=max(1 / fps, sau - self.bay_gio()))
             elif kieu == "dong":
                 ti, di = ev[1], ev[2]
                 d = G["trang"][ti]["dong"][di]
                 mob = cur["dong"][di]
                 chu_trang.add(mob)
-                anim = [Write(mob)]
+                anim = [FadeIn(mob, shift=UP * 0.12)]
                 for a, b2 in d.get("bo_sung") or []:
                     ln = self.net_doan(a, b2, "bo_sung")
                     self.hinh.add(ln)
@@ -586,17 +584,16 @@ class HinhPhang(Scene):
                         anim.append(r[1])
                 self.su_kien.append({"f": int(round(self.bay_gio() * 30)), "kieu": "dong"})
                 self.nhat_ky.append({"kieu": "dong", "trang": ti, "dong": di, "moc": round(t, 3), "that": round(self.bay_gio(), 3)})
-                self.choi(*anim, run_time=0.9, toi_da=con)
+                self.choi(*anim, run_time=0.35, toi_da=con)
                 hcn = [r for k in khung_bc for r in k if isinstance(r, Rectangle)]
                 if hcn and sau - self.bay_gio() > 0.45:
                     self.choi(*[Circumscribe(r, color=MAU["cyan"], buff=0.03, stroke_width=2) for r in hcn], run_time=0.6,
                               toi_da=sau - self.bay_gio() - 0.15)
                 for h in sau_dong:
-                    self.ket_luan(h, ghim, max(0.2, sau - self.bay_gio()))
+                    self.ket_luan(h, ghim, max(1 / fps, sau - self.bay_gio()))
             elif kieu == "het":
                 ra = [FadeOut(x) for x in (self.hinh, chu_trang, lop_trang, hd) if len(x)]
-                if ghim is not None:
-                    ra.append(FadeOut(ghim))
+                ra.append(FadeOut(card))
                 self.choi(*ra, run_time=0.4, toi_da=con)
         du = ket - self.bay_gio()
         if du > 1 / 60:
@@ -650,6 +647,8 @@ def main():
     props = json.load(open(a.props, encoding="utf8"))
     kb = json.load(open(a.kich_ban, encoding="utf8"))
     G = giai(kb)
+    if G:
+        G["tinh"] = thoi_gian.la_bai_tinh(kb)
     if G is None:
         print("Kịch bản không có hinh_phang_chuan -> dùng manim_hinh.py")
         sys.exit(3)

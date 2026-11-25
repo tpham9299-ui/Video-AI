@@ -51,9 +51,10 @@ const NgonTay: React.FC<{p: number}> = ({p}) => (
   <div style={{position: 'absolute', left: 74, top: 70, transform: `translate(${(1 - easeOut(kep(p * 2))) * 140}px, ${(1 - easeOut(kep(p * 2))) * 120}px) scale(${1 - 0.12 * Math.sin(Math.PI * kep((p - 0.5) * 2))})`, opacity: p > 0 && p < 1.4 ? 1 : 0, fontSize: 72, filter: 'drop-shadow(0 6px 10px rgba(0,0,0,0.5))'}}>👆</div>
 );
 
-export const ManKetChuyenNghiep: React.FC<{th: ThuongHieuProps; baiHoc: string[]; dapAn: string; tiepTheo: string}> = ({th, baiHoc, dapAn, tiepTheo}) => {
+export const ManKetChuyenNghiep: React.FC<{th: ThuongHieuProps; baiHoc: string[]; dapAn: string; nhanHinh?: string; tiepTheo: string}> = ({th, baiHoc, dapAn, nhanHinh, tiepTheo}) => {
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
+  const anToan: React.CSSProperties = nhanHinh ? {maxWidth: 920, boxSizing: 'border-box', overflow: 'hidden', textAlign: 'center', justifyContent: 'center', flexWrap: 'wrap'} : {};
   const coBaiHoc = baiHoc.length > 0;
   const tuKenh = coBaiHoc ? Math.round(1.2 * fps + baiHoc.length * 0.45 * fps) : 6;
   const tuNut = tuKenh + 16;
@@ -74,9 +75,9 @@ export const ManKetChuyenNghiep: React.FC<{th: ThuongHieuProps; baiHoc: string[]
         <div style={{position: 'absolute', left: 60, right: 60, top: 230, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22}}>
           {dapAn ? (
             <Vao tu={2}>
-              <div style={{display: 'flex', alignItems: 'center', gap: 14, padding: '8px 24px', borderRadius: 30, border: `2.5px solid ${XANH}`, background: 'linear-gradient(135deg, rgba(59,242,154,0.18), rgba(16,185,129,0.08))', boxShadow: `0 0 22px ${XANH}44, inset 0 1px 0 rgba(255,255,255,0.2)`}}>
-                <span style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: 26, color: XANH, letterSpacing: 1.2}}>ĐÁP ÁN</span>
-                <Toan tex={/^\s*-?\d+(?:\.\d+)?\s*\/\s*-?\d+(?:\.\d+)?\s*$/.test(dapAn) ? `\\frac{${dapAn.split('/')[0].trim()}}{${dapAn.split('/')[1].trim()}}` : dapAn} size={40} color="#fff" />
+              <div style={{display: 'flex', alignItems: 'center', ...anToan, gap: 14, padding: '8px 24px', borderRadius: 30, border: `2.5px solid ${XANH}`, background: 'linear-gradient(135deg, rgba(59,242,154,0.18), rgba(16,185,129,0.08))', boxShadow: `0 0 22px ${XANH}44, inset 0 1px 0 rgba(255,255,255,0.2)`}}>
+                <span style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: 26, color: XANH, letterSpacing: 1.2}}>{nhanHinh ? nhanHinh + ':' : 'ĐÁP ÁN'}</span>
+                <Toan maxWidth={nhanHinh ? 660 : undefined} maxHeight={nhanHinh ? 96 : undefined} tex={/^\s*-?\d+(?:\.\d+)?\s*\/\s*-?\d+(?:\.\d+)?\s*$/.test(dapAn) ? `\\frac{${dapAn.split('/')[0].trim()}}{${dapAn.split('/')[1].trim()}}` : dapAn} size={40} color="#fff" />
               </div>
             </Vao>
           ) : null}
@@ -106,9 +107,9 @@ export const ManKetChuyenNghiep: React.FC<{th: ThuongHieuProps; baiHoc: string[]
       {!coBaiHoc && dapAn ? (
         <div style={{position: 'absolute', left: 60, right: 60, top: 360, display: 'flex', justifyContent: 'center'}}>
           <Vao tu={2}>
-            <div style={{display: 'flex', alignItems: 'center', gap: 22, padding: '18px 38px', borderRadius: 36, border: `3px solid ${XANH}`, background: 'linear-gradient(135deg, rgba(59,242,154,0.2), rgba(16,185,129,0.08))', boxShadow: `0 0 30px ${XANH}44`}}>
-              <span style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: 34, color: XANH}}>Đáp án</span>
-              <Toan tex={/^\s*-?\d+(?:\.\d+)?\s*\/\s*-?\d+(?:\.\d+)?\s*$/.test(dapAn) ? `\\frac{${dapAn.split('/')[0].trim()}}{${dapAn.split('/')[1].trim()}}` : dapAn} size={60} color="#fff" />
+            <div style={{display: 'flex', alignItems: 'center', ...anToan, gap: 22, padding: '18px 38px', borderRadius: 36, border: `3px solid ${XANH}`, background: 'linear-gradient(135deg, rgba(59,242,154,0.2), rgba(16,185,129,0.08))', boxShadow: `0 0 30px ${XANH}44`}}>
+              <span style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: 34, color: XANH}}>{nhanHinh ? nhanHinh + ':' : 'Đáp án'}</span>
+              <Toan maxWidth={nhanHinh ? 660 : undefined} maxHeight={nhanHinh ? 96 : undefined} tex={/^\s*-?\d+(?:\.\d+)?\s*\/\s*-?\d+(?:\.\d+)?\s*$/.test(dapAn) ? `\\frac{${dapAn.split('/')[0].trim()}}{${dapAn.split('/')[1].trim()}}` : dapAn} size={nhanHinh ? 40 : 60} color="#fff" />
             </div>
           </Vao>
         </div>

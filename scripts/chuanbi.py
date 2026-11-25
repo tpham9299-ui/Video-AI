@@ -1262,7 +1262,7 @@ def hinh_phang_chuan_props(kb, canh_props, fps, props):
         return None
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from giai_hinh_phang import giai
-    from hinh_phang.thoi_gian import moc_hinh_phang
+    from hinh_phang.thoi_gian import moc_hinh_phang, la_bai_tinh
     G = giai(kb)
     if not G or not G.get("dat"):
         for x in (G or {}).get("loi") or []:
@@ -1278,6 +1278,19 @@ def hinh_phang_chuan_props(kb, canh_props, fps, props):
     moc = moc_hinh_phang(G, canh_props, fps, ket)
     props["boCuc"] = "hinh_phang"
     props["hinhPhang"] = {"moc": moc, "header": G["header"], "capLop": G["cap_lop"], "boCuc": G["bo_cuc"]}
+    tex = str(G["muc_tieu"].get("tex") or "").strip()
+    tinh = la_bai_tinh(kb)
+    if tinh:
+        candidates = [kb.get("dap_an_cuoi"), kb.get("dap_an"), tex]
+        ket_qua = next((v.strip() for v in candidates if isinstance(v, str)
+                        and 0 < len(v.strip()) <= 80 and "?" not in v), "")
+    else:
+        ket_qua = tex
+        md = G["muc_tieu"].get("menh_de")
+        if len(tex) > 42 and isinstance(md, dict) and md.get("loai") in ("vuong_goc", "song_song"):
+            op = r"\perp" if md["loai"] == "vuong_goc" else r"\parallel"
+            ket_qua = f"{md['a']} {op} {md['b']}"
+    props["ketQuaHinhPhang"] = {"nhan": "Đáp án" if tinh else "ĐPCM", "tex": ket_qua}
     k = moc["khop"]
     print("Hình phẳng chuẩn: %d cấu hình, khớp khi_noi dựng %d/%d, đề %d/%d, dòng %d/%d, mục tiêu %s" % (
         G.get("so_mau", 0), k["dung"], k["tong"]["dung"], k["de"], k["tong"]["de"], k["dong"], k["tong"]["dong"], "có" if k["muc_tieu"] else "không"))

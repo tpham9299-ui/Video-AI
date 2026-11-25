@@ -401,7 +401,9 @@ jobs:
             ffmpeg -y -loglevel error -i "out/${ID}_bia.png" -q:v 3 "out/${ID}_bia.jpg"
             cp "out/${ID}_bia.png" "build/public/bia/${ID}.png"
             # khung hình đầu của video = ảnh bìa (TikTok lấy khung 0 làm ảnh bìa)
-            python3 -c "import json;f='public/props.json';p=json.load(open(f,encoding='utf8'));p['anhBiaDau']='bia/${ID}.png';p['tongFrame']+=1;open(f,'w',encoding='utf8').write(json.dumps(p,ensure_ascii=False))"
+            if [ "$(jq -r '.boCuc' public/props.json)" != "hinh_phang" ]; then
+              python3 -c "import json;f='public/props.json';p=json.load(open(f,encoding='utf8'));p['anhBiaDau']='bia/${ID}.png';p['tongFrame']+=1;open(f,'w',encoding='utf8').write(json.dumps(p,ensure_ascii=False))"
+            fi
           else
             echo "Không dựng được ảnh bìa, video vẫn dựng bình thường"
           fi

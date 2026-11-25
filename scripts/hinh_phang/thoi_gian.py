@@ -10,6 +10,20 @@ import re
 _TU_SO = {"không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín", "mười", "mươi", "trăm", "nghìn", "lăm", "mốt", "tư", "linh", "lẻ"}
 
 
+def la_bai_tinh(kb):
+    hp = kb.get("hinh_phang_chuan") or {}
+    loai = hp.get("loai_yeu_cau")
+    if loai in ("tinh", "chung_minh"):
+        return loai == "tinh"
+    for field in ("can_tim", "de_bai", "tieu_de"):
+        text = str(kb.get(field) or "")
+        if re.search(r"chứng minh", text, re.I):
+            return False
+        if re.search(r"\btính\b|bao nhiêu|tìm độ (?:dài|lớn)", text, re.I):
+            return True
+    return bool(re.search(r"=\s*[-+]?\d", str((hp.get("muc_tieu") or {}).get("tex") or "")))
+
+
 def tok(s):
     return re.findall(r"\w+", str(s or "").casefold())
 
@@ -110,23 +124,46 @@ def moc_hinh_phang(hp, canh_props, fps, tong_giay):
         if "de_bai" in str(cp.get("loai") or ""):
             bat_de = float(cp.get("batDau") or 0) / fps
             break
-    t_dung, vt_dung = _chuoi([b.get("khi_noi") for b in pd], ds, 0)
-    t_de, _ = _chuoi([x.get("khi_noi") for x in de], ds, 0)
-    r_mt = tim(mt.get("khi_noi"), ds, vt_dung) if mt.get("khi_noi") else None
+    giai = [cp for cp in canh_props if cp.get("loai") in ("tinh_toan", "dap_an")]
+    canh_tinh = [cp for cp in giai if cp.get("loai") == "tinh_toan"]
+    if len(canh_tinh) == len(trang):
+        giai = canh_tinh
+    dau_giai = giai[0]["batDau"] / fps if giai else tong_giay
+    ds_de = [x for x in ds if x[1] < dau_giai]
+    t_dung, vt_dung = _chuoi([b.get("khi_noi") for b in pd], ds_de, 0)
+    t_de, _ = _chuoi([x.get("khi_noi") for x in de], ds_de, 0)
+    r_mt = tim(mt.get("khi_noi"), ds_de, 0) if mt.get("khi_noi") else None
     t_mt = ds[r_mt[0]][1] if r_mt else None
     vt = r_mt[1] if r_mt else vt_dung
     dong = [d.get("khi_noi") for t in trang for d in t.get("dong") or []]
-    t_dong, _ = _chuoi(dong, ds, vt)
+    t_dong, _ = _chuoi(dong, ds, len(ds_de) if giai else vt)
+    so_khop = sum(x is not None for x in t_dong)
+    if len(giai) == len(trang):
+        so_khop = 0
+        t_dong = []
+        for page, cp in zip(trang, giai):
+            words = dong_tu([cp], fps)
+            times, _ = _chuoi([d.get("khi_noi") for d in page["dong"]], words, 0)
+            so_khop += sum(x is not None for x in times)
+            if times and words:
+                times[0] = words[0][1]
+            t_dong.extend(_lap(times, cp["batDau"] / fps, (cp["batDau"] + cp["soFrame"]) / fps))
+
     khop = {"dung": sum(x is not None for x in t_dung), "de": sum(x is not None for x in t_de),
-            "dong": sum(x is not None for x in t_dong), "muc_tieu": t_mt is not None,
+            "dong": so_khop, "muc_tieu": t_mt is not None,
             "tong": {"dung": len(t_dung), "de": len(t_de), "dong": len(t_dong)}}
     # biên: phép dựng nằm trong [bat_de, mục tiêu]; dòng chứng minh trong [mục tiêu + 1, cuối - 1]
     t_dau_dong = next((x for x in t_dong if x is not None), None)
     if t_mt is None:
         t_mt = (t_dau_dong - 2.0) if t_dau_dong is not None else tong_giay * 0.3
     t_dung = _lap(t_dung, max(0.3, bat_de), max(bat_de + 0.5, t_mt - 0.6))
+    if t_dung:
+        t_dung[0] = 0.0
     t_de = _lap(t_de, max(0.2, bat_de), max(bat_de + 0.5, t_mt - 0.8))
-    t_dong = _lap(t_dong, t_mt + 1.2, max(t_mt + 2.0, tong_giay - 1.5))
+    if t_dong and giai and t_dong[0] is None:
+        words = dong_tu([giai[0]], fps)
+        t_dong[0] = words[0][1] if words else dau_giai
+    t_dong = _lap(t_dong, dau_giai if giai else t_mt + 1.2, tong_giay - 0.5)
     kq_trang, k = [], 0
     for t in trang:
         n = len(t.get("dong") or [])
