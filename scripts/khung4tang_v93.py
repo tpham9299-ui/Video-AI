@@ -52,8 +52,13 @@ def chu_sach(s, toi_da=0, hoa=True):
     return cat_tu(x, toi_da) if toi_da else x
 
 
+def cat_nhan(x, toi_da):
+    """Giữ trọn công thức, để Remotion tự đo và thu chữ."""
+    return x if re.search(r"[\\{}^_$]", x) else x[:toi_da]
+
+
 def cat_tu(x, toi_da):
-    if len(x) <= toi_da:
+    if len(x) <= toi_da or re.search(r"[\\{}^_$]", x):
         return x
     # v96: cụm "không ⋮ 4" là MỘT ý — không bao giờ cắt còn "tích không" (mất nghĩa) hay "tích ⋮ 4" (ngược nghĩa):
     # bỏ bớt từ thường đứng ngay trước cụm cho tới khi vừa
@@ -124,7 +129,7 @@ def moc_cau(kb, buoc, so_lo):
 def cong_thuc_gon(tex):
     """Công thức cốt lõi một dòng: dài quá thì giữ 2 vế cuối (vế = phần giữa các dấu '=')."""
     s = re.sub(r"\s+", " ", str(tex or "")).strip().strip("$")
-    if len(s) <= DAI_CONG_THUC:
+    if len(s) <= DAI_CONG_THUC or re.search(r"[\\{}^_]", s):
         return s
     ve = [v.strip() for v in s.split("=") if v.strip()]
     while len(ve) > 2:
@@ -252,7 +257,7 @@ def suy_doi_chieu(kb, c3):
     elif khuon == "parabol_quy_dao" and ts.get("ham") and isinstance(ts.get("t"), list) and len(ts["t"]) == 2:
         a, b = so(ts["t"][0]), so(ts["t"][1])
         if a is not None and b is not None and b > a:
-            dc = {"ham": str(ts["ham"]), "bien": "t", "ten_ham": str(ts.get("ten_ham") or "h")[:2], "mien": [a, b], "kieu": kieu, "hinh": "thanh"}
+            dc = {"ham": str(ts["ham"]), "bien": "t", "ten_ham": cat_nhan(str(ts.get("ten_ham") or "h"), 2), "mien": [a, b], "kieu": kieu, "hinh": "thanh"}
     return dc
 
 

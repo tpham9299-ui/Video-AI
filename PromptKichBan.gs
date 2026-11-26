@@ -387,7 +387,7 @@ function huongDanKhung4Tang_(r) {
     (String((r && r.mon) || '').toUpperCase() === 'XAC_SUAT'
       ? 'BÀI XÁC SUẤT (v96): KHÔNG ghi "canh_3d_vector" — tầng 2 dùng "san_khau" 2D (rut_mau | so_do_cay | luoi_bayes | cot_phan_phoi). ' + (typeof PHA_RUT_THEO_BUOC_ === 'string' ? PHA_RUT_THEO_BUOC_ : '')
       : 'Khuôn dùng được cho bài lớp ' + (lop || '?') + ': ' + dsK.map(moTaKhuon_).join(' | ') + '. ' +
-        'Bài ngắn THUC_TE cần vật thể, sơ đồ hoặc đồ thị ở Tầng 2 theo từng bước. Với sân khấu 2D, điền tham_so đủ để vẽ từ dữ kiện. Nếu thiếu khuôn, dùng hợp đồng tu_sinh_svg. Không dùng tu_duy_dai_so hoặc hộp công thức. ') +
+        'Cấm _, ^ và lệnh LaTeX thô trong thẻ <text> SVG. Dùng S₀, u₁, x², √3, Ā hoặc tspan cho chỉ số dài. Bài ngắn THUC_TE cần vật thể, sơ đồ hoặc đồ thị ở Tầng 2 theo từng bước. Với sân khấu 2D, điền tham_so đủ để vẽ từ dữ kiện. Nếu thiếu khuôn, dùng hợp đồng tu_sinh_svg. Không dùng tu_duy_dai_so hoặc hộp công thức. ') +
     'CHỈ khi không khuôn nào hợp mới dùng đặc tả tự do {"phien_ban":1,"doi_tuong":[...],"buoc":[{"khi_noi","camera":[goc_ngang,goc_cao 5..90,zoom] hoặc "tu_tren","hien":[id],"an":[id],"nhan_manh":[id],"hanh_dong":[...]}]} ' +
     '(≥ 3 bước có thay đổi; tọa độ [x,y,z], z hướng lên, khối ~[-3,3]³): diem {toa_do,nhan} | doan_thang/vector {tu,den} | da_giac {diem:[[x,y,z]...],ban_le?} | hinh_hop {tam,kich_thuoc,ten_dinh,nap} | mat_cau {tam,ban_kinh} | ' +
     'hinh_tru/hinh_non {day:[x,y,z],ban_kinh,cao} | hinh_chop {day:[[x,y,z]...],dinh} | duong_cong {diem|ham} | goc {dinh,canh:[id,id]} | nhom_lap {vat:"the|bi|khoi",so:N,xep:"luoi|hang|vong",mau_tung:[...],nhan_tung:[...]}; ' +
@@ -503,7 +503,7 @@ function lapBanVe_(r, anhDe) {
     .map(function (m) { return m[2] + ' -> ' + m[1].filter(function (t) { return t[0] !== '@'; }).join(' / '); });
   var prompt = 'Bạn là HỌA SĨ BẢN VẼ KỸ THUẬT cho video dạy toán. Đọc kỹ đề rồi lập BẢN VẼ cảnh thực tế của đề, đúng 100% vật, vị trí và số đo của đề.\n' +
     'ĐỀ: ' + r.de_bai + (r.mo_ta_hinh ? '\nMÔ TẢ HÌNH CỦA ĐỀ: ' + r.mo_ta_hinh : '') + (anhDe ? '\n(Ảnh đề gửi kèm: nhìn ảnh để đặt vật đúng như hình.)' : '') + '\n' +
-    ((r.dap_an_hien || r.dap_an) ? 'ĐÁP ÁN ĐÃ GIẢI (để vẽ ĐÚNG TỈ LỆ, không ghi đáp án lên hình): ' + String(r.dap_an_hien || r.dap_an).slice(0, 300) + '\n' : '') +
+    ((r.dap_an_hien || r.dap_an) ? 'ĐÁP ÁN ĐÃ GIẢI (để vẽ ĐÚNG TỈ LỆ, không ghi đáp án lên hình): ' + catGonTex_(String(r.dap_an_hien || r.dap_an), 300) + '\n' : '') +
     'VẬT THẬT MÁY NHẬN RA TRONG ĐỀ (bắt buộc có trong bản vẽ): ' + yeuCau.join('; ') + '\n' +
     'Định dạng bản vẽ (máy TỰ tính tọa độ, bạn chỉ ghi số đo thật bằng mét):\n' +
     'NHÌN NGANG: {"loai":"canh_that","nhin":"ngang","vat":[{"ma":"A","ten":"nguoi","cao":1.6,"x":0},{"ma":"B","ten":"cot_co","cao":15.6,"x":20}],"diem":[{"ma":"H","x":20,"cao":1.6}],"do":[{"kieu":"khoang_cach","tu":"A","den":"B","nhan":"20 m"},{"kieu":"chieu_cao","vat":"B","nhan":"h = ?"},{"kieu":"tia","tu":"A.mat","den":"B.dinh","goc":"35°"},{"kieu":"tam_giac","dinh":["A.mat","H","B.dinh"]},{"kieu":"vuong","tai":"H"}]}\n' +
@@ -730,20 +730,20 @@ function hinhTuMau_(m, kb, id) {
     var bv = JSON.parse(JSON.stringify(kb.ban_ve));
     bv.id = id; bv.x = 50; bv.y = 50; bv.buoc = 1;
     if (Array.isArray(m.nhan_canh) && bv.vung && bv.vung[0]) bv.vung[0].canh = m.nhan_canh.slice(0, 2).map(String);
-    bv.do = (Array.isArray(m.ghi_chu) ? m.ghi_chu : []).slice(0, 1).map(function (t) { return { kieu: 'chu', tai: ((bv.vung && bv.vung[0] && bv.vung[0].ma) || 'V') + '.giua', nhan: String(t).slice(0, 40), buoc: 2 }; });
+    bv.do = (Array.isArray(m.ghi_chu) ? m.ghi_chu : []).slice(0, 1).map(function (t) { return { kieu: 'chu', tai: ((bv.vung && bv.vung[0] && bv.vung[0].ma) || 'V') + '.giua', nhan: catGonTex_(String(t), 40), buoc: 2 }; });
     if (bv.nhin !== 'tren') bv.do = (kb.ban_ve.do || []).map(function (d) { var x = JSON.parse(JSON.stringify(d)); x.buoc = 2; return x; });
     return { vat: [bv], hanh_dong: [] };
   }
   if (kieu === 'do_thi' && m.ham && Number(m.x_den) > Number(m.x_tu)) {
-    var dt = { id: id, loai: 'do_thi', x: 50, y: 50, ham: String(m.ham), x_tu: Number(m.x_tu), x_den: Number(m.x_den), nhan_truc: ['x', String(m.truc_y || 'y')], noi_dung: String(m.tieu_de || '').slice(0, 40), buoc: 1 };
+    var dt = { id: id, loai: 'do_thi', x: 50, y: 50, ham: String(m.ham), x_tu: Number(m.x_tu), x_den: Number(m.x_den), nhan_truc: ['x', String(m.truc_y || 'y')], noi_dung: catGonTex_(String(m.tieu_de || ''), 40), buoc: 1 };
     if (m.y_tu !== undefined && m.y_den !== undefined && Number(m.y_den) > Number(m.y_tu)) { dt.y_tu = Number(m.y_tu); dt.y_den = Number(m.y_den); }
     var hd = [];
     if (m.diem_x !== undefined && isFinite(Number(m.diem_x))) { dt.gia_tri = Number(m.x_tu); hd.push({ buoc: 2, vat: id, kieu: 'dat_gia_tri', gia_tri: Number(m.diem_x) }); }
     return { vat: [dt], hanh_dong: hd };
   }
-  var ds = (Array.isArray(m.dong) ? m.dong : []).map(function (x) { return String(x).replace(/\s+/g, ' ').trim().slice(0, 46); }).filter(Boolean).slice(0, 4);
+  var ds = (Array.isArray(m.dong) ? m.dong : []).map(function (x) { return catGonTex_(String(x).replace(/\s+/g, ' ').trim(), 46); }).filter(Boolean).slice(0, 4);
   if (!ds.length) ds = ['Công thức dùng trong bài'];
-  return { vat: [{ id: id, loai: 'danh_sach', x: 50, y: 50, noi_dung: String(m.tieu_de || 'Ghi nhớ').slice(0, 34), ds: ds, buoc: 1 }],
+  return { vat: [{ id: id, loai: 'danh_sach', x: 50, y: 50, noi_dung: catGonTex_(String(m.tieu_de || 'Ghi nhớ'), 34), ds: ds, buoc: 1 }],
     hanh_dong: ds.map(function (_, i) { return { buoc: i + 1, vat: id, kieu: 'chon', chi_so: [i + 1] }; }).slice(0, 3) };
 }
 function boSungGiaiThichCongThuc_(kb, r, sn) {
@@ -770,9 +770,9 @@ function boSungGiaiThichCongThuc_(kb, r, sn) {
   var moi = ds.map(function (c, i) {
     var muc = NHAN[c.muc] ? c.muc : ['tu_dau', 'dai_luong', 'van_dung'][i];
     var du = hinhTuMau_(c.hinh, kb, 'gt' + (i + 1));
-    return { loai: 'nhac_lai', tieu_de_canh: String(c.tieu_de_canh || NHAN[muc]).slice(0, 40), nhan: NHAN[muc], tu_khoa: '', giu_san_khau: false, giong_doc: 'chậm rãi, rõ ràng',
+    return { loai: 'nhac_lai', tieu_de_canh: catGonTex_(String(c.tieu_de_canh || NHAN[muc]), 40), nhan: NHAN[muc], tu_khoa: '', giu_san_khau: false, giong_doc: 'chậm rãi, rõ ràng',
       loi_thoai: String(c.loi_thoai).replace(/\s+/g, ' ').trim(), noi_dung_man_hinh: (Array.isArray(c.noi_dung_man_hinh) ? c.noi_dung_man_hinh : []).map(String).slice(0, 2), trinh_bay: 'xep', chu_thich: [],
-      minh_hoa: { loai: 'san_khau', mo_ta: 'Giải thích công thức - ' + NHAN[muc].toLowerCase() + ': ' + String(c.tieu_de_canh || '').slice(0, 60) + '. Hình: ' + (du.vat[0].loai === 'canh_that' ? 'vẽ lại cảnh thực tế của đề, gắn tên đại lượng lên cạnh' : du.vat[0].loai === 'do_thi' ? 'đồ thị, chấm điểm cần chú ý' : du.vat[0].loai === 'hinh_tu_do' ? 'đường bao và các lớp hình dựng theo dữ kiện' : 'thẻ ghi nhớ, sáng lần lượt từng dòng'), du_lieu: du },
+      minh_hoa: { loai: 'san_khau', mo_ta: 'Giải thích công thức - ' + NHAN[muc].toLowerCase() + ': ' + catGonTex_(String(c.tieu_de_canh || ''), 60) + '. Hình: ' + (du.vat[0].loai === 'canh_that' ? 'vẽ lại cảnh thực tế của đề, gắn tên đại lượng lên cạnh' : du.vat[0].loai === 'do_thi' ? 'đồ thị, chấm điểm cần chú ý' : du.vat[0].loai === 'hinh_tu_do' ? 'đường bao và các lớp hình dựng theo dữ kiện' : 'thẻ ghi nhớ, sáng lần lượt từng dòng'), du_lieu: du },
       thoi_luong_giay: 7 };
   });
   // chèn: thay cảnh giải thích cũ; nếu không có thì đặt ngay trước bước tính đầu tiên

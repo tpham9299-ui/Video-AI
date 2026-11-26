@@ -49,6 +49,7 @@ export type DuKienGhim = {id: string; nhan: string; mau?: TenMau; doi?: {nhan: s
 
 export type Khung4TangVao = {
   batBuocMinhHoa?: boolean;
+  hetDe?: number;
   tongFrame: number;
   fps?: number;
   thuongHieu?: string;

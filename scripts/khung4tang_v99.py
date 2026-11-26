@@ -13,6 +13,10 @@ Hàm thuần (không gọi mạng / không đọc tệp) để test được đ�
 - chon_theme(kb): 1 trong 5 theme nền (deep_ocean | cosmic_indigo | emerald_studio | warm_slate | blueprint).
 """
 import hashlib
+if __package__:
+    from .khung4tang_v93 import cat_nhan
+else:
+    from khung4tang_v93 import cat_nhan
 import re
 
 # ---------------------------------------------------------------- phụ đề: trả phiên âm về ký hiệu
@@ -108,6 +112,35 @@ def kiem_ngay_dap_an(kb):
             raise ValueError("DAP_AN_NGAY: kiểm tra lại phân số gốc ở " + key)
 
 
+def dinh_dang_dap_an(text, kb):
+    # Chỉ thêm đơn vị khi đáp án khác xác nhận hoặc đề hỏi diện tích có một đơn vị dài.
+    unit = r"(?:km|cm|mm|dm|m)(?:[²³]|\^\{?[23]\}?)?"
+    display = re.sub(r"\\(?:text|mathrm)\s*\{(" + unit + r")\}", r"\1", text).replace(r"\,", " ").replace(r"\ ", " ")
+    match = re.fullmatch(r"\s*([+-]?\d+(?:[.,]\d+)?)\s*(" + unit + r")?\s*", display)
+    if not match:
+        return text
+    number = match[1].replace(".", ",")
+    suffix = match[2]
+    if not suffix:
+        for key in ("dap_an_hien", "dap_an_cuoi", "dap_an", "dap_an_chinh_xac"):
+            other = str(kb.get(key) or "").replace(".", ",")
+            m = re.search(r"(?<![\d,])" + re.escape(number) + r"\s*(" + unit + r")(?!\w)", other)
+            if m:
+                suffix = m[1]
+                break
+    de = str(kb.get("de_bai") or "")
+    if not suffix:
+        requested = re.search(r"(?:theo\s+(?:đơn vị\s+)?|đơn vị\s+|bao nhiêu\s+)\(?(" + unit + r")\)?(?!\w)", de, re.I)
+        if requested:
+            suffix = requested[1]
+    if not suffix and re.search(r"(?:tính|tìm|hỏi)\s+(?:tổng\s+)?diện tích|diện tích[^?.!]{0,100}bao nhiêu", de, re.I):
+        units = set(re.findall(r"\d\s*(km|cm|mm|dm|m)(?:[²³]|\^\{?[23]\}?)?(?!\w)", de))
+        if len(units) == 1:
+            suffix = units.pop() + "²"
+    suffix = re.sub(r"\^\{?([23])\}?", lambda m: "²" if m[1] == "2" else "³", suffix or "")
+    return number + (" " + suffix if suffix else "")
+
+
 def chon_dap_an_hien(kb):
     """Chuỗi đáp án hiển thị (ô đáp án + Outro). Giữ NGUYÊN dạng có tham số `a` ("\\frac{2a}{\\sqrt{11}}", "0,603a") khi bất kỳ trường đáp án
     nào của kịch bản còn giữ nó — không cắt cụt thành số trần "0,603"."""
@@ -116,14 +149,14 @@ def chon_dap_an_hien(kb):
     cac = [str(kb.get(k) or "") for k in ("dap_an_cuoi", "dap_an", "dap_an_hien", "dap_an_chinh_xac", "dap_an_tex")]
     chinh = next((x for x in cac if x.strip()), "")
     if co_tham_so(chinh):
-        return chinh
+        return dinh_dang_dap_an(chinh, kb)
     # đáp án chính là số trần: tìm bản có tham số mà phần số khớp (vd "0,603" ~ "0,603a" / "2a/\\sqrt{11}" ≈ 0,603a)
     so = re.findall(r"\d+(?:[.,]\d+)?", chinh)
     for x in cac:
         if x.strip() and co_tham_so(x):
             if not so or any(t in x.replace("{,}", ",") for t in so) or re.search(r"\\sqrt|\\frac|/", x):
-                return x
-    return chinh
+                return dinh_dang_dap_an(x, kb)
+    return dinh_dang_dap_an(chinh, kb)
 
 
 # ---------------------------------------------------------------- không đọc lặp "bằng X bằng X"
@@ -526,7 +559,7 @@ def du_cong_thuc_tom_tat(ra, buoc, kb, cong_thuc_gon, cong_thuc_buoc):
         m = re.fullmatch(r"\s*bước\s*(\d+)\s*", str(d.get("chien_thuat") or ""), re.I)
         b = next((x for x in buoc if re.fullmatch(r"\s*bước\s*%s\s*" % (m.group(1) if m else "-"), str(x.get("nhan") or ""), re.I)), None) if m else None
         if b and str(b.get("tieu_de") or "").strip() and "?" not in str(b.get("tieu_de")):
-            d["chien_thuat"] = str(b["tieu_de"]).strip()[:28]
+            d["chien_thuat"] = cat_nhan(str(b["tieu_de"]).strip(), 28)
     return ra
 
 

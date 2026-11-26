@@ -99,6 +99,16 @@ export const Toan: React.FC<{
   can?: 'trai' | 'giua';
 }> = ({tex, size = 52, color = '#ffffff', style, maxWidth, maxHeight, chuThuong, can}) => {
   tex = chuanTex(tex);
+  if (/[{}\\]/.test(tex)) {
+    let depth = 0;
+    tex = tex.replace(/\\[{}\\]|[{}]/g, token => {
+      if (token === '{') depth++;
+      if (token === '}' && depth === 0) return '';
+      if (token === '}') depth--;
+      return token;
+    }) + '}'.repeat(depth);
+    tex = tex.replace(/\\(?:text|mathrm|mbox|textrm)\s*(?:\{\s*\}|$)/g, '');
+  }
   const nhom = useContext(NhomVuaCtx);
   const trai = can ? can === 'trai' : nhom;
   const thuong = chuThuong !== undefined ? chuThuong : laChuThuong(tex);

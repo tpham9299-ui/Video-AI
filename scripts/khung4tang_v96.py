@@ -16,6 +16,10 @@ import itertools
 import json
 import math
 import random
+if __package__:
+    from .khung4tang_v93 import cat_nhan
+else:
+    from khung4tang_v93 import cat_nhan
 import re
 from fractions import Fraction
 
@@ -791,7 +795,7 @@ def kieu_so_cay(ps, kb):
 
 def so_cay(x, kieu):
     if kieu == "phan_so" and isinstance(x, Fraction) and x.denominator > 1:
-        return "\dfrac{%d}{%d}" % (x.numerator, x.denominator)
+        return r"\dfrac{%d}{%d}" % (x.numerator, x.denominator)
     return so_tex(x)
 
 
@@ -1074,7 +1078,7 @@ def _so_dap(kb):
 def dung_kinh_te(ts, kb, sua):
     """ts = {ham:'(50-x)(200+20x)', bien:'x', mien:[0,50], kieu:'max', ten_ham:'L', nhan_bien:'giảm giá (nghìn đồng)', nhan_ham:'lợi nhuận',
     phu:[{ten:'Giá bán', ham:'50-x', don_vi:'k'}, {ten:'Số khách', ham:'200+20x'}], don_vi:'nghìn đồng'}"""
-    bien = str(ts.get("bien") or "x")[:2]
+    bien = cat_nhan(str(ts.get("bien") or "x"), 2)
     f = ham_an_toan(ts.get("ham"), bien)
     mien = ts.get("mien") if isinstance(ts.get("mien"), list) and len(ts["mien"]) == 2 else None
     if not f or not mien:
@@ -1090,10 +1094,10 @@ def dung_kinh_te(ts, kb, sua):
     phu = []
     for c in ts.get("phu") or []:
         if isinstance(c, dict) and ham_an_toan(c.get("ham"), bien):
-            phu.append({"ten": str(c.get("ten") or "")[:18], "ham": str(c["ham"]), "don_vi": str(c.get("don_vi") or "")[:10]})
+            phu.append({"ten": cat_nhan(str(c.get("ten") or ""), 18), "ham": str(c["ham"]), "don_vi": cat_nhan(str(c.get("don_vi") or ""), 10)})
     kq = {"loai": "kinh_te_do_thi", "ham": str(ts["ham"]), "bien": bien, "mien": [a, b], "kieu": kieu,
-          "ten_ham": str(ts.get("ten_ham") or "L")[:3], "nhan_bien": str(ts.get("nhan_bien") or bien)[:28],
-          "nhan_ham": str(ts.get("nhan_ham") or "")[:28], "don_vi": str(ts.get("don_vi") or "")[:14], "phu": phu[:3],
+          "ten_ham": cat_nhan(str(ts.get("ten_ham") or "L"), 3), "nhan_bien": cat_nhan(str(ts.get("nhan_bien") or bien), 28),
+          "nhan_ham": cat_nhan(str(ts.get("nhan_ham") or ""), 28), "don_vi": cat_nhan(str(ts.get("don_vi") or ""), 14), "phu": phu[:3],
           "x_tot": round(tot[0], 4), "y_tot": round(tot[1], 4)}
     so = _so_dap(kb)
     kq["khop_dap_an"] = (any(abs(v - tot[0]) <= 0.02 * max(1, abs(tot[0])) or abs(v - tot[1]) <= 0.01 * max(1, abs(tot[1])) for v in so)) if so else None
@@ -1113,11 +1117,11 @@ def dung_so_do_2d(ts, kb, sua):
         sua.append("so_do_2d: mẫu '%s' không có -> bỏ sân khấu" % mau)
         return None
     tham = {k: float(doc_ti_le(v)) for k, v in (ts.get("tham_so") or {}).items() if doc_ti_le(v) is not None}
-    bien = str(ts.get("bien") or "x")[:2]
+    bien = cat_nhan(str(ts.get("bien") or "x"), 2)
     f = ham_an_toan(ts.get("ham"), bien) if ts.get("ham") else None
     mien = ts.get("mien") if isinstance(ts.get("mien"), list) and len(ts["mien"]) == 2 else None
-    kq = {"loai": "so_do_2d", "mau": mau, "tham_so": tham, "bien": bien, "nhan": {k: str(v)[:16] for k, v in (ts.get("nhan") or {}).items()},
-          "ten_ham": str(ts.get("ten_ham") or "f")[:3], "don_vi": str(ts.get("don_vi") or "")[:8]}
+    kq = {"loai": "so_do_2d", "mau": mau, "tham_so": tham, "bien": bien, "nhan": {k: cat_nhan(str(v), 16) for k, v in (ts.get("nhan") or {}).items()},
+          "ten_ham": cat_nhan(str(ts.get("ten_ham") or "f"), 3), "don_vi": cat_nhan(str(ts.get("don_vi") or ""), 8)}
     if f and mien:
         a, b = float(doc_ti_le(mien[0]) or 0), float(doc_ti_le(mien[1]) or 0)
         tot = toi_uu(f, a, b, "max" if str(ts.get("kieu")).lower() == "max" else "min") if b > a else None
@@ -1133,7 +1137,7 @@ def dung_so_do_2d(ts, kb, sua):
 
 def dung_tang_truong(ts, kb, sua):
     """ts = {ham:'100*(1+0.06)^t', bien:'t', mien:[0,10], moc:[0,10], ten_ham:'T', don_vi:'triệu', nguong?:200}"""
-    bien = str(ts.get("bien") or "t")[:2]
+    bien = cat_nhan(str(ts.get("bien") or "t"), 2)
     f = ham_an_toan(ts.get("ham"), bien)
     mien = ts.get("mien") if isinstance(ts.get("mien"), list) and len(ts["mien"]) == 2 else None
     if not f or not mien:
@@ -1149,8 +1153,8 @@ def dung_tang_truong(ts, kb, sua):
     if not all(isinstance(y, (int, float)) and math.isfinite(y) for y in ys):
         return None
     moc = [float(doc_ti_le(x)) for x in (ts.get("moc") or [a, b]) if doc_ti_le(x) is not None and a <= float(doc_ti_le(x)) <= b][:3] or [a, b]
-    kq = {"loai": "tang_truong", "ham": str(ts["ham"]), "bien": bien, "mien": [a, b], "ten_ham": str(ts.get("ten_ham") or "y")[:3],
-          "don_vi": str(ts.get("don_vi") or "")[:10], "nhan_bien": str(ts.get("nhan_bien") or bien)[:20],
+    kq = {"loai": "tang_truong", "ham": str(ts["ham"]), "bien": bien, "mien": [a, b], "ten_ham": cat_nhan(str(ts.get("ten_ham") or "y"), 3),
+          "don_vi": cat_nhan(str(ts.get("don_vi") or ""), 10), "nhan_bien": cat_nhan(str(ts.get("nhan_bien") or bien), 20),
           "moc": [{"x": x, "y": round(f(x), 4)} for x in moc]}
     ng = doc_ti_le(ts.get("nguong"))
     if ng is not None:
@@ -1178,7 +1182,7 @@ def dung_tu_duy(kb, k4, buoc=None):
             if th.get("loai") == "cong_thuc" and th.get("dong"):
                 dong = str(th["dong"][0])
                 break
-        nut.append({"nhan": str(b.get("nhan") or "Bước %d" % (j + 1))[:22], "tieu_de": str(b.get("tieu_de") or "")[:60], "dong": dong[:90],
+        nut.append({"nhan": cat_nhan(str(b.get("nhan") or "Bước %d" % (j + 1)), 22), "tieu_de": cat_nhan(str(b.get("tieu_de") or ""), 60), "dong": cat_nhan(dong, 90),
                     "mau": mau_chuan(b.get("mau"), MAU[j % 4])})
     kq = {"loai": "tu_duy_dai_so", "du_kien": du, "nut": nut}
     m = re.search(r"\b([fgyhP])\s*\(\s*([x])\s*\)\s*=\s*([-+*/^().0-9x ]{3,60})", str(kb.get("de_bai") or ""))
@@ -1471,7 +1475,53 @@ def gan_san_khau(kb, k4, buoc, t_buoc, t_het_de, tong, tim_moc, r=None, khuon_su
             ct = kq[1]
             ph["t"] = kq[2]
         ph.pop("khi_noi", None)
-    if ngan(kb) and loai in LOAI_XS:
+    if ngan(kb) and t_buoc and loai in ("so_do_cay", "luoi_bayes", "cot_phan_phoi"):
+        # Mỗi pha bắt buộc xuất hiện đúng một lần. Giữ mốc bước khai báo,
+        # nội suy các pha còn thiếu giữa hai bước thay vì bỏ toàn bộ liên kết.
+        anchors = {0: 0.0, len(ten_md)-1: t_buoc[-1]}
+        for i, raw in enumerate((k4.get("buoc") or [])[:len(t_buoc)]):
+            if not isinstance(raw, dict):
+                continue
+            action = raw.get("hanh_dong")
+            phase = (action.get("pha") if isinstance(action, dict) else None) or raw.get("pha")
+            if phase in ten_md[1:-1]:
+                anchors.setdefault(ten_md.index(phase), t_buoc[i])
+        anchors[1] = 0.4  # nhánh cấp một / cắt dọc / cột nền hiện ngay khi giới thiệu
+        for ph in ds:
+            if ph.get("t") is None or ph["ten"] not in ten_md[2:-1]:
+                continue
+            j = ten_md.index(ph["ten"])
+            left = max(k for k in anchors if k < j)
+            right = min(k for k in anchors if k > j)
+            if anchors[left] <= ph["t"] <= anchors[right]:
+                anchors.setdefault(j, ph["t"])
+        times = sorted(anchors)
+        ds = []
+        for j, name in enumerate(ten_md):
+            if j in anchors:
+                at = anchors[j]
+            else:
+                left = max(k for k in times if k < j)
+                right = min(k for k in times if k > j)
+                frac = (j-left)/(right-left)
+                near = round(frac*(len(t_buoc)-1))
+                candidate = t_buoc[near]
+                at = candidate if anchors[left] < candidate < anchors[right] else anchors[left] + frac*(anchors[right]-anchors[left])
+            ds.append({"ten": name, "t": at})
+        sk["moc_buoc"] = list(t_buoc)
+        labels = ([n["nhan"] for n in sk["nut"] if n["tang"] == 1] if loai == "so_do_cay"
+                  else [c["nhan"] for c in sk["cot"]] if loai == "cot_phan_phoi"
+                  else [sk["nhan_a"], "không " + sk["nhan_a"]])
+        sk["nhanh_buoc"] = []
+        for i, raw in enumerate(k4.get("buoc") or []):
+            action = raw.get("hanh_dong") if isinstance(raw, dict) else None
+            selected = action.get("nhanh") if isinstance(action, dict) else None
+            if type(selected) is not int or not 0 <= selected < len(labels):
+                title = " ".join(str(raw.get(key) or "") for key in ("tieu_de", "khi_noi")).casefold() if isinstance(raw, dict) else ""
+                matches = [j for j, label in enumerate(labels) if label and re.search(r"(?<!\w)" + re.escape(label.casefold()) + r"(?!\w)", title)]
+                selected = max(matches, key=lambda j: len(labels[j])) if matches else i % max(1, len(labels))
+            sk["nhanh_buoc"].append(selected)
+    elif ngan(kb) and loai in LOAI_XS:
         linked = []
         for i, raw in enumerate(k4.get("buoc") or []):
             if not isinstance(raw, dict) or i >= len(t_buoc):
@@ -1488,6 +1538,10 @@ def gan_san_khau(kb, k4, buoc, t_buoc, t_het_de, tong, tim_moc, r=None, khuon_su
             linked.append(ph)
         if linked and len(linked) == len(t_buoc):
             ds = linked
+    if thuc_te_ngan(kb) and loai in LOAI_2D_TT:
+        # Dựng hình của đề trước khi mở các pha giải.
+        base = ["hinh"] if loai == "so_do_2d" else ["truc", "ve"]
+        ds = [{"ten": name, "t": 0.6 * i} for i, name in enumerate(base)] + [ph for ph in ds if ph["ten"] not in base]
     trai_pha(ds, t_buoc, t_het_de, tong)
     if loai == "rut_mau":
         sua += gan_bo_mau_rut(sk, ds, buoc, loi_tai)

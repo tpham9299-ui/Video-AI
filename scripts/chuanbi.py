@@ -26,6 +26,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from khung4tang_v93 import cat_nhan
 import khung4tang_v99 as v99_k4  # noqa: E402  (v99.1: phiên âm -> ký hiệu, chống lặp số, khóa mốc đáp án, nền theme)
 
 CACHE_TTS_DIR = os.environ.get("CACHE_TTS_DIR") or os.path.join(tempfile.gettempdir(), "video_ai_tts_cache")
@@ -1704,8 +1705,7 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
         dem_ham[m.groups()] = dem_ham.get(m.groups(), 0) + 1
     ham_bbt = max(dem_ham, key=dem_ham.get) if dem_ham else None
 
-    def _chuan_dong(x):
-        return re.sub(r"\\[,;:! ]|\\left|\\right|\s+|\{,\}", "", str(x)).replace("\\dfrac", "\\frac")
+    _chuan_dong = v95_k4.chuan_dong
 
     def canh_cua_the(th, t0, t1):
         """Thẻ không có khi_noi: tìm cảnh (bắt đầu trong bước) có noi_dung_man_hinh trùng dòng của thẻ -> mốc đầu cảnh đó."""
@@ -1829,27 +1829,34 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
             the.sort(key=lambda x: x["t"])
         # bước cuối: thẻ đáp số giữ tới Outro (không còn khoảng trống giữa bước cuối và màn kết)
         if j == nb - 1 and so_dap and not any(any(sd in json.dumps(x, ensure_ascii=False) for sd in so_dap) for x in the):
-            the.append({"loai": "chu", "nhan": "Đáp số", "noi_dung": dap_an[:60], "t": round(min(tran, max(vao, the[-1]["t"] + 1.2 if the else vao)), 3)})
+            the.append({"loai": "chu", "nhan": "Đáp số", "noi_dung": v99_k4.chon_dap_an_hien(kb), "t": round(min(tran, max(vao, the[-1]["t"] + 1.2 if the else vao)), 3)})
         if not the:
-            the.append({"loai": "chu", "noi_dung": str(b.get("tieu_de") or b.get("nhan") or "")[:60], "t": round(vao, 3)})
+            the.append({"loai": "chu", "noi_dung": cat_nhan(str(b.get("tieu_de") or b.get("nhan") or ""), 60), "t": round(vao, 3)})
+        if j == nb - 1:
+            for card in the:
+                if card.get("loai") == "chu" and (card.get("chot") or card.get("noi_dung") == dap_an or re.search("đáp (án|số)", str(card.get("nhan") or ""), re.I)):
+                    card["noi_dung"] = v99_k4.dinh_dang_dap_an(str(card.get("noi_dung") or ""), kb)
+                if card.get("loai") == "cong_thuc" and card.get("dong"):
+                    card["dong"] = [v99_k4.dinh_dang_dap_an(line, kb) if line.strip() == dap_an.strip() else line for line in card["dong"]]
         da_in_all |= {_chuan_dong(d) for x in the for d in (x.get("dong") or [])}
-        tieu_de = str(b.get("tieu_de") or "")[:60]
+        tieu_de = cat_nhan(str(b.get("tieu_de") or ""), 60)
         for x in so_lo:   # chống lộ đáp số ở tiêu đề bước (tiêu đề hiện TRƯỚC khi tính xong)
             tieu_de = re.sub(r"(?<![\d.,])" + re.escape(x) + r"(?![\d.,])", "?", tieu_de)
         tieu_de = re.sub(r"\?(?:\s*[/:,.]\s*\?)+", "?", tieu_de)   # "31/44" -> "?" (không thành "?/?")
         tieu_de = re.sub(r"(?i)(biến cố đối)\s+([A-Z])(?![\w'])", r"\1 \\overline{\2}", tieu_de)   # ký hiệu biến cố đối đúng
-        buoc.append({"t": t, "nhan": str(b.get("nhan") or "Bước %d" % (j + 1))[:24], "tieu_de": tieu_de,
+        buoc.append({"t": t, "nhan": cat_nhan(str(b.get("nhan") or "Bước %d" % (j + 1)), 24), "tieu_de": tieu_de,
                      "mau": mau(b.get("mau"), ["cyan", "vang", "hong", "ngoc"][j % 4]),
                      "du_kien": [str(x) for x in b.get("du_kien") or []], "the": the})
     if not buoc:
         return None
-    de_ghim = [{"id": str(d.get("id") or "d%d" % i), "nhan": str(d.get("nhan") or "")[:28], **({"mau": mau(d["mau"])} if d.get("mau") else {})}
+    de_ghim = [{"id": str(d.get("id") or "d%d" % i), "nhan": cat_nhan(str(d.get("nhan") or ""), 28), **({"mau": mau(d["mau"])} if d.get("mau") else {})}
                for i, d in enumerate(k4.get("de_ghim") or []) if isinstance(d, dict) and str(d.get("nhan") or "").strip()][:5]
 
     # ---- 3D: khuôn tham số (ưu tiên) / đặc tả tự do có chuyển động / khuôn suy từ đề ----
     c3 = k4.get("canh_3d_vector")
     c3 = json.loads(json.dumps(c3)) if isinstance(c3, dict) and not khong_gian else None
     suy = suy_khuon(kb) if not khong_gian else None
+    import khung4tang_v96 as v96_k4
     if c3 and ten_khuon(c3.get("khuon")):
         c3["khuon"] = ten_khuon(c3["khuon"])
         c3.pop("doi_tuong", None)
@@ -1902,6 +1909,8 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
                 ts[k] = max(ts[k], ts[k - 1] + 0.4)
                 ds_pha[k]["t"] = round(ts[k], 3)
         if ds_pha:
+            if v96_k4.thuc_te_ngan(kb):
+                ds_pha[0]["t"] = 0.0
             c3["pha"] = ds_pha
     elif c3:
         ds3 = [b for b in (c3.get("buoc") or []) if isinstance(b, dict)]
@@ -1988,7 +1997,6 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
         tom_tat = v99_k4.du_cong_thuc_tom_tat(tom_tat, buoc, kb, v93.cong_thuc_gon, v93._cong_thuc_buoc)
     # ---- v96: SÂN KHẤU 2D (4 mô-đun Xác suất / nhánh 2D thực tế / sơ đồ tư duy). Định tuyến một lần (chon_san_khau);
     # có sân khấu 2D thì tầng 2 KHÔNG vẽ khuôn 3D (không còn nhét lưới thẻ / hình hộp sai ngữ cảnh) ----
-    import khung4tang_v96 as v96_k4
 
     def tim_moc(cum, tu_tu=0, t_tu=None):
         lo = max(tu_tu, chi_so_tai(t_tu)) if t_tu is not None else tu_tu
@@ -2014,6 +2022,8 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
            "boCuc": {"anToanTikTok": True, "phuDe": "tat" if str(os.environ.get("PHU_DE_4TANG") or "").upper() in ("0", "TAT", "OFF")
                      or str(k4.get("phu_de") or "").lower() == "tat" and str(os.environ.get("PHU_DE_4TANG") or "").upper() != "BAT" else "gon"},
            "deGhim": de_ghim, "buoc": buoc, "canh3dv": c3, **({"tChot": round(t_chot, 3)} if t_chot is not None else {})}
+    if v96_k4.thuc_te_ngan(kb):
+        out["hetDe"] = t_het_de
     if san_khau:
         out["sanKhau"] = san_khau
         # v96: ô ghim 'x = ?' đổi sang nghiệm tối ưu máy tính đúng lúc sân khấu 2D chốt đỉnh (đồng bộ thanh gạt + lời đọc)
@@ -2037,7 +2047,7 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
     # ---- v99.1: sân khấu tự sinh 2.5D (mã Python của BP2 chạy trong hộp cát), khóa mốc đáp án, nhịp chống đứng hình, theme ----
     if not khong_gian:
         import tu_sinh_svg
-        ts, ghi_ts = (None, "") if dong else tu_sinh_svg.gan_tu_sinh(kb, k4, buoc, tim_moc, t_het_de, tong)
+        ts, ghi_ts = (None, "") if dong or (san_khau or {}).get("moc_buoc") else tu_sinh_svg.gan_tu_sinh(kb, k4, buoc, tim_moc, t_het_de, tong)
         if ts:
             out["tuSinh"] = ts
             out.pop("sanKhau", None)
@@ -2063,6 +2073,11 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
         for ph, b in zip(dong["pha"], buoc):
             ph["t"] = b["t"]
         dong["cong_bo"] = t_cb or 0
+    if san_khau and san_khau.get("moc_buoc"):
+        san_khau["moc_buoc"] = [b["t"] for b in buoc]
+        for ph in san_khau["pha"]:
+            if ph["ten"] == "ket":
+                ph["t"] = max(ph["t"], t_cb or 0)
     if xs.ngan(kb):
         for j, b in enumerate(ds_buoc):
             lo, hi = t_buoc[j], t_buoc[j+1] if j+1 < len(buoc) else tong
@@ -2080,7 +2095,7 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
             elif san_khau and san_khau.get("loai") == "rut_mau" and san_khau.get("vet_can") and san_khau.get("khop_dap_an") and not out.get("tuSinh"):
                 from fractions import Fraction
                 san_khau["bieu_do"] = {"t": at, "p": str(Fraction(san_khau["n_a"], san_khau["n_omega"])), "cong_bo": t_cb or at}
-            elif not ((san_khau or {}).get("loai") == "cot_phan_phoi" or buoc[j].get("doi_chieu") or out.get("tuSinh")):
+            elif not ((san_khau or {}).get("loai") == "cot_phan_phoi" or (san_khau or {}).get("moc_buoc") or buoc[j].get("doi_chieu") or out.get("tuSinh")):
                 raise ValueError("XS_THIEU_BIEU_DO: lời đọc yêu cầu biểu đồ nhưng thiếu số liệu để dựng")
         if dong:
             dong["pha"].sort(key=lambda ph: ph["t"])
@@ -2388,7 +2403,7 @@ def tao_bia(kb, canh_kb, canh_props):
             chon = i
             break
     c = canh_props[chon]
-    return {"loai": loai, "tieuDe": tieu_de[:80], "khung": int(c["batDau"] + c["soFrame"] * 0.96)}   # lúc hình đã vẽ xong
+    return {"loai": loai, "tieuDe": cat_nhan(tieu_de, 80), "khung": int(c["batDau"] + c["soFrame"] * 0.96)}   # lúc hình đã vẽ xong
 
 
 def tim_tep(thu_muc, ten, duoi):
@@ -2524,7 +2539,7 @@ def the_de_bai(kb):
         cho = [str(x).strip() for x in (kb.get("du_kien") or []) if str(x).strip()][:4]
     def cat(x, n):   # cắt ở ranh giới từ, có dấu … (không cụt chữ giữa chừng)
         x = re.sub(r"\s+", " ", x).strip()
-        if len(x) <= n:
+        if len(x) <= n or re.search(r"[\\{}^_$]", x):
             return x
         c = x[:n - 1]
         i = c.rfind(" ")
@@ -2630,7 +2645,7 @@ def chuan_anh_san_pham(kb, public):
             if src:
                 v["src"] = src
             if not v.get("noi_dung"):
-                v["noi_dung"] = str(sp.get("ten") or "")[:40]
+                v["noi_dung"] = cat_nhan(str(sp.get("ten") or ""), 40)
             if v.get("gia") and not v.get("gia_tri_chu"):
                 v["gia_tri_chu"] = gia
     return co
@@ -2640,7 +2655,7 @@ def the_san_pham(kb, anh_sp):
     sp = kb.get("san_pham") if isinstance(kb.get("san_pham"), dict) else None
     if not sp or not sp.get("ten"):
         return None
-    return {"ten": str(sp.get("ten"))[:60], "gia": gia_viet(sp.get("gia_ban")), "anh": anh_sp[0] if anh_sp else "",
+    return {"ten": cat_nhan(str(sp.get("ten")), 60), "gia": gia_viet(sp.get("gia_ban")), "anh": anh_sp[0] if anh_sp else "",
             "cta": "🛒 Có tại kênh · link ở mô tả" if sp.get("link") else "🛒 Có tại kênh · xem giỏ hàng / mô tả"}
 
 
@@ -3397,9 +3412,9 @@ def main():
             "cau": cau,
             "trinhBay": trinh_bay(c, noi_dung),
             "chuThich": [str(x) for x in (c.get("chu_thich") or []) if str(x).strip()][:3],
-            "tieuDeCanh": str(c.get("tieu_de_canh") or "").strip()[:70],
-            "tuKhoa": str(c.get("tu_khoa") or "").strip()[:30],
-            "nhan": str(c.get("nhan") or "").strip()[:16],
+            "tieuDeCanh": cat_nhan(str(c.get("tieu_de_canh") or "").strip(), 70),
+            "tuKhoa": cat_nhan(str(c.get("tu_khoa") or "").strip(), 30),
+            "nhan": cat_nhan(str(c.get("nhan") or "").strip(), 16),
             "giuSanKhau": bool(c.get("giu_san_khau")) and i > 0,
             "chuyenCanh": str(c.get("chuyen_canh") or ""),
             "gocNhin": [str(x) for x in (c.get("goc_nhin") or [])][:4] if isinstance(c.get("goc_nhin"), list) else ([str(c.get("goc_nhin"))] if c.get("goc_nhin") else []),
@@ -3466,7 +3481,7 @@ def main():
     thuong_hieu = logo_theo_chuyen_muc(ten_kenh_theo_chuyen_muc(thuong_hieu, th, kb), args.public, kb)
     bhr = kb.get("bai_hoc_rut_ra")   # v99.2b: Gemini đôi khi trả chuỗi -> bọc thành mảng (không lặp từng ký tự)
     bhr = bhr if isinstance(bhr, list) else ([bhr] if isinstance(bhr, str) and bhr.strip() else [])
-    bai_hoc = [str(x).strip()[:90] for x in bhr if str(x).strip()][:3]
+    bai_hoc = [cat_nhan(str(x).strip(), 90) for x in bhr if str(x).strip()][:3]
     # Tự động chèn màn kết/outro thương hiệu chuyên nghiệp vào cuối video (tóm tắt bài học + kênh + nút Thích / Theo dõi).
     co_man_ket = bool(th.get("coManKet", True))
     # v89: video đã có cảnh bai_hoc (chốt kiến thức) -> màn kết KHÔNG lặp lại 3 gạch đầu dòng, chỉ đáp án + kênh (ngắn hơn, bớt đuôi im lặng)
@@ -3495,16 +3510,16 @@ def main():
         "nhanManh": [str(x) for x in (kb.get("nhan_manh") or [])][:5],
         "nhac": nhac,
         "amLuongNhac": float(os.environ.get("AM_LUONG_NHAC") or (0.2 if nhac and nhac.endswith("lofi.wav") else 0.16 if nhac and (nhac.endswith("nen.wav") or "/tron_" in nhac) else 0.12)),
-        "chuDe": str(kb.get("chu_de_ngan") or kb.get("chu_de") or "")[:40],
+        "chuDe": cat_nhan(str(kb.get("chu_de_ngan") or kb.get("chu_de") or ""), 40),
         "baiHoc": bai_hoc,
         "bia": tao_bia(kb, canh, canh_props),
         # số tập KHÔNG in lúc dựng nữa (kể cả kịch bản cũ còn mang số): số tập đánh lúc đăng, theo số bài đã có trên kênh (dang_video.py)
         "series": None,
         "quangCao": the_san_pham(kb, anh_sp),
-        "duKien": [str(x).strip()[:30] for x in (kb.get("du_kien") or []) if str(x).strip()][:4],
+        "duKien": [cat_nhan(str(x).strip(), 30) for x in (kb.get("du_kien") or []) if str(x).strip()][:4],
         "deBai": de_bai_the,
         "deGoc": str(kb.get("de_bai") or ""),
-        "tiepTheo": str(kb.get("video_tiep_theo") or "")[:70],
+        "tiepTheo": cat_nhan(str(kb.get("video_tiep_theo") or ""), 70),
         "nen": ds_nen[0] if ds_nen else None,
         "dsNen": ds_nen,
         "nenTuTao": nen_tu_tao,

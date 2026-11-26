@@ -24,7 +24,21 @@ export function tachChuToan(s0: string): CumChu[] {
   const s = String(s0 ?? '').replace(/\(\s*([^()]*?)\s*\)/g, (_, a: string) => `(${a.replace(/\s*,\s*/g, ',')})`).replace(/\s+/g, ' ').trim();
   if (!s) return [];
   const ra: CumChu[] = [];
-  for (const w of s.split(' ')) {
+  // Tách ở khoảng trắng ngoài nhóm. Giữ cả đối số kế tiếp của \frac{a} {b}.
+  const words: string[] = [];
+  let word = '', depth = 0;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === '\\' && i + 1 < s.length) { word += ch + s[++i]; continue; }
+    if (ch === '{') depth++;
+    if (ch === '}') depth = Math.max(0, depth - 1);
+    if (ch === ' ' && !depth && !(s[i + 1] === '{' && /\\[A-Za-z]+|[{}_^]/.test(word))) {
+      if (word) words.push(word);
+      word = '';
+    } else word += ch;
+  }
+  if (word) words.push(word);
+  for (const w of words) {
     const m = /^(.*?)([,.:;!?]*)$/.exec(w)!;
     const tex = texHoaCum(m[1]);
     if (tex) {

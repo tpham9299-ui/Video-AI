@@ -63,7 +63,10 @@ def sap_the_logic(ds):
 
 
 def chuan_dong(x):
-    return re.sub(r"\\[,;:! ]|\\left|\\right|\s+|\{,\}", "", str(x)).replace("\\dfrac", "\\frac")
+    x = re.sub(r"([_^])\{(\w)\}", r"\1\2", str(x))
+    x = re.sub(r"_(\d)", lambda m: "₀₁₂₃₄₅₆₇₈₉"[int(m[1])], x)
+    x = re.sub(r"\\sqrt\{(\d)\}", r"√\1", x)
+    return re.sub(r"\\[,;:! ]|\\left|\\right|\s+", "", str(x).replace("{,}", ",")).replace("\\dfrac", "\\frac")
 
 
 def khu_trung_ranh_gioi(the_truoc, the_nay):
@@ -109,6 +112,15 @@ def chuan_the_cac_buoc(ds_the):
     for j, ds in enumerate(ra):
         if not any(x.get("khi_noi") for x in ds):
             ra[j] = sap_the_logic(ds)
+    for j, ds in enumerate(ra):
+        kept = []
+        for card in ds:
+            if kept and card.get("loai") in ("cong_thuc", "chu") and _dong_the(card) and _dong_the(card) == _dong_the(kept[-1]):
+                if card.get("chot"):
+                    kept[-1] = card
+                continue
+            kept.append(card)
+        ra[j] = kept
     return ra
 
 

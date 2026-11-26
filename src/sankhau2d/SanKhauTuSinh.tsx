@@ -4,6 +4,7 @@
 // sang = hiện + sáng lên (chỉ brightness, không blur). Lớp mới nhất được nhấn sáng ~1,4 s rồi lắng xuống; lớp cũ dịu 82 % để mắt theo lớp đang giảng.
 import React from 'react';
 import {spring} from 'remotion';
+import {texSangChu} from '../chu';
 import {FONT} from '../theme';
 import {BAT_DAU_BUT_VE, BAT_QUET_MAT_PHANG, BAT_XUNG_NHIP_DIEM} from '../khung4tang/cauHinhTinhChinh';
 
@@ -48,7 +49,7 @@ const QuetMat: React.FC<{id: string; d: string; f: number}> = ({id, d, f}) => {
   );
 };
 
-export type LopTuSinh = {id: string; t: number; svg: string; hieu_ung: 'moc' | 'no' | 'sang' | 've'; buoc?: number; nhan?: string; nhom?: string};
+export type LopTuSinh = {id: string; t: number; hienDeDen?: number; tNhan?: number; svg: string; hieu_ung: 'moc' | 'no' | 'sang' | 've'; buoc?: number; nhan?: string; nhom?: string};
 
 // lớp cùng `nhom` thay nhau: khi lớp sau cùng nhóm đã hiện, lớp trước mờ hẳn trong 0,4 s (không chồng nhãn)
 export function heSoThay(l: LopTuSinh, ds: LopTuSinh[], t: number): number {
@@ -206,7 +207,7 @@ const Pill: React.FC<{x: number; y: number; ten: string; mau?: string; sp: numbe
   return (
     <g opacity={Math.min(1, sp * 1.2)} transform={`translate(0 ${12 * (1 - Math.min(1, sp))})`}>
       <rect x={cx - w / 2} y={y - 22} width={w} height={44} rx={22} fill={NEN} stroke={mau} strokeWidth={2} />
-      <text x={cx} y={y + 8} fontSize={24} fontWeight={700} fill={mau} textAnchor="middle">{ten}</text>
+      <text x={cx} y={y + 8} fontSize={24} fontWeight={700} fill={mau} textAnchor="middle">{texSangChu(ten)}</text>
     </g>
   );
 };
@@ -365,7 +366,7 @@ const LopTongQuat: React.FC<{ps: TP[]; t: number; fps: number; cong: number; mp?
               {p.nhanh || moi || /^[SGMN]$/.test(p.ten || '') ? <XungSonar cx={p.x || 0} cy={p.y || 0} f={(t - p.t) * fps} mau={p.nhanh ? AMBER : CYAN} /> : null}
               {p.nhanh ? <circle cx={p.x} cy={p.y} r={(moi ? 19 : 15) * (0.6 + 0.4 * Math.min(1, sp))} fill="none" stroke={AMBER} strokeWidth={moi ? 3 : 2} strokeOpacity={moi ? 1 : 0.6} /> : null}
               <circle cx={p.x} cy={p.y} r={(p.nhanh ? 10 : 8) * (0.6 + 0.4 * Math.min(1, sp))} fill={mau} />
-              <text x={np.x} y={np.y} fontSize={moi || p.nhanh ? 30 : 26} fontWeight={800} fill="#F8FAFC" textAnchor="middle" stroke={NEN} strokeWidth={6} paintOrder="stroke">{p.ten}</text>
+              <text x={np.x} y={np.y} fontSize={moi || p.nhanh ? 30 : 26} fontWeight={800} fill="#F8FAFC" textAnchor="middle" stroke={NEN} strokeWidth={6} paintOrder="stroke">{texSangChu(p.ten)}</text>
             </g>
           );
         }
@@ -373,7 +374,7 @@ const LopTongQuat: React.FC<{ps: TP[]; t: number; fps: number; cong: number; mp?
         return (
           <g key={p.id} opacity={Math.min(1, sp * 1.2) * lang} transform={`translate(0 ${14 * (1 - Math.min(1, sp))})`}>
             <rect x={(p.x || 400) - w / 2} y={(p.y || 500) - 24} width={w} height={44} rx={22} fill={NEN} stroke={XAM} strokeWidth={2} />
-            <text x={p.x} y={(p.y || 500) + 8} fontSize={26} fontWeight={700} fill={AMBER} textAnchor="middle">{p.ten}</text>
+            <text x={p.x} y={(p.y || 500) + 8} fontSize={26} fontWeight={700} fill={AMBER} textAnchor="middle">{texSangChu(p.ten)}</text>
           </g>
         );
       })}
@@ -397,8 +398,41 @@ export function trangThaiLop(l: LopTuSinh, t: number, fps: number, moiNhat: bool
   }
 }
 
+// Props lưu từ trước có thể chứa TeX. Chỉ thay các nút chữ, giữ nguyên tọa độ,
+// thuộc tính và các tspan do Python đã căn sẵn.
+function chuanNhanSvg(svg: string): string {
+  if (!/[_^\\]/.test(svg)) return svg;
+  const doc = new DOMParser().parseFromString('<svg xmlns="http://www.w3.org/2000/svg">' + svg + '</svg>', 'image/svg+xml');
+  if (doc.querySelector('parsererror')) return svg;
+  for (const el of Array.from(doc.querySelectorAll('text, tspan'))) {
+    for (const node of Array.from(el.childNodes)) {
+      const s = node.textContent || '';
+      if (node.nodeType !== 3 || !/[_^\\]/.test(s)) continue;
+      const fragment = doc.createDocumentFragment();
+      const plain = (v: string) => {
+        const clean = v.replace(/\S(?:[\s\S]*\S)?/, part => texSangChu(part));
+        fragment.appendChild(doc.createTextNode(clean));
+      };
+      let end = 0;
+      for (const match of s.matchAll(/([_^])(?:\{([^{}]{2,})\}|(\d{2,}))/g)) {
+        plain(s.slice(end, match.index));
+        const span = doc.createElementNS(el.namespaceURI, 'tspan');
+        span.setAttribute('baseline-shift', match[1] === '_' ? 'sub' : 'super');
+        span.setAttribute('font-size', '72%');
+        const arg = match[2] ?? match[3];
+        span.textContent = arg === 'them' ? 'thêm' : texSangChu(arg);
+        fragment.appendChild(span);
+        end = match.index! + match[0].length;
+      }
+      plain(s.slice(end));
+      node.replaceWith(fragment);
+    }
+  }
+  return doc.documentElement.innerHTML;
+}
+
 export const SanKhauTuSinh: React.FC<{ts: TuSinhVao; t: number; fps: number; rong: number; cao: number; xung?: number}> = ({ts, t, fps, rong, cao, xung = -1}) => {
-  const lop = ts.lop || [];
+  const lop = React.useMemo(() => (ts.lop || []).map(l => ({...l, svg: chuanNhanSvg(l.svg)})), [ts.lop]);
   const daHien = lop.filter((l) => l.t <= t);
   const moiNhat = daHien.length ? daHien[daHien.length - 1].id : '';
   // hình vừa T2, giữ tỉ lệ 800:540, căn giữa; xung nhịp chống đứng hình = zoom rất nhẹ 1 -> 1,018 -> 1
@@ -415,7 +449,7 @@ export const SanKhauTuSinh: React.FC<{ts: TuSinhVao; t: number; fps: number; ron
   return (
     <div data-tu-sinh style={{position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
       <svg viewBox={ts.viewBox || '0 0 800 540'} width={W * k} height={H * k} style={{overflow: 'visible', scale: String(zoom), fontFamily: FONT}}>
-        <style>{`.ts-cu [stroke-dasharray]{stroke-opacity:.55}.ts-moi [stroke-dasharray]{stroke-opacity:.8}${mp ? '.ts-moi polygon{stroke-width:3.5px;stroke-linejoin:round;paint-order:stroke}.ts-cu polygon{fill-opacity:.06}' : ''}`}</style>
+        <style>{`.ts-de-som text{visibility:hidden}.ts-cu [stroke-dasharray]{stroke-opacity:.55}.ts-moi [stroke-dasharray]{stroke-opacity:.8}${mp ? '.ts-moi polygon{stroke-width:3.5px;stroke-linejoin:round;paint-order:stroke}.ts-cu polygon{fill-opacity:.06}' : ''}`}</style>
         <defs>
           {lop.map((l) => (
             <clipPath key={l.id} id={`ts-quet-${l.id}`}>
@@ -429,9 +463,10 @@ export const SanKhauTuSinh: React.FC<{ts: TuSinhVao; t: number; fps: number; ron
           if (s.hien * thay <= 0.001) return null;
           // v99.10: lớp cũ dịu thêm (0,72 / 0,5 khi giảng mặt phẳng), lớp đang giảng giữ nguyên; nét đứt / khuất nhạt hơn nét liền
           const cu = l.id !== moiNhat;
+          const dangDe = t < (l.hienDeDen ?? 0) && thay >= 0.99;
           const dim = cu ? (mp ? 0.5 : 0.72) : 1;
           return (
-            <g key={l.id} data-lop={l.id} className={cu ? 'ts-cu' : 'ts-moi'} opacity={s.hien * thay * dim} clipPath={s.quet < 1 ? `url(#ts-quet-${l.id})` : undefined}
+            <g key={l.id} data-lop={l.id} className={(cu ? 'ts-cu' : 'ts-moi') + (t < (l.tNhan ?? 0) ? ' ts-de-som' : '')} opacity={dangDe ? 1 : s.hien * thay * dim} clipPath={s.quet < 1 ? `url(#ts-quet-${l.id})` : undefined}
               style={{transformBox: 'view-box', transformOrigin: '400px 270px', scale: String(s.s), translate: `0px ${s.dy}px`,
                 filter: s.sang > 0.01 ? `brightness(${1 + 0.32 * s.sang})` : undefined}}>
               <g dangerouslySetInnerHTML={{__html: l.svg}} />

@@ -141,13 +141,25 @@ function traVeSuaKichBan_(sh, r, gopY, ghiChu, them, suaKb) {
   var kb = JSON.parse(DriveApp.getFileById(r.file_kich_ban).getBlob().getDataAsString());
   if (typeof suaKb === 'function') suaKb(kb);   // v99.2: Auto-Heal dọn cờ trong kịch bản (vd cho phép lập lại sân khấu tự sinh)
   luuNhapKichBan_(r.id, kb);
-  ghiAiKT_(sh, r, them, { trang_thai: 'DA_GIAI', duyet: '', uu_tien: 1, so_lan_loi: 0, gop_y: String(gopY).slice(0, 1500), ghi_chu: String(ghiChu).slice(0, 200) });
+  ghiAiKT_(sh, r, them, { trang_thai: 'DA_GIAI', duyet: '', uu_tien: 1, so_lan_loi: 0, gop_y: (them && them.sai_toan_lan ? String(gopY) : String(gopY).slice(0, 1500)), ghi_chu: String(ghiChu).slice(0, 200) });
   henUuTien_(20);
 }
 
 // GitHub báo KIỂM DUYỆT BỐ CỤC không đạt (đo trên khung hình thật: chữ tràn mép, chữ đè, TeX thô, công thức lỗi)
 function xuLyKiemDuyetBoCuc_(sh, r, kd) {
   var nang = (kd && kd.nang) || [];
+  var toan = nang.filter(function (x) { return /^AI_SAI_TOAN:/.test(x); });
+  if (toan.length && r.file_kich_ban) {
+    var lanToan = Number(docAiKT_(r).sai_toan_lan) || 0;
+    var lyDoToan = toan.concat(nang.filter(function (x) { return toan.indexOf(x) < 0; })).join('\n');
+    if (lanToan >= soLanSuaYeuCau_()) {
+      ghi_(sh, r._row, {trang_thai: 'LOI', ghi_chu: lyDoToan.slice(0, 300)});
+      nhatKy_('SAI_TOAN', r.id + ' ' + lyDoToan);
+    } else {
+      traVeSuaKichBan_(sh, r, lyDoToan, 'BP2 sửa ký hiệu và công thức theo AI nhìn hình', {sai_toan_lan: lanToan + 1});
+    }
+    return {ok: true};
+  }
   if (kd && kd.loai === 'mo_hinh' && r.file_kich_ban) {
     var soLan = Number(docAiKT_(r).mo_hinh_lan) || 0;
     var lyDo = 'Kịch bản và bản vẽ: ' + nang.join(' | ');

@@ -22,7 +22,7 @@ const duongBz = ([p0, p1, p2, p3]: Bz) => `M${p0.x},${p0.y} C${p1.x},${p1.y} ${p
 
 // giá trị số của nhãn xác suất TeX ("\dfrac{3}{10}", "0,3", "1/2", "30\%") -> độ dày nét; không đọc được -> 0,5
 export const soCuaTex = (tex: string): number => {
-  const s = String(tex || '').replace(/\s+/g, '');
+  const s = String(tex || '').replace(/\{,\}/g, ',').replace(/\s+/g, '');
   const f = s.match(/\\[dt]?frac\{(\d+(?:[.,]\d+)?)\}\{(\d+(?:[.,]\d+)?)\}/) || s.match(/^(\d+(?:[.,]\d+)?)\/(\d+(?:[.,]\d+)?)$/);
   if (f) {
     const a = parseFloat(f[1].replace(',', '.')), b = parseFloat(f[2].replace(',', '.'));
@@ -86,7 +86,12 @@ export const SoDoCay: React.FC<{sk: SoDoCayVao; t: number; W: number; H: number;
   const uToan = em(dToan / 0.6), uBayes = em(dBayes / 0.6);
   const coDuong = sk.nut.some((n) => n.sang);
   const uDuong = !bayes && coDuong ? em(dDuong / 0.6) : 0;
+  const step = (sk.moc_buoc || []).filter(at => at <= t).length - 1;
+  const selected = sk.nhanh_buoc?.[step] ?? step;
+  const roots = sk.nut.filter(n => n.tang === 1);
   const doSang = (n: NutCay) => {
+    if (step >= 0 && roots.length && moTang(2) >= 0 && dDuong < 0 && dToan < 0)
+      return n.duong[0] === selected % roots.length ? 1 : 0.25;
     if (bayes) {
       let o = 1 + ((n.mau ? 1 : 0.25) - 1) * uToan;
       o += ((n.sang ? 1 : n.mau ? 0.55 : 0.25) - o) * uBayes;
@@ -184,7 +189,7 @@ export const SoDoCay: React.FC<{sk: SoDoCayVao; t: number; W: number; H: number;
         const a = em((u - 0.55) / 0.35);
         if (a <= 0) return null;
         const g = diemBz(bz, b.uNhan.get(n.id) ?? NHAN_U_CAY), o = doSang(n);
-        return <VienXacSuat key={k} ten={`nhan_${n.id}`} x={g.x} y={g.y} tex={n.p} mau={hoPhach(n) > 0.5 ? HO_PHACH : o < 0.4 ? XAM : CYAN} a={a} mo={Math.max(0.3, o)} />;
+        return <VienXacSuat key={k} ten={`nhan_${n.id}`} x={g.x} y={g.y} tex={n.p} mau={hoPhach(n) > 0.5 ? HO_PHACH : o < 0.4 ? XAM : CYAN} a={a} mo={Math.max(0.25, o)} />;
       })}
       {/* nút kính mờ + chấm màu bi + tích cuối nhánh */}
       {sk.nut.map((n) => {
@@ -202,13 +207,13 @@ export const SoDoCay: React.FC<{sk: SoDoCayVao; t: number; W: number; H: number;
         return (
           <React.Fragment key={n.id}>
             <div data-sk2d={`nut_${n.id}`} style={{position: 'absolute', left: v.x - nua, top: v.y - caoNut / 2, width: rongNut, height: caoNut, borderRadius: caoNut / 2, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: hp > 0.5 ? 'rgba(251,191,36,0.10)' : 'rgba(22,27,36,0.92)', border: `1.5px solid ${m}${o > 0.6 ? 'CC' : '55'}`, opacity: a * Math.max(0.3, o),
+              background: hp > 0.5 ? 'rgba(251,191,36,0.10)' : 'rgba(22,27,36,0.92)', border: `1.5px solid ${m}${o > 0.6 ? 'CC' : '55'}`, opacity: a * Math.max(0.25, o),
               transform: `scale(${0.8 + 0.2 * Math.min(1.25, nutNay) + (hp > 0.5 ? 0.05 * nh : 0)})`, boxShadow: hp > 0.5 ? `0 0 ${14 + 6 * tho(t)}px ${HO_PHACH}40` : '0 6px 16px rgba(0,0,0,0.35)',
               color: hp > 0.5 ? HO_PHACH : chu, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden'}}>
               <ChuTron s={n.nhan} co={Math.round((n.nhan.length > 8 ? 19 : 24) * Math.min(1, caoNut / 48))} mau={hp > 0.5 ? HO_PHACH : chu} />
             </div>
-            {cham.length ? <ChamBi x={v.x} y={v.y + caoNut / 2 + 5} w={rongNut + 20} mau={cham} o={a * Math.max(0.3, o)} /> : null}
-            {aTich > 0 ? <VienXacSuat ten={`tich_${n.id}`} trai x={v.x + nua + 14} y={v.y} tex={`= ${n.tich}`} mau={hp > 0.5 ? HO_PHACH : o < 0.4 ? XAM : CHU} a={aTich} mo={Math.max(0.3, o)} /> : null}
+            {cham.length ? <ChamBi x={v.x} y={v.y + caoNut / 2 + 5} w={rongNut + 20} mau={cham} o={a * Math.max(0.25, o)} /> : null}
+            {aTich > 0 ? <VienXacSuat ten={`tich_${n.id}`} trai x={v.x + nua + 14} y={v.y} tex={`= ${n.tich}`} mau={hp > 0.5 ? HO_PHACH : o < 0.4 ? XAM : CHU} a={aTich} mo={Math.max(0.25, o)} /> : null}
           </React.Fragment>
         );
       })}

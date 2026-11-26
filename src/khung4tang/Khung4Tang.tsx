@@ -177,7 +177,8 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
   // v93: đối chiếu Hình động ↔ Đồ thị (đã kiểm hợp lệ; sai -> null -> giữ sân khấu 3D chuẩn)
   const dsDoiChieu = useMemo(() => buoc.map((b) => (b.doi_chieu ? docDoiChieu(b.doi_chieu) : null)), [buoc]);
   const tuDoiChieu = sk2?.loai === 'rut_mau' && (sk2.mode || (sk2.bieu_do && t >= sk2.bieu_do.t));
-  const dc = i >= 0 && !tuDoiChieu ? dsDoiChieu[i] : null;
+  const dangDe = p.batBuocMinhHoa && t < (p.hetDe ?? 0);
+  const dc = i >= 0 && !dangDe && !tuDoiChieu && !sk2?.moc_buoc?.length ? dsDoiChieu[i] : null;
   const tDau = i >= 0 ? buoc[i].t : 0, tCuoi = i >= 0 && i + 1 < buoc.length ? buoc[i + 1].t : tong;
   const aDc = dc ? kep01((t - tDau) / 0.6) * (1 - kep01((t - (tCuoi - 0.6)) / 0.6)) : 0;
   // v95: chuyển cảnh SẠCH: sân khấu 3D tan hết trong nửa đầu rồi cảnh 2 cột mới hiện (không còn hình 3D đè mờ lên đồ thị)

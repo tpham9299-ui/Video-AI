@@ -439,7 +439,7 @@ jobs:
           if xs_ngan and b.get('hong'):
               b.setdefault('nang', []).append('hinh_dung_im: chưa đủ khung DOM để kiểm chuyển động T2')
               json.dump(b, open('out/kiem_duyet.json', 'w', encoding='utf8'), ensure_ascii=False)
-          if any(x.startswith('hinh_dung_im:') for x in b.get('nang', [])):
+          if any(x.startswith(('hinh_dung_im:', 'AI_SAI_TOAN:')) for x in b.get('nang', [])):
               chan = True
           if thuc_te_ngan(kb) and (b.get('hong') or any('t2_trong' in x for x in b.get('nang', []))):
               chan = True
@@ -478,7 +478,7 @@ jobs:
           path = 'out/loi_mo_hinh.json' if os.path.isfile('out/loi_mo_hinh.json') else 'out/kiem_duyet.json'
           b = json.load(open(path, encoding='utf8'))
           d = {"token": os.environ["DUNG_VIDEO_SECRET"], "id": os.environ["ID_VIDEO"], "ok": False, "loi": "KIEM_DUYET_BO_CUC",
-               "kiem_duyet": {"loai": "mo_hinh" if path.endswith("loi_mo_hinh.json") else "bo_cuc", "nang": b.get("nang", [])[:15], "nhe": b.get("nhe", [])[:10]}}
+               "kiem_duyet": {"loai": "mo_hinh" if path.endswith("loi_mo_hinh.json") else "bo_cuc", "nang": b.get("nang", []) if any(x.startswith("AI_SAI_TOAN:") for x in b.get("nang", [])) else b.get("nang", [])[:15], "nhe": b.get("nhe", [])[:10]}}
           json.dump(d, open("bao_kiem_duyet.json", "w", encoding="utf8"), ensure_ascii=False)
           PY
           for lan in 1 2 3 4 5 6; do

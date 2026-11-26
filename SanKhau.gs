@@ -13,7 +13,7 @@
 
 var TRAN_VET_CAN_ = 100000;
 var LOAI_XS_2D_ = ['rut_mau', 'so_do_cay', 'luoi_bayes', 'cot_phan_phoi'];
-var PHA_RUT_THEO_BUOC_ = 'Với rút bi chia trường hợp, dừng theo lượt hoặc chọn người bằng biến cố đối, ghi khung4tang.buoc[i].hanh_dong = {pha: "hien|mau|dieu_kien|truong_hop|loai|khoa|ti_le"}. Mỗi TH ghi thêm do là số bi đỏ thực sự chọn. Khi đọc biểu đồ phải đặt pha ti_le trong chính bước đó, dùng n(A), n(Ω) đã kiểm. Các dạng khác chỉ nhắc biểu đồ nếu sân khấu thực sự có biểu đồ.';
+var PHA_RUT_THEO_BUOC_ = 'Với rút bi chia trường hợp, dừng theo lượt hoặc chọn người bằng biến cố đối, ghi khung4tang.buoc[i].hanh_dong = {pha: "hien|mau|dieu_kien|truong_hop|loai|khoa|ti_le"}. Mỗi TH ghi thêm do là số bi đỏ thực sự chọn. Khi đọc biểu đồ phải đặt pha ti_le trong chính bước đó, dùng n(A), n(Ω) đã kiểm. Với cây, lưới Bayes và cột, mỗi bước ghi hanh_dong.pha đúng tên pha của sân khấu và hanh_dong.nhanh là chỉ số nhánh cấp một / cột đang xét (bắt đầu ở 0). Chỉ nhắc thanh tỉ lệ theo đúng biến cố đang xét.';
 var LOAI_TT_2D_ = ['kinh_te_do_thi', 'so_do_2d', 'tang_truong'];
 var LOAI_SAN_KHAU_ = LOAI_XS_2D_.concat(LOAI_TT_2D_, ['tu_duy_dai_so']);
 var KHUON_VAT_THE_ = ['tam_bia_gap_hop', 'tru_non_toi_uu', 'hai_mat_cau_oxyz', 'khung_day_cap', 'mat_phang_cat_khoi', 'chop_lang_tru', 'parabol_quy_dao'];
@@ -196,7 +196,7 @@ function huongDanTuSinh_(kb, r) {
     // v99.2: luật thẩm mỹ CỨNG (hộp cát --chi-kiem chặn: TS_CHU_NHO / TS_MAU_LA / TS_NHAN_DE_NET) + thư viện ve25d dựng sẵn
     '- LUẬT THẨM MỸ CỨNG (máy đo, sai là bị loại): (1) MỌI chữ có font-size >= 24 (sàn 22) - màn hình dọc điện thoại; (2) nhãn KHÔNG đè lên nét vẽ / đỉnh hình: đặt NGOÀI hình kèm đường gióng mảnh, hoặc nằm trọn trong hộp nền đặc (rect fill-opacity >= 0.6); ' +
     '(3) màu CHỈ dùng biến theme ve25d.MAU (nhan = cyan nhấn, nhan_dam, nhan_toi, ket = hổ phách kết quả, ket_toi, cu = xám lớp cũ, chu, chu_mo, mat, mat_toi, nen, dung, sai) - máy tự đổi họ màu nhấn theo theme nền của video.\n' +
-    '- THƯ VIỆN ve25d (được `import ve25d as v`, khuyên dùng): v.chu(x, y, s, co=28, mau) | v.nhan(x, y, s, tranh=[điểm cần tránh], co=26) tự chọn 1 trong 8 hướng không đè đỉnh + đường gióng + hộp nền | ' +
+    'Cấm _, ^ và lệnh LaTeX thô trong thẻ <text> SVG. Dùng S₀, u₁, x², √3, Ā hoặc tspan cho chỉ số dài. - THƯ VIỆN ve25d (được `import ve25d as v`, khuyên dùng): v.chu(x, y, s, co=28, mau) | v.nhan(x, y, s, tranh=[điểm cần tránh], co=26) tự chọn 1 trong 8 hướng không đè đỉnh + đường gióng + hộp nền | ' +
     'v.da_giac(pts, mau, day=7) mảng nổi 2.5D | v.hop(x, y, a, b, c, mau) -> (svg, P đỉnh A..H) | v.tru(cx, cy, r, h, mau) | v.trai_phang_2mat(x, y, rong1, rong2, cao) -> (svg, P A/G) | ' +
     'v.luoi(...), v.ban_co(x, y, o, n, to=[(i, j)]) | v.he_truc(x, y, w, h, u_max, v_max, nhan_x, nhan_y, vach) -> (svg, f(u, v)) | v.do_thi(x, y, w, h, ham, a, b, cuc_tri=t) -> (svg, f, P) | ' +
     'v.cua(x, y, w, h, so, mo, ben_trong) cánh cửa Monty Hall | v.the_bai | v.mien_to(pts, mau, mo) | v.cung(cx, cy, r, a0, a1, to=mau) | v.mui_ten | v.duong(pts, net_dut) | v.cham | v.lop(buoc, svg, hieu_ung, khi_noi, nhan_lop, nhom).\n' +
@@ -469,7 +469,7 @@ function tuSuaSanKhau_(kb, r) {
       if (!c || !/biểu đồ (?:cột|t[ỉỷ] lệ)/i.test(c.loi_thoai || '')) return;
       var b = cacBuoc.filter(function (x) { return x && Number(x.canh) === Number(c.so || i+1); })[0] || cacBuoc[i];
       if (b && b.hanh_dong && typeof b.hanh_dong.pha === 'string' && q.loai === 'rut_mau') return; // Python dựng biểu đồ ngay mốc lời trong bước.
-      else if (q.loai !== 'cot_phan_phoi' && q.loai !== 'tu_sinh_svg' && !k4.tu_sinh && !(b && b.doi_chieu)) {
+      else if (['cot_phan_phoi', 'luoi_bayes', 'so_do_cay', 'tu_sinh_svg'].indexOf(q.loai) < 0 && !k4.tu_sinh && !(b && b.doi_chieu)) {
         c.loi_thoai = c.loi_thoai.replace(/biểu đồ (?:cột(?: tần suất)?|t[ỉỷ] lệ)/gi, 'kết quả đếm');
         sua.push('đồng bộ lời kiểm chứng với sân khấu ở cảnh ' + (i+1));
       }

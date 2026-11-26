@@ -161,7 +161,11 @@ def co_net_hinh(im):
     import numpy as np
     w, h = im.size
     crop = im.crop((round(w * 130/1080), round(h * T2_TREN), round(w * 950/1080), round(h * T2_DUOI)))
-    edges = np.asarray(crop.convert("L").filter(ImageFilter.FIND_EDGES)) > 35
+    gray = crop.convert("L")
+    # Tương phản cục bộ giữ cả sườn tối của nét xiên mảnh sau khi thu ảnh.
+    pixels = np.asarray(gray, dtype=np.int16)
+    local_min = np.asarray(gray.filter(ImageFilter.MinFilter(3)), dtype=np.int16)
+    edges = (np.asarray(gray.filter(ImageFilter.FIND_EDGES)) > 35) | (pixels - local_min > 30)
     edges[[0, -1], :] = False
     edges[:, [0, -1]] = False
     for y, x in zip(*np.nonzero(edges)):
@@ -184,7 +188,9 @@ def co_net_hinh(im):
         l, r, top, bottom = min(xx), max(xx), min(yy), max(yy)
         if r-l < 20 or bottom-top < 15 or max(r-l, bottom-top) < 32:
             continue
-        if sum(l+4 < x < r-4 and top+4 < y < bottom-4 for y, x in pts) >= 12:
+        # Loại cả góc bo của khung nhãn: nét phải đi xuyên vùng trong hộp bao.
+        dx, dy = max(4, (r-l)*0.12), max(4, (bottom-top)*0.12)
+        if sum(l+dx < x < r-dx and top+dy < y < bottom-dy for y, x in pts) >= 12:
             return True
     return False
 
@@ -252,14 +258,15 @@ def kiem_tat_dinh(p, anh_o, o_da):
             loi.append({"o": 1, "loai": "t2_trong", "mo_ta": "Intro móc câu không có hình 3D (vùng giữa màn hình đen)", "nang": True})
     y0, y1 = int(O_CAO * T2_TREN), int(O_CAO * T2_DUOI)
     giai = [k for k in range(1, min(o_da - 1, len(anh_o))) if anh_o[k] is not None]   # ô 2 .. ô trước đáp án (0-based)
-    if thuc_te_ngan(p) and giai and all(not co_net_hinh(anh_o[k]) for k in giai):
+    net = {k: co_net_hinh(anh_o[k]) for k in giai}
+    if thuc_te_ngan(p) and giai and not any(net.values()):
         loi.append({"o": giai[0]+1, "loai": "t2_trong", "mo_ta": "T2 các ô giải chỉ có nền, ký tự hoặc khung nhãn", "nang": True})
     cat = {k: anh_o[k].crop((0, y0, O_RONG, y1)).convert("L") for k in giai}
     trong = []
     for k, im in cat.items():
         hist = im.histogram()
         sang = sum(hist[70:]) / float(max(1, sum(hist)))
-        if sang < 0.003:
+        if sang < 0.003 and not net[k]:
             trong.append(k)
     if len(trong) >= 2:
         loi.append({"o": trong[0] + 1, "loai": "t2_trong", "mo_ta": "tầng sân khấu 3D gần như đen ở ô %s" % ", ".join(str(k + 1) for k in trong), "nang": True})
@@ -329,7 +336,7 @@ def prompt_ai(p, o_da):
             "- nhan_de: nhãn tên điểm (A, B, C...) đè lên nhau, đè lên nét vẽ hoặc cung góc tới mức khó đọc.\n")
     if thuc_te_ngan(p):
         ghi_chu_intro += ("THUC_TE: xem riêng tầng 2 trong từng ô giải. Phải thấy vật thể, sơ đồ hoặc đồ thị đúng đề. "
-                          "Chữ, công thức, hộp nhãn và viền sáng cũng là t2_trong, nang=true. "
+                          "Tam giác, wireframe hoặc fractal có nét liên tục là hình thật kể cả ruột tối. Chữ, công thức, hộp nhãn và viền sáng cũng là t2_trong, nang=true. "
                           "Thêm trường JSON t2_co_hinh (boolean) xác nhận mọi ô giải đều đạt. ")
     return ghi_chu_intro + (
         "Bạn là người kiểm duyệt cuối của video toán dọc 9:16. Ảnh là lưới 3×3 gồm 9 khung hình theo thứ tự thời gian, "

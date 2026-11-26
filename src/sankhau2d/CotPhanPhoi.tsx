@@ -15,6 +15,8 @@ export const CotPhanPhoi: React.FC<{sk: CotPhanPhoiVao; t: number; W: number; H:
   const dDich = daQua(sk.pha, 'dich', t), dCong = daQua(sk.pha, 'cong', t), dKet = daQua(sk.pha, 'ket', t);
   const aT = em((t - tTruc) / 0.5);
   const aDich = sk.dich.length ? em(dDich / 0.5) : 0;
+  const step = (sk.moc_buoc || []).filter(at => at <= t).length - 1;
+  const selected = sk.nhanh_buoc?.[step] ?? step;
   const n = sk.cot.length;
   const VANG = mau('vang'), CYAN = mau('cyan');
   const dich = new Set(sk.dich);
@@ -33,7 +35,7 @@ export const CotPhanPhoi: React.FC<{sk: CotPhanPhoiVao; t: number; W: number; H:
         if (u <= 0) return null;
         const laDich = dich.has(i);
         const m = laDich && aDich > 0 ? VANG : CYAN;
-        const mo = sk.dich.length ? (laDich ? 1 : 1 - 0.6 * aDich) : 1;
+        const mo = step >= 0 && dDich < 0 ? (i === selected % n ? 1 : 0.25) : sk.dich.length ? (laDich ? 1 : 1 - 0.6 * aDich) : 1;
         const h = r.h * u * (laDich ? 1 + 0.02 * nh : 1);
         return (
           <React.Fragment key={i}>

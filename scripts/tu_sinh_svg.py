@@ -198,6 +198,41 @@ def _kiem_path(d):
                 raise LoiTuSinh("TS_TRAN_VIEWBOX: điểm (%.0f, %.0f) ngoài 0 0 800 540" % (x, y))
 
 
+def chuan_nhan_svg(svg):
+    """Chỉ sửa nội dung text/tspan sau khi đã kiểm cấu trúc SVG."""
+    if not re.search(r"[_^\\]", svg):
+        return svg
+    if __package__:
+        from . import ve25d
+    else:
+        import ve25d
+    root = ET.fromstring("<svg>" + svg + "</svg>")
+    changed = False
+    for el in list(root.iter()):
+        if el.tag.split("}")[-1] not in ("text", "tspan"):
+            continue
+        children = list(el)
+        for prev in [None] + children:
+            value = el.text if prev is None else prev.tail
+            if not value or not re.search(r"[_^\\]", value):
+                continue
+            try:
+                fragment = ET.fromstring("<g>" + ve25d.nhan_toan(value) + "</g>")
+            except (ValueError, ET.ParseError) as exc:
+                raise LoiTuSinh("TS_NHAN_TOAN: " + value) from exc
+            if re.search(r"\\[A-Za-z]+|[_^]", "".join(fragment.itertext())):
+                raise LoiTuSinh("TS_NHAN_TOAN: dùng ký hiệu Unicode trong nhãn " + value)
+            pos = 0 if prev is None else list(el).index(prev) + 1
+            if prev is None:
+                el.text = fragment.text
+            else:
+                prev.tail = fragment.text
+            for j, span in enumerate(fragment):
+                el.insert(pos + j, span)
+            changed = True
+    return "".join(ET.tostring(e, encoding="unicode") for e in root) if changed else svg
+
+
 def kiem_svg(svg):
     if not isinstance(svg, str) or not svg.strip():
         raise LoiTuSinh("TS_SVG_RONG")
@@ -259,6 +294,7 @@ def chuan_lop(kq, so_buoc):
             raise LoiTuSinh("TS_LOP_HONG: lớp %d không phải dict" % k)
         svg = l.get("svg")
         kiem_svg(svg)
+        svg = chuan_nhan_svg(svg)
         if not re.search(r"<\s*(path|polygon|polyline|line|circle|ellipse|rect|text)\b", svg):
             raise LoiTuSinh("TS_LOP_RONG: lớp %d chỉ có <g> / <defs> rỗng, không vẽ gì (ve25d trả chuỗi rỗng? kiểm lại tham số / điều kiện)" % k)
         tong += len(svg)
@@ -415,8 +451,10 @@ def _phan_tu(lop):
         a = {k.split("}")[-1]: v for k, v in el.attrib.items()}
         st = dict(x.split(":", 1) for x in str(a.get("style") or "").split(";") if ":" in x)
         st = {k.strip(): v.strip() for k, v in st.items()}
-        c = _so_co(a.get("font-size") or st.get("font-size"))
-        co = c if c is not None else co
+        size = st.get("font-size") or a.get("font-size")
+        c = _so_co(size)
+        if c is not None:
+            co = (co * c / 100 if co is not None else None) if str(size).endswith("%") else c
         if ten == "defs" or st.get("display", a.get("display")) == "none" or st.get("visibility", a.get("visibility")) == "hidden":
             mo = 0.0
         for k in ("opacity",):
@@ -583,7 +621,8 @@ def kiem_tham_my(ds):
                     continue
                 if co is None:
                     raise LoiTuSinh("TS_CHU_NHO: chữ '%s' thiếu font-size (cần >= %d px; dùng ve25d.chu / ve25d.nhan)" % (noi[:20], CO_CHU_SAN))
-                if co < CO_CHU_SAN:
+                script = ten == "tspan" and a.get("baseline-shift") in ("sub", "super")
+                if co < CO_CHU_SAN * (0.72 if script else 1):
                     raise LoiTuSinh("TS_CHU_NHO: chữ '%s' cỡ %g px < %d px (màn hình dọc không đọc được)" % (noi[:20], co, CO_CHU_SAN))
                 if ten == "tspan" or mo < 0.3:
                     continue
@@ -704,7 +743,7 @@ def nho_gemini_sua(ma, loi, de, so_buoc):
           "text defs linearGradient radialGradient stop; phong cách 2.5D (mặt bên tối hơn lệch 6-10 px, bóng mềm = bản sao "
           "rgba(0,0,0,.25) lệch xuống). Được `import ve25d as v` (v.MAU[...] màu theo theme, v.chu cỡ >= 24, v.nhan(x, y, chữ, tranh=[điểm]) "
           "tự đặt nhãn ngoài hình có đường gióng, v.hop / v.tru / v.trai_phang_2mat / v.he_truc / v.do_thi / v.cua / v.mien_to / v.lop; "
-          "v101.3: v.tam_nhan(x, y, chữ) nhãn viên thuốc nền đặc, v.da_giac_deu(cx, cy, r, số_cạnh) -> (svg, đỉnh), v.mui_ten_kich_thuoc, "
+          "Cấm _, ^ và lệnh LaTeX thô trong thẻ <text> SVG. Dùng S₀, u₁, x², √3, Ā hoặc tspan cho chỉ số dài. v101.3: v.tam_nhan(x, y, chữ) nhãn viên thuốc nền đặc, v.da_giac_deu(cx, cy, r, số_cạnh) -> (svg, đỉnh), v.mui_ten_kich_thuoc, "
           "v.cung_goc, v.truc_so, v.luoi_o, v.so_do_venn, v.phan_nhanh_de_quy(cx, cy, r, bac, kieu)). "
           "Chữ >= 22 px, nhãn không đè nét / đỉnh, chỉ màu họ cyan / hổ phách / xám / tối.\nĐề: %s\nLỗi: %s\nHướng sửa trọng tâm: %s\nMã:\n%s") % (
               so_buoc - 1, str(de)[:600], loi, goi_y_sua(loi) or "sửa đúng mục lỗi trên", ma[:12000])
@@ -779,6 +818,13 @@ def gan_tu_sinh(kb, k4, buoc, tim_moc, t_het_de, tong):
         l["t"] = round(min(max(t, t0), max(t0, t1 - 0.4)), 3)
         l["buoc"] = j
         l.pop("khi_noi", None)
+    if thuc_te_ngan(kb):
+        # Chỉ đưa hình nền của bước đầu lên cảnh đề. Các lớp giải vẫn theo lời.
+        hinh_de = next((l for l in lop if l["buoc"] == 0 and co_hinh_t2([l])), None)
+        if hinh_de:
+            hinh_de["tNhan"] = hinh_de["t"]
+            hinh_de["t"] = 0
+            hinh_de["hienDeDen"] = t_het_de
     lop.sort(key=lambda l: l["t"])
     return {"viewBox": "0 0 800 540", "lop": lop, **({"chiLopKichBan": True} if thuc_te_ngan(kb) else {}), **({"mo_ta": str(spec["mo_ta"])[:120]} if spec.get("mo_ta") else {})}, ghi
 

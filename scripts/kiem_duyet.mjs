@@ -169,7 +169,7 @@ function ghiBaoCao(aiKq, hoanTat) {
   const ds = [...gop.values()];
   // vật đè vật chỉ tính nặng khi lặp lại ở >= 2 khung mẫu (1 khung có thể là lúc vật đang bay vào)
   const laNang = (l) => NANG.has(l.kieu) || ((l.kieu === 'VAT_DE' || l.kieu === 'HINH_NHO') && l.so >= 2);   // hình nhỏ ở >= 2 khung mẫu cũng là lỗi nặng
-  const nang = ds.filter(laNang).map(moTa).concat(aiLoi, loiDapAn);
+  const nang = aiLoi.concat(ds.filter(laNang).map(moTa), loiDapAn);
   if (xs && dungImXacSuat(khung.filter(k => k.frame-lech < end).map(k => ({shape: k.shape, frame: k.frame-lech})), steps, fps))
     nang.unshift('hinh_dung_im: hình học T2 không đổi qua ba bước hoặc hơn 12 giây');
   if (thucTe) {
@@ -203,7 +203,7 @@ async function aiNhinHinh(anh) {
   const de = String(kb.de_bai || '').trim();
   if (!de) return {chay: false, ly_do: 'kịch bản không có đề bài', loi: []};
   const dapAn = String(kb.dap_an_hien || kb.dap_an || '');
-  const dsCanh = anh.map((a, i) => { const c = (kb.canh || [])[a.canh] || {}; return `ẢNH ${i + 1} = cảnh ${a.ten} (pha ${canh[a.canh]?.phaMinhHoa || "truyền thống"}): "${String(c.loi_thoai || '').slice(0, 140)}" | công thức: ${(c.noi_dung_man_hinh || []).join(' ; ').slice(0, 120)}`; }).join('\n');
+  const dsCanh = anh.map((a, i) => { const c = (kb.canh || [])[a.canh] || {}; return `ẢNH ${i + 1} = cảnh ${a.ten} (pha ${canh[a.canh]?.phaMinhHoa || "truyền thống"}): "${String(c.loi_thoai || '').slice(0, 140)}" | công thức: ${(c.noi_dung_man_hinh || []).join(' ; ')}`; }).join('\n');
   const prompt = 'Bạn là người KIỂM DUYỆT KHẮT KHE video dạy toán trước khi dựng. Pha thuc là minh họa đời thật. Pha chuyen hòa mờ từ vật thật sang nét toán. Pha toan dùng sơ đồ, ký hiệu và đồ thị Manim; ở pha này hãy đánh giá dữ kiện toán thay vì đòi vẽ lại vật thật. Với cặp vật 3D và cuối cảnh, đối chiếu cùng một vật, số lượng, vị trí tương đối, tỉ lệ và cạnh tương ứng khi chuyển sang sơ đồ. Với phép thử xác suất, so số vật, màu trước và sau lần rút, hoặc mặt ngửa của xu và số chấm mặt trên khi xúc xắc dừng với lời mô tả. Kết quả minh họa của một lần thử không phải xác suất của biến cố. Báo nếu có nền chữ nhật riêng che nền video. Những cảnh còn lại dùng khung cuối.\n' +
     'ĐỀ BÀI: ' + de + (kb.mo_ta_hinh ? '\nMÔ TẢ HÌNH ĐỀ: ' + kb.mo_ta_hinh : '') + '\nĐÁP ÁN ĐÚNG (đã kiểm chứng bằng 2 cách giải + mã tính): ' + dapAn + '\n' + dsCanh + '\n' +
     'Kiểm tra TỪNG ảnh, chỉ báo lỗi THẬT:\n' +
@@ -213,7 +213,7 @@ async function aiNhinHinh(anh) {
     '(3) Số đo trên hình đúng số của đề, đặt đúng chỗ (khoảng cách nằm dưới đoạn đúng, chiều cao cạnh đúng vật, góc ở đúng đỉnh); tỉ lệ hình không mâu thuẫn số đo.\n' +
     '(4) Mọi số, phép tính, đáp số hiện trên màn hình phải đúng và khớp đáp án ' + dapAn + ' (cảnh đáp án phải hiện đúng đáp án; huy hiệu số phải đọc được rõ).\n' +
     '(5) Chữ không bị che khuất hoàn toàn đến mức không đọc được, không lộ mã LaTeX thô.\n' +
-    'CHỈ trả "dung": false khi có lỗi NGHIÊM TRỌNG làm hỏng video hoặc sai toán học (sai đáp án, sai phép tính, vẽ sai hẳn vật của đề, hoặc chữ đè che khuất hoàn toàn). Các chi tiết thẩm mỹ nhỏ, khoảng cách hơi sát nhưng vẫn đọc rõ, hoặc cảnh mở đầu/chốt bài chỉ có chữ thì ĐẶT "dung": true. Trả JSON: {"dung": true|false, "van_de": ["ẢNH n (cảnh ...): lỗi gì, phải sửa thế nào"]}';
+    'CHỈ trả "dung": false khi có lỗi NGHIÊM TRỌNG làm hỏng video hoặc sai toán học (sai đáp án, sai phép tính, vẽ sai hẳn vật của đề, hoặc chữ đè che khuất hoàn toàn). Các chi tiết thẩm mỹ nhỏ, khoảng cách hơi sát nhưng vẫn đọc rõ, hoặc cảnh mở đầu/chốt bài chỉ có chữ thì ĐẶT "dung": true. Phân loại từng lỗi. sai_toan gồm sai ký hiệu biến cố, công thức, phép tính hoặc đáp số. Ghi nguyên công thức sai và công thức đúng. Trả JSON: {"dung": true|false, "van_de": [{"loai":"sai_toan|bo_cuc","ly_do":"ẢNH n (cảnh ...): lỗi gì, phải sửa thế nào"}]}';
   const parts = [{text: prompt}, ...anh.map((a) => ({inline_data: {mime_type: 'image/jpeg', data: fs.readFileSync(a.tep).toString('base64')}}))];
   // cùng bộ model linh hoạt với Bộ phận 1: tự động đổi model nếu một model lỗi / 404 / hết hạn mức
   // v98.2: danh sách model sống (ListModels, cache theo ngày) xếp hạng chế độ 'nhe'; lỗi -> dự phòng sạch
@@ -264,9 +264,14 @@ async function aiNhinHinh(anh) {
         let kq = null;
         try { kq = JSON.parse(txt); } catch (e) { lyDo = model + ' trả lời không đọc được'; continue; }
         if (!kq || typeof kq.dung !== 'boolean') { lyDo = model + ' trả lời thiếu "dung"'; continue; }
-        console.log(`AI nhìn hình (${anh.length} cảnh, ${model}): ` + (kq.dung ? 'ĐÚNG đề' : 'SAI: ' + (kq.van_de || []).join(' | ')));
         const issues = Array.isArray(kq.van_de) && kq.van_de.length ? kq.van_de : ['hình không khớp đề'];
-        return {chay: true, loi: kq.dung ? [] : issues.slice(0, 6).map(x => 'AI_NHIN_HINH: ' + String(x))};
+        const loi = kq.dung ? [] : issues.map(issue => {
+          const reason = String(issue?.ly_do || issue);
+          const legacyMath = typeof issue === 'string' && /sai (?:ký hiệu|biến cố|toán|đáp (?:án|số)|phép tính)|nhầm.{0,40}biến cố đối|biến cố đối.{0,60}n\(A\)/i.test(reason);
+          return (issue?.loai === 'sai_toan' || legacyMath ? 'AI_SAI_TOAN: ' : 'AI_NHIN_HINH: ') + reason;
+        });
+        console.log('AI nhìn hình (' + model + '): ' + (loi.join(' | ') || 'ĐÚNG đề'));
+        return {chay: true, loi};
       }
     }
     if (!choMs || Date.now() + choMs >= hanKiemDuyet) break;

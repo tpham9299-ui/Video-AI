@@ -59,6 +59,77 @@ def thoat(s):
     return str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
+def nhan_toan(s):
+    """Nội dung text XML đã escape, chỉ sinh thêm tspan chỉ số."""
+    s = str(s)
+    sub_src = "0123456789+-=()aehijklmnoprstuvx"
+    sup_src = "0123456789+-=()in"
+    sub_dst = "₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎ₐₑₕᵢⱼₖₗₘₙₒₚᵣₛₜᵤᵥₓ"
+    sup_dst = "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ⁱⁿ"
+    signs = {"times": "×", "cdot": "·", "approx": "≈", "pi": "π", "Omega": "Ω",
+             "le": "≤", "ge": "≥", "infty": "∞", "cap": "∩", "cup": "∪", "mid": "|"}
+    def group(i):
+        if i >= len(s) or s[i] != "{":
+            return "", i
+        depth = 1
+        for j in range(i + 1, len(s)):
+            if s[j] == "{":
+                depth += 1
+            elif s[j] == "}":
+                depth -= 1
+                if not depth:
+                    return s[i+1:j], j + 1
+        return "", i
+
+    ra = []
+    i = 0
+    while i < len(s):
+        ch = s[i]
+        i += 1
+        if ch in "_^" and i < len(s):
+            src, dst = (sub_src, sub_dst) if ch == "_" else (sup_src, sup_dst)
+            arg, end = group(i)
+            if end == i:
+                end = i + 1
+                while end < len(s) and s[end].isdigit() and s[i].isdigit():
+                    end += 1
+                arg = s[i:end]
+            i = end
+            if len(arg) == 1 and arg in src:
+                ra.append(dst[src.index(arg)])
+            else:
+                arg = "thêm" if arg == "them" else arg
+                ra.append('<tspan baseline-shift="%s" font-size="72%%">%s</tspan>' %
+                          ("sub" if ch == "_" else "super", nhan_toan(arg)))
+        elif ch == "\\":
+            j = i
+            while i < len(s) and s[i].isalpha():
+                i += 1
+            cmd = s[j:i]
+            arg, end = group(i)
+            if cmd in signs:
+                ra.append(signs[cmd])
+            elif end > i and cmd in ("sqrt", "overline", "bar", "text", "mathrm", "frac", "dfrac", "tfrac"):
+                i = end
+                if cmd == "sqrt":
+                    ra.append("√" + (nhan_toan(arg) if len(arg) == 1 else "(" + nhan_toan(arg) + ")"))
+                elif cmd in ("overline", "bar"):
+                    ra.append(thoat("".join(c + "̄" for c in arg)))
+                elif cmd.endswith("frac"):
+                    den, end = group(i)
+                    if end == i:
+                        raise ValueError("TS_NHAN_TOAN: phân số thiếu mẫu")
+                    i = end
+                    ra.append("(" + nhan_toan(arg) + ")/(" + nhan_toan(den) + ")")
+                else:
+                    ra.append(nhan_toan(arg))
+            else:
+                ra.append("\\" + cmd)
+        else:
+            ra.append(thoat(ch))
+    return "".join(ra)
+
+
 def rong_chu(s, co):
     """Bề rộng ước lượng của dòng chữ (Be Vietnam Pro đậm ~0,56 em / ký tự)."""
     return 0.56 * co * len(str(s))
@@ -67,7 +138,7 @@ def rong_chu(s, co):
 def chu(x, y, s, co=28, mau="chu", dam=700, neo="middle"):
     co = max(int(co), CO_CHU_MIN)
     x, y = kep(x, y, 4)
-    return '<text x="%s" y="%s" fill="%s" font-size="%d" font-weight="%d" text-anchor="%s">%s</text>' % (_f(x), _f(y), m(mau), co, dam, neo, thoat(s))
+    return '<text x="%s" y="%s" fill="%s" font-size="%d" font-weight="%d" text-anchor="%s">%s</text>' % (_f(x), _f(y), m(mau), co, dam, neo, nhan_toan(s))
 
 
 def da_giac(pts, mau="nhan", vien=None, day=7.0, bong=True, w=2.2, mo=1.0):

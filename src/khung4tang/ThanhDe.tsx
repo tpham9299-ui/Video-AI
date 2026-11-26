@@ -32,6 +32,9 @@ export const ThanhDe: React.FC<{ds: DuKienGhim[]; buoc: BuocGiai[]; i: number; t
   let co = 30;
   const rongHang = (c: number) => 64 + 44 + muc.reduce((s, p) => s + Math.max(rongNhan(p.nhan, c), p.doi ? rongNhan(p.doi.nhan, c) : 0) + 30, 0);
   while (co > 20 && rongHang(co) > RONG_ND - 2 * 24) co -= 1;   // v96: trong vùng an toàn TikTok (phải 12 %)
+  const widths = muc.map(p => Math.max(1, rongNhan(p.nhan, co), p.doi ? rongNhan(p.doi.nhan, co) : 0));
+  const totalWidth = widths.reduce((sum, w) => sum + w, 0);
+  const available = RONG_ND - 116 - 31 * Math.max(0, muc.length - 1);
   const sangCua = (id: string) => {
     const nay = i >= 0 && (buoc[i].du_kien || []).includes(id) ? 1 : 0;
     const truoc = i > 0 && (buoc[i - 1].du_kien || []).includes(id) ? 1 : 0;
@@ -78,7 +81,7 @@ export const ThanhDe: React.FC<{ds: DuKienGhim[]; buoc: BuocGiai[]; i: number; t
                 ) : null}
                 {quet >= 0 ? <span style={{position: 'absolute', top: 0, bottom: 0, left: `${-10 + 80 * quet}%`, width: '34%', pointerEvents: 'none',
                   background: 'linear-gradient(100deg, rgba(251,191,36,0), rgba(255,236,170,0.85), rgba(251,191,36,0))', opacity: 0.55 * vienLoe + 0.1}} /> : null}
-                <Toan tex={daDoi && aDoi >= 0.35 ? chaySo(p.doi!.nhan, dtDoi - 0.1) : p.nhan} size={co} color={mauChu} style={{fontWeight: daDoi || s > 0.5 ? 800 : 600}} />
+                <Toan tex={daDoi && aDoi >= 0.35 ? chaySo(p.doi!.nhan, dtDoi - 0.1) : p.nhan} size={co} maxWidth={available * widths[k] / totalWidth} maxHeight={caoDai - 8} color={mauChu} style={{fontWeight: daDoi || s > 0.5 ? 800 : 600}} />
                 {/* v99.5: nét bút khoanh tay — đường cong mảnh vẽ bằng strokeDashoffset dưới ô đáp số (không che chữ, không overflow) */}
                 {daDoi && dtDoi >= 0.2 ? (
                   <svg data-net-but="1" width="112%" height={16} viewBox="0 0 100 16" preserveAspectRatio="none" style={{position: 'absolute', left: '-6%', bottom: -9, pointerEvents: 'none', overflow: 'visible'}}>
