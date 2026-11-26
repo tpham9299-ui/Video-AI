@@ -25,6 +25,7 @@ import {KieuToan, NapPhongToan} from './Toan';
 import {Props, ThuongHieuProps} from './types';
 import {Khung4Tang} from './khung4tang/Khung4Tang';
 import {OutroTomTat} from './khung4tang/OutroTomTat';
+import {KhungHinhHoc} from './hinhhoc/KhungHinhHoc';
 import {chuanHoaCanh3DV} from './3d-vector/dac_ta';
 
 // Chớp sáng ở khung hình đầu tiên: cắt ngang thói quen lướt của người xem.
@@ -170,19 +171,41 @@ const VaoMuot: React.FC<{children: React.ReactNode}> = ({children}) => {
 const NoiDung4Tang: React.FC<Props & {coIntro?: boolean}> = (props) => {
   const {canh, tongFrame, fps, nhac, thuongHieu, outro} = props;
   const k = props.khung4tang!;
-  const batBuocMinhHoa = props.mon === 'THUC_TE' && props.kieu_video !== 'DAI_10_PHUT' && !/-10P$/i.test(props.id);
+  const la10P = props.kieu_video === 'DAI_10_PHUT' || /-10P$/i.test(props.id);
+  const batBuocMinhHoa = props.mon === 'THUC_TE' && !la10P;
+  const laHinhKhongGian = !!k.khongGian && !la10P && props.mon !== 'THUC_TE' && props.mon !== 'XAC_SUAT';
   const amNhac = React.useMemo(() => taoAmLuongNhac(props), [canh, tongFrame, fps, props.amLuongNhac]);
   const ketThuc = outro ? outro.batDau : tongFrame;
   // phụ đề gọn: câu của từng cảnh đổi sang giây toàn phần nội dung
   const cau = React.useMemo(() => canh.flatMap((c) => c.cau.map((x) => ({text: x.text, bat: c.batDau / fps + x.bat, ket: c.batDau / fps + x.ket}))), [canh, fps]);
   // v93: màn kết "tóm tắt 3 bước" (giữ mô hình 3D ở trạng thái cuối); không có tomTat -> màn kết v92
   const tomTat = k.tomTat && k.tomTat.length ? k.tomTat : null;
+  const tomTatKG = tomTat || (laHinhKhongGian ? (props.baiHoc || []).slice(0, 3).map((b, idx) => ({chien_thuat: `Ý ${idx + 1}`, cong_thuc: b})) : null);
   const canhCuoi = React.useMemo(() => (tomTat ? chuanHoaCanh3DV(k.canh3dv, [...(k.buoc || [])].map((b) => b.t).sort((x, y) => x - y), Math.max(1, ketThuc) / fps).canh : null), [tomTat, k.canh3dv, k.buoc, ketThuc, fps]);
   const sfx = React.useMemo(() => suKienSfx4Tang(k, Math.max(1, ketThuc) / fps), [k, ketThuc, fps]);
   return (
-    <AbsoluteFill style={{fontFamily: FONT, background: '#0E1014'}}>
+    <AbsoluteFill style={{fontFamily: FONT, background: laHinhKhongGian ? '#050C1B' : '#0E1014'}}>
       <Sequence from={0} durationInFrames={Math.max(1, ketThuc)}>
-        <Khung4Tang {...k} mon={props.mon} batBuocMinhHoa={batBuocMinhHoa} fps={fps} tongFrame={Math.max(1, ketThuc)} thuongHieu={k.thuongHieu ?? thuongHieu?.ten} cau={k.boCuc?.phuDe === 'gon' ? cau : k.cau} />
+        {laHinhKhongGian ? (
+          <KhungHinhHoc
+            cheDo="HINH_KHONG_GIAN"
+            mon="HINH_KHONG_GIAN"
+            fps={fps}
+            tongFrame={Math.max(1, ketThuc)}
+            deBai={props.deBai}
+            deGoc={props.deGoc}
+            deGhim={k.deGhim}
+            buoc={k.buoc}
+            khongGian={k.khongGian}
+            tCongBo={k.tCongBo ?? k.tChot}
+            dapAn={props.dapAn}
+            mocCau={k.mocCau}
+            cau={k.boCuc?.phuDe === 'gon' ? cau : k.cau}
+            phuDe={k.boCuc?.phuDe}
+          />
+        ) : (
+          <Khung4Tang {...k} mon={props.mon} batBuocMinhHoa={batBuocMinhHoa} fps={fps} tongFrame={Math.max(1, ketThuc)} thuongHieu={k.thuongHieu ?? thuongHieu?.ten} cau={k.boCuc?.phuDe === 'gon' ? cau : k.cau} />
+        )}
       </Sequence>
       {nhac ? <Audio src={staticFile(nhac)} loop volume={amNhac} /> : null}
       {canh.map((c) =>
@@ -208,9 +231,9 @@ const NoiDung4Tang: React.FC<Props & {coIntro?: boolean}> = (props) => {
       {outro ? (
         <Sequence from={outro.batDau} durationInFrames={outro.soFrame}>
           <VaoMuot>
-          {outro.loai === 'tu_tao' && tomTat ? (
-            <OutroTomTat mon={props.mon} giuHinh={batBuocMinhHoa} dapAn={props.dapAn} tomTat={tomTat} canh={k.tuSinh || k.sanKhau || k.khongGian ? null : canhCuoi} sanKhau={k.tuSinh?.lop?.length ? null : k.sanKhau || null} khongGian={k.khongGian || null} tCuoi={Math.max(1, ketThuc) / fps} thuongHieu={k.thuongHieu ?? thuongHieu?.ten} cta={k.cta} tuSinh={k.tuSinh || null} theme={k.theme} />
-          ) : outro.loai === 'tu_tao' ? <ManKetChuyenNghiep mon={props.mon} th={thuongHieu} baiHoc={props.baiHoc || []} dapAn={props.dapAn} tiepTheo={props.tiepTheo || ''} /> : <><ManKet tep={outro.tep} loai={outro.loai} /><KhoaThuongHieu viTri="outro" mon={props.mon} /></>}
+          {outro.loai === 'tu_tao' && (tomTat || laHinhKhongGian) ? (
+            <OutroTomTat mon={laHinhKhongGian ? 'HINH_KHONG_GIAN' : props.mon} giuHinh={batBuocMinhHoa} dapAn={props.dapAn} tomTat={tomTatKG || []} canh={k.tuSinh || k.sanKhau || k.khongGian ? null : canhCuoi} sanKhau={k.tuSinh?.lop?.length ? null : k.sanKhau || null} khongGian={k.khongGian || null} tCuoi={Math.max(1, ketThuc) / fps} thuongHieu={k.thuongHieu ?? thuongHieu?.ten} cta={k.cta} tuSinh={k.tuSinh || null} theme={k.theme} />
+          ) : outro.loai === 'tu_tao' ? <ManKetChuyenNghiep mon={props.mon} th={thuongHieu} baiHoc={props.baiHoc || []} dapAn={props.dapAn} tiepTheo={props.tiepTheo || ''} /> : <><ManKet tep={outro.tep} loai={outro.loai} /><KhoaThuongHieu viTri="outro" mon={laHinhKhongGian ? 'HINH_KHONG_GIAN' : props.mon} /></>}
           </VaoMuot>
         </Sequence>
       ) : null}
@@ -255,22 +278,41 @@ const VoiIntro: React.FC<Props> = (props) => {
 const NoiDungVideo: React.FC<Props & {coIntro?: boolean}> = (props) =>
   la4Tang(props) ? <NoiDung4Tang {...props} /> : props.boCuc === 'hinh_phang' && props.manimLop !== false ? <NoiDungHinhPhang {...props} /> : <NoiDungCu {...props} />;
 
-// v94: hình phẳng chuẩn - Manim (scripts/manim/HinhPhangChuan.py) vẽ TOÀN BỘ phần nhìn (header, đề, hình, trang chứng minh)
-// thành lớp trong suốt ghép đè sau; Remotion chỉ giữ nền #121214 + giọng từng cảnh + nhạc + tiếng hiệu ứng + màn kết.
-// Không tiêu đề / thanh bước / phụ đề của vỏ cũ để không đè lên header và trang chứng minh của Manim.
+// Hình phẳng chuẩn: dùng chung KhungHinhHoc (nền blueprint, 4 tầng trong SAFE_ZONE_TIKTOK, T2 trong suốt ghép lớp Manim/SVG)
+// + OutroTomTat chốt Story Math đúng chuyên mục (bỏ nền đen #121214 & nút đỏ đăng ký).
 const NoiDungHinhPhang: React.FC<Props & {coIntro?: boolean}> = (props) => {
   const {canh, tongFrame, fps, nhac, thuongHieu, outro} = props;
   const amNhac = React.useMemo(() => taoAmLuongNhac(props), [canh, tongFrame, fps, props.amLuongNhac]);
   const ketThuc = outro ? outro.batDau : tongFrame;
-  const monHP = props.mon || 'HINH_PHANG';
+  const monHP = props.mon && /HINH_/i.test(props.mon) ? props.mon : 'HINH_PHANG';
+  const k = props.khung4tang;
+  const cauHP = React.useMemo(() => canh.flatMap((c) => c.cau.map((x) => ({text: x.text, bat: c.batDau / fps + x.bat, ket: c.batDau / fps + x.ket}))), [canh, fps]);
+  const mocCongBoHP = React.useMemo(() => {
+    if (k?.tCongBo !== undefined) return k.tCongBo;
+    const cChot = canh.find((c) => /dap_an|ket_qua/i.test(c.loai));
+    return cChot ? cChot.batDau / fps : Math.max(1, ketThuc) / fps;
+  }, [k?.tCongBo, canh, ketThuc, fps]);
+  const tomTatHP = React.useMemo(() => {
+    if (k?.tomTat && k.tomTat.length) return k.tomTat;
+    return (props.baiHoc || []).slice(0, 3).map((b, idx) => ({chien_thuat: `Ý ${idx + 1}`, cong_thuc: b}));
+  }, [k?.tomTat, props.baiHoc]);
   return (
-    <AbsoluteFill style={{fontFamily: FONT, backgroundColor: '#0a1725', backgroundImage: 'linear-gradient(#adcde30d 1px,transparent 1px),linear-gradient(90deg,#adcde30d 1px,transparent 1px),radial-gradient(ellipse at 50% 35%,#17364a,#0a1725 74%)', backgroundSize: '56px 56px,56px 56px,100% 100%'}}>
-      <div style={{position: 'absolute', top: '10.8%', left: '4%', right: '4%', height: '7.5%', borderRadius: 20, border: '1px solid #41647c', background: '#102332bb'}}>
-        <span style={{position: 'absolute', top: -13, left: 24, padding: '0 10px', background: '#12283a', color: '#a5dded', fontSize: 20, fontWeight: 700}}>Đề bài</span>
-      </div>
-      <div style={{position: 'absolute', inset: '55% 3% 12%', borderRadius: 24, border: '1px solid #48718a', background: '#102332bb'}} />
+    <AbsoluteFill style={{fontFamily: FONT, background: '#081A3A'}}>
       <Sequence from={0} durationInFrames={Math.max(1, ketThuc)}>
-        <KhoaThuongHieu viTri="nuoc" />
+        <KhungHinhHoc
+          cheDo="HINH_PHANG"
+          mon={monHP}
+          fps={fps}
+          tongFrame={Math.max(1, ketThuc)}
+          deBai={props.deBai}
+          deGoc={props.deGoc}
+          deGhim={k?.deGhim}
+          buoc={k?.buoc}
+          tCongBo={mocCongBoHP}
+          dapAn={props.ketQuaHinhPhang?.tex ?? props.dapAn}
+          cau={k?.boCuc?.phuDe === 'gon' ? cauHP : k?.cau}
+          phuDe={k?.boCuc?.phuDe}
+        />
       </Sequence>
       {nhac ? <Audio src={staticFile(nhac)} loop volume={amNhac} /> : null}
       {canh.map((c) =>
@@ -287,7 +329,20 @@ const NoiDungHinhPhang: React.FC<Props & {coIntro?: boolean}> = (props) => {
       ))}
       {outro ? (
         <Sequence from={outro.batDau} durationInFrames={outro.soFrame}>
-          {outro.loai === 'tu_tao' ? <ManKetChuyenNghiep mon={monHP} th={thuongHieu} baiHoc={props.baiHoc || []} dapAn={props.ketQuaHinhPhang?.tex ?? props.dapAn} nhanHinh={props.ketQuaHinhPhang?.nhan} tiepTheo={props.tiepTheo || ''} /> : <><ManKet tep={outro.tep} loai={outro.loai} /><KhoaThuongHieu viTri="outro" mon={monHP} /></>}
+          {outro.loai === 'tu_tao' ? (
+            <OutroTomTat
+              mon={monHP}
+              theme="blueprint"
+              nhanKetQua={props.ketQuaHinhPhang?.nhan}
+              dapAn={props.ketQuaHinhPhang?.tex ?? props.dapAn}
+              tomTat={tomTatHP}
+              canh={null}
+              sanKhau={null}
+              khongGian={null}
+              tCuoi={Math.max(1, ketThuc) / fps}
+              thuongHieu={thuongHieu?.ten}
+            />
+          ) : <><ManKet tep={outro.tep} loai={outro.loai} /><KhoaThuongHieu viTri="outro" mon={monHP} /></>}
         </Sequence>
       ) : null}
       {props.kiemDuyet ? <KiemDuyet /> : null}

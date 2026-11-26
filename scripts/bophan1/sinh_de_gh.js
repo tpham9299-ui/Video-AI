@@ -107,7 +107,11 @@ const ctx = {
   },
 };
 
-ctx.TEN_THUONG_HIEU_ = require(path.join(GOC, "phong_cach.json")).thuongHieu.ten;
+try {
+  ctx.TEN_THUONG_HIEU_ = require(path.join(GOC, 'phong_cach.json')).thuongHieu.ten || 'Story Math';
+} catch (_e) {
+  ctx.TEN_THUONG_HIEU_ = 'Story Math';
+}
 vm.createContext(ctx);
 for (const f of ['BoPhan1.gs', 'PromptKichBan.gs', 'KiemTraHinh.gs', 'HinhHoc.gs', 'NangCao.gs', 'SanPham.gs', 'ZaloDeBai.gs', 'SanKhau.gs']) {   // v99.2: + SanKhau.gs (yeuCauDaDangSinhDe_)
   const p = path.join(GOC, f);

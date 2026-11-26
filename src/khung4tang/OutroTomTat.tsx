@@ -20,8 +20,8 @@ import {SanKhauKhongGian} from '../khonggian/SanKhauKhongGian';
 import type {KhongGianVao} from '../khonggian/kieu';
 import type {SanKhau2DVao} from '../sankhau2d/kieu';
 import {SanKhauTuSinh, type TuSinhVao} from '../sankhau2d/SanKhauTuSinh';
-import {NenKhiQuyen} from './NenKhiQuyen';
-import {layTheme, type TenTheme} from './nen_v99';
+import {NenKhiQuyen, THEME_DEEP_SPACE_BLUEPRINT} from './NenKhiQuyen';
+import {layTheme, THEME_V99, type TenTheme} from './nen_v99';
 import {BAT_CTA_THONG_MINH_OUTRO} from './cauHinhTinhChinh';
 
 const NGOC = '#2EE6A8';
@@ -51,9 +51,10 @@ const cauGoiTheoDang = (van: string, khongGian: boolean, loai?: string): string 
   return 'Lưu lại ôn nhanh • Bình luận dạng bài bạn muốn giải tiếp!';
 };
 
-export const OutroTomTat: React.FC<{mon?: string; giuHinh?: boolean; dapAn: string; tomTat: DongTomTat[]; canh: Canh3DV | null; sanKhau?: SanKhau2DVao | null; khongGian?: KhongGianVao | null; tCuoi: number; thuongHieu?: string; cta?: string; tuSinh?: TuSinhVao | null; theme?: TenTheme}> = ({mon, giuHinh, dapAn, tomTat, canh: canhVao, sanKhau, khongGian, tCuoi, thuongHieu, cta = 'LƯU LẠI NGAY!', tuSinh, theme}) => {
+export const OutroTomTat: React.FC<{mon?: string; giuHinh?: boolean; dapAn: string; nhanKetQua?: string; tomTat: DongTomTat[]; canh: Canh3DV | null; sanKhau?: SanKhau2DVao | null; khongGian?: KhongGianVao | null; tCuoi: number; thuongHieu?: string; cta?: string; tuSinh?: TuSinhVao | null; theme?: TenTheme}> = ({mon, giuHinh, dapAn, nhanKetQua, tomTat, canh: canhVao, sanKhau, khongGian, tCuoi, thuongHieu, cta = 'LƯU LẠI NGAY!', tuSinh, theme}) => {
   if (/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(dapAn)) throw new Error('DAP_AN_NGAY: kiểm tra phân số gốc');
-  const th = khongGian ? null : layTheme(theme);
+  const laHinhHoc = !!khongGian || /HINH_|hình học/i.test(mon || '');
+  const th = khongGian ? THEME_DEEP_SPACE_BLUEPRINT : laHinhHoc ? (layTheme(theme) || THEME_V99.blueprint) : layTheme(theme);
   // v95: Outro không làm mờ phần nào của mô hình (bỏ nhấn mạnh 30 %) -> mọi nhãn kích thước sáng rõ
   const canh = React.useMemo(() => (canhVao ? {...canhVao, buoc: canhVao.buoc.map((b) => ({...b, nhanManh: []}))} : null), [canhVao]);
   const f = useCurrentFrame();
@@ -78,14 +79,13 @@ export const OutroTomTat: React.FC<{mon?: string; giuHinh?: boolean; dapAn: stri
   const coNhanLuu = BAT_CTA_THONG_MINH_OUTRO && tomTat.length > 0;
   const caoSan = coNhanLuu ? Math.min(V.san.h, V.dong.y - 46 - KHOANG_HO - V.san.y) : V.san.h;
   const monHien = khongGian ? 'HINH_KHONG_GIAN' : mon;
-  const laHinhHoc = !!khongGian || /HINH_|hình học/i.test(mon || '');
   // v102: vào Outro nối liền Khung4Tang (khung cuối còn 35 % độ đậm: 1 - 0,65 * thoat) -> không còn nháy nền đen 1-2 khung
   return (
-    <AbsoluteFill data-vung="outro" style={{fontFamily: FONT, background: NEN, opacity: 0.35 + 0.65 * kep01(f / 6), ...SO_DEU}}>
+    <AbsoluteFill data-vung="outro" style={{fontFamily: FONT, background: laHinhHoc ? (khongGian ? '#050C1B' : '#081A3A') : NEN, opacity: 0.35 + 0.65 * kep01(f / 6), ...SO_DEU}}>
       <KieuToan />
       <NapPhongToan />
       {/* v99.1: Outro dùng cùng nền khí quyển với phần giải (đứng yên, không vệt quét) */}
-      {th ? <NenKhiQuyen th={th} t={tCuoi + t} mocBuoc={[]} tamSanKhau={V.san.y + V.san.h / 2} mauNhan={NGOC} />
+      {th ? <NenKhiQuyen th={th} t={tCuoi + t} mocBuoc={[]} tamSanKhau={V.san.y + V.san.h / 2} mauNhan={NGOC} phoiCanh3D={!!khongGian} />
         : <NenTramToanHoc t={tCuoi + t} mauNhan={khongGian ? MAU_3DV.ngoc : '#FBBF24'} tamSanKhau={V.san.y + V.san.h / 2} kieu={khongGian ? 'v95' : 'v981'} />}
       {/* v96: nội dung trong khung 0..950 (vùng an toàn TikTok: phải 12 %, trên 11 %, đáy 18 %) */}
       <div style={{position: 'absolute', left: LE_ND_V93, top: 0, width: RONG_ND_V93, height: '100%'}}>
@@ -94,7 +94,7 @@ export const OutroTomTat: React.FC<{mon?: string; giuHinh?: boolean; dapAn: stri
       {/* đáp án phát sáng */}
       <div style={{position: 'absolute', left: 60, right: 60, top: V.dapAn.y + 42, height: V.dapAn.h - 42, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14,
         opacity: kep01(aDap * 1.5), transform: `scale(${0.88 + 0.12 * aDap})`}}>
-        <div style={{height: 44, padding: '0 22px', borderRadius: 22, display: 'flex', alignItems: 'center', color: NGOC, border: `1.5px solid ${NGOC}`, background: `${NGOC}18`, fontWeight: 900, fontSize: 24, letterSpacing: 1.2}}>ĐÁP ÁN</div>
+        <div style={{height: 44, padding: '0 22px', borderRadius: 22, display: 'flex', alignItems: 'center', color: NGOC, border: `1.5px solid ${NGOC}`, background: `${NGOC}18`, fontWeight: 900, fontSize: 24, letterSpacing: 1.2}}>{nhanKetQua ? nhanKetQua.toUpperCase() : 'ĐÁP ÁN'}</div>
         <div style={{padding: '12px 34px', borderRadius: 24, background: `${NGOC}12`, border: `2px solid ${NGOC}AA`, boxShadow: `0 0 ${30 * sang}px ${NGOC}55, inset 0 0 24px ${NGOC}18`, textShadow: `0 0 18px ${NGOC}88`}}>
           <Toan tex={texDapAn(dapAn || '?')} size={64} color="#F4FFFB" maxWidth={690} />
         </div>

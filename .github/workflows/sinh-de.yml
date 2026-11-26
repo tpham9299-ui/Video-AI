@@ -35,6 +35,7 @@ jobs:
         with:
           sparse-checkout: |
             /*.gs
+            phong_cach.json
             scripts/bophan1
           sparse-checkout-cone-mode: false
 

@@ -2,7 +2,22 @@
 // feTurbulence) để render Chromium nhanh. Quầng sáng dịch nhẹ theo nhịp bước, vệt sáng lướt chéo khi đổi bước.
 import React, {useMemo} from 'react';
 import {CAO, RONG} from '../theme';
-import {diemTatDinh, ThemeV99, trangThaiNen} from './nen_v99';
+import {diemTatDinh, THEME_V99, ThemeV99, trangThaiNen} from './nen_v99';
+
+// Preset nền bản vẽ không gian sâu cho HINH_KHONG_GIAN (tách riêng khỏi THEME_V99 để giữ nguyên 5 theme v99.1).
+// Tương phản #E9EEF5 trên sangNhat #132A52 > 12:1 (đạt >= 7:1 WCAG).
+export const THEME_DEEP_SPACE_BLUEPRINT: ThemeV99 = {
+  ten: 'blueprint',
+  tren: '#050C1B',
+  giua: '#091834',
+  duoi: '#071329',
+  quang: '#60A5FA',
+  quangMo: 0.13,
+  vien: null,
+  hoaTiet: 'ban_ve',
+  net: '#93C5FD',
+  sangNhat: '#132A52',
+};
 
 const HoaTietSong: React.FC<{th: ThemeV99; t: number}> = ({th, t}) => {
   // lưới tọa độ uốn sóng trôi chậm (đại dương): 14 đường ngang uốn sin + đường dọc thưa
@@ -114,7 +129,55 @@ const LopDong: React.FC<{th: ThemeV99; t: number}> = ({th, t}) => {
   );
 };
 
-export const NenKhiQuyen: React.FC<{th: ThemeV99; t: number; mocBuoc: number[]; tamSanKhau: number; mauNhan: string}> = ({th, t, mocBuoc, tamSanKhau, mauNhan}) => {
+// Lưới phối cảnh kỹ thuật (sàn + trần hội tụ về tâm sân khấu + vòng la bàn mờ), không dùng filter blur / feTurbulence.
+const HoaTietPhoiCanhKG: React.FC<{th: ThemeV99; t: number; tamSanKhau: number}> = ({th, t, tamSanKhau}) => {
+  const pha = (t * 0.10) % 1;
+  const veLuoi = (tren: boolean) => {
+    const bien = tren ? 0 : CAO;
+    const den = tren ? 360 : 1480;
+    const vpY = tren ? tamSanKhau - 90 : tamSanKhau + 110;
+    const k = (den - bien) / (vpY - bien);
+    const id = tren ? 'pc-kg-tren' : 'pc-kg-duoi';
+    return (
+      <g>
+        <defs>
+          <linearGradient id={id} x1="0" y1={bien} x2="0" y2={den} gradientUnits="userSpaceOnUse">
+            <stop offset="0" stopColor="#fff" stopOpacity={1} />
+            <stop offset="1" stopColor="#fff" stopOpacity={0} />
+          </linearGradient>
+          <mask id={`${id}-m`}>
+            <rect x={0} y={Math.min(bien, den)} width={RONG} height={Math.abs(den - bien)} fill={`url(#${id})`} />
+          </mask>
+        </defs>
+        <g mask={`url(#${id}-m)`} stroke={th.net} strokeOpacity={0.11} strokeWidth={1.15} fill="none">
+          {Array.from({length: 15}, (_, idx) => {
+            const i = idx - 7;
+            const x = RONG / 2 + i * 155;
+            return <line key={`d${i}`} x1={x} y1={bien} x2={x + (RONG / 2 - x) * k} y2={den} />;
+          })}
+          {Array.from({length: 8}, (_, j) => {
+            const u = (j + pha) / 8;
+            const y = bien + (den - bien) * (1 - Math.pow(1 - u, 2.15));
+            return <line key={`n${j}`} x1={0} y1={y} x2={RONG} y2={y} strokeOpacity={0.75 * (1 - u)} />;
+          })}
+        </g>
+      </g>
+    );
+  };
+  return (
+    <g>
+      {veLuoi(true)}
+      {veLuoi(false)}
+      {/* vòng định vị bản vẽ rất mảnh phía sau khối 3D */}
+      <g stroke={th.net} fill="none" strokeOpacity={0.075} strokeWidth={1.1}>
+        <ellipse cx={RONG / 2} cy={tamSanKhau} rx={340} ry={130} strokeDasharray="6 10" />
+        <ellipse cx={RONG / 2} cy={tamSanKhau} rx={210} ry={78} />
+      </g>
+    </g>
+  );
+};
+
+export const NenKhiQuyen: React.FC<{th: ThemeV99; t: number; mocBuoc: number[]; tamSanKhau: number; mauNhan: string; phoiCanh3D?: boolean}> = ({th, t, mocBuoc, tamSanKhau, mauNhan, phoiCanh3D = false}) => {
   const n = trangThaiNen(t, mocBuoc);
   const a = Math.round(th.quangMo * 255).toString(16).padStart(2, '0');
   const a2 = Math.round(th.quangMo * 0.4 * 255).toString(16).padStart(2, '0');
@@ -123,6 +186,11 @@ export const NenKhiQuyen: React.FC<{th: ThemeV99; t: number; mocBuoc: number[]; 
       {/* quầng sáng chính sau T2 - dịch theo nhịp bước */}
       <div style={{position: 'absolute', left: -200 + n.lechX, width: RONG + 400, top: tamSanKhau - 640 + n.lechY, height: 1280,
         background: `radial-gradient(ellipse 46% 44% at 50% 50%, ${th.quang}${a} 0%, ${th.quang}${a2} 40%, transparent 72%)`}} />
+      {/* quầng sáng dịu riêng sau khối 3D không gian (thuần radial-gradient, không blur) */}
+      {phoiCanh3D ? (
+        <div style={{position: 'absolute', left: 90, right: 90, top: tamSanKhau - 380, height: 760,
+          background: 'radial-gradient(ellipse 52% 48% at 50% 50%, rgba(125,211,252,0.14) 0%, rgba(56,189,248,0.05) 45%, transparent 76%)'}} />
+      ) : null}
       {/* màu bước rất mảnh (giữ liên kết với màu nhấn) */}
       <div style={{position: 'absolute', left: 0, right: 0, top: tamSanKhau - 300, height: 600,
         background: `radial-gradient(ellipse 36% 36% at 50% 50%, ${mauNhan}0C 0%, transparent 70%)`}} />
@@ -157,6 +225,7 @@ export const NenKhiQuyen: React.FC<{th: ThemeV99; t: number; mocBuoc: number[]; 
         <LopDong th={th} t={t} />
         {th.hoaTiet === 'song' ?<HoaTietSong th={th} t={t} /> : th.hoaTiet === 'tinh_van' ? <HoaTietTinhVan th={th} t={t} />
           : th.hoaTiet === 'studio' ? <HoaTietStudio th={th} /> : th.hoaTiet === 'phan' ? <HoaTietPhan th={th} t={t} /> : <HoaTietBanVe th={th} t={t} />}
+        {phoiCanh3D ? <HoaTietPhoiCanhKG th={th} t={t} tamSanKhau={tamSanKhau} /> : null}
         {/* vệt sáng lướt chéo khi đổi bước */}
         {n.quet >= 0 ? (
           <g transform={`rotate(-18 540 960) translate(${-700 + n.quet * 2500} 0)`}>
@@ -168,3 +237,20 @@ export const NenKhiQuyen: React.FC<{th: ThemeV99; t: number; mocBuoc: number[]; 
     </div>
   );
 };
+
+export const NenBanVeHinhHoc: React.FC<{
+  cheDo: 'blueprint' | 'deep_space_blueprint';
+  t: number;
+  mocBuoc?: number[];
+  tamSanKhau: number;
+  mauNhan?: string;
+}> = ({cheDo, t, mocBuoc = [], tamSanKhau, mauNhan = '#38BDF8'}) => (
+  <NenKhiQuyen
+    th={cheDo === 'deep_space_blueprint' ? THEME_DEEP_SPACE_BLUEPRINT : THEME_V99.blueprint}
+    t={t}
+    mocBuoc={mocBuoc}
+    tamSanKhau={tamSanKhau}
+    mauNhan={mauNhan}
+    phoiCanh3D={cheDo === 'deep_space_blueprint'}
+  />
+);
