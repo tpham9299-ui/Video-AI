@@ -1,3 +1,4 @@
+import {TEN_THUONG_HIEU} from './theme';
 import React from 'react';
 import {AbsoluteFill, Audio, Img, Sequence, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
 import {easeInOut, easeOut, kep, ngauNhien, popOut} from './sankhau/donghieu';
@@ -14,11 +15,10 @@ import {CanhProps, ThuongHieuProps} from './types';
 const XANH = '#3BF29A';
 const CAM = '#FF8A3D';
 
-// Khóa cứng thương hiệu: mọi mảng kiến thức (kể cả Hình học, Hàm số, Parabol) luôn hiện "Tư duy Xác suất"
-export const TEN_KENH = 'Tư duy Xác suất';
+export const TEN_KENH = TEN_THUONG_HIEU;
 
 const chuCai = (th: ThuongHieuProps) => {
-  const s = (th.ten || th.handle || '').replace(/^@/, '').trim();
+  const s = TEN_KENH;
   const w = s.split(/\s+/).filter(Boolean);
   return (w.length >= 2 ? w[0][0] + w[w.length - 1][0] : s.slice(0, 2)).toUpperCase();
 };

@@ -94,7 +94,7 @@ kiem(v.ham_an_toan("__import__('os')") is None and v.ham_an_toan("exp(x)+ln(x)")
 print("— Định tuyến + chỉ đạo")
 kiem(v.chon_san_khau({"mon": "THUC_TE", "lop": "12", "de_bai": "Giải phương trình 4^x - 3.2^x + 2 = 0", "khung4tang": {"canh_3d_vector": {"khuon": "tam_bia_gap_hop"}}})["loai"] == "tu_sinh_svg",
      "đề đại số + AI gắn nhầm khuôn hộp -> tu_sinh_svg (không nhét hình hộp)")
-kiem(v.chon_san_khau({"mon": "THUC_TE", "lop": "12", "de_bai": "x", "chi_dao": "[chidao: vẽ đồ thị lợi nhuận]"})["loai"] == "kinh_te_do_thi", "chỉ đạo ưu tiên tuyệt đối")
+kiem(v.chon_san_khau({"mon": "THUC_TE", "lop": "12", "de_bai": "x", "chi_dao": "[chidao: vẽ đồ thị lợi nhuận]"})["loai"] == "tu_sinh_svg", "đề lạ không được miễn hình chỉ vì chỉ đạo đồ thị")
 kiem(v.chon_san_khau({"mon": "XAC_SUAT", "lop": "11", "chi_dao": "dùng lưới Bayes"})["loai"] == "so_do_cay", "chỉ đạo không vượt GDPT (Bayes lớp 11 -> cây)")
 kiem(v.tach_chi_dao("[chidao: dùng sơ đồ cây] Bắn 2 lần") == ("Bắn 2 lần", "dùng sơ đồ cây"), "tách thẻ chỉ đạo khỏi đề")
 
@@ -124,6 +124,9 @@ for tep, loai in MAU:
     ra = os.path.join(GOC, "out", "v96", ten, "props.json")
     r = subprocess.run([sys.executable, "scripts/chuanbi.py", tep, "--gia-lap", "--props-ra", ra], cwd=GOC, capture_output=True, text=True, encoding="utf-8",
                        env=dict(os.environ, PYTHONIOENCODING="utf-8"))
+    if loai == "tuSinhHong" and r.returncode == 42:
+        kiem("t2_trong:" in r.stderr, "THUC_TE cũ chỉ có sơ đồ chữ bị chặn trước TTS", r.stderr[-200:])
+        continue
     if r.returncode:
         kiem(False, "chuanbi %s" % tep, r.stderr[-400:])
         continue

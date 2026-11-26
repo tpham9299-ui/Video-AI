@@ -1,3 +1,6 @@
+import phongCach from '../phong_cach.json';
+export const TEN_THUONG_HIEU = phongCach.thuongHieu.ten;
+
 // v89: MỘT HỌ CHỮ DUY NHẤT cho toàn video = Be Vietnam Pro (đóng gói trong public/fonts, nạp xong mới chụp khung).
 // Phân cấp chỉ bằng độ đậm (900 tiêu đề, 700-800 nhấn/phụ đề, 500-600 nội dung) và thang cỡ CO_CHU.
 // DejaVu Sans chỉ là dự phòng cho vài ký hiệu Be Vietnam Pro không có (⋮ ⇒ ∈ ...), không bao giờ là phông chính.

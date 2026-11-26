@@ -5,6 +5,7 @@
  * Mọi dạng "minh_hoa" ở đây phải khớp với bộ dựng video (src/sankhau/dulieu.ts) và bộ kiểm tra KiemTraHinh.gs.
  */
 
+var TEN_THUONG_HIEU_; // Bộ nạp Node và trình đồng bộ Apps Script lấy từ phong_cach.json.
 function taoPromptKichBan_(r, c1, c2) {
   // v101.4: đề thiếu hợp đồng hình (đề Zalo bỏ qua BP0...) -> tự suy hợp đồng gọn ngay trước khi viết kịch bản
   if (typeof damBaoHopDongHinh_ === 'function') damBaoHopDongHinh_(r, (c2 && c2.cac_buoc && c2.cac_buoc.length ? c2.cac_buoc : (c1 && c1.cac_buoc)) || []);
@@ -437,6 +438,7 @@ var GIAY_4TANG_ = '45-55';
 var TIENG_4TANG_ = '170-220';
 function quyTrinhGon4Tang_(tt, r) {
   return 'NHỊP VIDEO GỌN (BẮT BUỘC, video khung 4 tầng): 7-10 cảnh, TỔNG ' + GIAY_4TANG_ + ' GIÂY, toàn bài ' + TIENG_4TANG_ + ' TIẾNG (âm tiết) lời thoại, mỗi cảnh 1 ý, 10-26 tiếng. ' +
+    'Nếu nhắc kênh trong CTA, chỉ dùng ' + TEN_THUONG_HIEU_ + '. Với bài thực tế tối ưu, gọi ẩn ngay trên vật thể, lập hàm, tìm cực trị rồi chốt đáp án. Không quay lại định nghĩa ẩn sau khi lập hàm. ' +
     'Giữ nhịp 45–55 giây: mỗi bước chỉ 1–2 câu ngắn gắn trực tiếp với thao tác tính. Cấm chen đoạn giảng lý thuyết trừu tượng dài 20–30 giây kiểu "Các bạn áp dụng dạng này khi...". ' +
     'Trong cùng một bước, cấm tạo hai thẻ công thức trình bày cùng một phép tính, kể cả khi đổi cách viết. ' +
     'Đồng nhất 100% ký hiệu biến cố và ẩn số giữa đề, thẻ giải và sân khấu. Hình mỗi bước chỉ hiện dữ kiện và kết quả đã có đến bước đó; cấm lộ kết quả bước sau (vd "y = 8m" ở hình bước đầu). ' +

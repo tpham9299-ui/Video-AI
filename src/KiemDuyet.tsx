@@ -1,5 +1,6 @@
 import React, {useEffect, useState} from 'react';
-import {boCuc4Tang} from './khung4tang/vung';
+import {TEN_THUONG_HIEU} from './theme';
+import {boCuc4Tang, trongAnToan} from './khung4tang/vung';
 import {continueRender, delayRender, useCurrentFrame} from 'remotion';
 
 // KIỂM DUYỆT BỐ CỤC (chỉ chạy khi props.kiemDuyet = true, lúc máy dựng chụp các khung mẫu trước khi dựng thật):
@@ -203,8 +204,9 @@ function doKhungHinh(goc: HTMLElement, kiemT2: boolean, doXacSuat: boolean) {
   goc.querySelectorAll('[data-kd-so]').forEach((e) => { if (doMo(e) > 0.55) so.push(String(e.getAttribute('data-kd-so'))); });
   const bc = boCuc4Tang(true);
   const tang = kiemT2 ? goc.querySelector('[data-vung="t2"]') : null;
-  const hinhT2 = Array.from(tang?.querySelectorAll<SVGGeometryElement>('path,polygon,polyline,line,circle,ellipse') || []).some(el => {
+  const coNet = (root: Element | null | undefined, ben?: 'trai' | 'phai', boTruc = false) => Array.from(root?.querySelectorAll<SVGGeometryElement>('path,polygon,polyline,line,circle,ellipse') || []).some(el => {
     if (el.closest('defs,clipPath,mask,.katex,[data-xung-t2],[data-lop="minh-hoa"],[data-san-khau-2d="tu_duy_dai_so"]')) return false;
+    if (boTruc && el.closest('[data-do-thi]')) return false;
     const cs = getComputedStyle(el);
     if (cs.visibility !== 'visible' || doMo(el) < 0.12) return false;
     const to = el.tagName !== 'line' && cs.fill !== 'none' && Number(cs.fillOpacity) > 0.1;
@@ -216,8 +218,25 @@ function doKhungHinh(goc: HTMLElement, kiemT2: boolean, doXacSuat: boolean) {
     const points = Array.from({length: 17}, (_, i) => el.getPointAtLength(len * i / 16).matrixTransform(m))
       .map(pt => ({x: (pt.x - g.x) / tl, y: (pt.y - g.y) / tl}))
       .filter(pt => pt.x >= vung.x && pt.x <= vung.x + vung.w && pt.y >= vung.y && pt.y <= vung.y + vung.h);
-    return points.some(pt => points.some(q => Math.hypot(pt.x - q.x, pt.y - q.y) >= 55));
+    const side = points.filter(pt => !ben || (ben === 'trai' ? pt.x < 540 : pt.x > 540));
+    return side.some(pt => side.some(q => Math.hypot(pt.x - q.x, pt.y - q.y) >= 55));
   });
+  const hinhT2 = coNet(tang);
+  const haiCot = Array.from(tang?.querySelectorAll('[data-doi-chieu], [data-sk2d="do_thi_mini"]') || []).find(el => doMo(el) >= 0.35);
+  const doThiSvg = Array.from(tang?.querySelectorAll('g[data-do-thi]') || []).filter(el => doMo(el) >= 0.35);
+  const duHaiCot = haiCot ? coNet(tang?.querySelector('[data-vat-the]'), 'trai') && coNet(tang?.querySelector('[data-do-thi]'), 'phai')
+    : !doThiSvg.length || (coNet(tang, 'trai', true) && doThiSvg.some(el => coNet(el, 'phai')));
+  const dungVung = (el: Element) => {
+    const {x, y, w, h} = quy(el.getBoundingClientRect());
+    return w > 0 && h > 0 && trongAnToan(x, y, w, h);
+  };
+  const nhanKenh = Array.from(goc.querySelectorAll('[data-thuong-hieu]')).filter(el =>
+    doMo(el) >= 0.06 && dungVung(el) && el.textContent?.trim().startsWith(TEN_THUONG_HIEU)
+  ).map(el => el.getAttribute('data-thuong-hieu'));
+  const tranIntro = Array.from(goc.querySelectorAll('[data-intro-title]')).some(el => !dungVung(el));
+  const coThe = Array.from(goc.querySelectorAll('[data-the-giai]')).some(el => doMo(el) > 0.4);
+  const chuCu = (goc.innerText || '').split(TEN_THUONG_HIEU + ' • Tư duy Xác suất').join('');
+  const kenhCu = /@tuduyxacsuat|toán thầy trí|(?:^|\n|kênh |theo dõi )(?:tư duy toán|tư duy xác suất)(?=$|[.!\n])/im.test(chuCu);
   const canvas = !hinhT2 && Array.from(tang?.querySelectorAll('canvas') || []).some(el => {
     if (doMo(el) < 0.12 || getComputedStyle(el).visibility !== 'visible') return false;
     const src = quy(el.getBoundingClientRect());
@@ -233,7 +252,7 @@ function doKhungHinh(goc: HTMLElement, kiemT2: boolean, doXacSuat: boolean) {
       const {x,y,w,h} = quy(el.getBoundingClientRect());
       return [el.tagName, ...[x,y,w,h].map(v => Math.round(v/12)), Math.round(doMo(el)*3), getComputedStyle(el).fill].join(',');
     }).join('|');
-  return {shape, hinhT2: hinhT2 || canvas, loi, chu: khoi.map((k) => k.chu).slice(0, 120), so};
+  return {shape, duHaiCot, nhanKenh, tranIntro, coThe, kenhCu, hinhT2: hinhT2 || canvas, loi, chu: khoi.map((k) => k.chu).slice(0, 120), so};
 }
 
 export const KiemDuyet: React.FC<{kiemT2?: boolean; doXacSuat?: boolean}> = ({kiemT2 = false, doXacSuat = false}) => {

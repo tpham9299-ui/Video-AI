@@ -262,7 +262,8 @@ jobs:
             bash scripts/cai_manim.sh &
             MANIM_PID=$!
           fi
-          python3 scripts/chuanbi.py kich_ban.json
+          mkdir -p out
+          BAO_LOI_BP2=out/loi_truoc_tts.txt python3 scripts/chuanbi.py kich_ban.json || { rc=$?; [ "$rc" = 42 ] && [ -s out/loi_truoc_tts.txt ] || exit "$rc"; }
           [ -f out/thoi_gian_chuanbi.json ] && echo "Thời gian chuanbi.py: $(python3 -c "import json;print(json.load(open('out/thoi_gian_chuanbi.json'))['tong'])") s"
           if [ -n "${MANIM_PID:-}" ]; then
             if ! wait "$MANIM_PID"; then
@@ -279,8 +280,9 @@ jobs:
         run: |
           python3 - <<'PY'
           import json, os
-          p = json.load(open('public/props.json', encoding='utf8'))
-          hong = str((p.get('khung4tang') or {}).get('tuSinhHong') or '').strip()
+          loi_som = 'out/loi_truoc_tts.txt'
+          p = {} if os.path.isfile(loi_som) else json.load(open('public/props.json', encoding='utf8'))
+          hong = open(loi_som, encoding='utf8').read() if os.path.isfile(loi_som) else str((p.get('khung4tang') or {}).get('tuSinhHong') or '').strip()
           from scripts.khung4tang_v96 import thuc_te_ngan
           if thuc_te_ngan(p) and (p.get('boCuc') != '4tang' or not p.get('khung4tang')):
               hong = 't2_trong: thiếu khung 4 tầng của bài thực tế'
@@ -439,7 +441,7 @@ jobs:
           if xs_ngan and b.get('hong'):
               b.setdefault('nang', []).append('hinh_dung_im: chưa đủ khung DOM để kiểm chuyển động T2')
               json.dump(b, open('out/kiem_duyet.json', 'w', encoding='utf8'), ensure_ascii=False)
-          if any(x.startswith(('hinh_dung_im:', 'AI_SAI_TOAN:')) for x in b.get('nang', [])):
+          if any(x.startswith(('hinh_dung_im:', 'AI_SAI_TOAN:', 'thuong_hieu:', 'cat_chu:')) for x in b.get('nang', [])):
               chan = True
           if thuc_te_ngan(kb) and (b.get('hong') or any('t2_trong' in x for x in b.get('nang', []))):
               chan = True
@@ -620,6 +622,7 @@ jobs:
             scripts
             package.json
             package-lock.json
+            phong_cach.json
           sparse-checkout-cone-mode: false
 
       - uses: actions/setup-node@v4
@@ -670,6 +673,7 @@ jobs:
         if: ${{ env.DA_DUNG == 'true' }}
         run: |
           ID="${{ needs.chuan_bi.outputs.id }}"
+          TEN_TH=$(python3 -c "import json;print(json.load(open('phong_cach.json',encoding='utf8'))['thuongHieu']['ten'])" 2>/dev/null || echo "Story Math")
           mkdir -p out
           node scripts/ghep_khuc.mjs khuc "out/$ID.mp4"
           if [ "$MANIM" = "1" ]; then
@@ -680,7 +684,8 @@ jobs:
             LUI=$(python3 -c "import json;p=json.load(open('public/props.json',encoding='utf8'));print((1 if p.get('anhBiaDau') else 0)+int((p.get('intro') or {}).get('lech') or 0))")
             ffmpeg -y -loglevel error -i "out/$ID.mp4" -i "out/${ID}_manim.mov" -filter_complex \
               "[1:v]format=rgba,tpad=start=${LUI}:color=0x00000000[m];[0:v][m]overlay=0:0:eof_action=pass:format=auto[v]" \
-              -map "[v]" -map 0:a -c:v libx264 -preset veryfast -crf 19 -pix_fmt yuv420p -c:a copy -movflags +faststart "out/${ID}_ghep.mp4"
+              -map "[v]" -map 0:a -c:v libx264 -preset veryfast -crf 19 -pix_fmt yuv420p -c:a copy \
+              -metadata artist="$TEN_TH" -metadata copyright="$TEN_TH" -metadata comment="$TEN_TH" -movflags +faststart "out/${ID}_ghep.mp4"
             mv "out/${ID}_ghep.mp4" "out/$ID.mp4"
             rm -f "out/${ID}_manim.mov"
             echo "Đã ghép lớp Manim"
@@ -689,7 +694,8 @@ jobs:
           KICH_THUOC=$(stat -c%s "out/$ID.mp4" 2>/dev/null || echo 0)
           if [ "$KICH_THUOC" -gt 44000000 ]; then
             command -v ffmpeg >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /tmp/apt_ff.log 2>&1; }
-            ffmpeg -y -loglevel error -i "out/$ID.mp4" -c:v libx264 -preset veryfast -crf 23 -maxrate 850k -bufsize 1700k -pix_fmt yuv420p -c:a copy -movflags +faststart "out/${ID}_nen.mp4"
+            ffmpeg -y -loglevel error -i "out/$ID.mp4" -c:v libx264 -preset veryfast -crf 23 -maxrate 850k -bufsize 1700k -pix_fmt yuv420p -c:a copy \
+              -metadata artist="$TEN_TH" -metadata copyright="$TEN_TH" -metadata comment="$TEN_TH" -movflags +faststart "out/${ID}_nen.mp4"
             mv "out/${ID}_nen.mp4" "out/$ID.mp4"
             echo "Đã tối ưu dung lượng video dài xuống dưới 42 MB"
           fi

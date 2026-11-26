@@ -67,6 +67,16 @@ if (xs && steps.length > 1) {
   steps.slice(1).forEach(b => add(Math.ceil((b.t+.8)*fps)));
   for (let f=Math.ceil(steps[1].t*fps); f<end; f+=4*fps) add(f);
 }
+if (props.boCuc === '4tang' && canh.length) {
+  const probe = (frame, brand) => {
+    const f = Math.min(props.tongFrame - 1, frame + lech);
+    const i = Math.max(0, canh.findIndex(c => frame >= c.batDau && frame < c.batDau + c.soFrame));
+    mau.unshift({f, i, isEnd: false, brand});
+  };
+  if (props.khung4tang?.mocCau) probe(Math.round(1.7 * fps), 'intro');
+  probe(Math.min(end - 1, Math.max(6 * fps, Math.round(end / 2))), 'giai');
+  if (props.outro) probe(end + Math.floor(props.outro.soFrame / 2), 'outro');
+}
 const trinhDuyet = await openBrowser('chrome', {browserExecutable: process.env.TRINH_DUYET || null, chromiumOptions: {gl: 'swangle'}});
 const comp = await selectComposition({serveUrl: path.resolve(bundle), id: 'Video', inputProps, puppeteerInstance: trinhDuyet});
 const tho = [];
@@ -172,10 +182,24 @@ function ghiBaoCao(aiKq, hoanTat) {
   const nang = aiLoi.concat(ds.filter(laNang).map(moTa), loiDapAn);
   if (xs && dungImXacSuat(khung.filter(k => k.frame-lech < end).map(k => ({shape: k.shape, frame: k.frame-lech})), steps, fps))
     nang.unshift('hinh_dung_im: hình học T2 không đổi qua ba bước hoặc hơn 12 giây');
+  if (props.boCuc === '4tang') {
+    if (!props.outro) nang.unshift('thuong_hieu: thiếu Outro của khung 4 tầng');
+    for (const probe of mau.filter(m => m.brand)) {
+      const sample = khung.find(k => k.frame === probe.f);
+      const required = probe.brand === 'outro' ? ['outro'] : probe.brand === 'giai' ? ['nuoc', 'dau'] : [];
+      if (!sample || required.some(key => !sample.nhanKenh?.includes(key)))
+        nang.unshift('thuong_hieu: thiếu dấu kênh trong SAFE_ZONE_TIKTOK ở ' + probe.brand);
+    }
+    if (khung.some(k => k.tranIntro)) nang.unshift('cat_chu: tiêu đề Intro tràn SAFE_ZONE_TIKTOK');
+    if (khung.some(k => k.kenhCu)) nang.unshift('thuong_hieu: còn tên kênh cũ');
+    if (khung.some(k => k.coThe && !k.nhanKenh?.includes('the'))) nang.unshift('thuong_hieu: thiếu chữ ký trên thẻ công thức');
+  }
+  if (thucTe && props.khung4tang?.batBuocVatThe && props.khung4tang?.tuSinh && hoanTat && !aiKq.chay)
+    nang.unshift('t2_trong: chưa đối chiếu được vật thể tự sinh với đề trên ảnh');
   if (thucTe) {
     const giua = mau.filter(m => m.i > 0 && m.i < canh.length - 1 &&
       (!props.outro || m.f - lech < props.outro.batDau));
-    const loi = giua.find(m => !khung.some(k => k.frame === m.f && k.hinhT2 === true));
+    const loi = giua.find(m => !khung.some(k => k.frame === m.f && k.hinhT2 === true && (!props.khung4tang?.batBuocVatThe || k.duHaiCot)));
     if (loi || !giua.length) nang.unshift('t2_trong: chưa thấy hình minh họa trong vùng an toàn T2' + (loi ? ' ở ' + ten(loi.i) : ' ở các khung giải'));
   }
   const nhe = ds.filter((l) => !laNang(l)).map(moTa);
@@ -206,6 +230,7 @@ async function aiNhinHinh(anh) {
   const dsCanh = anh.map((a, i) => { const c = (kb.canh || [])[a.canh] || {}; return `ẢNH ${i + 1} = cảnh ${a.ten} (pha ${canh[a.canh]?.phaMinhHoa || "truyền thống"}): "${String(c.loi_thoai || '').slice(0, 140)}" | công thức: ${(c.noi_dung_man_hinh || []).join(' ; ')}`; }).join('\n');
   const prompt = 'Bạn là người KIỂM DUYỆT KHẮT KHE video dạy toán trước khi dựng. Pha thuc là minh họa đời thật. Pha chuyen hòa mờ từ vật thật sang nét toán. Pha toan dùng sơ đồ, ký hiệu và đồ thị Manim; ở pha này hãy đánh giá dữ kiện toán thay vì đòi vẽ lại vật thật. Với cặp vật 3D và cuối cảnh, đối chiếu cùng một vật, số lượng, vị trí tương đối, tỉ lệ và cạnh tương ứng khi chuyển sang sơ đồ. Với phép thử xác suất, so số vật, màu trước và sau lần rút, hoặc mặt ngửa của xu và số chấm mặt trên khi xúc xắc dừng với lời mô tả. Kết quả minh họa của một lần thử không phải xác suất của biến cố. Báo nếu có nền chữ nhật riêng che nền video. Những cảnh còn lại dùng khung cuối.\n' +
     'ĐỀ BÀI: ' + de + (kb.mo_ta_hinh ? '\nMÔ TẢ HÌNH ĐỀ: ' + kb.mo_ta_hinh : '') + '\nĐÁP ÁN ĐÚNG (đã kiểm chứng bằng 2 cách giải + mã tính): ' + dapAn + '\n' + dsCanh + '\n' +
+    (props.khung4tang?.batBuocVatThe ? 'Mọi ô giải phải có vật thể đúng đề kể cả pha toán. Nếu chia đôi, kiểm riêng bên trái có vật thể và bên phải có đồ thị. Thanh trượt/chữ hoặc đồ thị đơn độc là lỗi t2_trong.\n' : '') +
     'Kiểm tra TỪNG ảnh, chỉ báo lỗi THẬT:\n' +
     '(1) Vật/địa điểm thật trong đề (cột cờ, tòa nhà, ngân hàng, hàng rào, tường, cây, người, xe...) phải vẽ ĐÚNG là vật đó; khối hộp/khối trụ/thẻ chữ thay vật thật là SAI.\n' +
     '(2) KHÔNG có vật bị vẽ LẶP (2 tòa nhà, 2 người khi đề chỉ có 1), không có vật thừa sót lại từ cảnh trước.\n' +
@@ -268,6 +293,7 @@ async function aiNhinHinh(anh) {
         const loi = kq.dung ? [] : issues.map(issue => {
           const reason = String(issue?.ly_do || issue);
           const legacyMath = typeof issue === 'string' && /sai (?:ký hiệu|biến cố|toán|đáp (?:án|số)|phép tính)|nhầm.{0,40}biến cố đối|biến cố đối.{0,60}n\(A\)/i.test(reason);
+          if (props.khung4tang?.batBuocVatThe && /t2_trong|thieu_hinh_vat_the/i.test(reason)) return 't2_trong: ' + reason;
           return (issue?.loai === 'sai_toan' || legacyMath ? 'AI_SAI_TOAN: ' : 'AI_NHIN_HINH: ') + reason;
         });
         console.log('AI nhìn hình (' + model + '): ' + (loi.join(' | ') || 'ĐÚNG đề'));

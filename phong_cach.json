@@ -1,5 +1,5 @@
 {
-  "_ghi_chu": "Chỉnh giao diện tại đây. doMoNen: độ tối phủ lên nền của bạn (0-1). nen_co_dinh: tên tệp trong thư mục nền Drive nếu muốn luôn dùng một nền; để trống = tự xoay vòng. mau: ghi đè bảng màu, ví dụ {\"vang\":\"#ffd54a\"}. kieuNen: \"toi\" (nền tối gọn, lưới rất mờ, mặc định), \"cuc_quang\" (cực quang nhiều màu), \"neon\" (xanh đen có lưới mờ và đốm sáng), \"luoi\" (lưới phối cảnh), \"luoi_phang\" hoặc \"gradient\". Chỉ áp dụng khi không có ảnh/video nền của bạn. thuongHieu: ten/khauHieu hiện ở góc trên bên trái cạnh logo (tệp logo.png đặt trong thư mục Drive VIDEO_XACSUAT/thuong_hieu), markNuoc = logo mờ lớn sau nội dung, handle = tên kênh nhỏ ở góc dưới, outroGiay = thời lượng màn kết (tệp outro.png hoặc outro.mp4 cùng thư mục). kieuToan: \"dam\" (công thức chữ đậm Montserrat có bóng, mặc định), \"latex\" (phông LaTeX có chân như Manim) hoặc \"dong_nhat\" (cùng phông không chân với chữ). kieuHinh: \"manim\" (nét phẳng, mặc định) hoặc \"that\" (vật 3D). thanhTienDo/phuDe: bật tắt thanh tiến độ và phụ đề. soNenToiDa: số nền của bạn dùng trong một video (đổi nền theo nhóm cảnh, mặc định 3). lopNeonTrenNen: phủ lưới mờ + đốm sáng neon lên nền của bạn. thuongHieu.outroTuTao: tự tạo màn kết động khi không có tệp outro. thuongHieu.loiMoi: câu mời theo dõi giữa video. kieuPhuDe: \"hop\" (ô màu sau từ đang đọc, chữ in hoa như video mẫu) hoặc \"mau\"; mauPhuDe: màu ô phụ đề. thuongHieu.coManKet: true để chèn màn kết vào cuối video (mặc định tắt). loiMoiGiuaVideo: true để hiện thẻ Theo dõi giữa video (mặc định tắt). intro: intro thương hiệu \"nét vẽ hình học\" chèn trước hook (bat bật/tắt, giay 2-3,5 = thời lượng, chuyenGiay = mặt nạ tròn mở sang cảnh đầu, mauNhan/mauPhu/mauNen, soTuNhan = số chữ cuối tên tô màu nhấn; ten/khauHieu để trống = lấy theo thuongHieu; v93: mocCau4Tang = true -> video khung 4 tầng bỏ intro thương hiệu, vào thẳng Intro móc câu từ giây 0; false = giữ intro thương hiệu cũ). chuyenDong: \"moi\" (bộ hiệu ứng mới: chữ 3 tầng, hình nổi khối 3D đổi góc theo lời giảng, vòng sóng, dấu BẪY, lóe sáng đáp án) hoặc \"cu\". thuongHieu.tenTheoChuyenMuc (v89): tên kênh ở intro/dấu nước/màn kết theo chuyên mục của bài, \"mac_dinh\" dùng cho các chuyên mục còn lại (để trống = luôn dùng thuongHieu.ten).",
+  "_ghi_chu": "Chỉnh giao diện tại đây. doMoNen: độ tối phủ lên nền của bạn (0-1). nen_co_dinh: tên tệp trong thư mục nền Drive nếu muốn luôn dùng một nền; để trống = tự xoay vòng. mau: ghi đè bảng màu, ví dụ {\"vang\":\"#ffd54a\"}. kieuNen: \"toi\" (nền tối gọn, lưới rất mờ, mặc định), \"cuc_quang\" (cực quang nhiều màu), \"neon\" (xanh đen có lưới mờ và đốm sáng), \"luoi\" (lưới phối cảnh), \"luoi_phang\" hoặc \"gradient\". Chỉ áp dụng khi không có ảnh/video nền của bạn. thuongHieu: ten/khauHieu hiện ở góc trên bên trái cạnh logo (tệp logo.png đặt trong thư mục Drive VIDEO_XACSUAT/thuong_hieu), markNuoc = logo mờ lớn sau nội dung, handle = tên kênh nhỏ ở góc dưới, outroGiay = thời lượng màn kết (tệp outro.png hoặc outro.mp4 cùng thư mục). kieuToan: \"dam\" (công thức chữ đậm Montserrat có bóng, mặc định), \"latex\" (phông LaTeX có chân như Manim) hoặc \"dong_nhat\" (cùng phông không chân với chữ). kieuHinh: \"manim\" (nét phẳng, mặc định) hoặc \"that\" (vật 3D). thanhTienDo/phuDe: bật tắt thanh tiến độ và phụ đề. soNenToiDa: số nền của bạn dùng trong một video (đổi nền theo nhóm cảnh, mặc định 3). lopNeonTrenNen: phủ lưới mờ + đốm sáng neon lên nền của bạn. thuongHieu.outroTuTao: tự tạo màn kết động khi không có tệp outro. thuongHieu.loiMoi: câu mời theo dõi giữa video. kieuPhuDe: \"hop\" (ô màu sau từ đang đọc, chữ in hoa như video mẫu) hoặc \"mau\"; mauPhuDe: màu ô phụ đề. thuongHieu.coManKet: true để chèn màn kết vào cuối video (mặc định tắt). loiMoiGiuaVideo: true để hiện thẻ Theo dõi giữa video (mặc định tắt). intro: intro thương hiệu \"nét vẽ hình học\" chèn trước hook (bat bật/tắt, giay 2-3,5 = thời lượng, chuyenGiay = mặt nạ tròn mở sang cảnh đầu, mauNhan/mauPhu/mauNen, soTuNhan = số chữ cuối tên tô màu nhấn; ten/khauHieu để trống = lấy theo thuongHieu; v93: mocCau4Tang = true -> video khung 4 tầng bỏ intro thương hiệu, vào thẳng Intro móc câu từ giây 0; false = giữ intro thương hiệu cũ). chuyenDong: \"moi\" (bộ hiệu ứng mới: chữ 3 tầng, hình nổi khối 3D đổi góc theo lời giảng, vòng sóng, dấu BẪY, lóe sáng đáp án) hoặc \"cu\". Tên kênh dùng chung lấy từ thuongHieu.ten.",
   "doMoNen": 0.35,
   "kyHieuTroi": false,
   "quangSang": true,
@@ -15,18 +15,14 @@
   "kieuPhuDe": "hop",
   "mauPhuDe": "#FF6B2C",
   "thuongHieu": {
-    "ten": "Tư duy Xác suất",
+    "ten": "Story Math",
     "khauHieu": "Giải toán tư duy ngắn gọn",
-    "handle": "@tuduyxacsuat",
+    "handle": "",
     "markNuoc": true,
     "outroGiay": 5,
     "outroTuTao": true,
     "loiMoi": "Theo dõi để học mẹo toán mỗi ngày",
-    "coManKet": true,
-    "tenTheoChuyenMuc": {
-      "Xác suất": "Tư duy Xác suất",
-      "mac_dinh": "Tư duy Toán"
-    }
+    "coManKet": true
   },
   "loiMoiGiuaVideo": false,
   "chuyenDong": "moi",

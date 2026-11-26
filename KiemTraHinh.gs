@@ -2546,7 +2546,7 @@ function kiemTraDaDangHinhThucTe_(kb, mon) {
 // Chỉ TỪ CHỐI CỨNG khi: kịch bản rỗng cảnh / lời đọc, sai kết quả toán học cốt lõi (đáp án, phép tính, vượt chương trình lớp),
 // vi phạm khóa luồng hinh_hoc_thuan hoặc hình học thiếu dữ kiện bắt buộc cho Manim. JSON hỏng đã bị chặn từ lúc đọc (BoPhan1.gs).
 // Tắt: CAU_HINH AUTO_FIX_KICH_BAN = TAT (quay về cách cũ).
-var LOI_CUNG_RE_ = /^(TEX_THIEU_NGOAC|TEX_THIEU_DOI_SO|t2_trong|KHUNG4TANG_BAT_BUOC|XS_SAI_DAP_SO|KB_DOC_LAP_DE|KB_CUT_CONG_THUC|MA_THO_HIEN_THI|KHUNG4TANG_3D_RONG|TOAN_GOI_SAI_PARABOL|TOAN_THIEU_CAN_CU_CUC_TRI|KHONG_CO_CANH|QUA_IT_CANH|THIEU_LOI_THOAI_CANH_|DAP_AN_CUOI_SAI|DAP_AN_SAI_TREN_MAN_HINH|PHEP_TINH_SAI_CANH_|VI_PHAM_CHUONG_TRINH_LOP|LUONG_HINH_HOC|NOI_DUNG_LA|THOI_LUONG_CHUYEN_DE|SO_CANH_VIDEO_DAI_SAI|HINH_THIEU_DIEM_DE|HINH_THIEU_DIEM_CANH_|THIEU_TOA_DO_HINH|BUOC_VE_KHONG_KHOP_LOI_CANH_|BUOC_VE_DOI_TUONG_LA_CANH_|HP_VUOT_CHUONG_TRINH|HP_MENH_DE_SAI|HP_DONG_DANG_SAI_THU_TU|HP_DUNG_LOI|HP_DIEM_KHONG_TON_TAI|HP_THIEU_DAC_TA|KG_VUOT_CHUONG_TRINH|KG_MENH_DE_SAI|KG_SAI_SO_DO|KG_DUNG_LOI|KG_DIEM_KHONG_TON_TAI|KG_THIEU_DAC_TA|KG_KHOI_LOI|KG_DINH_CHUM|CAM_MAT_MOC|CAM_DE_GIO)/;
+var LOI_CUNG_RE_ = /^(THU_TU_TOI_UU|TEX_THIEU_NGOAC|TEX_THIEU_DOI_SO|t2_trong|KHUNG4TANG_BAT_BUOC|XS_SAI_DAP_SO|KB_DOC_LAP_DE|KB_CUT_CONG_THUC|MA_THO_HIEN_THI|KHUNG4TANG_3D_RONG|TOAN_GOI_SAI_PARABOL|TOAN_THIEU_CAN_CU_CUC_TRI|KHONG_CO_CANH|QUA_IT_CANH|THIEU_LOI_THOAI_CANH_|DAP_AN_CUOI_SAI|DAP_AN_SAI_TREN_MAN_HINH|PHEP_TINH_SAI_CANH_|VI_PHAM_CHUONG_TRINH_LOP|LUONG_HINH_HOC|NOI_DUNG_LA|THOI_LUONG_CHUYEN_DE|SO_CANH_VIDEO_DAI_SAI|HINH_THIEU_DIEM_DE|HINH_THIEU_DIEM_CANH_|THIEU_TOA_DO_HINH|BUOC_VE_KHONG_KHOP_LOI_CANH_|BUOC_VE_DOI_TUONG_LA_CANH_|HP_VUOT_CHUONG_TRINH|HP_MENH_DE_SAI|HP_DONG_DANG_SAI_THU_TU|HP_DUNG_LOI|HP_DIEM_KHONG_TON_TAI|HP_THIEU_DAC_TA|KG_VUOT_CHUONG_TRINH|KG_MENH_DE_SAI|KG_SAI_SO_DO|KG_DUNG_LOI|KG_DIEM_KHONG_TON_TAI|KG_THIEU_DAC_TA|KG_KHOI_LOI|KG_DINH_CHUM|CAM_MAT_MOC|CAM_DE_GIO)/;
 var MAU_SAN_KHAU_ = ['do', 'xanh_duong', 'xanh_la', 'cam', 'vang', 'tim', 'hong', 'ngoc', 'trang', 'xam', 'nau'];
 var MAU_GAN_ = {'đỏ': 'do', red: 'do', xanh: 'xanh_duong', 'xanh dương': 'xanh_duong', xanh_lam: 'xanh_duong', lam: 'xanh_duong', blue: 'xanh_duong', cyan: 'xanh_duong',
   'xanh lá': 'xanh_la', xanh_luc: 'xanh_la', luc: 'xanh_la', green: 'xanh_la', orange: 'cam', 'vàng': 'vang', yellow: 'vang', 'tím': 'tim', purple: 'tim',
@@ -2989,7 +2989,7 @@ function chuSachMocCau_(s, max, hoa) {
   var x = String(s || '').replace(/\\(?:text|mathrm|mathbf)\s*\{([^{}]*)\}/g, '$1').replace(/\\(times|cdot)/g, '×')
     .replace(/\\[a-zA-Z]+/g, ' ').replace(/[${}^_\\]/g, '').replace(/\s+/g, ' ').trim();
   if (hoa !== false) x = x.toUpperCase();
-  return catTuMocCau_(x, max);
+  return max ? catTuMocCau_(x, max) : x;
 }
 function cheDapSoMocCau_(s, kb) {
   var mau = typeof mauDapSoLo_ === 'function' ? mauDapSoLo_(kb) : [];
@@ -3047,8 +3047,7 @@ function tuSuaMocCau_(kb, r) {
   // 2. tiêu đề intro: tối đa 2 dòng (≤ 40 ký tự, bỏ từ dài > 22 ký tự), che số đáp án
   var td = '', nguon = [kb.tieu_de_intro, kb.hook_chu, kb.tieu_de_bia, kb.tieu_de, kb.chu_de];
   for (var i = 0; i < nguon.length && td.length < 6; i++) {
-    td = chuSachMocCau_(cheDapSoMocCau_(nguon[i], kb), 200).split(' ').filter(function (w) { return w.length <= 22; }).join(' ');
-    td = catTuMocCau_(td, DAI_MOC_CAU_.tieu_de_intro);
+    td = chuSachMocCau_(cheDapSoMocCau_(nguon[i], kb));
   }
   if (td !== String(kb.tieu_de_intro || '')) sua.push(kb.tieu_de_intro ? 'cắt gọn/che số tieu_de_intro' : 'tự điền tieu_de_intro');
   // v95: tiêu đề đúng bản chất toán — bài hộp cắt 4 góc NHƯ NHAU không được hỏi "cắt góc nào" (khớp khung4tang_v95.py)
@@ -3059,8 +3058,8 @@ function tuSuaMocCau_(kb, r) {
   }
   kb.tieu_de_intro = td || 'GIẢI NHANH BÀI TOÁN';
   // 3. dòng phụ chuyên đề
-  var pd = chuSachMocCau_(cheDapSoMocCau_(kb.phu_de_intro, kb), DAI_MOC_CAU_.phu_de_intro);
-  if (!pd) {
+  var pd = chuSachMocCau_(cheDapSoMocCau_(kb.phu_de_intro, kb));
+  if (kb.phu_de_intro === undefined) {
     var phan = [], cd = chuSachMocCau_(kb.chu_de_ngan || kb.chu_de || '', 22);
     if (cd) phan.push(cd);
     (k4.buoc || []).forEach(function (b) {
@@ -3433,9 +3432,38 @@ function phanLoaiLoiCung_(nang, nhe, kb) {
     var c3 = k.canh_3d_vector || {}, kg = kb.hinh_khong_gian || {};
     var svg = k.tu_sinh || (sk.loai === 'tu_sinh_svg' ? sk : {});
     var ma = svg.ma || (svg.tham_so || {}).ma;
+    if (!choDoThiThuan_([kb.de_bai, kb.can_tim, kb.chu_de].join(' '))) {
+      (k.buoc || []).forEach(function (b, i) {
+        var d = b && b.doi_chieu;
+        if (!d) return;
+        var ts = d.tham_so || {}, mien = d.mien || [];
+        var phai = typeof d.ham === 'string' && d.ham.trim() && mien.length === 2 && isFinite(+mien[0]) && isFinite(+mien[1]) && +mien[1] > +mien[0];
+        var trai = +mien[0] >= 0 && ((d.hinh === 'tam_bia' && +ts.a > 0 && +mien[1] <= Math.min(+ts.a, +(ts.b == null ? ts.a : ts.b)) / 2 + 1e-6) ||
+          (d.hinh === 'mat_cat_tru' && +ts.V > 0) || (d.hinh === 'tam_giac_luc' && +mien[1] <= 89));
+        if (!trai || !phai) nang = nang.concat('t2_trong: đối chiếu bước ' + (i + 1) + ' thiếu ' + (!trai ? 'vật thể co giãn bên trái' : 'hàm và miền bên phải') + '.');
+      });
+    }
+    var muc = -1;
+    function luiBuoc(cau) {
+      var pha = /(?:gọi|đặt|chọn) (?:ẩn|biến|[xtrh](?![a-zà-ỹ]))|lập (?:hàm|biểu thức)|xây dựng hàm|thiết lập hàm|tìm (?:đỉnh|cực trị)|xét (?:đỉnh|đạo hàm)|tính đạo hàm|chốt (?:đáp án|kết quả)|kết luận/gi;
+      var dong;
+      while ((dong = pha.exec(cau))) {
+        var n = /^(?:gọi|đặt|chọn)/i.test(dong[0]) ? 0 : /^(?:lập|xây|thiết)/i.test(dong[0]) ? 1 : /^(?:tìm|xét|tính)/i.test(dong[0]) ? 2 : 3;
+        if (n < muc) return true;
+        muc = n;
+      }
+      return false;
+    }
+    if (/tối ưu|cực trị|lớn nhất|nhỏ nhất|cực đại|cực tiểu/i.test(kb.de_bai || '')) {
+      var loiBuoc = (k.buoc || []).some(function (b) { return b && luiBuoc(b.tieu_de || b.nhan || ''); });
+      muc = -1;
+      var loiDoc = (kb.canh || []).some(function (c) { return c && !/^(hook|de_bai|mo_dau|cta|bai_hoc)$/.test(c.loai) && luiBuoc(c.loi_thoai || ''); });
+      if (loiBuoc || loiDoc) nang = nang.concat('THU_TU_TOI_UU: gọi ẩn trên hình, lập hàm, tìm cực trị, chốt đáp án.');
+    }
     var tot = (sk.loai === 'so_do_2d' && ['song_bo','day_cap','cong_parabol','rao_tuong','thang_tuong'].indexOf(ts.mau) >= 0) ||
-      (['kinh_te_do_thi','tang_truong'].indexOf(sk.loai) >= 0 && ts.ham && Array.isArray(ts.mien) && ts.mien.length === 2) ||
+      (['kinh_te_do_thi','tang_truong'].indexOf(sk.loai) >= 0 && choDoThiThuan_([kb.de_bai,kb.can_tim,kb.chu_de].join(' ')) && ts.ham && Array.isArray(ts.mien) && ts.mien.length === 2) ||
       (!sk.loai && (tenKhuon_(c3.khuon) || (suaTruong3DV_(c3) && dong3DV_(c3)))) || (kg.doi_tuong || []).length;
+    if (chonSanKhau_(kb).loai === 'tu_sinh_svg' && !ma) tot = false;
     if (ma || kb.san_khau_dich === 'tu_sinh_svg') {
       tot = typeof ma === 'string' && ma.trim();
       if (tot) {
@@ -3446,6 +3474,9 @@ function phanLoaiLoiCung_(nang, nhe, kb) {
       var kq2D = kiemSanKhau2DMay_(kb);
       tot = kq2D && kq2D.ok;
     }
+    if (['kinh_te_do_thi','tang_truong'].indexOf(sk.loai) >= 0 && (kb.canh || []).some(function (c) {
+      return c && /nhìn (?:vào )?hình vẽ/i.test(c.loi_thoai || '');
+    })) nang = nang.concat('t2_trong: lời nói nhìn vào hình vẽ trong khi sân khấu chỉ có đồ thị.');
     if (!tot) nang = nang.concat('t2_trong: THUC_TE cần vật thể, sơ đồ hoặc đồ thị có dữ liệu hợp lệ theo từng bước.');
   }
   if (!batAutoFix_()) return {nang: nang, nhe: nhe};

@@ -1,10 +1,11 @@
+import {chuyenMuc, KhoaThuongHieu} from './KhoaThuongHieu';
 // v93 — OUTRO "TÓM TẮT 3 BƯỚC CHIẾN THUẬT" của khung 4 tầng (thay ManKetChuyenNghiep khi có props.khung4tang.tomTat).
 // Trên: đáp án lớn xanh ngọc phát sáng | giữa: mô hình 3D gọn ở trạng thái cuối, máy "thở" chậm |
 // dưới: 3 dòng 1·2·3 (trái tên chiến thuật màu nhấn, phải công thức KaTeX) | nút LƯU LẠI NGAY!.
 // Mỗi vùng có chiều cao cố định, công thức tự co bằng Toan maxWidth -> không dòng nào lấn vào vùng mô hình.
 import React from 'react';
 import {AbsoluteFill, Audio, Sequence, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
-import {FONT, SO_DEU} from '../theme';
+import {FONT, SO_DEU, TEN_THUONG_HIEU} from '../theme';
 import {KieuToan, NapPhongToan, Toan} from '../Toan';
 import {SanKhau3DVector} from '../3d-vector/SanKhau3DVector';
 import {Canh3DV, MAU_3DV} from '../3d-vector/kieu';
@@ -50,7 +51,7 @@ const cauGoiTheoDang = (van: string, khongGian: boolean, loai?: string): string 
   return 'Lưu lại ôn nhanh • Bình luận dạng bài bạn muốn giải tiếp!';
 };
 
-export const OutroTomTat: React.FC<{giuHinh?: boolean; dapAn: string; tomTat: DongTomTat[]; canh: Canh3DV | null; sanKhau?: SanKhau2DVao | null; khongGian?: KhongGianVao | null; tCuoi: number; thuongHieu?: string; cta?: string; tuSinh?: TuSinhVao | null; theme?: TenTheme}> = ({giuHinh, dapAn, tomTat, canh: canhVao, sanKhau, khongGian, tCuoi, thuongHieu, cta = 'LƯU LẠI NGAY!', tuSinh, theme}) => {
+export const OutroTomTat: React.FC<{mon?: string; giuHinh?: boolean; dapAn: string; tomTat: DongTomTat[]; canh: Canh3DV | null; sanKhau?: SanKhau2DVao | null; khongGian?: KhongGianVao | null; tCuoi: number; thuongHieu?: string; cta?: string; tuSinh?: TuSinhVao | null; theme?: TenTheme}> = ({mon, giuHinh, dapAn, tomTat, canh: canhVao, sanKhau, khongGian, tCuoi, thuongHieu, cta = 'LƯU LẠI NGAY!', tuSinh, theme}) => {
   if (/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(dapAn)) throw new Error('DAP_AN_NGAY: kiểm tra phân số gốc');
   const th = khongGian ? null : layTheme(theme);
   // v95: Outro không làm mờ phần nào của mô hình (bỏ nhấn mạnh 30 %) -> mọi nhãn kích thước sáng rõ
@@ -76,6 +77,8 @@ export const OutroTomTat: React.FC<{giuHinh?: boolean; dapAn: string; tomTat: Do
   const chon: 'tu_sinh' | 'khong_gian' | 'san_khau' | 'canh' | null = tuSinh && tuSinh.lop?.length ? 'tu_sinh' : khongGian ? 'khong_gian' : sanKhau ? 'san_khau' : canh ? 'canh' : null;
   const coNhanLuu = BAT_CTA_THONG_MINH_OUTRO && tomTat.length > 0;
   const caoSan = coNhanLuu ? Math.min(V.san.h, V.dong.y - 46 - KHOANG_HO - V.san.y) : V.san.h;
+  const monHien = khongGian ? 'HINH_KHONG_GIAN' : mon;
+  const laHinhHoc = !!khongGian || /HINH_|hình học/i.test(mon || '');
   // v102: vào Outro nối liền Khung4Tang (khung cuối còn 35 % độ đậm: 1 - 0,65 * thoat) -> không còn nháy nền đen 1-2 khung
   return (
     <AbsoluteFill data-vung="outro" style={{fontFamily: FONT, background: NEN, opacity: 0.35 + 0.65 * kep01(f / 6), ...SO_DEU}}>
@@ -86,10 +89,10 @@ export const OutroTomTat: React.FC<{giuHinh?: boolean; dapAn: string; tomTat: Do
         : <NenTramToanHoc t={tCuoi + t} mauNhan={khongGian ? MAU_3DV.ngoc : '#FBBF24'} tamSanKhau={V.san.y + V.san.h / 2} kieu={khongGian ? 'v95' : 'v981'} />}
       {/* v96: nội dung trong khung 0..950 (vùng an toàn TikTok: phải 12 %, trên 11 %, đáy 18 %) */}
       <div style={{position: 'absolute', left: LE_ND_V93, top: 0, width: RONG_ND_V93, height: '100%'}}>
-      {thuongHieu ? <div data-kd-bo="1" style={{position: 'absolute', top: 60, right: 44, fontWeight: 800, fontSize: 22, color: 'rgba(230,237,245,0.5)'}}>{thuongHieu}</div> : null}
+      <KhoaThuongHieu viTri="outro" mon={monHien} />
 
       {/* đáp án phát sáng */}
-      <div style={{position: 'absolute', left: 60, right: 60, top: V.dapAn.y, height: V.dapAn.h, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14,
+      <div style={{position: 'absolute', left: 60, right: 60, top: V.dapAn.y + 42, height: V.dapAn.h - 42, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14,
         opacity: kep01(aDap * 1.5), transform: `scale(${0.88 + 0.12 * aDap})`}}>
         <div style={{height: 44, padding: '0 22px', borderRadius: 22, display: 'flex', alignItems: 'center', color: NGOC, border: `1.5px solid ${NGOC}`, background: `${NGOC}18`, fontWeight: 900, fontSize: 24, letterSpacing: 1.2}}>ĐÁP ÁN</div>
         <div style={{padding: '12px 34px', borderRadius: 24, background: `${NGOC}12`, border: `2px solid ${NGOC}AA`, boxShadow: `0 0 ${30 * sang}px ${NGOC}55, inset 0 0 24px ${NGOC}18`, textShadow: `0 0 18px ${NGOC}88`}}>
@@ -182,13 +185,22 @@ export const OutroTomTat: React.FC<{giuHinh?: boolean; dapAn: string; tomTat: Do
         Lưu lại ôn nhanh • Bình luận dạng bài bạn muốn giải tiếp!
       </div>
       )}
-      <div style={{position: 'absolute', left: 0, right: 0, top: V.nut.y - 16, display: 'flex', justifyContent: 'center', opacity: kep01(sNut * 2)}}>
-        <div style={{height: 96, padding: '0 54px', borderRadius: 48, display: 'flex', alignItems: 'center', gap: 16, background: `linear-gradient(180deg, #FF7A7E, ${SAN_HO} 55%, #E2393F)`,
-          boxShadow: `0 7px 0 #9E1F25, 0 0 34px rgba(255,90,95,0.45)`, transform: `scale(${(0.6 + 0.4 * sNut) * nhun})`, color: '#fff', fontWeight: 900, fontSize: 38, letterSpacing: 0.8, whiteSpace: 'nowrap'}}>
-          <IconCta cta={cta} />
-          {cta}
+      {laHinhHoc ? (
+        <div style={{position: 'absolute', left: 0, right: 0, top: V.nut.y - 8, display: 'flex', justifyContent: 'center', opacity: kep01(sNut * 2)}}>
+          <div style={{height: 76, padding: '0 40px', borderRadius: 38, display: 'flex', alignItems: 'center', background: 'rgba(14,22,30,0.92)',
+            border: `1.5px solid ${NGOC}88`, boxShadow: `0 0 24px ${NGOC}26`, transform: `scale(${0.86 + 0.14 * sNut})`, color: '#E6EDF5', fontWeight: 800, fontSize: 32, letterSpacing: 0.4, whiteSpace: 'nowrap'}}>
+            {`${TEN_THUONG_HIEU} • ${chuyenMuc(monHien)}`}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div style={{position: 'absolute', left: 0, right: 0, top: V.nut.y - 16, display: 'flex', justifyContent: 'center', opacity: kep01(sNut * 2)}}>
+          <div style={{height: 96, padding: '0 54px', borderRadius: 48, display: 'flex', alignItems: 'center', gap: 16, background: `linear-gradient(180deg, #FF7A7E, ${SAN_HO} 55%, #E2393F)`,
+            boxShadow: `0 7px 0 #9E1F25, 0 0 34px rgba(255,90,95,0.45)`, transform: `scale(${(0.6 + 0.4 * sNut) * nhun})`, color: '#fff', fontWeight: 900, fontSize: 38, letterSpacing: 0.8, whiteSpace: 'nowrap'}}>
+            <IconCta cta={cta} />
+            {cta}
+          </div>
+        </div>
+      )}
       {/* v95: whoosh gọn khi bật Outro + chime sáng lúc đáp án nổi lên (SFX ~ -13 dB so với giọng) */}
       </div>
       <Sequence from={0} durationInFrames={20} layout="none"><Audio src={staticFile('sfx/whoosh.wav')} volume={0.2} /></Sequence>

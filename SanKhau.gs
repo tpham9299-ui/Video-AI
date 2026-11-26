@@ -60,10 +60,13 @@ function loaiXacSuat_(van, lop) {
   if (/khoanh (?:bừa|ngẫu nhiên)|đúng\s*\d+\s*câu|ít nhất\s*\d+\s*câu|phân phối|so sánh hai phương án|phương án nào/.test(t)) return 'cot_phan_phoi';
   return 'rut_mau';
 }
+function choDoThiThuan_(van) {
+  return /giá vé|giá bán|lợi nhuận|doanh thu|giảm giá|tăng giá|chiết khấu|tiền lãi|lãi suất|lãi kép|gửi tiết kiệm|lạm phát|dân số|tăng trưởng/i.test(van) && !/mét|(?:^|[^a-zà-ỹ])(?:km|dm|cm|mm|m)(?:[²³23]|(?=$|[^a-zà-ỹ]))|diện tích|thể tích|chu vi|kích thước|chiều (?:dài|rộng|cao)|bán kính|đất|vườn|ruộng|hộp|rào|lối đi|tường|góc|quãng đường|vận tốc|tốc độ chuyển động|cắt|gấp (?:giấy|hình)|gập|máng|vòm|sông|thuyền|bìa|quỹ đạo|bể|hình trụ|hình nón|khối|đường ống|dây cáp|mặt cầu|thang dựa|bánh răng|vi khuẩn/i.test(van) && !RE_VAT_THE_.test(van);
+}
 function loaiThucTe_(van, khuon) {
   var t = String(van || '').toLowerCase();
   if ((khuon === '__tu_do__' || (KHUON_VAT_THE_.indexOf(khuon) >= 0 && khuon !== 'parabol_quy_dao')) && RE_VAT_THE_.test(t)) return '3d_vector';
-  if (/giá bán|lợi nhuận|doanh thu|chi phí|giảm giá|tăng giá|tiền lãi thu|bán được|khách hàng/.test(t)) return 'kinh_te_do_thi';
+  if (/giá vé|chiết khấu|giá bán|lợi nhuận|doanh thu|chi phí|giảm giá|tăng giá|tiền lãi thu|bán được|khách hàng/.test(t)) return 'kinh_te_do_thi';
   if (/lãi suất|lãi kép|gửi tiết kiệm|tăng trưởng|dân số|vi khuẩn|phân rã|chu kì bán rã|logarit|\blog\b|hàm mũ|lạm phát/.test(t)) return 'tang_truong';
   if (/bờ sông|qua sông|chèo thuyền|bơi qua|kéo dây điện|dây cáp từ|đường ống từ|sát tường|rào.*(?:tường|bờ)|cổng (?:hình )?parabol|thang dựa/.test(t)) return 'so_do_2d';
   if (khuon === 'parabol_quy_dao' && /vận tốc|quãng đường|ném|quỹ đạo|tích phân|parabol|chuyển động|phanh/.test(t)) return '3d_vector';
@@ -86,17 +89,20 @@ function chonSanKhau_(kb, r) {
   var van = [kb.de_bai, r.de_bai, kb.can_tim, kb.chu_de].filter(Boolean).join(' ');
   var cd = docChiDao_(kb.chi_dao || r.chi_dao || '');
   var batBuoc = thucTeNgan_(kb, r);
+  var loaiTT = choDoThiThuan_(van) ? LOAI_TT_2D_ : ['so_do_2d'];
   if (batBuoc && (kb.san_khau_dich === 'tu_sinh_svg' || (kb.khung4tang || {}).tu_sinh || ((kb.khung4tang || {}).san_khau || {}).loai === 'tu_sinh_svg')) return {loai: 'tu_sinh_svg', nguon: 'hop_dong', chi_dao: cd.loi};
-  if (cd.loai && (!batBuoc || LOAI_TT_2D_.indexOf(cd.loai) >= 0 || cd.loai === '3d_vector')) return {loai: cd.loai === 'luoi_bayes' && lop !== '12' ? 'so_do_cay' : cd.loai, nguon: 'chi_dao', chi_dao: cd.loi};
+  if (batBuoc && /lối đi/i.test(van) && !(kb.khung4tang || {}).canh_3d_vector) return {loai: 'tu_sinh_svg', nguon: 'suy', chi_dao: cd.loi};
+  if (cd.loai && (!batBuoc || loaiTT.indexOf(cd.loai) >= 0 || cd.loai === '3d_vector')) return {loai: cd.loai === 'luoi_bayes' && lop !== '12' ? 'so_do_cay' : cd.loai, nguon: 'chi_dao', chi_dao: cd.loi};
   if (!batBuoc && kb.san_khau_dich === 'cay_bayes') return {loai: 'so_do_cay', nguon: 'hop_dong', chi_dao: cd.loi};   // v99.2: hợp đồng hình BP0
   var k4 = kb.khung4tang && typeof kb.khung4tang === 'object' ? kb.khung4tang : {};
   var sk = k4.san_khau && typeof k4.san_khau === 'object' ? k4.san_khau : {};
-  if ((batBuoc ? LOAI_TT_2D_ : LOAI_SAN_KHAU_).indexOf(sk.loai) >= 0) return {loai: sk.loai === 'luoi_bayes' && lop !== '12' ? 'so_do_cay' : sk.loai, nguon: 'ai', chi_dao: cd.loi};
+  if ((batBuoc ? loaiTT : LOAI_SAN_KHAU_).indexOf(sk.loai) >= 0) return {loai: sk.loai === 'luoi_bayes' && lop !== '12' ? 'so_do_cay' : sk.loai, nguon: 'ai', chi_dao: cd.loi};
   var c3 = k4.canh_3d_vector && typeof k4.canh_3d_vector === 'object' ? k4.canh_3d_vector : {};
   if (mon === 'XAC_SUAT' || !batBuoc && /tính xác suất|xác suất để/i.test(van)) return {loai: loaiXacSuat_(van, lop), nguon: 'suy', chi_dao: cd.loi};
   var khuon = c3.khuon && c3.khuon !== 'luoi_the_bi_xac_suat' ? c3.khuon : (Array.isArray(c3.doi_tuong) && c3.doi_tuong.length ? '__tu_do__' : null);
   if (!khuon && typeof suyKhuon_ === 'function') { var s = suyKhuon_(kb, r); if (s && s.khuon !== 'luoi_the_bi_xac_suat') khuon = s.khuon; }
   var l = loaiThucTe_(van, khuon);
+  if (batBuoc && !choDoThiThuan_(van) && /^(kinh_te_do_thi|tang_truong)$/.test(l)) l = null;
   if (l) return {loai: l, nguon: 'suy', chi_dao: cd.loi};
   return {loai: batBuoc ? 'tu_sinh_svg' : 'tu_duy_dai_so', nguon: 'lui', chi_dao: cd.loi};
 }
@@ -117,7 +123,11 @@ function dungTuSinh_(r, kb) {
   // v99.2: hợp đồng hình BP0 (kb.san_khau_dich, apHopDongVaoKb_) thắng - kể cả đề xác suất (Monty Hall, xác suất hình học)
   var dich = String(kb.san_khau_dich || ((typeof docHopDongHinh_ === 'function' && docHopDongHinh_(r)) || {}).san_khau_dich || '');
   if (dich === 'tu_sinh_svg') return true;
-  if (thucTeNgan_(kb, r) && chonSanKhau_(kb, r).loai === 'tu_sinh_svg') return true;
+  if (thucTeNgan_(kb, r)) {
+    var q = chonSanKhau_(kb, r).loai, k4 = kb.khung4tang || {}, sk = k4.san_khau || {};
+    if (q === 'tu_sinh_svg' || (q === 'so_do_2d' && !(sk.tham_so || {}).mau)) return true;
+    if (q === '3d_vector' && !k4.canh_3d_vector && !(typeof suyKhuon_ === 'function' && suyKhuon_(kb, r))) return true;
+  }
   if (dich && dich !== 'tu_sinh_svg') return false;
   if (String(kb.mon || r.mon || '').toUpperCase() === 'XAC_SUAT') return false;   // 4 mô-đun xác suất v96 đã đủ
   return RE_TU_SINH_.test(String(r.de_bai || kb.de_bai || ''));
@@ -188,6 +198,7 @@ function huongDanTuSinh_(kb, r) {
     'ĐỀ: ' + String((r && r.de_bai) || kb.de_bai || '') + '\nĐÁP ÁN: ' + String((r && r.dap_an) || kb.dap_an_cuoi || '') + '\n' +
     'CÁC BƯỚC GIẢI (chỉ số: nhãn — tiêu đề):\n' + buoc.join('\n') + '\nLỜI ĐỌC TỪNG CẢNH:\n' + loi + '\n\n' +
     'HỢP ĐỒNG MÃ (máy chạy trong hộp cát, sai là bị loại):\n' +
+    '- Đề thực tế có vật thể: vẽ chính vật thể, kích thước thay đổi theo biến qua các pha. Nếu có tường, hàng rào hoặc lối đi, vẽ riêng từng phần theo số liệu đề. Không thay hình bằng trục hay thanh gạt.\n' +
     '- Chỉ `import math` và `import ve25d` (thư viện vẽ dựng sẵn, xem dưới). Định nghĩa `def ve():` trả list lớp {"buoc": <chỉ số bước>, "svg": "<g>...</g>", "hieu_ung": "moc|no|ve|sang", "khi_noi": "cụm 3-6 từ NGUYÊN VĂN trong lời đọc lúc lớp này hiện", "nhan": "tên lớp"}.\n' +
     '- Mọi tọa độ TÍNH trong Python, nằm trong viewBox 0 0 800 540 (chừa lề 24 px). path chỉ lệnh TUYỆT ĐỐI M L C Q A Z. Không filter, không transform (trừ translate <= 40 px), không href / ảnh / script, không chuỗi chứa "__".\n' +
     '- Thẻ được dùng: g path polygon polyline line circle ellipse rect text tspan defs linearGradient radialGradient stop. Chữ: font-family "Be Vietnam Pro", cỡ >= 22, tô #E9EEF5.\n' +
@@ -482,6 +493,7 @@ function tuSuaSanKhau_(kb, r) {
     delete kb.tu_sinh_hong;
     sua.push('san_khau_dich tu_sinh_svg -> ' + q.loai + ' (khớp định tuyến ' + q.nguon + ')');
   }
+  if (q.loai === '3d_vector' && thucTeNgan_(kb, r)) delete k4.san_khau;
   if (q.loai === 'tu_sinh_svg') {
     kb.san_khau_dich = q.loai;
     if (k4.san_khau && k4.san_khau.loai !== q.loai) delete k4.san_khau;

@@ -170,7 +170,7 @@ DON_VI_HIEN = [("xăng ti mét vuông", "cm²"), ("xăng-ti-mét vuông", "cm²"
                ("m lập phương", "m³"), ("m bình phương", "m²"), ("mét", "m")]
 DON_VI_SAU_SO = re.compile(r"^(cm|mm|m|km|kg|g|m²|m³|cm²|cm³|mét|độ|phần|lít|giờ|phút|giây|đồng|nghìn|triệu|thẻ|số|pi|lần|người|bạn|viên|quả|cái|%|nhỏ|lớn|bằng|cộng|trừ|nhân|chia|<|>|=)$|^(xăng|xen|ki-lô|mi-li)", re.I)
 NOI_CUM_SO = {"phần", "phẩy", "pi", "mét", "xăng-ti-mét", "bằng", "nhỏ", "lớn", "hơn", "trừ", "cộng", "nhân", "chia", "bình", "lập", "phương"}
-KHONG_LA_SO = re.compile(r"^(bằng|=|trừ|cộng|nhân|chia|<|>|≤|≥|là)$", re.I)
+KHONG_LA_SO = re.compile(r"^(bằng|=|trừ|cộng|nhân|chia|<|>|≤|≥|hơn|phẩy)$", re.I)
 TU_TOAN_TRUOC = re.compile(r"^(bằng|=|là|phẩy|phần|chia|nhân|cộng|trừ|<|>|hơn|được|còn|tổng|tích|x|r|h|y|n|k)$", re.I)
 
 
@@ -227,11 +227,12 @@ def so_chu_sang_so(text):
         v = _gia_tri_cum_so(cum)
         # "không" đơn lẻ chỉ là số 0 khi đứng sau từ toán ("bằng không"), tránh đổi "không thỏa mãn"
         # v92: "tích không chia hết" -> giữ chữ (trước đây "tích"/"tổng"/"được" làm "không" thành 0)
-        if cum == ["không"] and not (KHONG_LA_SO.match(truoc) or sau in ("phẩy", "<", ">")):
+        khong_so = cum == ["không"] and (KHONG_LA_SO.fullmatch(truoc) or sau == "phẩy")
+        if cum == ["không"] and not khong_so:
             v = None
         if len(cum) == 1 and cum[0] in ("nghìn", "ngàn", "trăm", "mươi", "linh", "lẻ"):   # v96: "5 nghìn đồng" không thành "5 1000 đồng"
             v = None
-        doi = v is not None and (len(cum) >= 2 or DON_VI_SAU_SO.match(sau) or TU_TOAN_TRUOC.match(truoc) or cum[0] == "zero")
+        doi = v is not None and (khong_so or len(cum) >= 2 or DON_VI_SAU_SO.match(sau) or TU_TOAN_TRUOC.match(truoc) or cum[0] == "zero")
         if not doi:
             ra.append(w)
             i += 1
@@ -242,6 +243,7 @@ def so_chu_sang_so(text):
 
 
 def hien_phu_de(text):
+    text = re.sub(r"\b(?:trừ|âm)\s+(?:b|bê)\s+(?:trên|chia(?: cho)?)\s+(?:hai|2)\s*a\b", "-b/2a", str(text), flags=re.I)
     s = so_chu_sang_so(re.sub(r"\s+", " ", str(text)).strip())
     s = re.sub(r"(\d)\s+pi\b", r"\1π", s, flags=re.I)
     s = re.sub(r"(?<![\wÀ-ỹ])([a-zA-Z])\s+phẩy\b", r"\1'", s)
@@ -354,6 +356,7 @@ def phien_am_tts(text):
 
 def chuan_hoa_doc(text):
     # v102: số thập phân có số 0 sau dấu phẩy (0,0095) đọc hoàn toàn tiếng Việt; \cap giữ thành "giao" (không thành "n")
+    text = re.sub(r"(?<!\w)[−-]b\s*/\s*2a\b", "trừ b trên hai a", str(text or ""), flags=re.I)
     text = v99_k4.giu_ky_hieu_giao(v99_k4.doc_thap_phan_viet(text))
     s = doc_ky_hieu_ham(sua_chinh_ta_tieng_viet(doc_toan_v95(doc_toan_v96(phien_am_tts(re.sub(r"\\(cos|sin)(?![A-Za-z])", lambda m: " " + m.group(1), str(text or "")))))))
     # v89: đơn vị sau số đọc thành lời (lời thoại nay viết "10 cm", "54π m³" cho phụ đề; giọng vẫn đọc tự nhiên)
@@ -2024,6 +2027,7 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
            "deGhim": de_ghim, "buoc": buoc, "canh3dv": c3, **({"tChot": round(t_chot, 3)} if t_chot is not None else {})}
     if v96_k4.thuc_te_ngan(kb):
         out["hetDe"] = t_het_de
+        out["batBuocVatThe"] = v96_k4.bat_buoc_vat_the(kb)
     if san_khau:
         out["sanKhau"] = san_khau
         # v96: ô ghim 'x = ?' đổi sang nghiệm tối ưu máy tính đúng lúc sân khấu 2D chốt đỉnh (đồng bộ thanh gạt + lời đọc)
@@ -2068,6 +2072,8 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
     fraction = re.fullmatch(r"\s*(\d+)\s*/\s*(\d+)\s*", dap_an) if xs.ngan(kb) else None
     dap_can_do = [dap_an.strip()] if fraction else so_dap
     t_cb = v99_k4.moc_cong_bo(tu_all, canh_props, fps, dap_can_do, so_chu_sang_so)
+    if t_cb is None and v96_k4.thuc_te_ngan(kb) and (j_dc is not None or (san_khau or {}).get("x_tot") is not None):
+        t_cb = tong  # thiếu mốc đáp án: chỉ công bố ở Outro
     sua_cb = v99_k4.khoa_dap_an(out, t_cb, so_dap)
     if dong:
         for ph, b in zip(dong["pha"], buoc):
@@ -2078,6 +2084,7 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
         for ph in san_khau["pha"]:
             if ph["ten"] == "ket":
                 ph["t"] = max(ph["t"], t_cb or 0)
+        san_khau["nhip"] = v96_k4.nhip_chong_dung(san_khau["pha"], tong)
     if xs.ngan(kb):
         for j, b in enumerate(ds_buoc):
             lo, hi = t_buoc[j], t_buoc[j+1] if j+1 < len(buoc) else tong
@@ -2145,6 +2152,9 @@ def ghep(cac_tep, dich):
 
 PHONG_CACH_MAC_DINH = {"kieuPhuDe": "hop", "mauPhuDe": "#FF6B2C", "soNenToiDa": 3, "lopNeonTrenNen": False, "doMoNen": 0.35, "kyHieuTroi": False, "quangSang": True, "kieuNen": "toi", "kieuToan": "dam",
                        "kieuHinh": "manim", "thanhTienDo": False, "phuDe": True, "mau": {}}
+with open(os.path.join(os.path.dirname(__file__), "..", "phong_cach.json"), encoding="utf8") as _pc:
+    TEN_THUONG_HIEU = json.load(_pc)["thuongHieu"]["ten"]
+
 THUONG_HIEU_MAC_DINH = {"ten": "", "khauHieu": "", "handle": "", "markNuoc": True, "outroGiay": 5, "outroTuTao": True, "loiMoi": "Theo dõi để học mẹo xác suất"}
 DUOI_ANH = (".jpg", ".jpeg", ".png", ".webp")
 DUOI_VIDEO = (".mp4", ".mov", ".webm", ".m4v")
@@ -2424,10 +2434,8 @@ def tim_thuong_hieu(public, th):
     hien.pop("outroTuTao", None)
     hien.pop("dungOutroRieng", None)
     hien.pop("coManKet", None)
-    if not hien.get("ten") or "toán thầy trí" in str(hien.get("ten") or "").lower():
-        hien["ten"] = os.environ.get("KENH_TEN") or "Tư duy Xác suất"
-    if not hien.get("handle") or "toanthaytri" in str(hien.get("handle") or "").lower():
-        hien["handle"] = os.environ.get("KENH_HANDLE") or "@tuduyxacsuat"
+    hien["ten"] = TEN_THUONG_HIEU
+    hien["handle"] = ""
     if not hien.get("khauHieu"):
         hien["khauHieu"] = os.environ.get("KENH_KHAU_HIEU") or (th.get("khauHieu") if th else "") or "Học toán tư duy mỗi ngày"
     if not hien.get("loiMoi"):
@@ -2469,22 +2477,7 @@ def logo_theo_chuyen_muc(thuong_hieu, public, kb):
 
 
 def ten_kenh_theo_chuyen_muc(thuong_hieu, th, kb):
-    """v89: tên kênh ở Intro / dấu nước / màn kết theo chuyên mục (phong_cach.json -> thuongHieu.tenTheoChuyenMuc,
-    ví dụ {"Xác suất": "Tư duy Xác suất", "mac_dinh": "Tư duy Toán"}) để bài Đạo hàm/Tối ưu không gắn cứng chữ "Xác suất"."""
-    bang = (th or {}).get("tenTheoChuyenMuc")
-    if not isinstance(bang, dict) or not bang:
-        return thuong_hieu
-    mon = str(kb.get("mon") or kb.get("loai_cau_hoi") or kb.get("chuyen_muc") or "")
-    chu = (mon + " " + str(kb.get("chu_de") or kb.get("tieu_de") or "")).lower()
-    ten = None
-    for k, v in bang.items():
-        if k != "mac_dinh" and k.lower() in chu:
-            ten = v
-            break
-    if ten is None and re.search(r"xac_suat|xác suất|xac suat", chu):
-        ten = bang.get("Xác suất")
-    ten = ten or bang.get("mac_dinh")
-    return dict(thuong_hieu, ten=ten) if ten else thuong_hieu
+    return dict(thuong_hieu, ten=TEN_THUONG_HIEU)
 
 
 def chon_man_ket(outro_tep, th, bai_hoc):
@@ -3151,7 +3144,22 @@ def main():
     t_tong = time.perf_counter()
     cham("")
 
-    kb = json.load(open(args.kich_ban, encoding="utf8"))
+    with open(args.kich_ban, encoding="utf8") as tep:
+        kb = json.load(tep)
+    # Sửa CTA cũ trước khi tạo cả lời đọc lẫn phụ đề. Giữ nguyên thuật ngữ/chuyên mục.
+    for c in kb.get("canh") or []:
+        if isinstance(c, dict) and isinstance(c.get("loi_thoai"), str):
+            c["loi_thoai"] = re.sub(r"(kênh|theo dõi|đăng ký)\s+(?:Tư duy Xác suất|Tư duy Toán|Toán Thầy Trí)\b",
+                                     lambda m: m[1] + " " + TEN_THUONG_HIEU, c["loi_thoai"], flags=re.I)
+    import khung4tang_v96 as router
+    if router.thuc_te_ngan(kb):
+        loi = router.loi_truoc_tts(kb, (suy_khuon(kb) or {}).get("khuon"))
+        if loi:
+            print("t2_trong: " + loi, file=sys.stderr)
+            if os.environ.get("BAO_LOI_BP2"):
+                with open(os.environ["BAO_LOI_BP2"], "w", encoding="utf8") as bao:
+                    bao.write("t2_trong: " + loi)
+            raise SystemExit(42)
     import khung4tang_v99 as v99_dap
     v99_dap.kiem_ngay_dap_an(kb)
     import xac_suat_dong as xs
@@ -3477,17 +3485,18 @@ def main():
                 pc[k] = goi[k]
         print("Gói phong cách edit: %s" % kb.get("phong_cach_edit"))
     thuong_hieu, outro = tim_thuong_hieu(args.public, th)
-    # v92: tên + logo theo chuyên mục TRƯỚC khi dựng intro / màn kết (trước đây logo tròn "Tư duy Xác suất" cho mọi bài)
-    thuong_hieu = logo_theo_chuyen_muc(ten_kenh_theo_chuyen_muc(thuong_hieu, th, kb), args.public, kb)
+    # Logo chữ dùng chung; chuyên mục chỉ là dòng nhận diện của bài.
+    thuong_hieu = dict(thuong_hieu, logo=None, chuyenMuc="xac_suat" if la_chuyen_muc_xac_suat(kb) else "toan")
     bhr = kb.get("bai_hoc_rut_ra")   # v99.2b: Gemini đôi khi trả chuỗi -> bọc thành mảng (không lặp từng ký tự)
     bhr = bhr if isinstance(bhr, list) else ([bhr] if isinstance(bhr, str) and bhr.strip() else [])
     bai_hoc = [cat_nhan(str(x).strip(), 90) for x in bhr if str(x).strip()][:3]
     # Tự động chèn màn kết/outro thương hiệu chuyên nghiệp vào cuối video (tóm tắt bài học + kênh + nút Thích / Theo dõi).
-    co_man_ket = bool(th.get("coManKet", True))
+    ngan_4t = la_k4_kb and kb.get("kieu_video") != "DAI_10_PHUT" and not str(kb.get("id") or "").upper().endswith("-10P")
+    co_man_ket = ngan_4t or bool(th.get("coManKet", True))
     # v89: video đã có cảnh bai_hoc (chốt kiến thức) -> màn kết KHÔNG lặp lại 3 gạch đầu dòng, chỉ đáp án + kênh (ngắn hơn, bớt đuôi im lặng)
     if any(re.search(r"bai_hoc|ket_luan|chot", str(c.get("loai") or "").lower()) for c in (kb.get("canh") or [])):
         bai_hoc = []
-    outro = chon_man_ket(outro, dict(th, logo=thuong_hieu.get("logo")), bai_hoc) if co_man_ket else None
+    outro = chon_man_ket(outro, dict(th, ten=TEN_THUONG_HIEU, logo=None, outroTuTao=ngan_4t or th.get("outroTuTao", True)), bai_hoc) if co_man_ket else None
     if outro:
         outro["batDau"] = bat_dau
         bat_dau += outro["soFrame"]

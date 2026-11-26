@@ -144,7 +144,7 @@ const OxyCong: React.FC<{sk: SoDo2DVao; t: number; W: number; H: number; mauNhan
         <NhanTex x={xm} y={Y(y) + 14} tex={`MN = ${f(2 * u)}${dv}`} mau={V} co={26} />
       </div> : null}
       </div>
-      <DongKetQua x={LE.trai} y={H - LE.duoi - CAO_DONG_KQ} w={W - LE.trai - LE.phai} h={CAO_DONG_KQ} tex={dK >= 0 ? `y =${f(h)}\\left(1-\\dfrac{4x^2}{${f(w * w)}}\\right)` : ''} a={em(dK / 0.4)} mau={C} nhan={nh * 0.6} co={34} />
+      <DongKetQua x={LE.trai} y={H - LE.duoi - CAO_DONG_KQ} w={W - LE.trai - LE.phai} h={CAO_DONG_KQ} tex={dK >= 0 ? `y =${f(h)}\\left(1-\\dfrac{4x^2}{${f(w * w)}}\\right)` : ''} a={em(Math.max(sk.mocCongBo !== undefined ? t - sk.mocCongBo : dK, dT - 1.1) / 0.4)} mau={C} nhan={nh * 0.6} co={34} />
       <ThanhTienDo W={W} H={H} u={tienDo(sk.pha, t)} mau={mauNhan} />
     </div>
   );
@@ -168,11 +168,11 @@ const SoDo2DChung: React.FC<{sk: SoDo2DVao; t: number; W: number; H: number; mau
   const an = dT > 1.1 && dK < 0;
   const hinh = dungHinh(sk, x, rH, an);
   const VANG = mau('vang'), NGOC = HO_PHACH;
-  const tex = dK >= 0 && sk.x_tot !== undefined && sk.y_tot !== undefined
-    ? `${sk.bien} = ${soVN(sk.x_tot)} \\Rightarrow ${sk.ten_ham}_{${sk.kieu || 'min'}} = ${soVN(sk.y_tot)}` : '';
+  const tex = (sk.mocCongBo !== undefined ? t >= sk.mocCongBo : dK >= 0) && sk.x_tot !== undefined && sk.y_tot !== undefined
+    ? `${sk.bien} = ${soVN(sk.x_tot)} \\Rightarrow ${sk.ten_ham}_{${sk.kieu || 'min'}} = ${soVN(sk.y_tot)}` : dT > 1.1 && sk.x_tot !== undefined ? `${sk.bien} = ${soVN(sk.x_tot)}` : '';
   return (
     <div style={{position: 'absolute', inset: 0, opacity: aT}}>
-      <svg width={W} height={H} style={{position: 'absolute', inset: 0}}>
+      <svg data-vat-the width={W} height={H} style={{position: 'absolute', inset: 0}}>
         {(hinh.vung || []).map((v, k) => <path key={k} d={v.d} fill={v.mau} />)}
         {hinh.net.map((n, k) => <line key={k} x1={n.a[0]} y1={n.a[1]} x2={n.b[0]} y2={n.b[1]} stroke={n.mau} strokeWidth={(n.day || 2) + (n.day && n.day >= 3 ? nh : 0)} strokeDasharray={n.dut ? '7 7' : undefined} strokeLinecap="round" />)}
         {hinh.diem.map((d, k) => <circle key={k} cx={d.p[0]} cy={d.p[1]} r={8 + (d.ten === 'M' ? 2 * tho(t, 1.4) : 0)} fill={d.mau} stroke="#0E1014" strokeWidth={2} />)}
@@ -189,16 +189,17 @@ const SoDo2DChung: React.FC<{sk: SoDo2DVao; t: number; W: number; H: number; mau
       })}
       {hinh.diem.filter((d) => d.ten).map((d, k) => <NhanTex key={k} x={d.p[0]} y={d.p[1] + 28} tex={d.ten} mau={d.mau} co={24} />)}
       {th && f ? (
-        <div data-sk2d="do_thi_mini">
+        <div data-do-thi data-sk2d="do_thi_mini">
           <svg width={W} height={H} style={{position: 'absolute', inset: 0}}>
             <rect x={rD.x - 16} y={rD.y - 40} width={rD.w + 30} height={rD.h + 80} rx={18} fill="rgba(21,26,35,0.9)" stroke="rgba(255,255,255,0.1)" />
             <path d={th.mau.map(([u, v], i) => `${i ? 'L' : 'M'}${th.X(u).toFixed(1)} ${th.Y(v).toFixed(1)}`).join(' ')} fill="none" stroke={mau('cyan')} strokeWidth={2.6} />
             <circle cx={th.X(x)} cy={th.Y(f(x))} r={7 + 2 * nh} fill={an || dK >= 0 ? NGOC : VANG} />
           </svg>
+          <NhanTex x={rD.x + rD.w} y={rD.y + rD.h + 22} tex={sk.bien || 'x'} co={22} mau={MO} />
           <div style={{position: 'absolute', left: rD.x, top: rD.y - 34}}><Toan tex={`${sk.ten_ham}(${sk.bien})`} size={24} color={mau('cyan')} /></div>
         </div>
       ) : null}
-      <DongKetQua x={LE.trai} y={H - LE.duoi - CAO_DONG_KQ} w={W - LE.trai - LE.phai} h={CAO_DONG_KQ} tex={tex} a={em(dK / 0.4)} mau={VANG} nhan={nh * 0.6} co={38} />
+      <DongKetQua x={LE.trai} y={H - LE.duoi - CAO_DONG_KQ} w={W - LE.trai - LE.phai} h={CAO_DONG_KQ} tex={tex} a={em(Math.max(sk.mocCongBo !== undefined ? t - sk.mocCongBo : dK, dT - 1.1) / 0.4)} mau={VANG} nhan={nh * 0.6} co={38} />
       <ThanhTienDo W={W} H={H} u={tienDo(sk.pha, t)} mau={mauNhan} />
     </div>
   );

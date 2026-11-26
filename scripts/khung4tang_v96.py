@@ -1245,13 +1245,17 @@ def loai_xac_suat(van, lop):
     return "rut_mau"
 
 
+def cho_do_thi_thuan(van):
+    return bool(re.search(r"giá vé|giá bán|lợi nhuận|doanh thu|giảm giá|tăng giá|chiết khấu|tiền lãi|lãi suất|lãi kép|gửi tiết kiệm|lạm phát|dân số|tăng trưởng", van, re.I) and not re.search(r"mét|(?:^|[^a-zà-ỹ])(?:km|dm|cm|mm|m)(?:[²³23]|(?=$|[^a-zà-ỹ]))|diện tích|thể tích|chu vi|kích thước|chiều (?:dài|rộng|cao)|bán kính|đất|vườn|ruộng|hộp|rào|lối đi|tường|góc|quãng đường|vận tốc|tốc độ chuyển động|cắt|gấp (?:giấy|hình)|gập|máng|vòm|sông|thuyền|bìa|quỹ đạo|bể|hình trụ|hình nón|khối|đường ống|dây cáp|mặt cầu|thang dựa|bánh răng|vi khuẩn", van, re.I) and not RE_VAT_THE.search(van))
+
+
 def loai_thuc_te(van, khuon_suy):
     t = str(van or "").lower()
     # vật thể khối thật (hộp, lon, chóp, mặt cầu...) hoặc đặc tả 3D tự do AI đã dựng được -> giữ sân khấu 3D
     # (khuôn AI ghi chỉ được tin khi đề THẬT SỰ nói tới vật thể — đề đại số mà AI gắn "tam_bia_gap_hop" -> không nhận)
     if (khuon_suy == "__tu_do__" or (khuon_suy in KHUON_VAT_THE and khuon_suy != "parabol_quy_dao")) and RE_VAT_THE.search(t):
         return "3d_vector"
-    if re.search(r"giá bán|lợi nhuận|doanh thu|chi phí|giảm giá|tăng giá|tiền lãi thu|bán được|khách hàng", t):
+    if re.search(r"giá vé|chiết khấu|giá bán|lợi nhuận|doanh thu|chi phí|giảm giá|tăng giá|tiền lãi thu|bán được|khách hàng", t):
         return "kinh_te_do_thi"
     if re.search(r"lãi suất|lãi kép|gửi tiết kiệm|tăng trưởng|dân số|vi khuẩn|phân rã|chu kì bán rã|logarit|\blog\b|hàm mũ|lạm phát", t):
         return "tang_truong"
@@ -1290,7 +1294,10 @@ def chon_san_khau(kb, r=None, khuon_suy=None):
     sk = k4.get("san_khau") if isinstance(k4.get("san_khau"), dict) else {}
     if bat_buoc and (kb.get("san_khau_dich") == "tu_sinh_svg" or k4.get("tu_sinh") or sk.get("loai") == "tu_sinh_svg"):
         return {"loai": "tu_sinh_svg", "nguon": "hop_dong", "chi_dao": loi_cd}
-    if loai_cd and (not bat_buoc or loai_cd in (*LOAI_2D_TT, "3d_vector")):
+    loai_tt = LOAI_2D_TT if cho_do_thi_thuan(van) else ("so_do_2d",)
+    if bat_buoc and re.search(r"lối đi", van, re.I) and not k4.get("canh_3d_vector"):
+        return {"loai": "tu_sinh_svg", "nguon": "suy", "chi_dao": loi_cd}
+    if loai_cd and (not bat_buoc or loai_cd in (*loai_tt, "3d_vector")):
         if loai_cd == "luoi_bayes" and lop != "12":
             loai_cd = "so_do_cay"   # chỉ đạo không vượt GDPT 2018 (Bayes chỉ có ở lớp 12)
         if loai_cd in LOAI_XS and mon != "XAC_SUAT" and not re.search(r"xác suất|ngẫu nhiên", van, re.I):
@@ -1298,7 +1305,7 @@ def chon_san_khau(kb, r=None, khuon_suy=None):
         return {"loai": loai_cd, "nguon": "chi_dao", "chi_dao": loi_cd}
     if not bat_buoc and str(kb.get("san_khau_dich") or "") == "cay_bayes":   # v99.2: hợp đồng hình BP0 (bản đôi SanKhau.gs chonSanKhau_)
         return {"loai": "so_do_cay", "nguon": "hop_dong", "chi_dao": loi_cd}
-    if sk.get("loai") in (LOAI_2D_TT if bat_buoc else LOAI_SAN_KHAU):
+    if sk.get("loai") in (loai_tt if bat_buoc else LOAI_SAN_KHAU):
         loai = sk["loai"]
         if loai == "luoi_bayes" and lop != "12":
             loai = "so_do_cay"
@@ -1306,15 +1313,88 @@ def chon_san_khau(kb, r=None, khuon_suy=None):
     c3 = k4.get("canh_3d_vector") if isinstance(k4.get("canh_3d_vector"), dict) else {}
     if mon == "XAC_SUAT" or not bat_buoc and re.search(r"tính xác suất|xác suất để", van, re.I):
         return {"loai": loai_xac_suat(van, lop), "nguon": "suy", "chi_dao": loi_cd}
-    khuon = khuon_suy or (c3.get("khuon") if c3.get("khuon") != "luoi_the_bi_xac_suat" else None)
+    khuon = (c3.get("khuon") if c3.get("khuon") != "luoi_the_bi_xac_suat" else None) or ("__tu_do__" if c3.get("doi_tuong") else khuon_suy)
     if not khuon and re.search(r"gập|hộp|hình trụ|\blon\b|hình nón|phễu|hình chóp|lăng trụ|mặt cầu|dây cáp|thiết diện|bồn|bể", van, re.I):
         khuon = "__tu_do__"   # bản rút gọn của suyKhuon_ (Apps Script) khi chuanbi chưa truyền khuôn suy từ đề
     loai = loai_thuc_te(van, khuon)
+    if bat_buoc and loai in ("kinh_te_do_thi", "tang_truong") and not cho_do_thi_thuan(van):
+        loai = None
     if loai:
         return {"loai": loai, "nguon": "suy", "chi_dao": loi_cd}
     if c3.get("khuon") in KHUON_VAT_THE and RE_VAT_THE.search(van):
         return {"loai": "3d_vector", "nguon": "ai", "chi_dao": loi_cd}
     return {"loai": "tu_sinh_svg" if bat_buoc else "tu_duy_dai_so", "nguon": "lui", "chi_dao": loi_cd}
+
+
+def bat_buoc_vat_the(kb):
+    van = " ".join(str(kb.get(k) or "") for k in ("de_bai", "can_tim", "chu_de"))
+    return thuc_te_ngan(kb) and not cho_do_thi_thuan(van)
+
+
+def loi_thu_tu_toi_uu(kb):
+    if not re.search(r"tối ưu|cực trị|lớn nhất|nhỏ nhất|cực đại|cực tiểu", str(kb.get("de_bai") or ""), re.I):
+        return ""
+    # Chỉ nhận câu mô tả thao tác của bước, bỏ qua hook/đề bài nhắc trước mục tiêu.
+    nhom = [r"(?:gọi|đặt|chọn) (?:ẩn|biến|[xtrh](?!\w))",
+            r"lập (?:hàm|biểu thức)|xây dựng hàm|thiết lập hàm",
+            r"tìm (?:đỉnh|cực trị)|xét (?:đỉnh|đạo hàm)|tính đạo hàm",
+            r"chốt (?:đáp án|kết quả)|kết luận"]
+    def lui(cac_cau):
+        pha = -1
+        for cau in cac_cau:
+            for hit in re.finditer("|".join("(" + expr + ")" for expr in nhom), cau, re.I):
+                bac = hit.lastindex - 1
+                if bac < pha:
+                    return True
+                pha = bac
+        return False
+    buoc = (kb.get("khung4tang") or {}).get("buoc") or []
+    tieu_de = [str(b.get("tieu_de") or b.get("nhan") or "") for b in buoc if isinstance(b, dict)]
+    loi = [str(c.get("loi_thoai") or "") for c in kb.get("canh") or [] if isinstance(c, dict)
+           and c.get("loai") not in ("hook", "de_bai", "mo_dau", "cta", "bai_hoc")]
+    if lui(tieu_de) or lui(loi):
+        return "Sắp lại lời và thẻ: gọi ẩn trên hình, lập hàm, tìm cực trị, chốt đáp án."
+    return ""
+
+
+def loi_truoc_tts(kb, khuon_suy=None):
+    k4 = kb.get("khung4tang") or {}
+    route = chon_san_khau(kb, khuon_suy=khuon_suy)["loai"]
+    sk = k4.get("san_khau") or {}
+    if not k4 or not k4.get("buoc"):
+        if route != "lego_3d":
+            return "Thiếu khung và các bước minh họa của đề thực tế."
+    if bat_buoc_vat_the(kb):
+        from khung4tang_v93 import kiem_doi_chieu
+        for i, step in enumerate(k4.get("buoc") or []):
+            if not isinstance(step, dict) or not step.get("doi_chieu"):
+                continue
+            d = kiem_doi_chieu(step["doi_chieu"])
+            if not d:
+                return "Đối chiếu bước %d thiếu hàm hoặc miền hợp lệ bên phải." % (i+1)
+            lo, hi = d["mien"]
+            ts = d.get("tham_so") or {}
+            a = doc_ti_le(ts.get("a")) or 0
+            b = doc_ti_le(ts.get("b", a)) or 0
+            hinh = d.get("hinh")
+            if lo < 0 or not ((hinh == "tam_bia" and hi <= min(a, b)/2 + 1e-6)
+                              or (hinh == "mat_cat_tru" and (doc_ti_le(ts.get("V")) or 0) > 0)
+                              or (hinh == "tam_giac_luc" and hi <= 89)):
+                return "Đối chiếu bước %d thiếu vật thể co giãn bên trái. BP2 sinh sơ đồ đúng đề." % (i+1)
+    if route == "tu_sinh_svg":
+        svg = k4.get("tu_sinh") or (sk if sk.get("loai") == route else {})
+        if not (svg.get("ma") or (svg.get("tham_so") or {}).get("ma")):
+            return "Thiếu hình vật thể. BP2 sinh các lớp ve25d theo đề và từng bước."
+    if route == "so_do_2d" and (sk.get("tham_so") or {}).get("mau") not in MAU_SO_DO_2D:
+        return "Thiếu mẫu sơ đồ vật thể. BP2 sinh hình ve25d đúng kích thước đề."
+    if route == "3d_vector" and not (khuon_suy or k4.get("canh_3d_vector")):
+        return "Thiếu đặc tả vật thể 3D; BP2 sinh hình bằng ve25d."
+    if route in ("kinh_te_do_thi", "tang_truong"):
+        if not dung_san_khau(route, sk.get("tham_so") or {}, kb, k4, [], []):
+            return "Thiếu hàm hoặc miền hợp lệ cho đồ thị."
+        if any(re.search(r"nhìn (?:vào )?hình vẽ", str(c.get("loi_thoai") or ""), re.I) for c in kb.get("canh") or [] if isinstance(c, dict)):
+            return "Sân khấu là đồ thị; sửa lời dẫn 'nhìn vào hình vẽ' cho khớp."
+    return loi_thu_tu_toi_uu(kb)
 
 
 # ====================================================================================================================

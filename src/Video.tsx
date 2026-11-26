@@ -1,3 +1,5 @@
+import {TEN_THUONG_HIEU} from './theme';
+import {KhoaThuongHieu} from './khung4tang/KhoaThuongHieu';
 import {BoiCanh} from './NenCauChuyen';
 import {NenChieuSau} from './NenChieuSau';
 import React from 'react';
@@ -115,7 +117,7 @@ function taoAmLuongNhac(props: Props) {
 // Video có ảnh bìa ở khung hình đầu: khung 0 là ảnh bìa, toàn bộ nội dung lùi 1 khung (1/30 giây, mắt không nhận ra).
 // v91: props có boCuc '4tang' + khung4tang -> phần nội dung là khung 4 tầng (sân khấu 3D Vector) nhưng VẪN giữ vỏ chung
 // (ảnh bìa khung đầu, intro thương hiệu, giọng đọc từng cảnh, nhạc ducking, màn kết); còn lại giữ nguyên đường dựng cũ.
-export const Video: React.FC<Props> = (props) => <VideoCu {...props} />;
+export const Video: React.FC<Props> = (props) => <VideoCu {...props} thuongHieu={{...props.thuongHieu, ten: TEN_THUONG_HIEU, logo: null, handle: ''}} />;
 
 const la4Tang = (p: Props) => p.boCuc === '4tang' && !!p.khung4tang;
 
@@ -180,7 +182,7 @@ const NoiDung4Tang: React.FC<Props & {coIntro?: boolean}> = (props) => {
   return (
     <AbsoluteFill style={{fontFamily: FONT, background: '#0E1014'}}>
       <Sequence from={0} durationInFrames={Math.max(1, ketThuc)}>
-        <Khung4Tang {...k} batBuocMinhHoa={batBuocMinhHoa} fps={fps} tongFrame={Math.max(1, ketThuc)} thuongHieu={k.thuongHieu ?? thuongHieu?.ten} cau={k.boCuc?.phuDe === 'gon' ? cau : k.cau} />
+        <Khung4Tang {...k} mon={props.mon} batBuocMinhHoa={batBuocMinhHoa} fps={fps} tongFrame={Math.max(1, ketThuc)} thuongHieu={k.thuongHieu ?? thuongHieu?.ten} cau={k.boCuc?.phuDe === 'gon' ? cau : k.cau} />
       </Sequence>
       {nhac ? <Audio src={staticFile(nhac)} loop volume={amNhac} /> : null}
       {canh.map((c) =>
@@ -207,8 +209,8 @@ const NoiDung4Tang: React.FC<Props & {coIntro?: boolean}> = (props) => {
         <Sequence from={outro.batDau} durationInFrames={outro.soFrame}>
           <VaoMuot>
           {outro.loai === 'tu_tao' && tomTat ? (
-            <OutroTomTat giuHinh={batBuocMinhHoa} dapAn={props.dapAn} tomTat={tomTat} canh={k.tuSinh || k.sanKhau || k.khongGian ? null : canhCuoi} sanKhau={k.tuSinh?.lop?.length ? null : k.sanKhau || null} khongGian={k.khongGian || null} tCuoi={Math.max(1, ketThuc) / fps} thuongHieu={k.thuongHieu ?? thuongHieu?.ten} cta={k.cta} tuSinh={k.tuSinh || null} theme={k.theme} />
-          ) : outro.loai === 'tu_tao' ? <ManKetChuyenNghiep th={thuongHieu} baiHoc={props.baiHoc || []} dapAn={props.dapAn} tiepTheo={props.tiepTheo || ''} /> : <ManKet tep={outro.tep} loai={outro.loai} />}
+            <OutroTomTat mon={props.mon} giuHinh={batBuocMinhHoa} dapAn={props.dapAn} tomTat={tomTat} canh={k.tuSinh || k.sanKhau || k.khongGian ? null : canhCuoi} sanKhau={k.tuSinh?.lop?.length ? null : k.sanKhau || null} khongGian={k.khongGian || null} tCuoi={Math.max(1, ketThuc) / fps} thuongHieu={k.thuongHieu ?? thuongHieu?.ten} cta={k.cta} tuSinh={k.tuSinh || null} theme={k.theme} />
+          ) : outro.loai === 'tu_tao' ? <ManKetChuyenNghiep mon={props.mon} th={thuongHieu} baiHoc={props.baiHoc || []} dapAn={props.dapAn} tiepTheo={props.tiepTheo || ''} /> : <><ManKet tep={outro.tep} loai={outro.loai} /><KhoaThuongHieu viTri="outro" mon={props.mon} /></>}
           </VaoMuot>
         </Sequence>
       ) : null}
@@ -259,12 +261,17 @@ const NoiDungVideo: React.FC<Props & {coIntro?: boolean}> = (props) =>
 const NoiDungHinhPhang: React.FC<Props & {coIntro?: boolean}> = (props) => {
   const {canh, tongFrame, fps, nhac, thuongHieu, outro} = props;
   const amNhac = React.useMemo(() => taoAmLuongNhac(props), [canh, tongFrame, fps, props.amLuongNhac]);
+  const ketThuc = outro ? outro.batDau : tongFrame;
+  const monHP = props.mon || 'HINH_PHANG';
   return (
     <AbsoluteFill style={{fontFamily: FONT, backgroundColor: '#0a1725', backgroundImage: 'linear-gradient(#adcde30d 1px,transparent 1px),linear-gradient(90deg,#adcde30d 1px,transparent 1px),radial-gradient(ellipse at 50% 35%,#17364a,#0a1725 74%)', backgroundSize: '56px 56px,56px 56px,100% 100%'}}>
       <div style={{position: 'absolute', top: '10.8%', left: '4%', right: '4%', height: '7.5%', borderRadius: 20, border: '1px solid #41647c', background: '#102332bb'}}>
         <span style={{position: 'absolute', top: -13, left: 24, padding: '0 10px', background: '#12283a', color: '#a5dded', fontSize: 20, fontWeight: 700}}>Đề bài</span>
       </div>
       <div style={{position: 'absolute', inset: '55% 3% 12%', borderRadius: 24, border: '1px solid #48718a', background: '#102332bb'}} />
+      <Sequence from={0} durationInFrames={Math.max(1, ketThuc)}>
+        <KhoaThuongHieu viTri="nuoc" />
+      </Sequence>
       {nhac ? <Audio src={staticFile(nhac)} loop volume={amNhac} /> : null}
       {canh.map((c) =>
         c.audio ? (
@@ -280,7 +287,7 @@ const NoiDungHinhPhang: React.FC<Props & {coIntro?: boolean}> = (props) => {
       ))}
       {outro ? (
         <Sequence from={outro.batDau} durationInFrames={outro.soFrame}>
-          {outro.loai === 'tu_tao' ? <ManKetChuyenNghiep th={thuongHieu} baiHoc={props.baiHoc || []} dapAn={props.ketQuaHinhPhang?.tex ?? props.dapAn} nhanHinh={props.ketQuaHinhPhang?.nhan} tiepTheo={props.tiepTheo || ''} /> : <ManKet tep={outro.tep} loai={outro.loai} />}
+          {outro.loai === 'tu_tao' ? <ManKetChuyenNghiep mon={monHP} th={thuongHieu} baiHoc={props.baiHoc || []} dapAn={props.ketQuaHinhPhang?.tex ?? props.dapAn} nhanHinh={props.ketQuaHinhPhang?.nhan} tiepTheo={props.tiepTheo || ''} /> : <><ManKet tep={outro.tep} loai={outro.loai} /><KhoaThuongHieu viTri="outro" mon={monHP} /></>}
         </Sequence>
       ) : null}
       {props.kiemDuyet ? <KiemDuyet /> : null}
@@ -399,7 +406,7 @@ const NoiDungCu: React.FC<Props & {coIntro?: boolean}> = (props) => {
         moc={la4Tang(props) && props.khung4tang?.buoc?.length ? props.khung4tang.buoc.map((b) => Math.round(b.t * fps)) : canh.map((c) => c.batDau)} /> : null}
       {outro ? (
         <Sequence from={outro.batDau} durationInFrames={outro.soFrame}>
-          {outro.loai === 'tu_tao' ? <ManKetChuyenNghiep th={thuongHieu} baiHoc={props.baiHoc || []} dapAn={props.dapAn} tiepTheo={props.tiepTheo || ''} /> : <ManKet tep={outro.tep} loai={outro.loai} />}
+          {outro.loai === 'tu_tao' ? <ManKetChuyenNghiep mon={props.mon} th={thuongHieu} baiHoc={props.baiHoc || []} dapAn={props.dapAn} tiepTheo={props.tiepTheo || ''} /> : <ManKet tep={outro.tep} loai={outro.loai} />}
         </Sequence>
       ) : null}
       {props.kiemDuyet ? <KiemDuyet /> : null}

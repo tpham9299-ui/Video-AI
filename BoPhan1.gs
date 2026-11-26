@@ -3449,7 +3449,12 @@ function capNhatMaAppsScriptTuGitHub() {
       Logger.log(errTai);
       throw new Error(errTai);
     }
-    filesMoi.push({ name: ten, type: 'SERVER_JS', source: res.getContentText() });
+    var source = res.getContentText();
+    if (ten === 'PromptKichBan') {
+      var pc = JSON.parse(UrlFetchApp.fetch(urlRaw.replace(/PromptKichBan\.gs$/, 'phong_cach.json'), {headers: headersGh}).getContentText());
+      source = source.replace(/var TEN_THUONG_HIEU_;/, 'var TEN_THUONG_HIEU_ = ' + JSON.stringify(pc.thuongHieu.ten) + ';');
+    }
+    filesMoi.push({ name: ten, type: 'SERVER_JS', source: source });
     Logger.log('   ✓ Đã tải: ' + ten + '.gs (' + res.getContentText().length + ' ký tự)');
   }
 

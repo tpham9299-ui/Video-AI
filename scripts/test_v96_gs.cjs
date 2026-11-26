@@ -45,11 +45,11 @@ const CA = [
   ['bất đẳng thức lạ -> tu_sinh_svg', {mon: 'THUC_TE', lop: '11', de_bai: 'Chứng minh a^2 + b^2 >= 2ab với mọi a, b.'}, 'tu_sinh_svg'],
   ['chỉ đạo "chỉ dùng sơ đồ tư duy" vẫn minh họa bài hộp', {mon: 'THUC_TE', lop: '12', chi_dao: '[chidao: chỉ dùng sơ đồ tư duy]', de_bai: 'Tấm bìa 12 cm gập hộp.'}, '3d_vector'],
   ['chỉ đạo "dùng lưới Bayes" lớp 11 -> so_do_cay', {mon: 'XAC_SUAT', lop: '11', chi_dao: 'dùng lưới Bayes', de_bai: 'Rút 2 thẻ.'}, 'so_do_cay'],
-  ['chỉ đạo "vẽ đồ thị lợi nhuận"', {mon: 'THUC_TE', lop: '12', chi_dao: '[chidao: vẽ đồ thị lợi nhuận]', de_bai: 'Bài toán bán hàng.'}, 'kinh_te_do_thi'],
+  ['chỉ đạo "vẽ đồ thị lợi nhuận"', {mon: 'THUC_TE', lop: '12', chi_dao: '[chidao: vẽ đồ thị lợi nhuận]', de_bai: 'Tìm lợi nhuận lớn nhất khi bán hàng.'}, 'kinh_te_do_thi'],
   ['hình học thuần -> giữ luồng v94', {mon: 'HINH_HOC', lop: '9', de_bai: 'Cho tam giác ABC vuông tại A.'}, 'hinh_hoc'],
 ];
 for (const [ten, kb, mong] of CA) t(ten, () => assert.equal(ctx.chonSanKhau_(J(kb), {}).loai, mong));
-t('chỉ đạo ghi nguồn chi_dao + lời gốc', () => { const q = ctx.chonSanKhau_({mon: 'THUC_TE', lop: '12', chi_dao: '[chidao: vẽ đồ thị lợi nhuận]'}, {}); assert.equal(q.nguon, 'chi_dao'); assert.equal(q.chi_dao, 'vẽ đồ thị lợi nhuận'); });
+t('chỉ đạo ghi nguồn chi_dao + lời gốc', () => { const q = ctx.chonSanKhau_({mon: 'THUC_TE', lop: '12', de_bai: 'Tối ưu doanh thu.', chi_dao: '[chidao: vẽ đồ thị lợi nhuận]'}, {}); assert.equal(q.nguon, 'chi_dao'); assert.equal(q.chi_dao, 'vẽ đồ thị lợi nhuận'); });
 t('tachChiDao_ tách thẻ khỏi đề Zalo', () => assert.deepEqual(J(ctx.tachChiDao_('[chidao: dùng sơ đồ cây] Bắn 2 lần...')), {de: 'Bắn 2 lần...', chi_dao: 'dùng sơ đồ cây'}));
 t('so khớp định tuyến với bản Python (15 ca)', () => {
   const ma = 'import json,sys; sys.path.insert(0, "scripts"); import khung4tang_v96 as v; ca = json.load(sys.stdin); print(json.dumps([v.chon_san_khau(kb)["loai"] for kb in ca]))';

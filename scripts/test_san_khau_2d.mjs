@@ -5,7 +5,7 @@
 // khóa màu ẩn số, đồ thị không NaN.
 import {build} from 'esbuild';
 import fs from 'fs';
-import {execFileSync} from 'node:child_process';
+import {execFileSync, spawnSync} from 'node:child_process';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {dungImXacSuat} from './dung_im_xs.mjs';
@@ -54,13 +54,14 @@ const W = bc.rong, H = bc.t2.h;
 const MAU = ['vd_153504', 'bayes_xet_nghiem', 'loi_nhuan_tra_sua', 'dai_so_chi_dao'];
 for (const ten of MAU) {
   const tep = `out/v96/${ten}/props.json`;
+  if (ten === 'dai_so_chi_dao') {
+    const r = spawnSync('python', ['-X', 'utf8', 'scripts/chuanbi.py', 'mau/v96/dai_so_chi_dao.json', '--gia-lap', '--props-ra', tep], {encoding: 'utf8', env: {...process.env, PYTHONIOENCODING: 'utf-8'}});
+    thu('THUC_TE cũ chỉ có hộp chữ dừng trước TTS/bundle', r.status === 42 && /t2_trong:/.test(r.stderr || ''), `rc=${r.status} ${(r.stderr || '').trim().slice(0, 120)}`);
+    continue;
+  }
   if (!fs.existsSync(tep)) { thu(`${ten}: có props (chạy python scripts/test_v96.py trước)`, false); continue; }
   const p = JSON.parse(fs.readFileSync(tep, 'utf8'));
   const sk = p.khung4tang?.sanKhau;
-  if (ten === 'dai_so_chi_dao' && p.mon === 'THUC_TE') {
-    thu('THUC_TE cũ chỉ có hộp chữ dừng trước bundle', !sk && !!p.khung4tang?.tuSinhHong);
-    continue;
-  }
   if (!sk) { thu(`${ten}: có sanKhau`, false); continue; }
   const hop = C.hopQuanTrong(sk, W, H);
   const ngoai = (y0) => hop.filter((h) => !V.trongAnToan(bc.le + h.x, y0 + h.y, h.w, h.h));

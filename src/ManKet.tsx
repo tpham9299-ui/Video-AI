@@ -1,3 +1,5 @@
+import {TEN_THUONG_HIEU} from './theme';
+import {chuyenMuc} from './khung4tang/KhoaThuongHieu';
 import React from 'react';
 import {AbsoluteFill, Audio, Sequence, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
 import {NenToi} from './NenToi';
@@ -51,7 +53,7 @@ const NgonTay: React.FC<{p: number}> = ({p}) => (
   <div style={{position: 'absolute', left: 74, top: 70, transform: `translate(${(1 - easeOut(kep(p * 2))) * 140}px, ${(1 - easeOut(kep(p * 2))) * 120}px) scale(${1 - 0.12 * Math.sin(Math.PI * kep((p - 0.5) * 2))})`, opacity: p > 0 && p < 1.4 ? 1 : 0, fontSize: 72, filter: 'drop-shadow(0 6px 10px rgba(0,0,0,0.5))'}}>👆</div>
 );
 
-export const ManKetChuyenNghiep: React.FC<{th: ThuongHieuProps; baiHoc: string[]; dapAn: string; nhanHinh?: string; tiepTheo: string}> = ({th, baiHoc, dapAn, nhanHinh, tiepTheo}) => {
+export const ManKetChuyenNghiep: React.FC<{mon?: string; th: ThuongHieuProps; baiHoc: string[]; dapAn: string; nhanHinh?: string; tiepTheo: string}> = ({mon, th, baiHoc, dapAn, nhanHinh, tiepTheo}) => {
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
   const anToan: React.CSSProperties = nhanHinh ? {maxWidth: 920, boxSizing: 'border-box', overflow: 'hidden', textAlign: 'center', justifyContent: 'center', flexWrap: 'wrap'} : {};
@@ -60,7 +62,7 @@ export const ManKetChuyenNghiep: React.FC<{th: ThuongHieuProps; baiHoc: string[]
   const tuNut = tuKenh + 16;
   const tuBam = tuNut + 26;
   const bam = kep((f - tuBam - 10) / 8);
-  const ten = th.ten || th.handle || '';
+  const ten = TEN_THUONG_HIEU + ' • ' + chuyenMuc(mon);
   return (
     <AbsoluteFill style={{opacity: kep(f / 6)}}>
       <NenToi />
@@ -125,7 +127,7 @@ export const ManKetChuyenNghiep: React.FC<{th: ThuongHieuProps; baiHoc: string[]
           {th.logo || ten ? <LogoTron th={th} co={coBaiHoc ? 110 : 200} goc={f * 3} sang={0.6} /> : null}
           {ten ? (
             <div>
-              <div style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: coBaiHoc ? 46 : 60, color: '#fff'}}>{ten}</div>
+              <div data-thuong-hieu="outro" style={{fontFamily: FONT_DAM, fontWeight: 900, fontSize: coBaiHoc ? 38 : 46, color: '#fff'}}>{ten}</div>
               {th.khauHieu ? <div style={{fontFamily: FONT, fontWeight: 700, fontSize: 26, color: 'rgba(255,255,255,0.7)', marginTop: 4}}>{th.khauHieu}</div> : null}
             </div>
           ) : null}

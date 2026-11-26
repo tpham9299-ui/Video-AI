@@ -32,7 +32,7 @@ export const KinhTeDoThi: React.FC<{sk: KinhTeVao; t: number; W: number; H: numb
   const nVe = Math.max(2, Math.round(th.mau.length * uVe));
   const duong = th.mau.slice(0, nVe).map(([u, v], i) => `${i ? 'L' : 'M'}${th.X(u).toFixed(1)} ${th.Y(v).toFixed(1)}`).join(' ');
   const ten = `${sk.ten_ham}(${sk.bien})`;
-  const tex = dK >= 0 ? `${sk.bien} = ${soVN(sk.x_tot)} \\Rightarrow ${sk.ten_ham}_{${sk.kieu}} = ${soVN(sk.y_tot)}${dvTex(sk.don_vi)}` : '';
+  const tex = (sk.mocCongBo !== undefined ? t >= sk.mocCongBo : dK >= 0) ? `${sk.bien} = ${soVN(sk.x_tot)} \\Rightarrow ${sk.ten_ham}_{${sk.kieu}} = ${soVN(sk.y_tot)}${dvTex(sk.don_vi)}` : dT > 1.1 && sk.x_tot !== undefined ? `${sk.bien} = ${soVN(sk.x_tot)}` : '';
   const u = (x - a) / (b - a);
   // v96: từ pha chốt đỉnh (lời đọc đã nói ra nghiệm) ghi ĐÚNG số tối ưu (x = 5, 25 k, 300 ly), không còn x* / ? giữ chỗ
   const xHien = chot || dK >= 0 ? sk.x_tot : x;
@@ -67,7 +67,7 @@ export const KinhTeDoThi: React.FC<{sk: KinhTeVao; t: number; W: number; H: numb
       </svg>
       <NhanTex x={r.x + 8} y={r.y - 26} tex={ten} mau={CYAN} co={24} neo="trai" a={aT} />
       <div style={{position: 'absolute', left: r.x, width: r.w, top: r.y + r.h + 10, textAlign: 'right', color: MO, fontWeight: 700, fontSize: 20, opacity: aT, whiteSpace: 'nowrap', overflow: 'hidden'}}>
-        <ChuTron s={sk.nhan_ham || ten} co={20} mau={MO} />
+        <ChuTron s={sk.bien || 'x'} co={20} mau={MO} />
       </div>
       {chot ? (
         <div data-sk2d="huy_hieu" style={{position: 'absolute', left: Math.max(r.x, Math.min(th.X(x) - 90, r.x + r.w - 180)), top: Math.max(r.y - 8, th.Y(y) - 64), width: 180, textAlign: 'center', opacity: em((dT - 1.1) / 0.4)}}>
@@ -76,7 +76,7 @@ export const KinhTeDoThi: React.FC<{sk: KinhTeVao; t: number; W: number; H: numb
           </span>
         </div>
       ) : null}
-      <DongKetQua x={LE.trai} y={H - LE.duoi - CAO_DONG_KQ} w={W - LE.trai - LE.phai} h={CAO_DONG_KQ} tex={tex} a={em(dK / 0.4)} mau={VANG} nhan={nh * 0.6} co={38} />
+      <DongKetQua x={LE.trai} y={H - LE.duoi - CAO_DONG_KQ} w={W - LE.trai - LE.phai} h={CAO_DONG_KQ} tex={tex} a={em(Math.max(sk.mocCongBo !== undefined ? t - sk.mocCongBo : dK, dT - 1.1) / 0.4)} mau={VANG} nhan={nh * 0.6} co={38} />
       <ThanhTienDo W={W} H={H} u={tienDo(sk.pha, t)} mau={mauNhan} />
     </div>
   );

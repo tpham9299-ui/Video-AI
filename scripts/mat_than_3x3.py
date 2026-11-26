@@ -155,12 +155,12 @@ from khung4tang_v96 import thuc_te_ngan, LOAI_2D_TT, KHUON_VAT_THE
 from tu_sinh_svg import co_hinh_t2
 
 
-def co_net_hinh(im):
+def co_net_hinh(im, trai=130, phai=950):
     """Tìm nét liên thông dài trong vùng T2, bỏ ký tự rời và chu vi hộp nhãn."""
     from PIL import ImageFilter
     import numpy as np
     w, h = im.size
-    crop = im.crop((round(w * 130/1080), round(h * T2_TREN), round(w * 950/1080), round(h * T2_DUOI)))
+    crop = im.crop((round(w * trai/1080), round(h * T2_TREN), round(w * phai/1080), round(h * T2_DUOI)))
     gray = crop.convert("L")
     # Tương phản cục bộ giữ cả sườn tối của nét xiên mảnh sau khi thu ảnh.
     pixels = np.asarray(gray, dtype=np.int16)
@@ -224,9 +224,9 @@ def kiem_tat_dinh(p, anh_o, o_da):
         sk = k4p.get("sanKhau") or {}
         c3 = k4p.get("canh3dv") or {}
         if ts is not None:
-            co_hinh = co_hinh_t2(ts.get("lop") or [])
+            co_hinh = co_hinh_t2(ts.get("lop") or [], can_vat=k4p.get("batBuocVatThe", False))
         elif sk:
-            co_hinh = sk.get("loai") in LOAI_2D_TT
+            co_hinh = sk.get("loai") in LOAI_2D_TT and (not k4p.get("batBuocVatThe") or sk.get("loai") == "so_do_2d")
         else:
             co_hinh = c3.get("khuon") in KHUON_VAT_THE or c3.get("doi_tuong") or k4p.get("khongGian")
         if not co_hinh or k4p.get("tuSinhHong"):
@@ -258,6 +258,23 @@ def kiem_tat_dinh(p, anh_o, o_da):
             loi.append({"o": 1, "loai": "t2_trong", "mo_ta": "Intro móc câu không có hình 3D (vùng giữa màn hình đen)", "nang": True})
     y0, y1 = int(O_CAO * T2_TREN), int(O_CAO * T2_DUOI)
     giai = [k for k in range(1, min(o_da - 1, len(anh_o))) if anh_o[k] is not None]   # ô 2 .. ô trước đáp án (0-based)
+    if k4p.get("batBuocVatThe"):
+        moc, _ = chon_moc(p, p.get("tongFrame", 0) / (p.get("fps") or 30))
+        sk = k4p.get("sanKhau") or {}
+        for k in giai:
+            t = moc[k][0] - lech_dau(p)
+            steps = k4p.get("buoc") or []
+            step = next((b for b in reversed(steps) if b["t"] <= t), {})
+            dc = step.get("doi_chieu") or {}
+            doi = dc.get("hinh") in ("tam_bia", "mat_cat_tru", "tam_giac_luc") and t >= step["t"] + 0.65
+            active = {}
+            for layer in (k4p.get("tuSinh") or {}).get("lop") or []:
+                if layer.get("t", 0) + 0.6 <= t:
+                    active[layer.get("nhom") or layer.get("id")] = layer
+            svg_doi = any('data-do-thi=' in l.get("svg", "") for l in active.values())
+            if svg_doi or (doi and t >= k4p.get("hetDe", 0)) or (sk.get("loai") == "so_do_2d" and sk.get("ham")):
+                if not co_net_hinh(anh_o[k], 130, 535) or not co_net_hinh(anh_o[k], 550, 950):
+                    loi.append({"o": k+1, "loai": "t2_trong", "mo_ta": "Thiếu vật thể trái hoặc đồ thị phải", "nang": True})
     net = {k: co_net_hinh(anh_o[k]) for k in giai}
     if thuc_te_ngan(p) and giai and not any(net.values()):
         loi.append({"o": giai[0]+1, "loai": "t2_trong", "mo_ta": "T2 các ô giải chỉ có nền, ký tự hoặc khung nhãn", "nang": True})
@@ -335,7 +352,9 @@ def prompt_ai(p, o_da):
             "- tran_day: dòng chứng minh tràn xuống sát đáy khung (14% dưới cùng) hoặc bị cắt ở đáy.\n"
             "- nhan_de: nhãn tên điểm (A, B, C...) đè lên nhau, đè lên nét vẽ hoặc cung góc tới mức khó đọc.\n")
     if thuc_te_ngan(p):
-        ghi_chu_intro += ("THUC_TE: xem riêng tầng 2 trong từng ô giải. Phải thấy vật thể, sơ đồ hoặc đồ thị đúng đề. "
+        if (p.get("khung4tang") or {}).get("batBuocVatThe"):
+            ghi_chu_intro += "Đồ thị thuần ở bất cứ ô giải nào là t2_trong. "
+        ghi_chu_intro += ("THUC_TE: xem riêng tầng 2 trong từng ô giải. Kiểm riêng vật thể bên trái và đồ thị bên phải nếu chia đôi. Thanh trượt hoặc chữ không phải vật thể. "
                           "Tam giác, wireframe hoặc fractal có nét liên tục là hình thật kể cả ruột tối. Chữ, công thức, hộp nhãn và viền sáng cũng là t2_trong, nang=true. "
                           "Thêm trường JSON t2_co_hinh (boolean) xác nhận mọi ô giải đều đạt. ")
     return ghi_chu_intro + (

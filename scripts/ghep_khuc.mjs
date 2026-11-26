@@ -29,9 +29,11 @@ const audioFiles = meta.map((m) => path.join(thuMuc, `khuc_${m.i}.aac`));
 [...videoFiles, ...audioFiles].forEach((f) => {
   if (!fs.existsSync(f)) throw new Error('Thiếu tệp ' + f);
 });
+const tenThuongHieu = JSON.parse(fs.readFileSync(new URL('../phong_cach.json', import.meta.url), 'utf8')).thuongHieu.ten;
 const bd = Date.now();
 await combineChunks({
   outputLocation: ra,
+  metadata: Object.fromEntries(['artist', 'copyright', 'comment'].map(key => [key, tenThuongHieu])),
   videoFiles,
   audioFiles,
   codec: 'h264',

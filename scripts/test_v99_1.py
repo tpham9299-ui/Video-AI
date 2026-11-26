@@ -46,6 +46,13 @@ kiem(phu_de("lợi ích bằng 5 triệu") == "lợi ích bằng 5 triệu", "gi
 kiem(phu_de("Ve sầu kêu") == "Ve sầu kêu", "giữ chữ thường 've sầu'")
 kiem(not PHIEN_AM.search(phu_de("Gọi ít-sờ, đáy 16 trừ 2 ích, vê tại 2 bằng 144")), "chuỗi hỗn hợp không còn phiên âm")
 
+for cau, dung in [
+    ("Biến cố đối là không có cả 2 bạn", "Biến cố đối là không có cả 2 bạn"),
+    ("x bằng không", "x = 0"), ("x lớn hơn không", "x > 0"),
+    ("không phẩy năm", "0,5"), ("trừ b trên hai a", "-b/2a"),
+]:
+    kiem(phu_de(cau) == dung, cau + " -> " + dung)
+
 print("2. Không đọc lặp số")
 for vao, ra in [("Thể tích lớn nhất bằng một trăm bốn mươi tư bằng 144.", "Thể tích lớn nhất bằng một trăm bốn mươi tư."),
                 ("V(2) = 144 bằng 144 cm³.", "V(2) = 144 cm³."), ("x bằng 2 bằng 2 bằng 2.", "x bằng 2."),

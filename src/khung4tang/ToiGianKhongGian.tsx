@@ -1,3 +1,4 @@
+import {KhoaThuongHieu} from './KhoaThuongHieu';
 // v97 — BỐ CỤC TỐI GIẢN cho luồng hình KHÔNG GIAN (chỉ khi props.khung4tang.khongGian; luồng v95/v96 giữ bố cục 4 tầng cũ):
 //  T1  : MỘT dòng tiêu đề căn giữa ngay dưới Top 11 % ("02 · Giao tuyến ở đáy"), không viên thuốc / không 2 tầng chữ
 //  T2  : sân khấu TRÀN VIỀN 16 %..62 % chiều cao (không khung kính bo góc) — khối hình + lưới sàn hòa vào nền chung
@@ -67,6 +68,7 @@ function Khoi({th, t0, t, mau, a}: {th: TheGiai; t0: number; t: number; mau: str
     <div data-the-giai data-khoi-cong-thuc {...(chot ? {'data-the-chot': '1'} : {})} style={{position: 'absolute', left: 0, right: 0, top: '50%', transform: `translateY(-50%) translateY(${(1 - vao) * 14}px)`,
       opacity: a * vao, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: '26px 0 28px',
       background: `linear-gradient(90deg, transparent, ${chot ? 'rgba(46,230,168,0.10)' : 'rgba(255,255,255,0.05)'} 22%, ${chot ? 'rgba(46,230,168,0.10)' : 'rgba(255,255,255,0.05)'} 78%, transparent)`}}>
+      <KhoaThuongHieu viTri="the" />
       {vach(true)}
       {tex.map((d, k) => {
         const tk = th.loai === 'cong_thuc' ? Math.max(t0, th.moc?.[k] ?? t0 + k * 0.45) : t0;

@@ -3,7 +3,7 @@
 import type {TenMau} from '../3d-vector/kieu';
 
 export type Pha2D = {ten: string; t: number; chon?: number[]; thoa?: boolean | null; bt?: string; kl?: string; muc_tieu?: 'A' | 'doi'};
-type Chung = {moc_buoc?: number[]; nhanh_buoc?: number[]; p_so?: number; pha: Pha2D[]; nhip?: number[]; nguon?: string; chi_dao?: string};
+type Chung = {mocCongBo?: number; moc_buoc?: number[]; nhanh_buoc?: number[]; p_so?: number; pha: Pha2D[]; nhip?: number[]; nguon?: string; chi_dao?: string};
 
 export type PhanTuRut = {nhan: string; gia_tri: number | null; nhom: number};
 export type RutMauVao = Chung & {

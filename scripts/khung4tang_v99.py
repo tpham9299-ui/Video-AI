@@ -394,6 +394,8 @@ def khoa_dap_an(out, t_cb, so_dap=()):
         return []
     sua = []
     lech_max = 0.0
+    if out.get("sanKhau"):
+        out["sanKhau"]["mocCongBo"] = t_cb
     buoc = out.get("buoc") or []
     for j, b in enumerate(buoc):
         if j and LA_KET_LUAN.search(str(b.get("nhan") or "") + " " + str(b.get("tieu_de") or "")) and b["t"] < t_cb - 0.05:
@@ -410,6 +412,19 @@ def khoa_dap_an(out, t_cb, so_dap=()):
             buoc[j]["t"] = round(buoc[j + 1]["t"] - 0.6, 3)
     for b in buoc:
         for th in b.get("the") or []:
+            if th.get("loai") == "cong_thuc":
+                # Một dòng cũ có thể gộp nghiệm và đáp số: tách hai lần hiện.
+                dong, moc = [], []
+                for index, line in enumerate(th.get("dong") or []):
+                    times = th.get("moc") or []
+                    at = times[index] if index < len(times) else th.get("t", b["t"]) + 0.45 * index
+                    parts = re.split(r"\s*(?:⇒|=>|\\(?:Rightarrow|implies))\s*(?=[A-Za-z].*?(?:max|min))", line, maxsplit=1)
+                    for part in parts:
+                        dong.append(part)
+                        final = re.search(r"(?:max|min)\s*\}?\s*=\s*[-+]?\d", part)
+                        moc.append(max(at, t_cb) if final else at)
+                if dong and (dong != th.get("dong") or any(re.search(r"(?:max|min)\s*\}?\s*=", d) for d in dong)):
+                    th.update(dong=dong, moc=moc)
             if th.get("chot") and th.get("t", 0) < t_cb:
                 lech = t_cb - th["t"]
                 lech_max = max(lech_max, lech)

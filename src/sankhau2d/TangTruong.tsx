@@ -55,7 +55,7 @@ export const TangTruong: React.FC<{sk: TangTruongVao; t: number; W: number; H: n
       </div> : null}
       <NhanTex x={r.x + 8} y={r.y - 30} tex={`${sk.ten_ham}(${sk.bien})`} mau={CYAN} co={24} neo="trai" />
       <div style={{position: 'absolute', left: r.x, width: r.w, top: r.y + r.h + 10, display: 'flex', justifyContent: 'space-between', color: MO, fontFamily: FONT, fontWeight: 700, fontSize: 20}}>
-        <span>{soVN(a)}</span><span style={{whiteSpace: 'nowrap'}}><ChuTron s={sk.nhan_bien} co={20} mau={MO} /> = {soVN(b)}</span>
+        <span>{soVN(a)}</span><span style={{whiteSpace: 'nowrap'}}><ChuTron s={sk.bien || 't'} co={20} mau={MO} /> = {soVN(b)}</span>
       </div>
       <DongKetQua x={LE.trai} y={H - LE.duoi - CAO_DONG_KQ} w={W - LE.trai - LE.phai} h={CAO_DONG_KQ} tex={tex} a={em(dK / 0.4)} mau={VANG} nhan={nh * 0.6} co={38} />
       <ThanhTienDo W={W} H={H} u={tienDo(sk.pha, t)} mau={mauNhan} />

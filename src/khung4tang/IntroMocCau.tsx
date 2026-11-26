@@ -4,7 +4,7 @@
 // Bố cục cố định (chữ không bao giờ đè mô hình): viên thuốc nhan_thi | tiêu đề vàng ánh kim tối đa 2 dòng | dòng phụ cyan
 // | [vùng mô hình INTRO_SAN] | câu hook. (v102: đã gỡ nút CTA đăng ký sớm ở 3 giây đầu — CTA chỉ ở Outro.) Cỡ chữ tự co theo độ dài (ước lượng tất định, không đo DOM).
 import React from 'react';
-import {AbsoluteFill, Audio, random, Sequence, spring, staticFile, useVideoConfig} from 'remotion';
+import {AbsoluteFill, Audio, continueRender, delayRender, random, Sequence, spring, staticFile, useVideoConfig} from 'remotion';
 import {FONT} from '../theme';
 import {emRa, kep01} from '../3d-vector/toan3d';
 import type {MocCau} from './kieu';
@@ -44,9 +44,25 @@ export const IntroMocCau: React.FC<{m: MocCau; t: number; G: number}> = ({m, t, 
   const lo = (tu: number, d = 0.35) => emRa((t - tu) / d);
   const lo_lo = (tu: number) => spring({frame: f - Math.round(tu * fps), fps, config: {damping: 14, stiffness: 150, mass: 0.7}});
 
-  const dongTD = haiDong(m.tieu_de);
-  const coTD = coTieuDeIntro(dongTD);
-  const coPhu = coVua(m.phu_de, 40, 26, RONG_CHU, 0.62);
+  const dongTD = React.useMemo(() => haiDong(m.tieu_de), [m.tieu_de]);
+  const [coDo, setCoDo] = React.useState(92);
+  React.useLayoutEffect(() => {
+    const handle = delayRender('Đo tiêu đề Intro');
+    let active = true;
+    const release = () => { if (active) { active = false; continueRender(handle); } };
+    document.fonts.load('900 92px ' + FONT).then(() => {
+      const ctx = document.createElement('canvas').getContext('2d');
+      if (!active || !ctx) return;
+      ctx.font = '900 92px ' + FONT;
+      const width = Math.max(1, ...dongTD.map(line => ctx.measureText(line).width));
+      setCoDo(Math.min(92, Math.floor(92 * RONG_CHU / width)));
+    }).catch(() => {}).finally(release);
+    return release;
+  }, [dongTD]);
+  const coTD = Math.min(coDo, coTieuDeIntro(dongTD));
+  const chuan = (s: string) => s.normalize('NFC').toLocaleLowerCase('vi').replace(/[^\p{L}\p{N}]+/gu, '');
+  const phu = m.phu_de?.trim() || '';
+  const coPhu = coVua(phu, 40, 1, RONG_CHU, 0.78);
   const dongHook = haiDong(m.cau_hook, 22);
   const coHook = Math.min(60, coVua(dongHook.reduce((a, b) => (b.length > a.length ? b : a), ''), 60, 38, RONG_CHU, 0.66));
 
@@ -77,7 +93,7 @@ export const IntroMocCau: React.FC<{m: MocCau; t: number; G: number}> = ({m, t, 
       <div style={{position: 'absolute', left: 48, right: 48, top: 282, height: 200, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         opacity: kep01(sTD * 1.4) * con, transform: `scale(${0.9 + 0.1 * sTD}) translateY(${-ra * 40}px)`}}>
         {dongTD.map((d, i) => (
-          <div key={i} style={{position: 'relative', fontWeight: 900, fontSize: coTD, lineHeight: 1.04, letterSpacing: -0.5, whiteSpace: 'nowrap'}}>
+          <div key={i} data-intro-title style={{position: 'relative', fontWeight: 900, fontSize: coTD, lineHeight: 1.04, letterSpacing: -0.5, whiteSpace: 'nowrap'}}>
             <span style={{position: 'absolute', inset: 0, whiteSpace: 'nowrap', textWrap: 'nowrap' as React.CSSProperties['textWrap'], color: VANG, textShadow: `0 0 18px rgba(245,197,66,0.55), 0 0 42px rgba(245,197,66,0.25), 0 4px 0 #5A3D06`}}>{d}</span>
             <span style={{position: 'relative', whiteSpace: 'nowrap', textWrap: 'nowrap' as React.CSSProperties['textWrap'], background: `linear-gradient(180deg, ${VANG_SANG} 8%, ${VANG} 52%, ${VANG_DAM} 96%)`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent'}}>{d}</span>
           </div>
@@ -85,10 +101,10 @@ export const IntroMocCau: React.FC<{m: MocCau; t: number; G: number}> = ({m, t, 
       </div>
 
       {/* 3. dòng phụ chuyên đề */}
-      <div style={{position: 'absolute', left: 48, right: 48, top: 492, textAlign: 'center', color: CYAN, fontWeight: 800, fontSize: coPhu, letterSpacing: 2, whiteSpace: 'nowrap',
+      {phu && chuan(phu) !== chuan(m.tieu_de) && <div style={{position: 'absolute', left: 48, right: 48, top: 492, textAlign: 'center', color: CYAN, fontWeight: 800, fontSize: coPhu, letterSpacing: 0, whiteSpace: 'nowrap',
         opacity: aPhu * con, transform: `translateY(${(1 - aPhu) * 12 - ra * 30}px)`, textShadow: '0 0 16px rgba(63,216,242,0.35)'}}>
-        {m.phu_de}
-      </div>
+        {phu}
+      </div>}
 
       {/* 4. câu hook tâm lý (giây ~3) */}
       {t >= tHook - 0.05 ? (

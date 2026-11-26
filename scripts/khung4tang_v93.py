@@ -82,9 +82,7 @@ def che_so(s, so_lo):
 
 
 def tieu_de_vua(s):
-    """Tiêu đề intro tối đa 2 dòng: ≤ 44 ký tự, không từ nào quá dài (từ dài bị bỏ)."""
-    x = " ".join(w for w in chu_sach(s).split(" ") if len(w) <= DAI_TU)
-    return cat_tu(x, DAI_TIEU_DE)
+    return chu_sach(s)
 
 
 def _nhan_thi(kb):
@@ -105,8 +103,8 @@ def moc_cau(kb, buoc, so_lo):
         tieu_de = tieu_de_vua(che_so(str(nguon or ""), so_lo))
         if len(tieu_de) >= 6:
             break
-    phu = chu_sach(che_so(str(kb.get("phu_de_intro") or ""), so_lo), DAI_PHU_DE)
-    if not phu:
+    phu = chu_sach(che_so(str(kb.get("phu_de_intro") or ""), so_lo))
+    if "phu_de_intro" not in kb:
         phan = []
         cd = chu_sach(kb.get("chu_de_ngan") or kb.get("chu_de") or "", 22)
         if cd:

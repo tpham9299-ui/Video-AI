@@ -178,6 +178,7 @@ const ctx = {
 };
 
 const sheets = {};
+ctx.TEN_THUONG_HIEU_ = require(path.join(GOC, "phong_cach.json")).thuongHieu.ten;
 vm.createContext(ctx);
 for (const f of ['BoPhan1.gs', 'PromptKichBan.gs', 'KiemTraHinh.gs', 'NangCao.gs', 'SanPham.gs', 'HinhHoc.gs', 'SanKhau.gs']) {
   const p = path.join(GOC, f);

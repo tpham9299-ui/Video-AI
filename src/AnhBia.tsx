@@ -1,3 +1,4 @@
+import {TEN_THUONG_HIEU} from './theme';
 import React from 'react';
 import {AbsoluteFill, Img, staticFile} from 'remotion';
 import {FONT_DAM, FONT_TIEU_DE, vienChu} from './theme';
@@ -67,7 +68,7 @@ export const AnhBia: React.FC<Props> = (props) => {
       {b.loai === 'Xác suất' ? <TrangTriXacSuat mau={mau} /> : null}
       {/* hàng nhãn trên cùng */}
       <div style={{position: 'absolute', top: AN_TOAN.y0, left: 0, right: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 18}}>
-        {coBrand ? <LogoTron th={props.thuongHieu} co={84} sang={0.6} /> : null}
+        {coBrand ? <LogoTron th={{...props.thuongHieu, ten: TEN_THUONG_HIEU, logo: null}} co={84} sang={0.6} /> : null}
         {props.lop ? <span style={{background: '#3BF29A', color: '#062019', borderRadius: 14, padding: '6px 20px', fontSize: 44, fontWeight: 900}}>LỚP {props.lop}</span> : null}
         <span style={{background: mau, color: '#0a0a12', borderRadius: 14, padding: '6px 20px', fontSize: 44, fontWeight: 900, boxShadow: `0 0 30px ${mau}99`}}>{b.loai.toUpperCase()}</span>
         {props.series && props.series.tap ? <span style={{background: 'rgba(255,255,255,0.12)', color: '#fff', border: '3px solid rgba(255,255,255,0.5)', borderRadius: 14, padding: '3px 16px', fontSize: 40, fontWeight: 900}}>TẬP {props.series.tap}</span> : null}
@@ -95,7 +96,7 @@ export const AnhBia: React.FC<Props> = (props) => {
       </div>
       {props.thuongHieu && (props.thuongHieu.ten || props.thuongHieu.handle) ? (
         <div style={{position: 'absolute', top: 1522, left: 0, right: 0, textAlign: 'center', fontSize: 34, fontWeight: 800, color: 'rgba(255,255,255,0.85)'}}>
-          {props.thuongHieu.ten || ''} {props.thuongHieu.handle ? '· ' + props.thuongHieu.handle : ''}
+          {TEN_THUONG_HIEU}
         </div>
       ) : null}
     </AbsoluteFill>

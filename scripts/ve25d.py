@@ -268,11 +268,13 @@ def he_truc(x, y, w, h, u_max=1.0, v_max=1.0, nhan_x="", nhan_y="", vach=(), co=
         s += '<line x1="%s" y1="%s" x2="%s" y2="%s" stroke="%s" stroke-width="2"/>' % (_f(x - 6), _f(py), _f(x + 6), _f(py), m("chu_mo"))
         s += chu(px, y + h + 10 + co, ("%g" % t), co=co, mau="chu_mo", dam=600)
         s += chu(x - 12, py + co * 0.35, ("%g" % t), co=co, mau="chu_mo", dam=600, neo="end")
+    if nhan_x and nhan_x == nhan_y:
+        nhan_x = nhan_y.split("(")[-1].rstrip(")") if "(" in nhan_y else "x"
     if nhan_x:
         s += chu(x + w + 24, y + h + co + 10, nhan_x, co=co, mau="chu_mo", dam=600, neo="end")
     if nhan_y:
         s += chu(x + 14, y - 26, nhan_y, co=co, mau="chu_mo", dam=600, neo="start")
-    return s, f
+    return '<g data-do-thi="1">' + s + "</g>", f
 
 
 def do_thi(x, y, w, h, ham, a, b, mau="nhan", n=64, y_min=None, y_max=None, cuc_tri=None, w_net=3.4):
@@ -293,7 +295,7 @@ def do_thi(x, y, w, h, ham, a, b, mau="nhan", n=64, y_min=None, y_max=None, cuc_
         s += '<line x1="%s" y1="%s" x2="%s" y2="%s" stroke="%s" stroke-width="1.8" stroke-dasharray="6 6"/>' % (_f(px), _f(py), _f(px), _f(y + h), m("ket"))
         s += cham(px, py, 9, "ket")
         P["cuc_tri"] = (px, py)
-    return s, f, P
+    return '<g data-do-thi="1">' + s + "</g>", f, P
 
 
 # ---------------------------------------------------------------- vật xác suất

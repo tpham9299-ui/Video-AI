@@ -135,7 +135,7 @@ function HinhTrai({d, x, W, H, mau}: {d: DoiChieu; x: number; W: number; H: numb
 }
 
 /* ---------------- cột phải: đồ thị ---------------- */
-function DoThi({d, x, W, H, tt, hienSo, t, dung, tDung}: {d: DoiChieu; x: number; W: number; H: number; tt: TrangThai; hienSo: boolean; t: number; dung: boolean; tDung: number}) {
+function DoThi({d, x, W, H, tt, hienSo, choKetQua, t, dung, tDung}: {d: DoiChieu; x: number; W: number; H: number; tt: TrangThai; hienSo: boolean; choKetQua: boolean; t: number; dung: boolean; tDung: number}) {
   const L = 70, R = 26, T = 104, B = 74;
   const gw = W - L - R, gh = H - T - B;
   const X = (u: number) => L + ((u - d.a) / (d.b - d.a)) * gw;
@@ -152,7 +152,7 @@ function DoThi({d, x, W, H, tt, hienSo, t, dung, tDung}: {d: DoiChieu; x: number
   const sv = (v: number) => soViet(v).replace(/,/g, '{,}');
   // v95: đã chốt -> ghi SỐ THẬT lên 2 trục (x = 2 ở chân gióng đứng, V = 144 ở đầu gióng ngang) thay cho x*, V_max
   const nhanX = dung ? (hienSo ? `${d.bien} = ${sv(d.xTot)}` : `${d.bien}^{*}`) : `${d.bien} = ${sv(x)}`;
-  const nhanY = dung ? (hienSo ? `${d.tenHam} = ${sv(d.yTot)}` : `${d.tenHam}_{${d.kieu === 'max' ? 'max' : 'min'}}`) : '';
+  const nhanY = dung && choKetQua ? (hienSo ? `${d.tenHam} = ${sv(d.yTot)}` : `${d.tenHam}_{${d.kieu === 'max' ? 'max' : 'min'}}`) : '';
   // vòng gợn sóng (pulse ring) lan ra 3 lần lúc chốt, sau đó nhịp chậm
   const dtD = Math.max(0, t - tDung);
   const song = dung ? [0, 0.45, 0.9].map((tre) => { const u = (dtD - tre) / 1.1; return u > 0 && u < 1 ? u : dtD > 2.2 ? ((dtD - tre) % 1.8) / 1.8 : -1; }) : [];
@@ -216,7 +216,8 @@ function DoThi({d, x, W, H, tt, hienSo, t, dung, tDung}: {d: DoiChieu; x: number
   );
 }
 
-export const DoiChieu2Cot: React.FC<{d: DoiChieu; dt: number; dai: number; t: number; rong: number; cao: number; hienSo: boolean; a: number; dtGiai?: number; tHuyHieu?: number}> = ({d, dt, dai, t, rong, cao, hienSo, a, dtGiai, tHuyHieu}) => {
+export const DoiChieu2Cot: React.FC<{d: DoiChieu; dt: number; dai: number; t: number; rong: number; cao: number; hienSo: boolean; a: number; dtGiai?: number; tHuyHieu?: number; canVat?: boolean}> = ({canVat, d, dt, dai, t, rong, cao, hienSo, a, dtGiai, tHuyHieu}) => {
+  if (canVat && d.hinh === 'thanh') throw new Error('t2_trong: bên trái đối chiếu chỉ có thanh giá trị');
   const {x, pha} = nhipTheoLoi(d, dt, dai, dtGiai);
   // mốc (giây toàn cục) điểm sáng đứng ở tối ưu: theo lời đọc (+0,8 s lướt) hoặc nhịp cũ
   const tDung = t - dt + (dtGiai !== undefined ? dtGiai + 0.8 : 0.6 + Math.max(1.6, Math.min(4.2, 0.45 * dai)) + Math.max(0.8, Math.min(1.6, 0.18 * dai)));
@@ -227,13 +228,13 @@ export const DoiChieu2Cot: React.FC<{d: DoiChieu; dt: number; dai: number; t: nu
   const mauHinh = tt.dat === false ? VUOT : tt.dat ? DAT : VANG;
   return (
     <div data-doi-chieu style={{position: 'absolute', inset: 0, opacity: vao, fontFamily: FONT, color: CHU, ...SO_DEU}}>
-      <div style={{position: 'absolute', left: 0, top: 0, width: W, height: cao, transform: `translateX(${(1 - vao) * -30}px)`}}>
+      <div data-vat-the={d.hinh === 'thanh' ? undefined : true} style={{position: 'absolute', left: 0, top: 0, width: W, height: cao, transform: `translateX(${(1 - vao) * -30}px)`}}>
         <HinhTrai d={d} x={x} W={W} H={cao} mau={mauHinh} />
       </div>
       {/* vạch chia 2 cột */}
       <div style={{position: 'absolute', left: W - 1, top: 40, width: 2, height: cao - 80, background: 'linear-gradient(to bottom, transparent, rgba(230,237,245,0.16), transparent)'}} />
-      <div style={{position: 'absolute', left: W, top: 0, width: W, height: cao, transform: `translateX(${(1 - vao) * 30}px)`}}>
-        <DoThi d={d} x={x} W={W} H={cao} tt={tt} hienSo={hienSo} t={t} dung={pha === 'dung'} tDung={tDung} />
+      <div data-do-thi style={{position: 'absolute', left: W, top: 0, width: W, height: cao, transform: `translateX(${(1 - vao) * 30}px)`}}>
+        <DoThi d={d} x={x} W={W} H={cao} tt={tt} choKetQua={tHuyHieu === undefined || t >= tHuyHieu} hienSo={hienSo} t={t} dung={pha === 'dung'} tDung={tDung} />
       </div>
     </div>
   );

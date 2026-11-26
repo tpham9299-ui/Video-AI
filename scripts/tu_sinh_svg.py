@@ -322,10 +322,10 @@ def chuan_lop(kq, so_buoc):
     return ra
 
 
-def co_hinh_t2(lop):
+def co_hinh_t2(lop, can_vat=False, mien_x=None):
     """Kiểm kích thước nét/vật trong viewBox 800×540. rect dành cho nền và hộp nhãn."""
     for layer in lop:
-        for tag, a, st, _, opacity, _ in _phan_tu(layer):
+        for tag, a, st, _, opacity, _ in _phan_tu(layer, bo_do_thi=can_vat):
             if opacity < 0.12 or tag not in ("path", "polygon", "polyline", "circle", "ellipse", "line"):
                 continue
             a = {**a, **st}
@@ -336,12 +336,17 @@ def co_hinh_t2(lop):
             if not (tag != "line" and painted("fill", "black") or painted("stroke", "none")):
                 continue
             if tag in ("circle", "ellipse"):
+                cx = _so(a.get("cx", "0")) or [0]
+                if mien_x and not mien_x[0] <= cx[0] <= mien_x[1]:
+                    continue
                 radii = [_so(a.get(k, "")) for k in (("r", "r") if tag == "circle" else ("rx", "ry"))]
                 if all(r and r[0] >= 6 for r in radii) and radii[0][0] * radii[1][0] >= 320:
                     return True
             else:
                 points, segments = _diem_doan(tag, {"fill": "black", **a}, opacity)
                 points += [p for seg in segments for p in seg]
+                if mien_x:
+                    points = [p for p in points if mien_x[0] <= p[0] <= mien_x[1]]
                 if points:
                     xs, ys = zip(*points)
                     if max(max(xs)-min(xs), max(ys)-min(ys)) >= 55:
@@ -349,7 +354,7 @@ def co_hinh_t2(lop):
     return False
 
 
-def dung(ma, so_buoc, tham_my=True, can_hinh=False):
+def dung(ma, so_buoc, tham_my=True, can_hinh=False, can_vat=False):
     """Chạy + kiểm. Trả list lớp đã chuẩn hóa hoặc ném LoiTuSinh."""
     ra = chuan_lop(chay_hop_cat(ma), so_buoc)
     if can_hinh:
@@ -359,7 +364,17 @@ def dung(ma, so_buoc, tham_my=True, can_hinh=False):
             for layer in ra:
                 if layer["buoc"] == step:
                     active[layer.get("nhom") or layer["id"]] = layer
-            if not co_hinh_t2(active.values()):
+            chart = [l for l in active.values() if 'data-do-thi=' in l["svg"]]
+            split = can_vat and bool(chart)
+            if split:
+                duong = []
+                for l in chart:
+                    root = ET.fromstring("<svg>" + l["svg"] + "</svg>")
+                    for graph in root.findall(".//*[@data-do-thi]"):
+                        duong.append({"svg": ET.tostring(graph, encoding="unicode")})
+                if not co_hinh_t2(duong, mien_x=(400, 800)):
+                    raise LoiTuSinh("t2_trong: thiếu đồ thị nửa phải ở bước %d" % (step + 1))
+            if not co_hinh_t2(active.values(), can_vat, (0, 400) if split else None):
                 raise LoiTuSinh("t2_trong: bước %d chỉ có chữ, hộp nhãn hoặc hình quá nhỏ" % (step + 1))
     if tham_my:
         kiem_tham_my(ra)
@@ -441,12 +456,14 @@ def _so_co(v):
     return float(m.group(1)) if m else None
 
 
-def _phan_tu(lop):
+def _phan_tu(lop, bo_do_thi=False):
     """Duyệt (thẻ, thuộc tính, cỡ chữ thừa kế, độ đục tích lũy) của mọi phần tử trong lớp."""
     goc = ET.fromstring('<svg xmlns="http://www.w3.org/2000/svg">' + lop["svg"] + "</svg>")
     ra = []
 
     def di(el, co, mo):
+        if bo_do_thi and el.get("data-do-thi"):
+            return
         ten = el.tag.split("}")[-1]
         a = {k.split("}")[-1]: v for k, v in el.attrib.items()}
         st = dict(x.split(":", 1) for x in str(a.get("style") or "").split(";") if ":" in x)
@@ -745,6 +762,7 @@ def nho_gemini_sua(ma, loi, de, so_buoc):
           "tự đặt nhãn ngoài hình có đường gióng, v.hop / v.tru / v.trai_phang_2mat / v.he_truc / v.do_thi / v.cua / v.mien_to / v.lop; "
           "Cấm _, ^ và lệnh LaTeX thô trong thẻ <text> SVG. Dùng S₀, u₁, x², √3, Ā hoặc tspan cho chỉ số dài. v101.3: v.tam_nhan(x, y, chữ) nhãn viên thuốc nền đặc, v.da_giac_deu(cx, cy, r, số_cạnh) -> (svg, đỉnh), v.mui_ten_kich_thuoc, "
           "v.cung_goc, v.truc_so, v.luoi_o, v.so_do_venn, v.phan_nhanh_de_quy(cx, cy, r, bac, kieu)). "
+          "Đề có vật thể: vẽ đúng vật thể theo từng x, tường/rào/lối đi đúng kích thước nếu đề có. Nếu kèm đồ thị, đặt vật thể ở nửa trái, đồ thị ở nửa phải. Đừng thay bằng thanh trượt. "
           "Chữ >= 22 px, nhãn không đè nét / đỉnh, chỉ màu họ cyan / hổ phách / xám / tối.\nĐề: %s\nLỗi: %s\nHướng sửa trọng tâm: %s\nMã:\n%s") % (
               so_buoc - 1, str(de)[:600], loi, goi_y_sua(loi) or "sửa đúng mục lỗi trên", ma[:12000])
     body = {"contents": [{"role": "user", "parts": [{"text": yc}]}],
@@ -782,12 +800,12 @@ def gan_tu_sinh(kb, k4, buoc, tim_moc, t_het_de, tong):
         return None, ""
     ma = spec.get("ma") or (spec.get("tham_so") or {}).get("ma")
     n = len(buoc)
-    from khung4tang_v96 import thuc_te_ngan
+    from khung4tang_v96 import thuc_te_ngan, bat_buoc_vat_the
     so_va = 2 if thuc_te_ngan(kb) or str(kb.get("san_khau_dich") or "") == "tu_sinh_svg" else 1   # v99.2: hợp đồng BP0 -> vá tối đa 2 lần
     nhat_ky, lop, ghi = [], None, ""
     for lan in range(so_va + 1):
         try:
-            lop = dung(ma, n, can_hinh=thuc_te_ngan(kb))
+            lop = dung(ma, n, can_hinh=thuc_te_ngan(kb), can_vat=bat_buoc_vat_the(kb))
             ghi = ("đã tự sửa %d lần (%s)" % (lan, "; ".join(x.split(":")[0] for x in nhat_ky))) if lan else ""
             break
         except LoiTuSinh as e:
@@ -820,7 +838,7 @@ def gan_tu_sinh(kb, k4, buoc, tim_moc, t_het_de, tong):
         l.pop("khi_noi", None)
     if thuc_te_ngan(kb):
         # Chỉ đưa hình nền của bước đầu lên cảnh đề. Các lớp giải vẫn theo lời.
-        hinh_de = next((l for l in lop if l["buoc"] == 0 and co_hinh_t2([l])), None)
+        hinh_de = next((l for l in lop if l["buoc"] == 0 and co_hinh_t2([l], can_vat=bat_buoc_vat_the(kb))), None)
         if hinh_de:
             hinh_de["tNhan"] = hinh_de["t"]
             hinh_de["t"] = 0
@@ -842,7 +860,7 @@ if __name__ == "__main__":
     nguon = sys.stdin.read() if sys.argv[1] == "-" else open(sys.argv[1], encoding="utf8").read()
     kb = json.loads(nguon)
     k4 = kb.get("khung4tang") or {}
-    from khung4tang_v96 import thuc_te_ngan
+    from khung4tang_v96 import thuc_te_ngan, bat_buoc_vat_the
     sp = k4.get("tu_sinh") or k4.get("san_khau") or {}
     nb = len(k4.get("buoc") or []) or 4
     try:
@@ -854,7 +872,7 @@ if __name__ == "__main__":
                 raise LoiTuSinh("t2_trong: " + ("; ".join(ghi) or "sai dữ liệu sân khấu 2D"))
             kq = {"ok": True, "loi": ""}
         else:
-            ds = dung(sp.get("ma") or (sp.get("tham_so") or {}).get("ma"), nb, can_hinh=thuc_te_ngan(kb))
+            ds = dung(sp.get("ma") or (sp.get("tham_so") or {}).get("ma"), nb, can_hinh=thuc_te_ngan(kb), can_vat=bat_buoc_vat_the(kb))
             kq = {"ok": True, "loi": "", "so_lop": len(ds)}
     except LoiTuSinh as e:
         kq = {"ok": False, "loi": str(e), "so_lop": 0}

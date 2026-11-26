@@ -267,7 +267,7 @@ t('cắt gọn cho vừa bố cục: tiêu đề ≤ 2 dòng, bỏ TeX, che số
   Object.assign(kb, {tieu_de_intro: 'Hộp $V_{max}$ = 128 khi cắt góc x bằng bao nhiêu xăng-ti-mét vuông vức chuẩn chỉnh', cau_hook: 'Đáp án 128 nè', nhan_thi: 'đề giữa kì 1 · lớp 12',
     tom_tat_3_buoc: [{chien_thuat: 'Lập hàm thể tích theo cạnh cắt x', cong_thuc: 'V = x(12-2x)^2 = 4x^3 - 48x^2 + 144x = 4x(x-6)^2'}, {chien_thuat: 'Đạo hàm', cong_thuc: "V' = 0"}]});
   ctx.tuSuaKhung4Tang_(kb, {mon: 'THUC_TE', lop: '12'});
-  assert.ok(kb.tieu_de_intro.length <= 44 && !/[\\$_{}]/.test(kb.tieu_de_intro) && !/128/.test(kb.tieu_de_intro), kb.tieu_de_intro);
+  assert.ok(kb.tieu_de_intro.endsWith("CHUẨN CHỈNH") && !/[\\$_{}]/.test(kb.tieu_de_intro) && !/128/.test(kb.tieu_de_intro), kb.tieu_de_intro);
   assert.ok(!/128/.test(kb.cau_hook));
   assert.equal(kb.nhan_thi, 'ĐỀ GIỮA KÌ 1 · LỚP 12');
   assert.ok(kb.tom_tat_3_buoc[0].chien_thuat.length <= 18);

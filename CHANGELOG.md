@@ -604,3 +604,6 @@
 - DOM, Mắt thần 3×3 và AI chấm cuối kiểm riêng hình minh họa T2. Lỗi t2_trong dùng lại hạn mức Auto-Heal của từng cửa.
 - XAC_SUAT dựng khay tổ hợp, dãy lượt rút, phần bù và biểu đồ theo bước. Outro dùng riêng biểu đồ chốt.
 - Bảo vệ phân số ở Sheets, props và Outro. Kiểm hình học DOM và mặt nạ T2 để phát hiện đứng hình dù nền động.
+- Khóa thương hiệu `Story Math` phủ kín nhánh Hình học (`KhoaThuongHieu` tách `Hình học Không gian` / `Tư duy Hình học`, `NoiDungHinhPhang` gắn watermark động + Outro, `OutroTomTat` bỏ nút đỏ `"ĐĂNG KÝ KÊNH!"` ở Hình học).
+- Đồng bộ cờ FFmpeg `-metadata artist/copyright/comment` cho mọi luồng xuất MP4 (`ghep_khuc.mjs`, `dung-video.yml` ghép Manim & nén > 44 MB kèm `phong_cach.json` trong `sparse-checkout`, `dang_video.py`).
+- Sửa 2 lỗi test 1A: tính lại `san_khau["nhip"]` sau khi dời pha `ket` theo `t_cb` (`chuanbi.py`) và đồng bộ `test_v96.py` / `test_san_khau_2d.mjs` với mã thoát `42` trước TTS.

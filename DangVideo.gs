@@ -316,6 +316,7 @@ function noiDungDangGoc_(r, tap, td) {
     mucLucYT = '\n⏱ MỤC LỤC BÀI GIẢNG (Bấm vào mốc thời gian để xem từng phần):\n' + dsMuc.join('\n') + '\n';
   }
   var moTa = [
+    TEN_THUONG_HIEU_,
     sp ? '🛒 Sản phẩm trong video: ' + sp.ten + (Number(sp.gia_ban) > 0 ? ' – giá ' + Number(sp.gia_ban).toLocaleString('vi-VN') + 'đ' : '') + (sp.link ? '\n👉 Link sản phẩm: ' + sp.link : '') +
       '\n📢 Video có giới thiệu sản phẩm do kênh bán. Giá và thông số lấy ngày ' + (sp.ngay || '') + '.\n' : '',
     String(kb.hook || tieuDe),
@@ -336,7 +337,7 @@ function noiDungDangGoc_(r, tap, td) {
     tieu_de: tieuDe,
     yt_tieu_de: ytTieuDe.slice(0, 100),
     // TikTok: chú thích = câu mở đầu gây tò mò + kêu gọi THEO DÕI (thẻ # do GitHub nối thêm)
-    tt_tieu_de: (String(td.tiktok || tieuDe) + nhanTap + (sp ? '\n🛒 ' + sp.ten + ' có tại kênh (giỏ hàng / link ở bio)' : '') + '\n👉 Theo dõi để không bỏ lỡ tập sau!').slice(0, 1500),
+    tt_tieu_de: (String(td.tiktok || tieuDe) + nhanTap + (sp ? '\n🛒 ' + sp.ten + ' có tại kênh (giỏ hàng / link ở bio)' : '') + '\n👉 Theo dõi ' + TEN_THUONG_HIEU_ + ' để xem tập sau!').slice(0, 1500),
     mo_ta: moTa,
     yt_dau: String(td.youtube_mo_dau || td.youtube || tieuDe).slice(0, 220),
     fb_dau: String(td.facebook || tieuDe).slice(0, 220),

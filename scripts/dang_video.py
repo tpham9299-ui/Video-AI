@@ -397,8 +397,13 @@ def tao_ban_dang(video, n, kieu, gioi_han_48mb=False):
             crf_opt = ["-crf", "23", "-maxrate", "850k", "-bufsize", "1700k"]
     else:
         crf_opt = ["-crf", "18"]
+    try:
+        ten_th = json.load(open("phong_cach.json", encoding="utf8"))["thuongHieu"]["ten"]
+    except Exception:
+        ten_th = "Story Math"
+    meta_opt = ["-metadata", "artist=" + ten_th, "-metadata", "copyright=" + ten_th, "-metadata", "comment=" + ten_th]
     r = subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", video, "-vf", ",".join(loc), "-c:v", "libx264", "-preset", "veryfast"] + crf_opt +
-                       ["-pix_fmt", "yuv420p"] + audio_opt + ["-movflags", "+faststart", ra], capture_output=True, text=True)
+                       ["-pix_fmt", "yuv420p"] + audio_opt + meta_opt + ["-movflags", "+faststart", ra], capture_output=True, text=True)
     if r.returncode != 0 or not os.path.exists(ra):
         print("Tạo bản đăng (%s) lỗi, dùng video gốc: %s" % (kieu, r.stderr[-300:]))
         return video

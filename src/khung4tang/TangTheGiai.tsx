@@ -1,3 +1,4 @@
+import {KhoaThuongHieu} from './KhoaThuongHieu';
 // v90 — TẦNG 3: KHU THẺ GIẢI TOÁN. Thẻ nền tối bo góc, viền 1px sáng theo màu nhấn của bước, đánh số theo thứ tự
 // trong bước (nội dung là chuỗi bước thật). Mỗi dòng công thức hiện đúng mốc; đổi bước thì thẻ cũ mờ đi trước.
 import React from 'react';
@@ -25,7 +26,10 @@ const LE_THE = 12;
 const RONG_TRONG = RONG_ND - 2 * LE_THE - 2 * 28;
 
 // mốc xuất hiện của thẻ j trong bước b
-export const tTheCua = (b: BuocGiai, j: number) => (b.the[j].t !== undefined ? b.the[j].t! : b.t + 0.35 + j * 0.7);
+export const tTheCua = (b: BuocGiai, j: number) => {
+  const th = b.the[j];
+  return Math.max(th.t ?? b.t + 0.35 + j * 0.7, th.loai === 'cong_thuc' ? th.moc?.[0] ?? 0 : 0);
+};
 
 // v99.4: lò xo nảy gọn (damping 15, không rung thừa) theo giây -> khung (30 fps); pure, không phụ thuộc hook
 const loXo = (t: number, t0: number, delayKhung = 0) =>
@@ -166,7 +170,8 @@ function DanhSachThe({b, t, mau, aChung, hoatDong = false, tHet}: {b: BuocGiai; 
   let daHien = 0;
   b.the.forEach((_, j) => { if (t >= tTheCua(b, j)) daHien = j + 1; });
   // lùi từ thẻ mới nhất: giữ thẻ cũ khi còn vừa; thẻ sắp tới chỉ giữ chỗ nếu vừa (cụm không nhảy khi thẻ mới vào)
-  const cuoi = Math.max(1, Math.min(daHien, b.the.length));
+  if (!daHien) return null;
+  const cuoi = daHien;
   let dau = cuoi - 1, tong = caoThe(b.the[dau]);
   while (dau > 0 && cuoi - dau < TOI_DA_THE && tong + 16 + caoThe(b.the[dau - 1]) <= CAO_T3) tong += 16 + caoThe(b.the[--dau]);
   let het = cuoi;
@@ -195,7 +200,8 @@ function DanhSachThe({b, t, mau, aChung, hoatDong = false, tHet}: {b: BuocGiai; 
                 <span style={{height: 34, padding: '0 14px', borderRadius: 17, background: CHOT, color: '#0E1014', fontFamily: FONT, fontWeight: 900, fontSize: 20, display: 'flex', alignItems: 'center', letterSpacing: 0.6}}>{j + 1} · ĐÁP ÁN</span>
                 {th.nhan ? <span style={{color: CHOT, fontFamily: FONT, fontWeight: 800, fontSize: 28}}><ChuTron s={th.nhan} co={28} mau={CHOT} dam={800} /></span> : null}
               </div>
-              <NoiDung th={th} t0={t0 + 0.15} t={t} mau={NGOC} co={52} coDong={coDongVua(th)} />
+              <KhoaThuongHieu viTri="the" />
+            <NoiDung th={th} t0={t0} t={t} mau={NGOC} co={52} coDong={coDongVua(th)} />
             </div>
           );
         }
@@ -212,7 +218,8 @@ function DanhSachThe({b, t, mau, aChung, hoatDong = false, tHet}: {b: BuocGiai; 
               <span style={{width: 34, height: 34, borderRadius: 17, background: `${mau}26`, color: mau, fontFamily: FONT, fontWeight: 900, fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>{j + 1}</span>
               {th.nhan ? <span style={{color: mau, fontFamily: FONT, fontWeight: 700, fontSize: 26}}><ChuTron s={th.nhan} co={26} mau={mau} dam={700} /></span> : null}
             </div>
-            <NoiDung th={th} t0={t0 + 0.15} t={t} mau={mau} coDong={coDongVua(th)} />
+            <KhoaThuongHieu viTri="the" />
+            <NoiDung th={th} t0={t0} t={t} mau={mau} coDong={coDongVua(th)} />
           </div>
         );
       })}
