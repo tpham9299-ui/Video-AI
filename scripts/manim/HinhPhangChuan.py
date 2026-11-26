@@ -18,6 +18,7 @@ import math
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 
@@ -57,27 +58,36 @@ SceneFileWriter.save_image = lambda self, pixels: _luu_anh_goc(self, _alpha_than
 from hinh_phang import bo_cuc, thoi_gian  # noqa: E402
 from hinh_phang.hinh import tach_diem  # noqa: E402
 
-# ---------------- bảng màu (khóa tuyệt đối với LaTeX) ----------------
-NEN = "#121214"
-TRANG = "#F1F5F9"
+# ---------------- bảng màu (khóa tuyệt đối với LaTeX, không dùng nền đen đặc) ----------------
+TRANG = "#F8FAFC"
 CHU_PHU = "#CBD5E1"
 TRON_CHINH = "#38BDF8"
-MAU = {"vang": "#FACC15", "do": "#F87171", "ngoc": "#2DD4BF", "cam": "#FB923C", "la": "#4ADE80", "cyan": "#22D3EE"}
+MAU = {"vang": "#FACC15", "do": "#FB7185", "ngoc": "#34D399", "cam": "#FB923C", "la": "#4ADE80", "cyan": "#38BDF8"}
 PHONG = "Be Vietnam Pro"
 
 W, H = 9.0, 16.0
-Y_PILL, Y_PHU_DE = 7.05, 6.52
-Y_DE_TREN = 6.12
-Y_MUC_TIEU = 5.72
-Y_TRANG_TIEU_DE = -1.12
-Y_DONG_TREN = -1.62
-Y_DAY = -5.65
-RONG_CHU = 8.2
-CO_DONG = 44
-CO_NHAN = 40
-CO_DE = 32
+# Tầng 2 của KhungHinhHoc trong SAFE_ZONE_TIKTOK (px x: 130..950, y: 398..1046) quy về khung 9x16
+VUNG_T2 = {"x0": -3.35, "x1": 3.35, "y0": -0.65, "y1": 4.60}
+_V_GOC = bo_cuc.VUNG_HINH
+_S_T2 = min(
+    (VUNG_T2["x1"] - VUNG_T2["x0"]) / max(_V_GOC["x1"] - _V_GOC["x0"], 1e-9),
+    (VUNG_T2["y1"] - VUNG_T2["y0"]) / max(_V_GOC["y1"] - _V_GOC["y0"], 1e-9),
+)
+_CX_GOC = (_V_GOC["x0"] + _V_GOC["x1"]) / 2.0
+_CY_GOC = (_V_GOC["y0"] + _V_GOC["y1"]) / 2.0
+_CX_T2 = (VUNG_T2["x0"] + VUNG_T2["x1"]) / 2.0
+_CY_T2 = (VUNG_T2["y0"] + VUNG_T2["y1"]) / 2.0
+CO_NHAN = 38
+CO_SO_DO = 30
 
 TEX = None
+
+
+def _t2_p3(p):
+    """Ánh xạ đồng dạng (giữ nguyên góc vuông & đường tròn) từ bo_cuc.VUNG_HINH vào Tầng 2."""
+    x = (float(p[0]) - _CX_GOC) * _S_T2 + _CX_T2
+    y = (float(p[1]) - _CY_GOC) * _S_T2 + _CY_T2
+    return np.array([x, y, 0.0])
 
 
 def nap_phong(public):
@@ -194,14 +204,14 @@ class HinhPhang(Scene):
         if not anim:
             return
         rt = run_time if toi_da is None else max(1 / self.camera.frame_rate, min(run_time, toi_da))
-        self.play(*anim, run_time=rt)
+        self.play(*anim, run_time=rt, rate_func=rate_functions.ease_in_out_cubic)
 
-    # ---------- dựng đối tượng ----------
+    # ---------- dựng đối tượng (khớp Tầng 2) ----------
     def P(self, t):
-        return p3(self.G["diem"][t])
+        return _t2_p3(self.G["diem"][t])
 
     def net_doan(self, a, b, vai="chinh"):
-        w = {"chinh": 4.0, "cao": 3.2, "phu": 3.2, "bo_sung": 2.8}.get(vai, 3.2)
+        w = {"chinh": 4.2, "cao": 2.8, "phu": 2.4, "bo_sung": 2.4}.get(vai, 2.8)
         mau = TRANG if vai == "chinh" else "#E2E8F0"
         ln = Line(self.P(a), self.P(b), color=mau, stroke_width=w)
         ln.set_z_index(2)
@@ -209,15 +219,15 @@ class HinhPhang(Scene):
 
     def net_keo(self, a, b):
         ln = DashedLine(self.P(a), self.P(b), color=CHU_PHU, stroke_width=2.2, dash_length=0.14, dashed_ratio=0.55)
-        ln.set_stroke(opacity=0.7)
+        ln.set_stroke(opacity=0.65)
         ln.set_z_index(2)
         return ln
 
     def net_tron(self, khoa, mau=TRON_CHINH, w=3.2, dut=False):
         cx, cy, r = self.G["tron"][khoa] if isinstance(khoa, str) else khoa
-        c = Circle(radius=r, color=mau, stroke_width=w).move_to(p3((cx, cy)))
+        c = Circle(radius=r * _S_T2, color=mau, stroke_width=w).move_to(_t2_p3((cx, cy)))
         if dut:
-            c = DashedVMobject(c, num_dashes=max(36, int(r * 34)), dashed_ratio=0.55)
+            c = DashedVMobject(c, num_dashes=max(36, int(r * _S_T2 * 34)), dashed_ratio=0.55)
         c.set_z_index(1)
         return c
 
@@ -265,9 +275,61 @@ class HinhPhang(Scene):
         if t not in self.G["nhan"]:
             return None
         m = MathTex(tex_ten(t), font_size=CO_NHAN, color=TRANG, tex_template=TEX)
-        m.move_to(p3(self.G["nhan"][t]))
+        m.move_to(_t2_p3(self.G["nhan"][t]))
         m.set_z_index(6)
         return m
+
+    def so_do_hinh(self):
+        """Nhãn số đo độ dài / góc (từ dieu_kien) gắn trực tiếp lên hình, đẩy ra ngoài trọng tâm chống đè nét."""
+        dk_list = self.G.get("dieu_kien") or []
+        if not dk_list or not self.G.get("diem"):
+            return VGroup()
+        pts = [self.P(k) for k in self.G["diem"]]
+        tam = sum(pts) / max(1, len(pts))
+        nhom = VGroup()
+        for dk in dk_list:
+            if not isinstance(dk, dict):
+                continue
+            l = dk.get("loai")
+            if l == "do_dai":
+                ds = tach_diem(dk.get("doan"))
+                val = dk.get("nhan") or dk.get("gia_tri")
+                if len(ds) != 2 or val is None or not all(x in self.G["diem"] for x in ds):
+                    continue
+                pa, pb = self.P(ds[0]), self.P(ds[1])
+                mid = (pa + pb) / 2.0
+                v = pb - pa
+                nv = np.linalg.norm(v)
+                if nv < 1e-6:
+                    continue
+                perp = np.array([-v[1], v[0], 0.0]) / nv
+                if np.dot(mid + perp * 0.25 - tam, mid - tam) < np.dot(mid - perp * 0.25 - tam, mid - tam):
+                    perp = -perp
+                s_val = str(val).rstrip("0").rstrip(".") if isinstance(val, float) else str(val)
+                lb = MathTex(chuan_so(s_val), font_size=CO_SO_DO, color=MAU["cyan"], tex_template=TEX)
+                lb.move_to(mid + perp * 0.28)
+                lb.set_z_index(6)
+                nhom.add(lb)
+            elif l == "so_do_goc":
+                ds = tach_diem(dk.get("goc"))
+                do = dk.get("do")
+                if len(ds) != 3 or do is None or abs(float(do) - 90.0) < 1e-3 or not all(x in self.G["diem"] for x in ds):
+                    continue
+                O = self.P(ds[1])
+                u, v = self.P(ds[0]) - O, self.P(ds[2]) - O
+                nu, nv = np.linalg.norm(u), np.linalg.norm(v)
+                if nu < 1e-6 or nv < 1e-6:
+                    continue
+                bis = u / nu + v / nv
+                nb = np.linalg.norm(bis)
+                if nb < 1e-6:
+                    continue
+                s_do = str(int(do)) if float(do).is_integer() else str(do)
+                lb = MathTex(chuan_so(s_do + "^\\circ"), font_size=CO_SO_DO - 2, color=MAU["vang"], tex_template=TEX)
+                lb.move_to(O + (bis / nb) * 0.56)
+                lb.set_z_index(6)
+                nhom.add(lb)
+        return nhom
 
     def cham(self, t):
         d = Dot(self.P(t), radius=0.065, color=TRANG)
@@ -279,12 +341,6 @@ class HinhPhang(Scene):
         g = mob.copy().set_stroke(mau, width=w * 3, opacity=0.18)
         g.set_z_index(mob.z_index - 0.5 if hasattr(mob, "z_index") else 0)
         return g
-
-    def dong_tex(self, tex, co=CO_DONG, mau=TRANG):
-        m = MathTex(chuan_so(tex), font_size=co, color=mau, tex_template=TEX)
-        if m.width > RONG_CHU:
-            m.scale_to_fit_width(RONG_CHU)
-        return m
 
     # ---------- pha 1: dựng hình ----------
     def ve_buoc(self, idb):
@@ -322,43 +378,6 @@ class HinhPhang(Scene):
             self.hinh.add(m)
         return anim
 
-    def cham_de(self):
-        """Câu đề rút gọn: tối đa 3 dòng phía trên, hiện theo mốc."""
-        ds = []
-        for x in self.G["de_rut_gon"]:
-            tex = str(x.get("tex") or "")
-            if not tex.strip():
-                continue
-            ds.append(self.dong_tex(tex, co=CO_DE, mau=CHU_PHU))
-        if not ds:
-            return VGroup()
-        if len(ds) > 2:
-            # Chọn điểm xuống dòng giữ hai hàng giả thiết cân đối.
-            widths = [m.width + 0.18 for m in ds]
-            cut = min(range(1, len(ds)), key=lambda i: max(sum(widths[:i]), sum(widths[i:])))
-            ds = [VGroup(*row).arrange(RIGHT, buff=0.18) for row in (ds[:cut], ds[cut:])]
-        g = VGroup(*ds).arrange(DOWN, buff=0.14, aligned_edge=ORIGIN)
-        if g.height > 1.08:
-            g.scale_to_fit_height(1.08)
-        if g.width > RONG_CHU:
-            g.scale_to_fit_width(RONG_CHU)
-        g.move_to(p3((0, Y_DE_TREN - g.height / 2)))
-        return g
-
-    def header(self):
-        h = self.G["header"]
-        t1 = Text(h["nhan_lop"], font=PHONG, weight=BOLD, font_size=30, color=NEN)
-        v1 = RoundedRectangle(corner_radius=0.24, width=t1.width + 0.55, height=0.52, stroke_width=0).set_fill(MAU["vang"], 1)
-        p1 = VGroup(v1, t1.move_to(v1))
-        t2 = Text(h["chuyen_muc"], font=PHONG, weight=BOLD, font_size=30, color=MAU["cyan"])
-        v2 = RoundedRectangle(corner_radius=0.24, width=t2.width + 0.55, height=0.52, color=MAU["cyan"], stroke_width=2.2)
-        p2 = VGroup(v2, t2.move_to(v2))
-        hang = VGroup(p1, p2).arrange(RIGHT, buff=0.22).move_to(p3((0, Y_PILL)))
-        pd = Text(h["phu_de"], font=PHONG, font_size=27, color=CHU_PHU).move_to(p3((0, Y_PHU_DE)))
-        gach = Line(pd.get_corner(DOWN + LEFT) + DOWN * 0.09, pd.get_corner(DOWN + RIGHT) + DOWN * 0.09, color=MAU["cyan"], stroke_width=1.6)
-        gach.set_stroke(opacity=0.8)
-        return VGroup(hang, pd, gach)
-
     def to_muc_tieu(self):
         """Cuối đề: tô đỏ nổi bật đối tượng cần chứng minh (đoạn + điểm)."""
         g = VGroup()
@@ -374,71 +393,7 @@ class HinhPhang(Scene):
                 g.add(d)
         return g
 
-    def dong_muc_tieu(self, mau=TRANG):
-        tex = str(self.G["muc_tieu"].get("tex") or "").strip()
-        if not tex:
-            return None
-        if self.G["tinh"]:
-            tex = tex.split("=")[0] + " = ?"
-        nhan = Text("Tính:" if self.G["tinh"] else "Chứng minh:", font=PHONG, weight=BOLD, font_size=30, color=MAU["cyan"])
-        bt = MathTex(chuan_so(tex), font_size=40, color=mau, tex_template=TEX)
-        hang = VGroup(nhan, bt).arrange(RIGHT, buff=0.22)
-        if hang.width > RONG_CHU:
-            hang.scale_to_fit_width(RONG_CHU)
-        hang.move_to(p3((0, Y_MUC_TIEU)))
-        gach = Line(hang.get_corner(DOWN + LEFT) + DOWN * 0.1, hang.get_corner(DOWN + RIGHT) + DOWN * 0.1, color=MAU["vang"], stroke_width=2.0)
-        return VGroup(hang, gach)
-
-    # ---------- pha 2: trang chứng minh ----------
-    def dung_trang(self, ti, t):
-        so = Text("BƯỚC %d" % (ti + 1), font=PHONG, weight=BOLD, font_size=24, color=NEN)
-        vien = RoundedRectangle(corner_radius=0.18, width=so.width + 0.36, height=0.4, stroke_width=0).set_fill(MAU["cyan"], 1)
-        pill = VGroup(vien, so.move_to(vien))
-        td = MathTex(tieu_de_tex(str(t.get("tieu_de") or "")[:48]), font_size=36, color=TRANG, tex_template=TEX)
-        tieu = VGroup(pill, td).arrange(RIGHT, buff=0.2)
-        if tieu.width > RONG_CHU:
-            tieu.scale_to_fit_width(RONG_CHU)
-        tieu.move_to(p3((0, Y_TRANG_TIEU_DE)))
-        dong, phan = [], []
-        for d in t["dong"]:
-            # khung bắc cầu cần tách phần LaTeX -> dựng dòng có tách sẵn các chuỗi được dòng sau tham chiếu
-            dich = self._dich_bac_cau(t, d)
-            m, idx = None, None
-            for s in dich:
-                ps, k = tach_phan(d["tex"], s)
-                if ps:
-                    try:
-                        m = MathTex(*[chuan_so(x) for x in ps], font_size=CO_DONG, color=TRANG, tex_template=TEX)
-                        idx = (s, k)
-                        break
-                    except Exception:  # noqa: BLE001
-                        m = None
-            if m is None:
-                m = MathTex(chuan_so(d["tex"]), font_size=CO_DONG, color=TRANG, tex_template=TEX)
-            if m.width > RONG_CHU:
-                m.scale_to_fit_width(RONG_CHU)
-            dong.append(m)
-            phan.append(idx)
-        g = VGroup(*dong).arrange(DOWN, buff=0.34, aligned_edge=LEFT)
-        cao_toi_da = Y_DONG_TREN - Y_DAY
-        if g.height > cao_toi_da:
-            g.scale_to_fit_height(cao_toi_da)
-        if g.width > RONG_CHU:
-            g.scale_to_fit_width(RONG_CHU)
-        g.move_to(p3((0, Y_DONG_TREN - g.height / 2)))
-        return tieu, dong, phan
-
-    def _dich_bac_cau(self, t, d):
-        k = t["dong"].index(d) + 1
-        ds = []
-        for d2 in t["dong"]:
-            for h in d2.get("hanh_dong_hinh") or []:
-                if h.get("loai") == "khung_bac_cau" and (not h.get("dong") or k in h["dong"]):
-                    s = h.get("doan_tex") if isinstance(h.get("doan_tex"), str) else (h.get("doan_tex") or [""])[0]
-                    if s and s in d["tex"]:
-                        ds.append(s)
-        return ds
-
+    # ---------- pha 2: hành động trên hình (chữ bước giải do KhungHinhHoc dựng) ----------
     def lop_hanh_dong(self, h):
         l = h.get("loai")
         mau = MAU.get(h.get("mau"), MAU["vang"])
@@ -492,39 +447,32 @@ class HinhPhang(Scene):
                 for d in t["dong"]:
                     for a, b2 in d.get("bo_sung") or []:
                         self.hinh.add(self.net_doan(a, b2, "bo_sung"))
+            sd = self.so_do_hinh()
+            if len(sd):
+                self.hinh.add(sd)
             self.add(self.hinh)
             self.wait(1 / 30)
             return
         ket = float(M["ket"])
-        # header
-        hd = self.header()
-        de = self.cham_de()
-        ghim = self.dong_muc_tieu()
-        card = VGroup(de, *([ghim] if ghim is not None else [])).arrange(DOWN, buff=0.10)
-        if card.height > 1.08:
-            card.scale_to_fit_height(1.08)
-        card.move_to(p3((0, 5.65)))
-        self.add(hd, card)
+        # Chỉ vẽ lớp hình học thuần (không nền đen, không header, không đề bài, không chữ bước giải — đã do KhungHinhHoc dựng)
         su = [(M["dung"][str(b["id"])], 1, ("dung", b["id"])) for b in G["phep_dung"]]
         if su:
             dung_xong = max(e[0] for e in su)
             dau_buoc = next((row[0] for row in M["trang"] if row), ket)
-            if dung_xong + 1.1 < dau_buoc:
-                su.append((max(dung_xong + 0.1, min(dung_xong + 1.1, M["muc_tieu"])), 2, ("to_do",)))
+            if dung_xong + 0.9 < dau_buoc:
+                su.append((max(dung_xong + 0.1, min(dung_xong + 0.9, M["muc_tieu"])), 2, ("to_do",)))
         for ti, t in enumerate(G["trang"]):
             tm = M["trang"][ti] if ti < len(M["trang"]) else []
             for di, d in enumerate(t["dong"]):
                 td = tm[di] if di < len(tm) else ket - 2
                 if di == 0:
                     su.append((td, 4, ("trang", ti)))
-                next_line = tm[di + 1] if di + 1 < len(tm) else ket
-                delay = min(0.25, (next_line - td) / 2) if di == 0 else 0
-                su.append((td + delay, 5, ("dong", ti, di)))
-        su.append((ket - 0.5, 9, ("het",)))
+                su.append((td, 5, ("dong", ti, di)))
+        su.append((ket - 0.4, 9, ("het",)))
         su.sort(key=lambda x: (x[0], x[1]))
         do_muc = VGroup()
-        lop_trang, chu_trang = VGroup(), VGroup()
-        cur = None
+        lop_trang = VGroup()
+        sd_da_hien = False
         for i, (t, _, ev) in enumerate(su):
             sau = su[i + 1][0] if i + 1 < len(su) else ket
             self.den(t)
@@ -532,48 +480,47 @@ class HinhPhang(Scene):
             kieu = ev[0]
             if kieu == "dung":
                 anim = self.ve_buoc(ev[1])
+                if not sd_da_hien and ev[1] == G["phep_dung"][-1]["id"]:
+                    sd = self.so_do_hinh()
+                    if len(sd):
+                        self.hinh.add(sd)
+                        anim.append(FadeIn(sd))
+                    sd_da_hien = True
                 self.nhat_ky.append({"kieu": "dung", "id": ev[1], "moc": round(t, 3), "that": round(self.bay_gio(), 3)})
                 if anim:
-                    self.choi(LaggedStart(*anim, lag_ratio=0.15), run_time=1.1, toi_da=con)
+                    self.choi(LaggedStart(*anim, lag_ratio=0.15), run_time=0.9, toi_da=con)
             elif kieu == "to_do":
                 do_muc = self.to_muc_tieu()
                 if len(do_muc):
-                    self.choi(Create(do_muc), run_time=0.7, toi_da=con)
+                    self.choi(Create(do_muc), run_time=0.6, toi_da=con)
                     if sau - self.bay_gio() >= 1 / fps:
-                        self.choi(Indicate(do_muc, color=MAU["do"], scale_factor=1.04), run_time=0.6, toi_da=sau - self.bay_gio())
+                        self.choi(Indicate(do_muc, color=MAU["do"], scale_factor=1.04), run_time=0.5, toi_da=sau - self.bay_gio())
             elif kieu == "trang":
                 ti = ev[1]
-                if len(chu_trang):
-                    self.remove(*chu_trang)
                 if len(lop_trang):
                     self.remove(*lop_trang)
                 if ti == 0 and len(do_muc):
                     self.remove(do_muc)
-                lop_trang, chu_trang = VGroup(), VGroup()
-                tieu, dong, phan = self.dung_trang(ti, G["trang"][ti])
-                cur = {"tieu": tieu, "dong": dong, "phan": phan}
-                chu_trang.add(tieu)
+                lop_trang = VGroup()
                 self.nhat_ky.append({"kieu": "buoc", "trang": ti, "moc": round(t, 3), "that": round(self.bay_gio(), 3)})
-                self.choi(FadeIn(tieu, shift=UP * 0.15), run_time=0.25, toi_da=max(1 / fps, sau - self.bay_gio()))
             elif kieu == "dong":
                 ti, di = ev[1], ev[2]
                 d = G["trang"][ti]["dong"][di]
-                mob = cur["dong"][di]
-                chu_trang.add(mob)
-                anim = [FadeIn(mob, shift=UP * 0.12)]
+                anim = []
                 for a, b2 in d.get("bo_sung") or []:
                     ln = self.net_doan(a, b2, "bo_sung")
                     self.hinh.add(ln)
                     anim.append(Create(ln))
-                sau_dong, khung_bc = [], VGroup()
+                sau_dong = []
                 for h in d.get("hanh_dong_hinh") or []:
                     if h.get("loai") == "khung_bac_cau":
-                        # khung bắc cầu hiện CÙNG LÚC dòng kết luận (lời đọc thường sang trang ngay sau đó)
-                        k = self.khung_bac_cau(h, cur, di)
-                        if len(k):
-                            khung_bc.add(k)
-                            lop_trang.add(k)
-                            anim.append(Create(k))
+                        # Chỉ vẽ cung góc trên hình (không vẽ khung chữ trong Manim)
+                        s = h.get("doan_tex") if isinstance(h.get("doan_tex"), str) else (h.get("doan_tex") or [""])[0]
+                        ds = tach_diem(s)
+                        if len(ds) == 3 and all(x in self.G["diem"] for x in ds):
+                            cg = self.cung(ds[0], ds[1], ds[2], MAU["cyan"], 1, r0=None)
+                            lop_trang.add(cg)
+                            anim.append(Create(cg))
                         continue
                     if h.get("loai") == "ket_luan":
                         sau_dong.append(h)
@@ -584,56 +531,30 @@ class HinhPhang(Scene):
                         anim.append(r[1])
                 self.su_kien.append({"f": int(round(self.bay_gio() * 30)), "kieu": "dong"})
                 self.nhat_ky.append({"kieu": "dong", "trang": ti, "dong": di, "moc": round(t, 3), "that": round(self.bay_gio(), 3)})
-                self.choi(*anim, run_time=0.35, toi_da=con)
-                hcn = [r for k in khung_bc for r in k if isinstance(r, Rectangle)]
-                if hcn and sau - self.bay_gio() > 0.45:
-                    self.choi(*[Circumscribe(r, color=MAU["cyan"], buff=0.03, stroke_width=2) for r in hcn], run_time=0.6,
-                              toi_da=sau - self.bay_gio() - 0.15)
+                if anim:
+                    self.choi(*anim, run_time=0.35, toi_da=con)
                 for h in sau_dong:
-                    self.ket_luan(h, ghim, max(1 / fps, sau - self.bay_gio()))
+                    self.ket_luan(h, max(1 / fps, sau - self.bay_gio()))
             elif kieu == "het":
-                ra = [FadeOut(x) for x in (self.hinh, chu_trang, lop_trang, hd) if len(x)]
-                ra.append(FadeOut(card))
-                self.choi(*ra, run_time=0.4, toi_da=con)
+                ra = [FadeOut(x) for x in (self.hinh, lop_trang) if len(x)]
+                if ra:
+                    self.choi(*ra, run_time=0.35, toi_da=con)
         du = ket - self.bay_gio()
         if du > 1 / 60:
             self.wait(du)
 
-    def khung_bac_cau(self, h, cur, di):
-        """Khung chữ nhật cyan mảnh quanh góc trung gian ở các dòng được bắc cầu + cung cyan trên hình."""
-        s = h.get("doan_tex") if isinstance(h.get("doan_tex"), str) else (h.get("doan_tex") or [""])[0]
-        dong = h.get("dong") or [k + 1 for k in range(di)]
-        g = VGroup()
-        for k in dong:
-            j = k - 1
-            if j < 0 or j >= len(cur["dong"]):
-                continue
-            ph = cur["phan"][j]
-            mob = cur["dong"][j]
-            dich = mob[ph[1]] if ph and ph[0] == s else mob
-            g.add(SurroundingRectangle(dich, color=MAU["cyan"], buff=0.06, stroke_width=2.0, corner_radius=0.04))
-        ds = tach_diem(s)
-        if len(ds) == 3 and all(x in self.G["diem"] for x in ds):
-            g.add(self.cung(ds[0], ds[1], ds[2], MAU["cyan"], 1, r0=None))
-        return g
-
-    def ket_luan(self, h, ghim, con):
+    def ket_luan(self, h, con):
         ds = tach_diem(h.get("goc"))
         anim = []
         if len(ds) == 3 and all(x in self.G["diem"] for x in ds):
-            # góc vuông chốt bài: vàng nổi bật, cạnh 0,32, tô 30% + quầng sáng (stroke ×3, độ mờ 0,18)
-            q = self.vuong(ds[1], ds[0], ds[2], mau=MAU["vang"], w=3.6, canh=0.32, to=0.30)
+            # góc vuông chốt bài: vàng nổi bật + quầng sáng (stroke ×3, độ mờ 0,18)
+            q = self.vuong(ds[1], ds[0], ds[2], mau=MAU["vang"], w=3.6, canh=0.30, to=0.30)
             g = VGroup(self.sang(q, MAU["vang"], 3.6), q)
             self.hinh.add(g)
-            anim += [Create(g), Flash(self.P(ds[1]), color=MAU["vang"], line_length=0.25, num_lines=10, flash_radius=0.42)]
-        if ghim is not None:
-            xanh = self.dong_muc_tieu(MAU["la"])
-            dau = MathTex(r"\checkmark", font_size=44, color=MAU["la"], tex_template=TEX).next_to(xanh[0], RIGHT, buff=0.18)
-            anim.append(AnimationGroup(ghim.animate.set_color(MAU["la"]), FadeIn(dau, scale=1.6)))
-            self.hinh.add(dau)
+            anim += [Create(g), Flash(self.P(ds[1]), color=MAU["vang"], line_length=0.24, num_lines=10, flash_radius=0.38)]
         self.su_kien.append({"f": int(round(self.bay_gio() * 30)), "kieu": "khung"})
         if anim:
-            self.choi(*anim, run_time=0.9, toi_da=con)
+            self.choi(*anim, run_time=0.75, toi_da=con)
 
 
 def main():
@@ -649,6 +570,7 @@ def main():
     G = giai(kb)
     if G:
         G["tinh"] = thoi_gian.la_bai_tinh(kb)
+        G["dieu_kien"] = (kb.get("hinh_phang_chuan") or {}).get("dieu_kien") or []
     if G is None:
         print("Kịch bản không có hinh_phang_chuan -> dùng manim_hinh.py")
         sys.exit(3)
@@ -691,6 +613,18 @@ def main():
         vid = str(sc.renderer.file_writer.movie_file_path)
     ra = os.path.join(a.ra, "%s_manim.mov" % id_)
     shutil.move(vid, ra)
+    ra_webm = os.path.join(a.ra, "%s_manim.webm" % id_)
+    if shutil.which("ffmpeg"):
+        try:
+            subprocess.run(
+                ["ffmpeg", "-y", "-loglevel", "error", "-i", ra, "-c:v", "libvpx-vp9",
+                 "-pix_fmt", "yuva420p", "-auto-alt-ref", "0", "-b:v", "0", "-crf", "30", ra_webm],
+                check=True,
+            )
+            shutil.copy(ra_webm, os.path.join(a.public, "manim", "%s.webm" % id_))
+            props.setdefault("hinhPhang", {})["video"] = "manim/%s.webm" % id_
+        except Exception as e:  # noqa: BLE001
+            print("Cảnh báo: không xuất được webm VP9 yuva420p:", e)
     shutil.rmtree(tam, ignore_errors=True)
     props["manimLop"] = True
     props["anhManimBia"] = "manim/bia.png"

@@ -12,11 +12,11 @@ _TU_SO = {"không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tá
 
 def la_bai_tinh(kb):
     hp = kb.get("hinh_phang_chuan") or {}
-    loai = hp.get("loai_yeu_cau")
+    loai = str(hp.get("loai_yeu_cau") or "").strip().lower()
     if loai in ("tinh", "chung_minh"):
         return loai == "tinh"
-    for field in ("can_tim", "de_bai", "tieu_de"):
-        text = str(kb.get(field) or "")
+    for field in (hp.get("yeu_cau_ngan"), kb.get("can_tim"), kb.get("de_bai"), kb.get("tieu_de")):
+        text = str(field or "")
         if re.search(r"chứng minh", text, re.I):
             return False
         if re.search(r"\btính\b|bao nhiêu|tìm độ (?:dài|lớn)", text, re.I):
@@ -90,7 +90,7 @@ def _chuoi(cum_list, ds, bat):
 
 
 def _lap(ds_t, lo, hi):
-    """Điền mốc None bằng nội suy đều giữa hai mốc kề (biên lo/hi); giữ tăng dần."""
+    """Điền mốc None bằng nội suy đều giữa hai mốc kề (biên lo/hi); giữ tăng dần và không đẩy mốc thật vượt biên."""
     ra = list(ds_t)
     n = len(ra)
     i = 0
@@ -107,8 +107,21 @@ def _lap(ds_t, lo, hi):
             ra[k] = a + (b - a) * (k - i + 1) / (j - i + 1)
         i = j
     for k in range(1, n):
-        ra[k] = max(ra[k], ra[k - 1] + 0.05)
+        ra[k] = max(ra[k], ra[k - 1] + 0.04)
     return ra
+
+
+def _chuan_trang_nguon(hp):
+    """Đọc danh sách bước từ trang / trang_chung_minh hoặc dong_giai[] (tương thích ngược 100%)."""
+    trang = hp.get("trang") or hp.get("trang_chung_minh")
+    if isinstance(trang, list) and trang:
+        return trang
+    dg = hp.get("dong_giai")
+    if isinstance(dg, list) and dg:
+        if isinstance(dg[0], dict) and isinstance(dg[0].get("dong"), list):
+            return dg
+        return [{"tieu_de": "Giải", "dong": [d for d in dg if isinstance(d, dict)]}]
+    return []
 
 
 def moc_hinh_phang(hp, canh_props, fps, tong_giay):
@@ -116,7 +129,7 @@ def moc_hinh_phang(hp, canh_props, fps, tong_giay):
     ds = dong_tu(canh_props, fps)
     pd = hp.get("phep_dung") or []
     de = [x if isinstance(x, dict) else {"tex": str(x)} for x in (hp.get("de_rut_gon") or [])]
-    trang = hp.get("trang") or hp.get("trang_chung_minh") or []
+    trang = _chuan_trang_nguon(hp)
     mt = hp.get("muc_tieu") or {}
     # đầu cảnh đề bài (cảnh 2 nếu có) làm biên dưới của phép dựng
     bat_de = 0.0
@@ -130,7 +143,7 @@ def moc_hinh_phang(hp, canh_props, fps, tong_giay):
         giai = canh_tinh
     dau_giai = giai[0]["batDau"] / fps if giai else tong_giay
     ds_de = [x for x in ds if x[1] < dau_giai]
-    t_dung, vt_dung = _chuoi([b.get("khi_noi") for b in pd], ds_de, 0)
+    t_dung_goc, vt_dung = _chuoi([b.get("khi_noi") for b in pd], ds_de, 0)
     t_de, _ = _chuoi([x.get("khi_noi") for x in de], ds_de, 0)
     r_mt = tim(mt.get("khi_noi"), ds_de, 0) if mt.get("khi_noi") else None
     t_mt = ds[r_mt[0]][1] if r_mt else None
@@ -138,36 +151,52 @@ def moc_hinh_phang(hp, canh_props, fps, tong_giay):
     dong = [d.get("khi_noi") for t in trang for d in t.get("dong") or []]
     t_dong, _ = _chuoi(dong, ds, len(ds_de) if giai else vt)
     so_khop = sum(x is not None for x in t_dong)
-    if len(giai) == len(trang):
+    if len(giai) == len(trang) and trang:
         so_khop = 0
         t_dong = []
         for page, cp in zip(trang, giai):
             words = dong_tu([cp], fps)
             times, _ = _chuoi([d.get("khi_noi") for d in page["dong"]], words, 0)
             so_khop += sum(x is not None for x in times)
-            if times and words:
+            if times and times[0] is None and words:
                 times[0] = words[0][1]
             t_dong.extend(_lap(times, cp["batDau"] / fps, (cp["batDau"] + cp["soFrame"]) / fps))
 
-    khop = {"dung": sum(x is not None for x in t_dung), "de": sum(x is not None for x in t_de),
+    khop = {"dung": sum(x is not None for x in t_dung_goc), "de": sum(x is not None for x in t_de),
             "dong": so_khop, "muc_tieu": t_mt is not None,
-            "tong": {"dung": len(t_dung), "de": len(t_de), "dong": len(t_dong)}}
-    # biên: phép dựng nằm trong [bat_de, mục tiêu]; dòng chứng minh trong [mục tiêu + 1, cuối - 1]
+            "tong": {"dung": len(t_dung_goc), "de": len(t_de), "dong": len(t_dong)}}
+    # biên: phép dựng nằm trong [bat_de, mục tiêu]; dòng chứng minh trong [dau_giai, cuối - 0.5]
     t_dau_dong = next((x for x in t_dong if x is not None), None)
     if t_mt is None:
-        t_mt = (t_dau_dong - 2.0) if t_dau_dong is not None else tong_giay * 0.3
-    t_dung = _lap(t_dung, max(0.3, bat_de), max(bat_de + 0.5, t_mt - 0.6))
-    if t_dung:
+        t_mt = (t_dau_dong - 1.5) if t_dau_dong is not None else tong_giay * 0.3
+    t_dung = _lap(t_dung_goc, max(0.3, bat_de), max(bat_de + 0.5, t_mt - 0.4))
+    if t_dung and t_dung_goc and t_dung_goc[0] is None:
         t_dung[0] = 0.0
-    t_de = _lap(t_de, max(0.2, bat_de), max(bat_de + 0.5, t_mt - 0.8))
+    t_de = _lap(t_de, max(0.2, bat_de), max(bat_de + 0.5, t_mt - 0.6))
     if t_dong and giai and t_dong[0] is None:
         words = dong_tu([giai[0]], fps)
         t_dong[0] = words[0][1] if words else dau_giai
-    t_dong = _lap(t_dong, dau_giai if giai else t_mt + 1.2, tong_giay - 0.5)
+    t_dong = _lap(t_dong, dau_giai if giai else t_mt + 1.0, tong_giay - 0.4)
     kq_trang, k = [], 0
     for t in trang:
         n = len(t.get("dong") or [])
         kq_trang.append([round(x, 3) for x in t_dong[k:k + n]])
         k += n
+    # moc_cong_bo: đầu cảnh đáp án hoặc dòng cuối của trang cuối
+    canh_da = next((cp for cp in canh_props or [] if re.search(r"dap_an|ket_qua", str(cp.get("loai") or ""))), None)
+    if canh_da:
+        t_cb = float(canh_da.get("batDau") or 0) / fps
+    elif kq_trang and kq_trang[-1]:
+        t_cb = kq_trang[-1][-1]
+    else:
+        t_cb = max(0.0, tong_giay - 2.0)
+    # chip kết quả trung gian (từ ket_qua_chip của từng trang hoặc cấp gốc)
+    chips = []
+    for ti, t in enumerate(trang):
+        kc = str(t.get("ket_qua_chip") or "").strip()
+        if kc and ti < len(kq_trang) and kq_trang[ti]:
+            t_c = kq_trang[ti][-1]
+            chips.append({"id": "c%d" % (ti + 1), "tex": kc, "t": round(t_c, 3)})
     return {"dung": {str(b.get("id")): round(t, 3) for b, t in zip(pd, t_dung)}, "de": [round(x, 3) for x in t_de],
-            "muc_tieu": round(t_mt, 3), "trang": kq_trang, "ket": round(tong_giay, 3), "khop": khop}
+            "muc_tieu": round(t_mt, 3), "trang": kq_trang, "moc_cong_bo": round(t_cb, 3),
+            "chip": chips, "ket": round(tong_giay, 3), "khop": khop}

@@ -49,6 +49,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: |
+            phong_cach.json
             scripts/dang_video.py
             scripts/evergreen.py
             public/fonts

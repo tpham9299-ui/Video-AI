@@ -37,6 +37,7 @@ jobs:
         with:
           sparse-checkout: |
             /*.gs
+            phong_cach.json
             scripts/bophan1
             scripts/tu_sinh_svg.py
             scripts/khung4tang_v96.py

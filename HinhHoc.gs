@@ -133,8 +133,10 @@ function huongDanHinhPhangChuan_(r) {
     '   duong_tron_ngoai_tiep{tg,tam} | duong_tron_duong_kinh{doan:"BC",tam?} | tiep_tuyen{tai:"A",duong_tron,cat:"BC",ten} hoặc {tu:"M",duong_tron,ten_tiep_diem:["A","B"]} | phan_giac{goc:"BAC",cat:"BC",ten} |\n' +
     '   doi_xung{ten,diem,qua (điểm hoặc "XY")} | song_song{ten,qua,voi:"BC",cat} | vuong_goc{ten,qua,voi,cat?} | doan_noi{doan:"DE"} | diem_tren{ten,tren:"BC" hoặc "(O)"} | diem_ngoai{ten,duong_tron}. Điểm phụ không muốn hiện nhãn: "an_nhan":true.\n' +
     ' "loai_yeu_cau":"tinh" hoặc "chung_minh". Bài tính: muc_tieu.tex chỉ ghi đại lượng cần tìm (ví dụ AE = ?), đáp số ngắn có đơn vị ở dap_an_cuoi. Bài chứng minh: muc_tieu.tex chỉ là mệnh đề kết luận, khoảng 32 ký tự hiển thị.\n' +
+    ' "tom_tat_gia_thiet":["\\\\triangle ABC \\\\text{ nhọn nội tiếp } (O)","BD, CE \\\\text{ đường cao}"] (2-3 cụm LaTeX ngắn ghim ở Tầng 1 "Cho:", không chứa đáp số),\n' +
+    ' "yeu_cau_ngan":"AM \\\\perp DE" (1 dòng LaTeX ngắn cho Tầng 1 "Yêu cầu:", không lộ đáp số),\n' +
     ' "muc_tieu":{"tex":"AM \\\\perp DE \\\\text{ tại } I","khi_noi":"...","to_do":["AM","DE","I"],"menh_de":{"loai":"vuong_goc","a":"AM","b":"DE"}},\n' +
-    ' "trang_chung_minh":[{"tieu_de":"Tứ giác BEDC nội tiếp","dong":[{"khi_noi":"...","tex":"...","menh_de":[...],"hanh_dong_hinh":[...]}]}] - MỖI TRANG TỐI ĐA 4-5 DÒNG, mỗi trang khớp một cảnh lời giải, khi_noi dòng đầu bắt đầu đúng câu mở cảnh. Ghi đủ mọi phép tính trung gian theo thứ tự lời đọc.\n' +
+    ' "trang_chung_minh":[{"tieu_de":"Tứ giác BEDC nội tiếp","ket_qua_chip":"BEDC \\\\text{ nội tiếp}","dong":[{"khi_noi":"...","tex":"...","can_cu":"...","menh_de":[...],"hanh_dong_hinh":[...]}]}] (có thể dùng kèm/bổ sung "dong_giai":[...], "ket_qua_chip":"AO = \\\\dfrac{a\\\\sqrt{3}}{2}" cho dải chip Tầng 3) - MỖI TRANG TỐI ĐA 3-4 DÒNG suy luận có căn cứ, mỗi trang khớp một cảnh lời giải, khi_noi dòng đầu bắt đầu đúng câu mở cảnh. Ghi đủ mọi phép tính trung gian theo thứ tự lời đọc.\n' +
     '   • tex: LaTeX, góc \\\\angle ABC, tam giác \\\\triangle ABC, lý do ngắn \\\\ (\\\\text{kề bù}). TÔ MÀU bằng đúng 5 macro \\\\mvang{..} \\\\mdo{..} \\\\mngoc{..} \\\\mcam{..} \\\\mla{..}; đối tượng tô màu nào trong chữ thì hanh_dong_hinh dùng ĐÚNG màu đó (vang|do|ngoc|cam|la).\n' +
     '   • menh_de (máy kiểm bằng tọa độ trên mọi hình thỏa đề): vuong_goc{a,b} | song_song{a,b} | goc_bang{g1,g2} | goc_so_do{goc,do} | tong_goc{goc:[..],bang:180} | bang_doan{a,b} | tich_bang{ve_trai:["AE","AB"],ve_phai:["AD","AC"]} | dong_vien{diem:[4 điểm]} | thang_hang{diem} | thuoc{diem,a} | dong_dang{tg1,tg2} (ĐÚNG THỨ TỰ ĐỈNH TƯƠNG ỨNG) | bang_nhau{tg1,tg2} | trung_diem{diem,doan}.\n' +
     '   • hanh_dong_hinh: to_da_giac{dinh:[..],mau} | duong_tron_phu{duong_kinh:"BC" hoặc qua:[..],mau} | to_goc{goc:"ADE",mau,so_cung:1|2} | ky_hieu_vuong{goc:"BEC",mau} | nhan_manh_doan{doan,mau} | khung_bac_cau{doan_tex:"\\\\angle EDC",dong:[1,2]} (khung cyan quanh góc trung gian ở các dòng được bắc cầu) | ket_luan{goc:"AID"} (chốt cuối bài).\n' +
@@ -149,12 +151,19 @@ function kiemHinhPhangChuan_(kb) {
   var hp = kb.hinh_phang_chuan;
   loiLuongHinhHoc_(kb).forEach(function (x) { nang.push(x + ': video hình học thuần chỉ được có hình hình học (không canh_that, mo_hinh_3d, phong cảnh, vật đời sống).'); });
   if (!Array.isArray(hp.phep_dung) || !hp.phep_dung.length) nang.push('HP_THIEU_DAC_TA: hinh_phang_chuan thiếu phep_dung (danh sách phép dựng theo thứ tự đề).');
-  if (!Array.isArray(hp.trang_chung_minh) || !hp.trang_chung_minh.length) nang.push('HP_THIEU_DAC_TA: hinh_phang_chuan thiếu trang_chung_minh.');
+  var coTrang = Array.isArray(hp.trang_chung_minh) && hp.trang_chung_minh.length;
+  var coDongGiai = Array.isArray(hp.dong_giai) && hp.dong_giai.length;
+  if (!coTrang && !coDongGiai) nang.push('HP_THIEU_DAC_TA: hinh_phang_chuan thiếu trang_chung_minh / dong_giai.');
+  if (hp.loai_yeu_cau && !/^(tinh|chung_minh)$/.test(String(hp.loai_yeu_cau))) nhe.push('HP_LOAI_YEU_CAU: loai_yeu_cau nên là "tinh" hoặc "chung_minh".');
   var loi = kb.canh.map(function (c) { return String((c && c.loi_thoai) || ''); }).join(' ').toLowerCase().replace(/\s+/g, ' ');
   var khongKhop = [];
   var xet = function (k, nguon) { var s = String(k || '').trim().toLowerCase().replace(/\s+/g, ' '); if (s && loi.indexOf(s) < 0) khongKhop.push(nguon + ' "' + k + '"'); };
   (hp.phep_dung || []).forEach(function (b, i) { if (b) xet(b.khi_noi, 'phep_dung[' + i + ']'); });
   (hp.trang_chung_minh || []).forEach(function (t, i) { ((t && t.dong) || []).forEach(function (d, j) { if (d) xet(d.khi_noi, 'trang ' + (i + 1) + ' dòng ' + (j + 1)); }); });
+  (hp.dong_giai || []).forEach(function (t, i) {
+    if (t && Array.isArray(t.dong)) t.dong.forEach(function (d, j) { if (d) xet(d.khi_noi, 'dong_giai[' + i + '].dong[' + j + ']'); });
+    else if (t && t.khi_noi) xet(t.khi_noi, 'dong_giai[' + i + ']');
+  });
   if (khongKhop.length) nhe.push('HP_KHI_NOI_KHONG_KHOP: ' + khongKhop.slice(0, 6).join('; ') + ' không phải cụm nguyên văn trong lời thoại (máy sẽ nội suy mốc, nét vẽ có thể lệch lời).');
   if (typeof kiemGdpt2018_ === 'function') {
     var g = kiemGdpt2018_(kb, capLopHinhPhang_(hp.cap_lop || kb.lop));

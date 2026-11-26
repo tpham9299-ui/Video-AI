@@ -29,7 +29,12 @@ const audioFiles = meta.map((m) => path.join(thuMuc, `khuc_${m.i}.aac`));
 [...videoFiles, ...audioFiles].forEach((f) => {
   if (!fs.existsSync(f)) throw new Error('Thiếu tệp ' + f);
 });
-const tenThuongHieu = JSON.parse(fs.readFileSync(new URL('../phong_cach.json', import.meta.url), 'utf8')).thuongHieu.ten;
+let tenThuongHieu = 'Story Math';
+try {
+  tenThuongHieu = JSON.parse(fs.readFileSync(new URL('../phong_cach.json', import.meta.url), 'utf8')).thuongHieu?.ten || 'Story Math';
+} catch (_e) {
+  tenThuongHieu = 'Story Math';
+}
 const bd = Date.now();
 await combineChunks({
   outputLocation: ra,

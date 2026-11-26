@@ -555,6 +555,7 @@ jobs:
             scripts
             package.json
             package-lock.json
+            phong_cach.json
           sparse-checkout-cone-mode: false
 
       - uses: actions/setup-node@v4

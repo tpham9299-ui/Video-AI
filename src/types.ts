@@ -86,6 +86,26 @@ export type PhongCach = {
   mau: Record<string, string>; // ghi đè bảng màu (vang, lam, hong, xanh, nen1, nen2)
 };
 
+export type HinhPhangDongGiai = {
+  tieu_de: string;
+  dong: {tex: string; can_cu?: string; t: number}[];
+  ket_qua_chip?: string;
+};
+
+export type HinhPhangProps = {
+  loai_yeu_cau?: 'tinh' | 'chung_minh';
+  tom_tat_gia_thiet?: string[];
+  yeu_cau_ngan?: string;
+  dong_giai?: HinhPhangDongGiai[];
+  ket_qua_chip?: {id: string; tex: string; t: number}[];
+  moc_cong_bo?: number;
+  video?: string;
+  moc?: Record<string, unknown>;
+  header?: Record<string, string>;
+  capLop?: string;
+  boCuc?: Record<string, unknown>;
+};
+
 export type PhongCanh = {
   troi: string; dat: string; vat: {ten: string; hinh: 'hop'|'tru'|'cau'|'non'; mau: string;
     tam: [number,number,number]; co: [number,number,number]}[];
@@ -97,6 +117,7 @@ export type Props = {
   // v90: bố cục 4 tầng + sân khấu 3D Vector (chuanbi.py sẽ sinh ở giai đoạn sau); không có = đường dựng cũ
   boCuc?: string;
   khung4tang?: import('./khung4tang/kieu').Khung4TangVao;
+  hinhPhang?: HinhPhangProps;
   phongCanh?: PhongCanh;
   id: string;
   tieuDe: string;

@@ -1280,10 +1280,47 @@ def hinh_phang_chuan_props(kb, canh_props, fps, props):
     outro = props.get("outro") or {}
     ket = (outro.get("batDau") or props["tongFrame"]) / fps
     moc = moc_hinh_phang(G, canh_props, fps, ket)
-    props["boCuc"] = "hinh_phang"
-    props["hinhPhang"] = {"moc": moc, "header": G["header"], "capLop": G["cap_lop"], "boCuc": G["bo_cuc"]}
+    hp_raw = kb.get("hinh_phang_chuan") or {}
     tex = str(G["muc_tieu"].get("tex") or "").strip()
     tinh = la_bai_tinh(kb)
+    loai_yc = "tinh" if tinh else "chung_minh"
+    tom_tat_gt = [str(x).strip() for x in (hp_raw.get("tom_tat_gia_thiet") or []) if str(x).strip()]
+    if not tom_tat_gt:
+        tom_tat_gt = [str(x.get("tex") or "").strip() for x in (G.get("de_rut_gon") or []) if isinstance(x, dict) and str(x.get("tex") or "").strip()]
+    if not tom_tat_gt:
+        tom_tat_gt = [str(x).strip() for x in (kb.get("de_cho") or []) if str(x).strip()]
+    yc_ngan = str(hp_raw.get("yeu_cau_ngan") or tex or kb.get("can_tim") or "").strip()
+    if yc_ngan and not re.match(r"^\s*(?:tính|chứng\s*minh|tìm)\b", yc_ngan, re.I):
+        tim_hien = ("Tính: " if tinh else "Chứng minh: ") + yc_ngan
+    else:
+        tim_hien = yc_ngan
+    if tom_tat_gt or tim_hien:
+        props["deBai"] = {"cho": tom_tat_gt[:3], "tim": tim_hien}
+    dong_giai = []
+    for ti, tr in enumerate(G.get("trang") or []):
+        tm = moc["trang"][ti] if ti < len(moc.get("trang") or []) else []
+        d_list = []
+        for di, d in enumerate(tr.get("dong") or []):
+            t_d = tm[di] if di < len(tm) else round(ket - 1.0, 3)
+            d_list.append({"tex": str(d.get("tex") or "").strip(), "can_cu": str(d.get("can_cu") or "").strip(), "t": t_d})
+        chip_tr = str(tr.get("ket_qua_chip") or "").strip()
+        if not chip_tr and isinstance(hp_raw.get("trang_chung_minh"), list) and ti < len(hp_raw["trang_chung_minh"]):
+            chip_tr = str((hp_raw["trang_chung_minh"][ti] or {}).get("ket_qua_chip") or "").strip()
+        dong_giai.append({"tieu_de": str(tr.get("tieu_de") or "").strip(), "dong": d_list, **({"ket_qua_chip": chip_tr} if chip_tr else {})})
+    chips_hp = list(moc.get("chip") or [])
+    if not chips_hp and isinstance(hp_raw.get("ket_qua_chip"), list):
+        for ci, c_item in enumerate(hp_raw["ket_qua_chip"]):
+            if isinstance(c_item, dict) and str(c_item.get("tex") or "").strip():
+                chips_hp.append({"id": str(c_item.get("id") or f"c{ci + 1}"), "tex": str(c_item["tex"]).strip(), "t": float(c_item.get("t") or 0)})
+            elif isinstance(c_item, str) and c_item.strip():
+                t_c = moc["trang"][ci][-1] if ci < len(moc.get("trang") or []) and moc["trang"][ci] else 0.0
+                chips_hp.append({"id": f"c{ci + 1}", "tex": c_item.strip(), "t": round(t_c, 3)})
+    props["boCuc"] = "hinh_phang"
+    props["hinhPhang"] = {
+        "moc": moc, "header": G["header"], "capLop": G["cap_lop"], "boCuc": G["bo_cuc"],
+        "loai_yeu_cau": loai_yc, "tom_tat_gia_thiet": tom_tat_gt[:3], "yeu_cau_ngan": yc_ngan,
+        "dong_giai": dong_giai, "ket_qua_chip": chips_hp, "moc_cong_bo": moc.get("moc_cong_bo"),
+    }
     if tinh:
         candidates = [kb.get("dap_an_cuoi"), kb.get("dap_an"), tex]
         ket_qua = next((v.strip() for v in candidates if isinstance(v, str)
@@ -2152,8 +2189,11 @@ def ghep(cac_tep, dich):
 
 PHONG_CACH_MAC_DINH = {"kieuPhuDe": "hop", "mauPhuDe": "#FF6B2C", "soNenToiDa": 3, "lopNeonTrenNen": False, "doMoNen": 0.35, "kyHieuTroi": False, "quangSang": True, "kieuNen": "toi", "kieuToan": "dam",
                        "kieuHinh": "manim", "thanhTienDo": False, "phuDe": True, "mau": {}}
-with open(os.path.join(os.path.dirname(__file__), "..", "phong_cach.json"), encoding="utf8") as _pc:
-    TEN_THUONG_HIEU = json.load(_pc)["thuongHieu"]["ten"]
+try:
+    with open(os.path.join(os.path.dirname(__file__), "..", "phong_cach.json"), encoding="utf8") as _pc:
+        TEN_THUONG_HIEU = (json.load(_pc).get("thuongHieu") or {}).get("ten") or "Story Math"
+except Exception:
+    TEN_THUONG_HIEU = "Story Math"
 
 THUONG_HIEU_MAC_DINH = {"ten": "", "khauHieu": "", "handle": "", "markNuoc": True, "outroGiay": 5, "outroTuTao": True, "loiMoi": "Theo dõi để học mẹo xác suất"}
 DUOI_ANH = (".jpg", ".jpeg", ".png", ".webp")

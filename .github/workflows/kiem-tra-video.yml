@@ -36,6 +36,7 @@ jobs:
         with:
           sparse-checkout: |
             /*.gs
+            phong_cach.json
             scripts/bophan1
             scripts/kiem_tra_video_gh.js
           sparse-checkout-cone-mode: false
