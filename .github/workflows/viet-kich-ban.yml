@@ -38,6 +38,8 @@ jobs:
           sparse-checkout: |
             /*.gs
             phong_cach.json
+            bai_hoc_edit.json
+            mau_vang
             scripts/bophan1
             scripts/tu_sinh_svg.py
             scripts/khung4tang_v96.py

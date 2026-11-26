@@ -225,19 +225,24 @@ def so_chu_sang_so(text):
         sau = tu[j].lower().strip(",.;:!?") if j < len(tu) else ""
         truoc = ra[-1].lower().strip(",.;:!?") if ra else ""
         v = _gia_tri_cum_so(cum)
-        # "không" đơn lẻ chỉ là số 0 khi đứng sau từ toán ("bằng không"), tránh đổi "không thỏa mãn"
-        # v92: "tích không chia hết" -> giữ chữ (trước đây "tích"/"tổng"/"được" làm "không" thành 0)
-        khong_so = cum == ["không"] and (KHONG_LA_SO.fullmatch(truoc) or sau == "phẩy")
+        # Đọc từng chữ số sau "phẩy" (vd "không phẩy ba tám bảy ba" -> "0,3873")
+        chuoi_le = None
+        if v is None and truoc == "phẩy" and len(cum) >= 2 and all(w2 in SO_DON_VI for w2 in cum):
+            chuoi_le = "".join(str(SO_DON_VI[w2]) for w2 in cum)
+        # "không" đơn lẻ chỉ là số 0 khi đứng sau từ toán ("bằng không"), giữ nguyên "không có / không còn / không thể / không phải"
+        khong_so = cum == ["không"] and (sau == "phẩy" or (KHONG_LA_SO.fullmatch(truoc) and sau not in ("có", "còn", "thể", "phải", "đổi", "bằng", "thỏa", "chứa", "nằm", "cắt")))
         if cum == ["không"] and not khong_so:
+            v = None
+        if cum == ["một"] and sau in ("nửa", "chút", "ít", "cách", "lúc", "bên"):   # giữ nguyên "bằng một nửa"
             v = None
         if len(cum) == 1 and cum[0] in ("nghìn", "ngàn", "trăm", "mươi", "linh", "lẻ"):   # v96: "5 nghìn đồng" không thành "5 1000 đồng"
             v = None
-        doi = v is not None and (khong_so or len(cum) >= 2 or DON_VI_SAU_SO.match(sau) or TU_TOAN_TRUOC.match(truoc) or cum[0] == "zero")
+        doi = chuoi_le is not None or (v is not None and (khong_so or len(cum) >= 2 or DON_VI_SAU_SO.match(sau) or TU_TOAN_TRUOC.match(truoc) or cum[0] == "zero"))
         if not doi:
             ra.append(w)
             i += 1
             continue
-        ra.append(str(v) + dau_cuoi)
+        ra.append((chuoi_le if chuoi_le is not None else str(v)) + dau_cuoi)
         i = j
     return " ".join(ra)
 
@@ -250,7 +255,9 @@ def hien_phu_de(text):
     for doc, hien in DON_VI_HIEN:
         s = re.sub(r"(\d|π)\s+" + re.escape(doc) + r"(?![\wÀ-ỹ])", r"\1 " + hien, s, flags=re.I)
     s = re.sub(r"(\d+)\s+phần trăm\b", r"\1%", s)
-    s = re.sub(r"(\d+)\s+phẩy\s+(\d+)", r"\1,\2", s)                       # 29 phẩy 5 -> 29,5
+    s = re.sub(r"(\d+)\s+phẩy\s+(\d+)", r"\1,\2", s)                       # 29 phẩy 5 -> 29,5; 0 phẩy 3873 -> 0,3873
+    # giữ gọn số thập phân Việt tối đa 4 chữ số sau dấu phẩy (vd 0,3872983 -> 0,3873; giữ nguyên 0,3873)
+    s = re.sub(r"\b(\d+),(\d{5,})\b", lambda m: f"{float(m.group(1) + '.' + m.group(2)):.4f}".rstrip("0").rstrip(".").replace(".", ","), s)
     s = re.sub(r"\b\d{5,}\b", lambda m: "{:,}".format(int(m.group(0))).replace(",", "."), s)   # 500000 -> 500.000
     s = re.sub(r"\s+mỗi\s+(mét vuông|m²)(?![\wÀ-ỹ])", "/m²", s)
     s = re.sub(r"\s+mỗi\s+(mét khối|m³)(?![\wÀ-ỹ])", "/m³", s)
@@ -1239,6 +1246,52 @@ def hinh_khong_gian_k4(kb, canh_props, fps, tong_toi_da=None):
     k4["canh3dv"] = None
     k4.pop("sanKhau", None)
     k4["khongGian"] = lich
+    # Chuẩn hóa 100% chữ thô "a căn 15 / 10", "căn 3 phần 2", "a√6/3" -> KaTeX chuẩn trong buoc/deGhim/tomTat (chỉ HINH_KHONG_GIAN thuần)
+    if G.get("phien_ban") != 2:
+        def _tex_kg(s0):
+            s = str(s0 or "")
+            if not s or not re.search(r"căn|phần|√|/", s, re.I):
+                return s
+            s = re.sub(r"\bcăn(?:\s+bậc\s+hai)?(?:\s+của)?\s+(\d+|[a-zA-Z])\b", r"\\sqrt{\1}", s, flags=re.I)
+            s = re.sub(r"√\s*\(([^()]+)\)", r"\\sqrt{\1}", s)
+            s = re.sub(r"√\s*(\d+|[a-zA-Z])", r"\\sqrt{\1}", s)
+            s = re.sub(r"((?:\d*[a-zA-Z]?\s*\\sqrt\{[^{}]+\})|\d+[a-zA-Z]?|[a-zA-Z])\s*(?:phần|/)\s*(\d+|\\sqrt\{[^{}]+\})",
+                       lambda m: "\\dfrac{%s}{%s}" % (re.sub(r"\s+", "", m.group(1)), m.group(2)), s, flags=re.I)
+            return s
+        for b in k4.get("buoc") or []:
+            for th in b.get("the") or []:
+                if th.get("loai") == "cong_thuc":
+                    th["dong"] = [_tex_kg(x) for x in (th.get("dong") or [])]
+                elif "noi_dung" in th:
+                    th["noi_dung"] = _tex_kg(th["noi_dung"])
+        for g in k4.get("deGhim") or []:
+            g["nhan"] = _tex_kg(g.get("nhan"))
+            if isinstance(g.get("doi"), dict) and g["doi"].get("nhan"):
+                g["doi"]["nhan"] = _tex_kg(g["doi"]["nhan"])
+        for tt in k4.get("tomTat") or []:
+            if tt.get("cong_thuc"):
+                tt["cong_thuc"] = _tex_kg(tt["cong_thuc"])
+    # Tự trích tóm tắt giả thiết cho HINH_KHONG_GIAN khi kịch bản cũ (vd vuong_goc_sa.json) thiếu tom_tat_gia_thiet / de_cho
+    gt_kg = [str(x).strip() for x in (hkg.get("tom_tat_gia_thiet") or kb.get("de_cho") or []) if str(x).strip()]
+    if not gt_kg:
+        de_goc_kg = re.sub(r"\s+", " ", str(kb.get("de_bai") or "")).strip()
+        phan_cho = re.split(r"\.\s*(?:Chứng minh|Tính|Tìm|Hãy|Xác định)\b", de_goc_kg, maxsplit=1, flags=re.I)[0]
+        sach_cho = re.sub(r"^\s*Cho\s+", "", phan_cho, flags=re.I).strip()
+        m_khoi = re.match(r"^(hình\s+chóp|lăng\s+trụ(?:\s+đứng)?|tứ\s+diện(?:\s+đều)?|hình\s+hộp(?:\s+chữ\s+nhật)?|hình\s+lập\s+phương)\s+([A-Z][A-Z'.]+)", sach_cho, re.I)
+        m_day = re.search(r"đáy\s+[A-Z']*\s*là\s+(hình\s+vuông|hình\s+chữ\s+nhật|hình\s+thoi|tam\s+giác\s+(?:đều|vuông(?:\s+cân)?|cân|nhọn))(?:\s+cạnh\s+([a-zA-Z0-9\\{}^√]+))?", sach_cho, re.I)
+        if m_khoi:
+            ten_k = re.sub(r"^hình\s+", "", m_khoi.group(1), flags=re.I)
+            dong_k = ten_k[:1].upper() + ten_k[1:] + " " + m_khoi.group(2)
+            if m_day:
+                ten_d = re.sub(r"^hình\s+", "", m_day.group(1), flags=re.I)
+                dong_k += ", đáy " + ten_d + ((" cạnh " + m_day.group(2)) if m_day.group(2) else "")
+            gt_kg.append(dong_k)
+        for g in k4.get("deGhim") or []:
+            nh = str(g.get("nhan") or "").strip()
+            if nh and "?" not in nh and not g.get("doi") and nh not in gt_kg:
+                gt_kg.append(nh)
+    if gt_kg:
+        k4["tomTatGiaThiet"] = gt_kg[:3]
     print("Hình không gian v97: %d điểm, %d đoạn, %d mặt cắt, %d/%d cú xoay khớp lời (%d Auto-fix cụm con), tỷ lệ %s" % (
         len(G["dung"]["diem"]), len(G["dung"]["doan"]), len(G["dung"]["kinh"]), tk["khop"], tk["xoay"], tk["auto_fix"],
         json.dumps(G["cau_hinh"]["ty_le_bat_ky"])))
@@ -1315,11 +1368,97 @@ def hinh_phang_chuan_props(kb, canh_props, fps, props):
             elif isinstance(c_item, str) and c_item.strip():
                 t_c = moc["trang"][ci][-1] if ci < len(moc.get("trang") or []) and moc["trang"][ci] else 0.0
                 chips_hp.append({"id": f"c{ci + 1}", "tex": c_item.strip(), "t": round(t_c, 3)})
+    # Tự trích chip trung gian từ các trang suy luận (trừ trang kết luận) khi kịch bản cũ chưa khai báo ket_qua_chip
+    if not chips_hp and len(dong_giai) >= 2:
+        for ti, dg in enumerate(dong_giai[:-1]):
+            c_tex = str(dg.get("ket_qua_chip") or "").strip()
+            if not c_tex and dg.get("dong"):
+                cuoi = str(dg["dong"][-1].get("tex") or "").strip()
+                c_tex = re.sub(r"^\\Rightarrow\s*", "", cuoi).strip()
+            t_c = float(dg["dong"][-1]["t"]) + 0.35 if dg.get("dong") else (ti + 1) * 8.0
+            if c_tex and len(c_tex) <= 68:
+                chips_hp.append({"id": f"hp_c{ti + 1}", "tex": c_tex, "t": round(t_c, 3)})
+    # Intro móc câu + Outro tóm tắt 3 bước cho HINH_PHANG (tránh Outro trống khi cảnh bai_hoc làm rỗng baiHoc)
+    import khung4tang_v93 as _v93_hp
+    buoc_tam_hp = [{"nhan": dg.get("tieu_de") or "", "tieu_de": dg.get("tieu_de") or ""} for dg in dong_giai]
+    moc_cau_hp = _v93_hp.moc_cau(kb, buoc_tam_hp, [])
+    tom_tat_hp = []
+    for ti, dg in enumerate(dong_giai):
+        if len(tom_tat_hp) >= 3:
+            break
+        if ti == len(dong_giai) - 1 and len(dong_giai) > 3:
+            continue
+        td_dg = str(dg.get("tieu_de") or f"Bước {ti + 1}").strip()
+        ct_dg = str(dg["dong"][-1].get("tex") or "").strip() if dg.get("dong") else ""
+        ct_dg = re.sub(r"^\\Rightarrow\s*", "", ct_dg).strip()
+        tom_tat_hp.append({"chien_thuat": td_dg[:28], "cong_thuc": ct_dg})
+    if len(tom_tat_hp) < 3:
+        for bh in (kb.get("bai_hoc_rut_ra") or []):
+            if len(tom_tat_hp) >= 3:
+                break
+            s_bh = str(bh or "").strip()
+            if s_bh:
+                tom_tat_hp.append({"chien_thuat": f"Mẹo {len(tom_tat_hp) + 1}", "cong_thuc": s_bh})
+    # Dữ liệu hình 2D đã giải cho bản xem trước Remotion (khi chưa có lớp Manim)
+    moc_dung_raw = moc.get("dung")
+    if isinstance(moc_dung_raw, dict):
+        moc_dung_map = {str(k): float(v) for k, v in moc_dung_raw.items() if isinstance(v, (int, float))}
+    elif isinstance(moc_dung_raw, list):
+        moc_dung_map = {
+            str(pd["id"]): float(tm_d)
+            for pd, tm_d in zip(hp_raw.get("phep_dung") or [], moc_dung_raw)
+            if isinstance(pd, dict) and pd.get("id") and isinstance(tm_d, (int, float))
+        }
+    else:
+        moc_dung_map = {}
+    tron_raw = G.get("tron")
+    diem_map = G.get("diem") or {}
+    tron_2d = []
+    da_tron = set()
+    if isinstance(tron_raw, dict):
+        # Ưu tiên lấy từ net loai=='tron' để đúng id/mốc dựng; fallback sang các khóa trong G['tron']
+        for n in (G.get("net") or []):
+            if isinstance(n, dict) and n.get("loai") == "tron":
+                khoa = str(n.get("khoa") or "")
+                v = tron_raw.get(khoa)
+                if isinstance(v, (list, tuple)) and len(v) >= 3:
+                    sig = (round(float(v[0]), 3), round(float(v[1]), 3), round(float(v[2]), 3))
+                    if sig not in da_tron:
+                        da_tron.add(sig)
+                        tron_2d.append({"tam": [round(float(v[0]), 4), round(float(v[1]), 4)], "r": round(float(v[2]), 4),
+                                        "t": moc_dung_map.get(str(n.get("id") or ""), 0.0)})
+        if not tron_2d:
+            for k_tr, v in tron_raw.items():
+                if isinstance(v, (list, tuple)) and len(v) >= 3:
+                    sig = (round(float(v[0]), 3), round(float(v[1]), 3), round(float(v[2]), 3))
+                    if sig not in da_tron:
+                        da_tron.add(sig)
+                        tron_2d.append({"tam": [round(float(v[0]), 4), round(float(v[1]), 4)], "r": round(float(v[2]), 4), "t": 0.0})
+    elif isinstance(tron_raw, list):
+        for tr in tron_raw:
+            if not isinstance(tr, dict):
+                continue
+            tam_v = tr.get("tam")
+            if isinstance(tam_v, str) and tam_v in diem_map:
+                tam_v = diem_map[tam_v]
+            if isinstance(tam_v, (list, tuple)) and len(tam_v) >= 2 and tr.get("r"):
+                tron_2d.append({"tam": [round(float(tam_v[0]), 4), round(float(tam_v[1]), 4)], "r": round(float(tr["r"]), 4),
+                                "t": moc_dung_map.get(str(tr.get("id") or ""), 0.0)})
+    hinh_2d = {
+        "diem": {k: [round(float(v[0]), 4), round(float(v[1]), 4)] for k, v in diem_map.items() if isinstance(v, (list, tuple)) and len(v) >= 2},
+        "nhan": {k: [round(float(v[0]), 4), round(float(v[1]), 4)] for k, v in (G.get("nhan") or {}).items() if isinstance(v, (list, tuple)) and len(v) >= 2},
+        "net": [{"a": n["a"], "b": n["b"], "loai": n.get("loai") or "doan", "t": moc_dung_map.get(str(n.get("id") or ""), 0.0)}
+                for n in (G.get("net") or []) if isinstance(n, dict) and n.get("a") and n.get("b")],
+        "tron": tron_2d,
+        "hop": G.get("bo_cuc", {}).get("hop"),
+        "to_do": list((G.get("muc_tieu") or {}).get("to_do") or []),
+    }
     props["boCuc"] = "hinh_phang"
     props["hinhPhang"] = {
         "moc": moc, "header": G["header"], "capLop": G["cap_lop"], "boCuc": G["bo_cuc"],
         "loai_yeu_cau": loai_yc, "tom_tat_gia_thiet": tom_tat_gt[:3], "yeu_cau_ngan": yc_ngan,
         "dong_giai": dong_giai, "ket_qua_chip": chips_hp, "moc_cong_bo": moc.get("moc_cong_bo"),
+        "mocCau": moc_cau_hp, "tomTat": tom_tat_hp[:3], "hinh2d": hinh_2d,
     }
     if tinh:
         candidates = [kb.get("dap_an_cuoi"), kb.get("dap_an"), tex]
@@ -3590,6 +3729,12 @@ def main():
     if k4:
         props["boCuc"] = "4tang"
         props["khung4tang"] = k4
+        # Đảm bảo props.deBai.cho luôn có dữ kiện cho HINH_KHONG_GIAN (tránh trống dòng Cho: trên T1)
+        if k4.get("tomTatGiaThiet"):
+            db_cur = props.get("deBai") if isinstance(props.get("deBai"), dict) else {"cho": [], "tim": str(kb.get("can_tim") or "")}
+            if not db_cur.get("cho"):
+                db_cur = dict(db_cur, cho=list(k4["tomTatGiaThiet"])[:3])
+                props["deBai"] = db_cur
         # v93: Intro móc câu vào thẳng từ giây 0 cùng giọng đọc -> BỎ intro thương hiệu im lặng phía trước (lech = 0)
         # (phong_cach.json "intro": {"mocCau4Tang": false} để giữ intro thương hiệu cũ)
         if (pc.get("intro") or {}).get("mocCau4Tang", True) is False:

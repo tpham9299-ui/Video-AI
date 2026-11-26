@@ -1,0 +1,35 @@
+name: CI Smoke Test
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cài dependencies (npm ci)
+        run: npm ci
+
+      - name: Chạy kiểm tra TypeScript & kiểm thử nhanh (npm run kiem-tra)
+        run: npm run kiem-tra
+
+      - name: Chạy CI Smoke Test toàn hệ thống
+        run: node scripts/ci_smoke_test.mjs
+
+      - name: Kiểm tra hệ thống tự học 2 tầng
+        run: python3 -X utf8 scripts/tu_hoc_edit.py --kiem-tra

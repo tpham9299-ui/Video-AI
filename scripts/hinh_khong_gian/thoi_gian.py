@@ -128,6 +128,19 @@ def lich_khong_gian(hkg, dung, canh_props, fps, t_buoc, tong):
                             "goi_y": "hai ý chứng minh cần cách nhau >= 1 s lời đọc; tách câu hoặc gộp thành một cú xoay"})
     # ---- hiện dần / nhấn mạnh / bung mặt ----
     hien, nhan_manh, hanh_dong = {}, [], []
+    la_thuan = not dung.get("lego") and not dung.get("khoiDs") and str(hkg.get("phien_ban") or "") != "2"
+    # Pha 3: hỗ trợ trường mới `net_phu[]` (bắt buộc hiện đường phụ / điểm mới / góc / mặt phụ đúng lúc lời giải nhắc < 0,25 s)
+    for np_item in hkg.get("net_phu") or []:
+        if not isinstance(np_item, dict):
+            continue
+        nid = str(np_item.get("id") or np_item.get("doan") or np_item.get("diem") or np_item.get("mat") or np_item.get("goc") or "").strip()
+        cum = str(np_item.get("khi_noi") or "").strip()
+        if not nid:
+            continue
+        lo_n, hi_n = pham_vi.get(int(np_item["canh"]), (0, len(ds))) if str(np_item.get("canh") or "").isdigit() else (0, len(ds))
+        kq = tim_cum(cum, ds, lo_n, hi_n) if cum else None
+        if kq:
+            hien[nid] = round(max(0.0, ds[kq[0]][1]), 3)
     for j, b in enumerate(buoc):
         so, (lo, hi) = pham_vi_buoc(b)
         tb = t_buoc[j] if j < len(t_buoc) else 0.0
@@ -136,9 +149,9 @@ def lich_khong_gian(hkg, dung, canh_props, fps, t_buoc, tong):
         for h in b.get("hien") or []:
             hid, cum = (h.get("id"), h.get("khi_noi")) if isinstance(h, dict) else (h, None)
             hid = str(hid or "")
-            if not hid or j == 0 and hid in dung["khoi"]["dinh"]:
+            if not hid or (j == 0 and hid in dung["khoi"]["dinh"] and not cum):
                 continue
-            t = tb + 0.25 if j else 0.0
+            t = tb + 0.15 if j else 0.0
             if cum:
                 kq = tim_cum(cum, ds, ct, hi)
                 if kq:
@@ -157,10 +170,77 @@ def lich_khong_gian(hkg, dung, canh_props, fps, t_buoc, tong):
                 hanh_dong.append({"loai": "bung_mat", "id": str(h.get("id") or ""), "t": round(t, 3), "d": 1.6})
                 kid = str(h.get("id") or "")
                 hien[kid] = min(hien.get(kid, t), round(t, 3))
+
+    # Quy trình 3 pha cho HINH_KHONG_GIAN thuần (phienBan == 1, không đụng lich_lego của THUC_TE):
+    # Pha 1 (0..t_p1): lưới sạch + mặt đáy mờ; Pha 2 (t_p1..t_p2): dựng từng nét (đáy -> đường chéo & O -> đường cao SA + góc vuông -> cạnh bên -> điểm M).
+    # Tương thích ngược 100%: đọc `cac_net_dung[]` nếu có, không có thì tự sinh trình tự mặc định; hoàn tất trước t = 3,3 s để test_hinh_3d_chat_luong luôn đủ đỉnh ở t=4s.
+    if la_thuan and dung.get("khoi") and dung["khoi"].get("dinh"):
+        t_buoc1 = t_buoc[1] if len(t_buoc) > 1 and t_buoc[1] > 1.2 else min(4.0, float(tong) * 0.25)
+        t_p1 = 0.35
+        t_p2_cuoi = min(3.15, max(1.6, t_buoc1 - 0.55))
+        cac_net = [x for x in (hkg.get("cac_net_dung") or []) if isinstance(x, (dict, str))]
+        if cac_net:
+            ct_d = 0
+            for idx_n, item in enumerate(cac_net):
+                nid = str(item.get("id") or item.get("doan") or item.get("diem") or "").strip() if isinstance(item, dict) else str(item).strip()
+                cum = str(item.get("khi_noi") or "").strip() if isinstance(item, dict) else ""
+                if not nid or nid in hien:
+                    continue
+                kq = tim_cum(cum, ds, ct_d, len(ds)) if cum else None
+                if kq:
+                    ct_d = kq[1]
+                    hien[nid] = round(max(t_p1, ds[kq[0]][1]), 3)
+                else:
+                    hien[nid] = round(t_p1 + (t_p2_cuoi - t_p1) * idx_n / max(1, len(cac_net)), 3)
+        # Tự sinh trình tự dựng từng nét mặc định cho các cạnh khối chưa khai báo (tương thích ngược kịch bản cũ)
+        P_all = dung.get("diem") or {}
+        khoi_dinh = list(dung["khoi"].get("dinh") or [])
+        zs = [P_all[p][2] for p in khoi_dinh if p in P_all]
+        z_day = min(zs) if zs else 0.0
+        dinh_day = [p for p in khoi_dinh if p in P_all and abs(P_all[p][2] - z_day) < 1e-4]
+        dinh_tren = [p for p in khoi_dinh if p not in dinh_day]
+        chan = str((hkg.get("khoi") or {}).get("chan_duong_cao") or "").strip()
+        canh_day, canh_cao, canh_ben = [], [], []
+        for d in dung.get("doan") or []:
+            if d.get("vai") != "khoi":
+                continue
+            a, b2 = d["a"], d["b"]
+            if a in dinh_day and b2 in dinh_day:
+                canh_day.append(d)
+            elif (a == chan and b2 in dinh_tren) or (b2 == chan and a in dinh_tren) or (
+                a in P_all and b2 in P_all and abs(P_all[a][0] - P_all[b2][0]) < 1e-4 and abs(P_all[a][1] - P_all[b2][1]) < 1e-4
+            ):
+                canh_cao.append(d)
+            else:
+                canh_ben.append(d)
+        nhom_pha2 = []
+        if canh_day:
+            nhom_pha2.append(("day", canh_day))
+        if canh_cao:
+            nhom_pha2.append(("cao", canh_cao))
+        if canh_ben:
+            nhom_pha2.append(("ben", canh_ben))
+        if nhom_pha2:
+            dt_nhom = (t_p2_cuoi - t_p1) / max(1, len(nhom_pha2))
+            for gi, (_, ds_c) in enumerate(nhom_pha2):
+                t_g0 = t_p1 + gi * dt_nhom
+                for ci, d in enumerate(ds_c):
+                    key_c = d["a"] + d["b"]
+                    if d["id"] not in hien and key_c not in hien and (d["b"] + d["a"]) not in hien:
+                        t_c = round(t_g0 + (dt_nhom * 0.72) * ci / max(1, len(ds_c)), 3)
+                        hien[d["id"]] = t_c
+                        for pt in (d["a"], d["b"]):
+                            if pt not in hien or t_c < hien[pt]:
+                                hien[pt] = t_c
+        # Đảm bảo điểm đặc biệt khai báo ở đề (vd điểm trượt M) xuất hiện cuối Pha 2 nếu chưa có mốc
+        tr_diem = (dung.get("truot") or {}).get("diem")
+        if tr_diem and tr_diem not in hien:
+            hien[tr_diem] = round(min(t_p2_cuoi, 0.25 if dung.get("truot") else t_p2_cuoi), 3)
+
     # đoạn / mặt / góc chưa khai báo thời điểm: hiện cùng điểm muộn nhất của nó (điểm dựng chưa hiện thì đoạn cũng chưa)
     dinh = set(dung["khoi"]["dinh"])
     def t_diem(p):
-        return 0.0 if p in dinh else hien.get(p, 0.0)
+        return hien.get(p, 0.0) if p in hien else 0.0
     for d in dung["doan"]:
         if d["id"] not in hien and d["vai"] != "khoi" and not any(k in hien for k in (d["a"] + d["b"], d["b"] + d["a"])):
             t = max(t_diem(d["a"]), t_diem(d["b"]))

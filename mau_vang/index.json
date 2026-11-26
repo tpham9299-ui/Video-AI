@@ -1,0 +1,22 @@
+{
+  "phien_ban": 1,
+  "ngay_cap_nhat": "2026-11-26",
+  "mau": [
+    {
+      "id": "MV-HP-01",
+      "chuyen_muc": "HINH_PHANG",
+      "ten": "AM vuông góc DE tại I (tứ giác nội tiếp + đồng dạng)",
+      "tep": "hinh_phang_am_vuong_de.json",
+      "ngay_luu": "2026-11-26",
+      "diem_manh": "Tư duy ngược từ góc chắn nửa đường tròn, chốt nhanh bằng chip trung gian, 1 câu dí dỏm ngắn ở Hook"
+    },
+    {
+      "id": "MV-KG-01",
+      "chuyen_muc": "HINH_KHONG_GIAN",
+      "ten": "SA vuông góc đáy: góc và khoảng cách 3 pha",
+      "tep": "hinh_khong_gian_vuong_goc_sa.json",
+      "ngay_luu": "2026-11-26",
+      "diem_manh": "Chuẩn 3 pha (lưới sạch -> dựng từng nét -> đường phụ AH), xoay camera khớp lời, 1 câu đùa gọn ngay nút thắt"
+    }
+  ]
+}

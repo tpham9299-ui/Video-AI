@@ -198,6 +198,7 @@ const NoiDung4Tang: React.FC<Props & {coIntro?: boolean}> = (props) => {
             buoc={k.buoc}
             khongGian={k.khongGian}
             tCongBo={k.tCongBo ?? k.tChot}
+            tOutro={outro ? Math.max(0, ketThuc / fps - 0.35) : undefined}
             dapAn={props.dapAn}
             mocCau={k.mocCau}
             cau={k.boCuc?.phuDe === 'gon' ? cau : k.cau}
@@ -222,12 +223,12 @@ const NoiDung4Tang: React.FC<Props & {coIntro?: boolean}> = (props) => {
           </Sequence>
         ) : null
       )}
-      {/* v95: SFX tinh tế theo sự kiện (~ -14..-12 dB so với giọng): pop thẻ mới, whoosh đổi bước / gập hộp, ding chốt cực trị, chime thẻ đáp án */}
-      {sfx.map((e, i) => (
+      {/* v95: SFX tinh tế theo sự kiện cho Khung4Tang (HINH_KHONG_GIAN dùng DongCoSfx trong KhungHinhHoc với cooldown 3.5s) */}
+      {!laHinhKhongGian ? sfx.map((e, i) => (
         <Sequence key={`sfx4t${i}`} from={Math.max(0, Math.round(e.t * fps))} durationInFrames={Math.round(e.dai * fps)} layout="none">
           <Audio src={staticFile(`sfx/${e.tep}.wav`)} volume={e.vol} />
         </Sequence>
-      ))}
+      )) : null}
       {outro ? (
         <Sequence from={outro.batDau} durationInFrames={outro.soFrame}>
           <VaoMuot>
@@ -289,13 +290,23 @@ const NoiDungHinhPhang: React.FC<Props & {coIntro?: boolean}> = (props) => {
   const cauHP = React.useMemo(() => canh.flatMap((c) => c.cau.map((x) => ({text: x.text, bat: c.batDau / fps + x.bat, ket: c.batDau / fps + x.ket}))), [canh, fps]);
   const mocCongBoHP = React.useMemo(() => {
     if (k?.tCongBo !== undefined) return k.tCongBo;
+    if (typeof props.hinhPhang?.moc_cong_bo === 'number') return props.hinhPhang.moc_cong_bo;
     const cChot = canh.find((c) => /dap_an|ket_qua/i.test(c.loai));
     return cChot ? cChot.batDau / fps : Math.max(1, ketThuc) / fps;
-  }, [k?.tCongBo, canh, ketThuc, fps]);
+  }, [k?.tCongBo, props.hinhPhang?.moc_cong_bo, canh, ketThuc, fps]);
   const tomTatHP = React.useMemo(() => {
     if (k?.tomTat && k.tomTat.length) return k.tomTat;
-    return (props.baiHoc || []).slice(0, 3).map((b, idx) => ({chien_thuat: `Ý ${idx + 1}`, cong_thuc: b}));
-  }, [k?.tomTat, props.baiHoc]);
+    if (props.hinhPhang?.tomTat && props.hinhPhang.tomTat.length) return props.hinhPhang.tomTat;
+    if (props.baiHoc && props.baiHoc.length) return props.baiHoc.slice(0, 3).map((b, idx) => ({chien_thuat: `Ý ${idx + 1}`, cong_thuc: b}));
+    const dg = props.hinhPhang?.dong_giai || [];
+    if (dg.length) {
+      return dg.slice(0, 3).map((tr, idx) => ({
+        chien_thuat: (tr.tieu_de || `Bước ${idx + 1}`).slice(0, 22),
+        cong_thuc: tr.dong?.[tr.dong.length - 1]?.tex || '',
+      }));
+    }
+    return [];
+  }, [k?.tomTat, props.hinhPhang?.tomTat, props.hinhPhang?.dong_giai, props.baiHoc]);
   return (
     <AbsoluteFill style={{fontFamily: FONT, background: '#081A3A'}}>
       <Sequence from={0} durationInFrames={Math.max(1, ketThuc)}>
@@ -308,7 +319,12 @@ const NoiDungHinhPhang: React.FC<Props & {coIntro?: boolean}> = (props) => {
           deGoc={props.deGoc}
           deGhim={k?.deGhim}
           buoc={k?.buoc}
+          dongGiaiHinhPhang={props.hinhPhang?.dong_giai}
+          chipTrungGian={props.hinhPhang?.ket_qua_chip}
+          hinh2d={!props.manimLop ? props.hinhPhang?.hinh2d : null}
+          mocCau={k?.mocCau ?? props.hinhPhang?.mocCau}
           tCongBo={mocCongBoHP}
+          tOutro={outro ? Math.max(0, ketThuc / fps - 0.35) : undefined}
           dapAn={props.ketQuaHinhPhang?.tex ?? props.dapAn}
           cau={k?.boCuc?.phuDe === 'gon' ? cauHP : k?.cau}
           phuDe={k?.boCuc?.phuDe}

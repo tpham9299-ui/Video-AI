@@ -1,0 +1,73 @@
+{
+  "phien_ban": 1,
+  "ngay_cap_nhat": "2026-11-26",
+  "gioi_han_moi_chuyen_muc": 8,
+  "han_dung_ngay": 14,
+  "nguong_khoa_code": 3,
+  "chuyen_muc": {
+    "HINH_PHANG": [
+      {
+        "ma": "HP_THIEU_CHIP",
+        "luat": "[Tránh] Để trống ket_qua_chip khiến Tầng 3 thiếu điểm neo trung gian -> [Làm thay] Ghi rõ 1 chip LaTeX gọn sau mỗi trang suy luận (VD BEDC nội tiếp, ∠ADE = ∠ABC)",
+        "so_lan_tai_pham": 1,
+        "ngay_cap_nhat": "2026-11-26",
+        "can_khoa_bang_code": false
+      },
+      {
+        "ma": "HP_LOI_THOAI_KHO",
+        "luat": "[Tránh] Đọc liệt kê khô khan kiểu Ta có... suy ra... ta lại có... -> [Làm thay] Dẫn tư duy ngược: chỉ nút thắt -> tung chiêu kẻ đường phụ/đổi góc -> chốt nhanh bằng chip",
+        "so_lan_tai_pham": 1,
+        "ngay_cap_nhat": "2026-11-26",
+        "can_khoa_bang_code": false
+      }
+    ],
+    "HINH_KHONG_GIAN": [
+      {
+        "ma": "KG_THIEU_GIA_THIET",
+        "luat": "[Tránh] Để trống tom_tat_gia_thiet khiến dòng Cho: ở Tầng 1 bị mất -> [Làm thay] Luôn ghi 2-3 cụm giả thiết ngắn (hình khối, đáy, đường vuông góc, số đo) trong tom_tat_gia_thiet",
+        "so_lan_tai_pham": 2,
+        "ngay_cap_nhat": "2026-11-26",
+        "can_khoa_bang_code": false
+      },
+      {
+        "ma": "KG_CHU_THO_TEX",
+        "luat": "[Tránh] Viết chữ thô như a căn 6 phần 3 hoặc dùng ký hiệu rời trong công thức -> [Làm thay] Dùng 100% lệnh KaTeX chuẩn (\\dfrac{a\\sqrt{6}}{3}, \\perp, \\widehat{SCA}) và để chữ Việt đứng thẳng",
+        "so_lan_tai_pham": 1,
+        "ngay_cap_nhat": "2026-11-26",
+        "can_khoa_bang_code": false
+      },
+      {
+        "ma": "KG_KIEM_TRA_OXYZ_DUNG_HINH",
+        "luat": "[Tránh] Tạo cảnh kiem_tra đọc soát lại bằng Oxyz gây đứng hình 8-10 giây -> [Làm thay] Kết thúc ngay ở cảnh dap_an và bai_hoc gọn <= 2 câu sau khi chốt đáp số",
+        "so_lan_tai_pham": 1,
+        "ngay_cap_nhat": "2026-11-26",
+        "can_khoa_bang_code": false
+      }
+    ],
+    "THUC_TE": [
+      {
+        "ma": "T2_TRONG",
+        "luat": "[Tránh] Để Tầng 2 trống hoặc rơi về hộp công thức ở bài Toán Thực tế -> [Làm thay] Điền đủ tham_so sân khấu 2D/3D hoặc hợp đồng tu_sinh_svg có vật thể thật của đề",
+        "so_lan_tai_pham": 1,
+        "ngay_cap_nhat": "2026-11-26",
+        "can_khoa_bang_code": false
+      },
+      {
+        "ma": "LO_DAP_AN",
+        "luat": "[Tránh] Lộ đáp số cuối ở hook, tiêu đề bước hoặc thanh ĐỀ trước mốc công bố -> [Làm thay] Dùng dấu ? cho đại lượng cần tìm cho tới đúng câu thoại chốt đáp án",
+        "so_lan_tai_pham": 1,
+        "ngay_cap_nhat": "2026-11-26",
+        "can_khoa_bang_code": false
+      }
+    ],
+    "XAC_SUAT": [
+      {
+        "ma": "HINH_DUNG_IM",
+        "luat": "[Tránh] Giữ nguyên hình Tầng 2 quá 3 bước liên tiếp hoặc > 12 giây -> [Làm thay] Khai báo rõ buoc[].hanh_dong với pha và số bi/thẻ từng trường hợp để sân khấu đổi theo từng bước",
+        "so_lan_tai_pham": 1,
+        "ngay_cap_nhat": "2026-11-26",
+        "can_khoa_bang_code": false
+      }
+    ]
+  }
+}

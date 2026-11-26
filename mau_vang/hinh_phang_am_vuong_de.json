@@ -1,0 +1,34 @@
+{
+  "id": "MV-HP-01",
+  "chuyen_muc": "HINH_PHANG",
+  "lop": "9",
+  "mon": "HINH_HOC",
+  "luong": "hinh_hoc_thuan",
+  "tieu_de": "AM vuông góc DE tại I",
+  "hook": "Nhìn hai đường cao rối mắt thế này, nhưng chỉ cần bắc một cây cầu góc là xong!",
+  "loai_yeu_cau": "chung_minh",
+  "tom_tat_gia_thiet": [
+    "\\triangle ABC \\text{ nhọn } (AB<AC) \\text{ nội tiếp } (O)",
+    "\\text{Đường cao } BD,\\ CE;\\ \\text{đường kính } AM"
+  ],
+  "yeu_cau_ngan": "AM \\perp DE \\text{ tại } I",
+  "cau_truc_tu_duy_nguoc": [
+    "Nút thắt: muốn AM ⊥ DE tại I, phải ép góc AID = 90° mà I chưa dính góc vuông nào.",
+    "Chiêu đổi góc nhìn: đường kính AM đẻ ngay góc ACM = 90°, vậy chỉ cần chứng minh △AID ∼ △ACM.",
+    "Chip chốt trung gian: ✓ BEDC nội tiếp -> ✓ ∠ADE = ∠ABC -> ✓ ∠ADI = ∠AMC -> ✓ △AID ∼ △ACM."
+  ],
+  "ket_qua_chip": [
+    "BEDC \\text{ nội tiếp}",
+    "\\angle ADE = \\angle ABC",
+    "\\triangle AID \\sim \\triangle ACM"
+  ],
+  "khe_cau_dua": {
+    "vi_tri": "hook",
+    "cau": "Hình rối như mạng nhện nhưng gỡ đúng một nút là bung cả bài!"
+  },
+  "tom_tat_3_buoc": [
+    {"chien_thuat": "Tứ giác nội tiếp", "cong_thuc": "\\angle BEC = \\angle BDC = 90^\\circ"},
+    {"chien_thuat": "Bắc cầu góc", "cong_thuc": "\\angle ADI = \\angle ABC = \\angle AMC"},
+    {"chien_thuat": "Đồng dạng chốt 90°", "cong_thuc": "\\triangle AID \\sim \\triangle ACM \\Rightarrow AM \\perp DE"}
+  ]
+}

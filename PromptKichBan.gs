@@ -130,6 +130,8 @@ function taoPromptKichBan_(r, c1, c2) {
     typeof quyTacHocChoPrompt_ === 'function' ? quyTacHocChoPrompt_() : '',
     typeof phongCachLoiChoPrompt_ === 'function' ? phongCachLoiChoPrompt_(r) : '',
     typeof hocEditChoPrompt_ === 'function' ? hocEditChoPrompt_() : '',
+    typeof mauVangChoPrompt_ === 'function' ? mauVangChoPrompt_(r) : '',
+    typeof baiHocEditCoDacChoPrompt_ === 'function' ? baiHocEditCoDacChoPrompt_(r) : '',
     'GÓC NHÌN 3D (tùy chọn): cảnh có hình học/hình tự do được dựng nổi khối 3D; có thể thêm "goc_nhin": ["..."] (1-3 góc, máy đổi góc ở các bước của cảnh) chọn trong: cheo_trai, tren_xuong (nhìn thẳng từ trên khi cần đọc số đo chính xác), cheo_phai, thap_chinh_dien (góc thấp hùng vĩ, hợp hook/đáp án), cao_toan_canh, nghieng_nhe. Hai cảnh liền nhau nên khác góc; không cần thì bỏ trống.\n'
   ];
   var danHinh = hh
@@ -876,16 +878,21 @@ function huongDanKhongGian_(r) {
     ' "so_do": [{"loai":"goc_duong_mat","duong":"SC","mat":"ABCD","gia_tri":"45°"}, {"loai":"khoang_cach_diem_mat","diem":"A","mat":"SBC","gia_tri":"\\\\dfrac{a\\\\sqrt{6}}{3}"}] ' +
     '(loai: do_dai | goc_duong_mat | goc_hai_duong | goc_hai_mat | goc_ba_diem | khoang_cach_diem_mat | khoang_cach_diem_duong | khoang_cach_hai_duong | the_tich),\n' +
     ' "truot": {"diem":"M"} (tùy chọn: điểm "bất kỳ" trượt nhẹ trên cạnh ở 2 giây đầu - hook),\n' +
-    ' "de_ghim": [{"id":"d1","nhan":"SA ⊥ (ABCD)"}, ... "d(A, (SBC)) = ?"] (2-4 ô ngắn, ô cuối là câu hỏi có dấu ?),\n' +
+    ' "de_ghim": [{"id":"d1","nhan":"SA \\\\perp (ABCD)"}, ... "d(A, (SBC)) = ?"] (2-4 ô ngắn LaTeX 100%, ô cuối là câu hỏi có dấu ?; CẤM viết thô "a căn 15 / 10", phải viết \\\\dfrac{a\\\\sqrt{15}}{10}),\n' +
+    ' "cac_net_dung": [{"id":"AB","khi_noi":"..."}, {"id":"O","khi_noi":"..."}, {"id":"SA","khi_noi":"..."}] (Pha 2: thứ tự dựng từng nét khớp lời đọc đề < 0,25 s: đáy -> đường chéo & tâm O nét đứt -> đường cao SA + góc vuông 3D -> cạnh bên -> điểm đặc biệt M; Pha 1 chỉ hiện lưới sạch/mặt đáy mờ),\n' +
+    ' "net_phu": [{"id":"SO","khi_noi":"nối S với O"}, {"id":"AH","khi_noi":"hạ AH vuông góc SO"}, {"id":"H","khi_noi":"tại H"}] (Pha 3 BẮT BUỘC khai báo mọi đường phụ, điểm mới, ký hiệu góc vuông và mặt phẳng phụ khi lời giải nhắc tới),\n' +
     ' "buoc": [{"canh":<số cảnh>,"khi_noi":"cụm 2-5 từ NGUYÊN VĂN lời cảnh đó","nhan":"1-2 từ (Đề bài / Góc / Khoảng cách - KHÔNG ghi Bước 1)","tieu_de":"≤ 40 ký tự, không lộ đáp số",' +
     '"xoay":[{"goc_nhin":"' + CHE_DO_CAMERA_KG_.join('|') + '","doi_tuong":["S","A","C"],"moc_xoay":"cụm 3-5 từ NGUYÊN VĂN mở đầu ý chứng minh"}],' +
     '"hien":[{"id":"AH","khi_noi":"kẻ AH vuông góc"}],"nhan_manh":["AH","SB"],"hanh_dong":[{"loai":"bung_mat","id":"(MNP)","khi_noi":"bung rộng mặt phẳng"}],' +
     '"the":[{"loai":"cong_thuc","dong":["AH \\\\perp (SBC)"],"khi_noi":"..."}]}]\n}\n' +
+    'QUY TRÌNH 3 PHA (CỨNG): Pha 1 (Đọc đề: T1 ghim đề, T2 lưới sạch/đáy mờ) -> Pha 2 (Dựng từng nét một theo lời) -> Pha 3 (Tô mặt phẳng phụ đang xét, vẽ thêm đường phụ & điểm mới lên hình 3D, KHÔNG nhảy tắt bước tính trung gian ở T3).\n' +
     'ĐẠO DIỄN CAMERA (máy tính góc tối ưu, chỉ chọn tên + đối tượng): toan_canh (bước 1, mở đề) | truc_dien_mat [3 điểm của mặt] (nhìn thẳng mặt phụ đang chứng minh, máy làm mờ phần còn lại) | ' +
     'ep_mep_mat [3 điểm] (nhìn dọc theo mặt: đường ⊥ mặt, hai mặt ⊥, đường đâm xuyên mặt tại giao điểm) | nhin_day (giao tuyến ở đáy, hình chiếu xuống đáy) | can_canh [đối tượng] (chốt góc / đoạn / giao điểm).\n' +
     'ĐỒNG BỘ LỜI - XOAY (LỖI CỨNG CAM_MAT_MOC / CAM_DE_GIO): mỗi cú xoay (trừ toan_canh của bước 1) BẮT BUỘC có "moc_xoay" là cụm NGUYÊN VĂN trong loi_thoai của chính cảnh "canh" của bước, ' +
     'đặt đúng chỗ bắt đầu ý đó (vd "xét mặt phẳng SBD", "chiếu vuông góc xuống đáy", "cắt cạnh SD tại E"); máy xoay đúng lúc giọng đọc tới cụm, KHÔNG xoay đầu cảnh; hai cú xoay cách nhau ≥ 5 từ lời đọc.\n' +
-    'NHỊP: 7-10 cảnh, tổng 50-68 giây (200-270 tiếng), mỗi bước giải đúng MỘT ý + MỘT cú xoay; lời đọc tên điểm in hoa liền (SA, SBC); đọc đề đúng 1 lần; mỗi dòng "... = số" phải được đọc ra số.\n' +
+    'NHỊP: 7-10 cảnh, tổng 50-68 giây (200-270 tiếng), mỗi bước giải đúng MỘT ý + MỘT cú xoay; lời đọc tên điểm in hoa liền (SA, SBC); đọc đề đúng 1 lần; mỗi dòng "... = số" phải được đọc ra số. CẤM tạo cảnh kiem_tra / đoạn đọc "soát lại bằng Oxyz / kiểm tra bằng tọa độ" gây đứng hình 8-10 s!\n' +
+    'MẠCH TƯ DUY NGƯỢC & KHE CÂU ĐÙA CÓ KIỂM SOÁT: lời thoại Hình học đi theo mạch hấp dẫn: chỉ thẳng nút thắt khó -> tung chiêu đổi góc nhìn / kẻ đường phụ -> chốt nhanh bằng chip trung gian (BỎ kiểu đọc liệt kê khô khan "Ta có... suy ra... ta lại có..."). ' +
+    'Cho phép TỐI ĐA 1 câu dí dỏm ngắn (10-15 chữ) mỗi video, CHỈ đặt ở Hook mở đầu hoặc ngay nút thắt/cái bẫy; CẤM TUYỆT ĐỐI chen câu đùa vào giữa bước biến đổi toán học.\n' +
     'GDPT 2018: lớp 11 chứng minh tổng hợp (quan hệ song song / vuông góc, định lí ba đường vuông góc, hệ thức lượng tam giác vuông) - CẤM tọa độ Oxyz, vectơ pháp tuyến, tích vô hướng / có hướng; Oxyz chỉ lớp 12.\n';
 }
 
@@ -895,7 +902,9 @@ function gonPromptKhongGian_(s, r) {
   if (typeof huongDanKichBanHinh_ === 'function') { var h = huongDanKichBanHinh_(r); if (h) s = s.split(h).join(''); }
   s = s.replace(/QUY TRÌNH 6 PHẦN CHO BÀI HÌNH[\s\S]*?(?=Trả thêm "de_cho")/,
     'QUY TRÌNH GỌN CHO BÀI HÌNH KHÔNG GIAN (7-10 cảnh, 50-68 giây, mỗi cảnh MỘT ý, lời 12-30 từ): mo_dau (câu hỏi móc ≤ 5 giây) -> de_bai (đọc đề đúng 1 lần) -> ' +
-    'phan_tich (hướng đi: mặt phẳng phụ / hình chiếu) -> các cảnh giai (mỗi cảnh một bước + một cú xoay camera) -> dap_an -> bai_hoc (≤ 2 câu + kêu gọi lưu bài).\n');
+    'phan_tich (hướng đi: mặt phẳng phụ / hình chiếu) -> các cảnh giai (mỗi cảnh một bước + một cú xoay camera, KHÔNG có cảnh kiem_tra / soát lại bằng Oxyz) -> dap_an -> bai_hoc (≤ 2 câu + kêu gọi lưu bài).\n');
+  s = s.replace(/- Bài TÍNH: cảnh thử lại kiểm bằng cách thứ hai[^\n]*\n/g, '');
+  s = s.replace(/sang kiểm tra: "Khoan chốt vội, thử soát lại xem\.";\s*/g, '');
   s = s.replace(/ĐỒNG BỘ HÌNH - TIẾNG \(BẮT BUỘC[\s\S]*?Mỗi dòng noi_dung_man_hinh có một phần tử "moc_loi"[^\n]*\n\n/, '');
   s = s.replace(/VÍ DỤ MỘT CẢNH ĐỀ BÀI TỐT \(hình chóp[\s\S]*?(?=5 ĐIỀU SỐNG CÒN)/, '');
   s = s.replace(/Mỗi cảnh chỉ có đúng MỘT vật \{"id":"hh","loai":"hinh_hoc",[^\n]*\n\n/, 'Hình vẽ (tọa độ, nét khuất, mặt cắt, góc máy) do máy dựng từ "hinh_khong_gian" (một hình xuyên suốt, giu_san_khau: true từ cảnh 2, minh_hoa của cảnh để {"loai":"san_khau","du_lieu":{"vat":[]}}).\n\n');

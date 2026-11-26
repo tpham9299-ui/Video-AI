@@ -119,6 +119,26 @@ def _nhan_thi(kb):
     return "LUYỆN THI · LỚP %s" % lop if lop else "LUYỆN THI"
 
 
+def _khu_trung_tag(phan):
+    """Khử trùng lặp tag trên phụ đề Intro (VD 'QUAN HỆ VUÔNG GÓC · VUÔNG GÓC · GÓC' -> 'QUAN HỆ VUÔNG GÓC')."""
+    def _chuan(s):
+        return re.sub(r"\s+", " ", re.sub(r"[^\w\s]", " ", str(s or "").casefold())).strip()
+    giu = []
+    for tag in phan:
+        t = str(tag or "").strip()
+        nt = _chuan(t)
+        if not nt:
+            continue
+        if any(ng == nt or (" " + nt + " ") in (" " + ng + " ") for ng in (_chuan(g) for g in giu)):
+            continue
+        thay = next((idx for idx, g in enumerate(giu) if (" " + _chuan(g) + " ") in (" " + nt + " ")), -1)
+        if thay >= 0:
+            giu[thay] = t
+        else:
+            giu.append(t)
+    return giu
+
+
 def moc_cau(kb, buoc, so_lo):
     """props.khung4tang.mocCau (luôn đủ 5 trường, đã cắt vừa bố cục, không lộ số đáp án)."""
     lop = str(kb.get("lop") or "").strip()
@@ -136,11 +156,14 @@ def moc_cau(kb, buoc, so_lo):
             phan.append(cd)
         for b in buoc:
             n = chu_sach(b.get("nhan"), 14)
-            if n and not NHAN_CHUNG.match(n.lower()) and n not in phan and not re.search(r"\?", n):
+            if n and not NHAN_CHUNG.match(n.lower()) and not re.search(r"\?", n):
                 phan.append(n)
-        while phan and len(" · ".join(phan)) > DAI_PHU_DE:
+        phan = _khu_trung_tag(phan)
+        while len(phan) > 1 and len(" · ".join(phan)) > DAI_PHU_DE:
             phan.pop()
         phu = " · ".join(phan[:3])
+    elif phu:
+        phu = " · ".join(_khu_trung_tag(re.split(r"\s*[·•|]\s*", phu)))
     hook = chu_sach(che_so(str(kb.get("cau_hook") or ""), so_lo), DAI_HOOK)
     if len(hook) < 6:
         ds = HOOK_THEO_LOP.get(lop) or HOOK_THEO_LOP[""]

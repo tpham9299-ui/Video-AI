@@ -111,12 +111,13 @@ export function hienDiemPhu(kg: KhongGianVao): Record<string, number> {
   if (co) return co;
   const d = kg.dung, hien = kg.hien || {};
   const ra: Record<string, number> = {};
-  const giu = new Set<string>(d.khoi.dinh);
+  const coDungKhoi = !d.lego && !d.khoiDs?.length && d.doan.some((x) => x.vai === 'khoi' && (hien[x.id] !== undefined || hien[x.a + x.b] !== undefined || hien[x.b + x.a] !== undefined));
+  const giu = new Set<string>(coDungKhoi ? [] : d.khoi.dinh);
   (d.khoiDs || []).forEach((k) => k.dinh.forEach((x) => giu.add(x)));
   if (d.truot?.diem) giu.add(d.truot.diem);
   (kg.chuyen || []).forEach((c) => giu.add(c.diem));
   (kg.bienHinh || []).forEach((b) => b.cap.forEach(([a, z]) => { giu.add(a); giu.add(z); }));
-  for (const x of d.doan) if (x.vai === 'khoi') { giu.add(x.a); giu.add(x.b); }
+  if (!coDungKhoi) for (const x of d.doan) if (x.vai === 'khoi') { giu.add(x.a); giu.add(x.b); }
   const lay = (id: string, ...them: string[]) => [id, ...them].map((k) => hien[k]).find((v) => v !== undefined);
   for (const ten of d.nhan) {
     if (giu.has(ten) || hien[ten] !== undefined || !d.diem[ten]) continue;
@@ -140,11 +141,13 @@ export function trangThai(kg: KhongGianVao, t: number): TrangThai {
   const thHien = (key: string, id?: string, nhom?: string) => hienKhoa[key] ?? (id !== undefined ? hien[id] : undefined) ?? (nhom ? hien[nhom] : undefined);
   const alpha = (key: string, tre = 0, id?: string, nhom?: string) => {
     const th = thHien(key, id, nhom);
-    return th === undefined ? 1 : emRa((t - th - tre) / THOI_HIEN);
+    if (th === undefined) return 1;
+    return t < th + tre ? 0 : emRa((t - th - tre) / THOI_HIEN);
   };
   const ve = (key: string, id?: string, nhom?: string, tre = 0) => {
     const th = thHien(key, id, nhom);
-    return th === undefined ? 1 : emXoay((t - th - tre) / THOI_HIEN);
+    if (th === undefined) return 1;
+    return t < th + tre ? 0 : emXoay((t - th - tre) / THOI_HIEN);
   };
   const nm = nhanManhTai(kg, t);
   const muc = (key: string) => {

@@ -10,18 +10,19 @@ import {chuanBi, Lech, MAU_KG, veKhung} from './ve';
 import {DO_TO_MAT_PHANG_KG} from '../khung4tang/cauHinhTinhChinh';
 import {CO_NHAN} from './nhan';
 
-const NEN = MAU_KG.nen;
+// Halo xanh đêm đồng bộ deep_space_blueprint (thay nền đen cứng #0E1014, giữ nền SVG hoàn toàn trong suốt)
+const NEN = '#07142B';
 
 // "A'" -> A′ ; "M_1" -> M + chỉ số dưới
 const NhanChu: React.FC<{ten: string; x: number; y: number; mau: string; op: number; co: number}> = ({ten, x, y, mau, op, co}) => {
   const m = /^([A-Z])(?:_?(\d))?('*)$/.exec(ten);
   const chinh = m ? m[1] : ten, chiSo = m ? m[2] : '', phay = m ? m[3].replace(/'/g, '′') : '';
-  const rong = co * 0.62 * (chinh.length + (chiSo ? 0.6 : 0) + (phay ? 0.4 : 0)) + 12, cao = co + 4;
+  const rong = co * 0.62 * (chinh.length + (chiSo ? 0.6 : 0) + (phay ? 0.4 : 0)) + 14, cao = co + 6;
   return (
     <g opacity={op}>
-      {/* v101.2: viên tối đặc phía sau nhãn -> độ tương phản cao, không bị nét xuyên qua */}
-      <rect x={x - rong / 2} y={y - cao / 2} width={rong} height={cao} rx={cao / 2} fill={NEN} fillOpacity={0.74} />
-      <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fill={mau} stroke={NEN} strokeWidth={4.5} strokeLinejoin="round"
+      {/* Halo xanh đêm gọn phía sau nhãn -> tách rõ khỏi mọi cạnh cắt qua mà không tạo mảng đen cứng */}
+      <rect x={x - rong / 2} y={y - cao / 2} width={rong} height={cao} rx={cao / 2} fill={NEN} fillOpacity={0.68} />
+      <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fill={mau} stroke={NEN} strokeWidth={5.2} strokeLinejoin="round"
         style={{paintOrder: 'stroke', fontFamily: FONT, fontWeight: 800, fontSize: co, letterSpacing: 0.2}} data-nhan-kg={ten}>
         {chinh}
         {chiSo ? <tspan fontSize={co * 0.62} dy={co * 0.22}>{chiSo}</tspan> : null}
@@ -55,9 +56,9 @@ export const SanKhauKhongGian: React.FC<{kg: KhongGianVao; t: number; rong: numb
   const nMat = f.mat.filter((m) => !m.san && !m.bung && (m.act || 0) + m.op > 0.12).length;
   const tranTo = nMat >= 2 ? 0.14 : 0.19;
   return (
-    <div style={{position: 'absolute', inset: 0}} data-san-khau-kg="1">
-      <svg width={rong} height={cao} viewBox={`0 0 ${rong} ${cao}`} style={{position: 'absolute', inset: 0, overflow: 'hidden'}}>
-        {f.luoi.map((l, i) => <path key={`l${i}`} d={l.d} stroke={MAU_KG.phu} strokeOpacity={l.op} strokeWidth={1} fill="none" />)}
+    <div style={{position: 'absolute', inset: 0, background: 'transparent'}} data-san-khau-kg="1">
+      <svg width={rong} height={cao} viewBox={`0 0 ${rong} ${cao}`} style={{position: 'absolute', inset: 0, overflow: 'hidden', background: 'transparent'}}>
+        {f.luoi.map((l, i) => <path key={`l${i}`} d={l.d} stroke="#93C5FD" strokeOpacity={Math.min(0.22, l.op * 1.15)} strokeWidth={1} fill="none" />)}
         {/* v98: mặt trước khối Lego tô nhẹ theo ánh sáng (dưới mọi nét) */}
         {f.to.map((m) => <path key={m.id} d={m.d} fill={m.mau} fillOpacity={m.op} stroke="none" />)}
         {ve(0)}
@@ -119,14 +120,14 @@ export const SanKhauKhongGian: React.FC<{kg: KhongGianVao; t: number; rong: numb
       {/* v98: nhãn tự do — số đo đường gióng (200 m), tên trục x y z, vạch số, hướng; số đọc trực tiếp khi trượt tối ưu */}
       {f.nhanTu.map((x) => (
         <div key={x.id} data-nhan-tu={x.id} {...(x.co < 26 ? {'data-kd-bo': '1'} : {})} style={{position: 'absolute', left: x.x, top: x.y, transform: 'translate(-50%, -50%)', opacity: x.op, whiteSpace: 'nowrap',
-          ...(x.id.startsWith('doc_') ? {background: 'rgba(14,16,20,0.86)', border: `1.5px solid ${x.mau}`, borderRadius: 14, padding: '2px 12px 4px'} : {background: 'rgba(14,16,20,0.6)', borderRadius: 8, padding: '0 5px 1px'})}}>
+          ...(x.id.startsWith('doc_') ? {background: 'rgba(7,20,43,0.82)', border: `1.5px solid ${x.mau}`, borderRadius: 14, padding: '2px 12px 4px'} : {background: 'rgba(7,20,43,0.62)', borderRadius: 8, padding: '0 6px 1px'})}}>
           {x.chu ? <span style={{fontFamily: FONT, fontWeight: 700, fontSize: x.co, color: x.mau}}>{x.tex}</span> : <Toan tex={x.tex} size={x.co} color={x.mau} style={{fontWeight: 700}} />}
         </div>
       ))}
       {f.goc.filter((g) => g.nhan).map((g) => (
         // v97 tinh tế: nhãn góc 50 % (14 px) — cố ý nhỏ -> data-kd-bo để kiểm duyệt bố cục không báo CHU_NHO
         <div key={g.id + 'n'} data-kd-bo="1" style={{position: 'absolute', left: g.nhan!.x, top: g.nhan!.y, transform: 'translate(-50%, -50%)', opacity: g.op, whiteSpace: 'nowrap',
-          background: 'rgba(14,16,20,0.72)', borderRadius: 999, padding: '0 4px 1px'}}>
+          background: 'rgba(7,20,43,0.72)', borderRadius: 999, padding: '0 5px 1px'}}>
           <Toan tex={g.nhan!.tex} size={22} color={MAU_KG.goc} style={{fontWeight: 700}} />
         </div>
       ))}

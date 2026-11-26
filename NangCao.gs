@@ -1616,3 +1616,70 @@ function kiemVaDonScriptProperties_() {
   if (nKhoa > CANH_BAO_SCRIPT_PROPS_ || p.getProperty('DON_RAC_NGAY') !== homNay) return donRacScriptProperties();
   return null;
 }
+
+/* ===================== CƠ CHẾ TỰ HỌC 2 TẦNG (Ngân hàng Kịch bản Vàng + Sổ tay bài học cô đặc) ===================== */
+function xacDinhChuyenMucTuHoc_(r) {
+  var mon = String((r && r.mon) || '').toUpperCase();
+  if (mon === 'XAC_SUAT') return 'XAC_SUAT';
+  if (mon === 'HINH_HOC' || (typeof laMonHinhHoc_ === 'function' && laMonHinhHoc_(r))) {
+    var kg = typeof laHinhKhongGian_ === 'function' && laHinhKhongGian_(r && r.de_bai);
+    return kg ? 'HINH_KHONG_GIAN' : 'HINH_PHANG';
+  }
+  return 'THUC_TE';
+}
+
+// Tầng 1 — Lưu kịch bản đạt chuẩn vào kho vàng (lệnh Zalo: /hay <ID>) để bốc làm few-shot cùng chuyên mục
+function luuKichBanVang_(chu, chat) {
+  var id = String(chu || '').replace(/^\s*\/hay\b\s*/i, '').trim().split(/\s+/)[0] || '';
+  if (!id) return 'Cách dùng: /hay <mã_video> — lưu kịch bản đạt chuẩn vào Ngân hàng Kịch bản Vàng làm mẫu few-shot.';
+  try {
+    var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
+    var r = sh ? docHang_(sh).filter(function (x) { return String(x.id || '').toUpperCase() === id.toUpperCase(); })[0] : null;
+    if (!r) return '⚠️ Không tìm thấy mã ' + id + ' trong HANG_DOI.';
+    var cm = xacDinhChuyenMucTuHoc_(r);
+    var kb = null;
+    if (r.file_kich_ban) {
+      try { kb = JSON.parse(DriveApp.getFileById(String(r.file_kich_ban)).getBlob().getDataAsString()); } catch (eKb) {}
+    }
+    var tom = {
+      id: r.id,
+      chuyen_muc: cm,
+      ten: String((kb && kb.tieu_de) || r.chu_de || r.id).slice(0, 80),
+      hook: String((kb && kb.hook) || '').slice(0, 140),
+      yeu_cau_ngan: String((kb && kb.can_tim) || '').slice(0, 100),
+      tom_tat_3_buoc: (kb && Array.isArray(kb.tom_tat_3_buoc) ? kb.tom_tat_3_buoc : []).slice(0, 3),
+      ngay_luu: Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd')
+    };
+    var p = PropertiesService.getScriptProperties();
+    var kho = {};
+    try { kho = JSON.parse(p.getProperty('MAU_VANG_KHO') || '{}') || {}; } catch (e0) { kho = {}; }
+    var ds = Array.isArray(kho[cm]) ? kho[cm].filter(function (x) { return x && x.id !== r.id; }) : [];
+    ds.push(tom);
+    kho[cm] = ds.slice(-2); // giữ tối đa 2 mẫu mới nhất mỗi chuyên mục để không phình Script Properties
+    p.setProperty('MAU_VANG_KHO', JSON.stringify(kho));
+    try { nhatKy_('MAU_VANG', 'Đã lưu ' + r.id + ' (' + cm + ') vào Ngân hàng Kịch bản Vàng'); } catch (eNk) {}
+    return '🌟 Đã lưu kịch bản ' + r.id + ' vào Ngân hàng Kịch bản Vàng [' + cm + ']. BP2 sẽ tự động bốc mẫu này làm few-shot khi viết bài cùng chuyên mục!';
+  } catch (e) {
+    return '⚠️ Chưa lưu được mẫu vàng ' + id + ': ' + String(e.message || e).slice(0, 140);
+  }
+}
+
+// Bốc ĐÚNG 1 mẫu vàng cùng chuyên mục làm few-shot gọn khi BP2 viết kịch bản mới
+function mauVangChoPrompt_(r) {
+  try {
+    var cm = xacDinhChuyenMucTuHoc_(r);
+    var p = PropertiesService.getScriptProperties();
+    var kho = {};
+    try { kho = JSON.parse(p.getProperty('MAU_VANG_KHO') || '{}') || {}; } catch (e0) { kho = {}; }
+    var ds = Array.isArray(kho[cm]) ? kho[cm] : [];
+    if (!ds.length) return '';
+    var m = ds[ds.length - 1];
+    return 'MẪU VÀNG THAM KHẢO (1 mẫu chuẩn cùng chuyên mục ' + cm + ' — học nhịp & cấu trúc, KHÔNG chép đề):\n' +
+      JSON.stringify(m).slice(0, 1200) + '\n';
+  } catch (e) { return ''; }
+}
+
+// Tầng 2 — Sổ tay bài học cô đặc (tối đa 8 luật/chuyên mục dạng [Tránh] ... -> [Làm thay] ...; tự lọc luật quá 14 ngày)
+function baiHocEditCoDacChoPrompt_(r) {
+  return ''; // Khi chạy trên GitHub Actions (chay_bp1.js), được nạp trực tiếp từ bai_hoc_edit.json
+}

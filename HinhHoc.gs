@@ -142,6 +142,7 @@ function huongDanHinhPhangChuan_(r) {
     '   • hanh_dong_hinh: to_da_giac{dinh:[..],mau} | duong_tron_phu{duong_kinh:"BC" hoặc qua:[..],mau} | to_goc{goc:"ADE",mau,so_cung:1|2} | ky_hieu_vuong{goc:"BEC",mau} | nhan_manh_doan{doan,mau} | khung_bac_cau{doan_tex:"\\\\angle EDC",dong:[1,2]} (khung cyan quanh góc trung gian ở các dòng được bắc cầu) | ket_luan{goc:"AID"} (chốt cuối bài).\n' +
     '   • Dòng nêu điều SAI để minh họa bẫy thì thêm "kiem":false.\n' +
     '- Khi có hinh_phang_chuan: mọi cảnh để "noi_dung_man_hinh":[], không cần buoc_ve, minh_hoa = {"loai":"san_khau","du_lieu":{"vat":[]}}; lời thoại vẫn đọc đủ đề và từng bước, các khi_noi phải là cụm NGUYÊN VĂN, theo đúng thứ tự đọc.\n' +
+    '- MẠCH TƯ DUY NGƯỢC & CÂU ĐÙA CÓ KIỂM SOÁT: dẫn lời thoại theo mạch chỉ ra nút thắt khó -> chiêu đổi góc nhìn / kẻ đường phụ -> chốt gọn từng chặng bằng chip trung gian (bỏ kiểu đọc khô khan "Ta có... suy ra..."). Cho phép TỐI ĐA 1 câu dí dỏm ngắn (10-15 chữ) mỗi video, CHỈ đặt ở Hook mở đầu hoặc ngay nút thắt/cái bẫy; CẤM chen câu đùa vào giữa bước biến đổi toán học.\n' +
     (cap === 'thpt' ? '' : quyDinhThcsHinh_(cap));
 }
 

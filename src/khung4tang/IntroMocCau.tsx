@@ -39,7 +39,6 @@ export const IntroMocCau: React.FC<{m: MocCau; t: number; G: number}> = ({m, t, 
   const f = Math.round(t * fps);
   const ra = raIntro(t, G);
   const con = 1 - ra;
-  if (con <= 0.001) return null;
   const tHook = G * 0.6;
   const lo = (tu: number, d = 0.35) => emRa((t - tu) / d);
   const lo_lo = (tu: number) => spring({frame: f - Math.round(tu * fps), fps, config: {damping: 14, stiffness: 150, mass: 0.7}});
@@ -61,7 +60,29 @@ export const IntroMocCau: React.FC<{m: MocCau; t: number; G: number}> = ({m, t, 
   }, [dongTD]);
   const coTD = Math.min(coDo, coTieuDeIntro(dongTD));
   const chuan = (s: string) => s.normalize('NFC').toLocaleLowerCase('vi').replace(/[^\p{L}\p{N}]+/gu, '');
-  const phu = m.phu_de?.trim() || '';
+  const chuanTu = (s: string) => s.normalize('NFC').toLocaleLowerCase('vi').replace(/[^\p{L}\p{N}\s]+/gu, ' ').replace(/\s+/g, ' ').trim();
+  const phu = React.useMemo(() => {
+    const goc = m.phu_de?.trim() || '';
+    if (!goc) return '';
+    const rawTags = goc.split(/\s*[·•|]\s*/).map((x) => x.trim()).filter(Boolean);
+    const giu: string[] = [];
+    for (const tag of rawTags) {
+      const nt = chuanTu(tag);
+      if (!nt) continue;
+      // Bỏ tag đã nằm gọn trong 1 tag đã giữ (VD: "QUAN HỆ VUÔNG GÓC" đã chứa "VUÔNG GÓC" và "GÓC")
+      const biBao = giu.some((g) => {
+        const ng = chuanTu(g);
+        return ng === nt || (` ${ng} `).includes(` ${nt} `);
+      });
+      if (biBao) continue;
+      // Nếu tag mới bao trùm 1 tag cũ ngắn hơn -> thay thế
+      const idxCu = giu.findIndex((g) => (` ${nt} `).includes(` ${chuanTu(g)} `));
+      if (idxCu >= 0) giu[idxCu] = tag;
+      else giu.push(tag);
+    }
+    return giu.join(' · ');
+  }, [m.phu_de]);
+  if (con <= 0.001) return null;
   const coPhu = coVua(phu, 40, 1, RONG_CHU, 0.78);
   const dongHook = haiDong(m.cau_hook, 22);
   const coHook = Math.min(60, coVua(dongHook.reduce((a, b) => (b.length > a.length ? b : a), ''), 60, 38, RONG_CHU, 0.66));

@@ -92,6 +92,16 @@ export type HinhPhangDongGiai = {
   ket_qua_chip?: string;
 };
 
+export type HinhPhang2DPreview = {
+  diem: Record<string, [number, number]>;
+  nhan?: Record<string, [number, number]>;
+  net?: {a: string; b: string; loai?: string; t?: number}[];
+  tron?: {tam: [number, number]; r: number; t?: number}[];
+  vuong?: {goc: string; t?: number; mau?: string}[];
+  hop?: [number, number, number, number];
+  to_do?: string[];
+};
+
 export type HinhPhangProps = {
   loai_yeu_cau?: 'tinh' | 'chung_minh';
   tom_tat_gia_thiet?: string[];
@@ -99,6 +109,9 @@ export type HinhPhangProps = {
   dong_giai?: HinhPhangDongGiai[];
   ket_qua_chip?: {id: string; tex: string; t: number}[];
   moc_cong_bo?: number;
+  mocCau?: import('./khung4tang/kieu').MocCau | null;
+  tomTat?: import('./khung4tang/kieu').DongTomTat[] | null;
+  hinh2d?: HinhPhang2DPreview | null;
   video?: string;
   moc?: Record<string, unknown>;
   header?: Record<string, string>;

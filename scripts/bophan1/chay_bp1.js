@@ -214,6 +214,36 @@ if (de.model_chan && typeof de.model_chan === 'object') {
 }
 if (de.nhap && hang.id) tep['nhap_' + hang.id + '.json'] = String(de.nhap); // bản nháp đang sửa dở (vd. sửa theo góp ý /sua)
 
+// Nạp Hệ thống Tự học 2 tầng (mau_vang/ + bai_hoc_edit.json) khi chạy BP2 trên GitHub/Node
+let _mauVangIdx = null;
+let _baiHocEdit = null;
+try { _mauVangIdx = JSON.parse(fs.readFileSync(path.join(GOC, 'mau_vang', 'index.json'), 'utf8')); } catch (_e) {}
+try { _baiHocEdit = JSON.parse(fs.readFileSync(path.join(GOC, 'bai_hoc_edit.json'), 'utf8')); } catch (_e) {}
+ctx.__tuHoc = {
+  bocMauVang: (cm) => {
+    try {
+      const ds = (_mauVangIdx && Array.isArray(_mauVangIdx.mau) ? _mauVangIdx.mau : []).filter((m) => String(m.chuyen_muc || '').toUpperCase() === cm);
+      if (!ds.length) return '';
+      const chon = ds[ds.length - 1];
+      const nd = JSON.parse(fs.readFileSync(path.join(GOC, 'mau_vang', chon.tep), 'utf8'));
+      return 'MẪU VÀNG THAM KHẢO (1 mẫu chuẩn cùng chuyên mục ' + cm + ' — học nhịp & cấu trúc, KHÔNG chép đề):\n' + JSON.stringify(nd).slice(0, 1400) + '\n';
+    } catch (_e) { return ''; }
+  },
+  docBaiHocCoDac: (cm) => {
+    try {
+      const ds = (_baiHocEdit && _baiHocEdit.chuyen_muc && Array.isArray(_baiHocEdit.chuyen_muc[cm]) ? _baiHocEdit.chuyen_muc[cm] : []);
+      const hanMs = Date.now() - 14 * 86400000;
+      const loc = ds.filter((x) => {
+        if (!x || !x.luat) return false;
+        const ts = Date.parse(String(x.ngay_cap_nhat || ''));
+        return !isNaN(ts) && ts >= hanMs;
+      }).slice(0, 8);
+      if (!loc.length) return '';
+      return 'SỔ TAY BÀI HỌC CÔ ĐẶC (' + cm + ', tối đa 8 luật còn hạn 14 ngày):\n' + loc.map((x) => '- ' + x.luat).join('\n') + '\n';
+    } catch (_e) { return ''; }
+  },
+};
+
 ctx.__out = out;
 ctx.__thuMuc = thuMuc;
 ctx.__pre = {series: de.series || null, hook: de.hook || '', goi_y: de.goi_y || '', hoc_edit: de.hoc_edit || '', quy_tac_hoc: de.quy_tac_hoc || '', quy_tac_kd: de.quy_tac_kd || [], phong_cach: de.phong_cach || null, cau_noi: de.cau_noi || []};
@@ -229,6 +259,8 @@ vm.runInContext(`
   chonKieuHook_ = function () { return __pre.hook; };
   goiYTuSoLieu_ = function () { return __pre.goi_y; };
   hocEditChoPrompt_ = function () { return __pre.hoc_edit; };
+  mauVangChoPrompt_ = function (r) { var cm = typeof xacDinhChuyenMucTuHoc_ === 'function' ? xacDinhChuyenMucTuHoc_(r) : 'THUC_TE'; return __tuHoc.bocMauVang(cm); };
+  baiHocEditCoDacChoPrompt_ = function (r) { var cm = typeof xacDinhChuyenMucTuHoc_ === 'function' ? xacDinhChuyenMucTuHoc_(r) : 'THUC_TE'; return __tuHoc.docBaiHocCoDac(cm); };
   quyTacHocChoPrompt_ = function () { return __pre.quy_tac_hoc; };
   quyTacHocChoKiemDuyet_ = function () { return __pre.quy_tac_kd; };
   chonPhongCachVideo_ = function () { return __pre.phong_cach; };

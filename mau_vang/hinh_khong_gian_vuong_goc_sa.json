@@ -1,0 +1,40 @@
+{
+  "id": "MV-KG-01",
+  "chuyen_muc": "HINH_KHONG_GIAN",
+  "lop": "11",
+  "mon": "HINH_HOC",
+  "luong": "hinh_hoc_thuan",
+  "tieu_de": "SA vuông góc đáy: góc và khoảng cách",
+  "hook": "Một cạnh SA dựng đứng mà mở khóa cả góc lẫn khoảng cách!",
+  "loai_yeu_cau": "tinh",
+  "tom_tat_gia_thiet": [
+    "Chóp S.ABCD, đáy vuông cạnh a",
+    "SA \\perp (ABCD)",
+    "SA = a\\sqrt{2}"
+  ],
+  "yeu_cau_ngan": "d(A, (SBC)) = ?",
+  "quy_trinh_3_pha": {
+    "pha_1": "Lưới tọa độ sạch + ghim đề T1, chưa lộ hình đầy đủ trước khi đọc đề.",
+    "pha_2": "Dựng từng nét khớp lời: đáy ABCD -> đường chéo AC, BD & tâm O -> đường cao SA + góc vuông 3D -> cạnh bên SB, SC, SD.",
+    "pha_3": "Xoay truc_dien_mat (SAB), kẻ đường phụ AH ⊥ SB (net_phu), tô mặt (SBC), chốt chip trung gian từng bước."
+  },
+  "cau_truc_tu_duy_nguoc": [
+    "Nút thắt: khoảng cách từ A tới mặt nghiêng (SBC) khó nhìn trực tiếp trong không gian.",
+    "Chiêu đường phụ: ép về mặt phẳng (SAB) chứa SA, kẻ duy nhất một đường cao AH ⊥ SB.",
+    "Chip chốt trung gian: ✓ BD ⊥ (SAC) -> ✓ ∠SCA = 45° -> ✓ AH ⊥ (SBC) -> chốt AH = a√6/3."
+  ],
+  "ket_qua_chip": [
+    "BD \\perp (SAC)",
+    "\\widehat{SCA} = 45^\\circ",
+    "AH \\perp (SBC)"
+  ],
+  "khe_cau_dua": {
+    "vi_tri": "nut_that",
+    "cau": "Đừng lao đầu đo thẳng mặt nghiêng, xoay nhẹ sang mặt bên là xong!"
+  },
+  "tom_tat_3_buoc": [
+    {"chien_thuat": "Khóa vuông góc", "cong_thuc": "BD \\perp AC,\\ BD \\perp SA \\Rightarrow BD \\perp (SAC)"},
+    {"chien_thuat": "Góc hình chiếu", "cong_thuc": "\\tan\\widehat{SCA} = \\dfrac{SA}{AC} = 1 \\Rightarrow 45^\\circ"},
+    {"chien_thuat": "Đường cao mặt bên", "cong_thuc": "AH = \\dfrac{SA \\cdot AB}{SB} = \\dfrac{a\\sqrt{6}}{3}"}
+  ]
+}

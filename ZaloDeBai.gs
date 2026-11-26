@@ -207,7 +207,7 @@ function huongDanZalo_() {
     'Mẹo: chụp thẳng, rõ số; ảnh có nhiều câu thì ghi chú kèm ảnh, ví dụ "câu 3, lớp 12".\n' +
     'Lệnh: /tt tiến độ | /key kiểm tra số lượng key Gemini còn xài được | /huy hủy đề vừa gửi | /id mã chat | /token hạn token GitHub | /phongcach tỉ lệ duyệt theo phong cách\n' +
     'Hình học khó: /hinhhoc [phang|khonggian] [10|11|12] [chungminh|tinh] - sáng tác ngay một đề và làm video ưu tiên\n' +
-    'Duyệt video: /cho xem video chờ duyệt | /duyet [mã] | /sua [mã] <góp ý> | /bo [mã] | /donvideoloi dọn MP4 đã chấm không đạt vào Thùng rác Drive\n' +
+    'Duyệt video: /cho xem video chờ duyệt | /duyet [mã] | /sua [mã] <góp ý> | /bo [mã] | /hay [mã] lưu mẫu vàng | /donvideoloi dọn MP4 đã chấm không đạt vào Thùng rác Drive\n' +
     'Duyệt HÀNG LOẠT: mỗi dòng một lệnh trong cùng một tin, hoặc /duyet <mã1> <mã2> <mã3>, hoặc /duyet tatca\n' +
     'Sản phẩm: /sanpham <tên hoặc link> | /xacnhan [mã] <giá bạn bán> | /huysp [mã]';
 }

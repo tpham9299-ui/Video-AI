@@ -95,6 +95,7 @@ function traLoiLenh_(chat, chu, anh) {
   if (/^\/xacnhan\b/.test(l)) return xacNhanSanPham_(chu);
   if (/^\/huysp\b/.test(l)) return huySanPham_(chu);
   if (/^\/hoc\b/.test(l) && typeof nhanLenhHoc_ === 'function') return nhanLenhHoc_(chu);
+  if (/^\/hay\b/.test(l) && typeof luuKichBanVang_ === 'function') return luuKichBanVang_(chu, chat);
   if (/^\/quytac\b/.test(l) && typeof danhSachQuyTac_ === 'function') return danhSachQuyTac_();
   if (/^\/xoaquytac\b/.test(l) && typeof xoaQuyTac_ === 'function') return xoaQuyTac_(chu);
   if (/^\/gopy\b/.test(l) && typeof nhanGopYChung_ === 'function') return nhanGopYChung_(chat, chu);
