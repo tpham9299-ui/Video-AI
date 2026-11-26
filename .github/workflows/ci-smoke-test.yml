@@ -25,6 +25,12 @@ jobs:
       - name: Cài dependencies (npm ci)
         run: npm ci
 
+      - name: Cài đặt ffmpeg
+        run: |
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+          fi
+
       - name: Chạy kiểm tra TypeScript & kiểm thử nhanh (npm run kiem-tra)
         run: npm run kiem-tra
 
