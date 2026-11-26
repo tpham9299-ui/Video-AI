@@ -31,6 +31,9 @@ jobs:
             sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
           fi
 
+      - name: Cài thư viện Python
+        run: pip install --quiet numpy scipy pillow
+
       - name: Chạy kiểm tra TypeScript & kiểm thử nhanh (npm run kiem-tra)
         run: npm run kiem-tra
 
