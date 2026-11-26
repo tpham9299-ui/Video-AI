@@ -607,3 +607,6 @@
 - Khóa thương hiệu `Story Math` phủ kín nhánh Hình học (`KhoaThuongHieu` tách `Hình học Không gian` / `Tư duy Hình học`, `NoiDungHinhPhang` gắn watermark động + Outro, `OutroTomTat` bỏ nút đỏ `"ĐĂNG KÝ KÊNH!"` ở Hình học).
 - Đồng bộ cờ FFmpeg `-metadata artist/copyright/comment` cho mọi luồng xuất MP4 (`ghep_khuc.mjs`, `dung-video.yml` ghép Manim & nén > 44 MB kèm `phong_cach.json` trong `sparse-checkout`, `dang_video.py`).
 - Sửa 2 lỗi test 1A: tính lại `san_khau["nhip"]` sau khi dời pha `ket` theo `t_cb` (`chuanbi.py`) và đồng bộ `test_v96.py` / `test_san_khau_2d.mjs` với mã thoát `42` trước TTS.
+- Tiến trình 2.1: chặn cắt ngang chuỗi LaTeX (`\te`), đồng bộ bóc TeX → Unicode + cắt theo biên từ across `.gs` / Python / TS, sửa biên từ `\p{L}` trong `khoaMauAn`.
+- Tiến trình 2.2: gỡ ép `KHUNG4TANG_3D_RONG` (tự định tuyến `THUC_TE` ngoài 8 khuôn 3D sang 2D/2.5D có vật thể) và dựng Pre-flight Gate (`congLocSomBP2_` ↔ `cong_loc_som`, mã thoát `42`) cho luồng ngắn `Khung4Tang`.
+- Tiến trình 2.3: nối lại Auto-Heal cho `mat_than` + `bo_cuc_loi` với trần chung 1 lần dựng lại/bài, tự dọn `Script Properties` hằng ngày và khi > 35/50, lưu trữ `LOI`/`CHO` quá hạn, điều phối theo chỉ tiêu 3 video ĐẠT/ngày và bổ sung `%` đạt lần 1 + top 3 mã lỗi vào báo cáo Zalo 21:00.

@@ -777,6 +777,7 @@ jobs:
                   with open('out/kiem_duyet.json') as f:
                       bo_cuc = json.load(f)
               reasons = list((bo_cuc.get('nang') or [])[:2])
+              d['bo_cuc_loi'] = list(bo_cuc.get('nang') or [])
               seen, total = bo_cuc.get('so_khung'), bo_cuc.get('so_khung_mau')
               if bo_cuc.get('hong', True):
                   if total is not None and seen != total:
@@ -792,9 +793,11 @@ jobs:
                   except Exception:
                       mt = {}
                   d['mat_than'] = {k: mt.get(k) for k in ('dat', 'chay', 'loi', 'ly_do', 'canh_bao', 'o_dap_an')}
+                  if d['mat_than'].get('dat') is not False and any(isinstance(x, dict) and x.get('nang') is not False for x in (d['mat_than'].get('loi') or [])):
+                      d['mat_than']['dat'] = False
                   d['anh_3x3'] = os.environ.get("ANH_3X3", "")
-                  if mt.get('chay') and mt.get('dat') is False:
-                      reasons.insert(0, mt.get('ly_do') or 'Mắt thần 3×3 phát hiện lỗi nặng')
+                  if d['mat_than'].get('chay') and d['mat_than'].get('dat') is False:
+                      reasons.insert(0, d['mat_than'].get('ly_do') or 'Mắt thần 3×3 phát hiện lỗi nặng')
               from scripts.khung4tang_v96 import thuc_te_ngan
               if thuc_te_ngan(json.load(open('public/props.json', encoding='utf8'))) and not (d.get('mat_than') or {}).get('chay'):
                   reasons.insert(0, 'Chờ duyệt: thiếu kết quả Mắt thần cho THUC_TE')

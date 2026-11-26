@@ -142,18 +142,53 @@ export function thapPhanViet(s: string, tex = false): string {
     });
 }
 
+const LENH_HAM_TEX = new Set(['sin', 'cos', 'tan', 'cot', 'log', 'ln', 'lg', 'max', 'min', 'lim', 'exp', 'det', 'mod', 'gcd']);
+const LENH_KATEX_HOP_LE = new Set([
+  ...Object.keys(LENH), ...LENH_HAM_TEX,
+  'frac', 'dfrac', 'tfrac', 'binom', 'dbinom', 'tbinom', 'sqrt', 'overline', 'bar', 'widehat', 'vec', 'overrightarrow',
+  'text', 'textrm', 'textbf', 'textit', 'mathrm', 'mathbf', 'mathit', 'boldsymbol', 'operatorname', 'mbox',
+  'color', 'textcolor', 'colorbox', 'hl', 'mvang', 'mdo', 'mngoc', 'mcam', 'mla',
+  'left', 'right', 'displaystyle', 'limits', 'begin', 'end', 'not', 'mid', 'nmid', 'cong', 'implies', 'Longrightarrow',
+  'big', 'Big', 'bigg', 'Bigg', 'setminus', 'forall', 'exists', 'dpcm', 'Omega',
+]);
+
+export function kiemTraTexHopLe(s: unknown): boolean {
+  const x = typeof s === 'string' ? s.trim() : '';
+  if (!x) return true;
+  if (/\$|\\\\[A-Za-z]|\\$/.test(x)) return false;
+  let depth = 0;
+  for (let i = 0; i < x.length; i++) {
+    const ch = x[i];
+    if (ch === '\\' && i + 1 < x.length) { i++; continue; }
+    if (ch === '{') depth++;
+    else if (ch === '}') { if (--depth < 0) return false; }
+  }
+  if (depth !== 0) return false;
+  if (/\\(?:text|textrm|textbf|textit|mathrm|mathbf|overline|bar|sqrt|color|[dt]?frac|[dt]?binom)\s*(?:\{\s*\}|$)/.test(x)) return false;
+  if (/\\(?:[dt]?frac|[dt]?binom|textcolor)\s*\{[^{}]*\}\s*(?:$|[^\{\s])/.test(x)) return false;
+  const cmds = x.matchAll(/\\([A-Za-z]+)/g);
+  for (const m of cmds) {
+    if (!LENH_KATEX_HOP_LE.has(m[1])) return false;
+  }
+  return true;
+}
+
 export function texSangChu(s: unknown): string {
   let x = chuanTex(s);
-  if (!coTex(x) && !/[{}]/.test(x)) return thapPhanViet(x);
+  x = x.replace(/\\not\s*\\vdots|\\nmid|∤|\\not\s*⋮|(?<![\wÀ-ỹ])not\s*⋮/g, 'không ⋮ ');
+  if (!coTex(x) && !/[{}\\]/.test(x)) return thapPhanViet(x.replace(/(?<![A-Za-z\\])Omega(?![A-Za-z])/g, 'Ω'));
   const nhom = '\\{([^{}]*)\\}';
   for (let lan = 0; lan < 6; lan++) {
     const truoc = x;
+    x = x.replace(new RegExp(`\\\\textcolor\\s*${nhom}\\s*${nhom}`, 'g'), '$2');
+    x = x.replace(new RegExp(`\\{\\s*\\\\color\\s*${nhom}\\s*([^{}]*)\\}`, 'g'), '$2');
+    x = x.replace(new RegExp(`\\\\color\\s*${nhom}`, 'g'), '');
     x = x.replace(new RegExp(`\\\\[dt]?frac\\s*${nhom}\\s*${nhom}`, 'g'), (_, a, b) => `${/^[\w.,]+$/.test(a) ? a : `(${a})`}/${/^[\w.,]+$/.test(b) ? b : `(${b})`}`);
-    x = x.replace(new RegExp(`\\\\binom\\s*${nhom}\\s*${nhom}`, 'g'), 'C($1,$2)');
+    x = x.replace(new RegExp(`\\\\[dt]?binom\\s*${nhom}\\s*${nhom}`, 'g'), 'C($1,$2)');
     x = x.replace(new RegExp(`\\\\sqrt\\s*\\[([^\\]]*)\\]\\s*${nhom}`, 'g'), (_, n, a) => `${doiKyTu(n, SO_TREN, '')}√${a.length > 1 ? `(${a})` : a}`);
     x = x.replace(new RegExp(`\\\\sqrt\\s*${nhom}`, 'g'), (_, a) => `√${a.length > 1 ? `(${a})` : a}`);
     x = x.replace(new RegExp(`\\\\(?:overline|bar)\\s*${nhom}`, 'g'), (_, a) => Array.from(a).map((c) => c + '̅').join(''));
-    x = x.replace(new RegExp(`\\\\(?:text|mathrm|mathbf|textbf|operatorname|mathit|boldsymbol)\\s*${nhom}`, 'g'), '$1');
+    x = x.replace(new RegExp(`\\\\(?:text|textrm|mathrm|mathbf|textbf|textit|operatorname|mathit|boldsymbol|mbox|hl)\\s*${nhom}`, 'g'), '$1');
     x = x.replace(new RegExp(`\\^\\s*${nhom}`, 'g'), (_, a) => doiKyTu(a, SO_TREN, '^'));
     x = x.replace(new RegExp(`_\\s*${nhom}`, 'g'), (_, a) => doiKyTu(a, SO_DUOI, '_'));
     if (x === truoc) break;
@@ -164,16 +199,35 @@ export function texSangChu(s: unknown): string {
   x = x.replace(/_([0-9a-z])/g, (_, a) => doiKyTu(a, SO_DUOI, '_'));
   x = x.replace(/\\left|\\right|\\displaystyle|\\limits/g, '');
   x = x.replace(/\\[,;:!> ]/g, ' ').replace(/\\%/g, '%').replace(/\{,\}/g, ',');
-  x = x.replace(/\\([a-zA-Z]+)/g, (m, ten) => (LENH[ten] !== undefined ? LENH[ten] : ten));
-  return thapPhanViet(x.replace(/[{}]/g, '').replace(/\s+/g, ' ').trim());
+  x = x.replace(/\\([a-zA-Z]+)/g, (_, ten) => (LENH[ten] !== undefined ? LENH[ten] : LENH_HAM_TEX.has(ten) ? ten : ''));
+  x = x.replace(/(?<![A-Za-z\\])Omega(?![A-Za-z])/g, 'Ω');
+  return thapPhanViet(x.replace(/[{}\\]/g, '').replace(/\s+/g, ' ').trim());
 }
 
-// cắt chuỗi dài: chữ thường cắt ở ranh giới từ + "…"; công thức không cắt (cắt giữa lệnh làm KaTeX báo lỗi)
+// cắt văn bản thường theo biên từ (không bao giờ cắt giữa từ hay giữa lệnh TeX / ngoặc {...})
+export function lamSachChu(s: unknown, max = 0): string {
+  const sach = texSangChu(s);
+  if (!max || sach.length <= max) return sach;
+  const tu = sach.split(/\s+/).filter(Boolean);
+  let ra = '';
+  for (const w of tu) {
+    const thu = ra ? `${ra} ${w}` : w;
+    if (thu.length > max) {
+      if (!ra) return w;
+      break;
+    }
+    ra = thu;
+  }
+  return ra.replace(/[\s,.;:–-]+$/, '');
+}
+
+// cắt chuỗi dài: chữ thường cắt ở ranh giới từ + "…"; công thức/ngoặc TeX hợp lệ giữ nguyên (không cắt giữa lệnh làm KaTeX lỗi)
 export function catChu(s: string, max: number): string {
-  if (s.length <= max || coTex(s)) return s;
-  const cat = s.slice(0, max - 1);
-  const i = cat.lastIndexOf(' ');
-  return (i > max * 0.6 ? cat.slice(0, i) : cat).replace(/[\s,.;:–-]+$/, '') + '…';
+  const x = String(s ?? '').trim();
+  if (!max || x.length <= max) return x;
+  if (/[\\{}^_$]/.test(x)) return kiemTraTexHopLe(x) ? x : lamSachChu(x, max);
+  const gon = lamSachChu(x, Math.max(1, max - 1));
+  return gon.length < x.length ? `${gon}…` : gon;
 }
 
 // Công thức trộn chữ tiếng Việt ("Cửa bạn chọn: \frac{1}{3}"): KaTeX coi chữ là biến (nghiêng, mất khoảng trắng) -> bọc các cụm

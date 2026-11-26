@@ -229,9 +229,11 @@ export function bienTheoPha(pha: Pha2D[], t: number, a: number, b: number, xTot:
   return nghi + tho_ * 3;
 }
 
-// khóa màu ẩn số (sơ đồ tư duy): mọi chữ ẩn đứng riêng (không thuộc lệnh TeX) tô cùng một màu ở MỌI bước
+// khóa màu ẩn số (sơ đồ tư duy): mọi chữ ẩn đứng riêng (không thuộc lệnh TeX hay từ tiếng Việt có dấu) tô cùng một màu ở MỌI bước
 export function khoaMauAn(tex: string, an = 'x', m = '#FACC15') {
-  return tex.replace(new RegExp(`(?<![A-Za-z\\\\])${an}(?![A-Za-z])`, 'g'), `{\\color{${m}}${an}}`);
+  const esc = an.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`(\\\\(?:text|textrm|textbf|textit|mathrm|mathbf|color|textcolor|mbox)\\s*(?:\\{[^{}]*\\}){1,2}|\\\\[A-Za-z]+)|(?<![\\p{L}\\\\])(${esc})(?![\\p{L}])`, 'gu');
+  return tex.replace(re, (all, giu, bien) => (giu ? giu : `{\\color{${m}}${bien}}`));
 }
 
 /* ---------------- v98: CHỐNG ĐỨNG HÌNH THẬT (không chỉ "thở") ---------------- */

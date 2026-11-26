@@ -99,7 +99,11 @@ function chonSanKhau_(kb, r) {
   if ((batBuoc ? loaiTT : LOAI_SAN_KHAU_).indexOf(sk.loai) >= 0) return {loai: sk.loai === 'luoi_bayes' && lop !== '12' ? 'so_do_cay' : sk.loai, nguon: 'ai', chi_dao: cd.loi};
   var c3 = k4.canh_3d_vector && typeof k4.canh_3d_vector === 'object' ? k4.canh_3d_vector : {};
   if (mon === 'XAC_SUAT' || !batBuoc && /tính xác suất|xác suất để/i.test(van)) return {loai: loaiXacSuat_(van, lop), nguon: 'suy', chi_dao: cd.loi};
-  var khuon = c3.khuon && c3.khuon !== 'luoi_the_bi_xac_suat' ? c3.khuon : (Array.isArray(c3.doi_tuong) && c3.doi_tuong.length ? '__tu_do__' : null);
+  var c3TuDo = Array.isArray(c3.doi_tuong) && c3.doi_tuong.length &&
+    (typeof suaTruong3DV_ !== 'function' || suaTruong3DV_(c3)) &&
+    (typeof dong3DV_ !== 'function' || dong3DV_(c3));
+  var khuonHopLe = c3.khuon && c3.khuon !== 'luoi_the_bi_xac_suat' && (typeof tenKhuon_ !== 'function' || tenKhuon_(c3.khuon));
+  var khuon = khuonHopLe ? c3.khuon : (c3TuDo ? '__tu_do__' : null);
   if (!khuon && typeof suyKhuon_ === 'function') { var s = suyKhuon_(kb, r); if (s && s.khuon !== 'luoi_the_bi_xac_suat') khuon = s.khuon; }
   var l = loaiThucTe_(van, khuon);
   if (batBuoc && !choDoThiThuan_(van) && /^(kinh_te_do_thi|tang_truong)$/.test(l)) l = null;
@@ -124,9 +128,11 @@ function dungTuSinh_(r, kb) {
   var dich = String(kb.san_khau_dich || ((typeof docHopDongHinh_ === 'function' && docHopDongHinh_(r)) || {}).san_khau_dich || '');
   if (dich === 'tu_sinh_svg') return true;
   if (thucTeNgan_(kb, r)) {
-    var q = chonSanKhau_(kb, r).loai, k4 = kb.khung4tang || {}, sk = k4.san_khau || {};
+    var q = chonSanKhau_(kb, r).loai, k4 = kb.khung4tang || {}, sk = k4.san_khau || {}, c3 = k4.canh_3d_vector || {};
+    var c3Ok = (c3.khuon && (typeof tenKhuon_ !== 'function' || tenKhuon_(c3.khuon))) ||
+      (Array.isArray(c3.doi_tuong) && c3.doi_tuong.length && (typeof suaTruong3DV_ !== 'function' || suaTruong3DV_(c3)) && (typeof dong3DV_ !== 'function' || dong3DV_(c3)));
     if (q === 'tu_sinh_svg' || (q === 'so_do_2d' && !(sk.tham_so || {}).mau)) return true;
-    if (q === '3d_vector' && !k4.canh_3d_vector && !(typeof suyKhuon_ === 'function' && suyKhuon_(kb, r))) return true;
+    if (q === '3d_vector' && !c3Ok && !(typeof suyKhuon_ === 'function' && suyKhuon_(kb, r))) return true;
   }
   if (dich && dich !== 'tu_sinh_svg') return false;
   if (String(kb.mon || r.mon || '').toUpperCase() === 'XAC_SUAT') return false;   // 4 mô-đun xác suất v96 đã đủ
@@ -497,6 +503,10 @@ function tuSuaSanKhau_(kb, r) {
   if (q.loai === 'tu_sinh_svg') {
     kb.san_khau_dich = q.loai;
     if (k4.san_khau && k4.san_khau.loai !== q.loai) delete k4.san_khau;
+    if (k4.canh_3d_vector && !(k4.canh_3d_vector.khuon && (typeof tenKhuon_ !== 'function' || tenKhuon_(k4.canh_3d_vector.khuon)))) {
+      delete k4.canh_3d_vector;
+      sua.push('gỡ canh_3d_vector không khớp khuôn -> chuyển nhánh tu_sinh_svg (ve25d)');
+    }
   } else if (q.loai !== 'hinh_hoc' && q.loai !== '3d_vector') {
     var cu = k4.san_khau && typeof k4.san_khau === 'object' ? k4.san_khau : {};
     var ts = cu.loai === q.loai && cu.tham_so && typeof cu.tham_so === 'object' ? cu.tham_so : {};

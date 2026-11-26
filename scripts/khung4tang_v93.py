@@ -33,7 +33,7 @@ BUOC_KHAO_SAT = re.compile(r"tối ưu|lớn nhất|nhỏ nhất|gtln|gtnn|cực
 
 
 def chu_sach(s, toi_da=0, hoa=True):
-    """Bỏ mã TeX ($, \\lệnh, {}, ^, _) -> chữ thường in hoa, gọn khoảng trắng; cắt ở ranh giới từ nếu quá dài."""
+    """Bỏ mã TeX ($, \\lệnh, {}, ^, _) -> chữ thường Unicode, gọn khoảng trắng; cắt ở ranh giới từ nếu quá dài."""
     x = str(s or "")
     # v96: đổi TeX -> Unicode GIỮ NGHĨA trước khi lọc (trước đây "\overline{A}: tích \not\vdots 4" thành "A: tích 4" ngược nghĩa,
     # "n(\Omega)" thành "n( )")
@@ -41,25 +41,41 @@ def chu_sach(s, toi_da=0, hoa=True):
         import khung4tang_v96 as _v96
         x = _v96.tex_sang_chu(x)
     except Exception:   # noqa: BLE001
-        pass
-    x = re.sub(r"\\(?:text|mathrm|mathbf)\s*\{([^{}]*)\}", r"\1", x)
-    x = re.sub(r"\\(times|cdot)", "×", x)
-    x = re.sub(r"\\[a-zA-Z]+", " ", x)
-    x = re.sub(r"[${}^_\\]", "", x)
+        x = re.sub(r"\\textcolor\s*\{[^{}]*\}\s*\{([^{}]*)\}", r"\1", x)
+        x = re.sub(r"\{\s*\\color\s*\{[^{}]*\}\s*([^{}]*)\}", r"\1", x)
+        x = re.sub(r"\\(?:text|textrm|mathrm|mathbf|textbf|textit)\s*\{([^{}]*)\}", r"\1", x)
+        x = re.sub(r"\\(times|cdot)", "×", x)
+        x = re.sub(r"\\[a-zA-Z]+", " ", x)
+        x = re.sub(r"[${}^_\\]", "", x)
     x = re.sub(r"\s+", " ", x).strip()
     if hoa:
         x = x.upper()
     return cat_tu(x, toi_da) if toi_da else x
 
 
-def cat_nhan(x, toi_da):
-    """Giữ trọn công thức, để Remotion tự đo và thu chữ."""
-    return x if re.search(r"[\\{}^_$]", x) else x[:toi_da]
+def cat_nhan(x, toi_da, giu_tex=True):
+    """Giữ trọn công thức KaTeX hợp lệ; nếu là văn bản thường hoặc mã TeX lỗi/cụt thì bóc TeX -> Unicode rồi cắt theo biên từ."""
+    s = re.sub(r"\s+", " ", str(x or "")).strip()
+    if not s:
+        return ""
+    if re.search(r"[\\{}^_$]", s):
+        if giu_tex:
+            try:
+                import khung4tang_v96 as _v96
+                if _v96.kiem_tra_tex_hop_le(s):
+                    return s
+            except Exception:   # noqa: BLE001
+                return s
+        return chu_sach(s, toi_da, hoa=False)
+    return cat_tu(s, toi_da)
 
 
 def cat_tu(x, toi_da):
-    if len(x) <= toi_da or re.search(r"[\\{}^_$]", x):
+    x = re.sub(r"\s+", " ", str(x or "")).strip()
+    if not toi_da or len(x) <= toi_da:
         return x
+    if re.search(r"[\\{}^_$]", x):
+        return chu_sach(x, toi_da, hoa=False)
     # v96: cụm "không ⋮ 4" là MỘT ý — không bao giờ cắt còn "tích không" (mất nghĩa) hay "tích ⋮ 4" (ngược nghĩa):
     # bỏ bớt từ thường đứng ngay trước cụm cho tới khi vừa
     m = re.search(r"(?i)không\s*⋮\s*\d+", x)
@@ -70,9 +86,18 @@ def cat_tu(x, toi_da):
         y = (" ".join(dau + [cum]) + sau).strip()
         if len(y) <= toi_da:
             return y
-    cat = x[:toi_da + 1].rsplit(" ", 1)[0].rstrip(" ,.;:·-")
+    tu = x.split(" ")
+    ra = ""
+    for w in tu:
+        thu = (ra + " " + w) if ra else w
+        if len(thu) > toi_da:
+            if not ra:
+                return w
+            break
+        ra = thu
+    cat = ra.rstrip(" ,.;:·-")
     cat = re.sub(r"(?i)\s+không$", "", cat)   # không để "không" treo cuối (mất vế chia hết)
-    return cat if len(cat) >= toi_da * 0.5 else x[:toi_da].rstrip()
+    return cat or tu[0]
 
 
 def che_so(s, so_lo):

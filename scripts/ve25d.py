@@ -59,36 +59,191 @@ def thoat(s):
     return str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def nhan_toan(s):
-    """Nội dung text XML đã escape, chỉ sinh thêm tspan chỉ số."""
-    s = str(s)
+def _tach_nhom(s, i):
+    if i >= len(s) or s[i] != "{":
+        return "", i
+    depth = 1
+    for j in range(i + 1, len(s)):
+        if s[j] == "{":
+            depth += 1
+        elif s[j] == "}":
+            depth -= 1
+            if not depth:
+                return s[i + 1:j], j + 1
+    return "", i
+
+
+def _don_gian(t):
+    return bool(t) and all(c.isalnum() or c in ".,_" for c in t)
+
+
+def _tex_sang_chu_svg(s):
+    """Bóc sạch \\text{}, {\\color{...}...}, \\textcolor{}{}, \\textbf{} -> chữ tiếng Việt + Unicode (S₀, u₁, x², √3, 1/3)."""
+    s = str(s or "").replace("$", "")
     sub_src = "0123456789+-=()aehijklmnoprstuvx"
     sup_src = "0123456789+-=()in"
     sub_dst = "₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎ₐₑₕᵢⱼₖₗₘₙₒₚᵣₛₜᵤᵥₓ"
     sup_dst = "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ⁱⁿ"
-    signs = {"times": "×", "cdot": "·", "approx": "≈", "pi": "π", "Omega": "Ω",
-             "le": "≤", "ge": "≥", "infty": "∞", "cap": "∩", "cup": "∪", "mid": "|"}
-    def group(i):
-        if i >= len(s) or s[i] != "{":
-            return "", i
-        depth = 1
-        for j in range(i + 1, len(s)):
-            if s[j] == "{":
-                depth += 1
-            elif s[j] == "}":
-                depth -= 1
-                if not depth:
-                    return s[i+1:j], j + 1
-        return "", i
-
+    signs = {"times": "×", "cdot": "·", "div": "÷", "pm": "±", "approx": "≈", "pi": "π", "Omega": "Ω", "omega": "ω",
+             "le": "≤", "leq": "≤", "ge": "≥", "geq": "≥", "ne": "≠", "neq": "≠", "infty": "∞", "cap": "∩", "cup": "∪",
+             "in": "∈", "mid": "|", "vdots": "⋮", "Rightarrow": "⇒", "rightarrow": "→", "to": "→", "Leftrightarrow": "⇔",
+             "Delta": "Δ", "alpha": "α", "beta": "β", "circ": "°", "degree": "°", "perp": "⊥", "parallel": "∥",
+             "angle": "∠", "triangle": "△", "emptyset": "∅", "quad": " ", "qquad": " ",
+             "sin": "sin", "cos": "cos", "tan": "tan", "cot": "cot", "log": "log", "ln": "ln", "max": "max", "min": "min"}
     ra = []
     i = 0
     while i < len(s):
         ch = s[i]
         i += 1
+        if ch == "{":
+            noi, end = _tach_nhom(s, i - 1)
+            if end > i - 1:
+                i = end
+                ra.append(_tex_sang_chu_svg(noi))
+            continue
+        if ch == "}":
+            continue
         if ch in "_^" and i < len(s):
             src, dst = (sub_src, sub_dst) if ch == "_" else (sup_src, sup_dst)
-            arg, end = group(i)
+            arg, end = _tach_nhom(s, i)
+            if end == i:
+                end = i + 1
+                while end < len(s) and s[end].isdigit() and s[i].isdigit():
+                    end += 1
+                arg = s[i:end]
+            i = end
+            arg = _tex_sang_chu_svg(arg) if ("\\" in arg or "{" in arg) else arg
+            if arg == "them":
+                ra.append(" thêm")
+            elif arg and all(c in src for c in arg):
+                ra.append("".join(dst[src.index(c)] for c in arg))
+            else:
+                ra.append(arg)
+        elif ch == "\\":
+            if i < len(s) and not s[i].isalpha():
+                if s[i] in ",;:!> ":
+                    ra.append(" ")
+                elif s[i] == "%":
+                    ra.append("%")
+                i += 1
+                continue
+            j = i
+            while i < len(s) and s[i].isalpha():
+                i += 1
+            cmd = s[j:i]
+            while i < len(s) and s[i] == " ":
+                i += 1
+            if cmd in signs:
+                ra.append(signs[cmd])
+            elif cmd == "color":
+                _, end = _tach_nhom(s, i)
+                if end > i:
+                    i = end
+            elif cmd == "textcolor":
+                _, end1 = _tach_nhom(s, i)
+                if end1 > i:
+                    i = end1
+                    while i < len(s) and s[i] == " ":
+                        i += 1
+                    arg2, end2 = _tach_nhom(s, i)
+                    if end2 > i:
+                        i = end2
+                        ra.append(_tex_sang_chu_svg(arg2))
+            elif cmd in ("text", "textrm", "textbf", "textit", "mathrm", "mathbf", "mathit", "operatorname", "mbox", "hl"):
+                arg, end = _tach_nhom(s, i)
+                if end > i:
+                    i = end
+                    ra.append(_tex_sang_chu_svg(arg))
+            elif cmd == "sqrt":
+                if i < len(s) and s[i] == "[":
+                    q = s.find("]", i + 1)
+                    if q > i:
+                        bac = s[i + 1:q]
+                        i = q + 1
+                        while i < len(s) and s[i] == " ":
+                            i += 1
+                        ra.append("".join(sup_dst[sup_src.index(c)] if c in sup_src else c for c in bac))
+                arg, end = _tach_nhom(s, i)
+                if end > i:
+                    i = end
+                    noi = _tex_sang_chu_svg(arg)
+                    ra.append("√" + (noi if len(noi) <= 1 else "(" + noi + ")"))
+            elif cmd in ("overline", "bar"):
+                arg, end = _tach_nhom(s, i)
+                if end > i:
+                    i = end
+                    ra.append("".join(c + "\u0304" for c in _tex_sang_chu_svg(arg)))
+            elif cmd in ("frac", "dfrac", "tfrac"):
+                num, end1 = _tach_nhom(s, i)
+                if end1 > i:
+                    i = end1
+                    while i < len(s) and s[i] == " ":
+                        i += 1
+                    den, end2 = _tach_nhom(s, i)
+                    if end2 > i:
+                        i = end2
+                        a, b = _tex_sang_chu_svg(num), _tex_sang_chu_svg(den)
+                        ra.append(("%s/%s" % (a if _don_gian(a) else "(%s)" % a, b if _don_gian(b) else "(%s)" % b)))
+            elif cmd in ("binom", "dbinom", "tbinom"):
+                a, end1 = _tach_nhom(s, i)
+                if end1 > i:
+                    i = end1
+                    b, end2 = _tach_nhom(s, i)
+                    if end2 > i:
+                        i = end2
+                        ra.append("C(%s,%s)" % (_tex_sang_chu_svg(a), _tex_sang_chu_svg(b)))
+            # lệnh không nhận diện / bị cắt cụt (vd \te) -> bỏ sạch, không nhả mã thô
+        else:
+            ra.append(ch)
+    return " ".join("".join(ra).split())
+
+
+def _cat_bien_tu(s, toi_da):
+    """Cắt chuỗi đã làm sạch theo biên từ (không bao giờ cắt giữa từ hay giữa lệnh LaTeX)."""
+    x = " ".join(str(s or "").split())
+    if not toi_da or len(x) <= toi_da:
+        return x
+    tu = x.split(" ")
+    ra = ""
+    for w in tu:
+        thu = (ra + " " + w) if ra else w
+        if len(thu) > toi_da:
+            if not ra:
+                return w
+            break
+        ra = thu
+    return ra.rstrip(" ,.;:·-") or tu[0]
+
+
+def nhan_toan(s):
+    """Nội dung text XML đã escape, bóc sạch \\text/{\\color}/\\textbf và sinh tspan chỉ số khi cần."""
+    s = str(s or "").replace("$", "")
+    sub_src = "0123456789+-=()aehijklmnoprstuvx"
+    sup_src = "0123456789+-=()in"
+    sub_dst = "₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎ₐₑₕᵢⱼₖₗₘₙₒₚᵣₛₜᵤᵥₓ"
+    sup_dst = "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ⁱⁿ"
+    signs = {"times": "×", "cdot": "·", "div": "÷", "pm": "±", "approx": "≈", "pi": "π", "Omega": "Ω", "omega": "ω",
+             "le": "≤", "leq": "≤", "ge": "≥", "geq": "≥", "ne": "≠", "neq": "≠", "infty": "∞", "cap": "∩", "cup": "∪",
+             "in": "∈", "mid": "|", "vdots": "⋮", "Rightarrow": "⇒", "rightarrow": "→", "to": "→", "Leftrightarrow": "⇔",
+             "Delta": "Δ", "alpha": "α", "beta": "β", "circ": "°", "degree": "°", "perp": "⊥", "parallel": "∥",
+             "angle": "∠", "triangle": "△", "emptyset": "∅", "quad": " ", "qquad": " ",
+             "sin": "sin", "cos": "cos", "tan": "tan", "cot": "cot", "log": "log", "ln": "ln", "max": "max", "min": "min"}
+    ra = []
+    i = 0
+    while i < len(s):
+        ch = s[i]
+        i += 1
+        if ch == "{":
+            noi, end = _tach_nhom(s, i - 1)
+            if end > i - 1:
+                i = end
+                ra.append(nhan_toan(noi))
+            continue
+        if ch == "}":
+            continue
+        if ch in "_^" and i < len(s):
+            src, dst = (sub_src, sub_dst) if ch == "_" else (sup_src, sup_dst)
+            arg, end = _tach_nhom(s, i)
             if end == i:
                 end = i + 1
                 while end < len(s) and s[end].isdigit() and s[i].isdigit():
@@ -102,29 +257,50 @@ def nhan_toan(s):
                 ra.append('<tspan baseline-shift="%s" font-size="72%%">%s</tspan>' %
                           ("sub" if ch == "_" else "super", nhan_toan(arg)))
         elif ch == "\\":
+            if i < len(s) and not s[i].isalpha():
+                if s[i] in ",;:!> ":
+                    ra.append(" ")
+                elif s[i] == "%":
+                    ra.append("%")
+                i += 1
+                continue
             j = i
             while i < len(s) and s[i].isalpha():
                 i += 1
             cmd = s[j:i]
-            arg, end = group(i)
+            while i < len(s) and s[i] == " ":
+                i += 1
+            arg, end = _tach_nhom(s, i)
             if cmd in signs:
                 ra.append(signs[cmd])
-            elif end > i and cmd in ("sqrt", "overline", "bar", "text", "mathrm", "frac", "dfrac", "tfrac"):
+            elif cmd == "color" and end > i:
+                i = end
+            elif cmd == "textcolor" and end > i:
+                i = end
+                while i < len(s) and s[i] == " ":
+                    i += 1
+                arg2, end2 = _tach_nhom(s, i)
+                if end2 > i:
+                    i = end2
+                    ra.append(nhan_toan(arg2))
+            elif end > i and cmd in ("sqrt", "overline", "bar", "text", "textrm", "textbf", "textit", "mathrm", "mathbf", "mathit", "operatorname", "mbox", "hl", "frac", "dfrac", "tfrac"):
                 i = end
                 if cmd == "sqrt":
-                    ra.append("√" + (nhan_toan(arg) if len(arg) == 1 else "(" + nhan_toan(arg) + ")"))
+                    ra.append("√" + (nhan_toan(arg) if len(arg) <= 1 else "(" + nhan_toan(arg) + ")"))
                 elif cmd in ("overline", "bar"):
-                    ra.append(thoat("".join(c + "̄" for c in arg)))
+                    ra.append(thoat("".join(c + "\u0304" for c in arg)))
                 elif cmd.endswith("frac"):
-                    den, end = group(i)
+                    while i < len(s) and s[i] == " ":
+                        i += 1
+                    den, end = _tach_nhom(s, i)
                     if end == i:
                         raise ValueError("TS_NHAN_TOAN: phân số thiếu mẫu")
                     i = end
-                    ra.append("(" + nhan_toan(arg) + ")/(" + nhan_toan(den) + ")")
+                    a, b = nhan_toan(arg), nhan_toan(den)
+                    ra.append(("%s/%s" % (a if _don_gian(arg) else "(%s)" % a, b if _don_gian(den) else "(%s)" % b)))
                 else:
                     ra.append(nhan_toan(arg))
-            else:
-                ra.append("\\" + cmd)
+            # lệnh không nhận diện / bị cắt cụt -> bỏ sạch, không nhả mã thô
         else:
             ra.append(thoat(ch))
     return "".join(ra)
@@ -403,9 +579,8 @@ def _kich_pill(s, co):
 def tam_nhan(x, y, text, mau=None, co=24):
     """Nhãn viên thuốc: hộp nền tối đặc viền màu theme, rộng theo độ dài chữ (không bao giờ bị nét cắt). (x, y) = tâm hộp."""
     co = max(int(co), CO_CHU_MIN)
-    s = str(text)
     toi_da = max(1, int((W - LE - 26.0) / (0.56 * co)))
-    s = s[:toi_da]
+    s = _cat_bien_tu(_tex_sang_chu_svg(text), toi_da)
     w, h = _kich_pill(s, co)
     x0 = min(max(x - w / 2, LE / 2), W - LE / 2 - w)
     y0 = min(max(y - h / 2, LE / 2), H - LE / 2 - h)
@@ -441,8 +616,8 @@ def mui_ten_kich_thuoc(x1, y1, x2, y2, text, lech=26, mau=None):
     ux, uy = _don_vi(x2 - x1, y2 - y1)
     pnx, pny = -uy, ux
     d0 = abs(float(lech)) or 26.0
-    s_txt = str(text)
-    w, h = _kich_pill(s_txt[:max(1, int((W - LE - 26.0) / (0.56 * CO_CHU_MIN)))], CO_CHU_MIN) if s_txt else (0.0, 0.0)
+    s_txt = _cat_bien_tu(_tex_sang_chu_svg(text), max(1, int((W - LE - 26.0) / (0.56 * CO_CHU_MIN)))) if str(text or "").strip() else ""
+    w, h = _kich_pill(s_txt, CO_CHU_MIN) if s_txt else (0.0, 0.0)
     dai = math.hypot(x2 - x1, y2 - y1)
     xa = h / 2 + 10.0 if (s_txt and dai < w + 70.0) else 0.0
     uu = 1.0 if float(lech) >= 0 else -1.0
@@ -576,7 +751,7 @@ def luoi_o(x, y, cot, hang, kich_thuoc=56, o_to=None, nhan_o=None):
     toi_da = max(1, int((k - 6.0) / (0.56 * CO_CHU_MIN)))
     for (i, j), ten in nh.items():
         if 0 <= i < cot and 0 <= j < hang and ten:
-            out += chu(x + i * k + k / 2, y + j * k + k / 2 + CO_CHU_MIN * 0.36, ten[:toi_da], co=CO_CHU_MIN, mau="nen" if (i, j) in to else "chu")
+            out += chu(x + i * k + k / 2, y + j * k + k / 2 + CO_CHU_MIN * 0.36, _cat_bien_tu(_tex_sang_chu_svg(ten), toi_da), co=CO_CHU_MIN, mau="nen" if (i, j) in to else "chu")
     return out
 
 

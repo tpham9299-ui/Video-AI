@@ -175,33 +175,32 @@ function xuLyKiemDuyetBoCuc_(sh, r, kd) {
   var lan = (Number(akt.kd_lan) || 0) + 1;
   nhatKy_('KIEM_DUYET', r.id + ' lần ' + lan + ': ' + nang.length + ' lỗi bố cục | ' + nang.slice(0, 4).join(' | ').slice(0, 400));
   if (!r.file_kich_ban) { baoLoiDung_(sh, r, 'KIEM_DUYET: ' + nang.slice(0, 2).join('; ')); return { ok: true }; }
-  // v99.2: chung trần tự sửa TRAN_TU_SUA_ (2) với Mắt thần - trước đây kd_lan không có trần (lặp vô hạn, đốt quota)
-  // v101.5: hạn mức RIÊNG: bo_cuc tối đa TRAN_BO_CUC_ (1) lượt, Mắt thần tối đa TRAN_TU_SUA_ (2) lượt (so_lan_mat_than) - lỗi bố cục
-  // ban đầu không đốt sạch lượt tự sửa của Mắt thần về sau. so_lan_tu_sua vẫn là TỔNG để đọc nhật ký.
+  // v102.0: khóa trần chung tối đa TRAN_TU_SUA_ (1) lần dựng lại/bài cho cả bố cục và Mắt thần (tránh đốt slot GitHub Actions)
   var daSua = Number(akt.so_lan_tu_sua) || 0;
   var daBoCuc = Number(akt.so_lan_bo_cuc) || 0;
-  if (daBoCuc >= TRAN_BO_CUC_) {
-    var lyDoKD = 'Kiểm duyệt bố cục vẫn lỗi sau ' + daBoCuc + ' lần tự sửa bố cục: ' + nang.slice(0, 3).join(' | ');
+  if (daSua >= TRAN_TU_SUA_ || daBoCuc >= TRAN_BO_CUC_) {
+    var lyDoKD = 'Kiểm duyệt bố cục vẫn lỗi sau ' + daSua + '/' + TRAN_TU_SUA_ + ' lần tự sửa: ' + nang.slice(0, 3).join(' | ');
     ghi_(sh, r._row, { trang_thai: 'LOI', ghi_chu: lyDoKD.slice(0, 300) });
     nhatKy_('TU_SUA_HET_LUOT', r.id + ': ' + lyDoKD.slice(0, 300));
     guiZaloMotLan_('KD_HET_' + r.id + '_' + daSua, '🛑 ' + r.id + (r.chu_de ? ' (' + r.chu_de + ')' : '') + ': ' + lyDoKD.slice(0, 600) +
-      '\nĐã dừng tự sửa bố cục (tối đa ' + TRAN_BO_CUC_ + ' lần). /sua ' + r.id + ' <góp ý> để sửa tay hoặc /bo ' + r.id + '.');
+      '\nĐã dừng tự sửa (tối đa ' + TRAN_TU_SUA_ + ' lần dựng lại/bài). /sua ' + r.id + ' <góp ý> để sửa tay hoặc /bo ' + r.id + '.');
     return { ok: true, het_luot: true };
   }
   traVeSuaKichBan_(sh, r,
     'KIỂM DUYỆT BỐ CỤC TỰ ĐỘNG (đo trên khung hình thật) KHÔNG ĐẠT, PHẢI SỬA HẾT: ' + nang.slice(0, 10).join(' || ') +
     '. Cách sửa chung: bớt vật/chữ trong cảnh bị lỗi, đặt các vật cách xa nhau (x, y), nhãn ngắn ≤ 22 ký tự, công thức LaTeX đúng cú pháp.',
-    'Kiểm duyệt bố cục lần ' + lan + ' chưa đạt: tự sửa kịch bản (bố cục ' + (daBoCuc + 1) + '/' + TRAN_BO_CUC_ + ')',
+    'Kiểm duyệt bố cục lần ' + lan + ' chưa đạt: tự sửa kịch bản (' + (daSua + 1) + '/' + TRAN_TU_SUA_ + ')',
     { kd_lan: lan, kd_loi: nang.slice(0, 5), so_lan_tu_sua: daSua + 1, so_lan_bo_cuc: daBoCuc + 1, ghi_chu_sua_tu_dong: ['bo_cuc: ' + nang.slice(0, 3).join(' | ').slice(0, 300)] });
+  nhatKy_('AUTO_HEAL_BO_CUC', r.id + ' lần ' + (daSua + 1) + '/' + TRAN_TU_SUA_ + ': ' + nang.slice(0, 4).join(' | ').slice(0, 300));
   return { ok: true, sua: true };
 }
 
-/* ===================== v99.2: VÒNG MẮT THẦN TỰ SỬA (AUTO-HEAL) — CHỈ LỖI CỨNG, TỐI ĐA 2 LẦN / MÃ ĐỀ ===================== */
-// Mắt thần 3×3 (dung-video.yml -> doPost) chặn đăng: lỗi CỨNG do kịch bản gây ra -> trả về BP2 kèm chỉ thị sửa từng lỗi
+/* ===================== v99.2/v102.0: VÒNG MẮT THẦN TỰ SỬA (AUTO-HEAL) — CHỈ LỖI CỨNG, TỐI ĐA 1 LẦN DỰNG LẠI / BÀI ===================== */
+// Mắt thần 3×3 + lỗi bố cục nặng (dung-video.yml -> doPost) chặn đăng: lỗi CỨNG do kịch bản gây ra -> trả về BP2 kèm chỉ thị sửa từng lỗi
 // (viết lại -> CO_KICH_BAN -> BP3 tự dựng lại). Góp ý thẩm mỹ / ô nang:false / lỗi hệ thống (logo) KHÔNG dựng lại (không đốt quota).
 // Bộ đếm so_lan_tu_sua + ghi_chu_sua_tu_dong nằm trong JSON ai_kiem_tra (không thêm cột). Tắt: CAU_HINH TU_SUA_MAT_THAN = TAT.
-var TRAN_TU_SUA_ = 2;    // lượt tự sửa của Mắt thần (so_lan_mat_than)
-var TRAN_BO_CUC_ = 1;    // v101.5: lượt tự sửa riêng của kiểm duyệt bố cục (so_lan_bo_cuc)
+var TRAN_TU_SUA_ = 1;    // v102.0: trần chung tối đa 1 lần dựng lại / bài (dùng chung Mắt thần + bố cục)
+var TRAN_BO_CUC_ = 1;    // v102.0: trần bố cục = 1 (nằm trong trần chung TRAN_TU_SUA_)
 var LOI_TU_SUA_ = {
   cat_chu: 'chữ bị cắt / tràn khung: rút ngắn tiêu đề / nhãn / dòng công thức của cảnh đó (tiêu đề ≤ 34 ký tự, nhãn ≤ 22 ký tự), tách công thức dài thành 2 dòng',
   chong_chu: 'chữ / nhãn chồng nhau: bớt số dòng trên màn hình của cảnh đó, nhãn ngắn hơn, đặt các nhãn xa nhau',
@@ -212,15 +211,38 @@ var LOI_TU_SUA_ = {
   t2_trong: 'tầng 2 trống: khai báo đủ sân khấu (canh_3d_vector / san_khau / tu_sinh) có hình cho MỌI bước giải',
   hinh_dung_im: 'hình đứng im: mỗi bước giải phải đổi hình (pha / lớp mới gắn khi_noi khớp lời từng bước)',
   lech_pha: 'lệch pha hình - tiếng: bước "Kết luận / Đáp số" và thẻ chốt phải gắn khi_noi đúng cụm lời ĐỌC RA đáp số trong cảnh dap_an; lời cảnh dap_an phải đọc rõ con số đáp án',
-  tu_sinh_hong: 'sân khấu tự sinh hỏng: viết lại mã tu_sinh (import ve25d; chữ >= 24 px, nhãn bằng ve25d.nhan đặt ngoài hình, màu ve25d.MAU) cho đúng hợp đồng hình'
+  tu_sinh_hong: 'sân khấu tự sinh hỏng: viết lại mã tu_sinh (import ve25d; chữ >= 24 px, nhãn bằng ve25d.nhan đặt ngoài hình, màu ve25d.MAU) cho đúng hợp đồng hình',
+  hinh_nho: 'hình minh họa quá nhỏ: phóng to vật thể chính chiếm đủ vùng trung tâm Tầng 2 (cao >= 380 px), bỏ khoảng trắng thừa',
+  tran_day: 'nội dung tràn đáy khung: rút gọn số bước/dòng chữ và công thức ở cảnh đó, giữ đáy nội dung cách mép dưới >= 180 px',
+  nhan_de: 'nhãn đè lên nét vẽ hoặc đè nhau: rút nhãn ≤ 18 ký tự, đẩy nhãn ra ngoài hình bằng ve25d.nhan và giảm mật độ chú thích'
 };
 function batTuSuaMatThan_() { return String((typeof cauHinh_ === 'function' && cauHinh_('TU_SUA_MAT_THAN')) || 'BAT').toUpperCase() !== 'TAT'; }
-// -> {cung: [{o, loai, mo_ta}], nhe: [...]}: chỉ lỗi nặng thuộc LOI_TU_SUA_ là lỗi cứng tự sửa được
-function phanLoaiLoiTuSua_(mt) {
-  var cung = [], nhe = [];
+// -> {cung: [{o, loai, mo_ta}], nhe: [...]}: chỉ lỗi nặng thuộc LOI_TU_SUA_ là lỗi cứng tự sửa được (gộp cả bo_cuc_loi)
+function phanLoaiLoiTuSua_(mt, boCucLoi) {
+  var cung = [], nhe = [], daCo = {};
   ((mt && mt.loi) || []).forEach(function (x) {
     if (!x || !x.loai) return;
-    if (x.nang !== false && LOI_TU_SUA_[x.loai]) cung.push(x); else nhe.push(x);
+    var loai = String(x.loai).trim().toLowerCase();
+    if (x.nang !== false && LOI_TU_SUA_[loai]) {
+      var ban = { o: x.o, loai: loai, mo_ta: x.mo_ta, nang: true };
+      cung.push(ban);
+      daCo[loai + '|' + String(x.mo_ta || '').slice(0, 60)] = 1;
+    } else nhe.push(x);
+  });
+  (Array.isArray(boCucLoi) ? boCucLoi : []).forEach(function (raw) {
+    var s = String(raw || '').trim();
+    if (!s) return;
+    var ma = /TEX_THO|KATEX_LOI|TEX_THIEU_NGOAC/i.test(s) ? 'latex_tho'
+      : /NHAN_DE/i.test(s) ? 'nhan_de'
+      : /CHU_DE/i.test(s) ? 'chong_chu'
+      : /TRAN_DAY/i.test(s) ? 'tran_day'
+      : /CAT_CHU|TRAN_MEP/i.test(s) ? 'cat_chu'
+      : /t2_trong|TANG_2_TRONG/i.test(s) ? 't2_trong' : '';
+    if (!ma || !LOI_TU_SUA_[ma]) return;
+    var khoa = ma + '|' + s.slice(0, 60);
+    if (daCo[khoa]) return;
+    daCo[khoa] = 1;
+    cung.push({ o: 'BC', loai: ma, mo_ta: s.slice(0, 160), nang: true });
   });
   return {cung: cung, nhe: nhe};
 }
@@ -234,23 +256,23 @@ function chiThiSuaLoi_(cung) {
 }
 // Trả {tu_sua: true} khi đã đẩy về BP2; {tu_sua: false, het_luot, cung, nhe} khi để chủ kênh quyết định (CHO + Zalo)
 function xuLyTuSuaMatThan_(sh, r, d) {
-  var pl = phanLoaiLoiTuSua_(d && d.mat_than);
+  var pl = phanLoaiLoiTuSua_(d && d.mat_than, d && d.bo_cuc_loi);
   var akt = docAiKT_(r);
   var tong = Number(akt.so_lan_tu_sua) || 0;
-  var daSua = Number(akt.so_lan_mat_than) || 0;   // v101.5: đếm RIÊNG lượt Mắt thần (không tính lượt bố cục)
-  var kq = {tu_sua: false, het_luot: false, cung: pl.cung, nhe: pl.nhe, da_sua: daSua};
+  var daSua = Number(akt.so_lan_mat_than) || 0;
+  var kq = {tu_sua: false, het_luot: false, cung: pl.cung, nhe: pl.nhe, da_sua: tong};
   if (!batTuSuaMatThan_() || !pl.cung.length || !r.file_kich_ban) return kq;
-  if (daSua >= TRAN_TU_SUA_) { kq.het_luot = true; return kq; }
+  if (tong >= TRAN_TU_SUA_) { kq.het_luot = true; return kq; }
   var ghiChu = pl.cung.slice(0, 6).map(function (x) { return x.loai + (x.mo_ta ? ': ' + String(x.mo_ta).slice(0, 80) : ''); });
   var coTuSinh = pl.cung.some(function (x) { return x.loai === 'tu_sinh_hong' || x.loai === 't2_trong'; });
-  traVeSuaKichBan_(sh, r, chiThiSuaLoi_(pl.cung), 'Mắt thần tự sửa lần ' + (daSua + 1) + '/' + TRAN_TU_SUA_,
+  traVeSuaKichBan_(sh, r, chiThiSuaLoi_(pl.cung), 'Mắt thần tự sửa lần ' + (tong + 1) + '/' + TRAN_TU_SUA_,
     {so_lan_tu_sua: tong + 1, so_lan_mat_than: daSua + 1, ghi_chu_sua_tu_dong: ghiChu, mt_file: String((d && d.file_id) || '')},
     function (kb) {
       if (!coTuSinh) return;
       delete kb.tu_sinh_da_thu; delete kb.tu_sinh_hong;   // cho BP2 lập lại sân khấu tự sinh (vá tối đa 2 lần)
       if (kb.khung4tang && kb.khung4tang.tu_sinh) delete kb.khung4tang.tu_sinh;
     });
-  nhatKy_('TU_SUA_MAT_THAN', r.id + ' lần ' + (daSua + 1) + '/' + TRAN_TU_SUA_ + ': ' + ghiChu.join(' | ').slice(0, 300));
+  nhatKy_('TU_SUA_MAT_THAN', r.id + ' lần ' + (tong + 1) + '/' + TRAN_TU_SUA_ + ': ' + ghiChu.join(' | ').slice(0, 300));
   kq.tu_sua = true;
   return kq;
 }
@@ -1432,28 +1454,22 @@ function heSoSanXuat_() {
   return { ty_le: Math.round(tl * 100), he_so: Math.max(1, Math.min(2.5, 0.6 / Math.max(0.24, tl))), them_song_song: tl < 0.5 ? 1 : 0 };
 }
 
-// v99.7: dọn rác Script Properties — CHỈ xóa khóa HE_yt_* có giá trị "loi" (video YouTube học edit bị lỗi).
-// Giữ nguyên khóa có ngày hợp lệ, key Gemini và mọi cấu hình hệ thống. Còn <= 50 khóa -> cờ CAI_DAT_KHOA = '0' (Cài đặt tự mở khóa chỉnh sửa).
-// v101.4: cài trigger dọn rác hằng tuần (Chủ nhật ~03:00 giờ VN). Chạy tay MỘT lần; gọi lại không tạo trùng.
+// v99.7/v102.0: dọn rác Script Properties hằng ngày (03:00 giờ VN) và tự kích hoạt khi vượt 35/50 khóa.
+// Xóa khóa HE_yt_* lỗi/quá lớn, HE_* quá 30 ngày, và dấu hết hạn mực ngày cũ (kd_*/kdm_* < khoNgayPT_()); giữ nguyên BAD, key Gemini, secret & cấu hình.
 function caiTriggerDonRacTuan() {
   var ten = 'donRacScriptProperties';
   var co = ScriptApp.getProjectTriggers().filter(function (t) { return t.getHandlerFunction() === ten; });
-  if (co.length) {
-    var m1 = 'Trigger ' + ten + ' đã tồn tại (' + co.length + ') - không tạo thêm.';
-    Logger.log(m1);
-    try { nhatKy_('DON_RAC', m1); } catch (e) {}
-    return { da_co: co.length, tao_moi: false };
-  }
-  ScriptApp.newTrigger(ten).timeBased().onWeekDay(ScriptApp.WeekDay.SUNDAY).atHour(3).nearMinute(0).create();
-  var m2 = 'Đã tạo trigger ' + ten + ': mỗi Chủ nhật khoảng 03:00 (múi giờ dự án Apps Script).';
+  co.forEach(function (t) { try { ScriptApp.deleteTrigger(t); } catch (e) {} });
+  ScriptApp.newTrigger(ten).timeBased().everyDays(1).atHour(3).nearMinute(0).create();
+  var m2 = 'Đã cài trigger ' + ten + ': hằng ngày khoảng 03:00 (thay ' + co.length + ' trigger cũ).';
   Logger.log(m2);
   try { nhatKy_('DON_RAC', m2); } catch (e2) {}
-  return { da_co: 0, tao_moi: true };
+  return { da_co: co.length, tao_moi: true, chu_ky: 'hang_ngay' };
 }
 /* ===================== v101.7: GIÁM SÁT VẬN HÀNH RẢNH TAY ===================== */
 var GIOI_HAN_SCRIPT_PROPS_ = 50, CANH_BAO_SCRIPT_PROPS_ = 35;
 
-// Báo cáo sức khỏe hệ thống (tiếng Việt, ngắn gọn). Chỉ đọc dữ liệu có sẵn: HANG_DOI (COT), NHAT_KY (muc, thoi_gian), kho key (khoDanhSachKey_).
+// Báo cáo sức khỏe hệ thống (tiếng Việt, ngắn gọn). Chỉ đọc dữ liệu có sẵn: HANG_DOI (COT), NHAT_KY (thoi_gian, muc, noi_dung), kho key (khoDanhSachKey_).
 function taoBaoCaoSucKhoe_() {
   var tz = 'Asia/Ho_Chi_Minh', homNay = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -1465,16 +1481,19 @@ function taoBaoCaoSucKhoe_() {
   };
 
   // 1) Thống kê trong ngày từ HANG_DOI
-  var xong = 0, lan1 = 0, cho = 0, loi = 0;
+  var xong = 0, lan1 = 0, cho = 0, loi = 0, datHomNay = 0;
+  var chiTieuDat = Math.max(1, Number((typeof cauHinh_ === 'function' && cauHinh_('CHI_TIEU_VIDEO_DAT_NGAY')) || 3) || 3);
   try {
     var shHd = ss.getSheetByName(TEN_HANG_DOI);
     if (shHd) {
-      docHang_(shHd).forEach(function (r) {
+      var hangHd = docHang_(shHd);
+      datHomNay = typeof demVideoDatHomNay_ === 'function' ? demVideoDatHomNay_(hangHd) : 0;
+      hangHd.forEach(function (r) {
         if (!r.id) return;
         var ts = String(r.trang_thai || ''), du = String(r.duyet || '');
         if (ts === 'LOI') loi++;
         if (ts === 'CO_VIDEO' && du === 'CHO') cho++;
-        if (r.file_video && ngayCua(r.cap_nhat) === homNay && (ts === 'CO_VIDEO' || ts === 'DA_XONG')) {
+        if (r.file_video && ngayCua(r.cap_nhat) === homNay && (ts === 'CO_VIDEO' || ts === 'DA_DANG' || ts === 'DA_XONG')) {
           xong++;
           if (!(Number(docAiKT_(r).so_lan_tu_sua) > 0)) lan1++;
         }
@@ -1482,19 +1501,40 @@ function taoBaoCaoSucKhoe_() {
     }
   } catch (e1) { dong.push('(Khong doc duoc HANG_DOI: ' + e1.message + ')'); }
 
-  // 2) Số lượt Auto-Heal hôm nay từ NHAT_KY (muc TU_SUA_MAT_THAN)
-  var heal = 0;
+  // 2) Số lượt Auto-Heal + Top 3 mã lỗi nhiều nhất hôm nay từ NHAT_KY
+  var heal = 0, demLoi = {};
+  var MA_LOI_RE_ = /\b(t2_trong|cat_chu|chong_chu|latex_tho|ma_tho|so_cat|lo_dap_an|hinh_dung_im|lech_pha|tu_sinh_hong|hinh_nho|tran_day|nhan_de|TEX_THO|KATEX_LOI|CAT_CHU|CHU_DE|TRAN_MEP|TEX_THIEU_NGOAC|KHUNG4TANG_3D_RONG|DAP_AN_LECH|PREFLIGHT_LOI|QUA_HAN|AI_SAI_TOAN|BO_KHONG_DAT)\b/g;
+  var MUC_LOI_ = { DUNG_LOI: 1, MAT_THAN: 1, KIEM_DUYET: 1, SAI_TOAN: 1, TU_SUA_HET_LUOT: 1, LOI_CHAY: 1, BP2_LOI: 1, TU_SINH_HONG: 1 };
   try {
     var shNk = ss.getSheetByName('NHAT_KY');
     if (shNk && shNk.getLastRow() > 1) {
-      shNk.getRange(2, 1, shNk.getLastRow() - 1, 2).getValues().forEach(function (v) {
-        if (String(v[1]) === 'TU_SUA_MAT_THAN' && ngayCua(v[0]) === homNay) heal++;
+      var soCot = Math.min(3, shNk.getLastColumn ? shNk.getLastColumn() : 3);
+      shNk.getRange(2, 1, shNk.getLastRow() - 1, soCot).getValues().forEach(function (v) {
+        if (ngayCua(v[0]) !== homNay) return;
+        var muc = String(v[1] || ''), nd = String(v[2] || '');
+        if (muc === 'TU_SUA_MAT_THAN' || muc === 'AUTO_HEAL_BO_CUC') heal++;
+        var khop = nd.match(MA_LOI_RE_);
+        if (khop && khop.length) {
+          var da = {};
+          khop.forEach(function (m) {
+            var k = m.toLowerCase();
+            if (!da[k]) { da[k] = 1; demLoi[k] = (demLoi[k] || 0) + 1; }
+          });
+        } else if (MUC_LOI_[muc]) {
+          demLoi[muc] = (demLoi[muc] || 0) + 1;
+        }
       });
     }
   } catch (e2) { dong.push('(Khong doc duoc NHAT_KY: ' + e2.message + ')'); }
 
+  var tyLeLan1 = xong > 0 ? Math.round(lan1 * 100 / xong) + '%' : 'N/A';
+  var top3 = Object.keys(demLoi).sort(function (a, b) { return demLoi[b] - demLoi[a]; }).slice(0, 3)
+    .map(function (k) { return k + ' (' + demLoi[k] + ')'; });
+
   dong.push('');
-  dong.push('VIDEO HOM NAY: dung xong ' + xong + ' | qua Mat than ngay lan 1: ' + lan1 + ' | Auto-Heal da chay: ' + heal + ' luot');
+  dong.push('VIDEO HOM NAY: dat kiem duyet ' + datHomNay + '/' + chiTieuDat + ' | dung xong ' + xong +
+    ' | dat lan 1: ' + lan1 + '/' + xong + ' (' + tyLeLan1 + ') | Auto-Heal da chay: ' + heal + ' luot');
+  dong.push('TOP 3 LOI HOM NAY: ' + (top3.length ? top3.join(', ') : 'khong co'));
   dong.push('DANG TON DONG: cho duyet ' + cho + ' | loi ' + loi);
 
   // 3) Kho key Gemini
@@ -1513,7 +1553,8 @@ function taoBaoCaoSucKhoe_() {
   } catch (e4) { dong.push('(Khong doc duoc kho key: ' + e4.message + ')'); }
 
   // 4) Dung lượng Script Properties
-  var nKhoa = PropertiesService.getScriptProperties().getKeys().length;
+  var sp = PropertiesService.getScriptProperties();
+  var nKhoa = (typeof sp.getKeys === 'function' ? sp.getKeys() : Object.keys(sp.getProperties())).length;
   dong.push('SCRIPT PROPERTIES: ' + nKhoa + '/' + GIOI_HAN_SCRIPT_PROPS_ + ' thuoc tinh' +
     (nKhoa >= CANH_BAO_SCRIPT_PROPS_ ? ' - CANH BAO: sap day, chay donRacScriptProperties' : ''));
   return dong.join('\n');
@@ -1532,7 +1573,7 @@ function guiBaoCaoSucKhoeNgay() {
 function caiTriggerBaoTriHeThong() {
   var log = [];
   var kq = caiTriggerDonRacTuan();
-  log.push('donRacScriptProperties (tuan): ' + (kq && kq.tao_moi ? 'DA CAI MOI' : 'DA TON TAI'));
+  log.push('donRacScriptProperties (hang ngay 03:00): ' + (kq && kq.tao_moi ? 'DA CAI MOI' : 'DA TON TAI'));
   var ten = 'guiBaoCaoSucKhoeNgay';
   var co = ScriptApp.getProjectTriggers().filter(function (t) { return t.getHandlerFunction() === ten; });
   if (co.length) log.push(ten + ' (hang ngay 21:00): DA TON TAI (' + co.length + ')');
@@ -1549,13 +1590,29 @@ function caiTriggerBaoTriHeThong() {
 function donRacScriptProperties() {
   var p = PropertiesService.getScriptProperties();
   var all = p.getProperties(), xoa = 0;
+  var ngayPt = typeof khoNgayPT_ === 'function' ? khoNgayPT_() : Utilities.formatDate(new Date(), 'America/Los_Angeles', 'yyyy-MM-dd');
+  var han30 = Utilities.formatDate(new Date(Date.now() - 30 * 86400000), 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd');
   Object.keys(all).forEach(function (k) {
-    if (/^HE_yt_/.test(k) && String(all[k]) === 'loi') { try { p.deleteProperty(k); xoa++; } catch (e) {} }
+    var val = String(all[k] || '');
+    var laRacHE = (/^HE_yt_/.test(k) && (val === 'loi' || val === 'qua_lon')) ||
+      (/^HE_/.test(k) && /^\d{4}-\d{2}-\d{2}$/.test(val) && val < han30);
+    var laRacKeyCu = /^(kd_|kdm_)/.test(k) && /^\d{4}-\d{2}-\d{2}$/.test(val) && val < ngayPt;
+    if (laRacHE || laRacKeyCu) { try { p.deleteProperty(k); xoa++; } catch (e) {} }
   });
+  try { p.setProperty('DON_RAC_NGAY', Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd')); } catch (eD) {}
   var conLai = Object.keys(p.getProperties()).length;
   if (conLai <= 50) { try { p.setProperty('CAI_DAT_KHOA', '0'); } catch (e2) {} }
-  var msg = 'Dọn Script Properties: đã xóa ' + xoa + ' khóa HE_yt_* lỗi, còn lại ' + conLai + ' khóa' + (conLai <= 50 ? ' (<= 50: mở khóa chỉnh sửa Cài đặt)' : '');
+  var msg = 'Dọn Script Properties: đã xóa ' + xoa + ' khóa rác (HE_*/kd_*/kdm_* quá hạn), còn lại ' + conLai + ' khóa' + (conLai <= 50 ? ' (<= 50: mở khóa chỉnh sửa Cài đặt)' : '');
   try { nhatKy_('DON_RAC', msg); } catch (e3) {}
   Logger.log(msg);
   return { da_xoa: xoa, con_lai: conLai };
+}
+
+// Tự kích hoạt dọn rác ngay khi Script Properties vượt ngưỡng 35/50 hoặc chưa dọn trong ngày hôm nay.
+function kiemVaDonScriptProperties_() {
+  var p = PropertiesService.getScriptProperties();
+  var nKhoa = (typeof p.getKeys === 'function' ? p.getKeys() : Object.keys(p.getProperties())).length;
+  var homNay = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd');
+  if (nKhoa > CANH_BAO_SCRIPT_PROPS_ || p.getProperty('DON_RAC_NGAY') !== homNay) return donRacScriptProperties();
+  return null;
 }

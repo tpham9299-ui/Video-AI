@@ -70,11 +70,13 @@ Tên kênh lấy từ `phong_cach.json → thuongHieu.ten` (Story Math), dùng c
 * BP2: Hợp đồng hình cũng áp dụng cho đề Zalo.
 * `tuSinhHong` chặn sớm, trước `bundle` / `dung_khuc` (không đổi thứ tự bước).
 * Shorts `THUC_TE`: BP2 kiểm dữ liệu sân khấu, Python kiểm nét SVG và dừng trước bundle khi dựng hình hỏng. DOM đo hình nhìn thấy trong T2 ở các khung giải. Mắt thần và BP4 phải xác nhận hình trên ảnh. Lỗi `t2_trong` trả về Auto-Heal, hết lượt giữ CHO. Đường lui `tu_duy_dai_so` chỉ áp dụng ngoài luồng này.
-* Auto-Heal tách hạn mức `bo_cuc` và `mat_than` (không dùng chung trần).
+* Auto-Heal (`xuLyTuSuaMatThan_` / `xuLyKiemDuyetBoCuc_`, gồm `hinh_nho`/`tran_day`/`nhan_de` & `bo_cuc_loi`): khóa trần chung **tối đa 1 lần dựng lại/bài** (`TRAN_TU_SUA_ = 1`) để tránh đốt slot GitHub Actions.
 * CI: cache npm/pip/Chromium Remotion (khóa theo phiên bản + `package-lock.json`); `.gitattributes` ép `eol=lf`.
 * `npm run kiem-tra` gộp tsc + test Node + `python -X utf8` test_v99_1 / test_v99_2.
 
 * Shorts XAC_SUAT mô tả thao tác trong `buoc[].hanh_dong` (`pha`, số bi đỏ `do` cho từng trường hợp). `xac_suat_dong.py` tính số cách và xuất pha theo mốc lời. Ba bước liên tiếp giữ nguyên hình học T2 hoặc quá 12 giây đứng hình là lỗi cứng `hinh_dung_im`. Đáp án ISO dừng ở `DAP_AN_NGAY`.
+* **Pre-flight Gate (v102.0):** `congLocSomBP2_` (BP2 `.gs`) ↔ `cong_loc_som` (đầu `chuanbi.py`, mã thoát `42`, chỉ luồng ngắn `Khung4Tang` `THUC_TE`/`XAC_SUAT`, bỏ qua Hình học & `-10P`) chặn sớm ngoặc/lệnh TeX hỏng, lộ mã TeX ở ô text thường, thiếu hình T2 và lệch đáp án trước `bundle`/render; đồng bộ hàm bóc TeX → Unicode cắt biên từ ở `.gs` / Python / TS.
+* **Vận hành rảnh tay (v102.0):** `kiemVaDonScriptProperties_` tự dọn `Script Properties` hằng ngày (03:00) và ngay khi vượt **35/50** khóa; `donDaXong_` lưu trữ dòng `LOI` > 48h & `CHO` > 72h; điều phối sản lượng theo chỉ tiêu video ĐẠT/ngày (`CHI_TIEU_VIDEO_DAT_NGAY = 3`) kèm tỷ lệ đạt lần 1 (`%`) & top 3 mã lỗi trong báo cáo Zalo 21:00.
 
 ## 5. LỆNH KIỂM TRA NHANH KHI CHẠY LOCAL (WINDOWS)
 

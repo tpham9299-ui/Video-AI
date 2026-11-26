@@ -180,36 +180,110 @@ def chuan_khong_chia_het(s, kieu="tex"):
     return re.sub(r"[ \t]{2,}", " ", x).strip()
 
 
-SO_TREN = str.maketrans("0123456789+-n", "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻ⁿ")
-SO_DUOI = str.maketrans("0123456789+-nk", "₀₁₂₃₄₅₆₇₈₉₊₋ₙₖ")
-LENH_CHU = {"cdot": "·", "times": "×", "le": "≤", "leq": "≤", "ge": "≥", "geq": "≥", "ne": "≠", "neq": "≠", "approx": "≈",
-            "Omega": "Ω", "omega": "ω", "cap": "∩", "cup": "∪", "in": "∈", "pi": "π", "vdots": "⋮", "Rightarrow": "⇒", "to": "→",
-            "alpha": "α", "beta": "β", "Delta": "Δ", "infty": "∞", "emptyset": "∅", "mid": "|", "max": "max", "min": "min"}
+SO_TREN = str.maketrans("0123456789+-=()nikx", "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ⁿⁱᵏˣ")
+SO_DUOI = str.maketrans("0123456789+-=()aehijklmnoprstuvx", "₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎ₐₑₕᵢⱼₖₗₘₙₒₚᵣₛₜᵤᵥₓ")
+LENH_CHU = {"cdot": "·", "times": "×", "div": "÷", "pm": "±", "mp": "∓", "le": "≤", "leq": "≤", "ge": "≥", "geq": "≥", "ne": "≠", "neq": "≠",
+            "approx": "≈", "equiv": "≡", "Omega": "Ω", "omega": "ω", "cap": "∩", "cup": "∪", "in": "∈", "notin": "∉", "subset": "⊂",
+            "pi": "π", "vdots": "⋮", "Rightarrow": "⇒", "rightarrow": "→", "to": "→", "Leftrightarrow": "⇔", "iff": "⇔",
+            "alpha": "α", "beta": "β", "gamma": "γ", "delta": "δ", "Delta": "Δ", "theta": "θ", "lambda": "λ", "mu": "μ",
+            "sigma": "σ", "Sigma": "Σ", "varphi": "φ", "phi": "φ", "infty": "∞", "emptyset": "∅", "varnothing": "∅",
+            "angle": "∠", "circ": "°", "degree": "°", "perp": "⊥", "parallel": "∥", "triangle": "△", "ldots": "…", "cdots": "⋯", "dots": "…",
+            "mid": "|", "sim": "~", "percent": "%", "quad": " ", "qquad": " ",
+            "sin": "sin", "cos": "cos", "tan": "tan", "cot": "cot", "log": "log", "ln": "ln", "lg": "lg", "max": "max", "min": "min", "lim": "lim"}
+LENH_KATEX_HOP_LE = set(LENH_CHU.keys()) | {
+    "frac", "dfrac", "tfrac", "binom", "dbinom", "tbinom", "sqrt", "overline", "bar", "widehat", "vec", "overrightarrow",
+    "text", "textrm", "textbf", "textit", "mathrm", "mathbf", "mathit", "boldsymbol", "operatorname", "mbox",
+    "color", "textcolor", "colorbox", "hl", "mvang", "mdo", "mngoc", "mcam", "mla",
+    "left", "right", "displaystyle", "limits", "begin", "end", "not", "nmid", "cong", "implies", "Longrightarrow",
+    "big", "Big", "bigg", "Bigg", "setminus", "forall", "exists", "dpcm", "exp", "det", "mod", "gcd",
+}
+
+
+def kiem_tra_tex_hop_le(s):
+    """Kiểm cân bằng {} và cú pháp lệnh TeX cho ô chạy KaTeX (chặn lệnh cụt như \\te, \\color thiếu ngoặc)."""
+    x = str(s or "").strip()
+    if not x:
+        return True
+    if "$" in x or re.search(r"\\\\[A-Za-z]|\\$", x):
+        return False
+    sau = 0
+    i = 0
+    while i < len(x):
+        ch = x[i]
+        if ch == "\\" and i + 1 < len(x):
+            i += 2
+            continue
+        if ch == "{":
+            sau += 1
+        elif ch == "}":
+            sau -= 1
+            if sau < 0:
+                return False
+        i += 1
+    if sau != 0:
+        return False
+    if re.search(r"\\(?:text|textrm|textbf|textit|mathrm|mathbf|overline|bar|sqrt|color|[dt]?frac|[dt]?binom)\s*(?:\{\s*\}|$)", x):
+        return False
+    if re.search(r"\\(?:[dt]?frac|[dt]?binom|textcolor)\s*\{[^{}]*\}\s*(?:$|[^\{\s])", x):
+        return False
+    for m in re.finditer(r"\\([A-Za-z]+)", x):
+        if m.group(1) not in LENH_KATEX_HOP_LE:
+            return False
+    return True
 
 
 def tex_sang_chu(s):
-    """Mã TeX -> chữ Unicode GIỮ NGHĨA (khác chu_sach cũ xóa trắng lệnh làm '\\overline{A}' thành 'A', '\\not\\vdots' biến mất):
-    \\overline{A} -> Ā, \\not\\vdots -> không ⋮, \\Omega -> Ω, C_{10}^{3} -> C₁₀³, \\frac{a}{b} -> a/b, Omega -> Ω."""
+    """Mã TeX -> chữ Unicode GIỮ NGHĨA (đồng bộ .gs <-> Python <-> TS):
+    bóc \\text{}, {\\color{...}...}, \\textcolor{}{}, \\textbf{}; đổi S_0->S₀, u_1->u₁, x^2->x², \\sqrt{3}->√3, \\frac{1}{3}->1/3."""
     x = chuan_khong_chia_het(str(s or ""), "chu").replace("$", "")
+    x = re.sub(r"\\\(|\\\)|\\\[|\\\]", " ", x)
     x = re.sub(r"\\\\(?=[A-Za-z])", r"\\", x)
-    for _ in range(4):
+    for _ in range(6):
         x0 = x
+        x = re.sub(r"\\textcolor\s*\{[^{}]*\}\s*\{([^{}]*)\}", r"\1", x)
+        x = re.sub(r"\{\s*\\color\s*\{[^{}]*\}\s*([^{}]*)\}", r"\1", x)
+        x = re.sub(r"\\color\s*\{[^{}]*\}", "", x)
         x = re.sub(r"\\(?:overline|bar)\s*\{\s*([A-Za-z])\s*\}|\\bar\s+([A-Za-z])",
                    lambda m: MACRON.get(m.group(1) or m.group(2), (m.group(1) or m.group(2)) + "\u0304"), x)
         x = re.sub(r"\\(?:overline|bar)\s*\{([^{}]*)\}", lambda m: "".join(c + "\u0304" for c in m.group(1)), x)
-        x = re.sub(r"\\[dt]?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}", lambda m: "%s/%s" % (m.group(1), m.group(2)), x)
-        x = re.sub(r"\\binom\s*\{([^{}]*)\}\s*\{([^{}]*)\}", r"C(\1,\2)", x)
-        x = re.sub(r"\\(?:text|mathrm|mathbf|operatorname)\s*\{([^{}]*)\}", r"\1", x)
-        x = re.sub(r"\\sqrt\s*\{([^{}]*)\}", r"√(\1)", x)
+        x = re.sub(r"\\[dt]?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}",
+                   lambda m: "%s/%s" % (m.group(1) if re.fullmatch(r"[\w.,]+", m.group(1)) else "(%s)" % m.group(1),
+                                        m.group(2) if re.fullmatch(r"[\w.,]+", m.group(2)) else "(%s)" % m.group(2)), x)
+        x = re.sub(r"\\[dt]?binom\s*\{([^{}]*)\}\s*\{([^{}]*)\}", r"C(\1,\2)", x)
+        x = re.sub(r"\\(?:text|textrm|mathrm|mathbf|textbf|textit|operatorname|mathit|boldsymbol|mbox|hl)\s*\{([^{}]*)\}", r"\1", x)
+        x = re.sub(r"\\sqrt\s*\[([^\]]*)\]\s*\{([^{}]*)\}",
+                   lambda m: "%s√%s" % (m.group(1).translate(SO_TREN), m.group(2) if len(m.group(2)) <= 1 else "(%s)" % m.group(2)), x)
+        x = re.sub(r"\\sqrt\s*\{([^{}]*)\}", lambda m: "√%s" % (m.group(1) if len(m.group(1)) <= 1 else "(%s)" % m.group(1)), x)
         if x == x0:
             break
-    x = re.sub(r"_\{([0-9+\-nk]+)\}|_([0-9nk])", lambda m: (m.group(1) or m.group(2)).translate(SO_DUOI), x)
-    x = re.sub(r"\^\{([0-9+\-n]+)\}|\^([0-9n])", lambda m: (m.group(1) or m.group(2)).translate(SO_TREN), x)
+    x = re.sub(r"_\{([0-9+\-=()aehijklmnoprstuvx]+)\}|_([0-9aehijklmnoprstuvx])(?![A-Za-z])",
+               lambda m: (m.group(1) or m.group(2)).translate(SO_DUOI), x)
+    x = re.sub(r"\^\{([0-9+\-=()nikx]+)\}|\^([0-9nikx])(?![A-Za-z])",
+               lambda m: (m.group(1) or m.group(2)).translate(SO_TREN), x)
+    x = re.sub(r"\\(?:left|right|displaystyle|limits)\b", "", x)
+    x = re.sub(r"\\[,;:!> ]", " ", x).replace(r"\%", "%")
     x = re.sub(r"\\([A-Za-z]+)", lambda m: LENH_CHU.get(m.group(1), ""), x)
     x = re.sub(r"(?<![A-Za-z\\])Omega(?![A-Za-z])", "Ω", x)
     x = re.sub(r"\{,\}", ",", x)
     x = re.sub(r"[{}]", "", x).replace("\\", "")
     return re.sub(r"\s+", " ", x).strip()
+
+
+def cat_bien_tu(s, toi_da=0):
+    """Bóc sạch TeX -> Unicode rồi cắt gọn theo biên từ (không cắt giữa từ / giữa lệnh LaTeX / giữa {...})."""
+    x = tex_sang_chu(s)
+    if not toi_da or len(x) <= toi_da:
+        return x
+    tu = x.split(" ")
+    ra = ""
+    for w in tu:
+        thu = (ra + " " + w) if ra else w
+        if len(thu) > toi_da:
+            if not ra:
+                return w
+            break
+        ra = thu
+    return ra.rstrip(" ,.;:·-") or tu[0]
 
 
 RE_MA_THO = re.compile(r"\\[A-Za-z]+|\\\\|[_^]\{|(?<![A-Za-z])Omega(?![A-Za-z])|\bC_\d|(?<![A-Za-z])not\s*⋮")
@@ -220,15 +294,15 @@ def co_ma_tho(s):
 
 
 def sua_ma_tho_props(k4):
-    """Trường CHỮ THƯỜNG của props.khung4tang (Intro, Outro, CTA) -> Unicode giữ nghĩa; trường KaTeX/ChuTron -> chuẩn ký hiệu
-    'không chia hết'. Trả danh sách chỗ đã sửa."""
+    """Trường CHỮ THƯỜNG của props.khung4tang (Intro, Outro, CTA, nhãn 2D) -> Unicode giữ nghĩa; trường KaTeX/ChuTron -> chuẩn
+    ký hiệu 'không chia hết' và kiểm cân bằng {} / cú pháp lệnh TeX. Trả danh sách chỗ đã sửa."""
     sua = []
     mc = k4.get("mocCau") or {}
     for k in ("nhan_thi", "tieu_de", "phu_de", "cau_hook", "cta"):
-        if isinstance(mc.get(k), str) and (co_ma_tho(mc[k]) or RE_KHONG_CHIA_HET.search(mc[k])):
+        if isinstance(mc.get(k), str) and (co_ma_tho(mc[k]) or RE_KHONG_CHIA_HET.search(mc[k]) or "{" in mc[k]):
             mc[k] = tex_sang_chu(mc[k])
             sua.append("mocCau." + k)
-    if isinstance(k4.get("cta"), str) and co_ma_tho(k4["cta"]):
+    if isinstance(k4.get("cta"), str) and (co_ma_tho(k4["cta"]) or "{" in k4["cta"]):
         k4["cta"] = tex_sang_chu(k4["cta"])
         sua.append("cta")
     for d in k4.get("tomTat") or []:
@@ -236,17 +310,27 @@ def sua_ma_tho_props(k4):
             if RE_KHONG_CHIA_HET.search(str(d.get("chien_thuat") or "")):
                 d["chien_thuat"] = chuan_khong_chia_het(d["chien_thuat"], "tron")
                 sua.append("tomTat.chien_thuat")
+            elif isinstance(d.get("chien_thuat"), str) and not kiem_tra_tex_hop_le(d["chien_thuat"]):
+                d["chien_thuat"] = tex_sang_chu(d["chien_thuat"])
+                sua.append("tomTat.chien_thuat")
             if RE_KHONG_CHIA_HET.search(str(d.get("cong_thuc") or "")):
                 d["cong_thuc"] = chuan_khong_chia_het(d["cong_thuc"], "tex")
+                sua.append("tomTat.cong_thuc")
+            elif isinstance(d.get("cong_thuc"), str) and not kiem_tra_tex_hop_le(d["cong_thuc"]):
+                d["cong_thuc"] = tex_sang_chu(d["cong_thuc"])
                 sua.append("tomTat.cong_thuc")
     for b in k4.get("buoc") or []:
         for k in ("tieu_de", "nhan"):
             if RE_KHONG_CHIA_HET.search(str(b.get(k) or "")):
                 b[k] = chuan_khong_chia_het(b[k], "tron")
                 sua.append("buoc." + k)
+            elif isinstance(b.get(k), str) and not kiem_tra_tex_hop_le(b[k]):
+                b[k] = tex_sang_chu(b[k])
+                sua.append("buoc." + k)
         for th in b.get("the") or []:
             if th.get("loai") == "cong_thuc":
                 moi = [chuan_khong_chia_het(d, "tex") for d in th.get("dong") or []]
+                moi = [d if kiem_tra_tex_hop_le(d) else tex_sang_chu(d) for d in moi]
                 if moi != th.get("dong"):
                     th["dong"] = moi
                     sua.append("the.dong")
@@ -254,10 +338,35 @@ def sua_ma_tho_props(k4):
                 if RE_KHONG_CHIA_HET.search(str(th.get(k) or "")):
                     th[k] = chuan_khong_chia_het(th[k], "tron")
                     sua.append("the." + k)
+                elif isinstance(th.get(k), str) and not kiem_tra_tex_hop_le(th[k]):
+                    th[k] = tex_sang_chu(th[k])
+                    sua.append("the." + k)
     for d in k4.get("deGhim") or []:
         if RE_KHONG_CHIA_HET.search(str(d.get("nhan") or "")):
             d["nhan"] = chuan_khong_chia_het(d["nhan"], "tex")
             sua.append("deGhim")
+        elif isinstance(d.get("nhan"), str) and not kiem_tra_tex_hop_le(d["nhan"]):
+            d["nhan"] = tex_sang_chu(d["nhan"])
+            sua.append("deGhim")
+    sk = k4.get("sanKhau") or k4.get("san_khau")
+    if isinstance(sk, dict):
+        for k in ("nhan_bien", "nhan_ham", "don_vi"):
+            if isinstance(sk.get(k), str) and (co_ma_tho(sk[k]) or "{" in sk[k]):
+                sk[k] = tex_sang_chu(sk[k])
+                sua.append("sanKhau." + k)
+        if isinstance(sk.get("nhan"), dict):
+            for nk, nv in list(sk["nhan"].items()):
+                if isinstance(nv, str) and (co_ma_tho(nv) or "{" in nv):
+                    sk["nhan"][nk] = tex_sang_chu(nv)
+                    sua.append("sanKhau.nhan." + nk)
+        for n in sk.get("nut") or []:
+            if isinstance(n, dict):
+                if isinstance(n.get("nhan"), str) and (co_ma_tho(n["nhan"]) or "{" in n["nhan"]):
+                    n["nhan"] = tex_sang_chu(n["nhan"])
+                    sua.append("sanKhau.nut.nhan")
+                if isinstance(n.get("dong"), str) and not kiem_tra_tex_hop_le(n["dong"]):
+                    n["dong"] = tex_sang_chu(n["dong"])
+                    sua.append("sanKhau.nut.dong")
     return sua
 
 
@@ -1078,7 +1187,7 @@ def _so_dap(kb):
 def dung_kinh_te(ts, kb, sua):
     """ts = {ham:'(50-x)(200+20x)', bien:'x', mien:[0,50], kieu:'max', ten_ham:'L', nhan_bien:'giảm giá (nghìn đồng)', nhan_ham:'lợi nhuận',
     phu:[{ten:'Giá bán', ham:'50-x', don_vi:'k'}, {ten:'Số khách', ham:'200+20x'}], don_vi:'nghìn đồng'}"""
-    bien = cat_nhan(str(ts.get("bien") or "x"), 2)
+    bien = cat_bien_tu(str(ts.get("bien") or "x"), 2)
     f = ham_an_toan(ts.get("ham"), bien)
     mien = ts.get("mien") if isinstance(ts.get("mien"), list) and len(ts["mien"]) == 2 else None
     if not f or not mien:
@@ -1094,10 +1203,10 @@ def dung_kinh_te(ts, kb, sua):
     phu = []
     for c in ts.get("phu") or []:
         if isinstance(c, dict) and ham_an_toan(c.get("ham"), bien):
-            phu.append({"ten": cat_nhan(str(c.get("ten") or ""), 18), "ham": str(c["ham"]), "don_vi": cat_nhan(str(c.get("don_vi") or ""), 10)})
+            phu.append({"ten": cat_bien_tu(str(c.get("ten") or ""), 18), "ham": str(c["ham"]), "don_vi": cat_bien_tu(str(c.get("don_vi") or ""), 10)})
     kq = {"loai": "kinh_te_do_thi", "ham": str(ts["ham"]), "bien": bien, "mien": [a, b], "kieu": kieu,
-          "ten_ham": cat_nhan(str(ts.get("ten_ham") or "L"), 3), "nhan_bien": cat_nhan(str(ts.get("nhan_bien") or bien), 28),
-          "nhan_ham": cat_nhan(str(ts.get("nhan_ham") or ""), 28), "don_vi": cat_nhan(str(ts.get("don_vi") or ""), 14), "phu": phu[:3],
+          "ten_ham": cat_bien_tu(str(ts.get("ten_ham") or "L"), 3), "nhan_bien": cat_bien_tu(str(ts.get("nhan_bien") or bien), 28),
+          "nhan_ham": cat_bien_tu(str(ts.get("nhan_ham") or ""), 28), "don_vi": cat_bien_tu(str(ts.get("don_vi") or ""), 14), "phu": phu[:3],
           "x_tot": round(tot[0], 4), "y_tot": round(tot[1], 4)}
     so = _so_dap(kb)
     kq["khop_dap_an"] = (any(abs(v - tot[0]) <= 0.02 * max(1, abs(tot[0])) or abs(v - tot[1]) <= 0.01 * max(1, abs(tot[1])) for v in so)) if so else None
@@ -1117,11 +1226,11 @@ def dung_so_do_2d(ts, kb, sua):
         sua.append("so_do_2d: mẫu '%s' không có -> bỏ sân khấu" % mau)
         return None
     tham = {k: float(doc_ti_le(v)) for k, v in (ts.get("tham_so") or {}).items() if doc_ti_le(v) is not None}
-    bien = cat_nhan(str(ts.get("bien") or "x"), 2)
+    bien = cat_bien_tu(str(ts.get("bien") or "x"), 2)
     f = ham_an_toan(ts.get("ham"), bien) if ts.get("ham") else None
     mien = ts.get("mien") if isinstance(ts.get("mien"), list) and len(ts["mien"]) == 2 else None
-    kq = {"loai": "so_do_2d", "mau": mau, "tham_so": tham, "bien": bien, "nhan": {k: cat_nhan(str(v), 16) for k, v in (ts.get("nhan") or {}).items()},
-          "ten_ham": cat_nhan(str(ts.get("ten_ham") or "f"), 3), "don_vi": cat_nhan(str(ts.get("don_vi") or ""), 8)}
+    kq = {"loai": "so_do_2d", "mau": mau, "tham_so": tham, "bien": bien, "nhan": {k: cat_bien_tu(str(v), 16) for k, v in (ts.get("nhan") or {}).items()},
+          "ten_ham": cat_bien_tu(str(ts.get("ten_ham") or "f"), 3), "don_vi": cat_bien_tu(str(ts.get("don_vi") or ""), 8)}
     if f and mien:
         a, b = float(doc_ti_le(mien[0]) or 0), float(doc_ti_le(mien[1]) or 0)
         tot = toi_uu(f, a, b, "max" if str(ts.get("kieu")).lower() == "max" else "min") if b > a else None
@@ -1137,7 +1246,7 @@ def dung_so_do_2d(ts, kb, sua):
 
 def dung_tang_truong(ts, kb, sua):
     """ts = {ham:'100*(1+0.06)^t', bien:'t', mien:[0,10], moc:[0,10], ten_ham:'T', don_vi:'triệu', nguong?:200}"""
-    bien = cat_nhan(str(ts.get("bien") or "t"), 2)
+    bien = cat_bien_tu(str(ts.get("bien") or "t"), 2)
     f = ham_an_toan(ts.get("ham"), bien)
     mien = ts.get("mien") if isinstance(ts.get("mien"), list) and len(ts["mien"]) == 2 else None
     if not f or not mien:
@@ -1153,8 +1262,8 @@ def dung_tang_truong(ts, kb, sua):
     if not all(isinstance(y, (int, float)) and math.isfinite(y) for y in ys):
         return None
     moc = [float(doc_ti_le(x)) for x in (ts.get("moc") or [a, b]) if doc_ti_le(x) is not None and a <= float(doc_ti_le(x)) <= b][:3] or [a, b]
-    kq = {"loai": "tang_truong", "ham": str(ts["ham"]), "bien": bien, "mien": [a, b], "ten_ham": cat_nhan(str(ts.get("ten_ham") or "y"), 3),
-          "don_vi": cat_nhan(str(ts.get("don_vi") or ""), 10), "nhan_bien": cat_nhan(str(ts.get("nhan_bien") or bien), 20),
+    kq = {"loai": "tang_truong", "ham": str(ts["ham"]), "bien": bien, "mien": [a, b], "ten_ham": cat_bien_tu(str(ts.get("ten_ham") or "y"), 3),
+          "don_vi": cat_bien_tu(str(ts.get("don_vi") or ""), 10), "nhan_bien": cat_bien_tu(str(ts.get("nhan_bien") or bien), 20),
           "moc": [{"x": x, "y": round(f(x), 4)} for x in moc]}
     ng = doc_ti_le(ts.get("nguong"))
     if ng is not None:
@@ -1182,7 +1291,7 @@ def dung_tu_duy(kb, k4, buoc=None):
             if th.get("loai") == "cong_thuc" and th.get("dong"):
                 dong = str(th["dong"][0])
                 break
-        nut.append({"nhan": cat_nhan(str(b.get("nhan") or "Bước %d" % (j + 1)), 22), "tieu_de": cat_nhan(str(b.get("tieu_de") or ""), 60), "dong": cat_nhan(dong, 90),
+        nut.append({"nhan": cat_bien_tu(str(b.get("nhan") or "Bước %d" % (j + 1)), 22), "tieu_de": cat_nhan(str(b.get("tieu_de") or ""), 60), "dong": cat_nhan(dong, 90),
                     "mau": mau_chuan(b.get("mau"), MAU[j % 4])})
     kq = {"loai": "tu_duy_dai_so", "du_kien": du, "nut": nut}
     m = re.search(r"\b([fgyhP])\s*\(\s*([x])\s*\)\s*=\s*([-+*/^().0-9x ]{3,60})", str(kb.get("de_bai") or ""))
@@ -1313,15 +1422,17 @@ def chon_san_khau(kb, r=None, khuon_suy=None):
     c3 = k4.get("canh_3d_vector") if isinstance(k4.get("canh_3d_vector"), dict) else {}
     if mon == "XAC_SUAT" or not bat_buoc and re.search(r"tính xác suất|xác suất để", van, re.I):
         return {"loai": loai_xac_suat(van, lop), "nguon": "suy", "chi_dao": loi_cd}
-    khuon = (c3.get("khuon") if c3.get("khuon") != "luoi_the_bi_xac_suat" else None) or ("__tu_do__" if c3.get("doi_tuong") else khuon_suy)
-    if not khuon and re.search(r"gập|hộp|hình trụ|\blon\b|hình nón|phễu|hình chóp|lăng trụ|mặt cầu|dây cáp|thiết diện|bồn|bể", van, re.I):
+    c3_tu_do = isinstance(c3.get("doi_tuong"), list) and len(c3["doi_tuong"]) > 0 and isinstance(c3.get("buoc"), list) and len(c3["buoc"]) >= 2
+    khuon_c3 = c3.get("khuon") if c3.get("khuon") in KHUON_VAT_THE else None
+    khuon = khuon_c3 or ("__tu_do__" if c3_tu_do else (khuon_suy or None))
+    if not khuon and khuon_suy is None and not (c3 and not khuon_c3 and not c3_tu_do) and re.search(r"gập|hộp|hình trụ|\blon\b|hình nón|phễu|hình chóp|lăng trụ|mặt cầu|dây cáp|thiết diện|bồn|bể", van, re.I):
         khuon = "__tu_do__"   # bản rút gọn của suyKhuon_ (Apps Script) khi chuanbi chưa truyền khuôn suy từ đề
     loai = loai_thuc_te(van, khuon)
     if bat_buoc and loai in ("kinh_te_do_thi", "tang_truong") and not cho_do_thi_thuan(van):
         loai = None
     if loai:
         return {"loai": loai, "nguon": "suy", "chi_dao": loi_cd}
-    if c3.get("khuon") in KHUON_VAT_THE and RE_VAT_THE.search(van):
+    if khuon_c3 and RE_VAT_THE.search(van):
         return {"loai": "3d_vector", "nguon": "ai", "chi_dao": loi_cd}
     return {"loai": "tu_sinh_svg" if bat_buoc else "tu_duy_dai_so", "nguon": "lui", "chi_dao": loi_cd}
 
@@ -1354,6 +1465,115 @@ def loi_thu_tu_toi_uu(kb):
            and c.get("loai") not in ("hook", "de_bai", "mo_dau", "cta", "bai_hoc")]
     if lui(tieu_de) or lui(loi):
         return "Sắp lại lời và thẻ: gọi ẩn trên hình, lập hàm, tìm cực trị, chốt đáp án."
+    return ""
+
+
+def _la_ngan_k4_loc_som(kb):
+    """Chỉ bật Cổng lọc sớm cho bài ngắn Khung4Tang (THUC_TE / XAC_SUAT); bỏ qua HINH_PHANG, HINH_KHONG_GIAN và -10P."""
+    if not isinstance(kb, dict):
+        return False
+    id_ = str(kb.get("id") or "")
+    if str(kb.get("kieu_video") or "") == "DAI_10_PHUT" or id_.upper().endswith("-10P"):
+        return False
+    mon = str(kb.get("mon") or "").upper()
+    if str(kb.get("luong") or "") == "hinh_hoc_thuan" or mon.startswith("HINH_"):
+        return False
+    if kb.get("hinh_phang_chuan") or kb.get("hinh_khong_gian"):
+        return False
+    return thuc_te_ngan(kb) or mon == "XAC_SUAT" or isinstance(kb.get("khung4tang"), dict)
+
+
+def _tap_so_dap_an(s):
+    """Tập giá trị số/phân số đọc được trong chuỗi đáp án (phục vụ đối chiếu dap_an <-> dap_an_cuoi)."""
+    t = str(s or "").replace("{,}", ",").replace(".000", "000")
+    ra = []
+    for a, b in re.findall(r"\\[dt]?frac\s*\{\s*(-?\d+)\s*\}\s*\{\s*(\d+)\s*\}", t):
+        if int(b):
+            ra.append(int(a) / int(b))
+    for a, b in re.findall(r"(?<![\d.,])(-?\d+)\s*/\s*(\d+)(?![\d.,])", t):
+        if int(b):
+            ra.append(int(a) / int(b))
+    for x in re.findall(r"-?\d+(?:[.,]\d+)?", t):
+        try:
+            ra.append(float(x.replace(",", ".")))
+        except ValueError:
+            pass
+    return ra
+
+
+def cong_loc_som(kb, khuon_suy=None):
+    """Cổng lọc sớm (Pre-flight Gate) ngay đầu chuanbi.py (trước TTS / bundle / render) cho bài ngắn Khung4Tang:
+    (1) cân bằng {} & cú pháp lệnh TeX, (2) không lộ mã TeX ở ô text thường, (3) không thiếu hình Tầng 2 (giữ Allowlist THUC_TE),
+    (4) khớp đáp án. Trả chuỗi lỗi đầu tiên ('' nếu đạt)."""
+    if not _la_ngan_k4_loc_som(kb):
+        return ""
+    k4 = kb.get("khung4tang") if isinstance(kb.get("khung4tang"), dict) else {}
+    # 1) Kiểm cân bằng {} & cú pháp lệnh TeX ở các ô KaTeX / ChuTron
+    o_tex = []
+    for i, c in enumerate(kb.get("canh") or []):
+        if isinstance(c, dict):
+            for d in c.get("noi_dung_man_hinh") or []:
+                o_tex.append(("noi_dung_man_hinh cảnh %d" % (i + 1), d))
+    for d in k4.get("de_ghim") or []:
+        if isinstance(d, dict):
+            o_tex.append(("de_ghim", d.get("nhan")))
+    for i, b in enumerate(k4.get("buoc") or []):
+        if isinstance(b, dict):
+            o_tex.append(("buoc %d tieu_de" % (i + 1), b.get("tieu_de")))
+            o_tex.append(("buoc %d nhan" % (i + 1), b.get("nhan")))
+            for th in b.get("the") or []:
+                if isinstance(th, dict):
+                    for d in th.get("dong") or []:
+                        o_tex.append(("buoc %d the.dong" % (i + 1), d))
+                    o_tex.append(("buoc %d the.noi_dung" % (i + 1), th.get("noi_dung")))
+    for d in kb.get("tom_tat_3_buoc") or []:
+        if isinstance(d, dict):
+            o_tex.append(("tom_tat.cong_thuc", d.get("cong_thuc")))
+    for noi, val in o_tex:
+        if isinstance(val, str) and re.search(r"[\\{}^_$]", val) and not kiem_tra_tex_hop_le(val):
+            return "[PREFLIGHT/TEX_LOI] Lỗi cú pháp hoặc ngoặc LaTeX ở %s: %s" % (noi, val[:60])
+    # 2) Không lộ mã TeX thô ở ô văn bản thường (không chạy KaTeX)
+    re_tho_thuong = re.compile(r"\\[A-Za-z]+|\{[^{}]*\}|\\\\")
+    for k in ("tieu_de_intro", "phu_de_intro", "cau_hook", "cta", "nhan_thi"):
+        if isinstance(kb.get(k), str) and re_tho_thuong.search(kb[k]):
+            return "[PREFLIGHT/MA_THO] Lộ mã TeX thô ở ô chữ thường %s: %s" % (k, kb[k][:60])
+    for i, c in enumerate(kb.get("canh") or []):
+        if isinstance(c, dict):
+            if re.search(r"y_do|bay|loi_sai", str(c.get("loai") or ""), re.I) and isinstance(c.get("tieu_de_canh"), str) and re_tho_thuong.search(c["tieu_de_canh"]):
+                return "[PREFLIGHT/MA_THO] Lộ mã TeX thô ở tiêu đề cảnh %d (%s): %s" % (i + 1, c.get("loai"), c["tieu_de_canh"][:60])
+            for ct in (c.get("chu_thich") if isinstance(c.get("chu_thich"), list) else []):
+                if isinstance(ct, str) and re_tho_thuong.search(ct):
+                    return "[PREFLIGHT/MA_THO] Lộ mã TeX thô ở chu_thich cảnh %d: %s" % (i + 1, ct[:60])
+    sk_ts = (k4.get("san_khau") or {}).get("tham_so") if isinstance(k4.get("san_khau"), dict) else None
+    if isinstance(sk_ts, dict):
+        for k in ("nhan_bien", "nhan_ham", "don_vi"):
+            if isinstance(sk_ts.get(k), str) and re_tho_thuong.search(sk_ts[k]):
+                return "[PREFLIGHT/MA_THO] Lộ mã TeX thô ở nhãn 2D %s: %s" % (k, sk_ts[k][:60])
+        if isinstance(sk_ts.get("nhan"), dict):
+            for nk, nv in sk_ts["nhan"].items():
+                if isinstance(nv, str) and re_tho_thuong.search(nv):
+                    return "[PREFLIGHT/MA_THO] Lộ mã TeX thô ở so_do_2d.nhan.%s: %s" % (nk, nv[:60])
+    # 3) Không thiếu hình Tầng 2 (giữ nguyên Allowlist THUC_TE + sân khấu XAC_SUAT)
+    if thuc_te_ngan(kb):
+        loi_tt = loi_truoc_tts(kb, "" if khuon_suy is None else khuon_suy)
+        if loi_tt:
+            return loi_tt
+    elif str(kb.get("mon") or "").upper() == "XAC_SUAT":
+        if not k4 or not k4.get("buoc"):
+            return "Thiếu khung4tang.buoc của bài XAC_SUAT."
+        route_xs = chon_san_khau(kb, khuon_suy=khuon_suy)["loai"]
+        if route_xs == "tu_sinh_svg":
+            svg = k4.get("tu_sinh") or (k4.get("san_khau") if (k4.get("san_khau") or {}).get("loai") == "tu_sinh_svg" else {})
+            if not (svg.get("ma") or (svg.get("tham_so") or {}).get("ma")):
+                return "Thiếu mã tu_sinh_svg cho bài XAC_SUAT."
+    # 4) Khớp đáp án (chặn ISO date, chặn lệch dap_an <-> dap_an_cuoi)
+    da1, da2 = str(kb.get("dap_an") or "").strip(), str(kb.get("dap_an_cuoi") or "").strip()
+    if re.search(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}", da1) or re.search(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}", da2):
+        return "[PREFLIGHT/DAP_AN_NGAY] Đáp án bị chuyển thành ngày ISO, kiểm tra lại phân số gốc."
+    if da1 and da2:
+        s1, s2 = _tap_so_dap_an(da1), _tap_so_dap_an(da2)
+        if s1 and s2 and not any(abs(a - b) <= max(0.02, 0.015 * max(abs(a), abs(b))) for a in s1 for b in s2):
+            return "[PREFLIGHT/DAP_AN_LECH] dap_an ('%s') không khớp dap_an_cuoi ('%s')." % (da1[:40], da2[:40])
     return ""
 
 

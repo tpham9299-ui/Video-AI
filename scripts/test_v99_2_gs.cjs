@@ -20,7 +20,7 @@ const ghiSheet = [];
 const zalo = [];
 let nhapKb = null;
 const ctx = vm.createContext({
-  PropertiesService: {getScriptProperties: () => ({getProperty: (k) => (k in props ? props[k] : null), setProperty: (k, v) => { props[k] = String(v); }, getProperties: () => ({...props})})},
+  PropertiesService: {getScriptProperties: () => ({getProperty: (k) => (k in props ? props[k] : null), setProperty: (k, v) => { props[k] = String(v); }, deleteProperty: (k) => { delete props[k]; }, getProperties: () => ({...props}), getKeys: () => Object.keys(props)})},
   Logger: {log: () => {}}, console,
 });
 for (const f of ['BoPhan1.gs', 'NangCao.gs', 'KiemTraHinh.gs', 'HinhHoc.gs', 'PromptKichBan.gs', 'SanKhau.gs', 'BoPhan2.gs', 'DangVideo.gs']) vm.runInContext(fs.readFileSync(path.join(GOC, f), 'utf8'), ctx, {filename: f});
@@ -241,10 +241,10 @@ t('kịch bản (tuSuaHinhThuc_) + metadata đăng (noiDungDang_ bọc veSinhMet
   assert.ok(/XƯNG HÔ BỀN VỮNG/.test(fs.readFileSync(path.join(GOC, 'PromptKichBan.gs'), 'utf8')));
 });
 
-console.log('5. Auto-Heal Mắt thần — chỉ lỗi cứng, tối đa 2 lần');
+console.log('5. Auto-Heal Mắt thần — chỉ lỗi cứng, tối đa 1 lần dựng lại / bài');
 const dongR = () => ({id: 'TT1', _row: 5, file_kich_ban: 'f1', ai_kiem_tra: '{}'});
 const capNhat = (r) => { const g = ghiSheet[ghiSheet.length - 1]; if (g && g.ai_kiem_tra) r.ai_kiem_tra = g.ai_kiem_tra; return g; };
-t('lỗi cứng lần 1 & 2 -> trả về BP2 (DA_GIAI + chỉ thị sửa đúng lỗi), lần 3 -> dừng (het_luot) để CHO + Zalo', () => {
+t('lỗi cứng lần 1 -> trả về BP2 (DA_GIAI + chỉ thị sửa đúng lỗi), lần 2 -> dừng (het_luot) để CHO + Zalo', () => {
   const r = dongR();
   const d = {file_id: 'v1', mat_than: {dat: false, loi: [{o: 4, loai: 'cat_chu', mo_ta: 'tiêu đề tràn', nang: true}, {o: 7, loai: 'lech_pha', mo_ta: 'đáp án sớm 4 s', nang: true}]}};
   ghiSheet.length = 0;
@@ -255,15 +255,11 @@ t('lỗi cứng lần 1 & 2 -> trả về BP2 (DA_GIAI + chỉ thị sửa đún
   assert.ok(/cat_chu/.test(g.gop_y) && /lech_pha/.test(g.gop_y) && /Cách sửa/.test(g.gop_y));
   assert.equal(JSON.parse(r.ai_kiem_tra).so_lan_tu_sua, 1);
   assert.ok(JSON.parse(r.ai_kiem_tra).ghi_chu_sua_tu_dong.length === 2);
-  kq = ctx.xuLyTuSuaMatThan_({}, r, d);
-  capNhat(r);
-  assert.ok(kq.tu_sua);
-  assert.equal(JSON.parse(r.ai_kiem_tra).so_lan_tu_sua, 2);
   const truoc = ghiSheet.length;
   kq = ctx.xuLyTuSuaMatThan_({}, r, d);
   assert.equal(kq.tu_sua, false);
   assert.equal(kq.het_luot, true);
-  assert.equal(ghiSheet.length, truoc, 'lần 3 không ghi DA_GIAI');
+  assert.equal(ghiSheet.length, truoc, 'lần 2 không ghi DA_GIAI');
 });
 t('cảnh báo thẩm mỹ nhẹ (nang:false) / lỗi hệ thống (logo_sai) KHÔNG dựng lại', () => {
   const r = dongR();
@@ -284,11 +280,12 @@ t('tu_sinh_hong -> kịch bản nháp được dọn cờ để BP2 lập lại 
   assert.ok(!nhapKb.tu_sinh_da_thu && !nhapKb.tu_sinh_hong && !nhapKb.khung4tang.tu_sinh);
   nhapKb = null;
 });
-t('webhook BoPhan2.gs gọi Auto-Heal trước khi chặn CHO; kiểm duyệt bố cục dùng chung trần 2 lần', () => {
+t('webhook BoPhan2.gs gọi Auto-Heal cho cả Mắt thần + bo_cuc_loi; kiểm duyệt bố cục dùng chung trần 1 lần', () => {
   const b2 = fs.readFileSync(path.join(GOC, 'BoPhan2.gs'), 'utf8');
   assert.ok(b2.indexOf('xuLyTuSuaMatThan_(sh, r, d)') > 0 && b2.indexOf('xuLyTuSuaMatThan_(sh, r, d)') < b2.indexOf('kqMT._mat_than_chan'));
+  assert.ok(/d\.bo_cuc_loi/.test(b2));
   const r = dongR();
-  r.ai_kiem_tra = JSON.stringify({so_lan_tu_sua: 1, so_lan_bo_cuc: 1, kd_lan: 2});   // v101.5: bo_cuc có trần riêng = 1
+  r.ai_kiem_tra = JSON.stringify({so_lan_tu_sua: 1, so_lan_bo_cuc: 1, kd_lan: 1});
   ghiSheet.length = 0; zalo.length = 0;
   const kq = ctx.xuLyKiemDuyetBoCuc_({}, r, {loai: 'bo_cuc', nang: ['chữ tràn mép cảnh 3']});
   assert.equal(kq.het_luot, true);
@@ -300,15 +297,23 @@ t('webhook BoPhan2.gs gọi Auto-Heal trước khi chặn CHO; kiểm duyệt b�
   assert.equal(JSON.parse(capNhat(r2).ai_kiem_tra).so_lan_tu_sua, 1);
 });
 
-t('v101.5: bo_cuc 1 lượt không đốt lượt Mắt thần (vẫn đủ 2); catGonTex_ không cắt ngang \\text{...}', () => {
+t('v102.0: bo_cuc + Mắt thần dùng chung trần 1 lần/bài; nhận hinh_nho/tran_day/nhan_de & bo_cuc_loi; catGonTex_ an toàn', () => {
   const r = dongR();
   r.ai_kiem_tra = JSON.stringify({so_lan_tu_sua: 1, so_lan_bo_cuc: 1, kd_lan: 1});
   ghiSheet.length = 0;
   const kq = ctx.xuLyTuSuaMatThan_({}, r, {file_id: 'v1', mat_than: {dat: false, loi: [{o: 4, loai: 'cat_chu', mo_ta: 'x', nang: true}]}});
-  assert.ok(kq.tu_sua, 'lượt bố cục đã dùng không được chặn Mắt thần');
-  const ai = JSON.parse(capNhat(r).ai_kiem_tra);
-  assert.equal(ai.so_lan_mat_than, 1);
-  assert.equal(ai.so_lan_tu_sua, 2);
+  assert.equal(kq.tu_sua, false, 'đã dùng 1 lượt bố cục -> khóa trần 1 lần/bài');
+  assert.equal(kq.het_luot, true);
+  const r3 = dongR();
+  ghiSheet.length = 0;
+  const kq3 = ctx.xuLyTuSuaMatThan_({}, r3, {file_id: 'v2', mat_than: {dat: false, loi: [{o: 5, loai: 'hinh_nho', mo_ta: 'hình bé', nang: true}, {o: 6, loai: 'tran_day', mo_ta: 'tràn đáy', nang: true}, {o: 7, loai: 'nhan_de', mo_ta: 'nhãn đè', nang: true}]}});
+  assert.equal(kq3.tu_sua, true);
+  assert.equal(kq3.cung.length, 3);
+  const r4 = dongR();
+  ghiSheet.length = 0;
+  const kq4 = ctx.xuLyTuSuaMatThan_({}, r4, {file_id: 'v3', mat_than: {dat: true, loi: []}, bo_cuc_loi: ['TEX_THO: lộ \\text ở cảnh 2']});
+  assert.equal(kq4.tu_sua, true);
+  assert.equal(kq4.cung[0].loai, 'latex_tho');
   const goc = '\\Omega:\\ \\text{chọn 3 trong 20 thẻ (1 ... 20) rồi tính xác suất}';
   const gon = ctx.catGonTex_(goc, 40);
   assert.ok(!/\\text\{[^}]*$/.test(gon) && (gon.match(/\{/g) || []).length === (gon.match(/\}/g) || []).length && !/\\$/.test(gon), gon);
@@ -382,6 +387,73 @@ t('THUC_TE chỉ có thẻ chữ: BP2 giữ lỗi cứng và giữ hợp đồng
   assert.equal(kb.san_khau_dich, 'tu_sinh_svg');
   assert.ok(ctx.phanLoaiLoiCung_([], [], kb).nang.some(x => x.startsWith('t2_trong')));
   assert.ok(!ctx.phanLoaiLoiCung_([], [], {...kb, id: 'TEST-10P'}).nang.length);
+});
+
+console.log('7. v102.0 — Tự dọn Script Properties > 35/50, đếm video đạt hôm nay & báo cáo Zalo 21:00');
+const fmtDateMock = (d, tz, f) => {
+  const dt = new Date(d.getTime() + (tz === 'America/Los_Angeles' ? -7 : 7) * 3600000);
+  const p2 = (n) => String(n).padStart(2, '0');
+  const Y = dt.getUTCFullYear(), M = p2(dt.getUTCMonth() + 1), D = p2(dt.getUTCDate()), h = p2(dt.getUTCHours()), m = p2(dt.getUTCMinutes());
+  return f === 'yyyy-MM-dd' ? `${Y}-${M}-${D}` : `${h}:${m} ${D}/${M}/${Y}`;
+};
+t('kiemVaDonScriptProperties_ tự dọn khi > 35 khóa, xóa kdm_*/kd_* cũ & HE_yt_* lỗi, giữ BAD / hôm nay / key', () => {
+  ctx.Utilities = {formatDate: fmtDateMock};
+  ctx.khoNgayPT_ = () => '2026-11-26';
+  props = {GEMINI_KEY: 'secret', kd_bad1: 'BAD', kd_now: '2026-11-26', kdm_now_pro: '2026-11-26', HE_yt_ok: '2026-11-25', DON_RAC_NGAY: '2026-11-26'};
+  for (let i = 0; i < 20; i++) props['kdm_old_' + i] = '2026-11-20';
+  for (let i = 0; i < 15; i++) props['HE_yt_err_' + i] = 'loi';
+  assert.ok(Object.keys(props).length > 35);
+  const kq = ctx.kiemVaDonScriptProperties_();
+  assert.ok(kq && kq.da_xoa === 35, 'phải xóa 35 khóa rác, thực tế: ' + JSON.stringify(kq));
+  assert.equal(props.GEMINI_KEY, 'secret');
+  assert.equal(props.kd_bad1, 'BAD');
+  assert.equal(props.kd_now, '2026-11-26');
+  assert.equal(props.kdm_now_pro, '2026-11-26');
+  assert.equal(props.HE_yt_ok, '2026-11-25');
+  assert.equal(props.CAI_DAT_KHOA, '0');
+});
+t('demVideoDatHomNay_ chỉ đếm video ngắn ĐẠT hôm nay (bỏ LOI, CHO, -10P, hôm qua)', () => {
+  ctx.Utilities = {formatDate: fmtDateMock};
+  const now = new Date(), qua = new Date(Date.now() - 2 * 86400000);
+  const hang = [
+    {id: 'TT1', trang_thai: 'CO_VIDEO', duyet: 'DA_DUYET', cap_nhat: now},
+    {id: 'TT2', trang_thai: 'DA_DANG', duyet: 'DA_DUYET', cap_nhat: now},
+    {id: 'TT3', trang_thai: 'DA_XONG', duyet: '', cap_nhat: now},
+    {id: 'TT4', trang_thai: 'CO_VIDEO', duyet: 'CHO', cap_nhat: now},
+    {id: 'TT5', trang_thai: 'LOI', duyet: '', cap_nhat: now},
+    {id: 'TT6-10P', trang_thai: 'DA_XONG', duyet: 'DA_DUYET', cap_nhat: now},
+    {id: 'TT7', trang_thai: 'DA_XONG', duyet: 'DA_DUYET', cap_nhat: qua},
+  ];
+  assert.equal(ctx.demVideoDatHomNay_(hang), 3);
+});
+t('taoBaoCaoSucKhoe_ báo đúng chỉ tiêu đạt, tỷ lệ đạt lần 1 (%), Auto-Heal & Top 3 mã lỗi hôm nay', () => {
+  ctx.Utilities = {formatDate: fmtDateMock};
+  ctx.khoDanhSachKey_ = () => [];
+  const now = new Date();
+  const hang = [
+    {id: 'TT1', trang_thai: 'CO_VIDEO', duyet: 'DA_DUYET', file_video: 'v1', cap_nhat: now, ai_kiem_tra: '{}'},
+    {id: 'TT2', trang_thai: 'CO_VIDEO', duyet: 'DA_DUYET', file_video: 'v2', cap_nhat: now, ai_kiem_tra: JSON.stringify({so_lan_tu_sua: 1})},
+    {id: 'TT3', trang_thai: 'LOI', duyet: '', cap_nhat: now, ai_kiem_tra: '{}'},
+  ];
+  const nkRows = [
+    [now, 'TU_SUA_MAT_THAN', 'TT2 lần 1/1: cat_chu: tràn | hinh_nho: nhỏ'],
+    [now, 'AUTO_HEAL_BO_CUC', 'TT4 lần 1/1: TEX_THO: lộ text'],
+    [now, 'MAT_THAN', 'TT5 chặn: cat_chu + t2_trong'],
+    [now, 'MAT_THAN', 'TT6 chặn: cat_chu'],
+  ];
+  ctx.docHang_ = () => hang;
+  ctx.SpreadsheetApp = {
+    getActiveSpreadsheet: () => ({
+      getSheetByName: (ten) => ten === 'NHAT_KY'
+        ? {getLastRow: () => nkRows.length + 1, getLastColumn: () => 3, getRange: () => ({getValues: () => nkRows})}
+        : {}
+    })
+  };
+  const bc = ctx.taoBaoCaoSucKhoe_();
+  assert.match(bc, /dat kiem duyet 2\/3/);
+  assert.match(bc, /dat lan 1: 1\/2 \(50%\)/);
+  assert.match(bc, /Auto-Heal da chay: 2 luot/);
+  assert.match(bc, /TOP 3 LOI HOM NAY: cat_chu \(3\)/);
 });
 
 fs.rmSync(tmp, {recursive: true, force: true});

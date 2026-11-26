@@ -3152,14 +3152,16 @@ def main():
             c["loi_thoai"] = re.sub(r"(kênh|theo dõi|đăng ký)\s+(?:Tư duy Xác suất|Tư duy Toán|Toán Thầy Trí)\b",
                                      lambda m: m[1] + " " + TEN_THUONG_HIEU, c["loi_thoai"], flags=re.I)
     import khung4tang_v96 as router
-    if router.thuc_te_ngan(kb):
-        loi = router.loi_truoc_tts(kb, (suy_khuon(kb) or {}).get("khuon"))
-        if loi:
-            print("t2_trong: " + loi, file=sys.stderr)
-            if os.environ.get("BAO_LOI_BP2"):
-                with open(os.environ["BAO_LOI_BP2"], "w", encoding="utf8") as bao:
-                    bao.write("t2_trong: " + loi)
-            raise SystemExit(42)
+    # Cổng lọc sớm (Pre-flight Gate) trước TTS / bundle / render — chỉ áp dụng Khung4Tang ngắn (THUC_TE / XAC_SUAT),
+    # tự bỏ qua HINH_PHANG, HINH_KHONG_GIAN và video -10P.
+    khuon_goi_y = (suy_khuon(kb) or {}).get("khuon") or ""
+    loi_som = router.cong_loc_som(kb, khuon_goi_y)
+    if loi_som:
+        print("t2_trong: " + loi_som, file=sys.stderr)
+        if os.environ.get("BAO_LOI_BP2"):
+            with open(os.environ["BAO_LOI_BP2"], "w", encoding="utf8") as bao:
+                bao.write("t2_trong: " + loi_som)
+        raise SystemExit(42)
     import khung4tang_v99 as v99_dap
     v99_dap.kiem_ngay_dap_an(kb)
     import xac_suat_dong as xs

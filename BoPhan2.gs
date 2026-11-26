@@ -162,7 +162,9 @@ function chonVaGuiDung_(sh) {
       if (phut > BP2_QUA_HAN_PHUT) { kiemTraGitHubBiChan_(); baoLoiDung_(sh, r, 'QUA_HAN: GitHub không báo kết quả sau ' + BP2_QUA_HAN_PHUT + ' phút'); }
       else dangDung++;
     });
-    // 2) Đề ưu tiên (Zalo) trước, tiếp đến là Video dài 10 phút trong ngày, rồi kịch bản chờ lâu nhất
+    // 2) Đề ưu tiên (Zalo) trước, tiếp đến là Video dài 10 phút trong ngày, rồi kịch bản chờ lâu nhất (bỏ qua nhanh dòng LOI/CHO)
+    var chiTieuDat = Math.max(1, Number(cauHinh_('CHI_TIEU_VIDEO_DAT_NGAY')) || 3);
+    var datHomNay = typeof demVideoDatHomNay_ === 'function' ? demVideoDatHomNay_(hang) : 0;
     var conUuTien = hang.some(function (r) { return laUuTien_(r) && ['CHO_DOC', 'MOI', 'GITHUB', 'DA_GIAI', 'CO_KICH_BAN', 'DANG_DUNG'].indexOf(r.trang_thai) >= 0; });
     var ds = hang.filter(function (r) { return r.trang_thai === 'CO_KICH_BAN' && r.file_kich_ban && (laUuTien_(r) || !conUuTien); })
       .sort(function (a, b) {
@@ -171,8 +173,19 @@ function chonVaGuiDung_(sh) {
         var d10 = (typeof laVideoDai_ === 'function' && laVideoDai_(b) ? 1 : 0) - (typeof laVideoDai_ === 'function' && laVideoDai_(a) ? 1 : 0);
         return d10 || new Date(a.cap_nhat).getTime() - new Date(b.cap_nhat).getTime();
       });
-    if (!ds.length) return;
+    if (!ds.length) {
+      if (datHomNay < chiTieuDat && dangDung === 0 && typeof henUuTien_ === 'function') {
+        var cNap = CacheService.getScriptCache();
+        if (!cNap.get('NAP_BAI_THIEU_DAT')) {
+          cNap.put('NAP_BAI_THIEU_DAT', '1', 600);
+          henUuTien_(20);
+          nhatKy_('DIEU_PHOI', 'Chưa đủ chỉ tiêu video đạt hôm nay (' + datHomNay + '/' + chiTieuDat + '), tự nạp bài sạch kế tiếp');
+        }
+      }
+      return;
+    }
     var r = ds[0];
+    if (datHomNay >= chiTieuDat && !laUuTien_(r) && !(typeof laVideoDai_ === 'function' && laVideoDai_(r))) return;
     // dựng song song tối đa SO_VIDEO_CUNG_LUC video thường (mặc định 2); đề ưu tiên được thêm một chỗ
     var toiDaDung = Number(cauHinh_('SO_VIDEO_CUNG_LUC')) || 2;
     if (dangDung >= toiDaDung && !(laUuTien_(r) && dangDung < toiDaDung + 1)) return;
@@ -227,10 +240,10 @@ function kichHoatDungVideo_(r) {
   kb.id = r.id;
   if (!kb.mon && (r.mon || /^HH/i.test(String(r.id || '')))) kb.mon = r.mon || 'HINH_HOC';
   if (!kb.luong) kb.luong = String(kb.mon || '').toUpperCase() === 'HINH_HOC' ? 'hinh_hoc_thuan' : 'thuc_te_xac_suat';   // v86 khóa luồng (kịch bản cũ)
-  // kiểm duyệt bố cục trên GitHub: 'chan' = lỗi nặng thì dừng, gửi về để tự sửa kịch bản; sau 2 lần sửa vẫn lỗi -> 'bao' (dựng rồi AI chấm)
+  // kiểm duyệt bố cục trên GitHub: 'chan' = lỗi nặng thì dừng, gửi về để tự sửa kịch bản; sau 1 lần dựng lại vẫn lỗi -> 'bao' (dựng rồi AI chấm)
   var kdCu = {};
   try { kdCu = JSON.parse(String(r.ai_kiem_tra || '{}')); } catch (e0) {}
-  kb._kiem_duyet = (Number(kdCu.kd_lan) || 0) >= 2 ? 'bao' : 'chan';
+  kb._kiem_duyet = (Number(kdCu.so_lan_tu_sua) || Number(kdCu.kd_lan) || 0) >= 1 ? 'bao' : 'chan';
   // giọng đọc của video này theo QUY TẮC (không ngẫu nhiên); cùng một video dựng lại thì giữ nguyên giọng đã chọn
   var gd = chonGiongDoc_(r);
   kb.giong = gd.ten; kb.gioi_tinh_giong = gd.gioi;
@@ -433,9 +446,10 @@ function doPost(e) {
       // v91 MẮT THẦN 3×3 phát hiện lỗi nặng: giữ ở CHO (không giao AI xem, không xếp lịch), đánh dấu chặn trong link_dang
       // (DangVideo.gs bỏ qua cho tới khi chính bạn /duyet sau thời điểm chặn) và gửi ảnh lưới + danh sách lỗi qua Zalo.
       var matThanChan = d.mat_than && d.mat_than.dat === false;
-      // v99.2 AUTO-HEAL: lỗi CỨNG do kịch bản (cắt / chồng chữ, TeX thô, lộ đáp án, lệch pha, đứng hình, tự sinh hỏng) và còn lượt
-      // (tối đa 2 / mã đề) -> trả về BP2 sửa đúng lỗi rồi BP3 tự dựng lại; video lỗi bỏ vào thùng rác. Hết lượt / lỗi khác -> CHO + Zalo như cũ.
-      var tuSua = matThanChan && typeof xuLyTuSuaMatThan_ === 'function' ? xuLyTuSuaMatThan_(sh, r, d) : null;
+      var coBoCucLoi = Array.isArray(d.bo_cuc_loi) && d.bo_cuc_loi.length > 0;
+      // v99.2/v102.0 AUTO-HEAL: lỗi CỨNG do kịch bản (Mắt thần 3×3 hoặc bo_cuc_loi nặng) và còn lượt
+      // (tối đa 1 lần dựng lại / bài) -> trả về BP2 sửa đúng lỗi rồi BP3 tự dựng lại; video lỗi bỏ vào thùng rác. Hết lượt / lỗi khác -> CHO + Zalo.
+      var tuSua = (matThanChan || coBoCucLoi) && typeof xuLyTuSuaMatThan_ === 'function' ? xuLyTuSuaMatThan_(sh, r, d) : null;
       if (tuSua && tuSua.tu_sua) {
         [d.file_id, d.anh_kt, d.anh_bia].forEach(function (fid) { if (fid) { try { DriveApp.getFileById(String(fid)).setTrashed(true); } catch (eTr) {} } });
         PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1');
