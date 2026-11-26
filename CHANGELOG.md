@@ -602,3 +602,5 @@
 
 - Shorts THUC_TE giữ hợp đồng hình từ BP2 đến props. Thiếu sân khấu hoặc SVG chỉ có hộp chữ bị chặn trước khi dựng.
 - DOM, Mắt thần 3×3 và AI chấm cuối kiểm riêng hình minh họa T2. Lỗi t2_trong dùng lại hạn mức Auto-Heal của từng cửa.
+- XAC_SUAT dựng khay tổ hợp, dãy lượt rút, phần bù và biểu đồ theo bước. Outro dùng riêng biểu đồ chốt.
+- Bảo vệ phân số ở Sheets, props và Outro. Kiểm hình học DOM và mặt nạ T2 để phát hiện đứng hình dù nền động.

@@ -269,7 +269,8 @@ function xoaHanVideo_(sh, r, lyDo) {
   try { if (typeof xoaNhapKichBan_ === 'function') xoaNhapKichBan_(r.id); } catch (e) {}
   try {
     var lt = luuTruSheet_();
-    lt.appendRow([r.ma_bam || bam_(r.de_bai), r.id, r.lop, String(r.de_bai || '').slice(0, 120), r.dap_an || '', 'BO_QUA_ZALO' + (lyDo ? ': ' + String(lyDo).slice(0, 80) : ''), new Date()]);
+    lt.getRange(lt.getLastRow() + 1, 5).setNumberFormat('@');
+    lt.appendRow([r.ma_bam || bam_(r.de_bai), r.id, r.lop, String(r.de_bai || '').slice(0, 120), dapAnVanBan_(r.dap_an), 'BO_QUA_ZALO' + (lyDo ? ': ' + String(lyDo).slice(0, 80) : ''), new Date()]);
   } catch (e) {}
   // tìm lại dòng theo mã (số dòng có thể đã đổi nếu vừa xóa dòng khác trong cùng lượt)
   var dong = docHang_(sh).filter(function (x) { return x.id === r.id; })[0];
@@ -292,7 +293,7 @@ function luuNgonKichBan_(r) {
     kb_raw: kbRaw.slice(0, 45000),
     hang_backup: {
       id: r.id, lop: r.lop || '12', mon: r.mon || 'THUC_TE', chu_de: r.chu_de || '', de_bai: r.de_bai || '',
-      dap_an: r.dap_an || '', dap_an_hien: r.dap_an_hien || '', cach_1: r.cach_1 || '', cach_2: r.cach_2 || '',
+      dap_an: dapAnVanBan_(r.dap_an), dap_an_hien: dapAnVanBan_(r.dap_an_hien), cach_1: r.cach_1 || '', cach_2: r.cach_2 || '',
       kiem_chung: r.kiem_chung || '', ma_bam: r.ma_bam || '', san_pham: r.san_pham || '',
       file_anh: r.file_anh || '', mo_ta_hinh: r.mo_ta_hinh || '', nguon: r.nguon || '',
       diem_tu_duy: r.diem_tu_duy || '', yeu_to_tu_duy: r.yeu_to_tu_duy || '', bay_thuong_gap: r.bay_thuong_gap || ''
@@ -398,7 +399,9 @@ function traLoiLyDoBo_(chat, chu) {
             if (c === 'ngay_tao' || c === 'cap_nhat') return new Date();
             return hb[c] !== undefined ? hb[c] : '';
           });
-          sh.appendRow(dongMoi);
+          var khoiPhuc = {};
+          COT.forEach(function (c, i) { khoiPhuc[c] = dongMoi[i]; });
+          themHang_(sh, khoiPhuc);
         }
         daKhoiPhuc.push(id);
       } catch (eKP) { nhatKy_('KHOI_PHUC_SUA_LOI', id + ': ' + eKP.message); }

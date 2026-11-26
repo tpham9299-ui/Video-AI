@@ -1,0 +1,139 @@
+{
+  "id": "XS-lan_luot",
+  "mon": "XAC_SUAT",
+  "luong": "thuc_te_xac_suat",
+  "lop": 11,
+  "tieu_de": "Lượt đỏ cuối",
+  "chu_de": "Lượt đỏ cuối",
+  "de_bai": "Có 4 bi đỏ và 4 bi xanh. Rút lần lượt từng viên đến khi hết bi đỏ thì dừng. Tính xác suất còn 2 bi xanh.",
+  "dap_an_cuoi": "1/7",
+  "canh": [
+    {
+      "so": 1,
+      "loai": "mo_dau",
+      "loi_thoai": "Mỗi dãy màu mô tả một thứ tự rút.",
+      "noi_dung_man_hinh": []
+    },
+    {
+      "so": 2,
+      "loai": "tinh_toan",
+      "loi_thoai": "Chọn bốn vị trí đỏ trong tám vị trí, có bảy mươi dãy.",
+      "noi_dung_man_hinh": [
+        "n(\\Omega)=C_8^4=70"
+      ]
+    },
+    {
+      "so": 3,
+      "loai": "tinh_toan",
+      "loi_thoai": "Phải còn hai bi xanh trong túi và chưa rút hết đỏ trước lượt sáu.",
+      "noi_dung_man_hinh": []
+    },
+    {
+      "so": 4,
+      "loai": "tinh_toan",
+      "loi_thoai": "Viên đỏ thứ tư nằm ở lượt sáu. Năm lượt đầu có ba đỏ và hai xanh.",
+      "noi_dung_man_hinh": [
+        "n(A)=C_5^3=10"
+      ]
+    },
+    {
+      "so": 5,
+      "loai": "dap_an",
+      "loi_thoai": "Biểu đồ tỉ lệ cho mười trên bảy mươi, tức một phần bảy.",
+      "noi_dung_man_hinh": [
+        "P(A)=10/70=1/7"
+      ]
+    },
+    {
+      "so": 6,
+      "loai": "bai_hoc",
+      "loi_thoai": "Hãy lưu lại cách đếm và thử giải lại bài này.",
+      "noi_dung_man_hinh": []
+    }
+  ],
+  "khung4tang": {
+    "buoc": [
+      {
+        "canh": 1,
+        "khi_noi": "Mỗi dãy màu mô",
+        "nhan": "Bước 1",
+        "tieu_de": "Từng lượt rút",
+        "hanh_dong": {
+          "pha": "hien"
+        },
+        "the": [
+          {
+            "loai": "chu",
+            "noi_dung": "Từng lượt rút"
+          }
+        ]
+      },
+      {
+        "canh": 2,
+        "khi_noi": "Chọn bốn vị trí",
+        "nhan": "Bước 2",
+        "tieu_de": "Tám lượt",
+        "hanh_dong": {
+          "pha": "mau"
+        },
+        "the": [
+          {
+            "loai": "cong_thuc",
+            "dong": [
+              "n(\\Omega)=C_8^4=70"
+            ]
+          }
+        ]
+      },
+      {
+        "canh": 3,
+        "khi_noi": "Phải còn hai bi",
+        "nhan": "Bước 3",
+        "tieu_de": "Điều kiện dừng",
+        "hanh_dong": {
+          "pha": "dieu_kien"
+        },
+        "the": [
+          {
+            "loai": "chu",
+            "noi_dung": "Điều kiện dừng"
+          }
+        ]
+      },
+      {
+        "canh": 4,
+        "khi_noi": "Viên đỏ thứ tư",
+        "nhan": "Bước 4",
+        "tieu_de": "Khóa lượt sáu",
+        "hanh_dong": {
+          "pha": "khoa"
+        },
+        "the": [
+          {
+            "loai": "cong_thuc",
+            "dong": [
+              "n(A)=C_5^3=10"
+            ]
+          }
+        ]
+      },
+      {
+        "canh": 5,
+        "khi_noi": "Biểu đồ tỉ lệ",
+        "nhan": "Bước 5",
+        "tieu_de": "Tỉ lệ dãy thỏa",
+        "hanh_dong": {
+          "pha": "ti_le"
+        },
+        "the": [
+          {
+            "loai": "cong_thuc",
+            "dong": [
+              "P(A)=10/70=1/7"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

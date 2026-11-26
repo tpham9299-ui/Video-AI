@@ -435,6 +435,12 @@ jobs:
           che_do = str(kb.get('_kiem_duyet') or ('chan' if os.environ.get('ID_VIDEO') else 'bao'))
           chan = che_do == 'chan' and len(b.get('nang') or []) > 0 and bool(os.environ.get('ID_VIDEO'))
           from scripts.khung4tang_v96 import thuc_te_ngan
+          xs_ngan = kb.get('mon') == 'XAC_SUAT' and kb.get('kieu_video') != 'DAI_10_PHUT' and not str(kb.get('id')).endswith('-10P')
+          if xs_ngan and b.get('hong'):
+              b.setdefault('nang', []).append('hinh_dung_im: chưa đủ khung DOM để kiểm chuyển động T2')
+              json.dump(b, open('out/kiem_duyet.json', 'w', encoding='utf8'), ensure_ascii=False)
+          if any(x.startswith('hinh_dung_im:') for x in b.get('nang', [])):
+              chan = True
           if thuc_te_ngan(kb) and (b.get('hong') or any('t2_trong' in x for x in b.get('nang', []))):
               chan = True
               if b.get('hong'):

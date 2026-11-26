@@ -1,0 +1,166 @@
+{
+  "id": "XS-chia_th",
+  "mon": "XAC_SUAT",
+  "luong": "thuc_te_xac_suat",
+  "lop": 11,
+  "tieu_de": "Hai cách chia màu",
+  "chu_de": "Hai cách chia màu",
+  "de_bai": "Hộp có 6 bi đỏ và 4 bi xanh. Rút đồng thời 5 viên. Tính xác suất chọn được 3 hoặc 4 viên đỏ.",
+  "dap_an_cuoi": "5/7",
+  "canh": [
+    {
+      "so": 1,
+      "loai": "mo_dau",
+      "loi_thoai": "Có mười viên trong hộp, mỗi viên có cùng khả năng được chọn.",
+      "noi_dung_man_hinh": []
+    },
+    {
+      "so": 2,
+      "loai": "tinh_toan",
+      "loi_thoai": "Chọn năm trong mười viên, số cách chọn là hai trăm năm mươi hai.",
+      "noi_dung_man_hinh": [
+        "n(\\Omega)=C_{10}^5=252"
+      ]
+    },
+    {
+      "so": 3,
+      "loai": "tinh_toan",
+      "loi_thoai": "Đổi chỗ hai viên trong cùng một nhóm vẫn cho cùng một kết quả.",
+      "noi_dung_man_hinh": []
+    },
+    {
+      "so": 4,
+      "loai": "tinh_toan",
+      "loi_thoai": "Chọn bốn đỏ và một xanh cho sáu mươi cách.",
+      "noi_dung_man_hinh": [
+        "C_6^4 C_4^1=60"
+      ]
+    },
+    {
+      "so": 5,
+      "loai": "tinh_toan",
+      "loi_thoai": "Chọn ba đỏ và hai xanh cho một trăm hai mươi cách.",
+      "noi_dung_man_hinh": [
+        "C_6^3 C_4^2=120"
+      ]
+    },
+    {
+      "so": 6,
+      "loai": "dap_an",
+      "loi_thoai": "Biểu đồ tỉ lệ đối chiếu một trăm tám mươi với hai trăm năm mươi hai. Xác suất bằng năm phần bảy.",
+      "noi_dung_man_hinh": [
+        "P(A)=180/252=5/7"
+      ]
+    },
+    {
+      "so": 7,
+      "loai": "bai_hoc",
+      "loi_thoai": "Hãy lưu lại cách đếm và thử giải lại bài này.",
+      "noi_dung_man_hinh": []
+    }
+  ],
+  "khung4tang": {
+    "buoc": [
+      {
+        "canh": 1,
+        "khi_noi": "Có mười viên trong",
+        "nhan": "Bước 1",
+        "tieu_de": "Hai màu trong hộp",
+        "hanh_dong": {
+          "pha": "hien"
+        },
+        "the": [
+          {
+            "loai": "chu",
+            "noi_dung": "Hai màu trong hộp"
+          }
+        ]
+      },
+      {
+        "canh": 2,
+        "khi_noi": "Chọn năm trong mười",
+        "nhan": "Bước 2",
+        "tieu_de": "Không gian mẫu",
+        "hanh_dong": {
+          "pha": "mau"
+        },
+        "the": [
+          {
+            "loai": "cong_thuc",
+            "dong": [
+              "n(\\Omega)=C_{10}^5=252"
+            ]
+          }
+        ]
+      },
+      {
+        "canh": 3,
+        "khi_noi": "Đổi chỗ hai viên",
+        "nhan": "Bước 3",
+        "tieu_de": "Có tính thứ tự?",
+        "hanh_dong": {
+          "pha": "dieu_kien"
+        },
+        "the": [
+          {
+            "loai": "chu",
+            "noi_dung": "Có tính thứ tự?"
+          }
+        ]
+      },
+      {
+        "canh": 4,
+        "khi_noi": "Chọn bốn đỏ và",
+        "nhan": "Bước 4",
+        "tieu_de": "TH1 · 4 đỏ, 1 xanh",
+        "hanh_dong": {
+          "pha": "truong_hop",
+          "do": 4
+        },
+        "the": [
+          {
+            "loai": "cong_thuc",
+            "dong": [
+              "C_6^4 C_4^1=60"
+            ]
+          }
+        ]
+      },
+      {
+        "canh": 5,
+        "khi_noi": "Chọn ba đỏ và",
+        "nhan": "Bước 5",
+        "tieu_de": "TH2 · 3 đỏ, 2 xanh",
+        "hanh_dong": {
+          "pha": "truong_hop",
+          "do": 3
+        },
+        "the": [
+          {
+            "loai": "cong_thuc",
+            "dong": [
+              "C_6^3 C_4^2=120"
+            ]
+          }
+        ]
+      },
+      {
+        "canh": 6,
+        "khi_noi": "Biểu đồ tỉ lệ",
+        "nhan": "Bước 6",
+        "tieu_de": "Cộng hai trường hợp",
+        "hanh_dong": {
+          "pha": "ti_le"
+        },
+        "the": [
+          {
+            "loai": "cong_thuc",
+            "dong": [
+              "P(A)=180/252=5/7"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

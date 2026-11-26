@@ -8,6 +8,7 @@ import os from 'node:os';
 import {openBrowser, renderStill, selectComposition} from '@remotion/renderer';
 import catalog from './bophan1/model_gemini.cjs';
 import katex from 'katex';
+import {dungImXacSuat} from './dung_im_xs.mjs';
 
 // --- key Gemini hỏng (dùng chung với Bộ phận 1 / giọng đọc): khai báo TRƯỚC khi chạy kiểm duyệt ---
 var TEP_KEY_HONG_JSON = path.join(os.tmpdir(), 'gemini_key_hong.json');
@@ -54,6 +55,18 @@ for (const p of [0.95, 0.55]) {
   });
 }
 
+const xs = props.mon === 'XAC_SUAT' && props.boCuc === '4tang' && props.kieu_video !== 'DAI_10_PHUT' && !/-10P$/i.test(props.id || '');
+const fps = props.fps || 30, steps = props.khung4tang?.buoc || [];
+const end = props.outro?.batDau ?? props.tongFrame;
+if (xs && steps.length > 1) {
+  const add = frame => {
+    if (frame >= end || mau.some(m => m.f === frame+lech)) return;
+    const i = Math.max(0, canh.findIndex(c => frame >= c.batDau && frame < c.batDau+c.soFrame));
+    mau.push({f: frame+lech, i, isEnd: false});
+  };
+  steps.slice(1).forEach(b => add(Math.ceil((b.t+.8)*fps)));
+  for (let f=Math.ceil(steps[1].t*fps); f<end; f+=4*fps) add(f);
+}
 const trinhDuyet = await openBrowser('chrome', {browserExecutable: process.env.TRINH_DUYET || null, chromiumOptions: {gl: 'swangle'}});
 const comp = await selectComposition({serveUrl: path.resolve(bundle), id: 'Video', inputProps, puppeteerInstance: trinhDuyet});
 const tho = [];
@@ -157,6 +170,8 @@ function ghiBaoCao(aiKq, hoanTat) {
   // vật đè vật chỉ tính nặng khi lặp lại ở >= 2 khung mẫu (1 khung có thể là lúc vật đang bay vào)
   const laNang = (l) => NANG.has(l.kieu) || ((l.kieu === 'VAT_DE' || l.kieu === 'HINH_NHO') && l.so >= 2);   // hình nhỏ ở >= 2 khung mẫu cũng là lỗi nặng
   const nang = ds.filter(laNang).map(moTa).concat(aiLoi, loiDapAn);
+  if (xs && dungImXacSuat(khung.filter(k => k.frame-lech < end).map(k => ({shape: k.shape, frame: k.frame-lech})), steps, fps))
+    nang.unshift('hinh_dung_im: hình học T2 không đổi qua ba bước hoặc hơn 12 giây');
   if (thucTe) {
     const giua = mau.filter(m => m.i > 0 && m.i < canh.length - 1 &&
       (!props.outro || m.f - lech < props.outro.batDau));

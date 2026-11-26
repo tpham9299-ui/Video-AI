@@ -569,6 +569,7 @@ function tuSuaKichBan_(kb, ctx, r) {
     kb.bai_hoc_rut_ra = kb.bai_hoc_rut_ra.slice(0, 3).map(function (x) { return String(x).slice(0, 90); });
   }
   if (r && r.dap_an) {
+    if (typeof dapAnVanBan_ === 'function') r.dap_an = dapAnVanBan_(r.dap_an);
     var daTho = String(r.dap_an).replace(/\s/g, '');
     // v102: đáp án kịch bản có THAM SỐ chữ (2a/√11, 0,603a) mà kết quả máy là số trần -> giữ dạng có tham số, không cắt cụt thành "0,603"
     var coThamSo_ = function (s) { return /(?:^|[^A-Za-zÀ-ỹ])[A-Za-z](?![A-Za-zÀ-ỹ])/.test(String(s || '').replace(/\\[A-Za-z]+/g, ' ').replace(/[{}^_$]/g, ' ')); };

@@ -5,6 +5,10 @@
 // khóa màu ẩn số, đồ thị không NaN.
 import {build} from 'esbuild';
 import fs from 'fs';
+import {execFileSync} from 'node:child_process';
+import {createElement} from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+import {dungImXacSuat} from './dung_im_xs.mjs';
 import path from 'path';
 import {pathToFileURL} from 'url';
 
@@ -93,6 +97,29 @@ for (const ten of MAU) {
   }
 }
 
+const {RutTheoBuoc} = await nap('src/sankhau2d/RutTheoBuoc.tsx');
+for (const [mode, counts] of Object.entries({chia_th:[180,252],lan_luot:[10,70],phan_bu:[140,210]})) {
+  const sk = JSON.parse(execFileSync('python', ['-X','utf8','-c', [
+    'import sys,json; sys.path.insert(0,"scripts"); from xac_suat_dong import mo_phong',
+    'k=json.load(open(sys.argv[1],encoding="utf8")); bs=k["khung4tang"]["buoc"]',
+    'print(json.dumps(mo_phong(k,bs,[{"t":i*6} for i in range(len(bs))],lambda a,b:"",len(bs)*6)))'
+  ].join('\n'), 'mau/xac_suat/'+mode+'.json'], {encoding:'utf8'}));
+  const draw = (t,final=false) => renderToStaticMarkup(createElement(RutTheoBuoc,{sk,t,W:820,H:648,final}));
+  const markup = sk.pha.map(p => draw(p.t+1.5));
+  const objects = s => [...s.matchAll(/data-xs-object="([^"]+)"[^>]*>/g)].map(m => m[0]).join('|');
+  thu(mode+' số cách', sk.n_a === counts[0] && sk.n_omega === counts[1]);
+  thu(mode+' đổi hình qua mỗi bước', markup.every((s,i) => !i || objects(s)!==objects(markup[i-1]) || objects(draw(sk.pha[i].t+3.5))!==objects(markup[i-1])));
+  thu(mode+' Outro chỉ có thanh tỉ lệ', !/data-xs-object="\d/.test(draw(0,true)) && draw(0,true).includes('data-xs-object="A"'));
+  if (mode === 'phan_bu') {
+    const x = [...objects(markup[0]).matchAll(/translate\(([\d.]+)/g)].map(m=>+m[1]);
+    thu('tâm lưới 540 và tên An, Bình', (Math.min(...x)+Math.max(...x))/2+130===540 && ['An','Bình'].every(n=>markup[0].includes('>'+n+'<')));
+  }
+  if (mode === 'chia_th') thu('TH1, TH2 đúng màu và số cách', sk.pha.filter(p=>p.ten==='truong_hop').every((p,i)=>p.chon.filter(j=>j<sk.do).length===4-i && p.kl.includes(i?'120':'60')));
+  if (mode === 'lan_luot') thu('khóa lượt cuối và đếm năm lượt đầu', markup.some(s=>s.includes('L6 = đỏ thứ 4') && s.includes('C(5,3) = 10')));
+}
+const steps = [0,4,8,12].map(t=>({t}));
+thu('DOM đứng yên qua ba bước dù nhịp nền đổi', dungImXacSuat([4,8,12].map(frame=>({frame,shape:'ball@20',stars:frame})),steps,1));
+thu('DOM đứng yên hơn 12 giây trong một bước', dungImXacSuat([4,17].map(frame=>({frame,shape:'ball@20'})),steps.slice(0,2),1));
 console.log('— Khóa màu ẩn số (sơ đồ tư duy)');
 const k = C.khoaMauAn('x^2 - 3x + \\max(x, 2) = \\dfrac{x}{2}', 'x', '#FACC15');
 thu('mọi x đứng riêng được tô cùng màu, không đụng lệnh TeX (\\max)', (k.match(/\{\\color\{#FACC15\}x\}/g) || []).length === 4 && /\\max/.test(k), k);

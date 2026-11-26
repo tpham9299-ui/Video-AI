@@ -212,7 +212,7 @@ const NoiDung4Tang: React.FC<Props & {coIntro?: boolean}> = (props) => {
           </VaoMuot>
         </Sequence>
       ) : null}
-      {props.kiemDuyet ? <KiemDuyet kiemT2={batBuocMinhHoa} /> : null}
+      {props.kiemDuyet ? <KiemDuyet kiemT2={batBuocMinhHoa} doXacSuat={props.mon === 'XAC_SUAT'} /> : null}
     </AbsoluteFill>
   );
 };

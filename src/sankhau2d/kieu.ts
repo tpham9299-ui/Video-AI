@@ -8,6 +8,8 @@ type Chung = {pha: Pha2D[]; nhip?: number[]; nguon?: string; chi_dao?: string};
 export type PhanTuRut = {nhan: string; gia_tri: number | null; nhom: number};
 export type RutMauVao = Chung & {
   loai: 'rut_mau'; vat: 'the' | 'bi' | 'xuc_xac'; k: number; co_hoan_lai?: boolean;
+  mode?: 'chia_th' | 'lan_luot' | 'phan_bu'; do?: number; p_doi?: string; cong_bo?: number;
+  bieu_do?: {t: number; p: string; cong_bo: number};
   phan_tu: PhanTuRut[]; nhom: {nhan: string; mau: TenMau}[];
   n_omega: number; n_a?: number; n_doi?: number; p?: string; bien_co: string; omega_tex?: string;
 };

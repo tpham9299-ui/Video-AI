@@ -15,6 +15,9 @@ sys.stdout.reconfigure(encoding="utf-8")
 import khung4tang_v93 as v93  # noqa: E402
 import khung4tang_v96 as v  # noqa: E402
 
+import khung4tang_v99 as v99
+from xac_suat_dong import sua_phan_bu
+
 dat = hong = 0
 
 
@@ -29,6 +32,13 @@ def kiem(dk, ten, them=""):
 
 KB = {"de_bai": "Rút ngẫu nhiên 3 thẻ từ 10 thẻ đánh số từ 1 đến 10. Tính xác suất để tích 3 số chia hết cho 4.", "dap_an": "2/3"}
 
+try:
+    v99.chon_dap_an_hien({"dap_an": "2026-07-04T17:00:00.000Z"})
+    kiem(False, "ISO phải bị chặn")
+except ValueError as exc:
+    kiem("DAP_AN_NGAY" in str(exc), "ISO bị chặn trước Outro")
+kiem(v99.chon_dap_an_hien({"dap_an": "5/7"}) == "5/7", "giữ nguyên phân số")
+kiem(sua_phan_bu(["P(A)=1-P(A)"]) == [r"P(A)=1-P(\overline{A})"], "khôi phục overline trên thẻ")
 print("— Rút mẫu: nhóm theo giá trị")
 s = []
 sk = v.dung_rut_mau({"nhom": [{"nhan": "Chia hết cho 4", "so": 2}, {"nhan": "Chẵn không chia hết cho 4", "so": 3}, {"nhan": "Lẻ", "so": 5}]}, KB, s)

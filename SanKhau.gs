@@ -13,6 +13,7 @@
 
 var TRAN_VET_CAN_ = 100000;
 var LOAI_XS_2D_ = ['rut_mau', 'so_do_cay', 'luoi_bayes', 'cot_phan_phoi'];
+var PHA_RUT_THEO_BUOC_ = 'Với rút bi chia trường hợp, dừng theo lượt hoặc chọn người bằng biến cố đối, ghi khung4tang.buoc[i].hanh_dong = {pha: "hien|mau|dieu_kien|truong_hop|loai|khoa|ti_le"}. Mỗi TH ghi thêm do là số bi đỏ thực sự chọn. Khi đọc biểu đồ phải đặt pha ti_le trong chính bước đó, dùng n(A), n(Ω) đã kiểm. Các dạng khác chỉ nhắc biểu đồ nếu sân khấu thực sự có biểu đồ.';
 var LOAI_TT_2D_ = ['kinh_te_do_thi', 'so_do_2d', 'tang_truong'];
 var LOAI_SAN_KHAU_ = LOAI_XS_2D_.concat(LOAI_TT_2D_, ['tu_duy_dai_so']);
 var KHUON_VAT_THE_ = ['tam_bia_gap_hop', 'tru_non_toi_uu', 'hai_mat_cau_oxyz', 'khung_day_cap', 'mat_phang_cat_khoi', 'chop_lang_tru', 'parabol_quy_dao'];
@@ -462,6 +463,18 @@ function tuSuaSanKhau_(kb, r) {
   if (r && r.chi_dao && !kb.chi_dao) kb.chi_dao = String(r.chi_dao).slice(0, 200);
   var q = chonSanKhau_(kb, r);
   kb._v96_loi = [];
+  if ((kb.mon || (r || {}).mon) === 'XAC_SUAT' && kb.kieu_video !== 'DAI_10_PHUT' && !/-10P$/i.test(kb.id || (r || {}).id || '')) {
+    var cacBuoc = k4.buoc || [];
+    (kb.canh || []).forEach(function (c, i) {
+      if (!c || !/biểu đồ (?:cột|t[ỉỷ] lệ)/i.test(c.loi_thoai || '')) return;
+      var b = cacBuoc.filter(function (x) { return x && Number(x.canh) === Number(c.so || i+1); })[0] || cacBuoc[i];
+      if (b && b.hanh_dong && typeof b.hanh_dong.pha === 'string' && q.loai === 'rut_mau') return; // Python dựng biểu đồ ngay mốc lời trong bước.
+      else if (q.loai !== 'cot_phan_phoi' && q.loai !== 'tu_sinh_svg' && !k4.tu_sinh && !(b && b.doi_chieu)) {
+        c.loi_thoai = c.loi_thoai.replace(/biểu đồ (?:cột(?: tần suất)?|t[ỉỷ] lệ)/gi, 'kết quả đếm');
+        sua.push('đồng bộ lời kiểm chứng với sân khấu ở cảnh ' + (i+1));
+      }
+    });
+  }
   // v101.5: đã định tuyến vào sân khấu 2D chuyên dụng (chỉ đạo / AI chọn rõ) -> đồng bộ hợp đồng, không để sót san_khau_dich = tu_sinh_svg
   // (nếu sót, dungTuSinh_ vẫn đòi mã tu_sinh và Mắt thần báo nhầm tu_sinh_hong dù sân khấu chuyên dụng đã dựng hợp lệ)
   if (kb.san_khau_dich === 'tu_sinh_svg' && (q.nguon === 'chi_dao' || q.nguon === 'ai') && LOAI_SAN_KHAU_.indexOf(q.loai) >= 0) {

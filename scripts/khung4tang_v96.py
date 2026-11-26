@@ -1406,6 +1406,12 @@ def gan_san_khau(kb, k4, buoc, t_buoc, t_het_de, tong, tim_moc, r=None, khuon_su
     sua = []
     quyet = chon_san_khau(kb, r, khuon_suy)
     loai = quyet["loai"]
+    from xac_suat_dong import mo_phong, ngan
+    if ngan(kb) and buoc and loai not in ("lego_3d", "hinh_hoc"):
+        raw = [b for b in k4.get("buoc", []) if isinstance(b, dict)]
+        dong = mo_phong(kb, raw, buoc, loi_tai or (lambda a, b: ""), tong)
+        if dong:
+            return dong, [], {"loai": "rut_mau", "nguon": "buoc"}
     if loai in ("hinh_hoc", "3d_vector", "lego_3d", "tu_sinh_svg"):
         return None, sua, quyet
     sk_ai = k4.get("san_khau") if isinstance(k4.get("san_khau"), dict) else {}
@@ -1465,6 +1471,23 @@ def gan_san_khau(kb, k4, buoc, t_buoc, t_het_de, tong, tim_moc, r=None, khuon_su
             ct = kq[1]
             ph["t"] = kq[2]
         ph.pop("khi_noi", None)
+    if ngan(kb) and loai in LOAI_XS:
+        linked = []
+        for i, raw in enumerate(k4.get("buoc") or []):
+            if not isinstance(raw, dict) or i >= len(t_buoc):
+                break
+            action = raw.get("hanh_dong") or {}
+            ten = action.get("pha") if isinstance(action, dict) else None
+            ten = ten or raw.get("pha")
+            if ten not in ten_md:
+                break
+            ph = {"ten": ten, "t": t_buoc[i]}
+            selected = raw.get("mau_chon") or (action.get("mau_chon") if isinstance(action, dict) else None)
+            if isinstance(selected, list):
+                ph["chon"] = selected
+            linked.append(ph)
+        if linked and len(linked) == len(t_buoc):
+            ds = linked
     trai_pha(ds, t_buoc, t_het_de, tong)
     if loai == "rut_mau":
         sua += gan_bo_mau_rut(sk, ds, buoc, loi_tai)

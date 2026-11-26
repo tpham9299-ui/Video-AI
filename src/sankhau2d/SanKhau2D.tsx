@@ -4,6 +4,7 @@ import React from 'react';
 import {FONT} from '../theme';
 import type {SanKhau2DVao} from './kieu';
 import {RutMau} from './RutMau';
+import {RutTheoBuoc} from './RutTheoBuoc';
 import {SoDoCay} from './SoDoCay';
 import {LuoiBayes} from './LuoiBayes';
 import {CotPhanPhoi} from './CotPhanPhoi';
@@ -16,7 +17,12 @@ export const SanKhau2D: React.FC<{sk: SanKhau2DVao; t: number; rong: number; cao
   const W = rong, H = cao;
   const chung = {t, W, H, mauNhan};
   let noi: React.ReactNode = null;
-  if (sk.loai === 'rut_mau') noi = <RutMau sk={sk} {...chung} />;
+  if (sk.loai === 'rut_mau') {
+    const chart = sk.bieu_do;
+    if (chart && t >= chart.t) {
+      noi = <RutTheoBuoc sk={{...sk, p: chart.p, cong_bo: chart.cong_bo, pha: [{ten: 'ti_le', t: chart.t}]}} {...chung} />;
+    } else noi = sk.mode ? <RutTheoBuoc sk={sk} {...chung} /> : <RutMau sk={sk} {...chung} />;
+  }
   else if (sk.loai === 'so_do_cay') noi = <SoDoCay sk={sk} {...chung} />;
   else if (sk.loai === 'luoi_bayes') noi = <LuoiBayes sk={sk} {...chung} />;
   else if (sk.loai === 'cot_phan_phoi') noi = <CotPhanPhoi sk={sk} {...chung} />;

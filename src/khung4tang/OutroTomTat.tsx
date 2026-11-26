@@ -14,6 +14,7 @@ import type {DongTomTat} from './kieu';
 import {LE_ND_V93, RONG_ND_V93, VUNG_OUTRO} from './bo_cuc_v93';
 import {ChuTron} from './ChuTron';
 import {SanKhau2D} from '../sankhau2d/SanKhau2D';
+import {RutTheoBuoc} from '../sankhau2d/RutTheoBuoc';
 import {SanKhauKhongGian} from '../khonggian/SanKhauKhongGian';
 import type {KhongGianVao} from '../khonggian/kieu';
 import type {SanKhau2DVao} from '../sankhau2d/kieu';
@@ -50,6 +51,7 @@ const cauGoiTheoDang = (van: string, khongGian: boolean, loai?: string): string 
 };
 
 export const OutroTomTat: React.FC<{giuHinh?: boolean; dapAn: string; tomTat: DongTomTat[]; canh: Canh3DV | null; sanKhau?: SanKhau2DVao | null; khongGian?: KhongGianVao | null; tCuoi: number; thuongHieu?: string; cta?: string; tuSinh?: TuSinhVao | null; theme?: TenTheme}> = ({giuHinh, dapAn, tomTat, canh: canhVao, sanKhau, khongGian, tCuoi, thuongHieu, cta = 'LƯU LẠI NGAY!', tuSinh, theme}) => {
+  if (/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(dapAn)) throw new Error('DAP_AN_NGAY: kiểm tra phân số gốc');
   const th = khongGian ? null : layTheme(theme);
   // v95: Outro không làm mờ phần nào của mô hình (bỏ nhấn mạnh 30 %) -> mọi nhãn kích thước sáng rõ
   const canh = React.useMemo(() => (canhVao ? {...canhVao, buoc: canhVao.buoc.map((b) => ({...b, nhanManh: []}))} : null), [canhVao]);
@@ -103,7 +105,8 @@ export const OutroTomTat: React.FC<{giuHinh?: boolean; dapAn: string; tomTat: Do
           {chon === 'khong_gian' && khongGian ? <SanKhauKhongGian kg={khongGian} t={tCuoi} rong={RONG_ND_V93} cao={caoSan} lechMay={{k: 0.92}} /> : null}
           {chon === 'san_khau' && sanKhau ? (
             <div style={{position: 'absolute', left: 0, top: 0, width: RONG_ND_V93, height: 648, transform: `scale(${caoSan / 648})`, transformOrigin: 'center top', marginLeft: 0}}>
-              <SanKhau2D sk={sanKhau} t={tCuoi + t} rong={RONG_ND_V93} cao={648} mauNhan={MAU_3DV.ngoc} />
+              {sanKhau.loai === 'rut_mau' && sanKhau.mode ? <RutTheoBuoc sk={sanKhau} t={tCuoi} W={RONG_ND_V93} H={648} final /> :
+                <SanKhau2D sk={sanKhau} t={tCuoi + t} rong={RONG_ND_V93} cao={648} mauNhan={MAU_3DV.ngoc} />}
             </div>
           ) : null}
           {chon === 'canh' && canh ? <SanKhau3DVector canh={canh} t={tCuoi + t} rong={RONG_ND_V93} cao={caoSan} tongGiay={tCuoi} lechMay={{n: 6 * Math.sin((t * 2 * Math.PI) / 7), k: 0.86}} /> : null}

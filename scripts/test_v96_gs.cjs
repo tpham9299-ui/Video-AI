@@ -22,6 +22,14 @@ const t = (ten, fn) => {
 const J = (x) => JSON.parse(JSON.stringify(x));
 const doc = (f) => JSON.parse(fs.readFileSync(path.join(GOC, f), 'utf8'));
 
+t('Sheets ghi phân số ở ô văn bản và chặn Date, ISO', () => {
+  const writes = [];
+  const sh = {getRange: () => ({setNumberFormat: v => writes.push(v), setValue: v => writes.push(v)})};
+  ctx.ghi_(sh, 2, {dap_an: '5/7'});
+  assert.deepEqual(writes.slice(0,2), ['@','5/7']);
+  for (const bad of [new Date('2026-07-04T17:00:00Z'),'2026-07-04T17:00:00.000Z'])
+    assert.throws(() => ctx.dapAnVanBan_(bad), /DAP_AN_NGAY/);
+});
 console.log('Bộ định tuyến chonSanKhau_');
 const CA = [
   ['thẻ 1..10 tích ⋮ 4 -> rut_mau', {mon: 'XAC_SUAT', lop: '11', de_bai: 'Rút ngẫu nhiên 3 thẻ từ 10 thẻ đánh số từ 1 đến 10. Tính xác suất tích chia hết cho 4.'}, 'rut_mau'],

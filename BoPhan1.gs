@@ -2509,6 +2509,11 @@ function cauHinh_(khoa) {
   return _bo_nho_cau_hinh_[khoa] !== undefined ? _bo_nho_cau_hinh_[khoa] : MAC_DINH[khoa];
 }
 
+function dapAnVanBan_(v) {
+  if (Object.prototype.toString.call(v) === '[object Date]' || /\d{4}-\d\d-\d\dT\d\d:\d\d/.test(String(v)))
+    throw new Error('DAP_AN_NGAY: kiểm tra lại phân số gốc trong hàng đợi');
+  return String(v == null ? '' : v).replace(/^'(?=\d+\s*\/)/, '');
+}
 function docHang_(sh) {
   var v = sh.getDataRange().getValues(), out = [];
   for (var i = 1; i < v.length; i++) {
@@ -2516,7 +2521,7 @@ function docHang_(sh) {
     for (var j = 0; j < COT.length; j++) {
       var val = v[i][j];
       if ((COT[j] === 'dap_an' || COT[j] === 'dap_an_hien') && val instanceof Date && !isNaN(val.getTime())) {
-        val = val.getDate() + '/' + (val.getMonth() + 1);
+        val = Utilities.formatDate(val, sh.getParent().getSpreadsheetTimeZone(), 'd/M');
       }
       o[COT[j]] = val;
     }
@@ -2540,16 +2545,19 @@ function ghi_(sh, row, f, expectId) {
     var c = COT.indexOf(k);
     if (c >= 0) {
       var val = f[k];
-      if ((k === 'dap_an' || k === 'dap_an_hien') && typeof val === 'string' && /^\s*\d+\s*\/\s*\d+\s*$/.test(val)) {
-        val = "'" + val.trim();
+      var cell = sh.getRange(row, c + 1);
+      if (k === 'dap_an' || k === 'dap_an_hien') {
+        val = dapAnVanBan_(val);
+        cell.setNumberFormat('@');
       }
-      sh.getRange(row, c + 1).setValue(val);
+      cell.setValue(val);
     }
   });
 }
 function themHang_(sh, o) {
   sh.appendRow(COT.map(function (k) {
     var val = o[k] === undefined ? '' : o[k];
+    if (k === 'dap_an' || k === 'dap_an_hien') val = dapAnVanBan_(val);
     if ((k === 'dap_an' || k === 'dap_an_hien') && typeof val === 'string' && /^\s*\d+\s*\/\s*\d+\s*$/.test(val)) {
       return "'" + val.trim();
     }
@@ -2827,6 +2835,7 @@ function capNhatDocDe_() {
       r.ghi_chu || ''];
   });
   var vung = sh.getRange(3, 1, dong.length, nc);
+  vung.offset(0, 5, dong.length, 1).setNumberFormat('@');
   vung.setValues(dong).setWrap(true).setVerticalAlignment('top')
     .setBorder(true, true, true, true, true, true, '#e0e3e7', SpreadsheetApp.BorderStyle.SOLID);
 
@@ -3149,6 +3158,7 @@ function donDaXong_() {
       return [r.ma_bam || bam_(r.de_bai), r.id, r.lop, String(r.de_bai).slice(0, 120), r.dap_an || '',
         r.trang_thai === 'DA_XONG' ? 'DA_LAM_VIDEO' : 'LOAI', new Date()];
     });
+    lt.getRange(lt.getLastRow() + 1, 5, dong.length, 1).setNumberFormat('@');
     lt.getRange(lt.getLastRow() + 1, 1, dong.length, 7).setValues(dong);   // lưu mã băm TRƯỚC khi xóa
 
     xoa.forEach(function (r) {

@@ -1997,8 +1997,12 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
     khuon_suy = ((c3.get("khuon") or ("__tu_do__" if _hop_le_3dv(c3) and _dong_3dv(c3) else None)) if isinstance(c3, dict) else None)
     def loi_tai(t0, t1):
         return " ".join(x["w"] for x in tu_all if t0 <= x["bat"] < t1)
+    import xac_suat_dong as xs
     san_khau, sua_sk, quyet = v96_k4.gan_san_khau(kb, k4, buoc, t_buoc, t_het_de, tong, tim_moc, None,
-                                                  khuon_suy if khuon_suy != "luoi_the_bi_xac_suat" else None, loi_tai)         if not khong_gian else (None, [], {})
+        khuon_suy if khuon_suy != "luoi_the_bi_xac_suat" else None, loi_tai) if not khong_gian else (None, [], {})
+    dong = san_khau if san_khau and san_khau.get("mode") else None
+    if xs.ngan(kb) and not de_ghim:
+        de_ghim = [{"id": "de", "nhan": (f"Chọn {dong['k']} / {len(dong['phan_tu'])}" if dong and dong['mode'] != 'lan_luot' else "P(A) = ?")}]
     if san_khau:
         print("Sân khấu 2D v96: %s (%s%s), %d pha (mốc %s s)%s" % (
             san_khau["loai"], quyet["nguon"], ", chỉ đạo: " + quyet["chi_dao"] if quyet.get("chi_dao") else "", len(san_khau["pha"]),
@@ -2033,7 +2037,7 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
     # ---- v99.1: sân khấu tự sinh 2.5D (mã Python của BP2 chạy trong hộp cát), khóa mốc đáp án, nhịp chống đứng hình, theme ----
     if not khong_gian:
         import tu_sinh_svg
-        ts, ghi_ts = tu_sinh_svg.gan_tu_sinh(kb, k4, buoc, tim_moc, t_het_de, tong)
+        ts, ghi_ts = (None, "") if dong else tu_sinh_svg.gan_tu_sinh(kb, k4, buoc, tim_moc, t_het_de, tong)
         if ts:
             out["tuSinh"] = ts
             out.pop("sanKhau", None)
@@ -2051,8 +2055,35 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
         if hong:
             out["tuSinhHong"] = hong
             print("⚠ v99.2 " + hong)
-    t_cb = v99_k4.moc_cong_bo(tu_all, canh_props, fps, so_dap, so_chu_sang_so)
+    fraction = re.fullmatch(r"\s*(\d+)\s*/\s*(\d+)\s*", dap_an) if xs.ngan(kb) else None
+    dap_can_do = [dap_an.strip()] if fraction else so_dap
+    t_cb = v99_k4.moc_cong_bo(tu_all, canh_props, fps, dap_can_do, so_chu_sang_so)
     sua_cb = v99_k4.khoa_dap_an(out, t_cb, so_dap)
+    if dong:
+        for ph, b in zip(dong["pha"], buoc):
+            ph["t"] = b["t"]
+        dong["cong_bo"] = t_cb or 0
+    if xs.ngan(kb):
+        for j, b in enumerate(ds_buoc):
+            lo, hi = t_buoc[j], t_buoc[j+1] if j+1 < len(buoc) else tong
+            mention = re.search(r"biểu đồ (?:cột|t[ỉỷ] lệ)", loi_tai(lo, hi), re.I)
+            if not mention:
+                continue
+            hit = tim(mention[0], chi_so_tai(lo), chi_so_tai(hi))
+            at = tu_all[hit[0]]["bat"] if hit else lo
+            if dong:
+                ph = dong["pha"][j]
+                if ph["ten"] == "ti_le":
+                    ph["t"] = at
+                else:
+                    dong["pha"].append({"ten": "ti_le", "t": at})
+            elif san_khau and san_khau.get("loai") == "rut_mau" and san_khau.get("vet_can") and san_khau.get("khop_dap_an") and not out.get("tuSinh"):
+                from fractions import Fraction
+                san_khau["bieu_do"] = {"t": at, "p": str(Fraction(san_khau["n_a"], san_khau["n_omega"])), "cong_bo": t_cb or at}
+            elif not ((san_khau or {}).get("loai") == "cot_phan_phoi" or buoc[j].get("doi_chieu") or out.get("tuSinh")):
+                raise ValueError("XS_THIEU_BIEU_DO: lời đọc yêu cầu biểu đồ nhưng thiếu số liệu để dựng")
+        if dong:
+            dong["pha"].sort(key=lambda ph: ph["t"])
     if sua_cb:
         print("v99.1 khóa mốc đáp án (giọng công bố %.2f s): %s" % (t_cb, "; ".join(sua_cb[:6])))
     cb_db = v99_k4.canh_bao_dong_bo(out, t_cb, sua_cb, tu_all, canh_props, fps, so_dap, so_chu_sang_so)   # v99.2: cờ lệch pha hình - tiếng
@@ -3106,6 +3137,13 @@ def main():
     cham("")
 
     kb = json.load(open(args.kich_ban, encoding="utf8"))
+    import khung4tang_v99 as v99_dap
+    v99_dap.kiem_ngay_dap_an(kb)
+    import xac_suat_dong as xs
+    if xs.ngan(kb):
+        for field in ('khung4tang', 'tom_tat_3_buoc', 'canh'):
+            if field in kb:
+                kb[field] = xs.sua_phan_bu(kb[field])
     # giọng do Apps Script chọn theo quy tắc (Charon nam / Kore nữ...); dự phòng edge cùng giới tính để không đổi giọng nam <-> nữ
     if str(kb.get("giong") or "").strip() and re.fullmatch(r"[A-Za-z]{3,20}", str(kb["giong"]).strip()):
         args.giong_gemini = str(kb["giong"]).strip()

@@ -72,6 +72,8 @@
 * CI: cache npm/pip/Chromium Remotion (khóa theo phiên bản + `package-lock.json`); `.gitattributes` ép `eol=lf`.
 * `npm run kiem-tra` gộp tsc + test Node + `python -X utf8` test_v99_1 / test_v99_2.
 
+* Shorts XAC_SUAT mô tả thao tác trong `buoc[].hanh_dong` (`pha`, số bi đỏ `do` cho từng trường hợp). `xac_suat_dong.py` tính số cách và xuất pha theo mốc lời. Ba bước liên tiếp giữ nguyên hình học T2 hoặc quá 12 giây đứng hình là lỗi cứng `hinh_dung_im`. Đáp án ISO dừng ở `DAP_AN_NGAY`.
+
 ## 5. LỆNH KIỂM TRA NHANH KHI CHẠY LOCAL (WINDOWS)
 
 ```powershell

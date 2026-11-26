@@ -385,7 +385,7 @@ function huongDanKhung4Tang_(r) {
     '{"loai":"bang_bien_thien","ham":"tên hàm của bài: V, S, f...","bien":"x|r|t","moc_x":[...],"dau":[...],"gia_tri":[...],"khi_noi":"..."} | {"loai":"chu","noi_dung":"≤ 12 từ","khi_noi":"..."}]}] (3-6 bước theo đúng thứ tự lời giảng; bước 2 trở đi chỉ bắt đầu SAU khi đã đọc xong đề),' +
     '"canh_3d_vector": ƯU TIÊN KHUÔN THAM SỐ {"khuon":"tên khuôn","tham_so":{...số liệu ĐÚNG của đề...},"pha":[{"ten":"tên pha","khi_noi":"cụm nguyên văn lúc chuyển sang pha đó"}]} (pha không ghi khi_noi thì máy tự trải theo các bước). ' +
     (String((r && r.mon) || '').toUpperCase() === 'XAC_SUAT'
-      ? 'BÀI XÁC SUẤT (v96): KHÔNG ghi "canh_3d_vector" — tầng 2 dùng "san_khau" 2D (rut_mau | so_do_cay | luoi_bayes | cot_phan_phoi), xem hướng dẫn SÂN KHẤU 2D bên dưới. '
+      ? 'BÀI XÁC SUẤT (v96): KHÔNG ghi "canh_3d_vector" — tầng 2 dùng "san_khau" 2D (rut_mau | so_do_cay | luoi_bayes | cot_phan_phoi). ' + (typeof PHA_RUT_THEO_BUOC_ === 'string' ? PHA_RUT_THEO_BUOC_ : '')
       : 'Khuôn dùng được cho bài lớp ' + (lop || '?') + ': ' + dsK.map(moTaKhuon_).join(' | ') + '. ' +
         'Bài ngắn THUC_TE cần vật thể, sơ đồ hoặc đồ thị ở Tầng 2 theo từng bước. Với sân khấu 2D, điền tham_so đủ để vẽ từ dữ kiện. Nếu thiếu khuôn, dùng hợp đồng tu_sinh_svg. Không dùng tu_duy_dai_so hoặc hộp công thức. ') +
     'CHỈ khi không khuôn nào hợp mới dùng đặc tả tự do {"phien_ban":1,"doi_tuong":[...],"buoc":[{"khi_noi","camera":[goc_ngang,goc_cao 5..90,zoom] hoặc "tu_tren","hien":[id],"an":[id],"nhan_manh":[id],"hanh_dong":[...]}]} ' +

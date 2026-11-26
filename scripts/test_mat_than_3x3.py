@@ -79,6 +79,16 @@ def main():
     trong = [o_anh(True)] + [o_anh(False)] * 7 + [o_anh(True)]
     kq = mt.kiem_tat_dinh(p4, trong, 8)
     kiem(any(x["loai"] == "t2_trong" and x["nang"] for x in kq), "tầng 2 đen ở các ô giải -> t2_trong (nặng)")
+    xs = dict(p4, mon="XAC_SUAT", khung4tang={"buoc": [{"t": 2*i} for i in range(7)]})
+    sao = []
+    for i in range(9):
+        im = Image.new("RGB", (360, 640), (10+i*3, 14+i*3, 26+i*3))
+        ve = ImageDraw.Draw(im)
+        ve.ellipse((135, 186, 170, 221), fill="orange")
+        for j in range(80):
+            ve.point(((j*67+i*13) % 360, 156+(j*31+i) % 148), fill="white")
+        sao.append(im)
+    kiem(any(x["loai"] == "hinh_dung_im" for x in mt.kiem_tat_dinh(xs, sao, 8)), "Bi đứng yên ba bước dù nền và sao đổi")
     im_lang = [o_anh(True)] * 9
     kiem(any(x["loai"] == "hinh_dung_im" for x in mt.kiem_tat_dinh(p4, im_lang, 8)), "hình 3D giống hệt mọi ô -> hinh_dung_im")
     dong = [o_anh(True, 12 * k) for k in range(9)]

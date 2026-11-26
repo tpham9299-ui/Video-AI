@@ -102,10 +102,17 @@ def co_tham_so(dap):
     return bool(re.search(r"(?<![A-Za-zÀ-ỹ])[A-Za-z](?![A-Za-zÀ-ỹ])", re.sub(r"[{}^_$]", " ", s)))
 
 
+def kiem_ngay_dap_an(kb):
+    for key in ("dap_an", "dap_an_cuoi", "dap_an_hien", "dap_an_chinh_xac", "dap_an_tex"):
+        if re.search(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}", str(kb.get(key) or "")):
+            raise ValueError("DAP_AN_NGAY: kiểm tra lại phân số gốc ở " + key)
+
+
 def chon_dap_an_hien(kb):
     """Chuỗi đáp án hiển thị (ô đáp án + Outro). Giữ NGUYÊN dạng có tham số `a` ("\\frac{2a}{\\sqrt{11}}", "0,603a") khi bất kỳ trường đáp án
     nào của kịch bản còn giữ nó — không cắt cụt thành số trần "0,603"."""
     kb = kb or {}
+    kiem_ngay_dap_an(kb)
     cac = [str(kb.get(k) or "") for k in ("dap_an_cuoi", "dap_an", "dap_an_hien", "dap_an_chinh_xac", "dap_an_tex")]
     chinh = next((x for x in cac if x.strip()), "")
     if co_tham_so(chinh):

@@ -189,6 +189,26 @@ def co_net_hinh(im):
     return False
 
 
+def mat_na_doi_tuong(im):
+    """Lọc điểm sao nhỏ trước khi lấy mặt nạ các mảng sáng trong vùng sân khấu."""
+    from PIL import ImageFilter
+    w, h = im.size
+    crop = im.crop((int(.12*w), int(.245*h), int(.88*w), int(.485*h))).convert("RGB")
+    crop = crop.filter(ImageFilter.MedianFilter(5))
+    mask = crop.convert("L")
+    def nhom_mau(rgb):
+        r, g, b = rgb
+        if max(rgb) < 115:
+            return 0
+        if max(rgb)-min(rgb) < 38:
+            return 250 if min(rgb) > 175 else 0
+        if r > b and g > .68*r and b < .65*r:
+            return 160  # vàng
+        return (45, 90, 210)[rgb.index(max(rgb))]
+    mask.putdata([nhom_mau(rgb) for rgb in crop.getdata()])
+    return mask
+
+
 def kiem_tat_dinh(p, anh_o, o_da):
     """v92: lỗi nặng đo được bằng điểm ảnh / props (không cần AI). Chỉ áp dụng video khung 4 tầng."""
     loi = []
@@ -243,6 +263,22 @@ def kiem_tat_dinh(p, anh_o, o_da):
             trong.append(k)
     if len(trong) >= 2:
         loi.append({"o": trong[0] + 1, "loai": "t2_trong", "mo_ta": "tầng sân khấu 3D gần như đen ở ô %s" % ", ".join(str(k + 1) for k in trong), "nang": True})
+    if p.get("mon") == "XAC_SUAT" and not str(p.get("id")).endswith("-10P") and p.get("kieu_video") != "DAI_10_PHUT":
+        moc, _ = chon_moc(p, p.get("tongFrame", 0)/(p.get("fps") or 30) or 1e9)
+        first = None
+        for k in sorted(giai[1:], key=lambda j: moc[j][0]):
+            t = moc[k][0] - lech_dau(p)
+            step = sum(b["t"] <= t for b in k4p.get("buoc", [])) - 1
+            mask = mat_na_doi_tuong(anh_o[k])
+            if first:
+                diff = sum(ImageChops.difference(mask, first[0]).histogram()[1:])
+                area = max(50, sum(mask.histogram()[1:]), sum(first[0].histogram()[1:]))
+                if diff/area < .065:
+                    if step-first[2] >= 2 or t-first[1] > 12:
+                        loi.append({"o": k+1, "loai": "hinh_dung_im", "mo_ta": "Cấu trúc đối tượng T2 đứng yên", "nang": True})
+                        break
+                    continue
+            first = mask, t, step
     ds = [cat[k] for k in giai[1:]]   # bỏ ô đề bài, xét các ô giải
     if len(ds) >= 3 and len(trong) < len(giai):
         lech = [ImageStat.Stat(ImageChops.difference(a, b)).mean[0] for a, b in zip(ds, ds[1:])]

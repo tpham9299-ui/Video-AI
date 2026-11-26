@@ -1,0 +1,143 @@
+{
+  "id": "XS-phan_bu",
+  "mon": "XAC_SUAT",
+  "luong": "thuc_te_xac_suat",
+  "lop": 11,
+  "tieu_de": "Ai được chọn?",
+  "chu_de": "Ai được chọn?",
+  "de_bai": "Có 10 học sinh, trong đó có An và Bình. Chọn 4 học sinh. Xác suất có ít nhất một trong hai bạn là bao nhiêu?",
+  "dap_an_cuoi": "2/3",
+  "canh": [
+    {
+      "so": 1,
+      "loai": "mo_dau",
+      "loi_thoai": "Hãy tìm hai bạn có tên trong nhóm mười học sinh.",
+      "noi_dung_man_hinh": []
+    },
+    {
+      "so": 2,
+      "loai": "tinh_toan",
+      "loi_thoai": "Chọn bốn bạn trong mười bạn có hai trăm mười cách.",
+      "noi_dung_man_hinh": [
+        "n(\\Omega)=C_{10}^4=210"
+      ]
+    },
+    {
+      "so": 3,
+      "loai": "tinh_toan",
+      "loi_thoai": "Biến cố đối là không có cả hai bạn. Gạch An và Bình khỏi vùng chọn.",
+      "noi_dung_man_hinh": [
+        "\\overline{A}"
+      ]
+    },
+    {
+      "so": 4,
+      "loai": "tinh_toan",
+      "loi_thoai": "Quét bốn ô trong tám ô còn lại. Có bảy mươi cách chọn.",
+      "noi_dung_man_hinh": [
+        "n(\\overline{A})=C_8^4=70"
+      ]
+    },
+    {
+      "so": 5,
+      "loai": "dap_an",
+      "loi_thoai": "Biểu đồ tỉ lệ chia ba phần. Loại một phần ba và giữ lại hai phần ba.",
+      "noi_dung_man_hinh": [
+        "P(A)=1-P(\\overline{A})=2/3"
+      ]
+    },
+    {
+      "so": 6,
+      "loai": "bai_hoc",
+      "loi_thoai": "Hãy lưu lại cách đếm và thử giải lại bài này.",
+      "noi_dung_man_hinh": []
+    }
+  ],
+  "khung4tang": {
+    "buoc": [
+      {
+        "canh": 1,
+        "khi_noi": "Hãy tìm hai bạn",
+        "nhan": "Bước 1",
+        "tieu_de": "An và Bình",
+        "hanh_dong": {
+          "pha": "hien"
+        },
+        "the": [
+          {
+            "loai": "chu",
+            "noi_dung": "An và Bình"
+          }
+        ]
+      },
+      {
+        "canh": 2,
+        "khi_noi": "Chọn bốn bạn trong",
+        "nhan": "Bước 2",
+        "tieu_de": "Không gian mẫu",
+        "hanh_dong": {
+          "pha": "mau"
+        },
+        "the": [
+          {
+            "loai": "cong_thuc",
+            "dong": [
+              "n(\\Omega)=C_{10}^4=210"
+            ]
+          }
+        ]
+      },
+      {
+        "canh": 3,
+        "khi_noi": "Biến cố đối là",
+        "nhan": "Bước 3",
+        "tieu_de": "Loại An và Bình",
+        "hanh_dong": {
+          "pha": "loai"
+        },
+        "the": [
+          {
+            "loai": "cong_thuc",
+            "dong": [
+              "\\overline{A}"
+            ]
+          }
+        ]
+      },
+      {
+        "canh": 4,
+        "khi_noi": "Quét bốn ô trong",
+        "nhan": "Bước 4",
+        "tieu_de": "Chọn trong tám bạn",
+        "hanh_dong": {
+          "pha": "loai"
+        },
+        "the": [
+          {
+            "loai": "cong_thuc",
+            "dong": [
+              "n(\\overline{A})=C_8^4=70"
+            ]
+          }
+        ]
+      },
+      {
+        "canh": 5,
+        "khi_noi": "Biểu đồ tỉ lệ",
+        "nhan": "Bước 5",
+        "tieu_de": "Phần bù",
+        "hanh_dong": {
+          "pha": "ti_le"
+        },
+        "the": [
+          {
+            "loai": "cong_thuc",
+            "dong": [
+              "P(A)=1-P(\\overline{A})=2/3"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

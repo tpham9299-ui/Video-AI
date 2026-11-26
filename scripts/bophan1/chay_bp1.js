@@ -123,6 +123,7 @@ const ctx = {
     sleep: ngu,
     formatDate: (d, tz, f) => {
       const x = new Date(new Date(d).getTime() + 7 * 3600e3);
+      if (f === 'd/M') return `${x.getUTCDate()}/${x.getUTCMonth()+1}`;
       const P = (n) => String(n).padStart(2, '0');
       const m = {yyyy: x.getUTCFullYear(), yy: String(x.getUTCFullYear()).slice(2), MM: P(x.getUTCMonth() + 1), dd: P(x.getUTCDate()), HH: P(x.getUTCHours()), mm: P(x.getUTCMinutes()), ss: P(x.getUTCSeconds())};
       return f.replace(/yyyy|yy|MM|dd|HH|mm|ss/g, (k) => m[k]);
@@ -281,7 +282,8 @@ for (;;) {
 // các cột đã đổi
 COT.forEach((k, i) => {
   const a = truoc[i], b = sh.data[1][i];
-  if (k !== 'cap_nhat' && String(a ?? '') !== String(b ?? '')) out.hang[k] = b instanceof Date ? b.toISOString() : b;
+  if (k === 'cap_nhat' || String(a ?? '') === String(b ?? '')) return;
+  out.hang[k] = (k === 'dap_an' || k === 'dap_an_hien') ? ctx.dapAnVanBan_(b) : b instanceof Date ? b.toISOString() : b;
 });
 const tenKb = out.id + '.json';
 if (tep[tenKb]) { out.kich_ban = tep[tenKb]; delete out.hang.file_kich_ban; }

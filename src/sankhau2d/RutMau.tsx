@@ -29,7 +29,7 @@ function The({sk, i, hop, mauNhom, aMau, nang, lat, dam, mo}: {sk: RutMauVao; i:
     outline: dam > 0 ? `${(2.5 * dam).toFixed(1)}px solid ${mauNhom}` : undefined, outlineOffset: 2};
   if (sk.vat === 'bi') {
     return (
-      <div style={{...boc, borderRadius: hop.w, background: aMau > 0 ? mauNhom : '#3A4252', border: `2px solid ${aMau > 0 ? mauNhom : TRUNG}`,
+      <div data-xs-object={i} style={{...boc, borderRadius: hop.w, background: aMau > 0 ? mauNhom : '#3A4252', border: `2px solid ${aMau > 0 ? mauNhom : TRUNG}`,
         boxShadow: `inset -${hop.w * 0.12}px -${hop.w * 0.14}px 0 rgba(0,0,0,0.28), 0 ${6 + 10 * nang}px ${10 + 14 * nang}px rgba(0,0,0,${0.3 + 0.25 * nang})`}}>
         <span style={{position: 'absolute', left: hop.w * 0.22, top: hop.w * 0.16, width: hop.w * 0.22, height: hop.w * 0.16, borderRadius: hop.w, background: 'rgba(255,255,255,0.55)'}} />
       </div>
@@ -37,14 +37,14 @@ function The({sk, i, hop, mauNhom, aMau, nang, lat, dam, mo}: {sk: RutMauVao; i:
   }
   if (sk.vat === 'xuc_xac') {
     return (
-      <div style={{...boc, height: hop.w, borderRadius: hop.w * 0.2, background: '#F1F4F8', border: `3px solid ${vien}`, boxShadow: `0 ${6 + 10 * nang}px ${12 + 14 * nang}px rgba(0,0,0,0.4)`}}>
+      <div data-xs-object={i} style={{...boc, height: hop.w, borderRadius: hop.w * 0.2, background: '#F1F4F8', border: `3px solid ${vien}`, boxShadow: `0 ${6 + 10 * nang}px ${12 + 14 * nang}px rgba(0,0,0,0.4)`}}>
         <Cham n={Number(p.gia_tri) || 1} w={hop.w - 6} m={aMau > 0 ? mauNhom : '#1A2030'} />
       </div>
     );
   }
   const co = hop.w * (p.nhan.length > 2 ? 0.34 : 0.44);
   return (
-    <div style={{...boc, borderRadius: 14, background: NEN_THE, border: `2px solid ${vien}`, overflow: 'hidden',
+    <div data-xs-object={i} style={{...boc, borderRadius: 14, background: NEN_THE, border: `2px solid ${vien}`, overflow: 'hidden',
       boxShadow: `0 ${6 + 12 * nang}px ${12 + 16 * nang}px rgba(0,0,0,${0.35 + 0.25 * nang})${nang > 0 ? `, 0 0 18px ${mauNhom}44` : ''}`}}>
       <div style={{position: 'absolute', left: 0, right: 0, top: 0, height: 7, background: vien, opacity: 0.35 + 0.65 * aMau}} />
       <div style={{position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, ...SO_DEU,

@@ -59,7 +59,7 @@ function canvasCoHinh(el: HTMLCanvasElement, src: Hop, visible: Hop): boolean {
   return false;
 }
 
-function doKhungHinh(goc: HTMLElement, kiemT2: boolean) {
+function doKhungHinh(goc: HTMLElement, kiemT2: boolean, doXacSuat: boolean) {
   const g = goc.getBoundingClientRect();
   const tl = g.width / 1080 || 1;
   const quy = (r: DOMRect | Hop): Hop => {
@@ -225,10 +225,18 @@ function doKhungHinh(goc: HTMLElement, kiemT2: boolean) {
     const visible = safe && catBoi(el, safe);
     return !!visible && visible.w >= 55 && visible.h >= 35 && canvasCoHinh(el, src, visible);
   });
-  return {hinhT2: hinhT2 || canvas, loi, chu: khoi.map((k) => k.chu).slice(0, 120), so};
+  const stage = doXacSuat ? goc.querySelector('[data-vung="t2"]') : null;
+  const objects = stage?.querySelectorAll('[data-xs-object], [data-sk2d^="nut_"], [data-sk2d="vuong"] > div, [data-sk2d="tach_giao"], [data-sk2d^="cot_"]');
+  const nodes = objects?.length ? objects : stage?.querySelectorAll('svg path, svg circle, svg ellipse, svg rect, svg polygon, svg line');
+  const shape = Array.from(nodes || []).filter(el => !el.closest('defs,clipPath,mask,.katex,[data-xung-t2]') && doMo(el) > .15)
+    .map(el => {
+      const {x,y,w,h} = quy(el.getBoundingClientRect());
+      return [el.tagName, ...[x,y,w,h].map(v => Math.round(v/12)), Math.round(doMo(el)*3), getComputedStyle(el).fill].join(',');
+    }).join('|');
+  return {shape, hinhT2: hinhT2 || canvas, loi, chu: khoi.map((k) => k.chu).slice(0, 120), so};
 }
 
-export const KiemDuyet: React.FC<{kiemT2?: boolean}> = ({kiemT2 = false}) => {
+export const KiemDuyet: React.FC<{kiemT2?: boolean; doXacSuat?: boolean}> = ({kiemT2 = false, doXacSuat = false}) => {
   const f = useCurrentFrame();
   useEffect(() => {
     const h = delayRender(`Kiểm duyệt bố cục ${f}`);
@@ -240,7 +248,7 @@ export const KiemDuyet: React.FC<{kiemT2?: boolean}> = ({kiemT2 = false}) => {
       if (!huy) {
         try {
           const goc = document.getElementById('kd-goc');
-          const kq = goc && goc.parentElement ? doKhungHinh(goc.parentElement, kiemT2) : {loi: [], chu: [], so: []};
+          const kq = goc && goc.parentElement ? doKhungHinh(goc.parentElement, kiemT2, doXacSuat) : {loi: [], chu: [], so: []};
           console.log('KD|' + JSON.stringify({frame: f, ...kq}));
         } catch (e) {
           console.log('KD|' + JSON.stringify({frame: f, loi: [], hong: String(e)}));
@@ -256,6 +264,6 @@ export const KiemDuyet: React.FC<{kiemT2?: boolean}> = ({kiemT2 = false}) => {
       clearTimeout(du);
       chay();
     };
-  }, [f, kiemT2]);
+  }, [f, kiemT2, doXacSuat]);
   return <div id="kd-goc" data-kd-bo="1" style={{position: 'absolute', left: 0, top: 0, width: 1080, height: 1920, pointerEvents: 'none'}} />;
 };
