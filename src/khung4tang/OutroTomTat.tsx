@@ -49,7 +49,7 @@ const cauGoiTheoDang = (van: string, khongGian: boolean, loai?: string): string 
   return 'Lưu lại ôn nhanh • Bình luận dạng bài bạn muốn giải tiếp!';
 };
 
-export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: Canh3DV | null; sanKhau?: SanKhau2DVao | null; khongGian?: KhongGianVao | null; tCuoi: number; thuongHieu?: string; cta?: string; tuSinh?: TuSinhVao | null; theme?: TenTheme}> = ({dapAn, tomTat, canh: canhVao, sanKhau, khongGian, tCuoi, thuongHieu, cta = 'LƯU LẠI NGAY!', tuSinh, theme}) => {
+export const OutroTomTat: React.FC<{giuHinh?: boolean; dapAn: string; tomTat: DongTomTat[]; canh: Canh3DV | null; sanKhau?: SanKhau2DVao | null; khongGian?: KhongGianVao | null; tCuoi: number; thuongHieu?: string; cta?: string; tuSinh?: TuSinhVao | null; theme?: TenTheme}> = ({giuHinh, dapAn, tomTat, canh: canhVao, sanKhau, khongGian, tCuoi, thuongHieu, cta = 'LƯU LẠI NGAY!', tuSinh, theme}) => {
   const th = khongGian ? null : layTheme(theme);
   // v95: Outro không làm mờ phần nào của mô hình (bỏ nhấn mạnh 30 %) -> mọi nhãn kích thước sáng rõ
   const canh = React.useMemo(() => (canhVao ? {...canhVao, buoc: canhVao.buoc.map((b) => ({...b, nhanManh: []}))} : null), [canhVao]);
@@ -98,7 +98,7 @@ export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: C
       {/* v102: Outro chỉ dựng ĐÚNG MỘT sân khấu chính (ưu tiên tự sinh hợp lệ > hình không gian > sân khấu 2D > khuôn 3D), thu vừa vùng giữa
           và chừa >= KHOANG_HO px trên nhãn "LƯU LẠI ÔN NHANH" -> không bao giờ ghép chồng hai sân khấu hay đè nhãn. */}
       {chon ? (
-        <div data-vung="outro_san" data-outro-san-khau={chon} style={{position: 'absolute', left: 0, top: V.san.y, width: RONG_ND_V93, height: caoSan, overflow: 'hidden', opacity: vao(0.3, 0.6)}}>
+        <div data-vung="outro_san" data-outro-san-khau={chon} style={{position: 'absolute', left: 0, top: V.san.y, width: RONG_ND_V93, height: caoSan, overflow: 'hidden', opacity: giuHinh ? 1 : vao(0.3, 0.6)}}>
           {chon === 'tu_sinh' && tuSinh ? <SanKhauTuSinh ts={tuSinh} t={tCuoi + 30 + t} fps={fps} rong={RONG_ND_V93} cao={caoSan} /> : null}
           {chon === 'khong_gian' && khongGian ? <SanKhauKhongGian kg={khongGian} t={tCuoi} rong={RONG_ND_V93} cao={caoSan} lechMay={{k: 0.92}} /> : null}
           {chon === 'san_khau' && sanKhau ? (
@@ -151,7 +151,7 @@ export const OutroTomTat: React.FC<{dapAn: string; tomTat: DongTomTat[]; canh: C
             opacity: a, transform: `translateX(${(1 - a) * -26}px)`}}>
             <span style={{width: 54, height: 54, flexShrink: 0, borderRadius: 27, background: mau, color: NEN, fontWeight: 900, fontSize: 28, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>{k + 1}</span>
             {/* v99.1: nhãn dài xuống tối đa 2 dòng (không cắt "..."): <= 14 ký tự 32 px một dòng, dài hơn 27 px hai dòng */}
-            <span style={{width: 262, flexShrink: 0, color: mau, fontWeight: 800, fontSize: d.chien_thuat.length > 14 ? 27 : 32, lineHeight: 1.12,
+            <span style={{width: giuHinh && d.chien_thuat.length < 12 ? 184 : 262, flexShrink: 0, color: mau, fontWeight: 800, fontSize: d.chien_thuat.length > 14 ? 27 : 32, lineHeight: 1.12,
               whiteSpace: d.chien_thuat.length > 14 ? 'normal' : 'nowrap', textWrap: 'balance', overflow: 'hidden', maxHeight: 2 * 1.12 * 32}}><ChuTron s={d.chien_thuat} co={d.chien_thuat.length > 14 ? 27 : 32} mau={mau} dam={800} /></span>
             <span style={{flex: 1, minWidth: 0, display: 'flex', justifyContent: 'flex-end', overflow: 'hidden'}}>
               {d.cong_thuc ? <Toan tex={d.cong_thuc} size={38} color="#F4F7FB" maxWidth={380} /> : null}

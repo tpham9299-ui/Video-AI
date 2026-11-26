@@ -1394,6 +1394,7 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       }
       var hinhDe = deCoHinh_(r) ? String(r.de_bai || '') + ' ' + String(r.mo_ta_hinh || '') : '';
       if (kb && typeof kb === 'object') kb.lop = chuanLop_(r.lop) || String(r.lop || '');
+      if (kb && laMonThucTe_(r)) kb.mon = 'THUC_TE';
       var dg = null, lanSua = 0, hetGio = false;
       var maxSua = Number(cauHinh_('SO_LAN_SUA_KICH_BAN')) || 2;
       // v98: Oxyz lớp 12 -> đặc tả hình 3D Lego ở lời gọi riêng có responseSchema (sau khi đã có lời các cảnh)
@@ -1586,6 +1587,7 @@ function chonCauKeuGoi_(r) {
 // Chuẩn bị kịch bản trước khi đánh giá: bỏ lời chào, khóa đáp án đúng, máy tự sửa lỗi vặt.
 function chuanBiKichBan_(kb, r, ctxSua) {
   if (!kb || !Array.isArray(kb.canh)) return;
+  if (laMonThucTe_(r)) kb.mon = 'THUC_TE';
   if (laVideoDai_(r)) kb.kieu_video = 'DAI_10_PHUT';
   if (cauHinh_('KIEU_MO_DAU') !== 'chao_hook') xoaLoiChao_(kb);
   if (r.dap_an_hien && !kb.dap_an_hien) kb.dap_an_hien = String(r.dap_an_hien);
@@ -3795,7 +3797,7 @@ function lapTuSinh_(kb, r, sn) {
   var m = null;
   try { m = may ? may(kb) : null; } catch (e1) { m = null; }
   // v99.2: hợp đồng BP0 san_khau_dich = tu_sinh_svg -> vá tối đa 2 lần (kèm log lỗi từng lần); còn lại 1 lần như v99.1
-  var ep = kb.san_khau_dich === 'tu_sinh_svg';
+  var ep = kb.san_khau_dich === 'tu_sinh_svg' || (typeof thucTeNgan_ === 'function' && thucTeNgan_(kb, r));
   var soVa = ep ? 2 : 1, nhatKyLoi = [];
   for (var lanVa = 0; lanVa < soVa && m && !m.ok && conDuGoiGemini_(); lanVa++) {
     nhatKyLoi.push('lần ' + (lanVa + 1) + ': ' + String(m.loi || '').slice(0, 200));

@@ -67,6 +67,7 @@
 * `ve25d.py`: mở rộng bộ hàm vẽ cho mọi dạng đề, chặn dựng MP4 nhúng trong hình.
 * BP2: Hợp đồng hình cũng áp dụng cho đề Zalo.
 * `tuSinhHong` chặn sớm, trước `bundle` / `dung_khuc` (không đổi thứ tự bước).
+* Shorts `THUC_TE`: BP2 kiểm dữ liệu sân khấu, Python kiểm nét SVG và dừng trước bundle khi dựng hình hỏng. DOM đo hình nhìn thấy trong T2 ở các khung giải. Mắt thần và BP4 phải xác nhận hình trên ảnh. Lỗi `t2_trong` trả về Auto-Heal, hết lượt giữ CHO. Đường lui `tu_duy_dai_so` chỉ áp dụng ngoài luồng này.
 * Auto-Heal tách hạn mức `bo_cuc` và `mat_than` (không dùng chung trần).
 * CI: cache npm/pip/Chromium Remotion (khóa theo phiên bản + `package-lock.json`); `.gitattributes` ép `eol=lf`.
 * `npm run kiem-tra` gộp tsc + test Node + `python -X utf8` test_v99_1 / test_v99_2.

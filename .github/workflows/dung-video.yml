@@ -281,11 +281,14 @@ jobs:
           import json, os
           p = json.load(open('public/props.json', encoding='utf8'))
           hong = str((p.get('khung4tang') or {}).get('tuSinhHong') or '').strip()
+          from scripts.khung4tang_v96 import thuc_te_ngan
+          if thuc_te_ngan(p) and (p.get('boCuc') != '4tang' or not p.get('khung4tang')):
+              hong = 't2_trong: thiếu khung 4 tầng của bài thực tế'
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               f.write('hong=%s\n' % ('true' if hong else 'false'))
           if hong:
               os.makedirs('out', exist_ok=True)
-              nang = ["tu_sinh_hong: " + hong[:260] + " -> viết lại kb.khung4tang.tu_sinh (mã ve() dùng ve25d, chữ >= 24 px, nhãn trong v.tam_nhan, mỗi bước đổi hình) hoặc bỏ san_khau_dich = tu_sinh_svg"]
+              nang = [hong[:260]] if hong.startswith("t2_trong:") else ["tu_sinh_hong: " + hong[:260] + " -> viết lại kb.khung4tang.tu_sinh (mã ve() dùng ve25d, chữ >= 24 px, nhãn trong v.tam_nhan, mỗi bước đổi hình) hoặc bỏ san_khau_dich = tu_sinh_svg"]
               json.dump({"nang": nang, "nhe": [], "hong": False}, open('out/tu_sinh_hong.json', 'w', encoding='utf8'), ensure_ascii=False)
               print("::error::Lỗi cứng tu_sinh_hong - dừng sớm, không dựng MP4: " + hong[:200])
           PY
@@ -431,6 +434,12 @@ jobs:
           kb = json.load(open('kich_ban.json', encoding='utf8'))
           che_do = str(kb.get('_kiem_duyet') or ('chan' if os.environ.get('ID_VIDEO') else 'bao'))
           chan = che_do == 'chan' and len(b.get('nang') or []) > 0 and bool(os.environ.get('ID_VIDEO'))
+          from scripts.khung4tang_v96 import thuc_te_ngan
+          if thuc_te_ngan(kb) and (b.get('hong') or any('t2_trong' in x for x in b.get('nang', []))):
+              chan = True
+              if b.get('hong'):
+                  b.setdefault('nang', []).insert(0, 't2_trong: kiểm duyệt DOM chưa hoàn tất')
+                  json.dump(b, open('out/kiem_duyet.json', 'w', encoding='utf8'), ensure_ascii=False)
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               f.write('chan=%s\n' % ('true' if chan else 'false'))
           print('Chế độ kiểm duyệt: %s | lỗi nặng: %d | %s' % (che_do, len(b.get('nang') or []), 'DỪNG, gửi về tự sửa' if chan else 'dựng tiếp'))
@@ -689,7 +698,9 @@ jobs:
       # Bản thân Mắt thần lỗi (thiếu key, hết hạn mức) -> không chặn, BP4 vẫn chấm trước khi DA_DUYET.
       - name: Mắt thần AI quét lưới 3×3
         id: mat_than
-        if: ${{ steps.dung.outcome == 'success' && vars.MAT_THAN_3X3 != 'TAT' }}
+        if: ${{ steps.dung.outcome == 'success' }}
+        env:
+          MAT_THAN_3X3: ${{ vars.MAT_THAN_3X3 }}
         continue-on-error: true
         run: python3 scripts/mat_than_3x3.py public/props.json "out/${{ steps.dung.outputs.id }}.mp4" out/
 
@@ -772,6 +783,9 @@ jobs:
                   d['anh_3x3'] = os.environ.get("ANH_3X3", "")
                   if mt.get('chay') and mt.get('dat') is False:
                       reasons.insert(0, mt.get('ly_do') or 'Mắt thần 3×3 phát hiện lỗi nặng')
+              from scripts.khung4tang_v96 import thuc_te_ngan
+              if thuc_te_ngan(json.load(open('public/props.json', encoding='utf8'))) and not (d.get('mat_than') or {}).get('chay'):
+                  reasons.insert(0, 'Chờ duyệt: thiếu kết quả Mắt thần cho THUC_TE')
               if reasons:
                   kd = {"dat": False, "ly_do": ". ".join(reasons + ([kd["ly_do"]] if kd.get("ly_do") else []))}
               d['kiem_tra_mp4'] = kd

@@ -1,4 +1,5 @@
 import React, {useEffect, useState} from 'react';
+import {boCuc4Tang} from './khung4tang/vung';
 import {continueRender, delayRender, useCurrentFrame} from 'remotion';
 
 // KIỂM DUYỆT BỐ CỤC (chỉ chạy khi props.kiemDuyet = true, lúc máy dựng chụp các khung mẫu trước khi dựng thật):
@@ -17,7 +18,48 @@ const giao = (a: Hop, b: Hop): Hop | null => {
 };
 const dt = (h: Hop) => Math.max(0, h.w) * Math.max(0, h.h);
 
-function doKhungHinh(goc: HTMLElement): {loi: LoiKD[]; chu: string[]; so: string[]} {
+// Đọc phần canvas thực sự nằm trong T2. Tìm nét nối dài có điểm bên trong
+// hộp bao của nét để bỏ ký tự rời, nền đồng màu và chu vi khung nhãn.
+function canvasCoHinh(el: HTMLCanvasElement, src: Hop, visible: Hop): boolean {
+  const probe = document.createElement('canvas');
+  probe.width = 160;
+  probe.height = Math.max(1, Math.round(160 * visible.h / visible.w));
+  const ctx = probe.getContext('2d', {willReadFrequently: true});
+  if (!ctx) return false;
+  const sx = el.width / src.w, sy = el.height / src.h;
+  ctx.drawImage(el, (visible.x-src.x)*sx, (visible.y-src.y)*sy, visible.w*sx, visible.h*sy, 0, 0, probe.width, probe.height);
+  const w = probe.width, h = probe.height;
+  const pixels = ctx.getImageData(0, 0, w, h).data;
+  const edge = new Uint8Array(w*h);
+  for (let y = 1; y < h-1; y++) for (let x = 1; x < w-1; x++) {
+    const i = y*w+x;
+    for (const n of [i-w,i-1]) {
+      for (let c = 0; c < 3; c++) {
+        const contrast = Math.abs(pixels[4*i+c]*pixels[4*i+3] - pixels[4*n+c]*pixels[4*n+3]);
+        if (contrast > 32*255) edge[i] = 1;
+      }
+    }
+  }
+  const neighbours = [-w-1,-w,-w+1,-1,1,w-1,w,w+1];
+  for (let i = 0; i < edge.length; i++) {
+    if (!edge[i]) continue;
+    const points = [i];
+    edge[i] = 0;
+    let left = w, right = 0, top = h, bottom = 0;
+    for (let k = 0; k < points.length; k++) {
+      const pos = points[k], x = pos % w, y = Math.floor(pos/w);
+      left = Math.min(left,x); right = Math.max(right,x);
+      top = Math.min(top,y); bottom = Math.max(bottom,y);
+      for (const d of neighbours) if (edge[pos+d]) {edge[pos+d] = 0; points.push(pos+d);}
+    }
+    if (right-left < 14 || bottom-top < 10) continue;
+    if (points.filter(pos => pos%w > left+3 && pos%w < right-3 &&
+      Math.floor(pos/w) > top+3 && Math.floor(pos/w) < bottom-3).length >= 8) return true;
+  }
+  return false;
+}
+
+function doKhungHinh(goc: HTMLElement, kiemT2: boolean) {
   const g = goc.getBoundingClientRect();
   const tl = g.width / 1080 || 1;
   const quy = (r: DOMRect | Hop): Hop => {
@@ -159,10 +201,34 @@ function doKhungHinh(goc: HTMLElement): {loi: LoiKD[]; chu: string[]; so: string
   // CHỮ NHÌN THẤY trên khung (để máy đối chiếu đáp án) + số hiển thị của huy hiệu số lăn (data-kd-so: số các bánh số đang chỉ)
   const so: string[] = [];
   goc.querySelectorAll('[data-kd-so]').forEach((e) => { if (doMo(e) > 0.55) so.push(String(e.getAttribute('data-kd-so'))); });
-  return {loi, chu: khoi.map((k) => k.chu).slice(0, 120), so};
+  const bc = boCuc4Tang(true);
+  const tang = kiemT2 ? goc.querySelector('[data-vung="t2"]') : null;
+  const hinhT2 = Array.from(tang?.querySelectorAll<SVGGeometryElement>('path,polygon,polyline,line,circle,ellipse') || []).some(el => {
+    if (el.closest('defs,clipPath,mask,.katex,[data-xung-t2],[data-lop="minh-hoa"],[data-san-khau-2d="tu_duy_dai_so"]')) return false;
+    const cs = getComputedStyle(el);
+    if (cs.visibility !== 'visible' || doMo(el) < 0.12) return false;
+    const to = el.tagName !== 'line' && cs.fill !== 'none' && Number(cs.fillOpacity) > 0.1;
+    if (!to && (cs.stroke === 'none' || Number(cs.strokeOpacity) < 0.1 || parseFloat(cs.strokeWidth) <= 0)) return false;
+    const m = el.getScreenCTM(), len = el.getTotalLength();
+    if (!m || len <= 0 || !el.getClientRects().length) return false;
+    const vung = catBoi(el, {x: bc.le, y: bc.t2.y, w: bc.rong, h: bc.t2.h});
+    if (!vung) return false;
+    const points = Array.from({length: 17}, (_, i) => el.getPointAtLength(len * i / 16).matrixTransform(m))
+      .map(pt => ({x: (pt.x - g.x) / tl, y: (pt.y - g.y) / tl}))
+      .filter(pt => pt.x >= vung.x && pt.x <= vung.x + vung.w && pt.y >= vung.y && pt.y <= vung.y + vung.h);
+    return points.some(pt => points.some(q => Math.hypot(pt.x - q.x, pt.y - q.y) >= 55));
+  });
+  const canvas = !hinhT2 && Array.from(tang?.querySelectorAll('canvas') || []).some(el => {
+    if (doMo(el) < 0.12 || getComputedStyle(el).visibility !== 'visible') return false;
+    const src = quy(el.getBoundingClientRect());
+    const safe = giao(src, {x: bc.le, y: bc.t2.y, w: bc.rong, h: bc.t2.h});
+    const visible = safe && catBoi(el, safe);
+    return !!visible && visible.w >= 55 && visible.h >= 35 && canvasCoHinh(el, src, visible);
+  });
+  return {hinhT2: hinhT2 || canvas, loi, chu: khoi.map((k) => k.chu).slice(0, 120), so};
 }
 
-export const KiemDuyet: React.FC = () => {
+export const KiemDuyet: React.FC<{kiemT2?: boolean}> = ({kiemT2 = false}) => {
   const f = useCurrentFrame();
   useEffect(() => {
     const h = delayRender(`Kiểm duyệt bố cục ${f}`);
@@ -174,7 +240,7 @@ export const KiemDuyet: React.FC = () => {
       if (!huy) {
         try {
           const goc = document.getElementById('kd-goc');
-          const kq = goc && goc.parentElement ? doKhungHinh(goc.parentElement) : {loi: [], chu: [], so: []};
+          const kq = goc && goc.parentElement ? doKhungHinh(goc.parentElement, kiemT2) : {loi: [], chu: [], so: []};
           console.log('KD|' + JSON.stringify({frame: f, ...kq}));
         } catch (e) {
           console.log('KD|' + JSON.stringify({frame: f, loi: [], hong: String(e)}));
@@ -190,6 +256,6 @@ export const KiemDuyet: React.FC = () => {
       clearTimeout(du);
       chay();
     };
-  }, [f]);
+  }, [f, kiemT2]);
   return <div id="kd-goc" data-kd-bo="1" style={{position: 'absolute', left: 0, top: 0, width: 1080, height: 1920, pointerEvents: 'none'}} />;
 };

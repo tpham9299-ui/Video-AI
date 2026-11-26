@@ -49,6 +49,16 @@ def main():
     m4, _ = mt.chon_moc(props_gia(4, outro=False), 1e9)
     kiem(len(m4) == 9 and m4[8][1] == "cuối", "video ít cảnh vẫn đủ 9 ô")
 
+    from PIL import Image, ImageDraw
+    text = Image.new("RGB", (360, 640))
+    ve = ImageDraw.Draw(text)
+    ve.rectangle((60, 170, 300, 230), outline="white", width=2)
+    ve.text((100, 190), "x + y = 20", fill="white")
+    tt = {**p, "mon": "THUC_TE", "boCuc": "4tang", "khung4tang": {"sanKhau": {"loai": "kinh_te_do_thi"}}}
+    kiem(any(x["loai"] == "t2_trong" and x["nang"] for x in mt.kiem_tat_dinh(tt, [text]*9, 8)),
+         "MP4 chỉ có hộp chữ sáng vẫn bị chặn dù props ghi có đồ thị")
+    ve.line([(74, 295), (160, 188), (280, 308)], fill="yellow", width=4)
+    kiem(mt.co_net_hinh(text), "nhận nét đồ thị trong ảnh T2")
     print("Lọc lỗi AI:")
     ds = mt.chuan_loi([{"o": 8, "loai": "lo_dap_an"}, {"o": 3, "loai": "lo_dap_an"}, {"o": 2, "loai": "abc"},
                        {"o": 5, "loai": "latex_tho", "nang": False}], 8)

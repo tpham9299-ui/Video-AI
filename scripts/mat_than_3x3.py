@@ -151,10 +151,60 @@ def tao_luoi(video, moc, dich):
     return dich
 
 
+from khung4tang_v96 import thuc_te_ngan, LOAI_2D_TT, KHUON_VAT_THE
+from tu_sinh_svg import co_hinh_t2
+
+
+def co_net_hinh(im):
+    """Tìm nét liên thông dài trong vùng T2, bỏ ký tự rời và chu vi hộp nhãn."""
+    from PIL import ImageFilter
+    import numpy as np
+    w, h = im.size
+    crop = im.crop((round(w * 130/1080), round(h * T2_TREN), round(w * 950/1080), round(h * T2_DUOI)))
+    edges = np.asarray(crop.convert("L").filter(ImageFilter.FIND_EDGES)) > 35
+    edges[[0, -1], :] = False
+    edges[:, [0, -1]] = False
+    for y, x in zip(*np.nonzero(edges)):
+        if not edges[y, x]:
+            continue
+        stack = [(y, x)]
+        edges[y, x] = False
+        pts = []
+        while stack:
+            py, px = stack.pop()
+            pts.append((py, px))
+            for dy, dx in ((-1,-1), (-1,0), (-1,1), (0,-1), (0,1), (1,-1), (1,0), (1,1)):
+                ny, nx = py + dy, px + dx
+                if edges[ny, nx]:
+                    edges[ny, nx] = False
+                    stack.append((ny, nx))
+        if len(pts) < 35:
+            continue
+        yy, xx = zip(*pts)
+        l, r, top, bottom = min(xx), max(xx), min(yy), max(yy)
+        if r-l < 20 or bottom-top < 15 or max(r-l, bottom-top) < 32:
+            continue
+        if sum(l+4 < x < r-4 and top+4 < y < bottom-4 for y, x in pts) >= 12:
+            return True
+    return False
+
+
 def kiem_tat_dinh(p, anh_o, o_da):
     """v92: lỗi nặng đo được bằng điểm ảnh / props (không cần AI). Chỉ áp dụng video khung 4 tầng."""
     loi = []
     k4p = p.get("khung4tang") or {}
+    if thuc_te_ngan(p):
+        ts = k4p.get("tuSinh")
+        sk = k4p.get("sanKhau") or {}
+        c3 = k4p.get("canh3dv") or {}
+        if ts is not None:
+            co_hinh = co_hinh_t2(ts.get("lop") or [])
+        elif sk:
+            co_hinh = sk.get("loai") in LOAI_2D_TT
+        else:
+            co_hinh = c3.get("khuon") in KHUON_VAT_THE or c3.get("doi_tuong") or k4p.get("khongGian")
+        if not co_hinh or k4p.get("tuSinhHong"):
+            loi.append({"o": 2, "loai": "t2_trong", "mo_ta": "Thiếu dữ liệu minh họa thực tế ở tầng 2", "nang": True})
     for x in (k4p.get("canhBaoDongBo") or [])[:2]:   # v99.2: cờ do chuanbi.py gắn (khung4tang_v99.canh_bao_dong_bo)
         loi.append({"o": o_da, "loai": "lech_pha", "mo_ta": str(x)[:150], "nang": True})
     for x in (k4p.get("canhBaoNhe") or [])[:2]:   # v101.5: mốc ước lượng = đầu cảnh -> cảnh báo nhẹ (nang False: không chặn đăng, không Auto-Heal)
@@ -182,6 +232,8 @@ def kiem_tat_dinh(p, anh_o, o_da):
             loi.append({"o": 1, "loai": "t2_trong", "mo_ta": "Intro móc câu không có hình 3D (vùng giữa màn hình đen)", "nang": True})
     y0, y1 = int(O_CAO * T2_TREN), int(O_CAO * T2_DUOI)
     giai = [k for k in range(1, min(o_da - 1, len(anh_o))) if anh_o[k] is not None]   # ô 2 .. ô trước đáp án (0-based)
+    if thuc_te_ngan(p) and giai and all(not co_net_hinh(anh_o[k]) for k in giai):
+        loi.append({"o": giai[0]+1, "loai": "t2_trong", "mo_ta": "T2 các ô giải chỉ có nền, ký tự hoặc khung nhãn", "nang": True})
     cat = {k: anh_o[k].crop((0, y0, O_RONG, y1)).convert("L") for k in giai}
     trong = []
     for k, im in cat.items():
@@ -239,6 +291,10 @@ def prompt_ai(p, o_da):
             "- hinh_nho: hình vẽ (đường tròn, tam giác) quá nhỏ, chiếm dưới một nửa bề ngang vùng hình.\n"
             "- tran_day: dòng chứng minh tràn xuống sát đáy khung (14% dưới cùng) hoặc bị cắt ở đáy.\n"
             "- nhan_de: nhãn tên điểm (A, B, C...) đè lên nhau, đè lên nét vẽ hoặc cung góc tới mức khó đọc.\n")
+    if thuc_te_ngan(p):
+        ghi_chu_intro += ("THUC_TE: xem riêng tầng 2 trong từng ô giải. Phải thấy vật thể, sơ đồ hoặc đồ thị đúng đề. "
+                          "Chữ, công thức, hộp nhãn và viền sáng cũng là t2_trong, nang=true. "
+                          "Thêm trường JSON t2_co_hinh (boolean) xác nhận mọi ô giải đều đạt. ")
     return ghi_chu_intro + (
         "Bạn là người kiểm duyệt cuối của video toán dọc 9:16. Ảnh là lưới 3×3 gồm 9 khung hình theo thứ tự thời gian, "
         "mỗi ô có số 1..9 ở góc trên trái (dải nhãn đen-vàng đó là của người kiểm duyệt, KHÔNG phải lỗi video). "
@@ -319,6 +375,8 @@ def main():
         sys.exit(__doc__)
     props_tep, video, ra = sys.argv[1:4]
     p = json.load(open(props_tep, encoding="utf8"))
+    if os.environ.get("MAT_THAN_3X3") == "TAT" and not thuc_te_ngan(p):
+        return
     id_ = p.get("id") or os.path.splitext(os.path.basename(video))[0]
     os.makedirs(ra, exist_ok=True)
     moc, o_da = chon_moc(p, do_dai(video))
@@ -328,13 +386,20 @@ def main():
     gia_lap = os.environ.get("MAT_THAN_GIA_LAP", "").strip()
     if gia_lap:
         tho = {"loi": [{"o": 6, "loai": "lo_dap_an", "mo_ta": "Giả lập: đáp số hiện ở bước giải", "nang": True}]} if gia_lap == "loi" else {"loi": []}
+        tho["t2_co_hinh"] = gia_lap == "dat"
         canh_bao = ""
     else:
         tho, canh_bao = goi_gemini(anh, p, o_da)
     tat_dinh = kiem_tat_dinh(p, getattr(tao_luoi, "anh_o", []), o_da)
+    if thuc_te_ngan(p) and tho is not None and (not isinstance(tho, dict) or tho.get("t2_co_hinh") is not True):
+        if not isinstance(tho, dict):
+            tho = {}
+        tat_dinh.append({"o": 2, "loai": "t2_trong", "mo_ta": "Lưới 3×3 chưa xác nhận hình minh họa ở mọi ô giải", "nang": True})
     for x in tat_dinh:
         print("Mắt thần (đo điểm ảnh): ô %d %s - %s" % (x["o"], TEN_LOI[x["loai"]], x["mo_ta"]))
-    if tho is None and not tat_dinh:
+    if tho is None and thuc_te_ngan(p) and not any(x["nang"] for x in tat_dinh):
+        kq = {"dat": False, "chay": False, "loi": tat_dinh, "ly_do": "Chưa xác minh hình THUC_TE", "canh_bao": canh_bao}
+    elif tho is None and not tat_dinh:
         kq = {"dat": True, "chay": False, "loi": [], "ly_do": "", "canh_bao": "Mắt thần chưa chạy (%s), để BP4 kiểm duyệt" % canh_bao}
     else:
         loi = tat_dinh + chuan_loi((tho or {}).get("loi"), o_da)

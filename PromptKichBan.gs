@@ -387,7 +387,7 @@ function huongDanKhung4Tang_(r) {
     (String((r && r.mon) || '').toUpperCase() === 'XAC_SUAT'
       ? 'BÀI XÁC SUẤT (v96): KHÔNG ghi "canh_3d_vector" — tầng 2 dùng "san_khau" 2D (rut_mau | so_do_cay | luoi_bayes | cot_phan_phoi), xem hướng dẫn SÂN KHẤU 2D bên dưới. '
       : 'Khuôn dùng được cho bài lớp ' + (lop || '?') + ': ' + dsK.map(moTaKhuon_).join(' | ') + '. ' +
-        'Đề KHÔNG có vật thể khối thật (kinh tế / chuyển động 2D / tăng trưởng / đại số thuần) thì KHÔNG ghi canh_3d_vector mà ghi "san_khau" 2D (xem bên dưới). ') +
+        'Bài ngắn THUC_TE cần vật thể, sơ đồ hoặc đồ thị ở Tầng 2 theo từng bước. Với sân khấu 2D, điền tham_so đủ để vẽ từ dữ kiện. Nếu thiếu khuôn, dùng hợp đồng tu_sinh_svg. Không dùng tu_duy_dai_so hoặc hộp công thức. ') +
     'CHỈ khi không khuôn nào hợp mới dùng đặc tả tự do {"phien_ban":1,"doi_tuong":[...],"buoc":[{"khi_noi","camera":[goc_ngang,goc_cao 5..90,zoom] hoặc "tu_tren","hien":[id],"an":[id],"nhan_manh":[id],"hanh_dong":[...]}]} ' +
     '(≥ 3 bước có thay đổi; tọa độ [x,y,z], z hướng lên, khối ~[-3,3]³): diem {toa_do,nhan} | doan_thang/vector {tu,den} | da_giac {diem:[[x,y,z]...],ban_le?} | hinh_hop {tam,kich_thuoc,ten_dinh,nap} | mat_cau {tam,ban_kinh} | ' +
     'hinh_tru/hinh_non {day:[x,y,z],ban_kinh,cao} | hinh_chop {day:[[x,y,z]...],dinh} | duong_cong {diem|ham} | goc {dinh,canh:[id,id]} | nhom_lap {vat:"the|bi|khoi",so:N,xep:"luoi|hang|vong",mau_tung:[...],nhan_tung:[...]}; ' +

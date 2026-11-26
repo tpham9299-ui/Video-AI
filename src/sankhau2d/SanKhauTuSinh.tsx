@@ -57,7 +57,7 @@ export function heSoThay(l: LopTuSinh, ds: LopTuSinh[], t: number): number {
   if (!sau.length) return 1;
   return Math.max(0, 1 - (t - Math.min(...sau.map((x) => x.t))) / 0.4);
 }
-export type TuSinhVao = {viewBox?: string; lop: LopTuSinh[]; mo_ta?: string; de_bai?: string; buoc?: {t: number; text: string}[]};
+export type TuSinhVao = {chiLopKichBan?: boolean; viewBox?: string; lop: LopTuSinh[]; mo_ta?: string; de_bai?: string; buoc?: {t: number; text: string}[]};
 
 const W = 800, H = 540;
 
@@ -410,7 +410,7 @@ export const SanKhauTuSinh: React.FC<{ts: TuSinhVao; t: number; fps: number; ron
   // v99.9: dạng bài -> hình minh họa luôn có (Koch / tiến trình); lớp tự sinh vẫn thắng: đứng yên > 2,5 s mới hiện dần, không có lớp nào thì hiện ngay
   const dang: 'tq' | 'koch' | 'tt' = RE_KOCH.test(chuanKyHieu(ts.de_bai || '')) ? 'koch' : tq.length ? 'tq' : 'tt';
   const tuoi = daHien.length ? t - daHien[daHien.length - 1].t : 0;
-  const cong = !lop.length ? 1 : daHien.length ? Math.min(1, Math.max(0, (tuoi - 2.5) / 0.6)) : 0;
+  const cong = ts.chiLopKichBan ? 0 : !lop.length ? 1 : daHien.length ? Math.min(1, Math.max(0, (tuoi - 2.5) / 0.6)) : 0;
   const bsT = React.useMemo(() => (ts.buoc || []).slice().sort((a, b) => a.t - b.t), [ts.buoc]);
   return (
     <div data-tu-sinh style={{position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>

@@ -134,7 +134,7 @@ t('hợp đồng hình: ghi / đọc / bỏ khỏi yeu_to_tu_duy, chỉ thị BP
 });
 t('định tuyến: hợp đồng tu_sinh_svg mở tự sinh cho XÁC SUẤT; cay_bayes -> so_do_cay (khớp Python)', () => {
   assert.equal(ctx.dungTuSinh_({de_bai: 'Hai bạn hẹn gặp', mon: 'XAC_SUAT'}, {san_khau_dich: 'tu_sinh_svg'}), true);
-  assert.equal(ctx.dungTuSinh_({de_bai: 'Hòn đảo bông tuyết Koch', mon: 'THUC_TE'}, {san_khau_dich: 'cay_bayes'}), false);
+  assert.equal(ctx.dungTuSinh_({de_bai: 'Hòn đảo bông tuyết Koch', mon: 'THUC_TE'}, {san_khau_dich: 'cay_bayes'}), true);
   assert.equal(ctx.dungTuSinh_({de_bai: 'Hai bạn hẹn gặp', mon: 'XAC_SUAT'}, {}), false);
   const kb = {mon: 'XAC_SUAT', lop: '11', san_khau_dich: 'cay_bayes', de_bai: 'Rút thẻ ngẫu nhiên, tính xác suất'};
   assert.equal(ctx.chonSanKhau_(kb, {}).loai, 'so_do_cay');
@@ -364,6 +364,24 @@ t('workflow BP1 / BP2 checkout đủ bộ kiểm Python (tự sinh / hình phẳ
     ['scripts/tu_sinh_svg.py', 'scripts/ve25d.py', 'scripts/giai_hinh_phang.py', 'scripts/hinh_phang', 'scripts/giai_hinh_khong_gian.py', 'scripts/hinh_khong_gian'].forEach((x) => assert.ok(y.includes(x), f + ' thiếu ' + x));
   });
   assert.ok(fs.readFileSync(path.join(GOC, '.github', 'workflows', 'dang-video.yml'), 'utf8').includes('scripts/evergreen.py'));
+});
+
+t('BP4: đủ điểm nhưng thiếu bằng chứng hình phải về BP2', () => {
+  const r = {...dongR(), mon: 'THUC_TE'};
+  ghiSheet.length = 0;
+  ctx.apDungKetQuaAiXem_({}, r, {dat: true, phan_tram: 100});
+  const g = capNhat(r);
+  assert.equal(g.trang_thai, 'DA_GIAI');
+  assert.match(g.gop_y, /t2_trong/);
+  assert.equal(JSON.parse(r.ai_kiem_tra).so_lan_mat_than, 1);
+});
+
+t('THUC_TE chỉ có thẻ chữ: BP2 giữ lỗi cứng và giữ hợp đồng SVG', () => {
+  const kb = {mon: 'THUC_TE', san_khau_dich: 'tu_sinh_svg', khung4tang: {san_khau: {loai: 'tu_duy_dai_so'}, buoc: []}};
+  ctx.tuSuaSanKhau_(kb, {});
+  assert.equal(kb.san_khau_dich, 'tu_sinh_svg');
+  assert.ok(ctx.phanLoaiLoiCung_([], [], kb).nang.some(x => x.startsWith('t2_trong')));
+  assert.ok(!ctx.phanLoaiLoiCung_([], [], {...kb, id: 'TEST-10P'}).nang.length);
 });
 
 fs.rmSync(tmp, {recursive: true, force: true});

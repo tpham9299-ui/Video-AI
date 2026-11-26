@@ -1262,6 +1262,12 @@ RE_VAT_THE = re.compile(r"hộp|bìa|tấm|lon|hình trụ|hình nón|phễu|c�
                         r"mặt phẳng|thiết diện|khối|bể|bồn|thùng|oxyz|tòa nhà|cột|kim tự tháp", re.I)
 
 
+def thuc_te_ngan(kb):
+    mon = kb.get("mon") or ("THUC_TE" if re.match(r"^T[TI]\d", str(kb.get("id") or ""), re.I) else "")
+    return (str(mon).upper() == "THUC_TE" and kb.get("kieu_video") != "DAI_10_PHUT"
+            and not str(kb.get("id") or "").upper().endswith("-10P"))
+
+
 def chon_san_khau(kb, r=None, khuon_suy=None):
     """-> {'loai': ..., 'nguon': 'chi_dao'|'ai'|'suy'|'lui', 'chi_dao': str}. Không bao giờ trả khuôn 3D cho đề không có vật thể."""
     r = r or {}
@@ -1275,23 +1281,26 @@ def chon_san_khau(kb, r=None, khuon_suy=None):
     van = " ".join(str(x or "") for x in (kb.get("de_bai"), r.get("de_bai"), kb.get("can_tim"), kb.get("chu_de")))
     cd = str(kb.get("chi_dao") or r.get("chi_dao") or "")
     loai_cd, loi_cd = doc_chi_dao(cd)
-    if loai_cd:
+    bat_buoc = thuc_te_ngan({**r, **kb})
+    k4 = kb.get("khung4tang") if isinstance(kb.get("khung4tang"), dict) else {}
+    sk = k4.get("san_khau") if isinstance(k4.get("san_khau"), dict) else {}
+    if bat_buoc and (kb.get("san_khau_dich") == "tu_sinh_svg" or k4.get("tu_sinh") or sk.get("loai") == "tu_sinh_svg"):
+        return {"loai": "tu_sinh_svg", "nguon": "hop_dong", "chi_dao": loi_cd}
+    if loai_cd and (not bat_buoc or loai_cd in (*LOAI_2D_TT, "3d_vector")):
         if loai_cd == "luoi_bayes" and lop != "12":
             loai_cd = "so_do_cay"   # chỉ đạo không vượt GDPT 2018 (Bayes chỉ có ở lớp 12)
         if loai_cd in LOAI_XS and mon != "XAC_SUAT" and not re.search(r"xác suất|ngẫu nhiên", van, re.I):
             loai_cd = loai_cd   # người dùng chỉ định rõ -> vẫn tôn trọng
         return {"loai": loai_cd, "nguon": "chi_dao", "chi_dao": loi_cd}
-    if str(kb.get("san_khau_dich") or "") == "cay_bayes":   # v99.2: hợp đồng hình BP0 (bản đôi SanKhau.gs chonSanKhau_)
+    if not bat_buoc and str(kb.get("san_khau_dich") or "") == "cay_bayes":   # v99.2: hợp đồng hình BP0 (bản đôi SanKhau.gs chonSanKhau_)
         return {"loai": "so_do_cay", "nguon": "hop_dong", "chi_dao": loi_cd}
-    k4 = kb.get("khung4tang") if isinstance(kb.get("khung4tang"), dict) else {}
-    sk = k4.get("san_khau") if isinstance(k4.get("san_khau"), dict) else {}
-    if sk.get("loai") in LOAI_SAN_KHAU:
+    if sk.get("loai") in (LOAI_2D_TT if bat_buoc else LOAI_SAN_KHAU):
         loai = sk["loai"]
         if loai == "luoi_bayes" and lop != "12":
             loai = "so_do_cay"
         return {"loai": loai, "nguon": "ai", "chi_dao": loi_cd}
     c3 = k4.get("canh_3d_vector") if isinstance(k4.get("canh_3d_vector"), dict) else {}
-    if mon == "XAC_SUAT" or re.search(r"tính xác suất|xác suất để", van, re.I):
+    if mon == "XAC_SUAT" or not bat_buoc and re.search(r"tính xác suất|xác suất để", van, re.I):
         return {"loai": loai_xac_suat(van, lop), "nguon": "suy", "chi_dao": loi_cd}
     khuon = khuon_suy or (c3.get("khuon") if c3.get("khuon") != "luoi_the_bi_xac_suat" else None)
     if not khuon and re.search(r"gập|hộp|hình trụ|\blon\b|hình nón|phễu|hình chóp|lăng trụ|mặt cầu|dây cáp|thiết diện|bồn|bể", van, re.I):
@@ -1301,7 +1310,7 @@ def chon_san_khau(kb, r=None, khuon_suy=None):
         return {"loai": loai, "nguon": "suy", "chi_dao": loi_cd}
     if c3.get("khuon") in KHUON_VAT_THE and RE_VAT_THE.search(van):
         return {"loai": "3d_vector", "nguon": "ai", "chi_dao": loi_cd}
-    return {"loai": "tu_duy_dai_so", "nguon": "lui", "chi_dao": loi_cd}
+    return {"loai": "tu_sinh_svg" if bat_buoc else "tu_duy_dai_so", "nguon": "lui", "chi_dao": loi_cd}
 
 
 # ====================================================================================================================
@@ -1397,7 +1406,7 @@ def gan_san_khau(kb, k4, buoc, t_buoc, t_het_de, tong, tim_moc, r=None, khuon_su
     sua = []
     quyet = chon_san_khau(kb, r, khuon_suy)
     loai = quyet["loai"]
-    if loai in ("hinh_hoc", "3d_vector", "lego_3d"):
+    if loai in ("hinh_hoc", "3d_vector", "lego_3d", "tu_sinh_svg"):
         return None, sua, quyet
     sk_ai = k4.get("san_khau") if isinstance(k4.get("san_khau"), dict) else {}
     ts = sk_ai.get("tham_so") if isinstance(sk_ai.get("tham_so"), dict) and sk_ai.get("loai") == loai else {}
@@ -1407,6 +1416,8 @@ def gan_san_khau(kb, k4, buoc, t_buoc, t_het_de, tong, tim_moc, r=None, khuon_su
         ts.pop("chon", None)
         sua.append("rut_mau: nhận tham số từ khuôn 3D cũ luoi_the_bi_xac_suat")
     sk = dung_san_khau(loai, ts, kb, k4, buoc, sua)
+    if sk is None and thuc_te_ngan(kb):
+        return None, sua, quyet
     if sk is None and loai != "tu_duy_dai_so":
         sua.append("sân khấu %s không dựng được -> sơ đồ tư duy" % loai)
         quyet = dict(quyet, loai="tu_duy_dai_so", nguon="lui")

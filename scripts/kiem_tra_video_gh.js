@@ -75,7 +75,7 @@ const ctx = {
 };
 
 vm.createContext(ctx);
-for (const f of ['BoPhan1.gs', 'NangCao.gs', 'SanPham.gs', 'KiemTraHinh.gs', 'HinhHoc.gs', 'PromptKichBan.gs']) {
+for (const f of ['BoPhan1.gs', 'NangCao.gs', 'SanPham.gs', 'KiemTraHinh.gs', 'HinhHoc.gs', 'PromptKichBan.gs', 'SanKhau.gs']) {
   const p = path.join(GOC, f);
   if (fs.existsSync(p)) vm.runInContext(fs.readFileSync(p, 'utf8'), ctx, {filename: f});
 }

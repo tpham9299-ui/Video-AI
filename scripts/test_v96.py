@@ -82,8 +82,8 @@ kiem(tt and abs(tt["moc"][1]["y"] - 201.22) < 0.05, "tăng trưởng lãi kép 6
 kiem(v.ham_an_toan("__import__('os')") is None and v.ham_an_toan("exp(x)+ln(x)") is not None, "hàm an toàn: chặn mã lạ, nhận exp/ln")
 
 print("— Định tuyến + chỉ đạo")
-kiem(v.chon_san_khau({"mon": "THUC_TE", "lop": "12", "de_bai": "Giải phương trình 4^x - 3.2^x + 2 = 0", "khung4tang": {"canh_3d_vector": {"khuon": "tam_bia_gap_hop"}}})["loai"] == "tu_duy_dai_so",
-     "đề đại số + AI gắn nhầm khuôn hộp -> tu_duy_dai_so (không nhét hình hộp)")
+kiem(v.chon_san_khau({"mon": "THUC_TE", "lop": "12", "de_bai": "Giải phương trình 4^x - 3.2^x + 2 = 0", "khung4tang": {"canh_3d_vector": {"khuon": "tam_bia_gap_hop"}}})["loai"] == "tu_sinh_svg",
+     "đề đại số + AI gắn nhầm khuôn hộp -> tu_sinh_svg (không nhét hình hộp)")
 kiem(v.chon_san_khau({"mon": "THUC_TE", "lop": "12", "de_bai": "x", "chi_dao": "[chidao: vẽ đồ thị lợi nhuận]"})["loai"] == "kinh_te_do_thi", "chỉ đạo ưu tiên tuyệt đối")
 kiem(v.chon_san_khau({"mon": "XAC_SUAT", "lop": "11", "chi_dao": "dùng lưới Bayes"})["loai"] == "so_do_cay", "chỉ đạo không vượt GDPT (Bayes lớp 11 -> cây)")
 kiem(v.tach_chi_dao("[chidao: dùng sơ đồ cây] Bắn 2 lần") == ("Bắn 2 lần", "dùng sơ đồ cây"), "tách thẻ chỉ đạo khỏi đề")
@@ -106,7 +106,7 @@ kiem(max(b - a for a, b in zip(moc, moc[1:])) <= 4.0, "không khoảng nào > 4 
 
 print("— 4 mẫu --gia-lap (thời lượng + sân khấu)")
 MAU = [("out/v96/vd_153504/kb_sua.json", "rut_mau"), ("mau/v96/bayes_xet_nghiem.json", "luoi_bayes"),
-       ("mau/v96/loi_nhuan_tra_sua.json", "kinh_te_do_thi"), ("mau/v96/dai_so_chi_dao.json", "tu_duy_dai_so")]
+       ("mau/v96/loi_nhuan_tra_sua.json", "kinh_te_do_thi"), ("mau/v96/dai_so_chi_dao.json", "tuSinhHong")]
 if not os.path.exists(os.path.join(GOC, MAU[0][0])):
     subprocess.run(["node", "scripts/test_v96_gs.cjs"], cwd=GOC, capture_output=True)
 for tep, loai in MAU:
@@ -120,6 +120,9 @@ for tep, loai in MAU:
     p = json.load(open(ra, encoding="utf-8"))
     k4 = p.get("khung4tang") or {}
     sk = k4.get("sanKhau") or {}
+    if loai == "tuSinhHong":
+        kiem(k4.get("tuSinhHong") and not sk, "THUC_TE cũ chỉ có sơ đồ chữ bị chặn")
+        continue
     kiem(sk.get("loai") == loai and not k4.get("canh3dv"), "%s: sân khấu %s, không còn khuôn 3D" % (ten, loai), sk.get("loai"))
     kiem(sk.get("pha") and sk["pha"][0]["t"] <= 0.5, "%s: hook 2 s (pha đầu %.1f s)" % (ten, sk["pha"][0]["t"] if sk.get("pha") else -1))
     if ten in ("vd_153504", "bayes_xet_nghiem", "loi_nhuan_tra_sua"):

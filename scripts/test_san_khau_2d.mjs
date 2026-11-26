@@ -53,6 +53,10 @@ for (const ten of MAU) {
   if (!fs.existsSync(tep)) { thu(`${ten}: có props (chạy python scripts/test_v96.py trước)`, false); continue; }
   const p = JSON.parse(fs.readFileSync(tep, 'utf8'));
   const sk = p.khung4tang?.sanKhau;
+  if (ten === 'dai_so_chi_dao' && p.mon === 'THUC_TE') {
+    thu('THUC_TE cũ chỉ có hộp chữ dừng trước bundle', !sk && !!p.khung4tang?.tuSinhHong);
+    continue;
+  }
   if (!sk) { thu(`${ten}: có sanKhau`, false); continue; }
   const hop = C.hopQuanTrong(sk, W, H);
   const ngoai = (y0) => hop.filter((h) => !V.trongAnToan(bc.le + h.x, y0 + h.y, h.w, h.h));

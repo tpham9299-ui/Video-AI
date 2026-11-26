@@ -74,10 +74,10 @@ def ve():
         {"buoc": 3, "hieu_ung": "moc", "nhan": "nhãn công bội", "nhom": "dau", "khi_noi": "nhân bốn phần chín",
          "svg": chu(CX, 40, "công bội q = 4/9", CYAN, 30)},
         {"buoc": 4, "hieu_ung": "sang", "nhan": "đường bờ", "khi_noi": "tổng cấp số nhân lùi vô hạn", "nhom": "giua",
-         "svg": '<polygon points="%s" fill="none" stroke="%s" stroke-width="3"/>' % (pts(p3), HO) + '<rect x="%.1f" y="%.1f" width="200" height="54" rx="27" fill="#0B1A26"/>' % (CX - 100, CY - 18) + chu(CX, CY + 20, "S = 8/5 · S₀", HO, 32, 800)},
+         "svg": '<polygon points="%s" fill="none" stroke="%s" stroke-width="3"/>' % (pts(p3), HO) + '<rect x="%.1f" y="%.1f" width="200" height="54" rx="27" fill="#0B1A26"/>' % (12, 78) + chu(112, 116, "S = 8/5 · S₀", HO, 32, 800)},
         {"buoc": 5, "hieu_ung": "no", "nhan": "giá trị đảo", "khi_noi": "giá trị hòn đảo",
-         "svg": '<rect x="250" y="452" width="300" height="56" rx="28" fill="#2A2110" stroke="%s" stroke-width="2.5"/>' % HO
-                + chu(CX, 492, "≈ 138,6 tỷ đồng", HO, 32, 800)},
+         "svg": '<rect x="12" y="460" width="275" height="56" rx="28" fill="#2A2110" stroke="%s" stroke-width="2.5"/>' % HO
+                + chu(150, 500, "≈ 138,6 tỷ đồng", HO, 32, 800)},
     ]
     return lop
 '''

@@ -168,6 +168,7 @@ const VaoMuot: React.FC<{children: React.ReactNode}> = ({children}) => {
 const NoiDung4Tang: React.FC<Props & {coIntro?: boolean}> = (props) => {
   const {canh, tongFrame, fps, nhac, thuongHieu, outro} = props;
   const k = props.khung4tang!;
+  const batBuocMinhHoa = props.mon === 'THUC_TE' && props.kieu_video !== 'DAI_10_PHUT' && !/-10P$/i.test(props.id);
   const amNhac = React.useMemo(() => taoAmLuongNhac(props), [canh, tongFrame, fps, props.amLuongNhac]);
   const ketThuc = outro ? outro.batDau : tongFrame;
   // phụ đề gọn: câu của từng cảnh đổi sang giây toàn phần nội dung
@@ -179,7 +180,7 @@ const NoiDung4Tang: React.FC<Props & {coIntro?: boolean}> = (props) => {
   return (
     <AbsoluteFill style={{fontFamily: FONT, background: '#0E1014'}}>
       <Sequence from={0} durationInFrames={Math.max(1, ketThuc)}>
-        <Khung4Tang {...k} fps={fps} tongFrame={Math.max(1, ketThuc)} thuongHieu={k.thuongHieu ?? thuongHieu?.ten} cau={k.boCuc?.phuDe === 'gon' ? cau : k.cau} />
+        <Khung4Tang {...k} batBuocMinhHoa={batBuocMinhHoa} fps={fps} tongFrame={Math.max(1, ketThuc)} thuongHieu={k.thuongHieu ?? thuongHieu?.ten} cau={k.boCuc?.phuDe === 'gon' ? cau : k.cau} />
       </Sequence>
       {nhac ? <Audio src={staticFile(nhac)} loop volume={amNhac} /> : null}
       {canh.map((c) =>
@@ -206,12 +207,12 @@ const NoiDung4Tang: React.FC<Props & {coIntro?: boolean}> = (props) => {
         <Sequence from={outro.batDau} durationInFrames={outro.soFrame}>
           <VaoMuot>
           {outro.loai === 'tu_tao' && tomTat ? (
-            <OutroTomTat dapAn={props.dapAn} tomTat={tomTat} canh={k.tuSinh || k.sanKhau || k.khongGian ? null : canhCuoi} sanKhau={k.tuSinh?.lop?.length ? null : k.sanKhau || null} khongGian={k.khongGian || null} tCuoi={Math.max(1, ketThuc) / fps} thuongHieu={k.thuongHieu ?? thuongHieu?.ten} cta={k.cta} tuSinh={k.tuSinh || null} theme={k.theme} />
+            <OutroTomTat giuHinh={batBuocMinhHoa} dapAn={props.dapAn} tomTat={tomTat} canh={k.tuSinh || k.sanKhau || k.khongGian ? null : canhCuoi} sanKhau={k.tuSinh?.lop?.length ? null : k.sanKhau || null} khongGian={k.khongGian || null} tCuoi={Math.max(1, ketThuc) / fps} thuongHieu={k.thuongHieu ?? thuongHieu?.ten} cta={k.cta} tuSinh={k.tuSinh || null} theme={k.theme} />
           ) : outro.loai === 'tu_tao' ? <ManKetChuyenNghiep th={thuongHieu} baiHoc={props.baiHoc || []} dapAn={props.dapAn} tiepTheo={props.tiepTheo || ''} /> : <ManKet tep={outro.tep} loai={outro.loai} />}
           </VaoMuot>
         </Sequence>
       ) : null}
-      {props.kiemDuyet ? <KiemDuyet /> : null}
+      {props.kiemDuyet ? <KiemDuyet kiemT2={batBuocMinhHoa} /> : null}
     </AbsoluteFill>
   );
 };

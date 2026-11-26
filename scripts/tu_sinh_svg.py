@@ -286,9 +286,45 @@ def chuan_lop(kq, so_buoc):
     return ra
 
 
-def dung(ma, so_buoc, tham_my=True):
+def co_hinh_t2(lop):
+    """Kiểm kích thước nét/vật trong viewBox 800×540. rect dành cho nền và hộp nhãn."""
+    for layer in lop:
+        for tag, a, st, _, opacity, _ in _phan_tu(layer):
+            if opacity < 0.12 or tag not in ("path", "polygon", "polyline", "circle", "ellipse", "line"):
+                continue
+            a = {**a, **st}
+            def painted(key, default):
+                value = a.get(key, default)
+                alpha = _so(a.get(key + "-opacity", 1))
+                return value not in ("none", "transparent") and bool(alpha and alpha[0] * opacity >= 0.12)
+            if not (tag != "line" and painted("fill", "black") or painted("stroke", "none")):
+                continue
+            if tag in ("circle", "ellipse"):
+                radii = [_so(a.get(k, "")) for k in (("r", "r") if tag == "circle" else ("rx", "ry"))]
+                if all(r and r[0] >= 6 for r in radii) and radii[0][0] * radii[1][0] >= 320:
+                    return True
+            else:
+                points, segments = _diem_doan(tag, {"fill": "black", **a}, opacity)
+                points += [p for seg in segments for p in seg]
+                if points:
+                    xs, ys = zip(*points)
+                    if max(max(xs)-min(xs), max(ys)-min(ys)) >= 55:
+                        return True
+    return False
+
+
+def dung(ma, so_buoc, tham_my=True, can_hinh=False):
     """Chạy + kiểm. Trả list lớp đã chuẩn hóa hoặc ném LoiTuSinh."""
     ra = chuan_lop(chay_hop_cat(ma), so_buoc)
+    if can_hinh:
+        # Lớp cùng nhóm thay nhau; nhãn mới có thể xóa vật thể duy nhất của bước trước.
+        active = {}
+        for step in range(so_buoc):
+            for layer in ra:
+                if layer["buoc"] == step:
+                    active[layer.get("nhom") or layer["id"]] = layer
+            if not co_hinh_t2(active.values()):
+                raise LoiTuSinh("t2_trong: bước %d chỉ có chữ, hộp nhãn hoặc hình quá nhỏ" % (step + 1))
     if tham_my:
         kiem_tham_my(ra)
     return ra
@@ -381,6 +417,8 @@ def _phan_tu(lop):
         st = {k.strip(): v.strip() for k, v in st.items()}
         c = _so_co(a.get("font-size") or st.get("font-size"))
         co = c if c is not None else co
+        if ten == "defs" or st.get("display", a.get("display")) == "none" or st.get("visibility", a.get("visibility")) == "hidden":
+            mo = 0.0
         for k in ("opacity",):
             try:
                 mo *= float(a.get(k) or st.get(k) or 1)
@@ -705,11 +743,12 @@ def gan_tu_sinh(kb, k4, buoc, tim_moc, t_het_de, tong):
         return None, ""
     ma = spec.get("ma") or (spec.get("tham_so") or {}).get("ma")
     n = len(buoc)
-    so_va = 2 if str(kb.get("san_khau_dich") or "") == "tu_sinh_svg" else 1   # v99.2: hợp đồng BP0 -> vá tối đa 2 lần
+    from khung4tang_v96 import thuc_te_ngan
+    so_va = 2 if thuc_te_ngan(kb) or str(kb.get("san_khau_dich") or "") == "tu_sinh_svg" else 1   # v99.2: hợp đồng BP0 -> vá tối đa 2 lần
     nhat_ky, lop, ghi = [], None, ""
     for lan in range(so_va + 1):
         try:
-            lop = dung(ma, n)
+            lop = dung(ma, n, can_hinh=thuc_te_ngan(kb))
             ghi = ("đã tự sửa %d lần (%s)" % (lan, "; ".join(x.split(":")[0] for x in nhat_ky))) if lan else ""
             break
         except LoiTuSinh as e:
@@ -741,7 +780,7 @@ def gan_tu_sinh(kb, k4, buoc, tim_moc, t_het_de, tong):
         l["buoc"] = j
         l.pop("khi_noi", None)
     lop.sort(key=lambda l: l["t"])
-    return {"viewBox": "0 0 800 540", "lop": lop, **({"mo_ta": str(spec["mo_ta"])[:120]} if spec.get("mo_ta") else {})}, ghi
+    return {"viewBox": "0 0 800 540", "lop": lop, **({"chiLopKichBan": True} if thuc_te_ngan(kb) else {}), **({"mo_ta": str(spec["mo_ta"])[:120]} if spec.get("mo_ta") else {})}, ghi
 
 
 def tu_sinh_hong(kb, ts, ghi):
@@ -757,11 +796,20 @@ if __name__ == "__main__":
     nguon = sys.stdin.read() if sys.argv[1] == "-" else open(sys.argv[1], encoding="utf8").read()
     kb = json.loads(nguon)
     k4 = kb.get("khung4tang") or {}
-    sp = k4.get("tu_sinh") or {}
+    from khung4tang_v96 import thuc_te_ngan
+    sp = k4.get("tu_sinh") or k4.get("san_khau") or {}
     nb = len(k4.get("buoc") or []) or 4
     try:
-        ds = dung(sp.get("ma"), nb)
-        kq = {"ok": True, "loi": "", "so_lop": len(ds)}
+        if "--kiem-2d" in sys.argv:
+            from khung4tang_v96 import dung_san_khau, LOAI_2D_TT
+            sk = k4.get("san_khau") or {}
+            ghi = []
+            if sk.get("loai") not in LOAI_2D_TT or not dung_san_khau(sk["loai"], sk.get("tham_so") or {}, kb, k4, [], ghi):
+                raise LoiTuSinh("t2_trong: " + ("; ".join(ghi) or "sai dữ liệu sân khấu 2D"))
+            kq = {"ok": True, "loi": ""}
+        else:
+            ds = dung(sp.get("ma") or (sp.get("tham_so") or {}).get("ma"), nb, can_hinh=thuc_te_ngan(kb))
+            kq = {"ok": True, "loi": "", "so_lop": len(ds)}
     except LoiTuSinh as e:
         kq = {"ok": False, "loi": str(e), "so_lop": 0}
     if "--chi-kiem" in sys.argv:

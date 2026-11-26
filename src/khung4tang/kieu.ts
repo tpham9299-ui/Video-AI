@@ -48,6 +48,7 @@ export type DongTomTat = {chien_thuat: string; cong_thuc: string; mau?: TenMau};
 export type DuKienGhim = {id: string; nhan: string; mau?: TenMau; doi?: {nhan: string; t: number}};
 
 export type Khung4TangVao = {
+  batBuocMinhHoa?: boolean;
   tongFrame: number;
   fps?: number;
   thuongHieu?: string;

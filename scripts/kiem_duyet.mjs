@@ -23,11 +23,21 @@ function ghiKeyHong(k, code, raw) {
   console.log(`KEY_HONG: key ${maKey(k)} lỗi thật (HTTP ${code}) -> bỏ qua, sẽ báo Zalo`);
 }
 
-const [bundle, tepProps, tepRa, tepKichBan] = process.argv.slice(2);
+const [thuMucBundle, tepProps = 'public/props.json', tepRa = 'out/kiem_duyet.json', tepKichBan] = process.argv.slice(2);
+const bundle = thuMucBundle || (fs.existsSync('build/index.html') ? 'build' :
+  await (await import('@remotion/bundler')).bundle({entryPoint: path.resolve('src/index.ts')}));
+fs.mkdirSync(path.dirname(tepRa), {recursive: true});
 const props = JSON.parse(fs.readFileSync(tepProps, 'utf8'));
+const kbNguon = tepKichBan && fs.existsSync(tepKichBan) ? JSON.parse(fs.readFileSync(tepKichBan, 'utf8')) : {};
+props.mon ||= kbNguon.mon || (/^T[TI]\d/i.test(props.id || '') ? 'THUC_TE' : '');
+props.kieu_video ||= kbNguon.kieu_video;
+const thucTe = props.mon === 'THUC_TE' && props.kieu_video !== 'DAI_10_PHUT' && !/-10P$/i.test(props.id || '');
 const hanKiemDuyet = Date.now() + 400_000;
 const lech = (props.anhBiaDau ? 1 : 0) + (props.intro && props.intro.soFrame > 0 ? props.intro.lech || 0 : 0);   // khung 0 là ảnh bìa, sau đó intro thương hiệu
-const inputProps = {...props, kiemDuyet: true};
+// Ảnh tĩnh local dùng đúng mốc đã chuẩn bị ngay cả khi thư mục âm thanh của lượt dựng cũ đã dọn.
+const inputProps = {...props, kiemDuyet: true, ...(!thuMucBundle ? {
+  nhac: null, canh: (props.canh || []).map(c => ({...c, audio: null})),
+} : {})};
 const canh = props.canh || [];
 
 // khung mẫu: 55% và 95% mỗi cảnh (tái dùng chính khung 95% của các cảnh được chọn cho AI nhìn hình -> giảm một nửa số lần renderStill)
@@ -147,6 +157,12 @@ function ghiBaoCao(aiKq, hoanTat) {
   // vật đè vật chỉ tính nặng khi lặp lại ở >= 2 khung mẫu (1 khung có thể là lúc vật đang bay vào)
   const laNang = (l) => NANG.has(l.kieu) || ((l.kieu === 'VAT_DE' || l.kieu === 'HINH_NHO') && l.so >= 2);   // hình nhỏ ở >= 2 khung mẫu cũng là lỗi nặng
   const nang = ds.filter(laNang).map(moTa).concat(aiLoi, loiDapAn);
+  if (thucTe) {
+    const giua = mau.filter(m => m.i > 0 && m.i < canh.length - 1 &&
+      (!props.outro || m.f - lech < props.outro.batDau));
+    const loi = giua.find(m => !khung.some(k => k.frame === m.f && k.hinhT2 === true));
+    if (loi || !giua.length) nang.unshift('t2_trong: chưa thấy hình minh họa trong vùng an toàn T2' + (loi ? ' ở ' + ten(loi.i) : ' ở các khung giải'));
+  }
   const nhe = ds.filter((l) => !laNang(l)).map(moTa);
   if (!aiKq.chay) nhe.push('AI_NHIN_HINH_KHONG_CHAY: ' + (aiKq.ly_do || 'không gọi được Gemini') + ' - hình chưa được AI đối chiếu với đề');
   const bao = {hong: khung.length < mau.length || !hoanTat || (coCanhBlender && !aiKq.chay), so_khung: khung.length, so_khung_mau: mau.length, nang: [...new Set(nang)], nhe: [...new Set(nhe)], ai_nhin: aiKq.chay ? (aiLoi.length ? 'sai' : 'dung') : 'khong_chay', chi_tiet: ds.slice(0, 80)};

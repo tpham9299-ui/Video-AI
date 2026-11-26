@@ -32,14 +32,14 @@ def ve():
               + v.chu(X + C + 34, Y + C + 8, "An", co=26, mau="chu_mo", neo="start")
               + v.chu(X - 6, Y - 30, "Bình", co=26, mau="chu_mo", neo="end"), "no", khi_noi="trong một giờ", nhan_lop="khung giờ"),
         v.lop(1, v.cham(p[0], p[1], 9, "nhan"), "moc", khi_noi="mỗi cặp giờ đến", nhan_lop="một điểm", nhom="diem"),
-        v.lop(1, v.nhan(p[0], p[1], "An 40, Bình 20", tranh=goc + dai, co=24, uu_tien=(1, 1)), "moc", khi_noi="mỗi cặp giờ đến", nhan_lop="nhãn điểm", nhom="nhan"),
+        v.lop(1, v.chu(400, 515, "An 40, Bình 20", co=24), "moc", khi_noi="mỗi cặp giờ đến", nhan_lop="nhãn điểm", nhom="nhan"),
         v.lop(2, v.mien_to(dai, "nhan", 0.42, vien="nhan", w=2.6), "ve", khi_noi="gặp nhau khi", nhan_lop="dải gặp nhau", nhom="dai"),
-        v.lop(2, v.nhan(f(30, 30)[0], f(30, 30)[1], "|x − y| ≤ 15", tranh=goc, co=28, kc=0, giong=False), "moc", khi_noi="gặp nhau khi", nhan_lop="nhãn dải", nhom="nhan"),
+        v.lop(2, v.chu(400, 515, "|x − y| ≤ 15", co=28), "moc", khi_noi="gặp nhau khi", nhan_lop="nhãn dải", nhom="nhan"),
         v.lop(3, v.mien_to(tg1, "cu", 0.55) + v.mien_to(tg2, "cu", 0.55), "sang", khi_noi="hai tam giác góc", nhan_lop="phần không gặp"),
         v.lop(3, v.nhan(f(47, 13)[0], f(47, 13)[1], "45²/2", tranh=goc, co=26, kc=0, giong=False)
               + v.nhan(f(13, 47)[0], f(13, 47)[1], "45²/2", tranh=goc, co=26, kc=0, giong=False), "moc", khi_noi="hai tam giác góc", nhan_lop="nhãn bù", nhom="nhan"),
         v.lop(4, v.mien_to(dai, "ket", 0.5, vien="ket", w=3), "no", khi_noi="vậy xác suất", nhan_lop="dải kết quả", nhom="dai"),
-        v.lop(4, v.nhan(f(30, 30)[0], f(30, 30)[1], "P = 7/16", tranh=goc, co=32, mau="ket", kc=0, giong=False), "no", khi_noi="vậy xác suất", nhan_lop="kết quả", nhom="nhan"),
+        v.lop(4, v.chu(400, 515, "P = 7/16", co=32, mau="ket"), "no", khi_noi="vậy xác suất", nhan_lop="kết quả", nhom="nhan"),
     ]
 '''
 
@@ -54,12 +54,12 @@ def ve():
     hop, P = v.hop(170, 430, 30 * K, 20 * K, 10 * K, mau="nhan", k=0.62)
     A, G = P["A"], P["G"]
     dinh = list(P.values())
-    nh = (v.nhan(A[0], A[1], "A (kiến)", tranh=dinh, co=26, uu_tien=(-1, 1))
-          + v.nhan(G[0], G[1], "G (mồi)", tranh=dinh, co=26, uu_tien=(1, -1))
+    nh = (v.nhan(A[0], A[1], "A (kiến)", tranh=dinh, co=26, kc=58, uu_tien=(-1, 1))
+          + v.nhan(G[0], G[1], "G (mồi)", tranh=dinh, co=26, kc=58, uu_tien=(1, -1))
           + v.nhan((P["A"][0] + P["B"][0]) / 2, P["A"][1], "30 cm", tranh=dinh, co=24, uu_tien=(0, 1))
           + v.nhan((P["B"][0] + P["C"][0]) / 2, (P["B"][1] + P["C"][1]) / 2, "20 cm", tranh=dinh, co=24, uu_tien=(1, 1))
           + v.nhan(P["A"][0], (P["A"][1] + P["E"][1]) / 2, "10 cm", tranh=dinh, co=24, uu_tien=(-1, 0)))
-    cheo = v.duong([A, G], "sai", 3, net_dut=True) + v.nhan((A[0] + G[0]) / 2, (A[1] + G[1]) / 2, "xuyên hộp ✕", tranh=dinh, co=24, mau="sai", uu_tien=(0, -1))
+    cheo = v.duong([A, G], "sai", 3, net_dut=True) + v.chu(400, 120, "xuyên hộp ✕", co=24, mau="sai")
     # trải phẳng mặt bên (20 cm) + mặt trên (10 cm) thành hình chữ nhật (20 + 10) x 30 cm - nửa trên sân khấu
     rong, cao = 30 * K2, 30 * K2
     lx, ly = 400 - rong / 2, 46.0

@@ -39,6 +39,7 @@ jobs:
             /*.gs
             scripts/bophan1
             scripts/tu_sinh_svg.py
+            scripts/khung4tang_v96.py
             scripts/ve25d.py
             scripts/giai_hinh_phang.py
             scripts/hinh_phang

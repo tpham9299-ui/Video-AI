@@ -121,16 +121,16 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
   // v97: hình KHÔNG GIAN -> bố cục tối giản (T1 một dòng, T2 tràn viền 16-62 %, T3 một khối công thức, ẩn thanh ĐỀ)
   const toiGian = !!p.khongGian;
   const bc0 = boCuc4Tang(p.boCuc?.anToanTikTok !== false);
-  const bc = toiGian ? {...bc0, t1: VUNG_TOI_GIAN.t1, t2: VUNG_TOI_GIAN.t2, t3: VUNG_TOI_GIAN.t3} : bc0;
+  const bc = toiGian && !p.batBuocMinhHoa ? {...bc0, t1: VUNG_TOI_GIAN.t1, t2: VUNG_TOI_GIAN.t2, t3: VUNG_TOI_GIAN.t3} : bc0;
   const buoc = useMemo(() => [...(p.buoc || [])].sort((a, b) => a.t - b.t), [p.buoc]);
   // v92: khuôn tham số trải pha theo mốc các bước giải (mỗi bước có hình đổi); tongFrame = hết phần nội dung (sát Outro)
   const canh = useMemo(() => chuanHoaCanh3DV(p.canh3dv, buoc.map((b) => b.t), p.tongFrame / fps).canh, [p.canh3dv, buoc, p.tongFrame, fps]);
   // v96: sân khấu 2D (4 mô-đun Xác suất / 2D thực tế / sơ đồ tư duy) thay khuôn 3D khi chuanbi.py định tuyến ra
-  const sk2 = p.tuSinh ? null : p.sanKhau || null;
+  const sk2 = p.tuSinh || (p.batBuocMinhHoa && p.sanKhau?.loai === 'tu_duy_dai_so') ? null : p.sanKhau || null;
   // v99.1: sân khấu tự sinh 2.5D (mã Python hộp cát) thắng sân khấu 2D / khuôn 3D; nền khí quyển theo theme; xung chống đứng hình
   // v99.8: kèm chữ đề + chữ từng bước cho bộ dựng hình tổng quát của SanKhauTuSinh (chỉ đọc, không đổi mốc)
   // v99.9: có `tuSinh` (kể cả lớp rỗng / hỏng) hoặc không còn sân khấu nào khác -> LUÔN dựng tầng hình (hình minh họa theo dạng bài), không để T2 trống
-  const tsVao = !p.khongGian ? (p.tuSinh ? {...p.tuSinh, lop: p.tuSinh.lop || []} : !sk2 && !p.canh3dv ? {lop: []} : null) : null;
+  const tsVao: Khung4TangVao['tuSinh'] = !p.khongGian ? (p.tuSinh ? {...p.tuSinh, chiLopKichBan: p.batBuocMinhHoa || p.tuSinh.chiLopKichBan, lop: p.tuSinh.lop || []} : !p.batBuocMinhHoa && !sk2 && !p.canh3dv ? {lop: []} : null) : null;
   const ts = useMemo(() => tsVao ? {
     ...tsVao,
     de_bai: tsVao.de_bai || [...(p.deGhim || []).map((d) => d.nhan), (p.cau || [])[0]?.text || ''].join('. '),
@@ -168,8 +168,12 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
   };
   const lechMay = G > 0 && t < G ? {k: 1 + 0.35 * (1 - emRa(t / 1.6)), n: 32 * (1 - emRa(t / 2.2))} : undefined;
   // v97 tối giản: trong Intro sân khấu cao 883 px thu về đúng ô INTRO_SAN (scale 648/883, neo tâm) rồi giãn ra khi trượt về T2
-  const yT2 = G > 0 ? (toiGian ? bc.t2.y + (INTRO_SAN.y + INTRO_SAN.h / 2 - bc.t2.h / 2 - bc.t2.y) * (1 - ra) : bc.t2.y + (INTRO_SAN.y - bc.t2.y) * (1 - ra)) : bc.t2.y;
-  const coT2 = toiGian && G > 0 ? INTRO_SAN.h / bc.t2.h + (1 - INTRO_SAN.h / bc.t2.h) * ra : 1;
+  const dichIntro = G > 0 ? (INTRO_SAN.y - bc.t2.y) * (1 - ra) : 0;
+  const yT2 = p.batBuocMinhHoa ? bc.t2.y + dichIntro / 2 : bc.t2.y + dichIntro +
+    (toiGian && G > 0 ? (INTRO_SAN.h - bc.t2.h) / 2 * (1 - ra) : 0);
+  // Thu quanh tâm và dịch nửa khoảng hở để đáy hình giữ đúng mép T2 suốt Intro.
+  const coT2 = p.batBuocMinhHoa ? 1 - dichIntro / bc.t2.h :
+    toiGian && G > 0 ? INTRO_SAN.h / bc.t2.h + (1 - INTRO_SAN.h / bc.t2.h) * ra : 1;
   // v93: đối chiếu Hình động ↔ Đồ thị (đã kiểm hợp lệ; sai -> null -> giữ sân khấu 3D chuẩn)
   const dsDoiChieu = useMemo(() => buoc.map((b) => (b.doi_chieu ? docDoiChieu(b.doi_chieu) : null)), [buoc]);
   const dc = i >= 0 ? dsDoiChieu[i] : null;
@@ -254,7 +258,7 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
           </div>
         ) : null}
         {!ts && xung >= 0 && !kg ? <XungT2 u={xung} rong={bc.rong} cao={bc.t2.h} mau={mauNhan} /> : null}
-        {!kg && !sk2 && !ts && canh && a3D > 0 ? (
+        {!kg && !sk2 && !ts && canh && (!p.batBuocMinhHoa || p.canh3dv) && a3D > 0 ? (
           <div style={{position: 'absolute', inset: 0, opacity: a3D}}>
             <SanKhau3DVector canh={canh} t={t3d} rong={bc.rong} cao={bc.t2.h} tongGiay={tong} lechMay={lechMay} />
           </div>

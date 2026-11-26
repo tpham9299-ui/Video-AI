@@ -97,6 +97,19 @@ function goiTho(model, bodies, tungModel = false, cheDo = 'nang') {
 
 /* ---------------- dịch vụ Apps Script giả lập ---------------- */
 const ngu = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, Math.max(0, ms));
+function kiemSanKhauPython(kb, options) {
+  for (const py of ['python3', 'python']) {
+    try {
+      const ra = execFileSync(py, [path.join(GOC, 'scripts', 'tu_sinh_svg.py'), '-', '--chi-kiem', ...options],
+        {input: JSON.stringify(kb), timeout: 30000, stdio: ['pipe', 'pipe', 'pipe'], env: {...process.env, PYTHONIOENCODING: 'utf-8'}});
+      return JSON.parse(ra.toString('utf8'));
+    } catch (e) {
+      if (e && e.status === 2 && e.stdout) { try { return JSON.parse(e.stdout.toString('utf8')); } catch (e2) { return null; } }
+    }
+  }
+  return null;
+}
+
 const ctx = {
   console, JSON, Math, Date, Buffer,
   SpreadsheetApp: {
@@ -146,18 +159,8 @@ const ctx = {
     return null;
   },
   // v99.1: hộp cát sân khấu tự sinh (scripts/tu_sinh_svg.py --chi-kiem): {ok, loi, so_lop}; không có Python -> null
-  kiemTuSinhMay_: (kb) => {
-    for (const py of ['python3', 'python']) {
-      try {
-        const ra = execFileSync(py, [path.join(GOC, 'scripts', 'tu_sinh_svg.py'), '-', '--chi-kiem'],
-          {input: JSON.stringify(kb), timeout: 30000, stdio: ['pipe', 'pipe', 'pipe'], env: {...process.env, PYTHONIOENCODING: 'utf-8'}});
-        return JSON.parse(ra.toString('utf8'));
-      } catch (e) {
-        if (e && e.status === 2 && e.stdout) { try { return JSON.parse(e.stdout.toString('utf8')); } catch (e2) { return null; } }
-      }
-    }
-    return null;
-  },
+  kiemTuSinhMay_: kb => kiemSanKhauPython(kb, []),
+  kiemSanKhau2DMay_: kb => kiemSanKhauPython(kb, ['--kiem-2d']),
   kiemHinhPhangMay_: (kb) => {
     for (const py of ['python3', 'python']) {
       try {

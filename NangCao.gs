@@ -230,7 +230,7 @@ function xuLyTuSuaMatThan_(sh, r, d) {
   if (!batTuSuaMatThan_() || !pl.cung.length || !r.file_kich_ban) return kq;
   if (daSua >= TRAN_TU_SUA_) { kq.het_luot = true; return kq; }
   var ghiChu = pl.cung.slice(0, 6).map(function (x) { return x.loai + (x.mo_ta ? ': ' + String(x.mo_ta).slice(0, 80) : ''); });
-  var coTuSinh = pl.cung.some(function (x) { return x.loai === 'tu_sinh_hong'; });
+  var coTuSinh = pl.cung.some(function (x) { return x.loai === 'tu_sinh_hong' || x.loai === 't2_trong'; });
   traVeSuaKichBan_(sh, r, chiThiSuaLoi_(pl.cung), 'Mắt thần tự sửa lần ' + (daSua + 1) + '/' + TRAN_TU_SUA_,
     {so_lan_tu_sua: tong + 1, so_lan_mat_than: daSua + 1, ghi_chu_sua_tu_dong: ghiChu, mt_file: String((d && d.file_id) || '')},
     function (kb) {
@@ -286,6 +286,15 @@ function apDungKetQuaAiXem_(sh, r, kq) {
       { duyet: 'CHO', link_dang: JSON.stringify(kqDF), ghi_chu: 'Chờ duyệt tay: AI kiểm duyệt tạm nghẽn key (' + loiAi + ' lần)' });
     nhatKy_('AI_XEM', r.id + ': chưa chấm được video do nghẽn key -> chuyển CHO để chủ kênh kiểm tra trực tiếp');
     guiDuyet_(r, '⚠️ AI chưa xem được video (tạm nghẽn key). Đã vượt qua kiểm duyệt bố cục GitHub & kiểm chứng toán 2 cách, nhờ bạn xem nhanh trước khi đăng');
+    return;
+  }
+  if ((thucTeNgan_(r) || kq.t2_co_hinh === false) && kq.t2_co_hinh !== true) {
+    var loi = {o: 2, loai: 't2_trong', nang: true, mo_ta: 'AI chấm cuối chưa xác nhận hình minh họa ở tầng 2'};
+    var sua = xuLyTuSuaMatThan_(sh, r, {mat_than: {loi: [loi]}});
+    if (!sua.tu_sua) {
+      ghiAiKT_(sh, r, {van_de: [loi.mo_ta]}, {duyet: 'CHO', ghi_chu: loi.mo_ta});
+      guiDuyet_(r, loi.mo_ta);
+    }
     return;
   }
   var pt = kq.phan_tram, nguongPT = nguongDapUng_();
@@ -356,6 +365,8 @@ function aiChamVideo_(r) {
     'TIÊU CHÍ CỦA CHỦ KÊNH (chấm mỗi tiêu chí 0-10; 9-10 khi chính xác và hiển thị rõ; 8 khi tốt chỉ còn góp ý nhỏ; <= 6 khi có lỗi sai toán, sai đáp án, chữ đè che khuất hoặc sai vật của đề):\n' + moTaTieuChi_(ds) + '\n' +
     'Đối chiếu phương pháp từng bước với kiến thức được phép của lớp và các điều kiện áp dụng. Nếu vượt lớp, nêu cảnh, công thức và phương pháp thay thế. Tự kiểm lại từng phép tính nhìn thấy. "van_de": mỗi vấn đề một câu, nói rõ khung/cảnh nào. "gop_y": chỉ dẫn sửa cụ thể theo từng cảnh của kịch bản.\n' +
     'Trả JSON: {"diem":{' + ds.map(function (t) { return '"' + t.id + '":0'; }).join(',') + '},"van_de":[],"gop_y":""}';
+  var canHinh = thucTeNgan_(kb, r);
+  if (canHinh) prompt += '\nTHUC_TE: xem riêng tầng 2 từng khung lời giải trong ảnh 1. Thêm boolean t2_co_hinh=true chỉ khi thấy rõ vật thể, sơ đồ hoặc đồ thị đúng đề. Chỉ có chữ, công thức, viền nhãn hoặc không nhìn rõ thì ghi false và chỉ ra khung lỗi.';
   var j = goiGemini_(prompt, 0.1, { suyNghi: 'low', anhs: anhs, cheDo: 'nhe' });
   if (!j || !j.diem || typeof j.diem !== 'object') throw new Error('AI không trả điểm');
   if (vuotLop.length) {
@@ -363,6 +374,10 @@ function aiChamVideo_(r) {
     j.van_de = vuotLop.concat(Array.isArray(j.van_de) ? j.van_de : []);
   }
   var kq = tinhDapUng_(j, ds);
+  if (canHinh) {
+    kq.t2_co_hinh = j.t2_co_hinh === true;
+    if (!kq.t2_co_hinh) kq.dat = false;
+  }
   kq.diem = Math.round(kq.phan_tram) / 10;
   return kq;
 }

@@ -2043,6 +2043,11 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
             print("v99.1 sân khấu tự sinh: %s -> giữ sân khấu dự phòng" % ghi_ts)
         hong = tu_sinh_svg.tu_sinh_hong(kb, ts, ghi_ts)   # v99.2: hợp đồng tu_sinh_svg mà không dựng được -> cảnh báo rõ (Mắt thần lỗi cứng)
         hong = v99_k4.tu_sinh_hong_that(hong, out, kb)    # v101.5: đã có sân khấu chuyên dụng (rut_mau...) / 3D thay thế -> xóa cờ
+        if v96_k4.thuc_te_ngan(kb) and not ts:
+            if quyet.get("loai") != "3d_vector" or not (ten_khuon((c3 or {}).get("khuon")) or (_hop_le_3dv(c3) and _dong_3dv(c3))):
+                out["canh3dv"] = None
+            if not (san_khau or out["canh3dv"]) or ghi_ts or quyet.get("loai") == "tu_sinh_svg":
+                hong = "t2_trong: " + (ghi_ts or "; ".join(sua_sk) or "thiếu sân khấu minh họa THUC_TE")
         if hong:
             out["tuSinhHong"] = hong
             print("⚠ v99.2 " + hong)
@@ -3439,6 +3444,8 @@ def main():
             raise ValueError(f"Chuyên đề dài {bat_dau / FPS:.1f}s sau khi tạo giọng, cần 540–660s. Hãy sửa kịch bản trước khi dựng.")
     props = {
         "id": id_an_toan,
+        "mon": str(kb.get("mon") or "").upper(),
+        "kieu_video": str(kb.get("kieu_video") or ""),
         "tieuDe": str(kb.get("tieu_de") or kb.get("chu_de") or ""),
         "hook": str(kb.get("hook") or ""),
         "dapAn": v99_k4.chon_dap_an_hien(kb),   # v102: giữ tham số `a` của đáp án (2a/√11, 0,603a) trên ô đáp án + Outro

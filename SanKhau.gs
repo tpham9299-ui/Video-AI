@@ -69,6 +69,12 @@ function loaiThucTe_(van, khuon) {
   return null;
 }
 // -> {loai, nguon: chi_dao|ai|suy|lui|khoa_luong, chi_dao}
+function thucTeNgan_(kb, r) {
+  kb = kb || {}; r = r || {};
+  var mon = r.mon || kb.mon || (/^T[TI]\d/i.test(kb.id || r.id || '') ? 'THUC_TE' : '');
+  return String(mon).toUpperCase() === 'THUC_TE' &&
+    (kb.kieu_video || r.kieu_video) !== 'DAI_10_PHUT' && !/-10P$/i.test(kb.id || r.id || '');
+}
 function chonSanKhau_(kb, r) {
   kb = kb || {}; r = r || {};
   var mon = String(kb.mon || r.mon || '').toUpperCase(), lop = String(kb.lop || r.lop || '');
@@ -78,18 +84,20 @@ function chonSanKhau_(kb, r) {
   if (kb.luong === 'hinh_hoc_thuan' || mon === 'HINH_HOC') return {loai: 'hinh_hoc', nguon: 'khoa_luong', chi_dao: ''};
   var van = [kb.de_bai, r.de_bai, kb.can_tim, kb.chu_de].filter(Boolean).join(' ');
   var cd = docChiDao_(kb.chi_dao || r.chi_dao || '');
-  if (cd.loai) return {loai: cd.loai === 'luoi_bayes' && lop !== '12' ? 'so_do_cay' : cd.loai, nguon: 'chi_dao', chi_dao: cd.loi};
-  if (kb.san_khau_dich === 'cay_bayes') return {loai: 'so_do_cay', nguon: 'hop_dong', chi_dao: cd.loi};   // v99.2: hợp đồng hình BP0
+  var batBuoc = thucTeNgan_(kb, r);
+  if (batBuoc && (kb.san_khau_dich === 'tu_sinh_svg' || (kb.khung4tang || {}).tu_sinh || ((kb.khung4tang || {}).san_khau || {}).loai === 'tu_sinh_svg')) return {loai: 'tu_sinh_svg', nguon: 'hop_dong', chi_dao: cd.loi};
+  if (cd.loai && (!batBuoc || LOAI_TT_2D_.indexOf(cd.loai) >= 0 || cd.loai === '3d_vector')) return {loai: cd.loai === 'luoi_bayes' && lop !== '12' ? 'so_do_cay' : cd.loai, nguon: 'chi_dao', chi_dao: cd.loi};
+  if (!batBuoc && kb.san_khau_dich === 'cay_bayes') return {loai: 'so_do_cay', nguon: 'hop_dong', chi_dao: cd.loi};   // v99.2: hợp đồng hình BP0
   var k4 = kb.khung4tang && typeof kb.khung4tang === 'object' ? kb.khung4tang : {};
   var sk = k4.san_khau && typeof k4.san_khau === 'object' ? k4.san_khau : {};
-  if (LOAI_SAN_KHAU_.indexOf(sk.loai) >= 0) return {loai: sk.loai === 'luoi_bayes' && lop !== '12' ? 'so_do_cay' : sk.loai, nguon: 'ai', chi_dao: cd.loi};
+  if ((batBuoc ? LOAI_TT_2D_ : LOAI_SAN_KHAU_).indexOf(sk.loai) >= 0) return {loai: sk.loai === 'luoi_bayes' && lop !== '12' ? 'so_do_cay' : sk.loai, nguon: 'ai', chi_dao: cd.loi};
   var c3 = k4.canh_3d_vector && typeof k4.canh_3d_vector === 'object' ? k4.canh_3d_vector : {};
-  if (mon === 'XAC_SUAT' || /tính xác suất|xác suất để/i.test(van)) return {loai: loaiXacSuat_(van, lop), nguon: 'suy', chi_dao: cd.loi};
+  if (mon === 'XAC_SUAT' || !batBuoc && /tính xác suất|xác suất để/i.test(van)) return {loai: loaiXacSuat_(van, lop), nguon: 'suy', chi_dao: cd.loi};
   var khuon = c3.khuon && c3.khuon !== 'luoi_the_bi_xac_suat' ? c3.khuon : (Array.isArray(c3.doi_tuong) && c3.doi_tuong.length ? '__tu_do__' : null);
   if (!khuon && typeof suyKhuon_ === 'function') { var s = suyKhuon_(kb, r); if (s && s.khuon !== 'luoi_the_bi_xac_suat') khuon = s.khuon; }
   var l = loaiThucTe_(van, khuon);
   if (l) return {loai: l, nguon: 'suy', chi_dao: cd.loi};
-  return {loai: 'tu_duy_dai_so', nguon: 'lui', chi_dao: cd.loi};
+  return {loai: batBuoc ? 'tu_sinh_svg' : 'tu_duy_dai_so', nguon: 'lui', chi_dao: cd.loi};
 }
 
 /* ===================== v99.1: SÂN KHẤU TỰ SINH 2.5D (tu_sinh_svg) ===================== */
@@ -108,6 +116,7 @@ function dungTuSinh_(r, kb) {
   // v99.2: hợp đồng hình BP0 (kb.san_khau_dich, apHopDongVaoKb_) thắng - kể cả đề xác suất (Monty Hall, xác suất hình học)
   var dich = String(kb.san_khau_dich || ((typeof docHopDongHinh_ === 'function' && docHopDongHinh_(r)) || {}).san_khau_dich || '');
   if (dich === 'tu_sinh_svg') return true;
+  if (thucTeNgan_(kb, r) && chonSanKhau_(kb, r).loai === 'tu_sinh_svg') return true;
   if (dich && dich !== 'tu_sinh_svg') return false;
   if (String(kb.mon || r.mon || '').toUpperCase() === 'XAC_SUAT') return false;   // 4 mô-đun xác suất v96 đã đủ
   return RE_TU_SINH_.test(String(r.de_bai || kb.de_bai || ''));
@@ -137,7 +146,8 @@ function suyHopDongHinh_(r, buoc) {
     if (mon === 'XAC_SUAT') {
       if (q.loai === 'luoi_bayes' || /bayes|xét nghiệm|dương tính/.test(t)) return null;   // xác suất có điều kiện đã có lưới Bayes / sơ đồ cây
       if (RE_XS_MO_HINH_LA_.test(t) && !/thẻ|tấm thẻ|xúc xắc|viên bi/.test(t)) dich = 'tu_sinh_svg';
-    } else if (q.loai === 'tu_duy_dai_so' && q.nguon === 'lui') {
+    } else if (q.loai === 'tu_sinh_svg') dich = q.loai;
+    else if (q.loai === 'tu_duy_dai_so' && q.nguon === 'lui') {
       // đề rơi về sơ đồ chữ: có ngữ cảnh hình / dãy lặp / bối cảnh thực tế -> hộp cát hình thay vì sơ đồ tư duy chữ
       if (la || RE_NGU_CANH_HINH_.test(t) || mon === 'THUC_TE') dich = 'tu_sinh_svg';
     } else if (la && (q.loai === '3d_vector' ? RE_TU_SINH_.test(t) : true) && q.nguon !== 'chi_dao') {
@@ -459,7 +469,10 @@ function tuSuaSanKhau_(kb, r) {
     delete kb.tu_sinh_hong;
     sua.push('san_khau_dich tu_sinh_svg -> ' + q.loai + ' (khớp định tuyến ' + q.nguon + ')');
   }
-  if (q.loai !== 'hinh_hoc' && q.loai !== '3d_vector') {
+  if (q.loai === 'tu_sinh_svg') {
+    kb.san_khau_dich = q.loai;
+    if (k4.san_khau && k4.san_khau.loai !== q.loai) delete k4.san_khau;
+  } else if (q.loai !== 'hinh_hoc' && q.loai !== '3d_vector') {
     var cu = k4.san_khau && typeof k4.san_khau === 'object' ? k4.san_khau : {};
     var ts = cu.loai === q.loai && cu.tham_so && typeof cu.tham_so === 'object' ? cu.tham_so : {};
     var c3 = k4.canh_3d_vector || {};
@@ -592,7 +605,7 @@ function huongDanSanKhau_(r) {
     'THỰC TẾ KHÔNG CÓ VẬT KHỐI: {"loai":"kinh_te_do_thi","tham_so":{"ham":"(20-x)(200+20x)","bien":"x","mien":[0,20],"kieu":"max","ten_ham":"L","nhan_bien":"Giảm giá x (nghìn đồng)","phu":[{"ten":"Giá bán","ham":"30-x","don_vi":"k"}]},"pha":[truc, ve, keo, toi_uu, ket]}' +
     ' | {"loai":"so_do_2d","tham_so":{"mau":"song_bo|day_cap|cong_parabol|rao_tuong|thang_tuong","tham_so":{"rong":3,"dai":8} (day_cap: h1,h2,d; cong_parabol: rong,cao; rao_tuong: L; thang_tuong: h),"bien":"x","mien":[0,8],"ham":"tổng thời gian/độ dài theo x","kieu":"min","ten_ham":"T"},"pha":[hinh, bien, keo, toi_uu, ket]}' +
     ' | {"loai":"tang_truong","tham_so":{"ham":"100*(1+0.06)^t","bien":"t","mien":[0,10],"moc":[0,10],"ten_ham":"T","don_vi":"triệu"},"pha":[truc, ve, moc, so_sanh, ket]}' +
-    ' | {"loai":"tu_duy_dai_so"} (đề đại số / giải tích thuần / đề lạ: máy dựng sơ đồ suy luận từ các bước, khóa màu ẩn số — KHÔNG nhét hình hộp). ' +
+    ' | {"loai":"tu_duy_dai_so"} (chỉ đại số thuần ngoài THUC_TE; THUC_TE thiếu khuôn phải dùng tu_sinh_svg vẽ vật thể theo từng bước: máy dựng sơ đồ suy luận từ các bước, khóa màu ẩn số — KHÔNG nhét hình hộp). ' +
     'Ký hiệu "không chia hết": công thức viết "\\\\text{ không } \\\\vdots 4", tiêu đề viết "không \\\\vdots 4"; CẤM \\\\not\\\\vdots, \\\\nmid. ' +
     'Hook 2 giây đầu: pha đầu (hien/goc/truc) bật ngay, KHÔNG để sân khấu đứng yên.\n' +
     (cd.loi ? 'CHỈ ĐẠO CỦA NGƯỜI DÙNG (ƯU TIÊN TUYỆT ĐỐI, trong giới hạn GDPT 2018): "' + cd.loi + '"' + (cd.loai ? ' -> dùng sân khấu "' + (cd.loai === 'luoi_bayes' && lop !== '12' ? 'so_do_cay' : cd.loai) + '"' : '') + '; dàn cảnh, lời giảng và thứ tự pha theo đúng ý này.\n' : '');

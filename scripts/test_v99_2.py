@@ -138,6 +138,20 @@ t("lớp đã bị lớp cùng nhóm thay thế không còn 'cùng hiện' với
 t("2 mẫu v99.1 + 2 mẫu v99.2 đều qua hộp cát mới", lambda: [ts.dung(json.load(open(os.path.join(GOC, "mau", d, f + ".json"), encoding="utf8"))["khung4tang"]["tu_sinh"]["ma"], 5)
                                                               for d, f in (("v99_1", "koch_dao"), ("v99_1", "gia_ve_parabol"), ("v99_2", "gap_nhau_xs"), ("v99_2", "kien_bo_hop"))])
 
+def _t2_hop_chu():
+    svg = '<rect x="20" y="20" width="240" height="60"/><text x="40" y="55" font-size="28">x+y</text>'
+    layers = [lop(k, svg, nhom="nhan") for k in range(3)]
+    try:
+        ts.dung(ma_ve(layers), 3, can_hinh=True)
+    except ts.LoiTuSinh as e:
+        assert_true(str(e).startswith("t2_trong"), str(e))
+    else:
+        raise AssertionError("hộp chữ lọt hộp cát")
+    p = {"mon": "THUC_TE", "khung4tang": {"tuSinh": {"lop": layers}}}
+    assert_true(any(x["loai"] == "t2_trong" and x["nang"] for x in mt.kiem_tat_dinh(p, [], 8)))
+
+
+t("THUC_TE: rect + text bị chặn ở hộp cát và Mắt thần", _t2_hop_chu)
 print("3. Theme + vá 2 lần")
 
 

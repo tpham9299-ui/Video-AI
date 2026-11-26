@@ -2541,7 +2541,7 @@ function kiemTraDaDangHinhThucTe_(kb, mon) {
 // Chỉ TỪ CHỐI CỨNG khi: kịch bản rỗng cảnh / lời đọc, sai kết quả toán học cốt lõi (đáp án, phép tính, vượt chương trình lớp),
 // vi phạm khóa luồng hinh_hoc_thuan hoặc hình học thiếu dữ kiện bắt buộc cho Manim. JSON hỏng đã bị chặn từ lúc đọc (BoPhan1.gs).
 // Tắt: CAU_HINH AUTO_FIX_KICH_BAN = TAT (quay về cách cũ).
-var LOI_CUNG_RE_ = /^(KHUNG4TANG_BAT_BUOC|XS_SAI_DAP_SO|KB_DOC_LAP_DE|KB_CUT_CONG_THUC|MA_THO_HIEN_THI|KHUNG4TANG_3D_RONG|TOAN_GOI_SAI_PARABOL|TOAN_THIEU_CAN_CU_CUC_TRI|KHONG_CO_CANH|QUA_IT_CANH|THIEU_LOI_THOAI_CANH_|DAP_AN_CUOI_SAI|DAP_AN_SAI_TREN_MAN_HINH|PHEP_TINH_SAI_CANH_|VI_PHAM_CHUONG_TRINH_LOP|LUONG_HINH_HOC|NOI_DUNG_LA|THOI_LUONG_CHUYEN_DE|SO_CANH_VIDEO_DAI_SAI|HINH_THIEU_DIEM_DE|HINH_THIEU_DIEM_CANH_|THIEU_TOA_DO_HINH|BUOC_VE_KHONG_KHOP_LOI_CANH_|BUOC_VE_DOI_TUONG_LA_CANH_|HP_VUOT_CHUONG_TRINH|HP_MENH_DE_SAI|HP_DONG_DANG_SAI_THU_TU|HP_DUNG_LOI|HP_DIEM_KHONG_TON_TAI|HP_THIEU_DAC_TA|KG_VUOT_CHUONG_TRINH|KG_MENH_DE_SAI|KG_SAI_SO_DO|KG_DUNG_LOI|KG_DIEM_KHONG_TON_TAI|KG_THIEU_DAC_TA|KG_KHOI_LOI|KG_DINH_CHUM|CAM_MAT_MOC|CAM_DE_GIO)/;
+var LOI_CUNG_RE_ = /^(t2_trong|KHUNG4TANG_BAT_BUOC|XS_SAI_DAP_SO|KB_DOC_LAP_DE|KB_CUT_CONG_THUC|MA_THO_HIEN_THI|KHUNG4TANG_3D_RONG|TOAN_GOI_SAI_PARABOL|TOAN_THIEU_CAN_CU_CUC_TRI|KHONG_CO_CANH|QUA_IT_CANH|THIEU_LOI_THOAI_CANH_|DAP_AN_CUOI_SAI|DAP_AN_SAI_TREN_MAN_HINH|PHEP_TINH_SAI_CANH_|VI_PHAM_CHUONG_TRINH_LOP|LUONG_HINH_HOC|NOI_DUNG_LA|THOI_LUONG_CHUYEN_DE|SO_CANH_VIDEO_DAI_SAI|HINH_THIEU_DIEM_DE|HINH_THIEU_DIEM_CANH_|THIEU_TOA_DO_HINH|BUOC_VE_KHONG_KHOP_LOI_CANH_|BUOC_VE_DOI_TUONG_LA_CANH_|HP_VUOT_CHUONG_TRINH|HP_MENH_DE_SAI|HP_DONG_DANG_SAI_THU_TU|HP_DUNG_LOI|HP_DIEM_KHONG_TON_TAI|HP_THIEU_DAC_TA|KG_VUOT_CHUONG_TRINH|KG_MENH_DE_SAI|KG_SAI_SO_DO|KG_DUNG_LOI|KG_DIEM_KHONG_TON_TAI|KG_THIEU_DAC_TA|KG_KHOI_LOI|KG_DINH_CHUM|CAM_MAT_MOC|CAM_DE_GIO)/;
 var MAU_SAN_KHAU_ = ['do', 'xanh_duong', 'xanh_la', 'cam', 'vang', 'tim', 'hong', 'ngoc', 'trang', 'xam', 'nau'];
 var MAU_GAN_ = {'đỏ': 'do', red: 'do', xanh: 'xanh_duong', 'xanh dương': 'xanh_duong', xanh_lam: 'xanh_duong', lam: 'xanh_duong', blue: 'xanh_duong', cyan: 'xanh_duong',
   'xanh lá': 'xanh_la', xanh_luc: 'xanh_la', luc: 'xanh_la', green: 'xanh_la', orange: 'cam', 'vàng': 'vang', yellow: 'vang', 'tím': 'tim', purple: 'tim',
@@ -2913,8 +2913,8 @@ function tuSuaKhung4Tang_(kb, r) {
   // v96: định tuyến sân khấu MỘT lần (SanKhau.gs): 2D (xác suất / kinh tế / chuyển động 2D / tăng trưởng / tư duy) hoặc 3D
   if (typeof tuSuaSanKhau_ === 'function') sua = sua.concat(tuSuaSanKhau_(kb, r));
   var c3 = k4.canh_3d_vector;
-  var suy = k4.san_khau ? null : suyKhuon_(kb, r);
-  if (k4.san_khau) { /* v96: sân khấu 2D đã chọn -> bỏ qua khuôn 3D */ }
+  var suy = k4.san_khau || (k4.tu_sinh || {}).ma ? null : suyKhuon_(kb, r);
+  if (k4.san_khau || (k4.tu_sinh || {}).ma) { /* v96: sân khấu 2D đã chọn -> bỏ qua khuôn 3D */ }
   else if (c3 && typeof c3 === 'object' && tenKhuon_(c3.khuon)) {
     c3.khuon = tenKhuon_(c3.khuon);
     if (!c3.tham_so || typeof c3.tham_so !== 'object') c3.tham_so = (suy && suy.khuon === c3.khuon && suy.tham_so) || {};
@@ -3413,7 +3413,7 @@ function loiKhung4Tang_(kb) {
     var lech = k4.buoc.slice(1).filter(function (b) { return b.khi_noi && loi.indexOf(String(b.khi_noi).toLowerCase()) < 0; }).length;
     if (lech) nhe.push('KHUNG4TANG_KHI_NOI_LECH: ' + lech + ' bước có khi_noi không nằm nguyên văn trong loi_thoai (máy sẽ ước lượng mốc).');
     var c3 = k4.canh_3d_vector;
-    if (k4.san_khau && k4.san_khau.loai) { /* v96: tầng 2 là sân khấu 2D -> không đòi khuôn 3D */ }
+    if ((k4.tu_sinh || {}).ma || (k4.san_khau && k4.san_khau.loai)) { /* v96: tầng 2 là sân khấu 2D -> không đòi khuôn 3D */ }
     else if (!c3) nhe.push('KHUNG4TANG_3D_RONG: chưa có canh_3d_vector và máy không suy được khuôn từ đề; viết {"khuon","tham_so","pha"} theo một trong 8 khuôn.');
     else if (!tenKhuon_(c3.khuon) && !c3.khuon_du_phong && Array.isArray(c3.doi_tuong) && (!suaTruong3DV_(c3) || !dong3DV_(c3))) nhe.push('KHUNG4TANG_3D_RONG: canh_3d_vector ' + (suaTruong3DV_(c3) ? 'đứng im (< 3 bước thay đổi, không hành động)' : 'không còn đối tượng dựng được') + '; dùng một trong 8 khuôn.');
     k4.buoc.forEach(function (b, j) { if (!Array.isArray(b.the) || b.the.length < 2) nhe.push('KHUNG4TANG_IT_THE: bước ' + (j + 1) + ' cần 2-3 thẻ nối tiếp, mỗi thẻ có khi_noi.'); });
@@ -3423,6 +3423,26 @@ function loiKhung4Tang_(kb) {
 
 // Phân loại cuối: chỉ giữ lỗi CỨNG trong "nang"; còn lại hạ thành cảnh báo nhẹ (đã/đang được máy tự sửa, vẫn gửi làm gợi ý khi sửa bằng AI).
 function phanLoaiLoiCung_(nang, nhe, kb) {
+  if (typeof thucTeNgan_ === 'function' && thucTeNgan_(kb)) {
+    var k = kb.khung4tang || {}, sk = k.san_khau || {}, ts = sk.tham_so || {};
+    var c3 = k.canh_3d_vector || {}, kg = kb.hinh_khong_gian || {};
+    var svg = k.tu_sinh || (sk.loai === 'tu_sinh_svg' ? sk : {});
+    var ma = svg.ma || (svg.tham_so || {}).ma;
+    var tot = (sk.loai === 'so_do_2d' && ['song_bo','day_cap','cong_parabol','rao_tuong','thang_tuong'].indexOf(ts.mau) >= 0) ||
+      (['kinh_te_do_thi','tang_truong'].indexOf(sk.loai) >= 0 && ts.ham && Array.isArray(ts.mien) && ts.mien.length === 2) ||
+      (!sk.loai && (tenKhuon_(c3.khuon) || (suaTruong3DV_(c3) && dong3DV_(c3)))) || (kg.doi_tuong || []).length;
+    if (ma || kb.san_khau_dich === 'tu_sinh_svg') {
+      tot = typeof ma === 'string' && ma.trim();
+      if (tot) {
+        var kq = typeof kiemTuSinhMay_ === 'function' && kiemTuSinhMay_(kb);
+        tot = kq && kq.ok;
+      }
+    } else if (tot && ['kinh_te_do_thi','tang_truong','so_do_2d'].indexOf(sk.loai) >= 0 && typeof kiemSanKhau2DMay_ === 'function') {
+      var kq2D = kiemSanKhau2DMay_(kb);
+      tot = kq2D && kq2D.ok;
+    }
+    if (!tot) nang = nang.concat('t2_trong: THUC_TE cần vật thể, sơ đồ hoặc đồ thị có dữ liệu hợp lệ theo từng bước.');
+  }
   if (!batAutoFix_()) return {nang: nang, nhe: nhe};
   var cung = [], ha = [];
   nang.forEach(function (x) { (LOI_CUNG_RE_.test(String(x)) ? cung : ha).push(x); });
