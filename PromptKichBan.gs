@@ -263,7 +263,7 @@ function taoPromptKichBan_(r, c1, c2) {
     '3. HÌNH VẼ CHÍNH XÁC: Chỉ dùng các vật có trong danh sách vật của hệ thống hoặc "hinh_tu_do", không tự bịa tên vật lạ.\n' +
     '4. ĐỦ BƯỚC VÀ CẢNH: 15-20 cảnh chi tiết; cảnh cuối cùng bắt buộc là "bai_hoc"; mảng "bai_hoc_rut_ra" đủ 3 câu ngắn bổ ích.\n' +
     '5. TRẢ VỀ JSON HỢP LỆ DUY NHẤT: Bắt đầu bằng { và kết thúc bằng }, không kèm lời giải thích bên ngoài.\n\n',
-    'Trả về MỘT đối tượng JSON: {"tieu_de":"tiêu đề đăng video < 60 ký tự, gây tò mò","chu_de_ngan":"chủ đề 2-5 từ (hiện góc trên)","bai_hoc_rut_ra":["","",""],"video_tiep_theo":"","hook_ung_vien":["","",""],"hook":"(đúng lời thoại cảnh 1)","hook_chu":"","tieu_de_bia":"","hook_kieu":"","nhan_manh":[""],"y_tuong_chinh":"","de_cho":["",""],"can_tim":"","du_kien":["",""],"hashtag":["#toanhoc","' + (tt ? '#toanthucte' : '#xacsuat') + '"],"dap_an_cuoi":"' + r.dap_an + '",',
+    'Trả về MỘT đối tượng JSON: {"tieu_de":"tiêu đề đăng video < 60 ký tự, gây tò mò","chu_de_ngan":"chủ đề 2-5 từ (hiện góc trên)","bai_hoc_rut_ra":["","",""],"video_tiep_theo":"","binh_luan_ghim":"(tùy chọn, <= 180 ký tự: 1 câu hỏi biến thể ngắn đổi nhẹ số liệu từ bài vừa giải, không năm sinh/năm thi)","hook_ung_vien":["","",""],"hook":"(đúng lời thoại cảnh 1)","hook_chu":"","tieu_de_bia":"","hook_kieu":"","nhan_manh":[""],"y_tuong_chinh":"","de_cho":["",""],"can_tim":"","du_kien":["",""],"hashtag":["#toanhoc","' + (tt ? '#toanthucte' : '#xacsuat') + '"],"dap_an_cuoi":"' + r.dap_an + '",',
     '"canh":[{"so":1,"loai":"mo_dau|de_bai|mo_hinh_hoa|y_do|thu_nho|bay|nhac_lai|diem_chot|tinh_toan|dap_an|kiem_tra|lien_he_thuc_te|bai_hoc","tieu_de_canh":"","tu_khoa":"","nhan":"","giu_san_khau":false,"giong_doc":"","loi_thoai":"","noi_dung_man_hinh":[],"moc_loi":[],"trinh_bay":"cong_don|bien_doi|xep","chu_thich":[],"minh_hoa":{"loai":"san_khau","mo_ta":"","du_lieu":{"goc_nhin":null,"vat":[],"hanh_dong":[]}}}]}'
   ];
 
@@ -398,7 +398,19 @@ function huongDanKhung4Tang_(r) {
     (lop === '10' ? 'Lớp 10: chỉ hình PHẲNG, không Oxyz, không đạo hàm/tích phân. ' : lop === '11' ? 'Lớp 11: KHÔNG dùng hệ tọa độ Oxyz, không bảng biến thiên/đạo hàm tìm cực trị (dùng Cauchy / tam thức bậc hai). ' : '') +
     'Mọi khi_noi phải trích NGUYÊN VĂN loi_thoai (máy khớp từng từ); số liệu trên de_ghim, tham_so và thẻ phải khớp đề và đáp án.\n' +
     (typeof huongDanSanKhau_ === 'function' ? huongDanSanKhau_(r) : '') +
+    huongDanKhoManhSvg_(r) +
     huongDanMocCau_(r);
+}
+// Kho 16 mảnh ghép SVG chuẩn Story Math (THUC_TE & XAC_SUAT): ưu tiên lắp ghép sẵn thay vì vẽ tọa độ thô.
+function huongDanKhoManhSvg_(r) {
+  var mon = String((r && r.mon) || '').toUpperCase();
+  if (mon === 'HINH_HOC') return '';
+  var nhom = mon === 'XAC_SUAT'
+    ? 'Xác suất: xuc_xac_1_6, dong_xu, la_bai_the_so, hop_bi_mau, nut_cay_xac_suat.'
+    : 'Toán thực tế: be_nuoc_muc_chat_long, xe_di_chuyen, dong_ho_thoi_gian, bieu_do_loi_nhuan, hop_chu_nhat_3d, tui_tien_lai_suat.';
+  return 'KHO 16 MẢNH GHÉP SVG STORY MATH (gọi trực tiếp trong tu_sinh, cú pháp ten(x, y, scale=1.0, nhan="", gia_tri=None, mau=None); ƯU TIÊN lắp ghép các mảnh sẵn thay vì tự tính tọa độ path thô):\n' +
+    '- Người que Story Math (5 biểu cảm): nguoi_que_chi_bang, nguoi_que_gai_dau, nguoi_que_aha, nguoi_que_canh_bao, nguoi_que_hoan_ho.\n' +
+    '- ' + nhom + '\n';
 }
 // v93: INTRO "3 GIÂY MÓC CÂU" + OUTRO "TÓM TẮT 3 BƯỚC" + ĐỐI CHIẾU HÌNH ↔ ĐỒ THỊ (đều TÙY CHỌN; thiếu thì Auto-fix tự sinh)
 function huongDanMocCau_(r) {

@@ -714,6 +714,8 @@ jobs:
           command -v ffmpeg >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg; }
           python3 scripts/kiem_tra_chuyen_dong.py public/props.json "out/$ID.mp4" out/chuyen_dong.json
           python3 scripts/anh_kiem_tra.py public/props.json "out/$ID.mp4" out/
+          # Auto Cover Frame (non-blocking): trích 1 ảnh bìa cover_<ID>.png ở mốc cao trào
+          python3 scripts/chuanbi.py --trich-cover "out/$ID.mp4" --props public/props.json --out-dir out || echo "::warning::Auto Cover Frame bỏ qua"
 
       # v91 MẮT THẦN AI: 9 khung mốc -> lưới 3×3 -> Gemini Flash tìm cắt chữ / chồng chữ / LaTeX thô / lộ đáp án sớm.
       # Lỗi nặng -> báo Apps Script (kiem_tra_mp4.dat = false) => video giữ ở CHO, không vào lịch đăng, Zalo nhận ảnh lưới + lỗi.
@@ -754,6 +756,9 @@ jobs:
               echo "anh_${LOAI}=$AID" >> "$GITHUB_OUTPUT"
             fi
           done
+          if [ -f "out/cover_${ID}.png" ]; then
+            rclone copy "out/cover_${ID}.png" "gdrive:$THU_MUC/anh" || echo "::warning::Không tải được cover_${ID}.png lên Drive (bỏ qua)"
+          fi
 
       - name: Báo kết quả về Apps Script
         if: ${{ always() && (github.event_name == 'repository_dispatch' || github.event.inputs.id != '') && env.APPS_SCRIPT_URL != '' }}

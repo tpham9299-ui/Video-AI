@@ -29,13 +29,14 @@ import ast
 import json
 import math
 import os
+from pathlib import Path
 import re
 import subprocess
 import sys
 import tempfile
 import xml.etree.ElementTree as ET
 
-GOC = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+GOC = str(Path(__file__).resolve().parent.parent)
 VIEWBOX = (800.0, 540.0)
 DUNG_SAI = 2.0
 TIMEOUT = 5.0
@@ -50,8 +51,15 @@ NUT_CAM = (ast.Global, ast.Nonlocal, ast.With, ast.AsyncWith, ast.AsyncFunctionD
            ast.ClassDef, ast.Yield, ast.YieldFrom, ast.Delete)
 THE_SVG = {"g", "path", "polygon", "polyline", "line", "circle", "ellipse", "rect", "text", "tspan", "defs",
            "linearGradient", "radialGradient", "stop"}
-MO_DUN = ("math", "ve25d")
-TEP_VE25D = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ve25d.py")
+MO_DUN = ("math", "ve25d", "kho_manh_svg")
+TEP_VE25D = str(Path(__file__).resolve().parent / "ve25d.py")
+TEP_KHO_MANH = str(Path(__file__).resolve().parent / "kho_manh_svg.py")
+TEP_PHONG_CACH = str(Path(__file__).resolve().parent.parent / "phong_cach.json")
+TEN_MANH_SVG = (
+    "nguoi_que_chi_bang", "nguoi_que_gai_dau", "nguoi_que_aha", "nguoi_que_canh_bao", "nguoi_que_hoan_ho",
+    "be_nuoc_muc_chat_long", "xe_di_chuyen", "dong_ho_thoi_gian", "bieu_do_loi_nhuan", "hop_chu_nhat_3d", "tui_tien_lai_suat",
+    "xuc_xac_1_6", "dong_xu", "la_bai_the_so", "hop_bi_mau", "nut_cay_xac_suat",
+)
 CO_CHU_SAN = 22.0
 THUOC_TINH_X = {"x", "cx", "x1", "x2", "fx"}
 THUOC_TINH_Y = {"y", "cy", "y1", "y2", "fy"}
@@ -74,9 +82,9 @@ _mod = {}
 def _nhap(ten, *a, **k):
     if ten == "math":
         return math
-    if ten == "ve25d" and "ve25d" in _mod:
-        return _mod["ve25d"]
-    raise ImportError("chi duoc import math / ve25d")
+    if ten in ("ve25d", "kho_manh_svg") and ten in _mod:
+        return _mod[ten]
+    raise ImportError("chi duoc import math / ve25d / kho_manh_svg")
 an_toan = {k: __builtins__[k] if isinstance(__builtins__, dict) else getattr(__builtins__, k) for k in (
     "abs", "all", "any", "bool", "dict", "enumerate", "filter", "float", "format", "int", "isinstance", "len", "list",
     "map", "max", "min", "pow", "range", "reversed", "round", "set", "sorted", "str", "sum", "tuple", "zip", "divmod",
@@ -93,7 +101,22 @@ if vao.get("ve25d"):
         if not _k.startswith("_"):
             setattr(_m, _k, _v)
     _mod["ve25d"] = _m
+_helper_manh = {}
+if vao.get("kho_manh_svg"):
+    class _KM(object):
+        pass
+    _gk = {"__builtins__": an_toan, "__name__": "kho_manh_svg", "MAU_PHONG_CACH_NGOAI": vao.get("mau_phong_cach") or {}}
+    exec(compile(vao["kho_manh_svg"], "<kho_manh_svg>", "exec"), _gk)
+    _km = _KM()
+    for _k, _v in _gk.items():
+        if not _k.startswith("_"):
+            setattr(_km, _k, _v)
+    _mod["kho_manh_svg"] = _km
+    for _k in _gk.get("DANH_SACH_MANH") or ():
+        if _k in _gk:
+            _helper_manh[_k] = _gk[_k]
 g = {"__builtins__": an_toan, "math": math, "__name__": "tu_sinh"}
+g.update(_helper_manh)
 exec(compile(ma, "<tu_sinh>", "exec"), g)
 if "ve" not in g:
     raise SystemExit("THIEU_HAM_VE")
@@ -122,10 +145,10 @@ def kiem_ast(ma):
             raise LoiTuSinh("TS_CAM: không dùng %s" % type(n).__name__)
         if isinstance(n, ast.Import):
             if any(a.name not in MO_DUN for a in n.names):
-                raise LoiTuSinh("TS_IMPORT: chỉ được import math / ve25d")
+                raise LoiTuSinh("TS_IMPORT: chỉ được import math / ve25d / kho_manh_svg")
         if isinstance(n, ast.ImportFrom):
             if n.module not in MO_DUN or n.level:
-                raise LoiTuSinh("TS_IMPORT: chỉ được from math / ve25d import ...")
+                raise LoiTuSinh("TS_IMPORT: chỉ được from math / ve25d / kho_manh_svg import ...")
         if isinstance(n, ast.Attribute) and n.attr.startswith("_"):
             raise LoiTuSinh("TS_CAM: thuộc tính ẩn .%s" % n.attr)
         if isinstance(n, ast.Name) and (n.id in TEN_CAM or n.id.startswith("__")):
@@ -154,14 +177,31 @@ def _la_ma_thoat_qua_gio(returncode, stderr=""):
     return "cpu time limit exceeded" in low or "timeoutexpired" in low
 
 
+def _doc_mau_phong_cach():
+    try:
+        tep = Path(TEP_PHONG_CACH)
+        if tep.is_file():
+            d = json.loads(tep.read_text(encoding="utf8"))
+            return {"intro": d.get("intro") or {}, "mau": d.get("mau") or {}}
+    except Exception:
+        pass
+    return {}
+
+
 def chay_hop_cat(ma, timeout=TIMEOUT):
     kiem_ast(ma)
     env = {"PATH": os.environ.get("PATH", ""), "PYTHONIOENCODING": "utf8", "SYSTEMROOT": os.environ.get("SYSTEMROOT", "")}
     thu_muc = tempfile.mkdtemp(prefix="tu_sinh_")
     cpu_sec = str(max(1, int(math.ceil(float(timeout)))))
     try:
-        v25 = open(TEP_VE25D, encoding="utf8").read() if "ve25d" in ma and os.path.isfile(TEP_VE25D) else ""
-        r = subprocess.run([sys.executable, "-I", "-S", "-c", _CHAY, cpu_sec], input=json.dumps({"ma": ma, "ve25d": v25}), capture_output=True,
+        p_v25 = Path(TEP_VE25D)
+        p_km = Path(TEP_KHO_MANH)
+        v25 = p_v25.read_text(encoding="utf8") if "ve25d" in ma and p_v25.is_file() else ""
+        can_km = "kho_manh_svg" in ma or any(ten in ma for ten in TEN_MANH_SVG)
+        km_src = p_km.read_text(encoding="utf8") if can_km and p_km.is_file() else ""
+        mau_pc = _doc_mau_phong_cach() if km_src else {}
+        payload = {"ma": ma, "ve25d": v25, "kho_manh_svg": km_src, "mau_phong_cach": mau_pc}
+        r = subprocess.run([sys.executable, "-I", "-S", "-c", _CHAY, cpu_sec], input=json.dumps(payload), capture_output=True,
                            text=True, encoding="utf8", timeout=timeout, cwd=thu_muc, env=env)
     except subprocess.TimeoutExpired:
         raise LoiTuSinh("TS_QUA_GIO: mã chạy quá %.0f s" % timeout)
@@ -447,12 +487,20 @@ HO_MAU = ((185.0, 22.0), (37.0, 16.0), (137.0, 14.0), (0.0, 12.0))
 
 
 def _mau_token():
+    ra = set()
     try:
-        sys.path.insert(0, os.path.dirname(TEP_VE25D))
+        sys.path.insert(0, str(Path(TEP_VE25D).parent))
         import ve25d
-        return {v.upper() for v in ve25d.MAU.values() if v.startswith("#")}
+        ra.update(v.upper() for v in ve25d.MAU.values() if isinstance(v, str) and v.startswith("#"))
     except Exception:   # noqa: BLE001
-        return set()
+        pass
+    try:
+        sys.path.insert(0, str(Path(TEP_KHO_MANH).parent))
+        import kho_manh_svg
+        ra.update(v.upper() for v in kho_manh_svg.MAU.values() if isinstance(v, str) and v.startswith("#"))
+    except Exception:   # noqa: BLE001
+        pass
+    return ra
 
 
 MAU_TOKEN = _mau_token()

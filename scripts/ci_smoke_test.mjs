@@ -175,5 +175,19 @@ for (const m of MAU_SMOKE) {
 }
 try { fs.rmSync(tmpDir, {recursive: true, force: true}); } catch (_e) {}
 
+// 4. Kiểm thử Đợt 2: Kho 16 mảnh ghép SVG + Auto Cover Frame + Bình luận ghim biến thể
+console.log('4. Kiểm thử kho 16 mảnh ghép SVG, Auto Cover Frame và bình luận ghim');
+const rKhoSvg = spawnSync(PY, ['-X', 'utf8', path.join(ROOT, 'scripts', 'test_kho_manh_svg.py')], {
+  cwd: ROOT,
+  encoding: 'utf8',
+  env: {...process.env, PYTHONIOENCODING: 'utf-8'},
+  timeout: 90000,
+});
+kiem(
+  'python -X utf8 scripts/test_kho_manh_svg.py',
+  rKhoSvg.status === 0,
+  rKhoSvg.status === 0 ? '' : (rKhoSvg.stderr || rKhoSvg.stdout || '').slice(-260),
+);
+
 console.log(`\nCI SMOKE TEST: ${dat} đạt, ${hong.length} hỏng`);
 process.exit(hong.length ? 1 : 0);

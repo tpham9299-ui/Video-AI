@@ -17,15 +17,21 @@ import contextlib
 import glob
 import json
 import os
+from pathlib import Path
+import re
 import struct
 import subprocess
 import sys
 import time
 
-import requests
+try:
+    import requests
+except ImportError:  # Cho phép import các hàm tiện ích (vd lam_sach_binh_luan_ghim) trong CI không cài requests
+    requests = None
 
 GRAPH = "https://graph.facebook.com/v21.0"
 TT = "https://open.tiktokapis.com/v2"
+TOI_DA_BINH_LUAN_GHIM = 180
 
 
 class BoQua(Exception):
@@ -263,9 +269,74 @@ def dang_youtube(video, meta):
     with open(video, "rb") as f:
         d = kiem_tra(requests.put(res.headers["Location"], data=f, headers=dict(h, **{"Content-Type": "video/mp4"}), timeout=1800), "YouTube tải lên")
     bia = dat_bia_youtube(h, d.get("id"), meta.get("_anh_bia_yt"))
+    bl_ghi_chu = ""
+    try:
+        bl_ghi_chu = dang_binh_luan_youtube(h, d.get("id"), meta.get("binh_luan_ghim"), meta.get("lop", ""))
+    except Exception as e_bl:
+        print("CẢNH BÁO: bỏ qua bình luận ghim YouTube:", str(e_bl)[:160])
     la_dai = str(meta.get("ten", "")).upper().endswith("-10P") or thoi_luong_mp4(video) >= 240
     url_yt = ("https://youtu.be/%s" if la_dai else "https://youtube.com/shorts/%s") % d.get("id")
-    return {"ok": True, "url": url_yt, "id": d.get("id"), "che_do": d.get("status", {}).get("privacyStatus"), "ghi_chu": bia}
+    ghi_chu = "; ".join(x for x in (bia, bl_ghi_chu) if x)
+    return {"ok": True, "url": url_yt, "id": d.get("id"), "che_do": d.get("status", {}).get("privacyStatus"), "ghi_chu": ghi_chu}
+
+
+def lam_sach_binh_luan_ghim(noi_dung, lop=""):
+    """Lọc sạch ký tự lỗi/Evergreen và cắt gọn biên từ <= 180 ký tự cho bình luận ghim bài biến thể."""
+    if noi_dung is None:
+        return ""
+    s = str(noi_dung)
+    s = re.sub(r"[\x00-\x1f\x7f\u200b-\u200f\ufeff]+", " ", s)
+    s = s.replace("$", "").replace("`", "")
+    s = " ".join(s.split()).strip()
+    if not s:
+        return ""
+    try:
+        thu_muc = str(Path(__file__).resolve().parent)
+        if thu_muc not in sys.path:
+            sys.path.insert(0, thu_muc)
+        import evergreen
+        s = evergreen.ve_sinh_nam_sinh(s, lop)
+    except Exception:
+        pass
+    s = " ".join(s.split()).strip()
+    if len(s) <= TOI_DA_BINH_LUAN_GHIM:
+        return s
+    cat = s[: TOI_DA_BINH_LUAN_GHIM - 1]
+    if " " in cat:
+        cat = cat.rsplit(" ", 1)[0]
+    cat = cat.rstrip(" ,.;:-")
+    if not cat:
+        cat = s[: TOI_DA_BINH_LUAN_GHIM - 1]
+    return (cat + "…")[:TOI_DA_BINH_LUAN_GHIM]
+
+
+def dang_binh_luan_youtube(h, video_id, noi_dung, lop=""):
+    """Đăng bình luận đầu tiên (câu hỏi biến thể) qua YouTube Data API commentThreads.insert.
+    Non-blocking tuyệt đối: thiếu scope/quota/lỗi mạng chỉ ghi cảnh báo, không làm hỏng trạng thái DA_DANG."""
+    van = lam_sach_binh_luan_ghim(noi_dung, lop)
+    if not van or not video_id:
+        return ""
+    try:
+        than = {
+            "snippet": {
+                "videoId": str(video_id),
+                "topLevelComment": {"snippet": {"textOriginal": van}},
+            }
+        }
+        res = requests.post(
+            "https://www.googleapis.com/youtube/v3/commentThreads?part=snippet",
+            json=than,
+            headers=dict(h, **{"Content-Type": "application/json; charset=UTF-8"}),
+            timeout=60,
+        )
+        if res.status_code < 300:
+            print("Đã đăng bình luận ghim YouTube cho %s: %s" % (video_id, van[:80]))
+            return "đã đăng bình luận ghim biến thể"
+        print("CẢNH BÁO: không đăng được bình luận ghim YouTube (HTTP %d): %s" % (res.status_code, res.text[:160]))
+        return "chưa đăng được bình luận ghim (HTTP %d)" % res.status_code
+    except Exception as e:
+        print("CẢNH BÁO: lỗi khi đăng bình luận ghim YouTube:", str(e)[:160])
+        return "bỏ qua bình luận ghim (lỗi API)"
 
 
 # ---------------- SỐ TẬP THEO LỚP (đánh lúc đăng, theo số bài đã có trên kênh) ----------------

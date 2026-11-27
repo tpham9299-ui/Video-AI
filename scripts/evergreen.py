@@ -49,7 +49,7 @@ def ve_sinh_nam_sinh(s, lop=""):
     return re.sub(r"(^|\s)#([0-9A-Za-zÀ-ỹ_]+)", bo_trung, t)
 
 
-KHOA_META = ("tieu_de", "yt_tieu_de", "tt_tieu_de", "mo_ta", "yt_dau", "fb_dau", "yt_mo_ta", "fb_mo_ta")
+KHOA_META = ("tieu_de", "yt_tieu_de", "tt_tieu_de", "mo_ta", "yt_dau", "fb_dau", "yt_mo_ta", "fb_mo_ta", "binh_luan_ghim")
 
 
 def ve_sinh_meta(meta, lop=""):

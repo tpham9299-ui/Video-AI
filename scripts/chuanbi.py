@@ -16,6 +16,7 @@ import difflib
 import json
 import math
 import os
+from pathlib import Path
 import re
 import shutil
 import subprocess
@@ -2599,6 +2600,95 @@ def tao_bia(kb, canh_kb, canh_props):
     return {"loai": loai, "tieuDe": cat_nhan(tieu_de, 80), "khung": int(c["batDau"] + c["soFrame"] * 0.96)}   # lúc hình đã vẽ xong
 
 
+def chon_moc_cover(props, thoi_luong=None):
+    """Chọn mốc giây cao trào để trích ảnh bìa tự động (cover_<ID>.png):
+    gần lúc hiện đầy đủ hình + công thức đích, tránh khung đen / chuyển cảnh Intro & Outro."""
+    if not isinstance(props, dict):
+        return 3.0
+    fps = float(props.get("fps") or FPS) or 30.0
+    tong = float(thoi_luong) if thoi_luong is not None and float(thoi_luong) > 0 else float(props.get("tongFrame") or 0) / fps
+    if tong <= 0:
+        return 3.0
+    if tong <= 4.0:
+        return round(max(0.2, min(tong * 0.55, tong - 0.2)), 2)
+    lech_dau = ((1 if props.get("anhBiaDau") else 0) + int((props.get("intro") or {}).get("lech") or 0)) / fps
+    k4 = props.get("khung4tang") if isinstance(props.get("khung4tang"), dict) else {}
+    t_intro = lech_dau + (3.2 if k4.get("mocCau") else 1.6)
+    outro = props.get("outro") if isinstance(props.get("outro"), dict) else {}
+    t_outro = (float(outro["batDau"]) / fps + lech_dau) if outro.get("batDau") else max(t_intro + 1.0, tong - 3.8)
+    t_min = min(max(1.2, t_intro), max(1.2, tong - 1.5))
+    t_max = max(t_min, min(t_outro - 0.5, tong - 1.2))
+
+    moc = None
+    if k4.get("tChot") is not None:
+        try:
+            moc = float(k4["tChot"]) + lech_dau + 0.5
+        except (TypeError, ValueError):
+            moc = None
+    if moc is None and isinstance(k4.get("buoc"), list) and k4["buoc"]:
+        buoc_giai = [b for b in k4["buoc"] if isinstance(b, dict) and b.get("t") is not None]
+        if buoc_giai:
+            b_cuoi = buoc_giai[-1]
+            t_b = float(b_cuoi["t"]) + lech_dau
+            moc = t_b + min(2.0, max(0.6, (t_max - t_b) * 0.65))
+    if moc is None:
+        canh = [c for c in (props.get("canh") or []) if isinstance(c, dict)]
+        uu_tien = [c for c in canh if str(c.get("loai") or "") in ("dap_an", "ket_qua")]
+        if not uu_tien:
+            uu_tien = [c for c in canh if str(c.get("loai") or "") in ("tinh_toan", "diem_chot", "giai")]
+        if uu_tien:
+            c_chon = uu_tien[-1]
+            moc = (float(c_chon.get("batDau") or 0) + float(c_chon.get("soFrame") or 0) * 0.78) / fps + lech_dau
+    if moc is None:
+        moc = tong * 0.68
+    return round(min(max(float(moc), t_min), t_max), 2)
+
+
+def trich_anh_bia_tu_dong(video_path, props, out_dir, gia_lap=False):
+    """Auto Cover Frame (non-blocking): trích 1 khung ảnh bìa cover_<ID>.png ở mốc cao trào bằng ffmpeg.
+    Nếu --gia-lap hoặc không trích được khung -> chỉ ghi log cảnh báo và trả None, không dừng job."""
+    try:
+        if gia_lap:
+            print("Auto Cover Frame: bỏ qua ở chế độ --gia-lap")
+            return None
+        vp = Path(video_path)
+        if not vp.is_file():
+            print("CẢNH BÁO Auto Cover Frame: không tìm thấy video %s -> bỏ qua" % vp)
+            return None
+        if not shutil.which("ffmpeg"):
+            print("CẢNH BÁO Auto Cover Frame: không có ffmpeg -> bỏ qua")
+            return None
+        dai = None
+        if shutil.which("ffprobe"):
+            try:
+                r_dur = subprocess.run(
+                    ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(vp)],
+                    capture_output=True, text=True, timeout=15,
+                )
+                if r_dur.returncode == 0 and r_dur.stdout.strip():
+                    dai = float(r_dur.stdout.strip())
+            except Exception:
+                dai = None
+        id_raw = str((props or {}).get("id") or vp.stem)
+        id_sach = re.sub(r"[^A-Za-z0-9_-]", "", id_raw) or "video"
+        moc = chon_moc_cover(props or {}, thoi_luong=dai)
+        thu_muc_ra = Path(out_dir)
+        thu_muc_ra.mkdir(parents=True, exist_ok=True)
+        tep_ra = thu_muc_ra / ("cover_%s.png" % id_sach)
+        r = subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-ss", "%.2f" % moc, "-i", str(vp), "-frames:v", "1", str(tep_ra)],
+            capture_output=True, text=True, timeout=30,
+        )
+        if r.returncode == 0 and tep_ra.is_file() and tep_ra.stat().st_size > 0:
+            print("Auto Cover Frame: đã trích %s tại mốc %.2fs" % (tep_ra.as_posix(), moc))
+            return tep_ra.as_posix()
+        print("CẢNH BÁO Auto Cover Frame: ffmpeg không trích được khung (mã %d): %s" % (r.returncode, (r.stderr or "")[-180:]))
+        return None
+    except Exception as e:
+        print("CẢNH BÁO Auto Cover Frame: bỏ qua do lỗi:", str(e)[:180])
+        return None
+
+
 def tim_tep(thu_muc, ten, duoi):
     for d in duoi:
         f = os.path.join(thu_muc, ten + d)
@@ -3306,9 +3396,12 @@ def in_bang_thoi_gian(tong_giay, thu_muc_ra="out"):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("kich_ban")
+    ap.add_argument("kich_ban", nargs="?", default=None)
     ap.add_argument("--public", default="public")
     ap.add_argument("--props-ra", default=None)
+    ap.add_argument("--trich-cover", default=None, help="trích 1 ảnh bìa cover_<ID>.png từ MP4 đã ghép (non-blocking)")
+    ap.add_argument("--props", default=None, help="tệp props.json dùng cùng --trich-cover")
+    ap.add_argument("--out-dir", default="out", help="thư mục xuất cover_<ID>.png")
     ap.add_argument("--giong", default=os.environ.get("GIONG", "vi-VN-HoaiMyNeural"))
     ap.add_argument("--toc-do", default=os.environ.get("TOC_DO") or "+14%")
     ap.add_argument("--cao-do", default=os.environ.get("CAO_DO", "+0Hz"))
@@ -3324,6 +3417,18 @@ def main():
     ap.add_argument("--toc-do-gemini", default=os.environ.get("TOC_DO_GEMINI") or "1.14")
     ap.add_argument("--phong-cach-giong", default=os.environ.get("PHONG_CACH_GIONG") or PHONG_CACH_GIONG_MAC_DINH)
     args = ap.parse_args()
+    if args.trich_cover:
+        p_data = {}
+        try:
+            p_tep = Path(args.props or (Path(args.public) / "props.json"))
+            if p_tep.is_file():
+                p_data = json.loads(p_tep.read_text(encoding="utf8"))
+        except Exception as e_p:
+            print("CẢNH BÁO Auto Cover Frame: không đọc được props.json:", str(e_p)[:140])
+        trich_anh_bia_tu_dong(args.trich_cover, p_data, args.out_dir, gia_lap=args.gia_lap)
+        return
+    if not args.kich_ban:
+        ap.error("cần truyền đường dẫn kich_ban hoặc --trich-cover <video.mp4>")
     t_tong = time.perf_counter()
     cham("")
 
@@ -3792,6 +3897,10 @@ def main():
     }
     if luong_hh:
         hinh_phang_chuan_props(kb, canh_props, FPS, props)
+    try:
+        props["coverMocGiay"] = chon_moc_cover(props)
+    except Exception:
+        pass
     cham("Thương hiệu, bìa, khung 4 tầng")
     if not args.gia_lap:
         print("Giọng đọc: %d cảnh bằng Gemini TTS (%s), %d đoạn bằng edge-tts (%s), %d đoạn bằng Google TTS dự phòng" % (

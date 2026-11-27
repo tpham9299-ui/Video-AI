@@ -57,6 +57,7 @@ jobs:
             phong_cach.json
             scripts/dang_video.py
             scripts/evergreen.py
+            scripts/kho_manh_svg.py
             public/fonts
           sparse-checkout-cone-mode: false
 

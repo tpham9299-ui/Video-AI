@@ -220,6 +220,20 @@ function docKetQuaDang_(r) {
   try { var o = JSON.parse(String(r.link_dang || '{}')); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; }
 }
 
+// Lọc sạch ký tự lỗi/Evergreen và cắt gọn biên từ <= 180 ký tự cho bình luận ghim bài biến thể.
+function lamSachBinhLuanGhim_(van, lop) {
+  if (van === undefined || van === null) return '';
+  var s = String(van).replace(/[\x00-\x1f\x7f\u200b-\u200f\ufeff]+/g, ' ').replace(/[$`]/g, '').replace(/\s+/g, ' ').trim();
+  if (!s) return '';
+  if (typeof veSinhNamSinh_ === 'function') s = String(veSinhNamSinh_(s, lop || '') || '').replace(/\s+/g, ' ').trim();
+  if (s.length <= 180) return s;
+  var cat = s.slice(0, 179);
+  var sp = cat.lastIndexOf(' ');
+  if (sp > 20) cat = cat.slice(0, sp);
+  cat = cat.replace(/[\s,.;:-]+$/, '');
+  return ((cat || s.slice(0, 179)) + '…').slice(0, 180);
+}
+
 // Tiêu đề, mô tả, thẻ cho bài đăng (lấy từ kịch bản).
 function noiDungDangGoc_(r, tap, td) {
   var kb = {};
@@ -280,6 +294,7 @@ function noiDungDangGoc_(r, tap, td) {
     fb_dau: String(td.facebook || tieuDe).slice(0, 220),
     yt_mo_ta: (String(td.youtube_mo_dau || td.youtube || tieuDe) + '\n\n' + moTa + '\n\n🔔 ĐĂNG KÝ KÊNH và bật chuông để xem tập tiếp theo!').slice(0, 4900),
     fb_mo_ta: (String(td.facebook || tieuDe) + '\n\n' + moTa + '\n\n👉 Nhấn THEO DÕI trang để xem tập tiếp theo mỗi ngày!').slice(0, 4900),
+    binh_luan_ghim: lamSachBinhLuanGhim_(kb.binh_luan_ghim, r && r.lop),
     the: the, quang_cao: !!sp
   };
 }
@@ -332,7 +347,7 @@ function dangVideo_(sh, r) {
     var lopSo = String(r.lop || '').replace(/[^0-9]/g, '');
     var demYT = -1;
     try { if (lopSo && !tapDaGan) demYT = demBaiLopYouTube_(lopSo); } catch (eDem) { demYT = -1; }
-    var dangPayload = JSON.stringify({ file_id: String(r.file_video), ten: r.id, chuyen_de_10p: laVideoDai_(r), tieu_de: meta.tieu_de, yt_tieu_de: meta.yt_tieu_de, mo_ta: meta.mo_ta, yt_dau: meta.yt_dau, fb_dau: meta.fb_dau, tt_tieu_de: meta.tt_tieu_de, the: meta.the, nen_tang: can, yt_che_do: chDang_('YOUTUBE_CHE_DO'), quang_cao: meta.quang_cao, co_bia: !!r.anh_bia,
+    var dangPayload = JSON.stringify({ file_id: String(r.file_video), ten: r.id, chuyen_de_10p: laVideoDai_(r), tieu_de: meta.tieu_de, yt_tieu_de: meta.yt_tieu_de, mo_ta: meta.mo_ta, yt_dau: meta.yt_dau, fb_dau: meta.fb_dau, tt_tieu_de: meta.tt_tieu_de, binh_luan_ghim: meta.binh_luan_ghim || '', the: meta.the, nen_tang: can, yt_che_do: chDang_('YOUTUBE_CHE_DO'), quang_cao: meta.quang_cao, co_bia: !!r.anh_bia,
       lop: lopSo, tap_da_gan: tapDaGan, tap_he_thong: lopSo ? daDangLop_(lopSo) : 0, dem_youtube: demYT, yt_apps_script: ytApps });
     var gui = typeof guiWorkflowGitHub_ === 'function' ? guiWorkflowGitHub_({ viec: 'dang', lan_giao: r.lan_giao, id: r.id, dang: dangPayload }, 'dang-video.yml') : { ok: false, loi: 'Thiếu BoPhan2.gs bản mới (guiWorkflowGitHub_)' };
     // v99.1: chỉ đăng qua dang-video.yml (job "dang" trùng lặp trong dung-video.yml đã gỡ -> không còn đường dự phòng 404)
@@ -383,6 +398,16 @@ function dangYouTube_(r, meta, fileId, fileBia, file10pDaDo) {
     var kbYT = {};
     try { kbYT = JSON.parse(DriveApp.getFileById(r.file_kich_ban).getBlob().getDataAsString()); } catch (eK) {}
     if (typeof themVaoPlaylist_ === 'function') { var pl = themVaoPlaylist_(kbYT, v.id, r); if (pl) ghiChuYT.push(pl); }
+    if (meta.binh_luan_ghim) {
+      try {
+        if (YouTube && YouTube.CommentThreads && typeof YouTube.CommentThreads.insert === 'function') {
+          YouTube.CommentThreads.insert({ snippet: { videoId: v.id, topLevelComment: { snippet: { textOriginal: meta.binh_luan_ghim } } } }, 'snippet');
+          ghiChuYT.push('đã đăng bình luận ghim biến thể');
+        }
+      } catch (eBL) {
+        nhatKy_('DANG_VIDEO', 'Cảnh báo bình luận ghim YouTube (' + r.id + '): ' + String(eBL.message || eBL).slice(0, 140));
+      }
+    }
     if (typeof dangKyThongKe_ === 'function') dangKyThongKe_(r, v.id);
     var laDaiYT = (typeof laVideoDai_ === 'function' && laVideoDai_(r)) || kbYT.kieu_video === 'DAI_10_PHUT' || Number(kbYT.tong_giay) >= 240;
     return { ok: true, url: (laDaiYT ? 'https://youtu.be/' : 'https://youtube.com/shorts/') + v.id, id: v.id, che_do: v.status && v.status.privacyStatus, ghi_chu: ghiChuYT.join(', ') };
