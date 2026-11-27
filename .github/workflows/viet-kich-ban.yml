@@ -42,6 +42,8 @@ jobs:
             mau_vang
             scripts/bophan1
             scripts/tu_sinh_svg.py
+            scripts/khung4tang_v93.py
+            scripts/xac_suat_dong.py
             scripts/khung4tang_v96.py
             scripts/ve25d.py
             scripts/giai_hinh_phang.py
@@ -99,6 +101,10 @@ jobs:
               try: d["key_hong"] = json.load(open("/tmp/gemini_key_hong.json", encoding="utf8"))
               except Exception: pass
           d["token"] = os.environ["DUNG_VIDEO_SECRET"]
+          request = json.loads(os.environ.get("BP1_DE") or "{}")
+          d["lan_giao"] = (request.get("hang") or {}).get("lan_giao", "")
+          d["viec"] = request.get("viec", "")
+          d["run_url"] = "https://github.com/%s/actions/runs/%s" % (os.environ["GITHUB_REPOSITORY"], os.environ["GITHUB_RUN_ID"])
           d["loai"] = "bo_phan_1"
           d["id"] = d.get("id") or os.environ["ID_DE"]
           json.dump(d, open("gui_bp1.json", "w", encoding="utf8"), ensure_ascii=False)
@@ -114,3 +120,15 @@ jobs:
             sleep 20
           done
           echo "Không báo được kết quả về Apps Script"; exit 1
+
+      - name: Xác nhận đầu ra BP2
+        if: ${{ success() && env.ID_DE != '' }}
+        run: |
+          python3 - <<'PY'
+          import json
+          with open("ket_qua_bp1.json", encoding="utf8") as f:
+              result = json.load(f)
+          row = result.get("hang") or {}
+          if not result.get("kich_ban") or row.get("trang_thai") != "CO_KICH_BAN":
+              raise SystemExit("BP2 chưa bàn giao kịch bản: " + str(result.get("loi") or row.get("ghi_chu") or row.get("trang_thai")))
+          PY

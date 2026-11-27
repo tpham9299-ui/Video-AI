@@ -25,7 +25,7 @@ const ctx = vm.createContext({
   noiDungDang_: () => ({}), nhatKy_: () => {}, ghi_: (_,i,fields) => Object.assign(row,fields),
   guiWorkflowGitHub_: inputs => { payload = JSON.parse(inputs.dang); return {ok:true}; }
 });
-for (const name of ['DangVideo.gs','NangCao.gs']) {
+for (const name of ['BoNaoDieuPhoi.gs','DangVideo.gs','NangCao.gs']) {
   vm.runInContext(fs.readFileSync(path.join(__dirname,'..',name),'utf8'),ctx);
 }
 ctx.noiDungDang_ = () => ({});
@@ -35,7 +35,7 @@ ctx.henDangVideoS_(10);
 ctx.henDangVideoS_(10);
 ctx.damBaoLichDang_();
 assert.deepEqual(triggers.map(t => [t.getHandlerFunction(),t.minutes || t.delay]),
-  [['chayLichDangDinhKy',15],['kiemTraDangSauDuyet',10000]]);
+  [['chayBoNaoDieuPhoi',5]]);
 assert.equal(ctx.chonVideoDang_([row]),null);
 time = '11:30';
 assert.equal(ctx.chonVideoDang_([row]),row);

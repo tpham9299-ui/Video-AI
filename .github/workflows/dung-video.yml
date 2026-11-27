@@ -1,5 +1,5 @@
 name: Bộ phận 3 - Dựng video
-run-name: "Dựng video ${{ inputs.id || inputs.mau || github.run_number }}"
+run-name: "Dựng video ${{ inputs.id || github.event.client_payload.id || inputs.mau || github.run_number }}"
 
 # Kích hoạt:
 #  - Apps Script (BoPhan2.gs) gửi "workflow_dispatch" kèm ref = nhánh trong CAU_HINH > GITHUB_NHANH: GitHub chạy ĐÚNG mã của
@@ -12,6 +12,10 @@ on:
     types: [dung-video]
   workflow_dispatch:
     inputs:
+      lan_giao:
+        description: 'Mã lượt giao từ bộ điều phối'
+        type: string
+        default: ''
       mau:
         description: 'Kịch bản mẫu để dựng thử (khi không có kich_ban)'
         type: choice
@@ -83,6 +87,7 @@ jobs:
       TOC_DO: ${{ vars.TOC_DO }}
       SO_MAY_DUNG: ${{ vars.SO_MAY_DUNG }}
       APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
+      LAN_GIAO: ${{ inputs.lan_giao }}
       DUNG_VIDEO_SECRET: ${{ secrets.DUNG_VIDEO_SECRET }}
       ID_VIDEO: ${{ github.event.client_payload.id || github.event.inputs.id }}
       GEMINI_KEYS: ${{ secrets.GEMINI_KEYS }}
@@ -301,7 +306,7 @@ jobs:
           python3 - <<'PY'
           import json, os
           b = json.load(open('out/tu_sinh_hong.json', encoding='utf8'))
-          d = {"token": os.environ["DUNG_VIDEO_SECRET"], "id": os.environ["ID_VIDEO"], "ok": False, "loi": "KIEM_DUYET_BO_CUC",
+          d = {"lan_giao": os.environ.get("LAN_GIAO", ""), "token": os.environ["DUNG_VIDEO_SECRET"], "id": os.environ["ID_VIDEO"], "ok": False, "loi": "KIEM_DUYET_BO_CUC",
                "kiem_duyet": {"loai": "bo_cuc", "nang": b["nang"], "nhe": []}}
           json.dump(d, open("bao_tu_sinh_hong.json", "w", encoding="utf8"), ensure_ascii=False)
           PY
@@ -479,7 +484,7 @@ jobs:
           import json, os
           path = 'out/loi_mo_hinh.json' if os.path.isfile('out/loi_mo_hinh.json') else 'out/kiem_duyet.json'
           b = json.load(open(path, encoding='utf8'))
-          d = {"token": os.environ["DUNG_VIDEO_SECRET"], "id": os.environ["ID_VIDEO"], "ok": False, "loi": "KIEM_DUYET_BO_CUC",
+          d = {"lan_giao": os.environ.get("LAN_GIAO", ""), "token": os.environ["DUNG_VIDEO_SECRET"], "id": os.environ["ID_VIDEO"], "ok": False, "loi": "KIEM_DUYET_BO_CUC",
                "kiem_duyet": {"loai": "mo_hinh" if path.endswith("loi_mo_hinh.json") else "bo_cuc", "nang": b.get("nang", []) if any(x.startswith("AI_SAI_TOAN:") for x in b.get("nang", [])) else b.get("nang", [])[:15], "nhe": b.get("nhe", [])[:10]}}
           json.dump(d, open("bao_kiem_duyet.json", "w", encoding="utf8"), ensure_ascii=False)
           PY
@@ -607,6 +612,7 @@ jobs:
     env:
       RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
       APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
+      LAN_GIAO: ${{ inputs.lan_giao }}
       DUNG_VIDEO_SECRET: ${{ secrets.DUNG_VIDEO_SECRET }}
       DRIVE_THU_MUC: ${{ vars.DRIVE_THU_MUC }}
       DA_DUNG: ${{ needs.chuan_bi.result == 'success' && needs.dung_khuc.result == 'success' }}
@@ -761,7 +767,7 @@ jobs:
           import json, os
           ok = os.environ.get("TRANG_THAI") == "success" and os.environ.get("DA_DUNG") == "true" and bool(os.environ.get("FILE_ID"))
           d = {
-              "token": os.environ["DUNG_VIDEO_SECRET"],
+              "lan_giao": os.environ.get("LAN_GIAO", ""), "token": os.environ["DUNG_VIDEO_SECRET"],
               "id": os.environ["ID_VIDEO"],
               "ok": ok,
               "file_id": os.environ.get("FILE_ID", ""),

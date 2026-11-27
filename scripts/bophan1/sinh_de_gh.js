@@ -11,7 +11,7 @@ const RA = process.env.SD_RA || path.join(GOC, 'ket_qua_sinh_de.json');
 const dl = process.env.SD_DU_LIEU ? JSON.parse(process.env.SD_DU_LIEU) : {};
 const GIA_LAP = process.env.BP0_GIA_LAP === '1';
 const keys = String(process.env.GEMINI_KEYS || process.env.GEMINI_API_KEY || '').split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean);
-const out = {ok: false, de: [], lop_ke: null, mon_ke: null, ngay_10p: '', lop_10p: null, dem: {}, nhat_ky: [], loi: ''};
+const out = {lan_giao: dl.lan_giao, ok: false, de: [], lop_ke: null, mon_ke: null, ngay_10p: '', lop_10p: null, dem: {}, nhat_ky: [], loi: ''};
 
 if (!GIA_LAP && !keys.length) {
   out.loi = 'THIEU_GEMINI_KEYS';

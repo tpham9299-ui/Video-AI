@@ -42,6 +42,8 @@ jobs:
             mau_vang
             scripts/bophan1
             scripts/tu_sinh_svg.py
+            scripts/khung4tang_v93.py
+            scripts/xac_suat_dong.py
             scripts/khung4tang_v96.py
             scripts/ve25d.py
             scripts/giai_hinh_phang.py
@@ -106,6 +108,10 @@ jobs:
               try: d["key_hong"] = json.load(open("/tmp/gemini_key_hong.json", encoding="utf8"))
               except Exception: pass
           d["token"] = os.environ["DUNG_VIDEO_SECRET"]
+          request = json.loads(os.environ.get("BP1_DE") or "{}")
+          d["lan_giao"] = (request.get("hang") or {}).get("lan_giao", "")
+          d["viec"] = request.get("viec", "")
+          d["run_url"] = "https://github.com/%s/actions/runs/%s" % (os.environ["GITHUB_REPOSITORY"], os.environ["GITHUB_RUN_ID"])
           d["loai"] = "bo_phan_1"
           d["id"] = d.get("id") or os.environ["ID_DE"]
           json.dump(d, open("gui_bp1.json", "w", encoding="utf8"), ensure_ascii=False)

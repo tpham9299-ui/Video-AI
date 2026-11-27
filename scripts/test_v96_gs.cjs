@@ -148,7 +148,7 @@ t('sinh đề THUC_TE xen kẽ Kinh tế / Chuyển động 2D / Tăng trưởng
   const ds = Array.from({length: 5}, () => ctx.yeuCauKhuonSinhDe_('12', 'THUC_TE'));
   assert.ok(/KINH TẾ/.test(ds[1]) && /CHUYỂN ĐỘNG/.test(ds[3]) && /TĂNG TRƯỞNG/.test(ds[4]) && /KHUÔN HÌNH 3D/.test(ds[0]), ds.map((x) => x.slice(0, 40)).join(' | '));
 });
-t('cột Sheet chi_dao nối CUỐI (dữ liệu cũ không lệch)', () => assert.equal(vm.runInContext('COT[COT.length - 1]', ctx), 'chi_dao'));
+t('cột Sheet chi_dao giữ vị trí AI (dữ liệu cũ không lệch)', () => assert.equal(vm.runInContext('COT[34]', ctx), 'chi_dao'));
 t('SanKhau.gs nằm trong danh sách tự đồng bộ', () => assert.ok(vm.runInContext('DANH_SACH_TEP_GS_', ctx).includes('SanKhau')));
 
 console.log(`\nKẾT QUẢ: ${dat} đạt, ${loi} hỏng`);

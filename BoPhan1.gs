@@ -46,7 +46,7 @@ var COT = ['id', 'trang_thai', 'lop', 'chu_de', 'de_bai', 'nguon', 'diem_tu_duy'
   'mo_ta_hinh',                // lần 17: mô tả chi tiết hình vẽ kèm đề (đọc từ ảnh) để video vẽ lại đúng hình
   'duyet', 'gop_y', 'san_pham', // lần 19: trạng thái duyệt video, góp ý khi duyệt, sản phẩm trong bài (JSON)
   'anh_kt', 'anh_bia', 'ai_kiem_tra', 'series',   // lần 20: ảnh kiểm tra/ảnh bìa (Drive), kết quả AI xem video, series (hẹn giờ đăng, link đã đăng). Cột mới luôn nối vào CUỐI nên dữ liệu cũ không lệch
-  'chi_dao'];   // v96: ghi chú đạo diễn (dùng lưới Bayes / vẽ đồ thị lợi nhuận / chỉ dùng sơ đồ tư duy) -> ưu tiên chọn sân khấu (SanKhau.gs)
+  'chi_dao', 'so_lan_thu_lai', 'bp_thu_lai', 'lan_giao', 'duyet_kich_ban'];   // v96: ghi chú đạo diễn (dùng lưới Bayes / vẽ đồ thị lợi nhuận / chỉ dùng sơ đồ tư duy) -> ưu tiên chọn sân khấu (SanKhau.gs)
 
 var PHIEN_BAN_EDIT = 52;                    // phiên bản chuẩn edit mới nhất (tự động nâng cấp các video cũ/đang chờ dưới mức này)
 // Tên model nằm trong CAU_HINH vì Google đổi tên/ngừng model thường xuyên; hệ thống tự động đổi model dự phòng khi gặp lỗi.
@@ -78,12 +78,8 @@ var MAC_DINH = {
   CACH_XU_LY_FILE: 'CHUYEN',    // CHUYEN: đưa file kịch bản vào thư mục da_xong | XOA: bỏ vào thùng rác | GIU: để nguyên
   GIAY_MUC_TIEU: '110-170',    // thời lượng video mong muốn (giây): 16-22 cảnh chi tiết
   GIAY_TOI_DA: '200',          // kịch bản dài hơn mức này sẽ bị từ chối và viết lại
-  CHU_KY_CHAY_PHUT: '15',      // trigger chayBoPhan1 chạy mỗi bao nhiêu phút. Khi giải trên GitHub mỗi lần chạy chỉ vài giây nên 10-15 phút là an toàn. Chạy caiDatTrigger() lại sau khi đổi
   ZALO_THONG_BAO: 'IT',        // IT = chỉ báo việc quan trọng (video đạt kiểm duyệt, báo cáo ngày, lỗi cần bạn ra tay) | VUA = thêm đăng video, hết hạn mức | DAY_DU = báo mọi tiến độ
   GIAI_TREN_GITHUB: 'BAT',     // BAT = giải + viết kịch bản trên GitHub (nhanh, không giới hạn 6 phút) | TAT = làm tại Apps Script như cũ
-  SO_DE_GITHUB_CUNG_LUC: '3',  // số đề GitHub xử lý song song mỗi luồng
-  SO_GIAI_DE_CUNG_LUC: '3',    // luồng 1A (Giải đề MOI -> DA_GIAI): số đề giải song song trên GitHub
-  SO_KICH_BAN_CUNG_LUC: '5',   // luồng 1B (Xây kịch bản DA_GIAI -> CO_KICH_BAN): tăng lên 5 luồng song song để cấp kịch bản nhanh cho bộ dựng video
   MODEL_BIEN_KICH: '',          // v98.2: trống = model 'nang' xếp hạng cao nhất đang sống (pro mới nhất)
   SUY_NGHI_BIEN_KICH: 'high',
   MUC_SUY_NGHI_KICH_BAN: 'low', // mức "suy nghĩ" của Gemini khi viết kịch bản/tìm đề: low (nhanh, khuyên dùng) | high | tat (không gửi tham số)
@@ -246,23 +242,15 @@ function khoiTao() {
 }
 
 function caiDatTrigger() {
-  ScriptApp.getProjectTriggers().forEach(function (t) {
-    var fn = t.getHandlerFunction();
-    if (fn === 'chayBoPhan1' || fn === 'chayVietKichBan' || fn === 'chayGiaiDe') ScriptApp.deleteTrigger(t);
+  var ch = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_CAU_HINH);
+  var keys = ch.getDataRange().getValues().map(function(row) { return row[0]; });
+  if (keys.indexOf('CHE_DO_VAN_HANH') < 0) ch.appendRow(['CHE_DO_VAN_HANH', BO_NAO_.cheDo]);
+  BO_NAO_.workflow.forEach(function(_,bp) {
+    if (keys.indexOf('BAT_BP'+bp) < 0) ch.appendRow(['BAT_BP'+bp,'BAT']);
   });
-  // Luồng 1A (Giải đề) + điều phối chung: chayBoPhan1
-  var phut = Number(cauHinh_('CHU_KY_CHAY_PHUT')) || 15;
-  var tg = ScriptApp.newTrigger('chayBoPhan1').timeBased();
-  if (phut < 60) tg.everyMinutes([5, 10, 15, 30].filter(function (x) { return x <= phut; }).pop() || 15);
-  else tg.everyHours([1, 2, 4, 6, 8, 12].filter(function (x) { return x <= phut / 60; }).pop() || 1);
-  tg.create();
-  // Luồng 1B (Xây kịch bản riêng biệt DA_GIAI -> CO_KICH_BAN): chạy độc lập mỗi 10 phút để luôn có kịch bản dựng video
-  ScriptApp.newTrigger('chayVietKichBan').timeBased().everyMinutes(10).create();
-  caiDatTriggerDon();   // trigger 15 phút: dọn đề đã xong + vẽ lại bảng DOC_DE/DOC_KICH_BAN khi cần
-  Logger.log('Đã đặt trigger tách luồng: chayBoPhan1 (mỗi ' + phut + ' phút), chayVietKichBan (mỗi 10 phút) và chayDonDep (mỗi 15 phút).');
+  caiLichBoNao_();
+  caiDatTriggerDon();
 }
-
-/* ===================== VÒNG CHẠY TÁCH LUỒNG: GIẢI ĐỀ (1A) & XÂY KỊCH BẢN (1B) ===================== */
 
 var _GIU_KHOA_ = 0;
 function voiKhoa_(ms, fn) {
@@ -274,292 +262,17 @@ function voiKhoa_(ms, fn) {
   finally { _GIU_KHOA_--; try { lk.releaseLock(); } catch (eL) {} }
 }
 
-// LUỒNG 1B: CHỈ XÂY KỊCH BẢN (DA_GIAI -> CO_KICH_BAN -> gửi dựng video ngay).
-// Có khóa riêng (DANG_CHAY_KICH_BAN) để không bao giờ bị luồng Giải đề/Sinh đề làm nghẽn.
-function chayVietKichBan(chiUuTien, batChung) {
-  var cacheChay = CacheService.getScriptCache();
-  if (cacheChay.get('DANG_CHAY_KICH_BAN')) return false;
-  cacheChay.put('DANG_CHAY_KICH_BAN', String(Date.now()), 260);
-  var bat = batChung || Date.now();
-  _bat_dau_chay_ = bat;
-  _bo_nho_cau_hinh_ = null;
-  var bc = { moi: 0, giai_ok: 0, loai: 0, kich_ban: 0, loi: 0 };
-  try {
-    damBaoCauHinhTuDong_();
-    if (dangNghi_()) return false;
-    var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
-    if (!sh) return false;
-    damBaoCot_(sh);
-    var uuTien = chiUuTien === true || coDeUuTien_(docHang_(sh));
-    if (giaiTrenGitHub_()) {
-      var ghKB = giaoBoPhan1ChoGitHub_(sh, uuTien, 'kich_ban');
-      // Chỉ xử lý tại Apps Script khi GitHub lỗi/bị chặn hoặc với các đề đánh dấu TAI_CHO (tránh chạy đè cùng lúc với GitHub).
-      var taiChoKB = ghKB.loi ? null : docHang_(sh).filter(function (r) {
-        return /^TAI_CHO/.test(String(r.ghi_chu)) && r.trang_thai === 'DA_GIAI' && (!uuTien || laUuTien_(r));
-      }).map(function (r) { return r.id; });
-      if ((ghKB.loi || (taiChoKB && taiChoKB.length)) && conDuGoiGemini_()) {
-        xuLyKichBan_(sh, bc, bat, uuTien, taiChoKB);
-      }
-    } else {
-      xuLyKichBan_(sh, bc, bat, uuTien);
-    }
-    // Hễ có bất kỳ kịch bản nào ở CO_KICH_BAN -> gửi dựng video ngay lập tức
-    if (typeof chonVaGuiDung_ === 'function') {
-      try { voiKhoa_(10000, function () { chonVaGuiDung_(sh); }); } catch (eDV) { nhatKy_('DUNG_LOI', eDV.message); }
-    }
-  } catch (e) {
-    if (batChung && /^(HET_HAN_MUC|QUA_TAI)$/.test(String(e.message))) throw e;
-    if (String(e.message) === 'HET_HAN_MUC') datNghi_(30);
-    else if (String(e.message) === 'QUA_TAI') datNghi_(10);
-    else if (String(e.message) !== 'HET_GIO') nhatKy_('LOI_LUONG_KB', String(e.message).slice(0, 250));
-  } finally {
-    try { cacheChay.remove('DANG_CHAY_KICH_BAN'); } catch (eL) {}
-  }
-  if (bc.kich_ban > 0) PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1');
-  return bc;
-}
-
-// LUỒNG 1A: CHỈ ĐỌC ĐỀ ZALO + SINH ĐỀ + GIẢI ĐỀ (MOI -> DA_GIAI).
-// Có khóa riêng (DANG_CHAY_GIAI_DE), giải xong bàn giao ngay sang luồng Xây kịch bản (1B).
-function chayGiaiDe(chiUuTien, batChung) {
-  var cacheChay = CacheService.getScriptCache();
-  if (cacheChay.get('DANG_CHAY_GIAI_DE')) return false;
-  cacheChay.put('DANG_CHAY_GIAI_DE', String(Date.now()), 260);
-  var bat = batChung || Date.now();
-  _bat_dau_chay_ = bat;
-  _bo_nho_cau_hinh_ = null;
-  var bc = { moi: 0, giai_ok: 0, loai: 0, kich_ban: 0, loi: 0 };
-  try {
-    damBaoCauHinhTuDong_();
-    if (dangNghi_()) return false;
-    var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
-    if (!sh) return false;
-    damBaoCot_(sh);
-    baoDongBiNgat_(sh);
-    var coSP = typeof coViecSanPham_ === 'function' && coViecSanPham_();
-    var uuTien = chiUuTien === true || coSP || coDeUuTien_(docHang_(sh));
-    if (uuTien) {
-      if (coSP) xuLySanPham_(bc, bat);
-      xuLyDocDe_(sh, bc, bat);
-      if (giaiTrenGitHub_()) {
-        var ghU = giaoBoPhan1ChoGitHub_(sh, true, 'giai');
-        var taiChoU = ghU.loi ? null : docHang_(sh).filter(function (r) { return /^TAI_CHO/.test(String(r.ghi_chu)) && r.trang_thai === 'MOI'; }).map(function (r) { return r.id; });
-        if (ghU.loi || (taiChoU && taiChoU.length)) xuLyGiai_(sh, bc, bat, true, taiChoU);
-      } else {
-        xuLyGiai_(sh, bc, bat, true);
-      }
-    } else {
-      xuLyDocDe_(sh, bc, bat);
-      if (String(cauHinh_('TU_SUA_VIDEO_CU_DRIVE') || 'BAT').toUpperCase() !== 'TAT') {
-        try { doVaSuaVideoCuTrenDrive_(sh, 2); } catch (eCu) { nhatKy_('SUA_VIDEO_CU_LOI', eCu.message); }
-      }
-      var dsH = docHang_(sh);
-      var coDeMoi = dsH.some(function (r) { return r.trang_thai === 'MOI' || (r.trang_thai === 'GITHUB' && /\|MOI\b/.test(String(r.ghi_chu))); });
-      if (!coDeMoi) {
-        if (giaiTrenGitHub_()) sinhDeQuaGitHub_(sh, bc);
-        else { sinhDeNeuCan_(sh, bc); if (bc.moi) nhatKy_('SINH_DE', 'Đã thêm ' + bc.moi + ' đề mới vào luồng giải'); }
-      }
-      if (giaiTrenGitHub_()) {
-        var ghG = giaoBoPhan1ChoGitHub_(sh, false, 'giai');
-        var taiChoG = ghG.loi ? null : docHang_(sh).filter(function (r) { return /^TAI_CHO/.test(String(r.ghi_chu)) && r.trang_thai === 'MOI'; }).map(function (r) { return r.id; });
-        if (ghG.loi || (taiChoG && taiChoG.length)) xuLyGiai_(sh, bc, bat, false, taiChoG);
-      } else {
-        xuLyGiai_(sh, bc, bat, false);
-      }
-      if (coDeMoi && (giaiTrenGitHub_() || duThoiGian_(bat, tbMs_('TB_SINH_DE_MS', 90000) * 1.2))) {
-        if (giaiTrenGitHub_()) sinhDeQuaGitHub_(sh, bc);
-        else {
-          sinhDeNeuCan_(sh, bc);
-          if (bc.moi) giaoBoPhan1ChoGitHub_(sh, false, 'giai');
-        }
-      }
-    }
-    // Nếu vừa giải xong đề tại chỗ -> bàn giao ngay sang luồng Xây kịch bản
-    if (bc.giai_ok > 0 && giaiTrenGitHub_()) {
-      try { giaoBoPhan1ChoGitHub_(sh, false, 'kich_ban'); } catch (eKB) {}
-    }
-  } catch (e) {
-    if (batChung && /^(HET_HAN_MUC|QUA_TAI)$/.test(String(e.message))) throw e;
-    if (String(e.message) === 'HET_HAN_MUC') datNghi_(30);
-    else if (String(e.message) === 'QUA_TAI') datNghi_(10);
-    else if (String(e.message) !== 'HET_GIO') nhatKy_('LOI_LUONG_GIAI', String(e.message).slice(0, 250));
-  } finally {
-    try { cacheChay.remove('DANG_CHAY_GIAI_DE'); } catch (eL) {}
-  }
-  return bc;
-}
-
+// Các menu và trigger đã cài trước khi cập nhật đều dùng chung bộ điều phối.
+function chayVietKichBan() { return chayBoNaoDieuPhoi(); }
+function chayGiaiDe() { return chayBoNaoDieuPhoi(); }
 function chayBoPhan1() {
-  // Dùng cờ CacheService (tự giải phóng sau 280s) thay vì giữ cứng LockService.getScriptLock() suốt 5 phút gọi AI,
-  // để các lệnh Zalo (/bo, /sua, /duyet, /huy) của chủ kênh LUÔN thực thi tức thì, không bao giờ bị báo "Hệ thống đang bận".
-  var cacheChay = CacheService.getScriptCache();
-  if (cacheChay.get('DANG_CHAY_BP1')) return false;
-  cacheChay.put('DANG_CHAY_BP1', String(Date.now()), 280);
-  var bat = Date.now();
-  _bat_dau_chay_ = bat;
-  var cheDoUuTien = false;
-  _bo_nho_cau_hinh_ = null;
-  var bc = { moi: 0, giai_ok: 0, loai: 0, kich_ban: 0, loi: 0 };
-  try {
-    damBaoCauHinhTuDong_();
-    if (dangNghi_()) {
-      nhatKy_('NGHI', 'Đang tạm nghỉ (hết hạn mức trước đó) nên bỏ qua lần chạy này. Chạy xoaNghi() để chạy lại ngay.');
-      return;
-    }
-    try { tuDongDongBoCodeTuGitHub_(); } catch (eSync) {}
-    nhatKy_('BAT_DAU', 'Bắt đầu điều phối tách luồng: Luồng 1B (Xây kịch bản) + Luồng 1A (Giải đề)');
-    var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
-    if (!sh) return;
-    damBaoCot_(sh);
-    baoDongBiNgat_(sh);
-    var coSP = typeof coViecSanPham_ === 'function' && coViecSanPham_();
-    cheDoUuTien = !!(coSP || coDeUuTien_(docHang_(sh)));
-    // BƯỚC 1 (ƯU TIÊN SỐ 1): Chạy Luồng 1B (Xây kịch bản DA_GIAI -> CO_KICH_BAN) trước để có kịch bản dựng video ngay!
-    var bcKB = chayVietKichBan(cheDoUuTien, bat);
-    if (bcKB && typeof bcKB === 'object') {
-      bc.kich_ban += Number(bcKB.kich_ban || 0);
-      bc.loi += Number(bcKB.loi || 0);
-    }
-    // BƯỚC 2: Nếu còn thời gian thì chạy Luồng 1A (Đọc đề Zalo + Sinh đề + Giải đề MOI -> DA_GIAI)
-    if (Date.now() - bat < 210000) {
-      var bcGiai = chayGiaiDe(cheDoUuTien, bat);
-      if (bcGiai && typeof bcGiai === 'object') {
-        bc.moi += Number(bcGiai.moi || 0);
-        bc.giai_ok += Number(bcGiai.giai_ok || 0);
-        bc.loai += Number(bcGiai.loai || 0);
-        bc.loi += Number(bcGiai.loi || 0);
-      }
-      // Nếu Luồng 1A vừa giải xong đề mới và còn thời gian -> đẩy ngay sang Luồng 1B!
-      if (bcGiai && bcGiai.giai_ok > 0 && Date.now() - bat < 220000) {
-        var bcKB2 = chayVietKichBan(cheDoUuTien, bat);
-        if (bcKB2 && typeof bcKB2 === 'object') bc.kich_ban += Number(bcKB2.kich_ban || 0);
-      }
-    }
-  } catch (e) {
-    if (String(e.message) === 'HET_HAN_MUC') {
-      datNghi_(cheDoUuTien ? 30 : 60);
-      nhatKy_('HET_HAN_MUC', 'Gemini báo hết hạn mức/giới hạn tốc độ; tạm nghỉ ' + (cheDoUuTien ? 30 : 60) + ' phút');
-      guiZalo_('⏸ Hết hạn mức Gemini miễn phí hôm nay, hệ thống tự nghỉ rồi chạy lại' + (cheDoUuTien ? ' (đề ưu tiên của bạn vẫn giữ chỗ đầu hàng).' : '.'), 'vua', 'HHM_' + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd'));
-    } else if (String(e.message) === 'QUA_TAI') {
-      var phut = cheDoUuTien ? 4 : (Number(cauHinh_('PHUT_NGHI_QUA_TAI')) || 20);
-      datNghi_(phut);
-      nhatKy_('QUA_TAI', 'Mọi model Gemini đều báo quá tải (503, lỗi phía Google, không phải lỗi của bạn); tạm nghỉ ' + phut + ' phút');
-      var c = CacheService.getScriptCache();
-      if (!c.get('ZALO_QUA_TAI')) { c.put('ZALO_QUA_TAI', '1', 10800); guiZalo_('⏳ Gemini đang quá tải (503), hệ thống tự thử lại sau ' + phut + ' phút.', 'thap'); }
-    } else if (String(e.message) === 'HET_GIO') {
-      nhatKy_('DUNG_SOM', 'Không đủ thời gian cho lần gọi Gemini tiếp theo, phần còn lại để lần chạy sau');
-    } else {
-      nhatKy_('LOI', String(e.message) + ' | ' + String(e.stack || '').slice(0, 300));
-      guiZalo_('❌ Bộ phận 1 gặp lỗi: ' + String(e.message).slice(0, 300), 'vua', 'BP1LOI_' + String(e.message).slice(0, 60));
-    }
-  } finally {
-    try { cacheChay.remove('DANG_CHAY_BP1'); } catch (eLock) {}
-  }
-  try { if (Date.now() - bat < 300000) donDaXong_(); } catch (e) { nhatKy_('LOI_DON_DEP', e.message); }
-  PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1');
-  nhatKy_('KET_THUC', 'Xong sau ' + Math.round((Date.now() - bat) / 1000) + ' giây: ' + JSON.stringify(bc));
-  Logger.log('Xong sau ' + Math.round((Date.now() - bat) / 1000) + ' giay: ' + JSON.stringify(bc));
-  if (cheDoUuTien) { try { sauUuTien_(); } catch (e3) { nhatKy_('UU_TIEN_LOI', e3.message); } }
-  if (!cheDoUuTien && bc.moi + bc.giai_ok + bc.loai + bc.kich_ban + bc.loi > 0) {
-    guiZalo_('📊 Bộ phận 1 (tách luồng): +' + bc.moi + ' đề mới | ' + bc.giai_ok + ' đã giải | ' +
-      bc.loai + ' bị loại | ' + bc.kich_ban + ' kịch bản mới | ' + bc.loi + ' lỗi', 'thap');
-  }
-  return cheDoUuTien ? 'UU_TIEN' : true;
+  // Lần đồng bộ từ danh sách tệp cũ chỉ tải được BoPhan1; lượt kế lấy cả mô-đun mới.
+  if (typeof chayBoNaoDieuPhoi !== 'function') return capNhatMaAppsScriptTuGitHub();
+  return chayBoNaoDieuPhoi();
 }
 
-// Tự động cập nhật cấu hình sang chế độ tách luồng Giải đề (1A) & Xây kịch bản (1B) + tự động đăng 2 video/ngày
-function damBaoCauHinhTuDong_() {
-  try {
-    var p = PropertiesService.getScriptProperties();
-    if (typeof damBaoLichDang_ === 'function' && !CacheService.getScriptCache().get('LICH_DANG_DA_KIEM')) {
-      voiKhoa_(2000, function() {
-        damBaoLichDang_();
-        CacheService.getScriptCache().put('LICH_DANG_DA_KIEM', '1', 1800);
-      });
-    }
-    if (p.getProperty('DA_CAP_NHAT_TU_DONG_V60') === '1') return;
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var ch = ss.getSheetByName(TEN_CAU_HINH);
-    if (ch && ch.getLastRow() > 0) {
-      var capNhat = {
-        DANG_TU_DONG: 'BAT',
-        DUYET_TRUOC_KHI_DANG: 'TAT',
-        SO_VIDEO_MOI_NGAY: '2',
-        GIO_DANG: '11:30,19:30',
-        TU_KIEM_TRA_VIDEO: 'BAT',
-        AI_DUYET_KICH_BAN: 'BAT',
-        TU_SUA_VIDEO_CU_DRIVE: 'BAT',
-        SO_GIAI_DE_CUNG_LUC: '3',
-        SO_KICH_BAN_CUNG_LUC: '5',
-        SO_LAN_SUA_KICH_BAN: '2',
-        DANH_SACH_MODEL: MAC_DINH.DANH_SACH_MODEL
-      };
-      var v = ch.getDataRange().getValues();
-      var daCo = {}, giaTriCu = {};
-      for (var i = 1; i < v.length; i++) {
-        var k = String(v[i][0] || '').trim();
-        if (k) { daCo[k] = i + 1; giaTriCu[k] = String(v[i][1] || '').trim(); }
-      }
-      if (!daCo.MUC_DAP_UNG_TOI_THIEU || giaTriCu.MUC_DAP_UNG_TOI_THIEU === '100') capNhat.MUC_DAP_UNG_TOI_THIEU = '85';
-      if (!daCo.DIEM_MOI_TIEU_CHI || giaTriCu.DIEM_MOI_TIEU_CHI === '10') capNhat.DIEM_MOI_TIEU_CHI = '8';
-      if (!giaTriCu.GITHUB_NHANH || /^claude\//i.test(giaTriCu.GITHUB_NHANH)) capNhat.GITHUB_NHANH = 'master';
-      Object.keys(capNhat).forEach(function (k) {
-        if (daCo[k]) ch.getRange(daCo[k], 2).setValue(capNhat[k]);
-        else ch.appendRow([k, capNhat[k]]);
-      });
-      _bo_nho_cau_hinh_ = null;
-    }
-    // Đảm bảo luôn có trigger chayVietKichBan (10 phút) (lịch đăng đã được kiểm tra bên trên)
-    try {
-      var trigs = ScriptApp.getProjectTriggers();
-      if (!trigs.some(function (t) { return t.getHandlerFunction() === 'chayBoPhan1'; })) {
-        ScriptApp.newTrigger('chayBoPhan1').timeBased().everyMinutes(15).create();
-      }
-      if (!trigs.some(function (t) { return t.getHandlerFunction() === 'chayVietKichBan'; })) {
-        ScriptApp.newTrigger('chayVietKichBan').timeBased().everyMinutes(10).create();
-      }
-    } catch (eTr) {}
-    // Tự động giải cứu các dòng DA_GIAI hoặc GITHUB đang chờ để đưa vào luồng Xây kịch bản ngay
-    var sh = ss.getSheetByName(TEN_HANG_DOI);
-    var coDeZaloCuu = false;
-    if (sh && sh.getLastRow() > 1) {
-      var dsHang = docHang_(sh);
-      dsHang.forEach(function (r) {
-        if (r.trang_thai === 'CO_VIDEO' && r.file_video && r.duyet === 'KHONG_DAT' && /AI chưa chấm được video/i.test(String(r.ghi_chu || ''))) {
-          var kqD = {};
-          try { kqD = JSON.parse(String(r.link_dang || '{}')) || {}; } catch (e0) { kqD = {}; }
-          kqD._duyet_luc = kqD._duyet_luc || Date.now();
-          ghi_(sh, r._row, {
-            duyet: 'DA_DUYET',
-            link_dang: JSON.stringify(kqD),
-            ghi_chu: 'Đã giải cứu tự động từ trạng thái nghẽn key kiểm duyệt'
-          });
-        } else if (r.trang_thai === 'LOI' && /khoDanhSachKey_/i.test(String(r.ghi_chu || ''))) {
-          var ttKhoiPhuc = (/^ZL/i.test(String(r.id || '')) && (r.chu_de === 'Đề gửi qua Zalo' || r.file_anh)) ? 'CHO_DOC' : (r.dap_an ? 'DA_GIAI' : 'MOI');
-          ghi_(sh, r._row, {
-            trang_thai: ttKhoiPhuc,
-            so_lan_loi: 0,
-            ghi_chu: ''
-          });
-          if (laUuTien_(r)) coDeZaloCuu = true;
-        } else if (r.trang_thai === 'MOI' && !String(r.de_bai || '').trim() && (r.file_anh || /^ZL/i.test(String(r.id || '')))) {
-          if (r.file_anh) { ghi_(sh, r._row, { trang_thai: 'CHO_DOC', so_lan_loi: 0, ghi_chu: '' }); if (laUuTien_(r)) coDeZaloCuu = true; }
-          else ghi_(sh, r._row, { trang_thai: 'LOI', ghi_chu: 'Thiếu nội dung đề bài và ảnh đính kèm' });
-        } else if ((r.trang_thai === 'DA_GIAI' || r.trang_thai === 'MOI') && /^TAI_CHO|^Chờ|^DANG_|^Nâng cấp cách edit/i.test(String(r.ghi_chu || ''))) {
-          ghi_(sh, r._row, { so_lan_loi: 0, ghi_chu: '' });
-        }
-      });
-    }
-    if (coDeZaloCuu && typeof henUuTien_ === 'function') {
-      try { henUuTien_(10); } catch (eH) {}
-    }
-    p.setProperty('DA_CAP_NHAT_TU_DONG_V60', '1');
-  } catch (e) {}
-}
+function damBaoCauHinhTuDong_() { caiLichBoNao_(); }
 
-/* ===================== BƯỚC A: SINH ĐỀ ===================== */
-
-// Đếm số video ngắn ĐẠT kiểm duyệt trong ngày (DA_DUYET / DA_DANG / DA_XONG hôm nay giờ VN; không tính LOI / CHO / video dài 10P)
 function demVideoDatHomNay_(hang) {
   var tz = 'Asia/Ho_Chi_Minh', homNay = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
   return (hang || []).filter(function (r) {
@@ -1622,13 +1335,9 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       aiKtCu.phien_ban = PHIEN_BAN_EDIT;
       ghi_(sh, r._row, { trang_thai: 'CO_KICH_BAN', file_kich_ban: tep.getId(), ghi_chu: '', so_lan_loi: 0, series: kb.series ? kb.series.ten : '', ai_kiem_tra: JSON.stringify(aiKtCu).slice(0, 1800) }, r.id);
       nhatKy_('KICH_BAN', r.id + ' -> đã lưu file ' + tep.getId());
-      if (laUuTien_(r)) baoZaloDe_(r, '🎬 Kịch bản xong (' + kb.canh.length + ' cảnh, khoảng ' + kb.tong_giay + ' giây). Đang dựng video, thường mất 10-20 phút...', 'thap');
+      if (laUuTien_(r)) baoZaloDe_(r, '🎬 Kịch bản xong (' + kb.canh.length + ' cảnh, khoảng ' + kb.tong_giay + ' giây). Đã vào hàng chờ dựng video.', 'thap');
       capNhatTb_('TB_KICHBAN_MS', Date.now() - t0);
       bc.kich_ban++;
-      // Bàn giao ngay sang Bộ phận 2 để dựng video tức thì mà không chờ cuối lượt chạy
-      if (typeof chonVaGuiDung_ === 'function') {
-        try { voiKhoa_(5000, function () { chonVaGuiDung_(sh); }); } catch (eDV) { nhatKy_('DUNG_LOI', eDV.message); }
-      }
     } catch (e) { xuLyLoiHang_(sh, r, e, bc); }
   }
 }
@@ -2111,7 +1820,7 @@ function doVaSuaVideoCuTrenDrive_(sh, toiDa, quetSauDrive) {
   for (var i = 0; i < hang.length && daSuaSheet < toiDa; i++) {
     var r = hang[i];
     if (!r || !r.id || daNangCapEditMoi_(r)) continue;
-    if (String(r.duyet || '') === 'DA_DUYET') continue;
+    if (String(r.duyet || '') === 'DA_DUYET' || r.duyet === 'AI_XEM') continue;
     var tt = String(r.trang_thai || '');
     if (['CO_VIDEO', 'CO_KICH_BAN', 'LOI'].indexOf(tt) < 0) continue;
     if (!String(r.de_bai || '').trim() && !r.file_kich_ban) continue;
@@ -2254,25 +1963,8 @@ function doVaSuaVideoCuTrenDrive_(sh, toiDa, quetSauDrive) {
 }
 
 /* ===================== BỘ PHẬN 1 TRÊN GITHUB (TÁCH 2 LUỒNG ĐỘC LẬP: 1A GIẢI ĐỀ & 1B XÂY KỊCH BẢN) ===================== */
-// Apps Script chỉ ĐIỀU PHỐI theo 2 luồng tách biệt:
-// - Luồng 1A (viec = 'giai'): gửi đề MOI sang GitHub chỉ để giải + kiểm chứng (45-90s) -> trả về DA_GIAI -> bàn giao ngay sang Luồng 1B.
-// - Luồng 1B (viec = 'kich_ban'): gửi đề DA_GIAI sang GitHub chỉ để xây kịch bản (60-150s) -> trả về CO_KICH_BAN -> gửi dựng video ngay.
-// Hai luồng có hạn mức song song riêng (SO_GIAI_DE_CUNG_LUC và SO_KICH_BAN_CUNG_LUC) nên việc giải đề mới KHÔNG BAO GIỜ chặn việc sinh kịch bản!
-var GH_QUA_HAN_PHUT = 28;
+// BP1 và BP2 dùng chung gói đề. BoNaoDieuPhoi chọn workflow, giới hạn run và nhịp bàn giao.
 function giaiTrenGitHub_() { return String(cauHinh_('GIAI_TREN_GITHUB') || 'BAT').toUpperCase() !== 'TAT'; }
-
-function lamBoPhan1_(sh, bc, bat, chiUuTien) {
-  // Ưu tiên đẩy Luồng 1B (Xây kịch bản) trước, sau đó đẩy Luồng 1A (Giải đề)
-  var ghKB = giaoBoPhan1ChoGitHub_(sh, chiUuTien, 'kich_ban');
-  var ghGiai = giaoBoPhan1ChoGitHub_(sh, chiUuTien, 'giai');
-  var taiCho = (ghKB.loi && ghGiai.loi) ? null : docHang_(sh).filter(function (r) {
-    return /^TAI_CHO/.test(String(r.ghi_chu)) && (r.trang_thai === 'MOI' || r.trang_thai === 'DA_GIAI');
-  }).map(function (r) { return r.id; });
-  if (ghKB.loi || ghGiai.loi || (taiCho && taiCho.length)) {
-    xuLyKichBan_(sh, bc, bat, chiUuTien, taiCho);
-    xuLyGiai_(sh, bc, bat, chiUuTien, taiCho);
-  }
-}
 
 // Dữ liệu gửi kèm: dòng đề + CAU_HINH (bỏ mục bí mật) + series/kiểu hook/bài học số liệu đã tính sẵn + bản nháp kịch bản (nếu có).
 // KEY HẾT HẠN MỨC NGÀY mà GitHub đã phát hiện ("model|6 ký tự đầu_4 cuối", không lưu key đầy đủ): nhớ đến hết ngày
@@ -2332,84 +2024,15 @@ function goiDeChoGitHub_(r, viec) {
   return s.length > 60000 ? null : s;
 }
 
-function giaoBoPhan1ChoGitHub_(sh, chiUuTien, chiViec) {
-  var bayGio = Date.now();
-  var dangChayGiai = 0, dangChayKB = 0;
-  docHang_(sh).forEach(function (r) {
-    if (r.trang_thai !== 'GITHUB') return;
-    var m = /^GITHUB\|(\d+)\|(\w+)/.exec(String(r.ghi_chu));
-    var luc = m ? Number(m[1]) : (r.cap_nhat instanceof Date ? r.cap_nhat.getTime() : 0);
-    var ttGoc = m ? m[2] : (r.dap_an ? 'DA_GIAI' : 'MOI');
-    if (bayGio - luc > GH_QUA_HAN_PHUT * 60000) {
-      ghi_(sh, r._row, { trang_thai: ttGoc, ghi_chu: 'TAI_CHO: GitHub không trả kết quả sau ' + GH_QUA_HAN_PHUT + ' phút, làm tại Apps Script' });
-      if (typeof kiemTraGitHubBiChan_ === 'function') kiemTraGitHubBiChan_();
-      nhatKy_('GITHUB_BP1', r.id + ': GitHub quá hạn (' + ttGoc + '), chuyển về làm tại Apps Script');
-    } else {
-      if (ttGoc === 'DA_GIAI') dangChayKB++;
-      else dangChayGiai++;
-    }
-  });
-  var themSS = typeof heSoSanXuat_ === 'function' ? heSoSanXuat_().them_song_song : 0;
-  var toiDaKB = (Number(cauHinh_('SO_KICH_BAN_CUNG_LUC')) || Number(cauHinh_('SO_DE_GITHUB_CUNG_LUC')) || 5) + themSS;
-  var toiDaGiai = (Number(cauHinh_('SO_GIAI_DE_CUNG_LUC')) || Number(cauHinh_('SO_DE_GITHUB_CUNG_LUC')) || 3) + themSS;
-  var ds = docHang_(sh).filter(function (r) {
-    var ghiChu = String(r.ghi_chu || '');
-    if (/^TAI_CHO/.test(ghiChu)) return false;
-    var tgCN = r.cap_nhat ? new Date(r.cap_nhat).getTime() : 0;
-    if (/^DANG_/.test(ghiChu) && isFinite(tgCN) && tgCN > 0 && (bayGio - tgCN) < 8 * 60000) return false;
-    if (chiUuTien && !laUuTien_(r)) return false;
-    if (chiViec === 'kich_ban') return r.trang_thai === 'DA_GIAI';
-    if (chiViec === 'giai') return r.trang_thai === 'MOI' && !!r.de_bai;
-    return (r.trang_thai === 'MOI' && !!r.de_bai) || r.trang_thai === 'DA_GIAI';
-  }).sort(function (a, b) {
-    var u = (laUuTien_(b) ? 1 : 0) - (laUuTien_(a) ? 1 : 0);
-    var g = (b.trang_thai === 'DA_GIAI' ? 1 : 0) - (a.trang_thai === 'DA_GIAI' ? 1 : 0);   // đã giải -> ra kịch bản trước
-    var d10 = (typeof laVideoDai_ === 'function' ? (laVideoDai_(b) ? 1 : 0) - (laVideoDai_(a) ? 1 : 0) : 0);
-    return u || g || d10 || new Date(a.cap_nhat).getTime() - new Date(b.cap_nhat).getTime();
-  });
-  var gui = 0;
-  var cacheBP1 = CacheService.getScriptCache();
-  for (var i = 0; i < ds.length; i++) {
-    var r = ds[i];
-    var laKB = r.trang_thai === 'DA_GIAI';
-    var viec = laKB ? 'kich_ban' : 'giai';
-    if (laKB && dangChayKB >= toiDaKB && !laUuTien_(r)) continue;
-    if (!laKB && dangChayGiai >= toiDaGiai && !laUuTien_(r)) continue;
-    var khoaCache = 'GUI_BP1_' + viec.toUpperCase() + '_' + r.id;
-    if (cacheBP1.get(khoaCache)) continue;   // đã gửi bước này trong 90 giây gần đây -> không gửi trùng
-    var duLieu = goiDeChoGitHub_(r, viec);
-    if (!duLieu) { ghi_(sh, r._row, { ghi_chu: 'TAI_CHO: dữ liệu đề quá lớn để gửi GitHub' }); continue; }
-    cacheBP1.put(khoaCache, '1', 90);
-    var trangThaiCu = r.trang_thai, ghiChuCu = r.ghi_chu;
-    ghi_(sh, r._row, { trang_thai: 'GITHUB', ghi_chu: 'GITHUB|' + Date.now() + '|' + trangThaiCu + ' (đang ' + (laKB ? 'viết kịch bản [Bộ phận 2]' : 'giải đề [Bộ phận 1]') + ' trên GitHub)' });
-    var wfRieng = laKB ? 'viet-kich-ban.yml' : 'bo-phan-1.yml';
-    var kq = guiWorkflowGitHub_({ id: r.id, de: duLieu }, wfRieng);
-    if (laKB && !kq.ok && kq.ma === 404) kq = guiWorkflowGitHub_({ id: r.id, de: duLieu }, 'bo-phan-1.yml');
-    if (!kq.ok) {
-      cacheBP1.remove(khoaCache);
-      ghi_(sh, r._row, { trang_thai: trangThaiCu, ghi_chu: ghiChuCu });
-      nhatKy_('GITHUB_BP1_LOI', 'Không gửi được đề sang GitHub (' + kq.loi + '), lần này làm tại Apps Script');
-      guiZaloMotLan_('GH_BP1_' + kq.ma + '_' + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd'), '⚠️ Không gửi được đề sang GitHub (' + String(kq.loi).slice(0, 150) + '). Hệ thống tạm làm tại Apps Script.');
-      return { gui: gui, loi: kq.loi };
-    }
-    nhatKy_('GITHUB_BP1', r.id + ' -> đã gửi GitHub ' + (laKB ? 'Bộ phận 2 (viet-kich-ban.yml)' : 'Bộ phận 1 (bo-phan-1.yml)') + (laUuTien_(r) ? ' (ưu tiên)' : ''));
-    if (laKB) dangChayKB++; else dangChayGiai++;
-    gui++;
-  }
-  return { gui: gui, dang_chay_kb: dangChayKB, dang_chay_giai: dangChayGiai };
-}
-
-// Kết quả từ GitHub (doPost, loai = bo_phan_1):
-// - Nếu vừa xong Luồng 1A (Giải đề: f.trang_thai === 'DA_GIAI') -> lưu đáp án vào Sheet và ĐẨY NGAY SANG LUỒNG 1B (Xây kịch bản) trong tích tắc!
-// - Nếu vừa xong Luồng 1B (Xây kịch bản: f.trang_thai === 'CO_KICH_BAN') -> lưu kịch bản lên Drive và ĐẨY NGAY SANG BỘ PHẬN 2 (Dựng video)!
 function nhanKetQuaBoPhan1_(sh, d) {
   if (d && d.id && CacheService.getScriptCache().get('DA_BO_' + d.id)) return { ok: true, lap: true };
   var r = null;
   docHang_(sh).forEach(function (x) { if (x.id === d.id) r = x; });
   if (!r) return { ok: false, loi: 'KHONG_TIM_THAY' };
-  if (r.trang_thai !== 'GITHUB') return { ok: true, lap: true };
-  var m = /^GITHUB\|\d+\|(\w+)/.exec(String(r.ghi_chu));
-  var cu = m ? m[1] : 'MOI';
+  var laKB = trangThaiBoNao_(r) === 'DANG_KICH_BAN';
+  if (r.trang_thai !== 'GITHUB' || String(d.lan_giao || '') !== String(r.lan_giao || '') ||
+      (d.viec && d.viec !== (laKB ? 'kich_ban' : 'giai'))) return {ok:true, lap:true};
+  var cu = laKB ? 'DA_GIAI' : 'MOI';
   (d.nhat_ky || []).slice(-30).forEach(function (x) { nhatKy_(x[1], '[GitHub] ' + x[2]); });
   try { ghiKeyHetNgay_(d.het_ngay); } catch (eHN) {}
   try { ghiModelChan403_(d.model_chan); } catch (eMC) {}
@@ -2432,6 +2055,12 @@ function nhanKetQuaBoPhan1_(sh, d) {
   var f = {};
   Object.keys(d.hang).forEach(function (k) { if (COT.indexOf(k) >= 0 && k !== 'id' && k !== 'cap_nhat') f[k] = d.hang[k]; });
   if (!f.trang_thai) f.trang_thai = cu;
+  if (f.trang_thai !== cu) { f.so_lan_thu_lai = 0; f.bp_thu_lai = ''; }
+  if (cu === 'DA_GIAI' && (['XOA','LOI_CAN_XEM'].indexOf(f.trang_thai) >= 0 || (f.trang_thai === 'CO_KICH_BAN' && !d.kich_ban))) {
+    f.trang_thai = 'LOI_CAN_XEM';
+    f.bp_thu_lai = 2;
+    f.ghi_chu = (f.ghi_chu || 'BP2 thiếu tệp kịch bản') + ' ' + (d.run_url || '');
+  }
   if (f.ghi_chu === undefined) f.ghi_chu = '';
   if (d.kich_ban) {
     try {
@@ -2457,6 +2086,7 @@ function nhanKetQuaBoPhan1_(sh, d) {
   if (d.loi === 'QUA_TAI') datNghi_(10);
   ghi_(sh, r._row, f, r.id);
   SpreadsheetApp.flush();
+  if (f.trang_thai === 'LOI_CAN_XEM') guiZaloMotLan_('BP2_LOI_' + r.id, r.id + ' ' + f.ghi_chu);
   if (d.series_ghi && typeof ghiTapCuoiSeries_ === 'function') { try { ghiTapCuoiSeries_(d.series_ghi.se, d.series_ghi.tieu_de); } catch (e) {} }
   (d.zalo || []).forEach(function (z) { try { if (z.id) baoZaloDe_(r, z.noi_dung, z.muc); else guiZalo_(z.noi_dung, z.muc, z.khoa); } catch (e) {} });
   nhatKy_('GITHUB_BP1', r.id + ' -> ' + f.trang_thai + (d.kich_ban ? ' (đã lưu kịch bản)' : '') + (d.loi ? ' | ' + d.loi : ''));
@@ -2464,18 +2094,6 @@ function nhanKetQuaBoPhan1_(sh, d) {
   if (f.trang_thai === 'XOA' && /^BO_KHONG_DAT/.test(String(f.ghi_chu || '')) && laUuTien_(r)) baoZaloDe_(r, '❌ Đề ' + r.id + ' không đạt kiểm duyệt yêu cầu nên hệ thống đã bỏ (không dựng video): ' + String(f.ghi_chu).slice(0, 220), 'cao');
   else if ((f.trang_thai === 'LOAI' || f.trang_thai === 'XOA' || f.trang_thai === 'LOI') && laUuTien_(r)) baoZaloDe_(r, (f.trang_thai !== 'LOI' ? '❌ Không làm video cho đề ' : '⚠️ Đề ') + r.id + (f.trang_thai !== 'LOI' ? ' (không có đáp án chắc chắn, đã xóa khỏi danh sách): ' : ' tạm dừng vì lỗi: ') + String(f.ghi_chu || '').slice(0, 200), 'cao');
   if (f.trang_thai === 'XOA' || f.trang_thai === 'LOAI') PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1');   // dọn khỏi sheet ở lần chạy tới
-  // CHUYỂN TIẾP TỨC THÌ GIỮA CÁC LUỒNG:
-  // 1) Có kịch bản (CO_KICH_BAN) -> gửi dựng video ngay lập tức
-  if (f.trang_thai === 'CO_KICH_BAN' && typeof chonVaGuiDung_ === 'function') {
-    try { voiKhoa_(5000, function () { chonVaGuiDung_(sh); }); } catch (e) { nhatKy_('DUNG_LOI', e.message); }
-  }
-  // 2) Đẩy ngay đề vừa giải xong (DA_GIAI) vào Luồng 1B (Xây kịch bản) và nạp đề kế tiếp vào Luồng 1A (Giải đề)
-  try {
-    if (!dangNghi_()) {
-      giaoBoPhan1ChoGitHub_(sh, false, 'kich_ban');
-      giaoBoPhan1ChoGitHub_(sh, false, 'giai');
-    }
-  } catch (e) { nhatKy_('GITHUB_BP1_LOI', e.message); }
   PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1');
   return { ok: true };
 }
@@ -2536,12 +2154,12 @@ function xuLyLoiHang_(sh, r, e, bc) {
   var f = { so_lan_loi: n, ghi_chu: String(e.message).slice(0, 300) };
   if (n >= Number(cauHinh_('MAX_LAN_LOI'))) {
     f.trang_thai = 'LOI';
-    // kịch bản sửa nhiều lần vẫn không hợp lệ: không để đề nằm chờ mãi -> xóa đề, hệ thống làm đề mới
-    if (/^KICH_BAN_KHONG_HOP_LE/.test(msg)) { f.trang_thai = 'XOA'; f.ghi_chu = ('BO_KHONG_DAT (kịch bản): sửa ' + n + ' lần vẫn lỗi - ' + msg).slice(0, 300); PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1'); }
+    // Giữ đề và lý do để kiểm tra cổng BP2 sau khi hết lượt sửa.
+    if (/^KICH_BAN_KHONG_HOP_LE/.test(msg)) { f.trang_thai = 'LOI_CAN_XEM'; f.bp_thu_lai = 2; f.ghi_chu = ('BO_KHONG_DAT (kịch bản): sửa ' + n + ' lần vẫn lỗi - ' + msg).slice(0, 300); PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1'); }
   }
   ghi_(sh, r._row, f);
   bc.loi++;
-  if (f.trang_thai === 'XOA' && laUuTien_(r)) baoZaloDe_(r, '❌ Đề ' + r.id + ': kịch bản sửa ' + n + ' lần vẫn chưa đạt nên hệ thống bỏ đề này. Bạn có thể gửi lại đề rõ hơn.', 'cao');
+  if (f.trang_thai === 'LOI_CAN_XEM' && typeof viecTaiChoBoNao_ !== 'undefined') guiZaloMotLan_('BP2_LOI_' + r.id, r.id + ' ' + f.ghi_chu);
   if (f.trang_thai === 'LOI' && laUuTien_(r)) baoZaloDe_(r, '⚠️ Đề ' + r.id + ' gặp lỗi ' + n + ' lần nên tạm dừng: ' + String(e.message).slice(0, 160) + '\nCác đề khác chạy tiếp. Bạn có thể gửi lại đề.', 'cao');
 }
 
@@ -2587,6 +2205,7 @@ function docHang_(sh) {
       }
       o[COT[j]] = val;
     }
+    if (typeof docTrangThaiCu_ === 'function') docTrangThaiCu_(o);
     out.push(o);
   }
   return out;
@@ -2602,8 +2221,12 @@ function ghi_(sh, row, f, expectId) {
     if (timThay < 2) return;
     row = timThay;
   }
+  if (typeof chuanBiGhiTrangThai_ === "function") f = chuanBiGhiTrangThai_(sh, row, f);
   f.cap_nhat = new Date();
-  Object.keys(f).forEach(function (k) {
+  // Ghi kết quả/ID Drive trước khi công khai trạng thái bàn giao.
+  var keys = Object.keys(f).filter(function(k) { return k !== 'trang_thai'; });
+  if (f.trang_thai !== undefined) keys.push('trang_thai');
+  keys.forEach(function (k) {
     var c = COT.indexOf(k);
     if (c >= 0) {
       var val = f[k];
@@ -2617,6 +2240,7 @@ function ghi_(sh, row, f, expectId) {
   });
 }
 function themHang_(sh, o) {
+  if (typeof trangThaiBoNao_ === "function") o = Object.assign({}, o, {trang_thai: trangThaiBoNao_(o)});
   sh.appendRow(COT.map(function (k) {
     var val = o[k] === undefined ? '' : o[k];
     if (k === 'dap_an' || k === 'dap_an_hien') val = dapAnVanBan_(val);
@@ -2771,9 +2395,7 @@ function datChieuCaoHang_(sh, hangDau, bang, rongCot) {
 function onOpen() {
   var ui = SpreadsheetApp.getUi();
   ui.createMenu('🎬 Video AI')
-    .addItem('▶ Chạy Bộ phận 1 ngay (tách luồng)', 'chayBoPhan1')
-    .addItem('✍️ Chạy riêng Xây kịch bản (DA_GIAI -> CO_KICH_BAN)', 'chayVietKichBan')
-    .addItem('🧮 Chạy riêng Giải đề (MOI -> DA_GIAI)', 'chayGiaiDe')
+    .addItem('▶ Chạy Bộ não Điều phối BP5 → BP0', 'chayBoNaoDieuPhoi')
     .addSubMenu(ui.createMenu('📚 Nguồn đề')
       .addItem('🌐 Ưu tiên đề có thật trên internet, thiếu mới dùng AI', 'cheDoUuTienInternet')
       .addItem('🌐 Chỉ lấy đề trên internet', 'cheDoChiInternet')
@@ -3301,6 +2923,7 @@ function caiDatTriggerDon() {
 function chayDonDep() {
   var khoa = LockService.getScriptLock();
   if (!khoa.tryLock(5000)) return;   // đang có lần chạy chính thì bỏ qua
+  _GIU_KHOA_++;
   var canVe = false, tinDon = '', chatDon = '';
   try {
     var p = PropertiesService.getScriptProperties();
@@ -3313,7 +2936,7 @@ function chayDonDep() {
     var can = p.getProperty('CAN_DONG_BO') === '1';
     if (donDaXong_() > 0 || can) { p.deleteProperty('CAN_DONG_BO'); canVe = true; }
     if (typeof kiemVaDonScriptProperties_ === 'function') kiemVaDonScriptProperties_();
-  } finally { khoa.releaseLock(); }
+  } finally { _GIU_KHOA_--; khoa.releaseLock(); }
   // Vẽ lại bảng DOC_DE / DOC_KICH_BAN bên ngoài khóa để không bao giờ chặn lệnh Zalo của người dùng
   if (tinDon && chatDon) guiZaloToi_(chatDon, tinDon);
   if (canVe) dongBoBangDoc();
@@ -3502,7 +3125,7 @@ function taoDeVideoDai10Phut_(goiYChuDe, chat, laTuDongNgay) {
 }
 
 // Tự động đồng bộ toàn bộ 10 tệp .gs (bao gồm KhoKey.gs) và tệp kê khai appsscript.json (giữ nguyên mọi Dịch vụ/Thư viện như YouTube, YouTubeAnalytics) từ nhánh master trên GitHub thẳng vào dự án Google Apps Script hiện tại
-var DANH_SACH_TEP_GS_ = ['BoPhan1', 'PromptKichBan', 'KiemTraHinh', 'HinhHoc', 'BoPhan2', 'NangCao', 'DangVideo', 'SanPham', 'ZaloDeBai', 'KhoKey', 'SanKhau'];   // v96: + SanKhau.gs (lần đầu cần bấm đồng bộ 2 lần)
+var DANH_SACH_TEP_GS_ = ['BoPhan1', 'PromptKichBan', 'KiemTraHinh', 'HinhHoc', 'BoPhan2', 'NangCao', 'DangVideo', 'SanPham', 'ZaloDeBai', 'KhoKey', 'SanKhau', 'BoNaoDieuPhoi'];   // v96: + SanKhau.gs (lần đầu cần bấm đồng bộ 2 lần)
 function capNhatMaAppsScriptTuGitHub() {
   Logger.log('🚀 [BƯỚC 1/4] Bắt đầu đồng bộ mã từ GitHub...');
   var p = PropertiesService.getScriptProperties();
@@ -3713,12 +3336,7 @@ function tuDongDongBoCodeTuGitHub_() {
   }
 }
 
-// Giao việc sinh/tìm đề mới (Bộ phận 0) sang workflow sinh-de.yml trên GitHub; nếu lỗi/404 mới làm tại chỗ.
-function sinhDeQuaGitHub_(sh, bc) {
-  if (String(cauHinh_('CHE_DO_NGUON') || '') === 'KHO_DE') return false;
-  var cacheSD = CacheService.getScriptCache();
-  if (cacheSD.get('DANG_SINH_DE_GH')) return true;
-  var hang = docHang_(sh);
+function chanNguonBoNao_(hang) {
   var homNay = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyyMMdd');
   var p = PropertiesService.getScriptProperties();
   var can10p = String(cauHinh_('VIDEO_10P_MOI_NGAY') || 'BAT').toUpperCase() !== 'TAT' && p.getProperty('DA_SINH_10P_NGAY') !== homNay;
@@ -3726,10 +3344,20 @@ function sinhDeQuaGitHub_(sh, bc) {
   var chiTieuDat = Math.max(1, Number(cauHinh_('CHI_TIEU_VIDEO_DAT_NGAY')) || 3);
   var hsSX = typeof heSoSanXuat_ === 'function' ? heSoSanXuat_() : { he_so: 1 };
   var thieuCho = demVideoDatHomNay_(hang) < chiTieuDat && dangCho < Math.min(10, Math.round(Number(cauHinh_('NGUONG_HANG_DOI')) * hsSX.he_so));
-  if (!can10p && !thieuCho) return false;
+  if (!can10p && !thieuCho) return 'đã đủ chỉ tiêu ngày hoặc đủ hàng nguồn';
   var choDung = hang.filter(function (r) { return r.trang_thai === 'CO_KICH_BAN' || r.trang_thai === 'DANG_DUNG'; }).length;
   var toiDaCho = Number(cauHinh_('TOI_DA_CHO_DUNG_VIDEO'));
-  if (!can10p && toiDaCho > 0 && choDung >= toiDaCho) return false;
+  if (!can10p && toiDaCho > 0 && choDung >= toiDaCho) return 'đã đủ hàng chờ dựng (' + choDung + ')';
+
+  return '';
+}
+
+// Giao BP0 sau khi bộ điều phối đã kiểm tra hạn mức và giữ chỗ.
+function sinhDeQuaGitHub_(sh, bc) {
+  if (String(cauHinh_('CHE_DO_NGUON') || '') === 'KHO_DE') return false;
+  var hang = docHang_(sh);
+  var p = PropertiesService.getScriptProperties();
+  if (chanNguonBoNao_(hang)) return false;
 
   var ch = {};
   var chSh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_CAU_HINH);
@@ -3743,6 +3371,7 @@ function sinhDeQuaGitHub_(sh, bc) {
   Object.keys(tatCaP).forEach(function (k) { if (laKhoaDemBP0_(k)) propsGui[k] = String(tatCaP[k]); });
   KHOA_DEM_BP0_.forEach(function (k) { if (propsGui[k] === undefined && p.getProperty(k) !== null) propsGui[k] = String(p.getProperty(k)); });
   var duLieu = JSON.stringify({
+    lan_giao: p.getProperty('BP0_GIU_DEN'),
     cau_hinh: ch,
     props: propsGui,
     gan_day: hang.slice(-40).map(function (r) { return { id: r.id, trang_thai: r.trang_thai, chu_de: String(r.chu_de || '').slice(0, 60), de_bai: String(r.de_bai || '').slice(0, 120), ma_bam: r.ma_bam || '', mon: r.mon || '', nguon: String(r.nguon || '').slice(0, 60) }; }),
@@ -3751,19 +3380,18 @@ function sinhDeQuaGitHub_(sh, bc) {
   if (duLieu.length <= 60000 && typeof guiWorkflowGitHub_ === 'function') {
     var gh = guiWorkflowGitHub_({ mon: ch.CHU_DE_VIDEO || 'XEN_KE', du_lieu: duLieu }, 'sinh-de.yml');
     if (gh && gh.ok) {
-      cacheSD.put('DANG_SINH_DE_GH', '1', 300);
       nhatKy_('SINH_DE_GH', 'Đã giao Bộ phận 0 (sinh-de.yml) tìm/sáng tác đề mới trên GitHub');
       return true;
     }
   }
-  // Lùi về Apps Script nếu workflow sinh-de.yml chưa có hoặc gửi lỗi
-  sinhDeNeuCan_(sh, bc);
-  return false;
+  throw new Error(gh ? gh.loi : 'Dữ liệu BP0 vượt giới hạn dispatch');
 }
 
 // Nhận đề mới từ sinh-de.yml (doPost loai = 'them_de'), lưu vào Sheet rồi đẩy ngay vào Bộ phận 1 (bo-phan-1.yml)
 function nhanThemDeTuGitHub_(sh, d) {
-  try { CacheService.getScriptCache().remove('DANG_SINH_DE_GH'); } catch (eC) {}
+  var props = PropertiesService.getScriptProperties();
+  if (d.lan_giao && String(d.lan_giao) === props.getProperty('BP0_GIU_DEN'))
+    props.setProperty('BP0_GIU_DEN', String(Date.now() + 60000));
   (d.nhat_ky || []).slice(-20).forEach(function (x) { nhatKy_(x[1], '[GitHub] ' + x[2]); });
   if (d.loi) nhatKy_('SINH_DE_GH_LOI', String(d.loi).slice(0, 200));
   var p = PropertiesService.getScriptProperties();
@@ -3796,7 +3424,7 @@ function nhanThemDeTuGitHub_(sh, d) {
   if (them > 0) {
     SpreadsheetApp.flush();
     nhatKy_('SINH_DE_GH', 'Đã nhận ' + them + ' đề mới từ Bộ phận 0 -> đẩy ngay sang Bộ phận 1 (bo-phan-1.yml)');
-    try { if (!dangNghi_()) giaoBoPhan1ChoGitHub_(sh, coDeUuTien_(docHang_(sh)), 'giai'); } catch (eG) {}
+
     p.setProperty('CAN_DONG_BO', '1');
   }
   return { ok: true, them: them };

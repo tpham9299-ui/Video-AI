@@ -476,7 +476,7 @@ def bao_ve_apps_script(id_video, ket_qua):
     for lan in range(7):
         try:
             # requests đổi POST thành GET khi bị chuyển hướng 302 (đúng cách Apps Script trả kết quả)
-            kq = requests.post(url, json={"token": bi, "loai": "dang", "id": id_video, "ket_qua": ket_qua}, timeout=120).text
+            kq = requests.post(url, json={"lan_giao": env("LAN_GIAO"), "token": bi, "loai": "dang", "id": id_video, "ket_qua": ket_qua}, timeout=120).text
         except Exception as e:
             kq = str(e)
         print("Báo kết quả lần %d: %s" % (lan + 1, kq[:200]))

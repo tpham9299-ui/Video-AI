@@ -5,6 +5,10 @@ run-name: "Đăng ${{ inputs.id }}"
 on:
   workflow_dispatch:
     inputs:
+      lan_giao:
+        description: 'Mã lượt giao từ bộ điều phối'
+        type: string
+        default: ''
       viec:
         description: 'dang'
         type: string
@@ -29,6 +33,7 @@ jobs:
     env:
       RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
       APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
+      LAN_GIAO: ${{ inputs.lan_giao }}
       DUNG_VIDEO_SECRET: ${{ secrets.DUNG_VIDEO_SECRET }}
       DANG_JSON: ${{ inputs.dang }}
       ID_VIDEO: ${{ inputs.id }}
@@ -77,7 +82,7 @@ jobs:
           python3 - <<'PY'
           import json, os
           p = {
-              "token": os.environ["DUNG_VIDEO_SECRET"],
+              "lan_giao": os.environ.get("LAN_GIAO", ""), "token": os.environ["DUNG_VIDEO_SECRET"],
               "loai": "dang",
               "id": os.environ["ID_VIDEO"],
               "ket_qua": {"_github_loi": "GitHub workflow dang-video gap loi: https://github.com/%s/actions/runs/%s" % (os.environ.get("GITHUB_REPOSITORY", ""), os.environ.get("GITHUB_RUN_ID", ""))},

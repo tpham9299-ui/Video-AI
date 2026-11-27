@@ -155,7 +155,10 @@ function nhanZalo_(e, lanThu) {
     }
     nhoNguoiNhan_(chat);   // thông báo chung của hệ thống sẽ gửi qua bot này cho bạn
     if (/^\/(giup|help)\b/.test(lenh)) { guiZaloToi_(chat, huongDanZalo_()); return tra; }
-    if (/^\/(tt|trangthai|trạng thái)\b/.test(lenh) || lenh === 'tt') { guiZaloToi_(chat, tinhTrangUuTien_()); return tra; }
+    if (/^\/(trangthai|hethong)$/.test(lenh)) { guiZaloToi_(chat, nhipBoNao_('xem')); return tra; }
+    if (/^\/duyetkb\s+/i.test(chu)) { guiZaloToi_(chat, duyetKichBanBoNao_(chu.split(/\s+/)[1])); return tra; }
+    if (lenh === '/xaket') { guiZaloToi_(chat, nhipBoNao_('xa')); return tra; }
+    if (/^\/(tt|trạng thái)\b/.test(lenh) || lenh === 'tt') { guiZaloToi_(chat, tinhTrangUuTien_()); return tra; }
     if (/^\/(key|keys|khokey|kiemtrakey)\b/.test(lenh) && typeof thongTinKhoKeyZalo_ === 'function') { guiZaloToi_(chat, thongTinKhoKeyZalo_(true)); return tra; }
     if (/^\/huy\b/.test(lenh)) { guiZaloToi_(chat, huyUuTien_(chat)); return tra; }
     // lệnh (một hoặc NHIỀU dòng: /duyet /sua /bo /cho /sanpham /xacnhan /huysp...; "duyệt <mã>" không dấu gạch cũng hiểu) (SanPham.gs)
@@ -205,6 +208,7 @@ function dsNguoiGuiDe_() {
 function huongDanZalo_() {
   return '🤖 Gửi cho mình ẢNH CHỤP một đề toán (xác suất hoặc toán thực tế) hoặc GÕ đề, mình sẽ ưu tiên làm video hướng dẫn ngay.\n' +
     'Mẹo: chụp thẳng, rõ số; ảnh có nhiều câu thì ghi chú kèm ảnh, ví dụ "câu 3, lớp 12".\n' +
+    '/hethong xem hàng đợi và run GitHub | /xaket phục hồi bài quá hạn | /duyetkb <mã> duyệt kịch bản\n' +
     'Lệnh: /tt tiến độ | /key kiểm tra số lượng key Gemini còn xài được | /huy hủy đề vừa gửi | /id mã chat | /token hạn token GitHub | /phongcach tỉ lệ duyệt theo phong cách\n' +
     'Hình học khó: /hinhhoc [phang|khonggian] [10|11|12] [chungminh|tinh] - sáng tác ngay một đề và làm video ưu tiên\n' +
     'Duyệt video: /cho xem video chờ duyệt | /duyet [mã] | /sua [mã] <góp ý> | /bo [mã] | /hay [mã] lưu mẫu vàng | /donvideoloi dọn MP4 đã chấm không đạt vào Thùng rác Drive\n' +
@@ -243,13 +247,7 @@ function huyUuTien_(chat) {
 // Trigger một lần do nhanZalo_ / sauUuTien_ đặt. Toàn bộ việc nằm trong chayBoPhan1 (tự vào chế độ ưu tiên).
 function chayUuTien() {
   xoaTriggerUuTien_();
-  henUuTien_(370);   // hẹn sẵn dự phòng nếu Apps Script bị ngắt ở 6 phút
-  var kq = chayBoPhan1();
-  if (kq === false) henUuTien_(90);          // đang có lần chạy khác giữ khóa: hẹn lại
-  else {
-    xoaTriggerUuTien_();
-    if (kq !== 'UU_TIEN') sauUuTien_();      // kiểm tra việc dựng và hẹn lại nếu còn
-  }
+  return chayBoNaoDieuPhoi();
 }
 
 function xoaTriggerUuTien_() {
@@ -258,20 +256,6 @@ function xoaTriggerUuTien_() {
 function henUuTien_(giay) {
   xoaTriggerUuTien_();
   ScriptApp.newTrigger('chayUuTien').timeBased().after(Math.max(10, giay) * 1000).create();
-}
-
-// Sau mỗi lần chạy ưu tiên: kịch bản xong -> gửi dựng ngay; còn việc -> hẹn chạy tiếp.
-function sauUuTien_() {
-  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
-  var hang = docHang_(sh);
-  if (hang.some(function (r) { return laUuTien_(r) && r.trang_thai === 'CO_KICH_BAN'; }) && typeof chayBoPhan2 === 'function') {
-    try { chayBoPhan2(); } catch (e) { nhatKy_('UU_TIEN_LOI', 'gửi dựng: ' + e.message); }
-  }
-  if (coDeUuTien_(hang) || (typeof coViecSanPham_ === 'function' && coViecSanPham_())) {
-    var nghiDen = Number(PropertiesService.getScriptProperties().getProperty('NGHI_DEN') || 0);
-    var giay = nghiDen > Date.now() ? Math.ceil((nghiDen - Date.now()) / 1000) + 30 : 60;
-    henUuTien_(giay);
-  }
 }
 
 /* ===================== ĐỌC ĐỀ TỪ ẢNH / CHỮ ===================== */

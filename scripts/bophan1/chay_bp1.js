@@ -104,6 +104,7 @@ function kiemSanKhauPython(kb, options) {
         {input: JSON.stringify(kb), timeout: 30000, stdio: ['pipe', 'pipe', 'pipe'], env: {...process.env, PYTHONIOENCODING: 'utf-8'}});
       return JSON.parse(ra.toString('utf8'));
     } catch (e) {
+      if (e.code !== 'ENOENT' && e.status !== 2) console.error('Kiểm sân khấu Python:', String(e.stderr || e.message).slice(-600));
       if (e && e.status === 2 && e.stdout) { try { return JSON.parse(e.stdout.toString('utf8')); } catch (e2) { return null; } }
     }
   }

@@ -44,88 +44,39 @@ function caiDatNangCao() {
 // chỉ lùi về trigger Apps Script nếu GitHub chưa bật/lỗi. Trả true nếu đã giao cho AI xem (chưa gửi bạn duyệt).
 function giaoAiXemVideo_(sh, r, d) {
   if (chNC_('TU_KIEM_TRA_VIDEO').toUpperCase() === 'TAT' || !d.anh_kt) return false;
-  ghi_(sh, r._row, { duyet: 'AI_XEM' });
-  try {
-    if (typeof guiWorkflowGitHub_ === 'function' && typeof giaiTrenGitHub_ === 'function' && giaiTrenGitHub_()) {
-      var cacheKT = CacheService.getScriptCache();
-      if (!cacheKT.get('GUI_AI_XEM_' + r.id)) {
-        var ch = {};
-        var chSh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_CAU_HINH);
-        if (chSh) chSh.getDataRange().getValues().slice(1).forEach(function (x) {
-          var k = String(x[0] || '').trim();
-          if (k && String(x[1]) !== '' && !/TOKEN|SECRET|KEY|MAT_KHAU|PASS|CLIENT/i.test(k)) ch[k] = String(x[1]).slice(0, 1000);
-        });
-        var sp = null;
-        try { sp = r.san_pham ? JSON.parse(String(r.san_pham)) : null; } catch (eSp) { sp = null; }
-        var qt = [];
-        try { qt = quyTacHocChoKiemDuyet_() || []; } catch (eQt) { qt = []; }
-        var goi = JSON.stringify({
-          hang: {
-            id: r.id, lop: r.lop || '', mon: r.mon || '',
-            de_bai: String(r.de_bai || '').slice(0, 2000), mo_ta_hinh: String(r.mo_ta_hinh || '').slice(0, 800),
-            dap_an: r.dap_an, dap_an_hien: r.dap_an_hien, anh_kt: String(d.anh_kt || ''), file_kich_ban: String(r.file_kich_ban || ''),
-            file_anh: String(r.file_anh || '')
-          },
-          san_pham: sp ? { ten: sp.ten, gia_ban: sp.gia_ban, anh_id: (sp.anh_id || []).slice(0, 2) } : null,
-          quy_tac_kd: qt.slice(0, 15),
-          cau_hinh: ch
-        });
-        if (goi.length <= 60000) {
-          var gh = guiWorkflowGitHub_({ id: r.id, du_lieu: goi }, 'kiem-tra-video.yml');
-          if (gh && gh.ok) {
-            cacheKT.put('GUI_AI_XEM_' + r.id, '1', 300);
-            nhatKy_('AI_XEM_GH', r.id + ': đã giao sang workflow kiem-tra-video.yml trên GitHub');
-            henKiemTraVideo_(660);
-            return true;
-          }
-        }
-      }
-    }
-  } catch (eGh) {}
-  henKiemTraVideo_(15);
+  var ch = {};
+  var chSh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_CAU_HINH);
+  if (chSh) chSh.getDataRange().getValues().slice(1).forEach(function (x) {
+    var k = String(x[0] || '').trim();
+    if (k && String(x[1]) !== '' && !/TOKEN|SECRET|KEY|MAT_KHAU|PASS|CLIENT/i.test(k)) ch[k] = String(x[1]).slice(0, 1000);
+  });
+  var sp = null;
+  try { sp = r.san_pham ? JSON.parse(String(r.san_pham)) : null; } catch (eSp) { sp = null; }
+  var qt = [];
+  try { qt = quyTacHocChoKiemDuyet_() || []; } catch (eQt) { qt = []; }
+  var goi = JSON.stringify({
+    hang: {
+      id: r.id, lop: r.lop || '', mon: r.mon || '',
+      de_bai: String(r.de_bai || '').slice(0, 2000), mo_ta_hinh: String(r.mo_ta_hinh || '').slice(0, 800),
+      dap_an: r.dap_an, dap_an_hien: r.dap_an_hien, anh_kt: String(d.anh_kt || ''), file_kich_ban: String(r.file_kich_ban || ''),
+      file_anh: String(r.file_anh || '')
+    },
+    san_pham: sp ? { ten: sp.ten, gia_ban: sp.gia_ban, anh_id: (sp.anh_id || []).slice(0, 2) } : null,
+    quy_tac_kd: qt.slice(0, 15),
+    cau_hinh: ch
+  });
+  if (goi.length > 60000) throw new Error('Dữ liệu BP4 quá lớn');
+  var gh = guiWorkflowGitHub_({id: r.id, lan_giao:r.lan_giao, du_lieu: goi}, 'kiem-tra-video.yml');
+  if (!gh.ok) throw new Error(gh.loi);
+  ghi_(sh, r._row, {trang_thai: 'DANG_KIEM_DUYET', duyet: 'AI_XEM'}, r.id);
   return true;
 }
-function henKiemTraVideo_(giay) {
-  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'chayKiemTraVideo') ScriptApp.deleteTrigger(t); });
-  ScriptApp.newTrigger('chayKiemTraVideo').timeBased().after(Math.max(10, giay) * 1000).create();
-}
-function henDangVideoS_(giay) {
-  try {
-    if (!ScriptApp.getProjectTriggers().some(function(t) { return t.getHandlerFunction() === 'kiemTraDangSauDuyet'; }))
-      ScriptApp.newTrigger('kiemTraDangSauDuyet').timeBased().after(Math.max(5, giay) * 1000).create();
-  } catch (eT) {
-    try { if (typeof chayDangVideo === 'function') chayDangVideo(); } catch (eDV) {}
-  }
-}
+// Các callback chỉ cập nhật hàng đợi. Trigger chung quét ở nhịp kế tiếp.
+function henKiemTraVideo_() { caiLichBoNao_(); }
+function henDangVideoS_() { caiLichBoNao_(); }
 
-function chayKiemTraVideo() {
-  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'chayKiemTraVideo') ScriptApp.deleteTrigger(t); });
-  var cacheKT = CacheService.getScriptCache();
-  if (cacheKT.get('DANG_CHAY_KT_VIDEO')) { henKiemTraVideo_(90); return; }
-  cacheKT.put('DANG_CHAY_KT_VIDEO', '1', 240);
-  var conViec = false;
-  try {
-    _bat_dau_chay_ = Date.now();
-    _bo_nho_cau_hinh_ = null;
-    var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
-    if (!sh) return;
-    var ds = docHang_(sh).filter(function (r) { return r.trang_thai === 'CO_VIDEO' && String(r.duyet) === 'AI_XEM' && !cacheKT.get('DA_BO_' + r.id); });
-    for (var i = 0; i < ds.length; i++) {
-      if (cacheKT.get('DA_BO_' + ds[i].id) || cacheKT.get('GUI_AI_XEM_' + ds[i].id)) continue;
-      if (!conDuGoiGemini_()) { conViec = true; break; }
-      xuLyAiXem_(sh, ds[i]);
-    }
-  } catch (e) {
-    nhatKy_('AI_XEM_LOI', String(e.message).slice(0, 300));
-    conViec = true;
-  } finally { try { cacheKT.remove('DANG_CHAY_KT_VIDEO'); } catch (eL) {} }
-  if (conViec) henKiemTraVideo_(120);
-  try { if (typeof sauUuTien_ === 'function') sauUuTien_(); } catch (e2) {}
-}
+function chayKiemTraVideo() { return chayBoNaoDieuPhoi(); }
 
-// BỘ PHẬN KIỂM DUYỆT YÊU CẦU - cửa 2: chấm VIDEO vừa dựng (sau kiểm duyệt bố cục tự động trên GitHub) theo bảng tiêu chí của chủ kênh.
-// Đạt (≥ MUC_DAP_UNG_TOI_THIEU %, mặc định 85%, và mọi tiêu chí bắt buộc ≥ 7) mới gửi bạn duyệt / đăng.
-// Chưa đạt: tự viết lại kịch bản theo nhận xét rồi dựng lại, tối đa SO_LAN_SUA_YEU_CAU lần (mặc định 2). Vẫn chưa đạt -> BỎ video + XÓA đề, làm đề mới.
 function docAiKT_(r) { try { return JSON.parse(String(r.ai_kiem_tra || '{}')) || {}; } catch (e) { return {}; } }
 function ghiAiKT_(sh, r, them, cot) {
   var o = docAiKT_(r);
@@ -308,7 +259,7 @@ function apDungKetQuaAiXem_(sh, r, kq) {
     // để tuyệt đối không làm kẹt hàng đợi hay báo lỗi "AI kiểm duyệt chưa chấm được (hết key/lỗi mạng)".
     var loiAi = (Number(cu.lan_loi_ai) || 0) + 1;
     if (loiAi < 2) {
-      ghiAiKT_(sh, r, { lan_loi_ai: loiAi }, { duyet: 'AI_XEM' });
+      ghiAiKT_(sh, r, { lan_loi_ai: loiAi }, { trang_thai: 'CHO_KIEM_DUYET', duyet: 'CHO_AI' });
       nhatKy_('AI_XEM_LOI', r.id + ': tạm nghẽn key/mạng, sẽ chấm lại ở lượt kế tiếp (lần ' + loiAi + ')');
       henKiemTraVideo_(60);
       return;

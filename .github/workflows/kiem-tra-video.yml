@@ -6,6 +6,10 @@ run-name: "Kiểm duyệt ${{ inputs.id }}"
 on:
   workflow_dispatch:
     inputs:
+      lan_giao:
+        description: 'Mã lượt giao từ bộ điều phối'
+        type: string
+        default: ''
       id:
         description: 'Mã video (Apps Script tự điền)'
         type: string
@@ -28,6 +32,7 @@ jobs:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
       APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
+      LAN_GIAO: ${{ inputs.lan_giao }}
       DUNG_VIDEO_SECRET: ${{ secrets.DUNG_VIDEO_SECRET }}
       KT_DU_LIEU: ${{ inputs.du_lieu }}
       ID_VIDEO: ${{ inputs.id }}
@@ -82,6 +87,7 @@ jobs:
               d = json.load(open("ket_qua_kt_video.json", encoding="utf8"))
           else:
               d = {"id": os.environ["ID_VIDEO"], "ok": False, "loi": "Workflow kiem-tra-video gap su co"}
+          d["lan_giao"] = os.environ.get("LAN_GIAO", "")
           d["token"] = os.environ["DUNG_VIDEO_SECRET"]
           d["loai"] = "ai_xem"
           d["id"] = d.get("id") or os.environ["ID_VIDEO"]
