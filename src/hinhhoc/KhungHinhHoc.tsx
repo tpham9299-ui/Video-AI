@@ -332,6 +332,51 @@ function uocDoDaiHien(raw: string): number {
   return Math.max(1, s.replace(/\s+/g, ' ').trim().length);
 }
 
+// Tách đoạn toán chứa dấu ";" khi cho phép xuống dòng để ngắt gọn giữa các vế, và gom cặp "từ cuối + ký hiệu ngắn" (vd "cạnh\u00A0a") chống rớt mồ côi.
+type MucHien =
+  | {kieu: 'chu' | 'toan'; s: string}
+  | {kieu: 'cum'; truoc: string; sau: string};
+
+function taoMucHienWrap(segs: DoanHien[]): MucHien[] {
+  const tach: DoanHien[] = [];
+  for (const seg of segs) {
+    if (seg.kieu === 'toan' && seg.s.includes(';')) {
+      const phan = seg.s.split(';');
+      phan.forEach((p, idx) => {
+        const s = p.trim();
+        const coChamPhay = idx < phan.length - 1;
+        if (s) tach.push({kieu: 'toan', s: coChamPhay ? `${s};` : s});
+        else if (coChamPhay && tach.length) tach[tach.length - 1].s += ';';
+      });
+    } else if (seg.kieu === 'chu') {
+      // Giữ cụm kiểu "cạnh\u00A0a" trong cùng một đoạn chữ thường
+      const s = seg.s.replace(/(\S)\s+([a-zA-Z0-9][.,;:!?]?)(?=\s|$)/g, '$1\u00A0$2');
+      tach.push({kieu: 'chu', s});
+    } else {
+      tach.push(seg);
+    }
+  }
+  const ra: MucHien[] = [];
+  for (let i = 0; i < tach.length; i++) {
+    const cur = tach[i];
+    const next = tach[i + 1];
+    // Nếu chữ Việt kết thúc bằng 1 từ và ngay sau là ký hiệu/biểu thức toán ngắn (vd "cạnh" + "a;" hoặc "và" + "\dfrac{a\sqrt{6}}{3}") -> dính liền trên cùng dòng
+    if (cur.kieu === 'chu' && next?.kieu === 'toan' && uocDoDaiHien(next.s) <= 10) {
+      const m = /^(.*\s)?(\S+)$/.exec(cur.s);
+      if (m) {
+        const dau = (m[1] || '').trim();
+        const cuoi = m[2];
+        if (dau) ra.push({kieu: 'chu', s: dau});
+        ra.push({kieu: 'cum', truoc: cuoi, sau: next.s});
+        i++;
+        continue;
+      }
+    }
+    ra.push(cur);
+  }
+  return ra;
+}
+
 // Thành phần hiển thị chuẩn Hình học: tiếng Việt đứng thẳng (Be Vietnam Pro) + biểu thức toán KaTeX
 export const VanBanToan: React.FC<{
   raw: string;
@@ -342,12 +387,14 @@ export const VanBanToan: React.FC<{
   maxWidth: number;
   wrap?: boolean;
   align?: 'left' | 'center';
-}> = ({raw, size, minSize = 26, color = CHU_SANG, fontWeight = 600, maxWidth, wrap = false, align = 'left'}) => {
+  lineHeight?: number;
+}> = ({raw, size, minSize = 26, color = CHU_SANG, fontWeight = 600, maxWidth, wrap = false, align = 'left', lineHeight = 1.24}) => {
   const segs = useMemo(() => tachVanBanVaToan(raw), [raw]);
+  const mucHien = useMemo<MucHien[]>(() => (wrap ? taoMucHienWrap(segs) : segs), [segs, wrap]);
   const co = useMemo(() => {
     const len = uocDoDaiHien(raw);
-    const heSo = wrap ? 0.52 : fontWeight >= 700 ? 0.62 : 0.57;
-    const uoc = wrap ? Math.floor((maxWidth * 1.92) / (len * heSo)) : Math.floor(maxWidth / (len * heSo));
+    const heSo = wrap ? (fontWeight >= 700 ? 0.56 : 0.52) : fontWeight >= 700 ? 0.62 : 0.57;
+    const uoc = wrap ? Math.floor((maxWidth * 1.88) / (len * heSo)) : Math.floor(maxWidth / (len * heSo));
     return Math.max(minSize, Math.min(size, uoc));
   }, [raw, size, minSize, maxWidth, wrap, fontWeight]);
 
@@ -361,10 +408,11 @@ export const VanBanToan: React.FC<{
         maxWidth={maxWidth}
         chuThuong={false}
         can={align === 'left' ? 'trai' : 'giua'}
-        style={{fontWeight}}
+        style={{fontWeight, lineHeight}}
       />
     );
   }
+  const gap = Math.max(5, Math.round(co * 0.22));
   return (
     <div
       style={{
@@ -372,15 +420,50 @@ export const VanBanToan: React.FC<{
         flexWrap: wrap ? 'wrap' : 'nowrap',
         alignItems: 'baseline',
         justifyContent: align === 'center' ? 'center' : 'flex-start',
-        columnGap: Math.max(5, Math.round(co * 0.22)),
-        rowGap: 3,
+        columnGap: gap,
+        rowGap: wrap ? 2 : 3,
         maxWidth,
-        lineHeight: 1.24,
+        lineHeight,
         overflow: 'hidden',
       }}
     >
-      {segs.map((seg, idx) =>
-        seg.kieu === 'chu' ? (
+      {mucHien.map((muc, idx) =>
+        muc.kieu === 'cum' ? (
+          <span
+            key={idx}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'baseline',
+              gap,
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+              lineHeight,
+            }}
+          >
+            <span
+              style={{
+                fontFamily: FONT,
+                fontStyle: 'normal',
+                fontWeight,
+                fontSize: co,
+                color,
+                whiteSpace: 'nowrap',
+                lineHeight,
+              }}
+            >
+              {muc.truoc}
+            </span>
+            <Toan
+              tex={muc.sau}
+              size={co}
+              color={color}
+              maxWidth={maxWidth}
+              chuThuong={false}
+              can={align === 'left' ? 'trai' : 'giua'}
+              style={{fontWeight, lineHeight}}
+            />
+          </span>
+        ) : muc.kieu === 'chu' ? (
           <span
             key={idx}
             style={{
@@ -390,21 +473,21 @@ export const VanBanToan: React.FC<{
               fontSize: co,
               color,
               whiteSpace: wrap ? 'normal' : 'nowrap',
-              lineHeight: 1.24,
+              lineHeight,
             }}
           >
-            {seg.s}
+            {muc.s}
           </span>
         ) : (
           <span key={idx} style={{display: 'inline-flex', alignItems: 'baseline', flexShrink: wrap ? 1 : 0}}>
             <Toan
-              tex={seg.s}
+              tex={muc.s}
               size={co}
               color={color}
               maxWidth={maxWidth}
               chuThuong={false}
               can={align === 'left' ? 'trai' : 'giua'}
-              style={{fontWeight}}
+              style={{fontWeight, lineHeight}}
             />
           </span>
         ),
@@ -506,7 +589,35 @@ export function trichGiaThietTuDe(deGoc?: string, deGhim?: DuKienGhim[]): string
   return ds.slice(0, 3);
 }
 
-// Gom tối đa 3 chip kết quả trung gian (VD ✓ BD ⊥ (SAC), ✓ ∠SCA = 45°) từ các bước đã giảng; không lộ đáp án cuối trước mocCongBo.
+// Rút gọn chuỗi đẳng thức nhiều vế trong chip T3: chỉ giữ "vế trái = kết quả cuối" (VD "AH = SA·AB/SB = a√6/3" -> "AH = a√6/3")
+export function rutGonChipTex(raw: string): string {
+  const s = chuanTexHinhHoc(raw).replace(/^\\Rightarrow\s*/, '').trim();
+  if (!s) return '';
+  const parts: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === '\\' && i + 1 < s.length) { i++; continue; }
+    if (ch === '{') depth++;
+    else if (ch === '}') depth = Math.max(0, depth - 1);
+    else if (depth === 0 && ch === '=') {
+      const prev = s[i - 1] || '';
+      const next = s[i + 1] || '';
+      if (!/[<>!=\\]/.test(prev) && !/[=>]/.test(next)) {
+        parts.push(s.slice(start, i).trim());
+        start = i + 1;
+      }
+    }
+  }
+  parts.push(s.slice(start).trim());
+  const sach = parts.filter(Boolean);
+  const gon = sach.length >= 3 ? `${sach[0]} = ${sach[sach.length - 1]}` : s;
+  // Trong chip 1 dòng cao 46 px, dùng \frac gọn thay vì \dfrac cao để mẫu số không chạm viền pill
+  return gon.replace(/\\dfrac\b/g, '\\frac');
+}
+
+// Gom tối đa 3 chip kết quả trung gian (VD ✓ BD ⊥ (SAC), ✓ ∠SCA = 45°, ✓ AH = a√6/3) từ các bước đã giảng; không lộ đáp án cuối trước mocCongBo.
 export function trichChipTrungGian(
   buoc: BuocGiai[],
   chipVao: ChipKetQua[] | undefined,
@@ -519,7 +630,7 @@ export function trichChipTrungGian(
   const them = (id: string, texRaw: string, moc: number, chot = false) => {
     if (t < moc) return;
     if ((chot || laDapAnCuoi(texRaw, dapAn)) && t < mocCongBo) return;
-    const tex = chuanTexHinhHoc(texRaw).replace(/^\\Rightarrow\s*/, '').trim();
+    const tex = rutGonChipTex(texRaw);
     if (!tex || uocDoDaiHien(tex) > 42) return;
     const k = gonSoSanh(tex);
     if (!k || daCo.has(k)) return;
@@ -666,7 +777,7 @@ const TheDeBaiGhim: React.FC<{
       {/* Thanh Header tích hợp: Story Math • [Chuyên mục] trái | Badge TÍNH / CHỨNG MINH phải */}
       <div
         style={{
-          height: 36,
+          height: 32,
           padding: '0 16px',
           display: 'flex',
           alignItems: 'center',
@@ -704,15 +815,15 @@ const TheDeBaiGhim: React.FC<{
         </span>
       </div>
 
-      {/* Dòng Cho: cỡ 28-30px (sàn cứng >= 26px), tiếng Việt đứng thẳng + KaTeX chuẩn */}
+      {/* Dòng Cho: cỡ 28-30px (sàn cứng >= 26px), tiếng Việt đứng thẳng + KaTeX chuẩn, chống rớt ký tự đơn mồ côi */}
       <div
         style={{
           flex: 1,
-          padding: '6px 16px',
+          padding: '3px 16px',
           display: 'flex',
           alignItems: 'center',
           gap: 10,
-          minHeight: 58,
+          minHeight: 46,
           overflow: 'hidden',
         }}
       >
@@ -735,25 +846,27 @@ const TheDeBaiGhim: React.FC<{
         <div style={{flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', overflow: 'hidden'}}>
           <VanBanToan
             raw={choChuoi || 'Đọc giả thiết trên hình'}
-            size={29}
+            size={28}
             minSize={26}
             color={CHU_SANG}
             fontWeight={600}
             maxWidth={RONG_ND - 118}
             wrap
             align="left"
+            lineHeight={1.16}
           />
         </div>
       </div>
 
-      {/* Dải nền nhấn ở đáy thẻ cho dòng Yêu cầu: cỡ 32-36px đậm */}
+      {/* Dải nền nhấn ở đáy thẻ cho dòng Yêu cầu: sàn cứng >= 24px (tối đa 2 dòng gọn), luôn giữ gap >= 10px với badge Yêu cầu: */}
       <div
         style={{
           minHeight: 62,
-          padding: '7px 16px 8px 18px',
+          maxHeight: 92,
+          padding: '5px 16px 6px 18px',
           display: 'flex',
           alignItems: 'center',
-          gap: 10,
+          gap: 12,
           background: kq.daMoKhoa
             ? 'linear-gradient(90deg, rgba(46,230,168,0.22), rgba(46,230,168,0.08))'
             : kq.loai === 'tinh'
@@ -786,17 +899,20 @@ const TheDeBaiGhim: React.FC<{
             justifyContent: 'space-between',
             gap: 10,
             overflow: 'hidden',
-            scale: kq.daMoKhoa ? String(1 + 0.04 * Math.sin(Math.PI * Math.min(1, spMo))) : '1',
+            transformOrigin: 'left center',
+            scale: kq.daMoKhoa ? String(1 + 0.03 * Math.sin(Math.PI * Math.min(1, spMo))) : '1',
           }}
         >
           <VanBanToan
-            raw={kq.noiDungTex || '?'}
-            size={34}
-            minSize={23}
+            raw={(kq.noiDungTex || '?').replace(/\\dfrac\b/g, '\\frac')}
+            size={uocDoDaiHien(kq.noiDungTex || '') > 28 ? 25 : 33}
+            minSize={24}
             color={kq.daMoKhoa ? MAU_NGOC : '#FFFFFF'}
             fontWeight={800}
-            maxWidth={RONG_ND - (kq.loai === 'chung_minh' ? 196 : 154) - (kq.daMoKhoa && kq.loai === 'chung_minh' ? 112 : 0)}
+            maxWidth={RONG_ND - (kq.loai === 'chung_minh' ? 202 : 160) - (kq.daMoKhoa && kq.loai === 'chung_minh' ? 112 : 0)}
+            wrap
             align="left"
+            lineHeight={1.16}
           />
           {kq.daMoKhoa && kq.loai === 'chung_minh' ? (
             <span
@@ -1037,9 +1153,9 @@ const TangGiaiHinhHoc: React.FC<{
               <div
                 key={c.id}
                 style={{
-                  height: 44,
-                  padding: '0 14px',
-                  borderRadius: 22,
+                  height: 46,
+                  padding: '0 15px',
+                  borderRadius: 23,
                   display: 'flex',
                   alignItems: 'center',
                   gap: 7,
@@ -1052,7 +1168,7 @@ const TangGiaiHinhHoc: React.FC<{
                 }}
               >
                 <span style={{color: MAU_NGOC, fontFamily: FONT, fontWeight: 900, fontSize: 22}}>✓</span>
-                <VanBanToan raw={c.tex} size={24} minSize={20} color={CHU_SANG} fontWeight={700} maxWidth={Math.max(120, maxWChip)} />
+                <VanBanToan raw={c.tex} size={24} minSize={21} color={CHU_SANG} fontWeight={700} maxWidth={Math.max(120, maxWChip)} lineHeight={1.1} />
               </div>
             );
           })}

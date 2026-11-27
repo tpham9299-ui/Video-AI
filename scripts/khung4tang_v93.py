@@ -24,7 +24,7 @@ CTA_MD = "LƯU NGAY VIDEO!"
 HOOK_THEO_LOP = {
     "12": ["MUỐN 9+ THI THPT KHÔNG THỂ BỎ QUA!", "SAI 1 BƯỚC LÀ MẤT ĐIỂM!", "DẠNG HAY GẶP TRONG ĐỀ THI!"],
     "9": ["MUỐN ĐỖ VÀO 10 PHẢI NẮM DẠNG NÀY!", "SAI 1 BƯỚC LÀ MẤT ĐIỂM!", "3 BƯỚC LÀ RA ĐÁP ÁN!"],
-    "": ["MUỐN 9+ THI KÌ KHÔNG THỂ BỎ QUA!", "SAI 1 BƯỚC LÀ MẤT ĐIỂM!", "3 BƯỚC LÀ RA ĐÁP ÁN!"],
+    "": ["MUỐN 9+ THI HỌC KÌ KHÔNG THỂ BỎ QUA!", "SAI 1 BƯỚC LÀ MẤT ĐIỂM!", "3 BƯỚC LÀ RA ĐÁP ÁN!"],
 }
 NHAN_CHUNG = re.compile(r"^(đề bài|đề|bước\s*\d+|kết luận|dựng hình|đáp số|đáp án|tóm tắt)$", re.I)
 TOI_UU = re.compile(r"lớn nhất|nhỏ nhất|tối đa|tối thiểu|ít nhất|nhiều nhất|cao nhất|thấp nhất|gtln|gtnn|tiết kiệm", re.I)

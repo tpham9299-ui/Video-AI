@@ -34,8 +34,8 @@ const NhanChu: React.FC<{ten: string; x: number; y: number; mau: string; op: num
 
 export const SanKhauKhongGian: React.FC<{kg: KhongGianVao; t: number; rong: number; cao: number; lechMay?: Lech}> = ({kg, t, rong, cao, lechMay}) => {
   const cb = useMemo(() => chuanBi(kg, rong, cao), [kg, rong, cao]);
-  // nhãn trong vùng an toàn: v98 tầng đặt đối xứng 130..950 -> chỉ chừa 8 px hai mép tầng, cách mép trên/dưới 6 px
-  const vung = useMemo(() => ({x0: 8, y0: 6, x1: rong - 8, y1: cao - 6}), [rong, cao]);
+  // nhãn trong vùng an toàn bên trong khung CAD (chừa 14 px hai mép ngang, 12 px trên/dưới để không sát viền)
+  const vung = useMemo(() => ({x0: 14, y0: 12, x1: rong - 14, y1: cao - 12}), [rong, cao]);
   const f = veKhung(kg, cb, t, rong, cao, vung, lechMay);
   const nhip = 0.78 + 0.22 * Math.sin((t * 2 * Math.PI) / 1.8);
   // v102: đoạn trọng tâm có viền tối phía sau dày hơn nét >= 2,5 px (không blur) để cắt nổi qua mặt phẳng đang tô; cạnh khuất khung chính nét đứt 8 6

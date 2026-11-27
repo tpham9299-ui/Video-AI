@@ -131,6 +131,8 @@ for ma, loi, ten in [
     ("def khac(): return []", "TS_THIEU_HAM_VE", "thiếu ve()"),
 ]:
     kiem(bi_chan(ma, loi), "chặn %s (%s)" % (ten, loi))
+kiem(all(ts._la_ma_thoat_qua_gio(code) for code in (-24, 152, -9, 137, -14, 142)), "nhận diện mã thoát CPU/timeout Linux (-24/152/-9/137/-14/142) -> TS_QUA_GIO")
+kiem(not ts._la_ma_thoat_qua_gio(1, "ZeroDivisionError: division by zero"), "không nhận nhầm lỗi chạy thường (exit 1) thành TS_QUA_GIO")
 
 print("6. Hai mẫu v99.1")
 for ten, theme in (("koch_dao", "deep_ocean"), ("gia_ve_parabol", "emerald_studio")):

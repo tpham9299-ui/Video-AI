@@ -84,7 +84,8 @@ export const IntroMocCau: React.FC<{m: MocCau; t: number; G: number}> = ({m, t, 
   }, [m.phu_de]);
   if (con <= 0.001) return null;
   const coPhu = coVua(phu, 40, 1, RONG_CHU, 0.78);
-  const dongHook = haiDong(m.cau_hook, 22);
+  const cauHookSach = String(m.cau_hook || '').replace(/\bTHI\s+KÌ\b/giu, (s) => (s === s.toUpperCase() ? 'THI HỌC KÌ' : 'Thi học kì'));
+  const dongHook = haiDong(cauHookSach, 22);
   const coHook = Math.min(60, coVua(dongHook.reduce((a, b) => (b.length > a.length ? b : a), ''), 60, 38, RONG_CHU, 0.66));
 
   const aPill = lo(0, 0.25);

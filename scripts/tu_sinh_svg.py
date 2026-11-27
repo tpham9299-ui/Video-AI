@@ -27,6 +27,7 @@ v99.2:
 """
 import ast
 import json
+import math
 import os
 import re
 import subprocess
@@ -60,7 +61,8 @@ _CHAY = r'''
 import json, math, sys
 try:
     import resource
-    resource.setrlimit(resource.RLIMIT_CPU, (5, 5))
+    _cpu = max(1, int(sys.argv[1])) if len(sys.argv) > 1 and sys.argv[1].isdigit() else 5
+    resource.setrlimit(resource.RLIMIT_CPU, (_cpu, _cpu + 1))
     resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024))
     resource.setrlimit(resource.RLIMIT_FSIZE, (0, 0))
     resource.setrlimit(resource.RLIMIT_NOFILE, (8, 8))
@@ -140,13 +142,26 @@ def kiem_ast(ma):
 
 
 # ---------------------------------------------------------------- lớp 2: tiến trình con
+# Trên Linux/POSIX, RLIMIT_CPU (SIGXCPU -24/152, SIGKILL -9/137) hoặc SIGALRM (-14/142) có thể kết thúc tiến trình con
+# ngay trước khi subprocess.run(timeout=...) ném TimeoutExpired -> phải quy đồng về mã TS_QUA_GIO.
+MA_THOAT_QUA_GIO = {-24, 152, -14, 142, -9, 137}
+
+
+def _la_ma_thoat_qua_gio(returncode, stderr=""):
+    if returncode in MA_THOAT_QUA_GIO:
+        return True
+    low = (stderr or "").lower()
+    return "cpu time limit exceeded" in low or "timeoutexpired" in low
+
+
 def chay_hop_cat(ma, timeout=TIMEOUT):
     kiem_ast(ma)
     env = {"PATH": os.environ.get("PATH", ""), "PYTHONIOENCODING": "utf8", "SYSTEMROOT": os.environ.get("SYSTEMROOT", "")}
     thu_muc = tempfile.mkdtemp(prefix="tu_sinh_")
+    cpu_sec = str(max(1, int(math.ceil(float(timeout)))))
     try:
         v25 = open(TEP_VE25D, encoding="utf8").read() if "ve25d" in ma and os.path.isfile(TEP_VE25D) else ""
-        r = subprocess.run([sys.executable, "-I", "-S", "-c", _CHAY], input=json.dumps({"ma": ma, "ve25d": v25}), capture_output=True,
+        r = subprocess.run([sys.executable, "-I", "-S", "-c", _CHAY, cpu_sec], input=json.dumps({"ma": ma, "ve25d": v25}), capture_output=True,
                            text=True, encoding="utf8", timeout=timeout, cwd=thu_muc, env=env)
     except subprocess.TimeoutExpired:
         raise LoiTuSinh("TS_QUA_GIO: mã chạy quá %.0f s" % timeout)
@@ -156,6 +171,8 @@ def chay_hop_cat(ma, timeout=TIMEOUT):
         except OSError:
             pass
     if r.returncode != 0:
+        if _la_ma_thoat_qua_gio(r.returncode, r.stderr):
+            raise LoiTuSinh("TS_QUA_GIO: mã chạy quá %.0f s (mã thoát %d)" % (timeout, r.returncode))
         dong = [d for d in (r.stderr or "").strip().splitlines() if d.strip()]
         raise LoiTuSinh("TS_LOI_CHAY: %s" % (dong[-1][:200] if dong else "mã thoát %d" % r.returncode))
     if len(r.stdout) > TOI_DA_SVG * 1.5:

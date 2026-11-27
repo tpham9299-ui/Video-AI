@@ -38,14 +38,14 @@ export function vatThay(kg: KhongGianVao, tMax: number): {diem: [string, V3][]; 
   return {diem, doan, khung};
 }
 
-// khung tự động: tỉ lệ + gốc màn hình đưa toàn bộ điểm khung vào ~80 % x 76 % sân khấu
-export function khungTuThe(n: number, c: number, bc: BoiCanh, khung: V3[], tamTheo?: V3[], phong = 1): TuThe {
+// khung tự động: tỉ lệ + gốc màn hình đưa toàn bộ điểm khung vào ~80 % x 76 % sân khấu (nhin_day thu nhẹ ~86 % để hình + nhãn luôn <= ~92 % khung CAD)
+export function khungTuThe(n: number, c: number, bc: BoiCanh, khung: V3[], tamTheo?: V3[], phong = 1, heSoKhung = 1): TuThe {
   const m0: TuThe = {n, c, muc: bc.muc, R: bc.R, k: 1, ox: 0, oy: 0};
   const h = heMay(m0);
   const ps = khung.map((p) => chieu(p, m0, h));
   const xs = ps.map((p) => p.x), ys = ps.map((p) => p.y);
   const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
-  let k = Math.min((bc.W * KHUNG_RONG) / Math.max(1e-6, x1 - x0), (bc.H * KHUNG_CAO) / Math.max(1e-6, y1 - y0));
+  let k = Math.min((bc.W * KHUNG_RONG * heSoKhung) / Math.max(1e-6, x1 - x0), (bc.H * KHUNG_CAO * heSoKhung) / Math.max(1e-6, y1 - y0));
   let cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
   if (tamTheo && tamTheo.length && phong > 1) {
     // cận cảnh: tâm về đối tượng đích, phóng tới `phong` lần nhưng KHÔNG đẩy điểm nào ra khỏi 92 % sân khấu
@@ -277,9 +277,10 @@ export function tinhTuThe(bc: BoiCanh, che: CheDoMay, doi: string[], truoc: TuTh
   }
   const dinhKhoi = new Set(bc.kg.dung.khoi.dinh);
   const cum = vt.diem.filter(([t]) => !dinhKhoi.has(t));
+  const heSoKhung = che === 'nhin_day' ? 0.86 : 1;
   let tot: {m: TuThe; diem: number} | null = null;
   for (const u of ung) {
-    const m = khungTuThe(u.n, u.c, bc, vt.khung, tam, phong);
+    const m = khungTuThe(u.n, u.c, bc, vt.khung, tam, phong, heSoKhung);
     const dg = danhGia(m, bc, vt.diem, vt.doan, mien, matNhanDs, cum);
     const diem = -diemPhat(dg, mienSuot) - u.lech * 0.12;
     if (!tot || diem > tot.diem + 1e-9) tot = {m, diem};

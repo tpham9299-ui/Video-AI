@@ -4,7 +4,7 @@
 //  (2) khử va chạm lặp: hộp nhãn đụng nhãn khác / đụng cạnh / đụng chấm / chạm biên vùng an toàn -> thử khe trống kế tiếp
 //      (và khoảng đẩy xa hơn), lặp tới khi sạch;
 //  (3) giảm xóc: khi máy đang xoay, vị trí nhãn nội suy giữa nghiệm ở tư thế đầu và tư thế đích (ve.ts) -> không giật chữ.
-export type DiemNhan = {ten: string; x: number; y: number; huongCanh: number[]; uuTien: number; chu?: string}; // v98 chu: nhãn hiển thị dài (Flycam)
+export type DiemNhan = {ten: string; x: number; y: number; huongCanh: number[]; uuTien: number; chu?: string; diemPhu?: boolean}; // v98 chu: nhãn hiển thị dài (Flycam); diemPhu: điểm dựng phụ đẩy thêm 12 px khỏi cạnh
 export type HopNhan = {ten: string; x: number; y: number; w: number; h: number; dx: number; dy: number};
 export type DoanCan = {x1: number; y1: number; x2: number; y2: number; a?: string; b?: string};
 
@@ -64,13 +64,16 @@ export function datNhanKG(ds: DiemNhan[], doan: DoanCan[], cham: {x: number; y: 
       const lechRa = Math.abs(Math.atan2(Math.sin(g - ra), Math.cos(g - ra)));
       goc.push({g, phat: k * 6 + lechRa * 2.2 + (rong < 0.6 ? 14 : 0)});
       if (rong > 1.4) for (const l of [-0.42, 0.42]) goc.push({g: g + l, phat: k * 6 + 3 + Math.abs(Math.atan2(Math.sin(g + l - ra), Math.cos(g + l - ra))) * 2.2});
+      // Khe mở rộng >= 125° (điểm phụ nằm trên cạnh như H trên SB): thêm góc lệch ±0.78 rad để nhãn ở hẳn bên ngoài cạnh tránh đè cạnh lân cận & góc vuông
+      if (rong > 2.2) for (const l of [-0.78, 0.78]) goc.push({g: g + l, phat: k * 6 + 4.5 + Math.abs(Math.atan2(Math.sin(g + l - ra), Math.cos(g + l - ra))) * 2.2});
     });
     let tot: {x: number; y: number; diem: number} | null = null;
     for (const kc of [1, 1.35, 1.8, 2.4]) {
       for (const c of goc) {
         const ux = Math.cos(c.g), uy = Math.sin(c.g);
-        // khoảng từ tâm điểm tới tâm hộp theo hướng (u): đủ để hộp không chạm chấm điểm
-        const r = (11 + Math.abs(ux) * w / 2 + Math.abs(uy) * h / 2) * kc;
+        // khoảng từ tâm điểm tới tâm hộp theo hướng (u): đủ để hộp không chạm chấm điểm (điểm phụ như H đẩy thêm 12 px ra ngoài cạnh)
+        const lechPhu = p.diemPhu ? 12 : 0;
+        const r = (11 + lechPhu + Math.abs(ux) * w / 2 + Math.abs(uy) * h / 2) * kc;
         const x = p.x + ux * r, y = p.y + uy * r;
         const b = hop(x, y, w, h);
         let diem = c.phat + (kc - 1) * 9;

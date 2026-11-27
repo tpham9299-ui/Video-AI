@@ -129,7 +129,7 @@ function nhanTaiTuThe(m: TuThe, tt: ReturnType<typeof trangThai>, cb: ChuanBi, v
   const ds: DiemNhan[] = [];
   const cham2: {x: number; y: number; r: number}[] = [];
   for (const x of tt.diemVe) {
-    if (x.alpha < 0.05) continue;
+    if (x.alpha <= 0.001) continue;
     const p = q.get(x.ten)!;
     cham2.push({x: p.x, y: p.y, r: 7});
     const huong: number[] = [];
@@ -145,7 +145,9 @@ function nhanTaiTuThe(m: TuThe, tt: ReturnType<typeof trangThai>, cb: ChuanBi, v
       if (!tt.doan.some((d) => d.tenA && ((d.tenA === a && d.tenB === b) || (d.tenA === b && d.tenB === a)) && d.alpha * d.ve >= 0.3)) continue;
       for (const o of [q.get(a)!, q.get(b)!]) if (Math.hypot(o.x - p.x, o.y - p.y) > 2) huong.push(Math.atan2(o.y - p.y, o.x - p.x));
     }
-    ds.push({ten: x.ten, x: p.x, y: p.y, huongCanh: huong, uuTien: (cb.bc.kg.dung.khoi.dinh.includes(x.ten) ? 1 : 2) + x.sang, chu: cb.bc.kg.dung.nhanTen?.[x.ten]});
+    const laDinhKhoi = cb.bc.kg.dung.khoi.dinh.includes(x.ten);
+    const diemPhu = !laDinhKhoi && (cb.quaDiem.get(x.ten)?.length || 0) === 1;
+    ds.push({ten: x.ten, x: p.x, y: p.y, huongCanh: huong, uuTien: (laDinhKhoi ? 1 : 2) + x.sang, chu: cb.bc.kg.dung.nhanTen?.[x.ten], diemPhu});
   }
   const tam = chieu(cb.bc.muc, m, h);
   const ra = datNhanKG(ds, doan, cham2, vung, tam);
@@ -155,8 +157,30 @@ function nhanTaiTuThe(m: TuThe, tt: ReturnType<typeof trangThai>, cb: ChuanBi, v
 export function veKhung(kg: KhongGianVao, cb: ChuanBi, t: number, W: number, H: number, vung: VungAn, lech?: Lech): KhungVe {
   const tt = trangThai(kg, t);
   const mt = mayTai(cb.lich, t, kg.tongGiay);
-  const m = apLech(mt.m, lech, W, H);
-  const h = heMay(m);
+  let m = apLech(mt.m, lech, W, H);
+  let h = heMay(m);
+  // Khi đang xoay (đặc biệt xoay đáy nhin_day), giữ toàn bộ đỉnh trong ~90 % khung CAD để đỉnh S không sát/chạm viền giữa chừng
+  if (mt.dangXoay) {
+    const ps = Object.values(tt.diem).map((p) => chieu(p, m, h));
+    if (ps.length) {
+      const xs = ps.map((p) => p.x), ys = ps.map((p) => p.y);
+      const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+      const leX = W * 0.08, leY = H * 0.09;
+      const sFit = Math.min(
+        1,
+        (W - 2 * leX) / Math.max(1e-6, maxX - minX),
+        (H - 2 * leY) / Math.max(1e-6, maxY - minY),
+        minX < leX ? (W / 2 - leX) / Math.max(1e-6, W / 2 - minX) : 1,
+        maxX > W - leX ? (W / 2 - leX) / Math.max(1e-6, maxX - W / 2) : 1,
+        minY < leY ? (H / 2 - leY) / Math.max(1e-6, H / 2 - minY) : 1,
+        maxY > H - leY ? (H / 2 - leY) / Math.max(1e-6, maxY - H / 2) : 1,
+      );
+      if (sFit < 0.999) {
+        m = {...m, k: m.k * sFit, ox: W / 2 + (m.ox - W / 2) * sFit, oy: H / 2 + (m.oy - H / 2) * sFit};
+        h = heMay(m);
+      }
+    }
+  }
   const C = h.viTri;
   const Con = heMay(mt.on).viTri;
   const R = cb.bc.R;

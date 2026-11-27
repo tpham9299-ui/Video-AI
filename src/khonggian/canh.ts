@@ -118,11 +118,26 @@ export function hienDiemPhu(kg: KhongGianVao): Record<string, number> {
   (kg.chuyen || []).forEach((c) => giu.add(c.diem));
   (kg.bienHinh || []).forEach((b) => b.cap.forEach(([a, z]) => { giu.add(a); giu.add(z); }));
   if (!coDungKhoi) for (const x of d.doan) if (x.vai === 'khoi') { giu.add(x.a); giu.add(x.b); }
+  const trenDoan3D = (P: V3, A: V3, B: V3) => {
+    const ab = tru(B, A);
+    const L = Math.hypot(ab[0], ab[1], ab[2]);
+    if (L < 1e-9) return false;
+    const c = cheo(ab, tru(P, A));
+    return Math.hypot(c[0], c[1], c[2]) / L < 1e-5 * (1 + L) && cham(tru(P, A), tru(P, B)) <= 1e-9;
+  };
   const lay = (id: string, ...them: string[]) => [id, ...them].map((k) => hien[k]).find((v) => v !== undefined);
   for (const ten of d.nhan) {
     if (giu.has(ten) || hien[ten] !== undefined || !d.diem[ten]) continue;
     const ts: number[] = [];
-    for (const x of d.doan) if (x.a === ten || x.b === ten) { const v = lay(x.id, x.a + x.b, x.b + x.a, khoaDoan(x.a, x.b), x.nhom || ''); if (v !== undefined) ts.push(v); }
+    const tsGiao: number[] = [];
+    for (const x of d.doan) {
+      const v = lay(x.id, x.a + x.b, x.b + x.a, khoaDoan(x.a, x.b), x.nhom || '');
+      if (v === undefined) continue;
+      if (x.a === ten || x.b === ten) ts.push(v);
+      else if (x.vai !== 'khoi' && d.diem[x.a] && d.diem[x.b] && trenDoan3D(d.diem[ten], d.diem[x.a], d.diem[x.b])) tsGiao.push(v);
+    }
+    if (tsGiao.length >= 2) ts.push(Math.max(...tsGiao));
+    else if (tsGiao.length === 1) ts.push(tsGiao[0]);
     for (const k of d.kinh) if (k.diem.includes(ten) && hien[k.id] !== undefined) ts.push(hien[k.id]);
     for (const g of d.goc) if ((g.dinh === ten || g.a === ten || g.b === ten) && hien[g.id] !== undefined) ts.push(hien[g.id]);
     if (ts.length && Math.min(...ts) > 0) ra[ten] = Math.min(...ts);
