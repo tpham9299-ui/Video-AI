@@ -128,6 +128,8 @@ function huongDanHinhPhangChuan_(r) {
     ' "dieu_kien":[{"loai":"tam_giac_nhon","tg":"ABC"},{"loai":"nho_hon","a":"AB","b":"AC"}] (giả thiết về hình dạng: tam_giac_nhon | tam_giac_tu{tg,tai} | tam_giac_vuong{tg,tai} | tam_giac_can{tg,tai} | tam_giac_deu{tg} | nho_hon{a,b} | lon_hon{a,b} | so_do_goc{goc:"BAC",do} | do_dai{doan:"AB",gia_tri}),\n' +
     ' "de_rut_gon":[{"tex":"\\\\triangle ABC \\\\text{ nhọn } (AB<AC) \\\\text{ nội tiếp } (O)","khi_noi":"cụm nguyên văn lời thoại"}] (tối đa 2 dòng giả thiết ngắn, không chứa đáp số),\n' +
     ' "phep_dung":[ ... ] THEO ĐÚNG THỨ TỰ ĐỀ, mỗi phần tử có "id" và "khi_noi" (2-5 từ NGUYÊN VĂN trong lời thoại lúc đọc tới đối tượng đó). Loại hỗ trợ:\n' +
+    '   Bước đầu dựng hình gốc. Ví dụ đề cho tam giác ABC nội tiếp (O): "phep_dung":[{"id":"d1","loai":"tam_giac_noi_tiep","dinh":["A","B","C"],"tam":"O","khi_noi":"tam giác ABC"},{"id":"d2","loai":"chan_duong_cao","ten":"H","tu":"A","xuong":"BC","khi_noi":"hạ đường cao AH"}]. Với tam giác thường dùng "tam_giac", với tứ giác dùng "tu_giac" và liệt kê đủ bốn đỉnh trong "dinh".\n' +
+    '   Bước "duong_tron" chỉ tạo tâm. Nếu đề bắt đầu từ đường tròn, khai báo từng điểm trên đó bằng "diem_tren" trước khi dùng. Mỗi điểm và đường tròn phải được tạo ở phép dựng trước khi tham chiếu. "dieu_kien", "de_rut_gon" và lời thoại chỉ mô tả giả thiết.\n' +
     '   tam_giac{dinh:["A","B","C"]} | tam_giac_noi_tiep{dinh,tam:"O"} | tu_giac{dinh[4],kieu:hinh_vuong|hinh_chu_nhat|hinh_binh_hanh|hinh_thoi|hinh_thang} | duong_tron{tam} |\n' +
     '   chan_duong_cao{ten:"D",tu:"B",xuong:"AC"} | duong_kinh{ten:"M",tu:"A",duong_tron:"(O)"} | trung_diem{ten,doan} | giao_diem{ten,a:"AM",b:"DE" (đường thẳng "XY" hoặc đường tròn "(O)"), khac?:"A", gan?:"B"} |\n' +
     '   duong_tron_ngoai_tiep{tg,tam} | duong_tron_duong_kinh{doan:"BC",tam?} | tiep_tuyen{tai:"A",duong_tron,cat:"BC",ten} hoặc {tu:"M",duong_tron,ten_tiep_diem:["A","B"]} | phan_giac{goc:"BAC",cat:"BC",ten} |\n' +
@@ -151,7 +153,10 @@ function kiemHinhPhangChuan_(kb) {
   var nang = [], nhe = [];
   var hp = kb.hinh_phang_chuan;
   loiLuongHinhHoc_(kb).forEach(function (x) { nang.push(x + ': video hình học thuần chỉ được có hình hình học (không canh_that, mo_hinh_3d, phong cảnh, vật đời sống).'); });
-  if (!Array.isArray(hp.phep_dung) || !hp.phep_dung.length) nang.push('HP_THIEU_DAC_TA: hinh_phang_chuan thiếu phep_dung (danh sách phép dựng theo thứ tự đề).');
+  var phepDung = Array.isArray(hp.phep_dung) ? hp.phep_dung : [];
+  if (!phepDung.length) nang.push('HP_THIEU_DAC_TA: hinh_phang_chuan thiếu phep_dung (danh sách phép dựng theo thứ tự đề).');
+  var loiDung = kiemThuTuPhepDungHinhPhang_(phepDung);
+  if (loiDung) nang.push(loiDung);
   var coTrang = Array.isArray(hp.trang_chung_minh) && hp.trang_chung_minh.length;
   var coDongGiai = Array.isArray(hp.dong_giai) && hp.dong_giai.length;
   if (!coTrang && !coDongGiai) nang.push('HP_THIEU_DAC_TA: hinh_phang_chuan thiếu trang_chung_minh / dong_giai.');
@@ -159,7 +164,7 @@ function kiemHinhPhangChuan_(kb) {
   var loi = kb.canh.map(function (c) { return String((c && c.loi_thoai) || ''); }).join(' ').toLowerCase().replace(/\s+/g, ' ');
   var khongKhop = [];
   var xet = function (k, nguon) { var s = String(k || '').trim().toLowerCase().replace(/\s+/g, ' '); if (s && loi.indexOf(s) < 0) khongKhop.push(nguon + ' "' + k + '"'); };
-  (hp.phep_dung || []).forEach(function (b, i) { if (b) xet(b.khi_noi, 'phep_dung[' + i + ']'); });
+  phepDung.forEach(function (b, i) { if (b) xet(b.khi_noi, 'phep_dung[' + i + ']'); });
   (hp.trang_chung_minh || []).forEach(function (t, i) { ((t && t.dong) || []).forEach(function (d, j) { if (d) xet(d.khi_noi, 'trang ' + (i + 1) + ' dòng ' + (j + 1)); }); });
   (hp.dong_giai || []).forEach(function (t, i) {
     if (t && Array.isArray(t.dong)) t.dong.forEach(function (d, j) { if (d) xet(d.khi_noi, 'dong_giai[' + i + '].dong[' + j + ']'); });
@@ -171,10 +176,11 @@ function kiemHinhPhangChuan_(kb) {
     g.cung.forEach(function (x) { nang.push('HP_VUOT_CHUONG_TRINH: ' + x.nguon + ' dùng "' + x.cum + '" (' + x.ten + '). Sửa: ' + x.goi_y); });
     g.canh_bao.forEach(function (x) { nhe.push('HP_CHUONG_TRINH_CANH_BAO: ' + x.nguon + ' "' + x.cum + '" (' + x.ten + '). ' + x.goi_y); });
   }
-  if (typeof kiemHinhPhangMay_ === 'function') {
-    var m = null;
-    try { m = kiemHinhPhangMay_(kb); } catch (e) { m = null; }
-    if (m && Array.isArray(m.loi)) m.loi.forEach(function (x) {
+  if (!loiDung && typeof kiemHinhPhangMay_ === 'function') {
+    var m = kiemHinhPhangMay_(kb);
+    if (!m || typeof m.dat !== 'boolean' || !Array.isArray(m.loi)) {
+      nang.push('PREFLIGHT_HINH_PHANG: bộ giải Python chưa trả kết quả kiểm chứng.');
+    } else m.loi.forEach(function (x) {
       if (x.ma === 'HP_VUOT_CHUONG_TRINH') return;   // đã báo bằng bản JS ở trên
       nang.push(x.ma + ': ' + x.chi_tiet + (x.goi_y ? ' | Gợi ý: ' + x.goi_y : ''));
     });

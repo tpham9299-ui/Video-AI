@@ -1518,7 +1518,7 @@ function schemaAnhXa2B_(loai) {
     return JSON.parse(JSON.stringify(__schemaBP2.pha_2b_anh_xa[loai]));
   }
   if (loai === 'HINH_PHANG') {
-    return {type: 'OBJECT', required: ['hinh_phang_chuan'], properties: {hinh_phang_chuan: {type: 'STRING', description: 'JSON của hinh_phang_chuan dưới dạng chuỗi.'}}};
+    return {type: 'OBJECT', required: ['hinh_phang_chuan'], properties: {hinh_phang_chuan: {type: 'STRING', description: 'JSON của hinh_phang_chuan dưới dạng chuỗi. Khai báo đủ đỉnh gốc trong phep_dung[].dinh của tam_giac, tam_giac_noi_tiep hoặc tu_giac trước khi dùng.'}}};
   }
   if (loai === 'HINH_KHONG_GIAN') {
     return {type: 'OBJECT', required: ['hinh_khong_gian'], properties: {hinh_khong_gian: {type: 'STRING', description: 'JSON của hinh_khong_gian (3 pha dựng nét) dưới dạng chuỗi.'}}};
@@ -1648,7 +1648,8 @@ function taoPromptAnhXa2B_(kb, r, loai) {
   var goc = 'PHA 2B — ĐẠO DIỄN HÌNH ẢNH: ánh xạ 1-1 kịch bản đã chốt sang đặc tả kỹ thuật. GIỮ NGUYÊN lời thoại & mốc khi_noi NGUYÊN VĂN từ lời từng cảnh.\n' +
     'ĐỀ (lớp ' + (r.lop || kb.lop || '') + '): ' + String(r.de_bai || kb.de_bai || '') + '\nĐÁP ÁN: ' + String(r.dap_an_hien || r.dap_an || kb.dap_an_cuoi || '') + '\nCÁC CẢNH PHA 2A:\n' + dsCanh + '\n\n';
   if (loai === 'HINH_PHANG') {
-    return goc + (typeof huongDanHinhPhang_ === 'function' ? huongDanHinhPhang_(r) : 'Trả JSON {"hinh_phang_chuan": "<JSON chuỗi>"} chuẩn giai_hinh_phang.py.');
+    return goc + huongDanHinhPhangChuan_(r) +
+      '\nTrả JSON {"hinh_phang_chuan":"<JSON chuỗi>"} theo responseSchema. Giữ "phep_dung" là mảng trong nội dung chuỗi.';
   }
   if (loai === 'HINH_KHONG_GIAN') {
     return goc + (typeof huongDanKhongGian_ === 'function' ? huongDanKhongGian_(r) : 'Trả JSON {"hinh_khong_gian": "<JSON chuỗi>"} đủ 3 pha (cac_net_dung, net_phu, buoc[].xoay).');

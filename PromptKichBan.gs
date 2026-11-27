@@ -260,7 +260,7 @@ function taoPromptKichBan_(r, c1, c2) {
       'CÔNG THỨC "noi_dung_man_hinh": mảng LaTeX (không kèm $), tối đa 3 dòng ngắn, chữ tiếng Việt trong \text{}; "trinh_bay": "cong_don" | "bien_doi" | "xep".\n\n'];
     // v94: hình phẳng chuẩn -> công thức nằm trong hinh_phang_chuan.trang_chung_minh (máy dựng + kiểm chứng), cảnh để noi_dung_man_hinh []
     if (typeof dungHinhPhangChuan_ === 'function' && dungHinhPhangChuan_(r)) {
-      loiThoaiHH[2] = 'CÔNG THỨC: KHÔNG ghi vào "noi_dung_man_hinh" (để []); mọi dòng chứng minh viết trong hinh_phang_chuan.trang_chung_minh[].dong[].tex, mỗi dòng có khi_noi nguyên văn.\n\n';
+      loiThoaiHH[2] = 'HÌNH VÀ CÔNG THỨC: khai báo đỉnh gốc bằng "dinh" trong phép dựng hình gốc của hinh_phang_chuan.phep_dung. Để "noi_dung_man_hinh": []; mọi dòng chứng minh viết trong hinh_phang_chuan.trang_chung_minh[].dong[].tex, mỗi dòng có khi_noi nguyên văn.\n\n';
     }
     // v97: hình KHÔNG GIAN chuẩn -> đặc tả cấu trúc hinh_khong_gian (máy giải tọa độ + đạo diễn camera theo moc_xoay)
     var kgChuan = typeof dungHinhKhongGian_ === 'function' && dungHinhKhongGian_(r);
@@ -892,6 +892,7 @@ function huongDanKhongGian_(r) {
     ' "menh_de": [{"loai":"vuong_goc_mat","duong":"BD","mat":"SAC"}, {"loai":"thuoc","diem":"E","mat":"MNP"}, {"loai":"song_song","a":"NP","b":"BD"} ...] (loai: thuoc | vuong_goc | vuong_goc_mat | mat_vuong_goc | song_song | song_song_mat | thang_hang | dong_phang),\n' +
     ' "so_do": [{"loai":"goc_duong_mat","duong":"SC","mat":"ABCD","gia_tri":"45°"}, {"loai":"khoang_cach_diem_mat","diem":"A","mat":"SBC","gia_tri":"\\\\dfrac{a\\\\sqrt{6}}{3}"}] ' +
     '(loai: do_dai | goc_duong_mat | goc_hai_duong | goc_hai_mat | goc_ba_diem | khoang_cach_diem_mat | khoang_cach_diem_duong | khoang_cach_hai_duong | the_tich),\n' +
+    '   Với so_do.loai = "goc_ba_diem", bắt buộc ghi "goc":"SCA" (đủ ba điểm đã dựng, đỉnh góc C ở giữa).\n' +
     ' "truot": {"diem":"M"} (tùy chọn: điểm "bất kỳ" trượt nhẹ trên cạnh ở 2 giây đầu - hook),\n' +
     ' "de_ghim": [{"id":"d1","nhan":"SA \\\\perp (ABCD)"}, ... "d(A, (SBC)) = ?"] (2-4 ô ngắn LaTeX 100%, ô cuối là câu hỏi có dấu ?; CẤM viết thô "a căn 15 / 10", phải viết \\\\dfrac{a\\\\sqrt{15}}{10}),\n' +
     ' "cac_net_dung": [{"id":"AB","khi_noi":"..."}, {"id":"O","khi_noi":"..."}, {"id":"SA","khi_noi":"..."}] (Pha 2: thứ tự dựng từng nét khớp lời đọc đề < 0,25 s: đáy -> đường chéo & tâm O nét đứt -> đường cao SA + góc vuông 3D -> cạnh bên -> điểm đặc biệt M; Pha 1 chỉ hiện lưới sạch/mặt đáy mờ),\n' +

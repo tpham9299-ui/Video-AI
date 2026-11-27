@@ -528,7 +528,7 @@
       "type": "OBJECT",
       "required": ["hinh_phang_chuan"],
       "properties": {
-        "hinh_phang_chuan": {"type": "STRING", "description": "JSON của hinh_phang_chuan dưới dạng chuỗi."}
+        "hinh_phang_chuan": {"type": "STRING", "description": "JSON của hinh_phang_chuan dưới dạng chuỗi. Khai báo đủ đỉnh gốc trong phep_dung[].dinh của tam_giac, tam_giac_noi_tiep hoặc tu_giac trước khi dùng."}
       }
     },
     "HINH_KHONG_GIAN": {

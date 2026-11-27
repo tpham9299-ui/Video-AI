@@ -234,6 +234,35 @@ jobs:
               print(f"v3d={int(v3d)}", file=f)
           PY_HINH
 
+      - name: Kiểm chứng phép dựng và mệnh đề hình học trước TTS
+        env:
+          HINH_HOC: ${{ steps.kb.outputs.hh }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from scripts.giai_hinh_phang import giai as giai_phang
+          from scripts.giai_hinh_khong_gian import giai as giai_khong_gian
+
+          with open("kich_ban.json", encoding="utf8") as f:
+              kb = json.load(f)
+          hh = os.environ["HINH_HOC"] == "1"
+          kg = kb.get("hinh_khong_gian")
+          lego = isinstance(kg, dict) and (str(kg.get("phien_ban") or "") == "2" or isinstance(kg.get("doi_tuong"), list))
+          loi = []
+          for dung, cau_hinh, giai in (
+              (hh, "HINH_PHANG_CHUAN", giai_phang),
+              (hh or lego, "HINH_KHONG_GIAN_CHUAN", giai_khong_gian),
+          ):
+              if dung and os.environ.get(cau_hinh, "").upper() != "TAT":
+                  kq = giai(kb, chi_kiem=True)
+                  if kq is not None and not kq["dat"]:
+                      loi.extend(kq["loi"])
+          for x in loi:
+              print(f"::error::{x['ma']}: {x['chi_tiet']}")
+          if loi:
+              raise SystemExit(2)
+          PY
+
       - name: Chuẩn bị props giả lập (không TTS)
         id: props_soi_chu
         env:
@@ -406,7 +435,6 @@ jobs:
             echo "Checkpoint Manim hợp lệ (out/${ID}/checkpoint.json) -> bỏ qua render lại Manim"
           else
             if [ "$BO_CUC" = "hinh_phang" ]; then
-              python3 scripts/giai_hinh_phang.py kich_ban.json --ra out/hinh_phang_giai.json
               MANIM_TEX_DIR=/tmp/manim_tex_cache /tmp/mv/bin/python scripts/manim/HinhPhangChuan.py public/props.json kich_ban.json out --public public
             else
               /tmp/mv/bin/python scripts/manim_hinh.py public/props.json kich_ban.json out --public public

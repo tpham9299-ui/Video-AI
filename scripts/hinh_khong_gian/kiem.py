@@ -15,11 +15,15 @@ def _p(D, x):
     return D[x]
 
 
-def _dg(D, s):
+def _cac_diem(D, s, so_diem, mo_ta):
     ds = tach_ten(s)
-    if len(ds) != 2:
-        raise LoiDung("KG_DUNG_LOI", "đường '%s' phải gồm 2 điểm" % s)
-    return _p(D, ds[0]), _p(D, ds[1])
+    if len(ds) != so_diem:
+        raise LoiDung("KG_DUNG_LOI", "%s phải gồm đúng %d điểm" % (mo_ta, so_diem))
+    return [_p(D, x) for x in ds]
+
+
+def _dg(D, s):
+    return _cac_diem(D, s, 2, "đường '%s'" % s)
 
 
 def _mp(D, s):
@@ -107,14 +111,12 @@ def tinh_so_do(dl, D):
         n2, _, _ = _mp(D, dl.get("mat2") or dl.get("b"))
         return math.degrees(math.acos(min(1.0, abs(cham(n1, n2)))))
     if l == "goc_ba_diem":   # góc XYZ tại Y
-        ds = tach_ten(dl.get("goc"))
-        if len(ds) != 3:
-            raise LoiDung("KG_DUNG_LOI", "goc_ba_diem: trường 'goc' phải gồm đúng 3 điểm")
-        x, y, z = [_p(D, t) for t in ds]
+        goc = dl.get("goc")
+        x, y, z = _cac_diem(D, goc, 3, "goc_ba_diem: trường 'goc'")
         u, v = tru(x, y), tru(z, y)
         mau = dai(u) * dai(v)
         if mau == 0:
-            raise LoiDung("KG_DUNG_LOI", "góc '%s' có cạnh độ dài 0" % "".join(ds))
+            raise LoiDung("KG_DUNG_LOI", "góc %r có cạnh độ dài 0" % goc)
         return math.degrees(math.acos(max(-1.0, min(1.0, cham(u, v) / mau))))
     if l == "khoang_cach_diem_mat":
         X = _p(D, dl.get("diem"))
@@ -132,11 +134,8 @@ def tinh_so_do(dl, D):
             return dai(cheo(tru(q, p), tru(r, p))) / dai(tru(q, p))
         return abs(cham(chuan(n), tru(r, p)))
     if l == "the_tich":
-        ds = tach_ten(dl.get("khoi") or "")
-        if len(ds) == 4:
-            a, b, c, d = [_p(D, x) for x in ds]
-            return abs(cham(cheo(tru(b, a), tru(c, a)), tru(d, a))) / 6.0
-        raise LoiDung("KG_DUNG_LOI", "the_tich: chỉ hỗ trợ tứ diện 4 đỉnh (khối chóp đa giác: tách thành tứ diện)")
+        a, b, c, d = _cac_diem(D, dl.get("khoi"), 4, "the_tich: trường 'khoi' (tứ diện)")
+        return abs(cham(cheo(tru(b, a), tru(c, a)), tru(d, a))) / 6.0
     raise LoiDung("KG_DUNG_LOI", "loại số đo '%s' chưa hỗ trợ" % l)
 
 

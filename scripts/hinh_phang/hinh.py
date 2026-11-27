@@ -39,6 +39,18 @@ def tach_diem(s):
     return [chuan_ten(x) for x in RE_TEN.findall(s.replace(" ", ""))]
 
 
+def dinh_hinh_goc(b, so_dinh, id_buoc):
+    """Đỉnh của tam giác/tứ giác lấy từ dinh, dạng danh sách hoặc chuỗi tên liền."""
+    dinh = b.get("dinh")
+    if isinstance(dinh, list) and all(isinstance(x, str) for x in dinh):
+        dinh = "".join(dinh)
+    ds = tach_diem(dinh) if isinstance(dinh, str) else []
+    if len(ds) != so_dinh or len(set(ds)) != so_dinh:
+        raise LoiDung("HP_DUNG_LOI", '%s cần đúng %d đỉnh khác nhau trong "dinh"' % (
+            "tam giác" if so_dinh == 3 else "tứ giác", so_dinh), id_buoc)
+    return ds
+
+
 def khoa_duong_tron(ref):
     """"(O)" -> "O"; "(BC)" -> "BC"; "O" -> "O"."""
     s = str(ref or "").strip()
@@ -311,9 +323,7 @@ def dung_hinh(phep_dung, tham, dieu_kien=None):
         if loai not in LOAI_DUNG:
             raise LoiDung("HP_DUNG_LOI", "loại phép dựng '%s' không hỗ trợ" % loai, idb)
         if loai in ("tam_giac", "tam_giac_noi_tiep"):
-            dinh = tach_diem("".join(b.get("dinh") or [])) if isinstance(b.get("dinh"), list) else tach_diem(b.get("dinh"))
-            if len(dinh) != 3:
-                raise LoiDung("HP_DUNG_LOI", "tam giác cần đúng 3 đỉnh", idb)
+            dinh = dinh_hinh_goc(b, 3, idb)
             thu_tu = thu_tu_tam_giac(dinh, dieu_kien)
             toa = _dat_tam_giac(thu_tu, th.get("goc") or (60, 60, 60))
             H.goc_tam_giac["".join(dinh)] = th.get("goc")
@@ -329,9 +339,7 @@ def dung_hinh(phep_dung, tham, dieu_kien=None):
             for x in dinh:
                 H.net.append({"id": idb, "loai": "diem", "ten": x})
         elif loai == "tu_giac":
-            dinh = tach_diem("".join(b.get("dinh") or []) if isinstance(b.get("dinh"), list) else b.get("dinh"))
-            if len(dinh) != 4:
-                raise LoiDung("HP_DUNG_LOI", "tứ giác cần đúng 4 đỉnh", idb)
+            dinh = dinh_hinh_goc(b, 4, idb)
             kieu = str(b.get("kieu") or "tu_giac")
             k = float(th.get("ti_le") or 1.5)
             lech = float(th.get("lech") or 0.45)

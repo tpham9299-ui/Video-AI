@@ -40,6 +40,11 @@ kiem('dungHinhPhangChuan_: hình phẳng -> có; không gian -> không', ctx.dun
 const p = ctx.taoPromptHinhHocThuan_(r, {cac_buoc: []}, {cac_buoc: []}, {traVe: ['"giu_san_khau":false']});
 kiem('prompt có hinh_phang_chuan, phép dựng, khóa màu, cấm tọa độ', /"hinh_phang_chuan"/.test(p) && /chan_duong_cao/.test(p) && /\\\\mvang/.test(p) && /KHÔNG ghi tọa độ/.test(p));
 kiem('prompt bỏ ví dụ tọa độ hinh_hoc của bản cũ', !/"diem":\{"S":\[20,10\]/.test(p) && !/Mỗi cảnh chỉ có đúng MỘT vật/.test(p));
+const prompt2B = ctx.taoPromptAnhXa2B_(KB, r, 'HINH_PHANG');
+const schema2B = ctx.schemaAnhXa2B_('HINH_PHANG').properties.hinh_phang_chuan;
+kiem('pha 2B khai báo đúng phép dựng d1, đỉnh A B C và chuỗi JSON theo responseSchema',
+  prompt2B.includes('"loai":"tam_giac_noi_tiep","dinh":["A","B","C"]') && prompt2B.includes('Giữ "phep_dung" là mảng') &&
+  schema2B.type === 'STRING' && schema2B.description.includes('phep_dung[].dinh'));
 cauHinh.HINH_PHANG_CHUAN = 'TAT';
 kiem('CAU_HINH HINH_PHANG_CHUAN=TAT -> về prompt cũ', !ctx.dungHinhPhangChuan_(r) && !/"hinh_phang_chuan"/.test(ctx.taoPromptHinhHocThuan_(r, {cac_buoc: []}, {cac_buoc: []}, {traVe: []})));
 delete cauHinh.HINH_PHANG_CHUAN;
@@ -87,6 +92,27 @@ kiem('HP_* là lỗi cứng, lỗi hình thức hạ thành cảnh báo', ph.nan
 const kbK = moi();
 kbK.hinh_phang_chuan.phep_dung[1].khi_noi = 'cụm không có trong lời';
 kiem('khi_noi không nguyên văn -> chỉ cảnh báo HP_KHI_NOI_KHONG_KHOP', ctx.kiemTraKichBanManim_(kbK).nhe.some((x) => /^HP_KHI_NOI_KHONG_KHOP/.test(x)));
+const kbChungMinh = moi();
+kbChungMinh.hinh_phang_chuan.trang_chung_minh[0].dong.push({khi_noi: 'x', tex: '\\angle AZB = 90^\\circ'});
+kiem('BP2 giữ lỗi HP_DIEM_KHONG_TON_TAI từ bộ giải khi lời chứng minh dùng Z',
+  ctx.kiemTraKichBanManim_(kbChungMinh).nang.some((x) => /^HP_DIEM_KHONG_TON_TAI:.*điểm Z/.test(x)));
+
+const kbThieuA = moi();
+const pd = kbThieuA.hinh_phang_chuan.phep_dung;
+pd[0] = {id: 'd1', loai: 'duong_tron', tam: 'O'};
+pd[1] = {id: 'd2', loai: 'chan_duong_cao', ten: 'H', tu: 'A', xuong: 'BC'};
+const loiPy = kiemHinhPhangMay_(kbThieuA);
+const loiD2 = 'HP_DIEM_KHONG_TON_TAI: phép dựng 2/d2: điểm A chưa được dựng trước bước này';
+kiem('cầu nối Python trả đúng lỗi dùng A trước khi dựng ở d2',
+  loiPy?.dat === false && loiPy.loi.some((x) => x.ma + ': ' + x.chi_tiet === loiD2));
+ctx.kiemHinhPhangMay_ = undefined;
+const danhGiaBP2 = (b) => ctx.danhGiaKichBan_(b, r.dap_an, r.mon, false, null, r.de_bai, r.lop).nang;
+kiem('BP2 JS giữ lỗi thiếu A trong danh sách lỗi cứng khi chạy không có Python', danhGiaBP2(kbThieuA).includes(loiD2));
+const kbDinhChuoi = moi();
+kbDinhChuoi.hinh_phang_chuan.phep_dung[0].dinh = 'ABC';
+kiem('BP2 JS nạp đủ A B C từ dinh dạng chuỗi', ctx.kiemTraKichBanManim_(kbDinhChuoi).nang.length === 0);
+delete kbDinhChuoi.hinh_phang_chuan.phep_dung[0].dinh;
+kiem('BP2 JS chặn tam giác bước 1 thiếu trường dinh', danhGiaBP2(kbDinhChuoi).some((x) => /^HP_DUNG_LOI: phép dựng 1\/d1:/.test(x)));
 
 console.log('\nKết quả: %d đạt, %d hỏng', dat, hong.length);
 process.exit(hong.length ? 1 : 0);

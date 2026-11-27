@@ -11,7 +11,7 @@
 import math
 import random
 
-from .hinh import LoiDung, chuan_ten, cong, dai, dung_hinh, kc, nhan, tach_diem, tru, thu_tu_tam_giac, goc_do
+from .hinh import LoiDung, chuan_ten, cong, dai, dinh_hinh_goc, dung_hinh, kc, nhan, tach_diem, tru, thu_tu_tam_giac, goc_do
 
 # ---- khung 9:16 (đơn vị Manim, gốc giữa khung) ----
 W, H = 9.0, 16.0
@@ -184,7 +184,7 @@ def mau_tham(phep_dung, dieu_kien, rng):
         idb = str(b.get("id") or "d%d" % (i + 1))
         l = b.get("loai")
         if l in ("tam_giac", "tam_giac_noi_tiep"):
-            dinh = tach_diem("".join(b.get("dinh")) if isinstance(b.get("dinh"), list) else b.get("dinh"))
+            dinh = dinh_hinh_goc(b, 3, idb)
             g, _ = _mau_goc_tam_giac(dinh, dieu_kien, rng)
             tt = thu_tu_tam_giac(dinh, dieu_kien)
             th[idb] = {"goc": (g[tt[0]], g[tt[1]], g[tt[2]])}

@@ -183,10 +183,28 @@ kiem("tứ giác nội tiếp không nêu căn cứ -> cảnh báo", any("NOI_TI
 kiem("cấp lớp suy từ kb.lop", gdpt2018.chuan_cap_lop("", "8") == "lop_8" and gdpt2018.chuan_cap_lop(None, "11") == "thpt" and gdpt2018.chuan_cap_lop("lop_9") == "lop_9")
 
 print("9. Cửa vào dòng lệnh (BP2 kiểm nhanh qua stdin)")
-r = subprocess.run([sys.executable, os.path.join(GOC, "giai_hinh_phang.py"), "-", "--chi-kiem"], input=json.dumps(KB0).encode("utf8"), capture_output=True)
+lenh_kiem = [sys.executable, os.path.join(GOC, "giai_hinh_phang.py"), "-", "--chi-kiem"]
+r = subprocess.run(lenh_kiem, input=json.dumps(KB0).encode("utf8"), capture_output=True)
 kiem("--chi-kiem - : mã 0 + JSON dat=true", r.returncode == 0 and json.loads(r.stdout.decode("utf8"))["dat"] is True)
-r = subprocess.run([sys.executable, os.path.join(GOC, "giai_hinh_phang.py"), "-", "--chi-kiem"], input=json.dumps(them_dong(kb_moi(), "AM \\perp BC")).encode("utf8"), capture_output=True)
+r = subprocess.run(lenh_kiem, input=json.dumps(them_dong(kb_moi(), "AM \\perp BC")).encode("utf8"), capture_output=True)
 kiem("--chi-kiem - : lỗi -> mã 2", r.returncode == 2 and json.loads(r.stdout.decode("utf8"))["loi"])
+
+kb = kb_moi()
+pd = kb["hinh_phang_chuan"]["phep_dung"]
+pd[0] = {"id": "d1", "loai": "duong_tron", "tam": "O"}
+pd[1] = {"id": "d2", "loai": "chan_duong_cao", "ten": "H", "tu": "A", "xuong": "BC"}
+r = subprocess.run(lenh_kiem, input=json.dumps(kb).encode("utf8"), capture_output=True)
+loi_d2 = "phép dựng 2/d2: điểm A chưa được dựng trước bước này"
+kiem("bước 1 chỉ dựng (O), bước 2 dùng A -> BP2 nhận mã 2 và HP_DIEM_KHONG_TON_TAI",
+     r.returncode == 2 and not r.stderr and json.loads(r.stdout)["dat"] is False
+     and any(x["ma"] == "HP_DIEM_KHONG_TON_TAI" and x["chi_tiet"] == loi_d2 for x in json.loads(r.stdout)["loi"]))
+kb = kb_moi()
+dinh = kb["hinh_phang_chuan"]["phep_dung"][0]
+dinh["dinh"] = "ABC"
+kiem("dinh dạng chuỗi vẫn nạp cùng bộ đỉnh với mảng", giai(kb)["diem"] == P)
+del dinh["dinh"]
+G = giai(kb, chi_kiem=True)
+kiem("tam giác bước 1 thiếu trường dinh -> lỗi cứng", not G["dat"] and "HP_DUNG_LOI" in ma_loi(G))
 
 print("10. Bản JS (KiemTraHinh.gs kiemGdpt2018_) khớp bản Python")
 js = os.path.join(GOC, "test_gdpt_js.cjs")

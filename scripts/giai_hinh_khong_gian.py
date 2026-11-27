@@ -193,6 +193,8 @@ def giai(kb, chi_kiem=False):
             continue
         try:
             ds = tach_ten(m.get("mat"))
+            if len(ds) < 3:
+                raise LoiDung("KG_DUNG_LOI", "mặt cắt cần ít nhất 3 điểm")
             n, o = mat_qua(D[ds[0]], D[ds[1]], D[ds[2]])
         except (LoiDung, KeyError) as e:
             loi.append(_loi("KG_DUNG_LOI", "mặt cắt %s: %s" % (m.get("mat"), getattr(e, "chi_tiet", e))))
@@ -212,6 +214,8 @@ def giai(kb, chi_kiem=False):
         try:
             dinh = chuan_ten(g.get("dinh"))
             hai = tach_ten(g.get("canh")) if g.get("canh") else [chuan_ten(g.get("a")), chuan_ten(g.get("b"))]
+            if len(hai) != 2:
+                raise LoiDung("KG_DUNG_LOI", "ký hiệu góc tại %s cần đúng 2 điểm trên hai cạnh" % dinh)
             if not all(t in D for t in [dinh] + hai):
                 raise LoiDung("KG_DIEM_KHONG_TON_TAI", "góc tại %s nhắc điểm chưa dựng" % dinh)
             goc.append({"id": str(g.get("id") or "goc_" + dinh + "".join(hai)), "dinh": dinh, "a": hai[0], "b": hai[1],

@@ -269,12 +269,13 @@ for (const wf of ['bo-phan-1.yml', 'viet-kich-ban.yml', 'dung-video.yml']) {
   let khop2a = false, khop2b = false;
   try { assert.deepStrictEqual(gs2a, scGoc.pha_2a); khop2a = true; } catch (_e) {}
   try { assert.deepStrictEqual(gs2b, scGoc.pha_2b); khop2b = true; } catch (_e) {}
+  const khopHinhPhang = JSON.stringify(gsCtx.schemaAnhXa2B_('HINH_PHANG')) === JSON.stringify(scGoc.pha_2b_anh_xa.HINH_PHANG);
   const nodeGoi = fs.readFileSync(path.join(ROOT, 'scripts', 'bophan1', 'goi_gemini.js'), 'utf8');
   const pyCb = fs.readFileSync(path.join(ROOT, 'scripts', 'chuanbi.py'), 'utf8');
   const py2b = fs.readFileSync(path.join(ROOT, 'scripts', 'dao_dien_2b.py'), 'utf8');
   const duNguon = nodeGoi.includes('kich_ban_bp2.json') && py2b.includes('kich_ban_bp2.json') && pyCb.includes('dao_dien_2b');
-  kiem('Single Source of Truth: schema/kich_ban_bp2.json đồng bộ 100% với BoPhan1.gs, goi_gemini.js, dao_dien_2b.py & chuanbi.py', khop2a && khop2b && duNguon,
-    [!khop2a && 'lệch pha_2a', !khop2b && 'lệch pha_2b', !duNguon && 'thiếu tham chiếu Node/Python'].filter(Boolean).join(', '));
+  kiem('Single Source of Truth: schema/kich_ban_bp2.json đồng bộ 100% với BoPhan1.gs, goi_gemini.js, dao_dien_2b.py & chuanbi.py', khop2a && khop2b && khopHinhPhang && duNguon,
+    [!khop2a && 'lệch pha_2a', !khop2b && 'lệch pha_2b', !khopHinhPhang && 'lệch ánh xạ hình phẳng', !duNguon && 'thiếu tham chiếu Node/Python'].filter(Boolean).join(', '));
 }
 
 // =========================================================================
@@ -673,6 +674,13 @@ const wfDung = fs.readFileSync(path.join(wfDir, 'dung-video.yml'), 'utf8');
 const iProps = wfDung.indexOf('--props-soi-chu');
 const iGate = wfDung.indexOf('node scripts/kiem_tra_de_chu_truoc_render.mjs');
 const iTts = wfDung.indexOf('BAO_LOI_BP2=out/loi_truoc_tts.txt python3 scripts/chuanbi.py kich_ban.json ||');
+const iKiemHinh = wfDung.indexOf('- name: Kiểm chứng phép dựng và mệnh đề hình học trước TTS');
+const iBuocProps = wfDung.indexOf('- name: Chuẩn bị props giả lập');
+const buocKiemHinh = wfDung.slice(iKiemHinh, iBuocProps);
+kiem('BP3: kiểm chứng cả hai bộ giải hình học và dừng khi lỗi trước bước props và TTS',
+  wfDung.indexOf('id: kb') < iKiemHinh && iKiemHinh >= 0 && iKiemHinh < iBuocProps && iBuocProps < iTts &&
+  buocKiemHinh.includes('from scripts.giai_hinh_phang import giai') && buocKiemHinh.includes('from scripts.giai_hinh_khong_gian import giai') &&
+  buocKiemHinh.includes('raise SystemExit(2)'));
 const buocProps = wfDung.slice(wfDung.indexOf('id: props_soi_chu'), iGate);
 const buocTts = wfDung.slice(wfDung.indexOf('- name: Tạo giọng đọc'), iTts);
 kiem('BP3: 3 cửa chuẩn (props không TTS → 1 lần Chromium Cửa 2 → TTS → Cửa 3 hậu kiểm 1 lần, bỏ kiem_duyet.mjs trùng)',

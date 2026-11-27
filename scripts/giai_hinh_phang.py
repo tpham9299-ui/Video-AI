@@ -30,7 +30,7 @@ def _loi(ma, chi_tiet, goi_y="", nguon=""):
 
 GOI_Y_DUNG = {
     "HP_DUNG_LOI": "Kiểm lại phép dựng: đúng tên điểm, đúng thứ tự (điểm phải được dựng trước khi dùng), giao điểm chọn đúng nghiệm (khac/gan), điều kiện đề (nhọn, AB<AC...) khai báo trong dieu_kien.",
-    "HP_DIEM_KHONG_TON_TAI": "Mọi điểm nhắc trong chứng minh phải có trong phep_dung (thêm trung_diem / giao_diem / chan_duong_cao... đúng thứ tự đề).",
+    "HP_DIEM_KHONG_TON_TAI": "Khai báo đỉnh gốc trong dinh của tam_giac / tam_giac_noi_tiep / tu_giac. Mọi điểm và đường tròn phải được dựng trong phep_dung trước khi dùng.",
 }
 
 
@@ -104,15 +104,16 @@ def giai(kb, hat=None, chi_kiem=False):
     hp = kb.get("hinh_phang_chuan") if isinstance(kb, dict) else None
     if not isinstance(hp, dict):
         return None
-    kq = {"phien_ban": PHIEN_BAN, "loi": [], "canh_bao": [], "sua": []}
+    kq = {"dat": False, "phien_ban": PHIEN_BAN, "loi": [], "canh_bao": [], "sua": []}
     cap = gdpt2018.chuan_cap_lop(hp.get("cap_lop"), kb.get("lop"))
     kq["cap_lop"] = cap
-    pd = [b for b in (hp.get("phep_dung") or []) if isinstance(b, dict)]
+    pd = hp.get("phep_dung")
+    pd = [b for b in pd if isinstance(b, dict)] if isinstance(pd, list) else []
     for i, b in enumerate(pd):
         b.setdefault("id", "d%d" % (i + 1))
     dk = [x for x in (hp.get("dieu_kien") or []) if isinstance(x, dict)]
     if not pd:
-        kq["loi"].append(_loi("HP_DUNG_LOI", "hinh_phang_chuan thiếu phep_dung", GOI_Y_DUNG["HP_DUNG_LOI"]))
+        kq["loi"].append(_loi("HP_THIEU_DAC_TA", "hinh_phang_chuan thiếu phep_dung", GOI_Y_DUNG["HP_DUNG_LOI"]))
     # 1) GDPT 2018
     cung, cb = gdpt2018.kiem_gdpt(kb, cap)
     for x in cung:
@@ -131,7 +132,9 @@ def giai(kb, hat=None, chi_kiem=False):
     try:
         mau = bo_cuc.lay_mau(pd, dk, hat=hat)
     except LoiDung as e:
-        kq["loi"].append(_loi(e.ma, "phép dựng %s: %s" % (e.id_buoc or "?", e.chi_tiet), GOI_Y_DUNG.get(e.ma, ""), e.id_buoc))
+        id_buoc = next(("%d/%s" % (i, e.id_buoc) for i, b in enumerate(pd, 1)
+                       if str(b.get("id") or "d%d" % i) == e.id_buoc), e.id_buoc or "?")
+        kq["loi"].append(_loi(e.ma, "phép dựng %s: %s" % (id_buoc, e.chi_tiet), GOI_Y_DUNG.get(e.ma, ""), e.id_buoc))
         return kq
     kq["so_mau"] = len(mau)
     # 4) kiểm chứng toán học trên MỌI cấu hình

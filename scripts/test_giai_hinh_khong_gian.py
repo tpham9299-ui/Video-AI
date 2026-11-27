@@ -88,10 +88,25 @@ kb = copy.deepcopy(doc("vuong_goc_sa.json"))
 kb["hinh_khong_gian"]["so_do"][0]["gia_tri"] = "60°"
 ok("KG_SAI_SO_DO" in ma_loi(giai(kb)), "số đo lệch đáp án -> KG_SAI_SO_DO")
 kb = doc("vuong_goc_sa.json")
-kb["hinh_khong_gian"]["so_do"].append({"loai": "goc_ba_diem", "gia_tri": "45°"})
+goc_ba_diem = {"loai": "goc_ba_diem", "gia_tri": "45°"}
+kb["hinh_khong_gian"]["so_do"].append(goc_ba_diem)
 G = giai(kb, chi_kiem=True)
 ok(not G["dat"] and ma_loi(G) == {"KG_DUNG_LOI"} and all(dl["loai"] != "goc_ba_diem" for dl in G["so_do"]),
    "số đo góc ba điểm thiếu 'goc' -> KG_DUNG_LOI")
+kb_thieu_goc = copy.deepcopy(kb)
+for goc, ma in (("SC", "KG_DUNG_LOI"), ("SCAB", "KG_DUNG_LOI"), (["S", "C", "Z"], "KG_DIEM_KHONG_TON_TAI")):
+    goc_ba_diem["goc"] = goc
+    G = giai(kb, chi_kiem=True)
+    ok(not G["dat"] and ma_loi(G) == {ma}, "góc %s -> %s" % (goc, ma))
+goc_ba_diem["goc"] = "SCA"
+G = giai(kb, chi_kiem=True)
+ok(G["dat"] and G["so_do"][-1]["may_tinh"] == 45.0, "góc SCA đủ ba điểm -> 45°")
+kb = copy.deepcopy(kb1)
+kb["hinh_khong_gian"]["mat_cat"].append({"mat": "AB"})
+kb["hinh_khong_gian"]["goc"] = [{"dinh": "A", "canh": "S"}]
+G = giai(kb, chi_kiem=True)
+ok(not G["dat"] and len(G["loi"]) == 2 and ma_loi(G) == {"KG_DUNG_LOI"},
+   "mặt cắt và ký hiệu góc thiếu điểm -> hai lỗi KG_DUNG_LOI")
 kb = copy.deepcopy(kb1)
 kb["lop"] = "10"
 ok("KG_VUOT_CHUONG_TRINH" in ma_loi(giai(kb)), "lớp 10 -> KG_VUOT_CHUONG_TRINH")
@@ -135,10 +150,13 @@ G = giai({"lop": "11", "hinh_khong_gian": {"khoi": {"loai": "chop_tam_giac", "da
 ok(G["dat"], "chóp tam giác vuông tại B, SA ⊥ đáy: BC ⊥ (SAB)")
 # CLI --chi-kiem (BP2)
 import subprocess  # noqa: E402
-r = subprocess.run([sys.executable, os.path.join(GOC, "scripts", "giai_hinh_khong_gian.py"), "-", "--chi-kiem"], input=json.dumps(kb1).encode("utf8"),
-                   capture_output=True)
+lenh_kiem = [sys.executable, "-X", "utf8", os.path.join(GOC, "scripts", "giai_hinh_khong_gian.py"), "-", "--chi-kiem"]
+r = subprocess.run(lenh_kiem, input=json.dumps(kb1).encode("utf8"), capture_output=True)
 ok(r.returncode == 0 and json.loads(r.stdout.decode("utf8"))["dat"] is True, "CLI --chi-kiem trả JSON, mã 0")
-r = subprocess.run([sys.executable, os.path.join(GOC, "scripts", "giai_hinh_khong_gian.py"), "-", "--chi-kiem"], input=b'{"canh":[]}', capture_output=True)
+r = subprocess.run(lenh_kiem, input=json.dumps(kb_thieu_goc).encode("utf8"), capture_output=True)
+ok(r.returncode == 2 and not r.stderr and not json.loads(r.stdout)["dat"] and ma_loi(json.loads(r.stdout)) == {"KG_DUNG_LOI"},
+   "CLI: góc thiếu 'goc' -> JSON có mã KG_DUNG_LOI, thoát mã 2")
+r = subprocess.run(lenh_kiem, input=b'{"canh":[]}', capture_output=True)
 ok(r.returncode == 3, "CLI: không có hinh_khong_gian -> mã 3")
 
 print("test_giai_hinh_khong_gian: %d đạt, %d hỏng" % (DAT, len(HONG)))

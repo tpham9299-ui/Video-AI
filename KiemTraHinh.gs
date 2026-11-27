@@ -1065,7 +1065,7 @@ function danhGiaKichBan_(kb, dapAn, mon, coHinhDe, sanPham, deGoc, lop) {
   kiemTraNhanDai_(kb).forEach(function (x) { nhe.push(x); });
   kiemTraBaCham_(kb).forEach(function (x) { nang.push(x); });
   kiemTraCuPhapTex_(kb).forEach(function (x) { nang.push(x); });
-  if (String(kb.mon || '').toUpperCase() === 'HINH_HOC' && typeof kiemTraKichBanManim_ === 'function') {   // hình học dựng bằng Manim (HinhHoc.gs)
+  if ((laLuongHH || /^(HINH_HOC|HINH_PHANG|HINH_KHONG_GIAN)$/.test(String(kb.mon || mon || '').toUpperCase())) && typeof kiemTraKichBanManim_ === 'function') {
     // v97: hình KHÔNG GIAN chuẩn (hinh_khong_gian) -> kiểm riêng (đặc tả + moc_xoay + bộ giải máy), không đòi tọa độ hinh_hoc / buoc_ve
     var kM = kb.hinh_khong_gian && typeof kiemKhongGian_ === 'function' && (typeof batHinhKhongGian_ !== 'function' || batHinhKhongGian_()) ? kiemKhongGian_(kb) : kiemTraKichBanManim_(kb);
     kM.nang.forEach(function (x) { nang.push(x); });
@@ -2915,6 +2915,127 @@ function kiemGdpt2018_(kb, cap) {
   return { cung: cung, canh_bao: canhBao };
 }
 // [GDPT2018_KET_THUC]
+
+// Kiểm tên điểm và đường tròn theo thứ tự thực thi của hinh_phang/hinh.py, kể cả khi Apps Script chạy không có Python.
+function kiemThuTuPhepDungHinhPhang_(phepDung) {
+  var diem = new Set(), tron = new Set(), loi = '';
+  var chuan = function (x) {
+    return String(x || '').trim().replace(/^([A-Z])_\{(\d+)\}$/, '$1_$2').replace(/^([A-Z])(\d+)$/, '$1_$2');
+  };
+  var tach = function (x) {
+    var s = String(x || '').replace(/\\(triangle|angle|widehat|Delta)\b/g, '');
+    if (s.indexOf('_{') < 0) s = s.replace(/[{}]/g, '');
+    return (s.replace(/ /g, '').match(/[A-Z](?:'+|_\{\d+\}|_?\d+)?/g) || []).map(chuan);
+  };
+  var laTron = function (x) { return /^\([\s\S]*\)$/.test(String(x || '').trim()); };
+  function docDiem(x) {
+    var ten = chuan(x);
+    if (!loi && !diem.has(ten)) loi = 'HP_DIEM_KHONG_TON_TAI: điểm ' + ten + ' chưa được dựng trước bước này';
+  }
+  function docTron(x) {
+    var khoa = tach(x).join('');
+    if (!loi && !tron.has(khoa)) loi = 'HP_DIEM_KHONG_TON_TAI: đường tròn (' + khoa + ') chưa được dựng';
+  }
+  function docNhom(x, n) {
+    var ds = tach(x);
+    if (ds.length === n) ds.forEach(docDiem);
+    else if (!loi) loi = 'HP_DUNG_LOI: "' + String(x || '') + '" cần đúng ' + n + ' điểm';
+    return ds;
+  }
+  function docDuong(x) {
+    var ds = tach(x);
+    var vong = laTron(x) || (ds.length === 1 && tron.has(ds[0]));
+    if (vong) docTron(x);
+    else docNhom(x, 2);
+    return vong;
+  }
+  function chonGiao(b) {
+    (Array.isArray(b.khac) ? b.khac : b.khac ? [b.khac] : []).forEach(docDiem);
+    if (b.gan || b.xa) docDiem(b.gan || b.xa);
+  }
+  function themTam(tam) {
+    diem.add(tam);
+    tron.add(tam);
+  }
+  var buoc = phepDung.filter(function (b) { return b && typeof b === 'object' && !Array.isArray(b); });
+  if (phepDung.length && !buoc.length) return 'HP_THIEU_DAC_TA: phep_dung cần có ít nhất một phép dựng.';
+  for (var i = 0; i < buoc.length; i++) {
+    var b = buoc[i], loai = b.loai, tam = chuan(b.tam || 'O');
+    switch (loai) {
+      case 'tam_giac':
+      case 'tam_giac_noi_tiep':
+      case 'tu_giac':
+        var dinh = b.dinh;
+        if (Array.isArray(dinh)) dinh = dinh.every(function (x) { return typeof x === 'string'; }) ? dinh.join('') : '';
+        var ds = typeof dinh === 'string' ? tach(dinh) : [];
+        var soDinh = loai === 'tu_giac' ? 4 : 3;
+        if (new Set(ds).size !== soDinh || ds.length !== soDinh) {
+          loi = 'HP_DUNG_LOI: ' + (soDinh === 3 ? 'tam giác' : 'tứ giác') + ' cần đúng ' + soDinh + ' đỉnh khác nhau trong "dinh"';
+        } else {
+          ds.forEach(function (x) { diem.add(x); });
+          if (loai === 'tam_giac_noi_tiep') { themTam(tam); tron.add(ds.join('')); }
+        }
+        break;
+      case 'duong_tron': themTam(tam); break;
+      case 'diem_tren':
+        if (laTron(b.tren)) docTron(b.tren);
+        else docNhom(b.tren, 2);
+        break;
+      case 'diem_ngoai': docTron(b.duong_tron || '(O)'); break;
+      case 'chan_duong_cao': docDiem(b.tu); docNhom(b.xuong, 2); break;
+      case 'duong_kinh': docTron(b.duong_tron || '(O)'); docDiem(b.tu); break;
+      case 'trung_diem': docNhom(b.doan, 2); break;
+      case 'giao_diem':
+        var tronA = docDuong(b.a), tronB = docDuong(b.b);
+        if (tronA || tronB) chonGiao(b);
+        break;
+      case 'duong_tron_ngoai_tiep':
+        tron.add(docNhom(b.tg, 3).join(''));
+        themTam(tam);
+        break;
+      case 'duong_tron_duong_kinh':
+        tron.add(docNhom(b.doan, 2).join(''));
+        if (b.tam) themTam(chuan(b.tam));
+        break;
+      case 'tiep_tuyen':
+        docTron(b.duong_tron || '(O)');
+        docDiem(b.tai || b.tu);
+        if (b.tai && b.cat && docDuong(b.cat)) chonGiao(b);
+        if (!b.tai && b.tu) {
+          var tiepDiem = Array.isArray(b.ten_tiep_diem) ? b.ten_tiep_diem : b.ten_tiep_diem ? [b.ten_tiep_diem] : [];
+          tiepDiem.slice(0, 2).forEach(function (x) { diem.add(chuan(x)); });
+        }
+        break;
+      case 'phan_giac':
+        docNhom(b.goc, 3);
+        if (docDuong(b.cat)) chonGiao(b);
+        break;
+      case 'doi_xung':
+        docDiem(b.diem);
+        if (tach(b.qua).length === 1) docDiem(b.qua);
+        else docNhom(b.qua, 2);
+        break;
+      case 'song_song':
+      case 'vuong_goc':
+        docDiem(b.qua);
+        docNhom(b.voi, 2);
+        if (b.cat && docDuong(b.cat)) chonGiao(b);
+        break;
+      case 'doan_noi':
+        (Array.isArray(b.doan) ? b.doan : [b.doan]).forEach(function (x) {
+          var dsNoi = tach(x);
+          if (dsNoi.length >= 2) dsNoi.forEach(docDiem);
+          else if (!loi) loi = 'HP_DUNG_LOI: đoạn nối "' + String(x || '') + '" cần ít nhất 2 điểm';
+        });
+        break;
+      default: loi = 'HP_DUNG_LOI: loại phép dựng "' + (loai || '') + '" không hỗ trợ';
+    }
+    if (loi) return loi.replace(': ', ': phép dựng ' + (i + 1) + '/' + (b.id || 'd' + (i + 1)) + ': ');
+    if (b.ten && (/^(diem_tren|diem_ngoai|chan_duong_cao|duong_kinh|trung_diem|giao_diem|phan_giac|doi_xung|song_song|vuong_goc)$/.test(loai) ||
+        (loai === 'tiep_tuyen' && b.tai))) diem.add(chuan(b.ten));
+  }
+  return '';
+}
 
 // v94: Auto-fix nhẹ các trường phụ của kb.hinh_phang_chuan (không đụng phép dựng / mệnh đề: sai thì bộ kiểm chứng trả lại AI).
 var MAU_HP_ = ['vang', 'do', 'ngoc', 'cam', 'la'];
