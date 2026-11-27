@@ -1,0 +1,67 @@
+name: Phân tích YouTube hàng tuần
+
+# Workflow độc lập chạy định kỳ Chủ nhật 20:00 giờ Việt Nam (13:00 UTC) hoặc chạy tay.
+# KHÔNG can thiệp vào luồng sản xuất BP0–BP5; đọc chỉ số YouTube Analytics 7–30 ngày gần nhất,
+# chấm điểm và đề xuất Top 2 bài hiệu suất cao nhất mỗi chuyên mục gửi Zalo kèm lệnh `/hay <ID>`.
+on:
+  schedule:
+    - cron: '0 13 * * 0'
+  workflow_dispatch:
+    inputs:
+      tu_ngay_truoc:
+        description: 'Mốc bắt đầu (số ngày trước hôm nay, mặc định 30)'
+        type: string
+        default: '30'
+      den_ngay_truoc:
+        description: 'Mốc kết thúc (số ngày trước hôm nay, mặc định 7)'
+        type: string
+        default: '7'
+      top_k:
+        description: 'Số bài đề xuất mỗi chuyên mục (mặc định 2)'
+        type: string
+        default: '2'
+      khong_gui_zalo:
+        description: 'Chỉ in log, không gửi Zalo (true/false)'
+        type: string
+        default: 'false'
+
+concurrency:
+  group: phan-tich-youtube-tuan
+  cancel-in-progress: false
+
+jobs:
+  phan_tich_tuan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+      YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+      YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+      ZALO_BOT_TOKEN: ${{ secrets.ZALO_BOT_TOKEN }}
+      ZALO_BOT_TOKEN_DE: ${{ secrets.ZALO_BOT_TOKEN_DE }}
+      ZALO_CHAT_IDS: ${{ secrets.ZALO_CHAT_IDS }}
+      APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
+      DUNG_VIDEO_SECRET: ${{ secrets.DUNG_VIDEO_SECRET }}
+      TU_NGAY_TRUOC: ${{ inputs.tu_ngay_truoc || '30' }}
+      DEN_NGAY_TRUOC: ${{ inputs.den_ngay_truoc || '7' }}
+      TOP_K: ${{ inputs.top_k || '2' }}
+      KHONG_GUI_ZALO: ${{ inputs.khong_gui_zalo || 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts/phan_tich_youtube.py
+            mau_vang
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Chạy phân tích YouTube Analytics và gửi đề xuất về Zalo
+        run: |
+          ARGS="--tu-ngay-truoc ${TU_NGAY_TRUOC:-30} --den-ngay-truoc ${DEN_NGAY_TRUOC:-7} --top-k ${TOP_K:-2} --xuat-json /tmp/bao_cao_youtube_tuan.json"
+          if [ "${KHONG_GUI_ZALO}" = "true" ]; then
+            ARGS="$ARGS --khong-gui-zalo"
+          fi
+          PYTHONUTF8=1 python3 scripts/phan_tich_youtube.py $ARGS

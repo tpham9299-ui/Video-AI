@@ -7,6 +7,7 @@
 //  5. Kiểm tra hợp lệ bai_hoc_edit.json, mau_vang/index.json, đủ 5 tệp SFX WAV sạch, khóa chống ồn DongCoSfx.
 //  6. Chạy chuanbi.py --gia-lap cho các đề mẫu chuẩn + kiểm chứng checkpoint TTS/Manim/Audio Mastering + cảnh báo quỹ key < 20%.
 //  7. Kiểm thử kho 16 mảnh ghép SVG, Auto Cover Frame và bình luận ghim biến thể.
+//  8. Kiểm thử luồng phân tích YouTube Analytics hàng tuần (đề xuất kho vàng mau_vang/).
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -608,6 +609,22 @@ kiem(
   'python -X utf8 scripts/test_kho_manh_svg.py',
   rKhoSvg.status === 0,
   rKhoSvg.status === 0 ? '' : (rKhoSvg.stderr || rKhoSvg.stdout || '').slice(-260),
+);
+
+// =========================================================================
+// 8. Kiểm thử Đợt 4: Phân tích YouTube Analytics định kỳ hàng tuần
+// =========================================================================
+console.log('8. Kiểm thử phân tích YouTube Analytics hàng tuần (scripts/test_phan_tich_youtube.py)');
+const rYtTuan = spawnSync(PY, ['-X', 'utf8', path.join(ROOT, 'scripts', 'test_phan_tich_youtube.py')], {
+  cwd: ROOT,
+  encoding: 'utf8',
+  env: {...process.env, PYTHONIOENCODING: 'utf-8'},
+  timeout: 60000,
+});
+kiem(
+  'python -X utf8 scripts/test_phan_tich_youtube.py',
+  rYtTuan.status === 0,
+  rYtTuan.status === 0 ? '' : (rYtTuan.stderr || rYtTuan.stdout || '').slice(-260),
 );
 
 console.log(`\nCI SMOKE TEST: ${dat} đạt, ${hong.length} hỏng`);
