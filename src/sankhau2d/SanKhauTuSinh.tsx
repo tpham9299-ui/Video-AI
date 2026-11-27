@@ -218,7 +218,7 @@ const Pill: React.FC<{x: number; y: number; ten: string; mau?: string; sp: numbe
   return (
     <g opacity={Math.min(1, sp * 1.2)} transform={`translate(0 ${12 * (1 - Math.min(1, sp))})`}>
       <rect x={cx - w / 2} y={y - 22} width={w} height={44} rx={22} fill={NEN} stroke={mau} strokeWidth={2} />
-      <text x={cx} y={y + 8} fontSize={24} fontWeight={700} fill={mau} textAnchor="middle">{texSangChu(ten)}</text>
+      <text data-va-cham="svg_text" x={cx} y={y + 8} fontSize={24} fontWeight={700} fill={mau} textAnchor="middle">{texSangChu(ten)}</text>
     </g>
   );
 };
@@ -258,7 +258,7 @@ const LopKoch: React.FC<{de: string; bs: {t: number}[]; t: number; fps: number}>
       )}
       {muc === 0 ? (
         <g opacity={Math.min(1, sp * 1.2)}>
-          <text x={400} y={298} fontSize={44} fontWeight={800} fill="#F8FAFC" textAnchor="middle" stroke={NEN} strokeWidth={6} paintOrder="stroke">S₀</text>
+          <text data-va-cham="svg_text" x={400} y={298} fontSize={44} fontWeight={800} fill="#F8FAFC" textAnchor="middle" stroke={NEN} strokeWidth={6} paintOrder="stroke">S₀</text>
           <line x1={210} y1={412} x2={590} y2={412} stroke={AMBER} strokeWidth={3} />
           <line x1={210} y1={400} x2={210} y2={424} stroke={AMBER} strokeWidth={3} />
           <line x1={590} y1={400} x2={590} y2={424} stroke={AMBER} strokeWidth={3} />
@@ -291,7 +291,7 @@ const LopTienTrinh: React.FC<{bs: {t: number}[]; t: number; fps: number}> = ({bs
             {j > 0 ? <line x1={x - gap + 40} y1={330} x2={x - 40} y2={330} stroke={XAM} strokeWidth={3} /> : null}
             <rect x={x - 28} y={290 - h} width={56} height={h} rx={10} fill={mau} fillOpacity={0.35} stroke={mau} strokeWidth={3} />
             <circle cx={x} cy={330} r={30 + (hienTai ? 4 * Math.min(1, dt) : 0)} fill={NEN} stroke={mau} strokeWidth={4} />
-            <text x={x} y={341} fontSize={30} fontWeight={800} fill="#F8FAFC" textAnchor="middle">{j + 1}</text>
+            <text data-va-cham="svg_text" x={x} y={341} fontSize={30} fontWeight={800} fill="#F8FAFC" textAnchor="middle">{j + 1}</text>
           </g>
         );
       })}
@@ -377,7 +377,7 @@ const LopTongQuat: React.FC<{ps: TP[]; t: number; fps: number; cong: number; mp?
               {p.nhanh || moi || /^[SGMN]$/.test(p.ten || '') ? <XungSonar cx={p.x || 0} cy={p.y || 0} f={(t - p.t) * fps} mau={p.nhanh ? AMBER : CYAN} /> : null}
               {p.nhanh ? <circle cx={p.x} cy={p.y} r={(moi ? 19 : 15) * (0.6 + 0.4 * Math.min(1, sp))} fill="none" stroke={AMBER} strokeWidth={moi ? 3 : 2} strokeOpacity={moi ? 1 : 0.6} /> : null}
               <circle cx={p.x} cy={p.y} r={(p.nhanh ? 10 : 8) * (0.6 + 0.4 * Math.min(1, sp))} fill={mau} />
-              <text x={np.x} y={np.y} fontSize={moi || p.nhanh ? 30 : 26} fontWeight={800} fill="#F8FAFC" textAnchor="middle" stroke={NEN} strokeWidth={6} paintOrder="stroke">{texSangChu(p.ten)}</text>
+              <text data-va-cham="svg_text" x={np.x} y={np.y} fontSize={moi || p.nhanh ? 30 : 26} fontWeight={800} fill="#F8FAFC" textAnchor="middle" stroke={NEN} strokeWidth={6} paintOrder="stroke">{texSangChu(p.ten)}</text>
             </g>
           );
         }
@@ -385,7 +385,7 @@ const LopTongQuat: React.FC<{ps: TP[]; t: number; fps: number; cong: number; mp?
         return (
           <g key={p.id} opacity={Math.min(1, sp * 1.2) * lang} transform={`translate(0 ${14 * (1 - Math.min(1, sp))})`}>
             <rect x={(p.x || 400) - w / 2} y={(p.y || 500) - 24} width={w} height={44} rx={22} fill={NEN} stroke={XAM} strokeWidth={2} />
-            <text x={p.x} y={(p.y || 500) + 8} fontSize={26} fontWeight={700} fill={AMBER} textAnchor="middle">{texSangChu(p.ten)}</text>
+            <text data-va-cham="svg_text" x={p.x} y={(p.y || 500) + 8} fontSize={26} fontWeight={700} fill={AMBER} textAnchor="middle">{texSangChu(p.ten)}</text>
           </g>
         );
       })}
@@ -484,7 +484,7 @@ export const SanKhauTuSinh: React.FC<{ts: TuSinhVao; t: number; fps: number; ron
             <g key={l.id} data-lop={l.id} className={(cu ? 'ts-cu' : 'ts-moi') + (t < (l.tNhan ?? 0) ? ' ts-de-som' : '')} opacity={dangDe ? 1 : s.hien * thay * dim} clipPath={s.quet < 1 ? `url(#ts-quet-${l.id})` : undefined}
               style={{transformBox: 'view-box', transformOrigin: '400px 270px', scale: String(s.s), translate: `0px ${s.dy}px`,
                 filter: s.sang > 0.01 ? `brightness(${1 + 0.32 * s.sang})` : undefined}}>
-              <g dangerouslySetInnerHTML={{__html: l.svg}} />
+              <g dangerouslySetInnerHTML={{__html: l.svg.replace(/<text(?=\s|>)/g, '<text data-va-cham="svg_text"')}} />
             </g>
           );
         })}

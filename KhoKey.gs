@@ -203,6 +203,7 @@ function khoGoi_(he, model, body, tuyChon) {
     }
     var code = res.getResponseCode(), raw = res.getContentText();
     if (code === 200) return { ok: true, code: 200, het: false, raw: raw, key: key };
+    if (code === 400 && /schema|structured[- ]output/i.test(raw)) return {ok: false, code: code, het: false, raw: raw, key: key};
     if (khoLa404_(code, raw)) { khoGhi404_(key, model); khoLog_('MODEL_404', key, model + ' không tồn tại -> nhớ model 6 giờ (key vẫn tốt)'); return { ok: false, code: code, het: false, raw: raw, key: key }; }   // v99.3: chỉ model bị nhớ
     var la403 = khoLa403Model_(code, raw);
     if (khoGhiNhanLoi_(key, tq, code, raw)) {
@@ -236,6 +237,7 @@ function khoGoiSong_(he, model, bodies) {
   return kq.map(function (r, i) {
     var code = r.getResponseCode(), raw = r.getContentText(), key = keys[i % keys.length];
     if (code === 200) return { ok: true, code: 200, het: false, raw: raw, key: key };
+    if (code === 400 && /schema|structured[- ]output/i.test(raw)) return {ok: false, code: code, het: false, raw: raw, key: key};
     if (khoLa404_(code, raw)) { khoGhi404_(key, model); return { ok: false, code: code, het: false, raw: raw, key: key }; }
     if (code === 400 || code === 404) {
       if (!khoGhiNhanLoi_(key, model, code, raw)) return { ok: false, code: code, het: false, raw: raw };

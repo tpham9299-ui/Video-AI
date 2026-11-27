@@ -544,11 +544,12 @@ function giaiThucTe_(r) {
     'Nếu đề KHÔNG có đáp số thỏa mãn chính xác mọi dữ kiện (cần số nguyên mà phương trình không có nghiệm nguyên, dữ kiện mâu thuẫn, thiếu dữ kiện) thì ghi rõ vào "de_co_van_de" ' +
     'và chọn CÁCH HIỂU HỢP LÝ NHẤT để vẫn trả lời được (ví dụ: xếp được tối đa bao nhiêu tầng trọn vẹn và còn dư bao nhiêu), ghi cách hiểu đó trong "de_co_van_de"; đề bình thường thì để "de_co_van_de" rỗng. ' +
     'Trả JSON: {"mo_hinh":"đặt ẩn, điều kiện, hàm/biểu thức cần xét","cac_buoc":["..."],"gia_tri":0,"don_vi":"","dap_an_hien":"câu trả lời ngắn có đơn vị, ví dụ x = 4 m; S = 48 m²","thu_nguoc":"phép thử lại với đáp số","de_co_van_de":"","nut_that":"bước đột phá 1 câu","do_gon":1-10}\n\n';
+  var schemaGiai = schemaGiaiBP1_('gia_tri');
   var kq3 = goiGeminiSong_([
-    { nhiet: 0.2, prompt: 'Bạn là giáo viên Toán giỏi. Giải bài toán thực tế sau thật cẩn thận: đặt ẩn, nêu điều kiện của ẩn, lập biểu thức, giải và kiểm tra điều kiện; soát kỹ đơn vị. ' + dinhDang + de },
-    { nhiet: 0.5, prompt: 'Bạn là giáo viên Toán giỏi, dạy bằng SUY LUẬN. Giải bài toán thực tế sau bằng cách GỌN và DỄ HIỂU nhất: nhận ra đại lượng cố định để khử ẩn, đối xứng, bất đẳng thức, hình học trực quan... Mỗi bước nói rõ VÌ SAO làm vậy. ' +
+    { nhiet: 0.2, schema: schemaGiai, prompt: 'Bạn là giáo viên Toán giỏi. Giải bài toán thực tế sau thật cẩn thận: đặt ẩn, nêu điều kiện của ẩn, lập biểu thức, giải và kiểm tra điều kiện; soát kỹ đơn vị. ' + dinhDang + de },
+    { nhiet: 0.5, schema: schemaGiai, prompt: 'Bạn là giáo viên Toán giỏi, dạy bằng SUY LUẬN. Giải bài toán thực tế sau bằng cách GỌN và DỄ HIỂU nhất: nhận ra đại lượng cố định để khử ẩn, đối xứng, bất đẳng thức, hình học trực quan... Mỗi bước nói rõ VÌ SAO làm vậy. ' +
       'Thêm "y_tuong" (điều mấu chốt cần nhận ra, 1-2 câu) vào JSON. ' + dinhDang + de },
-    { nhiet: 0.1, prompt: 'Viết MỘT hàm JavaScript thuần tên kiemChung() (không dùng thư viện, không gọi mạng) để tự kiểm chứng đáp số bài toán thực tế sau bằng TÍNH SỐ trên máy (Google Apps Script, chậm hơn máy thường ~10 lần). ' +
+    { nhiet: 0.1, schema: schemaGiaiBP1_('ma'), prompt: 'Viết MỘT hàm JavaScript thuần tên kiemChung() (không dùng thư viện, không gọi mạng) để tự kiểm chứng đáp số bài toán thực tế sau bằng TÍNH SỐ trên máy (Google Apps Script, chậm hơn máy thường ~10 lần). ' +
       'Cài đặt trực tiếp từ ĐỀ BÀI, không dựa vào lời giải: ví dụ bài cực trị thì quét lưới thật mịn trên miền xác định rồi thu hẹp quanh điểm tốt nhất (tổng không quá 1 triệu phép tính); bài tích phân thì tính số bằng Simpson; bài lãi suất thì mô phỏng từng kỳ. ' +
       'Mọi vòng lặp phải chắc chắn dừng; không tạo mảng quá 100000 phần tử. Nếu đề yêu cầu làm tròn thì làm tròn đúng như đề. ' +
       'Hàm trả về {"kieu":"gia_tri","gia_tri":số_thực}. ' + YEU_CAU_HAI_CHIEU_ + 'Trả JSON: {"ma":"function kiemChung(){...}"}\n\n' + de }
@@ -558,7 +559,7 @@ function giaiThucTe_(r) {
   var docTT = function (c) { var x = docSo_(c && c.gia_tri); return isFinite(x) ? x : null; };
   if (docTT(c1) === null && docTT(c2) === null) throw new Error('DAP_AN_KHONG_HOP_LE');
   var tt = trongTai_(r, {
-    de: de, dinhDang: dinhDang, c1: c1, c2: c2, kc: kc,
+    de: de, dinhDang: dinhDang, c1: c1, c2: c2, kc: kc, schema: schemaGiai,
     doc: docTT, bang: function (a, b) { return a !== null && b !== null && khopSo_(a, b); }, chu: vietSo_,
     kiem: function (kq) {
       var gk = docSo_(kq && kq.gia_tri);
@@ -807,6 +808,28 @@ function baoDongBiNgat_(sh) {
   });
 }
 
+// BP1: lời giải và mã kiểm chứng dùng hợp đồng khác nhau.
+function schemaGiaiBP1_(dang) {
+  var chu = {type: 'STRING'}, so = {type: 'NUMBER'}, nguyen = {type: 'INTEGER'};
+  var dsChu = {type: 'ARRAY', items: chu};
+  if (dang === 'ma') return {type: 'OBJECT', properties: {ma: chu}, required: ['ma']};
+  dsChu.minItems = 1;
+  var p = {cac_buoc: dsChu, de_co_van_de: chu, y_tuong: chu, nut_that: chu, do_gon: nguyen};
+  var batBuoc = ['cac_buoc'];
+  if (dang === 'xac_suat') {
+    Object.assign(p, {tu: nguyen, mau: nguyen});
+    batBuoc.push('tu', 'mau');
+  } else if (dang === 'chung_minh') {
+    Object.assign(p, {menh_de: chu, duong_phu: dsChu, chung_minh_duoc: {type: 'BOOLEAN'},
+      cac_buoc: {type: 'ARRAY', items: {type: 'OBJECT', properties: {khang_dinh: chu, ly_do: chu}, required: ['khang_dinh', 'ly_do']}}});
+    batBuoc.push('menh_de', 'chung_minh_duoc');
+  } else {
+    Object.assign(p, {gia_tri: so, don_vi: chu, dap_an_hien: chu, mo_hinh: chu, thu_nguoc: chu, duong_phu: dsChu});
+    batBuoc.push('gia_tri', 'don_vi', 'dap_an_hien');
+  }
+  return {type: 'OBJECT', properties: p, required: batBuoc};
+}
+
 function giaiVaKiemChung_(r) {
   if (typeof laMonHinhHoc_ === 'function' && laMonHinhHoc_(r)) return giaiHinhHoc_(r);   // hình học khó: tính hoặc chứng minh (HinhHoc.gs)
   return laMonThucTe_(r) ? giaiThucTe_(r) : giaiXacSuat_(r);
@@ -819,12 +842,13 @@ function giaiXacSuat_(r) {
   var dinhDang = 'Đáp án cuối là MỘT xác suất dạng phân số với tử và mẫu là số nguyên dương. Soát lại: đếm trùng/đếm sót, có hoàn lại không, có phân biệt thứ tự không. ' +
     'Nếu đề mơ hồ hoặc mâu thuẫn, ghi rõ vào "de_co_van_de" cách hiểu hợp lý nhất đã dùng (đề bình thường để rỗng). Trả JSON: {"cac_buoc":["..."],"tu":0,"mau":0,"de_co_van_de":"","nut_that":"bước đột phá 1 câu","do_gon":1-10}\n\n';
   // Ba việc độc lập nhau (hai cách giải + mã kiểm chứng) nên gọi đồng thời.
+  var schemaGiai = schemaGiaiBP1_('xac_suat');
   var kq3 = goiGeminiSong_([
-    { nhiet: 0.2, prompt: 'Bạn là giáo viên Toán giỏi. Giải bài toán xác suất sau thật cẩn thận, từng bước, ' +
+    { nhiet: 0.2, schema: schemaGiai, prompt: 'Bạn là giáo viên Toán giỏi. Giải bài toán xác suất sau thật cẩn thận, từng bước, ' +
       'soát kỹ lỗi đếm trùng/đếm sót. ' + dinhDang + de },
-    { nhiet: 0.5, prompt: 'Bạn là giáo viên Toán giỏi, nổi tiếng vì dạy bằng SUY LUẬN. Giải bài toán xác suất sau bằng cách THÔNG MINH NHẤT, ít tính toán nhất: ưu tiên nhận ra cấu trúc của bài (đối xứng, đếm bù, biến cố đối, quy về bài đơn giản hơn, thử trường hợp nhỏ để tìm quy luật, đổi góc nhìn); CHỈ dùng công thức khi suy luận đã đưa tới đó. Mỗi bước phải nói rõ VÌ SAO làm vậy. Nếu bài không có cách thông minh hơn thì chia trường hợp thật rõ ràng. ' +
+    { nhiet: 0.5, schema: schemaGiai, prompt: 'Bạn là giáo viên Toán giỏi, nổi tiếng vì dạy bằng SUY LUẬN. Giải bài toán xác suất sau bằng cách THÔNG MINH NHẤT, ít tính toán nhất: ưu tiên nhận ra cấu trúc của bài (đối xứng, đếm bù, biến cố đối, quy về bài đơn giản hơn, thử trường hợp nhỏ để tìm quy luật, đổi góc nhìn); CHỈ dùng công thức khi suy luận đã đưa tới đó. Mỗi bước phải nói rõ VÌ SAO làm vậy. Nếu bài không có cách thông minh hơn thì chia trường hợp thật rõ ràng. ' +
     'Đáp án cuối là MỘT xác suất dạng phân số với tử và mẫu là số nguyên dương. Trả JSON: {"y_tuong":"điều mấu chốt cần nhận ra, 1-2 câu","nut_that":"bước đột phá 1 câu","do_gon":1-10,"cac_buoc":["..."],"tu":0,"mau":0}\n\n' + de },
-    { nhiet: 0.1, prompt: 'Viết MỘT hàm JavaScript thuần tên kiemChung() (không dùng thư viện, không gọi mạng) để tự kiểm chứng đáp án bài toán xác suất sau ' +
+    { nhiet: 0.1, schema: schemaGiaiBP1_('ma'), prompt: 'Viết MỘT hàm JavaScript thuần tên kiemChung() (không dùng thư viện, không gọi mạng) để tự kiểm chứng đáp án bài toán xác suất sau ' +
       'bằng máy tính (chạy trên Google Apps Script, CHẬM hơn máy tính thường khoảng 10 lần). Ưu tiên ĐẾM VÉT CẠN (liệt kê toàn bộ không gian mẫu) nếu không quá khoảng 1 triệu phép lặp; ' +
       'nếu không thì MÔ PHỎNG với đúng n = 200000 lần dùng Math.random. Mọi vòng lặp phải chắc chắn dừng; không tạo mảng quá 100000 phần tử. ' +
       'Hàm trả về: đếm vét cạn -> {"kieu":"chinh_xac","tu":số_nguyên,"mau":số_nguyên}; ' +
@@ -838,7 +862,7 @@ function giaiXacSuat_(r) {
   if (!chuanHoa_(c1) && !chuanHoa_(c2)) throw new Error('DAP_AN_KHONG_HOP_LE');
   var bangPS = function (a, b) { return !!(a && b && a.tu * b.mau === b.tu * a.mau); };
   var tt = trongTai_(r, {
-    de: de, dinhDang: dinhDang, c1: c1, c2: c2, kc: kc,
+    de: de, dinhDang: dinhDang, c1: c1, c2: c2, kc: kc, schema: schemaGiai,
     doc: chuanHoa_, bang: bangPS, chu: function (v) { return v.tu + '/' + v.mau; },
     kiem: function (kq) {
       if (kq.kieu === 'chinh_xac') {
@@ -884,7 +908,7 @@ function trongTai_(r, o) {
         nhatKy_('GIAI', r.id + ': mã kiểm chứng ' + ten + ' lệch 2 chiều (' + hc.mo + '), phản hồi sửa 1 lần');
         try {
           var kcSua = goiGemini_(o.promptMa + '\n\nMÃ TRƯỚC TỰ MÂU THUẪN: ' + hc.mo + '. Một trong hai cách tính SAI (hay gặp: nhầm hữu hạn n lần với tổng vô hạn, ' +
-            'sai đơn vị, nhầm có / không hoàn lại, nghiệm tối ưu ngoài miền). Đọc lại đề, sửa để hai giá trị khớp.\nMÃ TRƯỚC:\n' + String(kc.ma).slice(0, 6000), 0.1, { suyNghi: cauHinh_('MUC_SUY_NGHI_GIAI') });
+            'sai đơn vị, nhầm có / không hoàn lại, nghiệm tối ưu ngoài miền). Đọc lại đề, sửa để hai giá trị khớp.\nMÃ TRƯỚC:\n' + String(kc.ma).slice(0, 6000), 0.1, { suyNghi: cauHinh_('MUC_SUY_NGHI_GIAI'), schema: schemaGiaiBP1_('ma') });
           if (kcSua && kcSua.ma) { var raw2 = chayKiemChung_(kcSua.ma); var hc2 = kiemHaiChieu_(raw2); raw = raw2; hc = hc2; }
         } catch (eS) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(eS.message))) throw eS; }
       }
@@ -928,7 +952,7 @@ function trongTai_(r, o) {
         var promptSua = 'Bạn là giáo viên Toán lớp ' + r.lop + '. Đáp án đúng đã kiểm chứng của bài là ' + o.chu(v) +
           '.\nHãy VIẾT lời giải chi tiết, chính xác CHỈ dùng kiến thức được phép của lớp ' + r.lop + ' (giữ đúng đáp số ' + o.chu(v) + ').\n' +
           yeuCauKienThucLop_(r.lop, r.mon) + '\n' + o.dinhDang + o.de;
-        var cMoi = goiGemini_(promptSua, 0.2, { suyNghi: 'high' });
+        var cMoi = goiGemini_(promptSua, 0.2, { suyNghi: 'high', schema: o.schema });
         var vMoi = cMoi ? o.doc(cMoi) : null;
         var vpMoi = cMoi && typeof kiemTraViPhamLop_ === 'function' ? kiemTraViPhamLop_(cMoi, r.lop, r.mon, r.de_bai) : ['KHONG_DOC_DUOC'];
         if (vMoi !== null && vMoi !== undefined && o.bang(vMoi, v) && !vpMoi.length) {
@@ -963,15 +987,15 @@ function trongTai_(r, o) {
   nhatKy_('GIAI', r.id + ': các nguồn chưa thống nhất (' + tomTat() + '), mở trọng tài');
   var goiY = 'Các lời giải/máy tính trước cho các kết quả: ' + tomTat() + '. Có ít nhất một cái SAI. Hãy tự giải lại TỪ ĐẦU thật cẩn thận, đọc kỹ từng chữ của đề, ' +
     'chỉ ra chỗ dễ sai (đếm trùng, đếm sót, hiểu sai đề, đơn vị, làm tròn) rồi cho đáp án đúng. ';
-  try { themGiai(goiGemini_('Bạn là giáo viên Toán chấm thi rất cẩn thận. ' + goiY + o.dinhDang + o.de, 0.1, { suyNghi: 'high' }), 'giai_lai'); }
+  try { themGiai(goiGemini_('Bạn là giáo viên Toán chấm thi rất cẩn thận. ' + goiY + o.dinhDang + o.de, 0.1, { suyNghi: 'high', schema: o.schema }), 'giai_lai'); }
   catch (e1) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(e1.message))) throw e1; }
-  try { chayMa(goiGemini_(o.promptMa, 0.2, { suyNghi: cauHinh_('MUC_SUY_NGHI_GIAI') }), '2'); }
+  try { chayMa(goiGemini_(o.promptMa, 0.2, { suyNghi: cauHinh_('MUC_SUY_NGHI_GIAI'), schema: schemaGiaiBP1_('ma') }), '2'); }
   catch (e2) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(e2.message))) throw e2; }
   t = tot();
   if (t.v !== null && t.ro) return ketQua(t.v, 1);
   // vòng 2: giải bằng phương pháp khác hẳn (liệt kê trực tiếp / đặt lại mô hình)
   try { themGiai(goiGemini_('Bạn là giáo viên Toán. Giải bài sau theo ĐÚNG kiến thức lớp ' + (chuanLop_(r.lop) || r.lop) + ' bằng một PHƯƠNG PHÁP KHÁC HẲN cách thông thường (ví dụ liệt kê trực tiếp các trường hợp nhỏ, đếm bằng bảng, đặt lại mô hình' + (chuanLop_(r.lop) === '12' ? '/tọa độ Oxyz' : (chuanLop_(r.lop) === '10' ? '/tọa độ Oxy' : '')) + '), ' +
-    'kiểm tra lại kết quả bằng một cách thứ hai trước khi trả lời. ' + o.dinhDang + o.de, 0.3, { suyNghi: 'high' }), 'cach_khac'); }
+    'kiểm tra lại kết quả bằng một cách thứ hai trước khi trả lời. ' + o.dinhDang + o.de, 0.3, { suyNghi: 'high', schema: o.schema }), 'cach_khac'); }
   catch (e3) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(e3.message))) throw e3; }
   t = tot();
   if (t.v !== null && t.ro) return ketQua(t.v, 2);
@@ -1097,7 +1121,7 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
         capNhatTb_('TB_GOI_KB_MS', Date.now() - tGoiDai);
       } else {
         var tGoi = Date.now();
-        kb = goiGemini_(prompt, 0.6, sn);
+        kb = goiKichBanCoSchema_(prompt, 0.6, sn, schemaKichBan_());
         capNhatTb_('TB_GOI_KB_MS', Date.now() - tGoi);
       }
       if (laDai10P && kb) kb.kieu_video = 'DAI_10_PHUT';
@@ -1433,6 +1457,77 @@ function chuanBiKichBan_(kb, r, ctxSua) {
 function boSungBanVeMoDau_(kb, r, sn) { return; }
 
 // Nhờ Gemini sửa ĐÚNG các lỗi còn lại (gửi kèm toàn bộ quy tắc + kịch bản hiện tại), giữ nguyên phần đã đúng.
+function schemaKichBan_(soCanh) {
+  var chu = {type: 'STRING'}, nguyen = {type: 'INTEGER'}, dungSai = {type: 'BOOLEAN'};
+  var jsonHinh = {type: 'STRING', description: 'Chuỗi chứa JSON mô tả hình theo hướng dẫn của đề.'};
+  var mang = function (items, min) {
+    return Object.assign({type: 'ARRAY', items: items}, min == null ? {} : {minItems: min});
+  };
+  var obj = function (properties, required) { return {type: 'OBJECT', properties: properties, required: required || []}; };
+  var dsChu = mang(chu);
+  var canh = obj({
+    so: nguyen, loai: {type: 'STRING', enum: ['mo_dau', 'de_bai', 'mo_hinh_hoa', 'y_do', 'thu_nho', 'bay', 'nhac_lai', 'diem_chot',
+      'tinh_toan', 'dap_an', 'kiem_tra', 'thu_lai', 'lien_he_thuc_te', 'bai_hoc', 'ket_luan', 'gia_thiet',
+      'dung_hinh', 'chung_minh', 'kiem_chung', 'mo_phong', 'cta']}, tieu_de_canh: chu, tu_khoa: chu, nhan: chu, giu_san_khau: dungSai,
+    giong_doc: chu, loi_thoai: chu, noi_dung_man_hinh: dsChu, moc_loi: dsChu, trinh_bay: {type: 'STRING', enum: ['cong_don', 'bien_doi', 'xep']},
+    chu_thich: dsChu, chuyen_canh: chu, goc_nhin: dsChu, kien_thuc: chu, nhan_manh_hinh: dsChu, tach: dsChu,
+    buoc_ve: mang(obj({ve: chu, khi_noi: chu}, ['ve', 'khi_noi'])),
+    minh_hoa: obj({loai: chu, mo_ta: chu, du_lieu: jsonHinh}, ['loai']),
+    net_toan: jsonHinh, mo_hinh_3d: jsonHinh
+  }, ['loai', 'tieu_de_canh', 'loi_thoai', 'noi_dung_man_hinh', 'minh_hoa']);
+  var dsCanh = mang(canh, soCanh || 1);
+  if (soCanh) {
+    dsCanh.maxItems = soCanh;
+    return obj({canh: dsCanh}, ['canh']);
+  }
+  var the = obj({loai: chu, nhan: chu, dong: dsChu, khi_noi: chu, khi_noi_dong: dsChu,
+    phim: dsChu, ket_qua: chu, ham: chu, bien: chu, moc_x: dsChu, dau: dsChu, gia_tri: dsChu, noi_dung: chu},
+    ['loai', 'khi_noi']);
+  var buoc = obj({canh: nguyen, khi_noi: chu, nhan: chu, tieu_de: chu, mau: chu, du_kien: dsChu,
+    the: mang(the, 1), doi_chieu: jsonHinh}, ['khi_noi', 'tieu_de', 'the']);
+  return obj({
+    tieu_de: chu, chu_de_ngan: chu, dap_an_cuoi: chu, dap_an_hien: chu, canh: dsCanh,
+    hook: chu, hook_chu: chu, hook_kieu: chu, hook_ung_vien: dsChu, tieu_de_bia: chu, nhan_manh: dsChu,
+    y_tuong_chinh: chu, de_cho: dsChu, can_tim: chu, du_kien: dsChu, hashtag: dsChu,
+    bai_hoc_rut_ra: dsChu, video_tiep_theo: chu, binh_luan_ghim: chu,
+    nhan_thi: chu, tieu_de_intro: chu, phu_de_intro: chu, cau_hook: chu, cta: chu,
+    tom_tat_3_buoc: mang(obj({chien_thuat: chu, cong_thuc: chu}, ['chien_thuat', 'cong_thuc'])),
+    cau_chuyen: obj({nguoi_ke: chu, dia_diem: chu, muc_tieu: chu, phong_canh: jsonHinh}),
+    khung4tang: obj({phu_de: chu, theme: chu, de_ghim: mang(obj({id: chu, nhan: chu, mau: chu}, ['id', 'nhan'])),
+      buoc: mang(buoc, 1), san_khau: jsonHinh, canh_3d_vector: jsonHinh,
+      tu_sinh: obj({ma: chu, mo_ta: chu}, ['ma'])}, ['buoc']),
+    hinh_phang_chuan: jsonHinh, hinh_khong_gian: jsonHinh
+  }, ['tieu_de', 'dap_an_cuoi', 'hook', 'bai_hoc_rut_ra', 'binh_luan_ghim', 'canh']);
+}
+
+// Các bộ dựng nhận đối tượng/mảng. Giữ tương thích với JSON thường ở lượt fallback.
+function bungMucHinhJson_(o, khoa) {
+  if (!o) return;
+  khoa.forEach(function (k) {
+    if (typeof o[k] !== 'string') return;
+    try {
+      var v = JSON.parse(o[k]);
+      if (v && typeof v === 'object') { o[k] = v; return; }
+    } catch (e) { /* Bộ kiểm hình sẽ yêu cầu sửa nếu mục này cần thiết. */ }
+    delete o[k];
+  });
+}
+
+function goiKichBanCoSchema_(prompt, nhiet, opts, schema) {
+  var kb = goiGemini_(prompt + '\nTrả một đối tượng JSON. Các mục hình gồm hinh_phang_chuan, hinh_khong_gian, phong_canh, san_khau, canh_3d_vector, doi_chieu, net_toan, mo_hinh_3d và minh_hoa.du_lieu giữ cấu trúc đã mô tả. Nếu schema yêu cầu chuỗi ở các mục này, ghi nội dung mục dưới dạng chuỗi JSON.', nhiet,
+    Object.assign({}, opts || {}, {schema: schema}));
+  if (!kb) return kb;
+  bungMucHinhJson_(kb, ['hinh_phang_chuan', 'hinh_khong_gian']);
+  bungMucHinhJson_(kb.cau_chuyen, ['phong_canh']);
+  bungMucHinhJson_(kb.khung4tang, ['san_khau', 'canh_3d_vector']);
+  if (kb.khung4tang && Array.isArray(kb.khung4tang.buoc)) kb.khung4tang.buoc.forEach(function (b) { bungMucHinhJson_(b, ['doi_chieu']); });
+  if (Array.isArray(kb.canh)) kb.canh.forEach(function (c) {
+    bungMucHinhJson_(c, ['net_toan', 'mo_hinh_3d']);
+    bungMucHinhJson_(c && c.minh_hoa, ['du_lieu']);
+  });
+  return kb;
+}
+
 function suaKichBanBangGemini_(kb, dsLoi, prompt, sn) {
   if (kb.kieu_video === 'DAI_10_PHUT') prompt += '\nĐây là chuyên đề 540–660 giây. Giữ đủ các chương; quy định thời lượng và số cảnh video ngắn ở trên chỉ dùng cho bài ngắn.';
   var p = prompt + '\n\n=== NHIỆM VỤ BÂY GIỜ: SỬA KỊCH BẢN, KHÔNG VIẾT LẠI TỪ ĐẦU ===\n' +
@@ -1441,7 +1536,8 @@ function suaKichBanBangGemini_(kb, dsLoi, prompt, sn) {
     '\nYÊU CẦU: giữ nguyên mọi phần không liên quan tới lỗi (lời thoại, số liệu, đáp án, hình đã đúng); chỉ sửa đúng chỗ lỗi; tuân thủ mọi quy tắc ở trên ' +
     '(đặc biệt: hình phải khớp đề, đáp án đúng, lời thoại không có ký hiệu LaTeX). Trả về TOÀN BỘ kịch bản JSON sau khi sửa, cùng định dạng.\n' +
     'KỊCH BẢN HIỆN TẠI:\n' + JSON.stringify(kb);
-  return goiGemini_(p, 0.3, sn);
+  var daSua = goiKichBanCoSchema_(p, 0.3, sn, schemaKichBan_());
+  return daSua && Array.isArray(daSua.canh) ? Object.assign({}, kb, daSua) : daSua;
 }
 
 // Bản nháp kịch bản đang sửa dở (Drive, thư mục kịch bản): lần chạy sau sửa tiếp thay vì viết lại.
@@ -1666,6 +1762,18 @@ function tuyChonBienKich_() {
 }
 
 // opts.cheDo: 'nang' (mặc định: giải toán, kịch bản, Lego) | 'nhe' (kiểm duyệt, sửa nhanh) -> thứ tự model xếp hạng tự động
+function loiGeminiSchema_(kq) {
+  return kq && !kq.ok && kq.code === 400 && /schema|structured[- ]output/i.test(String(kq.raw));
+}
+
+function ghiGeminiKhongSchema_(cache, model, raw) {
+  // Chỉ nhớ model thực sự không hỗ trợ. Một schema phức tạp không loại các schema khác.
+  if (/unknown (?:field|name).*response[_ ]?schema|(?:response[_ ]?schema|structured output)s? (?:is |are )?(?:not supported|unsupported)|(?:not supported|unsupported) (?:response[_ ]?schema|structured output)/i.test(String(raw))) {
+    cache.put('KHONG_SCHEMA_' + model, '1', 21600);
+  }
+  nhatKy_('GEMINI', model + ' từ chối responseSchema -> gọi lại ở chế độ JSON');
+}
+
 function goiGemini_(prompt, nhiet, opts) {
   opts = opts || {};
   if (!khoDanhSachKey_().length) throw new Error('THIEU_GEMINI_API_KEY');
@@ -1687,14 +1795,13 @@ function goiGemini_(prompt, nhiet, opts) {
       if (!conDuGoiGemini_()) throw new Error(soQuaTai && soQuaTai === soLoi ? 'QUA_TAI' : 'HET_GIO');
       var dsAnh = opts.anhs || (opts.anh ? [opts.anh] : []);
       var phan = dsAnh.map(function (a) { return { inline_data: { mime_type: a.mime, data: a.data } }; }).concat([{ text: prompt }]);
-      // v98: opts.schema -> responseSchema (enum cố định cho đặc tả Lego); model không nhận (400) -> nhớ 6 giờ, gọi lại không schema
+      // responseSchema bị từ chối -> thử lại cùng model với JSON MIME.
       var gcG = { temperature: nhiet, responseMimeType: 'application/json' };
       var coSchema = !!opts.schema && !cache.get('KHONG_SCHEMA_' + tenModel);
       if (coSchema) gcG.responseSchema = opts.schema;
       var kq = khoGoiCoSuyNghi_(tenModel, { contents: [{ parts: phan }], generationConfig: gcG }, opts.suyNghi, { hanChoMs: 20000, tungModel: !!opts.modelUuTien, cheDo: cheDo });
-      if (coSchema && !kq.ok && kq.code === 400 && /schema|response_?schema|enum|Unknown name|Invalid JSON payload/i.test(String(kq.raw))) {
-        cache.put('KHONG_SCHEMA_' + tenModel, '1', 21600);
-        nhatKy_('GEMINI', tenModel + ' không nhận responseSchema -> gọi lại không schema (Python vẫn kiểm chặt)');
+      if (coSchema && loiGeminiSchema_(kq)) {
+        ghiGeminiKhongSchema_(cache, tenModel, kq.raw);
         kq = khoGoiCoSuyNghi_(tenModel, { contents: [{ parts: phan }], generationConfig: { temperature: nhiet, responseMimeType: 'application/json' } }, opts.suyNghi, { hanChoMs: 20000, tungModel: !!opts.modelUuTien, cheDo: cheDo });
       }
       if (kq.ok) {
@@ -1762,7 +1869,7 @@ function khoGoiCoSuyNghi_(model, body, muc, tuyChon) {
   var ts = thamSoSuyNghi_(model, muc);
   if (ts) body.generationConfig = Object.assign({}, body.generationConfig || {}, { thinkingConfig: ts });
   var kq = khoGoi_('VIDEO', model, body, tuyChon);
-  if (ts && !kq.ok && kq.code === 400 && /thinking|generationConfig|Invalid JSON payload/i.test(String(kq.raw))) {
+  if (ts && !loiGeminiSchema_(kq) && !kq.ok && kq.code === 400 && /thinking|generationConfig|Invalid JSON payload/i.test(String(kq.raw))) {
     CacheService.getScriptCache().put('KHONG_SUY_NGHI_' + String(model).toLowerCase(), '1', 21600);
     delete body.generationConfig.thinkingConfig;
     nhatKy_('GEMINI', model + ' không nhận tham số suy nghĩ, gọi lại không kèm');
@@ -1787,17 +1894,24 @@ function goiGeminiSong_(ds) {
   var models = danhSachModel_('nang');
   var modelChon = models[0] || MODEL_CHUAN_DU_PHONG_[0];
   var ts = thamSoSuyNghi_(modelChon, muc);
+  var cache = CacheService.getScriptCache();
   var bodies = ds.map(function (d) {
     var gc = { temperature: d.nhiet, responseMimeType: 'application/json' };
     if (ts) gc.thinkingConfig = ts;
+    if (d.schema && !cache.get('KHONG_SCHEMA_' + modelChon)) gc.responseSchema = d.schema;
     return { contents: [{ parts: [{ text: d.prompt }] }], generationConfig: gc };
   });
   var tBat = Date.now();
   var kq = khoGoiSong_('VIDEO', modelChon, bodies);
   var tSong = Math.round((Date.now() - tBat) / 1000);
   var goiLai = 0;
-  var cache = CacheService.getScriptCache();
   var ketQua = kq.map(function (r, i) {
+    var gc = bodies[i].generationConfig;
+    if (gc.responseSchema && loiGeminiSchema_(r)) {
+      ghiGeminiKhongSchema_(cache, modelChon, r.raw);
+      delete gc.responseSchema;
+      r = khoGoiCoSuyNghi_(modelChon, bodies[i], muc, {tungModel: true, cheDo: 'nang'});
+    }
     if (r && r.ok) {
       try {
         var parsed = docKetQua_(r.raw);
@@ -1812,7 +1926,7 @@ function goiGeminiSong_(ds) {
       cache.put('QUA_TAI_' + modelChon, '1', 600);
     }
     goiLai++;
-    return goiGemini_(ds[i].prompt, ds[i].nhiet, { suyNghi: muc });
+    return goiGemini_(ds[i].prompt, ds[i].nhiet, { suyNghi: muc, schema: ds[i].schema });
   });
   nhatKy_('GEMINI', ds.length + ' yêu cầu song song (model ' + modelChon + '): chờ ' + tSong + ' giây; ' + goiLai + ' yêu cầu tự đổi model/gọi lại; tổng ' + Math.round((Date.now() - tBat) / 1000) + ' giây');
   return ketQua;
@@ -3757,7 +3871,9 @@ function lapTuSinh_(kb, r, sn, opts) {
   opts = opts || {};
   kb.tu_sinh_da_thu = true;
   var goi = function (p) {
-    var kq = goiGemini_(p, 0.35, {cheDo: 'nang'});
+    var schema = schemaGiaiBP1_('ma');
+    schema.properties.mo_ta = {type: 'STRING'};
+    var kq = goiGemini_(p, 0.35, {cheDo: 'nang', schema: schema});
     if (typeof kq === 'string') { try { kq = JSON.parse(String(kq).replace(/^```(?:json)?|```$/g, '')); } catch (e) { kq = null; } }
     return kq && typeof kq.ma === 'string' && kq.ma.trim() ? kq : null;
   };

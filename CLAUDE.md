@@ -70,6 +70,11 @@ Tên kênh lấy từ `phong_cach.json → thuongHieu.ten` (Story Math), dùng c
 
 ## 4b. NÂNG CẤP v101.2–v101.6 (tóm tắt)
 
+* BP1/BP2 dùng Gemini `responseSchema` và thử lại cùng model ở chế độ `application/json` khi HTTP 400 liên quan schema.
+* BP3 tạo props ước lượng bằng `chuanbi.py --props-soi-chu` và đo 4–6 frame Remotion trước TTS/MP4.
+* Collision Gate chuyển `DE_CHU`/`TRAN_KHUNG` kèm cặp nhãn về Auto-Heal bố cục. Lỗi khởi chạy Chromium chỉ cảnh báo.
+* `npm run kiem-tra` chạy Chromium trên mẫu Koch. `ci_smoke_test.mjs` truy vết sparse-checkout từ workflow và lệnh npm.
+
 * `src/khonggian/`: phân cấp nét (liền/đứt/phụ) và làm nổi mặt phẳng trong động cơ không gian.
 * `ve25d.py`: mở rộng bộ hàm vẽ cho mọi dạng đề, chặn dựng MP4 nhúng trong hình.
 * BP2: Hợp đồng hình cũng áp dụng cho đề Zalo.

@@ -190,7 +190,7 @@ function DanhSachThe({b, t, mau, aChung, hoatDong = false, tHet}: {b: BuocGiai; 
           const nay = 1 + 0.05 * Math.sin(Math.PI * kep01((t - t0) / 0.5));
           const sang = 0.75 + 0.25 * Math.sin(((t - t0) * 2 * Math.PI) / 2.4);
           return (
-            <div key={j} data-the-giai data-the-chot style={{position: 'relative', opacity: a, transform: `translateY(${(1 - sp) * 22}px) scale(${nay})`, borderRadius: 20,
+            <div key={j} data-va-cham="hop_cong_thuc" data-the-giai data-the-chot style={{position: 'relative', opacity: a, transform: `translateY(${(1 - sp) * 22}px) scale(${nay})`, borderRadius: 20,
               background: 'linear-gradient(180deg, rgba(251,191,36,0.12), rgba(14,16,22,0.62) 55%, rgba(8,10,14,0.72))',
               boxShadow: `0 22px 48px rgba(0,0,0,0.40), 0 0 ${30 * sang + 20 * loe}px ${CHOT}1F, ${VIEN_KINH}`,
               padding: '18px 30px 22px', display: 'flex', flexDirection: 'column', gap: 12, flexShrink: 0}}>
@@ -208,7 +208,7 @@ function DanhSachThe({b, t, mau, aChung, hoatDong = false, tHet}: {b: BuocGiai; 
         }
         // v98.1: thẻ thường = tấm kính mờ mỏng rgba(255,255,255,0.04) + bóng mềm, bỏ viền 4 cạnh; chỉ 1 vạch sáng 2,5 px cạnh trên theo màu bước
         return (
-          <div key={j} data-the-giai style={{position: 'relative', opacity: a, transform: `translateY(${(1 - sp) * 20}px)`, borderRadius: 18,
+          <div key={j} data-va-cham="hop_cong_thuc" data-the-giai style={{position: 'relative', opacity: a, transform: `translateY(${(1 - sp) * 20}px)`, borderRadius: 18,
             background: 'linear-gradient(180deg, rgba(34,40,52,0.62), rgba(12,14,20,0.70))',
             boxShadow: `0 18px 40px rgba(0,0,0,0.34), ${VIEN_KINH}`,
             padding: '18px 28px 20px', display: 'flex', flexDirection: 'column', gap: 12, flexShrink: 0}}>

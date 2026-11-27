@@ -41,7 +41,7 @@ function taoPromptKichBan_(r, c1, c2) {
 
     '3) ĐÂY LÀ MỘT BÀI GIẢNG, PHẢI KỸ VÀ RÕ: người xem chưa biết gì cũng phải hiểu, và tự làm lại được bài tương tự. ',
     quyTrinh6Phan_(true, r),
-    'Ngoài "canh", trả thêm: "bai_hoc_rut_ra" (mảng 3 câu, mỗi câu ≤ 12 từ, là quy tắc dùng được ngay, ví dụ "Thể tích cố định: rút một ẩn theo ẩn kia") và "video_tiep_theo" (≤ 10 từ, hẹn bài kế tiếp).\n'
+    'Hẹn bài kế tiếp cùng chủ đề bằng video_tiep_theo (≤ 10 từ).\n'
   ] : [
     'Bạn là giáo viên Toán kiêm biên kịch và ĐẠO DIỄN HÌNH ẢNH cho video ngắn TikTok/YouTube Shorts (video dọc) dạy học sinh lớp ' + r.lop + ' giải bài xác suất. ',
     'Video được DỰNG TỰ ĐỘNG từ kịch bản JSON của bạn: mỗi cảnh có một "sân khấu" gồm các VẬT THẬT (người, thẻ, xúc xắc, vòng quay, hộp quà, đồng hồ đo xác suất...) chuyển động theo từng câu thoại, kiểu đồ họa neon như các video giải thích nổi tiếng trên TikTok. Chỉ những gì bạn mô tả trong "du_lieu" mới xuất hiện trên màn hình, nên hãy đạo diễn thật cụ thể.\n\n',
@@ -72,7 +72,7 @@ function taoPromptKichBan_(r, c1, c2) {
 
     '3) ĐÂY LÀ MỘT BÀI GIẢNG, PHẢI KỸ: người xem chưa biết gì cũng phải hiểu mình đang học gì, vì sao làm từng bước, và tự làm lại được bài tương tự. ',
     quyTrinh6Phan_(false, r),
-    'Ngoài "canh", trả thêm: "bai_hoc_rut_ra" (mảng 3 câu, mỗi câu ≤ 12 từ, là quy tắc làm bài dùng được ngay, ví dụ "Gặp chữ CÙNG: tách từng loại rồi cộng"; dùng làm các dòng danh_sach ở cảnh bai_hoc cuối video) và "video_tiep_theo" (≤ 10 từ, hẹn bài kế tiếp cùng chủ đề).\n'
+    'Hẹn bài kế tiếp cùng chủ đề bằng video_tiep_theo (≤ 10 từ).\n'
   ];
   var moDau = [
     'MỞ ĐẦU ẤN TƯỢNG (quyết định người xem có lướt đi không; 1,5 giây đầu là quan trọng nhất): cảnh 1 tối đa 5 giây, "loi_thoai" cảnh 1 tối đa 16 từ. Nghĩ 3 phương án hook, ghi vào "hook_ung_vien", chọn phương án mạnh nhất. ',
@@ -81,11 +81,10 @@ function taoPromptKichBan_(r, c1, c2) {
     chao ? 'Được phép mở bằng MỘT lời chào cực ngắn có năng lượng (tối đa 3 từ, ví dụ "Chào bạn!") rồi vào hook ngay trong cùng câu thoại; KHÔNG "hôm nay", "các bạn ơi", "mọi người". '
          : 'KHÔNG chào hỏi, KHÔNG "hôm nay", "các bạn ơi", "mọi người": vào thẳng câu móc. ',
     '"hook_kieu": sai_lam | thach_thuc | bat_ngo | cau_hoi. Không bịa thống kê kiểu "90% học sinh sai". ',
-    'XƯNG HÔ BỀN VỮNG (v99.2): CẤM năm sinh / khóa học / năm thi ở hook, tiêu đề, ảnh bìa, phụ đề, mô tả, hashtag (cấm "2k9", "học sinh 2009", "sĩ tử 2008", "#2k8", "THPT 2027"). ' +
-      'Bài gắn chương trình gọi theo lớp ("Học sinh lớp ' + r.lop + '", "Ôn thi vào 10", "Ôn thi THPT"); bài tư duy / thực tế sáng tạo gọi mở ("Đố bạn", "Nhiều bạn vẫn nhầm", "Mẹo tư duy Toán"). ',
+    'XƯNG HÔ BỀN VỮNG: gọi theo lớp hoặc dùng “Đố bạn”, “Mẹo tư duy Toán”. ',
     'CHỐNG LỘ ĐÁP ÁN (vi phạm = kịch bản bị loại): TUYỆT ĐỐI không nêu đáp số hay kết quả trung gian (ví dụ "xác suất là 1/4", "r = 3", "lãi 16000") trong loi_thoai cảnh 1, "hook", "hook_chu", "hook_ung_vien", "tieu_de_bia", "tieu_de", "chu_de_ngan"; mở bài là CÂU HỎI. Kết quả của một bước chỉ xuất hiện (lời, chữ, nhãn, đồ thị) ở đúng cảnh giảng tới bước đó; mỗi khung hình hiện đáp số tối đa MỘT chỗ. ',
-    'CHỮ HIỂN THỊ & KÝ HIỆU (phụ đề lấy từ loi_thoai): KHÔNG phiên âm ký hiệu (cấm "ít-sờ", "ích-xì", "vê tại 2": viết x, V(2) - máy tự đọc); mỗi kết quả chỉ nói MỘT lần (cấm "bằng 144 bằng 144"); trong "loi_thoai" viết CHỮ SỐ và KÝ HIỆU chuẩn ("54π m³", "1/4", "10 cm", "0 < x < 30", "x = 10", "V\'(x) = 0", "29,5"), KHÔNG phiên âm ("năm mươi tư", "một phần bốn", "xăng-ti-mét", "zero") - máy tự đọc thành lời. "tieu_de_canh", "nhan", dòng danh_sach: viết kiểu toán ("V\'(x) = 0", "10 cm", "Tích ⋮ 4"), không phiên âm, không bắt đầu bằng ":" "," "?". ',
-    'LATEX trong JSON: mọi lệnh viết HAI gạch chéo ("\\\\vdots", "\\\\cdot", "\\\\dfrac", "\\\\times"); chia hết viết "a \\\\vdots b"; phép nhân dùng "\\\\cdot", KHÔNG dùng dấu chấm câu "." ("4x \\\\cdot (30-x)^2", "(u \\\\cdot v)\'"); số thập phân dấu phẩy "{,}" (29{,}5), tiền dấu chấm nghìn (500.000 đồng). Mọi đáp số kèm đơn vị ("r = 3 m", "x = 10 cm"). ',
+    'Dùng chữ số và ký hiệu chuẩn để máy đọc (54π m³, 1/4, x = 10); mỗi kết quả chỉ nói một lần. Tiêu đề, nhãn và danh sách dùng ký hiệu toán. ',
+    'KÝ HIỆU TOÁN: chia hết viết "a \\\\vdots b"; phép nhân dùng "\\\\cdot", KHÔNG dùng dấu chấm câu "." ("4x \\\\cdot (30-x)^2", "(u \\\\cdot v)\'"); số thập phân dấu phẩy "{,}" (29{,}5), tiền dấu chấm nghìn (500.000 đồng). Mọi đáp số kèm đơn vị ("r = 3 m", "x = 10 cm"). ',
     '"hook_chu": câu hook rút gọn 3-11 từ để in chữ lớn; "nhan_manh": 1-3 cụm nằm NGUYÊN VĂN trong hook_chu (được tô vàng, rung). ',
     '"tieu_de_bia": tiêu đề ẢNH BÌA 3-7 từ (≤ 34 ký tự), cực gợi tò mò, nói đúng nội dung, không bịa số liệu, nên chứa NGUYÊN VĂN một cụm trong nhan_manh (được tô màu trên ảnh bìa).\n\n'
   ];
@@ -257,19 +256,15 @@ function taoPromptKichBan_(r, c1, c2) {
     '"hanh_dong":[{"buoc":1,"vat":"t1","kieu":"chon","mau":"xanh_la"},{"buoc":2,"vat":"t2","kieu":"rung"},{"buoc":2,"vat":"t2","kieu":"loai_bo"}]}}}\n\n'
   ];
   var traVe = [
-    '5 ĐIỀU SỐNG CÒN ĐỂ KỊCH BẢN ĐẠT CHUẨN 100% NGAY LẦN ĐẦU (KHÔNG BỊ TRẢ VỀ):\n' +
-    '1. LỜI THOẠI THUẦN TIẾNG VIỆT TỰ NHIÊN: TUYỆT ĐỐI CẤM ký hiệu $, \\, /, % trong "loi_thoai". Mọi công thức/số phải viết thành chữ đọc ("ba phần năm", "nhân", "C tám chập hai").\n' +
-    '2. ĐÁP ÁN CUỐI CHÍNH XÁC: "dap_an_cuoi" BẮT BUỘC bằng "' + r.dap_an + '", dòng cuối cùng của cảnh "dap_an" trong "noi_dung_man_hinh" phải kết luận đúng đáp án này.\n' +
-    '3. HÌNH VẼ CHÍNH XÁC: Chỉ dùng các vật có trong danh sách vật của hệ thống hoặc "hinh_tu_do", không tự bịa tên vật lạ.\n' +
-    '4. ĐỦ BƯỚC VÀ CẢNH: 15-20 cảnh chi tiết; cảnh cuối cùng bắt buộc là "bai_hoc"; mảng "bai_hoc_rut_ra" đủ 3 câu ngắn bổ ích.\n' +
-    '5. TRẢ VỀ JSON HỢP LỆ DUY NHẤT: Bắt đầu bằng { và kết thúc bằng }, không kèm lời giải thích bên ngoài.\n\n',
-    'Trả về MỘT đối tượng JSON: {"tieu_de":"tiêu đề đăng video < 60 ký tự, gây tò mò","chu_de_ngan":"chủ đề 2-5 từ (hiện góc trên)","bai_hoc_rut_ra":["","",""],"video_tiep_theo":"","binh_luan_ghim":"(tùy chọn, <= 180 ký tự: 1 câu hỏi biến thể ngắn đổi nhẹ số liệu từ bài vừa giải, không năm sinh/năm thi)","hook_ung_vien":["","",""],"hook":"(đúng lời thoại cảnh 1)","hook_chu":"","tieu_de_bia":"","hook_kieu":"","nhan_manh":[""],"y_tuong_chinh":"","de_cho":["",""],"can_tim":"","du_kien":["",""],"hashtag":["#toanhoc","' + (tt ? '#toanthucte' : '#xacsuat') + '"],"dap_an_cuoi":"' + r.dap_an + '",',
-    '"canh":[{"so":1,"loai":"mo_dau|de_bai|mo_hinh_hoa|y_do|thu_nho|bay|nhac_lai|diem_chot|tinh_toan|dap_an|kiem_tra|lien_he_thuc_te|bai_hoc","tieu_de_canh":"","tu_khoa":"","nhan":"","giu_san_khau":false,"giong_doc":"","loi_thoai":"","noi_dung_man_hinh":[],"moc_loi":[],"trinh_bay":"cong_don|bien_doi|xep","chu_thich":[],"minh_hoa":{"loai":"san_khau","mo_ta":"","du_lieu":{"goc_nhin":null,"vat":[],"hanh_dong":[]}}}]}'
+    'Chốt dap_an_cuoi bằng "' + r.dap_an + '" và kết luận đúng đáp số ở cảnh dap_an. ' +
+    'Tiêu đề đăng dưới 60 ký tự, chu_de_ngan 2–5 từ. hook khớp lời mở đầu. ' +
+    'bai_hoc_rut_ra gồm 3 quy tắc áp dụng được, mỗi câu ≤ 12 từ. binh_luan_ghim là một câu hỏi biến thể đổi nhẹ số liệu (≤ 180 ký tự). ' +
+    'Hashtag gồm #toanhoc và ' + (tt ? '#toanthucte' : '#xacsuat') + '.\n'
   ];
 
   // (v86) LUỒNG HÌNH HỌC THUẦN: prompt riêng, không chứa bất kỳ hướng dẫn cảnh thật / Blender / vật 3D nào (HinhHoc.gs)
   if (hh && typeof taoPromptHinhHocThuan_ === 'function') {
-    var loiThoaiHH = ['MỖI CẢNH CÓ: "loai"; "tieu_de_canh" (từ cảnh 2, 3-8 từ nói đúng ý chính); "tu_khoa" (1-3 từ nguyên văn trong tiêu đề); "giu_san_khau"; "giong_doc"; "loi_thoai"; "noi_dung_man_hinh"; "moc_loi"; "trinh_bay"; "buoc_ve"; "kien_thuc"; "nhan_manh_hinh"; "minh_hoa".\n',
+    var loiThoaiHH = ['Tiêu đề cảnh từ cảnh 2, 3–8 từ; tu_khoa trích nguyên văn 1–3 từ trong tiêu đề.\n',
       'LỜI THOẠI: câu ngắn (≤ 16 từ), mỗi cảnh ≤ 45 từ; số và công thức đọc thành LỜI, KHÔNG ký hiệu LaTeX, dấu / hay %; tên điểm viết in hoa liền (SA, ABCD) để máy đánh vần đúng.\n',
       'CÔNG THỨC "noi_dung_man_hinh": mảng LaTeX (không kèm $), tối đa 3 dòng ngắn, chữ tiếng Việt trong \text{}; "trinh_bay": "cong_don" | "bien_doi" | "xep".\n\n'];
     // v94: hình phẳng chuẩn -> công thức nằm trong hinh_phang_chuan.trang_chung_minh (máy dựng + kiểm chứng), cảnh để noi_dung_man_hinh []
@@ -289,7 +284,8 @@ function taoPromptKichBan_(r, c1, c2) {
     ['Mỗi bài là một câu chuyện toán học. Thêm ở gốc JSON "cau_chuyen":{"nguoi_ke":"vai người kể","dia_diem":"địa điểm cụ thể","muc_tieu":"quyết định cần đưa ra","phong_canh":{"troi":"#RRGGBB","dat":"#RRGGBB","vat":[{"ten":"chi tiết đặc trưng của nơi này","hinh":"hop|tru|cau|non","tam":[x,y,z],"co":[rộng,cao,sâu],"mau":"#RRGGBB"}]}}. Dùng màu hex thực. Bố trí 3–32 khối ghép thành cảnh nhận diện được: X trái/phải từ -10 đến 10, Y là độ cao 0–8, Z từ -12 đến 0 (xa tới gần), kích thước mỗi trục >0 và ≤20. Đây là phối cảnh trang trí, vật mang số liệu trình bày riêng đúng theo đề. Chừa trung tâm cho hình và phép tính.\n',
      'Dùng một người kể xuyên suốt: mở ngay lúc nhân vật cần quyết định; từ điều họ quan sát, dẫn tới đại lượng và giải thích vì sao chọn từng bước; kiểm tra đáp án rồi quay về kết quả đối với nhân vật. Kể bằng loi_thoai thực sự nghe được. Không tự thêm điều kiện, con số hay đổi đáp án để tạo kịch tính. Với chứng minh trừu tượng, kể hành trình tìm manh mối trên bàn vẽ và giữ nguyên giả thiết. Chọn hook, chuyển cảnh và câu kết phục vụ câu chuyện đó.\n'],
     !hh && dungKhung4Tang_(r) ? [huongDanKhung4Tang_(r)] : [],
-    hh ? [] : ['Trước khi xuất JSON, kiểm lại từng cảnh với đề và lời giải đã xác minh: số lượng, đơn vị, điều kiện áp dụng, kết quả trung gian và đáp số. Ví dụ sai có chủ ý phải ghi rõ và giải thích cách sửa. Đối chiếu hành động vật lý với chính câu lời thoại kích hoạt nó; giữ cùng vật và đại lượng qua điểm chuyển cảnh. Cảnh 1 bắt buộc có vật thật theo đề cho Blender, khai báo hành động vật lý có trong lời kể; cảnh 2 là de_bai chuyển chính vật đó thành hình toán cùng góc nhìn. Trong các cảnh giải, giữ góc máy ổn định, dùng net_toan trên từng cảnh khi cần sơ đồ mới: [{diem:[[x,y],...],nhan:"nhãn ngắn"}], tọa độ chuẩn hóa 0–1 từ trái sang phải và trên xuống dưới; một điểm là chấm, nhiều điểm là đường gấp khúc, khép kín để vẽ đa giác. Dựng đường, đồ thị và nhãn từ số liệu đã kiểm chứng, đưa công thức vào noi_dung_man_hinh. Với bài xe ô tô chạy trên đường, khai báo vật xe, ghi đúng hàm từ đề vào noi_dung_man_hinh và tách câu khi xe phanh, dừng hoặc chạy tiếp. Đừng viết sự kiện giả định thành câu kể. Với phép thử bi, xu, xúc xắc và trò chọn cửa, ghi số lượng, màu, kết quả và hành động trong san_khau theo đúng dữ kiện. Xe đơn chạy trên đường và các phép thử đã có bộ dựng riêng. Với các vật lý khác cần mô hình riêng, đặt mo_hinh_3d ngay trên cảnh, gồm chi_tiet và doan_toan. Mỗi chi tiết ghi tu_de nguyên văn đề, hinh, tam [X,Y,Z] theo mét, co [dài,rộng,cao], xoay theo độ, vat_lieu. Dùng thuyen hoặc bang_chuyen (trục dài X) khi đúng loại vật; ghép hop, tru, non, cau, hoặc lang_tru với day là 3–24 đỉnh XY của một đa giác lồi theo thứ tự chu vi. Vật chưa có mẫu có thể mô tả bằng khoi_tiet_dien với tang gồm 2–16 hàng [z,tâm_x,tâm_y,bán_kính_x,bán_kính_y], z tăng dần và bán kính dương; bộ dựng nối các tiết diện elip và co giãn về co. Nếu tiết diện chưa diễn tả được vật, tự tạo luoi_tam_giac với dinh là 3–256 đỉnh XYZ và mat là 1–512 tam giác gồm ba chỉ số đỉnh từ 0 theo thứ tự ngược chiều kim đồng hồ khi nhìn từ ngoài. Tách hình phức tạp thành nhiều phần. Đặt tất cả trong cùng hệ tọa độ, vẽ đủ các đối tượng và đúng quan hệ, số lượng. Vật chạy có dich_chuyen [dx,dy,dz] từ vị trí đầu đến cuối. doan_toan chứa các {a:[x,y,z],b:[x,y,z],tu_de:"trích đề",do_dai:"8 m"} để Manim hiện đúng đường đo; chỉ ghi do_dai nếu nằm nguyên văn trong trích dẫn. Có thể gắn id riêng cho chi tiết và thay tọa độ đầu mút bằng {"vat":"id","lech":[dx,dy,dz]} tính từ tâm cuối của vật, lệch theo các trục thế giới. Khoảng cách tới bờ thẳng là đoạn vuông góc tới bờ; phân biệt với quãng đường thuyền chạy. Giữ biểu đồ và các bước chứng minh trừu tượng ở dạng toán.\n'],
+    hh ? [] : ['Soát dữ kiện, đơn vị, điều kiện và đáp số. Nếu nêu ví dụ sai, giải thích cách sửa. Dùng cùng vật và góc nhìn khi chuyển từ đề sang mô hình toán. Vẽ sơ đồ bổ sung bằng net_toan [{diem:[[x,y],...],nhan:"nhãn ngắn"}] với tọa độ chuẩn hóa 0–1. Cho xe, bi, xu, xúc xắc và cửa hoạt động đúng dữ kiện và đúng câu thoại; đánh dấu kết quả phép thử minh họa là ví dụ. Khoảng cách tới bờ là đoạn vuông góc.\n'],
+
     ['GIỮ CHÂN NGƯỜI XEM (rất quan trọng trên TikTok): (a) cứ 2-3 giây phải có một thay đổi trên màn hình (vật mới, hành động, đổi cảnh); (b) mở một "vòng lặp tò mò" ở cảnh 1-2 và chỉ đóng ở cảnh đáp án ("đến cuối bạn sẽ thấy vì sao..."); ',
     '(c) có một khoảnh khắc mời người xem đoán trước ("dừng video, đoán thử đi"); (d) ưu tiên đề có kết quả TRÁI TRỰC GIÁC hoặc tình huống đời thực gây tranh cãi (gameshow, bốc thăm, xổ số, sinh nhật trùng nhau, mật khẩu, trận đấu...); (e) câu ngắn, động từ mạnh, không giảng dài.\n'],
     moDau,
@@ -297,10 +293,8 @@ function taoPromptKichBan_(r, c1, c2) {
     sanPham,
     nangCao,
     noiCanh,
-    ['4) MỖI CẢNH CÓ: "loai"; "tieu_de_canh" (BẮT BUỘC từ cảnh 2: câu tiêu đề in chữ trắng thật lớn ở đầu cảnh, 3-8 từ, nói đúng ý chính của cảnh, ví dụ "Cùng giới nghĩa là gì?", "Bẫy: quên hai bạn nữ"); ',
-    '"tu_khoa" (1-3 từ nằm NGUYÊN VĂN trong tieu_de_canh, được tô cam); "nhan" (tùy chọn, nhãn cam ngắn tối đa 2 từ, ví dụ "BƯỚC 1"; để trống thì máy tự đặt theo loại cảnh); ',
-    '"loi_thoai"; "noi_dung_man_hinh"; "trinh_bay"; "chu_thich" (tùy chọn); "chuyen_canh" (tùy chọn: mo | truot_len | nghieng | luot_ngang | truot_xuong | day_ngang | quet_sang | tron_mo | zoom_xuyen | lat_3d | lat_ngang | phong; để trống thì máy tự chọn đa dạng theo mạch bài); "giu_san_khau" (mặc định là false để MỖI CẢNH dựng một khung hình minh họa mới khớp đúng đoạn nội dung cảnh đó đang nói); "minh_hoa".\n',
-    'LỜI THOẠI: câu ngắn (≤ 16 từ mỗi câu), mỗi cảnh ≤ 45 từ, giọng tự nhiên như đang nói chuyện ("để ý nhé", "thử nghĩ xem", "vì sao?"). Số và công thức viết thành LỜI ("ba phần năm", "C tám hai"), KHÔNG có ký hiệu LaTeX, dấu / hay %. Đừng đọc lại thứ đã hiện trên màn hình từng chữ một.\n',
+    ['Tiêu đề mỗi cảnh từ cảnh 2 dài 3–8 từ và nói đúng ý chính. tu_khoa trích nguyên văn 1–3 từ trong tiêu đề; nhan riêng tối đa 2 từ. Mặc định đổi hình theo ý đang giảng, giữ sân khấu khi cần tiếp nối hành động.\n',
+    'LỜI THOẠI: câu ngắn (≤ 16 từ mỗi câu), mỗi cảnh ≤ 45 từ, giọng tự nhiên như đang nói chuyện ("để ý nhé", "thử nghĩ xem", "vì sao?"). Nói rõ ý nghĩa của dòng đang hiện, không đọc từng ký tự hay dùng LaTeX thô.\n',
     'CÔNG THỨC "noi_dung_man_hinh": mảng LaTeX (không kèm $), phép nhân viết bằng dấu ×, chỉ dùng chữ x cho biến. BẮT BUỘC hiện đầy đủ ở các cảnh mo_hinh_hoa, nhac_lai, diem_chot, tinh_toan, dap_an, kiem_tra để học sinh theo dõi rõ từng bước lập phương trình / tính n(Ω) / tính từng trường hợp n(A) / biến đổi đại số. Tối đa 3 dòng (cong_don tối đa 4), mỗi dòng ngắn; chữ tiếng Việt đặt trong \\text{}; chỉ dùng \\frac, \\times, \\cdot, \\binom, \\text, ^, _, \\cup, \\cap, \\Rightarrow, \\overline. ',
     'Dòng công thức ngắn ở cảnh thu_nho/diem_chot nên dùng "xep": máy hiện từng dòng như đang VIẾT TAY bằng bút chì. Tô màu biến theo vật trên sân khấu (ví dụ x cam, y xanh) bằng \\\\textcolor để người xem nối hình với công thức. ',
     '"trinh_bay": "cong_don" (ưu tiên cho tính toán/đáp án: dòng sau GIỮ NGUYÊN dòng trước và nối thêm "=...", ví dụ ["P=\\\\frac{10}{28}+\\\\frac{3}{28}","P=\\\\frac{10}{28}+\\\\frac{3}{28}=\\\\frac{13}{28}"]) | "bien_doi" | "xep". Dòng CUỐI của cảnh đáp án phải là đáp án đúng. ',
@@ -537,12 +531,16 @@ function lapBanVe_(r, anhDe) {
     'TỔNG các cạnh có rào phải ĐÚNG bằng tổng chiều dài lưới/rào của đề. "canh": [nhãn cạnh ngang, nhãn cạnh dọc] - chỉ ghi số đo ĐỀ CHO hoặc dấu "?" (tuyệt đối chưa ghi ẩn số tự đặt x, y vào bản vẽ đề bài).\n' +
     'THƯ VIỆN TÊN VẬT: ' + TEN_VAT_THUC_.join(', ') + '. Vật không có trong thư viện: cong_trinh + bien (ghi đúng tên công trình) hoặc bieu_tuong + emoji. KHÔNG dùng khối hộp/khối trụ.\n' +
     'Chỉ đưa số ĐỀ CHO vào nhãn; đại lượng cần tìm ghi "?" (vd "h = ?"). Mọi vị trí phải nhất quán với số đo (khoảng cách 20 m thì hai vật cách nhau đúng 20 trên trục x).\n' +
-    'Trả JSON: {"vat_trong_de":["liệt kê mọi vật/địa điểm thật trong đề"],"ban_ve":{...canh_that...},"tu_kiem_tra":"đối chiếu từng số của đề với bản vẽ"}';
-  var opts = { suyNghi: 'low' };
+    'Liệt kê vat_trong_de và đối chiếu từng số trong tu_kiem_tra. ban_ve chứa JSON của bản vẽ canh_that dưới dạng chuỗi khi dùng schema.';
+  var chu = {type: 'STRING'};
+  var opts = {suyNghi: 'low', schema: {type: 'OBJECT', required: ['ban_ve'], properties: {
+    ban_ve: chu, vat_trong_de: {type: 'ARRAY', items: chu}, tu_kiem_tra: chu
+  }}};
   if (anhDe) opts.anh = anhDe;
   for (var lan = 0; lan < 2; lan++) {
     var j = null;
     try { j = goiGemini_(prompt, 0.2, opts); } catch (e) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(e.message))) throw e; return banVeMacDinh_(r); }
+    bungMucHinhJson_(j, ['ban_ve']);
     var bv = j && j.ban_ve;
     if (!bv || typeof bv !== 'object') continue;
     bv.loai = 'canh_that'; bv.id = 'canh'; bv.x = 50; bv.y = 50; bv.buoc = 1;
@@ -777,14 +775,26 @@ function boSungGiaiThichCongThuc_(kb, r, sn) {
     '"hinh": tự dựng minh họa khi cần: {"kieu":"hinh_tu_do","khung":[100,100],"hinh":[...]} với 2–12 nét. Dùng duong/da_giac có diem:[[x,y],...], tron có tam và r, svg có d; dùng mau, to và buoc để lần lượt dựng vật, phần đang xét và đường đo. Có thể chọn dạng khác: {"kieu":"the","tieu_de":"...","dong":["2-4 dòng chữ ngắn ≤ 40 ký tự, viết thường, không LaTeX"]}' +
     (kb.ban_ve ? ' | {"kieu":"ban_ve","nhan_canh":["nhãn cạnh ngang","nhãn cạnh dọc"],"ghi_chu":["1 ghi chú ngắn"]} (vẽ lại cảnh thực tế của đề, gắn tên đại lượng lên đúng chỗ - nên dùng cho cảnh 2)' : '') +
     ' | {"kieu":"do_thi","ham":"biểu thức theo x kiểu máy tính","x_tu":0,"x_den":..,"diem_x":điểm cần chỉ,"truc_y":"S","tieu_de":"..."}.\n' +
-    'Trả JSON: {"canh":[{"muc":"tu_dau","tieu_de_canh":"","loi_thoai":"","noi_dung_man_hinh":[],"hinh":{}},{"muc":"dai_luong",...},{"muc":"van_dung",...}]}';
+    'Trả đối tượng có mảng canh theo thứ tự trên. Khi dùng schema, hinh chứa JSON của mục hình dưới dạng chuỗi.';
+  var chu = {type: 'STRING'};
+  var schema = {type: 'OBJECT', required: ['canh'], properties: {
+    canh: {type: 'ARRAY', minItems: 3, maxItems: 3, items: {type: 'OBJECT',
+      required: ['muc', 'tieu_de_canh', 'loi_thoai', 'noi_dung_man_hinh'], properties: {
+        muc: {type: 'STRING', enum: ['tu_dau', 'dai_luong', 'van_dung']}, tieu_de_canh: chu, loi_thoai: chu,
+        noi_dung_man_hinh: {type: 'ARRAY', items: chu}, hinh: chu
+      }}}
+  }};
   var j = null;
-  try { j = goiGemini_(prompt + '\nNối tiếp giọng kể và quyết định của nhân vật: ' + JSON.stringify(kb.cau_chuyen || {}), 0.5, sn || tuyChonBienKich_()); } catch (e) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(e.message))) throw e; return null; }
+  try {
+    j = goiGemini_(prompt + '\nNối tiếp giọng kể và quyết định của nhân vật: ' + JSON.stringify(kb.cau_chuyen || {}), 0.5,
+      Object.assign({}, sn || tuyChonBienKich_(), {schema: schema}));
+  } catch (e) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(e.message))) throw e; return null; }
   var ds = j && Array.isArray(j.canh) ? j.canh.filter(function (c) { return c && String(c.loi_thoai || '').trim().length > 20; }).slice(0, 3) : [];
   if (ds.length < 2) return null;
   var NHAN = { tu_dau: 'TỪ ĐÂU RA', dai_luong: 'Ý NGHĨA', van_dung: 'KHI NÀO DÙNG' };
   var moi = ds.map(function (c, i) {
     var muc = NHAN[c.muc] ? c.muc : ['tu_dau', 'dai_luong', 'van_dung'][i];
+    bungMucHinhJson_(c, ['hinh']);
     var du = hinhTuMau_(c.hinh, kb, 'gt' + (i + 1));
     return { loai: 'nhac_lai', tieu_de_canh: catGonTex_(String(c.tieu_de_canh || NHAN[muc]), 40), nhan: NHAN[muc], tu_khoa: '', giu_san_khau: false, giong_doc: 'chậm rãi, rõ ràng',
       loi_thoai: String(c.loi_thoai).replace(/\s+/g, ' ').trim(), noi_dung_man_hinh: (Array.isArray(c.noi_dung_man_hinh) ? c.noi_dung_man_hinh : []).map(String).slice(0, 2), trinh_bay: 'xep', chu_thich: [],
@@ -810,7 +820,7 @@ function boSungGiaiThichCongThuc_(kb, r, sn) {
 //  - Chương 4 (Cảnh 30-40, ~140s): Mở rộng & Giải nhanh Bài toán Biến thể Nâng cao 9+ / 10 điểm cùng dạng (đổi điều kiện thực tế)
 //  - Chương 5 (Cảnh 41-46, ~80s): Bảng tổng kết công thức "Bỏ túi phòng thi" + Bài tập tự luyện có đáp số để học sinh bình luận
 function lapKichBanDai10Phut_(r, c1, c2, sn, nhap) {
-  var kbGoc = nhap || goiGemini_(taoPromptKichBan_(r, c1, c2), 0.55, sn);
+  var kbGoc = nhap || goiKichBanCoSchema_(taoPromptKichBan_(r, c1, c2), 0.55, sn, schemaKichBan_());
   if (!kbGoc || !Array.isArray(kbGoc.canh) || !kbGoc.canh.length) throw new Error('KHONG_TAO_DUOC_KHUNG_10_PHUT');
   kbGoc.kieu_video = 'DAI_10_PHUT';
 
@@ -832,7 +842,7 @@ function lapKichBanDai10Phut_(r, c1, c2, sn, nhap) {
     '   - Bảng công thức đóng khung cần nhớ (danh_sach).\n' +
     '   - Mẹo bấm máy tính Casio / kiểm tra nhanh đạo hàm, cực trị trong phòng thi.\n' +
     '   - Giao 1 bài tập tự luyện cụ thể kèm gợi ý và đáp số để học sinh tự giải rồi bình luận.\n\n' +
-    'YÊU CẦU ĐỊNH DẠNG: mỗi cảnh đúng chuẩn {"loai":"...","tieu_de_canh":"...","tu_khoa":"...","nhan":"CHƯƠNG 2|BIẾN THỂ 10Đ|TỔNG KẾT","giu_san_khau":false,"giong_doc":"...","loi_thoai":"(không LaTeX, viết chữ số và ký hiệu chuẩn: 10 cm, 1/4, x = 10)","noi_dung_man_hinh":["1-2 dòng LaTeX ngắn, mới hoàn toàn"],"trinh_bay":"xep","minh_hoa":{"loai":"san_khau","mo_ta":"...","du_lieu":{"vat":[...],"hanh_dong":[...]}}}.\n' +
+    'Mỗi cảnh có 1–2 dòng LaTeX ngắn mới và hình minh họa đúng phép tính. Nhãn cho biết chương đang kể.\n' +
     'Giữ đúng chương trình lớp của đề. Mỗi cảnh phải giải thích một bước mới.';
   var soCanhThem = 24;
   var tuMoiCanh = Math.max(35, Math.ceil((600 - chuanHoaThoiLuong_(kbGoc)) * TOC_DO_DOC / soCanhThem));
@@ -840,7 +850,7 @@ function lapKichBanDai10Phut_(r, c1, c2, sn, nhap) {
     var p = promptMoRong + '\nLượt này CHỈ viết phần ' + khoa + ', đúng ' + soCanh +
       ' cảnh. Mục tiêu ' + tuMoiCanh + ' từ tiếng Việt mỗi cảnh (thay cho 30–45 từ ở trên). ' +
       'Triển khai lý do, phép tính và kiểm tra cụ thể. Trả JSON {"canh":[...]}. ' + truoc;
-    var j = goiGemini_(p, 0.5, sn);
+    var j = goiKichBanCoSchema_(p, 0.5, sn, schemaKichBan_(soCanh));
     if (!j || !Array.isArray(j.canh) || j.canh.length !== soCanh || j.canh.some(function(c) {
       return !c || !String(c.loi_thoai || '').trim();
     })) throw new Error('CHUONG_10P_CHUA_DU: ' + khoa);

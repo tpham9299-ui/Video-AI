@@ -66,7 +66,7 @@ jobs:
       so_khuc: ${{ steps.chia.outputs.so_khuc }}
       khuc: ${{ steps.chia.outputs.khuc }}
       manim: ${{ steps.chia.outputs.manim }}
-      chan: ${{ steps.kd.outputs.chan == 'true' || steps.bao_sua.outputs.da_bao == 'true' || steps.tu_sinh.outputs.da_bao == 'true' }}
+      chan: ${{ steps.soi_chu.outputs.chan == 'true' || steps.kd.outputs.chan == 'true' || steps.bao_sua.outputs.da_bao == 'true' || steps.tu_sinh.outputs.da_bao == 'true' }}
       da_bao: ${{ steps.bao_sua.outputs.da_bao == 'true' || steps.tu_sinh.outputs.da_bao == 'true' }}
     env:
       RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
@@ -97,6 +97,18 @@ jobs:
       THU_MUC_RA: out
     steps:
       - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            /*.json
+            /remotion.config.ts
+            /assets
+            /data
+            /mau
+            /public
+            /src
+            /scripts
+            /scripts/kiem_tra_de_chu_truoc_render.mjs
+          sparse-checkout-cone-mode: false
 
       - uses: actions/setup-node@v4
         with:
@@ -221,7 +233,33 @@ jobs:
               print(f"v3d={int(v3d)}", file=f)
           PY_HINH
 
+      - name: Chuẩn bị props giả lập (không TTS)
+        id: props_soi_chu
+        run: |
+          mkdir -p out/pre_render
+          BAO_LOI_BP2=out/loi_truoc_tts.txt python3 scripts/chuanbi.py kich_ban.json --props-soi-chu --props-ra out/pre_render/props.json --out-dir out/pre_render || {
+            rc=$?
+            [ "$rc" = 42 ] && [ -s out/loi_truoc_tts.txt ] || exit "$rc"
+            echo "loi_kich_ban=true" >> "$GITHUB_OUTPUT"
+          }
+
+      - name: Pre-Render Collision Gate
+        id: soi_chu
+        if: ${{ steps.props_soi_chu.outputs.loi_kich_ban != 'true' }}
+        run: |
+          node scripts/kiem_tra_de_chu_truoc_render.mjs out/pre_render/props.json out/pre_render/bao_cao.json
+          jq -e '(.dat | type == "boolean") and (.loi | type == "array")' out/pre_render/bao_cao.json >/dev/null
+          if jq -e '.dat == false' out/pre_render/bao_cao.json >/dev/null; then
+            echo "chan=true" >> "$GITHUB_OUTPUT"
+            echo "::error::Pre-Render Collision Gate phát hiện chữ đè hoặc tràn khung. Dừng trước TTS."
+          fi
+
+      - name: Dừng BP3 khi gate phát hiện va chạm
+        if: ${{ steps.soi_chu.outputs.chan == 'true' }}
+        run: exit 1
+
       - name: Cache âm thanh giọng đọc TTS
+        if: ${{ steps.props_soi_chu.outputs.loi_kich_ban != 'true' }}
         uses: actions/cache@v4
         with:
           path: /tmp/video_ai_tts_cache
@@ -231,7 +269,7 @@ jobs:
             tts-cache-${{ runner.os }}-
 
       - name: Cache checkpoint chặng dựng video (TTS / Manim)
-        if: ${{ env.ID_VIDEO != '' }}
+        if: ${{ env.ID_VIDEO != '' && steps.props_soi_chu.outputs.loi_kich_ban != 'true' }}
         uses: actions/cache@v4
         with:
           path: |
@@ -271,6 +309,7 @@ jobs:
             manim-tex-${{ runner.os }}-v2-
 
       - name: Tạo giọng đọc và chuẩn bị công cụ hình học song song
+        if: ${{ steps.props_soi_chu.outputs.loi_kich_ban != 'true' }}
         env:
           CAN_MANIM: ${{ steps.kb.outputs.hh }}
         run: |
@@ -496,12 +535,23 @@ jobs:
 
       - name: Kiểm duyệt không đạt - báo về Apps Script để tự sửa kịch bản
         id: bao_sua
-        if: always() && env.APPS_SCRIPT_URL != '' && env.ID_VIDEO != '' && (steps.kd.outputs.chan == 'true' || ((steps.bo_dung_3d.outcome == 'failure' || steps.kich_ban_canh.outcome == 'failure') && hashFiles('out/loi_mo_hinh.json') != ''))
+        if: always() && env.APPS_SCRIPT_URL != '' && env.ID_VIDEO != '' && (steps.soi_chu.outputs.chan == 'true' || steps.kd.outputs.chan == 'true' || ((steps.bo_dung_3d.outcome == 'failure' || steps.kich_ban_canh.outcome == 'failure') && hashFiles('out/loi_mo_hinh.json') != ''))
         run: |
           python3 - <<'PY'
           import json, os
           path = 'out/loi_mo_hinh.json' if os.path.isfile('out/loi_mo_hinh.json') else 'out/kiem_duyet.json'
-          b = json.load(open(path, encoding='utf8'))
+          gate_path = 'out/pre_render/bao_cao.json'
+          gate = json.load(open(gate_path, encoding='utf8')) if os.path.isfile(gate_path) else {}
+          if gate.get('dat') is False:
+              path = gate_path
+              nang = []
+              for loi in gate['loi']:
+                  muc = loi['phan_tu_1'] + (' ↔ ' + loi['phan_tu_2'] if loi['phan_tu_2'] else '')
+                  sua = 'tách hoặc dời nhãn ra xa nhau' if loi['loai'] == 'DE_CHU' else 'rút ngắn hoặc chia dòng chữ'
+                  nang.append(f"{loi['loai']} · {loi['canh']} (frame {loi['frame']}) · {muc}: {loi['chi_tiet']}. Hãy {sua}.")
+              b = {"nang": nang, "nhe": []}
+          else:
+              b = json.load(open(path, encoding='utf8'))
           run_url = "https://github.com/%s/actions/runs/%s" % (os.environ.get("GITHUB_REPOSITORY", ""), os.environ.get("GITHUB_RUN_ID", ""))
           d = {"lan_giao": os.environ.get("LAN_GIAO", ""), "token": os.environ["DUNG_VIDEO_SECRET"], "id": os.environ["ID_VIDEO"], "ok": False, "loi": "KIEM_DUYET_BO_CUC",
                "run_url": run_url,
@@ -517,6 +567,13 @@ jobs:
             sleep $((lan * 10))
           done
           echo "Bố cục chưa đạt: dừng dựng (Apps Script sẽ sửa kịch bản rồi gửi dựng lại)"; exit 1
+
+      - name: Lưu báo cáo Pre-Render Collision Gate
+        if: ${{ always() && steps.soi_chu.outputs.chan == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pre-render-collision
+          path: out/pre_render/bao_cao.json
 
       - name: Chia khúc
         id: chia

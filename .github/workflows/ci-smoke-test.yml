@@ -12,6 +12,23 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            /.github
+            /.gitignore
+            /*.gs
+            /*.json
+            /remotion.config.ts
+            /assets
+            /data
+            /mau
+            /mau_vang
+            /public
+            /src
+            /scripts
+            /scripts/test_pre_render_va_schema.mjs
+            /scripts/kiem_tra_de_chu_truoc_render.mjs
+          sparse-checkout-cone-mode: false
 
       - uses: actions/setup-node@v4
         with:

@@ -248,9 +248,9 @@ function giaiHinhHoc_(r) {
   var dinhDang = 'Trình bày chứng minh CHẶT CHẼ: được phép và khuyến khích KẺ THÊM ĐƯỜNG THẲNG PHỤ (đường cao, hình chiếu, đường song song, trung tuyến...) nếu giúp lời giải sáng sủa; mỗi bước một khẳng định + lý do (định lý, tính chất, dữ kiện nào). Nếu mệnh đề SAI hoặc đề thiếu/mơ hồ (cấu hình khác nhau cho kết luận khác nhau) thì "chung_minh_duoc": false và ghi rõ vào "de_co_van_de". ' +
     'Trả JSON: {"menh_de":"mệnh đề cần chứng minh (ngắn)","y_tuong":"ý then chốt (1-2 câu)","duong_phu":["mô tả đường kẻ thêm nếu có, vd Kẻ AH vuông góc BC tại H"],"cac_buoc":[{"khang_dinh":"","ly_do":""}],"chung_minh_duoc":true|false,"de_co_van_de":""}\n\n';
   var kq3 = goiGeminiSong_([
-    { nhiet: 0.2, prompt: 'Bạn là giáo viên chuyên Toán. Chứng minh bài hình học sau bằng phương pháp HÌNH HỌC TỔNG HỢP đúng chương trình lớp ' + (lopC || r.lop) + ' (góc, tam giác đồng dạng/bằng nhau, đường tròn, quan hệ vuông góc/song song không gian, kẻ thêm đường phụ khéo). ' + dinhDang + deGiai },
-    { nhiet: 0.3, prompt: 'Bạn là giáo viên chuyên Toán. Chứng minh bài hình học sau đúng chương trình lớp ' + (lopC || r.lop) + ' bằng một PHƯƠNG PHÁP KHÁC HẲN: ' + phuongPhap2 + ' (tính toán chặt chẽ, KHÔNG dùng kiến thức lớp trên hoặc số phức). ' + dinhDang + deGiai },
-    { nhiet: 0.1, prompt: HUONG_DAN_MA_HINH_ + 'Thử mệnh đề cần chứng minh ở ÍT NHẤT 6 cấu hình ngẫu nhiên khác nhau; với mỗi cấu hình tính "phần dư" (ví dụ |AM - AN|, |tích vô hướng| của hai véc tơ cần vuông góc, |định thức| khi cần thẳng hàng / đồng phẳng, khoảng cách từ điểm tới mặt phẳng khi cần điểm thuộc mặt phẳng) chia cho kích thước hình. ' +
+    { nhiet: 0.2, schema: schemaGiaiBP1_('chung_minh'), prompt: 'Bạn là giáo viên chuyên Toán. Chứng minh bài hình học sau bằng phương pháp HÌNH HỌC TỔNG HỢP đúng chương trình lớp ' + (lopC || r.lop) + ' (góc, tam giác đồng dạng/bằng nhau, đường tròn, quan hệ vuông góc/song song không gian, kẻ thêm đường phụ khéo). ' + dinhDang + deGiai },
+    { nhiet: 0.3, schema: schemaGiaiBP1_('chung_minh'), prompt: 'Bạn là giáo viên chuyên Toán. Chứng minh bài hình học sau đúng chương trình lớp ' + (lopC || r.lop) + ' bằng một PHƯƠNG PHÁP KHÁC HẲN: ' + phuongPhap2 + ' (tính toán chặt chẽ, KHÔNG dùng kiến thức lớp trên hoặc số phức). ' + dinhDang + deGiai },
+    { nhiet: 0.1, schema: schemaGiaiBP1_('ma'), prompt: HUONG_DAN_MA_HINH_ + 'Thử mệnh đề cần chứng minh ở ÍT NHẤT 6 cấu hình ngẫu nhiên khác nhau; với mỗi cấu hình tính "phần dư" (ví dụ |AM - AN|, |tích vô hướng| của hai véc tơ cần vuông góc, |định thức| khi cần thẳng hàng / đồng phẳng, khoảng cách từ điểm tới mặt phẳng khi cần điểm thuộc mặt phẳng) chia cho kích thước hình. ' +
       'Hàm trả về {"kieu":"chung_minh","so_cau_hinh":số cấu hình đã thử,"du_max":phần dư lớn nhất (số thực),' + DANG_TRA_HINH_ + '}. Trả JSON: {"ma":"function kiemChung(){...}"}\n\n' + de }
   ]);
   var c1 = kq3[0] || {}, c2 = kq3[1] || {}, kc = kq3[2];
@@ -259,7 +259,7 @@ function giaiHinhHoc_(r) {
   var dung = may && may.kieu === 'chung_minh' && Number(may.so_cau_hinh) >= 4 && isFinite(Number(may.du_max)) && Number(may.du_max) < 1e-6;
   // mã đầu chưa chạy được: viết lại một lần
   if (!may) {
-    try { may = chayMaHinh_(r, goiGemini_(HUONG_DAN_MA_HINH_ + 'Thử mệnh đề ở ÍT NHẤT 6 cấu hình ngẫu nhiên, trả {"kieu":"chung_minh","so_cau_hinh":n,"du_max":số,' + DANG_TRA_HINH_ + '}. Trả JSON: {"ma":"function kiemChung(){...}"}\n\n' + de, 0.2, { suyNghi: 'high' })); }
+    try { may = chayMaHinh_(r, goiGemini_(HUONG_DAN_MA_HINH_ + 'Thử mệnh đề ở ÍT NHẤT 6 cấu hình ngẫu nhiên, trả {"kieu":"chung_minh","so_cau_hinh":n,"du_max":số,' + DANG_TRA_HINH_ + '}. Trả JSON: {"ma":"function kiemChung(){...}"}\n\n' + de, 0.2, { suyNghi: 'high', schema: schemaGiaiBP1_('ma') })); }
     catch (e) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(e.message))) throw e; }
     dung = may && may.kieu === 'chung_minh' && Number(may.so_cau_hinh) >= 4 && Number(may.du_max) < 1e-6;
   }
@@ -269,7 +269,7 @@ function giaiHinhHoc_(r) {
     var veLai = HUONG_DAN_MA_HINH_ + 'Hình trước có hai điểm sát nhau hoặc đường cao gần trùng trung tuyến. Chọn lại các tham số TỰ DO để tách rõ điểm và nét, rồi dựng lại điểm phụ. Nếu giả thiết bắt buộc trùng, giữ nguyên. ' +
       'Thử ít nhất 6 cấu hình, trả {"kieu":"chung_minh","so_cau_hinh":n,"du_max":số,' + DANG_TRA_HINH_ + '}. Trả JSON {"ma":"function kiemChung(){...}"}.\n' + de;
     try {
-      var alt = chayMaHinh_(r, goiGemini_(veLai, 0.2, {suyNghi:'high'}));
+      var alt = chayMaHinh_(r, goiGemini_(veLai, 0.2, {suyNghi:'high', schema: schemaGiaiBP1_('ma')}));
       if (alt && alt.kieu === 'chung_minh' && alt.so_cau_hinh >= 4 && alt.du_max < 1e-6 &&
           alt.hinh && doRoHinhPhang_(alt.hinh, r.de_bai) > doRoHinhPhang_(may.hinh, r.de_bai)) may = alt;
     } catch (eVe) { nhatKy_('GIAI', r.id + ': giữ cấu hình hình học đã kiểm chứng'); }
@@ -280,7 +280,7 @@ function giaiHinhHoc_(r) {
   if (!dung && cm1 && cm2) {
     try {
       var may2 = chayMaHinh_(r, goiGemini_(HUONG_DAN_MA_HINH_ + 'Mã thử trước đó cho phần dư lớn (có thể đã dựng sai một điểm). Dựng lại CẨN THẬN từng điểm đúng như đề, tự kiểm từng bước dựng. ' +
-        'Thử mệnh đề ở ÍT NHẤT 6 cấu hình ngẫu nhiên, trả {"kieu":"chung_minh","so_cau_hinh":n,"du_max":số,' + DANG_TRA_HINH_ + '}. Trả JSON: {"ma":"function kiemChung(){...}"}\n\n' + de, 0.2, { suyNghi: 'high' }));
+        'Thử mệnh đề ở ÍT NHẤT 6 cấu hình ngẫu nhiên, trả {"kieu":"chung_minh","so_cau_hinh":n,"du_max":số,' + DANG_TRA_HINH_ + '}. Trả JSON: {"ma":"function kiemChung(){...}"}\n\n' + de, 0.2, { suyNghi: 'high', schema: schemaGiaiBP1_('ma') }));
       if (may2 && may2.kieu === 'chung_minh' && Number(may2.so_cau_hinh) >= 4 && Number(may2.du_max) < 1e-6) { may = may2; dung = true; }
     } catch (e2) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(e2.message))) throw e2; }
   }
@@ -294,7 +294,7 @@ function giaiHinhHoc_(r) {
   else if (cm1 && vp1.length && lopC && typeof goiGemini_ === 'function') {
     nhatKy_('GIAI', r.id + ': chứng minh hình học vi phạm lớp ' + lopC + ' (' + vp1[0] + ') -> viết lại theo đúng chương trình lớp ' + lopC);
     try {
-      var cSua = goiGemini_('Bạn là giáo viên Toán lớp ' + lopC + '. Chứng minh lại bài hình học sau CHỈ dùng kiến thức được phép của lớp ' + lopC + ' (KHÔNG dùng phương pháp lớp trên hay số phức; trước đó bị lỗi: ' + vp1.join('; ') + ').\n' + dinhDang + deGiai, 0.2, { suyNghi: 'high' });
+      var cSua = goiGemini_('Bạn là giáo viên Toán lớp ' + lopC + '. Chứng minh lại bài hình học sau CHỈ dùng kiến thức được phép của lớp ' + lopC + ' (KHÔNG dùng phương pháp lớp trên hay số phức; trước đó bị lỗi: ' + vp1.join('; ') + ').\n' + dinhDang + deGiai, 0.2, { suyNghi: 'high', schema: schemaGiaiBP1_('chung_minh') });
       if (cSua && cSua.chung_minh_duoc === true && !kiemTraViPhamLop_(cSua, r.lop, 'HINH_HOC', r.de_bai).length) c1 = cSua;
     } catch (eSuaH) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO)$/.test(String(eSuaH.message))) throw eSuaH; }
   }
@@ -316,16 +316,16 @@ function giaiHinhTinh_(r, de, t0, deGiai, phuongPhap2) {
   var maPrompt = HUONG_DAN_MA_HINH_ + 'Tính đại lượng đề hỏi từ tọa độ (nếu đề có tham số tự do mà đáp số không phụ thuộc tham số thì thử vài cấu hình và trả giá trị chung). ' +
     'Hàm trả về {"kieu":"gia_tri","gia_tri":số_thực,' + DANG_TRA_HINH_ + '}. Trả JSON: {"ma":"function kiemChung(){...}"}\n\n' + de;
   var kq3 = goiGeminiSong_([
-    { nhiet: 0.2, prompt: 'Bạn là giáo viên chuyên Toán. Giải bài hình học sau bằng HÌNH HỌC TỔNG HỢP đúng chương trình lớp ' + (lopC || r.lop) + ' thật chặt chẽ (kẻ thêm đường phụ, đồng dạng, góc nội tiếp, hệ thức lượng, hình chiếu không gian...). ' + dinhDang + deDayDu },
-    { nhiet: 0.4, prompt: 'Bạn là giáo viên chuyên Toán. Giải bài hình học sau đúng chương trình lớp ' + (lopC || r.lop) + ' bằng phương pháp KHÁC: ' + pp2 + '. ' + dinhDang + deDayDu },
-    { nhiet: 0.1, prompt: maPrompt }
+    { nhiet: 0.2, schema: schemaGiaiBP1_('gia_tri'), prompt: 'Bạn là giáo viên chuyên Toán. Giải bài hình học sau bằng HÌNH HỌC TỔNG HỢP đúng chương trình lớp ' + (lopC || r.lop) + ' thật chặt chẽ (kẻ thêm đường phụ, đồng dạng, góc nội tiếp, hệ thức lượng, hình chiếu không gian...). ' + dinhDang + deDayDu },
+    { nhiet: 0.4, schema: schemaGiaiBP1_('gia_tri'), prompt: 'Bạn là giáo viên chuyên Toán. Giải bài hình học sau đúng chương trình lớp ' + (lopC || r.lop) + ' bằng phương pháp KHÁC: ' + pp2 + '. ' + dinhDang + deDayDu },
+    { nhiet: 0.1, schema: schemaGiaiBP1_('ma'), prompt: maPrompt }
   ]);
   var c1 = kq3[0], c2 = kq3[1], kc = kq3[2];
   nhatKy_('THOI_GIAN', 'Giải hình học (tính) + mã dựng hình (3 yêu cầu Gemini) mất ' + Math.round((Date.now() - t0) / 1000) + ' giây');
   var docTT = function (c) { var x = docSo_(c && c.gia_tri); return isFinite(x) ? x : null; };
   if (docTT(c1) === null && docTT(c2) === null) throw new Error('DAP_AN_KHONG_HOP_LE');
   var tt = trongTai_(r, {
-    de: deDayDu, dinhDang: dinhDang, c1: c1, c2: c2, kc: kc,
+    de: deDayDu, dinhDang: dinhDang, c1: c1, c2: c2, kc: kc, schema: schemaGiaiBP1_('gia_tri'),
     doc: docTT, bang: function (a, b) { return a !== null && b !== null && khopSo_(a, b); }, chu: vietSo_,
     kiem: function (kq) {
       var gk = docSo_(kq && kq.gia_tri);
@@ -863,17 +863,13 @@ function taoPromptHinhHocThuan_(r, c1, c2, phan) {
     '"minh_hoa":{"loai":"san_khau","mo_ta":"Hình chóp S.ABCD hiện dần: đáy vuông, cạnh SA thẳng đứng có ký hiệu vuông góc, cạnh khuất AD nét đứt.",',
     '"du_lieu":{"vat":[{"id":"hh","loai":"hinh_hoc","x":50,"y":48,"co":1.2,"diem":{"S":[20,10],"A":[20,90],"B":[62,90],"C":[79,72],"D":[38,72]},"canh":[["S","B"],["S","C"],["A","B"],["B","C"],["S","A"]],"khuat":[["A","D"],["C","D"],["S","D"]],"vuong":[["S","A","B"]]}],"hanh_dong":[]}}}\n\n'
   ];
-  var traVe = (phan.traVe || []).map(function (s) {
-    return String(s).replace(/3\. HÌNH VẼ CHÍNH XÁC:[^\n]*\n/, '3. HÌNH VẼ CHÍNH XÁC: chỉ dùng vật hinh_hoc; mọi điểm của đề có trong "diem"; buoc_ve neo đúng cụm nguyên văn của lời thoại.\n')
-      .replace(/#toanthucte/g, '#hinhhoc').replace(/"giu_san_khau":false/, '"giu_san_khau":true,"buoc_ve":[{"ve":"","khi_noi":""}]');
-  });
+  var traVe = (phan.traVe || []).map(function (s) { return String(s).replace(/#toanthucte/g, '#hinhhoc'); });
   if (dungHinhPhangChuan_(r)) {
-    // v94: hình phẳng -> đặc tả phép dựng hinh_phang_chuan (bỏ hinh_hoc tọa độ / buoc_ve / ví dụ tọa độ của bản cũ)
-    var traVeHP = traVe.map(function (s) { return String(s).replace(/"buoc_ve":\[\{"ve":"","khi_noi":""\}\]/, '"noi_dung_man_hinh":[]'); });
+    // v94: hình phẳng dùng đặc tả phép dựng thay cho ví dụ chứa tọa độ của luồng cũ.
     var dauVaoHP = dauVao.map(function (s) {
       return /Mỗi cảnh chỉ có đúng MỘT vật/.test(s) ? 'Hình vẽ, câu đề rút gọn và các trang chứng minh do máy dựng từ "hinh_phang_chuan" (một hình xuyên suốt, giu_san_khau: true từ cảnh 2).\n\n' : s;
     });
-    return [].concat(dauVaoHP, quyTrinh, [huongDanHinhPhangChuan_(r)], phan.moDau || [], phan.nangCao || [], phan.noiCanh || [], phan.loiThoai || [], traVeHP,
+    return [].concat(dauVaoHP, quyTrinh, [huongDanHinhPhangChuan_(r)], phan.moDau || [], phan.nangCao || [], phan.noiCanh || [], phan.loiThoai || [], traVe,
       ['\nNHẮC LẠI: JSON trả về PHẢI có "hinh_phang_chuan" như mô tả (không tọa độ, không mã Manim).\n']).join('');
   }
   return [].concat(dauVao, [huongDanKichBanHinh_(r)], quyTrinh, dongBo, phan.moDau || [], phan.nangCao || [], phan.noiCanh || [], phan.loiThoai || [], viDu, traVe).join('');

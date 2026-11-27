@@ -89,6 +89,7 @@ function truyVetDeQuy(entryRels) {
 
   const addFileOrDir = (rel) => {
     const n = normRel(rel);
+    if (n === '.') return; // path.join(GOC, biến) không chỉ tới một tệp có thể truy vết.
     const full = path.join(ROOT, n);
     if (!fs.existsSync(full)) return;
     needed.add(n);
@@ -190,7 +191,7 @@ function truyVetDeQuy(entryRels) {
         const segs = [...m[1].matchAll(/['"]([^'"]+)['"]/g)].map((x) => x[1]);
         if (!segs.length) continue;
         const cand = normRel(path.join(...segs));
-        if (/^(?:ket_qua_|gui_|bao_)/.test(path.basename(cand))) continue;
+        if (cand.startsWith('out/') || /^(?:ket_qua_|gui_|bao_)/.test(path.basename(cand))) continue;
         if (fs.existsSync(path.join(ROOT, cand))) addFileOrDir(cand);
       }
       // Danh sách tệp .gs nạp bằng vm.runInContext
@@ -224,6 +225,10 @@ for (const wf of wfFiles) {
     const reScript = /(?:node|python3?|\/tmp\/mv\/bin\/python|bash)\s+(?:-[A-Za-z0-9]+\s+)*(scripts\/[A-Za-z0-9_./-]+\.(?:[cm]?js|py|sh))/g;
     let m;
     while ((m = reScript.exec(blk))) entries.add(m[1]);
+    if (/\bnpm run kiem-tra\b/.test(blk)) {
+      const npmTests = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).scripts['kiem-tra'];
+      for (const script of npmTests.matchAll(reScript)) entries.add(script[1]);
+    }
     // Bắt thêm `from scripts.xxx import ...` hoặc `import scripts.xxx` trong inline Python của workflow
     for (const mi of blk.matchAll(/(?:from|import)\s+scripts\.([A-Za-z0-9_.]+)/g)) {
       for (const found of giaiQuyetPyModule(mi[1], 'scripts/__inline__.py')) entries.add(found);
@@ -636,6 +641,20 @@ kiem(
   rYtTuan.status === 0,
   rYtTuan.status === 0 ? '' : (rYtTuan.stderr || rYtTuan.stdout || '').slice(-260),
 );
+
+// Collision Gate và schema. npm run kiem-tra chạy thêm ca Chromium thật.
+const wfDung = fs.readFileSync(path.join(wfDir, 'dung-video.yml'), 'utf8');
+const iProps = wfDung.indexOf('--props-soi-chu');
+const iGate = wfDung.indexOf('node scripts/kiem_tra_de_chu_truoc_render.mjs');
+const iTts = wfDung.indexOf('BAO_LOI_BP2=out/loi_truoc_tts.txt python3 scripts/chuanbi.py kich_ban.json ||');
+kiem('BP3: props không TTS → Collision Gate → TTS, báo bố cục qua webhook',
+  iProps >= 0 && iProps < iGate && iGate < iTts && wfDung.includes("steps.soi_chu.outputs.chan == 'true'") &&
+  wfDung.includes("gate_path = 'out/pre_render/bao_cao.json'"));
+const rGate = spawnSync(process.execPath, ['scripts/test_pre_render_va_schema.mjs', '--nhanh'], {
+  cwd: ROOT, encoding: 'utf8', timeout: 30000,
+});
+kiem('scripts/test_pre_render_va_schema.mjs: hình học hộp và fallback Gemini', rGate.status === 0,
+  rGate.status === 0 ? '' : (rGate.stderr || rGate.stdout || '').slice(-700));
 
 console.log(`\nCI SMOKE TEST: ${dat} đạt, ${hong.length} hỏng`);
 process.exit(hong.length ? 1 : 0);

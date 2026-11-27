@@ -831,7 +831,9 @@ def nho_gemini_sua(ma, loi, de, so_buoc):
           "Chữ >= 22 px, nhãn không đè nét / đỉnh, chỉ màu họ cyan / hổ phách / xám / tối.\nĐề: %s\nLỗi: %s\nHướng sửa trọng tâm: %s\nMã:\n%s") % (
               so_buoc - 1, str(de)[:600], loi, goi_y_sua(loi) or "sửa đúng mục lỗi trên", ma[:12000])
     body = {"contents": [{"role": "user", "parts": [{"text": yc}]}],
-            "generationConfig": {"temperature": 0.2, "responseMimeType": "application/json", "maxOutputTokens": 8192}}
+            "generationConfig": {"temperature": 0.2, "responseMimeType": "application/json", "maxOutputTokens": 8192,
+                                 "responseSchema": {"type": "OBJECT", "required": ["ma"],
+                                                    "properties": {"ma": {"type": "STRING"}}}}}
     tep = os.path.join(tempfile.gettempdir(), "tu_sinh_%d.json" % os.getpid())
     with open(tep, "w", encoding="utf8") as f:
         json.dump({"model": "", "models": [], "bodies": [body], "keys": keys, "gioiHanGiay": 90, "cheDo": "nhe"}, f)

@@ -387,7 +387,15 @@ def goi_gemini(anh, p, o_da):
             {"inline_data": {"mime_type": "image/jpeg", "data": base64.b64encode(open(anh, "rb").read()).decode()}},
         ]}],
         "generationConfig": {"temperature": 0.1, "responseMimeType": "application/json", "maxOutputTokens": 1024,
-                             "thinkingConfig": {"thinkingBudget": 0}},
+                             "thinkingConfig": {"thinkingBudget": 0},
+                             "responseSchema": {"type": "OBJECT", "required": ["loi"], "properties": {
+                                 "t2_co_hinh": {"type": "BOOLEAN"},
+                                 "loi": {"type": "ARRAY", "items": {"type": "OBJECT",
+                                     "required": ["o", "loai", "mo_ta", "nang"], "properties": {
+                                         "o": {"type": "INTEGER"}, "loai": {"type": "STRING", "enum": list(LOAI_LOI)},
+                                         "mo_ta": {"type": "STRING"}, "nang": {"type": "BOOLEAN"},
+                                     }}},
+                             }}},
     }
     # v98.2: không ghi cứng model - goi_gemini.js tự lấy ListModels + xếp hạng chế độ 'nhe' (flash mới nhất trước)
     model = os.environ.get("MAT_THAN_MODEL") or ""

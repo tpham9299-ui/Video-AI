@@ -27,9 +27,9 @@ function DongTieuDe({b, so, mau, a, lech}: {b: BuocGiai; so: number; mau: string
   return (
     <div data-tieu-de-toi-gian style={{position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, opacity: a, transform: `translateY(${lech}px)`,
       fontFamily: FONT, whiteSpace: 'nowrap'}}>
-      <span style={{color: mau, fontWeight: 900, fontSize: co, letterSpacing: 1, fontVariantNumeric: 'tabular-nums'}}>{String(so).padStart(2, '0')}</span>
+      <span data-va-cham="pill_buoc" style={{color: mau, fontWeight: 900, fontSize: co, letterSpacing: 1, fontVariantNumeric: 'tabular-nums'}}>{String(so).padStart(2, '0')}</span>
       <span style={{color: 'rgba(244,247,251,0.35)', fontWeight: 700, fontSize: co * 0.8}}>·</span>
-      <span style={{color: '#F4F7FB', fontWeight: 800, fontSize: co, letterSpacing: -0.3, maxWidth: 760, overflow: 'hidden'}}><ChuTron s={td} co={co} mau="#F4F7FB" dam={800} /></span>
+      <span data-va-cham="tieu_de_buoc" style={{color: '#F4F7FB', fontWeight: 800, fontSize: co, letterSpacing: -0.3, maxWidth: 760, overflow: 'hidden'}}><ChuTron s={td} co={co} mau="#F4F7FB" dam={800} /></span>
     </div>
   );
 }
@@ -65,7 +65,7 @@ function Khoi({th, t0, t, mau, a}: {th: TheGiai; t0: number; t: number; mau: str
       background: `linear-gradient(90deg, transparent, ${mauNhan}, transparent)`, opacity: 0.85} as React.CSSProperties} />
   );
   return (
-    <div data-the-giai data-khoi-cong-thuc {...(chot ? {'data-the-chot': '1'} : {})} style={{position: 'absolute', left: 0, right: 0, top: '50%', transform: `translateY(-50%) translateY(${(1 - vao) * 14}px)`,
+    <div data-the-giai data-khoi-cong-thuc data-va-cham="hop_cong_thuc" {...(chot ? {'data-the-chot': '1'} : {})} style={{position: 'absolute', left: 0, right: 0, top: '50%', transform: `translateY(-50%) translateY(${(1 - vao) * 14}px)`,
       opacity: a * vao, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: '26px 0 28px',
       background: `linear-gradient(90deg, transparent, ${chot ? 'rgba(46,230,168,0.10)' : 'rgba(255,255,255,0.05)'} 22%, ${chot ? 'rgba(46,230,168,0.10)' : 'rgba(255,255,255,0.05)'} 78%, transparent)`}}>
       <KhoaThuongHieu viTri="the" />

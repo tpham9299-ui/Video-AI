@@ -21,7 +21,7 @@ export const KhoaThuongHieu: React.FC<{viTri: 'dau' | 'nuoc' | 'the' | 'outro'; 
     position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: viTri === 'outro' ? 218 : 0,
     fontSize: viTri === 'outro' ? 30 : 19, fontWeight: 700,
   };
-  return <span data-thuong-hieu={viTri} data-kd-bo="1" style={{...style, fontFamily: FONT, color: '#E6EDF5', whiteSpace: 'nowrap', pointerEvents: 'none'}}>
+  return <span data-thuong-hieu={viTri} data-va-cham={viTri === 'dau' ? 'eyebrow' : undefined} data-kd-bo="1" style={{...style, fontFamily: FONT, color: '#E6EDF5', whiteSpace: 'nowrap', pointerEvents: 'none'}}>
     {TEN_THUONG_HIEU}{nuoc || the ? '' : ' • ' + chuyenMuc(mon)}
   </span>;
 };

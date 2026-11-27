@@ -106,7 +106,7 @@ export const IntroMocCau: React.FC<{m: MocCau; t: number; G: number}> = ({m, t, 
 
       {/* 1. viên thuốc ngữ cảnh thi */}
       <div style={{position: 'absolute', left: 0, right: 0, top: 216, display: 'flex', justifyContent: 'center', opacity: aPill * con, transform: `translateY(${(1 - aPill) * -14 - ra * 30}px)`}}>
-        <div style={{height: 54, padding: '0 28px', borderRadius: 27, display: 'flex', alignItems: 'center', background: 'rgba(245,197,66,0.12)', border: `1.5px solid ${VANG}`,
+        <div data-va-cham="intro_nhan" style={{height: 54, padding: '0 28px', borderRadius: 27, display: 'flex', alignItems: 'center', background: 'rgba(245,197,66,0.12)', border: `1.5px solid ${VANG}`,
           color: VANG_SANG, fontWeight: 800, fontSize: coVua(m.nhan_thi, 28, 20, RONG_CHU, 0.64), letterSpacing: 1.4, whiteSpace: 'nowrap', boxShadow: '0 0 24px rgba(245,197,66,0.18)'}}>
           {m.nhan_thi}
         </div>
@@ -116,7 +116,7 @@ export const IntroMocCau: React.FC<{m: MocCau; t: number; G: number}> = ({m, t, 
       <div style={{position: 'absolute', left: 48, right: 48, top: 282, height: 200, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         opacity: kep01(sTD * 1.4) * con, transform: `scale(${0.9 + 0.1 * sTD}) translateY(${-ra * 40}px)`}}>
         {dongTD.map((d, i) => (
-          <div key={i} data-intro-title style={{position: 'relative', fontWeight: 900, fontSize: coTD, lineHeight: 1.04, letterSpacing: -0.5, whiteSpace: 'nowrap'}}>
+          <div key={i} data-intro-title data-va-cham="intro_tieu_de" style={{position: 'relative', fontWeight: 900, fontSize: coTD, lineHeight: 1.04, letterSpacing: -0.5, whiteSpace: 'nowrap'}}>
             <span style={{position: 'absolute', inset: 0, whiteSpace: 'nowrap', textWrap: 'nowrap' as React.CSSProperties['textWrap'], color: VANG, textShadow: `0 0 18px rgba(245,197,66,0.55), 0 0 42px rgba(245,197,66,0.25), 0 4px 0 #5A3D06`}}>{d}</span>
             <span style={{position: 'relative', whiteSpace: 'nowrap', textWrap: 'nowrap' as React.CSSProperties['textWrap'], background: `linear-gradient(180deg, ${VANG_SANG} 8%, ${VANG} 52%, ${VANG_DAM} 96%)`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent'}}>{d}</span>
           </div>
@@ -124,7 +124,7 @@ export const IntroMocCau: React.FC<{m: MocCau; t: number; G: number}> = ({m, t, 
       </div>
 
       {/* 3. dòng phụ chuyên đề */}
-      {phu && chuan(phu) !== chuan(tieuDeSach) && <div style={{position: 'absolute', left: 48, right: 48, top: 492, textAlign: 'center', color: CYAN, fontWeight: 800, fontSize: coPhu, letterSpacing: 0, whiteSpace: 'nowrap',
+      {phu && chuan(phu) !== chuan(tieuDeSach) && <div data-va-cham="intro_phu_de" style={{position: 'absolute', left: 48, right: 48, top: 492, textAlign: 'center', color: CYAN, fontWeight: 800, fontSize: coPhu, letterSpacing: 0, whiteSpace: 'nowrap',
         opacity: aPhu * con, transform: `translateY(${(1 - aPhu) * 12 - ra * 30}px)`, textShadow: '0 0 16px rgba(63,216,242,0.35)'}}>
         {phu}
       </div>}
@@ -134,7 +134,7 @@ export const IntroMocCau: React.FC<{m: MocCau; t: number; G: number}> = ({m, t, 
         <div style={{position: 'absolute', left: 48, right: 48, top: INTRO_SAN.y + INTRO_SAN.h + 20, height: 140, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           opacity: kep01(sHook * 1.5) * con, transform: `scale(${0.86 + 0.14 * sHook}) translateY(${ra * 30}px)`}}>
           {dongHook.map((d, i) => (
-            <div key={i} style={{color: '#FFFFFF', fontWeight: 900, fontSize: coHook, lineHeight: 1.1, whiteSpace: 'nowrap', textShadow: '0 3px 0 rgba(0,0,0,0.6), 0 0 22px rgba(255,90,95,0.3)'}}>{d}</div>
+            <div key={i} data-va-cham="intro_hook" style={{color: '#FFFFFF', fontWeight: 900, fontSize: coHook, lineHeight: 1.1, whiteSpace: 'nowrap', textShadow: '0 3px 0 rgba(0,0,0,0.6), 0 0 22px rgba(255,90,95,0.3)'}}>{d}</div>
           ))}
         </div>
       ) : null}

@@ -257,11 +257,26 @@ async function aiNhinHinh(anh) {
         if (hetNgay.has(model + '|' + k)) continue;
         const conLai = hanKiemDuyet - Date.now();
         if (conLai <= 0) return {chay: false, ly_do: 'hết thời gian kiểm duyệt', loi: []};
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(k)}`, {
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(k)}`;
+        const generationConfig = {temperature: 0.1, responseMimeType: 'application/json',
+          responseSchema: {type: 'OBJECT', required: ['dung', 'van_de'], properties: {
+            dung: {type: 'BOOLEAN'},
+            van_de: {type: 'ARRAY', items: {type: 'OBJECT', required: ['loai', 'ly_do'], properties: {
+              loai: {type: 'STRING', enum: ['sai_toan', 'bo_cuc']}, ly_do: {type: 'STRING'},
+            }}},
+          }},
+        };
+        const signal = AbortSignal.timeout(Math.min(90000, conLai));
+        const goi = () => fetch(endpoint, {
           method: 'POST', headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({contents: [{role: 'user', parts}], generationConfig: {temperature: 0.1, responseMimeType: 'application/json'}}),
-          signal: AbortSignal.timeout(Math.min(90000, conLai)),
+          body: JSON.stringify({contents: [{role: 'user', parts}], generationConfig}), signal,
         }).catch((e) => { lyDo = 'lỗi mạng: ' + String(e.message || e).slice(0, 80); return null; });
+        let res = await goi();
+        if (res?.status === 400 && /schema|structured[- ]output/i.test(await res.clone().text().catch(() => ''))) {
+          delete generationConfig.responseSchema;
+          console.warn('GEMINI_SCHEMA_FALLBACK: ' + model + ' gọi lại ở chế độ JSON');
+          res = await goi();
+        }
         if (!res) continue;
         if (!res.ok) {
           const raw = await res.text().catch(() => '');

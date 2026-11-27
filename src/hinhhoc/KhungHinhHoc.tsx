@@ -799,7 +799,7 @@ const TheDeBaiGhim: React.FC<{
 
   return (
     <div
-      data-the-de-bai="1"
+      data-the-de-bai="1" data-va-cham="the_de_bai"
       style={{
         position: 'absolute',
         inset: 0,
@@ -844,7 +844,7 @@ const TheDeBaiGhim: React.FC<{
         <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
           <span style={{width: 8, height: 8, borderRadius: 4, background: MAU_CYAN, boxShadow: `0 0 8px ${MAU_CYAN}`}} />
           <span
-            data-thuong-hieu="dau"
+            data-thuong-hieu="dau" data-va-cham="eyebrow"
             data-kd-bo="1"
             style={{fontFamily: FONT, fontSize: 18, fontWeight: 700, color: '#E2E8F0', whiteSpace: 'nowrap', letterSpacing: 0.2}}
           >
@@ -1213,7 +1213,7 @@ const TangGiaiHinhHoc: React.FC<{
             const maxWChip = Math.floor((RONG_ND - 10 * (chips.length - 1)) / chips.length) - 44;
             return (
               <div
-                key={c.id}
+                key={c.id} data-va-cham="chip_trung_gian"
                 style={{
                   height: 44,
                   padding: '0 15px',
@@ -1239,7 +1239,7 @@ const TangGiaiHinhHoc: React.FC<{
 
       {/* Thẻ bước giải chính (KHÔNG BAO GIỜ RỖNG, chiều cao gọn theo số dòng công thức) */}
       <div
-        data-the-giai="1"
+        data-the-giai="1" data-va-cham="hop_cong_thuc"
         {...(chot ? {'data-the-chot': '1'} : {})}
         style={{
           position: 'relative',

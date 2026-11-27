@@ -154,6 +154,14 @@ async function motModel(model, body, i, huy, soVong = 2) {
         const raw = await res.text();
         if (res.ok) { ghiModelTot(model); return {ok: true, code: res.status, raw, model}; }
         cuoi = {ok: false, code: res.status, raw, het: false, model};
+        // Giữ model, key và MIME khi lỗi chỉ thuộc cấu hình structured output.
+        if (res.status === 400 && bodyGui.generationConfig?.responseSchema && /schema|structured[- ]output/i.test(raw)) {
+          const {responseSchema, ...generationConfig} = bodyGui.generationConfig;
+          bodyGui = {...bodyGui, generationConfig};
+          process.stderr.write('GEMINI_SCHEMA_FALLBACK: ' + model + ' gọi lại ở chế độ JSON\n');
+          lan--;
+          continue;
+        }
         const loai = phanLoai(res.status, raw);
         if (loai === 'model_404') { ghiModel404(model, k); cuoi.goiY = catalog.goiY404(raw); return cuoi; }
         // Nếu lỗi 400 do thinkingConfig không tương thích với model này -> bỏ thinkingConfig và thử lại ngay

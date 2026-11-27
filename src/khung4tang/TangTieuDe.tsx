@@ -19,12 +19,12 @@ function Mot({b, so, tong, mau, a, lech}: {b: BuocGiai; so: number; tong: number
   const co = Math.max(32, Math.min(tranCo, Math.floor(1360 / Math.max(1, tieuDe.length * 0.62))));
   return (
     <div style={{position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', paddingTop: 16, gap: 14, boxSizing: 'border-box', opacity: a, transform: `translateY(${lech}px)`}}>
-      <div style={{display: 'flex', alignItems: 'center', height: 46, flexShrink: 0, borderRadius: 23, border: `1.5px solid ${mau}`, background: `linear-gradient(180deg, ${mau}2E, rgba(12,14,20,0.62))`, padding: nhan ? '0 20px 0 6px' : '0 6px', gap: 12,
+      <div data-va-cham="pill_buoc" style={{display: 'flex', alignItems: 'center', height: 46, flexShrink: 0, borderRadius: 23, border: `1.5px solid ${mau}`, background: `linear-gradient(180deg, ${mau}2E, rgba(12,14,20,0.62))`, padding: nhan ? '0 20px 0 6px' : '0 6px', gap: 12,
         boxShadow: `0 0 22px ${mau}33, inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.45)`}}>
         <span data-kd-bo="1" style={{height: 36, padding: '0 14px', borderRadius: 18, background: mau, color: NOI, fontFamily: FONT, fontWeight: 900, fontSize: 23, display: 'flex', alignItems: 'center', letterSpacing: 0.5}}>BƯỚC {so}</span>
         {nhan ? <span style={{color: mau, fontFamily: FONT, fontWeight: 800, fontSize: 25, letterSpacing: 1.1, whiteSpace: 'nowrap'}}><ChuTron s={nhan} co={25} mau={mau} hoa={inHoaGiuToan} /></span> : null}
       </div>
-      <div style={{color: '#F4F7FB', fontFamily: FONT, fontWeight: 900, fontSize: co, lineHeight: 1.08, textAlign: 'center', maxWidth: 820, letterSpacing: -0.5, textWrap: 'balance' as React.CSSProperties['textWrap']}}>
+      <div data-va-cham="tieu_de_buoc" style={{color: '#F4F7FB', fontFamily: FONT, fontWeight: 900, fontSize: co, lineHeight: 1.08, textAlign: 'center', maxWidth: 820, letterSpacing: -0.5, textWrap: 'balance' as React.CSSProperties['textWrap']}}>
         <ChuTron s={tieuDe} co={co} mau="#F4F7FB" dam={900} />
       </div>
     </div>

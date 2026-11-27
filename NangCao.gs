@@ -501,7 +501,20 @@ function aiDuyetKichBan_(kb, r, spham) {
     'Trả JSON: {"diem":{' + ds.map(function (t) { return '"' + t.id + '":0'; }).join(',') + '},"van_de":[],"gop_y":""}';
   if (canDoiChieu) prompt += '\nLỜI GIẢI THAM CHIẾU: ' + String(r.cach_1 || '') +
     '\nĐối chiếu từng cảnh với đề và lời giải trên. Kiểm lại số lượng, đơn vị, điều kiện, từng phép biến đổi, và công thức đúng lớp. Kiểm tra vật Blender mở đầu và hành động trùng lời kể, vật chuyển sang nét toán cùng vị trí khi đọc đề, hình Manim đúng đại lượng đang giải, góc nhìn ổn định. Ví dụ sai phải được đính chính. Bổ sung doi_chieu_canh là mảng có đúng một mục cho MỖI cảnh theo thứ tự, mỗi mục {canh: số thứ tự từ 1, loi: []}; khi có sai sót hoặc thiếu căn cứ, ghi từng lỗi cụ thể vào loi.';
-  var j = goiGemini_(prompt, 0.1, tuyChonBienKich_());
+  var diem = {}, ids = ds.map(function (t) { return t.id; });
+  ids.forEach(function (id) { diem[id] = {type: 'NUMBER', minimum: 0, maximum: 10}; });
+  var dsChu = {type: 'ARRAY', items: {type: 'STRING'}};
+  var schema = {type: 'OBJECT', required: ['diem', 'van_de', 'gop_y'], properties: {
+    diem: {type: 'OBJECT', properties: diem, required: ids}, van_de: dsChu, gop_y: {type: 'STRING'}
+  }};
+  if (canDoiChieu) {
+    var soCanh = kb.canh.length;
+    schema.properties.doi_chieu_canh = {type: 'ARRAY', minItems: soCanh, maxItems: soCanh, items: {
+      type: 'OBJECT', required: ['canh', 'loi'], properties: {canh: {type: 'INTEGER'}, loi: dsChu}
+    }};
+    schema.required.push('doi_chieu_canh');
+  }
+  var j = goiGemini_(prompt, 0.1, Object.assign({}, tuyChonBienKich_(), {schema: schema}));
   if (!j || !j.diem) return null;
   var kq = tinhDapUng_(j, ds);
   if (canDoiChieu) {

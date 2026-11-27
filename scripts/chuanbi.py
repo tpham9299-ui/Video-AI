@@ -1318,6 +1318,11 @@ def moc_buoc_ve(buoc_ve, tu):
     return kq
 
 
+def mang_bai_hoc(bhr):
+    # Kịch bản cũ có thể lưu bài học thành một chuỗi.
+    return bhr if isinstance(bhr, list) else ([bhr] if isinstance(bhr, str) and bhr.strip() else [])
+
+
 def hinh_phang_chuan_props(kb, canh_props, fps, props):
     """v94: bài hình phẳng có kb.hinh_phang_chuan -> props.boCuc='hinh_phang' + props.hinhPhang.moc (giây, từ khi_noi).
     Tọa độ do scripts/giai_hinh_phang.py tính (không đọc tọa độ AI); Manim (scripts/manim/HinhPhangChuan.py) vẽ cả header,
@@ -1400,7 +1405,7 @@ def hinh_phang_chuan_props(kb, canh_props, fps, props):
         ct_dg = re.sub(r"^\\Rightarrow\s*", "", ct_dg).strip()
         tom_tat_hp.append({"chien_thuat": td_dg[:28], "cong_thuc": ct_dg})
     if len(tom_tat_hp) < 3:
-        for bh in (kb.get("bai_hoc_rut_ra") or []):
+        for bh in mang_bai_hoc(kb.get("bai_hoc_rut_ra")):
             if len(tom_tat_hp) >= 3:
                 break
             s_bh = str(bh or "").strip()
@@ -3524,6 +3529,7 @@ def main():
     ap.add_argument("--cao-do", default=os.environ.get("CAO_DO", "+0Hz"))
     ap.add_argument("--phong-cach", default="phong_cach.json")
     ap.add_argument("--gia-lap", action="store_true", help="dùng tiếng bíp thay giọng thật (để thử máy)")
+    ap.add_argument("--props-soi-chu", action="store_true", help="ước lượng mốc thoại để soi chữ, không tạo âm thanh")
     # MỘT GIỌNG CHO CẢ VIDEO: mặc định Gemini đọc TOÀN BỘ lời thoại trong MỘT lần gọi (một người đọc xuyên suốt, giọng tự nhiên),
     # rồi cắt theo cảnh. Không đọc được thì CẢ video dùng edge-tts (không bao giờ trộn hai giọng trong một video). MAY_GIONG=edge để luôn dùng edge.
     co_key = bool(os.environ.get("GEMINI_KEYS") or os.environ.get("GEMINI_API_KEY"))
@@ -3562,6 +3568,11 @@ def main():
         return
     if not args.kich_ban:
         ap.error("cần truyền đường dẫn kich_ban hoặc --trich-cover <video.mp4>")
+    if args.props_soi_chu:
+        if not args.props_ra:
+            ap.error("--props-soi-chu cần --props-ra riêng")
+        args.gia_lap = True
+        os.environ["VIDEO_AI_GIA_LAP"] = "1"
     t_tong = time.perf_counter()
     cham("")
 
@@ -3658,13 +3669,14 @@ def main():
     id_an_toan = re.sub(r"[^A-Za-z0-9_-]", "_", id_)
 
     thu_muc_giong = os.path.join(args.public, "giong")
-    os.makedirs(thu_muc_giong, exist_ok=True)
+    if not args.props_soi_chu:
+        os.makedirs(thu_muc_giong, exist_ok=True)
 
     # video HÌNH HỌC: đánh vần tên điểm (BD -> "bê đê", (SAC) -> "mặt phẳng ét a xê") để giọng đọc không lạc
     DOC_CHU_CAI["bat"] = str(kb.get("mon") or "").upper() == "HINH_HOC" or bool(re.search(r"tam giác|hình chóp|lăng trụ|tứ diện|đường tròn|chứng minh|mặt phẳng", str(kb.get("de_bai") or ""), re.I))
     canh_props = []
     bat_dau = 0
-    tam_gem = tempfile.mkdtemp()
+    tam_gem = tempfile.mkdtemp() if not args.props_soi_chu else None
     giong_gem = None
     chuan_hoa = []
     for i, c in enumerate(canh):
@@ -3703,7 +3715,11 @@ def main():
         },
     )
     am_thanh_kq = {}
-    ck_tts = kiem_checkpoint(id_an_toan, "tts", kb_hash=tts_ck_hash, out_dir=out_dir_eff)
+    if args.props_soi_chu:
+        for i, _, _, _, _, doan in chuan_hoa:
+            moc = [max(0.32, len(d.split()) / 3.7) for d in doan]
+            am_thanh_kq[i] = ("", moc, sum(moc) + max(0, len(moc) - 1) * GAP, GAP, None)
+    ck_tts = None if args.props_soi_chu else kiem_checkpoint(id_an_toan, "tts", kb_hash=tts_ck_hash, out_dir=out_dir_eff)
     if ck_tts:
         meta_tts = ck_tts.get("canh_meta") or {}
         if all(str(i) in meta_tts and os.path.isfile(os.path.join(thu_muc_giong, meta_tts[str(i)]["ten"])) and os.path.getsize(os.path.join(thu_muc_giong, meta_tts[str(i)]["ten"])) > 0 for i, *_ in chuan_hoa):
@@ -3830,7 +3846,8 @@ def main():
             out_dir=out_dir_eff,
         )
 
-    shutil.rmtree(tam_gem, ignore_errors=True)
+    if tam_gem:
+        shutil.rmtree(tam_gem, ignore_errors=True)
 
     for i, so, c, loi_thoai, noi_dung_tam, cac_doan in chuan_hoa:
         ten, do_dai, tong_am, gap, tu_doan = am_thanh_kq[i]
@@ -3902,7 +3919,7 @@ def main():
                 "moTa": str(mh.get("mo_ta") or ""),
                 "duLieu": mh.get("du_lieu"),
             },
-            "audio": "giong/" + ten,
+            "audio": "giong/" + ten if ten else None,
             "batDau": bat_dau,
             "soFrame": so_frame,
             "leadFrame": int(round(lead_c * FPS)),
@@ -3921,7 +3938,7 @@ def main():
         print("Cảnh %d: %d câu, %d từ, giọng %.1fs (%.1f từ/giây), %d khung hình" % (so, len(cac_doan), so_tu, tong_am - GAP, so_tu / max(0.1, tong_am - GAP), so_frame))
 
     cham("Mốc phụ đề / công thức / góc máy")
-    nhac = chon_nhac(args.public, id_an_toan)
+    nhac = None if args.props_soi_chu else chon_nhac(args.public, id_an_toan)
     # v95: luồng khung 4 tầng (thực tế / tối ưu / Oxyz / xác suất) mặc định nhạc lo-fi 112 BPM ấm, có nhịp (NHAC_LOFI=0 để tắt)
     hkg_v = kb.get("hinh_khong_gian") if isinstance(kb.get("hinh_khong_gian"), dict) else None
     # v98: động cơ Lego (phien_ban 2: Oxyz lớp 12 / Toán thực tế 3D) chạy ở MỌI luồng; v97 tổng hợp chỉ ở luồng hình học thuần
@@ -3976,8 +3993,7 @@ def main():
     thuong_hieu, outro = tim_thuong_hieu(args.public, th)
     # Logo chữ dùng chung; chuyên mục chỉ là dòng nhận diện của bài.
     thuong_hieu = dict(thuong_hieu, logo=None, chuyenMuc="xac_suat" if la_chuyen_muc_xac_suat(kb) else "toan")
-    bhr = kb.get("bai_hoc_rut_ra")   # v99.2b: Gemini đôi khi trả chuỗi -> bọc thành mảng (không lặp từng ký tự)
-    bhr = bhr if isinstance(bhr, list) else ([bhr] if isinstance(bhr, str) and bhr.strip() else [])
+    bhr = mang_bai_hoc(kb.get("bai_hoc_rut_ra"))
     bai_hoc = [cat_nhan(str(x).strip(), 90) for x in bhr if str(x).strip()][:3]
     # Tự động chèn màn kết/outro thương hiệu chuyên nghiệp vào cuối video (tóm tắt bài học + kênh + nút Thích / Theo dõi).
     ngan_4t = la_k4_kb and kb.get("kieu_video") != "DAI_10_PHUT" and not str(kb.get("id") or "").upper().endswith("-10P")
@@ -3990,7 +4006,7 @@ def main():
         outro["batDau"] = bat_dau
         bat_dau += outro["soFrame"]
     intro = tao_intro(pc.get("intro"), thuong_hieu)
-    if kb.get("kieu_video") == "DAI_10_PHUT" or str(kb.get("id", "")).upper().endswith("-10P"):
+    if not args.props_soi_chu and (kb.get("kieu_video") == "DAI_10_PHUT" or str(kb.get("id", "")).upper().endswith("-10P")):
         if not 540 * FPS <= bat_dau <= 660 * FPS:
             raise ValueError(f"Chuyên đề dài {bat_dau / FPS:.1f}s sau khi tạo giọng, cần 540–660s. Hãy sửa kịch bản trước khi dựng.")
     props = {
@@ -4110,7 +4126,7 @@ def main():
         json.dump(props, f, ensure_ascii=False, indent=1)
     print("Xong: %d cảnh, %.1f giây -> %s" % (len(canh_props), bat_dau / FPS, dich))
     cham("Ghi props.json")
-    in_bang_thoi_gian(time.perf_counter() - t_tong, os.environ.get("THU_MUC_RA") or "out")
+    in_bang_thoi_gian(time.perf_counter() - t_tong, out_dir_eff if args.props_soi_chu else os.environ.get("THU_MUC_RA") or "out")
 
 
 if __name__ == "__main__":

@@ -126,7 +126,7 @@ export const OutroTomTat: React.FC<{mon?: string; giuHinh?: boolean; dapAn: stri
       <div style={{position: 'absolute', left: 60, right: 60, top: V.dapAn.y + 52, height: V.dapAn.h - 46, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', gap: laHinhHoc ? 10 : 8,
         opacity: kep01(aDap * 1.5), transform: `scale(${0.88 + 0.12 * aDap})`}}>
         <div style={{height: 38, padding: '0 22px', borderRadius: 22, display: 'flex', alignItems: 'center', color: NGOC, border: `1.5px solid ${NGOC}`, background: `${NGOC}18`, fontWeight: 900, fontSize: 22, letterSpacing: 1.2, flexShrink: 0}}>{nhanKetQua ? nhanKetQua.toUpperCase() : 'ĐÁP ÁN'}</div>
-        <div style={{padding: laHinhHoc ? '8px 30px' : '8px 34px', borderRadius: 24, background: `${NGOC}12`, border: `2px solid ${NGOC}AA`, boxShadow: `0 0 ${30 * sang}px ${NGOC}55, inset 0 0 24px ${NGOC}18`, textShadow: `0 0 18px ${NGOC}88`}}>
+        <div data-va-cham="outro_dap_an" style={{padding: laHinhHoc ? '8px 30px' : '8px 34px', borderRadius: 24, background: `${NGOC}12`, border: `2px solid ${NGOC}AA`, boxShadow: `0 0 ${30 * sang}px ${NGOC}55, inset 0 0 24px ${NGOC}18`, textShadow: `0 0 18px ${NGOC}88`}}>
           {laHinhHoc ? (
             <VanBanToan raw={texDapAn(dapAn || '?', true)} size={48} minSize={32} color="#F4FFFB" fontWeight={800} maxWidth={690} align="center" />
           ) : (
@@ -174,7 +174,7 @@ export const OutroTomTat: React.FC<{mon?: string; giuHinh?: boolean; dapAn: stri
             const nhanSach = chuanNhanTomTat(d.chien_thuat);
             const coNhan = nhanSach.length > 15 ? 24 : 28;
             return (
-              <div key={k} data-tom-tat style={{position: 'relative', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, padding: '6px 24px 6px 28px', opacity: a,
+              <div key={k} data-tom-tat data-va-cham="outro_tom_tat" style={{position: 'relative', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, padding: '6px 24px 6px 28px', opacity: a,
                 borderTop: k ? '1px solid rgba(147,197,253,0.14)' : 'none', transform: `translateY(${(1 - a) * 8}px)`}}>
                 <div style={{position: 'absolute', left: 0, top: 14, bottom: 14, width: 4, borderRadius: '0 3px 3px 0', background: mau}} />
                 <div style={{display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: '0 1 330px', maxWidth: 336}}>
@@ -199,7 +199,7 @@ export const OutroTomTat: React.FC<{mon?: string; giuHinh?: boolean; dapAn: stri
         const mau = MAU_3DV[d.mau || (laHinhPhangOutro ? (['cyan', 'vang', 'ngoc'] as const)[k] : (['cyan', 'vang', 'hong'] as const)[k])] || MAU_3DV.cyan;
         const nhanSach = chuanNhanTomTat(d.chien_thuat);
         return (
-          <div key={k} data-tom-tat style={{position: 'absolute', left: 0, right: 0, top: yDong + k * (hDong + cachDong), height: hDong, display: 'flex', flexDirection: laHinhPhangOutro ? 'column' : 'row', justifyContent: laHinhPhangOutro ? 'center' : 'flex-start', alignItems: laHinhPhangOutro ? 'flex-start' : 'center', gap: laHinhPhangOutro ? 10 : 22,
+          <div key={k} data-tom-tat data-va-cham="outro_tom_tat" style={{position: 'absolute', left: 0, right: 0, top: yDong + k * (hDong + cachDong), height: hDong, display: 'flex', flexDirection: laHinhPhangOutro ? 'column' : 'row', justifyContent: laHinhPhangOutro ? 'center' : 'flex-start', alignItems: laHinhPhangOutro ? 'flex-start' : 'center', gap: laHinhPhangOutro ? 10 : 22,
             padding: laHinhPhangOutro ? '16px 26px 16px 32px' : '0 26px', borderRadius: 20,
             background: laHinhPhangOutro ? 'linear-gradient(180deg, rgba(11,29,62,0.92), rgba(6,17,38,0.95))' : 'rgba(20,24,32,0.92)',
             border: `1px solid ${mau}66`, boxShadow: `0 10px 26px rgba(2,8,20,0.42), 0 0 18px ${mau}1F`,
@@ -237,7 +237,7 @@ export const OutroTomTat: React.FC<{mon?: string; giuHinh?: boolean; dapAn: stri
       {BAT_CTA_THONG_MINH_OUTRO ? (
         <div data-goi-tuong-tac style={{position: 'absolute', left: 0, right: 0, top: laHinhHoc ? (khongGian ? 1424 : 1244) : yNut + 88, height: 44, display: 'flex', justifyContent: 'center', alignItems: 'center',
           opacity: kep01(sGoi * 1.6), transform: `translateY(${(1 - sGoi) * 12}px)`}}>
-          <div style={{height: 44, maxWidth: 780, padding: '0 20px', borderRadius: 22, display: 'flex', alignItems: 'center', gap: 10, boxSizing: 'border-box', whiteSpace: 'nowrap',
+          <div data-va-cham="outro_cta" style={{height: 44, maxWidth: 780, padding: '0 20px', borderRadius: 22, display: 'flex', alignItems: 'center', gap: 10, boxSizing: 'border-box', whiteSpace: 'nowrap',
             background: 'linear-gradient(180deg, rgba(34,40,52,0.9), rgba(12,14,20,0.94))', border: '1px solid rgba(56,189,248,0.5)', boxShadow: '0 0 16px rgba(56,189,248,0.18)',
             color: '#F1F5FA', fontWeight: 800, fontSize: cauGoi.length > 50 ? 20 : 22}}>
             <svg width={26} height={26} viewBox="0 0 24 24" style={{flexShrink: 0, transform: `scale(${nayIcon})`}}><path d="M4 4h16v12H9l-5 4z" fill="#38BDF8" /></svg>
@@ -246,7 +246,7 @@ export const OutroTomTat: React.FC<{mon?: string; giuHinh?: boolean; dapAn: stri
           </div>
         </div>
       ) : (
-      <div data-goi-tuong-tac style={{position: 'absolute', left: 0, right: 0, top: laHinhHoc ? (khongGian ? 1428 : 1252) : yNut + 98, height: 30, display: 'flex', justifyContent: 'center', alignItems: 'center',
+      <div data-goi-tuong-tac data-va-cham="outro_cta" style={{position: 'absolute', left: 0, right: 0, top: laHinhHoc ? (khongGian ? 1428 : 1252) : yNut + 98, height: 30, display: 'flex', justifyContent: 'center', alignItems: 'center',
         opacity: kep01(sGoi * 1.6), transform: `translateY(${(1 - sGoi) * 12}px)`, color: 'rgba(230,237,245,0.82)', fontWeight: 700, fontSize: 24, whiteSpace: 'nowrap'}}>
         Lưu lại ôn nhanh • Bình luận dạng bài bạn muốn giải tiếp!
       </div>
@@ -254,7 +254,7 @@ export const OutroTomTat: React.FC<{mon?: string; giuHinh?: boolean; dapAn: stri
       {/* Hình học đã có tiêu đề Story Math • Chuyên mục ở đầu màn hình -> bỏ dòng lặp phía trên hộp CTA */}
       {laHinhHoc ? null : (
         <div style={{position: 'absolute', left: 0, right: 0, top: yNut - 16, display: 'flex', justifyContent: 'center', opacity: kep01(sNut * 2)}}>
-          <div style={{height: 96, padding: '0 54px', borderRadius: 48, display: 'flex', alignItems: 'center', gap: 16, background: `linear-gradient(180deg, #FF7A7E, ${SAN_HO} 55%, #E2393F)`,
+          <div data-va-cham="outro_cta" style={{height: 96, padding: '0 54px', borderRadius: 48, display: 'flex', alignItems: 'center', gap: 16, background: `linear-gradient(180deg, #FF7A7E, ${SAN_HO} 55%, #E2393F)`,
             boxShadow: `0 7px 0 #9E1F25, 0 0 34px rgba(255,90,95,0.45)`, transform: `scale(${(0.6 + 0.4 * sNut) * nhun})`, color: '#fff', fontWeight: 900, fontSize: 38, letterSpacing: 0.8, whiteSpace: 'nowrap'}}>
             <IconCta cta={cta} />
             {cta}
