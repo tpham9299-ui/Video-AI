@@ -84,7 +84,7 @@ function traLoiLenh_(chat, chu, anh) {
   if (/^\/duyet\b/.test(l)) return duyetVideo_(chu);
   if (/^\/sua\b/.test(l)) return yeuCauSuaVideo_(chat, chu);
   if (/^\/bo\b/.test(l)) return boVideo_(chu, chat);
-  if (l === '/donvideoloi') return donVideoLoi_(chat);
+  if (/^\/donvideoloi(?:\s|$)/.test(l)) return donVideoLoi_(chat, chu);
   if (l === '/xulyloi' && typeof xuLyLoiTrenSheetNgay === 'function') return xuLyLoiTrenSheetNgay();
   if (/^\/cho\b/.test(l)) return danhSachChoDuyet_();
   if (/^\/(suavideocu|dunglai|nangcap)\b/.test(l) && typeof quetVaSuaVideoCuDrive === 'function') return quetVaSuaVideoCuDrive();
@@ -261,8 +261,8 @@ function boVideo_(chu, chat) {
 // Xóa hẳn một video: tệp trên Drive (video gốc, bản đã in số tập, ảnh bìa đăng, ảnh bìa, ảnh kiểm tra, kịch bản) + khối kịch bản ở
 // DOC_KICH_BAN + dòng HANG_DOI; mã băm đề được lưu ở LUU_TRU để hệ thống không sinh/tìm lại đúng đề đó.
 function xoaHanVideo_(sh, r, lyDo) {
-  var ids = [idDriveVideo_(r.file_video), r.anh_bia, r.anh_kt, idTepKichBan_(r.file_kich_ban)];
-  try { var kq = JSON.parse(String(r.link_dang || '{}')) || {}; ids.push(kq._file_tap, kq._file_bia); } catch (e) {}
+  // Chỉ xóa kịch bản JSON do Apps Script tạo; KHÔNG gọi DriveApp.setTrashed lên MP4 (don-video-drive.yml sẽ dọn bằng rclone).
+  var ids = [idTepKichBan_(r.file_kich_ban)];
   var tep = 0;
   ids.filter(function (x, i, a) { return x && a.indexOf(x) === i; }).forEach(function (id) {
     try { DriveApp.getFileById(String(id)).setTrashed(true); tep++; } catch (e) {}
@@ -436,13 +436,9 @@ function videoCoKetLuanLoi_(r) {
   });
 }
 
-function donVideoLoi_(chat) {
-  return voiKhoa_(1000, function () {
-    var p = PropertiesService.getScriptProperties();
-    if (p.getProperty('DOT_DON_VIDEO_LOI')) return 'Đã có yêu cầu dọn video lỗi đang chờ xử lý.';
-    p.setProperty('DOT_DON_VIDEO_LOI', JSON.stringify({chat: chat}));
-    return 'Đã nhận /donvideoloi. Tôi sẽ gửi kết quả sau lượt dọn định kỳ tiếp theo.';
-  }) || 'Hệ thống đang bận. Gửi lại /donvideoloi sau ít phút.';
+function donVideoLoi_(chat, chu) {
+  if (typeof lenhDonVideoLoiZalo_ === 'function') return lenhDonVideoLoiZalo_(chat, chu || '/donvideoloi');
+  return '⚠️ Thiếu hàm lenhDonVideoLoiZalo_ trong BoNaoDieuPhoi.gs.';
 }
 
 function danhSachChoDuyet_() {
@@ -474,10 +470,7 @@ function yeuCauSuaVideo_(chat, chu) {
         luuNhapKichBan_(r.id, kb);
       } catch (eKb) {}
     }
-    // Bỏ file video cũ để tránh đăng nhầm trong lúc đang dựng bản sửa mới
-    [r.file_video, r.anh_kt, r.anh_bia].forEach(function (fid) {
-      if (fid) { try { DriveApp.getFileById(String(fid)).setTrashed(true); } catch (eTr) {} }
-    });
+    // Không gọi DriveApp.setTrashed lên MP4 (don-video-drive.yml sẽ dọn MP4 cũ bằng rclone); chỉ gỡ tham chiếu trên Sheet.
     try { CacheService.getScriptCache().put('SUA_MOI_' + r.id, String(Date.now()), 3600); } catch (eC) {}
     var ttTiep = r.dap_an ? 'DA_GIAI' : 'MOI';
     var ghiSua = { trang_thai: ttTiep, file_video: '', anh_kt: '', anh_bia: '', gop_y: t.con.slice(0, 1000), uu_tien: 1, zalo_chat: chat, duyet: '', so_lan_loi: 0, tu_sua_cho: '', ghi_chu: 'Sửa theo góp ý: ' + t.con.slice(0, 200) };

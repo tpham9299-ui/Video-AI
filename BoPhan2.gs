@@ -291,6 +291,13 @@ function doPost(e) {
       guiZalo_(tbKey, 'cao', 'BC_KEY_GH_' + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd_HHmm'));
       return tra({ ok: true });
     }
+    if (d.loai === 'bao_cao_don_drive' && d.bao_cao) {
+      var tinDonDrive = String(d.bao_cao).slice(0, 1800);
+      nhatKy_('DON_VIDEO_DRIVE', tinDonDrive.replace(/\n/g, ' | ').slice(0, 400));
+      if (d.chat_id && typeof guiZaloToi_ === 'function') guiZaloToi_(String(d.chat_id), tinDonDrive);
+      else guiZalo_(tinDonDrive, 'cao', 'DON_DRIVE_' + Utilities.formatDate(new Date(), 'GMT+7', 'yyMMdd_HHmm'));
+      return tra({ ok: true });
+    }
     if (d.loai === 'key_hong') return tra({ ok: true });
     if (d.id && d.loai !== 'them_de') {
       var hienTai = docHang_(sh).find(function(x) { return x.id === d.id; });
@@ -312,9 +319,8 @@ function doPost(e) {
       PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1');
       return tra(kqDang);
     }
-    // Nếu người dùng vừa yêu cầu /bo video này trong lúc GitHub đang dựng: hủy tệp mới trên Drive và bỏ qua
+    // Nếu người dùng vừa yêu cầu /bo video này trong lúc GitHub đang dựng: không gọi DriveApp.setTrashed lên MP4 (don-video-drive.yml sẽ dọn bằng rclone)
     if (d.id && CacheService.getScriptCache().get('DA_BO_' + d.id)) {
-      [d.file_id, d.anh_kt, d.anh_bia, d.anh_3x3].forEach(function (fid) { if (fid) { try { DriveApp.getFileById(String(fid)).setTrashed(true); } catch (eTr) {} } });
       return tra({ ok: true, lap: true });
     }
     var r = null;
@@ -323,9 +329,8 @@ function doPost(e) {
       // Dòng có thể đã được lưu trữ sau khi đăng. Webhook gửi lại không chứng minh MP4 là bản lỗi.
       return tra({ ok: false, loi: 'KHONG_TIM_THAY' });
     }
-    // Nếu người dùng vừa nhắn /sua <mã> khiến dòng đã quay về MOI / DA_GIAI / GITHUB hoặc vừa mới sửa xong (SUA_MOI_): bỏ kết quả dựng cũ
+    // Nếu người dùng vừa nhắn /sua <mã> khiến dòng đã quay về MOI / DA_GIAI / GITHUB hoặc vừa mới sửa xong (SUA_MOI_): bỏ kết quả dựng cũ (MP4 mồ côi do rclone dọn)
     if (['MOI', 'DA_GIAI', 'GITHUB'].indexOf(String(r.trang_thai)) >= 0 || CacheService.getScriptCache().get('SUA_MOI_' + r.id)) {
-      [d.file_id, d.anh_kt, d.anh_bia, d.anh_3x3].forEach(function (fid) { if (fid) { try { DriveApp.getFileById(String(fid)).setTrashed(true); } catch (eTr) {} } });
       return tra({ ok: true, lap: true });
     }
 
@@ -373,7 +378,7 @@ function doPost(e) {
       // (tối đa 1 lần dựng lại / bài) -> trả về BP2 sửa đúng lỗi rồi BP3 tự dựng lại; video lỗi bỏ vào thùng rác. Hết lượt / lỗi khác -> CHO + Zalo.
       var tuSua = (matThanChan || coBoCucLoi) && typeof xuLyTuSuaMatThan_ === 'function' ? xuLyTuSuaMatThan_(sh, r, d) : null;
       if (tuSua && tuSua.tu_sua) {
-        [d.file_id, d.anh_kt, d.anh_bia].forEach(function (fid) { if (fid) { try { DriveApp.getFileById(String(fid)).setTrashed(true); } catch (eTr) {} } });
+        // Không gọi DriveApp.setTrashed lên MP4 (tránh lỗi quyền DON_VIDEO_LOI); MP4 lỗi sẽ được rclone dọn qua don-video-drive.yml.
         PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1');
         return tra({ ok: true, tu_sua: true, lan: tuSua.da_sua + 1 });
       }

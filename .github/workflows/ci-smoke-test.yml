@@ -27,6 +27,8 @@ jobs:
             /public
             /src
             /scripts
+            /scripts/don_video_drive.py
+            /scripts/test_don_video_drive.py
             /scripts/test_pre_render_va_schema.mjs
             /scripts/kiem_tra_de_chu_truoc_render.mjs
           sparse-checkout-cone-mode: false

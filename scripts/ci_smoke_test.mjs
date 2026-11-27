@@ -289,6 +289,7 @@ const BP_LIMITS = {
   'kiem-tra-video.yml': {maxTimeout: 20, camCancel: true, canCallback: true},
   'dang-video.yml': {maxTimeout: 20, camCancel: true, canCallback: true},
   'ci-smoke-test.yml': {maxTimeout: 10},
+  'don-video-drive.yml': {maxTimeout: 15, camCancel: true, canCallback: true},
   'kiem-tra-key.yml': {maxTimeout: 10},
   'phan-tich-tuan.yml': {maxTimeout: 10},
   'thu-giong.yml': {maxTimeout: 20},
@@ -693,6 +694,43 @@ const rGate = spawnSync(process.execPath, ['scripts/test_pre_render_va_schema.mj
 });
 kiem('scripts/test_pre_render_va_schema.mjs: hình học hộp, fallback Gemini và báo lỗi Auto-Heal', rGate.status === 0,
   rGate.status === 0 ? '' : (rGate.stderr || rGate.stdout || '').slice(-700));
+
+// =========================================================================
+// 9. Kiểm thử chống lọt lỗi lạ & dọn MP4 Drive bằng rclone (don-video-drive.yml)
+// =========================================================================
+console.log('9. Kiểm thử don-video-drive.yml, scripts/don_video_drive.py & thứ tự kiểm lỗi cứng MP4');
+const wfDonDrivePath = path.join(wfDir, 'don-video-drive.yml');
+const pyDonDrivePath = path.join(ROOT, 'scripts', 'don_video_drive.py');
+const wfDonDriveTxt = fs.existsSync(wfDonDrivePath) ? fs.readFileSync(wfDonDrivePath, 'utf8') : '';
+const pyDonDriveTxt = fs.existsSync(pyDonDrivePath) ? fs.readFileSync(pyDonDrivePath, 'utf8') : '';
+kiem(
+  'don-video-drive.yml & scripts/don_video_drive.py tồn tại, cấm xóa vĩnh viễn (--drive-use-trash=false)',
+  !!wfDonDriveTxt && !!pyDonDriveTxt &&
+  !wfDonDriveTxt.includes('--drive-use-trash=false') &&
+  !pyDonDriveTxt.includes('--drive-use-trash=false') &&
+  pyDonDriveTxt.includes('--drive-use-trash=true') &&
+  wfDonDriveTxt.includes('scripts/don_video_drive.py'),
+);
+const iMotion = wfDung.indexOf('scripts/kiem_tra_chuyen_dong.py');
+const iMatThan = wfDung.indexOf('scripts/mat_than_3x3.py');
+const iCongMp4 = wfDung.indexOf('id: cong_mp4');
+const iPushMp4 = wfDung.indexOf('rclone copy --retries 3 --low-level-retries 5 --retries-sleep 5s "out/$ID.mp4"');
+kiem(
+  'dung-video.yml: kiểm lỗi cứng MP4 (chuyển động + Mắt thần 3×3 + cổng chặn MP4) chạy TRƯỚC bước đẩy MP4 lên Drive',
+  iMotion >= 0 && iMatThan > iMotion && iCongMp4 > iMatThan && iPushMp4 > iCongMp4,
+  `iMotion=${iMotion}, iMatThan=${iMatThan}, iCongMp4=${iCongMp4}, iPushMp4=${iPushMp4}`,
+);
+const rDonDrive = spawnSync(PY, ['-X', 'utf8', path.join(ROOT, 'scripts', 'test_don_video_drive.py')], {
+  cwd: ROOT,
+  encoding: 'utf8',
+  env: {...process.env, PYTHONIOENCODING: 'utf-8'},
+  timeout: 60000,
+});
+kiem(
+  'python -X utf8 scripts/test_don_video_drive.py',
+  rDonDrive.status === 0,
+  rDonDrive.status === 0 ? '' : (rDonDrive.stderr || rDonDrive.stdout || '').slice(-320),
+);
 
 console.log(`\nCI SMOKE TEST: ${dat} đạt, ${hong.length} hỏng`);
 process.exit(hong.length ? 1 : 0);

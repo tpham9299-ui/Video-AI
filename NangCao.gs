@@ -589,48 +589,12 @@ function soLanLoiQuyenDrive_(fileId) {
   } catch (e) { return 0; }
 }
 
+// Ngừng gọi DriveApp.setTrashed lên tệp MP4 tại Apps Script (tránh lặp DON_VIDEO_LOI do quyền sở hữu);
+// toàn bộ việc đưa MP4 lỗi/mồ côi vào Thùng rác Drive được chuyển sang GitHub Actions don-video-drive.yml (rclone).
 function duaMp4LoiVaoThungRac_(fileId, han, kq, tapIdBaoVe, chiTiet) {
   if (!fileId) return true;
-  han = han || Date.now() + GIOI_HAN_DON_VIDEO_MS_;
-  try {
-    kiemHanDonVideo_(han, 10000);
-    var tep = DriveApp.getFileById(fileId);
-    var ten = tep.getName();
-    if (tapIdBaoVe && tapIdBaoVe.size && maTrongTenMp4_(ten).some(function (id) { return tapIdBaoVe.has(id); })) return null;
-    if (!laTepMp4_(tep.getMimeType(), ten)) {
-      if (chiTiet) chiTiet.khongPhaiMp4 = true;
-      return false;
-    }
-    if (!tep.isTrashed()) {
-      kiemHanDonVideo_(han);
-      tep.setTrashed(true);
-      if (kq) {
-        kq.mp4++;
-        if (typeof kq.drive === 'number') kq.drive++;
-      }
-    }
-    ghiNhanLoiQuyenDrive_(fileId, true);
-    return true;
-  } catch (e) {
-    if (e.message === HET_GIO_DON_VIDEO_) throw e;
-    if (/file not found|no item with the given id|không tìm thấy/i.test(e.message) && !laLoiQuyenDrive_(e.message)) {
-      ghiNhanLoiQuyenDrive_(fileId, true);
-      return true;
-    }
-    var msg = String(e.message || e);
-    Logger.log('DON_MP4 ' + fileId + ': ' + msg);
-    try { if (typeof nhatKy_ === 'function') nhatKy_('DON_VIDEO_LOI', fileId + ': ' + msg); } catch (eNk) {}
-    if (chiTiet) chiTiet.loi = msg;
-    if (laLoiQuyenDrive_(msg)) {
-      var lan = ghiNhanLoiQuyenDrive_(fileId, false);
-      if (chiTiet) {
-        chiTiet.khongQuyen = true;
-        chiTiet.soLanQuyen = lan;
-        if (lan > 1) chiTiet.boQuaQuyen = true;
-      }
-    }
-    return false;
-  }
+  if (chiTiet) chiTiet.chuyenSangRclone = true;
+  return true;
 }
 
 function ghiVideoBoKhongDat_(sh, r, lyDo, tepMoi) {
@@ -1062,6 +1026,7 @@ function baoCaoHangNgay() {
     '⚡ Gemini: ' + dem('QUA_TAI') + ' lần quá tải, ' + dem('HET_HAN_MUC') + ' lần hết hạn mức' + (nghi ? ' (đang tạm nghỉ)' : '') + '\n' +
     '🔑 Token GitHub: ' + tokenTin + '\n' +
     (loi.length ? '⚠️ ' + loi.length + ' lỗi hôm nay: ' + Object.keys(dongLoi).slice(0, 3).map(function (k) { return k + (dongLoi[k] > 1 ? ' (x' + dongLoi[k] + ')' : ''); }).join(' | ') + '\n' : '✨ Không có lỗi nào hôm nay\n') +
+    (typeof tomTatLoiLaHomNay_ === 'function' ? '🧹 ' + tomTatLoiLaHomNay_(ss).dong + '\n' : '') +
     (tk.length ? '🏆 Video nổi bật 7 ngày: ' + tk[0].chu_de + ' (' + tk[0].luot_xem + ' lượt xem' + (Number(tk[0].ty_le_xem) > 0 ? ', xem trung bình ' + tk[0].ty_le_xem + '%' : '') + ')' : '');
   // đổi mới liên tục: mỗi tuần sáng tác thêm một cách dàn cảnh để thử
   var moiDD = '';
@@ -1466,7 +1431,8 @@ function suaCacVideoDinhGopY_(maGoc, gopY, yDo, dsQuyTac) {
             luuNhapKichBan_(r.id, kb);
           } catch (eKb) {}
         }
-        [r.file_video, r.anh_kt, r.anh_bia].forEach(function (fid) {
+        // Không gọi DriveApp.setTrashed lên MP4 (don-video-drive.yml sẽ dọn bằng rclone).
+        [r.anh_kt, r.anh_bia].forEach(function (fid) {
           if (fid) { try { DriveApp.getFileById(String(fid)).setTrashed(true); } catch (eTr) {} }
         });
         try { CacheService.getScriptCache().remove('DA_BO_' + r.id); } catch (eC) {}
@@ -1833,6 +1799,8 @@ function taoBaoCaoSucKhoe_() {
   dong.push('2) Ty le dau BP2 lan dau: ' + tyLeBp2Lan1);
   dong.push('3) Loi ha tang (Drive / GitHub Actions): ' + tongHaTang + ' (Drive: ' + loiHaTangDrive + ' | GitHub Actions: ' + loiHaTangGH + ')');
   dong.push('TOP 3 LOI HOM NAY: ' + (top3.length ? top3.join(', ') : 'khong co'));
+  var tkLoiLa = typeof tomTatLoiLaHomNay_ === 'function' ? tomTatLoiLaHomNay_(ss, homNay) : {dong: 'Lỗi lạ mới tự dọn hôm nay: 0'};
+  dong.push(tkLoiLa.dong);
   dong.push('DANG TON DONG: cho duyet ' + cho + ' | loi ' + loi);
 
   // 3) Kho key Gemini

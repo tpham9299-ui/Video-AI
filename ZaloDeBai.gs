@@ -159,6 +159,7 @@ function nhanZalo_(e, lanThu) {
     if (lenh === '/sanxuatngay') { guiZaloToi_(chat, kichHoatSanXuatNgay()); return tra; }
     if (lenh === '/donsheet') { guiZaloToi_(chat, donSachCauLoiSheet()); return tra; }
     if (lenh === '/xulyloi') { guiZaloToi_(chat, xuLyLoiTrenSheetNgay()); return tra; }
+    if (/^\/donvideoloi(?:\s|$)/.test(lenh) && typeof lenhDonVideoLoiZalo_ === 'function') { guiZaloToi_(chat, lenhDonVideoLoiZalo_(chat, chu)); return tra; }
     if (/^\/duyetkb\s+/i.test(chu)) { guiZaloToi_(chat, duyetKichBanBoNao_(chu.split(/\s+/)[1])); return tra; }
     if (lenh === '/xaket') { guiZaloToi_(chat, nhipBoNao_('xa')); return tra; }
     if (/^\/(tt|trạng thái)\b/.test(lenh) || lenh === 'tt') { guiZaloToi_(chat, tinhTrangUuTien_()); return tra; }
@@ -215,7 +216,8 @@ function huongDanZalo_() {
     '/xaket phục hồi bài quá hạn | /duyetkb <mã> duyệt kịch bản\n' +
     'Lệnh: /tt tiến độ | /key kiểm tra số lượng key Gemini còn xài được | /huy hủy đề vừa gửi | /id mã chat | /token hạn token GitHub | /phongcach tỉ lệ duyệt theo phong cách\n' +
     'Hình học khó: /hinhhoc [phang|khonggian] [10|11|12] [chungminh|tinh] - sáng tác ngay một đề và làm video ưu tiên\n' +
-    'Duyệt video: /cho xem video chờ duyệt | /duyet [mã] | /sua [mã] <góp ý> | /bo [mã] | /hay [mã] lưu mẫu vàng | /donvideoloi dọn video lỗi trên Sheet và Drive, trả kết quả sau lượt dọn\n' +
+    'Duyệt video: /cho xem video chờ duyệt | /duyet [mã] | /sua [mã] <góp ý> | /bo [mã] | /hay [mã] lưu mẫu vàng\n' +
+    'Dọn MP4 Drive (rclone -> Thùng rác): /donvideoloi thu (chạy thử mồ côi, không xóa) | /donvideoloi (xóa MP4 lỗi) | /donvideoloi mocoi (xóa MP4 lỗi + mồ côi > 24h)\n' +
     '/xulyloi tự phân loại toàn bộ dòng lỗi trên DOC_DE (xóa hẳn lỗi không sửa được + đẩy sửa lại lỗi sửa được) | /donsheet lưu trữ bài đã đăng quá 7 ngày và bài lỗi đã dọn MP4 quá 2 ngày.\n' +
     'Duyệt HÀNG LOẠT: mỗi dòng một lệnh trong cùng một tin, hoặc /duyet <mã1> <mã2> <mã3>, hoặc /duyet tatca\n' +
     'Sản phẩm: /sanpham <tên hoặc link> | /xacnhan [mã] <giá bạn bán> | /huysp [mã]';

@@ -324,12 +324,12 @@ for (const link of ['',null,'https://drive.google.com/file/d/','https://drive.go
 }
 let inTrash=false;
 files.set(videoId,{getName:()=> 'duyet.mp4',getMimeType:()=> 'video/mp4',isTrashed:()=>inTrash,setTrashed:v=>{trashed.push(v);inTrash=v;}});
-assert.equal(app.duaMp4LoiVaoThungRac_(videoId),true);
+// Ngừng gọi DriveApp.setTrashed lên tệp MP4 từ Apps Script (chuyển hoàn toàn sang rclone trên GitHub Actions).
 assert.equal(app.duaMp4LoiVaoThungRac_(videoId),true);
 assert.equal(app.duaMp4LoiVaoThungRac_('id-missing'),true);
-assert.deepEqual(trashed,[true]);
+assert.deepEqual(trashed,[]);
 files.set('no-access',{getName(){throw Error('Access denied');}});
-assert.equal(app.duaMp4LoiVaoThungRac_('no-access'),false);
+assert.equal(app.duaMp4LoiVaoThungRac_('no-access'),true);
 addRow('TT-rejected');
 const col=k=>cells[0].indexOf(k);
 cells[3][col('file_video')]=videoUrl;
@@ -472,87 +472,78 @@ app.DriveApp.getFolderById=id=>{
   return {getId:()=>id,getFiles:()=>iterateFrom()};
 };
 app.DriveApp.continueFileIterator=token=>{cursorCalls.push(token);return iterateFrom(Number(token));};
-assert.match(app.donSachVideoLoiDriveNgay(),/Đã chuyển 1 dòng DOC_DE .* đưa 6 file MP4/);
-assert.equal(formulaFile.removed,true);
-assert.ok(rejectedFiles.every(f=>f.removed));
+const driveDispatches=[];
+app.guiWorkflowGitHub_=(inputs,wf)=>{ driveDispatches.push({wf,inputs}); return {ok:true}; };
+assert.match(app.donSachVideoLoiDriveNgay(),/Đã chuyển 1 dòng DOC_DE sang LuuTru_Loi.*đánh dấu 1 file MP4 lỗi chờ rclone dọn.*Đã giữ 2 dòng/);
+// Apps Script tuyệt đối không gọi DriveApp.setTrashed lên bất kỳ tệp MP4 nào; thay vào đó giao don-video-drive.yml (rclone).
+assert.equal(formulaFile.removed,false);
+assert.ok(rejectedFiles.every(f=>!f.removed));
 assert.ok(protectedFiles.concat(nonMp4).every(f=>!f.removed));
 assert.equal(docData.some(r=>r[0]==='DOC-LOI'),false);
 assert.equal(docData.some(r=>r[0]==='SHARED' && r[4].includes('file-protected')),true);
+assert.equal(docData.some(r=>r[0]==='SHARED-NAME' && r[4].includes('good-index-only')),true);
 const errorArchive=tabs.get('LuuTru_Loi');
 assert.equal(errorArchive.getRange(3,1).getValue(),'DOC-LOI');
-assert.match(errorArchive.getRange(3,col('file_video')+1).getValue(),/^\[Đã xóa file lỗi - \d\d\/\d\d\]$/);
+assert.match(errorArchive.getRange(3,col('file_video')+1).getValue(),/^\[Chờ rclone dọn MP4 - \d\d\/\d\d\]$/);
 assert.equal(app.docMaBamLuuTru_()[app.bam_('bài lỗi công thức')],true);
-assert.match(logs.at(-1)[1],/1 dòng DOC_DE.*6 file MP4/);
-assert.match(app.donSachVideoLoiDriveNgay(),/Đã chuyển 0 dòng DOC_DE .* đưa 0 file MP4/);
+assert.equal(driveDispatches.at(-1).wf,'don-video-drive.yml');
+assert.equal(driveDispatches.at(-1).inputs.che_do,'loi');
+assert.equal(driveDispatches.at(-1).inputs.dry_run,'false');
+const payloadDon1=JSON.parse(driveDispatches.at(-1).inputs.du_lieu);
+assert.ok(payloadDon1.tap_id_bao_ve.includes('CHO-NOW') && payloadDon1.tap_id_bao_ve.includes('POSTED-ID'));
+assert.ok(payloadDon1.tap_id_loi.includes('DOC-LOI') && payloadDon1.tap_id_loi.includes('OLD-LOI'));
+assert.ok(!payloadDon1.tap_id_loi.includes('CHO-NOW') && !payloadDon1.tap_id_loi.includes('POSTED-ID'));
+assert.match(app.donSachVideoLoiDriveNgay(),/Đã chuyển 0 dòng DOC_DE sang LuuTru_Loi.*đánh dấu 0 file MP4 lỗi/);
 
-// A new BP4 failure trashes and archives the exact version. A stale callback cannot reject a passing version.
+// A new BP4 failure archives the exact version without calling DriveApp.setTrashed on MP4. A stale callback cannot reject a passing version.
 const bp4=mp4('bp4-new');
 hotData.push(archiveRow('BP4-NEW',{trang_thai:'DANG_KIEM_DUYET',file_video:'bp4-new',cap_nhat:new Date()}));
 app.boDeKhongDat_(hot,app.docHang_(hot).find(r=>r.id==='BP4-NEW'),'t2_trong: '+ 'mô tả dài '.repeat(100),'video');
-assert.equal(bp4.removed,true);
+assert.equal(bp4.removed,false,'boDeKhongDat_ không gọi DriveApp.setTrashed lên MP4 (chờ rclone dọn)');
 assert.equal(hotData.some(r=>r[0]==='BP4-NEW'),false);
 assert.equal(errorArchive.getRange(4,col('ghi_chu')+1).getValue(),'BO_KHONG_DAT (video): t2_trong');
-assert.match(errorArchive.getRange(4,col('file_video')+1).getValue(),/^\[Đã xóa file lỗi - /);
+assert.match(errorArchive.getRange(4,col('file_video')+1).getValue(),/^\[Chờ rclone dọn MP4 - /);
 hotData.push(archiveRow('PASS-BP4',{trang_thai:'CHO_DANG',file_video:'still-good',cap_nhat:new Date()}));
 const passBp4=mp4('still-good');
 app.boDeKhongDat_(hot,app.docHang_(hot).find(r=>r.id==='PASS-BP4'),'het_luot','video');
 assert.equal(passBp4.removed,false);
 assert.equal(hotData.find(r=>r[0]==='PASS-BP4')[1],'CHO_DANG');
 
-// Retry a failed Drive write without losing the link or adding a second archive row.
-const blocked=mp4('blocked');
-const trashBlocked=blocked.setTrashed;
-blocked.setTrashed=()=>{throw Error('Access denied');};
-const blockedRow=['DOC-BLOCKED','LOI_CAN_XEM','đề liên kết lỗi','Kiểm duyệt bố cục vẫn lỗi','https://drive.google.com/open?id=blocked'];
-docData.push(blockedRow);
-assert.match(app.donSachVideoLoiDriveNgay(),/Có lỗi cần xem trong NHAT_KY/);
-assert.match(blockedRow[4],/id=blocked/);
-assert.equal(docData.includes(blockedRow),true);
-blocked.setTrashed=trashBlocked;
-assert.match(app.donSachVideoLoiDriveNgay(),/Đã chuyển 1 dòng DOC_DE .* đưa 1 file MP4/);
-assert.equal(docData.includes(blockedRow),false);
+// Kiểm chứng 3 lệnh Zalo /donvideoloi thu | /donvideoloi | /donvideoloi mocoi đẩy đúng che_do & dry_run sang don-video-drive.yml.
+driveDispatches.length=0;
+assert.match(app.traLoiLenh_('chat-test','/donvideoloi thu'),/CHẠY THỬ \(dry_run=true/);
+assert.equal(driveDispatches.at(-1).wf,'don-video-drive.yml');
+assert.equal(driveDispatches.at(-1).inputs.che_do,'mocoi');
+assert.equal(driveDispatches.at(-1).inputs.dry_run,'true');
+assert.equal(driveDispatches.at(-1).inputs.chat_id,'chat-test');
 
-// A timed-out scan resumes at the next Drive file, rebuilding the protection set before trashing it.
-const resumeA=mp4('resume-a','RESUME-A.mp4'), resumeB=mp4('resume-b','RESUME-B.mp4'), resumeC=mp4('resume-c','RESUME-C.mp4');
-for (const id of ['RESUME-A','RESUME-B','RESUME-C']) idx.appendRow(['hash-'+id,id,'','','','LOAI',new Date()]);
-folderFiles=[resumeA,resumeB,resumeC];
-const now=Date.now();
-const actualNow=Date.now;
-const trashA=resumeA.setTrashed;
-let clock=now;
-try {
-  Date.now=()=>clock;
-  resumeA.setTrashed=v=>{trashA(v);clock=now+260000;};
-  assert.match(app.donSachVideoLoiDriveNgay(),/Chạy thêm một lượt/);
-  assert.equal(resumeB.removed,false);
-  assert.equal(JSON.parse(driveProps.get('VI_TRI_QUET_VIDEO_LOI')).token,'1');
-  docData.push(['RESUME-B','CHO_DANG','vừa duyệt','','']);
-  assert.match(app.donSachVideoLoiDriveNgay(),/đưa 1 file MP4/);
-  assert.equal(resumeB.removed,false);
-  assert.equal(resumeC.removed,true);
-  assert.deepEqual(cursorCalls,['1']);
-  assert.equal(driveProps.has('VI_TRI_QUET_VIDEO_LOI'),false);
-} finally { Date.now=actualNow; }
+assert.match(app.traLoiLenh_('chat-test','/donvideoloi'),/dọn MP4 lỗi/);
+assert.equal(driveDispatches.at(-1).inputs.che_do,'loi');
+assert.equal(driveDispatches.at(-1).inputs.dry_run,'false');
 
-// A backlog larger than the periodic batch is processed by the Zalo command, including recent/undated rows.
-const backlogFiles=Array.from({length:103},(_,i)=>{
-  const file=mp4('backlog-file-'+i,'BACKLOG-'+i+'.mp4');
-  docData.push(['BACKLOG-'+i,'LOI_CAN_XEM','đề tồn số '+i,'Mắt thần 3+3','https://drive.google.com/open?id='+file.getId()]);
-  return file;
-});
-const replies=[];
-Object.assign(app,{LockService:{getScriptLock:()=>({tryLock:()=>true,releaseLock(){}})},
-  guiZaloToi_:(...args)=>replies.push(args)});
-folderFiles=[...backlogFiles,mp4('canonical-name','ban-cu-TT260126-103000-1-render.mp4')];
-idx.appendRow(['hash-native-id','TT260126-103000-1','','','','LOI_CU',new Date()]);
-assert.match(app.traLoiLenh_('chat-test','/donvideoloi'),/Đã nhận/);
-assert.equal(backlogFiles[0].removed,false,'webhook trả lời trước khi gọi Drive');
-app.chayDonDep();
-assert.deepEqual(replies.map(([chat])=>chat),['chat-test']);
-assert.match(replies[0][1],/Đã chuyển 103 dòng DOC_DE .* đưa 104 file MP4/);
-assert.ok(folderFiles.every(f=>f.removed));
-assert.ok(docData.every(r=>!String(r[0]).startsWith('BACKLOG-')));
-assert.equal(driveProps.has('DOT_DON_VIDEO_LOI'),false);
+assert.match(app.traLoiLenh_('chat-test','/donvideoloi mocoi'),/dọn tổng MP4 lỗi \+ mồ côi > 24h/);
+assert.equal(driveDispatches.at(-1).inputs.che_do,'mocoi');
+assert.equal(driveDispatches.at(-1).inputs.dry_run,'false');
+
+// Kiểm chứng fallback ghi JSON tạm lên Drive khi payload > 55KB & dừng an toàn khi tap_id_bao_ve rỗng.
+const bigTabs=new Map([['LUU_TRU',mockTab([['ma_bam','id','lop','de_bai_rut_gon','dap_an','ket_qua','ngay_xong'],
+  ...Array.from({length:2800},(_,i)=>['h'+i,'TT261127-10'+String(i).padStart(4,'0')+'-1','12','','','DA_DANG',new Date()])],'LUU_TRU')]]);
+const origGetBook=app.SpreadsheetApp.getActiveSpreadsheet;
+app.SpreadsheetApp.getActiveSpreadsheet=()=>({getSheetByName:n=>bigTabs.get(n),getSheets:()=>Array.from(bigTabs.values())});
+driveDispatches.length=0;
+const uploadsBefore=uploads.length;
+const kqBig=app.kichHoatDonVideoDriveGitHub_('mocoi',false,'chat-big','zalo');
+assert.equal(kqBig.ok,true);
+assert.equal(uploads.length,uploadsBefore+1,'payload > 55KB ghi tệp JSON tạm trên Drive');
+assert.equal(JSON.parse(driveDispatches.at(-1).inputs.du_lieu)._file_du_lieu_drive,'drive-id');
+
+// Khi Whitelist rỗng (= 0 phần tử) -> Apps Script cũng dừng an toàn, không gọi GitHub Actions.
+app.SpreadsheetApp.getActiveSpreadsheet=()=>({getSheetByName:()=>null,getSheets:()=>[]});
+driveDispatches.length=0;
+const kqRongGs=app.kichHoatDonVideoDriveGitHub_('mocoi',false,'chat-empty','zalo');
+assert.equal(kqRongGs.dung_an_toan,true);
+assert.equal(driveDispatches.length,0);
+app.SpreadsheetApp.getActiveSpreadsheet=origGetBook;
 
 const inputs=[['mon','du_lieu'],['id','de'],['id','de'],['viec','id','kich_ban','lan_giao'],['id','du_lieu','lan_giao'],['viec','id','dang','lan_giao']];
 workflow.forEach((file,bp)=>{
@@ -641,82 +632,131 @@ assert.deepEqual(
   ['hyp-id-1', 'kb-value-1', 'raw-url-1', 'rt-cell-1', 'rt-run-json', 'rt-run-mp4'].sort()
 );
 
-// Kiểm tra phanLoaiLoiDong_ đủ các nhánh (BP1, BP2, BP3, lỗi bản chất, chạm trần, quá 48h, không rõ nguyên nhân).
-assert.equal(app.phanLoaiLoiDong_('BO_KHONG_DAT', 'bất kỳ', 0).hanhDong, 'XOA_KHONG_SUA_DUOC');
-assert.equal(app.phanLoaiLoiDong_('LOAI', 'lệch đáp án', 0).hanhDong, 'XOA_KHONG_SUA_DUOC');
-for (const kw of ['BO_KHONG_DAT', 'sửa 3 lần vẫn lỗi', 'Mắt thần 3+3', 'het_luot', 'Kiểm duyệt bố cục vẫn lỗi', 'AI_SAI_TOAN', 'DE_SAI', 'VO_NGHIEM_SAI_DE', 'KHONG_CO_DAP_AN', 'TRUNG_DE']) {
-  assert.equal(app.phanLoaiLoiDong_('LOI_CAN_XEM', kw, 0).hanhDong, 'XOA_KHONG_SUA_DUOC', 'từ khóa không sửa được: ' + kw);
+// Kiểm tra Whitelist + Default-Delete + TTL 24h (phanLoaiDongLoiMacDinh_ & phanLoaiLoiDong_).
+assert.deepEqual(Array.from(app.TRANG_THAI_SONG_HOP_LE),
+  ['MOI', 'CHO_GIAI', 'DA_GIAI', 'CHO_KICH_BAN', 'CO_KICH_BAN', 'DANG_DUNG', 'CO_VIDEO', 'CHO_KIEM_DUYET', 'CHO_DUYET', 'CHO_DANG', 'DA_DANG']);
+assert.deepEqual(Array.from(app.LOI_HA_TANG_TAM_THOI),
+  ['timeout', '429', '502', '503', '504', 'rate limit', 'het_key', 'ECONNRESET', 'ETIMEDOUT', 'network']);
+
+// (a) Ca lỗi lạ chưa từng định nghĩa: trạng thái lạ LOI_LA_MOI_999 hoặc LOI_CAN_XEM với ghi chú Traceback lạ -> mặc định XOA_KHONG_SUA_DUOC + laLoiLa=true + [LOI_LA]
+const plLoiLaStatus = app.phanLoaiDongLoiMacDinh_('LOI_LA_MOI_999', 'lỗi hệ thống chưa từng thấy', 0, 2);
+assert.equal(plLoiLaStatus.hanhDong, 'XOA_KHONG_SUA_DUOC');
+assert.equal(plLoiLaStatus.laLoiLa, true);
+assert.equal(plLoiLaStatus.tienToGhiChu, '[LOI_LA]');
+
+const plLoiLaTrace = app.phanLoaiDongLoiMacDinh_('LOI_CAN_XEM', 'Traceback: ZeroDivisionError ở module lạ', 0, 2);
+assert.equal(plLoiLaTrace.hanhDong, 'XOA_KHONG_SUA_DUOC');
+assert.equal(plLoiLaTrace.laLoiLa, true);
+assert.equal(plLoiLaTrace.tienToGhiChu, '[LOI_LA]');
+
+// (b) Ca lỗi đã biết (BO_KHONG_DAT, LOAI, AI_SAI_TOAN...) -> XOA_KHONG_SUA_DUOC nhưng không đánh dấu laLoiLa
+assert.equal(app.phanLoaiDongLoiMacDinh_('BO_KHONG_DAT', 'bất kỳ', 0, 1).hanhDong, 'XOA_KHONG_SUA_DUOC');
+assert.equal(app.phanLoaiDongLoiMacDinh_('BO_KHONG_DAT', 'bất kỳ', 0, 1).laLoiLa, false);
+assert.equal(app.phanLoaiDongLoiMacDinh_('LOAI', 'lệch đáp án', 0, 1).hanhDong, 'XOA_KHONG_SUA_DUOC');
+for (const kw of ['BO_KHONG_DAT', 'sửa 3 lần vẫn lỗi', 'Mắt thần 3+3', 'het_luot', 'AI_SAI_TOAN', 'DE_SAI', 'TRUNG_DE']) {
+  assert.equal(app.phanLoaiDongLoiMacDinh_('LOI_CAN_XEM', kw, 0, 1).hanhDong, 'XOA_KHONG_SUA_DUOC', 'từ khóa không sửa được: ' + kw);
 }
-assert.deepEqual(
-  { h: app.phanLoaiLoiDong_('LOI_CAN_XEM', 'het_key tại BP1', 0).hanhDong, t: app.phanLoaiLoiDong_('LOI_CAN_XEM', 'het_key tại BP1', 0).trangThaiDich },
-  { h: 'BAT_BUOC_SUA', t: 'CHO_GIAI' }
-);
-assert.equal(app.phanLoaiLoiDong_('LOI_CAN_XEM', '[TU_SUA:1/1] Ly do cu: JSON_LOI', 1).hanhDong, 'XOA_KHONG_SUA_DUOC');
-assert.equal(app.phanLoaiLoiDong_('LOI_CAN_XEM', 'timeout tại BP1', 0).trangThaiDich, 'CHO_GIAI');
-assert.equal(app.phanLoaiLoiDong_('LOI_CAN_XEM', 'DE_CHU: chồng chữ', 0).trangThaiDich, 'CHO_KICH_BAN');
-assert.equal(app.phanLoaiLoiDong_('LOI_CAN_XEM', 'TRAN_KHUNG', 1).hanhDong, 'XOA_KHONG_SUA_DUOC');
-assert.equal(app.phanLoaiLoiDong_('LOI_CAN_XEM', 'DUNG_VIDEO: 503', 0, { coKichBanJson: true }).trangThaiDich, 'CO_KICH_BAN');
-assert.equal(app.phanLoaiLoiDong_('LOI_CAN_XEM', 'DUNG_VIDEO: 503', 0, { coKichBanJson: true }).tranSua, 1);
-assert.equal(app.phanLoaiLoiDong_('LOI_CAN_XEM', 'GIAO_DIEN_CU_KHONG_HOP_LE', 0, { coKichBanJson: false }).trangThaiDich, 'CHO_KICH_BAN');
-assert.equal(app.phanLoaiLoiDong_('LOI_CAN_XEM', 'DUNG_VIDEO: 503', 1, { coKichBanJson: true }).hanhDong, 'XOA_KHONG_SUA_DUOC');
-assert.equal(app.phanLoaiLoiDong_('LOI_CAN_XEM', 'DUNG_VIDEO: 503', 0, { coKichBanJson: true, quaHan48h: true }).hanhDong, 'XOA_KHONG_SUA_DUOC');
-assert.equal(app.phanLoaiLoiDong_('LOI_CAN_XEM', 'lỗi lạ không xác định', 0).hanhDong, 'XOA_KHONG_SUA_DUOC');
 
-// 5 CA BẮT BUỘC cho xuLyLoiTrenSheetNgay() và lệnh Zalo /xulyloi.
-const ca1Json = jsonFile('ca1-kb-json', 'CA1-DUNG.json');
-const ca1BadMp4 = mp4('ca1-bad-mp4', 'CA1-DUNG.mp4');
-const ca1NoKbMp4 = mp4('ca1-nokb-mp4', 'CA1-NOKB.mp4');
-const ca2Json = jsonFile('ca2-kb-json', 'CA2-HETLUOT.json');
-const ca2Mp4 = mp4('ca2-bad-mp4', 'CA2-HETLUOT.mp4');
-const ca3Video = mp4('ca3-bo-mp4', 'CA3-BO.mp4');
-const ca4BadMp4 = mp4('ca4-bad-mp4', 'CA4-T2.mp4');
-const ca5DaDang = mp4('ca5-dadang-mp4', 'CA5-DADANG.mp4');
-const ca5ChoDang = mp4('ca5-chodang-mp4', 'CA5-CHODANG.mp4');
-const ca5Orphan = mp4('ca5-orphan-mp4', 'CA3-BO_ban_cu.mp4');
+// (c) Ca lỗi hạ tầng tạm (timeout, 429, 503, het_key...) lần đầu -> BAT_BUOC_SUA ([TU_SUA:1/1]); lần 2 vẫn lỗi -> tự hạ cấp XOA_KHONG_SUA_DUOC
+const plTimeout1 = app.phanLoaiDongLoiMacDinh_('LOI_CAN_XEM', 'timeout tại BP1', 0, 1);
+assert.equal(plTimeout1.hanhDong, 'BAT_BUOC_SUA');
+assert.equal(plTimeout1.trangThaiDich, 'CHO_GIAI');
+assert.equal(plTimeout1.tienToGhiChu, '[TU_SUA:1/1]');
+const plTimeout2 = app.phanLoaiDongLoiMacDinh_('LOI_CAN_XEM', '[TU_SUA:1/1] Ly do cu: timeout tại BP1', 1, 2);
+assert.equal(plTimeout2.hanhDong, 'XOA_KHONG_SUA_DUOC');
 
-const docLoiHeader = ['Mã', 'Trạng thái', 'Lớp', 'Chủ đề', 'ĐỀ BÀI', 'Đáp án', 'Tư duy', 'Vì sao cần suy nghĩ', 'Bẫy thường gặp', 'Kịch bản', 'Ghi chú'];
+const pl429Lan1 = app.phanLoaiDongLoiMacDinh_('LOI_CAN_XEM', 'Gemini HTTP 429 rate limit', 0, 1, { coKichBanJson: true });
+assert.equal(pl429Lan1.hanhDong, 'BAT_BUOC_SUA');
+assert.equal(pl429Lan1.trangThaiDich, 'CO_KICH_BAN');
+assert.equal(pl429Lan1.tranSua, 1);
+assert.equal(app.phanLoaiDongLoiMacDinh_('LOI_CAN_XEM', '[TU_SUA:1/1] Ly do cu: HTTP 429', 1, 2, { coKichBanJson: true }).hanhDong, 'XOA_KHONG_SUA_DUOC');
+assert.equal(app.phanLoaiDongLoiMacDinh_('LOI_CAN_XEM', 'DUNG_VIDEO: 503', 0, 50, { coKichBanJson: true, quaHan48h: true }).hanhDong, 'XOA_KHONG_SUA_DUOC');
+
+// (d) Ca bài treo im lặng ở DANG_DUNG quá 24 giờ không có run đang chạy -> lần 1 trả hàng đợi, lần 2 tự xóa ([LOI_LA_TREO_24H]); có run đang chạy -> GIU_NGUYEN
+assert.equal(app.phanLoaiDongLoiMacDinh_('DANG_DUNG', '', 0, 20, { dangChayWorkflow: false }).hanhDong, 'GIU_NGUYEN', 'Dưới 24h giữ nguyên');
+assert.equal(app.phanLoaiDongLoiMacDinh_('DANG_DUNG', '', 0, 30, { dangChayWorkflow: true }).hanhDong, 'GIU_NGUYEN', 'Đang có workflow GitHub chạy thì giữ nguyên');
+const plTreo1 = app.phanLoaiDongLoiMacDinh_('DANG_DUNG', '', 0, 26, { coKichBanJson: true, dangChayWorkflow: false });
+assert.equal(plTreo1.hanhDong, 'BAT_BUOC_SUA');
+assert.equal(plTreo1.trangThaiDich, 'CO_KICH_BAN');
+assert.equal(plTreo1.laTreo24h, true);
+assert.equal(plTreo1.tienToGhiChu, '[TU_SUA:1/1]');
+const plTreo2 = app.phanLoaiDongLoiMacDinh_('DANG_DUNG', '[TU_SUA:1/1] Ly do cu: Treo > 24h ở DANG_DUNG', 1, 26, { coKichBanJson: true, dangChayWorkflow: false });
+assert.equal(plTreo2.hanhDong, 'XOA_KHONG_SUA_DUOC');
+assert.equal(plTreo2.laLoiLa, true);
+assert.equal(plTreo2.laTreo24h, true);
+assert.equal(plTreo2.tienToGhiChu, '[LOI_LA_TREO_24H]');
+
+// Tích hợp thực tế trên DOC_DE + HANG_DOI qua xuLyLoiDocDe_() / xuLyLoiTrenSheetNgay():
+// - Ca lỗi lạ (LOI_LA_MOI_999 & LOI_CAN_XEM Traceback ZeroDivisionError) -> gắn [LOI_LA], xóa JSON Apps Script, KHÔNG gọi setTrashed lên MP4, đưa sang LuuTru_Loi + LUU_TRU, xóa khỏi DOC_DE
+// - Ca lỗi hạ tầng tạm (timeout, 429) lần 1 -> đẩy sửa [TU_SUA:1/1]; lần 2 -> xóa sạch
+// - Ca bài treo im lặng ở DANG_DUNG > 24h không có run -> lần 1 trả về CO_KICH_BAN, lần 2 xóa với [LOI_LA_TREO_24H]
+// - Ca bảo vệ DA_DANG & CHO_DANG tuyệt đối không bị đụng tới
+const nowLoi = Date.now();
+const cu26h = new Date(nowLoi - 26 * 3600e3);
+const moi2h = new Date(nowLoi - 2 * 3600e3);
+
+const caHaTangJson = jsonFile('ca-ht-json', 'CA-HT-503.json');
+const caHaTangMp4 = mp4('ca-ht-mp4', 'CA-HT-503.mp4');
+const caLoiLa1Json = jsonFile('ca-ll1-json', 'CA-LOILA-999.json');
+const caLoiLa1Mp4 = mp4('ca-ll1-mp4', 'CA-LOILA-999.mp4');
+const caLoiLa2Json = jsonFile('ca-ll2-json', 'CA-TRACE.json');
+const caLoiLa2Mp4 = mp4('ca-ll2-mp4', 'CA-TRACE.mp4');
+const caTreo1Json = jsonFile('ca-treo1-json', 'CA-TREO-1.json');
+const caTreo2Json = jsonFile('ca-treo2-json', 'CA-TREO-2.json');
+const caTreo2Mp4 = mp4('ca-treo2-mp4', 'CA-TREO-2.mp4');
+const caHetLuot429Json = jsonFile('ca-429-json', 'CA-429-LAN2.json');
+const caDaDangMp4 = mp4('ca-dd-mp4', 'CA-DADANG.mp4');
+const caChoDangMp4 = mp4('ca-cd-mp4', 'CA-CHODANG.mp4');
+
+const docLoiHeader = ['Mã', 'Trạng thái', 'Lớp', 'Chủ đề', 'ĐỀ BÀI', 'Đáp án', 'Tư duy', 'Vì sao cần suy nghĩ', 'Bẫy thường gặp', 'Kịch bản', 'Ghi chú', 'Ngày cập nhật'];
 const docLoiRows = [
   ['Thống kê cũ (⚠️ 5 lỗi)'],
   docLoiHeader,
-  // Ca 1a: DUNG_VIDEO lần đầu, có Rich Text ▶️ Mở file (JSON hợp lệ) + MP4 hỏng -> xóa MP4 hỏng, giữ JSON, [TU_SUA:1/2], đẩy CO_KICH_BAN
-  ['CA1-DUNG', 'LOI_CAN_XEM', '12', 'Tối ưu', 'Đề ca 1a', '5', '8', '', '',
+  ['CA-HT-503', 'LOI_CAN_XEM', '12', 'Tối ưu', 'Đề lỗi 503 lần 1', '5', '8', '', '',
     richText('▶️ Mở file', null, [
-      ['▶️ Mở file', 'https://drive.google.com/file/d/ca1-kb-json/view'],
-      ['🎬 Xem video', 'https://drive.google.com/file/d/ca1-bad-mp4/view']
+      ['▶️ Mở file', 'https://drive.google.com/file/d/ca-ht-json/view'],
+      ['🎬 Xem video', 'https://drive.google.com/file/d/ca-ht-mp4/view']
     ]),
-    'DUNG_VIDEO: Xem nhật ký: https://github.com/test/runs/101'],
-  // Ca 1b: DUNG_VIDEO lần đầu, không còn JSON hợp lệ -> xóa MP4 hỏng, [TU_SUA:1/2], đẩy CHO_KICH_BAN
-  ['CA1-NOKB', 'LOI_CAN_XEM', '12', 'Tối ưu', 'Đề ca 1b', '6', '8', '', '',
-    richText('🎬 Xem video', 'https://drive.google.com/file/d/ca1-nokb-mp4/view'),
-    'DUNG_VIDEO: Xem nhật ký: https://github.com/test/runs/102'],
-  // Ca 2: DUNG_VIDEO đã [TU_SUA:1/1] -> XOA_KHONG_SUA_DUOC, setTrashed(true), LUU_TRU + LuuTru_Loi, xóa khỏi DOC_DE
-  ['CA2-HETLUOT', 'LOI_CAN_XEM', '12', 'Xác suất', 'Đề ca 2 hết lượt', '3/4', '8', '', '',
+    'DUNG_VIDEO: HTTP 503', moi2h],
+  ['CA-HT-TIMEOUT', 'LOI_CAN_XEM', '12', 'Xác suất', 'Đề timeout BP1 lần 1', '', '8', '', '', '', 'timeout tại BP1', moi2h],
+  ['CA-429-LAN2', 'LOI_CAN_XEM', '12', 'Xác suất', 'Đề 429 lần 2 hết lượt', '3/4', '8', '', '',
+    richText('▶️ Mở file', 'https://drive.google.com/file/d/ca-429-json/view'),
+    '[TU_SUA:1/1] Ly do cu: HTTP 429', moi2h],
+  ['CA-LOILA-999', 'LOI_LA_MOI_999', '11', 'Hình học', 'Đề trạng thái lỗi lạ', '12', '9', '', '',
     richText('▶️ Mở file', null, [
-      ['▶️ Mở file', 'https://drive.google.com/file/d/ca2-kb-json/view'],
-      ['🎬 Xem video', 'https://drive.google.com/file/d/ca2-bad-mp4/view']
+      ['▶️ Mở file', 'https://drive.google.com/file/d/ca-ll1-json/view'],
+      ['🎬 Xem video', 'https://drive.google.com/file/d/ca-ll1-mp4/view']
     ]),
-    '[TU_SUA:1/1] Ly do cu: DUNG_VIDEO: Xem nhật ký: https://github.com/test/runs/202'],
-  // Ca 3: LOI_CAN_XEM ghi BO_KHONG_DAT (video): S_0, u_1 có Rich Text 🎬 Xem video -> setTrashed(true) đúng fileId, xóa hẳn khỏi DOC_DE
-  ['CA3-BO', 'LOI_CAN_XEM', '11', 'Hình học', 'Đề ca 3 bỏ không đạt', '12', '9', '', '',
-    richText('🎬 Xem video', 'https://drive.google.com/file/d/ca3-bo-mp4/view'),
-    'BO_KHONG_DAT (video): S_0, u_1'],
-  // Ca 4: LOI_CAN_XEM ghi t2_trong lần đầu -> đẩy về CHO_KICH_BAN kèm [TU_SUA:1/1]
-  ['CA4-T2', 'LOI_CAN_XEM', '12', 'Thực tế', 'Đề ca 4 t2 trống', '10', '8', '', '',
-    richText('🎬 Xem video', 'https://drive.google.com/file/d/ca4-bad-mp4/view'),
-    't2_trong'],
-  // Ca 5: Dòng DA_DANG và CHO_DANG phải được bảo vệ tuyệt đối
-  ['CA5-DADANG', 'DA_DANG', '12', 'Đã đăng', 'Đề ca 5 đã đăng', '7', '9', '', '',
-    richText('🎬 Xem video', 'https://drive.google.com/file/d/ca5-dadang-mp4/view'), ''],
-  ['CA5-CHODANG', 'CHO_DANG', '12', 'Chờ đăng', 'Đề ca 5 chờ đăng', '8', '9', '', '',
-    richText('🎬 Xem video', 'https://drive.google.com/file/d/ca5-chodang-mp4/view'), '']
+    'Lỗi chưa từng khai báo', moi2h],
+  ['CA-TRACE', 'LOI_CAN_XEM', '12', 'Thực tế', 'Đề traceback lạ', '10', '8', '', '',
+    richText('▶️ Mở file', null, [
+      ['▶️ Mở file', 'https://drive.google.com/file/d/ca-ll2-json/view'],
+      ['🎬 Xem video', 'https://drive.google.com/file/d/ca-ll2-mp4/view']
+    ]),
+    'Traceback: ZeroDivisionError ở module lạ', moi2h],
+  ['CA-TREO-1', 'DANG_DUNG', '12', 'Tối ưu', 'Đề treo 26h lần 1', '9', '8', '', '',
+    richText('▶️ Mở file', 'https://drive.google.com/file/d/ca-treo1-json/view'), '', cu26h],
+  ['CA-TREO-2', 'DANG_DUNG', '12', 'Tối ưu', 'Đề treo 26h lần 2', '9', '8', '', '',
+    richText('▶️ Mở file', null, [
+      ['▶️ Mở file', 'https://drive.google.com/file/d/ca-treo2-json/view'],
+      ['🎬 Xem video', 'https://drive.google.com/file/d/ca-treo2-mp4/view']
+    ]),
+    '[TU_SUA:1/1] Ly do cu: Treo > 24h ở DANG_DUNG', cu26h],
+  ['CA-DADANG', 'DA_DANG', '12', 'Đã đăng', 'Đề đã đăng', '7', '9', '', '',
+    richText('🎬 Xem video', 'https://drive.google.com/file/d/ca-dd-mp4/view'), '', cu26h],
+  ['CA-CHODANG', 'CHO_DANG', '12', 'Chờ đăng', 'Đề chờ đăng', '8', '9', '', '',
+    richText('🎬 Xem video', 'https://drive.google.com/file/d/ca-cd-mp4/view'), '', cu26h]
 ];
 const docLoiTab = mockRichTab(docLoiRows, 'DOC_DE');
 const hangLoiData = [cells[0].slice(),
-  archiveRow('CA1-DUNG', { trang_thai: 'LOI_CAN_XEM', file_video: 'ca1-bad-mp4', file_kich_ban: 'DRIVE_JSON:ca1-kb-json', cap_nhat: new Date() }),
-  archiveRow('CA2-HETLUOT', { trang_thai: 'LOI_CAN_XEM', file_video: 'ca2-bad-mp4', file_kich_ban: 'DRIVE_JSON:ca2-kb-json', cap_nhat: new Date() }),
-  archiveRow('CA4-T2', { trang_thai: 'LOI_CAN_XEM', file_video: 'ca4-bad-mp4', cap_nhat: new Date() }),
-  archiveRow('CA5-DADANG', { trang_thai: 'DA_DANG', file_video: 'ca5-dadang-mp4', cap_nhat: new Date() }),
-  archiveRow('CA5-CHODANG', { trang_thai: 'CHO_DANG', file_video: 'ca5-chodang-mp4', cap_nhat: new Date() })
+  archiveRow('CA-HT-503', { trang_thai: 'LOI_CAN_XEM', file_video: 'ca-ht-mp4', file_kich_ban: 'DRIVE_JSON:ca-ht-json', cap_nhat: moi2h }),
+  archiveRow('CA-429-LAN2', { trang_thai: 'LOI_CAN_XEM', file_kich_ban: 'DRIVE_JSON:ca-429-json', cap_nhat: moi2h }),
+  archiveRow('CA-LOILA-999', { trang_thai: 'LOI_LA_MOI_999', file_video: 'ca-ll1-mp4', file_kich_ban: 'DRIVE_JSON:ca-ll1-json', cap_nhat: moi2h }),
+  archiveRow('CA-TRACE', { trang_thai: 'LOI_CAN_XEM', file_video: 'ca-ll2-mp4', file_kich_ban: 'DRIVE_JSON:ca-ll2-json', cap_nhat: moi2h }),
+  archiveRow('CA-TREO-1', { trang_thai: 'DANG_DUNG', file_kich_ban: 'DRIVE_JSON:ca-treo1-json', cap_nhat: cu26h }),
+  archiveRow('CA-TREO-2', { trang_thai: 'DANG_DUNG', file_video: 'ca-treo2-mp4', file_kich_ban: 'DRIVE_JSON:ca-treo2-json', ghi_chu: '[TU_SUA:1/1] Ly do cu: Treo > 24h ở DANG_DUNG', cap_nhat: cu26h }),
+  archiveRow('CA-DADANG', { trang_thai: 'DA_DANG', file_video: 'ca-dd-mp4', cap_nhat: cu26h }),
+  archiveRow('CA-CHODANG', { trang_thai: 'CHO_DANG', file_video: 'ca-cd-mp4', cap_nhat: cu26h })
 ];
 const hangLoiTab = mockRichTab(hangLoiData, 'HANG_DOI');
 const luuTruLoiMoi = mockRichTab([], 'LuuTru_Loi');
@@ -725,59 +765,64 @@ tabs.set('DOC_DE', docLoiTab);
 tabs.set('HANG_DOI', hangLoiTab);
 tabs.set('LuuTru_Loi', luuTruLoiMoi);
 tabs.set('LUU_TRU', chiMucMoi);
-folderFiles = [ca1BadMp4, ca1NoKbMp4, ca2Mp4, ca3Video, ca4BadMp4, ca5DaDang, ca5ChoDang, ca5Orphan];
-driveProps.delete('VI_TRI_QUET_VIDEO_LOI');
+app.runsDangBoNao_ = () => []; // không có workflow GitHub nào đang chạy cho CA-TREO-1 / CA-TREO-2
 
 const tomTatLoi = app.xuLyLoiTrenSheetNgay();
-assert.match(tomTatLoi, /Đẩy sửa lại: 3 bài \(BP1: 0, BP2: 2, BP3: 1\)/);
-assert.match(tomTatLoi, /Đã xóa không sửa được: 2 bài/);
-assert.match(tomTatLoi, /Đã đưa vào Thùng rác Drive: 7 file/);
+assert.match(tomTatLoi, /Đẩy sửa lại: 3 bài \(BP1: 1, BP2: 0, BP3: 2\)/);
+assert.match(tomTatLoi, /Đã xóa không sửa được: 4 bài \(lỗi lạ: 3\)/);
 
-// Kiểm chứng Ca 1a & Ca 1b
-const rCa1a = docLoiRows.find(r => r[0] === 'CA1-DUNG');
-assert.equal(rCa1a[1], 'CO_KICH_BAN', 'Ca 1a đẩy về CO_KICH_BAN khi còn file JSON hợp lệ');
-assert.match(rCa1a[10], /^\[TU_SUA:1\/1\] Ly do cu: DUNG_VIDEO: Xem nhật ký:/);
-assert.equal(ca1BadMp4.removed, true, 'Ca 1a xóa MP4 hỏng');
-assert.equal(ca1Json.removed, false, 'Ca 1a giữ lại file JSON kịch bản');
-const hCa1a = hangLoiData.find(r => r[0] === 'CA1-DUNG');
-assert.equal(hCa1a[1], 'CHO_DUNG', 'HANG_DOI đồng bộ CO_KICH_BAN -> CHO_DUNG để BP3 chạy ngay');
-const rCa1b = docLoiRows.find(r => r[0] === 'CA1-NOKB');
-assert.equal(rCa1b[1], 'CHO_KICH_BAN', 'Ca 1b thiếu JSON đẩy về CHO_KICH_BAN');
-assert.match(rCa1b[10], /^\[TU_SUA:1\/1\] Ly do cu: DUNG_VIDEO:/);
-assert.equal(ca1NoKbMp4.removed, true);
+// Lỗi hạ tầng tạm lần 1 -> đẩy sửa [TU_SUA:1/1], giữ JSON, KHÔNG gọi DriveApp.setTrashed lên MP4
+const rHt503 = docLoiRows.find(r => r[0] === 'CA-HT-503');
+assert.equal(rHt503[1], 'CO_KICH_BAN');
+assert.match(rHt503[10], /^\[TU_SUA:1\/1\] Ly do cu: DUNG_VIDEO: HTTP 503/);
+assert.equal(caHaTangJson.removed, false, 'Giữ JSON kịch bản khi đẩy về CO_KICH_BAN');
+assert.equal(caHaTangMp4.removed, false, 'Apps Script KHÔNG gọi DriveApp.setTrashed lên MP4');
+const rHtTimeout = docLoiRows.find(r => r[0] === 'CA-HT-TIMEOUT');
+assert.equal(rHtTimeout[1], 'CHO_GIAI');
+assert.match(rHtTimeout[10], /^\[TU_SUA:1\/1\] Ly do cu: timeout tại BP1/);
 
-// Kiểm chứng Ca 2
-assert.equal(docLoiRows.some(r => r[0] === 'CA2-HETLUOT'), false, 'Ca 2 xóa hẳn khỏi DOC_DE');
-assert.equal(hangLoiData.some(r => r[0] === 'CA2-HETLUOT'), false, 'Ca 2 xóa hẳn khỏi HANG_DOI');
-assert.equal(ca2Mp4.removed, true, 'Ca 2 xóa MP4 lỗi');
-assert.equal(ca2Json.removed, true, 'Ca 2 xóa luôn JSON lỗi');
-assert.equal(luuTruLoiMoi.getDataRange().getValues().some(r => r[0] === 'CA2-HETLUOT'), true, 'Ca 2 lưu LuuTru_Loi');
-assert.equal(chiMucMoi.getDataRange().getValues().some(r => r[1] === 'CA2-HETLUOT' && r[5] === 'LOI_KHONG_SUA_DUOC'), true, 'Ca 2 lưu LUU_TRU ket_qua=LOI_KHONG_SUA_DUOC');
+// Lỗi hạ tầng lần 2 (CA-429-LAN2) -> xóa sạch khỏi DOC_DE + HANG_DOI, xóa JSON, lưu LuuTru_Loi + LUU_TRU
+assert.equal(docLoiRows.some(r => r[0] === 'CA-429-LAN2'), false);
+assert.equal(hangLoiData.some(r => r[0] === 'CA-429-LAN2'), false);
+assert.equal(caHetLuot429Json.removed, true);
 
-// Kiểm chứng Ca 3
-assert.equal(docLoiRows.some(r => r[0] === 'CA3-BO'), false, 'Ca 3 xóa hẳn khỏi DOC_DE');
-assert.equal(ca3Video.removed, true, 'Ca 3 xóa đúng fileId từ Rich Text 🎬 Xem video');
-assert.equal(ca5Orphan.removed, true, 'Quét Drive dọn luôn MP4 mồ côi của mã đã xóa');
-assert.equal(luuTruLoiMoi.getDataRange().getValues().some(r => r[0] === 'CA3-BO'), true);
-assert.equal(chiMucMoi.getDataRange().getValues().some(r => r[1] === 'CA3-BO' && r[5] === 'LOI_KHONG_SUA_DUOC'), true);
+// 2 ca lỗi lạ (LOI_LA_MOI_999 & Traceback ZeroDivisionError) -> xóa khỏi DOC_DE + HANG_DOI, gắn [LOI_LA] trong LuuTru_Loi, xóa JSON Apps Script, KHÔNG đụng MP4
+const ltLoiVals = luuTruLoiMoi.getDataRange().getValues();
+const cmVals = chiMucMoi.getDataRange().getValues();
+for (const idLa of ['CA-LOILA-999', 'CA-TRACE']) {
+  assert.equal(docLoiRows.some(r => r[0] === idLa), false, idLa + ' bị xóa khỏi DOC_DE');
+  assert.equal(hangLoiData.some(r => r[0] === idLa), false, idLa + ' bị xóa khỏi HANG_DOI');
+  const dongLt = ltLoiVals.find(r => r[0] === idLa);
+  assert.ok(dongLt, idLa + ' được lưu vào LuuTru_Loi');
+  assert.match(String(dongLt[col('ghi_chu')]), /^\[LOI_LA\]/, idLa + ' gắn tiền tố [LOI_LA]');
+  assert.equal(cmVals.some(r => r[1] === idLa && r[5] === 'LOI_KHONG_SUA_DUOC'), true, idLa + ' ghi mã băm vào LUU_TRU');
+}
+assert.equal(caLoiLa1Json.removed, true, 'Xóa kịch bản JSON của lỗi lạ');
+assert.equal(caLoiLa2Json.removed, true, 'Xóa kịch bản JSON của lỗi lạ');
+assert.equal(caLoiLa1Mp4.removed, false, 'Không gọi DriveApp.setTrashed lên MP4 lỗi lạ (chờ rclone dọn)');
+assert.equal(caLoiLa2Mp4.removed, false, 'Không gọi DriveApp.setTrashed lên MP4 lỗi lạ (chờ rclone dọn)');
 
-// Kiểm chứng Ca 4
-const rCa4 = docLoiRows.find(r => r[0] === 'CA4-T2');
-assert.equal(rCa4[1], 'CHO_KICH_BAN', 'Ca 4 đẩy về CHO_KICH_BAN');
-assert.equal(rCa4[10], '[TU_SUA:1/1] Ly do cu: t2_trong');
-assert.equal(ca4BadMp4.removed, true);
-const hCa4 = hangLoiData.find(r => r[0] === 'CA4-T2');
-assert.equal(hCa4[1], 'CHO_KICH_BAN');
-assert.match(hCa4[col('gop_y')], /t2_trong/);
+// Ca treo im lặng DANG_DUNG > 24h: lần 1 trả CO_KICH_BAN + [TU_SUA:1/1]; lần 2 xóa hẳn + gắn [LOI_LA_TREO_24H]
+const rTreo1 = docLoiRows.find(r => r[0] === 'CA-TREO-1');
+assert.equal(rTreo1[1], 'CO_KICH_BAN', 'Treo 24h lần 1 trả về hàng đợi CO_KICH_BAN');
+assert.match(rTreo1[10], /^\[TU_SUA:1\/1\]/);
+assert.equal(caTreo1Json.removed, false);
+assert.equal(docLoiRows.some(r => r[0] === 'CA-TREO-2'), false, 'Treo 24h lần 2 xóa hẳn khỏi DOC_DE');
+assert.equal(hangLoiData.some(r => r[0] === 'CA-TREO-2'), false, 'Treo 24h lần 2 xóa hẳn khỏi HANG_DOI');
+assert.equal(caTreo2Json.removed, true);
+assert.equal(caTreo2Mp4.removed, false);
+const dongTreo2 = ltLoiVals.find(r => r[0] === 'CA-TREO-2');
+assert.ok(dongTreo2);
+assert.match(String(dongTreo2[col('ghi_chu')]), /^\[LOI_LA_TREO_24H\]/);
 
-// Kiểm chứng Ca 5: tuyệt đối KHÔNG xóa file DA_DANG / CHO_DANG và thanh thống kê hàng 1 đã làm mới
-assert.equal(ca5DaDang.removed, false, 'Ca 5 bảo vệ DA_DANG');
-assert.equal(ca5ChoDang.removed, false, 'Ca 5 bảo vệ CHO_DANG');
-assert.equal(docLoiRows.some(r => r[0] === 'CA5-DADANG'), true);
-assert.equal(docLoiRows.some(r => r[0] === 'CA5-CHODANG'), true);
+// Bảo vệ tuyệt đối DA_DANG và CHO_DANG + cập nhật thanh thống kê hàng 1
+assert.equal(caDaDangMp4.removed, false);
+assert.equal(caChoDangMp4.removed, false);
+assert.equal(docLoiRows.some(r => r[0] === 'CA-DADANG'), true);
+assert.equal(docLoiRows.some(r => r[0] === 'CA-CHODANG'), true);
 assert.match(String(docLoiRows[0][0]), /Tổng 5 đề.*⚠️ 0 lỗi/, 'Thanh thống kê hàng 1 cập nhật ngay lập tức');
 
-// Kiểm chứng lệnh Zalo /xulyloi và trần 3 bài/nhịp (key >= 25%) vs 0 bài sửa (key < 25%, vẫn xóa không sửa được) trong nhipBoNao_.
+// Kiểm chứng lệnh Zalo /xulyloi và /donvideoloi thu|mocoi qua nhanZalo_.
 assert.match(app.traLoiLenh_('chat-test', '/xulyloi'), /Đẩy sửa lại: 0 bài.*Đã xóa không sửa được: 0 bài/s);
 vm.runInContext(read('ZaloDeBai.gs'), app);
 const zaloRepliesLoi = [];
@@ -791,20 +836,24 @@ driveProps.set('ZALO_WEBHOOK_SECRET', 'sec-loi');
 driveProps.set('ZALO_CHAT_IDS', 'chat-loi');
 app.nhanZalo_({ parameter: { k: 'sec-loi' }, postData: { contents: JSON.stringify({ message: { text: '/xulyloi', message_id: 'm-xl-1', chat: { id: 'chat-loi' } } }) } });
 assert.match(zaloRepliesLoi.at(-1), /Đẩy sửa lại: 0 bài \(BP1: 0, BP2: 0, BP3: 0\)/);
+driveDispatches.length = 0;
+app.nhanZalo_({ parameter: { k: 'sec-loi' }, postData: { contents: JSON.stringify({ message: { text: '/donvideoloi thu', message_id: 'm-dv-1', chat: { id: 'chat-loi' } } }) } });
+assert.equal(driveDispatches.at(-1).wf, 'don-video-drive.yml');
+assert.equal(driveDispatches.at(-1).inputs.che_do, 'mocoi');
+assert.equal(driveDispatches.at(-1).inputs.dry_run, 'true');
 
-// Kiểm tra tách tác vụ nặng khỏi nhịp 5 phút: nhipBoNao_('chay') KHÔNG chạy xuLyLoiDocDe_ (giữ <30s, tránh "khóa đang bận");
-// còn xuLyLoiDocDe_ tự kiểm soát trần toiDaSua (0 khi key < 25%, 3 khi key >= 25%).
+// Kiểm tra tách tác vụ nặng khỏi nhịp 5 phút: nhipBoNao_('chay') KHÔNG chạy xuLyLoiDocDe_;
+// còn xuLyLoiDocDe_ tự kiểm soát trần toiDaSua (0 khi key < 25%, 3 khi key >= 25%) cho lỗi hạ tầng tạm.
 const nhipDocRows = [
   ['Thống kê'], docLoiHeader,
-  ['NB-S1', 'LOI_CAN_XEM', '12', 'T', 'Đề s1', '1', '8', '', '', '', 't2_trong'],
-  ['NB-S2', 'LOI_CAN_XEM', '12', 'T', 'Đề s2', '2', '8', '', '', '', 't2_trong'],
-  ['NB-S3', 'LOI_CAN_XEM', '12', 'T', 'Đề s3', '3', '8', '', '', '', 't2_trong'],
-  ['NB-S4', 'LOI_CAN_XEM', '12', 'T', 'Đề s4', '4', '8', '', '', '', 't2_trong'],
-  ['NB-X1', 'LOI_CAN_XEM', '12', 'T', 'Đề x1', '5', '8', '', '', '', 'AI_SAI_TOAN']
+  ['NB-S1', 'LOI_CAN_XEM', '12', 'T', 'Đề s1', '1', '8', '', '', '', 'timeout tại BP1', moi2h],
+  ['NB-S2', 'LOI_CAN_XEM', '12', 'T', 'Đề s2', '2', '8', '', '', '', '429 rate limit tại BP1', moi2h],
+  ['NB-S3', 'LOI_CAN_XEM', '12', 'T', 'Đề s3', '3', '8', '', '', '', 'network error tại BP1', moi2h],
+  ['NB-S4', 'LOI_CAN_XEM', '12', 'T', 'Đề s4', '4', '8', '', '', '', '504 tại BP1', moi2h],
+  ['NB-X1', 'LOI_CAN_XEM', '12', 'T', 'Đề x1', '5', '8', '', '', '', 'AI_SAI_TOAN', moi2h]
 ];
 tabs.set('DOC_DE', mockRichTab(nhipDocRows, 'DOC_DE'));
 tabs.set('HANG_DOI', mockRichTab([cells[0].slice()], 'HANG_DOI'));
-folderFiles = [];
 let appKeyRatio = 0.2;
 Object.assign(app, {
   khoThongKeKhaDung_: () => ({ tyLe: appKeyRatio, conSong: Math.round(20 * appKeyRatio), tong: 20 }),
@@ -824,60 +873,17 @@ app.nhipBoNao_('chay');
 assert.equal(nhipDocRows.some(r => r[0] === 'NB-X1'), true, 'nhipBoNao_ siêu nhẹ KHÔNG quét/xóa nặng trên DOC_DE trong nhịp 5 phút');
 app.xuLyLoiDocDe_({ chayTay: false, toiDaSua: 0 });
 assert.equal(nhipDocRows.some(r => r[0] === 'NB-X1'), false, 'Nhánh xóa không sửa được chạy khi toiDaSua=0');
-assert.equal(nhipDocRows.slice(2).filter(r => r[1] === 'CHO_KICH_BAN').length, 0, 'toiDaSua=0 không đẩy sửa');
+assert.equal(nhipDocRows.slice(2).filter(r => r[1] === 'CHO_GIAI').length, 0, 'toiDaSua=0 không đẩy sửa');
 app.xuLyLoiDocDe_({ chayTay: false, toiDaSua: 3 });
-assert.equal(nhipDocRows.slice(2).filter(r => r[1] === 'CHO_KICH_BAN').length, 3, 'Mỗi lượt dọn đẩy sửa tối đa 3 bài');
+assert.equal(nhipDocRows.slice(2).filter(r => r[1] === 'CHO_GIAI').length, 3, 'Mỗi lượt dọn đẩy sửa tối đa 3 bài lỗi hạ tầng tạm');
 assert.equal(nhipDocRows.slice(2).filter(r => r[1] === 'LOI_CAN_XEM').length, 1, 'Bài thứ 4 chờ lượt sau');
 
-// Kiểm chứng bổ sung Đợt 1:
-// (A) Đọc Rich Text Link cột J (kể cả multi-run) trong donSachVideoLoiDriveNgay;
-// (B) Lỗi quyền sở hữu DriveApp ghi nguyên văn err.message vào NHAT_KY và >1 lần thì gắn [BO_QUA_XOA_MP4] + VẪN chuyển LuuTru_Loi (không lặp vô hạn);
-// (C) Tự động dọn PropertiesService vượt 35/50 (xóa PLI_*, HE_* > 3 ngày, khóa tạm/mã bài/ngày cũ; giữ nguyên key Gemini, GitHub token, cấu hình & sản lượng hôm nay).
-const rtColJMp4 = mp4('rt-colj-mp4', 'RT-COLJ.mp4');
-const rtColJJson = jsonFile('rt-colj-json', 'RT-COLJ.json');
-const deniedForever = mp4('denied-forever', 'DENIED-ROW.mp4');
-deniedForever.setTrashed = () => { throw Error('Access denied: You do not have permission to trash this file'); };
-const permDocRows = [
-  ['Thống kê'], docLoiHeader,
-  ['RT-COLJ', 'LOI_CAN_XEM', '12', 'Xác suất', 'Đề cột J rich text runs', '1/2', '8', '', '',
-    richText('▶️ Mở file | 🎬 Xem video', null, [
-      ['▶️ Mở file', 'https://drive.google.com/file/d/rt-colj-json/view'],
-      ['🎬 Xem video', 'https://drive.google.com/file/d/rt-colj-mp4/view']
-    ]),
-    'BO_KHONG_DAT (video): t2_trong'],
-  ['DENIED-ROW', 'LOI_CAN_XEM', '12', 'Thực tế', 'Đề lỗi quyền sở hữu Drive', '5', '8', '', '',
-    richText('🎬 Xem video', 'https://drive.google.com/file/d/denied-forever/view'),
-    'BO_KHONG_DAT (video): cat_chu']
-];
-const permLuuTruLoi = mockRichTab([], 'LuuTru_Loi');
-const permChiMuc = mockRichTab([['ma_bam', 'id', 'lop', 'de_bai_rut_gon', 'dap_an', 'ket_qua', 'ngay_xong']], 'LUU_TRU');
-tabs.set('DOC_DE', mockRichTab(permDocRows, 'DOC_DE'));
-tabs.set('HANG_DOI', mockRichTab([cells[0].slice()], 'HANG_DOI'));
-tabs.set('LuuTru_Loi', permLuuTruLoi);
-tabs.set('LUU_TRU', permChiMuc);
-folderFiles = [rtColJMp4, deniedForever];
-driveProps.delete('MP4_LOI_BO_QUA');
-driveProps.delete('VI_TRI_QUET_VIDEO_LOI');
-logs.length = 0;
-
-// Lượt 1: RT-COLJ xóa được MP4 từ run thứ 2 ở cột J (không xóa nhầm JSON); DENIED-ROW bị từ chối quyền lần 1 -> ghi nguyên văn err.message vào NHAT_KY, giữ dòng chờ thử lại 1 lần
-const kqQuyen1 = app.donSachVideoLoiDriveNgay();
-assert.equal(rtColJMp4.removed, true, 'donSachVideoLoiDriveNgay đọc đúng Rich Text run ở cột J và xóa MP4');
-assert.equal(rtColJJson.removed, false, 'donTepVideoCuaDong_ bỏ qua file JSON ở cột J');
-assert.equal(permDocRows.some(r => r[0] === 'RT-COLJ'), false);
-assert.equal(permDocRows.some(r => r[0] === 'DENIED-ROW'), true, 'Lần 1 lỗi quyền giữ lại thử thêm 1 lần');
-assert.ok(logs.some(([muc, msg]) => muc === 'DON_VIDEO_LOI' && /Access denied: You do not have permission to trash this file/.test(msg)), 'Ghi nguyên văn err.message vào NHAT_KY');
-assert.match(kqQuyen1, /Có lỗi cần xem trong NHAT_KY/);
-
-// Lượt 2: DENIED-ROW bị từ chối quyền lần 2 (>1 lần) -> gắn [BO_QUA_XOA_MP4] và VẪN chuyển sang LuuTru_Loi, xóa khỏi DOC_DE (chấm dứt vòng lặp 90 lỗi!)
-logs.length = 0;
-const kqQuyen2 = app.donSachVideoLoiDriveNgay();
-assert.equal(permDocRows.some(r => r[0] === 'DENIED-ROW'), false, 'Lần 2 lỗi quyền phải chuyển dòng khỏi DOC_DE để không lặp vô hạn');
-const dongDeniedLuu = permLuuTruLoi.getDataRange().getValues().find(r => r[0] === 'DENIED-ROW');
-assert.ok(dongDeniedLuu, 'DENIED-ROW đã được chuyển vào LuuTru_Loi');
-assert.match(String(dongDeniedLuu[col('ghi_chu')]), /\[BO_QUA_XOA_MP4\]/, 'Gắn cờ [BO_QUA_XOA_MP4] trên dòng chuyển lưu trữ');
-assert.equal(logs.some(([muc, msg]) => muc === 'DON_VIDEO_LOI' && /\[BO_QUA_XOA_MP4\]/.test(msg)), true);
-assert.match(kqQuyen2, /Đã chuyển 1 dòng DOC_DE/);
+// Kiểm chứng lịch dọn đêm 02:30 VN (chayDonDepHotSheetTheoLich) tự kích hoạt don-video-drive.yml (mocoi, dry_run=false).
+driveDispatches.length = 0;
+tabs.set('DOC_DE', mockRichTab([['Thống kê'], docLoiHeader, ['LIVE-1', 'DA_DANG', '12', 'T', 'Đề sống', '1', '8', '', '', '', '', moi2h]], 'DOC_DE'));
+app.chayDonDepHotSheetTheoLich();
+assert.equal(driveDispatches.some(d => d.wf === 'don-video-drive.yml' && d.inputs.che_do === 'mocoi' && d.inputs.dry_run === 'false' && d.inputs.nguon === 'lich_dem'), true,
+  'Lịch đêm 02:30 gọi don-video-drive.yml với che_do=mocoi, dry_run=false');
 
 // Kiểm chứng donRacScriptProperties() + donDepHotSheetDinhKy() tự dọn khi > 35/50 khóa
 const propStore = new Map([
@@ -1055,7 +1061,7 @@ assert.equal(bodyCua3.cua_3_da_cham, true);
 assert.equal(bodyCua3.dat, true);
 assert.equal(cua3Tab.getDataRange().getValues()[1][col('trang_thai')], 'CHO_DANG', 'Cửa 3 đạt chuyển thẳng CHO_DANG không gọi BP4 lần 2');
 
-// (5) Báo cáo Zalo 21:00 tách 3 dòng: BP1, BP2 lần đầu, Lỗi hạ tầng (Drive / GitHub Actions) — không gộp Drive vào lỗi sản xuất
+// (5) Báo cáo Zalo 21:00 tách 3 dòng + thêm 1 dòng tóm tắt "Lỗi lạ mới tự dọn hôm nay" (tối đa 3 mẫu [LOI_LA])
 const nkBaoCao = [
   ['thoi_gian', 'muc', 'noi_dung'],
   [new Date(), 'GIAI_OK', 'TT1 giải xong'],
@@ -1064,12 +1070,17 @@ const nkBaoCao = [
   [new Date(), 'DON_VIDEO_LOI', 'file123: Access denied'],
   [new Date(), 'GITHUB_BI_CHAN', 'GitHub HTTP 503'],
   [new Date(), 'MAT_THAN', 'TT4 chặn: cat_chu'],
+  [new Date(), 'LOI_LA', 'TT-LA1: [LOI_LA] Traceback: ZeroDivisionError'],
+  [new Date(), 'LOI_LA', 'TT-LA2: [LOI_LA] LOI_LA_MOI_999'],
+  [new Date(), 'LOI_LA', 'TT-LA3: [LOI_LA_TREO_24H] Treo > 24h ở DANG_DUNG'],
+  [new Date(), 'LOI_LA', 'TT-LA4: [LOI_LA] Mẫu thứ 4 không vượt quá 3 mẫu hiển thị'],
 ];
 tabs.set('NHAT_KY', {
   getLastRow: () => nkBaoCao.length,
   getLastColumn: () => 3,
   getRange: () => ({ getValues: () => nkBaoCao.slice(1) }),
 });
+tabs.set('LuuTru_Loi', mockRichTab([cells[0].slice()], 'LuuTru_Loi'));
 tabs.set('HANG_DOI', mockRichTab([
   cells[0].slice(),
   archiveRow('BC-1', { trang_thai: 'CO_VIDEO', duyet: 'DA_DUYET', file_video: 'v1', cap_nhat: new Date(), ai_kiem_tra: '{}' }),
@@ -1080,5 +1091,24 @@ assert.match(bcZalo, /1\) Ty le dau BP1: 67% \(2\/3\)/);
 assert.match(bcZalo, /2\) Ty le dau BP2 lan dau: 100% \(1\/1\)/);
 assert.match(bcZalo, /3\) Loi ha tang \(Drive \/ GitHub Actions\): 2 \(Drive: 1 \| GitHub Actions: 1\)/);
 assert.ok(!/TOP 3 LOI HOM NAY:.*DON_VIDEO_LOI/.test(bcZalo), 'Không gộp lỗi Drive vào Top 3 lỗi sản xuất video');
+assert.match(bcZalo, /Lỗi lạ mới tự dọn hôm nay: 4 \(\[LOI_LA\] Traceback: ZeroDivisionError \| \[LOI_LA\] LOI_LA_MOI_999 \| \[LOI_LA_TREO_24H\]/);
+assert.ok(!/Mẫu thứ 4/.test(bcZalo), 'Chỉ gom tối đa 3 mẫu chuỗi [LOI_LA] ngắn');
 
-console.log('0 hỏng. Đạt điều phối BP5 → BP0, 3 cửa chuẩn, trần sửa thống nhất (=1), sinh lô BP0, xả kho 72h, báo cáo 3 dòng tách hạ tầng, dọn MP4, xử lý lỗi DOC_DE (/xulyloi), Script Properties >35/50, watchdog, checkout Python và đăng ký/cú pháp '+gs.length+' tệp .gs.');
+// (6) Webhook BoPhan2.gs doPost tiếp nhận báo cáo từ don-video-drive.yml (loai='bao_cao_don_drive')
+const donDriveReplies = [];
+app.guiZaloToi_ = (cid, msg) => donDriveReplies.push([cid, msg]);
+const resDonDrive = app.doPost({
+  parameter: {},
+  postData: {
+    contents: JSON.stringify({
+      token: 'sec-123',
+      loai: 'bao_cao_don_drive',
+      chat_id: 'chat-don',
+      bao_cao: '🧹 DỌN VIDEO DRIVE THÙNG RÁC: đã đưa 3 tệp vào Thùng rác.',
+    }),
+  },
+});
+assert.equal(JSON.parse(resDonDrive.text).ok, true);
+assert.deepEqual(donDriveReplies.at(-1), ['chat-don', '🧹 DỌN VIDEO DRIVE THÙNG RÁC: đã đưa 3 tệp vào Thùng rác.']);
+
+console.log('0 hỏng. Đạt điều phối BP5 → BP0, Whitelist + Default-Delete + TTL 24h, dọn Drive bằng rclone (don-video-drive.yml), 3 cửa chuẩn, trần sửa thống nhất (=1), sinh lô BP0, xả kho 72h, báo cáo 3 dòng + lỗi lạ, Script Properties >35/50, watchdog, checkout Python và đăng ký/cú pháp '+gs.length+' tệp .gs.');

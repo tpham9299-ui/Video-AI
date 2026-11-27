@@ -1,0 +1,116 @@
+name: Dọn video MP4 lỗi & mồ côi trên Drive
+
+# Quét đệ quy thư mục MP4 của dung-video.yml bằng rclone và đưa MP4 lỗi / mồ côi > 24h
+# vào Thùng rác Google Drive theo Whitelist (tuyệt đối không xóa vĩnh viễn, dừng an toàn nếu Whitelist rỗng).
+on:
+  workflow_dispatch:
+    inputs:
+      che_do:
+        description: 'loi = chỉ xóa MP4 lỗi | mocoi = xóa MP4 lỗi + mồ côi > 24h ngoài Whitelist'
+        type: choice
+        options: [mocoi, loi]
+        default: mocoi
+      dry_run:
+        description: 'true = chạy thử thống kê mẫu tối đa 30 tệp (không xóa) | false = đưa vào Thùng rác'
+        type: choice
+        options: ['true', 'false']
+        default: 'true'
+      du_lieu:
+        description: 'JSON chứa tap_id_bao_ve & tap_id_loi (hoặc _file_du_lieu_drive) do Apps Script gửi'
+        type: string
+        default: ''
+      chat_id:
+        description: 'Mã chat Zalo nhận báo cáo kết quả (tùy chọn)'
+        type: string
+        default: ''
+      nguon:
+        description: 'Nguồn kích hoạt (zalo, lich_dem, menu_sheet, thu_cong)'
+        type: string
+        default: 'thu_cong'
+
+concurrency:
+  group: don-video-drive
+  cancel-in-progress: false
+
+env:
+  RCLONE_STATS: 30s
+  RCLONE_STATS_ONE_LINE: "true"
+  RCLONE_STATS_LOG_LEVEL: NOTICE
+
+jobs:
+  don_drive:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+      DRIVE_THU_MUC: ${{ vars.DRIVE_THU_MUC }}
+      ZALO_BOT_TOKEN: ${{ secrets.ZALO_BOT_TOKEN }}
+      ZALO_BOT_TOKEN_DE: ${{ secrets.ZALO_BOT_TOKEN_DE }}
+      ZALO_CHAT_IDS: ${{ secrets.ZALO_CHAT_IDS }}
+      APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
+      DUNG_VIDEO_SECRET: ${{ secrets.DUNG_VIDEO_SECRET }}
+      CHE_DO: ${{ inputs.che_do || 'mocoi' }}
+      DRY_RUN: ${{ inputs.dry_run || 'true' }}
+      DU_LIEU: ${{ inputs.du_lieu || '' }}
+      CHAT_ID: ${{ inputs.chat_id || '' }}
+      NGUON: ${{ inputs.nguon || 'thu_cong' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts/don_video_drive.py
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cài rclone
+        run: |
+          if ! command -v rclone >/dev/null 2>&1; then
+            curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors https://rclone.org/install.sh | sudo bash
+          fi
+
+      - name: Cấu hình rclone & chạy dọn MP4 vào Thùng rác Drive
+        id: don
+        run: |
+          if [ -z "$RCLONE_CONF" ]; then
+            echo "::error::Thiếu GitHub Secret RCLONE_CONF"
+            exit 1
+          fi
+          mkdir -p ~/.config/rclone
+          printf '%s' "$RCLONE_CONF" > ~/.config/rclone/rclone.conf
+          printf '%s' "$DU_LIEU" > /tmp/du_lieu_don_drive.json
+          THU_MUC="${DRIVE_THU_MUC:-VIDEO_XACSUAT/video}"
+          ARGS=(--che-do "$CHE_DO" --thu-muc "$THU_MUC" --du-lieu-json /tmp/du_lieu_don_drive.json --xuat-json /tmp/ket_qua_don_drive.json --chat-id "$CHAT_ID" --nguon "$NGUON")
+          if [ "$DRY_RUN" = "true" ]; then
+            ARGS+=(--dry-run)
+          fi
+          PYTHONUTF8=1 python3 -X utf8 scripts/don_video_drive.py "${ARGS[@]}"
+
+      - name: Báo lỗi dự phòng về Apps Script / Zalo nếu job sập sớm
+        if: ${{ always() && steps.don.outcome != 'success' && env.APPS_SCRIPT_URL != '' }}
+        run: |
+          if [ -s /tmp/ket_qua_don_drive.json ]; then
+            echo "don_video_drive.py đã xuất kết quả & gửi báo cáo Zalo, bỏ qua callback dự phòng."
+            exit 0
+          fi
+          python3 - <<'PY'
+          import json, os
+          run_url = "https://github.com/%s/actions/runs/%s" % (os.environ.get("GITHUB_REPOSITORY", ""), os.environ.get("GITHUB_RUN_ID", ""))
+          d = {
+              "token": os.environ.get("DUNG_VIDEO_SECRET", ""),
+              "loai": "bao_cao_don_drive",
+              "chat_id": os.environ.get("CHAT_ID", ""),
+              "run_url": run_url,
+              "bao_cao": "⚠️ Workflow don-video-drive.yml dừng bất thường trước khi xuất kết quả (che_do=%s, dry_run=%s). Xem nhật ký: %s"
+              % (os.environ.get("CHE_DO", ""), os.environ.get("DRY_RUN", ""), run_url),
+          }
+          json.dump(d, open("/tmp/bao_loi_don_drive.json", "w", encoding="utf8"), ensure_ascii=False)
+          PY
+          for lan in 1 2 3; do
+            KQ=$(curl -sS -L --max-time 45 --retry 3 --retry-delay 5 --retry-all-errors -H 'Content-Type: application/json' --data @/tmp/bao_loi_don_drive.json "$APPS_SCRIPT_URL" || true)
+            echo "Lần $lan: $KQ"
+            if echo "$KQ" | grep -Eq '"ok" *: *true|SAI_TOKEN'; then break; fi
+            sleep $((lan * 10))
+          done
