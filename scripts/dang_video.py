@@ -93,11 +93,30 @@ def thoi_luong_mp4(duong):
 
 def tai_video(file_id):
     os.makedirs("video_dang", exist_ok=True)
-    subprocess.run(["rclone", "backend", "copyid", "gdrive:", file_id, "video_dang/"], check=True)
+    subprocess.run(["rclone", "backend", "copyid", "--retries", "3", "--low-level-retries", "5", "--retries-sleep", "5s", "gdrive:", file_id, "video_dang/"], check=True)
     ds = glob.glob("video_dang/*.mp4") or glob.glob("video_dang/*")
     if not ds:
         raise RuntimeError("Không tải được video từ Drive (file_id %s)" % file_id)
     return ds[0]
+
+
+def goi_http_retry(ham, *args, so_lan=3, tre_goc=5, **kwargs):
+    """Thử lại 3 lần với độ trễ tăng dần (5s, 10s, 20s) cho lỗi mạng tạm thời / HTTP 5xx."""
+    loi_cuoi = None
+    for lan in range(so_lan):
+        try:
+            res = ham(*args, **kwargs)
+            if getattr(res, "status_code", 200) < 500 or lan == so_lan - 1:
+                return res
+            loi_cuoi = RuntimeError("HTTP %d" % res.status_code)
+        except Exception as e:
+            loi_cuoi = e
+            if lan == so_lan - 1:
+                raise
+        tre = tre_goc * (2 ** lan)
+        print("Mạng/API tạm lỗi (%s), thử lại sau %ds (%d/%d)..." % (str(loi_cuoi)[:100], tre, lan + 1, so_lan))
+        time.sleep(tre)
+    raise loi_cuoi
 
 
 def kiem_tra(res, ten):
@@ -175,7 +194,7 @@ def token_tiktok():
     refresh = doc_refresh_tiktok() if key and bi else ""
     if not key or not bi or not refresh:
         raise BoQua("chưa có TIKTOK_CLIENT_KEY / TIKTOK_CLIENT_SECRET / TIKTOK_REFRESH_TOKEN")
-    tk = kiem_tra(requests.post(TT + "/oauth/token/", data={"client_key": key, "client_secret": bi, "grant_type": "refresh_token", "refresh_token": refresh},
+    tk = kiem_tra(goi_http_retry(requests.post, TT + "/oauth/token/", data={"client_key": key, "client_secret": bi, "grant_type": "refresh_token", "refresh_token": refresh},
                                 headers={"Content-Type": "application/x-www-form-urlencoded"}, timeout=60), "TikTok token")
     if not tk.get("access_token"):
         raise RuntimeError("TikTok không cấp access token: %s" % json.dumps(tk, ensure_ascii=False)[:200])
@@ -257,7 +276,7 @@ def dang_youtube(video, meta):
     cid, bi, rt = env("YT_CLIENT_ID"), env("YT_CLIENT_SECRET"), env("YT_REFRESH_TOKEN")
     if not cid or not bi or not rt:
         raise BoQua("chưa có YT_CLIENT_ID / YT_CLIENT_SECRET / YT_REFRESH_TOKEN")
-    tk = kiem_tra(requests.post("https://oauth2.googleapis.com/token", data={"client_id": cid, "client_secret": bi, "refresh_token": rt, "grant_type": "refresh_token"}, timeout=60), "YouTube token")
+    tk = kiem_tra(goi_http_retry(requests.post, "https://oauth2.googleapis.com/token", data={"client_id": cid, "client_secret": bi, "refresh_token": rt, "grant_type": "refresh_token"}, timeout=60), "YouTube token")
     h = {"Authorization": "Bearer " + tk["access_token"]}
     n = os.path.getsize(video)
     than = {"snippet": {"title": meta.get("yt_tieu_de") or meta.get("tieu_de", ""), "description": meta.get("yt_mo_ta") or meta.get("mo_ta", ""), "tags": meta.get("the", []), "categoryId": "27",
@@ -383,7 +402,7 @@ def dem_youtube(lop):
     cid, bi, rt = env("YT_CLIENT_ID"), env("YT_CLIENT_SECRET"), env("YT_REFRESH_TOKEN")
     if not cid or not bi or not rt:
         return None
-    tk = kiem_tra(requests.post("https://oauth2.googleapis.com/token", data={"client_id": cid, "client_secret": bi, "refresh_token": rt, "grant_type": "refresh_token"}, timeout=60), "YouTube token")
+    tk = kiem_tra(goi_http_retry(requests.post, "https://oauth2.googleapis.com/token", data={"client_id": cid, "client_secret": bi, "refresh_token": rt, "grant_type": "refresh_token"}, timeout=60), "YouTube token")
     h = {"Authorization": "Bearer " + tk["access_token"]}
     ch = kiem_tra(requests.get("https://www.googleapis.com/youtube/v3/channels", params={"part": "contentDetails", "mine": "true"}, headers=h, timeout=60), "YouTube kênh")
     up = ch["items"][0]["contentDetails"]["relatedPlaylists"]["uploads"]
@@ -530,8 +549,8 @@ def in_so_tap(video, n):
 def tai_len_drive(video):
     """Đưa bản đã in số tập lên Drive (để Apps Script đăng YouTube bằng đúng bản này). Trả file id."""
     thu_muc = "gdrive:%s/da_danh_so" % (env("DRIVE_THU_MUC") or "VIDEO_XACSUAT/video")
-    subprocess.run(["rclone", "copy", video, thu_muc], check=True, timeout=900)
-    r = subprocess.run(["rclone", "lsjson", thu_muc, "--files-only", "--include", os.path.basename(video)], capture_output=True, text=True, timeout=120)
+    subprocess.run(["rclone", "copy", "--retries", "3", "--low-level-retries", "5", "--retries-sleep", "5s", video, thu_muc], check=True, timeout=900)
+    r = subprocess.run(["rclone", "lsjson", "--retries", "3", "--retries-sleep", "5s", thu_muc, "--files-only", "--include", os.path.basename(video)], capture_output=True, text=True, timeout=120)
     d = json.loads(r.stdout or "[]")
     return d[0]["ID"] if d else ""
 
@@ -544,10 +563,12 @@ def bao_ve_apps_script(id_video, ket_qua):
     if not url or not id_video:
         print("Không báo về Apps Script (thiếu APPS_SCRIPT_URL hoặc chạy tay)")
         return
+    run_url = "https://github.com/%s/actions/runs/%s" % (env("GITHUB_REPOSITORY"), env("GITHUB_RUN_ID")) if env("GITHUB_RUN_ID") else ""
+    payload = {"lan_giao": env("LAN_GIAO"), "token": bi, "loai": "dang", "id": id_video, "run_url": run_url, "ket_qua": ket_qua}
     for lan in range(7):
         try:
             # requests đổi POST thành GET khi bị chuyển hướng 302 (đúng cách Apps Script trả kết quả)
-            kq = requests.post(url, json={"lan_giao": env("LAN_GIAO"), "token": bi, "loai": "dang", "id": id_video, "ket_qua": ket_qua}, timeout=120).text
+            kq = goi_http_retry(requests.post, url, json=payload, timeout=120).text
         except Exception as e:
             kq = str(e)
         print("Báo kết quả lần %d: %s" % (lan + 1, kq[:200]))
@@ -555,7 +576,7 @@ def bao_ve_apps_script(id_video, ket_qua):
             return
         if "SAI_TOKEN" in kq:
             sys.exit(1)
-        time.sleep(60 if "BAN" in kq else 20)
+        time.sleep(60 if "BAN" in kq else min(45, 5 * (2 ** min(lan, 3))))
     sys.exit("Không báo được kết quả về Apps Script")
 
 

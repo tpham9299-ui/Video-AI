@@ -3394,6 +3394,99 @@ def in_bang_thoi_gian(tong_giay, thu_muc_ra="out"):
         pass
 
 
+# ---------- Checkpoint chặng dựng video (out/<ID>/checkpoint.json) ----------
+def _bam_dau_tep(duong, so_byte=65536):
+    h = hashlib.sha256()
+    with open(duong, "rb") as f:
+        h.update(f.read(so_byte))
+    return h.hexdigest()[:16]
+
+
+def duong_checkpoint(id_an_toan, out_dir=None):
+    goc = out_dir or os.environ.get("THU_MUC_RA") or "out"
+    ma = re.sub(r"[^A-Za-z0-9_-]", "_", str(id_an_toan or "video"))
+    return os.path.join(goc, ma, "checkpoint.json")
+
+
+def bam_checkpoint_kb(kb_hoac_tep, them=None):
+    if isinstance(kb_hoac_tep, (str, Path)) and os.path.isfile(str(kb_hoac_tep)):
+        try:
+            du_lieu = json.loads(Path(kb_hoac_tep).read_text(encoding="utf8"))
+        except Exception:
+            du_lieu = Path(kb_hoac_tep).read_text(encoding="utf8", errors="ignore")
+    else:
+        du_lieu = kb_hoac_tep
+    goi = {"du_lieu": du_lieu, "them": them or {}}
+    return hashlib.sha256(json.dumps(goi, ensure_ascii=False, sort_keys=True).encode("utf8")).hexdigest()[:16]
+
+
+def doc_checkpoint(id_an_toan, out_dir=None):
+    tep = duong_checkpoint(id_an_toan, out_dir)
+    if not os.path.isfile(tep):
+        return {}
+    try:
+        d = json.loads(Path(tep).read_text(encoding="utf8"))
+        return d if isinstance(d, dict) else {}
+    except Exception:
+        return {}
+
+
+def ghi_checkpoint(id_an_toan, chang, du_lieu=None, kb_hash="", out_dir=None):
+    tep = duong_checkpoint(id_an_toan, out_dir)
+    d = doc_checkpoint(id_an_toan, out_dir)
+    d["id"] = re.sub(r"[^A-Za-z0-9_-]", "_", str(id_an_toan or "video"))
+    luc = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    d["cap_nhat"] = luc
+    muc = dict(du_lieu or {})
+    muc["xong"] = True
+    muc["luc"] = luc
+    if kb_hash:
+        muc["kb_hash"] = kb_hash
+    tep_ra = muc.get("tep")
+    if isinstance(tep_ra, str) and os.path.isfile(tep_ra):
+        muc["size"] = os.path.getsize(tep_ra)
+        muc["sha256_dau"] = _bam_dau_tep(tep_ra)
+    d.setdefault("chang", {})[chang] = muc
+    try:
+        os.makedirs(os.path.dirname(os.path.abspath(tep)), exist_ok=True)
+        tam = tep + ".tmp"
+        with open(tam, "w", encoding="utf8") as f:
+            json.dump(d, f, ensure_ascii=False, indent=2)
+        os.replace(tam, tep)
+    except OSError as e:
+        print("CẢNH BÁO checkpoint: không ghi được %s (%s)" % (tep, str(e)[:120]))
+    return tep
+
+
+def kiem_checkpoint(id_an_toan, chang, kb_hash="", tep_kiem=None, out_dir=None):
+    d = doc_checkpoint(id_an_toan, out_dir)
+    muc = (d.get("chang") or {}).get(chang)
+    if not isinstance(muc, dict) or muc.get("xong") is not True:
+        return None
+    if kb_hash and muc.get("kb_hash") != kb_hash:
+        return None
+    if chang == "tts":
+        ds_tep = muc.get("tep") or []
+        if not ds_tep or not isinstance(muc.get("canh_meta"), dict):
+            return None
+        for p in ds_tep:
+            if not (isinstance(p, str) and os.path.isfile(p) and os.path.getsize(p) > 0):
+                return None
+        return muc
+    tep_kt = tep_kiem or muc.get("tep")
+    if not (isinstance(tep_kt, str) and os.path.isfile(tep_kt) and os.path.getsize(tep_kt) > 0):
+        return None
+    if muc.get("size") and os.path.getsize(tep_kt) != int(muc["size"]):
+        return None
+    if chang == "audio_mastering" and muc.get("sha256_dau"):
+        try:
+            if _bam_dau_tep(tep_kt) != muc["sha256_dau"]:
+                return None
+        except OSError:
+            return None
+    return muc
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("kich_ban", nargs="?", default=None)
@@ -3401,7 +3494,12 @@ def main():
     ap.add_argument("--props-ra", default=None)
     ap.add_argument("--trich-cover", default=None, help="trích 1 ảnh bìa cover_<ID>.png từ MP4 đã ghép (non-blocking)")
     ap.add_argument("--props", default=None, help="tệp props.json dùng cùng --trich-cover")
-    ap.add_argument("--out-dir", default="out", help="thư mục xuất cover_<ID>.png")
+    ap.add_argument("--out-dir", default=None, help="thư mục xuất cover_<ID>.png hoặc checkpoint")
+    ap.add_argument("--checkpoint-kiem", choices=["tts", "manim", "audio_mastering"], default=None)
+    ap.add_argument("--checkpoint-ghi", choices=["tts", "manim", "audio_mastering"], default=None)
+    ap.add_argument("--id", dest="ma_bai", default=None, help="mã bài dùng cho --checkpoint-kiem / --checkpoint-ghi")
+    ap.add_argument("--kich-ban", dest="tep_kb_ck", default=None, help="đường dẫn kich_ban.json để tính kb_hash checkpoint")
+    ap.add_argument("--tep", dest="tep_ck", default=None, help="tệp đầu ra của chặng để xác thực checkpoint")
     ap.add_argument("--giong", default=os.environ.get("GIONG", "vi-VN-HoaiMyNeural"))
     ap.add_argument("--toc-do", default=os.environ.get("TOC_DO") or "+14%")
     ap.add_argument("--cao-do", default=os.environ.get("CAO_DO", "+0Hz"))
@@ -3417,6 +3515,22 @@ def main():
     ap.add_argument("--toc-do-gemini", default=os.environ.get("TOC_DO_GEMINI") or "1.14")
     ap.add_argument("--phong-cach-giong", default=os.environ.get("PHONG_CACH_GIONG") or PHONG_CACH_GIONG_MAC_DINH)
     args = ap.parse_args()
+    out_dir_eff = args.out_dir or os.environ.get("THU_MUC_RA") or "out"
+    if args.checkpoint_kiem:
+        if not args.ma_bai:
+            raise SystemExit(2)
+        kb_h = bam_checkpoint_kb(args.tep_kb_ck) if args.tep_kb_ck else ""
+        hop_le = kiem_checkpoint(args.ma_bai, args.checkpoint_kiem, kb_hash=kb_h, tep_kiem=args.tep_ck, out_dir=out_dir_eff)
+        raise SystemExit(0 if hop_le else 1)
+    if args.checkpoint_ghi:
+        if not args.ma_bai:
+            raise SystemExit(2)
+        kb_h = bam_checkpoint_kb(args.tep_kb_ck) if args.tep_kb_ck else ""
+        du = {"tep": args.tep_ck} if args.tep_ck else {}
+        if args.checkpoint_ghi == "audio_mastering":
+            du["lufs"] = -14
+        ghi_checkpoint(args.ma_bai, args.checkpoint_ghi, du, kb_hash=kb_h, out_dir=out_dir_eff)
+        return
     if args.trich_cover:
         p_data = {}
         try:
@@ -3425,7 +3539,7 @@ def main():
                 p_data = json.loads(p_tep.read_text(encoding="utf8"))
         except Exception as e_p:
             print("CẢNH BÁO Auto Cover Frame: không đọc được props.json:", str(e_p)[:140])
-        trich_anh_bia_tu_dong(args.trich_cover, p_data, args.out_dir, gia_lap=args.gia_lap)
+        trich_anh_bia_tu_dong(args.trich_cover, p_data, out_dir_eff, gia_lap=args.gia_lap)
         return
     if not args.kich_ban:
         ap.error("cần truyền đường dẫn kich_ban hoặc --trich-cover <video.mp4>")
@@ -3504,9 +3618,6 @@ def main():
 
     thu_muc_giong = os.path.join(args.public, "giong")
     os.makedirs(thu_muc_giong, exist_ok=True)
-    for f in os.listdir(thu_muc_giong):
-        if f.endswith(".mp3"):
-            os.remove(os.path.join(thu_muc_giong, f))
 
     # video HÌNH HỌC: đánh vần tên điểm (BD -> "bê đê", (SAC) -> "mặt phẳng ét a xê") để giọng đọc không lạc
     DOC_CHU_CAI["bat"] = str(kb.get("mon") or "").upper() == "HINH_HOC" or bool(re.search(r"tam giác|hình chóp|lăng trụ|tứ diện|đường tròn|chứng minh|mặt phẳng", str(kb.get("de_bai") or ""), re.I))
@@ -3537,99 +3648,146 @@ def main():
     ex_phu = ThreadPoolExecutor(max_workers=2)
     tuong_lai_pc = ex_phu.submit(doc_phong_cach, args.phong_cach)
     cham("Chuẩn hóa kịch bản")
-    from xe_3d import CAR, EVENT
-    xe = CAR.search(str(kb.get("de_bai") or ""))
-    tach_nhip = {i for i, _, _, van, _, _ in chuan_hoa if xe and EVENT.search(van)}
-    gem_doan = {}
-    if not args.gia_lap and args.may_giong == "gemini":
-        # Mặc định đọc LIỀN MẠCH MỘT LẦN (mot_lan) kết hợp them_nhan_nha_doc() để giọng đọc ĐỒNG NHẤT 100% xuyên suốt các cảnh
-        # mà vẫn có nhấn nhá trọng âm tự nhiên (không bị lệch giọng giữa các cảnh).
-        if tach_nhip:
-            # Đo thời lượng bản đọc từng câu có sự kiện, giữ cùng một giọng cho cả bài.
-            ds_doc, chi_muc = [], {}
-            for i, _, c, van, _, cau_doc in chuan_hoa:
-                indices = []
-                for doan in (cau_doc if i in tach_nhip else [van]):
-                    indices.append(len(ds_doc))
-                    ds_doc.append(dict(c, loi_thoai=doan))
-                chi_muc[i] = indices
-            wavs = tao_giong_gemini(ds_doc, tam_gem, args)
-            if wavs and len(wavs) == len(ds_doc):
-                gem_doan = {i: [wavs[j] for j in ids] for i, ids in chi_muc.items() if i in tach_nhip}
-                giong_gem = {i: wavs[ids[0]] for i, ids in chi_muc.items()}
-        elif (os.environ.get("CACH_DOC_GEMINI") or "mot_lan") != "tung_canh":
-            giong_gem = tao_giong_gemini_mot_lan(canh, tam_gem, args)
-        else:
-            giong_gem = tao_giong_gemini(canh, tam_gem, args)
-            if not giong_gem:
-                giong_gem = tao_giong_gemini_mot_lan(canh, tam_gem, args)
-        if not giong_gem:
-            print("Gemini không đọc được cả video -> CẢ video dùng một giọng edge-tts đồng nhất 100% có nhấn nhá (không trộn giọng)")
-    if giong_gem is not None and set(giong_gem) != set(range(len(canh))):
-        giong_gem = None
-    cham("Giọng Gemini TTS")
+    # Kiểm tra checkpoint chặng TTS (out/<ID>/checkpoint.json): nếu đầu ra MP3 đã hợp lệ & khớp kịch bản -> bỏ qua TTS
+    tts_ck_hash = bam_checkpoint_kb(
+        [(so, loi_thoai) for _, so, _, loi_thoai, _, _ in chuan_hoa],
+        {
+            "giong": args.giong,
+            "giong_gemini": args.giong_gemini,
+            "may_giong": args.may_giong,
+            "toc_do": args.toc_do,
+            "toc_do_gemini": args.toc_do_gemini,
+            "gia_lap": bool(args.gia_lap),
+            "public": os.path.abspath(args.public),
+        },
+    )
     am_thanh_kq = {}
-    with tempfile.TemporaryDirectory() as tam_chung:
-        nhiem_vu_edge = []
-        for i, so, c, loi_thoai, noi_dung_tam, cac_doan in chuan_hoa:
-            if not (giong_gem and i in giong_gem):
-                tam_i = os.path.join(tam_chung, "c_%d" % i)
-                os.makedirs(tam_i, exist_ok=True)
-                nhiem_vu_edge.append((i, cac_doan, tam_i, str(c.get("loai") or "")))
-        edge_tho = asyncio.run(tao_tat_ca_doan_edge(nhiem_vu_edge, args)) if nhiem_vu_edge else {}
-        cham("Giọng edge-tts (song song %d)" % SO_EDGE_SONG_SONG)
-
-        def xu_ly_am_canh(muc):
-            i, so, c, loi_thoai, noi_dung_tam, cac_doan = muc
-            tam_i = os.path.join(tam_chung, "am_%d" % i)
-            os.makedirs(tam_i, exist_ok=True)
-            ten = "%s_c%d.mp3" % (id_an_toan, so)
-            tam_wav = os.path.join(tam_i, "tam_%d.wav" % i)
-            dich_mp3 = os.path.join(thu_muc_giong, ten)
-            if giong_gem and i in giong_gem and i not in gem_doan:
-                # Gemini đọc cả cảnh một lần (ngữ điệu liền mạch); mốc từng câu chia theo số ký tự
-                nguon_gem = giong_gem[i]
-                if str(nguon_gem).endswith(".gon.wav"):
-                    gon = nguon_gem
-                else:
-                    gon = os.path.join(tam_i, "g.wav")
-                    cat_lang(nguon_gem, gon)
-                tong = do_thoi_luong(gon)
-                ky_tu = [max(1, len(d)) for d in cac_doan]
-                # v98.3: ranh giới câu đo TRÊN tệp đã cắt lặng + tăng tốc (khoảng lặng thật gần mốc tỉ lệ ký tự)
-                do_dai = chia_moc_theo_lang(gon, ky_tu, tong)
-                gap_c = 0
-                vao_loc = gon
-                tu_doan = None
+    ck_tts = kiem_checkpoint(id_an_toan, "tts", kb_hash=tts_ck_hash, out_dir=out_dir_eff)
+    if ck_tts:
+        meta_tts = ck_tts.get("canh_meta") or {}
+        if all(str(i) in meta_tts and os.path.isfile(os.path.join(thu_muc_giong, meta_tts[str(i)]["ten"])) and os.path.getsize(os.path.join(thu_muc_giong, meta_tts[str(i)]["ten"])) > 0 for i, *_ in chuan_hoa):
+            for i, *_ in chuan_hoa:
+                m_i = meta_tts[str(i)]
+                am_thanh_kq[i] = (m_i["ten"], m_i["do_dai"], m_i["tong_am"], m_i["gap_c"], m_i.get("tu_doan"))
+            print("Checkpoint TTS hợp lệ (%s) -> bỏ qua gọi TTS cho %d cảnh" % (duong_checkpoint(id_an_toan, out_dir_eff), len(chuan_hoa)))
+            cham("Checkpoint TTS (tái dùng)")
+    if len(am_thanh_kq) != len(chuan_hoa):
+        am_thanh_kq = {}
+        for f in os.listdir(thu_muc_giong):
+            if f.endswith(".mp3"):
+                os.remove(os.path.join(thu_muc_giong, f))
+        from xe_3d import CAR, EVENT
+        xe = CAR.search(str(kb.get("de_bai") or ""))
+        tach_nhip = {i for i, _, _, van, _, _ in chuan_hoa if xe and EVENT.search(van)}
+        gem_doan = {}
+        if not args.gia_lap and args.may_giong == "gemini":
+            # Mặc định đọc LIỀN MẠCH MỘT LẦN (mot_lan) kết hợp them_nhan_nha_doc() để giọng đọc ĐỒNG NHẤT 100% xuyên suốt các cảnh
+            # mà vẫn có nhấn nhá trọng âm tự nhiên (không bị lệch giọng giữa các cảnh).
+            if tach_nhip:
+                # Đo thời lượng bản đọc từng câu có sự kiện, giữ cùng một giọng cho cả bài.
+                ds_doc, chi_muc = [], {}
+                for i, _, c, van, _, cau_doc in chuan_hoa:
+                    indices = []
+                    for doan in (cau_doc if i in tach_nhip else [van]):
+                        indices.append(len(ds_doc))
+                        ds_doc.append(dict(c, loi_thoai=doan))
+                    chi_muc[i] = indices
+                wavs = tao_giong_gemini(ds_doc, tam_gem, args)
+                if wavs and len(wavs) == len(ds_doc):
+                    gem_doan = {i: [wavs[j] for j in ids] for i, ids in chi_muc.items() if i in tach_nhip}
+                    giong_gem = {i: wavs[ids[0]] for i, ids in chi_muc.items()}
+            elif (os.environ.get("CACH_DOC_GEMINI") or "mot_lan") != "tung_canh":
+                giong_gem = tao_giong_gemini_mot_lan(canh, tam_gem, args)
             else:
-                cac_tep_tho = gem_doan[i] if i in gem_doan else edge_tho[i]
-                cac_tep = []
-                tu_doan = []
-                for k, tho in enumerate(cac_tep_tho):
-                    gon = os.path.join(tam_i, "g%03d.wav" % k)
-                    tu_tho = doc_tu_edge(tho) if i not in gem_doan else None
-                    if tu_tho:
-                        tu_doan.append(cat_theo_tu(tho, gon, tu_tho))
-                    else:
-                        cat_lang(tho, gon)
-                        tu_doan.append(None)
-                    cac_tep.append(gon)
-                do_dai = [do_thoi_luong(t) for t in cac_tep]
-                ghep(cac_tep, tam_wav)
-                gap_c = GAP
-                vao_loc = tam_wav
-            # Chuẩn hóa độ lớn giọng (-15 LUFS) nhưng giữ nguyên dải động tự nhiên (LRA=13, ratio=1.6, attack=25ms)
-            # để bảo toàn trọng âm nhấn nhá của giọng đọc (tránh nén bẹp âm lượng làm giọng bị ngang)
-            chay(["ffmpeg", "-y", "-loglevel", "error", "-i", vao_loc, "-af",
-                  "highpass=f=75,treble=g=1.8:f=3600,acompressor=threshold=-14dB:ratio=1.6:attack=25:release=180,loudnorm=I=-15:TP=-1.2:LRA=13",
-                  "-ar", "44100", "-c:a", "libmp3lame", "-b:a", "128k", dich_mp3])
-            tong_am = do_thoi_luong(dich_mp3)
-            return ten, do_dai, tong_am, gap_c, tu_doan
+                giong_gem = tao_giong_gemini(canh, tam_gem, args)
+                if not giong_gem:
+                    giong_gem = tao_giong_gemini_mot_lan(canh, tam_gem, args)
+            if not giong_gem:
+                print("Gemini không đọc được cả video -> CẢ video dùng một giọng edge-tts đồng nhất 100% có nhấn nhá (không trộn giọng)")
+        if giong_gem is not None and set(giong_gem) != set(range(len(canh))):
+            giong_gem = None
+        cham("Giọng Gemini TTS")
+        with tempfile.TemporaryDirectory() as tam_chung:
+            nhiem_vu_edge = []
+            for i, so, c, loi_thoai, noi_dung_tam, cac_doan in chuan_hoa:
+                if not (giong_gem and i in giong_gem):
+                    tam_i = os.path.join(tam_chung, "c_%d" % i)
+                    os.makedirs(tam_i, exist_ok=True)
+                    nhiem_vu_edge.append((i, cac_doan, tam_i, str(c.get("loai") or "")))
+            edge_tho = asyncio.run(tao_tat_ca_doan_edge(nhiem_vu_edge, args)) if nhiem_vu_edge else {}
+            cham("Giọng edge-tts (song song %d)" % SO_EDGE_SONG_SONG)
 
-        with ThreadPoolExecutor(max_workers=min(SO_LUONG_AM, max(1, len(chuan_hoa)))) as ex:
-            for item, kq_am in zip(chuan_hoa, ex.map(xu_ly_am_canh, chuan_hoa)):
-                am_thanh_kq[item[0]] = kq_am
-        cham("Cắt lặng + chuẩn âm (%d luồng)" % SO_LUONG_AM)
+            def xu_ly_am_canh(muc):
+                i, so, c, loi_thoai, noi_dung_tam, cac_doan = muc
+                tam_i = os.path.join(tam_chung, "am_%d" % i)
+                os.makedirs(tam_i, exist_ok=True)
+                ten = "%s_c%d.mp3" % (id_an_toan, so)
+                tam_wav = os.path.join(tam_i, "tam_%d.wav" % i)
+                dich_mp3 = os.path.join(thu_muc_giong, ten)
+                if giong_gem and i in giong_gem and i not in gem_doan:
+                    # Gemini đọc cả cảnh một lần (ngữ điệu liền mạch); mốc từng câu chia theo số ký tự
+                    nguon_gem = giong_gem[i]
+                    if str(nguon_gem).endswith(".gon.wav"):
+                        gon = nguon_gem
+                    else:
+                        gon = os.path.join(tam_i, "g.wav")
+                        cat_lang(nguon_gem, gon)
+                    tong = do_thoi_luong(gon)
+                    ky_tu = [max(1, len(d)) for d in cac_doan]
+                    # v98.3: ranh giới câu đo TRÊN tệp đã cắt lặng + tăng tốc (khoảng lặng thật gần mốc tỉ lệ ký tự)
+                    do_dai = chia_moc_theo_lang(gon, ky_tu, tong)
+                    gap_c = 0
+                    vao_loc = gon
+                    tu_doan = None
+                else:
+                    cac_tep_tho = gem_doan[i] if i in gem_doan else edge_tho[i]
+                    cac_tep = []
+                    tu_doan = []
+                    for k, tho in enumerate(cac_tep_tho):
+                        gon = os.path.join(tam_i, "g%03d.wav" % k)
+                        tu_tho = doc_tu_edge(tho) if i not in gem_doan else None
+                        if tu_tho:
+                            tu_doan.append(cat_theo_tu(tho, gon, tu_tho))
+                        else:
+                            cat_lang(tho, gon)
+                            tu_doan.append(None)
+                        cac_tep.append(gon)
+                    do_dai = [do_thoi_luong(t) for t in cac_tep]
+                    ghep(cac_tep, tam_wav)
+                    gap_c = GAP
+                    vao_loc = tam_wav
+                # Chuẩn hóa độ lớn giọng (-15 LUFS) nhưng giữ nguyên dải động tự nhiên (LRA=13, ratio=1.6, attack=25ms)
+                # để bảo toàn trọng âm nhấn nhá của giọng đọc (tránh nén bẹp âm lượng làm giọng bị ngang)
+                chay(["ffmpeg", "-y", "-loglevel", "error", "-i", vao_loc, "-af",
+                      "highpass=f=75,treble=g=1.8:f=3600,acompressor=threshold=-14dB:ratio=1.6:attack=25:release=180,loudnorm=I=-15:TP=-1.2:LRA=13",
+                      "-ar", "44100", "-c:a", "libmp3lame", "-b:a", "128k", dich_mp3])
+                tong_am = do_thoi_luong(dich_mp3)
+                return ten, do_dai, tong_am, gap_c, tu_doan
+
+            with ThreadPoolExecutor(max_workers=min(SO_LUONG_AM, max(1, len(chuan_hoa)))) as ex:
+                for item, kq_am in zip(chuan_hoa, ex.map(xu_ly_am_canh, chuan_hoa)):
+                    am_thanh_kq[item[0]] = kq_am
+            cham("Cắt lặng + chuẩn âm (%d luồng)" % SO_LUONG_AM)
+        # Lưu checkpoint chặng TTS để lần chạy lại cùng bài tái dùng MP3 hợp lệ
+        ghi_checkpoint(
+            id_an_toan,
+            "tts",
+            {
+                "tep": [os.path.join(thu_muc_giong, am_thanh_kq[i][0]) for i, *_ in chuan_hoa],
+                "canh_meta": {
+                    str(i): {
+                        "ten": am_thanh_kq[i][0],
+                        "do_dai": am_thanh_kq[i][1],
+                        "tong_am": am_thanh_kq[i][2],
+                        "gap_c": am_thanh_kq[i][3],
+                        "tu_doan": am_thanh_kq[i][4],
+                    }
+                    for i, *_ in chuan_hoa
+                },
+            },
+            kb_hash=tts_ck_hash,
+            out_dir=out_dir_eff,
+        )
 
     shutil.rmtree(tam_gem, ignore_errors=True)
 

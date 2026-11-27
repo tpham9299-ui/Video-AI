@@ -29,7 +29,7 @@ concurrency:
 jobs:
   dang:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 20
     env:
       RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
       APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
@@ -82,17 +82,22 @@ jobs:
         run: |
           python3 - <<'PY'
           import json, os
+          run_url = "https://github.com/%s/actions/runs/%s" % (os.environ.get("GITHUB_REPOSITORY", ""), os.environ.get("GITHUB_RUN_ID", ""))
           p = {
               "lan_giao": os.environ.get("LAN_GIAO", ""), "token": os.environ["DUNG_VIDEO_SECRET"],
               "loai": "dang",
               "id": os.environ["ID_VIDEO"],
-              "ket_qua": {"_github_loi": "GitHub workflow dang-video gap loi: https://github.com/%s/actions/runs/%s" % (os.environ.get("GITHUB_REPOSITORY", ""), os.environ.get("GITHUB_RUN_ID", ""))},
+              "run_url": run_url,
+              "loi": "GitHub workflow dang-video gap su co (" + run_url + ")",
+              "ket_qua": {"_github_loi": "GitHub workflow dang-video gap loi: " + run_url},
           }
-          json.dump(p, open("bao_loi_dang.json", "w"))
+          json.dump(p, open("bao_loi_dang.json", "w", encoding="utf8"), ensure_ascii=False)
           PY
           for lan in 1 2 3 4; do
-            KQ=$(curl -sS -L -H 'Content-Type: application/json' --data @bao_loi_dang.json "$APPS_SCRIPT_URL" || true)
+            KQ=$(curl -sS -L --max-time 45 --retry 3 --retry-delay 5 --retry-all-errors -H 'Content-Type: application/json' --data @bao_loi_dang.json "$APPS_SCRIPT_URL" || true)
             echo "Báo lỗi đăng lần $lan: $KQ"
             if echo "$KQ" | grep -Eq '"ok" *: *true|KHONG_TIM_THAY'; then exit 0; fi
-            sleep 15
+            if echo "$KQ" | grep -q 'SAI_TOKEN'; then exit 1; fi
+            if echo "$KQ" | grep -q 'BAN'; then sleep 45; continue; fi
+            sleep $((lan * 10))
           done

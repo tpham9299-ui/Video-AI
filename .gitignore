@@ -28,6 +28,7 @@ temp/
 *.mp3
 *.wav
 !public/nhac/lofi.wav
+!public/sfx/*.wav
 public/props.json
 kich_ban.json
 .env

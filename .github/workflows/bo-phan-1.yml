@@ -23,7 +23,7 @@ concurrency:
 jobs:
   giai:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 20
     env:
       GEMINI_KEYS: ${{ secrets.GEMINI_KEYS }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -44,8 +44,10 @@ jobs:
             scripts/tu_sinh_svg.py
             scripts/kho_manh_svg.py
             scripts/khung4tang_v93.py
-            scripts/xac_suat_dong.py
+            scripts/khung4tang_v95.py
             scripts/khung4tang_v96.py
+            scripts/khung4tang_v98.py
+            scripts/xac_suat_dong.py
             scripts/ve25d.py
             scripts/giai_hinh_phang.py
             scripts/hinh_phang
@@ -63,10 +65,10 @@ jobs:
         run: |
           ANH=$(python3 -c "import json,os;h=(json.loads(os.environ.get('BP1_DE') or '{}').get('hang') or {});f=str(h.get('file_anh') or '');print('' if (not f or f.startswith('http')) else f)")
           if [ -z "$ANH" ]; then echo "Đề không có ảnh"; exit 0; fi
-          command -v rclone >/dev/null || (curl -fsSL --retry 3 --retry-delay 5 https://rclone.org/install.sh | sudo bash > /dev/null 2>&1 || (sudo apt-get update -qq && sudo apt-get install -y -qq rclone))
+          command -v rclone >/dev/null || (curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors https://rclone.org/install.sh | sudo bash > /dev/null 2>&1 || (sudo apt-get update -qq && sudo apt-get install -y -qq rclone))
           mkdir -p ~/.config/rclone anh_de
           printf '%s' "$RCLONE_CONF" > ~/.config/rclone/rclone.conf
-          rclone backend copyid gdrive: "$ANH" anh_de/ || { echo "Không tải được ảnh đề, vẫn giải bằng chữ"; exit 0; }
+          rclone backend copyid --retries 3 --retries-sleep 5s gdrive: "$ANH" anh_de/ || { echo "Không tải được ảnh đề, vẫn giải bằng chữ"; exit 0; }
           F=$(ls anh_de | head -1)
           if [ -n "$F" ]; then echo "BP1_ANH=$PWD/anh_de/$F" >> "$GITHUB_ENV"; echo "Đã tải ảnh đề: $F"; fi
 
@@ -98,34 +100,37 @@ jobs:
         run: |
           python3 - <<'PY'
           import json, os
-          d = {}
+          run_url = "https://github.com/%s/actions/runs/%s" % (os.environ.get("GITHUB_REPOSITORY", ""), os.environ.get("GITHUB_RUN_ID", ""))
           if os.path.exists("ket_qua_bp1.json"):
               d = json.load(open("ket_qua_bp1.json", encoding="utf8"))
           else:
               d = {"id": os.environ["ID_DE"], "ok": False, "hang": None,
-                   "loi": "Xem nhật ký: https://github.com/%s/actions/runs/%s" % (os.environ["GITHUB_REPOSITORY"], os.environ["GITHUB_RUN_ID"])}
+                   "loi": "Workflow bo-phan-1 gap su co (" + run_url + ")"}
           # key Gemini LỖI THẬT (không phải hết hạn mức): gửi kèm để Apps Script báo Zalo cho người dùng gỡ key
           if os.path.exists("/tmp/gemini_key_hong.json"):
               try: d["key_hong"] = json.load(open("/tmp/gemini_key_hong.json", encoding="utf8"))
               except Exception: pass
           d["token"] = os.environ["DUNG_VIDEO_SECRET"]
-          request = json.loads(os.environ.get("BP1_DE") or "{}")
+          try:
+              request = json.loads(os.environ.get("BP1_DE") or "{}")
+          except Exception:
+              request = {}
           d["lan_giao"] = (request.get("hang") or {}).get("lan_giao", "")
           d["viec"] = request.get("viec", "")
-          d["run_url"] = "https://github.com/%s/actions/runs/%s" % (os.environ["GITHUB_REPOSITORY"], os.environ["GITHUB_RUN_ID"])
+          d["run_url"] = run_url
           d["loai"] = "bo_phan_1"
           d["id"] = d.get("id") or os.environ["ID_DE"]
           json.dump(d, open("gui_bp1.json", "w", encoding="utf8"), ensure_ascii=False)
           PY
           # không dùng "-X POST" cùng "-L" (xem dung-video.yml): Apps Script trả 302 sau khi xử lý
           for lan in 1 2 3 4 5 6 7; do
-            KQ=$(curl -sS -L -H 'Content-Type: application/json' --data @gui_bp1.json "$APPS_SCRIPT_URL" || true)
+            KQ=$(curl -sS -L --max-time 45 --retry 3 --retry-delay 5 --retry-all-errors -H 'Content-Type: application/json' --data @gui_bp1.json "$APPS_SCRIPT_URL" || true)
             echo "Lần $lan: $KQ"
             if echo "$KQ" | grep -Eq '"ok" *: *true'; then exit 0; fi
             if echo "$KQ" | grep -q 'KHONG_TIM_THAY'; then exit 0; fi
             if echo "$KQ" | grep -q 'SAI_TOKEN'; then exit 1; fi
             if echo "$KQ" | grep -q 'BAN'; then sleep 45; continue; fi
             if [ "$lan" -ge 3 ]; then break; fi
-            sleep 20
+            sleep $((lan * 10))
           done
           echo "Không báo được kết quả về Apps Script"; exit 1

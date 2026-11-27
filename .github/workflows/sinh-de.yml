@@ -51,7 +51,14 @@ jobs:
         run: |
           python3 - <<'PY'
           import json, os
-          d = json.load(open("ket_qua_sinh_de.json", encoding="utf8")) if os.path.exists("ket_qua_sinh_de.json") else {"ok": False, "de": [], "loi": "Khong tao duoc ket_qua_sinh_de.json"}
+          run_url = "https://github.com/%s/actions/runs/%s" % (os.environ.get("GITHUB_REPOSITORY", ""), os.environ.get("GITHUB_RUN_ID", ""))
+          d = json.load(open("ket_qua_sinh_de.json", encoding="utf8")) if os.path.exists("ket_qua_sinh_de.json") else {"ok": False, "de": [], "loi": "Khong tao duoc ket_qua_sinh_de.json (" + run_url + ")"}
+          try:
+              req = json.loads(os.environ.get("SD_DU_LIEU") or "{}")
+          except Exception:
+              req = {}
+          d["lan_giao"] = d.get("lan_giao") or req.get("lan_giao") or ""
+          d["run_url"] = run_url
           d["token"] = os.environ["DUNG_VIDEO_SECRET"]
           d["loai"] = "them_de"
           if os.path.exists("/tmp/gemini_key_hong.json"):
@@ -62,11 +69,11 @@ jobs:
           json.dump(d, open("gui_sinh_de.json", "w", encoding="utf8"), ensure_ascii=False)
           PY
           for lan in 1 2 3 4 5; do
-            KQ=$(curl -sS -L --max-time 45 -H 'Content-Type: application/json' --data @gui_sinh_de.json "$APPS_SCRIPT_URL" || true)
+            KQ=$(curl -sS -L --max-time 45 --retry 3 --retry-delay 5 --retry-all-errors -H 'Content-Type: application/json' --data @gui_sinh_de.json "$APPS_SCRIPT_URL" || true)
             echo "Lần $lan: $KQ"
             if echo "$KQ" | grep -Eq '"ok" *: *true'; then exit 0; fi
             if echo "$KQ" | grep -q 'SAI_TOKEN'; then exit 1; fi
             if echo "$KQ" | grep -q 'BAN'; then sleep 45; continue; fi
-            sleep 15
+            sleep $((lan * 10))
           done
           echo "Không báo được đề mới về Apps Script"; exit 1

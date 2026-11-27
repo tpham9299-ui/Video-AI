@@ -145,13 +145,16 @@ function khoGhiNhanLoi_(key, tq, code, raw) {
     return true;
   }
   if (code === 429 || /RESOURCE_EXHAUSTED/.test(raw)) {
-    if (/PerDay|per day|daily|RPD/i.test(raw)) { khoDanhDau_(key, tq, 'ngay'); khoBaoChu_(key, tq, 'ngay'); khoLog_('KEY_429', key, 'hết hạn mức NGÀY -> nghỉ 6 giờ'); }
-    else { khoNghiNgan_(khoId_(key), tq); khoLog_('KEY_429', key, 'chạm giới hạn phút -> nghỉ ' + KHO_TTL_RPM_ + ' giây'); }
+    if (/PerDay|per day|daily|RPD/i.test(raw)) {
+      khoDanhDau_(key, tq, 'ngay'); khoBaoChu_(key, tq, 'ngay'); khoLog_('KEY_429', key, 'hết hạn mức NGÀY -> nghỉ 6 giờ');
+      try { khoCanhBaoQuyKeyThap_(tq); } catch (eCb) {}
+    } else { khoNghiNgan_(khoId_(key), tq); khoLog_('KEY_429', key, 'chạm giới hạn phút -> nghỉ ' + KHO_TTL_RPM_ + ' giây'); }
     return true;
   }
   if (code === 401 || ((code === 400 || code === 403) && /API_KEY_INVALID|API key not valid|API_KEY_EXPIRED|API key expired/i.test(raw))) {
     khoDanhDau_(key, tq, 'bad'); khoBaoChu_(key, tq, 'bad');
     khoLog_('KEY_HONG', key, 'HTTP ' + code + ' key hỏng/bị khóa -> bỏ qua 6 giờ');
+    try { khoCanhBaoQuyKeyThap_(tq); } catch (eCb2) {}
     return true;
   }
   if (code === 403) {
@@ -331,6 +334,72 @@ function khoThu() {
                                         generationConfig: { maxOutputTokens: 20, temperature: 0 } }, { hanChoMs: 0 });
   Logger.log(kq.ok ? '✔ Gọi Gemini được, dùng key ' + khoNhan_(kq.key) + ' (model ' + model + ')'
                    : '✘ Lỗi ' + kq.code + (kq.het ? ' (mọi key đã hết hạn mức ngày cho model này)' : '') + ': ' + String(kq.raw).slice(0, 200));
+}
+
+// Thời điểm reset hạn mức ngày Gemini kế tiếp (00:00 Pacific Time -> giờ VN GMT+7: 14:00 mùa hè / 15:00 mùa đông)
+function khoMocResetVN_() {
+  var ptDay = khoNgayPT_();
+  var now = Date.now();
+  for (var m = 1; m <= 50; m++) {
+    var d = new Date(now + m * 1800000);
+    if (Utilities.formatDate(d, 'America/Los_Angeles', 'yyyy-MM-dd') !== ptDay) {
+      d.setMinutes(0, 0, 0);
+      return Utilities.formatDate(d, 'Asia/Ho_Chi_Minh', 'HH:mm dd/MM') + ' giờ VN (00:00 PT)';
+    }
+  }
+  return '14:00-15:00 giờ VN (00:00 PT)';
+}
+
+// Thống kê tỷ lệ key Gemini còn khả dụng trong ngày PT hiện tại
+function khoThongKeKhaDung_(model) {
+  var p = khoProps_(), all = p.getProperties(), homNay = khoNgayPT_(), ds = khoDanhSachKey_();
+  var tong = ds.length;
+  if (!tong) return { tong: 0, conSong: 0, tyLe: 0, ngayPT: homNay, resetVN: khoMocResetVN_() };
+  var tq = model || all.GEMINI_MODEL || KHO_MODEL_CU_;
+  var cache = CacheService.getScriptCache();
+  var badKeys = ds.map(function (k) { return 'kdx_' + khoId_(k); });
+  var ngayKeys = ds.map(function (k) { return 'kdd_' + khoId_(k) + '_' + tq; });
+  var mapCache = {};
+  try { mapCache = cache.getAll(badKeys.concat(ngayKeys)) || {}; } catch (eC) { mapCache = {}; }
+  var hetGhMap = {};
+  try {
+    var oGh = JSON.parse(all.KEY_HET_NGAY_GH || '{}');
+    if (oGh && oGh.ngay === homNay && Array.isArray(oGh.ds)) {
+      oGh.ds.forEach(function (x) {
+        var parts = String(x).split('|');
+        if (parts.length === 2) hetGhMap[parts[1]] = (hetGhMap[parts[1]] || 0) + 1;
+      });
+    }
+  } catch (eGh) {}
+  var conSong = 0;
+  ds.forEach(function (k, i) {
+    var id = khoId_(k);
+    if (all['kd_' + id] === 'BAD' || mapCache[badKeys[i]]) return;
+    if (all[khoTenKhoa_(id, tq)] === homNay || mapCache[ngayKeys[i]]) return;
+    if (all['kd_' + id] === homNay) return;
+    var maNg = String(k).slice(0, 6) + '_' + String(k).slice(-4);
+    if (hetGhMap[maNg] && hetGhMap[maNg] >= 2) return;
+    conSong++;
+  });
+  return { tong: tong, conSong: conSong, tyLe: conSong / tong, ngayPT: homNay, resetVN: khoMocResetVN_() };
+}
+
+// Cảnh báo sớm khi tỷ lệ key khả dụng tụt xuống dưới 20% (lưu cờ theo ngày PT trong PropertiesService để chống spam)
+function khoCanhBaoQuyKeyThap_(model) {
+  var tk = khoThongKeKhaDung_(model);
+  if (!tk.tong || tk.tyLe >= 0.2) return false;
+  var p = khoProps_();
+  if (p.getProperty('CANH_BAO_KEY_THAP_NGAY') === tk.ngayPT) return false;
+  p.setProperty('CANH_BAO_KEY_THAP_NGAY', tk.ngayPT);
+  var pct = Math.round(tk.tyLe * 100);
+  var tin = '⚠️ Quỹ key Gemini sắp cạn (< 20%): còn ' + tk.conSong + '/' + tk.tong +
+    ' key khả dụng (' + pct + '%).\n⏱ Dự kiến reset hạn mức lúc ' + tk.resetVN + '.';
+  try { if (typeof nhatKy_ === 'function') nhatKy_('KEY_THAP', tk.conSong + '/' + tk.tong + ' (' + pct + '%)'); } catch (eNk) {}
+  try {
+    if (typeof guiZaloMotLan_ === 'function') guiZaloMotLan_('KEY_THAP_' + tk.ngayPT, tin, 'cao');
+    else if (typeof guiZalo_ === 'function') guiZalo_(tin, 'cao', 'KEY_THAP_' + tk.ngayPT);
+  } catch (eZl) {}
+  return true;
 }
 
 // Báo cáo chi tiết số lượng key còn xài được qua Zalo (lệnh /key hoặc /khokey) & kích hoạt kiểm tra trực tiếp trên GitHub Actions

@@ -40,10 +40,10 @@ on:
         default: ''
 
 # Mỗi đề một nhóm: đề ưu tiên (gửi qua Zalo) được dựng SONG SONG với video đang dựng, không phải xếp hàng chờ;
-# cùng một đề gửi lặp thì chỉ dựng/đăng một lần.
+# cùng một đề gửi lặp thì xếp hàng tuần tự, TUYỆT ĐỐI không hủy ngang video đang dựng.
 concurrency:
   group: dung-video-${{ github.event.inputs.viec || 'dung' }}-${{ github.event.client_payload.id || github.event.inputs.id || github.run_id }}
-  cancel-in-progress: ${{ github.event.inputs.viec != 'dang' }}
+  cancel-in-progress: false
 
 env:
   RCLONE_STATS: 30s
@@ -67,6 +67,7 @@ jobs:
       khuc: ${{ steps.chia.outputs.khuc }}
       manim: ${{ steps.chia.outputs.manim }}
       chan: ${{ steps.kd.outputs.chan == 'true' || steps.bao_sua.outputs.da_bao == 'true' || steps.tu_sinh.outputs.da_bao == 'true' }}
+      da_bao: ${{ steps.bao_sua.outputs.da_bao == 'true' || steps.tu_sinh.outputs.da_bao == 'true' }}
     env:
       RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
       DRIVE_NEN: ${{ vars.DRIVE_NEN }}
@@ -110,7 +111,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: pip-chuanbi-${{ runner.os }}-py312-v2
+          key: pip-chuanbi-${{ runner.os }}-py312-v3
 
       - name: Cài công cụ (chạy song song)
         run: |
@@ -120,10 +121,10 @@ jobs:
             ( sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends $THIEU ) > /tmp/apt.log 2>&1 &
             APT=$!
           fi
-          ( pip install -q "edge-tts>=7.2" gTTS numpy scipy ) > /tmp/pip.log 2>&1 &
+          ( pip install -q "edge-tts>=7.2" gTTS numpy scipy pillow ) > /tmp/pip.log 2>&1 &
           PIP=$!
           if [ -n "$RCLONE_CONF" ] && ! command -v rclone >/dev/null 2>&1; then
-            ( curl -fsSL https://rclone.org/install.sh | sudo bash ) > /tmp/rclone.log 2>&1 &
+            ( curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors https://rclone.org/install.sh | sudo bash ) > /tmp/rclone.log 2>&1 &
             RC=$!
           fi
           npm ci --prefer-offline --no-audit --no-fund
@@ -174,7 +175,7 @@ jobs:
             echo "Tải kịch bản đầy đủ từ Drive ID: $FILE_KB"
             mkdir -p ~/.config/rclone kb_drive
             printf '%s' "$RCLONE_CONF" > ~/.config/rclone/rclone.conf
-            rclone backend copyid gdrive: "$FILE_KB" kb_drive/
+            rclone backend copyid --retries 3 --retries-sleep 5s gdrive: "$FILE_KB" kb_drive/
             F_KB=$(ls kb_drive | head -1)
             if [ -n "$F_KB" ]; then
               python3 -c "import json, glob; meta = json.load(open('kich_ban.json', encoding='utf8')); f_kb = glob.glob('kb_drive/*')[0]; kb = json.load(open(f_kb, encoding='utf8')); [kb.update({k: meta[k]}) for k in ('id', 'giong', 'gioi_tinh_giong', '_kiem_duyet', 'mon', 'luong') if k in meta and meta[k]]; json.dump(kb, open('kich_ban.json', 'w', encoding='utf8'), ensure_ascii=False); print('Đã ghép kịch bản đầy đủ từ Drive:', len(kb.get('canh') or []), 'cảnh')"
@@ -228,6 +229,16 @@ jobs:
           restore-keys: |
             tts-cache-${{ runner.os }}-v2-
             tts-cache-${{ runner.os }}-
+
+      - name: Cache checkpoint chặng dựng video (TTS / Manim)
+        if: ${{ env.ID_VIDEO != '' }}
+        uses: actions/cache@v4
+        with:
+          path: |
+            out/${{ env.ID_VIDEO }}
+            public/giong
+            out/${{ env.ID_VIDEO }}_manim.mov
+          key: video-ckpt-${{ runner.os }}-v1-${{ env.ID_VIDEO }}-${{ hashFiles('kich_ban.json') }}
 
       # Video giới thiệu sản phẩm: lấy ẢNH THẬT của sản phẩm (Apps Script lưu ở Drive VIDEO_XACSUAT/san_pham/<mã>/)
       - name: Lấy ảnh thật của sản phẩm
@@ -306,17 +317,19 @@ jobs:
           python3 - <<'PY'
           import json, os
           b = json.load(open('out/tu_sinh_hong.json', encoding='utf8'))
+          run_url = "https://github.com/%s/actions/runs/%s" % (os.environ.get("GITHUB_REPOSITORY", ""), os.environ.get("GITHUB_RUN_ID", ""))
           d = {"lan_giao": os.environ.get("LAN_GIAO", ""), "token": os.environ["DUNG_VIDEO_SECRET"], "id": os.environ["ID_VIDEO"], "ok": False, "loi": "KIEM_DUYET_BO_CUC",
+               "run_url": run_url,
                "kiem_duyet": {"loai": "bo_cuc", "nang": b["nang"], "nhe": []}}
           json.dump(d, open("bao_tu_sinh_hong.json", "w", encoding="utf8"), ensure_ascii=False)
           PY
           for lan in 1 2 3 4 5 6; do
-            KQ=$(curl -sS -L --max-time 45 -H 'Content-Type: application/json' --data @bao_tu_sinh_hong.json "$APPS_SCRIPT_URL" || true)
+            KQ=$(curl -sS -L --max-time 45 --retry 3 --retry-delay 5 --retry-all-errors -H 'Content-Type: application/json' --data @bao_tu_sinh_hong.json "$APPS_SCRIPT_URL" || true)
             echo "Lần $lan: $KQ"
             if echo "$KQ" | grep -Eq '"ok" *: *true|KHONG_TIM_THAY'; then echo "da_bao=true" >> "$GITHUB_OUTPUT"; break; fi
             if echo "$KQ" | grep -q 'SAI_TOKEN'; then echo "SAI_TOKEN"; break; fi
             if echo "$KQ" | grep -q 'BAN'; then sleep 60; continue; fi
-            sleep 20
+            sleep $((lan * 10))
           done
           echo "Sân khấu tự sinh hỏng: dừng dựng (Apps Script sẽ trả BP2 sửa kịch bản rồi dựng lại)"; exit 1
 
@@ -345,16 +358,21 @@ jobs:
           BO_CUC=$(python3 -c "import json;print(json.load(open('public/props.json',encoding='utf8')).get('boCuc') or '')")
           # v97: hình không gian chuẩn -> Remotion vẽ cả hình (nét khuất giải tích từng khung) -> không có lớp Manim (manim=0)
           if [ "$BO_CUC" = "4tang" ]; then echo "Hình không gian v97: không dựng Manim"; exit 0; fi
-          if [ "$BO_CUC" = "hinh_phang" ]; then
-            python3 scripts/giai_hinh_phang.py kich_ban.json --ra out/hinh_phang_giai.json
-            MANIM_TEX_DIR=/tmp/manim_tex_cache /tmp/mv/bin/python scripts/manim/HinhPhangChuan.py public/props.json kich_ban.json out --public public
-          else
-            /tmp/mv/bin/python scripts/manim_hinh.py public/props.json kich_ban.json out --public public
-          fi
           ID=$(python3 -c "import json;print(json.load(open('public/props.json',encoding='utf8'))['id'])")
-          [ -s "out/${ID}_manim.mov" ] || { echo "Manim không ra video"; exit 1; }
-          # đủ cảnh + từng nét vẽ khớp mốc lời đọc (lệch <= 0,25 s), không đạt -> dừng
-          python3 scripts/kiem_hinh_hoc.py kich_ban.json public/props.json --sau --bao out/kiem_hinh_hoc_sau.json
+          if [ -s "out/${ID}_manim.mov" ] && python3 scripts/chuanbi.py --checkpoint-kiem manim --id "$ID" --kich-ban kich_ban.json --tep "out/${ID}_manim.mov"; then
+            echo "Checkpoint Manim hợp lệ (out/${ID}/checkpoint.json) -> bỏ qua render lại Manim"
+          else
+            if [ "$BO_CUC" = "hinh_phang" ]; then
+              python3 scripts/giai_hinh_phang.py kich_ban.json --ra out/hinh_phang_giai.json
+              MANIM_TEX_DIR=/tmp/manim_tex_cache /tmp/mv/bin/python scripts/manim/HinhPhangChuan.py public/props.json kich_ban.json out --public public
+            else
+              /tmp/mv/bin/python scripts/manim_hinh.py public/props.json kich_ban.json out --public public
+            fi
+            [ -s "out/${ID}_manim.mov" ] || { echo "Manim không ra video"; exit 1; }
+            # đủ cảnh + từng nét vẽ khớp mốc lời đọc (lệch <= 0,25 s), không đạt -> dừng
+            python3 scripts/kiem_hinh_hoc.py kich_ban.json public/props.json --sau --bao out/kiem_hinh_hoc_sau.json
+            python3 scripts/chuanbi.py --checkpoint-ghi manim --id "$ID" --kich-ban kich_ban.json --tep "out/${ID}_manim.mov" || true
+          fi
           ls -la out
           echo "ok=1" >> "$GITHUB_OUTPUT"
 
@@ -470,10 +488,10 @@ jobs:
           print("Key hỏng:", [(k.get("so"), k.get("ly_do")) for k in d["key_hong"]])
           PY
           for lan in 1 2 3; do
-            KQ=$(curl -sS -L --max-time 45 -H 'Content-Type: application/json' --data @bao_key_hong.json "$APPS_SCRIPT_URL" || true)
+            KQ=$(curl -sS -L --max-time 45 --retry 3 --retry-delay 5 --retry-all-errors -H 'Content-Type: application/json' --data @bao_key_hong.json "$APPS_SCRIPT_URL" || true)
             if echo "$KQ" | grep -Eq '"ok" *: *true|SAI_TOKEN'; then break; fi
             if echo "$KQ" | grep -q 'BAN'; then sleep 45; continue; fi
-            sleep 15
+            sleep $((lan * 10))
           done
 
       - name: Kiểm duyệt không đạt - báo về Apps Script để tự sửa kịch bản
@@ -484,17 +502,19 @@ jobs:
           import json, os
           path = 'out/loi_mo_hinh.json' if os.path.isfile('out/loi_mo_hinh.json') else 'out/kiem_duyet.json'
           b = json.load(open(path, encoding='utf8'))
+          run_url = "https://github.com/%s/actions/runs/%s" % (os.environ.get("GITHUB_REPOSITORY", ""), os.environ.get("GITHUB_RUN_ID", ""))
           d = {"lan_giao": os.environ.get("LAN_GIAO", ""), "token": os.environ["DUNG_VIDEO_SECRET"], "id": os.environ["ID_VIDEO"], "ok": False, "loi": "KIEM_DUYET_BO_CUC",
+               "run_url": run_url,
                "kiem_duyet": {"loai": "mo_hinh" if path.endswith("loi_mo_hinh.json") else "bo_cuc", "nang": b.get("nang", []) if any(x.startswith("AI_SAI_TOAN:") for x in b.get("nang", [])) else b.get("nang", [])[:15], "nhe": b.get("nhe", [])[:10]}}
           json.dump(d, open("bao_kiem_duyet.json", "w", encoding="utf8"), ensure_ascii=False)
           PY
           for lan in 1 2 3 4 5 6; do
-            KQ=$(curl -sS -L --max-time 45 -H 'Content-Type: application/json' --data @bao_kiem_duyet.json "$APPS_SCRIPT_URL" || true)
+            KQ=$(curl -sS -L --max-time 45 --retry 3 --retry-delay 5 --retry-all-errors -H 'Content-Type: application/json' --data @bao_kiem_duyet.json "$APPS_SCRIPT_URL" || true)
             echo "Lần $lan: $KQ"
             if echo "$KQ" | grep -Eq '"ok" *: *true|KHONG_TIM_THAY'; then echo "da_bao=true" >> "$GITHUB_OUTPUT"; break; fi
             if echo "$KQ" | grep -q 'SAI_TOKEN'; then echo "SAI_TOKEN"; break; fi
             if echo "$KQ" | grep -q 'BAN'; then sleep 60; continue; fi
-            sleep 20
+            sleep $((lan * 10))
           done
           echo "Bố cục chưa đạt: dừng dựng (Apps Script sẽ sửa kịch bản rồi gửi dựng lại)"; exit 1
 
@@ -540,6 +560,7 @@ jobs:
             out/*_bia.jpg
             out/*_manim.mov
             out/kiem_duyet.json
+            out/*/checkpoint.json
           retention-days: 1
           if-no-files-found: ignore
 
@@ -605,8 +626,8 @@ jobs:
 
   ghep:
     needs: [chuan_bi, dung_khuc]
-    # luôn chạy (kể cả khi dựng lỗi) để báo kết quả về Apps Script; bỏ qua khi việc là "dang" hoặc dừng do kiem_duyet chan=true
-    if: ${{ always() && needs.chuan_bi.result != 'skipped' && needs.chuan_bi.outputs.chan != 'true' }}
+    # luôn chạy (kể cả khi dựng lỗi) để báo kết quả về Apps Script; bỏ qua khi việc là "dang" hoặc chuan_bi đã báo thành công về Apps Script (da_bao=true)
+    if: ${{ always() && needs.chuan_bi.result != 'skipped' && needs.chuan_bi.outputs.da_bao != 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
@@ -616,6 +637,8 @@ jobs:
       DUNG_VIDEO_SECRET: ${{ secrets.DUNG_VIDEO_SECRET }}
       DRIVE_THU_MUC: ${{ vars.DRIVE_THU_MUC }}
       DA_DUNG: ${{ needs.chuan_bi.result == 'success' && needs.dung_khuc.result == 'success' }}
+      CHUAN_BI_KQ: ${{ needs.chuan_bi.result }}
+      DUNG_KHUC_KQ: ${{ needs.dung_khuc.result }}
       MANIM: ${{ needs.chuan_bi.outputs.manim }}
       # v91 Mắt thần 3×3: tái dùng kho key Gemini sẵn có (goi_gemini.js xoay key, né 404/429). Tắt: GitHub Variable MAT_THAN_3X3 = TAT
       GEMINI_KEYS: ${{ secrets.GEMINI_KEYS }}
@@ -648,18 +671,23 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: pip-ghep-${{ runner.os }}-py312-v1
+          key: pip-ghep-${{ runner.os }}-py312-v2
 
       - name: Cài thư viện
         if: ${{ env.DA_DUNG == 'true' }}
         run: |
-          ( pip install -q pillow numpy ) > /tmp/pip.log 2>&1 &
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            ( sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends ffmpeg ) > /tmp/apt_ff.log 2>&1 &
+            APT=$!
+          fi
+          ( pip install -q pillow numpy scipy ) > /tmp/pip.log 2>&1 &
           PIP=$!
           if [ -n "$RCLONE_CONF" ] && ! command -v rclone >/dev/null 2>&1; then
-            ( curl -fsSL https://rclone.org/install.sh | sudo bash ) > /tmp/rclone.log 2>&1 &
+            ( curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors https://rclone.org/install.sh | sudo bash ) > /tmp/rclone.log 2>&1 &
             RC=$!
           fi
           npm ci --prefer-offline --no-audit --no-fund
+          if [ -n "${APT:-}" ]; then wait $APT || { cat /tmp/apt_ff.log; exit 1; }; fi
           wait $PIP || { cat /tmp/pip.log; exit 1; }
           if [ -n "${RC:-}" ]; then wait $RC || { cat /tmp/rclone.log; exit 1; }; fi
 
@@ -698,12 +726,15 @@ jobs:
             echo "Đã ghép lớp Manim"
           fi
           # Audio Mastering: chuẩn hóa độ lớn đầu ra -14 LUFS (I=-14:TP=-1.5:LRA=11), copy nguyên hình, có fallback an toàn nếu thiếu audio thật
-          command -v ffmpeg >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /tmp/apt_ff.log 2>&1; }
-          python3 scripts/nhac_nen_v98.py --chuan-hoa-lufs "out/$ID.mp4"
+          if python3 scripts/chuanbi.py --checkpoint-kiem audio_mastering --id "$ID" --tep "out/$ID.mp4"; then
+            echo "Checkpoint Audio Mastering hợp lệ (out/${ID}/checkpoint.json) -> bỏ qua chuẩn hóa lại"
+          else
+            python3 scripts/nhac_nen_v98.py --chuan-hoa-lufs "out/$ID.mp4"
+            python3 scripts/chuanbi.py --checkpoint-ghi audio_mastering --id "$ID" --tep "out/$ID.mp4" || true
+          fi
           # Nếu video dài (ví dụ video 10 phút) có dung lượng > 42 MB, tự động nén tối ưu dưới 42 MB để Apps Script YouTube API (giới hạn 48 MB) luôn đăng trực tiếp được
           KICH_THUOC=$(stat -c%s "out/$ID.mp4" 2>/dev/null || echo 0)
           if [ "$KICH_THUOC" -gt 44000000 ]; then
-            command -v ffmpeg >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /tmp/apt_ff.log 2>&1; }
             ffmpeg -y -loglevel error -i "out/$ID.mp4" -c:v libx264 -preset veryfast -crf 23 -maxrate 850k -bufsize 1700k -pix_fmt yuv420p -c:a copy \
               -metadata artist="$TEN_TH" -metadata copyright="$TEN_TH" -metadata comment="$TEN_TH" -movflags +faststart "out/${ID}_nen.mp4"
             mv "out/${ID}_nen.mp4" "out/$ID.mp4"
@@ -711,7 +742,6 @@ jobs:
           fi
           ls -la out
           echo "id=$ID" >> "$GITHUB_OUTPUT"
-          command -v ffmpeg >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg; }
           python3 scripts/kiem_tra_chuyen_dong.py public/props.json "out/$ID.mp4" out/chuyen_dong.json
           python3 scripts/anh_kiem_tra.py public/props.json "out/$ID.mp4" out/
           # Auto Cover Frame (non-blocking): trích 1 ảnh bìa cover_<ID>.png ở mốc cao trào
@@ -745,19 +775,19 @@ jobs:
           printf '%s' "$RCLONE_CONF" > ~/.config/rclone/rclone.conf
           THU_MUC="${DRIVE_THU_MUC:-VIDEO_XACSUAT/video}"
           ID="${{ steps.dung.outputs.id }}"
-          rclone copy "out/$ID.mp4" "gdrive:$THU_MUC"
-          FILE_ID=$(rclone lsjson "gdrive:$THU_MUC" --files-only --include "$ID.mp4" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d[0]['ID'] if d else '')")
+          rclone copy --retries 3 --low-level-retries 5 --retries-sleep 5s "out/$ID.mp4" "gdrive:$THU_MUC"
+          FILE_ID=$(rclone lsjson --retries 3 --retries-sleep 5s "gdrive:$THU_MUC" --files-only --include "$ID.mp4" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d[0]['ID'] if d else '')")
           if [ -z "$FILE_ID" ]; then echo "Không lấy được ID tệp trên Drive"; exit 1; fi
           echo "file_id=$FILE_ID" >> "$GITHUB_OUTPUT"
           for LOAI in kt bia 3x3; do
             if [ -f "out/${ID}_${LOAI}.jpg" ]; then
-              rclone copy "out/${ID}_${LOAI}.jpg" "gdrive:$THU_MUC/anh"
-              AID=$(rclone lsjson "gdrive:$THU_MUC/anh" --files-only --include "${ID}_${LOAI}.jpg" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d[0]['ID'] if d else '')" || true)
+              rclone copy --retries 3 --low-level-retries 5 --retries-sleep 5s "out/${ID}_${LOAI}.jpg" "gdrive:$THU_MUC/anh"
+              AID=$(rclone lsjson --retries 3 --retries-sleep 5s "gdrive:$THU_MUC/anh" --files-only --include "${ID}_${LOAI}.jpg" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d[0]['ID'] if d else '')" || true)
               echo "anh_${LOAI}=$AID" >> "$GITHUB_OUTPUT"
             fi
           done
           if [ -f "out/cover_${ID}.png" ]; then
-            rclone copy "out/cover_${ID}.png" "gdrive:$THU_MUC/anh" || echo "::warning::Không tải được cover_${ID}.png lên Drive (bỏ qua)"
+            rclone copy --retries 3 --low-level-retries 5 --retries-sleep 5s "out/cover_${ID}.png" "gdrive:$THU_MUC/anh" || echo "::warning::Không tải được cover_${ID}.png lên Drive (bỏ qua)"
           fi
 
       - name: Báo kết quả về Apps Script
@@ -773,16 +803,26 @@ jobs:
         run: |
           python3 - <<'PY'
           import json, os
+          run_url = "https://github.com/%s/actions/runs/%s" % (os.environ.get("GITHUB_REPOSITORY", ""), os.environ.get("GITHUB_RUN_ID", ""))
           ok = os.environ.get("TRANG_THAI") == "success" and os.environ.get("DA_DUNG") == "true" and bool(os.environ.get("FILE_ID"))
+          ly_do_loi = ""
+          if not ok:
+              chi_tiet = "chuan_bi=%s, dung_khuc=%s, ghep=%s" % (
+                  os.environ.get("CHUAN_BI_KQ", "?"),
+                  os.environ.get("DUNG_KHUC_KQ", "?"),
+                  os.environ.get("TRANG_THAI", "?"),
+              )
+              ly_do_loi = "BP3 lỗi (%s) — %s" % (chi_tiet, run_url)
           d = {
               "lan_giao": os.environ.get("LAN_GIAO", ""), "token": os.environ["DUNG_VIDEO_SECRET"],
               "id": os.environ["ID_VIDEO"],
               "ok": ok,
+              "run_url": run_url,
               "file_id": os.environ.get("FILE_ID", ""),
               "giay": os.environ.get("GIAY", ""),
               "anh_kt": os.environ.get("ANH_KT", ""),
               "anh_bia": os.environ.get("ANH_BIA", ""),
-              "loi": "" if ok else "Xem nhật ký: https://github.com/%s/actions/runs/%s" % (os.environ["GITHUB_REPOSITORY"], os.environ["GITHUB_RUN_ID"]),
+              "loi": ly_do_loi,
           }
           if ok:
               with open('out/chuyen_dong.json') as f:
@@ -825,13 +865,13 @@ jobs:
           # Quan trọng: KHÔNG dùng "-X POST" cùng "-L". Apps Script xử lý yêu cầu rồi chuyển hướng (302);
           # "-X POST" làm curl gửi POST lần nữa tới địa chỉ chuyển hướng, nhận lỗi 405 và bị hiểu nhầm là thất bại.
           for lan in 1 2 3 4 5 6 7; do
-            KQ=$(curl -sS -L -H 'Content-Type: application/json' --data @bao_ket_qua.json "$APPS_SCRIPT_URL" || true)
+            KQ=$(curl -sS -L --max-time 45 --retry 3 --retry-delay 5 --retry-all-errors -H 'Content-Type: application/json' --data @bao_ket_qua.json "$APPS_SCRIPT_URL" || true)
             echo "Lần $lan: $KQ"
             if echo "$KQ" | grep -Eq '"ok" *: *true'; then exit 0; fi
             if echo "$KQ" | grep -q 'KHONG_TIM_THAY'; then echo "Dòng đã được dọn khỏi hàng đợi, bỏ qua"; exit 0; fi
             if echo "$KQ" | grep -q 'SAI_TOKEN'; then exit 1; fi
             if echo "$KQ" | grep -q '"BAN"\|BAN'; then sleep 60; continue; fi
-            if [ "$lan" -ge 2 ]; then break; fi   # phản hồi lạ (không phải JSON): thử thêm 1 lần rồi dừng, tránh gọi lặp
-            sleep 20
+            if [ "$lan" -ge 3 ]; then break; fi   # phản hồi lạ (không phải JSON): thử tối đa 3 lần rồi dừng
+            sleep $((lan * 10))
           done
           echo "Không báo được kết quả về Apps Script"; exit 1

@@ -292,6 +292,7 @@ function chayBoNaoDieuPhoi() {
   nhatKy_('DIEU_PHOI',tin);
   tuDongDongBoCodeTuGitHub_();
   try { kiemTraHanToken_(); } catch (e) { nhatKy_('GITHUB_TOKEN',e.message); }
+  try { if (typeof khoCanhBaoQuyKeyThap_ === 'function') khoCanhBaoQuyKeyThap_(); } catch (eK) { nhatKy_('KEY_THAP_LOI', eK.message); }
   var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
   var bc = {moi:0,giai_ok:0,loai:0,kich_ban:0,loi:0};
   if (viecTaiChoBoNao_) lamTaiChoBoNao_(sh,bc);
