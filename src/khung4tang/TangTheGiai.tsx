@@ -4,6 +4,7 @@ import {KhoaThuongHieu} from './KhoaThuongHieu';
 import React from 'react';
 import {spring} from 'remotion';
 import {FONT} from '../theme';
+import {texSangChu} from '../chu';
 import {Toan} from '../Toan';
 import {BangBienThien} from '../sankhau/BangBienThien';
 import type {Vat} from '../sankhau/dulieu';
@@ -227,10 +228,109 @@ function DanhSachThe({b, t, mau, aChung, hoatDong = false, tHet}: {b: BuocGiai; 
   );
 }
 
+// Khử trùng thẻ công thức / giải thích trong CÙNG 1 BƯỚC: lọc bỏ thẻ trùng vế trái (trước ":" hoặc "=")
+// hoặc trùng nghĩa (VD "Ā : cả 3 viên bi vàng" vs "Ā : cả 3 bi đều vàng"). Ưu tiên giữ thẻ chot / thẻ kịch bản gốc (không phải tu_dong)
+// và bảo toàn mốc xuất hiện sớm hơn để T3 không bị khoảng trống.
+const TU_DEM_TRUNG = new Set(['vien', 'deu', 'la', 'co', 'cua', 'cac', 'duoc', 'thi', 'nen', 'bang', 'ra', 'nhu', 'sau', 'ta', 'suy', 'ma']);
+
+function chuanChuSoSanh(s: string): string {
+  return texSangChu(s)
+    .replace(/([A-Za-z])[\u0304\u0305]/g, '$1_bar')
+    .replace(/Ā/g, 'a_bar')
+    .replace(/ā/g, 'a_bar')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/gi, 'd')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function phanTichThe(th: TheGiai): {van: string; dau: ':' | '=' | ''; lhs: string; tu: Set<string>; tuDong: boolean} {
+  const tuDong = Boolean((th as {tu_dong?: boolean}).tu_dong);
+  const goc = th.loai === 'cong_thuc' ? (th.dong || []).join(' ; ') : th.loai === 'chu' ? String(th.noi_dung || '') : '';
+  const van = chuanChuSoSanh(goc);
+  if (!van) return {van: '', dau: '', lhs: '', tu: new Set(), tuDong};
+  const dongDau = th.loai === 'cong_thuc' ? chuanChuSoSanh(th.dong?.[0] || '') : van;
+  let dau: ':' | '=' | '' = '';
+  let lhs = '';
+  const iHaiCham = dongDau.indexOf(':');
+  const iBang = dongDau.indexOf('=');
+  if (iHaiCham > 0 && (iBang < 0 || iHaiCham < iBang)) {
+    dau = ':';
+    lhs = dongDau.slice(0, iHaiCham).replace(/[^a-z0-9_()]+/g, '').trim();
+  } else if (iBang > 0) {
+    dau = '=';
+    lhs = dongDau.slice(0, iBang).replace(/[^a-z0-9_()]+/g, '').trim();
+  }
+  const tu = new Set(
+    van
+      .replace(/[^a-z0-9_]+/g, ' ')
+      .split(/\s+/)
+      .filter((w) => w && !TU_DEM_TRUNG.has(w)),
+  );
+  return {van, dau, lhs, tu, tuDong};
+}
+
+function laTheTrung(a: ReturnType<typeof phanTichThe>, b: ReturnType<typeof phanTichThe>, theA: TheGiai, theB: TheGiai): boolean {
+  if (!a.van || !b.van) return false;
+  if (a.van === b.van) return true;
+  if (a.lhs && b.lhs && a.lhs === b.lhs) {
+    // Cùng vế trái định nghĩa ":" (VD "Ā : ...") -> chắc chắn trùng
+    if (a.dau === ':' && b.dau === ':') return true;
+    // Cùng vế trái phương trình "=" trong cùng 1 bước (đặc biệt khi 1 thẻ là tu_dong hoặc cùng kiểu cong_thuc) -> khử trùng
+    if (a.dau === '=' && b.dau === '=' && theA.loai === 'cong_thuc' && theB.loai === 'cong_thuc') return true;
+  }
+  if (a.tu.size >= 3 && b.tu.size >= 3) {
+    let chung = 0;
+    for (const w of a.tu) if (b.tu.has(w)) chung++;
+    const jaccard = chung / Math.max(1, a.tu.size + b.tu.size - chung);
+    const chua = chung / Math.min(a.tu.size, b.tu.size);
+    if (jaccard >= 0.72 || (chung >= 3 && chua >= 0.85)) return true;
+  }
+  return false;
+}
+
+function gopMocGiu(giu: TheGiai, bo: TheGiai): TheGiai {
+  const tGiu = giu.t;
+  const tBo = bo.t;
+  const tSom = typeof tGiu === 'number' && typeof tBo === 'number' ? Math.min(tGiu, tBo) : (tGiu ?? tBo);
+  if (giu.loai === 'cong_thuc' && giu.moc?.length && typeof tSom === 'number' && giu.moc[0] > tSom + 0.25) {
+    const dt = giu.moc[0] - (tSom + 0.15);
+    return {...giu, t: tSom, moc: giu.moc.map((m) => Math.max(tSom, m - dt))};
+  }
+  return typeof tSom === 'number' ? {...giu, t: tSom} : giu;
+}
+
+export function locTheTrungTrongBuoc(the: TheGiai[]): TheGiai[] {
+  if (!the || the.length <= 1) return the || [];
+  const kq: {th: TheGiai; pt: ReturnType<typeof phanTichThe>}[] = [];
+  for (const th of the) {
+    const pt = phanTichThe(th);
+    const idx = kq.findIndex((x) => laTheTrung(x.pt, pt, x.th, th));
+    if (idx < 0) {
+      kq.push({th, pt});
+      continue;
+    }
+    const cu = kq[idx];
+    // Ưu tiên giữ: thẻ chot > thẻ gốc (không phải tu_dong) > thẻ dài/chi tiết hơn
+    const diem = (x: TheGiai, p: ReturnType<typeof phanTichThe>) =>
+      (x.chot ? 100 : 0) + (!p.tuDong ? 20 : 0) + (x.loai === 'cong_thuc' ? x.dong.length * 5 : 0) + Math.min(10, p.van.length / 8);
+    if (diem(th, pt) > diem(cu.th, cu.pt)) {
+      kq[idx] = {th: gopMocGiu(th, cu.th), pt};
+    } else {
+      kq[idx] = {th: gopMocGiu(cu.th, th), pt: cu.pt};
+    }
+  }
+  return kq.map((x) => x.th);
+}
+
 export const TangTheGiai: React.FC<{buoc: BuocGiai[]; i: number; t: number; mau: (b: BuocGiai) => string}> = ({buoc, i, t, mau}) => {
   if (i < 0) return null;
-  const b = buoc[i];
-  const truoc = i > 0 ? buoc[i - 1] : null;
+  const bGoc = buoc[i];
+  const b = {...bGoc, the: locTheTrungTrongBuoc(bGoc.the)};
+  const truocGoc = i > 0 ? buoc[i - 1] : null;
+  const truoc = truocGoc ? {...truocGoc, the: locTheTrungTrongBuoc(truocGoc.the)} : null;
   const ra = truoc ? 1 - kep01((t - b.t) / RA_TIEU_DE) : 0;
   return (
     <>

@@ -19,15 +19,63 @@ const CHU_MO = 'rgba(230,237,245,0.78)';
 const gon = (s: string) => s.replace(/\\[,;!:]|\\text\{[^}]*\}|\\mathrm\{[^}]*\}|\\\s|\s/g, '');
 const veTrai = (s: string) => (s.includes('=') ? s.slice(0, s.lastIndexOf('=')).trimEnd() : s);
 const vePhai = (s: string) => gon(s.includes('=') ? s.slice(s.lastIndexOf('=') + 1) : '');
+const chuanKhoaVt = (s: string) =>
+  s
+    .replace(/\\(?:text|mathrm|mathbf|operatorname)\s*\{([^}]*)\}/g, '$1')
+    .replace(/\\[a-zA-Z]+/g, (m) => (m === '\\max' ? 'max' : m === '\\min' ? 'min' : m))
+    .replace(/[{}\s_]/g, '')
+    .toLowerCase();
+
+// Đưa phân số đơn giản \dfrac{a}{b} -> a/b để thanh ĐỀ 1 dòng đáy luôn sắc nét, không bị co nhỏ chữ.
+const gonPhanSoThanhDe = (s: string) =>
+  s.replace(/\\(?:d|t)?frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g, '$1/$2').trim();
+
+// Tự động mở khóa ô "= ?" trên thanh ĐỀ tại bước cuối (KẾT LUẬN) nếu props deGhim chưa gắn sẵn `doi`.
+export function boSungDoiDapAn(ds: DuKienGhim[], buoc: BuocGiai[], tChot?: number, dapAn?: string): DuKienGhim[] {
+  if (!ds.length || !buoc.length) return ds;
+  const bChot = [...buoc].reverse().find((b) => (b.the || []).some((th) => th.chot)) || buoc[buoc.length - 1];
+  if (!bChot) return ds;
+  const tMo = typeof tChot === 'number' && Number.isFinite(tChot) ? Math.max(bChot.t, tChot) : bChot.t;
+  const dsDongCuoi: string[] = [];
+  for (const th of [...(bChot.the || [])].sort((a, b) => Number(!!b.chot) - Number(!!a.chot))) {
+    if (th.loai === 'cong_thuc') dsDongCuoi.push(...(th.dong || []));
+    else if (th.loai === 'chu' && th.noi_dung) dsDongCuoi.push(th.noi_dung);
+  }
+  const dapAnSach = String(dapAn || '').replace(/\s+([,.;:!?])/g, '$1').trim();
+  return ds.map((p) => {
+    if (p.doi || !p.nhan.includes('?')) return p;
+    const vt = veTrai(p.nhan);
+    const kVt = chuanKhoaVt(vt);
+    let giaTri: string | null = null;
+    for (const dong of dsDongCuoi) {
+      if (!dong.includes('=')) continue;
+      const cacVe = dong.split('=').map((x) => x.trim()).filter(Boolean);
+      if (cacVe.length < 2) continue;
+      const kDau = chuanKhoaVt(cacVe[0]);
+      if (kVt && kDau && (kDau === kVt || kDau.endsWith(kVt) || kVt.endsWith(kDau))) {
+        giaTri = gonPhanSoThanhDe(cacVe[cacVe.length - 1]);
+        break;
+      }
+    }
+    if (!giaTri && dapAnSach && !dapAnSach.includes('?')) {
+      giaTri = gonPhanSoThanhDe(dapAnSach.replace(/(\d),(\d)/g, '$1{,}$2'));
+    }
+    if (!giaTri) return p;
+    const nhanMoi = p.nhan.includes('=') ? `${vt} = ${giaTri}` : giaTri;
+    return {...p, doi: {nhan: nhanMoi, t: tMo}};
+  });
+}
+
 const nhanAn = (p: DuKienGhim, ds: DuKienGhim[], t: number): string => {
   if (p.doi && t < p.doi.t) return p.nhan.includes('?') || !p.nhan.includes('=') ? p.nhan : `${veTrai(p.nhan)} = ?`;
   const lo = ds.some((q) => q !== p && q.doi && t < q.doi.t && vePhai(q.doi.nhan) !== '' && vePhai(q.doi.nhan) === vePhai(p.nhan) && gon(veTrai(q.doi.nhan)) === gon(veTrai(p.nhan)));
   return lo ? `${veTrai(p.nhan)} = ?` : p.nhan;
 };
 
-export const ThanhDe: React.FC<{ds: DuKienGhim[]; buoc: BuocGiai[]; i: number; t: number; cao: number}> = ({ds, buoc, i, t, cao}) => {
+export const ThanhDe: React.FC<{ds: DuKienGhim[]; buoc: BuocGiai[]; i: number; t: number; cao: number; dapAn?: string; tChot?: number}> = ({ds, buoc, i, t, cao, dapAn, tChot}) => {
   if (!ds.length) return null;
-  const muc = ds.slice(0, 6).map((p) => ({...p, nhan: nhanAn(p, ds, t)}));
+  const dsDayDu = boSungDoiDapAn(ds, buoc, tChot, dapAn);
+  const muc = dsDayDu.slice(0, 6).map((p) => ({...p, nhan: nhanAn(p, dsDayDu, t)}));
   // cỡ chữ chung: co lại tới khi cả dải vừa bề rộng (nhãn "ĐỀ" + dữ kiện + chấm ngăn)
   let co = 30;
   const rongHang = (c: number) => 64 + 44 + muc.reduce((s, p) => s + Math.max(rongNhan(p.nhan, c), p.doi ? rongNhan(p.doi.nhan, c) : 0) + 30, 0);
@@ -43,7 +91,7 @@ export const ThanhDe: React.FC<{ds: DuKienGhim[]; buoc: BuocGiai[]; i: number; t
   };
   const caoDai = Math.min(60, cao - 18);
   // v100.3: nhịp hồi hộp ~1 s (30 frame) trước mốc mở khóa đáp án cuối; chỉ bật khi trước mốc có đủ khoảng giảng >= 1,4 s
-  const tMo = ds.reduce((m, p) => (p.doi && p.doi.t > m ? p.doi.t : m), -1);
+  const tMo = dsDayDu.reduce((m, p) => (p.doi && p.doi.t > m ? p.doi.t : m), -1);
   const tBuocTruoc = buoc.reduce((m, b) => (b.t < tMo && b.t > m ? b.t : m), -1);
   const dtHoiHop = tMo > 0 ? t - (tMo - 1) : -1;
   const hoiHop = BAT_NHIP_HOI_HOP_DAP_AN && tMo > 0 && tMo - tBuocTruoc >= 1.4 && dtHoiHop >= 0 && dtHoiHop < 1;

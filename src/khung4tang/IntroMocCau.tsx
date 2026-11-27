@@ -8,7 +8,7 @@ import {AbsoluteFill, Audio, continueRender, delayRender, random, Sequence, spri
 import {FONT} from '../theme';
 import {emRa, kep01} from '../3d-vector/toan3d';
 import type {MocCau} from './kieu';
-import {coTieuDeIntro, coVua, haiDong, INTRO_SAN, LE_ND_V93, RONG_CHU, RONG_ND_V93, raIntro} from './bo_cuc_v93';
+import {coTieuDeIntro, coVua, haiDong, INTRO_SAN, lamSachTieuDeIntro, LE_ND_V93, RONG_CHU, RONG_ND_V93, raIntro} from './bo_cuc_v93';
 
 export {giayIntro, INTRO_SAN, raIntro} from './bo_cuc_v93';
 
@@ -43,7 +43,8 @@ export const IntroMocCau: React.FC<{m: MocCau; t: number; G: number}> = ({m, t, 
   const lo = (tu: number, d = 0.35) => emRa((t - tu) / d);
   const lo_lo = (tu: number) => spring({frame: f - Math.round(tu * fps), fps, config: {damping: 14, stiffness: 150, mass: 0.7}});
 
-  const dongTD = React.useMemo(() => haiDong(m.tieu_de), [m.tieu_de]);
+  const tieuDeSach = React.useMemo(() => lamSachTieuDeIntro(m.tieu_de), [m.tieu_de]);
+  const dongTD = React.useMemo(() => haiDong(tieuDeSach), [tieuDeSach]);
   const [coDo, setCoDo] = React.useState(92);
   React.useLayoutEffect(() => {
     const handle = delayRender('Đo tiêu đề Intro');
@@ -123,7 +124,7 @@ export const IntroMocCau: React.FC<{m: MocCau; t: number; G: number}> = ({m, t, 
       </div>
 
       {/* 3. dòng phụ chuyên đề */}
-      {phu && chuan(phu) !== chuan(m.tieu_de) && <div style={{position: 'absolute', left: 48, right: 48, top: 492, textAlign: 'center', color: CYAN, fontWeight: 800, fontSize: coPhu, letterSpacing: 0, whiteSpace: 'nowrap',
+      {phu && chuan(phu) !== chuan(tieuDeSach) && <div style={{position: 'absolute', left: 48, right: 48, top: 492, textAlign: 'center', color: CYAN, fontWeight: 800, fontSize: coPhu, letterSpacing: 0, whiteSpace: 'nowrap',
         opacity: aPhu * con, transform: `translateY(${(1 - aPhu) * 12 - ra * 30}px)`, textShadow: '0 0 16px rgba(63,216,242,0.35)'}}>
         {phu}
       </div>}

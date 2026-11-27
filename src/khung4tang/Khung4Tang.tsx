@@ -4,6 +4,7 @@ import {KhoaThuongHieu} from './KhoaThuongHieu';
 import React, {useMemo} from 'react';
 import {AbsoluteFill, Audio, Sequence, spring, staticFile, useCurrentFrame} from 'remotion';
 import {FONT} from '../theme';
+import {lamSachPhuDe} from '../chu';
 import {KieuToan, NapPhongToan} from '../Toan';
 import {SanKhau3DVector} from '../3d-vector/SanKhau3DVector';
 import {chuanHoaCanh3DV} from '../3d-vector/dac_ta';
@@ -37,8 +38,9 @@ const TU_KHOA = /^(\d[\d.,]*|[a-zA-Z]|thể|tích|đạo|hàm|cực|đại|tiể
 // v97: câu dài (lời hình không gian ~70 ký tự) chia thành các đoạn <= ~40 ký tự theo ranh giới từ, thời lượng tỉ lệ số ký tự
 // -> phụ đề LUÔN 1 dòng (trước đây chữ co tới 28 px rồi vẫn tràn / xuống dòng vì span kế thừa text-wrap: balance)
 export const chiaCauPhuDe = (c: {text: string; bat: number; ket: number}, toiDa = 40): {text: string; bat: number; ket: number}[] => {
-  const chu = c.text.replace(/\s+/g, ' ').trim();
-  if (chu.length <= toiDa + 2) return [c];
+  const chu = lamSachPhuDe(c.text, true);
+  if (!chu) return [];
+  if (chu.length <= toiDa + 2) return [{...c, text: chu}];
   const n = Math.ceil(chu.length / toiDa), muc = chu.length / n;
   const tu = chu.split(' ');
   const doan: string[] = [];
@@ -48,9 +50,10 @@ export const chiaCauPhuDe = (c: {text: string; bat: number; ket: number}, toiDa 
     if (cur && thu.length > muc + 6 && doan.length < n - 1) { doan.push(cur); cur = w; } else cur = thu;
   }
   if (cur) doan.push(cur);
-  const tong = doan.reduce((s, d) => s + d.length, 0);
+  const doanSach = doan.map((d, idx) => lamSachPhuDe(d, idx === doan.length - 1)).filter(Boolean);
+  const tong = Math.max(1, doanSach.reduce((s, d) => s + d.length, 0));
   let t = c.bat;
-  return doan.map((d) => {
+  return doanSach.map((d) => {
     const dt = ((c.ket - c.bat) * d.length) / tong;
     const ra = {text: d, bat: t, ket: t + dt};
     t += dt;
@@ -126,12 +129,17 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
   const buoc = useMemo(() => [...(p.buoc || [])].sort((a, b) => a.t - b.t), [p.buoc]);
   // v92: khuôn tham số trải pha theo mốc các bước giải (mỗi bước có hình đổi); tongFrame = hết phần nội dung (sát Outro)
   const canh = useMemo(() => chuanHoaCanh3DV(p.canh3dv, buoc.map((b) => b.t), p.tongFrame / fps).canh, [p.canh3dv, buoc, p.tongFrame, fps]);
-  // v96: sân khấu 2D (4 mô-đun Xác suất / 2D thực tế / sơ đồ tư duy) thay khuôn 3D khi chuanbi.py định tuyến ra
-  const sk2 = p.tuSinh || (p.batBuocMinhHoa && p.sanKhau?.loai === 'tu_duy_dai_so') ? null : p.sanKhau || null;
-  // v99.1: sân khấu tự sinh 2.5D (mã Python hộp cát) thắng sân khấu 2D / khuôn 3D; nền khí quyển theo theme; xung chống đứng hình
-  // v99.8: kèm chữ đề + chữ từng bước cho bộ dựng hình tổng quát của SanKhauTuSinh (chỉ đọc, không đổi mốc)
-  // v99.9: có `tuSinh` (kể cả lớp rỗng / hỏng) hoặc không còn sân khấu nào khác -> LUÔN dựng tầng hình (hình minh họa theo dạng bài), không để T2 trống
-  const tsVao: Khung4TangVao['tuSinh'] = !p.khongGian ? (p.tuSinh ? {...p.tuSinh, chiLopKichBan: p.batBuocMinhHoa || p.tuSinh.chiLopKichBan, lop: p.tuSinh.lop || []} : !p.batBuocMinhHoa && !sk2 && !p.canh3dv ? {lop: []} : null) : null;
+  // Độc quyền tuyệt đối ở T2 (mutually exclusive): khi có dữ liệu tu_sinh_svg hợp lệ -> BẮT BUỘC chỉ render SanKhauTuSinh,
+  // ẩn hoàn toàn sân khấu 2D / khuôn 3D và lớp tiến trình mặc định để không bao giờ chồng 2 sân khấu.
+  const coTuSinhHopLe = Boolean(p.tuSinh?.lop?.some((l) => Boolean(l.svg && l.svg.trim())));
+  const sk2 = p.khongGian || coTuSinhHopLe || (p.batBuocMinhHoa && p.sanKhau?.loai === 'tu_duy_dai_so') ? null : p.sanKhau || null;
+  const tsVao: Khung4TangVao['tuSinh'] = !p.khongGian
+    ? coTuSinhHopLe
+      ? {...p.tuSinh!, chiLopKichBan: true, lop: p.tuSinh!.lop || []}
+      : !p.batBuocMinhHoa && !sk2 && !p.canh3dv
+        ? {lop: []}
+        : null
+    : null;
   const ts = useMemo(() => tsVao ? {
     ...tsVao,
     de_bai: tsVao.de_bai || [...(p.deGhim || []).map((d) => d.nhan), (p.cau || [])[0]?.text || ''].join('. '),
@@ -140,6 +148,15 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
   const th = !p.khongGian ? layTheme(p.theme) : null;
   // v97: hình học không gian (động cơ riêng src/khonggian: nét khuất giải tích từng khung + đạo diễn camera theo moc_xoay)
   const kg = p.khongGian || null;
+  const loaiSanKhauT2: 'kg' | 'ts' | 'sk2' | '3dv' | null = kg
+    ? 'kg'
+    : ts
+      ? 'ts'
+      : sk2
+        ? 'sk2'
+        : canh && (!p.batBuocMinhHoa || p.canh3dv)
+          ? '3dv'
+          : null;
   let i = -1;
   buoc.forEach((b, j) => b.t <= t && (i = j));
 
@@ -249,27 +266,24 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
         </Tang>
       </div>
       <Tang ten="t2" v={{y: yT2, h: bc.t2.h}} rong={bc.rong} le={bc.le} co={coT2}>
-        {sk2 && a3D > 0 ? (
-          <div style={{position: 'absolute', inset: 0, opacity: a3D}}>
-            <SanKhau2D sk={p.tCongBo !== undefined ? {...sk2, mocCongBo: p.tCongBo} : sk2} t={t} rong={bc.rong} cao={bc.t2.h} yTrenKhung={yT2} mauNhan={mauNhan} intro={G > 0 && t < G} />
-          </div>
-        ) : null}
-        {kg ? (
+        {loaiSanKhauT2 === 'kg' && kg ? (
           <div style={{position: 'absolute', inset: 0}}>
             <SanKhauKhongGian kg={kg} t={t} rong={bc.rong} cao={bc.t2.h} lechMay={G > 0 && t < G ? {k: 1 + 0.22 * (1 - emRa(t / 1.6)), n: 18 * (1 - emRa(t / 2.2))} : undefined} />
           </div>
-        ) : null}
-        {ts && a3D > 0 ? (
+        ) : loaiSanKhauT2 === 'ts' && ts && a3D > 0 ? (
           <div style={{position: 'absolute', inset: 0, opacity: a3D}}>
-            <SanKhauTuSinh ts={ts} t={t} fps={fps} rong={bc.rong} cao={bc.t2.h} xung={xung} />
+            <SanKhauTuSinh ts={ts} t={t} fps={fps} rong={bc.rong} cao={bc.t2.h} xung={xung} heSoPhong={1.15} />
           </div>
-        ) : null}
-        {!ts && xung >= 0 && !kg ? <XungT2 u={xung} rong={bc.rong} cao={bc.t2.h} mau={mauNhan} /> : null}
-        {!kg && !sk2 && !ts && canh && (!p.batBuocMinhHoa || p.canh3dv) && a3D > 0 ? (
+        ) : loaiSanKhauT2 === 'sk2' && sk2 && a3D > 0 ? (
+          <div style={{position: 'absolute', inset: 0, opacity: a3D}}>
+            <SanKhau2D sk={p.tCongBo !== undefined ? {...sk2, mocCongBo: p.tCongBo} : sk2} t={t} rong={bc.rong} cao={bc.t2.h} yTrenKhung={yT2} mauNhan={mauNhan} intro={G > 0 && t < G} />
+          </div>
+        ) : loaiSanKhauT2 === '3dv' && canh && a3D > 0 ? (
           <div style={{position: 'absolute', inset: 0, opacity: a3D}}>
             <SanKhau3DVector canh={canh} t={t3d} rong={bc.rong} cao={bc.t2.h} tongGiay={tong} lechMay={lechMay} />
           </div>
         ) : null}
+        {loaiSanKhauT2 !== 'ts' && loaiSanKhauT2 !== 'kg' && xung >= 0 ? <XungT2 u={xung} rong={bc.rong} cao={bc.t2.h} mau={mauNhan} /> : null}
         {dc && aDc2 > 0 ? <DoiChieu2Cot canVat={canVat} d={dc} dt={t - tDau} dai={tCuoi - tDau} t={t} rong={bc.rong} cao={bc.t2.h} hienSo={!!buoc[i].doi_chieu?.hien_so} a={aDc2} dtGiai={dtGiai} tHuyHieu={Math.max(p.tCongBo ?? 0, buoc[i].doi_chieu?.t_huy_hieu ?? 0)} /> : null}
       </Tang>
       <div style={chuyenHoi}>
@@ -278,7 +292,7 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
         </Tang>
         {toiGian ? null : (
           <Tang ten="t4" v={bc.t4} rong={bc.rong} le={bc.le}>
-            <ThanhDe ds={p.deGhim || []} buoc={buoc} i={i} t={t} cao={bc.t4.h} />
+            <ThanhDe ds={p.deGhim || []} buoc={buoc} i={i} t={t} cao={bc.t4.h} dapAn={p.dapAn} tChot={p.tCongBo ?? p.tChot} />
           </Tang>
         )}
       </div>

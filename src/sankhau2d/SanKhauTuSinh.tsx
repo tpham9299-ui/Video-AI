@@ -51,12 +51,23 @@ const QuetMat: React.FC<{id: string; d: string; f: number}> = ({id, d, f}) => {
 
 export type LopTuSinh = {id: string; t: number; hienDeDen?: number; tNhan?: number; svg: string; hieu_ung: 'moc' | 'no' | 'sang' | 've'; buoc?: number; nhan?: string; nhom?: string};
 
-// lớp cùng `nhom` thay nhau: khi lớp sau cùng nhóm đã hiện, lớp trước mờ hẳn trong 0,4 s (không chồng nhãn)
-export function heSoThay(l: LopTuSinh, ds: LopTuSinh[], t: number): number {
+// lớp cùng `nhom` thay nhau: khi lớp sau cùng nhóm đã tới mốc, lớp cũ mờ hẳn nhanh trong 5 khung hình (~0,17 s)
+// rồi lớp mới mới bắt đầu hiện (không bao giờ đè 2 lớp chữ lên nhau).
+export const KHUNG_RA_NHOM = 5;
+
+export function heSoThay(l: LopTuSinh, ds: LopTuSinh[], t: number, fps = 30): number {
   if (!l.nhom) return 1;
   const sau = ds.filter((x) => x.nhom === l.nhom && x.t > l.t && x.t <= t);
   if (!sau.length) return 1;
-  return Math.max(0, 1 - (t - Math.min(...sau.map((x) => x.t))) / 0.4);
+  const tRa = KHUNG_RA_NHOM / Math.max(1, fps);
+  return Math.max(0, 1 - (t - Math.min(...sau.map((x) => x.t))) / tRa);
+}
+
+// mốc vào thực tế của lớp: nếu cùng `nhom` đã có lớp trước đó -> chờ lớp cũ fade-out xong (5 khung) mới bắt đầu fade-in
+export function mocVaoLop(l: LopTuSinh, ds: LopTuSinh[], fps = 30): number {
+  if (!l.nhom) return l.t;
+  const coTruoc = ds.some((x) => x.nhom === l.nhom && x.t < l.t);
+  return coTruoc ? l.t + KHUNG_RA_NHOM / Math.max(1, fps) : l.t;
 }
 export type TuSinhVao = {chiLopKichBan?: boolean; viewBox?: string; lop: LopTuSinh[]; mo_ta?: string; de_bai?: string; buoc?: {t: number; text: string}[]};
 
@@ -431,35 +442,39 @@ function chuanNhanSvg(svg: string): string {
   return doc.documentElement.innerHTML;
 }
 
-export const SanKhauTuSinh: React.FC<{ts: TuSinhVao; t: number; fps: number; rong: number; cao: number; xung?: number}> = ({ts, t, fps, rong, cao, xung = -1}) => {
+export const SanKhauTuSinh: React.FC<{ts: TuSinhVao; t: number; fps: number; rong: number; cao: number; xung?: number; heSoPhong?: number}> = ({ts, t, fps, rong, cao, xung = -1, heSoPhong = 1}) => {
   const lop = React.useMemo(() => (ts.lop || []).map(l => ({...l, svg: chuanNhanSvg(l.svg)})), [ts.lop]);
-  const daHien = lop.filter((l) => l.t <= t);
+  const coLopHopLe = React.useMemo(() => lop.some((l) => Boolean(l.svg && l.svg.trim())), [lop]);
+  const daHien = lop.filter((l) => mocVaoLop(l, lop, fps) <= t);
   const moiNhat = daHien.length ? daHien[daHien.length - 1].id : '';
-  // hình vừa T2, giữ tỉ lệ 800:540, căn giữa; xung nhịp chống đứng hình = zoom rất nhẹ 1 -> 1,018 -> 1
-  const k = Math.min(rong / W, cao / H) * 1.0;
+  // hình vừa T2, giữ tỉ lệ 800:540, căn giữa; khi phóng nhẹ (~15% ở T2) vẫn khóa cách mép khung 1080 tối thiểu 48 px và không vượt chiều cao vùng chứa
+  const kCoSo = Math.min(rong / W, cao / H);
+  const k = Math.min(kCoSo * Math.max(1, heSoPhong), (1080 - 96) / W, cao / H);
   const mp = RE_MAT_PHANG.test(chuanKyHieu(buocHienTai(ts.buoc, t)));
   const zoom = xung >= 0 ? 1 + 0.018 * Math.sin(Math.PI * xung) : 1;
-  // bộ dựng tổng quát chỉ lấp khoảng trống: khi lớp mới nhất đã đứng > 2,5 s mới hiện dần (không đè hợp đồng lớp / quét 1,1 s)
-  const tq = React.useMemo(() => (ts.de_bai || ts.buoc?.length ? suyHinhTongQuat(ts.de_bai || '', ts.buoc || []) : []), [ts.de_bai, ts.buoc]);
-  // v99.9: dạng bài -> hình minh họa luôn có (Koch / tiến trình); lớp tự sinh vẫn thắng: đứng yên > 2,5 s mới hiện dần, không có lớp nào thì hiện ngay
+  // bộ dựng tổng quát / tiến trình dự phòng CHỈ dùng khi không có lớp tu_sinh_svg hợp lệ nào (tuyệt đối không vẽ đè lên sân khấu tự sinh)
+  const tq = React.useMemo(() => (!coLopHopLe && (ts.de_bai || ts.buoc?.length) ? suyHinhTongQuat(ts.de_bai || '', ts.buoc || []) : []), [coLopHopLe, ts.de_bai, ts.buoc]);
   const dang: 'tq' | 'koch' | 'tt' = RE_KOCH.test(chuanKyHieu(ts.de_bai || '')) ? 'koch' : tq.length ? 'tq' : 'tt';
-  const tuoi = daHien.length ? t - daHien[daHien.length - 1].t : 0;
-  const cong = ts.chiLopKichBan ? 0 : !lop.length ? 1 : daHien.length ? Math.min(1, Math.max(0, (tuoi - 2.5) / 0.6)) : 0;
+  const cong = ts.chiLopKichBan || coLopHopLe ? 0 : 1;
   const bsT = React.useMemo(() => (ts.buoc || []).slice().sort((a, b) => a.t - b.t), [ts.buoc]);
   return (
     <div data-tu-sinh style={{position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
       <svg viewBox={ts.viewBox || '0 0 800 540'} width={W * k} height={H * k} style={{overflow: 'visible', scale: String(zoom), fontFamily: FONT}}>
         <style>{`.ts-de-som text{visibility:hidden}.ts-cu [stroke-dasharray]{stroke-opacity:.55}.ts-moi [stroke-dasharray]{stroke-opacity:.8}${mp ? '.ts-moi polygon{stroke-width:3.5px;stroke-linejoin:round;paint-order:stroke}.ts-cu polygon{fill-opacity:.06}' : ''}`}</style>
         <defs>
-          {lop.map((l) => (
-            <clipPath key={l.id} id={`ts-quet-${l.id}`}>
-              <rect x={-10} y={-10} width={(W + 20) * trangThaiLop(l, t, fps, l.id === moiNhat).quet} height={H + 20} />
-            </clipPath>
-          ))}
+          {lop.map((l) => {
+            const tVao = mocVaoLop(l, lop, fps);
+            return (
+              <clipPath key={l.id} id={`ts-quet-${l.id}`}>
+                <rect x={-10} y={-10} width={(W + 20) * trangThaiLop({...l, t: tVao}, t, fps, l.id === moiNhat).quet} height={H + 20} />
+              </clipPath>
+            );
+          })}
         </defs>
         {lop.map((l) => {
-          const s = trangThaiLop(l, t, fps, l.id === moiNhat);
-          const thay = heSoThay(l, lop, t);
+          const tVao = mocVaoLop(l, lop, fps);
+          const s = trangThaiLop({...l, t: tVao}, t, fps, l.id === moiNhat);
+          const thay = heSoThay(l, lop, t, fps);
           if (s.hien * thay <= 0.001) return null;
           // v99.10: lớp cũ dịu thêm (0,72 / 0,5 khi giảng mặt phẳng), lớp đang giảng giữ nguyên; nét đứt / khuất nhạt hơn nét liền
           const cu = l.id !== moiNhat;

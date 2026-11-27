@@ -1,3 +1,4 @@
+import {lamSachChu} from './chu';
 import {TEN_THUONG_HIEU} from './theme';
 import {KhoaThuongHieu} from './khung4tang/KhoaThuongHieu';
 import {BoiCanh} from './NenCauChuyen';
@@ -220,7 +221,7 @@ const NoiDung4Tang: React.FC<Props & {coIntro?: boolean}> = (props) => {
             phuDe={k.boCuc?.phuDe}
           />
         ) : (
-          <Khung4Tang {...k} mon={props.mon} batBuocMinhHoa={batBuocMinhHoa} fps={fps} tongFrame={Math.max(1, ketThuc)} thuongHieu={k.thuongHieu ?? thuongHieu?.ten} cau={k.boCuc?.phuDe === 'gon' ? cau : k.cau} />
+          <Khung4Tang {...k} mon={props.mon} dapAn={props.dapAn} batBuocMinhHoa={batBuocMinhHoa} fps={fps} tongFrame={Math.max(1, ketThuc)} thuongHieu={k.thuongHieu ?? thuongHieu?.ten} cau={k.boCuc?.phuDe === 'gon' ? cau : k.cau} />
         )}
       </Sequence>
       {nhac ? <Audio src={staticFile(nhac)} loop volume={amNhac} /> : null}
@@ -316,7 +317,7 @@ const NoiDungHinhPhang: React.FC<Props & {coIntro?: boolean}> = (props) => {
     const dg = props.hinhPhang?.dong_giai || [];
     if (dg.length) {
       return dg.slice(0, 3).map((tr, idx) => ({
-        chien_thuat: (tr.tieu_de || `Bước ${idx + 1}`).slice(0, 22),
+        chien_thuat: lamSachChu(tr.tieu_de || `Bước ${idx + 1}`, 26),
         cong_thuc: tr.dong?.[tr.dong.length - 1]?.tex || '',
       }));
     }

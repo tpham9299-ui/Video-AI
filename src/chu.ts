@@ -38,9 +38,35 @@ function khoiPhucEscape(x: string): string {
 export function chuanDauCau(s: string): string {
   return String(s ?? '')
     .replace(/^[\s:;,.?!–—-]+(?=\S)/u, '')
-    .replace(/\s+([:;,?!])(?=\s|$)/g, '$1')
+    .replace(/\s+([:;,?!.])(?=\s|$)/g, '$1')
     .replace(/\s{2,}/g, ' ')
     .trim();
+}
+
+// Dọn lỗi dấu câu phụ đề: xóa dấu phẩy/chấm phẩy thừa trước dấu "=", khoảng trắng thừa trước dấu câu,
+// chuẩn hóa "P(A) bằng 1 - ..." -> "P(A) = 1 - ...", và dọn dấu phẩy lẻ ở cuối câu/đoạn phụ đề.
+export function lamSachPhuDe(s: string, laCuoiCau = false): string {
+  let x = String(s ?? '')
+    .replace(/[\u00A0\s]+/g, ' ')
+    .trim();
+  if (!x) return '';
+  // "P(A) bằng 1 - P(Ā)" / "P(Ā) bằng 4/84" / "x bằng -b/2a" -> dùng dấu "=" gọn khi kết nối biểu thức toán với số/biểu thức
+  x = x.replace(/([A-Za-z0-9)°²³ΩĀ])\s+bằng\s+(?=[\d\-−+(]|[A-Za-z]\s*[(/=\-−])/gu, '$1 = ');
+  // Bỏ dấu phẩy/chấm phẩy thừa ngay trước dấu "=" (VD: "1 - P(Ā), = 1 - 1/21" -> "1 - P(Ā) = 1 - 1/21")
+  x = x.replace(/\s*[,;]\s*=\s*/g, ' = ');
+  // Xóa khoảng trắng thừa trước dấu câu
+  x = x.replace(/\s+([,.;:!?])/g, '$1');
+  // Gộp dấu lặp
+  x = x.replace(/=\s*=/g, '=').replace(/,\s*,+/g, ',');
+  x = x.replace(/\s{2,}/g, ' ').trim();
+  // Dọn dấu phẩy/chấm phẩy thừa ở cuối đoạn phụ đề:
+  // nếu đoạn kết thúc bằng biểu thức có "=" hoặc là cuối câu -> chốt dấu "."; còn lại bỏ dấu phẩy treo ở cuối đoạn
+  if (/[,;]+$/.test(x)) {
+    const khongPhay = x.replace(/[,;\s]+$/, '').trim();
+    if (!khongPhay) return '';
+    x = (laCuoiCau || khongPhay.includes('=')) && !/[.!?]$/.test(khongPhay) ? `${khongPhay}.` : khongPhay;
+  }
+  return x;
 }
 
 // v89: SỐ ĐỌC THÀNH CHỮ -> CHỮ SỐ ("năm mươi tư" -> 54, "mười cm" -> 10 cm) cho tiêu đề và kịch bản cũ.

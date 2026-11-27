@@ -13,16 +13,18 @@ function Mot({b, so, tong, mau, a, lech}: {b: BuocGiai; so: number; tong: number
   const tieuDe = chuanTieuDe(b.tieu_de || '');
   // v99.2: nhãn phụ không lặp "BƯỚC n" của viên thuốc (kịch bản cũ ghi nhan = "Bước 1"); rỗng -> chỉ còn viên thuốc
   const nhan = nhanPhuBuoc(b.nhan, so - 1, tong);
-  // v96: T1 thấp hơn (186 px, vùng an toàn TikTok top 11 %) -> thang tiêu đề 70/58/50 để 2 dòng vẫn vừa
-  const co = Math.max(34, Math.min(tieuDe.length > 34 ? 50 : tieuDe.length > 24 ? 58 : Math.min(70, CO_CHU.tieuDe[0]), Math.floor(1500 / Math.max(1, tieuDe.length * 0.62)))); // auto-fit tối đa 2 dòng trong 860 px
+  // Cố định căn từ trên xuống (flex-start + paddingTop cố định) để khoảng cách eyebrow Story Math -> pill BƯỚC n -> tiêu đề luôn >= 14 px,
+  // tuyệt đối không bị đẩy tràn ngược lên trên khi tiêu đề bước dài hoặc xuống 2 dòng.
+  const tranCo = tieuDe.length > 32 ? 40 : tieuDe.length > 22 ? 44 : Math.min(54, CO_CHU.tieuDe[0]);
+  const co = Math.max(32, Math.min(tranCo, Math.floor(1360 / Math.max(1, tieuDe.length * 0.62))));
   return (
-    <div style={{position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, opacity: a, transform: `translateY(${lech}px)`}}>
-      <div style={{display: 'flex', alignItems: 'center', height: 50, borderRadius: 25, border: `1.5px solid ${mau}`, background: `linear-gradient(180deg, ${mau}2E, rgba(12,14,20,0.62))`, padding: nhan ? '0 22px 0 6px' : '0 6px', gap: 14,
+    <div style={{position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', paddingTop: 16, gap: 14, boxSizing: 'border-box', opacity: a, transform: `translateY(${lech}px)`}}>
+      <div style={{display: 'flex', alignItems: 'center', height: 46, flexShrink: 0, borderRadius: 23, border: `1.5px solid ${mau}`, background: `linear-gradient(180deg, ${mau}2E, rgba(12,14,20,0.62))`, padding: nhan ? '0 20px 0 6px' : '0 6px', gap: 12,
         boxShadow: `0 0 22px ${mau}33, inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.45)`}}>
-        <span data-kd-bo="1" style={{height: 38, padding: '0 14px', borderRadius: 19, background: mau, color: NOI, fontFamily: FONT, fontWeight: 900, fontSize: 24, display: 'flex', alignItems: 'center', letterSpacing: 0.5}}>BƯỚC {so}</span>
-        {nhan ? <span style={{color: mau, fontFamily: FONT, fontWeight: 800, fontSize: 26, letterSpacing: 1.2, whiteSpace: 'nowrap'}}><ChuTron s={nhan} co={26} mau={mau} hoa={inHoaGiuToan} /></span> : null}
+        <span data-kd-bo="1" style={{height: 36, padding: '0 14px', borderRadius: 18, background: mau, color: NOI, fontFamily: FONT, fontWeight: 900, fontSize: 23, display: 'flex', alignItems: 'center', letterSpacing: 0.5}}>BƯỚC {so}</span>
+        {nhan ? <span style={{color: mau, fontFamily: FONT, fontWeight: 800, fontSize: 25, letterSpacing: 1.1, whiteSpace: 'nowrap'}}><ChuTron s={nhan} co={25} mau={mau} hoa={inHoaGiuToan} /></span> : null}
       </div>
-      <div style={{color: '#F4F7FB', fontFamily: FONT, fontWeight: 900, fontSize: co, lineHeight: 1.08, textAlign: 'center', maxWidth: 860, letterSpacing: -0.5, textWrap: 'balance' as React.CSSProperties['textWrap']}}>
+      <div style={{color: '#F4F7FB', fontFamily: FONT, fontWeight: 900, fontSize: co, lineHeight: 1.08, textAlign: 'center', maxWidth: 820, letterSpacing: -0.5, textWrap: 'balance' as React.CSSProperties['textWrap']}}>
         <ChuTron s={tieuDe} co={co} mau="#F4F7FB" dam={900} />
       </div>
     </div>

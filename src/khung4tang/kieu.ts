@@ -70,4 +70,5 @@ export type Khung4TangVao = {
   tuSinh?: import('../sankhau2d/SanKhauTuSinh').TuSinhVao | null; // v99.1: sân khấu tự sinh 2.5D (lớp SVG hộp cát)
   nhipT2?: number[]; // v99.1: mốc nhịp chống đứng hình T2 (mỗi câu thoại trong khoảng > 6 s không đổi hình)
   tCongBo?: number; // v99.1: giây giọng đọc công bố đáp án
+  dapAn?: string; // đáp số chốt (dùng mở khóa ô = ? trên thanh ĐỀ ở bước cuối khi deGhim chưa có doi)
 };

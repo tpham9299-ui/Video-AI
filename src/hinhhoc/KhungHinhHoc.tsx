@@ -5,7 +5,7 @@ import React, {useMemo} from 'react';
 import {AbsoluteFill, Easing, interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
 import {FONT, SO_DEU, TEN_THUONG_HIEU} from '../theme';
 import {KieuToan, NapPhongToan, Toan} from '../Toan';
-import {chuanTex} from '../chu';
+import {chuanTex, lamSachPhuDe} from '../chu';
 import {MAU_3DV} from '../3d-vector/kieu';
 import {emRa, kep01} from '../3d-vector/toan3d';
 import {SanKhauKhongGian} from '../khonggian/SanKhauKhongGian';
@@ -739,8 +739,9 @@ function doiDongGiaiSangBuoc(dongGiai?: HinhPhangDongGiai[]): BuocGiai[] {
 
 // Chia phụ đề gọn 1 dòng trong SAFE_ZONE_TIKTOK
 function chiaPhuDeNgan(c: {text: string; bat: number; ket: number}, toiDa = 40): {text: string; bat: number; ket: number}[] {
-  const chu = c.text.replace(/\s+/g, ' ').trim();
-  if (chu.length <= toiDa + 2) return [c];
+  const chu = lamSachPhuDe(c.text, true);
+  if (!chu) return [];
+  if (chu.length <= toiDa + 2) return [{...c, text: chu}];
   const n = Math.ceil(chu.length / toiDa), muc = chu.length / n;
   const tu = chu.split(' ');
   const doan: string[] = [];
@@ -750,9 +751,10 @@ function chiaPhuDeNgan(c: {text: string; bat: number; ket: number}, toiDa = 40):
     if (cur && thu.length > muc + 6 && doan.length < n - 1) { doan.push(cur); cur = w; } else cur = thu;
   }
   if (cur) doan.push(cur);
-  const tong = doan.reduce((s, d) => s + d.length, 0);
+  const doanSach = doan.map((d, idx) => lamSachPhuDe(d, idx === doan.length - 1)).filter(Boolean);
+  const tong = doanSach.reduce((s, d) => s + d.length, 0);
   let moc = c.bat;
-  return doan.map((d) => {
+  return doanSach.map((d) => {
     const dt = ((c.ket - c.bat) * d.length) / Math.max(1, tong);
     const ra = {text: d, bat: moc, ket: moc + dt};
     moc += dt;

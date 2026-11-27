@@ -312,6 +312,7 @@ export function veKhung(kg: KhongGianVao, cb: ChuanBi, t: number, W: number, H: 
       op: x.alpha * x.nm * mo(x.ten), sang: x.sang, song: songDiem(x.ten)});
   }
   const goc: GocVe[] = [];
+  const gocCanChinh: {idx: number; dinhX: number; dinhY: number; ux: number; uy: number; len: number}[] = [];
   for (const g of tt.goc) {
     if (g.alpha <= 0.001) continue;
     const op = g.alpha * mo(g.tenDinh) * (diemKhuat(g.dinh, C, cb.vo, truoc, R) ? 0.6 : 1);
@@ -325,8 +326,14 @@ export function veKhung(kg: KhongGianVao, cb: ChuanBi, t: number, W: number, H: 
       const ps = cungGoc3D(g.dinh, g.a, g.b, r).map((p) => chieu(p, m, h));
       const giua = cungGoc3D(g.dinh, g.a, g.b, r * 2.3, 2)[1]; // nhãn ngay ngoài cung nhỏ
       const q = chieu(giua, m, h);
+      const pDinh = chieu(g.dinh, m, h);
+      const idx = goc.length;
       goc.push({id: g.id, d: 'M' + ps.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('L'), mau: MAU_KG.goc, op, vuong: false,
         nhan: g.nhan ? {x: q.x, y: q.y, tex: g.nhan} : undefined});
+      if (g.nhan) {
+        const dx = q.x - pDinh.x, dy = q.y - pDinh.y, len = Math.hypot(dx, dy);
+        if (len > 1e-3) gocCanChinh.push({idx, dinhX: pDinh.x, dinhY: pDinh.y, ux: dx / len, uy: dy / len, len});
+      }
     }
   }
   // nhãn: nghiệm ở tư thế ổn định; đang xoay -> nội suy độ lệch giữa nghiệm ở tư thế đầu và tư thế đích (không giật chữ)
@@ -354,6 +361,36 @@ export function veKhung(kg: KhongGianVao, cb: ChuanBi, t: number, W: number, H: 
     const dinhChinh = kg.dung.khoi.dinh.includes(c.ten);
     const mauChu = c.mau === MAU_KG.chot || c.sang > 0.5 ? MAU_TAM_DICH : dinhChinh ? '#FFFFFF' : MAU_TAM;
     nhan.push({...l, x: c.x + l.dx, y: c.y + l.dy, op: c.op, mau: mauChu, khuat: c.khuat});
+  }
+  // Chống nhãn góc (như 45°) đè lên nhãn đỉnh (như C) hoặc chấm đỉnh: kiểm tra khoảng cách 2D sau phép chiếu;
+  // nếu quá gần (< 38 px với nhãn đỉnh hoặc < 28 px với chấm đỉnh) -> tự dịch nhãn góc dọc theo tia phân giác vào bên trong cung góc.
+  if (gocCanChinh.length) {
+    const nhanHien = nhan.filter((n) => n.op > 0.05);
+    const chamHien = cham2.filter((c) => c.op > 0.05);
+    const kcMinNhan = (px: number, py: number) => nhanHien.reduce((mn, n) => Math.min(mn, Math.hypot(px - n.x, py - n.y)), Infinity);
+    const kcMinCham = (px: number, py: number) => chamHien.reduce((mn, c) => Math.min(mn, Math.hypot(px - c.x, py - c.y)), Infinity);
+    const trongVung = (px: number, py: number) => px >= vung.x0 + 24 && px <= vung.x1 - 24 && py >= vung.y0 + 16 && py <= vung.y1 - 16;
+    for (const gc of gocCanChinh) {
+      const gVe = goc[gc.idx];
+      if (!gVe?.nhan) continue;
+      const curNhan = kcMinNhan(gVe.nhan.x, gVe.nhan.y);
+      const curCham = kcMinCham(gVe.nhan.x, gVe.nhan.y);
+      if (curNhan >= 38 && curCham >= 28) continue;
+      let totX = gVe.nhan.x, totY = gVe.nhan.y;
+      let diemTot = -1e9;
+      // Ưu tiên lùi dọc tia phân giác vào gần cung góc (0.50..0.78 * len) hoặc tiến sâu vào lòng góc (1.28..2.25 * len)
+      for (const heSo of [0.68, 0.60, 0.52, 0.76, 1.32, 1.50, 1.72, 1.98, 2.25]) {
+        const d = gc.len * heSo;
+        if (d < 26) continue;
+        const cx = gc.dinhX + gc.ux * d, cy = gc.dinhY + gc.uy * d;
+        if (!trongVung(cx, cy)) continue;
+        const kn = kcMinNhan(cx, cy), kc = kcMinCham(cx, cy);
+        const dat = kn >= 38 && kc >= 28 ? 100 : 0;
+        const diem = dat + Math.min(kn, kc + 8) - Math.abs(heSo - 1) * 10;
+        if (diem > diemTot) { diemTot = diem; totX = cx; totY = cy; }
+      }
+      gVe.nhan = {...gVe.nhan, x: totX, y: totY};
+    }
   }
   // v98: nhãn tự do (số đo đường gióng, tên trục, hướng) + số đọc trực tiếp khi trượt điểm tối ưu
   const nhanTu: NhanTuVe[] = [];

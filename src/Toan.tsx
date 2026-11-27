@@ -66,18 +66,21 @@ export function tachVe(tex: string): Phan[] {
 function dungHtml(tex: string): string | null {
   try {
     const phan = tachVe(bocChuViet(String(tex)));
-    // dấu ":" ngay sau cụm chữ là dấu câu (dính vào chữ), không phải quan hệ toán (KaTeX chèn khoảng trắng "nhất : 500")
+    // dấu câu (":", ",", ".", ";", "!", "?") ngay sau cụm chữ phải dính vào chữ trước (tránh "50 nghìn đồng , lãi" hoặc "nhất : 500")
     for (let i = 1; i < phan.length; i++) {
       const p = phan[i];
-      if (p.toan !== undefined && phan[i - 1].chu !== undefined && /^:/.test(p.toan)) {
-        phan[i - 1].chu = phan[i - 1].chu!.replace(/\s+$/, '') + ': ';
-        p.toan = p.toan.slice(1).trim();
+      if (p.toan !== undefined && phan[i - 1].chu !== undefined) {
+        const mDau = /^([:,.;!?])/.exec(p.toan);
+        if (mDau) {
+          phan[i - 1].chu = phan[i - 1].chu!.replace(/\s+$/, '') + mDau[1] + ' ';
+          p.toan = p.toan.slice(1).trim();
+        }
       }
     }
     for (let i = phan.length - 1; i >= 0; i--) if (phan[i].toan !== undefined && !phan[i].toan) phan.splice(i, 1);
     const ve = phan.map((p) =>
       p.chu !== undefined
-        ? `<span class="toan-chu">${p.chu.replace(/[&<>]/g, (x) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'}[x] as string))}</span>`
+        ? `<span class="toan-chu">${p.chu.replace(/\s+([,.;:!?])/g, '$1').replace(/[&<>]/g, (x) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'}[x] as string))}</span>`
         : `<span class="toan-ve">${katex.renderToString(p.toan!, {throwOnError: true, strict: 'ignore', displayMode: false, output: 'html'}).replace(/′/g, '<span class="toan-phay">′</span>')}</span>`,
     );
     return ve.join(' ');

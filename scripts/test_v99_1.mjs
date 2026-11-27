@@ -9,8 +9,15 @@ import path from 'path';
 import os from 'os';
 import {pathToFileURL} from 'url';
 
+const boCss = {
+  name: 'bo-css',
+  setup(b) {
+    b.onResolve({filter: /\.css$/}, (a) => ({path: a.path, namespace: 'css-empty'}));
+    b.onLoad({filter: /.*/, namespace: 'css-empty'}, () => ({contents: ''}));
+  },
+};
 const nap = async (vao) => {
-  const kq = await build({entryPoints: [path.resolve(vao)], bundle: true, write: false, format: 'esm', platform: 'node', logLevel: 'error', external: ['react', 'remotion', 'katex']});
+  const kq = await build({entryPoints: [path.resolve(vao)], bundle: true, write: false, format: 'esm', platform: 'node', logLevel: 'error', external: ['react', 'remotion', 'katex'], plugins: [boCss]});
   fs.mkdirSync('out', {recursive: true});
   const tep = path.join(path.resolve('out'), `v991_${path.basename(vao)}_${process.pid}.mjs`);
   fs.writeFileSync(tep, kq.outputFiles[0].text);
@@ -20,6 +27,12 @@ const nap = async (vao) => {
 };
 const N = await nap('src/khung4tang/nen_v99.ts');
 const S = await nap('src/sankhau2d/SanKhauTuSinh.tsx');
+const C = await nap('src/chu.ts');
+const B = await nap('src/khung4tang/bo_cuc_v93.ts');
+const T3 = await nap('src/khung4tang/TangTheGiai.tsx');
+const T4 = await nap('src/khung4tang/ThanhDe.tsx');
+const OT = await nap('src/khung4tang/OutroTomTat.tsx');
+const KG = await nap('src/khonggian/index.ts');
 let dat = 0, hong = 0;
 const kiem = (dk, ten) => { if (dk) dat++; else hong++; console.log((dk ? 'ĐẠT  ' : 'HỎNG ') + ten); };
 
@@ -75,6 +88,71 @@ for (const ten of ['koch_dao', 'gia_ve_parabol']) {
   if (!fs.existsSync(p)) continue;
   const tt = JSON.parse(fs.readFileSync(p, 'utf8')).khung4tang.tomTat || [];
   kiem(tt.length === 3 && tt.every((d) => d.chien_thuat.length <= 18 && d.cong_thuc), `${ten}: Outro 3 nhãn trọn (<= 18 ký tự) + đủ công thức`);
+}
+
+console.log('6. Khắc phục lỗi thị giác Việc 2 (Xác suất, Thực tế, Hình học 3D)');
+// 6.1 Độc quyền sân khấu + chuyển lớp nối tiếp 5 khung không đè chữ
+const tRa5 = 5 / 30;
+kiem(
+  S.heSoThay(L[0], L, 5 + tRa5 + 0.001, 30) === 0 &&
+    Math.abs(S.mocVaoLop(L[2], L, 30) - (5 + tRa5)) < 1e-6 &&
+    S.mocVaoLop(L[0], L, 30) === L[0].t,
+  'SanKhauTuSinh: lớp cũ tắt hẳn trong 5 khung rồi lớp mới cùng nhóm mới vào (không đè chữ)',
+);
+const k4Src = fs.readFileSync('src/khung4tang/Khung4Tang.tsx', 'utf8');
+const tsSrc = fs.readFileSync('src/sankhau2d/SanKhauTuSinh.tsx', 'utf8');
+const t1Src = fs.readFileSync('src/khung4tang/TangTieuDe.tsx', 'utf8');
+kiem(
+  tsSrc.includes('const cong = ts.chiLopKichBan || coLopHopLe ? 0 : 1;') && k4Src.includes('loaiSanKhauT2 === \'ts\''),
+  'T2 & Outro độc quyền 1 sân khấu: có tu_sinh_svg hợp lệ thì không render lớp tiến trình mặc định',
+);
+kiem(
+  /justifyContent:\s*'flex-start'/.test(t1Src) && /paddingTop:\s*1[4-9]/.test(t1Src) && /gap:\s*1[4-9]/.test(t1Src),
+  'TangTieuDe: căn từ trên xuống (flex-start + paddingTop/gap >= 14px) chống đè dòng Story Math',
+);
+// 6.2 Khử trùng thẻ trong cùng bước
+const theLoc = T3.locTheTrungTrongBuoc([
+  {loai: 'cong_thuc', dong: ['\\overline{A}: \\text{ cả 3 viên bi vàng}'], t: 15.48, tu_dong: true, moc: [15.63]},
+  {loai: 'cong_thuc', dong: ['\\overline{A}: \\text{ cả 3 bi đều vàng}'], t: 15.5, moc: [15.65]},
+]);
+kiem(theLoc.length === 1 && theLoc[0].dong[0].includes('đều vàng') && theLoc[0].t === 15.48, 'TangTheGiai: khử trùng 2 thẻ cùng vế trái Ā trong cùng 1 bước');
+// 6.3 Dọn dấu câu phụ đề
+const pdSach = C.lamSachPhuDe('Suy ra P(A) bằng 1 - P(Ā), = 1 - 1/21,', false);
+kiem(pdSach === 'Suy ra P(A) = 1 - P(Ā) = 1 - 1/21.', `Phụ đề dọn dấu phẩy trước "=" & cuối câu -> "${pdSach}"`);
+// 6.4 Mở khóa đáp án trên thanh ĐỀ ở bước cuối
+const dgMo = T4.boSungDoiDapAn(
+  [{id: 'p', nhan: 'P(A) = ?'}],
+  [{t: 37.2, nhan: 'Kết luận', tieu_de: 'Chốt', the: [{loai: 'cong_thuc', chot: true, dong: ['P(A) = 1 - \\dfrac{1}{21} = \\dfrac{20}{21}']}]}],
+  37.2,
+  '20/21',
+);
+kiem(dgMo[0]?.doi?.nhan === 'P(A) = 20/21' && dgMo[0]?.doi?.t === 37.2, `ThanhDe: tự mở khóa "P(A) = ?" -> "${dgMo[0]?.doi?.nhan}"`);
+// 6.5 Dọn ký tự rác tiêu đề Intro + Outro nhãn không cụt + không khoảng trắng trước dấu phẩy
+const td1 = B.lamSachTieuDeIntro('CHÓP TAM GIÁC ĐỀU ĐÁY: GÓC ?° VÀ KHOẢNG CÁCH A√?');
+const td2 = B.lamSachTieuDeIntro('GÓC ?" VÀ KHOẢNG CÁCH A/?"');
+const td3 = B.lamSachTieuDeIntro('TĂNG GIÁ CÀ PHÊ – CÓ LÃI HƠN?');
+kiem(
+  td1 === 'CHÓP TAM GIÁC ĐỀU ĐÁY: GÓC VÀ KHOẢNG CÁCH' && td2 === 'GÓC VÀ KHOẢNG CÁCH' && td3 === 'TĂNG GIÁ CÀ PHÊ – CÓ LÃI HƠN?',
+  `IntroMocCau: dọn rác tiêu đề ("${td1}" | "${td2}") và giữ nguyên tiêu đề hợp lệ`,
+);
+kiem(
+  OT.chuanNhanTomTat('Biến cố đối Ā (3') === 'Biến cố đối Ā' &&
+    OT.chuanNhanTomTat('Hàm lợi nhuận bậc') === 'Hàm lợi nhuận' &&
+    OT.chuanNhanTomTat('Khóa mặt phụ (SAM)') === 'Khóa mặt phụ (SAM)' &&
+    OT.texDapAn('50 nghìn đồng , lãi 6,75 triệu') === '50 nghìn đồng, lãi 6{,}75 triệu',
+  'OutroTomTat: bỏ cắt cụt ngoặc/từ treo và xóa khoảng trắng thừa trước dấu phẩy',
+);
+// 6.6 Hình học 3D: nhãn góc 45° cách mọi nhãn đỉnh & chấm đỉnh >= 28px
+if (fs.existsSync('out/san-pham-mau/props_mau_1.json')) {
+  const kg1 = JSON.parse(fs.readFileSync('out/san-pham-mau/props_mau_1.json', 'utf8')).khung4tang?.khongGian;
+  if (kg1) {
+    const cb1 = KG.chuanBi(kg1, 820, 642);
+    const f54 = KG.veKhung(kg1, cb1, 54, 820, 642, {x0: 22, y0: 18, x1: 798, y1: 624});
+    const g45 = f54.goc.find((g) => g.nhan);
+    const kcMinNhan = g45 ? Math.min(...f54.nhan.filter((n) => n.op > 0.05).map((n) => Math.hypot(g45.nhan.x - n.x, g45.nhan.y - n.y))) : 0;
+    const kcMinCham = g45 ? Math.min(...f54.cham.filter((c) => c.op > 0.05).map((c) => Math.hypot(g45.nhan.x - c.x, g45.nhan.y - c.y))) : 0;
+    kiem(kcMinNhan >= 28 && kcMinCham >= 28, `SanKhauKhongGian: nhãn góc 45° cách nhãn đỉnh ${kcMinNhan.toFixed(1)}px & chấm đỉnh ${kcMinCham.toFixed(1)}px (>= 28px)`);
+  }
 }
 
 console.log(`\nKẾT QUẢ: ${dat} đạt, ${hong} hỏng`);

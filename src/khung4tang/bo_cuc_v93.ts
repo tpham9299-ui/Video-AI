@@ -20,6 +20,26 @@ export const RONG_CHU = RONG_ND_V93 - 2 * 48;
 export const coVua = (s: string, max: number, min: number, rong = RONG_CHU, he = 0.68) =>
   Math.max(min, Math.min(max, Math.floor(rong / (Math.max(1, s.length) * he))));
 
+// Dọn ký tự rác vỡ chuỗi ở tiêu đề Intro (VD dấu ngoặc kép lệch cặp, cụm "/?", "?\"", "?°", "A√?" từ bước che đáp án).
+export function lamSachTieuDeIntro(raw: string): string {
+  let s = String(raw || '').replace(/\s+/g, ' ').trim();
+  if (!s) return '';
+  // Xóa dấu ngoặc kép lệch cặp (số lượng lẻ) hoặc ngoặc kép dính cụm rác ?" / /?"
+  s = s.replace(/([/?√°º])\s*["“”]+/g, '$1').replace(/["“”]+\s*([/?])/g, '$1');
+  if ((s.match(/"/g) || []).length % 2 === 1) s = s.replace(/"/g, '');
+  if ((s.match(/“/g) || []).length !== (s.match(/”/g) || []).length) s = s.replace(/[“”]/g, '');
+  // Xóa cụm che đáp án vỡ chuỗi: "?°", "°?", "A√?", "A/?", "/?", "√?"
+  s = s
+    .replace(/(?:^|\s)[A-Za-z]?\s*(?:\/|√)\s*\?+(?=\s|$|[,.:;!–—-])/g, ' ')
+    .replace(/\?+\s*[°º]|[°º]\s*\?+/g, ' ')
+    .replace(/(?:^|\s)\?+(?=\s|$)/g, ' ')
+    .replace(/\s+([,.:;!?])/g, '$1')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/[:–—-]\s*$/, '')
+    .trim();
+  return s;
+}
+
 // tách tối đa 2 dòng, cắt ở khoảng trắng gần giữa nhất
 export function haiDong(s: string, motDong = 16): string[] {
   const x = s.replace(/\s+/g, ' ').trim();
