@@ -331,7 +331,7 @@ function doPost(e) {
     var r = null;
     docHang_(sh).forEach(function (x) { if (x.id === d.id) r = x; });
     if (!r) {
-      [d.file_id, d.anh_kt, d.anh_bia, d.anh_3x3].forEach(function (fid) { if (fid) { try { DriveApp.getFileById(String(fid)).setTrashed(true); } catch (eTr) {} } });
+      // Dòng có thể đã được lưu trữ sau khi đăng. Webhook gửi lại không chứng minh MP4 là bản lỗi.
       return tra({ ok: false, loi: 'KHONG_TIM_THAY' });
     }
     // Nếu người dùng vừa nhắn /sua <mã> khiến dòng đã quay về MOI / DA_GIAI / GITHUB hoặc vừa mới sửa xong (SUA_MOI_): bỏ kết quả dựng cũ
@@ -367,8 +367,7 @@ function doPost(e) {
       }
       if (tuSua && tuSua.het_luot) {
         ghi_(sh, r._row, {anh_kt: gc.anh_kt, anh_bia: gc.anh_bia}, r.id);
-        r.file_video = String(d.file_id);
-        boDeKhongDat_(sh, r, tuSua.cung.map(function (x) { return x.loai; }).join(', '), 'video');
+        boDeKhongDat_(sh, r, tuSua.cung.map(function (x) { return x.loai; }).join(', '), 'video', String(d.file_id));
         return tra({ok: true, het_luot: true});
       }
       if (matThanChan) {
@@ -468,17 +467,17 @@ function baoLoiDung_(sh, r, lyDo) {
 
 /* ===================== DỌN FILE VIDEO KHI ĐÁNH DẤU ĐÃ ĐĂNG ===================== */
 
-// Gọi từ donDaXong_() (bước J trong hướng dẫn sửa Code.gs): cùng cách xử lý như file kịch bản (CACH_XU_LY_FILE).
-function xuLyFileVideo_(fileId) {
-  if (!fileId) return;
-  var cach = cauHinh_('CACH_XU_LY_FILE');
-  if (cach === 'GIU') return;
+function xuLyFileVideo_(fileId, han) {
+  fileId = idDriveVideo_(fileId);
+  if (!fileId || cauHinh_('CACH_XU_LY_FILE') !== 'CHUYEN') return;
   try {
+    kiemHanDonVideo_(han, 10000);
     var f = DriveApp.getFileById(fileId);
-    if (cach === 'XOA') { f.setTrashed(true); return; }
     var goc = thuMucKichBan_().getParents().next();
     var it = goc.getFoldersByName('da_xong');
+    kiemHanDonVideo_(han, 5000);
     var dich = it.hasNext() ? it.next() : goc.createFolder('da_xong');
+    kiemHanDonVideo_(han);
     f.moveTo(dich);
   } catch (e) { nhatKy_('LOI_DON_DEP', 'video ' + fileId + ': ' + e.message); }
 }

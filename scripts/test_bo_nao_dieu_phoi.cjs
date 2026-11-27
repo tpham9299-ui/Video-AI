@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const {createHash} = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -190,22 +191,16 @@ for (const link of ['',null,'https://drive.google.com/file/d/','https://drive.go
   assert.equal(app.duaMp4LoiVaoThungRac_(app.idDriveVideo_(link)),true);
 }
 let inTrash=false;
-files.set(videoId,{getMimeType:()=> 'video/mp4',isTrashed:()=>inTrash,setTrashed:v=>{trashed.push(v);inTrash=v;}});
+files.set(videoId,{getName:()=> 'duyet.mp4',getMimeType:()=> 'video/mp4',isTrashed:()=>inTrash,setTrashed:v=>{trashed.push(v);inTrash=v;}});
 assert.equal(app.duaMp4LoiVaoThungRac_(videoId),true);
 assert.equal(app.duaMp4LoiVaoThungRac_(videoId),true);
 assert.equal(app.duaMp4LoiVaoThungRac_('id-missing'),true);
 assert.deepEqual(trashed,[true]);
-files.set('no-access',{getMimeType(){throw Error('Access denied');}});
+files.set('no-access',{getName(){throw Error('Access denied');}});
 assert.equal(app.duaMp4LoiVaoThungRac_('no-access'),false);
 addRow('TT-rejected');
 const col=k=>cells[0].indexOf(k);
 cells[3][col('file_video')]=videoUrl;
-inTrash=false;
-app.ghiVideoBoKhongDat_(sheet,app.docHang_(sheet)[2],'t2_trong: '+ 'mô tả dài '.repeat(100));
-assert.equal(cells[3][col('file_video')],'[Đã xóa file lỗi - 27/11]');
-assert.equal(cells[3][col('ghi_chu')],'BO_KHONG_DAT (video): t2_trong');
-assert.equal(cells[3][col('trang_thai')],'XOA');
-assert.deepEqual(trashed,[true,true]);
 
 // Keep a failed Auto-Heal job on the Sheet, then resume the same job without another BP4 run.
 addRow('TT-heal');
@@ -234,24 +229,36 @@ app.apDungKetQuaAiXem_(sheet,app.docHang_(sheet)[5],{dat:true,phan_tram:90,diem:
 assert.equal(cells[6][col('trang_thai')],'CHO_DANG');
 
 // Copy must survive a failure between the confirmed archive write and deletion of the source.
-function mockTab(data) {
+function mockTab(data, name='') {
+  let maxRows=100;
+  const valueAt=(r,c)=>data[r]?.[c] ?? '';
+  const readValue=v=>typeof v==='string' && /^=HYPERLINK/i.test(v) ? 'Xem MP4' : v;
   const tab={
-    getLastRow:()=>data.length,getMaxColumns:()=>app.COT.length,getMaxRows:()=>100,
-    getDataRange:()=>({getValues:()=>data.map(row=>row.slice())}),
+    getName:()=>name,
+    getLastRow:()=>data.length,getMaxColumns:()=>app.COT.length,getMaxRows:()=>maxRows,
+    getDataRange:()=>({getValues:()=>data.map(row=>row.map(readValue))}),
     appendRow:row=>data.push(Array.from(row)),setFrozenRows(){},setTabColor(){},
     deleteRow:n=>data.splice(n-1,1),
-    getRange:(row,c,width=1,count=1)=>({
-      getValue:()=>data[row-1]?.[c-1] ?? '',getFormula:()=>'',
-      getValues:()=>Array.from({length:width},(_,i)=>Array.from({length:count},(_,j)=>data[row+i-1]?.[c+j-1] ?? '')),
+    insertRowsAfter:(_,n)=>{maxRows+=n;},
+    getRange:(row,c,height=1,width=1)=>({
+      getValue:()=>readValue(valueAt(row-1,c-1)),
+      getFormula:()=>/^=HYPERLINK/i.test(valueAt(row-1,c-1)) ? valueAt(row-1,c-1) : '',
+      getRichTextValue:()=>null,
+      getFormulas:()=>Array.from({length:height},(_,i)=>Array.from({length:width},(_,j)=>tab.getRange(row+i,c+j).getFormula())),
+      getRichTextValues:()=>Array.from({length:height},()=>Array(width).fill(null)),
+      getValues:()=>Array.from({length:height},(_,i)=>Array.from({length:width},(_,j)=>tab.getRange(row+i,c+j).getValue())),
       setValue:v=>{(data[row-1] ||= [])[c-1]=v;},
       setValues(values){values.forEach((r,i)=>r.forEach((v,j)=>tab.getRange(row+i,c+j).setValue(v)));},
-      copyTo(target){target.setValues(this.getValues());}
+      copyTo(target){target.setValues(Array.from({length:height},(_,i)=>Array.from({length:width},(_,j)=>valueAt(row+i-1,c+j-1))));}
     })
   };
   return tab;
 }
 const postedDate=new Date(Date.now()-8*86400e3);
-const dateFromVN=(d,fmt)=>new Date(d.getTime()+7*3600e3).toISOString().slice(0,7).replace('-','_');
+const dateFromVN=(d,fmt)=>{
+  const iso = new Date(d.getTime()+7*3600e3).toISOString();
+  return fmt==='dd/MM' ? iso.slice(8,10)+'/'+iso.slice(5,7) : iso.slice(0,7).replace('-','_');
+};
 const archiveMonth='LuuTru_'+dateFromVN(postedDate,'yyyy_MM');
 const archiveRow=(id,data)=>Array.from(app.COT,k=>({id,de_bai:'đề '+id,ma_bam:'hash-'+id,...data})[k] ?? '');
 const hotData=[cells[0].slice(),
@@ -259,25 +266,162 @@ const hotData=[cells[0].slice(),
   archiveRow('recent',{trang_thai:'DA_DANG',cap_nhat:new Date()}),
   archiveRow('rejected',{trang_thai:'XOA',ghi_chu:'BO_KHONG_DAT (video): t2_trong',
     file_video:'[Đã xóa file lỗi - 25/11]',cap_nhat:new Date(Date.now()-3*86400e3)})];
-const hot=mockTab(hotData), tabs=new Map([['HANG_DOI',hot]]);
+const hot=mockTab(hotData,'HANG_DOI'), tabs=new Map([['HANG_DOI',hot]]);
 const book={
   getSheetByName:n=>tabs.get(n),
-  insertSheet:n=>{const t=mockTab([]);tabs.set(n,t);return t;}
+  getSheets:()=>Array.from(tabs.values()),
+  insertSheet:n=>{const t=mockTab([],n);tabs.set(n,t);return t;},
+  toast(){}
 };
 Object.assign(app,{voiKhoa_:(_,fn)=>fn(),damBaoCot_(){},deMoiChoSanPhamBiBo_(){},xoaKichBanKhoiSheet_(){throw Error('tạm lỗi');}});
 app.SpreadsheetApp.getActiveSpreadsheet=()=>book;
-app.Utilities.formatDate=dateFromVN;
+app.Utilities.formatDate=(d,_,fmt)=>dateFromVN(d,fmt);
 assert.equal(app.donDepHotSheetDinhKy().trucTrac,true);
 assert.equal(hotData.length,4,'nguồn còn nguyên khi dọn bị gián đoạn');
 assert.equal(tabs.get(archiveMonth).getLastRow(),2);
 assert.equal(tabs.get('LuuTru_Loi').getLastRow(),2);
 app.xoaKichBanKhoiSheet_=()=>{};
-assert.deepEqual({...app.donDepHotSheetDinhKy()},{daDang:1,loi:1,mp4:0,trucTrac:false});
+assert.deepEqual({...app.donDepHotSheetDinhKy()},{daDang:1,loi:1,docDe:0,mp4:0,trucTrac:false,hetGio:false,baoVe:0});
 assert.deepEqual(hotData.slice(1).map(r=>r[0]),['recent']);
 assert.equal(tabs.get(archiveMonth).getLastRow(),2,'chạy lại không chép trùng');
 assert.equal(tabs.get('LUU_TRU').getLastRow(),3,'chạy lại không trùng mã băm');
 assert.equal(app.docMaBamLuuTru_()['hash-posted'],true);
 assert.equal(app.docMaBamLuuTru_()['hash-rejected'],true);
+
+// Manual cleanup uses the rendered label, formula and explicit status from DOC_DE.
+vm.runInContext(read('SanPham.gs'),app);
+app.bam_=s=>createHash('md5').update(String(s).toLowerCase()).digest('hex');
+const driveProps=new Map([['THU_MUC_VIDEO_ID','videos-folder']]);
+const logs=[];
+Object.assign(app,{
+  nhatKy_:(kind,entry)=>logs.push([kind,entry]),
+  PropertiesService:{getScriptProperties:()=>({
+    getProperty:k=>driveProps.get(k),setProperty:(k,v)=>driveProps.set(k,v),deleteProperty:k=>driveProps.delete(k)
+  })}
+});
+function mp4(id, name=id+'.mp4') {
+  const file={getId:()=>id,getName:()=>name,getMimeType:()=> 'video/mp4',isTrashed:()=>file.removed,
+    setTrashed:v=>{assert.equal(v,true);assert.equal(file.removed,false);file.removed=v;},removed:false};
+  files.set(id,file);
+  return file;
+}
+const docFormula='=HYPERLINK("https://drive.google.com/file/d/file-formula/view";"Xem MP4")';
+const docData=[['Bảng đề'],['Mã','Trạng thái','ĐỀ BÀI','Ghi chú','Link video'],
+  ['DOC-LOI','LOI_CAN_XEM','bài lỗi công thức','sửa 3 lần vẫn lỗi',docFormula],
+  ['CHO-NOW','CHO_DANG','bài đang chờ','BO_KHONG_DAT từ bản trước','=HYPERLINK("https://drive.google.com/open?id=file-protected";"Xem MP4")'],
+  ['DANG-DUNG','DANG_DUNG','bài đang dựng','BO_KHONG_DAT từ bản trước',''],
+  ['CHO-KD','CHO_KIEM_DUYET','bài chờ kiểm duyệt','het_luot của bản cũ',''],
+  ['CO-VIDEO','CO_VIDEO','video chưa có lỗi','đang chờ chấm',''],
+  ['CHUA-CHOT','LOI_CAN_XEM','chưa kết luận','đang chờ xem',''],
+  ['SHARED','BO_KHONG_DAT','dòng lỗi trỏ tới video chờ đăng','het_luot','https://drive.google.com/open?id=file-protected'],
+  ['SHARED-NAME','LOI_CAN_XEM','dòng lỗi trỏ tới video đã đăng','BO_KHONG_DAT','https://drive.google.com/open?id=good-index-only']];
+tabs.set('DOC_DE',mockTab(docData,'DOC_DE'));
+const idx=tabs.get('LUU_TRU');
+for (const [id,ketQua] of [['OLD-LOI','LOI_CU'],['OLD-LOAI','LOAI'],['OLD-CHO','CHO_QUA_HAN'],['OLD-BO','BO_KHONG_DAT'],
+  ['POSTED-ID','DA_DANG'],['POSTED-ID','LOI_CU'],['CHO-NOW','LOAI'],['DANG-DUNG','LOI_CU'],['CHO-KD','LOI_CU'],
+  ['CO-VIDEO','LOAI'],['CHUA-CHOT','LOI_CU'],['posted','LOI_CU'],['ID-NGAN','LOI_CU'],['FILE-ALIAS','LOI_CU']]) {
+  idx.appendRow(['hash-'+id,id,'','','',ketQua,new Date()]);
+}
+const formulaFile=mp4('file-formula','DOC-LOI.mp4');
+const rejectedFiles=[mp4('old-1','OLD-LOI.mp4'),mp4('old-2','demo_OLD-LOAI_legacy.MP4'),
+  mp4('old-3','OLD-CHO.mp4'),mp4('old-4','OLD-BO.mp4'),mp4('old-5','rejected.mp4')];
+const protectedFiles=[mp4('good-index-only','POSTED-ID.mp4'),mp4('good-1','CHO-NOW.mp4'),mp4('good-2','posted.mp4'),
+  mp4('good-3','OLD-LOI_CHO-NOW.mp4'),mp4('good-4','ID-NGAN-10P.mp4'),mp4('file-protected','FILE-ALIAS.mp4'),
+  mp4('good-5','DANG-DUNG.mp4'),mp4('good-6','CHO-KD.mp4'),mp4('good-7','CO-VIDEO.mp4'),mp4('good-8','CHUA-CHOT.mp4'),
+  mp4('good-9','OLD-LOI_OLD-LOAI.mp4')];
+const nonMp4=mp4('cover','OLD-LOI.png');
+let folderFiles=[formulaFile,...rejectedFiles,...protectedFiles,nonMp4];
+const cursorCalls=[];
+function iterateFrom(i=0) {
+  return {hasNext:()=>i<folderFiles.length,next:()=>folderFiles[i++],getContinuationToken:()=>String(i)};
+}
+app.DriveApp.getFolderById=id=>{
+  assert.equal(id,'videos-folder');
+  return {getId:()=>id,getFiles:()=>iterateFrom()};
+};
+app.DriveApp.continueFileIterator=token=>{cursorCalls.push(token);return iterateFrom(Number(token));};
+assert.match(app.donSachVideoLoiDriveNgay(),/Đã chuyển 1 dòng DOC_DE .* đưa 6 file MP4/);
+assert.equal(formulaFile.removed,true);
+assert.ok(rejectedFiles.every(f=>f.removed));
+assert.ok(protectedFiles.concat(nonMp4).every(f=>!f.removed));
+assert.equal(docData.some(r=>r[0]==='DOC-LOI'),false);
+assert.equal(docData.some(r=>r[0]==='SHARED' && r[4].includes('file-protected')),true);
+const errorArchive=tabs.get('LuuTru_Loi');
+assert.equal(errorArchive.getRange(3,1).getValue(),'DOC-LOI');
+assert.match(errorArchive.getRange(3,col('file_video')+1).getValue(),/^\[Đã xóa file lỗi - \d\d\/\d\d\]$/);
+assert.equal(app.docMaBamLuuTru_()[app.bam_('bài lỗi công thức')],true);
+assert.match(logs.at(-1)[1],/1 dòng DOC_DE.*6 file MP4/);
+assert.match(app.donSachVideoLoiDriveNgay(),/Đã chuyển 0 dòng DOC_DE .* đưa 0 file MP4/);
+
+// A new BP4 failure trashes and archives the exact version. A stale callback cannot reject a passing version.
+const bp4=mp4('bp4-new');
+hotData.push(archiveRow('BP4-NEW',{trang_thai:'DANG_KIEM_DUYET',file_video:'bp4-new',cap_nhat:new Date()}));
+app.boDeKhongDat_(hot,app.docHang_(hot).find(r=>r.id==='BP4-NEW'),'t2_trong: '+ 'mô tả dài '.repeat(100),'video');
+assert.equal(bp4.removed,true);
+assert.equal(hotData.some(r=>r[0]==='BP4-NEW'),false);
+assert.equal(errorArchive.getRange(4,col('ghi_chu')+1).getValue(),'BO_KHONG_DAT (video): t2_trong');
+assert.match(errorArchive.getRange(4,col('file_video')+1).getValue(),/^\[Đã xóa file lỗi - /);
+hotData.push(archiveRow('PASS-BP4',{trang_thai:'CHO_DANG',file_video:'still-good',cap_nhat:new Date()}));
+const passBp4=mp4('still-good');
+app.boDeKhongDat_(hot,app.docHang_(hot).find(r=>r.id==='PASS-BP4'),'het_luot','video');
+assert.equal(passBp4.removed,false);
+assert.equal(hotData.find(r=>r[0]==='PASS-BP4')[1],'CHO_DANG');
+
+// Retry a failed Drive write without losing the link or adding a second archive row.
+const blocked=mp4('blocked');
+const trashBlocked=blocked.setTrashed;
+blocked.setTrashed=()=>{throw Error('Access denied');};
+const blockedRow=['DOC-BLOCKED','LOI_CAN_XEM','đề liên kết lỗi','Kiểm duyệt bố cục vẫn lỗi','https://drive.google.com/open?id=blocked'];
+docData.push(blockedRow);
+assert.match(app.donSachVideoLoiDriveNgay(),/Có lỗi cần xem trong NHAT_KY/);
+assert.match(blockedRow[4],/id=blocked/);
+assert.equal(docData.includes(blockedRow),true);
+blocked.setTrashed=trashBlocked;
+assert.match(app.donSachVideoLoiDriveNgay(),/Đã chuyển 1 dòng DOC_DE .* đưa 1 file MP4/);
+assert.equal(docData.includes(blockedRow),false);
+
+// A timed-out scan resumes at the next Drive file, rebuilding the protection set before trashing it.
+const resumeA=mp4('resume-a','RESUME-A.mp4'), resumeB=mp4('resume-b','RESUME-B.mp4'), resumeC=mp4('resume-c','RESUME-C.mp4');
+for (const id of ['RESUME-A','RESUME-B','RESUME-C']) idx.appendRow(['hash-'+id,id,'','','','LOAI',new Date()]);
+folderFiles=[resumeA,resumeB,resumeC];
+const now=Date.now();
+const actualNow=Date.now;
+const trashA=resumeA.setTrashed;
+let clock=now;
+try {
+  Date.now=()=>clock;
+  resumeA.setTrashed=v=>{trashA(v);clock=now+260000;};
+  assert.match(app.donSachVideoLoiDriveNgay(),/Chạy thêm một lượt/);
+  assert.equal(resumeB.removed,false);
+  assert.equal(JSON.parse(driveProps.get('VI_TRI_QUET_VIDEO_LOI')).token,'1');
+  docData.push(['RESUME-B','CHO_DANG','vừa duyệt','','']);
+  assert.match(app.donSachVideoLoiDriveNgay(),/đưa 1 file MP4/);
+  assert.equal(resumeB.removed,false);
+  assert.equal(resumeC.removed,true);
+  assert.deepEqual(cursorCalls,['1']);
+  assert.equal(driveProps.has('VI_TRI_QUET_VIDEO_LOI'),false);
+} finally { Date.now=actualNow; }
+
+// A backlog larger than the periodic batch is processed by the Zalo command, including recent/undated rows.
+const backlogFiles=Array.from({length:103},(_,i)=>{
+  const file=mp4('backlog-file-'+i,'BACKLOG-'+i+'.mp4');
+  docData.push(['BACKLOG-'+i,'LOI_CAN_XEM','đề tồn số '+i,'Mắt thần 3+3','https://drive.google.com/open?id='+file.getId()]);
+  return file;
+});
+const replies=[];
+Object.assign(app,{LockService:{getScriptLock:()=>({tryLock:()=>true,releaseLock(){}})},
+  guiZaloToi_:(...args)=>replies.push(args)});
+folderFiles=[...backlogFiles,mp4('canonical-name','ban-cu-TT260126-103000-1-render.mp4')];
+idx.appendRow(['hash-native-id','TT260126-103000-1','','','','LOI_CU',new Date()]);
+assert.match(app.traLoiLenh_('chat-test','/donvideoloi'),/Đã nhận/);
+assert.equal(backlogFiles[0].removed,false,'webhook trả lời trước khi gọi Drive');
+app.chayDonDep();
+assert.deepEqual(replies.map(([chat])=>chat),['chat-test']);
+assert.match(replies[0][1],/Đã chuyển 103 dòng DOC_DE .* đưa 104 file MP4/);
+assert.ok(folderFiles.every(f=>f.removed));
+assert.ok(docData.every(r=>!String(r[0]).startsWith('BACKLOG-')));
+assert.equal(driveProps.has('DOT_DON_VIDEO_LOI'),false);
+
 const inputs=[['mon','du_lieu'],['id','de'],['id','de'],['viec','id','kich_ban','lan_giao'],['id','du_lieu','lan_giao'],['viec','id','dang','lan_giao']];
 workflow.forEach((file,bp)=>{
   const yaml=read('.github/workflows/'+file).split('concurrency:')[0];

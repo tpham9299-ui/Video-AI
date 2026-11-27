@@ -436,52 +436,12 @@ function videoCoKetLuanLoi_(r) {
 }
 
 function donVideoLoi_(chat) {
-  return voiKhoa_(5000, function () {
+  return voiKhoa_(1000, function () {
     var p = PropertiesService.getScriptProperties();
-    if (!p.getProperty('DOT_DON_VIDEO_LOI')) {
-      p.setProperty('DOT_DON_VIDEO_LOI', JSON.stringify({den: Date.now(), sau: '', daDon: 0, loi: 0, chat: chat}));
-    }
-    return donLoVideoLoi_(p);
+    if (p.getProperty('DOT_DON_VIDEO_LOI')) return 'Đã có yêu cầu dọn video lỗi đang chờ xử lý.';
+    p.setProperty('DOT_DON_VIDEO_LOI', JSON.stringify({chat: chat}));
+    return 'Đã nhận /donvideoloi. Tôi sẽ gửi kết quả sau lượt dọn định kỳ tiếp theo.';
   }) || 'Hệ thống đang bận. Gửi lại /donvideoloi sau ít phút.';
-}
-
-// Cả lệnh Zalo và lịch chayDonDep đều giữ khóa khi gọi hàm này.
-function donLoVideoLoi_(p) {
-  var raw = p.getProperty('DOT_DON_VIDEO_LOI');
-  if (!raw) return '';
-  var dot = JSON.parse(raw);
-  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
-  var hang = docHang_(sh);
-  var tepDungChung = Object.create(null);
-  hang.forEach(function (r) {
-    if (r.file_video) tepDungChung[r.file_video] = (tepDungChung[r.file_video] || 0) + 1;
-  });
-  var ds = hang.filter(function (r) {
-    return videoCoKetLuanLoi_(r) && String(r.id) > dot.sau && !(new Date(r.cap_nhat).getTime() > dot.den);
-  }).sort(function (a, b) { return a.id < b.id ? -1 : a.id > b.id ? 1 : 0; });
-  var batDau = Date.now(), i = 0;
-  while (i < ds.length && i < 15 && Date.now() - batDau < 18000) {
-    var r = ds[i++];
-    try {
-      var f = DriveApp.getFileById(String(r.file_video));
-      if (tepDungChung[r.file_video] > 1 || !/^video\//i.test(f.getMimeType())) throw Error('Tệp dùng chung hoặc sai loại');
-      if (!f.isTrashed()) f.setTrashed(true);
-      ghi_(sh, r._row, {trang_thai: 'DA_DON_VIDEO', file_video: '', duyet: 'BO'}, r.id);
-      dot.daDon++;
-    } catch (e) {
-      dot.loi++;
-      nhatKy_('DON_VIDEO_LOI', r.id + ': ' + e.message);
-    }
-    dot.sau = String(r.id);
-  }
-  SpreadsheetApp.flush();
-  var tin = 'Đã dọn ' + dot.daDon + ' video lỗi vào Thùng rác Drive. Có lỗi khi xử lý ' + dot.loi + ' video.';
-  if (i === ds.length) {
-    p.deleteProperty('DOT_DON_VIDEO_LOI');
-    return tin;
-  }
-  p.setProperty('DOT_DON_VIDEO_LOI', JSON.stringify(dot));
-  return tin + ' Lịch dọn nền sẽ tiếp tục.';
 }
 
 function danhSachChoDuyet_() {
