@@ -74,7 +74,10 @@ def kiem_menh_de(md, D):
         trong = abs(cham(n, tru(p, o))) < 1e-6
         return e < TOL_GOC and not trong, e
     if l in ("thang_hang", "dong_phang"):
-        ps = [_p(D, x) for x in (md.get("diem") if isinstance(md.get("diem"), list) else tach_ten(md.get("diem")))]
+        ds = tach_ten(md.get("diem"))
+        if len(ds) < 3:
+            raise LoiDung("KG_DUNG_LOI", "mệnh đề %s cần ít nhất 3 điểm" % l)
+        ps = [_p(D, x) for x in ds]
         if l == "thang_hang":
             e = max(dai(cheo(tru(ps[1], ps[0]), tru(x, ps[0]))) / max(1e-12, dai(tru(ps[1], ps[0]))) for x in ps[2:])
         else:
@@ -104,9 +107,15 @@ def tinh_so_do(dl, D):
         n2, _, _ = _mp(D, dl.get("mat2") or dl.get("b"))
         return math.degrees(math.acos(min(1.0, abs(cham(n1, n2)))))
     if l == "goc_ba_diem":   # góc XYZ tại Y
-        x, y, z = [_p(D, t) for t in tach_ten(dl.get("goc"))]
+        ds = tach_ten(dl.get("goc"))
+        if len(ds) != 3:
+            raise LoiDung("KG_DUNG_LOI", "goc_ba_diem: trường 'goc' phải gồm đúng 3 điểm")
+        x, y, z = [_p(D, t) for t in ds]
         u, v = tru(x, y), tru(z, y)
-        return math.degrees(math.acos(max(-1.0, min(1.0, cham(u, v) / (dai(u) * dai(v))))))
+        mau = dai(u) * dai(v)
+        if mau == 0:
+            raise LoiDung("KG_DUNG_LOI", "góc '%s' có cạnh độ dài 0" % "".join(ds))
+        return math.degrees(math.acos(max(-1.0, min(1.0, cham(u, v) / mau))))
     if l == "khoang_cach_diem_mat":
         X = _p(D, dl.get("diem"))
         n, o, _ = _mp(D, dl.get("mat"))

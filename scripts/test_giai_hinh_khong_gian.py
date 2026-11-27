@@ -87,6 +87,11 @@ ok("KG_MENH_DE_SAI" in ma_loi(G), "mệnh đề chỉ đúng khi M là trung đi
 kb = copy.deepcopy(doc("vuong_goc_sa.json"))
 kb["hinh_khong_gian"]["so_do"][0]["gia_tri"] = "60°"
 ok("KG_SAI_SO_DO" in ma_loi(giai(kb)), "số đo lệch đáp án -> KG_SAI_SO_DO")
+kb = doc("vuong_goc_sa.json")
+kb["hinh_khong_gian"]["so_do"].append({"loai": "goc_ba_diem", "gia_tri": "45°"})
+G = giai(kb, chi_kiem=True)
+ok(not G["dat"] and ma_loi(G) == {"KG_DUNG_LOI"} and all(dl["loai"] != "goc_ba_diem" for dl in G["so_do"]),
+   "số đo góc ba điểm thiếu 'goc' -> KG_DUNG_LOI")
 kb = copy.deepcopy(kb1)
 kb["lop"] = "10"
 ok("KG_VUOT_CHUONG_TRINH" in ma_loi(giai(kb)), "lớp 10 -> KG_VUOT_CHUONG_TRINH")
