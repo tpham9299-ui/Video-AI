@@ -1458,8 +1458,8 @@ function boSungBanVeMoDau_(kb, r, sn) { return; }
 
 // Nhờ Gemini sửa ĐÚNG các lỗi còn lại (gửi kèm toàn bộ quy tắc + kịch bản hiện tại), giữ nguyên phần đã đúng.
 function schemaKichBan_(soCanh) {
-  var chu = {type: 'STRING'}, nguyen = {type: 'INTEGER'}, dungSai = {type: 'BOOLEAN'};
-  var jsonHinh = {type: 'STRING', description: 'Chuỗi chứa JSON mô tả hình theo hướng dẫn của đề.'};
+  var chu = {type: 'STRING'}, nguyen = {type: 'INTEGER'}, so = {type: 'NUMBER'}, dungSai = {type: 'BOOLEAN'};
+  var jsonHinh = {type: 'STRING', description: 'JSON của mục hình dưới dạng chuỗi.'};
   var mang = function (items, min) {
     return Object.assign({type: 'ARRAY', items: items}, min == null ? {} : {minItems: min});
   };
@@ -1468,9 +1468,9 @@ function schemaKichBan_(soCanh) {
   var canh = obj({
     so: nguyen, loai: {type: 'STRING', enum: ['mo_dau', 'de_bai', 'mo_hinh_hoa', 'y_do', 'thu_nho', 'bay', 'nhac_lai', 'diem_chot',
       'tinh_toan', 'dap_an', 'kiem_tra', 'thu_lai', 'lien_he_thuc_te', 'bai_hoc', 'ket_luan', 'gia_thiet',
-      'dung_hinh', 'chung_minh', 'kiem_chung', 'mo_phong', 'cta']}, tieu_de_canh: chu, tu_khoa: chu, nhan: chu, giu_san_khau: dungSai,
+      'dung_hinh', 'chung_minh', 'kiem_chung', 'mo_phong', 'phan_tich', 'giai', 'cta']}, tieu_de_canh: chu, tu_khoa: chu, nhan: chu, giu_san_khau: dungSai,
     giong_doc: chu, loi_thoai: chu, noi_dung_man_hinh: dsChu, moc_loi: dsChu, trinh_bay: {type: 'STRING', enum: ['cong_don', 'bien_doi', 'xep']},
-    chu_thich: dsChu, chuyen_canh: chu, goc_nhin: dsChu, kien_thuc: chu, nhan_manh_hinh: dsChu, tach: dsChu,
+    chu_thich: dsChu, chuyen_canh: chu, goc_nhin: dsChu, kien_thuc: chu, nhan_manh_hinh: dsChu, tach: dsChu, thoi_luong_giay: so,
     buoc_ve: mang(obj({ve: chu, khi_noi: chu}, ['ve', 'khi_noi'])),
     minh_hoa: obj({loai: chu, mo_ta: chu, du_lieu: jsonHinh}, ['loai']),
     net_toan: jsonHinh, mo_hinh_3d: jsonHinh
@@ -1481,17 +1481,20 @@ function schemaKichBan_(soCanh) {
     return obj({canh: dsCanh}, ['canh']);
   }
   var the = obj({loai: chu, nhan: chu, dong: dsChu, khi_noi: chu, khi_noi_dong: dsChu,
-    phim: dsChu, ket_qua: chu, ham: chu, bien: chu, moc_x: dsChu, dau: dsChu, gia_tri: dsChu, noi_dung: chu},
+    phim: dsChu, ket_qua: chu, ham: chu, bien: chu, moc_x: dsChu, dau: dsChu, gia_tri: dsChu, noi_dung: chu, chot: dungSai},
     ['loai', 'khi_noi']);
   var buoc = obj({canh: nguyen, khi_noi: chu, nhan: chu, tieu_de: chu, mau: chu, du_kien: dsChu,
-    the: mang(the, 1), doi_chieu: jsonHinh}, ['khi_noi', 'tieu_de', 'the']);
+    the: mang(the, 1), doi_chieu: jsonHinh,
+    hanh_dong: obj({pha: chu, do: nguyen, nhanh: nguyen}, ['pha'])}, ['khi_noi', 'tieu_de', 'the']);
+  var tomTat = mang(obj({chien_thuat: chu, cong_thuc: chu}, ['chien_thuat', 'cong_thuc']), 3);
+  tomTat.maxItems = 3;
   return obj({
     tieu_de: chu, chu_de_ngan: chu, dap_an_cuoi: chu, dap_an_hien: chu, canh: dsCanh,
     hook: chu, hook_chu: chu, hook_kieu: chu, hook_ung_vien: dsChu, tieu_de_bia: chu, nhan_manh: dsChu,
     y_tuong_chinh: chu, de_cho: dsChu, can_tim: chu, du_kien: dsChu, hashtag: dsChu,
     bai_hoc_rut_ra: dsChu, video_tiep_theo: chu, binh_luan_ghim: chu,
     nhan_thi: chu, tieu_de_intro: chu, phu_de_intro: chu, cau_hook: chu, cta: chu,
-    tom_tat_3_buoc: mang(obj({chien_thuat: chu, cong_thuc: chu}, ['chien_thuat', 'cong_thuc'])),
+    tom_tat_3_buoc: tomTat,
     cau_chuyen: obj({nguoi_ke: chu, dia_diem: chu, muc_tieu: chu, phong_canh: jsonHinh}),
     khung4tang: obj({phu_de: chu, theme: chu, de_ghim: mang(obj({id: chu, nhan: chu, mau: chu}, ['id', 'nhan'])),
       buoc: mang(buoc, 1), san_khau: jsonHinh, canh_3d_vector: jsonHinh,
@@ -1763,7 +1766,7 @@ function tuyChonBienKich_() {
 
 // opts.cheDo: 'nang' (mặc định: giải toán, kịch bản, Lego) | 'nhe' (kiểm duyệt, sửa nhanh) -> thứ tự model xếp hạng tự động
 function loiGeminiSchema_(kq) {
-  return kq && !kq.ok && kq.code === 400 && /schema|structured[- ]output/i.test(String(kq.raw));
+  return kq && !kq.ok && !kq.schemaDaThuLai && kq.code === 400 && /schema|structured[- ]output/i.test(String(kq.raw));
 }
 
 function ghiGeminiKhongSchema_(cache, model, raw) {

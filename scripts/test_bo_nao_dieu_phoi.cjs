@@ -10,15 +10,27 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const gs = fs.readdirSync(root).filter(file => file.endsWith('.gs'));
 gs.forEach(filename => new vm.Script(read(filename), {filename}));
 
-let rows = [], active = [], calls = [], picked = [], warnings = [], keyRatio = 1, vnDay = '20261127';
+let rows = [], active = [], calls = [], picked = [], warnings = [], keyRatio = 1, vnDay = '20261127', vnHour = 17;
+let logRows = [];
 const config = new Map(), props = new Map();
 const ctx = vm.createContext({
-  Date, TEN_HANG_DOI:'HANG_DOI', SpreadsheetApp:{getActiveSpreadsheet:()=>({getSheetByName:()=>({})}),flush(){}},
-  PropertiesService:{getScriptProperties:()=>({getProperty:k=>props.get(k),setProperty:(k,v)=>props.set(k,v),deleteProperty:k=>props.delete(k)})},
-  Utilities:{formatDate:()=>vnDay}, khoThongKeKhaDung_:()=>({tyLe:keyRatio}),
+  Date, TEN_HANG_DOI:'HANG_DOI', TEN_CAU_HINH:'CAU_HINH',
+  SpreadsheetApp:{getActiveSpreadsheet:()=>({getSheetByName:name=>{
+    if (name==='NHAT_KY') return {getDataRange:()=>({getValues:()=>logRows})};
+    if (name==='CAU_HINH') return {getDataRange:()=>({getValues:()=>[['khoa','gia_tri'],...config]})};
+    return {};
+  }}),flush(){}},
+  PropertiesService:{getScriptProperties:()=>({getProperty:k=>props.get(k),getProperties:()=>Object.fromEntries(props),setProperty:(k,v)=>props.set(k,v),deleteProperty:k=>props.delete(k)})},
+  Utilities:{formatDate:(d,tz,fmt)=>{
+    assert.equal(tz,'Asia/Ho_Chi_Minh');
+    if (fmt==='HH') return String(vnHour);
+    if (d.getUTCFullYear()===2025) return new Date(d.getTime()+7*3600e3).toISOString().slice(0,10).replaceAll('-','');
+    return vnDay;
+  }}, khoThongKeKhaDung_:()=>({tyLe:keyRatio,conSong:Math.round(28*keyRatio),tong:28}),
   giaiTrenGitHub_:()=>true,cauHinh_:k=>config.get(k), chDang_:()=>'BAT', chNC_:()=>'BAT', dangNghi_:()=>false, chanNguonBoNao_:()=>'',
   dsNenTangChoVideo_:()=>['youtube'], damBaoCot_(){}, matThanChan_:()=>false, daDuyet_:r=>r.duyet==='DA_DUYET', laUuTien_:()=>false,
   docHang_:()=>rows, voiKhoa_:(_,fn)=>fn(), nhatKy_(){}, guiZaloMotLan_:(k,text)=>warnings.push(text),
+  guiZalo_:text=>warnings.push(text),
   ghi_:(_,i,f,id)=>Object.assign(rows.find(r=>r.id===id),f)
 });
 vm.runInContext(read('BoNaoDieuPhoi.gs'), ctx);
@@ -100,8 +112,40 @@ vnDay='20261128';ctx.buocBoNao_({},4,'chay',0);assert.deepEqual(picked,['backlog
 function fillBuffer(n) {
   return [row(1),row(2),row(3),row(4),...Array.from({length:n},(_,i)=>row(5,{id:'ready-'+i}))];
 }
-props.clear(); calls=[]; rows=fillBuffer(7);
-assert.match(ctx.nhipBoNao_('chay'),/Kho đệm sẵn đăng: 6\/7 \(ĐANG NGỦ ĐÔNG\)/);
+const tenDem='BO_NAO_VIDEO_MOI_NGAY';
+const logRender=(date,id)=>[date,'DUNG_VIDEO',id+' -> xong, file file-'+id];
+props.clear(); calls=[]; keyRatio=0.25;
+rows=fillBuffer(10).filter(r=>r.id!=='TT-1');
+rows.push(row(4,{id:'raw',trang_thai:'CO_VIDEO',duyet:'CHO'}), row(5,{id:'published',trang_thai:'DA_DANG'}),
+  row(5,{id:'legacy-approved',trang_thai:'CO_VIDEO',_trang_thai_sheet:'CO_VIDEO'}),
+  ...Array.from({length:4},(_,i)=>row(4,{id:'loi-'+i,trang_thai:'LOI_CAN_XEM',bp_thu_lai:2})));
+config.set('BAT_BP5','TAT');
+assert.match(ctx.nhipBoNao_('xem'),/Video mới hôm nay: 0\/3\nKho đệm CHO_DANG: 10\/7 \(ĐANG SẢN XUẤT\)\nQuỹ key: 7\/28/);
+assert.deepEqual(calls,[]);
+ctx.nhipBoNao_('chay');
+assert.deepEqual(calls,[4,3,2,0],'kho đầy, thiếu video, BP0 vẫn giao khi còn đúng 25% key');
+assert.equal(ctx.tonBoNao_(rows),1,'chỉ đang dựng chiếm phanh tồn sau khi đã gửi BP2');
+assert.equal(ctx.demDangSanXuatBoNao_(rows),2);
+
+calls=[]; rows=fillBuffer(10); props.delete('BP0_GIU_DEN');
+assert.match(ctx.nhipBoNao_('chay'),/Lý do BP0 chưa tạo đề: BP1–BP3 có 3 bài đang xử lý, đủ bù 3 video còn thiếu/);
+assert.deepEqual(calls,[4,3,2,1],'BP1–BP3 vẫn chạy khi các bài hiện tại đủ bù chỉ tiêu');
+
+calls=[]; rows=fillBuffer(10); keyRatio=6/28;
+assert.match(ctx.nhipBoNao_('chay'),/Lý do BP0 chưa tạo đề: ngủ đông, quỹ key Gemini 6\/28 dưới 25%/);
+assert.deepEqual(calls,[4]);
+keyRatio=0.25; config.delete('BAT_BP5');
+logRows=['a','b','a','c'].map(id=>logRender(new Date(),id));
+logRows.push([new Date(),'AI_XEM','old -> xong, file old']);
+calls=[]; rows=fillBuffer(10);
+assert.match(ctx.nhipBoNao_('chay'),/Video mới hôm nay: 3\/3\nKho đệm CHO_DANG: 9\/7 \(ĐANG NGỦ ĐÔNG\)/);
+assert.deepEqual(calls,[5,4]);
+logRows=[];
+assert.equal(ctx.demVideoMoiTrongNgay_(),3,'Script Properties giữ số đã dựng sau khi nhật ký bị cắt');
+assert.deepEqual(JSON.parse(props.get(tenDem)).ids,['a','b','c']);
+
+props.delete('BO_NAO_NGU_DONG'); calls=[]; rows=fillBuffer(7);
+assert.match(ctx.nhipBoNao_('chay'),/Kho đệm CHO_DANG: 6\/7 \(ĐANG NGỦ ĐÔNG\)/);
 assert.deepEqual(calls,[5,4]);
 assert.equal(props.get('BO_NAO_NGU_DONG'),'1');
 // A busy publisher keeps the buffer at 6, and the production stages stay asleep.
@@ -113,6 +157,90 @@ active=[];rows=fillBuffer(6);calls=[];
 assert.match(ctx.nhipBoNao_('chay'),/5\/7 \(ĐANG SẢN XUẤT\)/);
 assert.deepEqual(calls,[5,4,3,2,1,0]);
 assert.equal(props.has('BO_NAO_NGU_DONG'),false);
+
+// A held full buffer reopens the next day. The first render at VN midnight belongs to the new day.
+props.clear(); vnDay='20251128';
+logRows=[logRender(new Date('2025-11-27T16:59:59Z'),'yesterday'),logRender(new Date('2025-11-27T17:00:00Z'),'today')];
+assert.equal(ctx.demVideoMoiTrongNgay_(),1);
+logRows=[]; calls=[]; rows=fillBuffer(10).slice(4);
+ctx.chanNguonBoNao_=()=> 'đã đủ chỉ tiêu ngày hoặc đủ hàng nguồn';
+ctx.laKhoaDemBP0_=k=>k==='MON_KE';
+ctx.docMaBamLuuTru_=()=>({'archived-hash':true});
+props.set('MON_KE','2');
+let bp0Payload;
+ctx.guiWorkflowGitHub_=(inputs,workflow)=>{
+  assert.equal(workflow,'sinh-de.yml');
+  calls.push(0);
+  bp0Payload=JSON.parse(inputs.du_lieu);
+  return {ok:true};
+};
+config.set('GEMINI_KEYS','test-secret');
+config.set('BAT_BP5','TAT');
+ctx.nhipBoNao_('chay');
+assert.deepEqual(calls,[0],'bộ đếm video đạt cũ không chặn giao thêm đề');
+assert.equal(bp0Payload.lan_giao,props.get('BP0_GIU_DEN'));
+assert.equal(bp0Payload.props.MON_KE,'2');
+assert.ok(!('GEMINI_KEYS' in bp0Payload.cau_hinh));
+assert.deepEqual(bp0Payload.ma_bam,['archived-hash']);
+
+// Evening alert uses the real BP0 blocker and is only sent by the scheduler, once per VN day.
+warnings=[]; props.delete('BP0_GIU_DEN'); config.set('BAT_BP0','TAT'); vnHour=17;
+ctx.nhipBoNao_('chay'); assert.deepEqual(warnings,[]);
+vnHour=18;
+ctx.nhipBoNao_('xem'); assert.deepEqual(warnings,[]);
+ctx.nhipBoNao_('chay'); ctx.nhipBoNao_('chay');
+assert.equal(warnings.length,1);
+assert.match(warnings[0],/0\/3[\s\S]*BP0 BAT_BP0=TAT/);
+vnDay='20251129';
+ctx.nhipBoNao_('chay'); assert.equal(warnings.length,2);
+logRows=[logRender(new Date(),'done')]; vnDay='20251130';
+ctx.nhipBoNao_('chay'); assert.equal(warnings.length,2);
+
+// One-off Zalo dispatch bypasses the buffer but respects an empty BP1–BP3 queue and the BP0 hold.
+vm.runInContext(read('ZaloDeBai.gs'),ctx);
+const chatReplies=[];
+const messages=new Map();
+Object.assign(ctx,{
+  CacheService:{getScriptCache:()=>({get:k=>messages.get(k),put:(k,v)=>messages.set(k,v)})},
+  ContentService:{createTextOutput:()=>({setMimeType(){return this;}}),MimeType:{JSON:'json'}},
+  guiZaloToi_:(_,msg)=>chatReplies.push(msg)
+});
+props.set('ZALO_WEBHOOK_SECRET','test'); props.set('ZALO_CHAT_IDS','chat');
+const zalo=(text,message_id)=>ctx.nhanZalo_({parameter:{k:'test'},postData:{contents:JSON.stringify({message:{text,message_id,chat:{id:'chat'}}})}});
+config.delete('BAT_BP0'); calls=[]; props.delete('BP0_GIU_DEN');
+rows=fillBuffer(10).slice(4).concat(row(2,{trang_thai:'DANG_KICH_BAN'}));
+zalo('/sanxuatngay',1); assert.match(chatReplies.at(-1),/BP1–BP3 còn 1 bài/);
+assert.deepEqual(calls,[]);
+rows.pop(); props.set('BO_NAO_NGU_DONG','1');
+props.set(tenDem,JSON.stringify({ngay:vnDay,ids:['done','done2','done3']}));
+zalo('/trangthai',2); assert.match(chatReplies.at(-1),/ĐANG NGỦ ĐÔNG/);
+zalo('/sanxuatngay',3); assert.match(chatReplies.at(-1),/Đã giao BP0/);
+zalo('/sanxuatngay',4); assert.match(chatReplies.at(-1),/đã gửi BP0/);
+assert.deepEqual(calls,[0]);
+assert.equal(props.get('BO_NAO_NGU_DONG'),'1');
+
+// Remove only superseded schedules, then keep exactly one of each on repeated installation.
+const schedule=(name,options={})=>({getHandlerFunction:()=>name,...options});
+let triggers=['chayBoNaoDieuPhoi','chayBoNaoDieuPhoi','donDepHotSheetDinhKy','chayDonDep','chayBoPhan1','khoDongBoDinhKy'].map(name=>schedule(name));
+ctx.ScriptApp={
+  getProjectTriggers:()=>triggers.slice(),
+  deleteTrigger:t=>{triggers=triggers.filter(x=>x!==t);},
+  newTrigger:name=>({timeBased:()=>{
+    const options={};
+    const builder={create(){const t=schedule(name,options);triggers.push(t);return t;}};
+    for (const method of ['everyMinutes','inTimezone','atHour','everyDays']) builder[method]=value=>{options[method]=value;return builder;};
+    return builder;
+  }})
+};
+ctx.caiDatLichTuDongChuan(); ctx.caiDatLichTuDongChuan();
+assert.deepEqual(triggers.map(t=>t.getHandlerFunction()),['khoDongBoDinhKy','chayBoNaoDieuPhoi','chayDonDepHotSheetTheoLich']);
+assert.equal(triggers[1].everyMinutes,5);
+assert.deepEqual([triggers[2].inTimezone,triggers[2].atHour,triggers[2].everyDays],['Asia/Ho_Chi_Minh',2,1]);
+ctx.donDepHotSheetDinhKy=(...args)=>args.length;
+assert.equal(ctx.chayDonDepHotSheetTheoLich({triggerUid:'daily'}),0,'trigger giữ chính sách hạn chót mặc định của hàm dọn');
+ctx.chayDonDep=()=>{props.delete('DOT_DON_VIDEO_LOI');return 'đã dọn theo yêu cầu';};
+props.set('DOT_DON_VIDEO_LOI',JSON.stringify({chat:'chat'}));
+assert.equal(ctx.chayBoNaoDieuPhoi(),'đã dọn theo yêu cầu','lịch chuẩn vẫn phục vụ /donvideoloi');
 
 // Exercise the Python import chain with only files delivered by each worker checkout.
 for (const bp of [1,2]) {
@@ -427,4 +555,4 @@ workflow.forEach((file,bp)=>{
   const yaml=read('.github/workflows/'+file).split('concurrency:')[0];
   inputs[bp].forEach(key=>assert.match(yaml,new RegExp('^      '+key+':','m'),file));
 });
-console.log('0 hỏng. Đạt điều phối BP5 → BP0, thứ tự quét, phanh tồn cũ, kho đệm, dọn MP4, lưu kịch bản, watchdog, checkout Python và đăng ký/cú pháp '+gs.length+' tệp .gs.');
+console.log('0 hỏng. Đạt điều phối BP5 → BP0, chỉ tiêu ngày, kho đệm, lịch và lệnh Zalo, phanh tồn, dọn MP4, lưu kịch bản, watchdog, checkout Python và đăng ký/cú pháp '+gs.length+' tệp .gs.');

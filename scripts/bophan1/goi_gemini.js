@@ -128,6 +128,7 @@ async function motModel(model, body, i, huy, soVong = 2) {
   if (modelChan[model]) return {ok: false, code: 403, raw: 'MODEL_TU_CHOI (đã chặn): ' + model, het: false, model};
   if (chet(model)) return {ok: false, code: 404, raw: 'MODEL_KHONG_CO: ' + model, het: false};
   let bodyGui = chuanBodyChoModel(model, body);
+  let schemaDaThuLai = false;
   let so403 = 0;
   let cuoi = {ok: false, code: 0, raw: 'KHONG_CO_KEY', het: false};
   for (let vong = 0; vong < soVong; vong++) {
@@ -150,18 +151,20 @@ async function motModel(model, body, i, huy, soVong = 2) {
         const ac = new AbortController();
         hen = setTimeout(() => ac.abort(), gioiHanGiay * 1000);
         if (huy) huy.ds.push(ac);
-        const res = await fetch(url(k, model), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(bodyGui), signal: ac.signal});
-        const raw = await res.text();
-        if (res.ok) { ghiModelTot(model); return {ok: true, code: res.status, raw, model}; }
-        cuoi = {ok: false, code: res.status, raw, het: false, model};
+        const gui = data => fetch(url(k, model), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data), signal: ac.signal});
+        let res = await gui(bodyGui);
+        let raw = await res.text();
         // Giữ model, key và MIME khi lỗi chỉ thuộc cấu hình structured output.
         if (res.status === 400 && bodyGui.generationConfig?.responseSchema && /schema|structured[- ]output/i.test(raw)) {
           const {responseSchema, ...generationConfig} = bodyGui.generationConfig;
-          bodyGui = {...bodyGui, generationConfig};
+          bodyGui = {...bodyGui, generationConfig: {...generationConfig, responseMimeType: 'application/json'}};
           process.stderr.write('GEMINI_SCHEMA_FALLBACK: ' + model + ' gọi lại ở chế độ JSON\n');
-          lan--;
-          continue;
+          schemaDaThuLai = true;
+          res = await gui(bodyGui);
+          raw = await res.text();
         }
+        if (res.ok) { ghiModelTot(model); return {ok: true, code: res.status, raw, model}; }
+        cuoi = {ok: false, code: res.status, raw, het: false, model, schemaDaThuLai};
         const loai = phanLoai(res.status, raw);
         if (loai === 'model_404') { ghiModel404(model, k); cuoi.goiY = catalog.goiY404(raw); return cuoi; }
         // Nếu lỗi 400 do thinkingConfig không tương thích với model này -> bỏ thinkingConfig và thử lại ngay

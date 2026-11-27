@@ -125,7 +125,7 @@ export const OutroTomTat: React.FC<{mon?: string; giuHinh?: boolean; dapAn: stri
       {/* đáp án phát sáng — cố định căn từ trên xuống dưới Story Math để không bao giờ đè dòng thương hiệu khi đáp án là phân số cao */}
       <div style={{position: 'absolute', left: 60, right: 60, top: V.dapAn.y + 52, height: V.dapAn.h - 46, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', gap: laHinhHoc ? 10 : 8,
         opacity: kep01(aDap * 1.5), transform: `scale(${0.88 + 0.12 * aDap})`}}>
-        <div style={{height: 38, padding: '0 22px', borderRadius: 22, display: 'flex', alignItems: 'center', color: NGOC, border: `1.5px solid ${NGOC}`, background: `${NGOC}18`, fontWeight: 900, fontSize: 22, letterSpacing: 1.2, flexShrink: 0}}>{nhanKetQua ? nhanKetQua.toUpperCase() : 'ĐÁP ÁN'}</div>
+        <div data-va-cham="outro_nhan_dap_an" style={{height: 38, padding: '0 22px', borderRadius: 22, display: 'flex', alignItems: 'center', color: NGOC, border: `1.5px solid ${NGOC}`, background: `${NGOC}18`, fontWeight: 900, fontSize: 22, letterSpacing: 1.2, flexShrink: 0}}>{nhanKetQua ? nhanKetQua.toUpperCase() : 'ĐÁP ÁN'}</div>
         <div data-va-cham="outro_dap_an" style={{padding: laHinhHoc ? '8px 30px' : '8px 34px', borderRadius: 24, background: `${NGOC}12`, border: `2px solid ${NGOC}AA`, boxShadow: `0 0 ${30 * sang}px ${NGOC}55, inset 0 0 24px ${NGOC}18`, textShadow: `0 0 18px ${NGOC}88`}}>
           {laHinhHoc ? (
             <VanBanToan raw={texDapAn(dapAn || '?', true)} size={48} minSize={32} color="#F4FFFB" fontWeight={800} maxWidth={690} align="center" />
@@ -155,7 +155,7 @@ export const OutroTomTat: React.FC<{mon?: string; giuHinh?: boolean; dapAn: stri
       {BAT_CTA_THONG_MINH_OUTRO && tomTat.length ? (
         <div data-nhac-luu style={{position: 'absolute', left: 0, right: 0, top: yDong - 46, height: 34, display: 'flex', justifyContent: 'center', alignItems: 'center',
           opacity: kep01(sLuu * 1.6), transform: `translateY(${(1 - sLuu) * 10}px)`}}>
-          <div style={{height: 34, padding: '0 16px', borderRadius: 17, display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap', background: 'rgba(10,12,18,0.86)',
+          <div data-va-cham="outro_nhac_luu" style={{height: 34, padding: '0 16px', borderRadius: 17, display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap', background: 'rgba(10,12,18,0.86)',
             border: '1px solid rgba(251,191,36,0.62)', color: '#FBBF24', fontWeight: 800, fontSize: 18, letterSpacing: 0.6}}>
             <svg width={18} height={18} viewBox="0 0 24 24" style={{flexShrink: 0}}><path d="M6 3h12v18l-6-4-6 4z" fill="#FBBF24" /></svg>
             LƯU LẠI ÔN NHANH • CHỤP MÀN HÌNH CÔNG THỨC

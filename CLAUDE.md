@@ -23,9 +23,10 @@
    * Chống nghẽn bằng cờ nhẹ `CacheService` và khóa tái nhập `voiKhoa_` (không giữ `LockService` dài phút). Các lệnh Zalo `/bo`, `/sua`, `/duyet`, `/huy`, `/key`, `/capnhatcode`, `/donvideoloi`, `/suavideocu` phản hồi tức thời.
 
    * `BoNaoDieuPhoi.gs` điều phối BP5 → BP0 mỗi 5 phút. `CAU_HINH.CHE_DO_VAN_HANH` mặc định `TU_DONG_TOAN_PHAN`, chọn `DUYET_TAY_SAU_BP2` và dùng `/duyetkb ID` để duyệt từng bản. `BAT_BP0` … `BAT_BP5=TAT` tạm dừng từng bộ phận.
-   * Sheet ghi trạng thái chuẩn, bộ đọc ánh xạ hàng cũ. Bộ điều phối kiểm tra run GitHub, giữ hạn mức 1/2/2/2/1/1 và dừng sinh khi tồn đạt 4 bài.
-   * `/hethong` xem tồn, run và lý do chặn. `/xaket` đối chiếu run theo mã, trả bài quá hạn về hàng đợi tối đa hai lần. BP5 vẫn dùng lịch đăng và giữ chỗ theo nền tảng.
-   * Sau lần đầu thêm mô-đun, đồng bộ hai lần bằng `/capnhatcode` rồi chạy `caiDatTrigger()` để thay các lịch điều phối cũ.
+   * Sheet ghi trạng thái chuẩn, bộ đọc ánh xạ hàng cũ. Bộ điều phối kiểm tra run GitHub, giữ hạn mức 1/2/2/2/1/1. Phanh BP0 đếm tối đa 4 bài chờ giải, chờ kịch bản, chờ dựng hoặc đang dựng.
+   * Kho đệm đếm dòng `CHO_DANG` (ngủ ở 7, thức ở 5). Khi quỹ key còn từ 25%, BP1–BP3 tiếp tục đến mốc 3 video mới/ngày VN và BP0 bù nếu số bài đang làm còn thiếu. Bộ đếm lưu các mã hoàn thành BP3 từ `NHAT_KY` vào Script Properties theo ngày. Nếu còn 0 video từ 18:00, Zalo báo lý do một lần trong ngày.
+   * `/trangthai` hoặc `/hethong` xem sản lượng, tồn, key, run và lý do chặn. `/sanxuatngay` giao BP0 ngay khi BP1–BP3 trống. `/xaket` đối chiếu run theo mã và trả bài quá hạn về hàng đợi tối đa hai lần. BP5 dùng lịch đăng và giữ chỗ theo nền tảng.
+   * Đồng bộ các mô-đun đã có bằng `/capnhatcode` một lần, rồi chạy `caiDatLichTuDongChuan()` để đặt nhịp 5 phút và dọn Hot Sheet hằng ngày 02:00–03:00 giờ VN. Trigger `chayDonDepHotSheetTheoLich` gọi `donDepHotSheetDinhKy()` với giới hạn thời gian mặc định. Dự án cũ chưa có mô-đun cần hai lượt đồng bộ.
 
 2. **Tầng tính toán & dựng hình (GitHub Actions — 6 Workflow theo thứ tự):**
    * `sinh-de.yml` (**BP0**): Sinh/tìm đề mới & đề 10 phút (`scripts/bophan1/sinh_de_gh.js`; v99.2: xoay 4 mảng theo lịch sử thật `chonMang_`, gửi-trả ĐỦ bộ đếm `KHOA_DEM_BP0_`, nạp `SanKhau.gs`).
@@ -109,7 +110,7 @@ Tên kênh lấy từ `phong_cach.json → thuongHieu.ten` (Story Math), dùng c
 * **Khắc phục triệt để lỗi thị giác 3 chủ đề (Việc 2):** khóa độc quyền 1 sân khấu T2 & Outro (`SanKhauTuSinh` tắt lớp tiến trình dự phòng khi có `tu_sinh_svg` hợp lệ, chuyển lớp cùng nhóm nối tiếp 5 khung không đè chữ, phóng +15% giữ lề `>= 48px`); `TangTieuDe` căn `flex-start` (`paddingTop`/`gap >= 14px`) chống đè `Story Math`; `TangTheGiai` khử trùng thẻ cùng vế trái/nghĩa trong bước (`locTheTrungTrongBuoc`); `ThanhDe` tự mở khóa `= ?` ở bước `KẾT LUẬN` (`boSungDoiDapAn`); dọn dấu câu phụ đề (`lamSachPhuDe`), khoảng trắng trước dấu phẩy (`Toan.tsx`), rác tiêu đề Intro (`lamSachTieuDeIntro`), chống cắt cụt nhãn Outro (`chuanNhanTomTat`) và đẩy nhãn góc 3D (`45°`) dọc phân giác cách mọi nhãn/chấm đỉnh `>= 28px` (`src/khonggian/ve.ts`).
 
 * **Việc 3:** BP5 → BP1 quét từ dòng cuối. BP4 và Auto-Heal chỉ lấy bài từ 3 ngày tuổi khi hết bài mới chờ, quỹ key sống ≥ 40% và còn suất trong trần 5 bài/ngày VN.
-* Kho đủ 7 bài `CHO_DANG` thì ngừng BP0–BP3, còn 5 bài thì sản xuất lại. BP4/BP5 tiếp tục chạy. `/trangthai` hiển thị kho và tồn cũ.
+* BP4/BP5 tiếp tục chạy khi kho đệm cho BP0–BP3 ngủ theo chỉ tiêu ở mục 2. `/trangthai` hiển thị cả tồn cũ chờ dọn.
 * BP4 đạt vào `CHO_DANG`. Hết lượt Auto-Heal thì đưa MP4 lỗi vào Thùng rác, giữ mã lỗi và dòng đề.
 * `/donsheet` và lịch dọn lưu `DA_DANG` quá 7 ngày theo tháng đăng, lỗi đã dọn MP4 quá 2 ngày vào `LuuTru_Loi`. `LUU_TRU` giữ mã băm chống trùng.
 * Kịch bản trên 8.000 ký tự lưu dưới `VideoAI_KhoKichBan` với con trỏ `DRIVE_JSON:`. Bộ đọc hỗ trợ JSON thô và ID Drive cũ.

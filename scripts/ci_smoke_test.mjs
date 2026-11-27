@@ -647,13 +647,17 @@ const wfDung = fs.readFileSync(path.join(wfDir, 'dung-video.yml'), 'utf8');
 const iProps = wfDung.indexOf('--props-soi-chu');
 const iGate = wfDung.indexOf('node scripts/kiem_tra_de_chu_truoc_render.mjs');
 const iTts = wfDung.indexOf('BAO_LOI_BP2=out/loi_truoc_tts.txt python3 scripts/chuanbi.py kich_ban.json ||');
+const buocProps = wfDung.slice(wfDung.indexOf('id: props_soi_chu'), iGate);
+const buocTts = wfDung.slice(wfDung.indexOf('- name: Tạo giọng đọc'), iTts);
 kiem('BP3: props không TTS → Collision Gate → TTS, báo bố cục qua webhook',
-  iProps >= 0 && iProps < iGate && iGate < iTts && wfDung.includes("steps.soi_chu.outputs.chan == 'true'") &&
+  iProps >= 0 && iProps < iGate && iGate < iTts && buocProps.includes("GEMINI_KEYS: ''") &&
+  buocProps.includes("GEMINI_API_KEY: ''") && buocTts.includes("steps.soi_chu.outputs.chan != 'true'") &&
+  wfDung.includes("steps.soi_chu.outputs.chan == 'true'") &&
   wfDung.includes("gate_path = 'out/pre_render/bao_cao.json'"));
 const rGate = spawnSync(process.execPath, ['scripts/test_pre_render_va_schema.mjs', '--nhanh'], {
   cwd: ROOT, encoding: 'utf8', timeout: 30000,
 });
-kiem('scripts/test_pre_render_va_schema.mjs: hình học hộp và fallback Gemini', rGate.status === 0,
+kiem('scripts/test_pre_render_va_schema.mjs: hình học hộp, fallback Gemini và báo lỗi Auto-Heal', rGate.status === 0,
   rGate.status === 0 ? '' : (rGate.stderr || rGate.stdout || '').slice(-700));
 
 console.log(`\nCI SMOKE TEST: ${dat} đạt, ${hong.length} hỏng`);

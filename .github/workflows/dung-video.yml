@@ -235,6 +235,9 @@ jobs:
 
       - name: Chuẩn bị props giả lập (không TTS)
         id: props_soi_chu
+        env:
+          GEMINI_KEYS: ''
+          GEMINI_API_KEY: ''
         run: |
           mkdir -p out/pre_render
           BAO_LOI_BP2=out/loi_truoc_tts.txt python3 scripts/chuanbi.py kich_ban.json --props-soi-chu --props-ra out/pre_render/props.json --out-dir out/pre_render || {
@@ -248,7 +251,7 @@ jobs:
         if: ${{ steps.props_soi_chu.outputs.loi_kich_ban != 'true' }}
         run: |
           node scripts/kiem_tra_de_chu_truoc_render.mjs out/pre_render/props.json out/pre_render/bao_cao.json
-          jq -e '(.dat | type == "boolean") and (.loi | type == "array")' out/pre_render/bao_cao.json >/dev/null
+          jq -e '(.dat | type == "boolean") and (.loi | type == "array") and (.dat == (.loi | length == 0))' out/pre_render/bao_cao.json >/dev/null
           if jq -e '.dat == false' out/pre_render/bao_cao.json >/dev/null; then
             echo "chan=true" >> "$GITHUB_OUTPUT"
             echo "::error::Pre-Render Collision Gate phát hiện chữ đè hoặc tràn khung. Dừng trước TTS."
@@ -309,7 +312,7 @@ jobs:
             manim-tex-${{ runner.os }}-v2-
 
       - name: Tạo giọng đọc và chuẩn bị công cụ hình học song song
-        if: ${{ steps.props_soi_chu.outputs.loi_kich_ban != 'true' }}
+        if: ${{ steps.props_soi_chu.outputs.loi_kich_ban != 'true' && steps.soi_chu.outputs.chan != 'true' }}
         env:
           CAN_MANIM: ${{ steps.kb.outputs.hh }}
         run: |

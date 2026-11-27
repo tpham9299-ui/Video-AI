@@ -39,7 +39,7 @@ export function soiHop(cacHop, frame, canh) {
 export function chonFrame(p, comp) {
   const fps = comp.fps;
   const lechBia = p.anhBiaDau ? 1 : 0;
-  const lech = lechBia + (p.intro?.lech || 0);
+  const lech = lechBia + (p.thuongHieu ? p.intro?.lech || 0 : 0);
   const canh = p.canh || [];
   const ket = p.outro?.batDau ?? comp.durationInFrames - lech;
   const k4 = p.khung4tang;
@@ -56,8 +56,9 @@ export function chonFrame(p, comp) {
   const canhChot = canh.find(c => /^(dap_an|ket_qua|ket_luan|bai_hoc)$/.test(c.loai) && c.batDau < ket);
   const mocChot = k4?.tCongBo ?? p.hinhPhang?.moc_cong_bo;
   const chot = Math.min(ket - 1, Math.max(bat, Math.round(mocChot == null ? canhChot?.batDau ?? ket * 0.85 : mocChot * fps)));
-  if (p.intro?.soFrame) them(lechBia + p.intro.soFrame / 2, 'Intro');
-  else them(lech + (G ? G / 2 : Math.min(ket, canh[0]?.soFrame || fps) / 2), 'Intro');
+  // Khung giữa Intro của bài có chữ cần đo, kể cả khi đứng sau Intro thương hiệu.
+  if (G) them(lech + G / 2, 'Intro');
+  else them(lech + Math.min(ket, canh[0]?.soFrame || fps) / 2, 'Intro');
   const mocBuoc = (k4?.buoc?.length ? k4.buoc.map(b => [Math.round(b.t * fps), b.tieu_de || b.nhan])
     : (p.hinhPhang?.dong_giai || []).map((b, i) => [Math.round((b.dong?.[0]?.t ?? i * 6) * fps), b.tieu_de]));
   const moc = mocBuoc.length ? mocBuoc : canh.map(c => [c.batDau, c.tieuDeCanh || c.loai]);
@@ -76,36 +77,48 @@ export function chonFrame(p, comp) {
     }
   }
   them(lech + giua(chot, Math.min(ket, Math.max(chot + fps, (canhChot?.batDau || 0) + (canhChot?.soFrame || 0)))), 'Kết luận');
-  if (p.outro) them(lech + ket + p.outro.soFrame / 2, 'Outro');
+  if (p.outro) {
+    // CTA xuất hiện sau ba dòng tóm tắt, thường muộn hơn giữa Outro.
+    const sauCTA = Math.max(p.outro.soFrame * 0.8, 3.2 * fps);
+    them(lech + ket + Math.min(p.outro.soFrame - 1, sauCTA), 'Outro');
+  }
   return [...mau.values()].sort((a, b) => a.frame - b.frame);
 }
 
 // Hàm này chạy trong Chromium, cùng viewport với composition Video.
-function doHopTrongTrang() {
+async function doHopTrongTrang() {
+  await document.fonts.ready;
   const ds = [...document.querySelectorAll('[data-va-cham]')];
   const ids = new Map(ds.map((e, i) => [e, i]));
+  const cat = /^(hidden|clip|auto|scroll)$/;
   return ds.flatMap((e, id) => {
     const {x, y, width: w, height: h} = e.getBoundingClientRect();
     const text = (e.textContent || '').replace(/\s+/g, ' ').trim();
     if (!text || !w || !h || getComputedStyle(e).visibility !== 'visible') return [];
     let opacity = 1;
     const cha = [];
+    let biCat = '';
     for (let q = e; q; q = q.parentElement) {
-      opacity *= Number(getComputedStyle(q).opacity);
-      if (q !== e && ids.has(q)) cha.push(ids.get(q));
+      const css = getComputedStyle(q);
+      opacity *= Number(css.opacity);
+      if (q === e) {
+        const dw = q.scrollWidth - q.clientWidth, dh = q.scrollHeight - q.clientHeight;
+        const catX = q.clientWidth > 0 && (cat.test(css.overflowX) || q.style.width || q.style.maxWidth) && dw > 4;
+        const catY = q.clientHeight > 0 && (cat.test(css.overflowY) || q.style.height || q.style.maxHeight) && dh > 4;
+        if (catX || catY) biCat = 'Chữ vượt khối cố định' + (catX ? ' ngang ' + dw + ' px' : '') + (catY ? ' dọc ' + dh + ' px' : '');
+      } else {
+        if (ids.has(q)) cha.push(ids.get(q));
+        // Nhãn SVG có thể còn trong khung video nhưng đã bị viewport sân khấu cắt mất.
+        if (!biCat && (cat.test(css.overflowX) || cat.test(css.overflowY))) {
+          const r = q.getBoundingClientRect();
+          const ngang = cat.test(css.overflowX) ? Math.max(r.left - x, x + w - r.right) : 0;
+          const doc = cat.test(css.overflowY) ? Math.max(r.top - y, y + h - r.bottom) : 0;
+          if (ngang > 4 || doc > 4) biCat = 'Nhãn bị khối bao cắt' + (ngang > 4 ? ' ngang ' + Math.round(ngang) + ' px' : '') + (doc > 4 ? ' dọc ' + Math.round(doc) + ' px' : '');
+        }
+      }
     }
     if (opacity <= 0.15) return [];
-    const overflow = q => {
-      if (!(q instanceof HTMLElement) || !q.clientWidth || !q.clientHeight) return '';
-      const css = getComputedStyle(q);
-      const cat = /^(hidden|clip|auto|scroll)$/;
-      const dw = q.scrollWidth - q.clientWidth, dh = q.scrollHeight - q.clientHeight;
-      const catX = (cat.test(css.overflowX) || q.style.width || q.style.maxWidth) && dw > 4;
-      const catY = (cat.test(css.overflowY) || q.style.height || q.style.maxHeight) && dh > 4;
-      if (!catX && !catY) return '';
-      return 'Chữ vượt khối cố định' + (catX ? ' ngang ' + dw + ' px' : '') + (catY ? ' dọc ' + dh + ' px' : '');
-    };
-    return [{id, nhan: e.dataset.vaCham, text: text.slice(0, 90), x, y, w, h, opacity, cha, cat: overflow(e)}];
+    return [{id, nhan: e.dataset.vaCham, text: text.slice(0, 90), x, y, w, h, opacity, cha, cat: biCat}];
   });
 }
 
@@ -168,7 +181,10 @@ async function chay(tepProps, tepRa) {
     }
   } finally {
     try {
-      if (browser) await browser.close({silent: true});
+      if (browser) {
+        try { await browser.close({silent: true}); }
+        catch (e) { if (!boQua && !loiChromium(e)) throw e; }
+      }
     } finally {
       if (server) await server.closeServer(true);
       if (tam) await fs.rm(tam, {recursive: true, force: true});

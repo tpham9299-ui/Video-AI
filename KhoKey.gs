@@ -166,6 +166,28 @@ function khoGhiNhanLoi_(key, tq, code, raw) {
 }
 function khoLa403Model_(code, raw) { return code === 403 && !/API_KEY_INVALID|API key not valid|API_KEY_EXPIRED|API key expired|SERVICE_DISABLED|has not been used in project|API_KEY_SERVICE_BLOCKED|API_KEY_HTTP_REFERRER_BLOCKED|billing/i.test(String(raw || '')); }
 
+// Gọi lại với chính key và model nhận lỗi schema, trước khi phân loại lỗi hoặc xoay key.
+function khoGuiGeminiJson_(model, body, url, opts, phanHoi) {
+  var res = phanHoi || UrlFetchApp.fetch(url, opts);
+  var code = res.getResponseCode(), raw = res.getContentText(), daThuLai = false;
+  if (code === 400 && /schema|structured[- ]output/i.test(raw)) {
+    var json = body;
+    if (typeof body === 'string') { try { json = JSON.parse(body); } catch (e) { json = null; } }
+    var gc = json && json.generationConfig;
+    if (gc && gc.responseSchema) {
+      try {
+        if (typeof ghiGeminiKhongSchema_ === 'function') ghiGeminiKhongSchema_(CacheService.getScriptCache(), model, raw);
+      } catch (e) { /* Vẫn thử lại nếu cache hoặc nhật ký lỗi. */ }
+      var gcJson = Object.assign({}, gc, {responseMimeType: 'application/json'});
+      delete gcJson.responseSchema;
+      var thuLai = Object.assign({}, json, {generationConfig: gcJson});
+      res = UrlFetchApp.fetch(url, Object.assign({}, opts, {payload: JSON.stringify(thuLai)}));
+      code = res.getResponseCode(); raw = res.getContentText(); daThuLai = true;
+    }
+  }
+  return {ok: code === 200, code: code, raw: raw, schemaDaThuLai: daThuLai};
+}
+
 // GỌI GEMINI QUA KHO KEY. he: 'VIDEO' | 'DIEMDANH' | tên bất kỳ. body: đối tượng hoặc chuỗi JSON.
 // tuyChon: { hanChoMs: tổng thời gian chờ tối đa khi mọi key đang nghỉ ngắn (mặc định 45000; 0 = không chờ),
 //            tenQuota: tên để theo dõi hạn mức riêng, ví dụ model + '+tim' cho lệnh có Google Search }
@@ -192,18 +214,18 @@ function khoGoi_(he, model, body, tuyChon) {
       Utilities.sleep(8000);
       continue;
     }
-    var key = tt.dung[0], res;
+    var key = tt.dung[0], kq;
     try {
-      res = UrlFetchApp.fetch(url, { method: 'post', contentType: 'application/json', headers: { 'x-goog-api-key': key },
+      kq = khoGuiGeminiJson_(model, body, url, { method: 'post', contentType: 'application/json', headers: { 'x-goog-api-key': key },
                                      payload: payload, muteHttpExceptions: true });
     } catch (e) {
       if (++loiMang > 3) return { ok: false, code: 0, het: false, raw: String(e) };
       Utilities.sleep(2000 * loiMang);
       continue;
     }
-    var code = res.getResponseCode(), raw = res.getContentText();
+    var code = kq.code, raw = kq.raw;
     if (code === 200) return { ok: true, code: 200, het: false, raw: raw, key: key };
-    if (code === 400 && /schema|structured[- ]output/i.test(raw)) return {ok: false, code: code, het: false, raw: raw, key: key};
+    if (code === 400 && /schema|structured[- ]output/i.test(raw)) return Object.assign({het: false, key: key}, kq);
     if (khoLa404_(code, raw)) { khoGhi404_(key, model); khoLog_('MODEL_404', key, model + ' không tồn tại -> nhớ model 6 giờ (key vẫn tốt)'); return { ok: false, code: code, het: false, raw: raw, key: key }; }   // v99.3: chỉ model bị nhớ
     var la403 = khoLa403Model_(code, raw);
     if (khoGhiNhanLoi_(key, tq, code, raw)) {
@@ -235,9 +257,12 @@ function khoGoiSong_(he, model, bodies) {
   var kq;
   try { kq = UrlFetchApp.fetchAll(yc); } catch (e) { return tuan(); }
   return kq.map(function (r, i) {
-    var code = r.getResponseCode(), raw = r.getContentText(), key = keys[i % keys.length];
+    var phanHoi;
+    try { phanHoi = khoGuiGeminiJson_(model, bodies[i], url, yc[i], r); }
+    catch (e) { return khoGoi_(he, model, bodies[i]); }
+    var code = phanHoi.code, raw = phanHoi.raw, key = keys[i % keys.length];
     if (code === 200) return { ok: true, code: 200, het: false, raw: raw, key: key };
-    if (code === 400 && /schema|structured[- ]output/i.test(raw)) return {ok: false, code: code, het: false, raw: raw, key: key};
+    if (code === 400 && /schema|structured[- ]output/i.test(raw)) return Object.assign({het: false, key: key}, phanHoi);
     if (khoLa404_(code, raw)) { khoGhi404_(key, model); return { ok: false, code: code, het: false, raw: raw, key: key }; }
     if (code === 400 || code === 404) {
       if (!khoGhiNhanLoi_(key, model, code, raw)) return { ok: false, code: code, het: false, raw: raw };

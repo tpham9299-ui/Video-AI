@@ -378,7 +378,7 @@ export const Canh: React.FC<{
         ) : null}
         {coNote ? <ChuThich dong={canh.chuThich} bd={Math.max(0.6, giayAm * 0.45)} /> : null}
         {hienCongThuc ? (
-          <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: coHinh ? '16px 28px' : khungCuoi ? '14px 26px' : 0, borderRadius: 24,
+          <div data-va-cham="hop_cong_thuc" style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: coHinh ? '16px 28px' : khungCuoi ? '14px 26px' : 0, borderRadius: 24,
             background: coHinh ? 'linear-gradient(165deg, rgba(10,24,26,0.84), rgba(6,14,18,0.9))' : khungCuoi ? 'radial-gradient(ellipse at 50% 50%, rgba(59,242,154,0.12), rgba(6,14,18,0.62) 76%)' : 'transparent',
             border: coHinh ? `2px solid ${khungCuoi ? 'rgba(59,242,154,0.55)' : `${mauNhan}48`}` : khungCuoi ? '2px solid rgba(59,242,154,0.42)' : 'none',
             boxShadow: coHinh || khungCuoi ? '0 14px 36px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.1)' : 'none',
@@ -411,7 +411,7 @@ export const Canh: React.FC<{
       )}
 
       {/* Đầu cảnh: nhãn + tiêu đề (hoặc câu hook ở cảnh 1) */}
-      <div style={{position: 'absolute', left: 40, right: 40, top: yTieuDe, height: dayTieuDe - yTieuDe - (moi ? 4 : 10), display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: moi ? 'center' : undefined, opacity: ra}}>
+      <div data-va-cham="tieu_de_canh" style={{position: 'absolute', left: 40, right: 40, top: yTieuDe, height: dayTieuDe - yTieuDe - (moi ? 4 : 10), display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: moi ? 'center' : undefined, opacity: ra}}>
         {(clip || moiTruong) ? (anTieuDe ? null : <VuaKhung maxW={956} maxH={155}>
           <div style={{fontFamily: FONT_TIEU_DE, fontSize: 68, fontWeight: 800, lineHeight: 1.12,
             textAlign: 'center', color: '#f1f6f5', textShadow: '0 2px 7px #081019'}}>
