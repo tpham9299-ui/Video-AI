@@ -3656,6 +3656,20 @@ def main():
 
     with open(args.kich_ban, encoding="utf8") as tep:
         kb = json.load(tep)
+    # Đối chiếu Single Source of Truth schema/kich_ban_bp2.json (tương thích ngược 100% kịch bản cũ; chuẩn hóa mo_ta_minh_hoa nếu có)
+    try:
+        import dao_dien_2b
+        for _c in kb.get("canh") or []:
+            if isinstance(_c, dict) and _c.get("mo_ta_minh_hoa"):
+                if not isinstance(_c.get("minh_hoa"), dict) or not _c["minh_hoa"].get("loai"):
+                    _c["minh_hoa"] = {"loai": "san_khau", "mo_ta": str(_c["mo_ta_minh_hoa"]), "du_lieu": {"vat": []}}
+                elif not _c["minh_hoa"].get("mo_ta"):
+                    _c["minh_hoa"]["mo_ta"] = str(_c["mo_ta_minh_hoa"])
+        _loi_sc = dao_dien_2b.kiem_tra_schema_bp2(kb, pha="pha_2b", nghiem_ngat=False)
+        if _loi_sc:
+            print("CẢNH BÁO schema/kich_ban_bp2.json:", "; ".join(_loi_sc[:3]))
+    except Exception as _e_sc:
+        print("CẢNH BÁO không kiểm được schema BP2:", str(_e_sc)[:120])
     # Sửa CTA cũ trước khi tạo cả lời đọc lẫn phụ đề. Giữ nguyên thuật ngữ/chuyên mục.
     for c in kb.get("canh") or []:
         if isinstance(c, dict) and isinstance(c.get("loi_thoai"), str):

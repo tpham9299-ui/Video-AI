@@ -40,14 +40,19 @@ jobs:
             phong_cach.json
             bai_hoc_edit.json
             mau_vang
+            schema
             scripts/bophan1
+            scripts/dao_dien_2b.py
+            scripts/evergreen.py
             scripts/tu_sinh_svg.py
             scripts/kho_manh_svg.py
             scripts/du_phong_t2.py
+            scripts/khung4tang
             scripts/khung4tang_v93.py
             scripts/khung4tang_v95.py
             scripts/khung4tang_v96.py
             scripts/khung4tang_v98.py
+            scripts/khung4tang_v99.py
             scripts/xac_suat_dong.py
             scripts/ve25d.py
             scripts/giai_hinh_phang.py

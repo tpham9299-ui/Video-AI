@@ -48,6 +48,18 @@ const hetNgay = new Set(docDong(TEP_HET_NGAY));   // dạng "model|key"
 const tatCa = [...new Set(cauHinh.keys || [])];
 const nghiDen = new Map();
 const GOC_API = process.env.GEMINI_GOC || 'https://generativelanguage.googleapis.com';   // chỉ đổi khi chạy thử với máy chủ giả
+const TEP_SCHEMA_BP2 = path.resolve(__dirname, '..', '..', 'schema', 'kich_ban_bp2.json');
+let _schemaBp2Cache;
+function taiSchemaBP2() {
+  if (_schemaBp2Cache !== undefined) return _schemaBp2Cache;
+  try { _schemaBp2Cache = JSON.parse(fs.readFileSync(TEP_SCHEMA_BP2, 'utf8')); } catch (_e) { _schemaBp2Cache = null; }
+  return _schemaBp2Cache;
+}
+function laySchemaTuNguonChuan(khoa) {
+  const sc = taiSchemaBP2();
+  if (!sc || !khoa) return null;
+  return String(khoa).split('.').reduce((o, k) => (o && typeof o === 'object' ? o[k] : null), sc);
+}
 const url = (k, md = model) => `${GOC_API}/v1beta/models/${encodeURIComponent(md)}:generateContent?key=${encodeURIComponent(k)}`;
 const ngu = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -80,13 +92,23 @@ function ghiModelTot(md) {
   try { fs.writeFileSync(TEP_MODEL_TOT, String(md || '').trim()); } catch (e) { /* bỏ */ }
 }
 function chuanBodyChoModel(md, body) {
-  if (!body || !body.generationConfig || !body.generationConfig.thinkingConfig) return body;
-  const config = body.generationConfig.thinkingConfig;
-  if (/^gemini-2\.5/i.test(md) && config.thinkingBudget != null && !(config.thinkingBudget === 0 && /pro/i.test(md))) return body;
-  if (/^gemini-([3-9]|[1-9]\d)|latest/i.test(md) && config.thinkingLevel) return body;
-  const b = JSON.parse(JSON.stringify(body));
-  if (b.generationConfig) delete b.generationConfig.thinkingConfig;
-  return b;
+  let b = body;
+  if (b && b._schemaBP2) {
+    b = JSON.parse(JSON.stringify(b));
+    const sc = laySchemaTuNguonChuan(b._schemaBP2);
+    delete b._schemaBP2;
+    if (sc) {
+      b.generationConfig = Object.assign({responseMimeType: 'application/json'}, b.generationConfig || {});
+      if (!b.generationConfig.responseSchema) b.generationConfig.responseSchema = sc;
+    }
+  }
+  if (!b || !b.generationConfig || !b.generationConfig.thinkingConfig) return b;
+  const config = b.generationConfig.thinkingConfig;
+  if (/^gemini-2\.5/i.test(md) && config.thinkingBudget != null && !(config.thinkingBudget === 0 && /pro/i.test(md))) return b;
+  if (/^gemini-([3-9]|[1-9]\d)|latest/i.test(md) && config.thinkingLevel) return b;
+  const out = b === body ? JSON.parse(JSON.stringify(b)) : b;
+  if (out.generationConfig) delete out.generationConfig.thinkingConfig;
+  return out;
 }
 let danhMuc;
 function tuTimModelTrenApi() {   // danh sách model sống (cache theo key / theo ngày), xếp theo chế độ gọi

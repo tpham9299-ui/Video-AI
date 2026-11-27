@@ -100,11 +100,14 @@ vm.runInContext(`
 
 try {
   const r = dl.hang || {};
-  const kq = ctx.aiChamVideo_(r);
+  // Cửa 3 gộp: nếu Mắt thần 3×3 ở BP3 đã chấm đủ tiêu chí trên lưới 3×3 -> tái dùng, KHÔNG gọi AI lần 2.
+  const sanCo = r.ai_hau_kiem && typeof r.ai_hau_kiem === 'object' && r.ai_hau_kiem.chi_tiet ? r.ai_hau_kiem : null;
+  const kq = sanCo || ctx.aiChamVideo_(r);
   out.anh_kt = r.anh_kt;
   out.ok = true;
   out.kq = kq;
-  console.log(`AI_XEM [${out.id}]: ${kq.phan_tram}% (dat=${kq.dat})`);
+  out.tai_dung_cua_3 = !!sanCo;
+  console.log(`AI_XEM [${out.id}]: ${kq.phan_tram}% (dat=${kq.dat}${sanCo ? ', tái dùng Cửa 3' : ''})`);
 } catch (e) {
   out.loi = String(e && e.message || e).slice(0, 300);
   console.error('AI_XEM loi:', out.loi);

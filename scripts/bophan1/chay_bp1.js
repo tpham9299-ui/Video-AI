@@ -176,6 +176,24 @@ const ctx = {
     }
     return null;
   },
+  // Pha 2B (Script-First): đạo diễn hình ảnh & đóng gói dữ liệu bằng Python (scripts/dao_dien_2b.py + xac_suat_dong.py + du_phong_t2.py)
+  daoDien2BMay_: (kb2a, r, c1, c2) => {
+    const deInfo = {
+      id: r && r.id, lop: r && r.lop, mon: r && r.mon, chu_de: r && r.chu_de,
+      de_bai: r && r.de_bai, dap_an: r && r.dap_an, dap_an_hien: r && r.dap_an_hien,
+      chi_dao: r && r.chi_dao, cach_1: c1 || null, cach_2: c2 || null,
+    };
+    for (const py of ['python3', 'python']) {
+      try {
+        const ra = execFileSync(py, [path.join(GOC, 'scripts', 'dao_dien_2b.py'), '-'],
+          {input: JSON.stringify({kb_2a: kb2a, de_info: deInfo}), timeout: 40000, stdio: ['pipe', 'pipe', 'pipe'], env: {...process.env, PYTHONIOENCODING: 'utf-8'}});
+        return JSON.parse(ra.toString('utf8'));
+      } catch (e) {
+        if (e.code !== 'ENOENT') console.error('Đạo diễn Pha 2B Python:', String(e.stderr || e.message).slice(-400));
+      }
+    }
+    return null;
+  },
   kiemHinhPhangMay_: (kb) => {
     for (const py of ['python3', 'python']) {
       try {
@@ -228,11 +246,14 @@ if (de.model_chan && typeof de.model_chan === 'object') {
 }
 if (de.nhap && hang.id) tep['nhap_' + hang.id + '.json'] = String(de.nhap); // bản nháp đang sửa dở (vd. sửa theo góp ý /sua)
 
-// Nạp Hệ thống Tự học 2 tầng (mau_vang/ + bai_hoc_edit.json) khi chạy BP2 trên GitHub/Node
+// Nạp Single Source of Truth Schema BP2 + Hệ thống Tự học 2 tầng (mau_vang/ + bai_hoc_edit.json) khi chạy BP2 trên GitHub/Node
+let _schemaBP2 = null;
 let _mauVangIdx = null;
 let _baiHocEdit = null;
+try { _schemaBP2 = JSON.parse(fs.readFileSync(path.join(GOC, 'schema', 'kich_ban_bp2.json'), 'utf8')); } catch (_e) {}
 try { _mauVangIdx = JSON.parse(fs.readFileSync(path.join(GOC, 'mau_vang', 'index.json'), 'utf8')); } catch (_e) {}
 try { _baiHocEdit = JSON.parse(fs.readFileSync(path.join(GOC, 'bai_hoc_edit.json'), 'utf8')); } catch (_e) {}
+ctx.__schemaBP2 = _schemaBP2;
 ctx.__tuHoc = {
   bocMauVang: (cm) => {
     try {
@@ -243,17 +264,18 @@ ctx.__tuHoc = {
       return 'MẪU VÀNG THAM KHẢO (1 mẫu chuẩn cùng chuyên mục ' + cm + ' — học nhịp & cấu trúc, KHÔNG chép đề):\n' + JSON.stringify(nd).slice(0, 1400) + '\n';
     } catch (_e) { return ''; }
   },
-  docBaiHocCoDac: (cm) => {
+  docBaiHocCoDac: (cm, toiDa = 8) => {
     try {
       const ds = (_baiHocEdit && _baiHocEdit.chuyen_muc && Array.isArray(_baiHocEdit.chuyen_muc[cm]) ? _baiHocEdit.chuyen_muc[cm] : []);
       const hanMs = Date.now() - 14 * 86400000;
+      const gioiHan = Math.max(1, Math.min(8, Number(toiDa) || 8));
       const loc = ds.filter((x) => {
         if (!x || !x.luat) return false;
         const ts = Date.parse(String(x.ngay_cap_nhat || ''));
         return !isNaN(ts) && ts >= hanMs;
-      }).slice(0, 8);
+      }).slice(0, gioiHan);
       if (!loc.length) return '';
-      return 'SỔ TAY BÀI HỌC CÔ ĐẶC (' + cm + ', tối đa 8 luật còn hạn 14 ngày):\n' + loc.map((x) => '- ' + x.luat).join('\n') + '\n';
+      return 'SỔ TAY BÀI HỌC CÔ ĐẶC (' + cm + ', tối đa ' + gioiHan + ' luật còn hạn 14 ngày):\n' + loc.map((x) => '- ' + x.luat).join('\n') + '\n';
     } catch (_e) { return ''; }
   },
 };
@@ -274,7 +296,7 @@ vm.runInContext(`
   goiYTuSoLieu_ = function () { return __pre.goi_y; };
   hocEditChoPrompt_ = function () { return __pre.hoc_edit; };
   mauVangChoPrompt_ = function (r) { var cm = typeof xacDinhChuyenMucTuHoc_ === 'function' ? xacDinhChuyenMucTuHoc_(r) : 'THUC_TE'; return __tuHoc.bocMauVang(cm); };
-  baiHocEditCoDacChoPrompt_ = function (r) { var cm = typeof xacDinhChuyenMucTuHoc_ === 'function' ? xacDinhChuyenMucTuHoc_(r) : 'THUC_TE'; return __tuHoc.docBaiHocCoDac(cm); };
+  baiHocEditCoDacChoPrompt_ = function (r, toiDa) { var cm = typeof xacDinhChuyenMucTuHoc_ === 'function' ? xacDinhChuyenMucTuHoc_(r) : 'THUC_TE'; return __tuHoc.docBaiHocCoDac(cm, toiDa); };
   quyTacHocChoPrompt_ = function () { return __pre.quy_tac_hoc; };
   quyTacHocChoKiemDuyet_ = function () { return __pre.quy_tac_kd; };
   chonPhongCachVideo_ = function () { return __pre.phong_cach; };

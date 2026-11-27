@@ -130,8 +130,25 @@ vm.runInContext(`
 
 try {
   const bc = {moi: 0, giai_ok: 0, loai: 0, kich_ban: 0, loi: 0};
-  ctx.sinhDeNeuCan_({}, bc);
+  const soLuongLo = Math.max(1, Math.min(3, Number(dl.so_luong) || 1));
+  if (soLuongLo > 1) {
+    // Sinh theo lô 2–3 đề xoay đều các mảng còn thiếu qua chonMang_ trong cùng 1 lần mở runner.
+    const gocSoDe = chMap.SO_DE_MOI_MOI_LAN;
+    const gocNguong = Number(chMap.NGUONG_HANG_DOI) || 4;
+    const gocChiTieu = Number(chMap.CHI_TIEU_VIDEO_DAT_NGAY) || 3;
+    chMap.SO_DE_MOI_MOI_LAN = '1';
+    chMap.CHI_TIEU_VIDEO_DAT_NGAY = String(Math.max(gocChiTieu, 99));
+    for (let luot = 0; luot < soLuongLo && addedRows.length < soLuongLo; luot++) {
+      chMap.NGUONG_HANG_DOI = String(Math.max(gocNguong, fakeHang.length + soLuongLo + 2));
+      ctx.sinhDeNeuCan_({}, bc);
+    }
+    if (gocSoDe !== undefined) chMap.SO_DE_MOI_MOI_LAN = gocSoDe;
+    else delete chMap.SO_DE_MOI_MOI_LAN;
+  } else {
+    ctx.sinhDeNeuCan_({}, bc);
+  }
   out.ok = true;
+  out.so_luong_lo = soLuongLo;
   out.de = addedRows.map((x) => {
     const y = Object.assign({}, x);
     if (y.cap_nhat instanceof Date) y.cap_nhat = y.cap_nhat.toISOString();

@@ -148,14 +148,20 @@ def _trich_cong_thuc_chinh(kb, so_da):
 
 
 def chon_manh_du_phong(kb):
-    """Chọn mảnh ghép chính xác nhất trong `kho_manh_svg.py` theo từ khóa đề bài & chuyên mục.
+    """Chọn mảnh ghép chính xác nhất trong `kho_manh_svg.py` theo từ khóa đề bài, `mo_ta_minh_hoa` từng cảnh & chuyên mục.
     Nếu không khớp từ khóa nào thì trả `so_do_du_kien` (khung sơ đồ dữ kiện + người que)."""
     kb = kb if isinstance(kb, dict) else {}
     mon = str(kb.get("mon") or "").upper()
+    mo_ta_canh = " ".join(
+        str(c.get("mo_ta_minh_hoa") or (c.get("minh_hoa") or {}).get("mo_ta") or "")
+        for c in (kb.get("canh") or []) if isinstance(c, dict)
+    )
     van = " ".join(str(kb.get(k) or "") for k in ("de_bai", "chu_de", "tieu_de", "can_tim")).strip()
-    t = van.lower()
+    van_day_du = (van + " " + mo_ta_canh).strip()
+    t = van_day_du.lower()
+    t_de = van.lower()
     la_xs = mon == "XAC_SUAT" or (
-        mon != "THUC_TE" and bool(re.search(r"xác suất|ngẫu nhiên|biến cố|không gian mẫu", t))
+        mon != "THUC_TE" and bool(re.search(r"xác suất|ngẫu nhiên|biến cố|không gian mẫu", t_de))
     )
     so_da = _tap_so_dap_an(kb)
     cong_thuc = _trich_cong_thuc_chinh(kb, so_da)
@@ -173,21 +179,24 @@ def chon_manh_du_phong(kb):
             manh = "la_bai_the_so"
         else:
             manh = "so_do_du_kien"
-        return {"manh": manh, "mon": "XAC_SUAT", "bi": _trich_bi_mau(van), "so": _trich_so_lieu(van), "cong_thuc": cong_thuc}
+        return {"manh": manh, "mon": "XAC_SUAT", "bi": _trich_bi_mau(van_day_du), "so": _trich_so_lieu(van), "cong_thuc": cong_thuc}
 
-    # Toán thực tế (THUC_TE)
-    if re.search(r"bể|nước|chất lỏng|vòi|chảy|dung dịch|bồn nước|lít|thể tích nước|mực nước", t):
+    # Toán thực tế (THUC_TE): bài tiền bạc / tài chính TUYỆT ĐỐI không rơi về hop_chu_nhat_3d
+    la_tai_chinh = bool(re.search(r"lãi suất|lãi kép|gửi tiết kiệm|ngân hàng|tiền gửi|trả góp|vay vốn|lạm phát|lợi nhuận|doanh thu|giá vé|giá bán|chi phí|giảm giá|tăng giá|tiền lãi|kinh doanh", t_de))
+    if re.search(r"lãi suất|lãi kép|gửi tiết kiệm|ngân hàng|tiền gửi|trả góp|vay vốn|lạm phát", t_de):
+        manh = "tui_tien_lai_suat"
+    elif re.search(r"lợi nhuận|doanh thu|giá vé|giá bán|chi phí|giảm giá|tăng giá|kinh doanh|bán được|khách hàng|cửa hàng|quán", t_de):
+        manh = "bieu_do_loi_nhuan"
+    elif re.search(r"bể|nước|chất lỏng|vòi|chảy|dung dịch|bồn nước|lít|thể tích nước|mực nước", t):
         manh = "be_nuoc_muc_chat_long"
     elif re.search(r"ô tô|xe máy|xe hơi|tàu|chuyển động|vận tốc|quãng đường|phanh|hãm|km/h|m/s|xuất phát|đi từ", t):
         manh = "xe_di_chuyen"
-    elif re.search(r"lãi suất|lãi kép|gửi tiết kiệm|ngân hàng|tiền gửi|trả góp|vay vốn|lạm phát", t):
-        manh = "tui_tien_lai_suat"
-    elif re.search(r"lợi nhuận|doanh thu|giá vé|giá bán|chi phí|giảm giá|tăng giá|kinh doanh|bán được|khách hàng|cửa hàng|quán", t):
-        manh = "bieu_do_loi_nhuan"
     elif re.search(r"đồng hồ|kim giờ|kim phút|thời gian|chu kì|bao nhiêu phút|sau bao lâu", t):
         manh = "dong_ho_thoi_gian"
-    elif re.search(r"hộp|bìa|thùng|lập phương|lăng trụ|khối|mảnh đất|khu vườn|hàng rào|lối đi|bức tường|diện tích|thể tích|cắt góc|gập", t):
+    elif not la_tai_chinh and re.search(r"hộp|bìa|thùng|lập phương|lăng trụ|khối|mảnh đất|khu vườn|hàng rào|lối đi|bức tường|diện tích|thể tích|cắt góc|gập", t):
         manh = "hop_chu_nhat_3d"
+    elif la_tai_chinh:
+        manh = "tui_tien_lai_suat"
     else:
         manh = "so_do_du_kien"
     return {"manh": manh, "mon": "THUC_TE", "bi": {}, "so": _trich_so_lieu(van), "cong_thuc": cong_thuc}

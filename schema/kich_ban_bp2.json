@@ -1,0 +1,550 @@
+{
+  "phien_ban": 2,
+  "mo_ta": "Một nguồn chân lý Schema duy nhất (Single Source of Truth) cho BP2 2 pha (Pha 2A Biên kịch sư phạm thuần + Pha 2B Đạo diễn hình ảnh & đóng gói dữ liệu). Dùng chung cho Node (goi_gemini.js / chay_bp1.js), Python (dao_dien_2b.py / chuanbi.py) và Apps Script (BoPhan1.gs).",
+  "chung": {
+    "mang": [
+      "HINH_PHANG",
+      "HINH_KHONG_GIAN",
+      "THUC_TE",
+      "XAC_SUAT"
+    ],
+    "loai_canh": [
+      "mo_dau",
+      "de_bai",
+      "mo_hinh_hoa",
+      "y_do",
+      "thu_nho",
+      "bay",
+      "nhac_lai",
+      "diem_chot",
+      "tinh_toan",
+      "dap_an",
+      "kiem_tra",
+      "thu_lai",
+      "lien_he_thuc_te",
+      "bai_hoc",
+      "ket_luan",
+      "gia_thiet",
+      "dung_hinh",
+      "chung_minh",
+      "kiem_chung",
+      "mo_phong",
+      "phan_tich",
+      "giai",
+      "cta"
+    ],
+    "trinh_bay": [
+      "cong_don",
+      "bien_doi",
+      "xep"
+    ],
+    "loai_san_khau": [
+      "rut_mau",
+      "so_do_cay",
+      "luoi_bayes",
+      "cot_phan_phoi",
+      "kinh_te_do_thi",
+      "so_do_2d",
+      "tang_truong",
+      "tu_duy_dai_so",
+      "tu_sinh_svg"
+    ],
+    "loai_bien_co": [
+      "tich_chia_het",
+      "tong_chia_het",
+      "tong_bang",
+      "tong_lon_hon",
+      "tong_nho_hon",
+      "tong_it_nhat",
+      "tong_toi_da",
+      "it_nhat_mot",
+      "dung",
+      "khong_co",
+      "cung_nhom",
+      "khac_nhom"
+    ],
+    "pha_xac_suat": [
+      "hien",
+      "mau",
+      "dieu_kien",
+      "truong_hop",
+      "loai",
+      "dem",
+      "khoa",
+      "ti_le",
+      "ket"
+    ],
+    "loai_yeu_cau": [
+      "tinh",
+      "chung_minh"
+    ],
+    "che_do_camera_kg": [
+      "toan_canh",
+      "truc_dien_mat",
+      "ep_mep_mat",
+      "nhin_day",
+      "can_canh",
+      "phang_2d"
+    ],
+    "manh_kho_svg": [
+      "nguoi_que_chi_bang",
+      "nguoi_que_gai_dau",
+      "nguoi_que_aha",
+      "nguoi_que_canh_bao",
+      "nguoi_que_hoan_ho",
+      "be_nuoc_muc_chat_long",
+      "xe_di_chuyen",
+      "dong_ho_thoi_gian",
+      "bieu_do_loi_nhuan",
+      "hop_chu_nhat_3d",
+      "tui_tien_lai_suat",
+      "xuc_xac_1_6",
+      "dong_xu",
+      "la_bai_the_so",
+      "hop_bi_mau",
+      "nut_cay_xac_suat"
+    ]
+  },
+  "pha_2a": {
+    "type": "OBJECT",
+    "required": [
+      "tieu_de",
+      "dap_an_cuoi",
+      "hook",
+      "y_tuong_chinh",
+      "bai_hoc_rut_ra",
+      "binh_luan_ghim",
+      "canh",
+      "tom_tat_3_buoc"
+    ],
+    "properties": {
+      "tieu_de": {"type": "STRING"},
+      "chu_de_ngan": {"type": "STRING"},
+      "dap_an_cuoi": {"type": "STRING"},
+      "dap_an_hien": {"type": "STRING"},
+      "hook": {"type": "STRING"},
+      "hook_chu": {"type": "STRING"},
+      "hook_kieu": {"type": "STRING"},
+      "hook_ung_vien": {"type": "ARRAY", "items": {"type": "STRING"}},
+      "tieu_de_bia": {"type": "STRING"},
+      "nhan_manh": {"type": "ARRAY", "items": {"type": "STRING"}},
+      "y_tuong_chinh": {"type": "STRING"},
+      "bay_tu_duy": {"type": "STRING"},
+      "de_cho": {"type": "ARRAY", "items": {"type": "STRING"}},
+      "can_tim": {"type": "STRING"},
+      "du_kien": {"type": "ARRAY", "items": {"type": "STRING"}},
+      "hashtag": {"type": "ARRAY", "items": {"type": "STRING"}},
+      "bai_hoc_rut_ra": {"type": "ARRAY", "items": {"type": "STRING"}},
+      "video_tiep_theo": {"type": "STRING"},
+      "binh_luan_ghim": {"type": "STRING"},
+      "khong_thu_lai": {"type": "STRING"},
+      "nhan_thi": {"type": "STRING"},
+      "tieu_de_intro": {"type": "STRING"},
+      "phu_de_intro": {"type": "STRING"},
+      "cau_hook": {"type": "STRING"},
+      "cta": {"type": "STRING"},
+      "loai_yeu_cau": {"type": "STRING", "enum": ["tinh", "chung_minh"]},
+      "tom_tat_gia_thiet": {"type": "ARRAY", "items": {"type": "STRING"}},
+      "yeu_cau_ngan": {"type": "STRING"},
+      "ket_qua_chip": {"type": "ARRAY", "items": {"type": "STRING"}},
+      "tom_tat_3_buoc": {
+        "type": "ARRAY",
+        "minItems": 3,
+        "maxItems": 3,
+        "items": {
+          "type": "OBJECT",
+          "required": ["chien_thuat", "cong_thuc"],
+          "properties": {
+            "chien_thuat": {"type": "STRING"},
+            "cong_thuc": {"type": "STRING"}
+          }
+        }
+      },
+      "canh": {
+        "type": "ARRAY",
+        "minItems": 4,
+        "items": {
+          "type": "OBJECT",
+          "required": ["so", "loai", "tieu_de_canh", "loi_thoai", "noi_dung_man_hinh", "mo_ta_minh_hoa"],
+          "properties": {
+            "so": {"type": "INTEGER"},
+            "loai": {
+              "type": "STRING",
+              "enum": [
+                "mo_dau", "de_bai", "mo_hinh_hoa", "y_do", "thu_nho", "bay", "nhac_lai", "diem_chot",
+                "tinh_toan", "dap_an", "kiem_tra", "thu_lai", "lien_he_thuc_te", "bai_hoc", "ket_luan",
+                "gia_thiet", "dung_hinh", "chung_minh", "kiem_chung", "mo_phong", "phan_tich", "giai", "cta"
+              ]
+            },
+            "tieu_de_canh": {"type": "STRING"},
+            "tu_khoa": {"type": "STRING"},
+            "nhan": {"type": "STRING"},
+            "giong_doc": {"type": "STRING"},
+            "loi_thoai": {"type": "STRING"},
+            "noi_dung_man_hinh": {"type": "ARRAY", "items": {"type": "STRING"}},
+            "moc_loi": {"type": "ARRAY", "items": {"type": "STRING"}},
+            "trinh_bay": {"type": "STRING", "enum": ["cong_don", "bien_doi", "xep"]},
+            "mo_ta_minh_hoa": {"type": "STRING"},
+            "ket_qua_chip": {"type": "STRING"},
+            "thoi_luong_giay": {"type": "NUMBER"}
+          }
+        }
+      }
+    }
+  },
+  "pha_2b": {
+    "type": "OBJECT",
+    "required": [
+      "tieu_de",
+      "dap_an_cuoi",
+      "hook",
+      "bai_hoc_rut_ra",
+      "binh_luan_ghim",
+      "canh"
+    ],
+    "properties": {
+      "tieu_de": {"type": "STRING"},
+      "chu_de_ngan": {"type": "STRING"},
+      "dap_an_cuoi": {"type": "STRING"},
+      "dap_an_hien": {"type": "STRING"},
+      "hook": {"type": "STRING"},
+      "hook_chu": {"type": "STRING"},
+      "hook_kieu": {"type": "STRING"},
+      "hook_ung_vien": {"type": "ARRAY", "items": {"type": "STRING"}},
+      "tieu_de_bia": {"type": "STRING"},
+      "nhan_manh": {"type": "ARRAY", "items": {"type": "STRING"}},
+      "y_tuong_chinh": {"type": "STRING"},
+      "bay_tu_duy": {"type": "STRING"},
+      "de_cho": {"type": "ARRAY", "items": {"type": "STRING"}},
+      "can_tim": {"type": "STRING"},
+      "du_kien": {"type": "ARRAY", "items": {"type": "STRING"}},
+      "hashtag": {"type": "ARRAY", "items": {"type": "STRING"}},
+      "bai_hoc_rut_ra": {"type": "ARRAY", "items": {"type": "STRING"}},
+      "video_tiep_theo": {"type": "STRING"},
+      "binh_luan_ghim": {"type": "STRING"},
+      "khong_thu_lai": {"type": "STRING"},
+      "nhan_thi": {"type": "STRING"},
+      "tieu_de_intro": {"type": "STRING"},
+      "phu_de_intro": {"type": "STRING"},
+      "cau_hook": {"type": "STRING"},
+      "cta": {"type": "STRING"},
+      "loai_yeu_cau": {"type": "STRING", "enum": ["tinh", "chung_minh"]},
+      "tom_tat_gia_thiet": {"type": "ARRAY", "items": {"type": "STRING"}},
+      "yeu_cau_ngan": {"type": "STRING"},
+      "ket_qua_chip": {"type": "ARRAY", "items": {"type": "STRING"}},
+      "pha_bp2": {"type": "STRING"},
+      "tom_tat_3_buoc": {
+        "type": "ARRAY",
+        "minItems": 3,
+        "maxItems": 3,
+        "items": {
+          "type": "OBJECT",
+          "required": ["chien_thuat", "cong_thuc"],
+          "properties": {
+            "chien_thuat": {"type": "STRING"},
+            "cong_thuc": {"type": "STRING"}
+          }
+        }
+      },
+      "cau_chuyen": {
+        "type": "OBJECT",
+        "properties": {
+          "nguoi_ke": {"type": "STRING"},
+          "dia_diem": {"type": "STRING"},
+          "muc_tieu": {"type": "STRING"},
+          "phong_canh": {"type": "STRING", "description": "JSON của mục hình dưới dạng chuỗi."}
+        }
+      },
+      "canh": {
+        "type": "ARRAY",
+        "minItems": 1,
+        "items": {
+          "type": "OBJECT",
+          "required": ["loai", "tieu_de_canh", "loi_thoai", "noi_dung_man_hinh", "minh_hoa"],
+          "properties": {
+            "so": {"type": "INTEGER"},
+            "loai": {
+              "type": "STRING",
+              "enum": [
+                "mo_dau", "de_bai", "mo_hinh_hoa", "y_do", "thu_nho", "bay", "nhac_lai", "diem_chot",
+                "tinh_toan", "dap_an", "kiem_tra", "thu_lai", "lien_he_thuc_te", "bai_hoc", "ket_luan",
+                "gia_thiet", "dung_hinh", "chung_minh", "kiem_chung", "mo_phong", "phan_tich", "giai", "cta"
+              ]
+            },
+            "tieu_de_canh": {"type": "STRING"},
+            "tu_khoa": {"type": "STRING"},
+            "nhan": {"type": "STRING"},
+            "giu_san_khau": {"type": "BOOLEAN"},
+            "giong_doc": {"type": "STRING"},
+            "loi_thoai": {"type": "STRING"},
+            "noi_dung_man_hinh": {"type": "ARRAY", "items": {"type": "STRING"}},
+            "moc_loi": {"type": "ARRAY", "items": {"type": "STRING"}},
+            "trinh_bay": {"type": "STRING", "enum": ["cong_don", "bien_doi", "xep"]},
+            "mo_ta_minh_hoa": {"type": "STRING"},
+            "ket_qua_chip": {"type": "STRING"},
+            "chu_thich": {"type": "ARRAY", "items": {"type": "STRING"}},
+            "chuyen_canh": {"type": "STRING"},
+            "goc_nhin": {"type": "ARRAY", "items": {"type": "STRING"}},
+            "kien_thuc": {"type": "STRING"},
+            "nhan_manh_hinh": {"type": "ARRAY", "items": {"type": "STRING"}},
+            "tach": {"type": "ARRAY", "items": {"type": "STRING"}},
+            "thoi_luong_giay": {"type": "NUMBER"},
+            "buoc_ve": {
+              "type": "ARRAY",
+              "items": {
+                "type": "OBJECT",
+                "required": ["ve", "khi_noi"],
+                "properties": {
+                  "ve": {"type": "STRING"},
+                  "khi_noi": {"type": "STRING"}
+                }
+              }
+            },
+            "minh_hoa": {
+              "type": "OBJECT",
+              "required": ["loai"],
+              "properties": {
+                "loai": {"type": "STRING"},
+                "mo_ta": {"type": "STRING"},
+                "du_lieu": {"type": "STRING", "description": "JSON của mục hình dưới dạng chuỗi."}
+              }
+            },
+            "net_toan": {"type": "STRING", "description": "JSON của mục hình dưới dạng chuỗi."},
+            "mo_hinh_3d": {"type": "STRING", "description": "JSON của mục hình dưới dạng chuỗi."}
+          }
+        }
+      },
+      "khung4tang": {
+        "type": "OBJECT",
+        "required": ["buoc"],
+        "properties": {
+          "phu_de": {"type": "STRING"},
+          "theme": {"type": "STRING"},
+          "de_ghim": {
+            "type": "ARRAY",
+            "items": {
+              "type": "OBJECT",
+              "required": ["id", "nhan"],
+              "properties": {
+                "id": {"type": "STRING"},
+                "nhan": {"type": "STRING"},
+                "mau": {"type": "STRING"}
+              }
+            }
+          },
+          "buoc": {
+            "type": "ARRAY",
+            "minItems": 1,
+            "items": {
+              "type": "OBJECT",
+              "required": ["khi_noi", "tieu_de", "the"],
+              "properties": {
+                "canh": {"type": "INTEGER"},
+                "khi_noi": {"type": "STRING"},
+                "nhan": {"type": "STRING"},
+                "tieu_de": {"type": "STRING"},
+                "mau": {"type": "STRING"},
+                "du_kien": {"type": "ARRAY", "items": {"type": "STRING"}},
+                "the": {
+                  "type": "ARRAY",
+                  "minItems": 1,
+                  "items": {
+                    "type": "OBJECT",
+                    "required": ["loai", "khi_noi"],
+                    "properties": {
+                      "loai": {"type": "STRING"},
+                      "nhan": {"type": "STRING"},
+                      "dong": {"type": "ARRAY", "items": {"type": "STRING"}},
+                      "khi_noi": {"type": "STRING"},
+                      "khi_noi_dong": {"type": "ARRAY", "items": {"type": "STRING"}},
+                      "phim": {"type": "ARRAY", "items": {"type": "STRING"}},
+                      "ket_qua": {"type": "STRING"},
+                      "ham": {"type": "STRING"},
+                      "bien": {"type": "STRING"},
+                      "moc_x": {"type": "ARRAY", "items": {"type": "STRING"}},
+                      "dau": {"type": "ARRAY", "items": {"type": "STRING"}},
+                      "gia_tri": {"type": "ARRAY", "items": {"type": "STRING"}},
+                      "noi_dung": {"type": "STRING"},
+                      "chot": {"type": "BOOLEAN"}
+                    }
+                  }
+                },
+                "doi_chieu": {"type": "STRING", "description": "JSON của mục hình dưới dạng chuỗi."},
+                "hanh_dong": {
+                  "type": "OBJECT",
+                  "required": ["pha"],
+                  "properties": {
+                    "pha": {"type": "STRING"},
+                    "do": {"type": "INTEGER"},
+                    "nhanh": {"type": "INTEGER"}
+                  }
+                }
+              }
+            }
+          },
+          "san_khau": {
+            "type": "OBJECT",
+            "required": ["loai"],
+            "properties": {
+              "loai": {
+                "type": "STRING",
+                "enum": [
+                  "rut_mau", "so_do_cay", "luoi_bayes", "cot_phan_phoi",
+                  "kinh_te_do_thi", "so_do_2d", "tang_truong", "tu_duy_dai_so", "tu_sinh_svg"
+                ]
+              },
+              "tham_so": {
+                "type": "OBJECT",
+                "properties": {
+                  "vat": {"type": "STRING"},
+                  "tu": {"type": "INTEGER"},
+                  "den": {"type": "INTEGER"},
+                  "N": {"type": "INTEGER"},
+                  "k": {"type": "INTEGER"},
+                  "co_hoan_lai": {"type": "BOOLEAN"},
+                  "phan_tu": {"type": "ARRAY", "items": {"type": "INTEGER"}},
+                  "nhom": {
+                    "type": "ARRAY",
+                    "items": {
+                      "type": "OBJECT",
+                      "required": ["nhan"],
+                      "properties": {
+                        "nhan": {"type": "STRING"},
+                        "mau": {"type": "STRING"},
+                        "so": {"type": "INTEGER"},
+                        "phan_tu": {"type": "ARRAY", "items": {"type": "INTEGER"}}
+                      }
+                    }
+                  },
+                  "bien_co": {
+                    "type": "OBJECT",
+                    "required": ["loai"],
+                    "properties": {
+                      "loai": {
+                        "type": "STRING",
+                        "enum": [
+                          "tich_chia_het", "tong_chia_het", "tong_bang", "tong_lon_hon", "tong_nho_hon",
+                          "tong_it_nhat", "tong_toi_da", "it_nhat_mot", "dung", "khong_co", "cung_nhom", "khac_nhom"
+                        ]
+                      },
+                      "so": {"type": "NUMBER"},
+                      "so_luong": {"type": "INTEGER"},
+                      "nhom": {"type": "STRING"},
+                      "phu_dinh": {"type": "BOOLEAN"}
+                    }
+                  },
+                  "tang": {"type": "ARRAY", "items": {"type": "STRING"}},
+                  "goc": {"type": "STRING", "description": "JSON của mục hình dưới dạng chuỗi."},
+                  "duong": {"type": "ARRAY", "items": {"type": "ARRAY", "items": {"type": "INTEGER"}}},
+                  "mau": {"type": "ARRAY", "items": {"type": "ARRAY", "items": {"type": "INTEGER"}}},
+                  "hoi": {"type": "STRING"},
+                  "A": {
+                    "type": "OBJECT",
+                    "properties": {
+                      "nhan": {"type": "STRING"},
+                      "p": {"type": "STRING"},
+                      "ky_hieu": {"type": "STRING"}
+                    }
+                  },
+                  "B": {
+                    "type": "OBJECT",
+                    "properties": {
+                      "nhan": {"type": "STRING"},
+                      "ky_hieu": {"type": "STRING"}
+                    }
+                  },
+                  "p_A": {"type": "STRING"},
+                  "p_B_A": {"type": "STRING"},
+                  "p_B_khong_A": {"type": "STRING"},
+                  "ky_hieu_A": {"type": "STRING"},
+                  "ky_hieu_B": {"type": "STRING"},
+                  "tan_so": {"type": "INTEGER"},
+                  "nhi_thuc": {
+                    "type": "OBJECT",
+                    "properties": {
+                      "n": {"type": "INTEGER"},
+                      "p": {"type": "STRING"}
+                    }
+                  },
+                  "cot": {
+                    "type": "ARRAY",
+                    "items": {
+                      "type": "OBJECT",
+                      "required": ["nhan", "p"],
+                      "properties": {
+                        "nhan": {"type": "STRING"},
+                        "p": {"type": "STRING"},
+                        "thuan_loi": {"type": "BOOLEAN"}
+                      }
+                    }
+                  },
+                  "dich": {"type": "ARRAY", "items": {"type": "INTEGER"}},
+                  "truc_x": {"type": "STRING"},
+                  "nhan_x": {"type": "STRING"},
+                  "ham": {"type": "STRING"},
+                  "bien": {"type": "STRING"},
+                  "mien": {"type": "ARRAY", "items": {"type": "NUMBER"}},
+                  "kieu": {"type": "STRING"},
+                  "ten_ham": {"type": "STRING"},
+                  "nhan_bien": {"type": "STRING"},
+                  "don_vi": {"type": "STRING"},
+                  "moc": {"type": "ARRAY", "items": {"type": "NUMBER"}},
+                  "phu": {"type": "STRING", "description": "JSON của mục hình dưới dạng chuỗi."},
+                  "tham_so": {"type": "STRING", "description": "JSON của mục hình dưới dạng chuỗi."},
+                  "mau_2d": {"type": "STRING"}
+                }
+              },
+              "pha": {
+                "type": "ARRAY",
+                "items": {
+                  "type": "OBJECT",
+                  "required": ["ten"],
+                  "properties": {
+                    "ten": {"type": "STRING"},
+                    "khi_noi": {"type": "STRING"},
+                    "chon": {"type": "ARRAY", "items": {"type": "INTEGER"}}
+                  }
+                }
+              }
+            }
+          },
+          "canh_3d_vector": {"type": "STRING", "description": "JSON của mục hình dưới dạng chuỗi."},
+          "tu_sinh": {
+            "type": "OBJECT",
+            "required": ["ma"],
+            "properties": {
+              "ma": {"type": "STRING"},
+              "mo_ta": {"type": "STRING"}
+            }
+          }
+        }
+      },
+      "hinh_phang_chuan": {"type": "STRING", "description": "JSON của mục hình dưới dạng chuỗi."},
+      "hinh_khong_gian": {"type": "STRING", "description": "JSON của mục hình dưới dạng chuỗi."}
+    }
+  },
+  "pha_2b_anh_xa": {
+    "HINH_PHANG": {
+      "type": "OBJECT",
+      "required": ["hinh_phang_chuan"],
+      "properties": {
+        "hinh_phang_chuan": {"type": "STRING", "description": "JSON của hinh_phang_chuan dưới dạng chuỗi."}
+      }
+    },
+    "HINH_KHONG_GIAN": {
+      "type": "OBJECT",
+      "required": ["hinh_khong_gian"],
+      "properties": {
+        "hinh_khong_gian": {"type": "STRING", "description": "JSON của hinh_khong_gian (3 pha dựng nét) dưới dạng chuỗi."}
+      }
+    },
+    "SAN_KHAU": {
+      "type": "OBJECT",
+      "required": ["san_khau"],
+      "properties": {
+        "san_khau": {"type": "STRING", "description": "JSON của khung4tang.san_khau dưới dạng chuỗi."},
+        "canh_3d_vector": {"type": "STRING", "description": "JSON của khung4tang.canh_3d_vector nếu khớp 8 khuôn 3D."}
+      }
+    }
+  }
+}

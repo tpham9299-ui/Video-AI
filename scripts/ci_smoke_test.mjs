@@ -8,6 +8,7 @@
 //  6. Chạy chuanbi.py --gia-lap cho các đề mẫu chuẩn + kiểm chứng checkpoint TTS/Manim/Audio Mastering + cảnh báo quỹ key < 20%.
 //  7. Kiểm thử kho 16 mảnh ghép SVG, Auto Cover Frame và bình luận ghim biến thể.
 //  8. Kiểm thử luồng phân tích YouTube Analytics hàng tuần (đề xuất kho vàng mau_vang/).
+import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -38,7 +39,7 @@ const wfFiles = fs.existsSync(wfDir) ? fs.readdirSync(wfDir).filter((f) => f.end
 // 1. Quét chéo import Python & require/import JS đệ quy đối chiếu sparse-checkout
 // =========================================================================
 console.log('1. Quét chéo import Python & require/import JS đối chiếu sparse-checkout');
-const CONFIG_REFS = ['phong_cach.json', 'bai_hoc_edit.json', 'mau_vang/index.json', 'mau_vang'];
+const CONFIG_REFS = ['phong_cach.json', 'bai_hoc_edit.json', 'mau_vang/index.json', 'mau_vang', 'schema/kich_ban_bp2.json'];
 
 function normRel(p) {
   return p.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
@@ -245,12 +246,35 @@ for (const wf of wfFiles) {
   if (!checkedJobs) kiem(`${wf}: phân tích được sparse-checkout`, false);
 }
 
-// Kiểm tra tường minh bộ dựng hình Tầng 2 dự phòng (scripts/du_phong_t2.py) trong 3 workflow cốt lõi
+// Kiểm tra tường minh bộ dựng hình Tầng 2 dự phòng (scripts/du_phong_t2.py), đạo diễn Pha 2B (scripts/dao_dien_2b.py)
+// và nguồn chân lý Schema duy nhất (schema/kich_ban_bp2.json) trong các workflow cốt lõi
 kiem('scripts/du_phong_t2.py tồn tại trên ổ đĩa', fs.existsSync(path.join(ROOT, 'scripts', 'du_phong_t2.py')));
+kiem('scripts/dao_dien_2b.py tồn tại trên ổ đĩa', fs.existsSync(path.join(ROOT, 'scripts', 'dao_dien_2b.py')));
+kiem('schema/kich_ban_bp2.json tồn tại trên ổ đĩa', fs.existsSync(path.join(ROOT, 'schema', 'kich_ban_bp2.json')));
 for (const wf of ['bo-phan-1.yml', 'viet-kich-ban.yml', 'dung-video.yml']) {
   const txt = fs.readFileSync(path.join(wfDir, wf), 'utf8');
-  const coDuPhong = txt.includes('scripts/du_phong_t2.py') || !txt.includes('sparse-checkout:') || /^\s*scripts\s*$/m.test(txt);
+  const coDuPhong = txt.includes('scripts/du_phong_t2.py') || !txt.includes('sparse-checkout:') || /^\s*\/?scripts\s*$/m.test(txt);
+  const coDaoDien = txt.includes('scripts/dao_dien_2b.py') || !txt.includes('sparse-checkout:') || /^\s*\/?scripts\s*$/m.test(txt);
+  const coSchema = /^\s*\/?schema(?:\/kich_ban_bp2\.json)?\s*$/m.test(txt) || !txt.includes('sparse-checkout:');
   kiem(`${wf}: bao phủ scripts/du_phong_t2.py trong checkout/sparse-checkout`, coDuPhong);
+  kiem(`${wf}: bao phủ scripts/dao_dien_2b.py & schema/kich_ban_bp2.json trong sparse-checkout`, coDaoDien && coSchema);
+}
+{
+  // Kiểm tra đồng bộ Single Source of Truth Schema giữa schema/kich_ban_bp2.json, BoPhan1.gs (bản nội tuyến Apps Script), Node & Python
+  const scGoc = JSON.parse(fs.readFileSync(path.join(ROOT, 'schema', 'kich_ban_bp2.json'), 'utf8'));
+  const gsCtx = vm.createContext({Object, Array, String, Number, JSON, RegExp, Math, Date});
+  vm.runInContext(fs.readFileSync(path.join(ROOT, 'BoPhan1.gs'), 'utf8'), gsCtx, {filename: 'BoPhan1.gs'});
+  const gs2a = JSON.parse(JSON.stringify(gsCtx.schemaPha2A_()));
+  const gs2b = JSON.parse(JSON.stringify(gsCtx.schemaKichBan_()));
+  let khop2a = false, khop2b = false;
+  try { assert.deepStrictEqual(gs2a, scGoc.pha_2a); khop2a = true; } catch (_e) {}
+  try { assert.deepStrictEqual(gs2b, scGoc.pha_2b); khop2b = true; } catch (_e) {}
+  const nodeGoi = fs.readFileSync(path.join(ROOT, 'scripts', 'bophan1', 'goi_gemini.js'), 'utf8');
+  const pyCb = fs.readFileSync(path.join(ROOT, 'scripts', 'chuanbi.py'), 'utf8');
+  const py2b = fs.readFileSync(path.join(ROOT, 'scripts', 'dao_dien_2b.py'), 'utf8');
+  const duNguon = nodeGoi.includes('kich_ban_bp2.json') && py2b.includes('kich_ban_bp2.json') && pyCb.includes('dao_dien_2b');
+  kiem('Single Source of Truth: schema/kich_ban_bp2.json đồng bộ 100% với BoPhan1.gs, goi_gemini.js, dao_dien_2b.py & chuanbi.py', khop2a && khop2b && duNguon,
+    [!khop2a && 'lệch pha_2a', !khop2b && 'lệch pha_2b', !duNguon && 'thiếu tham chiếu Node/Python'].filter(Boolean).join(', '));
 }
 
 // =========================================================================
@@ -650,11 +674,20 @@ const iGate = wfDung.indexOf('node scripts/kiem_tra_de_chu_truoc_render.mjs');
 const iTts = wfDung.indexOf('BAO_LOI_BP2=out/loi_truoc_tts.txt python3 scripts/chuanbi.py kich_ban.json ||');
 const buocProps = wfDung.slice(wfDung.indexOf('id: props_soi_chu'), iGate);
 const buocTts = wfDung.slice(wfDung.indexOf('- name: Tạo giọng đọc'), iTts);
-kiem('BP3: props không TTS → Collision Gate → TTS, báo bố cục qua webhook',
+kiem('BP3: 3 cửa chuẩn (props không TTS → 1 lần Chromium Cửa 2 → TTS → Cửa 3 hậu kiểm 1 lần, bỏ kiem_duyet.mjs trùng)',
   iProps >= 0 && iProps < iGate && iGate < iTts && buocProps.includes("GEMINI_KEYS: ''") &&
   buocProps.includes("GEMINI_API_KEY: ''") && buocTts.includes("steps.soi_chu.outputs.chan != 'true'") &&
   wfDung.includes("steps.soi_chu.outputs.chan == 'true'") &&
-  wfDung.includes("gate_path = 'out/pre_render/bao_cao.json'"));
+  wfDung.includes("gate_path = 'out/pre_render/bao_cao.json'") &&
+  !wfDung.includes('node scripts/kiem_duyet.mjs') &&
+  wfDung.includes("d['ai_hau_kiem'] = mt['hau_kiem']"));
+const coGoiKhung4Tang = ['__init__.py', 'moc_thoi_gian.py', 'san_khau.py', 'kiem_tra.py'].every(
+  (f) => fs.existsSync(path.join(ROOT, 'scripts', 'khung4tang', f)),
+);
+const wfBp1 = fs.readFileSync(path.join(wfDir, 'bo-phan-1.yml'), 'utf8');
+const wfBp2 = fs.readFileSync(path.join(wfDir, 'viet-kich-ban.yml'), 'utf8');
+kiem('Gói scripts/khung4tang/ + sparse-checkout + wrapper tương thích ngược v93..v99',
+  coGoiKhung4Tang && wfBp1.includes('scripts/khung4tang') && wfBp2.includes('scripts/khung4tang'));
 const rGate = spawnSync(process.execPath, ['scripts/test_pre_render_va_schema.mjs', '--nhanh'], {
   cwd: ROOT, encoding: 'utf8', timeout: 30000,
 });

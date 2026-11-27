@@ -23,6 +23,7 @@ jobs:
             /data
             /mau
             /mau_vang
+            /schema
             /public
             /src
             /scripts

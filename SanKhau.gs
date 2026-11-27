@@ -388,19 +388,68 @@ function suyBienCo_(van) {
   if (/tích[^.;?]{0,30}?(?:là\s*)?(?:một\s*)?số chẵn/.test(t)) return {loai: 'tich_chia_het', so: 2};
   if (/tích[^.;?]{0,30}?(?:là\s*)?(?:một\s*)?số lẻ/.test(t)) return {loai: 'tich_chia_het', so: 2, phu_dinh: true};
   if ((m = /tổng[^.;?]{0,40}?(?:chia hết cho|⋮|\\vdots)\s*(\d+)/.exec(t))) return {loai: 'tong_chia_het', so: +m[1], phu_dinh: /tổng[^.;?]{0,30}?không\s*(?:chia hết|⋮)/.test(t)};
-  if ((m = /tổng[^.;?]{0,30}?(bằng|lớn hơn|nhỏ hơn)\s*(\d+)/.exec(t))) return {loai: {'bằng': 'tong_bang', 'lớn hơn': 'tong_lon_hon', 'nhỏ hơn': 'tong_nho_hon'}[m[1]], so: +m[2]};
+  if (/tổng[^.;?]{0,30}?(?:là\s*)?(?:một\s*)?số chẵn/.test(t)) return {loai: 'tong_chia_het', so: 2};
+  if (/tổng[^.;?]{0,30}?(?:là\s*)?(?:một\s*)?số lẻ/.test(t)) return {loai: 'tong_chia_het', so: 2, phu_dinh: true};
+  if ((m = /tổng[^.;?]{0,30}?(bằng|lớn hơn|nhỏ hơn|không nhỏ hơn|không vượt quá|ít nhất là)\s*(\d+)/.exec(t))) {
+    return {loai: {'bằng': 'tong_bang', 'lớn hơn': 'tong_lon_hon', 'nhỏ hơn': 'tong_nho_hon',
+      'không nhỏ hơn': 'tong_it_nhat', 'ít nhất là': 'tong_it_nhat', 'không vượt quá': 'tong_toi_da'}[m[1]], so: +m[2]};
+  }
+  if ((m = /ít nhất (?:một|1)\s*(?:viên|quả|thẻ|bạn|người)?\s*(?:bi\s*)?(?:màu\s*)?(đỏ|xanh lá|xanh|vàng|trắng|đen|nữ|nam|chẵn|lẻ)/.exec(t))) {
+    return {loai: 'it_nhat_mot', nhom: m[1]};
+  }
+  if ((m = /(?:đúng|có)\s*(\d+|hai|ba|một)\s*(?:viên|quả|thẻ|bạn|người)?\s*(?:bi\s*)?(?:màu\s*)?(đỏ|xanh lá|xanh|vàng|trắng|đen|nữ|nam|chẵn|lẻ)/.exec(t))) {
+    var sl = ({'một': 1, 'hai': 2, 'ba': 3})[m[1]] || +m[1];
+    return {loai: 'dung', nhom: m[2], so_luong: sl};
+  }
+  if (/cùng màu/.test(t)) return {loai: 'cung_nhom'};
+  if (/khác màu|đủ (?:ba|3) màu|ba màu khác nhau/.test(t)) return {loai: 'khac_nhom'};
   return null;
 }
-function thoaBienCo_(gt, bc) {
-  if (!bc || gt.some(function (v) { return typeof v !== 'number'; })) return null;
-  var tich = 1, tong = 0, k = +bc.so || 0, ok;
-  gt.forEach(function (v) { tich *= v; tong += v; });
-  if (bc.loai === 'tich_chia_het') ok = !!k && tich % k === 0;
-  else if (bc.loai === 'tong_chia_het') ok = !!k && tong % k === 0;
-  else if (bc.loai === 'tong_bang') ok = tong === +bc.so;
-  else if (bc.loai === 'tong_lon_hon') ok = tong > +bc.so;
-  else if (bc.loai === 'tong_nho_hon') ok = tong < +bc.so;
-  else return null;
+function timNhomRutMau_(nhom) {
+  return function (x) {
+    if (typeof x === 'number' && x >= 0 && x < nhom.length) return x;
+    var s = String(x || '').trim().toLowerCase();
+    if (!s) return null;
+    for (var i = 0; i < nhom.length; i++) {
+      var n = texSangChu_(nhom[i] && nhom[i].nhan).toLowerCase();
+      if (s === n || n.split(/\s+/).indexOf(s) >= 0 || n.indexOf('màu ' + s) >= 0 || n === 'bi ' + s) return i;
+    }
+    for (var j = 0; j < nhom.length; j++) {
+      if (texSangChu_(nhom[j] && nhom[j].nhan).toLowerCase().indexOf(s) >= 0) return j;
+    }
+    return null;
+  };
+}
+function thoaBienCo_(gt, bc, nhomBo, timNhom) {
+  if (!bc || !bc.loai) return null;
+  var loai = bc.loai, ok;
+  if (/^(tich_chia_het|tong_chia_het|tong_bang|tong_lon_hon|tong_nho_hon|tong_it_nhat|tong_toi_da)$/.test(loai)) {
+    if (gt.some(function (v) { return typeof v !== 'number'; })) return null;
+    var tich = 1, tong = 0, k = +bc.so || 0;
+    gt.forEach(function (v) { tich *= v; tong += v; });
+    if (loai === 'tich_chia_het') ok = !!k && tich % k === 0;
+    else if (loai === 'tong_chia_het') ok = !!k && tong % k === 0;
+    else if (loai === 'tong_bang') ok = tong === +bc.so;
+    else if (loai === 'tong_lon_hon') ok = tong > +bc.so;
+    else if (loai === 'tong_nho_hon') ok = tong < +bc.so;
+    else if (loai === 'tong_it_nhat') ok = tong >= +bc.so;
+    else ok = tong <= +bc.so;
+  } else if (loai === 'it_nhat_mot' || loai === 'dung' || loai === 'khong_co') {
+    if (!Array.isArray(nhomBo) || typeof timNhom !== 'function') return null;
+    var g = timNhom(bc.nhom);
+    if (g === null) return null;
+    var demG = nhomBo.filter(function (gi) { return gi === g; }).length;
+    ok = loai === 'it_nhat_mot' ? demG >= 1 : loai === 'khong_co' ? demG === 0 : demG === (+bc.so_luong || 0);
+  } else if (loai === 'cung_nhom') {
+    if (!Array.isArray(nhomBo) || !nhomBo.length || nhomBo.some(function (gi) { return gi < 0; })) return null;
+    ok = nhomBo.every(function (gi) { return gi === nhomBo[0]; });
+  } else if (loai === 'khac_nhom') {
+    if (!Array.isArray(nhomBo) || !nhomBo.length || nhomBo.some(function (gi) { return gi < 0; })) return null;
+    var tapG = {};
+    ok = nhomBo.every(function (gi) { if (tapG[gi]) return false; tapG[gi] = 1; return true; });
+  } else {
+    return null;
+  }
   return bc.phu_dinh ? !ok : ok;
 }
 function nhomTuBienCo_(gt, bc) {
@@ -469,15 +518,28 @@ function tinhRutMau_(ts, kb) {
     g.phan_tu = g.phan_tu.filter(function (v) { if (da[v]) return false; da[v] = 1; return true; });
   });
   nhom = nhom.filter(function (g) { return g.phan_tu.length; });
-  var nO = vat === 'xuc_xac' ? Math.pow(gt.length, k) : toHop_(gt.length, k), nA = null;
+  var hoanLai = !!ts.co_hoan_lai || vat === 'xuc_xac';
+  var nhomCuaGt = gt.map(function (v) {
+    for (var gi = 0; gi < nhom.length; gi++) if (nhom[gi].phan_tu.indexOf(v) >= 0) return gi;
+    return -1;
+  });
+  var timNhom = timNhomRutMau_(nhom);
+  var nO = hoanLai ? Math.pow(gt.length, k) : toHop_(gt.length, k), nA = null;
   if (bc) {
-    var dem = 0, n = gt.length, tong = 0;
+    var dem = 0, n = gt.length, tong = 0, huyDem = false;
     if (nO <= TRAN_VET_CAN_) {
-      // vét cạn tổ hợp (không hoàn lại) / chỉnh hợp lặp (xúc xắc)
+      // vét cạn tổ hợp (không hoàn lại) / chỉnh hợp lặp (có hoàn lại / xúc xắc)
       var chi = [];
       var duyet = function (bd, sau) {
-        if (sau === k) { tong++; if (thoaBienCo_(chi.map(function (i) { return gt[i]; }), bc)) dem++; return; }
-        for (var i = vat === 'xuc_xac' ? 0 : bd; i < n; i++) { chi.push(i); duyet(i + 1, sau + 1); chi.pop(); }
+        if (huyDem) return;
+        if (sau === k) {
+          tong++;
+          var ket = thoaBienCo_(chi.map(function (i) { return gt[i]; }), bc, chi.map(function (i) { return nhomCuaGt[i]; }), timNhom);
+          if (ket === null) { huyDem = true; dem = null; return; }
+          if (ket) dem++;
+          return;
+        }
+        for (var i = hoanLai ? 0 : bd; i < n; i++) { chi.push(i); duyet(i + 1, sau + 1); chi.pop(); if (huyDem) return; }
       };
       duyet(0, 0);
       nA = dem;
@@ -485,11 +547,13 @@ function tinhRutMau_(ts, kb) {
       // n(Ω) quá lớn: lấy mẫu 20 000 lần (hạt giống cố định) -> ước lượng, không treo script
       var hat = 96, ngau = function () { hat = (hat * 1103515245 + 12345) % 2147483648; return hat / 2147483648; };
       for (var lan = 0; lan < 20000; lan++) {
-        var chon = [], co = {};
-        while (chon.length < k) { var j = Math.floor(ngau() * n); if (vat === 'xuc_xac' || !co[j]) { co[j] = 1; chon.push(gt[j]); } }
-        if (thoaBienCo_(chon, bc)) dem++;
+        var chon = [], nhomChon = [], co = {};
+        while (chon.length < k) { var j = Math.floor(ngau() * n); if (hoanLai || !co[j]) { co[j] = 1; chon.push(gt[j]); nhomChon.push(nhomCuaGt[j]); } }
+        var ketM = thoaBienCo_(chon, bc, nhomChon, timNhom);
+        if (ketM === null) { dem = null; break; }
+        if (ketM) dem++;
       }
-      nA = Math.round(dem / 20000 * nO);
+      nA = dem === null ? null : Math.round(dem / 20000 * nO);
     }
   }
   var kq = {vat: vat, k: k, phan_tu: gt, nhom: nhom, n_omega: nO, bien_co: bc, vet_can: nO <= TRAN_VET_CAN_, sua: sua};

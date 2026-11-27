@@ -1,6 +1,11 @@
 // HANG_DOI lưu trạng thái chuẩn. docHang_ dịch về tên cũ cho các bộ giải, bảng đọc và lịch đăng.
+var TRAN_SUA_BP2 = typeof TRAN_SUA_BP2 !== 'undefined' ? TRAN_SUA_BP2 : 1;
+var TRAN_SUA_BP3 = typeof TRAN_SUA_BP3 !== 'undefined' ? TRAN_SUA_BP3 : 1;
+var NGAN_SACH_NHIP_BO_NAO_MS_ = 30000;   // giữ nhipBoNao_ siêu nhẹ (< 30 giây/nhịp, không chạy dọn Sheet/Drive nặng)
+var NGUONG_NONG_BP0_MIN_ = 4;
+var NGUONG_NONG_BP0_MAX_ = 6;
 var BO_NAO_ = {
-  cheDo: 'TU_DONG_TOAN_PHAN', ton: 4, thuLai: 2,
+  cheDo: 'TU_DONG_TOAN_PHAN', ton: 4, thuLai: TRAN_SUA_BP3,
   workflow: ['sinh-de.yml', 'bo-phan-1.yml', 'viet-kich-ban.yml', 'dung-video.yml', 'kiem-tra-video.yml', 'dang-video.yml'],
   cho: ['', 'CHO_GIAI', 'CHO_KICH_BAN', 'CHO_DUNG', 'CHO_KIEM_DUYET', 'CHO_DANG'],
   dang: ['', 'DANG_GIAI', 'DANG_KICH_BAN', 'DANG_DUNG', 'DANG_KIEM_DUYET', 'DANG_DANG'],
@@ -213,9 +218,21 @@ function runCuaBai_(run, id) {
 }
 
 function tonBoNao_(hang) {
+  // Chỉ đếm hàng đợi NÓNG (MOI/CHO_GIAI, DA_GIAI/CHO_KICH_BAN, CO_KICH_BAN/CHO_DUNG, DANG_DUNG).
+  // TUYỆT ĐỐI không tính CHO_DANG hay CHO_DUYET/CHO_KIEM_DUYET vào phanh chặn BP0.
   return hang.filter(function(r) {
     return r.id && ['CHO_GIAI', 'CHO_KICH_BAN', 'CHO_DUNG', 'DANG_DUNG'].indexOf(trangThaiBoNao_(r)) >= 0;
   }).length;
+}
+
+// Tính cỡ lô BP0 (2–3 đề/lượt) khi hàng đợi nóng dưới ngưỡng 4–6 bài và quỹ key >= 25%.
+function tinhSoDeLoBP0_(hang, key) {
+  var ton = tonBoNao_(hang || []);
+  var cfgNguong = Number(typeof cauHinh_ === 'function' ? cauHinh_('NGUONG_HANG_DOI_NONG') : 0);
+  var nguong = cfgNguong ? Math.max(NGUONG_NONG_BP0_MIN_, Math.min(NGUONG_NONG_BP0_MAX_, cfgNguong)) : BO_NAO_.ton;
+  if (ton >= nguong) return 0;
+  if (key && !(key.tyLe >= NGUONG_KEY_TOI_THIEU_SAN_XUAT)) return 0;
+  return Math.max(2, Math.min(3, nguong - ton));
 }
 
 function demDangSanXuatBoNao_(hang) {
@@ -234,7 +251,7 @@ function thuLaiBoNao_(sh, r, bp, lyDo, tam) {
   if (bp === 4) f.duyet = 'CHO_AI';
   if (bp === 5) giaiPhongGiuKhung_(r.id);
   ghi_(sh, r._row, f, r.id);
-  if (het) guiZaloMotLan_('XAKET_' + bp + '_' + r.id, r.id + ' BP' + bp + ' hết 2 lượt thử lại. ' + lyDo);
+  if (het) guiZaloMotLan_('XAKET_' + bp + '_' + r.id, r.id + ' BP' + bp + ' hết ' + BO_NAO_.thuLai + ' lượt thử lại. ' + lyDo);
 }
 
 function xaZombieBoNao_(sh, bp, hang, runs) {
@@ -351,8 +368,9 @@ function giaoSinhDeBuChiTieu_(hang, p) {
     ch.TOI_DA_CHO_DUNG_VIDEO = String(Math.max(BO_NAO_.ton, Number(ch.TOI_DA_CHO_DUNG_VIDEO)));
   var tatCa = p.getProperties();
   Object.keys(tatCa).forEach(function (k) { if (laKhoaDemBP0_(k)) propsGui[k] = tatCa[k]; });
+  var soLo = tinhSoDeLoBP0_(hang) || 2;
   var duLieu = JSON.stringify({
-    lan_giao: p.getProperty('BP0_GIU_DEN'), cau_hinh: ch, props: propsGui,
+    lan_giao: p.getProperty('BP0_GIU_DEN'), so_luong: soLo, cau_hinh: ch, props: propsGui,
     gan_day: hang.slice(-40).map(function (r) {
       return {id: r.id, trang_thai: r.trang_thai, chu_de: String(r.chu_de || '').slice(0, 60),
         de_bai: String(r.de_bai || '').slice(0, 120), ma_bam: r.ma_bam || '', mon: r.mon || '', nguon: String(r.nguon || '').slice(0, 60)};
@@ -362,7 +380,7 @@ function giaoSinhDeBuChiTieu_(hang, p) {
   if (duLieu.length > 60000) throw new Error('Dữ liệu BP0 vượt giới hạn dispatch');
   var gh = guiWorkflowGitHub_({mon: ch.CHU_DE_VIDEO || 'XEN_KE', du_lieu: duLieu}, 'sinh-de.yml');
   if (!gh || !gh.ok) throw new Error(gh ? gh.loi : 'GitHub chưa xác nhận giao BP0');
-  nhatKy_('SINH_DE_GH', 'Đã giao Bộ phận 0 (sinh-de.yml) bổ sung đề mới trên GitHub');
+  nhatKy_('SINH_DE_GH', 'Đã giao Bộ phận 0 (sinh-de.yml) tạo lô ' + soLo + ' đề mới trên GitHub');
 }
 
 function buocBoNao_(sh,bp,lenh,tonDau,kho,ketQua) {
@@ -503,23 +521,19 @@ function nhipBoNao_(lenh, trangThai) {
   var soVideoMoi = lenh === 'chay' ? voiKhoa_(1000, function () { return demVideoMoiTrongNgay_(luc, true); }) : null;
   if (soVideoMoi === null) soVideoMoi = demVideoMoiTrongNgay_(luc, false);
   var key = docQuyKeyBoNao_();
-  if (lenh === 'chay' && typeof xuLyLoiDocDe_ === 'function') {
-    try {
-      var toiDaSuaLoi = (key && key.tyLe >= NGUONG_KEY_TOI_THIEU_SAN_XUAT) ? 3 : 0;
-      var hanLoi = _bat_dau_chay_ + (typeof GIOI_HAN_DON_VIDEO_MS_ === 'number' ? GIOI_HAN_DON_VIDEO_MS_ : 270000);
-      voiKhoa_(5000, function () {
-        xuLyLoiDocDe_({chayTay: false, han: hanLoi, toiDaSua: toiDaSuaLoi});
-      });
-      hang = docHang_(sh);
-      tonDau = tonBoNao_(hang);
-    } catch (eLoi) { nhatKy_('DIEU_PHOI_LOI', 'Xử lý lỗi DOC_DE · ' + eLoi.message); }
-  }
+  // Tách tác vụ dọn Sheet/Drive nặng (xuLyLoiDocDe_, donDaXong_, doVaSuaVideoCuTrenDrive_) ra khỏi nhịp 5 phút:
+  // nhipBoNao_ chỉ đọc bảng nóng và gửi workflow_dispatch (< 30 giây/nhịp) để /trangthai không bị "khóa đang bận".
   var loi = hang.filter(function(r) { return trangThaiBoNao_(r) === 'LOI_CAN_XEM'; });
   var tin = [cheDoBoNao_() + (loi.length ? ' · cần xem ' + loi.length + ' (' + loi[0].id + ': ' + String(loi[0].ghi_chu).slice(0,120) + ')' : '')];
   var kho = tinhKhoDemBoNao_(hang, false, soVideoMoi, key);
   var ketQua = {};
   (lenh === 'dang_ngay' ? [5] : [5,4,3,2,1,0]).forEach(function(bp) {
     var buoc = ketQua[bp] = {};
+    if (lenh === 'chay' && Date.now() - _bat_dau_chay_ >= NGAN_SACH_NHIP_BO_NAO_MS_) {
+      buoc.lyDo = 'nhường khóa (< 30s/nhịp)';
+      tin.push('BP' + bp + ' · ' + buoc.lyDo);
+      return;
+    }
     try {
       var dong = voiKhoa_(5000,function() {
         try {
@@ -573,7 +587,8 @@ function chayBoNaoDieuPhoi() {
   var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TEN_HANG_DOI);
   var bc = {moi:0,giai_ok:0,loai:0,kich_ban:0,loi:0};
   if (viecTaiChoBoNao_) lamTaiChoBoNao_(sh,bc);
-  try { baoTriNhipBoNao_(); } catch (eDon) { nhatKy_('DON_DEP', eDon.message); }
+  // Tác vụ nặng (donDaXong_, xuLyLoiDocDe_, xaKhoChoDuyet_, doVaSuaVideoCuTrenDrive_) đã tách sang lịch dọn định kỳ / lệnh tay
+  // để nhịp 5 phút luôn hoàn tất nhanh, không làm /trangthai dính "khóa đang bận".
   if (trangThai.ngu) return tin;
   if (dangNghi_() || !duThoiGian_(_bat_dau_chay_,60000)) return tin;
   var cache = CacheService.getScriptCache();
@@ -586,8 +601,6 @@ function chayBoNaoDieuPhoi() {
   try {
     if (coViecSanPham_()) xuLySanPham_(bc,_bat_dau_chay_);
     xuLyDocDe_(sh,bc,_bat_dau_chay_);
-    if (String(cauHinh_('TU_SUA_VIDEO_CU_DRIVE') || 'BAT') !== 'TAT' && !coDeUuTien_(docHang_(sh)) && duThoiGian_(_bat_dau_chay_,60000))
-      doVaSuaVideoCuTrenDrive_(sh,2);
   } finally { cache.remove('DOC_NGUON_BO_NAO'); }
   return tin;
 }

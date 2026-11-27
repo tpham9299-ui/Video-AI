@@ -335,8 +335,67 @@ def kiem_hinh_phang(p, anh_o, o_da):
     return loi
 
 
-def prompt_ai(p, o_da):
-    dap = str(p.get("dapAn") or "").strip()
+TIEU_CHI_CUA_3 = [
+    ("de_bai", 1.5, True),
+    ("bam_de", 3.0, True),
+    ("loi_giai", 3.0, True),
+    ("dap_an", 2.0, True),
+    ("thu_lai", 1.5, True),
+    ("nhieu_canh", 2.0, True),
+    ("bo_cuc", 2.0, True),
+    ("tham_my", 1.0, False),
+]
+
+
+def tinh_hau_kiem_cua_3(tho, loi_cung, thuc_te=False, nguong_pt=85, diem_toi_thieu=8):
+    """Cửa 3 gộp: tính điểm % đáp ứng + tiêu chí bắt buộc từ 1 lần gọi AI duy nhất trên lưới 3×3."""
+    if not isinstance(tho, dict):
+        return None
+    diem_raw = tho.get("diem")
+    if not isinstance(diem_raw, dict) or not diem_raw:
+        return None
+    tong = 0.0
+    w_sum = 0.0
+    chi_tiet = {}
+    nang = []
+    chua_du = []
+    for ma, w, bb in TIEU_CHI_CUA_3:
+        val = diem_raw.get(ma)
+        try:
+            x = float(val) if val is not None else 0.0
+        except (TypeError, ValueError):
+            x = 0.0
+        x = max(0.0, min(10.0, x))
+        chi_tiet[ma] = round(x, 1) if x % 1 else int(x)
+        tong += x * w
+        w_sum += w
+        if bb and x < 7:
+            nang.append("%s=%s" % (ma, chi_tiet[ma]))
+        if x < diem_toi_thieu:
+            chua_du.append("%s=%s" % (ma, chi_tiet[ma]))
+    pt = int(round((tong / w_sum) * 10)) if w_sum else 0
+    co_loi_cung = bool(loi_cung)
+    t2_ok = True if not thuc_te else (tho.get("t2_co_hinh") is True)
+    dat = (not co_loi_cung) and t2_ok and pt >= nguong_pt and not nang and not chua_du
+    kq = {
+        "phan_tram": pt,
+        "diem": round(pt) / 10.0,
+        "loi_nang": bool(nang) or co_loi_cung,
+        "nang": nang if nang else chua_du,
+        "chi_tiet": chi_tiet,
+        "dat": dat,
+        "van_de": [str(v)[:200] for v in (tho.get("van_de") or [])][:8],
+        "gop_y": str(tho.get("gop_y") or "")[:1200],
+        "nguon": "cua_3_mat_than_3x3",
+    }
+    if thuc_te:
+        kq["t2_co_hinh"] = t2_ok
+    return kq
+
+
+def prompt_ai(p, o_da, kb=None):
+    kb = kb if isinstance(kb, dict) else {}
+    dap = str(p.get("dapAn") or kb.get("dap_an_hien") or kb.get("dap_an") or "").strip()
     chuyen = "Xác suất" if (p.get("thuongHieu") or {}).get("chuyenMuc") == "xac_suat" else "Toán (không phải Xác suất)"
     # v93: ô 1 là khung Intro móc câu -> chỉ bắt lỗi hiển thị, không bắt thiếu thẻ giải / thanh ĐỀ / nhãn BƯỚC
     ghi_chu_intro = (
@@ -357,11 +416,25 @@ def prompt_ai(p, o_da):
         ghi_chu_intro += ("THUC_TE: xem riêng tầng 2 trong từng ô giải. Kiểm riêng vật thể bên trái và đồ thị bên phải nếu chia đôi. Thanh trượt hoặc chữ không phải vật thể. "
                           "Tam giác, wireframe hoặc fractal có nét liên tục là hình thật kể cả ruột tối. Chữ, công thức, hộp nhãn và viền sáng cũng là t2_trong, nang=true. "
                           "Thêm trường JSON t2_co_hinh (boolean) xác nhận mọi ô giải đều đạt. ")
-    return ghi_chu_intro + (
-        "Bạn là người kiểm duyệt cuối của video toán dọc 9:16. Ảnh là lưới 3×3 gồm 9 khung hình theo thứ tự thời gian, "
+    ngu_canh_kb = ""
+    de_bai = str(kb.get("de_bai") or p.get("deBai") or "").strip()
+    if de_bai:
+        canh_tom = "\n".join(
+            "  C%d[%s]: %s | %s" % (i + 1, c.get("loai") or "", str(c.get("loi_thoai") or "")[:90], " ; ".join(str(x) for x in (c.get("noi_dung_man_hinh") or []))[:80])
+            for i, c in enumerate((kb.get("canh") or [])[:16]) if isinstance(c, dict)
+        )
+        ngu_canh_kb = (
+            "NGỮ CẢNH ĐỀ & KỊCH BẢN (để chấm điểm hậu kiểm trong cùng 1 lượt):\n"
+            "Lớp: %s | Đề: %s\n%s%s\n"
+            % (kb.get("lop") or p.get("lop") or "?", de_bai[:700],
+               ("Kịch bản ghi không thử lại: %s\n" % kb["khong_thu_lai"][:140]) if kb.get("khong_thu_lai") else "",
+               (canh_tom[:1800] + "\n") if canh_tom else "")
+        )
+    return ghi_chu_intro + ngu_canh_kb + (
+        "Bạn là CỬA 3 — người hậu kiểm AI duy nhất của video toán dọc 9:16. Ảnh là lưới 3×3 gồm 9 khung hình theo thứ tự thời gian, "
         "mỗi ô có số 1..9 ở góc trên trái (dải nhãn đen-vàng đó là của người kiểm duyệt, KHÔNG phải lỗi video). "
         "Ô %d là cảnh đáp án, ô 9 là màn kết. Đáp số của bài: \"%s\".\n"
-        "Chỉ tìm các loại LỖI NẶNG sau, bỏ qua mọi góp ý thẩm mỹ:\n"
+        "NHIỆM VỤ 1 — Tìm các LỖI NẶNG hiển thị (bỏ qua góp ý thẩm mỹ):\n"
         "- cat_chu: chữ/công thức bị cắt mất một phần ở mép khung hoặc mép hộp, tràn ra ngoài khung hình.\n"
         "- chong_chu: hai nhãn/dòng chữ/công thức đè lên nhau đến mức khó đọc.\n"
         "- latex_tho: hiện nguyên mã LaTeX như \\\\frac, \\\\sqrt, \\\\cdot, $...$, ^{...}, _{...}, \\\\text thay vì công thức đã dựng.\n"
@@ -371,30 +444,36 @@ def prompt_ai(p, o_da):
         "- so_cat: con số bị cắt cụt hoặc tách đôi giữa hai dòng/khung (1024 thành 1000 | 24), dấu so sánh chèn sai vào câu chữ.\n"
         "- t2_trong: video bố cục 4 tầng mà vùng sân khấu giữa (dưới tiêu đề, trên thẻ giải) trống đen ở ô giải.\n"
         "- hinh_dung_im: hình 3D giữa màn hình y hệt nhau ở mọi ô giải (không đổi góc, không có chi tiết mới).\n"
-        "Chỉ báo khi thấy rõ. nang=true khi người xem chắc chắn nhận ra lỗi. "
-        "Trả JSON đúng mẫu: {\"loi\":[{\"o\":số ô,\"loai\":\"cat_chu|chong_chu|latex_tho|lo_dap_an|ma_tho|logo_sai|so_cat|t2_trong|hinh_dung_im|hinh_nho|tran_day|nhan_de\",\"mo_ta\":\"ngắn gọn tiếng Việt\",\"nang\":true}]} ; "
-        "không có lỗi thì {\"loi\":[]}."
+        "NHIỆM VỤ 2 — Chấm 8 tiêu chí chất lượng 0-10 (9-10 chính xác/rõ ràng; 8 tốt; <=6 khi sai toán/đáp án/chữ đè/sai vật đề): "
+        "de_bai, bam_de, loi_giai, dap_an, thu_lai, nhieu_canh, bo_cuc, tham_my.\n"
+        "Chỉ báo lỗi khi thấy rõ. nang=true khi người xem chắc chắn nhận ra lỗi. "
+        "Trả JSON đúng mẫu: {\"loi\":[{\"o\":số ô,\"loai\":\"cat_chu|chong_chu|latex_tho|lo_dap_an|ma_tho|logo_sai|so_cat|t2_trong|hinh_dung_im|hinh_nho|tran_day|nhan_de\",\"mo_ta\":\"ngắn gọn tiếng Việt\",\"nang\":true}], "
+        "\"diem\":{\"de_bai\":9,\"bam_de\":9,\"loi_giai\":9,\"dap_an\":9,\"thu_lai\":9,\"nhieu_canh\":9,\"bo_cuc\":9,\"tham_my\":9}, \"van_de\":[], \"gop_y\":\"\"}."
     ) % (o_da, dap or "không rõ", dap or "không rõ", o_da, o_da)
 
 
-def goi_gemini(anh, p, o_da):
+def goi_gemini(anh, p, o_da, kb=None):
     keys = [k for k in re.split(r"[\s,;]+", os.environ.get("GEMINI_KEYS") or os.environ.get("GEMINI_API_KEY") or "") if k]
     if not keys:
         return None, "THIEU_GEMINI_KEYS"
+    diem_props = {ma: {"type": "NUMBER"} for ma, _, _ in TIEU_CHI_CUA_3}
     body = {
         "contents": [{"role": "user", "parts": [
-            {"text": prompt_ai(p, o_da)},
+            {"text": prompt_ai(p, o_da, kb)},
             {"inline_data": {"mime_type": "image/jpeg", "data": base64.b64encode(open(anh, "rb").read()).decode()}},
         ]}],
-        "generationConfig": {"temperature": 0.1, "responseMimeType": "application/json", "maxOutputTokens": 1024,
+        "generationConfig": {"temperature": 0.1, "responseMimeType": "application/json", "maxOutputTokens": 1536,
                              "thinkingConfig": {"thinkingBudget": 0},
-                             "responseSchema": {"type": "OBJECT", "required": ["loi"], "properties": {
+                             "responseSchema": {"type": "OBJECT", "required": ["loi", "diem"], "properties": {
                                  "t2_co_hinh": {"type": "BOOLEAN"},
                                  "loi": {"type": "ARRAY", "items": {"type": "OBJECT",
                                      "required": ["o", "loai", "mo_ta", "nang"], "properties": {
                                          "o": {"type": "INTEGER"}, "loai": {"type": "STRING", "enum": list(LOAI_LOI)},
                                          "mo_ta": {"type": "STRING"}, "nang": {"type": "BOOLEAN"},
                                      }}},
+                                 "diem": {"type": "OBJECT", "properties": diem_props},
+                                 "van_de": {"type": "ARRAY", "items": {"type": "STRING"}},
+                                 "gop_y": {"type": "STRING"},
                              }}},
     }
     # v98.2: không ghi cứng model - goi_gemini.js tự lấy ListModels + xếp hạng chế độ 'nhe' (flash mới nhất trước)
@@ -444,6 +523,13 @@ def main():
     if len(sys.argv) < 4:
         sys.exit(__doc__)
     props_tep, video, ra = sys.argv[1:4]
+    kb_tep = sys.argv[4] if len(sys.argv) >= 5 else os.environ.get("MAT_THAN_KICH_BAN", "")
+    kb = None
+    if kb_tep and os.path.isfile(kb_tep):
+        try:
+            kb = json.load(open(kb_tep, encoding="utf8"))
+        except Exception:   # noqa: BLE001
+            kb = None
     p = json.load(open(props_tep, encoding="utf8"))
     if os.environ.get("MAT_THAN_3X3") == "TAT" and not thuc_te_ngan(p):
         return
@@ -455,11 +541,24 @@ def main():
 
     gia_lap = os.environ.get("MAT_THAN_GIA_LAP", "").strip()
     if gia_lap:
-        tho = {"loi": [{"o": 6, "loai": "lo_dap_an", "mo_ta": "Giả lập: đáp số hiện ở bước giải", "nang": True}]} if gia_lap == "loi" else {"loi": []}
+        if gia_lap == "loi":
+            tho = {
+                "loi": [{"o": 6, "loai": "lo_dap_an", "mo_ta": "Giả lập: đáp số hiện ở bước giải", "nang": True}],
+                "diem": {ma: 5 if ma == "bo_cuc" else 9 for ma, _, _ in TIEU_CHI_CUA_3},
+                "van_de": ["Giả lập: lộ đáp số sớm"],
+                "gop_y": "Che đáp số trước bước chốt",
+            }
+        else:
+            tho = {
+                "loi": [],
+                "diem": {ma: 9.5 for ma, _, _ in TIEU_CHI_CUA_3},
+                "van_de": [],
+                "gop_y": "",
+            }
         tho["t2_co_hinh"] = gia_lap == "dat"
         canh_bao = ""
     else:
-        tho, canh_bao = goi_gemini(anh, p, o_da)
+        tho, canh_bao = goi_gemini(anh, p, o_da, kb)
     tat_dinh = kiem_tat_dinh(p, getattr(tao_luoi, "anh_o", []), o_da)
     if thuc_te_ngan(p) and tho is not None and (not isinstance(tho, dict) or tho.get("t2_co_hinh") is not True):
         if not isinstance(tho, dict):
@@ -467,6 +566,7 @@ def main():
         tat_dinh.append({"o": 2, "loai": "t2_trong", "mo_ta": "Lưới 3×3 chưa xác nhận hình minh họa ở mọi ô giải", "nang": True})
     for x in tat_dinh:
         print("Mắt thần (đo điểm ảnh): ô %d %s - %s" % (x["o"], TEN_LOI[x["loai"]], x["mo_ta"]))
+    hau_kiem = None
     if tho is None and thuc_te_ngan(p) and not any(x["nang"] for x in tat_dinh):
         kq = {"dat": False, "chay": False, "loi": tat_dinh, "ly_do": "Chưa xác minh hình THUC_TE", "canh_bao": canh_bao}
     elif tho is None and not tat_dinh:
@@ -474,15 +574,22 @@ def main():
     else:
         loi = tat_dinh + chuan_loi((tho or {}).get("loi"), o_da)
         nang = [x for x in loi if x["nang"]]
-        ly_do = "; ".join("ô %d %s%s" % (x["o"], TEN_LOI[x["loai"]], (": " + x["mo_ta"]) if x["mo_ta"] else "") for x in nang)
-        kq = {"dat": not nang, "chay": True, "loi": loi, "ly_do": ("Mắt thần 3×3: " + ly_do) if nang else ""}
+        hau_kiem = tinh_hau_kiem_cua_3(tho, nang, thuc_te=thuc_te_ngan(p))
+        ly_do_mt = "; ".join("ô %d %s%s" % (x["o"], TEN_LOI[x["loai"]], (": " + x["mo_ta"]) if x["mo_ta"] else "") for x in nang)
+        if not ly_do_mt and hau_kiem and not hau_kiem["dat"]:
+            ly_do_mt = "Hậu kiểm Cửa 3 chưa đạt (%d%%: %s)" % (hau_kiem["phan_tram"], ", ".join(hau_kiem.get("nang") or [])[:120])
+        dat_tong = (not nang) and (hau_kiem["dat"] if hau_kiem is not None else True)
+        kq = {"dat": dat_tong, "chay": True, "loi": loi, "ly_do": ("Mắt thần 3×3: " + ly_do_mt) if not dat_tong else ""}
+    if hau_kiem is not None:
+        kq["hau_kiem"] = hau_kiem
     kq.update({"anh": os.path.basename(anh), "o_dap_an": o_da, "moc": [{"o": k + 1, "nhan": n, "giay": round(t, 2)} for k, (t, n) in enumerate(moc)]})
     with open(os.path.join(ra, "mat_than.json"), "w", encoding="utf8") as f:
         json.dump(kq, f, ensure_ascii=False, indent=1)
     if not kq["chay"]:
         print("::warning::" + kq["canh_bao"])
     elif kq["dat"]:
-        print("Mắt thần: ĐẠT (không có lỗi nặng)%s" % ("" if not kq["loi"] else ", %d lưu ý nhẹ" % len(kq["loi"])))
+        pt_s = (" | hậu kiểm %d%%" % hau_kiem["phan_tram"]) if hau_kiem else ""
+        print("Mắt thần: ĐẠT (không có lỗi nặng%s)%s" % (pt_s, "" if not kq["loi"] else ", %d lưu ý nhẹ" % len(kq["loi"])))
     else:
         print("::error::" + kq["ly_do"])
 

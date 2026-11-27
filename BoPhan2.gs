@@ -336,6 +336,29 @@ function doPost(e) {
     }
     // Chống xử lý lặp: GitHub (hoặc mạng) có thể gửi cùng một kết quả nhiều lần; chỉ lần đầu được báo Zalo/ghi.
     if (r.trang_thai !== 'DANG_DUNG') return tra({ok: true, lap: true});
+    // Cổng chặn MP4 hỏng trên runner: chưa tải MP4 lên Drive (không sinh rác Drive), vẫn đi qua Auto-Heal / chốt lỗi.
+    if (d.mp4_bi_chan) {
+      var matThanBiChan = d.mat_than && d.mat_than.dat === false;
+      var coBoCucBiChan = Array.isArray(d.bo_cuc_loi) && d.bo_cuc_loi.length > 0;
+      var tuSuaChan = (matThanBiChan || coBoCucBiChan) && typeof xuLyTuSuaMatThan_ === 'function' ? xuLyTuSuaMatThan_(sh, r, d) : null;
+      if (tuSuaChan && tuSuaChan.tu_sua) {
+        PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1');
+        return tra({ ok: true, tu_sua: true, mp4_bi_chan: true, lan: tuSuaChan.da_sua + 1 });
+      }
+      var lyDoChan = String((d.kiem_tra_mp4 && d.kiem_tra_mp4.ly_do) || (d.mat_than && d.mat_than.ly_do) || d.loi || 'MP4 trượt cổng kiểm tra trước khi tải lên Drive');
+      nhatKy_('MAT_THAN', r.id + ': chặn MP4 trên runner (không tải Drive) - ' + lyDoChan.slice(0, 300));
+      if (tuSuaChan && tuSuaChan.het_luot && typeof boDeKhongDat_ === 'function') {
+        boDeKhongDat_(sh, r, tuSuaChan.cung.map(function (x) { return x.loai; }).join(', '), 'video', '');
+        PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1');
+        return tra({ ok: true, het_luot: true, mp4_bi_chan: true });
+      }
+      ghi_(sh, r._row, { trang_thai: 'LOI_CAN_XEM', file_video: '', ghi_chu: ('MP4_BI_CHAN: ' + lyDoChan).slice(0, 300), lan_giao: '' }, r.id);
+      var tinChan = '🛑 Chặn MP4 hỏng trên runner (đã xóa MP4, không đẩy lên Drive) cho ' + r.id + ':\n' + lyDoChan.slice(0, 400);
+      if (d.anh_3x3 && typeof guiAnhZalo_ === 'function') guiAnhZalo_(d.anh_3x3, tinChan, laUuTien_(r) && r.zalo_chat ? r.zalo_chat : '');
+      else guiZaloMotLan_('CHAN_MP4_' + r.id, tinChan, 'cao');
+      PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1');
+      return tra({ ok: true, mp4_bi_chan: true });
+    }
     if (d.ok && d.file_id) {
       if (r.trang_thai === 'CO_VIDEO' && String(r.file_video) === String(d.file_id)) return tra({ ok: true, lap: true });
       if (r.trang_thai === 'DA_XONG') return tra({ ok: true, lap: true });
@@ -382,6 +405,15 @@ function doPost(e) {
           if (typeof guiAnhZalo_ === 'function') guiAnhZalo_(d.anh_3x3, tinMT, laUuTien_(r) && r.zalo_chat ? r.zalo_chat : '');
           else guiZalo_(tinMT, 'cao');
         }
+      }
+      // Cửa 3 gộp (Mắt thần 3×3 + AI hậu kiểm 1 lần duy nhất): nếu Cửa 3 đã chấm đủ tiêu chí & đạt -> chuyển thẳng CHO_DANG, KHÔNG gọi BP4 lần 2!
+      var hauKiemCua3 = d.ai_hau_kiem && d.ai_hau_kiem.chi_tiet ? d.ai_hau_kiem
+        : (d.mat_than && d.mat_than.hau_kiem && d.mat_than.hau_kiem.chi_tiet ? d.mat_than.hau_kiem : null);
+      if (!matThanChan && !lyDoCho && hauKiemCua3 && typeof apDungKetQuaAiXem_ === 'function') {
+        nhatKy_('DUNG_VIDEO', r.id + ' -> xong, file ' + d.file_id);
+        apDungKetQuaAiXem_(sh, r, hauKiemCua3);
+        PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1');
+        return tra({ ok: true, cua_3_da_cham: true, phan_tram: hauKiemCua3.phan_tram, dat: !!hauKiemCua3.dat });
       }
       var aiXem = !matThanChan && !lyDoCho && !!d.anh_kt;
       if (aiXem) ghi_(sh, r._row, {trang_thai: 'CHO_KIEM_DUYET', duyet: 'CHO_AI'}, r.id);
