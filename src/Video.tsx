@@ -85,32 +85,47 @@ const NenBlender: React.FC<{src: string; tat: number}> = ({src, tat}) => {
   );
 };
 
-// Nhạc nền tự giảm âm lượng khi có giọng đọc (ducking) để lời giảng luôn rõ, tăng lên ở các quãng nghỉ.
+// Nhạc nền tự giảm âm lượng khi có giọng đọc (auto-ducking -16..-18 dB) để lời giảng luôn rõ, nhích nhẹ lên ở các quãng nghỉ và Outro.
 function taoAmLuongNhac(props: Props) {
-  const {canh, tongFrame, fps} = props;
+  const {canh, tongFrame, fps, outro} = props;
   const goc = props.amLuongNhac ?? 0.16;
   const nt = props.nhacTron;
-  const khoang: [number, number][] = [];
+  const rawKhoang: [number, number][] = [];
   canh.forEach((c) => {
     if (!c.cau.length) return;
-    khoang.push([c.batDau + c.cau[0].bat * fps, c.batDau + c.cau[c.cau.length - 1].ket * fps]);
+    for (const cau of c.cau) {
+      const a = c.batDau + cau.bat * fps;
+      const b = c.batDau + cau.ket * fps;
+      if (b > a) rawKhoang.push([a, b]);
+    }
   });
+  rawKhoang.sort((x, y) => x[0] - y[0]);
+  // Gộp các khoảng nói sát nhau (< 0.28 s) để nhạc không nhấp nháy giữa các câu nối liền
+  const khoang: [number, number][] = [];
+  const kheGop = Math.round(0.28 * fps);
+  for (const [a, b] of rawKhoang) {
+    const cuoi = khoang[khoang.length - 1];
+    if (cuoi && a - cuoi[1] <= kheGop) cuoi[1] = Math.max(cuoi[1], b);
+    else khoang.push([a, b]);
+  }
+  const outroBat = outro ? outro.batDau : tongFrame - 2 * fps;
   return (f: number) => {
     let gan = 1e9;
     for (const [a, b] of khoang) {
       if (f >= a && f <= b) { gan = 0; break; }
       gan = Math.min(gan, f < a ? a - f : f - b);
     }
-    // giảm nhạc mềm (18 khung hình) để không nghe "phập phồng"; ở quãng nghỉ giữa hai cảnh nhạc dâng lên nối hai bước
+    // giảm nhạc mềm (14-18 khung hình) để không nghe "phập phồng"; ở quãng nghỉ & Outro nhạc nhích nhẹ lên
     const dauCuoi = interpolate(f, [0, 20, tongFrame - 45, tongFrame], [0.5, 1, 1, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
     if (nt) {
-      // v95: mức tuyệt đối theo đo độ to thật: dưới giọng ~-16 dB (nghe rõ nhịp, không át lời), nghỉ +5 dB,
-      // 3 s đầu (intro) và 2 s cuối (outro) nâng +4 dB
-      const co = interpolate(gan, [0, 18], [nt.duoi, nt.nghi], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
-      const dau = f < 3 * fps || f > tongFrame - 2 * fps ? Math.max(co, nt.dauCuoi) : co;
-      return dau * dauCuoi;
+      const co = interpolate(gan, [0, 16], [nt.duoi, nt.nghi], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
+      const mucOutro = nt.outro ?? nt.dauCuoi;
+      const nangIntro = f < 3 * fps ? Math.max(co, nt.dauCuoi) : co;
+      const trongOutro = f >= outroBat && gan > 6 ? interpolate(gan, [6, 18], [co, Math.max(co, mucOutro)], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'}) : nangIntro;
+      const cuoi = f > tongFrame - 2 * fps ? Math.max(trongOutro, nt.dauCuoi) : trongOutro;
+      return cuoi * dauCuoi;
     }
-    const duck = interpolate(gan, [0, 18], [0.42, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
+    const duck = interpolate(gan, [0, 16], [0.22, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
     return goc * duck * dauCuoi;
   };
 }
@@ -340,7 +355,7 @@ const NoiDungHinhPhang: React.FC<Props & {coIntro?: boolean}> = (props) => {
       )}
       {(props.suKienManim || []).slice(0, 80).map((e, i) => (
         <Sequence key={`sfxhp${i}`} from={Math.max(0, e.f)} durationInFrames={e.kieu === 'khung' ? 70 : 20} layout="none">
-          <Audio src={staticFile(e.kieu === 'khung' ? 'sfx/ting.wav' : 'sfx/click.wav')} volume={e.kieu === 'khung' ? 0.4 : 0.1} />
+          <Audio src={staticFile(e.kieu === 'khung' ? 'sfx/ting.wav' : 'sfx/click.wav')} volume={e.kieu === 'khung' ? 0.18 : 0.1} />
         </Sequence>
       ))}
       {outro ? (

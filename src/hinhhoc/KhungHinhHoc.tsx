@@ -862,8 +862,8 @@ const TheDeBaiGhim: React.FC<{
       <div
         style={{
           minHeight: 62,
-          maxHeight: 92,
-          padding: '5px 16px 6px 18px',
+          maxHeight: 96,
+          padding: '4px 16px 7px 18px',
           display: 'flex',
           alignItems: 'center',
           gap: 12,
@@ -1125,7 +1125,7 @@ const TangGiaiHinhHoc: React.FC<{
   const chot = !!(thHien?.chot) && t >= mocCongBo;
   const mauPha = mauPhaBuoc(bHien, iHien, buoc.length, chot);
   const coChip = chips.length > 0;
-  const caoTheToiDa = coChip ? 358 : 412;
+  const caoTheToiDa = coChip ? 352 : 412;
   const coMacDinh = chot ? 38 : dongHien.length >= 3 ? 34 : 37;
   const spThe = spring({frame: Math.max(0, Math.round((t - t0Hien) * fps)), fps, config: {damping: 16, stiffness: 150, mass: 0.75}});
   const aThe = t >= t0Hien ? emRa((t - t0Hien) / 0.3) : 1;
@@ -1137,7 +1137,7 @@ const TangGiaiHinhHoc: React.FC<{
         <div
           data-chip-trung-gian="1"
           style={{
-            height: 48,
+            height: 54,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1149,13 +1149,14 @@ const TangGiaiHinhHoc: React.FC<{
           {chips.map((c) => {
             const ac = emRa((t - c.t) / 0.28);
             const maxWChip = Math.floor((RONG_ND - 10 * (chips.length - 1)) / chips.length) - 44;
+            const coPhanSo = /\\(?:d|t)?frac\b/.test(c.tex);
             return (
               <div
                 key={c.id}
                 style={{
-                  height: 46,
+                  height: 52,
                   padding: '0 15px',
-                  borderRadius: 23,
+                  borderRadius: 26,
                   display: 'flex',
                   alignItems: 'center',
                   gap: 7,
@@ -1168,7 +1169,7 @@ const TangGiaiHinhHoc: React.FC<{
                 }}
               >
                 <span style={{color: MAU_NGOC, fontFamily: FONT, fontWeight: 900, fontSize: 22}}>✓</span>
-                <VanBanToan raw={c.tex} size={24} minSize={21} color={CHU_SANG} fontWeight={700} maxWidth={Math.max(120, maxWChip)} lineHeight={1.1} />
+                <VanBanToan raw={c.tex} size={coPhanSo ? 22 : 24} minSize={20} color={CHU_SANG} fontWeight={700} maxWidth={Math.max(120, maxWChip)} lineHeight={1.08} />
               </div>
             );
           })}

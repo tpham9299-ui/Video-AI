@@ -9,14 +9,26 @@ Mỗi bản 16 ô nhịp, đuôi nốt QUẤN về đầu vòng -> lặp liền 
 Giai điệu viết riêng (motif 2 ô nhịp + biến tấu câu trả lời), tránh vòng hợp âm "bài hit" quen tai.
 Chạy thử: python scripts/nhac_nen_v98.py [preset] -> public/nhac/v98_<preset>.wav
 """
+import json
 import os
+import re
+import shutil
+import subprocess
 import sys
+import tempfile
 
 import numpy as np
-from scipy import signal
+try:
+    from scipy import signal
+except ImportError:  # job ghep trên CI chỉ cài pillow + numpy khi gọi --chuan-hoa-lufs
+    signal = None
 
 SR = 32000
 PHIEN_BAN = "v98"
+DUCKING_DB_MAC_DINH = -17.0   # Tự động nén/hạ nhạc nền dưới giọng đọc trong khoảng -16 dB .. -18 dB
+DUCKING_NGHI_TANG_DB = 5.0    # Nhích nhẹ lên ở khoảng nghỉ giữa các câu/cảnh
+DUCKING_OUTRO_TANG_DB = 4.5   # Nhích nhẹ lên ở Intro / Outro
+LOUDNORM_TARGET = "I=-14:TP=-1.5:LRA=11"
 PRESET = {
     "chillhop_upbeat": {"bpm": 118},
     "cyber_study": {"bpm": 122},
@@ -310,7 +322,196 @@ def dam_bao(public, preset):
     return rel
 
 
+# ---------------- AUDIO MASTERING: AUTO-DUCKING & CHUẨN HÓA -14 LUFS ----------------
+def tinh_muc_ducking(db_giong, db_nhac, duoi_db=DUCKING_DB_MAC_DINH):
+    """Tính gain tuyến tính cho Remotion <Audio volume> từ độ lớn thật (dB) của giọng đọc và nhạc nền.
+    Mặc định hạ nhạc nền dưới giọng -17 dB (trong dải -16..-18 dB), nhích lên +5 dB ở khoảng nghỉ và +4.5 dB ở Outro."""
+    g = 10.0 ** ((float(db_giong) + float(duoi_db) - float(db_nhac)) / 20.0)
+    g = max(0.01, min(0.6, g))
+    return {
+        "duoi": round(g, 4),
+        "nghi": round(min(0.8, g * (10.0 ** (DUCKING_NGHI_TANG_DB / 20.0))), 4),
+        "dauCuoi": round(min(0.8, g * (10.0 ** (4.0 / 20.0))), 4),
+        "outro": round(min(0.8, g * (10.0 ** (DUCKING_OUTRO_TANG_DB / 20.0))), 4),
+        "dbGiong": round(float(db_giong), 1),
+        "dbNhac": round(float(db_nhac), 1),
+        "duoiDb": round(float(duoi_db), 1),
+    }
+
+
+def tao_duong_bao_ducking(
+    tong_mau,
+    khoang_noi,
+    sr=SR,
+    duck_db=DUCKING_DB_MAC_DINH,
+    nghi_tang_db=DUCKING_NGHI_TANG_DB,
+    outro_tang_db=DUCKING_OUTRO_TANG_DB,
+    outro_bat_dau=None,
+    attack_s=0.12,
+    release_s=0.45,
+):
+    """Tạo đường bao auto-ducking mượt (không phập phồng):
+    - Đoạn có giọng đọc: hạ nhạc xuống mức `duck_db` (mặc định -17 dB, nằm trong -16..-18 dB).
+    - Khoảng nghỉ: nhích mượt lên +`nghi_tang_db` dB.
+    - Outro (khi không còn giọng): nhích lên +`outro_tang_db` dB rồi fade-out 0.6 s cuối.
+    """
+    n = max(1, int(tong_mau))
+    g_noi = float(10.0 ** (float(duck_db) / 20.0))
+    g_nghi = min(1.0, g_noi * float(10.0 ** (float(nghi_tang_db) / 20.0)))
+    g_outro = min(1.0, g_noi * float(10.0 ** (float(outro_tang_db) / 20.0)))
+
+    muc_tieu = np.full(n, g_nghi, dtype=np.float32)
+    if outro_bat_dau is not None:
+        i_out = max(0, min(n, int(round(float(outro_bat_dau) * sr))))
+        muc_tieu[i_out:] = g_outro
+
+    for a, b in khoang_noi or []:
+        i0 = max(0, min(n, int(round(float(a) * sr))))
+        i1 = max(i0, min(n, int(round(float(b) * sr))))
+        if i1 > i0:
+            muc_tieu[i0:i1] = g_noi
+
+    # Làm mượt theo từng khối 10 ms (nhanh, tất định, không cần scipy)
+    buoc = max(1, int(round(sr * 0.01)))
+    m_block = (n + buoc - 1) // buoc
+    a_atk = 1.0 - float(np.exp(-0.01 / max(0.01, float(attack_s))))
+    a_rel = 1.0 - float(np.exp(-0.01 / max(0.01, float(release_s))))
+    env_b = np.empty(m_block, dtype=np.float32)
+    cur = float(muc_tieu[0])
+    for k in range(m_block):
+        lo = k * buoc
+        hi = min(n, lo + buoc)
+        # Trong khung có tiếng nói -> lấy giá trị nhỏ nhất để nén kịp trước âm đầu
+        tgt = float(np.min(muc_tieu[lo:hi]))
+        alpha = a_atk if tgt < cur else a_rel
+        cur += (tgt - cur) * alpha
+        env_b[k] = cur
+
+    env = np.repeat(env_b, buoc)[:n]
+    # Fade-out dịu 0.6 s cuối video
+    fade = min(n // 4, int(round(0.6 * sr)))
+    if fade > 1:
+        env[-fade:] *= np.linspace(1.0, 0.0, fade, dtype=np.float32)
+    return env
+
+
+def ap_ducking_nhac(am_nhac, khoang_noi, tong_giay, sr=SR, duck_db=DUCKING_DB_MAC_DINH, outro_bat_dau=None):
+    """Lặp nhạc nền đủ `tong_giay` rồi áp đường bao auto-ducking theo các khoảng có giọng đọc."""
+    x = np.asarray(am_nhac, dtype=np.float32)
+    if x.size == 0:
+        return np.zeros(max(1, int(round(float(tong_giay) * sr))), dtype=np.float32)
+    n = max(1, int(round(float(tong_giay) * sr)))
+    so_lap = (n + x.size - 1) // x.size
+    dai = np.tile(x, so_lap)[:n]
+    env = tao_duong_bao_ducking(n, khoang_noi, sr=sr, duck_db=duck_db, outro_bat_dau=outro_bat_dau)
+    return np.clip(dai * env, -1.0, 1.0)
+
+
+def _doc_ten_thuong_hieu():
+    goc = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "phong_cach.json")
+    try:
+        with open(goc, encoding="utf8") as f:
+            return str((json.load(f).get("thuongHieu") or {}).get("ten") or "Story Math")
+    except Exception:  # noqa: BLE001
+        return "Story Math"
+
+
+def kiem_tra_co_audio_that(video_path, timeout=45):
+    """Kiểm tra tệp video có luồng âm thanh thực sự (không rỗng / không câm hoàn toàn) bằng ffprobe + volumedetect."""
+    if not video_path or not os.path.isfile(video_path):
+        return False, "không tìm thấy tệp video"
+    try:
+        pr = subprocess.run(
+            ["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=codec_type", "-of", "csv=p=0", video_path],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf8", errors="replace", timeout=timeout,
+        )
+        if pr.returncode != 0 or not pr.stdout.strip():
+            return False, "video không có luồng âm thanh"
+        vd = subprocess.run(
+            ["ffmpeg", "-hide_banner", "-nostats", "-i", video_path, "-af", "volumedetect", "-f", "null", "-"],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf8", errors="replace", timeout=timeout,
+        )
+        m = re.search(r"mean_volume:\s*(-?[\d.]+)\s*dB", vd.stderr)
+        if not m:
+            return False, "không đo được mean_volume"
+        db = float(m.group(1))
+        if db <= -85.0:
+            return False, "luồng âm thanh câm (%.1f dB)" % db
+        return True, "mean_volume=%.1f dB" % db
+    except Exception as e:  # noqa: BLE001
+        return False, "lỗi kiểm tra audio: %s" % str(e)[:120]
+
+
+def chuan_hoa_lufs_video(video_vao, video_ra=None, gia_lap=False, metadata=None, timeout=180):
+    """Hậu kỳ chuẩn hóa độ lớn đầu ra video bằng ffmpeg loudnorm (I=-14:TP=-1.5:LRA=11), copy nguyên luồng hình.
+    Fallback an toàn: khi `gia_lap=True`, không có audio thật, hoặc ffmpeg báo lỗi -> giữ nguyên video gốc không làm gãy dây chuyền.
+    """
+    vao = os.path.abspath(video_vao)
+    ra = os.path.abspath(video_ra) if video_ra else vao
+    ghi_de = os.path.normcase(vao) == os.path.normcase(ra)
+
+    def _fallback(ly_do):
+        if not ghi_de and os.path.isfile(vao):
+            os.makedirs(os.path.dirname(ra), exist_ok=True)
+            shutil.copyfile(vao, ra)
+        return {"ok": True, "da_chuan_hoa": False, "ly_do": ly_do, "filter": "loudnorm=" + LOUDNORM_TARGET, "tep": ra}
+
+    if gia_lap:
+        return _fallback("chế độ --gia-lap (bỏ qua loudnorm)")
+    if not os.path.isfile(vao):
+        return {"ok": False, "da_chuan_hoa": False, "ly_do": "không thấy tệp vào: " + vao, "filter": "loudnorm=" + LOUDNORM_TARGET, "tep": ra}
+
+    co_am, ghi_chu = kiem_tra_co_audio_that(vao, timeout=min(60, timeout))
+    if not co_am:
+        return _fallback("fallback an toàn: " + ghi_chu)
+
+    ten_th = _doc_ten_thuong_hieu()
+    meta = {"artist": ten_th, "copyright": ten_th, "comment": ten_th}
+    if isinstance(metadata, dict):
+        meta.update({k: str(v) for k, v in metadata.items() if v})
+
+    os.makedirs(os.path.dirname(ra), exist_ok=True)
+    fd, tam = tempfile.mkstemp(prefix="lufs_", suffix=".mp4", dir=os.path.dirname(ra))
+    os.close(fd)
+    try:
+        lenh = [
+            "ffmpeg", "-y", "-loglevel", "error", "-i", vao,
+            "-c:v", "copy",
+            "-af", "loudnorm=" + LOUDNORM_TARGET,
+            "-c:a", "aac", "-b:a", "192k", "-ar", "44100",
+            "-metadata", "artist=" + meta["artist"],
+            "-metadata", "copyright=" + meta["copyright"],
+            "-metadata", "comment=" + meta["comment"],
+            "-movflags", "+faststart",
+            tam,
+        ]
+        kq = subprocess.run(lenh, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf8", errors="replace", timeout=timeout)
+        if kq.returncode != 0 or not os.path.isfile(tam) or os.path.getsize(tam) < 1000:
+            if os.path.exists(tam):
+                os.remove(tam)
+            return _fallback("ffmpeg loudnorm thất bại: " + (kq.stderr or "")[-180:].strip())
+        os.replace(tam, ra)
+        return {"ok": True, "da_chuan_hoa": True, "ly_do": ghi_chu, "filter": "loudnorm=" + LOUDNORM_TARGET, "tep": ra}
+    except Exception as e:  # noqa: BLE001
+        if os.path.exists(tam):
+            try:
+                os.remove(tam)
+            except OSError:
+                pass
+        return _fallback("ngoại lệ loudnorm: " + str(e)[:120])
+
+
 if __name__ == "__main__":
+    if "--chuan-hoa-lufs" in sys.argv:
+        import argparse
+        ap = argparse.ArgumentParser(description="Audio Mastering -14 LUFS cho video MP4")
+        ap.add_argument("--chuan-hoa-lufs", required=True, help="Đường dẫn tệp MP4 đầu vào")
+        ap.add_argument("--ra", default=None, help="Đường dẫn tệp MP4 đầu ra (mặc định ghi đè tệp vào)")
+        ap.add_argument("--gia-lap", action="store_true", help="Fallback an toàn cho chế độ giả lập")
+        a = ap.parse_args()
+        kq = chuan_hoa_lufs_video(a.chuan_hoa_lufs, a.ra, gia_lap=a.gia_lap)
+        print("Audio Mastering (%s): %s (%s)" % (kq["filter"], "ĐÃ CHUẨN HÓA -14 LUFS" if kq["da_chuan_hoa"] else "FALLBACK AN TOÀN", kq["ly_do"]))
+        sys.exit(0 if kq["ok"] else 1)
     goc = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "public")
     for ps in (sys.argv[1:] or list(HAM)):
         x = tao(ps)

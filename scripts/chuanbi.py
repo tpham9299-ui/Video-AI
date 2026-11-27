@@ -28,6 +28,7 @@ from concurrent.futures import ThreadPoolExecutor
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from khung4tang_v93 import cat_nhan
 import khung4tang_v99 as v99_k4  # noqa: E402  (v99.1: phiên âm -> ký hiệu, chống lặp số, khóa mốc đáp án, nền theme)
+import tu_dien_doc_toan  # noqa: E402  (từ điển đọc ký hiệu Toán tiếng Việt tự nhiên cho TTS)
 
 CACHE_TTS_DIR = os.environ.get("CACHE_TTS_DIR") or os.path.join(tempfile.gettempdir(), "video_ai_tts_cache")
 try:
@@ -332,7 +333,8 @@ def doc_toan_v95(s):
     s = re.sub(r"(?<=pi )([a-z])([a-z])?(?![A-Za-zÀ-ỹ'(])", lambda m: " ".join(TEN_BIEN.get(c, c) for c in m.groups() if c), s)   # πr² / πrh
     s = re.sub(r"(?<![A-Za-zÀ-ỹ'])x(?![A-Za-zÀ-ỹ'(])", "ích", s)   # ích đứng riêng (x = 2, cạnh x)
     # chữ cái đứng riêng ngay trước dấu "=" (V = 144, h = 2r) -> tên chữ kiểu Việt (giọng hay đọc "V" thành "vờ"/"vế")
-    s = re.sub(r"(?<![\wÀ-ỹ'])([A-Za-z])(?=\s*=)", lambda m: _ten_ky(m.group(1)), s)
+    # Không đổi chữ cái cuối của tên mặt phẳng/đường thẳng đã tách chữ (VD: "mặt phẳng S B D = ...")
+    s = re.sub(r"(?<![A-Z] )(?<![\wÀ-ỹ'])([A-Za-z])(?=\s*=)", lambda m: _ten_ky(m.group(1)), s)
     return re.sub(r"[ \t]+", " ", s)
 
 
@@ -365,7 +367,11 @@ def chuan_hoa_doc(text):
     # v102: số thập phân có số 0 sau dấu phẩy (0,0095) đọc hoàn toàn tiếng Việt; \cap giữ thành "giao" (không thành "n")
     text = re.sub(r"(?<!\w)[−-]b\s*/\s*2a\b", "trừ b trên hai a", str(text or ""), flags=re.I)
     text = v99_k4.giu_ky_hieu_giao(v99_k4.doc_thap_phan_viet(text))
-    s = doc_ky_hieu_ham(sua_chinh_ta_tieng_viet(doc_toan_v95(doc_toan_v96(phien_am_tts(re.sub(r"\\(cos|sin)(?![A-Za-z])", lambda m: " " + m.group(1), str(text or "")))))))
+    s = doc_ky_hieu_ham(sua_chinh_ta_tieng_viet(doc_toan_v95(doc_toan_v96(
+        tu_dien_doc_toan.doc_toan_tu_nhien(
+            phien_am_tts(re.sub(r"\\(cos|sin)(?![A-Za-z])", lambda m: " " + m.group(1), str(text or "")))
+        )
+    ))))
     # v89: đơn vị sau số đọc thành lời (lời thoại nay viết "10 cm", "54π m³" cho phụ đề; giọng vẫn đọc tự nhiên)
     for ky, doc in (("cm²", "xăng-ti-mét vuông"), ("cm³", "xăng-ti-mét khối"), ("m²", "mét vuông"), ("m³", "mét khối"),
                     ("cm", "xăng-ti-mét"), ("mm", "mi-li-mét"), ("km", "ki-lô-mét"), ("m", "mét")):
@@ -2472,22 +2478,20 @@ def _muc_db(tep):
 
 
 def muc_tron_nhac(public, nhac, canh_props, duoi_db=None):
-    """v95: mức trộn nhạc nền theo ĐỘ TO THẬT của giọng và nhạc (không đoán): lúc có giọng nhạc nằm dưới giọng `duoi_db`
-    (v98: mặc định -19 dB; v95 cũ -16 dB, env NHAC_DUOI_GIONG_DB, kẹp -17..-15 theo yêu cầu, cho phép chỉnh ngoài khoảng), quãng nghỉ +5 dB,
-    3 s đầu (intro) và 2 s cuối (outro) +4 dB. Trả gain tuyến tính cho Remotion <Audio volume>."""
+    """v95/v102: mức trộn nhạc nền theo ĐỘ TO THẬT của giọng và nhạc (auto-ducking): lúc có giọng nhạc hạ thấp dưới giọng
+    (mặc định Audio Mastering -17 dB trong dải -16..-18 dB khi truyền từ main; giữ fallback env NHAC_DUOI_GIONG_DB / -19 cho
+    tương thích ngược), nhích nhẹ +5 dB ở quãng nghỉ và +4.5 dB ở Outro. Trả gain tuyến tính cho Remotion <Audio volume>."""
     if not nhac:
         return None
-    # v98: dưới giọng mặc định -19 dB (yêu cầu -18..-20 dB: giọng Gemini trong rõ), quãng nghỉ / đầu-cuối vẫn nâng nhẹ
+    # Giữ giá trị mặc định cũ khi gọi trực tiếp không truyền duoi_db (tương thích test_nhac_v98.py)
     duoi_db = float(duoi_db if duoi_db is not None else (os.environ.get("NHAC_DUOI_GIONG_DB") or -19))
     m_nhac = _muc_db(os.path.join(public, nhac))
     ds = [os.path.join(public, c["audio"]) for c in canh_props if c.get("audio")][:4]
     m_giong = [x for x in (_muc_db(t) for t in ds) if x is not None and x > -60]
     if m_nhac is None or not m_giong:
         return None
-    g = 10 ** ((sum(m_giong) / len(m_giong) + duoi_db - m_nhac) / 20)
-    g = max(0.01, min(0.6, g))
-    return {"duoi": round(g, 4), "nghi": round(min(0.8, g * 10 ** (5 / 20)), 4), "dauCuoi": round(min(0.8, g * 10 ** (4 / 20)), 4),
-            "dbGiong": round(sum(m_giong) / len(m_giong), 1), "dbNhac": m_nhac, "duoiDb": duoi_db}
+    import nhac_nen_v98
+    return nhac_nen_v98.tinh_muc_ducking(sum(m_giong) / len(m_giong), m_nhac, duoi_db=duoi_db)
 
 
 TAM_TRANG_THEO_LOAI = [
@@ -3774,8 +3778,18 @@ def main():
             print("Nhạc nền v98: %s (%d BPM, tự tổng hợp, 0 %% bản quyền)" % (preset, nhac_nen_v98.PRESET[preset]["bpm"]))
         except Exception as e:   # noqa: BLE001
             print("Không sinh được nhạc v98 (%s) -> giữ %s" % (str(e)[:120], nhac))
-    if k4 and not args.gia_lap:
-        props["nhacTron"] = muc_tron_nhac(args.public, nhac, canh_props)   # v95: mức nhạc đo theo độ to thật của giọng
+    import nhac_nen_v98 as _nhac_master
+    duoi_env = os.environ.get("NHAC_DUOI_GIONG_DB")
+    duck_db = float(duoi_env) if duoi_env else _nhac_master.DUCKING_DB_MAC_DINH
+    if nhac and canh_props and not args.gia_lap:
+        props["nhacTron"] = muc_tron_nhac(args.public, nhac, canh_props, duoi_db=duck_db)   # Auto-ducking theo độ to thật của giọng (-16..-18 dB)
+    props["audioMastering"] = {
+        "lufs": -14,
+        "tp": -1.5,
+        "lra": 11,
+        "duckingDb": duck_db,
+        "giaLap": bool(args.gia_lap),
+    }
     if luong_hh:
         hinh_phang_chuan_props(kb, canh_props, FPS, props)
     cham("Thương hiệu, bìa, khung 4 tầng")

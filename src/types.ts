@@ -146,7 +146,8 @@ export type Props = {
   nhac: string | null;
   amLuongNhac: number; // âm lượng nhạc nền khi không có giọng đọc (khi có giọng tự giảm còn ~40%)
   // v95: mức nhạc đo theo độ to thật (chuanbi.py muc_tron_nhac): duoi = lúc có giọng (~-16 dB dưới giọng), nghi = quãng nghỉ, dauCuoi = 3 s đầu / 2 s cuối
-  nhacTron?: {duoi: number; nghi: number; dauCuoi: number} | null;
+  nhacTron?: {duoi: number; nghi: number; dauCuoi: number; outro?: number; duoiDb?: number} | null;
+  audioMastering?: {lufs: number; tp: number; lra: number; duckingDb: number; giaLap?: boolean} | null;
   baiHoc?: string[]; // 2-3 bài học rút ra (hiện ở màn kết)
   bia?: {loai: string; tieuDe: string; khung: number} | null;
   kiemDuyet?: boolean; // chế độ kiểm duyệt bố cục (máy dựng chụp khung mẫu, đo chữ tràn/đè/TeX thô)

@@ -697,6 +697,9 @@ jobs:
             rm -f "out/${ID}_manim.mov"
             echo "Đã ghép lớp Manim"
           fi
+          # Audio Mastering: chuẩn hóa độ lớn đầu ra -14 LUFS (I=-14:TP=-1.5:LRA=11), copy nguyên hình, có fallback an toàn nếu thiếu audio thật
+          command -v ffmpeg >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /tmp/apt_ff.log 2>&1; }
+          python3 scripts/nhac_nen_v98.py --chuan-hoa-lufs "out/$ID.mp4"
           # Nếu video dài (ví dụ video 10 phút) có dung lượng > 42 MB, tự động nén tối ưu dưới 42 MB để Apps Script YouTube API (giới hạn 48 MB) luôn đăng trực tiếp được
           KICH_THUOC=$(stat -c%s "out/$ID.mp4" 2>/dev/null || echo 0)
           if [ "$KICH_THUOC" -gt 44000000 ]; then
