@@ -558,7 +558,10 @@ function duaMp4LoiVaoThungRac_(fileId, han, kq, tapIdBaoVe) {
     if (!tep.isTrashed()) {
       kiemHanDonVideo_(han);
       tep.setTrashed(true);
-      if (kq) kq.mp4++;
+      if (kq) {
+        kq.mp4++;
+        if (typeof kq.drive === 'number') kq.drive++;
+      }
     }
     return true;
   } catch (e) {

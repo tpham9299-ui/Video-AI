@@ -555,4 +555,271 @@ workflow.forEach((file,bp)=>{
   const yaml=read('.github/workflows/'+file).split('concurrency:')[0];
   inputs[bp].forEach(key=>assert.match(yaml,new RegExp('^      '+key+':','m'),file));
 });
-console.log('0 hỏng. Đạt điều phối BP5 → BP0, chỉ tiêu ngày, kho đệm, lịch và lệnh Zalo, phanh tồn, dọn MP4, lưu kịch bản, watchdog, checkout Python và đăng ký/cú pháp '+gs.length+' tệp .gs.');
+
+// Tự động đọc link Drive 3 nguồn, phân loại lỗi DOC_DE (XOA_KHONG_SUA_DUOC vs BAT_BUOC_SUA) và thực thi /xulyloi + nhipBoNao_.
+function richText(text, linkUrl = null, runs = []) {
+  return {
+    _isRichText: true,
+    getText: () => text,
+    getLinkUrl: () => linkUrl,
+    getRuns: () => runs.map(([t, u]) => ({ getText: () => t, getLinkUrl: () => u }))
+  };
+}
+function mockRichTab(data, name = '') {
+  let maxRows = 100;
+  const rawAt = (r, c) => data[r]?.[c] ?? '';
+  const readVal = v => {
+    if (v && v._isRichText) return v.getText();
+    if (typeof v === 'string' && /^=HYPERLINK/i.test(v)) return 'Xem MP4';
+    return v;
+  };
+  const tab = {
+    getName: () => name,
+    getLastRow: () => data.length,
+    getLastColumn: () => Math.max(...data.map(r => r.length), 1),
+    getMaxColumns: () => Math.max(...data.map(r => r.length), app.COT.length),
+    getMaxRows: () => maxRows,
+    getDataRange: () => ({ getValues: () => data.map(r => r.map(readVal)) }),
+    appendRow: r => data.push(Array.from(r)),
+    setFrozenRows() {},
+    setTabColor() {},
+    deleteRow: n => data.splice(n - 1, 1),
+    insertRowsAfter: (_, n) => { maxRows += n; },
+    getRange: (row, c, height = 1, width = 1) => ({
+      getValue: () => readVal(rawAt(row - 1, c - 1)),
+      getFormula: () => {
+        const v = rawAt(row - 1, c - 1);
+        return typeof v === 'string' && /^=HYPERLINK/i.test(v) ? v : '';
+      },
+      getRichTextValue: () => {
+        const v = rawAt(row - 1, c - 1);
+        return v && v._isRichText ? v : null;
+      },
+      getFormulas: () => Array.from({ length: height }, (_, i) => Array.from({ length: width }, (_, j) => tab.getRange(row + i, c + j).getFormula())),
+      getRichTextValues: () => Array.from({ length: height }, (_, i) => Array.from({ length: width }, (_, j) => tab.getRange(row + i, c + j).getRichTextValue())),
+      getValues: () => Array.from({ length: height }, (_, i) => Array.from({ length: width }, (_, j) => tab.getRange(row + i, c + j).getValue())),
+      setValue: v => { (data[row - 1] ||= [])[c - 1] = v; },
+      setValues(values) { values.forEach((r, i) => r.forEach((v, j) => tab.getRange(row + i, c + j).setValue(v))); },
+      copyTo(target) { target.setValues(Array.from({ length: height }, (_, i) => Array.from({ length: width }, (_, j) => rawAt(row + i - 1, c + j - 1)))); }
+    })
+  };
+  return tab;
+}
+function jsonFile(id, name = id + '.json') {
+  const file = {
+    getId: () => id, getName: () => name, getMimeType: () => 'application/json',
+    isTrashed: () => file.removed,
+    setTrashed: v => { assert.equal(v, true); assert.equal(file.removed, false); file.removed = v; },
+    removed: false
+  };
+  files.set(id, file);
+  return file;
+}
+
+// Kiểm tra layDanhSachFileIdDriveTuDong_ đọc đủ 3 nguồn (RichText + getRuns, Formula HYPERLINK, Value URL trần + DRIVE_JSON).
+const triSourceData = [
+  ['Thanh thống kê'],
+  ['Mã', 'Trạng thái', 'Lớp', 'Chủ đề', 'ĐỀ BÀI', 'Đáp án', 'Tư duy', 'Vì sao cần suy nghĩ', 'Bẫy thường gặp', 'Kịch bản', 'Ghi chú'],
+  [
+    'SRC-1', 'LOI_CAN_XEM', '12', 'Chủ đề', 'Đề 1', '1/2', '8',
+    'DRIVE_JSON:kb-value-1 https://drive.google.com/open?id=raw-url-1',
+    '=HYPERLINK("https://drive.google.com/file/d/hyp-id-1/view";"Mở MP4")',
+    richText('🎬 Xem video | ▶️ Mở file', 'https://drive.google.com/file/d/rt-cell-1/view', [
+      ['🎬 Xem video', 'https://drive.google.com/file/d/rt-run-mp4/view'],
+      ['▶️ Mở file', 'https://drive.google.com/file/d/rt-run-json/view']
+    ]),
+    'DUNG_VIDEO: Xem nhật ký: https://github.com/test/runs/1'
+  ]
+];
+const triTab = mockRichTab(triSourceData, 'DOC_DE');
+assert.deepEqual(
+  Array.from(app.layDanhSachFileIdDriveTuDong_(triTab, 3, 11)).sort(),
+  ['hyp-id-1', 'kb-value-1', 'raw-url-1', 'rt-cell-1', 'rt-run-json', 'rt-run-mp4'].sort()
+);
+
+// Kiểm tra phanLoaiLoiDong_ đủ các nhánh (BP1, BP2, BP3, lỗi bản chất, chạm trần, quá 48h, không rõ nguyên nhân).
+assert.equal(app.phanLoaiLoiDong_('BO_KHONG_DAT', 'bất kỳ', 0).hanhDong, 'XOA_KHONG_SUA_DUOC');
+assert.equal(app.phanLoaiLoiDong_('LOAI', 'lệch đáp án', 0).hanhDong, 'XOA_KHONG_SUA_DUOC');
+for (const kw of ['BO_KHONG_DAT', 'sửa 3 lần vẫn lỗi', 'Mắt thần 3+3', 'het_luot', 'Kiểm duyệt bố cục vẫn lỗi', 'AI_SAI_TOAN', 'DE_SAI', 'VO_NGHIEM_SAI_DE', 'KHONG_CO_DAP_AN', 'TRUNG_DE']) {
+  assert.equal(app.phanLoaiLoiDong_('LOI_CAN_XEM', kw, 0).hanhDong, 'XOA_KHONG_SUA_DUOC', 'từ khóa không sửa được: ' + kw);
+}
+assert.deepEqual(
+  { h: app.phanLoaiLoiDong_('LOI_CAN_XEM', 'het_key tại BP1', 0).hanhDong, t: app.phanLoaiLoiDong_('LOI_CAN_XEM', 'het_key tại BP1', 0).trangThaiDich },
+  { h: 'BAT_BUOC_SUA', t: 'CHO_GIAI' }
+);
+assert.equal(app.phanLoaiLoiDong_('LOI_CAN_XEM', '[TU_SUA:1/1] Ly do cu: JSON_LOI', 1).hanhDong, 'XOA_KHONG_SUA_DUOC');
+assert.equal(app.phanLoaiLoiDong_('LOI_CAN_XEM', 'timeout tại BP1', 0).trangThaiDich, 'CHO_GIAI');
+assert.equal(app.phanLoaiLoiDong_('LOI_CAN_XEM', 'DE_CHU: chồng chữ', 0).trangThaiDich, 'CHO_KICH_BAN');
+assert.equal(app.phanLoaiLoiDong_('LOI_CAN_XEM', 'TRAN_KHUNG', 1).hanhDong, 'XOA_KHONG_SUA_DUOC');
+assert.equal(app.phanLoaiLoiDong_('LOI_CAN_XEM', 'DUNG_VIDEO: 503', 1, { coKichBanJson: true }).trangThaiDich, 'CO_KICH_BAN');
+assert.equal(app.phanLoaiLoiDong_('LOI_CAN_XEM', 'GIAO_DIEN_CU_KHONG_HOP_LE', 0, { coKichBanJson: false }).trangThaiDich, 'CHO_KICH_BAN');
+assert.equal(app.phanLoaiLoiDong_('LOI_CAN_XEM', 'DUNG_VIDEO: 503', 2, { coKichBanJson: true }).hanhDong, 'XOA_KHONG_SUA_DUOC');
+assert.equal(app.phanLoaiLoiDong_('LOI_CAN_XEM', 'DUNG_VIDEO: 503', 0, { coKichBanJson: true, quaHan48h: true }).hanhDong, 'XOA_KHONG_SUA_DUOC');
+assert.equal(app.phanLoaiLoiDong_('LOI_CAN_XEM', 'lỗi lạ không xác định', 0).hanhDong, 'XOA_KHONG_SUA_DUOC');
+
+// 5 CA BẮT BUỘC cho xuLyLoiTrenSheetNgay() và lệnh Zalo /xulyloi.
+const ca1Json = jsonFile('ca1-kb-json', 'CA1-DUNG.json');
+const ca1BadMp4 = mp4('ca1-bad-mp4', 'CA1-DUNG.mp4');
+const ca1NoKbMp4 = mp4('ca1-nokb-mp4', 'CA1-NOKB.mp4');
+const ca2Json = jsonFile('ca2-kb-json', 'CA2-HETLUOT.json');
+const ca2Mp4 = mp4('ca2-bad-mp4', 'CA2-HETLUOT.mp4');
+const ca3Video = mp4('ca3-bo-mp4', 'CA3-BO.mp4');
+const ca4BadMp4 = mp4('ca4-bad-mp4', 'CA4-T2.mp4');
+const ca5DaDang = mp4('ca5-dadang-mp4', 'CA5-DADANG.mp4');
+const ca5ChoDang = mp4('ca5-chodang-mp4', 'CA5-CHODANG.mp4');
+const ca5Orphan = mp4('ca5-orphan-mp4', 'CA3-BO_ban_cu.mp4');
+
+const docLoiHeader = ['Mã', 'Trạng thái', 'Lớp', 'Chủ đề', 'ĐỀ BÀI', 'Đáp án', 'Tư duy', 'Vì sao cần suy nghĩ', 'Bẫy thường gặp', 'Kịch bản', 'Ghi chú'];
+const docLoiRows = [
+  ['Thống kê cũ (⚠️ 5 lỗi)'],
+  docLoiHeader,
+  // Ca 1a: DUNG_VIDEO lần đầu, có Rich Text ▶️ Mở file (JSON hợp lệ) + MP4 hỏng -> xóa MP4 hỏng, giữ JSON, [TU_SUA:1/2], đẩy CO_KICH_BAN
+  ['CA1-DUNG', 'LOI_CAN_XEM', '12', 'Tối ưu', 'Đề ca 1a', '5', '8', '', '',
+    richText('▶️ Mở file', null, [
+      ['▶️ Mở file', 'https://drive.google.com/file/d/ca1-kb-json/view'],
+      ['🎬 Xem video', 'https://drive.google.com/file/d/ca1-bad-mp4/view']
+    ]),
+    'DUNG_VIDEO: Xem nhật ký: https://github.com/test/runs/101'],
+  // Ca 1b: DUNG_VIDEO lần đầu, không còn JSON hợp lệ -> xóa MP4 hỏng, [TU_SUA:1/2], đẩy CHO_KICH_BAN
+  ['CA1-NOKB', 'LOI_CAN_XEM', '12', 'Tối ưu', 'Đề ca 1b', '6', '8', '', '',
+    richText('🎬 Xem video', 'https://drive.google.com/file/d/ca1-nokb-mp4/view'),
+    'DUNG_VIDEO: Xem nhật ký: https://github.com/test/runs/102'],
+  // Ca 2: DUNG_VIDEO đã [TU_SUA:2/2] -> XOA_KHONG_SUA_DUOC, setTrashed(true), LUU_TRU + LuuTru_Loi, xóa khỏi DOC_DE
+  ['CA2-HETLUOT', 'LOI_CAN_XEM', '12', 'Xác suất', 'Đề ca 2 hết lượt', '3/4', '8', '', '',
+    richText('▶️ Mở file', null, [
+      ['▶️ Mở file', 'https://drive.google.com/file/d/ca2-kb-json/view'],
+      ['🎬 Xem video', 'https://drive.google.com/file/d/ca2-bad-mp4/view']
+    ]),
+    '[TU_SUA:2/2] Ly do cu: DUNG_VIDEO: Xem nhật ký: https://github.com/test/runs/202'],
+  // Ca 3: LOI_CAN_XEM ghi BO_KHONG_DAT (video): S_0, u_1 có Rich Text 🎬 Xem video -> setTrashed(true) đúng fileId, xóa hẳn khỏi DOC_DE
+  ['CA3-BO', 'LOI_CAN_XEM', '11', 'Hình học', 'Đề ca 3 bỏ không đạt', '12', '9', '', '',
+    richText('🎬 Xem video', 'https://drive.google.com/file/d/ca3-bo-mp4/view'),
+    'BO_KHONG_DAT (video): S_0, u_1'],
+  // Ca 4: LOI_CAN_XEM ghi t2_trong lần đầu -> đẩy về CHO_KICH_BAN kèm [TU_SUA:1/1]
+  ['CA4-T2', 'LOI_CAN_XEM', '12', 'Thực tế', 'Đề ca 4 t2 trống', '10', '8', '', '',
+    richText('🎬 Xem video', 'https://drive.google.com/file/d/ca4-bad-mp4/view'),
+    't2_trong'],
+  // Ca 5: Dòng DA_DANG và CHO_DANG phải được bảo vệ tuyệt đối
+  ['CA5-DADANG', 'DA_DANG', '12', 'Đã đăng', 'Đề ca 5 đã đăng', '7', '9', '', '',
+    richText('🎬 Xem video', 'https://drive.google.com/file/d/ca5-dadang-mp4/view'), ''],
+  ['CA5-CHODANG', 'CHO_DANG', '12', 'Chờ đăng', 'Đề ca 5 chờ đăng', '8', '9', '', '',
+    richText('🎬 Xem video', 'https://drive.google.com/file/d/ca5-chodang-mp4/view'), '']
+];
+const docLoiTab = mockRichTab(docLoiRows, 'DOC_DE');
+const hangLoiData = [cells[0].slice(),
+  archiveRow('CA1-DUNG', { trang_thai: 'LOI_CAN_XEM', file_video: 'ca1-bad-mp4', file_kich_ban: 'DRIVE_JSON:ca1-kb-json', cap_nhat: new Date() }),
+  archiveRow('CA2-HETLUOT', { trang_thai: 'LOI_CAN_XEM', file_video: 'ca2-bad-mp4', file_kich_ban: 'DRIVE_JSON:ca2-kb-json', cap_nhat: new Date() }),
+  archiveRow('CA4-T2', { trang_thai: 'LOI_CAN_XEM', file_video: 'ca4-bad-mp4', cap_nhat: new Date() }),
+  archiveRow('CA5-DADANG', { trang_thai: 'DA_DANG', file_video: 'ca5-dadang-mp4', cap_nhat: new Date() }),
+  archiveRow('CA5-CHODANG', { trang_thai: 'CHO_DANG', file_video: 'ca5-chodang-mp4', cap_nhat: new Date() })
+];
+const hangLoiTab = mockRichTab(hangLoiData, 'HANG_DOI');
+const luuTruLoiMoi = mockRichTab([], 'LuuTru_Loi');
+const chiMucMoi = mockRichTab([['ma_bam', 'id', 'lop', 'de_bai_rut_gon', 'dap_an', 'ket_qua', 'ngay_xong']], 'LUU_TRU');
+tabs.set('DOC_DE', docLoiTab);
+tabs.set('HANG_DOI', hangLoiTab);
+tabs.set('LuuTru_Loi', luuTruLoiMoi);
+tabs.set('LUU_TRU', chiMucMoi);
+folderFiles = [ca1BadMp4, ca1NoKbMp4, ca2Mp4, ca3Video, ca4BadMp4, ca5DaDang, ca5ChoDang, ca5Orphan];
+driveProps.delete('VI_TRI_QUET_VIDEO_LOI');
+
+const tomTatLoi = app.xuLyLoiTrenSheetNgay();
+assert.match(tomTatLoi, /Đẩy sửa lại: 3 bài \(BP1: 0, BP2: 2, BP3: 1\)/);
+assert.match(tomTatLoi, /Đã xóa không sửa được: 2 bài/);
+assert.match(tomTatLoi, /Đã đưa vào Thùng rác Drive: 7 file/);
+
+// Kiểm chứng Ca 1a & Ca 1b
+const rCa1a = docLoiRows.find(r => r[0] === 'CA1-DUNG');
+assert.equal(rCa1a[1], 'CO_KICH_BAN', 'Ca 1a đẩy về CO_KICH_BAN khi còn file JSON hợp lệ');
+assert.match(rCa1a[10], /^\[TU_SUA:1\/2\] Ly do cu: DUNG_VIDEO: Xem nhật ký:/);
+assert.equal(ca1BadMp4.removed, true, 'Ca 1a xóa MP4 hỏng');
+assert.equal(ca1Json.removed, false, 'Ca 1a giữ lại file JSON kịch bản');
+const hCa1a = hangLoiData.find(r => r[0] === 'CA1-DUNG');
+assert.equal(hCa1a[1], 'CHO_DUNG', 'HANG_DOI đồng bộ CO_KICH_BAN -> CHO_DUNG để BP3 chạy ngay');
+const rCa1b = docLoiRows.find(r => r[0] === 'CA1-NOKB');
+assert.equal(rCa1b[1], 'CHO_KICH_BAN', 'Ca 1b thiếu JSON đẩy về CHO_KICH_BAN');
+assert.match(rCa1b[10], /^\[TU_SUA:1\/2\] Ly do cu: DUNG_VIDEO:/);
+assert.equal(ca1NoKbMp4.removed, true);
+
+// Kiểm chứng Ca 2
+assert.equal(docLoiRows.some(r => r[0] === 'CA2-HETLUOT'), false, 'Ca 2 xóa hẳn khỏi DOC_DE');
+assert.equal(hangLoiData.some(r => r[0] === 'CA2-HETLUOT'), false, 'Ca 2 xóa hẳn khỏi HANG_DOI');
+assert.equal(ca2Mp4.removed, true, 'Ca 2 xóa MP4 lỗi');
+assert.equal(ca2Json.removed, true, 'Ca 2 xóa luôn JSON lỗi');
+assert.equal(luuTruLoiMoi.getDataRange().getValues().some(r => r[0] === 'CA2-HETLUOT'), true, 'Ca 2 lưu LuuTru_Loi');
+assert.equal(chiMucMoi.getDataRange().getValues().some(r => r[1] === 'CA2-HETLUOT' && r[5] === 'LOI_KHONG_SUA_DUOC'), true, 'Ca 2 lưu LUU_TRU ket_qua=LOI_KHONG_SUA_DUOC');
+
+// Kiểm chứng Ca 3
+assert.equal(docLoiRows.some(r => r[0] === 'CA3-BO'), false, 'Ca 3 xóa hẳn khỏi DOC_DE');
+assert.equal(ca3Video.removed, true, 'Ca 3 xóa đúng fileId từ Rich Text 🎬 Xem video');
+assert.equal(ca5Orphan.removed, true, 'Quét Drive dọn luôn MP4 mồ côi của mã đã xóa');
+assert.equal(luuTruLoiMoi.getDataRange().getValues().some(r => r[0] === 'CA3-BO'), true);
+assert.equal(chiMucMoi.getDataRange().getValues().some(r => r[1] === 'CA3-BO' && r[5] === 'LOI_KHONG_SUA_DUOC'), true);
+
+// Kiểm chứng Ca 4
+const rCa4 = docLoiRows.find(r => r[0] === 'CA4-T2');
+assert.equal(rCa4[1], 'CHO_KICH_BAN', 'Ca 4 đẩy về CHO_KICH_BAN');
+assert.equal(rCa4[10], '[TU_SUA:1/1] Ly do cu: t2_trong');
+assert.equal(ca4BadMp4.removed, true);
+const hCa4 = hangLoiData.find(r => r[0] === 'CA4-T2');
+assert.equal(hCa4[1], 'CHO_KICH_BAN');
+assert.match(hCa4[col('gop_y')], /t2_trong/);
+
+// Kiểm chứng Ca 5: tuyệt đối KHÔNG xóa file DA_DANG / CHO_DANG và thanh thống kê hàng 1 đã làm mới
+assert.equal(ca5DaDang.removed, false, 'Ca 5 bảo vệ DA_DANG');
+assert.equal(ca5ChoDang.removed, false, 'Ca 5 bảo vệ CHO_DANG');
+assert.equal(docLoiRows.some(r => r[0] === 'CA5-DADANG'), true);
+assert.equal(docLoiRows.some(r => r[0] === 'CA5-CHODANG'), true);
+assert.match(String(docLoiRows[0][0]), /Tổng 5 đề.*⚠️ 0 lỗi/, 'Thanh thống kê hàng 1 cập nhật ngay lập tức');
+
+// Kiểm chứng lệnh Zalo /xulyloi và trần 3 bài/nhịp (key >= 25%) vs 0 bài sửa (key < 25%, vẫn xóa không sửa được) trong nhipBoNao_.
+assert.match(app.traLoiLenh_('chat-test', '/xulyloi'), /Đẩy sửa lại: 0 bài.*Đã xóa không sửa được: 0 bài/s);
+vm.runInContext(read('ZaloDeBai.gs'), app);
+const zaloRepliesLoi = [];
+const zaloCacheLoi = new Map();
+Object.assign(app, {
+  CacheService: { getScriptCache: () => ({ get: k => zaloCacheLoi.get(k), put: (k, v) => zaloCacheLoi.set(k, v) }) },
+  ContentService: { createTextOutput: () => ({ setMimeType() { return this; } }), MimeType: { JSON: 'json' } },
+  guiZaloToi_: (_, msg) => zaloRepliesLoi.push(msg)
+});
+driveProps.set('ZALO_WEBHOOK_SECRET', 'sec-loi');
+driveProps.set('ZALO_CHAT_IDS', 'chat-loi');
+app.nhanZalo_({ parameter: { k: 'sec-loi' }, postData: { contents: JSON.stringify({ message: { text: '/xulyloi', message_id: 'm-xl-1', chat: { id: 'chat-loi' } } }) } });
+assert.match(zaloRepliesLoi.at(-1), /Đẩy sửa lại: 0 bài \(BP1: 0, BP2: 0, BP3: 0\)/);
+
+// Kiểm tra nhipBoNao_('chay'): key < 25% -> 0 sửa nhưng vẫn xóa bài không sửa được; key >= 25% -> sửa tối đa 3 bài/nhịp.
+const nhipDocRows = [
+  ['Thống kê'], docLoiHeader,
+  ['NB-S1', 'LOI_CAN_XEM', '12', 'T', 'Đề s1', '1', '8', '', '', '', 't2_trong'],
+  ['NB-S2', 'LOI_CAN_XEM', '12', 'T', 'Đề s2', '2', '8', '', '', '', 't2_trong'],
+  ['NB-S3', 'LOI_CAN_XEM', '12', 'T', 'Đề s3', '3', '8', '', '', '', 't2_trong'],
+  ['NB-S4', 'LOI_CAN_XEM', '12', 'T', 'Đề s4', '4', '8', '', '', '', 't2_trong'],
+  ['NB-X1', 'LOI_CAN_XEM', '12', 'T', 'Đề x1', '5', '8', '', '', '', 'AI_SAI_TOAN']
+];
+tabs.set('DOC_DE', mockRichTab(nhipDocRows, 'DOC_DE'));
+tabs.set('HANG_DOI', mockRichTab([cells[0].slice()], 'HANG_DOI'));
+folderFiles = [];
+let appKeyRatio = 0.2;
+Object.assign(app, {
+  khoThongKeKhaDung_: () => ({ tyLe: appKeyRatio, conSong: Math.round(20 * appKeyRatio), tong: 20 }),
+  runsDangBoNao_: () => [],
+  docRunsBoNao_: () => [],
+  chanNguonBoNao_: () => 'đủ nguồn',
+  chDang_: () => 'TAT',
+  chNC_: () => 'TAT',
+  dangNghi_: () => false,
+  dsNenTangChoVideo_: () => [],
+  matThanChan_: () => false,
+  laUuTien_: () => false,
+  giaiTrenGitHub_: () => true
+});
+app.Utilities.formatDate = (d, _, fmt) => fmt === 'HH' ? '10' : fmt === 'yyyyMMdd' ? '20261127' : dateFromVN(d, fmt);
+app.nhipBoNao_('chay');
+assert.equal(nhipDocRows.some(r => r[0] === 'NB-X1'), false, 'Nhánh xóa không sửa được chạy kể cả khi quỹ key < 25%');
+assert.equal(nhipDocRows.slice(2).filter(r => r[1] === 'CHO_KICH_BAN').length, 0, 'Quỹ key < 25% không đẩy sửa');
+appKeyRatio = 0.25;
+app.nhipBoNao_('chay');
+assert.equal(nhipDocRows.slice(2).filter(r => r[1] === 'CHO_KICH_BAN').length, 3, 'Mỗi nhịp đẩy sửa tối đa 3 bài khi quỹ key >= 25%');
+assert.equal(nhipDocRows.slice(2).filter(r => r[1] === 'LOI_CAN_XEM').length, 1, 'Bài thứ 4 chờ nhịp sau');
+
+console.log('0 hỏng. Đạt điều phối BP5 → BP0, chỉ tiêu ngày, kho đệm, lịch và lệnh Zalo, phanh tồn, dọn MP4, xử lý lỗi DOC_DE (/xulyloi), lưu kịch bản, watchdog, checkout Python và đăng ký/cú pháp '+gs.length+' tệp .gs.');

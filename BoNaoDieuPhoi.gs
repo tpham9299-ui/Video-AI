@@ -500,11 +500,22 @@ function nhipBoNao_(lenh, trangThai) {
   damBaoCot_(sh);
   var hang = docHang_(sh);
   var tonDau = tonBoNao_(hang);
-  var loi = hang.filter(function(r) { return trangThaiBoNao_(r) === 'LOI_CAN_XEM'; });
-  var tin = [cheDoBoNao_() + (loi.length ? ' · cần xem ' + loi.length + ' (' + loi[0].id + ': ' + String(loi[0].ghi_chu).slice(0,120) + ')' : '')];
   var soVideoMoi = lenh === 'chay' ? voiKhoa_(1000, function () { return demVideoMoiTrongNgay_(luc, true); }) : null;
   if (soVideoMoi === null) soVideoMoi = demVideoMoiTrongNgay_(luc, false);
   var key = docQuyKeyBoNao_();
+  if (lenh === 'chay' && typeof xuLyLoiDocDe_ === 'function') {
+    try {
+      var toiDaSuaLoi = (key && key.tyLe >= NGUONG_KEY_TOI_THIEU_SAN_XUAT) ? 3 : 0;
+      var hanLoi = _bat_dau_chay_ + (typeof GIOI_HAN_DON_VIDEO_MS_ === 'number' ? GIOI_HAN_DON_VIDEO_MS_ : 270000);
+      voiKhoa_(5000, function () {
+        xuLyLoiDocDe_({chayTay: false, han: hanLoi, toiDaSua: toiDaSuaLoi});
+      });
+      hang = docHang_(sh);
+      tonDau = tonBoNao_(hang);
+    } catch (eLoi) { nhatKy_('DIEU_PHOI_LOI', 'Xử lý lỗi DOC_DE · ' + eLoi.message); }
+  }
+  var loi = hang.filter(function(r) { return trangThaiBoNao_(r) === 'LOI_CAN_XEM'; });
+  var tin = [cheDoBoNao_() + (loi.length ? ' · cần xem ' + loi.length + ' (' + loi[0].id + ': ' + String(loi[0].ghi_chu).slice(0,120) + ')' : '')];
   var kho = tinhKhoDemBoNao_(hang, false, soVideoMoi, key);
   var ketQua = {};
   (lenh === 'dang_ngay' ? [5] : [5,4,3,2,1,0]).forEach(function(bp) {

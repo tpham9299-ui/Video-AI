@@ -85,6 +85,7 @@ function traLoiLenh_(chat, chu, anh) {
   if (/^\/sua\b/.test(l)) return yeuCauSuaVideo_(chat, chu);
   if (/^\/bo\b/.test(l)) return boVideo_(chu, chat);
   if (l === '/donvideoloi') return donVideoLoi_(chat);
+  if (l === '/xulyloi' && typeof xuLyLoiTrenSheetNgay === 'function') return xuLyLoiTrenSheetNgay();
   if (/^\/cho\b/.test(l)) return danhSachChoDuyet_();
   if (/^\/(suavideocu|dunglai|nangcap)\b/.test(l) && typeof quetVaSuaVideoCuDrive === 'function') return quetVaSuaVideoCuDrive();
   if (/^\/(videodai|10phut|youtube10p)\b/.test(l) && typeof taoVideoDaiZalo_ === 'function') return taoVideoDaiZalo_(chat, chu);

@@ -114,6 +114,7 @@ Tên kênh lấy từ `phong_cach.json → thuongHieu.ten` (Story Math), dùng c
 * BP4 đạt vào `CHO_DANG`. Hết lượt Auto-Heal thì đưa MP4 lỗi vào Thùng rác, giữ mã lỗi và dòng đề.
 * `/donsheet` và lịch dọn lưu `DA_DANG` quá 7 ngày theo tháng đăng, lỗi đã dọn MP4 quá 2 ngày vào `LuuTru_Loi`. `LUU_TRU` giữ mã băm chống trùng.
 * Kịch bản trên 8.000 ký tự lưu dưới `VideoAI_KhoKichBan` với con trỏ `DRIVE_JSON:`. Bộ đọc hỗ trợ JSON thô và ID Drive cũ.
+* **Xử lý lỗi `DOC_DE` tự động & `/xulyloi`:** `layDanhSachFileIdDriveTuDong_` đọc đủ 3 nguồn (RichText + `getRuns()`, `=HYPERLINK`, URL trần/`DRIVE_JSON:`), `phanLoaiLoiDong_` tách dứt khoát `XOA_KHONG_SUA_DUOC` (xóa tài nguyên Drive trừ `tapIdBaoVe`, lưu `LuuTru_Loi` + `LUU_TRU` `LOI_KHONG_SUA_DUOC`, xóa dòng khỏi `DOC_DE` + quét MP4 mồ côi) và `BAT_BUOC_SUA` (xóa MP4 hỏng, giữ JSON nếu đẩy `CO_KICH_BAN`, gắn `[TU_SUA:x/y]` với trần 2 cho BP3 và 1 cho BP1/BP2, đẩy `CHO_GIAI`/`CHO_KICH_BAN`/`CO_KICH_BAN`). `nhipBoNao_` đẩy sửa tối đa 3 bài/nhịp khi quỹ key ≥ 25% (xóa không phụ thuộc key); `xuLyLoiTrenSheetNgay()` / `/xulyloi` quét toàn bảng (giới hạn 4,5 phút/lượt) và làm mới ngay thanh thống kê hàng 1 `DOC_DE`.
 
 ## 5. LỆNH KIỂM TRA NHANH KHI CHẠY LOCAL (WINDOWS)
 
