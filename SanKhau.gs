@@ -18,6 +18,23 @@ var LOAI_TT_2D_ = ['kinh_te_do_thi', 'so_do_2d', 'tang_truong'];
 var LOAI_SAN_KHAU_ = LOAI_XS_2D_.concat(LOAI_TT_2D_, ['tu_duy_dai_so']);
 var KHUON_VAT_THE_ = ['tam_bia_gap_hop', 'tru_non_toi_uu', 'hai_mat_cau_oxyz', 'khung_day_cap', 'mat_phang_cat_khoi', 'chop_lang_tru', 'parabol_quy_dao'];
 var RE_VAT_THE_ = /hộp|bìa|tấm|lon|hình trụ|hình nón|phễu|cốc|mặt cầu|quả cầu|hình chóp|lăng trụ|tứ diện|dây cáp|sợi dây|treo|mặt phẳng|thiết diện|khối|bể|bồn|thùng|oxyz|tòa nhà|cột|kim tự tháp/i;
+// Siết khớp 8 khuôn 3D: chỉ nhận 3d_vector khi đề thực sự khớp rõ 1 trong các khuôn 3D (không khớp mơ hồ theo 1 từ đơn như "hộp bánh").
+var RE_KHUON_RO_ = {
+  tam_bia_gap_hop: /(?:tấm|miếng|tờ)\s*(?:bìa|tôn|nhôm|giấy|carton|thép)|gấp\s*(?:lại\s*)?(?:thành\s*)?(?:một\s*)?(?:cái\s*)?(?:hộp|thùng)|cắt\s*(?:bỏ\s*)?(?:đi\s*)?(?:4|bốn)\s*(?:hình vuông|góc)|gập\s*hộp/i,
+  tru_non_toi_uu: /hình trụ|\blon\b|bồn|cốc|thùng phuy|hộp sữa|hình nón|phễu/i,
+  hai_mat_cau_oxyz: /mặt cầu.*(?:oxyz|tọa độ)|(?:oxyz|tọa độ).*mặt cầu/i,
+  khung_day_cap: /dây cáp|sợi dây|lực căng|treo/i,
+  mat_phang_cat_khoi: /mặt phẳng cắt|thiết diện|cắt khối|mặt cắt/i,
+  chop_lang_tru: /hình chóp|lăng trụ|tứ diện|kim tự tháp/i,
+  parabol_quy_dao: /vận tốc|quãng đường|ném|quỹ đạo|tích phân|parabol|chuyển động|phanh/i
+};
+function khopKhuon3DRo_(van, khuon) {
+  var t = String(van || '');
+  if (!khuon) return false;
+  if (khuon === '__tu_do__') return RE_VAT_THE_.test(t) && !choDoThiThuan_(t);
+  var re = RE_KHUON_RO_[khuon];
+  return re ? re.test(t) : false;
+}
 var TU_CHI_DAO_ = [
   [/bayes|lưới diện tích|hình vuông đơn vị|mosaic/i, 'luoi_bayes'],
   [/sơ đồ cây|cây xác suất|tree/i, 'so_do_cay'],
@@ -65,11 +82,11 @@ function choDoThiThuan_(van) {
 }
 function loaiThucTe_(van, khuon) {
   var t = String(van || '').toLowerCase();
-  if ((khuon === '__tu_do__' || (KHUON_VAT_THE_.indexOf(khuon) >= 0 && khuon !== 'parabol_quy_dao')) && RE_VAT_THE_.test(t)) return '3d_vector';
+  if ((khuon === '__tu_do__' || (KHUON_VAT_THE_.indexOf(khuon) >= 0 && khuon !== 'parabol_quy_dao')) && khopKhuon3DRo_(t, khuon)) return '3d_vector';
   if (/giá vé|chiết khấu|giá bán|lợi nhuận|doanh thu|chi phí|giảm giá|tăng giá|tiền lãi thu|bán được|khách hàng/.test(t)) return 'kinh_te_do_thi';
   if (/lãi suất|lãi kép|gửi tiết kiệm|tăng trưởng|dân số|vi khuẩn|phân rã|chu kì bán rã|logarit|\blog\b|hàm mũ|lạm phát/.test(t)) return 'tang_truong';
   if (/bờ sông|qua sông|chèo thuyền|bơi qua|kéo dây điện|dây cáp từ|đường ống từ|sát tường|rào.*(?:tường|bờ)|cổng (?:hình )?parabol|thang dựa/.test(t)) return 'so_do_2d';
-  if (khuon === 'parabol_quy_dao' && /vận tốc|quãng đường|ném|quỹ đạo|tích phân|parabol|chuyển động|phanh/.test(t)) return '3d_vector';
+  if (khuon === 'parabol_quy_dao' && khopKhuon3DRo_(t, 'parabol_quy_dao')) return '3d_vector';
   return null;
 }
 // -> {loai, nguon: chi_dao|ai|suy|lui|khoa_luong, chi_dao}
@@ -228,6 +245,34 @@ function huongDanTuSinh_(kb, r) {
     (kb.kich_ban_hinh && kb.kich_ban_hinh.length ? '- HỢP ĐỒNG HÌNH TỪ BỘ PHẬN 0 (bám đúng thứ tự, mỗi bước hình ứng một bước giải): ' + kb.kich_ban_hinh.map(function (x, i) { return (i + 1) + ') ' + x; }).join(' ') + (kb.nut_that ? ' | Nút thắt: ' + kb.nut_that : '') + '\n' : '') +
     '- Bám đúng số liệu đề (ví dụ bông tuyết Koch: tam giác đều cạnh a, mỗi cạnh chia 3 bật tam giác đều ra ngoài, lớp n+1 = các tam giác mới; parabol: trục, đỉnh nổi bật, điểm chạy).\n' +
     'Chỉ trả JSON {"ma": "<mã Python>", "mo_ta": "1 câu"}.';
+}
+
+// Khung mẫu tu_sinh_svg tối giản (< 15 dòng) dùng helper trong scripts/kho_manh_svg.py — bơm vào lần sửa AI duy nhất khi gặp KHUNG4TANG_3D_RONG / t2_trong.
+function mauTuSinhToiGian_(kb, r) {
+  kb = kb || {}; r = r || {};
+  var mon = String(kb.mon || r.mon || '').toUpperCase();
+  var van = String((r && r.de_bai) || kb.de_bai || '').toLowerCase();
+  var manh = 'bieu_do_loi_nhuan';
+  if (mon === 'XAC_SUAT' || /xác suất|biến cố|ngẫu nhiên/.test(van)) {
+    manh = /xúc xắc|súc sắc/.test(van) ? 'xuc_xac_1_6' : /đồng xu|sấp|ngửa/.test(van) ? 'dong_xu' :
+      /\bbi\b|viên bi|bóng/.test(van) ? 'hop_bi_mau' : /bayes|xét nghiệm|cây|lần lượt|độc lập/.test(van) ? 'nut_cay_xac_suat' : 'la_bai_the_so';
+  } else {
+    manh = /bể|nước|chất lỏng|vòi/.test(van) ? 'be_nuoc_muc_chat_long' : /xe|ô tô|vận tốc|chuyển động/.test(van) ? 'xe_di_chuyen' :
+      /lãi suất|lãi kép|tiết kiệm/.test(van) ? 'tui_tien_lai_suat' : /đồng hồ|phút|giờ/.test(van) ? 'dong_ho_thoi_gian' :
+      /hộp|bìa|thùng|khối|vườn|lối đi|rào/.test(van) ? 'hop_chu_nhat_3d' : 'bieu_do_loi_nhuan';
+  }
+  return [
+    'import kho_manh_svg as km',
+    'def ve():',
+    '    return [',
+    '        {"buoc": 0, "svg": km.nguoi_que_gai_dau(210, 272, scale=1.24, nhan="Đọc đề"), "hieu_ung": "moc", "nhom": "nv"},',
+    '        {"buoc": 0, "svg": km.' + manh + '(585, 272, scale=1.26, nhan="Mô hình đề"), "hieu_ung": "moc", "nhom": "mh"},',
+    '        {"buoc": 1, "svg": km.nguoi_que_chi_bang(210, 272, scale=1.24, nhan="Lập công thức"), "hieu_ung": "no", "nhom": "nv"},',
+    '        {"buoc": 1, "svg": km.' + manh + '(585, 272, scale=1.26, nhan="Thiết lập", mau="la"), "hieu_ung": "ve", "nhom": "mh"},',
+    '        {"buoc": 2, "svg": km.nguoi_que_aha(210, 272, scale=1.24, nhan="Giải nhanh"), "hieu_ung": "no", "nhom": "nv"},',
+    '        {"buoc": 2, "svg": km.' + manh + '(585, 272, scale=1.26, nhan="Chốt số liệu", mau="ket"), "hieu_ung": "sang", "nhom": "mh"},',
+    '    ]'
+  ].join('\n');
 }
 
 /* ===================== KÝ HIỆU "KHÔNG CHIA HẾT" & MÃ THÔ ===================== */
@@ -503,9 +548,11 @@ function tuSuaSanKhau_(kb, r) {
   if (q.loai === 'tu_sinh_svg') {
     kb.san_khau_dich = q.loai;
     if (k4.san_khau && k4.san_khau.loai !== q.loai) delete k4.san_khau;
-    if (k4.canh_3d_vector && !(k4.canh_3d_vector.khuon && (typeof tenKhuon_ !== 'function' || tenKhuon_(k4.canh_3d_vector.khuon)))) {
+    var vanSk = [kb.de_bai, r && r.de_bai, kb.can_tim, kb.chu_de].filter(Boolean).join(' ');
+    var tenK3 = k4.canh_3d_vector && k4.canh_3d_vector.khuon && (typeof tenKhuon_ === 'function' ? tenKhuon_(k4.canh_3d_vector.khuon) : k4.canh_3d_vector.khuon);
+    if (k4.canh_3d_vector && (!tenK3 || !khopKhuon3DRo_(vanSk, tenK3))) {
       delete k4.canh_3d_vector;
-      sua.push('gỡ canh_3d_vector không khớp khuôn -> chuyển nhánh tu_sinh_svg (ve25d)');
+      sua.push('gỡ canh_3d_vector không khớp rõ 8 khuôn 3D -> chuyển tuyến tu_sinh_svg');
     }
   } else if (q.loai !== 'hinh_hoc' && q.loai !== '3d_vector') {
     var cu = k4.san_khau && typeof k4.san_khau === 'object' ? k4.san_khau : {};

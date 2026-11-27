@@ -232,6 +232,218 @@ def kiem_tra_tex_hop_le(s):
     return True
 
 
+def va_cu_phap_tex(s):
+    """Tiền xử lý vá lỗi TeX thuần code chạy TRƯỚC kiểm duyệt TEX_LENH_CUT (bản đôi suaCuPhapTex_ trong KiemTraHinh.gs):
+      - Cân bằng ngoặc { } cho các lệnh phổ biến (\\text{, \\textbf{, \\mathrm{, \\overline{...)
+      - Xóa/dọn các đuôi lệnh cắt vỡ ở cuối chuỗi (\\te, \\text{ rỗng, cụm vỡ |\\color{#...}...)
+      - Bóc vỏ \\text{...} khi bên trong chỉ chứa câu chữ tiếng Việt thuần không có toán phức tạp.
+    """
+    if not isinstance(s, str):
+        return s
+    t = re.sub(r"\\\\([A-Za-z]+)", r"\\\1", s.replace("$", ""))
+    # 1) Dọn cụm vỡ kiểu "|\color{#FACC15}t|\te" hoặc "\color{#...}" cắt dở
+    t = re.sub(
+        r"\|\s*\\color\s*\{#[0-9A-Fa-f]{3,8}\}\s*([^|{}\\]*?)\|\s*(?:\\[A-Za-z]*)?$",
+        lambda m: (" | " + m.group(1).strip()) if m.group(1).strip() else "",
+        t,
+    )
+    t = re.sub(
+        r"\|\s*\\color\s*\{#[0-9A-Fa-f]{3,8}\}\s*([^|{}\\]*?)(?=\||$)",
+        lambda m: (" | " + m.group(1).strip()) if m.group(1).strip() else "",
+        t,
+    )
+    t = re.sub(r"\\color\s*\{[^}]*$", "", t).strip()
+    # 2) Gỡ lệnh cắt cụt ở cuối chuỗi (\te, \co, \) và lệnh mở ngoặc rỗng ở cuối (2\text{)
+    for _ in range(3):
+        t0 = t
+        t = re.sub(
+            r"\|?\s*\\([A-Za-z]+)\s*$",
+            lambda m: m.group(0) if m.group(1) in LENH_KATEX_HOP_LE else "",
+            t,
+        )
+        t = re.sub(r"\|?\s*\\\s*$", "", t).strip()
+        t = re.sub(
+            r"\\(?:text|textrm|textbf|textit|mathrm|mathbf|overline|bar|sqrt|color|textcolor|[dt]?frac|[dt]?binom)\s*\{\s*$",
+            "",
+            t,
+        ).strip()
+        t = re.sub(r"\\textcolor\s*\{[^{}]*\}\s*$", "", t).strip()
+        t = re.sub(r"\\[dt]?frac\s*\{([^{}]*)\}\s*$", r"\1", t).strip()
+        if t == t0:
+            break
+    # 3) Cân bằng { / }
+    mo = 0
+    out_chars = []
+    i = 0
+    while i < len(t):
+        ch = t[i]
+        if ch == "\\" and i + 1 < len(t):
+            out_chars.append(ch + t[i + 1])
+            i += 2
+            continue
+        if ch == "{":
+            mo += 1
+            out_chars.append(ch)
+        elif ch == "}":
+            if mo > 0:
+                mo -= 1
+                out_chars.append(ch)
+        else:
+            out_chars.append(ch)
+        i += 1
+    out = "".join(out_chars) + ("}" * mo)
+    # 4) Bỏ vỏ lệnh rỗng & lệnh lạ không nằm trong danh sách KaTeX hợp lệ
+    out = re.sub(r"\\(?:text|textrm|textbf|textit|mathrm|mathbf|overline|bar|sqrt|color)\s*\{\s*\}", "", out)
+    out = re.sub(r"\\([A-Za-z]+)", lambda m: m.group(0) if m.group(1) in LENH_KATEX_HOP_LE else "", out)
+    out = re.sub(r"\s+", " ", out).strip()
+    # 5) Bóc vỏ \text{...} nếu chỉ chứa chữ tiếng Việt thuần không có toán phức tạp
+    if re.search(r"\\(?:text|textrm|textbf)\s*\{", out):
+        thu_boc = re.sub(r"\\(?:text|textrm|textbf)\s*\{([^{}\\]*)\}", r"\1", out)
+        thu_boc = re.sub(r"\s+", " ", thu_boc).strip()
+        if not re.search(r"[\\^_{}]", thu_boc):
+            out = thu_boc
+    return out
+
+
+def va_cu_phap_tex_kb(kb):
+    """Tiền xử lý vá TeX trên mọi ô hiển thị / KaTeX của kịch bản trước bước kiểm duyệt."""
+    if not isinstance(kb, dict):
+        return kb
+
+    def sua(obj, key):
+        if isinstance(obj, dict) and isinstance(obj.get(key), str) and re.search(r"[\\{}^_$]", obj[key]):
+            obj[key] = va_cu_phap_tex(obj[key])
+
+    def sua_mang(arr):
+        if not isinstance(arr, list):
+            return arr
+        return [va_cu_phap_tex(x) if isinstance(x, str) and re.search(r"[\\{}^_$]", x) else x for x in arr]
+
+    for c in kb.get("canh") or []:
+        if not isinstance(c, dict):
+            continue
+        sua(c, "tieu_de_canh")
+        if isinstance(c.get("noi_dung_man_hinh"), list):
+            c["noi_dung_man_hinh"] = sua_mang(c["noi_dung_man_hinh"])
+        if isinstance(c.get("chu_thich"), list):
+            c["chu_thich"] = sua_mang(c["chu_thich"])
+    if isinstance(kb.get("de_cho"), list):
+        kb["de_cho"] = sua_mang(kb["de_cho"])
+    sua(kb, "can_tim")
+    for d in kb.get("tom_tat_3_buoc") or []:
+        if isinstance(d, dict):
+            sua(d, "chien_thuat")
+            sua(d, "cong_thuc")
+    k4 = kb.get("khung4tang") if isinstance(kb.get("khung4tang"), dict) else {}
+    for d in k4.get("de_ghim") or []:
+        if isinstance(d, dict):
+            sua(d, "nhan")
+    for b in k4.get("buoc") or []:
+        if not isinstance(b, dict):
+            continue
+        sua(b, "nhan")
+        sua(b, "tieu_de")
+        for th in b.get("the") or []:
+            if not isinstance(th, dict):
+                continue
+            sua(th, "nhan")
+            sua(th, "noi_dung")
+            if isinstance(th.get("dong"), list):
+                th["dong"] = sua_mang(th["dong"])
+    sk_ts = (k4.get("san_khau") or {}).get("tham_so") if isinstance(k4.get("san_khau"), dict) else None
+    if isinstance(sk_ts, dict):
+        for k in ("nhan_bien", "nhan_ham", "don_vi"):
+            sua(sk_ts, k)
+        if isinstance(sk_ts.get("nhan"), dict):
+            for nk in list(sk_ts["nhan"].keys()):
+                sua(sk_ts["nhan"], nk)
+        for g in sk_ts.get("nhom") or []:
+            if isinstance(g, dict):
+                sua(g, "nhan")
+    return kb
+
+
+def _chua_dap_so_chinh_xac(text, num_val):
+    t = str(text or "").replace("{,}", ",")
+    t = re.sub(r"\\,|\\ |~", "", t)
+    t = re.sub(r"(\d)\s+(?=\d{3}(?:\D|$))", r"\1", t)
+    tol = max(1e-6, 1e-6 * abs(num_val))
+    for m in re.findall(r"-?\d+(?:[.,]\d+)?", t):
+        try:
+            v = float(m.replace(",", "."))
+            if abs(v - num_val) <= tol:
+                return True
+        except ValueError:
+            pass
+    return False
+
+
+def dong_bo_dap_so_canh_dap_an(kb):
+    """Tự đồng bộ đáp số chốt của kịch bản/BP1 vào `noi_dung_man_hinh` cảnh `dap_an` (và thẻ bước khung4tang tương ứng)."""
+    if not isinstance(kb, dict):
+        return False
+    canh = kb.get("canh")
+    if not isinstance(canh, list) or not canh:
+        return False
+    goc = str(kb.get("dap_an") or kb.get("dap_an_cuoi") or "").strip()
+    if not re.fullmatch(r"-?\d+(?:[.,]\d+)?", goc):
+        return False
+    dap_norm = goc.replace(",", ".")
+    try:
+        num_val = float(dap_norm)
+    except ValueError:
+        return False
+    so_tex = dap_norm.replace(".", "{,}")
+    hien = str(kb.get("dap_an_hien") or "").strip()
+    if hien and _chua_dap_so_chinh_xac(hien, num_val) and len(hien) <= 40:
+        dong_bo_sung = "\\text{%s}" % re.sub(r"[{}\\]", "", hien)
+    else:
+        dong_bo_sung = "\\text{Đáp số: } " + so_tex
+
+    ds_da = [(i, c) for i, c in enumerate(canh) if isinstance(c, dict) and re.search(r"dap_an|ket_qua", str(c.get("loai") or ""), re.I)]
+    if not ds_da:
+        return False
+    da_sua = False
+    for _, c in ds_da:
+        nd = c.get("noi_dung_man_hinh")
+        if not isinstance(nd, list):
+            nd = [str(nd)] if nd else []
+            c["noi_dung_man_hinh"] = nd
+        if not any(_chua_dap_so_chinh_xac(line, num_val) for line in nd):
+            c["noi_dung_man_hinh"] = nd[:3] + [dong_bo_sung]
+            da_sua = True
+
+    k4 = kb.get("khung4tang")
+    if isinstance(k4, dict) and isinstance(k4.get("buoc"), list) and k4["buoc"]:
+        so_canh_da = {int(c.get("so") or (i + 1)) for i, c in ds_da}
+        b_chon = None
+        for b in k4["buoc"]:
+            if isinstance(b, dict) and b.get("canh") is not None:
+                try:
+                    if int(b["canh"]) in so_canh_da:
+                        b_chon = b
+                except (TypeError, ValueError):
+                    pass
+        if b_chon is None and isinstance(k4["buoc"][-1], dict):
+            b_chon = k4["buoc"][-1]
+        if isinstance(b_chon, dict):
+            the = b_chon.get("the")
+            if not isinstance(the, list):
+                the = []
+                b_chon["the"] = the
+            co_the = any(
+                isinstance(th, dict) and (
+                    _chua_dap_so_chinh_xac(th.get("noi_dung"), num_val)
+                    or any(_chua_dap_so_chinh_xac(d, num_val) for d in (th.get("dong") or []))
+                )
+                for th in the
+            )
+            if not co_the:
+                the.append({"loai": "cong_thuc", "dong": [dong_bo_sung]})
+                da_sua = True
+    return da_sua
+
+
 def tex_sang_chu(s):
     """Mã TeX -> chữ Unicode GIỮ NGHĨA (đồng bộ .gs <-> Python <-> TS):
     bóc \\text{}, {\\color{...}...}, \\textcolor{}{}, \\textbf{}; đổi S_0->S₀, u_1->u₁, x^2->x², \\sqrt{3}->√3, \\frac{1}{3}->1/3."""
@@ -270,7 +482,7 @@ def tex_sang_chu(s):
 
 
 def cat_bien_tu(s, toi_da=0):
-    """Bóc sạch TeX -> Unicode rồi cắt gọn theo biên từ (không cắt giữa từ / giữa lệnh LaTeX / giữa {...})."""
+    """Bóc sạch TeX -> Unicode rồi cắt gọn theo biên từ (cấm cắt ngang giữa lệnh \\ hoặc cặp ngoặc {...} / (...))."""
     x = tex_sang_chu(s)
     if not toi_da or len(x) <= toi_da:
         return x
@@ -280,9 +492,18 @@ def cat_bien_tu(s, toi_da=0):
         thu = (ra + " " + w) if ra else w
         if len(thu) > toi_da:
             if not ra:
-                return w
+                ra = w
             break
         ra = thu
+    ra = re.sub(r"\\[A-Za-z]*\s*$", "", ra).strip()
+    while ra and (ra.count("(") > ra.count(")") or ra.count("{") > ra.count("}")):
+        idx = max(
+            ra.rfind("(") if ra.count("(") > ra.count(")") else -1,
+            ra.rfind("{") if ra.count("{") > ra.count("}") else -1,
+        )
+        if idx <= 0:
+            break
+        ra = ra[:idx].strip()
     return ra.rstrip(" ,.;:·-") or tu[0]
 
 
@@ -1358,11 +1579,41 @@ def cho_do_thi_thuan(van):
     return bool(re.search(r"giá vé|giá bán|lợi nhuận|doanh thu|giảm giá|tăng giá|chiết khấu|tiền lãi|lãi suất|lãi kép|gửi tiết kiệm|lạm phát|dân số|tăng trưởng", van, re.I) and not re.search(r"mét|(?:^|[^a-zà-ỹ])(?:km|dm|cm|mm|m)(?:[²³23]|(?=$|[^a-zà-ỹ]))|diện tích|thể tích|chu vi|kích thước|chiều (?:dài|rộng|cao)|bán kính|đất|vườn|ruộng|hộp|rào|lối đi|tường|góc|quãng đường|vận tốc|tốc độ chuyển động|cắt|gấp (?:giấy|hình)|gập|máng|vòm|sông|thuyền|bìa|quỹ đạo|bể|hình trụ|hình nón|khối|đường ống|dây cáp|mặt cầu|thang dựa|bánh răng|vi khuẩn", van, re.I) and not RE_VAT_THE.search(van))
 
 
+RE_KHUON_RO = {
+    "tam_bia_gap_hop": re.compile(r"(?:tấm|miếng|tờ)\s*(?:bìa|tôn|nhôm|giấy|carton|thép)|gấp\s*(?:lại\s*)?(?:thành\s*)?(?:một\s*)?(?:cái\s*)?(?:hộp|thùng)|cắt\s*(?:bỏ\s*)?(?:đi\s*)?(?:4|bốn)\s*(?:hình vuông|góc)|gập\s*hộp", re.I),
+    "tru_non_toi_uu": re.compile(r"hình trụ|\blon\b|bồn|cốc|thùng phuy|hộp sữa|hình nón|phễu", re.I),
+    "hai_mat_cau_oxyz": re.compile(r"mặt cầu.*(?:oxyz|tọa độ)|(?:oxyz|tọa độ).*mặt cầu", re.I),
+    "khung_day_cap": re.compile(r"dây cáp|sợi dây|lực căng|treo", re.I),
+    "mat_phang_cat_khoi": re.compile(r"mặt phẳng cắt|thiết diện|cắt khối|mặt cắt", re.I),
+    "chop_lang_tru": re.compile(r"hình chóp|lăng trụ|tứ diện|kim tự tháp", re.I),
+    "parabol_quy_dao": re.compile(r"vận tốc|quãng đường|ném|quỹ đạo|tích phân|parabol|chuyển động|phanh", re.I),
+}
+
+
+def khop_khuon_3d_ro(van, khuon):
+    t = str(van or "")
+    if not khuon:
+        return False
+    if khuon == "__tu_do__":
+        return bool(RE_VAT_THE.search(t)) and not cho_do_thi_thuan(t)
+    rx = RE_KHUON_RO.get(khuon)
+    return bool(rx.search(t)) if rx else False
+
+
+def _suy_khuon_ro(van, lop=""):
+    t = str(van or "")
+    if str(lop) == "12" and RE_KHUON_RO["hai_mat_cau_oxyz"].search(t):
+        return "hai_mat_cau_oxyz"
+    for k in ("tam_bia_gap_hop", "tru_non_toi_uu", "parabol_quy_dao", "khung_day_cap", "mat_phang_cat_khoi", "chop_lang_tru"):
+        if RE_KHUON_RO[k].search(t):
+            return k
+    return None
+
+
 def loai_thuc_te(van, khuon_suy):
     t = str(van or "").lower()
-    # vật thể khối thật (hộp, lon, chóp, mặt cầu...) hoặc đặc tả 3D tự do AI đã dựng được -> giữ sân khấu 3D
-    # (khuôn AI ghi chỉ được tin khi đề THẬT SỰ nói tới vật thể — đề đại số mà AI gắn "tam_bia_gap_hop" -> không nhận)
-    if (khuon_suy == "__tu_do__" or (khuon_suy in KHUON_VAT_THE and khuon_suy != "parabol_quy_dao")) and RE_VAT_THE.search(t):
+    # vật thể khối thật khớp RÕ 1 trong 8 khuôn 3D hoặc đặc tả 3D tự do AI đã dựng được -> giữ sân khấu 3D
+    if (khuon_suy == "__tu_do__" or (khuon_suy in KHUON_VAT_THE and khuon_suy != "parabol_quy_dao")) and khop_khuon_3d_ro(t, khuon_suy):
         return "3d_vector"
     if re.search(r"giá vé|chiết khấu|giá bán|lợi nhuận|doanh thu|chi phí|giảm giá|tăng giá|tiền lãi thu|bán được|khách hàng", t):
         return "kinh_te_do_thi"
@@ -1370,7 +1621,7 @@ def loai_thuc_te(van, khuon_suy):
         return "tang_truong"
     if re.search(r"bờ sông|qua sông|chèo thuyền|bơi qua|kéo dây điện|dây cáp từ|đường ống từ|sát tường|rào.*(?:tường|bờ)|cổng (?:hình )?parabol|thang dựa", t):
         return "so_do_2d"
-    if khuon_suy == "parabol_quy_dao" and re.search(r"vận tốc|quãng đường|ném|quỹ đạo|tích phân|parabol|chuyển động|phanh", t):
+    if khuon_suy == "parabol_quy_dao" and khop_khuon_3d_ro(t, "parabol_quy_dao"):
         return "3d_vector"
     return None
 
@@ -1425,14 +1676,14 @@ def chon_san_khau(kb, r=None, khuon_suy=None):
     c3_tu_do = isinstance(c3.get("doi_tuong"), list) and len(c3["doi_tuong"]) > 0 and isinstance(c3.get("buoc"), list) and len(c3["buoc"]) >= 2
     khuon_c3 = c3.get("khuon") if c3.get("khuon") in KHUON_VAT_THE else None
     khuon = khuon_c3 or ("__tu_do__" if c3_tu_do else (khuon_suy or None))
-    if not khuon and khuon_suy is None and not (c3 and not khuon_c3 and not c3_tu_do) and re.search(r"gập|hộp|hình trụ|\blon\b|hình nón|phễu|hình chóp|lăng trụ|mặt cầu|dây cáp|thiết diện|bồn|bể", van, re.I):
-        khuon = "__tu_do__"   # bản rút gọn của suyKhuon_ (Apps Script) khi chuanbi chưa truyền khuôn suy từ đề
+    if not khuon and khuon_suy is None and not (c3 and not khuon_c3 and not c3_tu_do):
+        khuon = _suy_khuon_ro(van, lop)   # chỉ gắn 3d_vector khi đề khớp rõ 1 trong 8 khuôn 3D; mơ hồ -> tu_sinh_svg
     loai = loai_thuc_te(van, khuon)
     if bat_buoc and loai in ("kinh_te_do_thi", "tang_truong") and not cho_do_thi_thuan(van):
         loai = None
     if loai:
         return {"loai": loai, "nguon": "suy", "chi_dao": loi_cd}
-    if khuon_c3 and RE_VAT_THE.search(van):
+    if khuon_c3 and khop_khuon_3d_ro(van, khuon_c3):
         return {"loai": "3d_vector", "nguon": "ai", "chi_dao": loi_cd}
     return {"loai": "tu_sinh_svg" if bat_buoc else "tu_duy_dai_so", "nguon": "lui", "chi_dao": loi_cd}
 
@@ -1507,6 +1758,9 @@ def cong_loc_som(kb, khuon_suy=None):
     (4) khớp đáp án. Trả chuỗi lỗi đầu tiên ('' nếu đạt)."""
     if not _la_ngan_k4_loc_som(kb):
         return ""
+    # 0) Tiền xử lý thuần code TRƯỚC khi chấm lỗi: tự vá TEX_LENH_CUT / ngoặc hở và đồng bộ đáp số cảnh cuối dap_an
+    va_cu_phap_tex_kb(kb)
+    dong_bo_dap_so_canh_dap_an(kb)
     k4 = kb.get("khung4tang") if isinstance(kb.get("khung4tang"), dict) else {}
     # 1) Kiểm cân bằng {} & cú pháp lệnh TeX ở các ô KaTeX / ChuTron
     o_tex = []

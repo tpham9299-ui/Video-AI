@@ -43,6 +43,7 @@ jobs:
             scripts/bophan1
             scripts/tu_sinh_svg.py
             scripts/kho_manh_svg.py
+            scripts/du_phong_t2.py
             scripts/khung4tang_v93.py
             scripts/khung4tang_v95.py
             scripts/khung4tang_v96.py

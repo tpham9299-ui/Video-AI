@@ -2241,7 +2241,7 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
             out["canh3dv"] = None
             print("v99.1 sân khấu tự sinh: %d lớp SVG (mốc %s s)%s" % (len(ts["lop"]), ", ".join("%.1f" % l["t"] for l in ts["lop"]), (" | " + ghi_ts) if ghi_ts else ""))
         elif ghi_ts:
-            print("v99.1 sân khấu tự sinh: %s -> giữ sân khấu dự phòng" % ghi_ts)
+            print("v99.1 sân khấu tự sinh: %s -> thử lớp dự phòng Tầng 2" % ghi_ts)
         hong = tu_sinh_svg.tu_sinh_hong(kb, ts, ghi_ts)   # v99.2: hợp đồng tu_sinh_svg mà không dựng được -> cảnh báo rõ (Mắt thần lỗi cứng)
         hong = v99_k4.tu_sinh_hong_that(hong, out, kb)    # v101.5: đã có sân khấu chuyên dụng (rut_mau...) / 3D thay thế -> xóa cờ
         if v96_k4.thuc_te_ngan(kb) and not ts:
@@ -2249,6 +2249,25 @@ def khung_4_tang(kb, canh_props, fps, tong_toi_da=None, khong_gian=False):
                 out["canh3dv"] = None
             if not (san_khau or out["canh3dv"]) or ghi_ts or quyet.get("loai") == "tu_sinh_svg":
                 hong = "t2_trong: " + (ghi_ts or "; ".join(sua_sk) or "thiếu sân khấu minh họa THUC_TE")
+        # Lớp 3 chốt cuối (0 tốn API): nếu Tầng 2 rỗng/đứng im/lỗi hộp cát trên bài THUC_TE / XAC_SUAT -> tự cứu bằng scripts/du_phong_t2.py
+        sk_dung_im = bool(out.get("sanKhau")) and len((out.get("sanKhau") or {}).get("pha") or []) < 2
+        can_tu_cuu = (not ts and not out.get("sanKhau") and not out.get("canh3dv")) or bool(hong) or sk_dung_im
+        if can_tu_cuu and (v96_k4.thuc_te_ngan(kb) or str(kb.get("mon") or "").upper() == "XAC_SUAT"):
+            try:
+                import du_phong_t2
+                kq_cuu = du_phong_t2.cuu_kb_t2(kb)
+                if kq_cuu.get("ok"):
+                    ts_cuu, _ = tu_sinh_svg.gan_tu_sinh(kb, kb.get("khung4tang") or k4, buoc, tim_moc, t_het_de, tong)
+                    if ts_cuu and ts_cuu.get("lop"):
+                        ts_cuu["tuCuuT2"] = True
+                        out["tuSinh"] = ts_cuu
+                        out.pop("sanKhau", None)
+                        out["canh3dv"] = None
+                        ts = ts_cuu
+                        hong = ""
+                        print("tu_cuu_t2: true | tự cứu Tầng 2 chốt cuối bằng du_phong_t2.py (%s, %d lớp, 0 API)" % (kq_cuu.get("manh"), len(ts_cuu["lop"])))
+            except Exception as e_cuu:
+                print("⚠ Lớp 3 du_phong_t2.py lỗi:", str(e_cuu)[:160])
         if hong:
             out["tuSinhHong"] = hong
             print("⚠ v99.2 " + hong)
@@ -3554,10 +3573,32 @@ def main():
             c["loi_thoai"] = re.sub(r"(kênh|theo dõi|đăng ký)\s+(?:Tư duy Xác suất|Tư duy Toán|Toán Thầy Trí)\b",
                                      lambda m: m[1] + " " + TEN_THUONG_HIEU, c["loi_thoai"], flags=re.I)
     import khung4tang_v96 as router
+    # Tự vá lỗi cú pháp TeX cắt cụt & đồng bộ đáp số cho cảnh dap_an bằng code thuần trước Cổng lọc sớm
+    if not kb.get("hinh_phang_chuan"):
+        router.va_cu_phap_tex_kb(kb)
+        router.dong_bo_dap_so_canh_dap_an(kb)
     # Cổng lọc sớm (Pre-flight Gate) trước TTS / bundle / render — chỉ áp dụng Khung4Tang ngắn (THUC_TE / XAC_SUAT),
     # tự bỏ qua HINH_PHANG, HINH_KHONG_GIAN và video -10P.
     khuon_goi_y = (suy_khuon(kb) or {}).get("khuon") or ""
     loi_som = router.cong_loc_som(kb, khuon_goi_y)
+    # Chốt cuối Lớp 3 tại Pre-flight: nếu chỉ thiếu hình / đứng im Tầng 2 (t2_trong / KHUNG4TANG_3D_RONG / hinh_dung_im / thiếu hình vật thể)
+    # -> tự cứu tất định bằng du_phong_t2.py (0 API), gắn cờ log tu_cuu_t2: true, cho đi tiếp sang BP3.
+    la_loi_thieu_t2_pf = bool(loi_som) and not re.search(
+        r"\[PREFLIGHT/|THU_TU_TOI_UU|Sắp lại lời và thẻ|TEX_|DAP_AN_|MA_THO_HIEN_THI|sửa lời dẫn",
+        str(loi_som),
+    ) and bool(re.search(
+        r"^(?:t2_trong|KHUNG4TANG_3D_RONG|hinh_dung_im)|Thiếu (?:khung|hình|mẫu sơ đồ|đặc tả|hàm|mã tu_sinh)|Đối chiếu bước",
+        str(loi_som),
+    ))
+    if la_loi_thieu_t2_pf:
+        try:
+            import du_phong_t2
+            kq_pf = du_phong_t2.cuu_kb_t2(kb)
+            if kq_pf.get("ok"):
+                print("tu_cuu_t2: true | Pre-flight tự cứu Tầng 2 bằng du_phong_t2.py (%s, %d lớp, 0 API)" % (kq_pf.get("manh"), kq_pf.get("so_lop", 0)))
+                loi_som = router.cong_loc_som(kb, khuon_goi_y)
+        except Exception as e_pf_cuu:
+            print("⚠ Pre-flight du_phong_t2.py lỗi:", str(e_pf_cuu)[:160])
     if loi_som:
         print("t2_trong: " + loi_som, file=sys.stderr)
         if os.environ.get("BAO_LOI_BP2"):

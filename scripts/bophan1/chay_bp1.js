@@ -163,6 +163,19 @@ const ctx = {
   // v99.1: hộp cát sân khấu tự sinh (scripts/tu_sinh_svg.py --chi-kiem): {ok, loi, so_lop}; không có Python -> null
   kiemTuSinhMay_: kb => kiemSanKhauPython(kb, []),
   kiemSanKhau2DMay_: kb => kiemSanKhauPython(kb, ['--kiem-2d']),
+  // Lớp 3: bộ dựng hình Tầng 2 dự phòng tất định (scripts/du_phong_t2.py, 0 tốn API) -> {ok, tu_sinh, so_lop, manh, tu_cuu_t2: true}
+  duPhongT2May_: (kb) => {
+    for (const py of ['python3', 'python']) {
+      try {
+        const ra = execFileSync(py, [path.join(GOC, 'scripts', 'du_phong_t2.py'), '-'],
+          {input: JSON.stringify(kb), timeout: 30000, stdio: ['pipe', 'pipe', 'pipe'], env: {...process.env, PYTHONIOENCODING: 'utf-8'}});
+        return JSON.parse(ra.toString('utf8'));
+      } catch (e) {
+        if (e.code !== 'ENOENT') console.error('Dự phòng Tầng 2 Python:', String(e.stderr || e.message).slice(-400));
+      }
+    }
+    return null;
+  },
   kiemHinhPhangMay_: (kb) => {
     for (const py of ['python3', 'python']) {
       try {

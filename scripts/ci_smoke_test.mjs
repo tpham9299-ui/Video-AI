@@ -240,6 +240,14 @@ for (const wf of wfFiles) {
   if (!checkedJobs) kiem(`${wf}: phân tích được sparse-checkout`, false);
 }
 
+// Kiểm tra tường minh bộ dựng hình Tầng 2 dự phòng (scripts/du_phong_t2.py) trong 3 workflow cốt lõi
+kiem('scripts/du_phong_t2.py tồn tại trên ổ đĩa', fs.existsSync(path.join(ROOT, 'scripts', 'du_phong_t2.py')));
+for (const wf of ['bo-phan-1.yml', 'viet-kich-ban.yml', 'dung-video.yml']) {
+  const txt = fs.readFileSync(path.join(wfDir, wf), 'utf8');
+  const coDuPhong = txt.includes('scripts/du_phong_t2.py') || !txt.includes('sparse-checkout:') || /^\s*scripts\s*$/m.test(txt);
+  kiem(`${wf}: bao phủ scripts/du_phong_t2.py trong checkout/sparse-checkout`, coDuPhong);
+}
+
 // =========================================================================
 // 2. Kiểm tra cú pháp YAML & trường an toàn của toàn bộ .github/workflows/*.yml
 // =========================================================================

@@ -901,15 +901,23 @@ def gan_tu_sinh(kb, k4, buoc, tim_moc, t_het_de, tong):
         l["t"] = round(min(max(t, t0), max(t0, t1 - 0.4)), 3)
         l["buoc"] = j
         l.pop("khi_noi", None)
-    if thuc_te_ngan(kb):
-        # Chỉ đưa hình nền của bước đầu lên cảnh đề. Các lớp giải vẫn theo lời.
+    co_tu_cuu = bool(spec.get("tu_cuu_t2") or kb.get("tu_cuu_t2"))
+    if thuc_te_ngan(kb) or co_tu_cuu:
+        # Đưa hình của bước đầu lên ngay từ cảnh đề (t = 0) để tuyệt đối không bị t2_trong ở cảnh 2 (de_bai).
         hinh_de = next((l for l in lop if l["buoc"] == 0 and co_hinh_t2([l], can_vat=bat_buoc_vat_the(kb))), None)
         if hinh_de:
             hinh_de["tNhan"] = hinh_de["t"]
             hinh_de["t"] = 0
             hinh_de["hienDeDen"] = t_het_de
     lop.sort(key=lambda l: l["t"])
-    return {"viewBox": "0 0 800 540", "lop": lop, **({"chiLopKichBan": True} if thuc_te_ngan(kb) else {}), **({"mo_ta": str(spec["mo_ta"])[:120]} if spec.get("mo_ta") else {})}, ghi
+    return {
+        "viewBox": "0 0 800 540",
+        "lop": lop,
+        # Khi đã có lớp tu_sinh_svg hợp lệ -> tuyệt đối KHÔNG vẽ chồng sân khấu phụ/mặc định (áp dụng cả THUC_TE & XAC_SUAT)
+        **({"chiLopKichBan": True} if lop else {}),
+        **({"tuCuuT2": True} if co_tu_cuu else {}),
+        **({"mo_ta": str(spec["mo_ta"])[:120]} if spec.get("mo_ta") else {}),
+    }, ghi
 
 
 def tu_sinh_hong(kb, ts, ghi):

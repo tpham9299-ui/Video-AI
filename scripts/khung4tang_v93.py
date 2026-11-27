@@ -54,7 +54,7 @@ def chu_sach(s, toi_da=0, hoa=True):
 
 
 def cat_nhan(x, toi_da, giu_tex=True):
-    """Giữ trọn công thức KaTeX hợp lệ; nếu là văn bản thường hoặc mã TeX lỗi/cụt thì bóc TeX -> Unicode rồi cắt theo biên từ."""
+    """Giữ trọn công thức KaTeX hợp lệ; tự vá lệnh TeX cụt trước khi kiểm; vẫn lỗi thì bóc TeX -> Unicode rồi cắt theo biên từ."""
     s = re.sub(r"\s+", " ", str(x or "")).strip()
     if not s:
         return ""
@@ -62,6 +62,9 @@ def cat_nhan(x, toi_da, giu_tex=True):
         if giu_tex:
             try:
                 import khung4tang_v96 as _v96
+                s = _v96.va_cu_phap_tex(s)
+                if not re.search(r"[\\{}^_$]", s):
+                    return cat_tu(s, toi_da)
                 if _v96.kiem_tra_tex_hop_le(s):
                     return s
             except Exception:   # noqa: BLE001
@@ -77,7 +80,7 @@ def cat_tu(x, toi_da):
     if re.search(r"[\\{}^_$]", x):
         return chu_sach(x, toi_da, hoa=False)
     # v96: cụm "không ⋮ 4" là MỘT ý — không bao giờ cắt còn "tích không" (mất nghĩa) hay "tích ⋮ 4" (ngược nghĩa):
-    # bỏ bớt từ thường đứng ngay trước cụm cho tới khi vừa
+    # bỏ bớt từ thường đứng trước cụm cho tới khi vừa
     m = re.search(r"(?i)không\s*⋮\s*\d+", x)
     if m:
         dau, cum, sau = x[:m.start()].split(), m.group(0), x[m.end():]
@@ -92,9 +95,19 @@ def cat_tu(x, toi_da):
         thu = (ra + " " + w) if ra else w
         if len(thu) > toi_da:
             if not ra:
-                return w
+                ra = w
             break
         ra = thu
+    # Cấm cắt hở ngoặc đơn/nhọn hoặc lệnh \ ở cuối
+    ra = re.sub(r"\\[A-Za-z]*\s*$", "", ra).strip()
+    while ra and (ra.count("(") > ra.count(")") or ra.count("{") > ra.count("}")):
+        idx = max(
+            ra.rfind("(") if ra.count("(") > ra.count(")") else -1,
+            ra.rfind("{") if ra.count("{") > ra.count("}") else -1,
+        )
+        if idx <= 0:
+            break
+        ra = ra[:idx].strip()
     cat = ra.rstrip(" ,.;:·-")
     cat = re.sub(r"(?i)\s+không$", "", cat)   # không để "không" treo cuối (mất vế chia hết)
     return cat or tu[0]
@@ -173,7 +186,7 @@ def moc_cau(kb, buoc, so_lo):
 
 
 def cong_thuc_gon(tex):
-    """Công thức cốt lõi một dòng: dài quá thì giữ 2 vế cuối (vế = phần giữa các dấu '=')."""
+    """Công thức cốt lõi một dòng: dài quá thì giữ 2 vế cuối (vế = phần giữa các dấu '='); không cắt giữa lệnh \\ hay ngoặc."""
     s = re.sub(r"\s+", " ", str(tex or "")).strip().strip("$")
     if len(s) <= DAI_CONG_THUC or re.search(r"[\\{}^_]", s):
         return s
@@ -181,7 +194,7 @@ def cong_thuc_gon(tex):
     while len(ve) > 2:
         ve.pop(0)
     s = " = ".join(ve)
-    return s if len(s) <= DAI_CONG_THUC else ve[-1][:DAI_CONG_THUC]
+    return s if len(s) <= DAI_CONG_THUC else cat_tu(ve[-1], DAI_CONG_THUC)
 
 
 def _cong_thuc_buoc(b):

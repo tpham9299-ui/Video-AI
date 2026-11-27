@@ -1127,7 +1127,7 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       var hinhDe = deCoHinh_(r) ? String(r.de_bai || '') + ' ' + String(r.mo_ta_hinh || '') : '';
       if (kb && typeof kb === 'object') kb.lop = chuanLop_(r.lop) || String(r.lop || '');
       if (kb && laMonThucTe_(r)) kb.mon = 'THUC_TE';
-      var dg = null, lanSua = 0, hetGio = false;
+      var dg = null, lanSua = 0, hetGio = false, daSuaThieuHinh = false, daSuaTexAI = false;
       var maxSua = Number(cauHinh_('SO_LAN_SUA_KICH_BAN')) || 2;
       // v98: Oxyz lớp 12 -> đặc tả hình 3D Lego ở lời gọi riêng có responseSchema (sau khi đã có lời các cảnh)
       if (kb && typeof dungLego_ === 'function' && dungLego_(r) && !laLegoKb_(kb) && conDuGoiGemini_()) {
@@ -1135,41 +1135,53 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       }
       // v99.2: hợp đồng hình của BP0 (san_khau_dich / kich_ban_hinh / nut_that) -> kb để SanKhau.gs + chuanbi.py cùng đọc
       if (kb && typeof apHopDongVaoKb_ === 'function') apHopDongVaoKb_(kb, r);
-      // v99.1: đề thực tế giàu hình ảnh / dạng lạ -> sân khấu tự sinh 2.5D (mã Python sinh SVG, kiểm hộp cát, vá tối đa 1 lần; v99.2: 2 lần khi hợp đồng tu_sinh_svg)
+      // v99.1: đề thực tế giàu hình ảnh / dạng lạ -> sân khấu tự sinh 2.5D (tối đa 1 lần vá khi thiếu hình, rồi tự cứu tất định)
       if (kb && kb.khung4tang && typeof dungTuSinh_ === 'function' && dungTuSinh_(r, kb) && !(kb.khung4tang.tu_sinh || {}).ma && !kb.tu_sinh_da_thu && conDuGoiGemini_()) {
-        try { lapTuSinh_(kb, r, sn); } catch (eTs) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(eTs.message))) { luuNhapKichBan_(r.id, kb); throw eTs; } }
+        var coTsDau = false;
+        try { coTsDau = lapTuSinh_(kb, r, sn, {toiDaVa: 1, mauNgan: true}); } catch (eTs) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(eTs.message))) { luuNhapKichBan_(r.id, kb); throw eTs; } }
+        if (!coTsDau) daSuaThieuHinh = true;
       }
       for (;;) {
         try { boSungBanVeMoDau_(kb, r, sn); }
         catch (eBV) { if (kb && kb.canh) luuNhapKichBan_(r.id, kb); throw eBV; }
         chuanBiKichBan_(kb, r, ctxSua);
-        // v102: đề THUC_TE không khớp 8 khuôn 3D đã được tuSuaKhung4Tang_ chuyển sang tu_sinh_svg -> gọi lapTuSinh_ ngay trong vòng sửa
-        if (kb && kb.khung4tang && typeof dungTuSinh_ === 'function' && dungTuSinh_(r, kb) && !(kb.khung4tang.tu_sinh || {}).ma && !kb.tu_sinh_da_thu && conDuGoiGemini_()) {
+        // v102: đề THUC_TE không khớp 8 khuôn 3D đã được tuSuaKhung4Tang_ chuyển sang tu_sinh_svg -> gọi lapTuSinh_ tối đa 1 lần
+        if (kb && kb.khung4tang && typeof dungTuSinh_ === 'function' && dungTuSinh_(r, kb) && !(kb.khung4tang.tu_sinh || {}).ma && !kb.tu_sinh_da_thu && !daSuaThieuHinh && conDuGoiGemini_()) {
           var coTsVong = false;
-          try { coTsVong = lapTuSinh_(kb, r, sn); } catch (eTsV) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(eTsV.message))) { luuNhapKichBan_(r.id, kb); throw eTsV; } }
+          try { coTsVong = lapTuSinh_(kb, r, sn, {toiDaVa: 0, mauNgan: true}); } catch (eTsV) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(eTsV.message))) { luuNhapKichBan_(r.id, kb); throw eTsV; } }
+          daSuaThieuHinh = true;
           if (coTsVong) chuanBiKichBan_(kb, r, ctxSua);
         }
         dg = danhGiaKichBan_(kb, r.dap_an, r.mon, hinhDe, spham, r.de_bai, r.lop);
-        // v98: thực tế 3D không suy được khuôn (KHUNG4TANG_3D_RONG) -> ưu tiên chuyển sang 2.5D tu_sinh_svg (ve25d) trước, chỉ dùng Lego khi là khối 3D/Oxyz
-        if (dg.nang.some(function (x) { return /^KHUNG4TANG_3D_RONG/.test(String(x)); })) {
-          if (kb && kb.khung4tang && typeof lapTuSinh_ === 'function' && !kb.tu_sinh_da_thu && conDuGoiGemini_()) {
-            kb.san_khau_dich = 'tu_sinh_svg';
-            delete kb.khung4tang.canh_3d_vector;
-            var coTsCuu = false;
-            try { coTsCuu = lapTuSinh_(kb, r, sn); } catch (eTs2) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(eTs2.message))) { luuNhapKichBan_(r.id, kb); throw eTs2; } }
-            if (coTsCuu) continue;
+        // Chống thiếu hình Tầng 2 & chống đốt quota key:
+        //  - Gặp KHUNG4TANG_3D_RONG -> tự chuyển tuyến ngay sang tu_sinh_svg (tuyệt đối không bắt AI sửa 8 khuôn 3D).
+        //  - Với KHUNG4TANG_3D_RONG / t2_trong / hinh_dung_im -> gọi AI sửa tối đa 1 lần (kèm khung mẫu kho_manh_svg < 15 dòng);
+        //    nếu vẫn rỗng/lỗi -> chuyển thẳng sang Lớp 3 tất định tuCuuTang2_ (0 tốn API, KHÔNG vứt BO_KHONG_DAT).
+        var coLoi3DRong = dg.nang.some(function (x) { return /^KHUNG4TANG_3D_RONG/.test(String(x)); });
+        var coLoiT2Trong = dg.nang.some(function (x) { return /^(?:t2_trong|hinh_dung_im)\b/.test(String(x)); });
+        if ((coLoi3DRong || coLoiT2Trong) && kb && kb.khung4tang) {
+          kb.san_khau_dich = 'tu_sinh_svg';
+          delete kb.khung4tang.canh_3d_vector;
+          if (kb.khung4tang.san_khau && kb.khung4tang.san_khau.loai !== 'tu_sinh_svg') delete kb.khung4tang.san_khau;
+          var coTsCuu = false;
+          if (!daSuaThieuHinh && typeof lapTuSinh_ === 'function' && conDuGoiGemini_()) {
+            daSuaThieuHinh = true;
+            kb.tu_sinh_da_thu = false;
+            try { coTsCuu = lapTuSinh_(kb, r, sn, {toiDaVa: 0, mauNgan: true}); } catch (eTs2) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(eTs2.message))) { luuNhapKichBan_(r.id, kb); throw eTs2; } }
           }
-          if (typeof lapLego_ === 'function' && batLego_() && !laLegoKb_(kb) && !kb.lego_da_thu && conDuGoiGemini_()) {
-            var coLego = false;
-            try { coLego = lapLego_(kb, r, sn); } catch (eLg2) { luuNhapKichBan_(r.id, kb); throw eLg2; }
-            if (coLego) continue;
+          if (!coTsCuu && typeof tuCuuTang2_ === 'function') {
+            coTsCuu = tuCuuTang2_(kb, r, coLoi3DRong ? 'KHUNG4TANG_3D_RONG' : (dg.nang.some(function (x) { return /^hinh_dung_im\b/.test(String(x)); }) ? 'hinh_dung_im' : 't2_trong'));
           }
+          if (coTsCuu) continue;
         }
         // Hết lỗi nặng thì đi tiếp ngay sang cửa AI chấm tiêu chí (gộp sửa các lưu ý nhẹ vào cùng 1 vòng nếu AI chấm cần sửa, tiết kiệm 1-2 lượt Gemini).
         if (!dg.nang.length) break;
+        var chiLoiTex = dg.nang.every(function (x) { return /^TEX_/.test(String(x)); });
+        if (chiLoiTex && daSuaTexAI) break;
         if (lanSua >= maxSua) break;
         if (!conDuGoiGemini_()) { hetGio = true; break; }
         var dsLoi = dg.nang.concat(dg.nhe);
+        if (dg.nang.some(function (x) { return /^TEX_/.test(String(x)); })) daSuaTexAI = true;
         nhatKy_('KICH_BAN_SUA', r.id + ' sửa ngay lần ' + (lanSua + 1) + ' (' + dg.nang.length + ' lỗi nặng, ' + dg.nhe.length + ' lỗi nhẹ): ' + dsLoi.map(function (x) { return String(x).split(':')[0]; }).join(', '));
         var kbMoi = null;
         try { kbMoi = suaKichBanBangGemini_(kb, dsLoi, prompt, sn); }
@@ -1285,18 +1297,36 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       // Cổng lọc sớm (Pre-flight Gate) trước khi lưu CO_KICH_BAN (chỉ Khung4Tang ngắn; bỏ qua HINH_PHANG / HINH_KHONG_GIAN / -10P)
       if (typeof congLocSomBP2_ === 'function') {
         var loiPF = congLocSomBP2_(kb, r);
-        if (loiPF.length && conDuGoiGemini_()) {
-          nhatKy_('CONG_LOC_SOM_BP2', r.id + ': chặn trước khi lưu (' + loiPF.slice(0, 3).join('; ').slice(0, 220) + ') -> tự sửa bằng Gemini');
-          var thieuTsPF = loiPF.some(function (x) { return /^t2_trong/.test(String(x)); }) && kb.khung4tang &&
-            (kb.san_khau_dich === 'tu_sinh_svg' || (typeof dungTuSinh_ === 'function' && dungTuSinh_(r, kb)));
-          if (thieuTsPF && typeof lapTuSinh_ === 'function') {
+        var thieuT2PF = loiPF.some(function (x) { return /^(?:t2_trong|KHUNG4TANG_3D_RONG|hinh_dung_im)/.test(String(x)); });
+        if (thieuT2PF && kb.khung4tang) {
+          kb.san_khau_dich = 'tu_sinh_svg';
+          delete kb.khung4tang.canh_3d_vector;
+          if (kb.khung4tang.san_khau && kb.khung4tang.san_khau.loai !== 'tu_sinh_svg') delete kb.khung4tang.san_khau;
+          var daCuuPF = false;
+          if (!daSuaThieuHinh && typeof lapTuSinh_ === 'function' && conDuGoiGemini_()) {
+            daSuaThieuHinh = true;
             kb.tu_sinh_da_thu = false;
-            try { lapTuSinh_(kb, r, sn); } catch (ePfTs) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(ePfTs.message))) { luuNhapKichBan_(r.id, kb); throw ePfTs; } }
-          } else {
-            var kbPF = null;
-            try { kbPF = suaKichBanBangGemini_(kb, loiPF, prompt, sn); } catch (ePfG) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(ePfG.message))) { luuNhapKichBan_(r.id, kb); throw ePfG; } }
-            if (kbPF && Array.isArray(kbPF.canh) && kbPF.canh.length) kb = kbPF;
+            nhatKy_('CONG_LOC_SOM_BP2', r.id + ': thiếu hình T2 -> gọi AI sửa 1 lần duy nhất kèm khung mẫu kho_manh_svg');
+            try { daCuuPF = lapTuSinh_(kb, r, sn, {toiDaVa: 0, mauNgan: true}); } catch (ePfTs) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(ePfTs.message))) { luuNhapKichBan_(r.id, kb); throw ePfTs; } }
           }
+          if (!daCuuPF && typeof tuCuuTang2_ === 'function') {
+            tuCuuTang2_(kb, r, 'CONG_LOC_SOM_BP2');
+          }
+          chuanBiKichBan_(kb, r, ctxSua);
+          loiPF = congLocSomBP2_(kb, r);
+        }
+        var chiLoiTexPF = loiPF.length && loiPF.every(function (x) { return /^TEX_/.test(String(x)); });
+        if (loiPF.length && !(chiLoiTexPF && daSuaTexAI) && conDuGoiGemini_()) {
+          if (loiPF.some(function (x) { return /^TEX_/.test(String(x)); })) daSuaTexAI = true;
+          nhatKy_('CONG_LOC_SOM_BP2', r.id + ': chặn trước khi lưu (' + loiPF.slice(0, 3).join('; ').slice(0, 220) + ') -> tự sửa bằng Gemini');
+          var kbPF = null;
+          try { kbPF = suaKichBanBangGemini_(kb, loiPF, prompt, sn); } catch (ePfG) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(ePfG.message))) { luuNhapKichBan_(r.id, kb); throw ePfG; } }
+          if (kbPF && Array.isArray(kbPF.canh) && kbPF.canh.length) kb = kbPF;
+          chuanBiKichBan_(kb, r, ctxSua);
+          loiPF = congLocSomBP2_(kb, r);
+        }
+        if (loiPF.some(function (x) { return /^(?:t2_trong|KHUNG4TANG_3D_RONG|hinh_dung_im)/.test(String(x)); }) && typeof tuCuuTang2_ === 'function') {
+          tuCuuTang2_(kb, r, 'CONG_LOC_SOM_BP2_CHOT');
           chuanBiKichBan_(kb, r, ctxSua);
           loiPF = congLocSomBP2_(kb, r);
         }
@@ -1389,10 +1419,12 @@ function chuanBiKichBan_(kb, r, ctxSua) {
   });
   if (!laHH && r._banVe && typeof chenBanVe_ === 'function') { sua = sua.concat(chenBanVe_(kb, r._banVe)); kb.ban_ve = r._banVe; }
   // v91 AUTO-FIX: chuẩn hóa lỗi hình thức (TeX, màu, nhãn thừa, tiêu đề, trường hook, đáp số lộ ở hook) + khung4tang / bo_dung
+  if (typeof vaCuPhapTexKb_ === 'function') vaCuPhapTexKb_(kb);
   if (typeof tuSuaHinhThuc_ === 'function') sua = sua.concat(tuSuaHinhThuc_(kb, r) || []);
   if (!laHH && !kb.bo_dung && kb.khung4tang) kb.bo_dung = '3d_vector';   // v99.1: không còn bo_dung = blender
   kb._phien_ban_edit = PHIEN_BAN_EDIT;
   suaDapAn_(kb, r.dap_an);   // sau khi tự sửa (có thể vừa thêm/đổi cảnh) để cảnh đáp án luôn đúng
+  if (typeof vaCuPhapTexKb_ === 'function') vaCuPhapTexKb_(kb);
   if (sua.length) nhatKy_('KICH_BAN_TU_SUA', r.id + ': ' + sua.slice(0, 8).join('; ').slice(0, 450));
 }
 
@@ -3500,40 +3532,86 @@ function vaLego_(kb, r, sn, loi) {
   return dem ? moi : null;
 }
 
+// Lớp 3 dự phòng tất định (0 tốn API): ưu tiên gọi scripts/du_phong_t2.py qua duPhongT2May_; nếu chạy trên Apps Script thuần
+// không có Python thì sinh khung Python kho_manh_svg tối giản chuẩn sandbox để chuanbi.py dựng thẳng.
+function tuCuuTang2_(kb, r, lyDo) {
+  if (!kb || typeof kb !== 'object') return false;
+  r = r || {};
+  if (!kb.khung4tang || typeof kb.khung4tang !== 'object') kb.khung4tang = {};
+  if (!Array.isArray(kb.khung4tang.buoc) || kb.khung4tang.buoc.length < 3) {
+    var dsCanh = Array.isArray(kb.canh) ? kb.canh : [];
+    var nhanMd = ['PHÂN TÍCH ĐỀ', 'THIẾT LẬP', 'TÍNH TOÁN', 'KẾT LUẬN'];
+    var soB = Math.max(3, Math.min(4, dsCanh.length || 3));
+    kb.khung4tang.buoc = [];
+    for (var bi = 0; bi < soB; bi++) {
+      var cc = dsCanh[Math.min(bi, Math.max(0, dsCanh.length - 1))] || {};
+      kb.khung4tang.buoc.push({
+        nhan: nhanMd[bi] || ('BƯỚC ' + (bi + 1)),
+        tieu_de: String(cc.tieu_de_canh || nhanMd[bi] || 'Lời giải').slice(0, 40),
+        khi_noi: String(cc.loi_thoai || '').trim().split(/\s+/).slice(0, 4).join(' '),
+        canh: Math.min(bi + 1, Math.max(1, dsCanh.length)),
+        the: []
+      });
+    }
+  }
+  var kq = null;
+  if (typeof duPhongT2May_ === 'function') {
+    try { kq = duPhongT2May_(kb); } catch (eDp) { kq = null; }
+  }
+  if (!kq || !kq.ok || !kq.tu_sinh || !kq.tu_sinh.ma) {
+    var maMau = typeof mauTuSinhToiGian_ === 'function' ? mauTuSinhToiGian_(kb, r) :
+      'import kho_manh_svg as km\ndef ve():\n    return [{"buoc":0,"svg":km.nguoi_que_gai_dau(210,272,scale=1.24,nhan="Đọc đề"),"hieu_ung":"moc","nhom":"nv"},{"buoc":0,"svg":km.bieu_do_loi_nhuan(585,272,scale=1.26,nhan="Mô hình"),"hieu_ung":"moc","nhom":"mh"},{"buoc":1,"svg":km.nguoi_que_chi_bang(210,272,scale=1.24,nhan="Lập hướng"),"hieu_ung":"no","nhom":"nv"},{"buoc":1,"svg":km.bieu_do_loi_nhuan(585,272,scale=1.26,nhan="Phân tích",mau="la"),"hieu_ung":"ve","nhom":"mh"},{"buoc":2,"svg":km.nguoi_que_hoan_ho(210,272,scale=1.24,nhan="Chốt đáp án"),"hieu_ung":"sang","nhom":"nv"},{"buoc":2,"svg":km.bieu_do_loi_nhuan(585,272,scale=1.26,nhan="Kết quả",mau="ket"),"hieu_ung":"sang","nhom":"mh"}]\n';
+    kq = {ok: true, tu_sinh: {ma: maMau, mo_ta: 'Tự cứu Tầng 2 tất định (kho_manh_svg)', tu_cuu_t2: true}, so_lop: 6, manh: 'kho_manh_svg', tu_cuu_t2: true};
+  }
+  kb.san_khau_dich = 'tu_sinh_svg';
+  delete kb.khung4tang.canh_3d_vector;
+  if (kb.khung4tang.san_khau && kb.khung4tang.san_khau.loai !== 'tu_sinh_svg') delete kb.khung4tang.san_khau;
+  kb.khung4tang.tu_sinh = kq.tu_sinh;
+  kb.khung4tang.tu_sinh.tu_cuu_t2 = true;
+  kb.tu_cuu_t2 = true;
+  kb.tu_sinh_da_thu = true;
+  delete kb.tu_sinh_hong;
+  nhatKy_('TU_CUU_T2', ((r && r.id) || kb.id || '') + ': tu_cuu_t2: true | nguồn=' + String(lyDo || 't2_trong') + ' | mảnh=' + String(kq.manh || '') + ' (' + String(kq.so_lop || 0) + ' lớp, 0 tốn API)');
+  return true;
+}
+
 // v99.1: sân khấu tự sinh 2.5D: xin mã Python (lời gọi riêng, JSON) -> kiểm hộp cát (kiemTuSinhMay_) -> lỗi thì gửi lại ĐÚNG
-// thông báo lỗi để Gemini sửa 1 lần -> vẫn lỗi: bỏ tu_sinh, giữ sân khấu 2D / khuôn 3D cũ. Trả true nếu gắn được.
-function lapTuSinh_(kb, r, sn) {
+// thông báo lỗi để Gemini sửa (opts.toiDaVa giới hạn số lần vá bổ sung, opts.mauNgan bơm khung mẫu kho_manh_svg < 15 dòng). Trả true nếu gắn được.
+function lapTuSinh_(kb, r, sn, opts) {
+  opts = opts || {};
   kb.tu_sinh_da_thu = true;
   var goi = function (p) {
     var kq = goiGemini_(p, 0.35, {cheDo: 'nang'});
     if (typeof kq === 'string') { try { kq = JSON.parse(String(kq).replace(/^```(?:json)?|```$/g, '')); } catch (e) { kq = null; } }
     return kq && typeof kq.ma === 'string' && kq.ma.trim() ? kq : null;
   };
-  var ts = goi(huongDanTuSinh_(kb, r));
+  var mauNganStr = opts.mauNgan && typeof mauTuSinhToiGian_ === 'function'
+    ? '\n\nKHUNG MẪU TỐI GIẢN (< 15 dòng, dùng sẵn kho_manh_svg — điền trúng cấu trúc, KHÔNG tự bịa path dài):\n```python\n' + mauTuSinhToiGian_(kb, r) + '\n```'
+    : '';
+  var ts = goi(huongDanTuSinh_(kb, r) + mauNganStr);
   if (!ts) { nhatKy_('TU_SINH_SVG', ((r && r.id) || '') + ': Gemini không trả mã'); return false; }
   kb.khung4tang.tu_sinh = {ma: ts.ma, mo_ta: String(ts.mo_ta || '').slice(0, 160)};
   var may = typeof kiemTuSinhMay_ === 'function' ? kiemTuSinhMay_ : null;
   var m = null;
   try { m = may ? may(kb) : null; } catch (e1) { m = null; }
-  // v99.2: hợp đồng BP0 san_khau_dich = tu_sinh_svg -> vá tối đa 2 lần (kèm log lỗi từng lần); còn lại 1 lần như v99.1
+  // v99.2: hợp đồng BP0 san_khau_dich = tu_sinh_svg -> mặc định vá tối đa 2 lần; khi gọi từ nhánh cứu KHUNG4TANG_3D_RONG/t2_trong -> opts.toiDaVa giới hạn số lần gọi AI (<= 1 lần sửa).
   var ep = kb.san_khau_dich === 'tu_sinh_svg' || (typeof thucTeNgan_ === 'function' && thucTeNgan_(kb, r));
-  var soVa = ep ? 2 : 1, nhatKyLoi = [];
+  var soVa = typeof opts.toiDaVa === 'number' ? Math.max(0, opts.toiDaVa) : (ep ? 2 : 1), nhatKyLoi = [];
   for (var lanVa = 0; lanVa < soVa && m && !m.ok && conDuGoiGemini_(); lanVa++) {
     nhatKyLoi.push('lần ' + (lanVa + 1) + ': ' + String(m.loi || '').slice(0, 200));
     var maTruoc = kb.khung4tang.tu_sinh.ma;
-    var sua = goi(huongDanTuSinh_(kb, r) + '\n\nMÃ TRƯỚC BỊ MÁY TỪ CHỐI. NHẬT KÝ LỖI:\n' + nhatKyLoi.join('\n') + '\nMÃ TRƯỚC:\n' + String(maTruoc).slice(0, 12000) +
-      '\nSửa đúng lỗi đó, giữ phần còn lại (ưu tiên dùng hàm ve25d có sẵn: nhan() tự tránh nét, chu() đủ cỡ, MAU[...] theo theme).');
+    var sua = goi(huongDanTuSinh_(kb, r) + mauNganStr + '\n\nMÃ TRƯỚC BỊ MÁY TỪ CHỐI. NHẬT KÝ LỖI:\n' + nhatKyLoi.join('\n') + '\nMÃ TRƯỚC:\n' + String(maTruoc).slice(0, 12000) +
+      '\nSửa đúng lỗi đó, giữ phần còn lại (ưu tiên dùng hàm kho_manh_svg hoặc ve25d có sẵn: nhan() tự tránh nét, chu() đủ cỡ, MAU[...] theo theme).');
     if (!sua) break;
     kb.khung4tang.tu_sinh = {ma: sua.ma, mo_ta: String(sua.mo_ta || ts.mo_ta || '').slice(0, 160)};
     try { m = may(kb); } catch (e2) { m = null; }
   }
   if (m && !m.ok) {
-    if (!ep) delete kb.khung4tang.tu_sinh;   // hợp đồng tu_sinh_svg: giữ mã lỗi để chuanbi.py vá tiếp (Gemini, có log lỗi)
+    if (!ep) delete kb.khung4tang.tu_sinh;   // hợp đồng tu_sinh_svg: giữ mã lỗi để chuanbi.py vá tiếp (hoặc tự cứu Lớp 3)
     var lyDoTs = 'mã vẫn lỗi sau ' + soVa + ' lần vá (' + String(m.loi || '').slice(0, 120) + ')';
     if (ep) {
-      // KHÔNG rơi ngầm về sân khấu chữ: ghi cảnh báo rõ (chuanbi.py -> props tuSinhHong -> Mắt thần lỗi cứng tu_sinh_hong -> Auto-Heal / Zalo)
       kb.tu_sinh_hong = lyDoTs;
-      nhatKy_('TU_SINH_HONG', ((r && r.id) || '') + ': hợp đồng tu_sinh_svg nhưng ' + lyDoTs + ' -> cảnh báo, chuanbi.py thử lại hộp cát');
+      nhatKy_('TU_SINH_HONG', ((r && r.id) || '') + ': hợp đồng tu_sinh_svg nhưng ' + lyDoTs + ' -> chuyển lớp tự cứu Tầng 2');
     } else nhatKy_('TU_SINH_SVG', ((r && r.id) || '') + ': ' + lyDoTs + ' -> giữ sân khấu cũ');
     return false;
   }
