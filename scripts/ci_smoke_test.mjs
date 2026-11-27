@@ -259,6 +259,10 @@ const BP_LIMITS = {
   'dung-video.yml': {maxTimeout: 45, camCancel: true, canCallback: true},
   'kiem-tra-video.yml': {maxTimeout: 20, camCancel: true, canCallback: true},
   'dang-video.yml': {maxTimeout: 20, camCancel: true, canCallback: true},
+  'ci-smoke-test.yml': {maxTimeout: 10},
+  'kiem-tra-key.yml': {maxTimeout: 10},
+  'phan-tich-tuan.yml': {maxTimeout: 10},
+  'thu-giong.yml': {maxTimeout: 20},
 };
 
 for (const wf of wfFiles) {
@@ -267,8 +271,7 @@ for (const wf of wfFiles) {
   const coOnJobs = /^on:/m.test(txt) && /^jobs:/m.test(txt);
   kiem(`${wf}: cú pháp YAML sạch (không Tab, có on: & jobs:)`, !coTab && coOnJobs, coTab ? 'chứa ký tự Tab' : !coOnJobs ? 'thiếu on:/jobs:' : '');
 
-  const rule = BP_LIMITS[wf];
-  if (!rule) continue;
+  const rule = BP_LIMITS[wf] || {maxTimeout: 45};
 
   // Tách phần jobs: và kiểm từng job có timeout-minutes hợp lệ
   const jobsPart = txt.split(/^jobs:\s*$/m)[1] || '';
@@ -276,17 +279,16 @@ for (const wf of wfFiles) {
   const timeoutLoi = [];
   for (const jb of jobBlocks) {
     const jName = (/^  ([a-zA-Z0-9_-]+):/m.exec(jb) || [])[1] || 'job';
-    const mTo = /^\s{4}timeout-minutes:\s*(\d+)/m.exec(jb);
+    const mTo = /^ {4}timeout-minutes:[ \t]*([1-9]\d*)[ \t]*(?:#.*)?$/m.exec(jb);
     if (!mTo) timeoutLoi.push(`${jName}: thiếu timeout-minutes`);
     else if (Number(mTo[1]) > rule.maxTimeout) timeoutLoi.push(`${jName}: timeout=${mTo[1]} > ${rule.maxTimeout}`);
   }
   kiem(`${wf}: mọi job có timeout-minutes <= ${rule.maxTimeout}`, jobBlocks.length > 0 && timeoutLoi.length === 0, timeoutLoi.join('; '));
 
   if (rule.camCancel) {
-    const mCancel = /^\s*cancel-in-progress:\s*(.+)$/m.exec(txt);
-    const cancelVal = mCancel ? mCancel[1].trim() : '';
-    const anToan = !mCancel || cancelVal === 'false';
-    kiem(`${wf}: KHÔNG đặt cancel-in-progress: true`, anToan, anToan ? '' : `cancel-in-progress=${cancelVal}`);
+    const cancelVals = [...txt.matchAll(/^ *cancel-in-progress:[ \t]*(.*)$/gm)].map((m) => m[1].split('#')[0].trim());
+    const anToan = cancelVals.every((v) => v === 'false');
+    kiem(`${wf}: KHÔNG đặt cancel-in-progress: true`, anToan, anToan ? '' : `cancel-in-progress=${cancelVals.join(', ')}`);
   }
 
   if (rule.canCallback) {

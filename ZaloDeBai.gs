@@ -156,6 +156,7 @@ function nhanZalo_(e, lanThu) {
     nhoNguoiNhan_(chat);   // thông báo chung của hệ thống sẽ gửi qua bot này cho bạn
     if (/^\/(giup|help)\b/.test(lenh)) { guiZaloToi_(chat, huongDanZalo_()); return tra; }
     if (/^\/(trangthai|hethong)$/.test(lenh)) { guiZaloToi_(chat, nhipBoNao_('xem')); return tra; }
+    if (lenh === '/donsheet') { guiZaloToi_(chat, donSachCauLoiSheet()); return tra; }
     if (/^\/duyetkb\s+/i.test(chu)) { guiZaloToi_(chat, duyetKichBanBoNao_(chu.split(/\s+/)[1])); return tra; }
     if (lenh === '/xaket') { guiZaloToi_(chat, nhipBoNao_('xa')); return tra; }
     if (/^\/(tt|trạng thái)\b/.test(lenh) || lenh === 'tt') { guiZaloToi_(chat, tinhTrangUuTien_()); return tra; }
@@ -212,6 +213,7 @@ function huongDanZalo_() {
     'Lệnh: /tt tiến độ | /key kiểm tra số lượng key Gemini còn xài được | /huy hủy đề vừa gửi | /id mã chat | /token hạn token GitHub | /phongcach tỉ lệ duyệt theo phong cách\n' +
     'Hình học khó: /hinhhoc [phang|khonggian] [10|11|12] [chungminh|tinh] - sáng tác ngay một đề và làm video ưu tiên\n' +
     'Duyệt video: /cho xem video chờ duyệt | /duyet [mã] | /sua [mã] <góp ý> | /bo [mã] | /hay [mã] lưu mẫu vàng | /donvideoloi dọn MP4 đã chấm không đạt vào Thùng rác Drive\n' +
+    '/donsheet lưu trữ bài đã đăng quá 7 ngày và bài lỗi đã dọn MP4 quá 2 ngày.\n' +
     'Duyệt HÀNG LOẠT: mỗi dòng một lệnh trong cùng một tin, hoặc /duyet <mã1> <mã2> <mã3>, hoặc /duyet tatca\n' +
     'Sản phẩm: /sanpham <tên hoặc link> | /xacnhan [mã] <giá bạn bán> | /huysp [mã]';
 }
@@ -236,7 +238,7 @@ function huyUuTien_(chat) {
     if (!ds.length) return 'Không có đề nào của bạn còn hủy được.';
     var r = ds[ds.length - 1];
     try { CacheService.getScriptCache().put('DA_BO_' + r.id, '1', 21600); } catch (eC) {}
-    ghi_(sh, r._row, { trang_thai: 'LOAI', uu_tien: '', ghi_chu: 'Người gửi đã hủy qua Zalo' });
+    ghi_(sh, r._row, { trang_thai: 'LOAI', uu_tien: '', tu_sua_cho: '', ghi_chu: 'Người gửi đã hủy qua Zalo' });
     SpreadsheetApp.flush();
     return '🗑 Đã hủy đề ' + r.id + '. Hệ thống quay lại làm các đề khác.';
   } finally { if (coKhoa) { try { khoa.releaseLock(); } catch (eL) {} } }

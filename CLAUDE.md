@@ -103,6 +103,12 @@ Tên kênh lấy từ `phong_cach.json → thuongHieu.ten` (Story Math), dùng c
 * **Bấm 1-lần `chot.bat` & Kiểm thử Việc 1:** thêm `chot.bat` (chạy `npm run kiem-tra` + `ci_smoke_test.mjs`, chỉ commit/push khi `0 hỏng`) và `scripts/test_viec1_tu_cuu.py` (đưa vào `npm run kiem-tra`).
 * **Khắc phục triệt để lỗi thị giác 3 chủ đề (Việc 2):** khóa độc quyền 1 sân khấu T2 & Outro (`SanKhauTuSinh` tắt lớp tiến trình dự phòng khi có `tu_sinh_svg` hợp lệ, chuyển lớp cùng nhóm nối tiếp 5 khung không đè chữ, phóng +15% giữ lề `>= 48px`); `TangTieuDe` căn `flex-start` (`paddingTop`/`gap >= 14px`) chống đè `Story Math`; `TangTheGiai` khử trùng thẻ cùng vế trái/nghĩa trong bước (`locTheTrungTrongBuoc`); `ThanhDe` tự mở khóa `= ?` ở bước `KẾT LUẬN` (`boSungDoiDapAn`); dọn dấu câu phụ đề (`lamSachPhuDe`), khoảng trắng trước dấu phẩy (`Toan.tsx`), rác tiêu đề Intro (`lamSachTieuDeIntro`), chống cắt cụt nhãn Outro (`chuanNhanTomTat`) và đẩy nhãn góc 3D (`45°`) dọc phân giác cách mọi nhãn/chấm đỉnh `>= 28px` (`src/khonggian/ve.ts`).
 
+* **Việc 3:** BP5 → BP1 quét từ dòng cuối. BP4 và Auto-Heal chỉ lấy bài từ 3 ngày tuổi khi hết bài mới chờ, quỹ key sống ≥ 40% và còn suất trong trần 5 bài/ngày VN.
+* Kho đủ 7 bài `CHO_DANG` thì ngừng BP0–BP3, còn 5 bài thì sản xuất lại. BP4/BP5 tiếp tục chạy. `/trangthai` hiển thị kho và tồn cũ.
+* BP4 đạt vào `CHO_DANG`. Hết lượt Auto-Heal thì đưa MP4 lỗi vào Thùng rác, giữ mã lỗi và dòng đề.
+* `/donsheet` và lịch dọn lưu `DA_DANG` quá 7 ngày theo tháng đăng, lỗi đã dọn MP4 quá 2 ngày vào `LuuTru_Loi`. `LUU_TRU` giữ mã băm chống trùng.
+* Kịch bản trên 8.000 ký tự lưu dưới `VideoAI_KhoKichBan` với con trỏ `DRIVE_JSON:`. Bộ đọc hỗ trợ JSON thô và ID Drive cũ.
+
 ## 5. LỆNH KIỂM TRA NHANH KHI CHẠY LOCAL (WINDOWS)
 
 ```powershell

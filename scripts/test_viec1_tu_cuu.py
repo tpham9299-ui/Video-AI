@@ -177,7 +177,10 @@ def test_bp2_chuyen_tuyen_va_tu_cuu_khung3d_rong():
         Utilities: {sleep: () => {}, formatDate: () => '2026-11-27'},
         Logger: {log: () => {}},
         MimeType: {PLAIN_TEXT: 'text/plain'},
-        DriveApp: {getFileById: () => ({setTrashed: () => {}})},
+        DriveApp: {getFileById: id => ({
+          setTrashed: () => delete driveFiles[id],
+          getBlob: () => ({getDataAsString: () => driveFiles[id]}),
+        })},
         kiemTuSinhMay_: (kb) => {
           try {
             const ra = execFileSync('python', ['-X', 'utf8', path.join(GOC, 'scripts', 'tu_sinh_svg.py'), '-', '--chi-kiem'],
@@ -212,6 +215,7 @@ def test_bp2_chuyen_tuyen_va_tu_cuu_khung3d_rong():
       ctx.SpreadsheetApp = {getActiveSpreadsheet: () => ({getSheetByName: n => n === 'HANG_DOI' ? shHD : n === 'CAU_HINH' ? shCH : null}), flush: () => {}};
       ctx.nhatKy_ = (m, s) => logs.push(m + ': ' + s);
       ctx.thuMucKichBan_ = () => thuMuc;
+      ctx.thuMucKhoKichBan_ = () => ({createFile: (_n, c) => thuMuc.createFile('drive-test-id', c)});
       ctx.conDuGoiGemini_ = () => true;
       ctx.capNhatTb_ = () => {};
       ctx.aiDuyetKichBan_ = () => ({dat: true, phan_tram: 95, van_de: [], nang: [], gop_y: '', chi_tiet: {}});
@@ -255,7 +259,8 @@ def test_bp2_chuyen_tuyen_va_tu_cuu_khung3d_rong():
       ctx.xuLyKichBan_(shHD, bc, Date.now(), false, ['TT-3DRONG']);
       const st = shHD.data[1][COT.indexOf('trang_thai')];
       const gc = shHD.data[1][COT.indexOf('ghi_chu')];
-      const kbSaved = driveFiles['TT-3DRONG.json'] ? JSON.parse(driveFiles['TT-3DRONG.json']) : null;
+      const oKichBan = shHD.data[1][COT.indexOf('file_kich_ban')];
+      const kbSaved = JSON.parse(ctx.docKichBanAnToan_(oKichBan) || 'null');
       console.log(JSON.stringify({
         st, gc, bc, soLanGoiViet, soLanGoiTuSinh, soLanGoiSuaChung,
         san_khau_dich: kbSaved && kbSaved.san_khau_dich,

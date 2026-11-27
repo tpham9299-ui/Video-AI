@@ -194,8 +194,7 @@ function chonVideoDang_(hang, chiXem) {
   // 2) Mỗi ngày đảm bảo đăng riêng 1 Video Dài 10 Phút lên YouTube (độc lập với hạn ngạch & giờ giãn cách video ngắn SO_VIDEO_MOI_NGAY)
   var p = PropertiesService.getScriptProperties();
   var tt = trangThaiDangHomNay_();
-  var ds10p = cho.filter(function (r) { return !thoiDiem_(r.lich_dang) && typeof laVideoDai_ === 'function' && laVideoDai_(r); })
-    .sort(function (a, b) { return lucDuyet_(a) - lucDuyet_(b); });
+  var ds10p = cho.filter(function (r) { return !thoiDiem_(r.lich_dang) && typeof laVideoDai_ === 'function' && laVideoDai_(r); });
   if (ds10p.length && !tt.da_dang_10p && !dangChoConHieuLuc_(hang, tt, '10p')) {
     tt.dang_cho_10p = { id: ds10p[0].id, kieu: '10p', khung: '', ma: '', luc: Date.now() };
     if (!chiXem) p.setProperty('LICH_SU_DANG_NGAY', JSON.stringify(tt));
@@ -204,9 +203,8 @@ function chonVideoDang_(hang, chiXem) {
   // 3) khung giờ chung mỗi ngày cho các video ngắn (mặc định 2 video/ngày vào 11:30 và 19:30)
   var khung = khungDangHienTai_(hang);
   if (!khung || p.getProperty('DANG_KHUNG_CUOI') === khung.ma) return null;
-  // ĐĂNG THEO THỨ TỰ ĐẠT KIỂM DUYỆT / DUYỆT (số tập đánh lúc đăng -> tập tăng dần đúng thứ tự)
-  var ds = cho.filter(function (r) { return !thoiDiem_(r.lich_dang) && !(typeof laVideoDai_ === 'function' && laVideoDai_(r)); })
-    .sort(function (a, b) { return lucDuyet_(a) - lucDuyet_(b); });
+  // Hàng đợi đã được quét từ dòng cuối. Số tập vẫn được gán lúc đăng.
+  var ds = cho.filter(function (r) { return !thoiDiem_(r.lich_dang) && !(typeof laVideoDai_ === 'function' && laVideoDai_(r)); });
   if (!ds.length) return null;
   // Giữ chỗ tạm thời (dang_cho_khung), CHỈ chốt tt.khung & DANG_KHUNG_CUOI khi ketThucDang_ ghi nhận đăng thành công!
   tt.dang_cho_khung = { id: ds[0].id, kieu: 'khung', khung: khung.ten, ma: khung.ma, luc: Date.now() };
@@ -237,7 +235,7 @@ function lamSachBinhLuanGhim_(van, lop) {
 // Tiêu đề, mô tả, thẻ cho bài đăng (lấy từ kịch bản).
 function noiDungDangGoc_(r, tap, td) {
   var kb = {};
-  try { kb = JSON.parse(DriveApp.getFileById(r.file_kich_ban).getBlob().getDataAsString()); } catch (e) {}
+  try { kb = JSON.parse(docKichBanAnToan_(r.file_kich_ban)); } catch (e) {}
   var the = (kb.hashtag || []).map(function (h) { return String(h).replace(/^#+/, '').replace(/\s+/g, ''); }).filter(Boolean);
   (String(r.mon).toUpperCase() === 'HINH_HOC' ? ['hinhhoc', 'toanhoc', 'hoctoan'] : laMonThucTe_(r) ? ['toanthucte', 'toanhoc', 'hoctoan'] : ['xacsuat', 'toanhoc', 'hoctoan']).concat(r.lop ? ['toan' + r.lop] : []).forEach(function (t) { if (the.indexOf(t) < 0) the.push(t); });
   the = the.slice(0, 10);
@@ -303,7 +301,7 @@ function noiDungDangGoc_(r, tap, td) {
 // Tò mò, có con số / vật thật, câu hỏi thách đố; KHÔNG lộ đáp án, KHÔNG giật tít sai sự thật.
 function tieuDeHapDan_(r) {
   var kb = {};
-  try { kb = JSON.parse(DriveApp.getFileById(r.file_kich_ban).getBlob().getDataAsString()); } catch (e) {}
+  try { kb = JSON.parse(docKichBanAnToan_(r.file_kich_ban)); } catch (e) {}
   var prompt = 'Bạn là chuyên gia viết tiêu đề video ngắn (TikTok, YouTube Shorts, Facebook Reels) cho kênh dạy toán tiếng Việt.\n' +
     'Video: lớp ' + (r.lop || '') + ', chủ đề "' + (r.chu_de || kb.chu_de || '') + '".\nĐỀ: ' + String(kb.de_bai || r.de_bai || '').slice(0, 600) +
     '\nCâu móc trong video: ' + String(kb.hook || '').slice(0, 200) + '\nCái bẫy học sinh hay mắc: ' + String(r.bay_thuong_gap || '').slice(0, 200) + '\n' +
@@ -347,7 +345,10 @@ function dangVideo_(sh, r) {
     var lopSo = String(r.lop || '').replace(/[^0-9]/g, '');
     var demYT = -1;
     try { if (lopSo && !tapDaGan) demYT = demBaiLopYouTube_(lopSo); } catch (eDem) { demYT = -1; }
-    var dangPayload = JSON.stringify({ file_id: String(r.file_video), ten: r.id, chuyen_de_10p: laVideoDai_(r), tieu_de: meta.tieu_de, yt_tieu_de: meta.yt_tieu_de, mo_ta: meta.mo_ta, yt_dau: meta.yt_dau, fb_dau: meta.fb_dau, tt_tieu_de: meta.tt_tieu_de, binh_luan_ghim: meta.binh_luan_ghim || '', the: meta.the, nen_tang: can, yt_che_do: chDang_('YOUTUBE_CHE_DO'), quang_cao: meta.quang_cao, co_bia: !!r.anh_bia,
+    var congThuc = sh && r._row ? sh.getRange(r._row, COT.indexOf('file_video') + 1).getFormula() : '';
+    var idVideo = idDriveVideo_(congThuc || r.file_video);
+    if (!idVideo) throw new Error('DRIVE_VIDEO: liên kết MP4 không hợp lệ');
+    var dangPayload = JSON.stringify({ file_id: idVideo, ten: r.id, chuyen_de_10p: laVideoDai_(r), tieu_de: meta.tieu_de, yt_tieu_de: meta.yt_tieu_de, mo_ta: meta.mo_ta, yt_dau: meta.yt_dau, fb_dau: meta.fb_dau, tt_tieu_de: meta.tt_tieu_de, binh_luan_ghim: meta.binh_luan_ghim || '', the: meta.the, nen_tang: can, yt_che_do: chDang_('YOUTUBE_CHE_DO'), quang_cao: meta.quang_cao, co_bia: !!r.anh_bia,
       lop: lopSo, tap_da_gan: tapDaGan, tap_he_thong: lopSo ? daDangLop_(lopSo) : 0, dem_youtube: demYT, yt_apps_script: ytApps });
     var gui = typeof guiWorkflowGitHub_ === 'function' ? guiWorkflowGitHub_({ viec: 'dang', lan_giao: r.lan_giao, id: r.id, dang: dangPayload }, 'dang-video.yml') : { ok: false, loi: 'Thiếu BoPhan2.gs bản mới (guiWorkflowGitHub_)' };
     // v99.1: chỉ đăng qua dang-video.yml (job "dang" trùng lặp trong dung-video.yml đã gỡ -> không còn đường dự phòng 404)
@@ -396,7 +397,7 @@ function dangYouTube_(r, meta, fileId, fileBia, file10pDaDo) {
       }
     } else ghiChuYT.push('video không có ảnh bìa thiết kế');
     var kbYT = {};
-    try { kbYT = JSON.parse(DriveApp.getFileById(r.file_kich_ban).getBlob().getDataAsString()); } catch (eK) {}
+    try { kbYT = JSON.parse(docKichBanAnToan_(r.file_kich_ban)); } catch (eK) {}
     if (typeof themVaoPlaylist_ === 'function') { var pl = themVaoPlaylist_(kbYT, v.id, r); if (pl) ghiChuYT.push(pl); }
     if (meta.binh_luan_ghim) {
       try {

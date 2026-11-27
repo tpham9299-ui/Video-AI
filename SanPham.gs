@@ -260,7 +260,7 @@ function boVideo_(chu, chat) {
 // Xóa hẳn một video: tệp trên Drive (video gốc, bản đã in số tập, ảnh bìa đăng, ảnh bìa, ảnh kiểm tra, kịch bản) + khối kịch bản ở
 // DOC_KICH_BAN + dòng HANG_DOI; mã băm đề được lưu ở LUU_TRU để hệ thống không sinh/tìm lại đúng đề đó.
 function xoaHanVideo_(sh, r, lyDo) {
-  var ids = [r.file_video, r.anh_bia, r.anh_kt, r.file_kich_ban];
+  var ids = [idDriveVideo_(r.file_video), r.anh_bia, r.anh_kt, idTepKichBan_(r.file_kich_ban)];
   try { var kq = JSON.parse(String(r.link_dang || '{}')) || {}; ids.push(kq._file_tap, kq._file_bia); } catch (e) {}
   var tep = 0;
   ids.filter(function (x, i, a) { return x && a.indexOf(x) === i; }).forEach(function (id) {
@@ -284,7 +284,7 @@ function xoaHanVideo_(sh, r, lyDo) {
 function luuNgonKichBan_(r) {
   var kbRaw = '', kbMoTa = '';
   try {
-    kbRaw = DriveApp.getFileById(String(r.file_kich_ban)).getBlob().getDataAsString();
+    kbRaw = docKichBanAnToan_(r.file_kich_ban);
     var kb = JSON.parse(kbRaw);
     kbMoTa = typeof moTaKichBanChoDuyet_ === 'function' ? moTaKichBanChoDuyet_(kb).slice(0, 3000) : '';
   } catch (e) {}
@@ -389,7 +389,7 @@ function traLoiLyDoBo_(chat, chu) {
         var hb = ng.hang_backup;
         var hienCo = docHang_(sh).filter(function (x) { return x.id === id; })[0];
         if (hienCo) {
-          ghi_(sh, hienCo._row, { trang_thai: hb.dap_an ? 'DA_GIAI' : 'MOI', gop_y: noiDung.slice(0, 1000), uu_tien: 1, zalo_chat: chat, duyet: '', so_lan_loi: 0, ghi_chu: 'Sửa lại theo góp ý: ' + noiDung.slice(0, 180) });
+          ghi_(sh, hienCo._row, { trang_thai: hb.dap_an ? 'DA_GIAI' : 'MOI', gop_y: noiDung.slice(0, 1000), uu_tien: 1, zalo_chat: chat, duyet: '', so_lan_loi: 0, tu_sua_cho: '', ghi_chu: 'Sửa lại theo góp ý: ' + noiDung.slice(0, 180) });
         } else {
           var dongMoi = COT.map(function (c) {
             if (c === 'trang_thai') return hb.dap_an ? 'DA_GIAI' : 'MOI';
@@ -509,7 +509,7 @@ function yeuCauSuaVideo_(chat, chu) {
     if (!t.con || t.con.length < 3) return 'Hãy ghi rõ góp ý, ví dụ: /sua ' + r.id + ' cảnh 2 vẽ bông tuyết to hơn, giọng chậm lại ở đáp số';
     if (r.file_kich_ban) {
       try {
-        var kb = JSON.parse(DriveApp.getFileById(r.file_kich_ban).getBlob().getDataAsString());
+        var kb = JSON.parse(docKichBanAnToan_(r.file_kich_ban));
         luuNhapKichBan_(r.id, kb);
       } catch (eKb) {}
     }
@@ -519,7 +519,7 @@ function yeuCauSuaVideo_(chat, chu) {
     });
     try { CacheService.getScriptCache().put('SUA_MOI_' + r.id, String(Date.now()), 3600); } catch (eC) {}
     var ttTiep = r.dap_an ? 'DA_GIAI' : 'MOI';
-    var ghiSua = { trang_thai: ttTiep, file_video: '', anh_kt: '', anh_bia: '', gop_y: t.con.slice(0, 1000), uu_tien: 1, zalo_chat: chat, duyet: '', so_lan_loi: 0, ghi_chu: 'Sửa theo góp ý: ' + t.con.slice(0, 200) };
+    var ghiSua = { trang_thai: ttTiep, file_video: '', anh_kt: '', anh_bia: '', gop_y: t.con.slice(0, 1000), uu_tien: 1, zalo_chat: chat, duyet: '', so_lan_loi: 0, tu_sua_cho: '', ghi_chu: 'Sửa theo góp ý: ' + t.con.slice(0, 200) };
     // v96: "/sua <mã> [chidao: dùng sơ đồ cây] ..." -> đổi ghi chú đạo diễn (sân khấu) cho lần viết lại
     var cdSua = typeof tachChiDao_ === 'function' ? tachChiDao_(t.con) : {chi_dao: ''};
     if (cdSua.chi_dao) ghiSua.chi_dao = cdSua.chi_dao;
