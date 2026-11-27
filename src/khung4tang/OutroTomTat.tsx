@@ -1,11 +1,11 @@
-import {chuyenMuc, KhoaThuongHieu} from './KhoaThuongHieu';
+import {KhoaThuongHieu} from './KhoaThuongHieu';
 // v93 — OUTRO "TÓM TẮT 3 BƯỚC CHIẾN THUẬT" của khung 4 tầng (thay ManKetChuyenNghiep khi có props.khung4tang.tomTat).
 // Trên: đáp án lớn xanh ngọc phát sáng | giữa: mô hình 3D gọn ở trạng thái cuối, máy "thở" chậm |
 // dưới: 3 dòng 1·2·3 (trái tên chiến thuật màu nhấn, phải công thức KaTeX) | nút LƯU LẠI NGAY!.
 // Mỗi vùng có chiều cao cố định, công thức tự co bằng Toan maxWidth -> không dòng nào lấn vào vùng mô hình.
 import React from 'react';
 import {AbsoluteFill, Audio, Sequence, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
-import {FONT, SO_DEU, TEN_THUONG_HIEU} from '../theme';
+import {FONT, SO_DEU} from '../theme';
 import {KieuToan, NapPhongToan, Toan} from '../Toan';
 import {SanKhau3DVector} from '../3d-vector/SanKhau3DVector';
 import {Canh3DV, MAU_3DV} from '../3d-vector/kieu';
@@ -212,7 +212,7 @@ export const OutroTomTat: React.FC<{mon?: string; giuHinh?: boolean; dapAn: stri
       {/* nút lưu */}
       {/* v99.6: dòng gợi tương tác, nằm trọn trong vùng an toàn (đáy <= 1574, trái/phải 130..950); nút nhích lên 16 px nhường chỗ */}
       {BAT_CTA_THONG_MINH_OUTRO ? (
-        <div data-goi-tuong-tac style={{position: 'absolute', left: 0, right: 0, top: yNut + 88, height: 44, display: 'flex', justifyContent: 'center', alignItems: 'center',
+        <div data-goi-tuong-tac style={{position: 'absolute', left: 0, right: 0, top: laHinhHoc ? (khongGian ? 1424 : 1244) : yNut + 88, height: 44, display: 'flex', justifyContent: 'center', alignItems: 'center',
           opacity: kep01(sGoi * 1.6), transform: `translateY(${(1 - sGoi) * 12}px)`}}>
           <div style={{height: 44, maxWidth: 780, padding: '0 20px', borderRadius: 22, display: 'flex', alignItems: 'center', gap: 10, boxSizing: 'border-box', whiteSpace: 'nowrap',
             background: 'linear-gradient(180deg, rgba(34,40,52,0.9), rgba(12,14,20,0.94))', border: '1px solid rgba(56,189,248,0.5)', boxShadow: '0 0 16px rgba(56,189,248,0.18)',
@@ -223,19 +223,13 @@ export const OutroTomTat: React.FC<{mon?: string; giuHinh?: boolean; dapAn: stri
           </div>
         </div>
       ) : (
-      <div data-goi-tuong-tac style={{position: 'absolute', left: 0, right: 0, top: yNut + 98, height: 30, display: 'flex', justifyContent: 'center', alignItems: 'center',
+      <div data-goi-tuong-tac style={{position: 'absolute', left: 0, right: 0, top: laHinhHoc ? (khongGian ? 1428 : 1252) : yNut + 98, height: 30, display: 'flex', justifyContent: 'center', alignItems: 'center',
         opacity: kep01(sGoi * 1.6), transform: `translateY(${(1 - sGoi) * 12}px)`, color: 'rgba(230,237,245,0.82)', fontWeight: 700, fontSize: 24, whiteSpace: 'nowrap'}}>
         Lưu lại ôn nhanh • Bình luận dạng bài bạn muốn giải tiếp!
       </div>
       )}
-      {laHinhHoc ? (
-        <div style={{position: 'absolute', left: 0, right: 0, top: yNut - 8, display: 'flex', justifyContent: 'center', opacity: kep01(sNut * 2)}}>
-          <div style={{height: 76, padding: '0 40px', borderRadius: 38, display: 'flex', alignItems: 'center', background: 'rgba(11,26,52,0.94)',
-            border: `1.5px solid ${NGOC}99`, boxShadow: `0 0 26px ${NGOC}30`, transform: `scale(${0.86 + 0.14 * sNut})`, color: '#E6EDF5', fontWeight: 800, fontSize: 32, letterSpacing: 0.4, whiteSpace: 'nowrap'}}>
-            {`${TEN_THUONG_HIEU} • ${chuyenMuc(monHien)}`}
-          </div>
-        </div>
-      ) : (
+      {/* Hình học đã có tiêu đề Story Math • Chuyên mục ở đầu màn hình -> bỏ dòng lặp phía trên hộp CTA */}
+      {laHinhHoc ? null : (
         <div style={{position: 'absolute', left: 0, right: 0, top: yNut - 16, display: 'flex', justifyContent: 'center', opacity: kep01(sNut * 2)}}>
           <div style={{height: 96, padding: '0 54px', borderRadius: 48, display: 'flex', alignItems: 'center', gap: 16, background: `linear-gradient(180deg, #FF7A7E, ${SAN_HO} 55%, #E2393F)`,
             boxShadow: `0 7px 0 #9E1F25, 0 0 34px rgba(255,90,95,0.45)`, transform: `scale(${(0.6 + 0.4 * sNut) * nhun})`, color: '#fff', fontWeight: 900, fontSize: 38, letterSpacing: 0.8, whiteSpace: 'nowrap'}}>

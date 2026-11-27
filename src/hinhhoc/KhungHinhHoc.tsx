@@ -73,10 +73,54 @@ const SO_CHU_MAP: Record<string, string> = {
 
 const doiSoChu = (tok: string): string => SO_CHU_MAP[tok.toLowerCase()] ?? tok;
 
+// Chuyển phân số 2 tầng (\frac{A}{B}, \dfrac{A}{B}, \tfrac{A}{B}) thành dạng 1 dòng gọn A/B cho ô hẹp (Yêu cầu T1 & chip T3).
+export function phanSoMotDong(raw: string): string {
+  let s = String(raw || '');
+  if (!s || !/\\(?:d|t)?frac\b/.test(s)) return s;
+  const docNgoac = (str: string, pos: number): [string, number] | null => {
+    let i = pos;
+    while (i < str.length && str[i] === ' ') i++;
+    if (str[i] !== '{') return null;
+    let d = 1;
+    let j = i + 1;
+    while (j < str.length && d > 0) {
+      if (str[j] === '\\' && j + 1 < str.length) { j += 2; continue; }
+      if (str[j] === '{') d++;
+      else if (str[j] === '}') d--;
+      j++;
+    }
+    return d === 0 ? [str.slice(i + 1, j - 1).trim(), j] : null;
+  };
+  const coCongTru = (expr: string): boolean => {
+    let d = 0;
+    for (let i = 0; i < expr.length; i++) {
+      const ch = expr[i];
+      if (ch === '\\' && i + 1 < expr.length) { i++; continue; }
+      if (ch === '{') d++;
+      else if (ch === '}') d = Math.max(0, d - 1);
+      else if (d === 0 && i > 0 && (ch === '+' || ch === '-')) return true;
+    }
+    return false;
+  };
+  for (let pass = 0; pass < 4; pass++) {
+    const m = /\\(?:d|t)?frac\b/.exec(s);
+    if (!m) break;
+    const tu = docNgoac(s, m.index + m[0].length);
+    if (!tu) break;
+    const mau = docNgoac(s, tu[1]);
+    if (!mau) break;
+    const tStr = coCongTru(tu[0]) ? `(${tu[0]})` : tu[0];
+    const mStr = coCongTru(mau[0]) ? `(${mau[0]})` : mau[0];
+    s = s.slice(0, m.index) + `${tStr}/${mStr}` + s.slice(mau[1]);
+  }
+  return s;
+}
+
 // Chuẩn hóa 100% chuỗi hình học sang TeX hợp lệ cho KaTeX:
 // - Bỏ chữ thô "căn", "phần", ký hiệu Unicode hình học, macro màu Manim (\mvang -> \textcolor).
 // - Bảo toàn chỉ số S_0, A_1, H_1... để KaTeX dựng chỉ số dưới thay vì in thô.
-export function chuanTexHinhHoc(raw: string): string {
+// - Khi phanSoNgang=true: giữ phân số 1 dòng gọn a/b thay vì dựng phân số 2 tầng \dfrac{a}{b}.
+export function chuanTexHinhHoc(raw: string, phanSoNgang = false): string {
   let s = chuanTex(String(raw || ''));
   if (!s) return '';
   s = s.replace(/\\(mvang|mdo|mngoc|mcam|mla)\s*\{/g, (_, m: string) => `\\textcolor{${MACRO_MAU[m] || MAU_CYAN}}{`);
@@ -85,14 +129,22 @@ export function chuanTexHinhHoc(raw: string): string {
     (_, v: string) => `\\sqrt{${doiSoChu(v)}}`,
   );
   s = s.replace(/√\s*\(([^()]+)\)/g, '\\sqrt{$1}').replace(/√\s*(\d+(?:[.,]\d+)?|[a-zA-Z])/g, '\\sqrt{$1}');
-  s = s.replace(
-    /((?:\d*[a-zA-Z]?\s*\\sqrt\{[^{}]+\})|\d+[a-zA-Z]?|[a-zA-Z](?:_[a-zA-Z0-9]+)?)\s+phần\s+(\d+(?:[.,]\d+)?|không|một|hai|ba|bốn|tư|năm|sáu|bảy|tám|chín|mười|[a-zA-Z]|\\sqrt\{[^{}]+\})/giu,
-    (_, tu: string, mau: string) => `\\dfrac{${tu.replace(/\s+/g, '')}}{${doiSoChu(mau)}}`,
-  );
-  s = s.replace(
-    /(?<![\\A-Za-z0-9}])((?:\d*[a-zA-Z]?\\sqrt\{[^{}]+\})|\d+[a-zA-Z]?|[a-zA-Z]\^?\d?)\s*\/\s*(\d+|\\sqrt\{[^{}]+\})(?![A-Za-z0-9_])/g,
-    '\\dfrac{$1}{$2}',
-  );
+  if (phanSoNgang) {
+    s = s.replace(
+      /((?:\d*[a-zA-Z]?\s*\\sqrt\{[^{}]+\})|\d+[a-zA-Z]?|[a-zA-Z](?:_[a-zA-Z0-9]+)?)\s+phần\s+(\d+(?:[.,]\d+)?|không|một|hai|ba|bốn|tư|năm|sáu|bảy|tám|chín|mười|[a-zA-Z]|\\sqrt\{[^{}]+\})/giu,
+      (_, tu: string, mau: string) => `${tu.replace(/\s+/g, '')}/${doiSoChu(mau)}`,
+    );
+    s = phanSoMotDong(s);
+  } else {
+    s = s.replace(
+      /((?:\d*[a-zA-Z]?\s*\\sqrt\{[^{}]+\})|\d+[a-zA-Z]?|[a-zA-Z](?:_[a-zA-Z0-9]+)?)\s+phần\s+(\d+(?:[.,]\d+)?|không|một|hai|ba|bốn|tư|năm|sáu|bảy|tám|chín|mười|[a-zA-Z]|\\sqrt\{[^{}]+\})/giu,
+      (_, tu: string, mau: string) => `\\dfrac{${tu.replace(/\s+/g, '')}}{${doiSoChu(mau)}}`,
+    );
+    s = s.replace(
+      /(?<![\\A-Za-z0-9}])((?:\d*[a-zA-Z]?\\sqrt\{[^{}]+\})|\d+[a-zA-Z]?|[a-zA-Z]\^?\d?)\s*\/\s*(\d+|\\sqrt\{[^{}]+\})(?![A-Za-z0-9_])/g,
+      '\\dfrac{$1}{$2}',
+    );
+  }
   s = s
     .replace(/⊥/g, ' \\perp ')
     .replace(/∥/g, ' \\parallel ')
@@ -248,8 +300,8 @@ function tachChuTrongManh(frag: string): DoanHien[] {
   return gop;
 }
 
-export function tachVanBanVaToan(raw: string): DoanHien[] {
-  const s = chuanTexHinhHoc(raw);
+export function tachVanBanVaToan(raw: string, phanSoNgang = false): DoanHien[] {
+  const s = chuanTexHinhHoc(raw, phanSoNgang);
   if (!s) return [];
   const ra: DoanHien[] = [];
   let i = 0;
@@ -388,15 +440,16 @@ export const VanBanToan: React.FC<{
   wrap?: boolean;
   align?: 'left' | 'center';
   lineHeight?: number;
-}> = ({raw, size, minSize = 26, color = CHU_SANG, fontWeight = 600, maxWidth, wrap = false, align = 'left', lineHeight = 1.24}) => {
-  const segs = useMemo(() => tachVanBanVaToan(raw), [raw]);
+  phanSoNgang?: boolean;
+}> = ({raw, size, minSize = 26, color = CHU_SANG, fontWeight = 600, maxWidth, wrap = false, align = 'left', lineHeight = 1.24, phanSoNgang = false}) => {
+  const segs = useMemo(() => tachVanBanVaToan(raw, phanSoNgang), [raw, phanSoNgang]);
   const mucHien = useMemo<MucHien[]>(() => (wrap ? taoMucHienWrap(segs) : segs), [segs, wrap]);
   const co = useMemo(() => {
-    const len = uocDoDaiHien(raw);
+    const len = uocDoDaiHien(phanSoNgang ? chuanTexHinhHoc(raw, true) : raw);
     const heSo = wrap ? (fontWeight >= 700 ? 0.56 : 0.52) : fontWeight >= 700 ? 0.62 : 0.57;
     const uoc = wrap ? Math.floor((maxWidth * 1.88) / (len * heSo)) : Math.floor(maxWidth / (len * heSo));
     return Math.max(minSize, Math.min(size, uoc));
-  }, [raw, size, minSize, maxWidth, wrap, fontWeight]);
+  }, [raw, size, minSize, maxWidth, wrap, fontWeight, phanSoNgang]);
 
   if (!segs.length) return null;
   if (segs.length === 1 && segs[0].kieu === 'toan' && !wrap) {
@@ -589,9 +642,9 @@ export function trichGiaThietTuDe(deGoc?: string, deGhim?: DuKienGhim[]): string
   return ds.slice(0, 3);
 }
 
-// Rút gọn chuỗi đẳng thức nhiều vế trong chip T3: chỉ giữ "vế trái = kết quả cuối" (VD "AH = SA·AB/SB = a√6/3" -> "AH = a√6/3")
+// Rút gọn chuỗi đẳng thức nhiều vế trong chip T3: chỉ giữ "vế trái = kết quả cuối" và đưa phân số về 1 dòng gọn a/b (VD "✓ AH = a√6/3")
 export function rutGonChipTex(raw: string): string {
-  const s = chuanTexHinhHoc(raw).replace(/^\\Rightarrow\s*/, '').trim();
+  const s = chuanTexHinhHoc(raw, true).replace(/^\\Rightarrow\s*/, '').trim();
   if (!s) return '';
   const parts: string[] = [];
   let depth = 0;
@@ -613,8 +666,7 @@ export function rutGonChipTex(raw: string): string {
   parts.push(s.slice(start).trim());
   const sach = parts.filter(Boolean);
   const gon = sach.length >= 3 ? `${sach[0]} = ${sach[sach.length - 1]}` : s;
-  // Trong chip 1 dòng cao 46 px, dùng \frac gọn thay vì \dfrac cao để mẫu số không chạm viền pill
-  return gon.replace(/\\dfrac\b/g, '\\frac');
+  return phanSoMotDong(gon);
 }
 
 // Gom tối đa 3 chip kết quả trung gian (VD ✓ BD ⊥ (SAC), ✓ ∠SCA = 45°, ✓ AH = a√6/3) từ các bước đã giảng; không lộ đáp án cuối trước mocCongBo.
@@ -778,7 +830,7 @@ const TheDeBaiGhim: React.FC<{
       <div
         style={{
           height: 32,
-          padding: '0 16px',
+          padding: '0 20px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -815,16 +867,17 @@ const TheDeBaiGhim: React.FC<{
         </span>
       </div>
 
-      {/* Dòng Cho: cỡ 28-30px (sàn cứng >= 26px), tiếng Việt đứng thẳng + KaTeX chuẩn, chống rớt ký tự đơn mồ côi */}
+      {/* Dòng Cho: khóa chiều cao 76px, tăng padding ngang/dọc tạo khoảng thở với viền, phân số 1 dòng gọn */}
       <div
         style={{
-          flex: 1,
-          padding: '3px 16px',
+          height: 76,
+          padding: '8px 20px',
           display: 'flex',
           alignItems: 'center',
-          gap: 10,
-          minHeight: 46,
+          gap: 12,
           overflow: 'hidden',
+          flexShrink: 0,
+          boxSizing: 'border-box',
         }}
       >
         <span
@@ -846,24 +899,24 @@ const TheDeBaiGhim: React.FC<{
         <div style={{flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', overflow: 'hidden'}}>
           <VanBanToan
             raw={choChuoi || 'Đọc giả thiết trên hình'}
-            size={28}
-            minSize={26}
+            size={27}
+            minSize={25}
             color={CHU_SANG}
             fontWeight={600}
-            maxWidth={RONG_ND - 118}
+            maxWidth={RONG_ND - 126}
             wrap
+            phanSoNgang
             align="left"
-            lineHeight={1.16}
+            lineHeight={1.18}
           />
         </div>
       </div>
 
-      {/* Dải nền nhấn ở đáy thẻ cho dòng Yêu cầu: sàn cứng >= 24px (tối đa 2 dòng gọn), luôn giữ gap >= 10px với badge Yêu cầu: */}
+      {/* Dải nền nhấn ở đáy thẻ cho dòng Yêu cầu: khóa cứng chiều cao 74px, phân số 1 dòng gọn a/b không làm phình thẻ khi mở khóa đáp án */}
       <div
         style={{
-          minHeight: 62,
-          maxHeight: 96,
-          padding: '4px 16px 7px 18px',
+          height: 74,
+          padding: '8px 20px 8px 22px',
           display: 'flex',
           alignItems: 'center',
           gap: 12,
@@ -904,13 +957,14 @@ const TheDeBaiGhim: React.FC<{
           }}
         >
           <VanBanToan
-            raw={(kq.noiDungTex || '?').replace(/\\dfrac\b/g, '\\frac')}
-            size={uocDoDaiHien(kq.noiDungTex || '') > 28 ? 25 : 33}
+            raw={phanSoMotDong(kq.noiDungTex || '?')}
+            size={uocDoDaiHien(phanSoMotDong(kq.noiDungTex || '')) > 28 ? 25 : 32}
             minSize={24}
             color={kq.daMoKhoa ? MAU_NGOC : '#FFFFFF'}
             fontWeight={800}
-            maxWidth={RONG_ND - (kq.loai === 'chung_minh' ? 202 : 160) - (kq.daMoKhoa && kq.loai === 'chung_minh' ? 112 : 0)}
+            maxWidth={RONG_ND - (kq.loai === 'chung_minh' ? 210 : 168) - (kq.daMoKhoa && kq.loai === 'chung_minh' ? 112 : 0)}
             wrap
+            phanSoNgang
             align="left"
             lineHeight={1.16}
           />
@@ -1125,19 +1179,25 @@ const TangGiaiHinhHoc: React.FC<{
   const chot = !!(thHien?.chot) && t >= mocCongBo;
   const mauPha = mauPhaBuoc(bHien, iHien, buoc.length, chot);
   const coChip = chips.length > 0;
-  const caoTheToiDa = coChip ? 352 : 412;
+  // Thu gọn chiều cao hộp T3 ~22% (đặc biệt khi chỉ có 1 dòng công thức để không trống ruột), dồn phần dư làm khoảng thở quanh T2 & dải chip
+  const caoThe =
+    dongHien.length <= 1
+      ? coChip ? 248 : 268
+      : dongHien.length === 2
+        ? coChip ? 276 : 298
+        : coChip ? 302 : 324;
   const coMacDinh = chot ? 38 : dongHien.length >= 3 ? 34 : 37;
   const spThe = spring({frame: Math.max(0, Math.round((t - t0Hien) * fps)), fps, config: {damping: 16, stiffness: 150, mass: 0.75}});
   const aThe = t >= t0Hien ? emRa((t - t0Hien) / 0.3) : 1;
 
   return (
-    <div style={{position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', gap: 10, justifyContent: 'flex-start', paddingTop: 2}}>
-      {/* Dải chip kết quả trung gian (✓ ...) nổi rõ ngay mép trên thẻ T3 */}
+    <div style={{position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', gap: 16, justifyContent: 'flex-start', paddingTop: coChip ? 2 : 16}}>
+      {/* Dải chip kết quả trung gian 1 dòng gọn (✓ AH = a√6/3) có khoảng thở rõ với T2 và thẻ T3 */}
       {coChip ? (
         <div
           data-chip-trung-gian="1"
           style={{
-            height: 54,
+            height: 46,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1149,14 +1209,13 @@ const TangGiaiHinhHoc: React.FC<{
           {chips.map((c) => {
             const ac = emRa((t - c.t) / 0.28);
             const maxWChip = Math.floor((RONG_ND - 10 * (chips.length - 1)) / chips.length) - 44;
-            const coPhanSo = /\\(?:d|t)?frac\b/.test(c.tex);
             return (
               <div
                 key={c.id}
                 style={{
-                  height: 52,
+                  height: 44,
                   padding: '0 15px',
-                  borderRadius: 26,
+                  borderRadius: 22,
                   display: 'flex',
                   alignItems: 'center',
                   gap: 7,
@@ -1169,28 +1228,28 @@ const TangGiaiHinhHoc: React.FC<{
                 }}
               >
                 <span style={{color: MAU_NGOC, fontFamily: FONT, fontWeight: 900, fontSize: 22}}>✓</span>
-                <VanBanToan raw={c.tex} size={coPhanSo ? 22 : 24} minSize={20} color={CHU_SANG} fontWeight={700} maxWidth={Math.max(120, maxWChip)} lineHeight={1.08} />
+                <VanBanToan raw={c.tex} size={24} minSize={21} color={CHU_SANG} fontWeight={700} maxWidth={Math.max(120, maxWChip)} phanSoNgang lineHeight={1.1} />
               </div>
             );
           })}
         </div>
       ) : null}
 
-      {/* Thẻ bước giải chính (KHÔNG BAO GIỜ RỖNG) */}
+      {/* Thẻ bước giải chính (KHÔNG BAO GIỜ RỖNG, chiều cao gọn theo số dòng công thức) */}
       <div
         data-the-giai="1"
         {...(chot ? {'data-the-chot': '1'} : {})}
         style={{
           position: 'relative',
-          flex: 1,
-          maxHeight: caoTheToiDa,
+          height: caoThe,
+          flexShrink: 0,
           borderRadius: 20,
           background: chot
             ? 'linear-gradient(180deg, rgba(46,230,168,0.16), rgba(9,24,52,0.93) 48%, rgba(6,16,36,0.96))'
             : 'linear-gradient(180deg, rgba(12,31,64,0.92), rgba(7,19,42,0.95))',
           border: `1px solid ${chot ? `${MAU_NGOC}AA` : `${mauPha}66`}`,
           boxShadow: '0 16px 36px rgba(2,8,20,0.52), inset 0 1px 0 rgba(191,219,254,0.18)',
-          padding: '16px 24px 36px 28px',
+          padding: '12px 24px 30px 28px',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
@@ -1431,11 +1490,19 @@ export const KhungHinhHoc: React.FC<KhungHinhHocProps> = (p) => {
   const mauNhan = p.mauNhan || mauPhaBuoc(buoc[iHien] || null, iHien, buoc.length, chotHien);
   const monHien = p.mon || p.cheDo;
 
+  // Phân bổ khoảng thở thoáng riêng cho Hình học trong SAFE_ZONE_TIKTOK (y: 212..1574):
+  // T1 khóa 182px (212..394) | đệm 18px | T2 642px (412..1054) | đệm 20px | T3 gọn (1074..1466) | T4 (1472..1574)
+  const hT1 = 182;
+  const yT2Goc = bc.t1.y + hT1 + 18; // 412
+  const hT2 = 642; // 412..1054
+  const yT3 = yT2Goc + hT2 + 20; // 1074
+  const hT3 = bc.t4.y - yT3 - 6; // 392
+
   const G = giayIntro(p.mocCau, tong);
   const ra = raIntro(t, G);
   const lechMay = G > 0 && t < G ? {k: 1 + 0.22 * (1 - emRa(t / 1.6)), n: 18 * (1 - emRa(t / 2.2))} : undefined;
-  const dichIntro = G > 0 ? (INTRO_SAN.y - bc.t2.y) * (1 - ra) : 0;
-  const yT2 = bc.t2.y + dichIntro;
+  const dichIntro = G > 0 ? (INTRO_SAN.y - yT2Goc) * (1 - ra) : 0;
+  const yT2 = yT2Goc + dichIntro;
 
   // Visual Beat chu kỳ 4 giây bằng useCurrentFrame / interpolate (zoom nhẹ 1.00 -> 1.032 + nhịp thở ánh sáng)
   const chuKyBeat = Math.max(30, Math.round(4 * fps));
@@ -1521,12 +1588,12 @@ export const KhungHinhHoc: React.FC<KhungHinhHocProps> = (p) => {
         cheDo={cheDoNen}
         t={t}
         mocBuoc={buoc.map((b) => b.t)}
-        tamSanKhau={bc.t2.y + bc.t2.h / 2}
+        tamSanKhau={yT2Goc + hT2 / 2}
         mauNhan={mauNhan}
       />
 
-      {/* TẦNG 1: Thẻ kính HUD Đề bài ghim (tích hợp Header Story Math + Badge TÍNH/CHỨNG MINH + Cho + Yêu cầu) */}
-      <div data-vung="t1" style={{position: 'absolute', left: bc.le, width: bc.rong, top: bc.t1.y, height: bc.t1.h, opacity: ra, zIndex: 4}}>
+      {/* TẦNG 1: Thẻ kính HUD Đề bài ghim khóa cố định chiều cao 182px */}
+      <div data-vung="t1" style={{position: 'absolute', left: bc.le, width: bc.rong, top: bc.t1.y, height: hT1, opacity: ra, zIndex: 4}}>
         <TheDeBaiGhim
           mon={monHien}
           cho={cho}
@@ -1542,7 +1609,7 @@ export const KhungHinhHoc: React.FC<KhungHinhHocProps> = (p) => {
       {/* TẦNG 2: Sân khấu Hình học + Quầng sáng radial dịu + 4 ngoặc góc CAD + Visual Beat */}
       <div
         data-vung="t2"
-        style={{position: 'absolute', left: bc.le, width: bc.rong, top: yT2, height: bc.t2.h, background: 'transparent', overflow: 'visible', zIndex: 2}}
+        style={{position: 'absolute', left: bc.le, width: bc.rong, top: yT2, height: hT2, background: 'transparent', overflow: 'visible', zIndex: 2}}
       >
         {/* Quầng sáng radial dịu phía sau khối hình, thở theo Visual Beat */}
         <div
@@ -1558,7 +1625,7 @@ export const KhungHinhHoc: React.FC<KhungHinhHocProps> = (p) => {
         {/* 4 ngoặc góc kỹ thuật CAD quanh khung sân khấu (hiện mượt sau Intro) */}
         {ra > 0.25 ? (
           <div style={{position: 'absolute', inset: 0, opacity: ra, pointerEvents: 'none'}}>
-            <NgoacGocCAD rong={bc.rong} cao={bc.t2.h} mau={mauNhan} nhip={beat} />
+            <NgoacGocCAD rong={bc.rong} cao={hT2} mau={mauNhan} nhip={beat} />
           </div>
         ) : null}
 
@@ -1566,11 +1633,11 @@ export const KhungHinhHoc: React.FC<KhungHinhHocProps> = (p) => {
         <div style={{position: 'absolute', inset: 0, background: 'transparent', scale: zoomBeat.toFixed(4), transformOrigin: '50% 50%'}}>
           {p.khongGian ? (
             <div style={{position: 'absolute', inset: 0, background: 'transparent'}}>
-              <SanKhauKhongGian kg={p.khongGian} t={t} rong={bc.rong} cao={bc.t2.h} lechMay={lechMay} />
+              <SanKhauKhongGian kg={p.khongGian} t={t} rong={bc.rong} cao={hT2} lechMay={lechMay} />
             </div>
           ) : null}
           {!p.khongGian && !p.children && p.hinh2d ? (
-            <XemTruocHinhPhang2D hinh={p.hinh2d} t={t} rong={bc.rong} cao={bc.t2.h} mauNhan={mauNhan} />
+            <XemTruocHinhPhang2D hinh={p.hinh2d} t={t} rong={bc.rong} cao={hT2} mauNhan={mauNhan} />
           ) : null}
           {p.children ? (
             <div style={{position: 'absolute', inset: 0, background: 'transparent'}}>{p.children}</div>
@@ -1583,8 +1650,8 @@ export const KhungHinhHoc: React.FC<KhungHinhHocProps> = (p) => {
         <KhoaThuongHieu viTri="nuoc" />
       </div>
 
-      {/* TẦNG 3: Dải chip kết quả trung gian + Thẻ bước giải đầy đủ (không bao giờ rỗng) */}
-      <div data-vung="t3" style={{position: 'absolute', left: bc.le, width: bc.rong, top: bc.t3.y, height: bc.t3.h, opacity: ra, zIndex: 3}}>
+      {/* TẦNG 3: Dải chip kết quả trung gian + Thẻ bước giải gọn thoáng (không bao giờ rỗng) */}
+      <div data-vung="t3" style={{position: 'absolute', left: bc.le, width: bc.rong, top: yT3, height: hT3, opacity: ra, zIndex: 3}}>
         <TangGiaiHinhHoc
           buoc={buoc}
           i={i}

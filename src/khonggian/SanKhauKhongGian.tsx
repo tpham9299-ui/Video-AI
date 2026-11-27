@@ -7,6 +7,7 @@ import {FONT} from '../theme';
 import {Toan} from '../Toan';
 import {KhongGianVao} from './kieu';
 import {chuanBi, Lech, MAU_KG, veKhung} from './ve';
+import {mayTai} from './dao_dien';
 import {DO_TO_MAT_PHANG_KG} from '../khung4tang/cauHinhTinhChinh';
 import {CO_NHAN} from './nhan';
 
@@ -34,9 +35,16 @@ const NhanChu: React.FC<{ten: string; x: number; y: number; mau: string; op: num
 
 export const SanKhauKhongGian: React.FC<{kg: KhongGianVao; t: number; rong: number; cao: number; lechMay?: Lech}> = ({kg, t, rong, cao, lechMay}) => {
   const cb = useMemo(() => chuanBi(kg, rong, cao), [kg, rong, cao]);
-  // nhãn trong vùng an toàn bên trong khung CAD (chừa 14 px hai mép ngang, 12 px trên/dưới để không sát viền)
-  const vung = useMemo(() => ({x0: 14, y0: 12, x1: rong - 14, y1: cao - 12}), [rong, cao]);
-  const f = veKhung(kg, cb, t, rong, cao, vung, lechMay);
+  // nhãn lùi sâu vào trong 4 dấu ngoặc góc CAD (chừa 22 px hai mép ngang, 18 px trên/dưới)
+  const vung = useMemo(() => ({x0: 22, y0: 18, x1: rong - 22, y1: cao - 18}), [rong, cao]);
+  // Thu nhẹ 8% tỷ lệ hình chiếu 3D ở góc xoay nhìn đáy (nhin_day) để S, A, B, C, D luôn nằm lùi sâu trong 4 dấu ngoặc góc CAD
+  const mt = mayTai(cb.lich, t, kg.tongGiay);
+  const cheNay = mt.i >= 0 ? cb.lich.moc[mt.i]?.che_do : undefined;
+  const cheTruoc = mt.i > 0 ? cb.lich.moc[mt.i - 1]?.che_do : undefined;
+  const mucNhinDay = cheNay === 'nhin_day' ? (mt.dangXoay ? mt.u : 1) : mt.dangXoay && cheTruoc === 'nhin_day' ? 1 - mt.u : 0;
+  const kNhinDay = 1 - 0.08 * mucNhinDay;
+  const lechHop: Lech | undefined = kNhinDay < 0.999 ? {...lechMay, k: (lechMay?.k ?? 1) * kNhinDay} : lechMay;
+  const f = veKhung(kg, cb, t, rong, cao, vung, lechHop);
   const nhip = 0.78 + 0.22 * Math.sin((t * 2 * Math.PI) / 1.8);
   // v102: đoạn trọng tâm có viền tối phía sau dày hơn nét >= 2,5 px (không blur) để cắt nổi qua mặt phẳng đang tô; cạnh khuất khung chính nét đứt 8 6
   const ve = (lop: 0 | 1) =>
