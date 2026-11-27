@@ -2,10 +2,9 @@ import {TEN_THUONG_HIEU} from './theme';
 import React from 'react';
 import {AbsoluteFill, Img, staticFile} from 'remotion';
 import {FONT_DAM, FONT_TIEU_DE, vienChu} from './theme';
-import {LogoTron} from './ThuongHieu';
+import {LogoTron, Xuc3D} from './dung_chung/TrangTriBia';
 import {Props} from './types';
 import {Video} from './Video';
-import {Xuc3D} from './sankhau/vat';
 import {AN_TOAN} from './khung4tang/vung';
 import {layTheme} from './khung4tang/nen_v99';
 

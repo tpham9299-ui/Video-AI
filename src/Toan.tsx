@@ -2,9 +2,8 @@ import React, {createContext, useContext, useLayoutEffect, useMemo, useRef, useS
 import {continueRender, delayRender} from 'remotion';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
-import {laChuThuong} from './bocuc';
 import {khopNhom, khopVua} from './vua';
-import {bocChuViet, chuanTex, texSangChu} from './chu';
+import {bocChuViet, chuanTex, laChuThuong, texSangChu} from './chu';
 import {napPhong} from './phong';
 import {FONT} from './theme';
 

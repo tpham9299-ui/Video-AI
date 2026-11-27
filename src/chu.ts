@@ -142,6 +142,15 @@ export function chuanTex(s: unknown): string {
 
 export const coTex = (s: string) => /\\[a-zA-Z]+|[_^]\{|[A-Za-z0-9)][_^][A-Za-z0-9]/.test(s);
 
+// Chữ tiếng Việt/từ thường thì hiện như chữ; chỉ chuỗi có dấu hiệu công thức mới đưa qua KaTeX
+// (nếu không, KaTeX sẽ nuốt dấu cách và in nghiêng chữ "Cùng đỏ").
+export function laChuThuong(t: string): boolean {
+  const x = String(t);
+  if (/[\\^_{}]/.test(x)) return false;
+  if (/[À-ỹ]/.test(x)) return true;
+  return /[A-Za-z]{3,}/.test(x);
+}
+
 const SO_TREN: Record<string, string> = {'0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾', n: 'ⁿ', i: 'ⁱ', k: 'ᵏ', x: 'ˣ'};
 const SO_DUOI: Record<string, string> = {'0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉', '+': '₊', '-': '₋', '=': '₌', '(': '₍', ')': '₎', n: 'ₙ', i: 'ᵢ', k: 'ₖ', x: 'ₓ', a: 'ₐ', e: 'ₑ', o: 'ₒ', m: 'ₘ', t: 'ₜ'};
 const doiKyTu = (s: string, bang: Record<string, string>, du: string) => (Array.from(s).every((c) => bang[c]) ? Array.from(s).map((c) => bang[c]).join('') : `${du}(${s})`);

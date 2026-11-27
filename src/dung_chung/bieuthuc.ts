@@ -118,7 +118,6 @@ export function phanTichBieuThuc(nguon: string, theoDo = false): Nut | null {
   try {
     const f = tong();
     if (i !== s.length) return null;
-    // thử tại vài điểm: phải ra số hữu hạn ở ít nhất một điểm
     return f;
   } catch (e) {
     return null;

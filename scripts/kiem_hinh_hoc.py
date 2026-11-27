@@ -131,9 +131,13 @@ def kiem_truoc(kb, props):
             loi.append("LUONG: kịch bản hình học còn '%s'" % k)
     if isinstance(kb.get("cau_chuyen"), dict) and kb["cau_chuyen"].get("phong_canh"):
         loi.append("LUONG: kịch bản hình học còn phong cảnh 3D (cau_chuyen.phong_canh)")
-    for k in ("phongCanh", "nenBlender", "khung4tang", "boCuc"):
+    for k in ("phongCanh", "nenBlender"):
         if props.get(k):
             loi.append("LUONG: props còn '%s'" % k)
+    k4_p = props.get("khung4tang") if isinstance(props.get("khung4tang"), dict) else {}
+    for k in ("canh3dv", "sanKhau", "tuSinh"):
+        if k4_p.get(k):
+            loi.append("LUONG: props.khung4tang còn '%s' của luồng thực tế" % k)
     for i, c in enumerate(canh_k):
         for k in KHOA_3D:
             if k in c:

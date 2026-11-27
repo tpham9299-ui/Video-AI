@@ -1489,6 +1489,102 @@ def hinh_phang_chuan_props(kb, canh_props, fps, props):
     return props["hinhPhang"]
 
 
+LA_HINH_KHONG_GIAN_RE = re.compile(
+    r"hình\s*chóp|lăng\s*trụ|tứ\s*diện|hình\s*hộp|lập\s*phương|hình\s*trụ|hình\s*nón|mặt\s*cầu|khối\s*chóp|"
+    r"mặt\s*phẳng\s*\(|không\s*gian|cạnh\s*bên|mặt\s*bên|\bS\.[A-Z]{2,4}\b",
+    re.I,
+)
+
+
+def khung_hinh_hoc_du_phong(kb, canh_props, fps, tong_toi_da=None):
+    """Vỏ Khung 4 tầng chuẩn (KhungHinhHoc + OutroTomTat) cho bài hình học dựng T2 bằng Manim 3D
+    (hoặc hình phẳng không dùng hinh_phang_chuan): T1 đề ghim, T2 trong suốt ghép lớp Manim, T3 bước giải, Outro tóm tắt."""
+    van = " ".join(str(kb.get(k) or "") for k in ("mon", "de_bai", "tieu_de", "chu_de_ngan", "can_tim"))
+    la_kg_hh = str(kb.get("mon") or "").upper() == "HINH_KHONG_GIAN" or bool(LA_HINH_KHONG_GIAN_RE.search(van))
+    che_do = "HINH_KHONG_GIAN" if la_kg_hh else "HINH_PHANG"
+    tong = canh_props[-1]["batDau"] / float(fps) + canh_props[-1]["soFrame"] / float(fps) if canh_props else 1.0
+    if tong_toi_da is not None:
+        tong = min(tong, float(tong_toi_da))
+    phu_de = "tat" if str(os.environ.get("PHU_DE_4TANG") or "").lower() in ("0", "tat", "off", "false") else "gon"
+
+    de_cho = [str(x).strip() for x in (kb.get("de_cho") or []) if str(x).strip()]
+    can_tim = str(kb.get("can_tim") or "").strip()
+    de_ghim = [{"id": f"c{i}", "nhan": s} for i, s in enumerate(de_cho[:3])]
+    if can_tim:
+        de_ghim.append({"id": "tim", "nhan": can_tim})
+
+    buoc = []
+    t_cong_bo = None
+    for idx, c in enumerate(canh_props):
+        t0 = c["batDau"] / float(fps)
+        if tong_toi_da is not None and t0 >= float(tong_toi_da) - 0.05:
+            break
+        loai = str(c.get("loai") or "").lower()
+        chot = bool(re.search(r"dap_an|ket_qua|ket_luan", loai))
+        if chot and t_cong_bo is None:
+            t_cong_bo = round(t0, 3)
+        dong = [str(x).strip() for x in (c.get("noiDung") or []) if str(x).strip()]
+        tieu_de = str(c.get("tieuDeCanh") or "").strip() or ("Kết luận" if chot else "Phân tích" if idx == 0 else f"Bước {idx + 1}")
+        nhan = "Kết luận" if chot else ("Đề bài" if re.search(r"de_bai|mo_dau", loai) else "Phân tích" if idx <= 1 else "Suy luận")
+        mau = "ngoc" if chot else ("cyan" if idx == 0 else "vang")
+        if dong:
+            the = [{"loai": "cong_thuc", "dong": dong[:4], "t": round(t0, 3), "chot": chot}]
+        else:
+            mo_ta_c = can_tim if re.search(r"de_bai|mo_dau", loai) and can_tim else (
+                (c.get("cau") or [{}])[0].get("text") if c.get("cau") else tieu_de
+            )
+            the = [{"loai": "chu", "noi_dung": cat_nhan(str(mo_ta_c or tieu_de).strip(), 72), "t": round(t0, 3), "chot": chot}]
+        buoc.append({"t": round(t0, 3), "nhan": nhan, "tieu_de": tieu_de, "mau": mau, "the": the})
+
+    if not buoc:
+        buoc = [{"t": 0.0, "nhan": "Phân tích", "tieu_de": str(kb.get("tieu_de") or "Lời giải"), "mau": "cyan",
+                 "the": [{"loai": "chu", "noi_dung": cat_nhan(can_tim or str(kb.get("de_bai") or ""), 72), "t": 0.0, "chot": True}]}]
+    if t_cong_bo is None:
+        t_cong_bo = round(buoc[-1]["t"] if len(buoc) > 1 else tong * 0.8, 3)
+
+    tom_tat = []
+    for d in (kb.get("tom_tat_3_buoc") or []):
+        if isinstance(d, dict) and str(d.get("chien_thuat") or "").strip():
+            tom_tat.append({"chien_thuat": str(d["chien_thuat"]).strip()[:28], "cong_thuc": str(d.get("cong_thuc") or "").strip()})
+    if not tom_tat:
+        for bh in mang_bai_hoc(kb.get("bai_hoc_rut_ra")):
+            s_bh = str(bh or "").strip()
+            if s_bh:
+                tom_tat.append({"chien_thuat": f"Ý {len(tom_tat) + 1}", "cong_thuc": s_bh})
+    if len(tom_tat) < 2:
+        for idx, b in enumerate(buoc):
+            if len(tom_tat) >= 3:
+                break
+            th0 = (b.get("the") or [{}])[0]
+            ct = (th0.get("dong") or [""])[-1] if th0.get("loai") == "cong_thuc" else str(th0.get("noi_dung") or "")
+            tom_tat.append({"chien_thuat": cat_nhan(str(b.get("tieu_de") or f"Bước {idx + 1}"), 24), "cong_thuc": ct})
+
+    tieu_intro = str(kb.get("tieu_de_intro") or kb.get("tieu_de") or kb.get("chu_de_ngan") or ("Hình học không gian" if la_kg_hh else "Hình học phẳng")).strip()
+    hook_intro = str(kb.get("hook") or kb.get("hook_chu") or can_tim or "Nhìn hình giải nhanh!").strip()
+    moc_cau = {
+        "nhan_thi": "HÌNH KHÔNG GIAN" if la_kg_hh else "HÌNH HỌC PHẲNG",
+        "tieu_de": cat_nhan(tieu_intro, 44),
+        "phu_de": f"Lớp {kb.get('lop')}" if kb.get("lop") else TEN_THUONG_HIEU,
+        "cau_hook": cat_nhan(hook_intro, 64),
+        "cta": "Lưu lại ôn nhanh!",
+        "giay": 3.6,
+    }
+    return {
+        "mon": che_do,
+        "cheDo": che_do,
+        "tongFrame": max(30, int(round(tong * fps))),
+        "boCuc": {"anToanTikTok": True, "phuDe": phu_de},
+        "deGhim": de_ghim,
+        "buoc": buoc,
+        "canh3dv": None,
+        "khongGian": None,
+        "mocCau": moc_cau,
+        "tomTat": tom_tat[:3],
+        "tCongBo": t_cong_bo,
+        "cta": "LƯU LẠI NGAY!",
+    }
+
+
 def tu_tu_cau(cau):
     """Mốc từng từ ước lượng từ các câu phụ đề (khi giọng đọc không có WordBoundary): chia đều thời lượng câu theo số từ."""
     tu = []
@@ -2389,24 +2485,6 @@ def doc_phong_cach(tep):
         except Exception as e:
             print("Cảnh báo: không đọc được %s (%s), dùng phong cách mặc định" % (tep, e))
     return pc, co_dinh, th
-
-
-def tao_intro(cfg, thuong_hieu):
-    """Intro thương hiệu "nét vẽ hình học" chèn TRƯỚC cảnh hook (src/Intro.tsx), đọc từ phong_cach.json -> "intro".
-    Trả None khi tắt hoặc kênh chưa có tên. lech = số khung nội dung bị lùi (= soFrame - chuyen, phần chuyển cảnh chồng lên cảnh đầu);
-    tongFrame đã cộng lech, các tầng đọc mốc khung (kiểm duyệt, ảnh kiểm tra, chuyển động, lớp Manim) cộng thêm lech."""
-    if not isinstance(cfg, dict) or cfg.get("bat", True) is not True:
-        return None
-    if not (cfg.get("ten") or (thuong_hieu or {}).get("ten") or (thuong_hieu or {}).get("handle")):
-        return None
-    giay = min(3.5, max(2.0, float(cfg.get("giay") or 2.8)))
-    so = int(round(giay * FPS))
-    chuyen = int(round(min(1.0, max(0.25, float(cfg.get("chuyenGiay") or 0.5))) * FPS))
-    it = {"soFrame": so, "chuyen": chuyen, "lech": so - chuyen}
-    for k in ("ten", "khauHieu", "mauNhan", "mauPhu", "mauNen", "soTuNhan", "dungLogo", "amThanh"):
-        if k in cfg and cfg[k] not in (None, ""):
-            it[k] = cfg[k]
-    return it
 
 
 def chon_nen(public, id_, co_dinh, so_toi_da=3):
@@ -3641,21 +3719,6 @@ def main():
         # Gemini TTS không trả mốc từng từ -> bài hình học dùng edge-tts (WordBoundary) để từng nét vẽ khớp đúng lời đọc
         args.may_giong = "edge"
         print("Luồng hình học thuần: dùng edge-tts có mốc từng từ (WordBoundary) để đồng bộ cứng nét vẽ với giọng đọc")
-    # cảnh ghi "dung_ban_ve": bung lại vật/điểm/vùng từ bản vẽ chung kb.ban_ve (Apps Script nén để kịch bản nhiều cảnh vừa giới hạn gửi)
-    bv = kb.get("ban_ve") if isinstance(kb.get("ban_ve"), dict) else None
-    for idx_c, c in enumerate(kb.get("canh") or []):
-        du = (c.get("minh_hoa") or {}).get("du_lieu") if isinstance(c.get("minh_hoa"), dict) else None
-        for v in (du.get("vat") or []) if isinstance(du, dict) else []:
-            if isinstance(v, dict) and v.get("dung_ban_ve") and bv:
-                for k in ("vat", "diem", "vung", "nhin"):
-                    if k in bv and k not in v:
-                        v[k] = json.loads(json.dumps(bv[k]))
-                if "do" not in v and "do" in bv and isinstance(bv["do"], list):
-                    ds_do = json.loads(json.dumps(bv["do"]))
-                    for idx_d, d_item in enumerate(ds_do):
-                        if isinstance(d_item, dict):
-                            d_item["buoc"] = min(4, 1 + ((idx_d + idx_c) % 4))
-                    v["do"] = ds_do
     if not luong_hh:   # luồng hình học thuần: không bung vật đời sống / bản vẽ cảnh thật
         minh_hoa_thuc_te(kb)
         minh_hoa_chon_nhom(kb)
@@ -4001,11 +4064,11 @@ def main():
     # v89: video đã có cảnh bai_hoc (chốt kiến thức) -> màn kết KHÔNG lặp lại 3 gạch đầu dòng, chỉ đáp án + kênh (ngắn hơn, bớt đuôi im lặng)
     if any(re.search(r"bai_hoc|ket_luan|chot", str(c.get("loai") or "").lower()) for c in (kb.get("canh") or [])):
         bai_hoc = []
-    outro = chon_man_ket(outro, dict(th, ten=TEN_THUONG_HIEU, logo=None, outroTuTao=ngan_4t or th.get("outroTuTao", True)), bai_hoc) if co_man_ket else None
+    outro = chon_man_ket(outro, dict(th, ten=TEN_THUONG_HIEU, logo=None, outroTuTao=True), bai_hoc) if co_man_ket else None
     if outro:
         outro["batDau"] = bat_dau
         bat_dau += outro["soFrame"]
-    intro = tao_intro(pc.get("intro"), thuong_hieu)
+    intro = None
     if not args.props_soi_chu and (kb.get("kieu_video") == "DAI_10_PHUT" or str(kb.get("id", "")).upper().endswith("-10P")):
         if not 540 * FPS <= bat_dau <= 660 * FPS:
             raise ValueError(f"Chuyên đề dài {bat_dau / FPS:.1f}s sau khi tạo giọng, cần 540–660s. Hãy sửa kịch bản trước khi dựng.")
@@ -4018,7 +4081,7 @@ def main():
         "dapAn": v99_k4.chon_dap_an_hien(kb),   # v102: giữ tham số `a` của đáp án (2a/√11, 0,603a) trên ô đáp án + Outro
         "lop": str(kb.get("lop") or ""),
         "fps": FPS,
-        "tongFrame": bat_dau + (intro["lech"] if intro else 0),
+        "tongFrame": bat_dau,
         "hookChu": hook_chu,
         "hookKieu": str(kb.get("hook_kieu") or ""),
         "nhanManh": [str(x) for x in (kb.get("nhan_manh") or [])][:5],
@@ -4112,6 +4175,29 @@ def main():
     }
     if luong_hh:
         hinh_phang_chuan_props(kb, canh_props, FPS, props)
+    # 100% bài hình học (kể cả HINH_KHONG_GIAN dựng T2 bằng Manim 3D) đều đi qua Khung 4 tầng Hình học + OutroTomTat
+    if luong_hh and not props.get("boCuc"):
+        k_outro_hh = vi_tri_outro_4tang(canh_props) if outro and outro.get("loai") == "tu_tao" else None
+        t_outro_hh = canh_props[k_outro_hh]["batDau"] / FPS if k_outro_hh is not None else None
+        k4_hh = khung_hinh_hoc_du_phong(kb, canh_props, FPS, t_outro_hh)
+        props["boCuc"] = "4tang"
+        props["khung4tang"] = k4_hh
+        props["mon"] = k4_hh["mon"]
+        if outro and outro.get("loai") == "tu_tao":
+            ket_cu = outro["batDau"] + outro["soFrame"]
+            if k_outro_hh is not None:
+                bat_o = canh_props[k_outro_hh]["batDau"]
+                het_o = max(het_giong_canh(c, FPS) for c in canh_props[k_outro_hh:])
+                outro["batDau"] = bat_o
+                outro["soFrame"] = max(int(round(3.5 * FPS)), int(round((het_o + 1.0) * FPS)) - bat_o)
+                outro["giongCung"] = True
+            else:
+                het_o = het_giong_canh(canh_props[-1], FPS) if canh_props else 0
+                outro["batDau"] = min(outro["batDau"], int(round((het_o + 0.3) * FPS)))
+                outro["soFrame"] = max(int(round(3.5 * FPS)), outro["soFrame"])
+            props["tongFrame"] += outro["batDau"] + outro["soFrame"] - ket_cu
+        print("Khung 4 tầng Hình học (%s, Manim T2): %d bước, Outro bật %.1fs" % (
+            k4_hh["cheDo"], len(k4_hh["buoc"]), (outro["batDau"] / FPS) if outro else 0.0))
     try:
         props["coverMocGiay"] = chon_moc_cover(props)
     except Exception:

@@ -175,19 +175,8 @@ function kichHoatDungVideo_(r) {
   var gd = chonGiongDoc_(r);
   kb.giong = gd.ten; kb.gioi_tinh_giong = gd.gioi;
   // KỊCH BẢN NHIỀU CẢNH -> NÉN cho vừa giới hạn gửi GitHub (65.535 ký tự):
-  //  (1) cảnh dùng y nguyên bản vẽ cảnh thực tế: chỉ ghi "dung_ban_ve" (máy dựng tự bung lại từ kb.ban_ve)
-  if (kb.ban_ve && Array.isArray(kb.canh)) {
-    var khoaBv = function (v) { return JSON.stringify({ vat: v.vat || [], diem: v.diem || [], vung: v.vung || [], nhin: v.nhin || 'ngang' }); };
-    var mau = khoaBv(kb.ban_ve);
-    kb.canh.forEach(function (c) {
-      var du = c && c.minh_hoa && c.minh_hoa.du_lieu;
-      (du && Array.isArray(du.vat) ? du.vat : []).forEach(function (v) {
-        if (v && v.loai === 'canh_that' && khoaBv(v) === mau) { delete v.vat; delete v.diem; delete v.vung; delete v.nhin; v.dung_ban_ve = true; }
-      });
-    });
-  }
-  //  (2) vẫn dài: bỏ phần không dùng khi dựng, rút gọn mô tả cảnh; nếu kịch bản nhiều khung hình rất lớn (> 58KB)
-  //      thì lưu bản payload gọn lên tệp riêng trên Drive (KHÔNG ghi đè file_kich_ban gốc để giữ nguyên hashtag/thong_tin đăng)
+  // Bỏ phần không dùng khi dựng, rút gọn mô tả cảnh; nếu kịch bản nhiều khung hình rất lớn (> 58KB)
+  // thì lưu bản payload gọn lên tệp riêng trên Drive (KHÔNG ghi đè file_kich_ban gốc để giữ nguyên hashtag/thong_tin đăng)
   ['hook_ung_vien', 'hashtag', 'y_tuong_chinh', 'tu_kiem_tra'].forEach(function (k) { if (JSON.stringify(kb).length > 50000) delete kb[k]; });
   if (JSON.stringify(kb).length > 52000) kb.canh.forEach(function (c) { if (c && c.minh_hoa && c.minh_hoa.mo_ta) c.minh_hoa.mo_ta = String(c.minh_hoa.mo_ta).slice(0, 90); });
   var chuoi = JSON.stringify(kb);

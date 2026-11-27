@@ -3,7 +3,7 @@ import {KhoaThuongHieu} from './KhoaThuongHieu';
 // Mỗi tầng là một vùng cứng (overflow hidden, data-vung cho kiem_duyet.mjs) nên không thành phần nào lấn sang tầng khác.
 import React, {useMemo} from 'react';
 import {AbsoluteFill, Audio, Sequence, spring, staticFile, useCurrentFrame} from 'remotion';
-import {FONT} from '../theme';
+import {FONT, TEN_THUONG_HIEU} from '../theme';
 import {lamSachPhuDe} from '../chu';
 import {KieuToan, NapPhongToan} from '../Toan';
 import {SanKhau3DVector} from '../3d-vector/SanKhau3DVector';
@@ -18,7 +18,6 @@ import {TangTheGiai} from './TangTheGiai';
 import {ThanhDe} from './ThanhDe';
 import {boCuc4Tang, LE_ND, RONG_ND, Vung} from './vung';
 import {BuocGiai, Khung4TangVao, MocCau} from './kieu';
-import {TEN_KENH} from '../ThuongHieu';
 import {docDoiChieu} from './doi_chieu';
 import {DoiChieu2Cot} from './DoiChieu';
 import {giayIntro, INTRO_SAN, IntroMocCau, raIntro} from './IntroMocCau';
@@ -170,7 +169,7 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
     if (p.mocCau || p.khongGian) return p.mocCau || null;
     const tieu = (buoc[0]?.tieu_de || '').replace(/\s+/g, ' ').trim();
     const hook = ((p.cau || [])[0]?.text || '').replace(/\s+/g, ' ').trim();
-    return {nhan_thi: 'BÀI TOÁN HAY', tieu_de: tieu || 'Bài toán hôm nay', phu_de: TEN_KENH, cau_hook: hook || 'Bạn giải được không?', cta: 'Lưu bài để ôn'};
+    return {nhan_thi: 'BÀI TOÁN HAY', tieu_de: tieu || 'Bài toán hôm nay', phu_de: TEN_THUONG_HIEU, cau_hook: hook || 'Bạn giải được không?', cta: 'Lưu bài để ôn'};
   }, [p.mocCau, p.khongGian, p.cau, buoc]);
   const G = giayIntro(mocCau, tong);
   const ra = raIntro(t, G);

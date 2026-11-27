@@ -122,6 +122,21 @@ async function doHopTrongTrang() {
   });
 }
 
+export function chotBaoCao(loi, {boQua = '', soFrame = 0, soHop = 0} = {}) {
+  const ds = [...loi];
+  if (!boQua && soHop === 0) {
+    ds.push({
+      frame: 0,
+      canh: 'Toàn video',
+      loai: 'GIAO_DIEN_CU_KHONG_HOP_LE',
+      phan_tu_1: 'Khung4Tang',
+      phan_tu_2: null,
+      chi_tiet: 'Đo được 0 hộp data-va-cham trong ' + soFrame + ' frame mẫu — giao diện cũ không hợp lệ',
+    });
+  }
+  return {dat: ds.length === 0, loi: ds};
+}
+
 function loiChromium(e) {
   return /(?:browser|target|session|connection) (?:has been |is )?(?:closed|disconnected)|page crash|failed to launch|browser process|ERR_INSUFFICIENT_RESOURCES/i.test(String(e));
 }
@@ -190,11 +205,10 @@ async function chay(tepProps, tepRa) {
       if (tam) await fs.rm(tam, {recursive: true, force: true});
     }
   }
-  const bao = {dat: loi.length === 0, loi};
+  const bao = chotBaoCao(loi, {boQua, soFrame, soHop});
   await fs.mkdir(path.dirname(path.resolve(tepRa)), {recursive: true});
   await fs.writeFile(tepRa, JSON.stringify(bao, null, 2) + '\n');
   if (boQua) console.warn('::warning::Pre-Render Collision Gate: ' + boQua.replace(/\s+/g, ' ').slice(0, 300));
-  else if (!soHop) console.warn('::warning::Pre-Render Collision Gate: các khung mẫu không có phần tử được gắn nhãn.');
   console.log(JSON.stringify(bao));
   console.log('Pre-Render Collision Gate: ' + soFrame + ' frame, ' + soHop + ' hộp chữ, ' + ((performance.now() - batDau) / 1000).toFixed(2) + ' s');
 }

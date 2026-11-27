@@ -1,7 +1,7 @@
 // v93 — KIỂM HỢP LỆ cảnh đối chiếu "Hình động ↔ Đồ thị ngưỡng" (hàm thuần, chạy được trong Node test).
 // Mọi giá trị (hàm số, miền, ngưỡng, điểm tối ưu) được kiểm TRƯỚC khi vẽ; chỉ một chỗ sai -> trả null và tầng 2
 // giữ sân khấu 3D chuẩn (không bao giờ vẽ đồ thị rỗng / NaN). Điểm tối ưu do MÁY tính lại, không tin số AI ghi.
-import {phanTichBieuThuc} from '../sankhau/bieuthuc';
+import {phanTichBieuThuc} from '../dung_chung/bieuthuc';
 import type {DoiChieuVao} from './kieu';
 
 export type HinhDoiChieu = 'tam_bia' | 'mat_cat_tru' | 'tam_giac_luc' | 'thanh';

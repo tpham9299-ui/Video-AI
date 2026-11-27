@@ -7,7 +7,7 @@ import {execFile, execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {promisify} from 'node:util';
 import vm from 'node:vm';
-import {chonFrame, soiHop} from './kiem_tra_de_chu_truoc_render.mjs';
+import {chonFrame, chotBaoCao, soiHop} from './kiem_tra_de_chu_truoc_render.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const CHROME_GATE = 'scripts/kiem_tra_de_chu_truoc_render.mjs';
@@ -48,6 +48,17 @@ await test('TRAN_KHUNG đúng ranh 1072 px và báo hộp bị cắt', () => {
   assert.deepEqual(soiHop([{...a, x: 872}], 16, 'Outro'), []);
   assert.equal(soiHop([{...a, x: 873}], 16, 'Outro')[0].loai, 'TRAN_KHUNG');
   assert.equal(soiHop([{...a, cat: 'Chữ vượt khối cố định ngang 5 px'}], 16, 'Outro')[0].loai, 'TRAN_KHUNG');
+});
+
+await test('0 hộp data-va-cham khi Chromium đã chạy -> dat=false và mã GIAO_DIEN_CU_KHONG_HOP_LE', () => {
+  const kq0 = chotBaoCao([], {boQua: '', soFrame: 5, soHop: 0});
+  assert.equal(kq0.dat, false);
+  assert.equal(kq0.loi.length, 1);
+  assert.equal(kq0.loi[0].loai, 'GIAO_DIEN_CU_KHONG_HOP_LE');
+  const kqBoQua = chotBaoCao([], {boQua: 'Chromium lỗi', soFrame: 0, soHop: 0});
+  assert.deepEqual(kqBoQua, {dat: true, loi: []});
+  const kqOk = chotBaoCao([], {boQua: '', soFrame: 5, soHop: 12});
+  assert.deepEqual(kqOk, {dat: true, loi: []});
 });
 
 await test('Mốc Intro sau thương hiệu và Outro sau khi CTA xuất hiện', () => {

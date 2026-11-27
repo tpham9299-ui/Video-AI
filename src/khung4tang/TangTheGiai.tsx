@@ -6,9 +6,7 @@ import {spring} from 'remotion';
 import {FONT} from '../theme';
 import {texSangChu} from '../chu';
 import {Toan} from '../Toan';
-import {BangBienThien} from '../sankhau/BangBienThien';
-import type {Vat} from '../sankhau/dulieu';
-import type {TrangThai} from '../sankhau/trangthai';
+import {BangBienThien} from './BangBienThien';
 import {emRa, kep01} from '../3d-vector/toan3d';
 import {TheCasio} from './TheCasio';
 import {BuocGiai, TheGiai} from './kieu';
@@ -93,10 +91,9 @@ function NoiDung({th, t0, t, mau, co = 42, coDong}: {th: TheGiai; t0: number; t:
   if (th.loai === 'bang_bien_thien') {
     // v92: tên hàm động theo kịch bản (V(x), S'(r)...) thay vì cứng f'(x), f(x)
     const [ham, bien] = tachHam(th.ham, th.bien);
-    const v = {bbtMoc: th.moc_x, bbtDau: th.dau, bbtGiaTri: th.gia_tri, bbtHam: ham, bbtBien: bien, mocDong: [t0 + 0.6, t0 + 1.4], noiDung: ''} as unknown as Vat;
     return (
       <div style={{transform: 'scale(0.96)', transformOrigin: 'center top', alignSelf: 'center'}}>
-        <BangBienThien v={v} st={{t, ta: t0} as unknown as TrangThai} />
+        <BangBienThien moc={th.moc_x} dau={th.dau} giaTri={th.gia_tri} ham={ham} bien={bien} mocDong={[t0 + 0.6, t0 + 1.4]} t={t} ta={t0} />
       </div>
     );
   }

@@ -1,6 +1,6 @@
 // v96 — Hàm thuần (không React) dùng chung cho sân khấu 2D: pha hiện tại theo thời gian, nhịp chống đứng hình, bố cục từng
 // mô-đun (trả hình chữ nhật để test_san_khau_2d.mjs kiểm vùng an toàn TikTok: không phần tử nào vượt ranh phải 12 % / trên 11 % / đáy 18 %).
-import {phanTichBieuThuc} from '../sankhau/bieuthuc';
+import {phanTichBieuThuc} from '../dung_chung/bieuthuc';
 import type {CotPhanPhoiVao, LuoiBayesVao, Pha2D, RutMauVao, SanKhau2DVao, SoDoCayVao} from './kieu';
 
 export const kep = (x: number, a = 0, b = 1) => Math.min(b, Math.max(a, x));

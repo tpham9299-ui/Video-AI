@@ -2,7 +2,7 @@
 // và bộ giải tham chiếu điểm ("A", "khung.dinh[4]", "cau1.tam", tọa độ). Hàm thuần của (đặc tả, t) -> chạy song song an toàn.
 import {Canh3DV, DoiTuong, HanhDong, Manh, TenMau, ThamChieu, V3, VatChe} from './kieu';
 import {catmullRom, chuan, coSoMatPhang, cong, diemTheoDoDai, emRa, emVaoRa, kep01, nhan, quayQuanhTruc, RAD, tru, trungBinh} from './toan3d';
-import {phanTichBieuThuc} from '../sankhau/bieuthuc';
+import {phanTichBieuThuc} from '../dung_chung/bieuthuc';
 import {dungKhoi} from './khoi';
 
 const THOI_HIEN = 0.6; // giây: vật xuất hiện (vẽ dần)

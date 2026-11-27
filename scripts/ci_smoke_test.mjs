@@ -479,10 +479,11 @@ try {
 console.log('6. Smoke test chuanbi.py --gia-lap, checkpoint dựng video & cảnh báo quỹ key < 20%');
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'video_ai_smoke_'));
 const MAU_SMOKE = [
-  {ten: 'HINH_PHANG (am_vuong_de)', tep: 'mau/hinh_phang/am_vuong_de.json', kiemProps: (p) => p.boCuc === 'hinh_phang' && (p.deBai?.cho?.length || 0) > 0 && (p.hinhPhang?.dong_giai?.length || 0) > 0 && (p.hinhPhang?.tomTat?.length || 0) >= 2 && !!p.hinhPhang?.mocCau},
-  {ten: 'HINH_KHONG_GIAN (vuong_goc_sa)', tep: 'mau/v97/vuong_goc_sa.json', kiemProps: (p) => p.boCuc === '4tang' && !!p.khung4tang?.khongGian && (p.deBai?.cho?.length || 0) > 0 && !/VUÔNG GÓC\s*·\s*VUÔNG GÓC/i.test(String(p.khung4tang?.mocCau?.phu_de || ''))},
-  {ten: 'THUC_TE (kien_bo_hop)', tep: 'mau/v99_2/kien_bo_hop.json', kiemProps: (p) => p.boCuc === '4tang' && !!p.khung4tang?.buoc?.length},
-  {ten: 'XAC_SUAT (gap_nhau_xs)', tep: 'mau/v99_2/gap_nhau_xs.json', kiemProps: (p) => p.boCuc === '4tang' && !!p.khung4tang?.buoc?.length},
+  {ten: 'HINH_PHANG (am_vuong_de)', tep: 'mau/hinh_phang/am_vuong_de.json', kiemProps: (p) => p.boCuc === 'hinh_phang' && !p.intro && (p.deBai?.cho?.length || 0) > 0 && (p.hinhPhang?.dong_giai?.length || 0) > 0 && (p.hinhPhang?.tomTat?.length || 0) >= 2 && !!p.hinhPhang?.mocCau && p.outro?.loai === 'tu_tao'},
+  {ten: 'HINH_KHONG_GIAN Remotion 3D (vuong_goc_sa)', tep: 'mau/v97/vuong_goc_sa.json', kiemProps: (p) => p.boCuc === '4tang' && !p.intro && !!p.khung4tang?.khongGian && (p.deBai?.cho?.length || 0) > 0 && !/VUÔNG GÓC\s*·\s*VUÔNG GÓC/i.test(String(p.khung4tang?.mocCau?.phu_de || '')) && p.outro?.loai === 'tu_tao'},
+  {ten: 'HINH_KHONG_GIAN Manim 3D (kich_ban_hinh_khong_gian)', tep: 'mau/kich_ban_hinh_khong_gian.json', kiemProps: (p) => p.boCuc === '4tang' && !p.intro && p.mon === 'HINH_KHONG_GIAN' && p.khung4tang?.cheDo === 'HINH_KHONG_GIAN' && p.khung4tang?.khongGian === null && (p.khung4tang?.buoc?.length || 0) >= 2 && (p.khung4tang?.tomTat?.length || 0) >= 2 && p.outro?.loai === 'tu_tao'},
+  {ten: 'THUC_TE (kien_bo_hop)', tep: 'mau/v99_2/kien_bo_hop.json', kiemProps: (p) => p.boCuc === '4tang' && !p.intro && !!p.khung4tang?.buoc?.length && p.outro?.loai === 'tu_tao'},
+  {ten: 'XAC_SUAT (gap_nhau_xs)', tep: 'mau/v99_2/gap_nhau_xs.json', kiemProps: (p) => p.boCuc === '4tang' && !p.intro && !!p.khung4tang?.buoc?.length && p.outro?.loai === 'tu_tao'},
 ];
 
 let mauCkPath = '';

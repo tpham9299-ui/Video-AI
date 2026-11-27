@@ -78,7 +78,8 @@ const cauGoiTheoDang = (van: string, khongGian: boolean, loai?: string): string 
 export const OutroTomTat: React.FC<{mon?: string; giuHinh?: boolean; dapAn: string; nhanKetQua?: string; tomTat: DongTomTat[]; canh: Canh3DV | null; sanKhau?: SanKhau2DVao | null; khongGian?: KhongGianVao | null; tCuoi: number; thuongHieu?: string; cta?: string; tuSinh?: TuSinhVao | null; theme?: TenTheme}> = ({mon, giuHinh, dapAn, nhanKetQua, tomTat, canh: canhVao, sanKhau, khongGian, tCuoi, thuongHieu, cta = 'LƯU LẠI NGAY!', tuSinh, theme}) => {
   if (/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(dapAn)) throw new Error('DAP_AN_NGAY: kiểm tra phân số gốc');
   const laHinhHoc = !!khongGian || /HINH_|hình học/i.test(mon || '');
-  const th = khongGian ? THEME_DEEP_SPACE_BLUEPRINT : laHinhHoc ? (layTheme(theme) || THEME_V99.blueprint) : layTheme(theme);
+  const laKhongGian = !!khongGian || /HINH_KHONG_GIAN/i.test(mon || '');
+  const th = laKhongGian ? THEME_DEEP_SPACE_BLUEPRINT : laHinhHoc ? (layTheme(theme) || THEME_V99.blueprint) : layTheme(theme);
   // v95: Outro không làm mờ phần nào của mô hình (bỏ nhấn mạnh 30 %) -> mọi nhãn kích thước sáng rõ
   const canh = React.useMemo(() => (canhVao ? {...canhVao, buoc: canhVao.buoc.map((b) => ({...b, nhanManh: []}))} : null), [canhVao]);
   const f = useCurrentFrame();
@@ -109,14 +110,14 @@ export const OutroTomTat: React.FC<{mon?: string; giuHinh?: boolean; dapAn: stri
   const cachDong = laHinhPhangOutro ? 22 : V.dong.cach;
   const yNut = laHinhPhangOutro ? 1368 : khongGian ? 1420 : V.nut.y;
   const caoSan = coNhanLuu ? Math.min(V.san.h, yDong - 46 - KHOANG_HO - V.san.y) : V.san.h;
-  const monHien = khongGian ? 'HINH_KHONG_GIAN' : mon;
+  const monHien = laKhongGian ? 'HINH_KHONG_GIAN' : mon;
   // v102: vào Outro nối liền Khung4Tang (khung cuối còn 35 % độ đậm: 1 - 0,65 * thoat) -> không còn nháy nền đen 1-2 khung
   return (
-    <AbsoluteFill data-vung="outro" style={{fontFamily: FONT, background: laHinhHoc ? (khongGian ? '#050C1B' : '#081A3A') : NEN, opacity: 0.35 + 0.65 * kep01(f / 6), ...SO_DEU}}>
+    <AbsoluteFill data-vung="outro" style={{fontFamily: FONT, background: laHinhHoc ? (laKhongGian ? '#050C1B' : '#081A3A') : NEN, opacity: 0.35 + 0.65 * kep01(f / 6), ...SO_DEU}}>
       <KieuToan />
       <NapPhongToan />
       {/* v99.1: Outro dùng cùng nền khí quyển với phần giải (đứng yên, không vệt quét) */}
-      {th ? <NenKhiQuyen th={th} t={tCuoi + t} mocBuoc={[]} tamSanKhau={V.san.y + V.san.h / 2} mauNhan={NGOC} phoiCanh3D={!!khongGian} />
+      {th ? <NenKhiQuyen th={th} t={tCuoi + t} mocBuoc={[]} tamSanKhau={V.san.y + V.san.h / 2} mauNhan={NGOC} phoiCanh3D={laKhongGian} />
         : <NenTramToanHoc t={tCuoi + t} mauNhan={khongGian ? MAU_3DV.ngoc : '#FBBF24'} tamSanKhau={V.san.y + V.san.h / 2} kieu={khongGian ? 'v95' : 'v981'} />}
       {/* v96: nội dung trong khung 0..950 (vùng an toàn TikTok: phải 12 %, trên 11 %, đáy 18 %) */}
       <div style={{position: 'absolute', left: LE_ND_V93, top: 0, width: RONG_ND_V93, height: '100%'}}>

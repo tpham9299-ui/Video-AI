@@ -216,8 +216,8 @@ jobs:
               kb["mon"] = "HINH_HOC"
               with open("kich_ban.json", "w", encoding="utf8") as f:
                   json.dump(kb, f, ensure_ascii=False)
-          # v99.1: luồng thực tế & xác suất LUÔN dựng bằng Khung 4 tầng (Remotion); đường dựng Blender đã gỡ hoàn toàn.
-          if hh and ("khung4tang" in kb or "bo_dung" in kb):   # khóa luồng hình học thuần: gỡ mọi lớp 3D Vector
+          # 100% cả 4 mảng đi qua duy nhất Khung 4 tầng (src/khung4tang/ + KhungHinhHoc + OutroTomTat).
+          if hh and ("khung4tang" in kb or "bo_dung" in kb):   # khóa luồng hình học thuần: gỡ mọi lớp 3D Vector của thực tế
               kb.pop("khung4tang", None); kb.pop("bo_dung", None)
               with open("kich_ban.json", "w", encoding="utf8") as f:
                   json.dump(kb, f, ensure_ascii=False)
@@ -225,9 +225,9 @@ jobs:
           v3d = not hh and isinstance(k4, dict) and isinstance(k4.get("buoc"), list) and len(k4["buoc"]) > 0
           dai = kb.get("kieu_video") == "DAI_10_PHUT" or str(kb.get("id", "")).upper().endswith("-10P")
           if not hh and not v3d and not dai:
-              raise SystemExit("::error::v99.1: bài thực tế / xác suất bắt buộc có khung4tang (đường dựng Blender cũ đã gỡ)")
-          print("Luồng dựng:", "hinh_hoc_thuan (Manim)" if hh else
-                ("thuc_te_xac_suat - Khung 4 tầng (Remotion)" if v3d else "video 10 phút - giao diện cảnh (Remotion)"))
+              raise SystemExit("::error::Bài thực tế / xác suất bắt buộc có khung4tang")
+          print("Luồng dựng:", "hinh_hoc_thuan - Khung 4 tầng Hình học (Remotion/Manim)" if hh else
+                "thuc_te_xac_suat - Khung 4 tầng (Remotion)")
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
               print(f"hh={int(hh)}", file=f)
               print(f"v3d={int(v3d)}", file=f)
@@ -395,11 +395,11 @@ jobs:
         if: steps.kb.outputs.hh == '1'
         run: |
           mkdir -p out /tmp/manim_tex_cache
-          # v94: kịch bản có hinh_phang_chuan (props.boCuc = hinh_phang) -> động cơ chuẩn 3 lớp (tọa độ do giai_hinh_phang.py tính);
-          # còn lại (hình không gian / kịch bản cũ) -> manim_hinh.py như trước
+          # Hình phẳng (boCuc=hinh_phang) -> HinhPhangChuan.py; Hình không gian có khongGian (Remotion SVG) -> không dựng Manim;
+          # Hình không gian Manim 3D (boCuc=4tang, khongGian=null) -> vẫn dựng lớp Manim T2 trên vỏ KhungHinhHoc 4 tầng.
           BO_CUC=$(python3 -c "import json;print(json.load(open('public/props.json',encoding='utf8')).get('boCuc') or '')")
-          # v97: hình không gian chuẩn -> Remotion vẽ cả hình (nét khuất giải tích từng khung) -> không có lớp Manim (manim=0)
-          if [ "$BO_CUC" = "4tang" ]; then echo "Hình không gian v97: không dựng Manim"; exit 0; fi
+          CO_KG_SVG=$(python3 -c "import json;p=json.load(open('public/props.json',encoding='utf8'));print('1' if p.get('boCuc')=='4tang' and (p.get('khung4tang') or {}).get('khongGian') else '0')")
+          if [ "$CO_KG_SVG" = "1" ]; then echo "Hình không gian Remotion SVG: không dựng Manim"; exit 0; fi
           ID=$(python3 -c "import json;print(json.load(open('public/props.json',encoding='utf8'))['id'])")
           if [ -s "out/${ID}_manim.mov" ] && python3 scripts/chuanbi.py --checkpoint-kiem manim --id "$ID" --kich-ban kich_ban.json --tep "out/${ID}_manim.mov"; then
             echo "Checkpoint Manim hợp lệ (out/${ID}/checkpoint.json) -> bỏ qua render lại Manim"
@@ -538,11 +538,11 @@ jobs:
 
       - name: Kiểm duyệt không đạt - báo về Apps Script để tự sửa kịch bản
         id: bao_sua
-        if: always() && env.APPS_SCRIPT_URL != '' && env.ID_VIDEO != '' && (steps.soi_chu.outputs.chan == 'true' || steps.kd.outputs.chan == 'true' || ((steps.bo_dung_3d.outcome == 'failure' || steps.kich_ban_canh.outcome == 'failure') && hashFiles('out/loi_mo_hinh.json') != ''))
+        if: always() && env.APPS_SCRIPT_URL != '' && env.ID_VIDEO != '' && (steps.soi_chu.outputs.chan == 'true' || steps.kd.outputs.chan == 'true')
         run: |
           python3 - <<'PY'
           import json, os
-          path = 'out/loi_mo_hinh.json' if os.path.isfile('out/loi_mo_hinh.json') else 'out/kiem_duyet.json'
+          path = 'out/kiem_duyet.json'
           gate_path = 'out/pre_render/bao_cao.json'
           gate = json.load(open(gate_path, encoding='utf8')) if os.path.isfile(gate_path) else {}
           if gate.get('dat') is False:

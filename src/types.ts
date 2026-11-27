@@ -126,6 +126,7 @@ export type PhongCanh = {
 
 export type Props = {
   mon?: string;
+  luong?: string;
   kieu_video?: string;
   // v90: bố cục 4 tầng + sân khấu 3D Vector (chuanbi.py sẽ sinh ở giai đoạn sau); không có = đường dựng cũ
   boCuc?: string;

@@ -3,7 +3,7 @@
 // (hiện/ẩn/nhấn mạnh/góc máy/hành động). Mốc pha: lấy `pha[i].t` (chuanbi.py đổi từ khi_noi) hoặc trải theo mốc các bước
 // của khung 4 tầng -> mọi bước giải đều có hình thay đổi, không bao giờ đứng im.
 // Đầu ra là đặc tả thô snake_case (cùng schema `canh_3d_vector`) để đi tiếp qua chuanHoaCanh3DV như 10 mảnh tự do.
-import {phanTichBieuThuc} from '../../sankhau/bieuthuc';
+import {phanTichBieuThuc} from '../../dung_chung/bieuthuc';
 
 type R = Record<string, unknown>;
 type V = [number, number, number];
