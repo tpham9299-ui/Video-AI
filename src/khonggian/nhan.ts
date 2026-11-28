@@ -68,7 +68,7 @@ export function datNhanKG(ds: DiemNhan[], doan: DoanCan[], cham: {x: number; y: 
       if (rong > 2.2) for (const l of [-0.78, 0.78]) goc.push({g: g + l, phat: k * 6 + 4.5 + Math.abs(Math.atan2(Math.sin(g + l - ra), Math.cos(g + l - ra))) * 2.2});
     });
     let tot: {x: number; y: number; diem: number} | null = null;
-    for (const kc of [1, 1.35, 1.8, 2.4]) {
+    for (const kc of [1, 1.35, 1.8, 2.4, 3.0]) {
       for (const c of goc) {
         const ux = Math.cos(c.g), uy = Math.sin(c.g);
         // khoảng từ tâm điểm tới tâm hộp theo hướng (u): đủ để hộp không chạm chấm điểm (điểm phụ như H đẩy thêm 12 px ra ngoài cạnh)
@@ -78,7 +78,9 @@ export function datNhanKG(ds: DiemNhan[], doan: DoanCan[], cham: {x: number; y: 
         const b = hop(x, y, w, h);
         let diem = c.phat + (kc - 1) * 9;
         if (b.x0 < vung.x0 || b.x1 > vung.x1 || b.y0 < vung.y0 || b.y1 > vung.y1) diem += 400;
-        for (const o of da) if (chongHop(b, o.b) > 0) diem += 300 + chongHop(b, o.b) / 10;
+        // T7 kiểm toán phiên 3: nhãn cách nhãn tối thiểu 6 px (trước chỉ phạt khi chồng hẳn -> N/P/K/D dính chùm khi ép mép mặt)
+        const bGian = {x0: b.x0 - 6, y0: b.y0 - 6, x1: b.x1 + 6, y1: b.y1 + 6};
+        for (const o of da) if (chongHop(bGian, o.b) > 0) diem += 300 + chongHop(bGian, o.b) / 10;
         for (const d of doan) if (doanCatHop(d, b, 2)) diem += d.a === p.ten || d.b === p.ten ? 60 : 45;
         for (const q of cham) {
           const qx = Math.max(b.x0, Math.min(q.x, b.x1)), qy = Math.max(b.y0, Math.min(q.y, b.y1));

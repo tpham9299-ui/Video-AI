@@ -335,10 +335,11 @@ def dat_nhan(P, C, doan, tron_ve, ds_nhan, cung_goc=(), tam_chinh=None, vung=VUN
                 u, v = tru(P[a], p), tru(P[b], p)
                 cam.append((u, v))
         tot, tot_c = None, 1e18
-        for h in huong:
-            c = cong(p, nhan(h, KC_NHAN))
+        # T13 kiểm toán phiên 3: thêm vòng đẩy xa 1,35x (phạt nhẹ) cho điểm "chật" như I kẹp giữa ED và AI
+        for h, kx in [(h, kx) for kx in (1.0, 1.35) for h in huong]:
+            c = cong(p, nhan(h, KC_NHAN * kx))
             hop = _hop_nhan(c, t)
-            chi = 0.35 * (1 - (h[0] * ra[0] + h[1] * ra[1]))
+            chi = 0.35 * (1 - (h[0] * ra[0] + h[1] * ra[1])) + (kx - 1.0) * 0.9
             for a, b in ve_doan:
                 d = _kc_doan(c, a, b)
                 if d < 0.30:

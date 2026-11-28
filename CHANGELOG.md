@@ -633,3 +633,8 @@
 ## v102.1 — Tái cấu trúc BP2 bền vững (28/11)
 - Sự cố: 0 video sang BP3, quỹ key < 20%. Gốc: `tinhDapUng_` đòi MỌI tiêu chí >= 8 + bắt buộc >= 7 (quy_tac_hoc/ke_chuyen bắt buộc), `doi_chieu_canh` trượt khi có bất kỳ góp ý; `taoVatXacSuatTheoDe_` mặc định `hop_bi`; "Sân khấu gồm ..." nối lặp; `maxLoiPF/maxLoiHH/maxLoiKB` + `xuLyLoiHang_` cho lặp tới MAX_LAN_LOI=3 run; `CAM_MAT_MOC` và tia "Ax" là lỗi cứng.
 - Sửa: cửa cứng/mềm (`tinhDapUngKb_`, `quyetDinhKichBanBP2_`, `lech_ban_chat`), AI chấm 1 lần, trần sửa 1 mọi mảng, vệ sinh tĩnh, `thu_lai` bắt buộc ở schema, minh họa trung tính, hạ cánh mềm camera, tia "Ax", cầu dao BP2 + `/mobp2`. Cập nhật test camera cũ (`test_v97_gs`, `test_v98_gs`, `test_dong_bo_camera`).
+
+## Kiểm toán thị giác phiên 3 (28/11)
+- 4 mẫu (kien_bo_hop, gap_nhau_xs, am_vuong_de, giao_diem_mnp) chụp lưới + bìa, vá 5 lỗi nghiêm trọng (defaultProps "4 dây cáp" lẫn vào hình phẳng; bìa: tiêu đề đè huy hiệu, lộ T3, trang trí XS đè chữ; phụ đề đè ô ĐỀ lúc chuyển Intro) và 13 lỗi trung bình (dấu nước, ngắt phụ đề, T3 sát phụ đề, bóng Intro, T1 hình học, camera ép mép, CTA, dấu phẩy thập phân, safe zone bìa, điểm lơ lửng Intro, khung Cửa 2, nhãn Manim).
+- Lưu ý: `ve25d.py` chạy trong hộp cát tu_sinh_svg → KHÔNG import thêm module (từng làm `TS_LOI_CHAY` rơi về sân khấu dự phòng).
+

@@ -483,6 +483,15 @@ def tach_cau(text):
     return [c.strip() for c in re.split(r"(?<=[.!?…])\s+", text) if c.strip()]
 
 
+# Cặp từ ghép Toán không tách giữa 2 đoạn phụ đề (khớp TU_GHEP_PD ở src/chu.ts)
+TU_GHEP_PHU_DE = {
+    "trung điểm", "giao tuyến", "giao điểm", "mặt phẳng", "tam giác", "tứ giác", "hình chóp", "hình hộp", "hình vuông", "hình chữ", "chữ nhật",
+    "bình hành", "đường thẳng", "đường tròn", "đường kính", "đường cao", "xác suất", "nội tiếp", "vuông góc", "song song", "phần bù", "biến cố",
+    "số cách", "đáp án", "kết quả", "khoảng cách", "cạnh đáy", "mặt đáy", "diện tích", "thể tích", "lần lượt", "bất kỳ", "đồng dạng",
+}
+TU_NOI_KHONG_CUOI = {"với", "của", "và", "là", "cho", "tại", "trên", "các", "những", "một", "giữa", "từ", "đến", "thì", "nên", "vì", "bằng", "khi", "để"}
+
+
 def chia_phu_de(cau, toi_da=TOI_DA_KY_TU):
     """Câu dài chia thành các đoạn phụ đề cân nhau (ưu tiên ngắt sau dấu phẩy), mỗi đoạn tối đa ~3 dòng."""
     if len(cau) <= toi_da:
@@ -504,6 +513,12 @@ def chia_phu_de(cau, toi_da=TOI_DA_KY_TU):
         if w[-1:] not in ",;:" and (nxt in TU_SO or nxt in NOI_CUM_SO or hien in NOI_CUM_SO) and dai < 1.5 * con_lai / con_phan:
             continue
         muc_tieu = con_lai / con_phan
+        # T2b kiểm toán phiên 3: không kết đoạn bằng hư từ ("… giao của KM với | SD, và …") và ưu tiên dấu phẩy ngay 1–2 từ sau
+        if w[-1:] not in ",;:" and dai < 1.4 * muc_tieu:
+            if hien in TU_NOI_KHONG_CUOI or (hien + " " + nxt) in TU_GHEP_PHU_DE:
+                continue
+            if any(x[-1:] in ",;:" for x in tu[idx + 1:idx + 3]) and dai + 1 + len(" ".join(tu[idx + 1:idx + 3])) < 1.4 * muc_tieu:
+                continue
         if dai >= muc_tieu or (w[-1:] in ",;:" and dai >= 0.7 * muc_tieu):
             phan.append(" ".join(cur))
             con_lai -= dai + 1
@@ -4226,6 +4241,8 @@ def main():
     if not args.gia_lap:
         print("Giọng đọc: %d cảnh bằng Gemini TTS (%s), %d đoạn bằng edge-tts (%s), %d đoạn bằng Google TTS dự phòng" % (
             THONG_KE_GIONG["gemini"], args.giong_gemini, THONG_KE_GIONG["edge"], args.giong, THONG_KE_GIONG["gtts"]))
+    # Ghi tường minh khung4tang = null khi không có: chặn Remotion trộn defaultProps mẫu vào bài thật (hình phẳng).
+    props.setdefault("khung4tang", None)
     dich = args.props_ra or os.path.join(args.public, "props.json")
     os.makedirs(os.path.dirname(os.path.abspath(dich)), exist_ok=True)
     with open(dich, "w", encoding="utf8") as f:

@@ -45,6 +45,26 @@ export function chuanDauCau(s: string): string {
 
 // Dọn lỗi dấu câu phụ đề: xóa dấu phẩy/chấm phẩy thừa trước dấu "=", khoảng trắng thừa trước dấu câu,
 // chuẩn hóa "P(A) bằng 1 - ..." -> "P(A) = 1 - ...", và dọn dấu phẩy lẻ ở cuối câu/đoạn phụ đề.
+// T2 kiểm toán phiên 3: được phép ngắt đoạn phụ đề giữa từ `a` và từ `b` không?
+// Không ngắt quanh toán tử (tránh dòng treo "= 1 −") và không tách cặp từ ghép Toán ("trung | điểm", "giao | tuyến").
+const TOAN_TU_PD = /^[=−\-+·×÷≈<>≤≥≠∈∩∪⊥∥:/]+$/;
+const TU_GHEP_PD = new Set([
+  'trung điểm', 'giao tuyến', 'giao điểm', 'mặt phẳng', 'tam giác', 'tứ giác', 'hình chóp', 'hình hộp', 'hình vuông', 'hình chữ', 'chữ nhật',
+  'bình hành', 'đường thẳng', 'đường tròn', 'đường kính', 'đường cao', 'xác suất', 'nội tiếp', 'vuông góc', 'song song', 'phần bù', 'biến cố',
+  'số cách', 'đáp án', 'kết quả', 'khoảng cách', 'cạnh đáy', 'mặt đáy', 'diện tích', 'thể tích', 'lần lượt', 'bất kỳ', 'đồng dạng',
+]);
+// Khớp TU_NOI_KHONG_CUOI ở scripts/chuanbi.py (+ "tới", "có")
+const HU_TU_KHONG_CUOI_PD = new Set(['với', 'của', 'và', 'là', 'cho', 'tại', 'trên', 'các', 'những', 'một', 'giữa', 'từ', 'đến', 'thì', 'nên', 'vì', 'bằng', 'khi', 'để', 'tới', 'có']);
+export function coTheNgatPhuDe(a: string, b: string): boolean {
+  const x = String(a || '').trim(), y = String(b || '').trim();
+  if (!x || !y) return true;
+  if (TOAN_TU_PD.test(x) || TOAN_TU_PD.test(y) || /[=−+·×≈<>≤≥]$/.test(x) || /^[=−+·×≈<>≤≥]/.test(y)) return false;
+  const cap = (x.replace(/[,.;:!?]+$/, '') + ' ' + y.replace(/[,.;:!?]+$/, '')).toLowerCase();
+  if (/[,.;:!?]$/.test(x)) return true;
+  if (HU_TU_KHONG_CUOI_PD.has(x.toLowerCase())) return false;   // không kết đoạn bằng hư từ ("… giao của KM với |")
+  return !TU_GHEP_PD.has(cap);
+}
+
 export function lamSachPhuDe(s: string, laCuoiCau = false): string {
   let x = String(s ?? '')
     .replace(/[\u00A0\s]+/g, ' ')

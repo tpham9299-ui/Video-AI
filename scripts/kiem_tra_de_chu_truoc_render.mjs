@@ -108,9 +108,14 @@ export function chonFrame(p, comp) {
   const buoc = moc.map(([t, ten], i) => ({
     a: Math.max(bat, t), b: Math.min(chot, moc[i + 1]?.[0] ?? chot), ten: 'Bước ' + (i + 1) + (ten ? ' · ' + ten : ''),
   })).filter(b => b.b > b.a);
-  const n = Math.min(3, buoc.length);
+  // T12 kiểm toán phiên 3: khung CHUYỂN Intro → Bước 1 (lò xo 10 khung) — nơi phụ đề từng đè ô ĐỀ mà các khung giữa bước không thấy.
+  // Giữ tổng 4–6 khung: có khung chuyển thì chỉ lấy 2 khung giữa bước.
+  const coChuyen = G > 0 && buoc.length > 0 && buoc[0].b > bat + 8;
+  if (coChuyen) them(lech + bat + 8, 'Chuyển Intro → Bước 1');
+  const n = Math.min(coChuyen ? 2 : 3, buoc.length);
+  const dsBuoc = coChuyen && buoc.length >= 3 ? buoc.slice(1) : buoc;   // bước 1 đã có khung chuyển gần đầu
   for (let i = 0; i < n; i++) {
-    const b = buoc[Math.round(i * (buoc.length - 1) / Math.max(1, n - 1))];
+    const b = dsBuoc[Math.round(i * (dsBuoc.length - 1) / Math.max(1, n - 1))];
     them(lech + giua(b.a, b.b), b.ten);
   }
   if (n < 2 && chot > bat + 3) {

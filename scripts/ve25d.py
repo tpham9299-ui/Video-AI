@@ -311,8 +311,33 @@ def rong_chu(s, co):
     return 0.56 * co * len(str(s))
 
 
+def so_vn(s):
+    """T9 kiểm toán phiên 3: nhãn chữ hiển thị dùng dấu phẩy thập phân chuẩn SGK (51.0 -> 51,0), khớp thẻ T3 (44,7 / 42,43).
+    CHỈ áp cho nội dung chữ; tọa độ SVG (_f) giữ dấu chấm. Không dùng `re` (hộp cát tu_sinh_svg chỉ cho import math / ve25d)."""
+    if not isinstance(s, (str, int, float)):
+        return s
+    t = str(s)
+    ra = []
+    for i, ch in enumerate(t):
+        if ch == "." and 0 < i < len(t) - 1 and t[i - 1].isdigit() and t[i + 1].isdigit():
+            j = i - 1
+            while j >= 0 and t[j].isdigit():
+                j -= 1
+            k = i + 1
+            while k < len(t) and t[k].isdigit():
+                k += 1
+            truoc_ok = j < 0 or t[j] not in ".,"
+            sau_ok = k >= len(t) or t[k] != "."
+            if truoc_ok and sau_ok:
+                ra.append(",")
+                continue
+        ra.append(ch)
+    return "".join(ra)
+
+
 def chu(x, y, s, co=28, mau="chu", dam=700, neo="middle"):
     co = max(int(co), CO_CHU_MIN)
+    s = so_vn(s)
     x, y = kep(x, y, 4)
     return '<text x="%s" y="%s" fill="%s" font-size="%d" font-weight="%d" text-anchor="%s">%s</text>' % (_f(x), _f(y), m(mau), co, dam, neo, nhan_toan(s))
 

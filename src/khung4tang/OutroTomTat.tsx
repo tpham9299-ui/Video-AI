@@ -66,12 +66,14 @@ const IconCta: React.FC<{cta: string}> = ({cta}) => {
 };
 
 // v100.3: chọn câu gợi tương tác theo dạng bài (thứ tự: dãy số -> xác suất -> hàm số -> hình học -> mặc định)
-const cauGoiTheoDang = (van: string, khongGian: boolean, loai?: string): string => {
+const cauGoiTheoDang = (van: string, khongGian: boolean, loai?: string, hinhPhang = false): string => {
   const s = van.toLowerCase();
   if (/cấp số|dãy số|bông tuyết|koch|u_n|u_\{n/.test(s)) return 'Đổi số bước n lớn hơn thì sao? Bình luận suy nghĩ của bạn!';
   if (/xác suất|tổ hợp|chỉnh hợp|hoán vị|đếm|binom|\\binom|\bc\(|\ba_n\^|p\(a/.test(s) || /rut_mau|so_do_cay|luoi_bayes|cot_phan_phoi/.test(loai || '')) return 'Có ai bị đếm lặp ở bước này không? Comment đáp án của bạn!';
   if (/parabol|hàm số|đồ thị|bậc hai|y\s*=|f\(x\)/.test(s) || /kinh_te_do_thi/.test(loai || '')) return 'Bạn còn cách lập hàm nào nhanh hơn không? Bình luận bên dưới!';
-  if (khongGian || /mặt phẳng|hình chóp|lăng trụ|hình hộp|thiết diện|vuông góc|song song|tam giác|đường tròn/.test(s)) return 'Bạn nhìn ra mặt phẳng phụ trong mấy giây? Bình luận nhé!';
+  // T8 kiểm toán phiên 3: "mặt phẳng phụ" CHỈ cho hình không gian; hình phẳng (tam giác, đường tròn, tứ giác…) có câu gợi riêng
+  if (khongGian || (!hinhPhang && /mặt phẳng|hình chóp|lăng trụ|thiết diện/.test(s))) return 'Bạn nhìn ra mặt phẳng phụ trong mấy giây? Bình luận nhé!';
+  if (hinhPhang || /tam giác|đường tròn|tứ giác|nội tiếp|vuông góc|song song/.test(s)) return 'Bạn thấy hướng chứng minh sau mấy giây? Bình luận nhé!';
   return 'Lưu lại ôn nhanh • Bình luận dạng bài bạn muốn giải tiếp!';
 };
 
@@ -93,7 +95,7 @@ export const OutroTomTat: React.FC<{mon?: string; giuHinh?: boolean; dapAn: stri
   const sGoi = spring({frame: f - Math.round((tNut + (laHinhHoc ? 0.2 : 0.35)) * fps), fps, config: {damping: 16, stiffness: 120, mass: 0.8}});
   const sLuu = spring({frame: f - Math.round((laHinhHoc ? 0.22 : 0.6) * fps), fps, config: {damping: 16, stiffness: 130, mass: 0.8}});
   // v100.3: câu gợi bình luận khớp dạng bài (suy từ đáp án + tóm tắt + loại sân khấu); 2 icon nảy 1 lần khi thanh vào
-  const cauGoi = React.useMemo(() => cauGoiTheoDang(`${dapAn} ${tomTat.map((d) => `${d.chien_thuat} ${d.cong_thuc || ''}`).join(' ')}`, !!khongGian, (sanKhau as {loai?: string} | null | undefined)?.loai), [dapAn, tomTat, khongGian, sanKhau]);
+  const cauGoi = React.useMemo(() => cauGoiTheoDang(`${dapAn} ${tomTat.map((d) => `${d.chien_thuat} ${d.cong_thuc || ''}`).join(' ')}`, laKhongGian, (sanKhau as {loai?: string} | null | undefined)?.loai, laHinhHoc && !laKhongGian), [dapAn, tomTat, laKhongGian, laHinhHoc, sanKhau]);
   const tNayIcon = (t - (tNut + 0.35) - 0.25) / 0.5;
   const nayIcon = tNayIcon > 0 && tNayIcon < 1 ? 1 + 0.28 * Math.sin(Math.PI * tNayIcon) : 1;
   const nhun = t > tNut + 0.5? 1 + 0.04 * Math.max(0, Math.sin(((t - tNut - 0.5) * 2 * Math.PI) / 0.9)) : 1;

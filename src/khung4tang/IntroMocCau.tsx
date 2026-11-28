@@ -38,7 +38,8 @@ export const IntroMocCau: React.FC<{m: MocCau; t: number; G: number}> = ({m, t, 
   const {fps} = useVideoConfig();
   const f = Math.round(t * fps);
   const ra = raIntro(t, G);
-  const con = 1 - ra;
+  // T4 kiểm toán phiên 3: chữ Intro tắt hẳn khi thân bài mới hiện ~60% (trước đây giao thoa đều -> bóng hook mờ sau thẻ bước 1)
+  const con = 1 - Math.min(1, ra * 1.7);
   const tHook = G * 0.6;
   const lo = (tu: number, d = 0.35) => emRa((t - tu) / d);
   const lo_lo = (tu: number) => spring({frame: f - Math.round(tu * fps), fps, config: {damping: 14, stiffness: 150, mass: 0.7}});

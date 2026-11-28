@@ -171,7 +171,10 @@ function damBaoTomTat(tomTat: DongTomTat[] | null | undefined, baiHoc: string[] 
 // - HINH_KHONG_GIAN (cả Remotion SVG 3D lẫn Manim 3D T2) và HINH_PHANG -> KhungHinhHoc + OutroTomTat
 // - THUC_TE và XAC_SUAT -> Khung4Tang + OutroTomTat
 export const Video: React.FC<Props> = (props) => {
-  const chuan: Props = {...props, thuongHieu: {...props.thuongHieu, ten: TEN_THUONG_HIEU, logo: null, handle: ''}};
+  // Remotion trộn defaultProps (mẫu "4 dây cáp" ở Root.tsx) dưới inputProps: bài thật thiếu khóa khung4tang
+  // (vd hình phẳng) sẽ nhận nhầm T3/chip/phụ đề của mẫu -> gỡ khung4tang mẫu khi id không phải bài mẫu.
+  const k4LaMau = !!(props.khung4tang as {laMau?: boolean} | null | undefined)?.laMau && props.id !== 'MAU-4TANG';
+  const chuan: Props = {...props, khung4tang: k4LaMau ? undefined : props.khung4tang, thuongHieu: {...props.thuongHieu, ten: TEN_THUONG_HIEU, logo: null, handle: ''}};
   if (chuan.anhBiaDau) {
     return (
       <AbsoluteFill style={{background: '#000'}}>
@@ -326,8 +329,9 @@ const NoiDungHinhPhang: React.FC<Props> = (props) => {
           tCongBo={mocCongBoHP}
           tOutro={outro ? Math.max(0, ketThuc / fps - 0.35) : undefined}
           dapAn={props.ketQuaHinhPhang?.tex ?? props.dapAn}
-          cau={k?.boCuc?.phuDe === 'gon' ? cauHP : k?.cau}
-          phuDe={k?.boCuc?.phuDe}
+          // N1 kiểm toán phiên 3: hình phẳng không có khung4tang -> phụ đề gọn dựng từ lời từng cảnh (trước đây T4 trống)
+          cau={!k || k.boCuc?.phuDe === 'gon' ? cauHP : k.cau}
+          phuDe={k ? k.boCuc?.phuDe : 'gon'}
         />
       </Sequence>
       {nhac ? <Audio src={staticFile(nhac)} loop volume={amNhac} /> : null}

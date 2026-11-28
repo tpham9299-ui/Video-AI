@@ -15,6 +15,7 @@ import {khoaId, tachTen} from './canh';
 export const GOC_TOAN_CANH = {n: 28, c: 22};
 export const GOC_NHIN_DAY_C = 64;
 export const LECH_TRUC_DIEN = 20; // độ
+export const NGHIENG_EP_MEP = 12; // độ — T7: ép mép mặt nghiêng nhẹ để mặt là dải mỏng, nhãn cùng mặt tách nhau
 export const KC_DINH_MIN = 32; // px: mục tiêu tối ưu giữa hai đỉnh
 export const KC_DINH_CANH_MIN = 18; // px: đỉnh tới cạnh không đi qua nó
 export const KHUNG_RONG = 0.86, KHUNG_CAO = 0.8; // v97 tối giản: sân khấu tràn viền -> hình chiếm nhiều hơn
@@ -235,7 +236,14 @@ export function tinhTuThe(bc: BoiCanh, che: CheDoMay, doi: string[], truoc: TuTh
       const u = chuan(cheo(pm.n, v));
       if (u[2] > v[2]) v = u;
     }
-    // tối ưu CHỈ xoay quanh pháp tuyến (mọi ứng viên vẫn song song mặt -> mặt luôn là một vệt thẳng)
+    // T7 kiểm toán phiên 3: nghiêng 12° khỏi mặt (về phía máy cũ) -> mặt thành dải mỏng đọc được thay vì một vạch,
+    // các điểm cùng mặt (M, N, P, K) tách nhãn; vẫn đủ "nhìn dọc theo mặt" để thấy SD đâm xuyên.
+    {
+      let nn = pm.n;
+      if (cham(nn, veTruoc) < 0) nn = nhan(nn, -1);
+      v = chuan(cong(nhan(v, Math.cos(NGHIENG_EP_MEP * RAD)), nhan(nn, Math.sin(NGHIENG_EP_MEP * RAD))));
+    }
+    // tối ưu CHỈ xoay quanh pháp tuyến (mọi ứng viên giữ cùng độ nghiêng nhỏ so với mặt)
     const u = cheo(pm.n, v);
     for (let a = -16; a <= 16; a += 2) {
       const r = a * RAD;

@@ -13,7 +13,8 @@ const propsMau: Props = {
   id: 'MAU-4TANG',
   mon: 'THUC_TE',
   boCuc: '4tang',
-  khung4tang: k4Mau,
+  // laMau: đánh dấu dữ liệu mẫu Studio — Video.tsx bỏ qua khi inputProps của bài thật không có khung4tang (Remotion trộn defaultProps).
+  khung4tang: {...k4Mau, laMau: true} as Khung4TangVao,
   tieuDe: 'Cân bằng 4 dây cáp',
   hook: '4 dây cáp chịu lực bao nhiêu?',
   dapAn: '2500 N',

@@ -24,6 +24,21 @@ const LOI_MOI: Record<string, string> = {
 
 const Vien = ({co}: {co: number}) => ({WebkitTextStroke: vienChu(co), paintOrder: 'stroke fill' as const, textShadow: `0 ${co * 0.06}px 0 rgba(4,12,12,0.95), 0 ${co * 0.12}px ${co * 0.25}px rgba(0,0,0,0.6)`});
 
+// Lưới dọc ảnh bìa trong SAFE_ZONE_TIKTOK (y 212..1574): huy hiệu 212..296 | tiêu đề 318..614 | ô kính 640..1320 | lời mời 1378..1460 | tên kênh 1478..1520.
+const TIEU_DE_TREN = 318, TIEU_DE_CAO = 296;
+const VIDEO_Y = 398 - 16;             // T2 video bắt đầu y 398, chừa 16px trong ô kính
+const KINH_TREN = 640, KINH_CAO = 680; // 648px T2 + 2 x 16px đệm
+
+export const chonCoTieuDe = (tu: string): number => {
+  const n = Math.max(1, tu.length);
+  for (const co of [116, 102, 90, 80, 72, 64]) {
+    const kyTuMoiDong = Math.max(6, Math.floor(820 / (co * 0.6)));
+    const soDong = Math.ceil(n / kyTuMoiDong);
+    if (soDong <= 3 && soDong * co * 1.12 <= TIEU_DE_CAO) return co;
+  }
+  return 60;
+};
+
 // huy hiệu dạng bài khi kịch bản chưa có props.bia (khớp khóa MAU_LOAI / LOI_MOI)
 const nhanDang = (t: string): string => {
   const x = t.toLowerCase();
@@ -39,8 +54,9 @@ export const AnhBia: React.FC<Props> = (props) => {
   const mau = MAU_LOAI[b.loai] || '#3BF2D0';
   const tu = String(b.tieuDe || '').toUpperCase().replace(/\s+/g, ' ').trim();
   const nhan = (props.nhanManh || []).map((x) => x.toUpperCase()).filter((x) => x && tu.includes(x));
-  const soKyTu = tu.length;
-  const co = soKyTu > 42 ? 74 : soKyTu > 30 ? 88 : soKyTu > 20 ? 102 : 116;
+  // Cỡ tiêu đề theo SỐ DÒNG ước lượng (rộng 820 = SAFE_ZONE, ~0,6 em/ký tự chữ khối): tối đa 3 dòng và vừa hộp cao TIEU_DE_CAO,
+  // không tràn lên hàng huy hiệu hay xuống ô kính (lỗi N2 kiểm toán phiên 3).
+  const co = chonCoTieuDe(tu);
   // tách tiêu đề thành các đoạn thường / đoạn nhấn mạnh
   const doan: {chu: string; nhan: boolean}[] = [];
   if (nhan.length) {
@@ -56,13 +72,17 @@ export const AnhBia: React.FC<Props> = (props) => {
       <AbsoluteFill style={{background: th ? `linear-gradient(180deg, ${th.tren} 0%, ${th.giua} 52%, ${th.duoi} 100%)` : '#050b0d'}} />
       <AbsoluteFill style={{background: `radial-gradient(ellipse 85% 58% at 50% 54%, ${mau}30 0%, ${th ? 'transparent' : '#09171b'} 55%, ${th ? 'transparent' : '#030709'} 100%)`}} />
       <AbsoluteFill style={{background: `radial-gradient(circle at 20% 18%, rgba(255,138,61,0.16), transparent 42%), radial-gradient(circle at 82% 84%, ${mau}22, transparent 44%)`}} />
-      {/* ô kính chứa hình minh họa thật của đề (vùng sân khấu của video) */}
-      <div style={{position: 'absolute', left: AN_TOAN.x0 - 70, right: 1080 - AN_TOAN.x1 - 70, top: 600, height: 800, borderRadius: 44, overflow: 'hidden', border: `5px solid ${mau}`,
-        boxShadow: `0 0 60px ${mau}88, 0 0 0 10px rgba(255,255,255,0.06), 0 30px 80px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.25)`, background: '#071113'}}>
-        <div style={{position: 'absolute', left: -60, top: -470, width: 1080, height: 1920}}>{video}</div>
-        {/* bài hình học dựng bằng Manim: hình đầy đủ (tô màu đại lượng) do Manim vẽ, đặt đúng vùng nội dung */}
-        {props.manimLop && props.anhManimBia ? <Img src={staticFile(props.anhManimBia)} style={{position: 'absolute', left: -60, top: -330, width: 1080, height: 1920}} /> : null}
-        <div style={{position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(7,17,19,0) 75%, rgba(7,17,19,0.85) 100%)'}} />
+      {/* ô kính chứa ĐÚNG vùng T2 của video (y 398..1046) trong SAFE_ZONE x 130..950: không lộ thẻ T3/T4 (N3, T10) */}
+      <div style={{position: 'absolute', left: AN_TOAN.x0, right: 1080 - AN_TOAN.x1, top: KINH_TREN, height: KINH_CAO, borderRadius: 40, overflow: 'hidden', border: `5px solid ${mau}`,
+        boxShadow: `0 0 60px ${mau}88, 0 0 0 10px rgba(255,255,255,0.06), 0 30px 80px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.25)`, background: th ? th.giua : '#071113'}}>
+        {/* thu 92% quanh tâm T2 (540, 722): nhãn sát mép sân khấu (vd "A (kiến)") vẫn nằm trọn trong ô kính */}
+        <div style={{position: 'absolute', inset: 0, transform: 'scale(0.92)', transformOrigin: `${540 - AN_TOAN.x0}px ${722 - VIDEO_Y}px`,
+          clipPath: `inset(${398 - VIDEO_Y}px -60px ${KINH_CAO - (1046 - VIDEO_Y)}px -60px)`}}>
+          <div style={{position: 'absolute', left: -AN_TOAN.x0, top: -VIDEO_Y, width: 1080, height: 1920}}>{video}</div>
+          {/* bài hình học dựng bằng Manim: lớp hình 1080x1920 ghép đè 0:0 như khi dựng thật -> cùng độ lệch với video */}
+          {props.manimLop && props.anhManimBia ? <Img src={staticFile(props.anhManimBia)} style={{position: 'absolute', left: -AN_TOAN.x0, top: -VIDEO_Y, width: 1080, height: 1920}} /> : null}
+        </div>
+        <div style={{position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(7,17,19,0) 78%, rgba(7,17,19,0.85) 100%)'}} />
       </div>
       {b.loai === 'Xác suất' ? <TrangTriXacSuat mau={mau} /> : null}
       {/* hàng nhãn trên cùng */}
@@ -73,7 +93,7 @@ export const AnhBia: React.FC<Props> = (props) => {
         {props.series && props.series.tap ? <span style={{background: 'rgba(255,255,255,0.12)', color: '#fff', border: '3px solid rgba(255,255,255,0.5)', borderRadius: 14, padding: '3px 16px', fontSize: 40, fontWeight: 900}}>TẬP {props.series.tap}</span> : null}
       </div>
       {/* tiêu đề */}
-      <div style={{position: 'absolute', top: 300, left: AN_TOAN.x0 - 40, right: 1080 - AN_TOAN.x1 - 40, height: 290, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center'}}>
+      <div style={{position: 'absolute', top: TIEU_DE_TREN, left: AN_TOAN.x0, right: 1080 - AN_TOAN.x1, height: TIEU_DE_CAO, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center'}}>
         <div style={{fontFamily: FONT_TIEU_DE, fontSize: co, fontWeight: 900, lineHeight: 1.12, color: '#fff', letterSpacing: -1, ...Vien({co})}}>
           {doan.map((d, i) =>
             d.nhan ? (
@@ -85,16 +105,16 @@ export const AnhBia: React.FC<Props> = (props) => {
         </div>
       </div>
       {/* dấu ? nổi bật đè góc ô kính (thay dòng "ĐÁP ÁN: ???") */}
-      <div style={{position: 'absolute', left: AN_TOAN.x1 - 190, top: 600 + 800 - 120, width: 170, height: 170, borderRadius: 85, background: mau, color: '#0a0a12', fontSize: 140, fontWeight: 900, lineHeight: '170px', textAlign: 'center',
+      <div style={{position: 'absolute', left: AN_TOAN.x1 - 168, top: KINH_TREN + KINH_CAO - 118, width: 150, height: 150, borderRadius: 75, background: mau, color: '#0a0a12', fontSize: 124, fontWeight: 900, lineHeight: '150px', textAlign: 'center',
         boxShadow: `0 0 0 12px ${mau}40, 0 14px 30px rgba(0,0,0,0.6)`}}>?</div>
       {/* lời mời gọi theo loại câu hỏi */}
-      <div style={{position: 'absolute', top: 1432, left: 0, right: 0, display: 'flex', justifyContent: 'center'}}>
+      <div style={{position: 'absolute', top: KINH_TREN + KINH_CAO + 58, left: 0, right: 0, display: 'flex', justifyContent: 'center'}}>
         <div style={{background: '#FF8A3D', color: '#1a0d02', fontSize: 54, fontWeight: 900, borderRadius: 22, padding: '8px 30px', transform: 'rotate(-2deg)', boxShadow: '0 8px 0 #a2470f, 0 14px 30px rgba(0,0,0,0.5)'}}>
           {LOI_MOI[b.loai] || 'GIẢI TRONG 60 GIÂY'}
         </div>
       </div>
       {props.thuongHieu && (props.thuongHieu.ten || props.thuongHieu.handle) ? (
-        <div style={{position: 'absolute', top: 1522, left: 0, right: 0, textAlign: 'center', fontSize: 34, fontWeight: 800, color: 'rgba(255,255,255,0.85)'}}>
+        <div style={{position: 'absolute', top: KINH_TREN + KINH_CAO + 158, left: 0, right: 0, textAlign: 'center', fontSize: 34, fontWeight: 800, color: 'rgba(255,255,255,0.85)'}}>
           {TEN_THUONG_HIEU}
         </div>
       ) : null}
@@ -106,22 +126,12 @@ export const AnhBia: React.FC<Props> = (props) => {
 // (người xem nhận ra ngay đây là bài xác suất, khung hình bớt trống, có điểm nhìn).
 const TrangTriXacSuat: React.FC<{mau: string}> = ({mau}) => (
   <>
-    <div style={{position: 'absolute', left: AN_TOAN.x0, top: 548, filter: `drop-shadow(0 18px 30px rgba(0,0,0,0.7)) drop-shadow(0 0 22px ${mau}66)`}}>
-      <Xuc3D co={150} rx={-28} ry={38} vien={mau} />
+    {/* N5: chỉ 2 điểm nhấn ở góc ô kính, không chạm vùng tiêu đề (y < 640) và không che sân khấu: xúc xắc góc dưới trái, nhãn P = ? góc trên phải */}
+    <div style={{position: 'absolute', left: AN_TOAN.x0 + 6, top: KINH_TREN + KINH_CAO - 132, filter: `drop-shadow(0 18px 30px rgba(0,0,0,0.7)) drop-shadow(0 0 22px ${mau}66)`}}>
+      <Xuc3D co={124} rx={-28} ry={38} vien={mau} />
     </div>
-    <div style={{position: 'absolute', right: 1080 - AN_TOAN.x1, top: 1150, filter: 'drop-shadow(0 14px 24px rgba(0,0,0,0.7))', transform: 'rotate(14deg)'}}>
-      <Xuc3D co={110} rx={-20} ry={-30} vien="#FF8A3D" />
-    </div>
-    <div style={{position: 'absolute', right: 1080 - AN_TOAN.x1, top: 470, width: 150, height: 150, borderRadius: '50%', background: `radial-gradient(circle at 35% 30%, #F1E9FF 0%, ${mau} 55%, #7B5BE0 100%)`,
-      border: '6px solid #ffffff', boxShadow: `0 0 40px ${mau}, 0 16px 30px rgba(0,0,0,0.6)`, display: 'flex', alignItems: 'center', justifyContent: 'center', transform: 'rotate(12deg)',
-      fontSize: 50, fontWeight: 900, color: '#140a2a', fontStyle: 'italic'}}>P&nbsp;=&nbsp;?</div>
-    {[0, 1, 2, 3].map((k) => (
-      <div key={k} style={{position: 'absolute', left: AN_TOAN.x0 + 10 + k * 6, top: 1330 - k * 22, width: 120, height: 40, borderRadius: '50%', background: 'linear-gradient(180deg, #FFE27A, #E0A800)', border: '3px solid #8a6400', boxShadow: '0 6px 0 #8a6400'}} />
-    ))}
-    <div style={{position: 'absolute', left: AN_TOAN.x0 + 20, right: 1080 - AN_TOAN.x1 + 20, top: 1368, height: 26, borderRadius: 13, background: `linear-gradient(90deg, #FF5C61, #FFD54A, #3BF29A)`, boxShadow: '0 0 20px rgba(0,0,0,0.6)', border: '3px solid rgba(255,255,255,0.8)'}}>
-      <div style={{position: 'absolute', left: '62%', top: -64, transform: 'translateX(-50%)', width: 70, height: 70, borderRadius: '50%', background: '#fff', color: '#140a2a', fontSize: 52, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 26px ${mau}`}}>?</div>
-      <div style={{position: 'absolute', left: -6, top: 30, fontSize: 30, fontWeight: 900, color: '#fff'}}>0%</div>
-      <div style={{position: 'absolute', right: -6, top: 30, fontSize: 30, fontWeight: 900, color: '#fff'}}>100%</div>
-    </div>
+    <div style={{position: 'absolute', right: 1080 - AN_TOAN.x1 + 16, top: KINH_TREN + 18, width: 128, height: 128, borderRadius: '50%', background: `radial-gradient(circle at 35% 30%, #F1E9FF 0%, ${mau} 55%, #7B5BE0 100%)`,
+      border: '5px solid #ffffff', boxShadow: `0 0 34px ${mau}, 0 14px 26px rgba(0,0,0,0.6)`, display: 'flex', alignItems: 'center', justifyContent: 'center', transform: 'rotate(12deg)',
+      fontSize: 42, fontWeight: 900, color: '#140a2a', fontStyle: 'italic'}}>P&nbsp;=&nbsp;?</div>
   </>
 );

@@ -4,7 +4,7 @@ import {KhoaThuongHieu} from './KhoaThuongHieu';
 import React, {useMemo} from 'react';
 import {AbsoluteFill, Audio, Sequence, spring, staticFile, useCurrentFrame} from 'remotion';
 import {FONT, TEN_THUONG_HIEU} from '../theme';
-import {lamSachPhuDe} from '../chu';
+import {coTheNgatPhuDe, lamSachPhuDe} from '../chu';
 import {KieuToan, NapPhongToan} from '../Toan';
 import {SanKhau3DVector} from '../3d-vector/SanKhau3DVector';
 import {chuanHoaCanh3DV} from '../3d-vector/dac_ta';
@@ -46,7 +46,9 @@ export const chiaCauPhuDe = (c: {text: string; bat: number; ket: number}, toiDa 
   let cur = '';
   for (const w of tu) {
     const thu = cur ? cur + ' ' + w : w;
-    if (cur && thu.length > muc + 6 && doan.length < n - 1) { doan.push(cur); cur = w; } else cur = thu;
+    const truoc = cur.slice(cur.lastIndexOf(' ') + 1);
+    const ngat = thu.length > muc + 16 || coTheNgatPhuDe(truoc, w);   // quá dài thì vẫn ngắt để giữ 1 dòng
+    if (cur && thu.length > muc + 6 && doan.length < n - 1 && ngat) { doan.push(cur); cur = w; } else cur = thu;
   }
   if (cur) doan.push(cur);
   const doanSach = doan.map((d, idx) => lamSachPhuDe(d, idx === doan.length - 1)).filter(Boolean);
@@ -285,7 +287,9 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
         {loaiSanKhauT2 !== 'ts' && loaiSanKhauT2 !== 'kg' && xung >= 0 ? <XungT2 u={xung} rong={bc.rong} cao={bc.t2.h} mau={mauNhan} /> : null}
         {dc && aDc2 > 0 ? <DoiChieu2Cot canVat={canVat} d={dc} dt={t - tDau} dai={tCuoi - tDau} t={t} rong={bc.rong} cao={bc.t2.h} hienSo={!!buoc[i].doi_chieu?.hien_so} a={aDc2} dtGiai={dtGiai} tHuyHieu={Math.max(p.tCongBo ?? 0, buoc[i].doi_chieu?.t_huy_hieu ?? 0)} /> : null}
       </Tang>
-      <div style={chuyenHoi}>
+      {/* N4 kiểm toán phiên 3: T3 + T4 + phụ đề chung MỘT lớp chuyển hồi (khối phủ toàn khung, tâm 540/960) -> lúc lò xo Intro → thân bài
+          phụ đề và ô ĐỀ dịch cùng nhau, không còn cảnh phụ đề đứng yên đè lên ô ĐỀ đang trượt. */}
+      <div style={{position: 'absolute', inset: 0, ...chuyenHoi}}>
         <Tang ten="t3" v={t3} rong={bc.rong} le={bc.le}>
           {toiGian ? <KhoiCongThuc buoc={buoc} i={i} t={t} mau={mauBuoc} /> : <TangTheGiai buoc={buoc} i={i} t={t} mau={mauB} />}
         </Tang>
@@ -294,10 +298,10 @@ export const Khung4Tang: React.FC<Khung4TangVao> = (p) => {
             <ThanhDe ds={p.deGhim || []} buoc={buoc} i={i} t={t} cao={bc.t4.h} dapAn={p.dapAn} tChot={p.tCongBo ?? p.tChot} />
           </Tang>
         )}
+        {cauNay && ra > 0.5 ? <PhuDeMotDong cau={cauNay} t={t} y={toiGian ? VUNG_TOI_GIAN.phuDe : Math.min(t3.y + t3.h + 6, bc.t4.y - 52)} mau={mauNhan} /> : null}
       </div>
       <KhoaThuongHieu viTri="nuoc" />
       {G > 0 && t < G && mocCau ? <IntroMocCau m={mocCau} t={t} G={G} /> : null}
-      {cauNay && ra > 0.5 ? <PhuDeMotDong cau={cauNay} t={t} y={toiGian ? VUNG_TOI_GIAN.phuDe : t3.y + t3.h + 6} mau={mauNhan} /> : null}
     </AbsoluteFill>
   );
 };

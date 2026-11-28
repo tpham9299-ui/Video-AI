@@ -13,8 +13,10 @@ export const KhoaThuongHieu: React.FC<{viTri: 'dau' | 'nuoc' | 'the' | 'outro'; 
   const t = useCurrentFrame() / useVideoConfig().fps;
   const nuoc = viTri === 'nuoc', the = viTri === 'the';
   const style: React.CSSProperties = nuoc ? {
-    position: 'absolute', left: 540 + 223 * Math.sin(t * 0.27), top: 720 + 164 * Math.cos(t * 0.32),
-    transform: 'translate(-50%, -50%) rotate(-12deg)', fontSize: 34, fontWeight: 600, opacity: 0.10,
+    // T1 kiểm toán phiên 3: dấu nước vẫn trôi (chống cắt ghép lại) nhưng CHỈ trong lề trái x 40..110 — ngoài SAFE_ZONE nội dung
+    // (x >= 130), chữ dọc -> không bao giờ đè hình / nhãn / thẻ của T2–T3 (trước đây trôi giữa khung đè sân khấu).
+    position: 'absolute', left: 75 + 10 * Math.sin(t * 0.27), top: 910 + 330 * Math.cos(t * 0.21),
+    transform: 'translate(-50%, -50%) rotate(-90deg)', fontSize: 30, fontWeight: 600, opacity: 0.12,
   } : the ? {
     position: 'absolute', right: 16, bottom: 2, fontSize: 13, opacity: 0.5,
   } : {

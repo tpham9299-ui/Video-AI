@@ -118,7 +118,8 @@ function NoiDung({th, t0, t, mau, co = 42, coDong}: {th: TheGiai; t0: number; t:
 
 // Cụm thẻ căn GIỮA tầng 3 theo chiều dọc. Thẻ chưa tới lượt vẫn giữ chỗ (ẩn) nên cụm không nhảy khi thẻ mới vào.
 // v92: chiều cao ước lượng của thẻ -> cửa sổ thẻ theo NGÂN SÁCH CHIỀU CAO tầng 3 (3 thẻ nhiều dòng không còn tràn/cắt mép)
-const CAO_T3 = 380;   // v96: T3 426 px (vùng an toàn TikTok) trừ dải phụ đề 56 px
+// T3 kiểm toán phiên 3: chừa thêm 14 px đệm dưới (thẻ phân số cao từng chạm sát phụ đề khi 2 thẻ cùng hiện)
+const CAO_T3 = 366;   // v96: T3 426 px (vùng an toàn TikTok) trừ dải phụ đề 56 px, trừ đệm 14 px
 export const caoCongThuc = (dong: string[], co: number) => dong.reduce((s, d) => s + caoDongTex(d, co), 0) + 10 * Math.max(0, dong.length - 1);
 // cỡ dòng công thức để MỘT thẻ vừa ngân sách T3 (thẻ một mình vẫn cao quá -> co chữ, tối thiểu 28 px)
 export const coDongVua = (th: TheGiai, caoToiDa = CAO_T3): number | undefined => {
@@ -205,7 +206,7 @@ function DanhSachThe({b, t, mau, aChung, hoatDong = false, tHet}: {b: BuocGiai; 
         }
         // v98.1: thẻ thường = tấm kính mờ mỏng rgba(255,255,255,0.04) + bóng mềm, bỏ viền 4 cạnh; chỉ 1 vạch sáng 2,5 px cạnh trên theo màu bước
         return (
-          <div key={j} data-va-cham="hop_cong_thuc" data-the-giai style={{position: 'relative', opacity: a, transform: `translateY(${(1 - sp) * 20}px)`, borderRadius: 18,
+          <div key={j} data-va-cham="hop_cong_thuc" data-the-giai style={{position: 'relative', opacity: a, transform: `translateY(${(1 - sp) * 12}px)`, borderRadius: 18,
             background: 'linear-gradient(180deg, rgba(34,40,52,0.62), rgba(12,14,20,0.70))',
             boxShadow: `0 18px 40px rgba(0,0,0,0.34), ${VIEN_KINH}`,
             padding: '18px 28px 20px', display: 'flex', flexDirection: 'column', gap: 12, flexShrink: 0}}>

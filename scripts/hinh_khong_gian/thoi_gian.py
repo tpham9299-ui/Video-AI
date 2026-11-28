@@ -249,6 +249,27 @@ def lich_khong_gian(hkg, dung, canh_props, fps, t_buoc, tong):
         tr_diem = (dung.get("truot") or {}).get("diem")
         if tr_diem and tr_diem not in hien:
             hien[tr_diem] = round(min(t_p2_cuoi, 0.25 if dung.get("truot") else t_p2_cuoi), 3)
+        # T11 kiểm toán phiên 3: điểm nằm TRÊN một cạnh khối (M ∈ SC, N ∈ AB, P ∈ AD) không hiện trước cạnh mang nó
+        # (Intro từng có M lơ lửng khi chưa dựng S, SC) -> hiện ngay sau khi cạnh đó được vẽ.
+        def _tren_doan(q, a, b):
+            if q not in P_all or a not in P_all or b not in P_all:
+                return False
+            A, B, Q = P_all[a], P_all[b], P_all[q]
+            ab = [B[i] - A[i] for i in range(3)]
+            aq = [Q[i] - A[i] for i in range(3)]
+            l2 = sum(x * x for x in ab)
+            if l2 < 1e-12:
+                return False
+            u = sum(ab[i] * aq[i] for i in range(3)) / l2
+            if u < -1e-6 or u > 1 + 1e-6:
+                return False
+            return sum((aq[i] - u * ab[i]) ** 2 for i in range(3)) < 1e-6 * max(1.0, l2)
+        for q in list(hien.keys()):
+            if q in khoi_dinh or q not in P_all:
+                continue
+            t_mang = [hien[d["id"]] for d in dung.get("doan") or [] if d.get("vai") == "khoi" and d["id"] in hien and _tren_doan(q, d["a"], d["b"])]
+            if t_mang and hien[q] < min(t_mang) + 0.12:
+                hien[q] = round(min(t_mang) + 0.12, 3)
 
     # đoạn / mặt / góc chưa khai báo thời điểm: hiện cùng điểm muộn nhất của nó (điểm dựng chưa hiện thì đoạn cũng chưa)
     dinh = set(dung["khoi"]["dinh"])

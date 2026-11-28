@@ -5,7 +5,7 @@ import React, {useMemo} from 'react';
 import {AbsoluteFill, Easing, interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
 import {FONT, SO_DEU, TEN_THUONG_HIEU} from '../theme';
 import {KieuToan, NapPhongToan, Toan} from '../Toan';
-import {chuanTex, lamSachPhuDe} from '../chu';
+import {chuanTex, coTheNgatPhuDe, lamSachPhuDe} from '../chu';
 import {MAU_3DV} from '../3d-vector/kieu';
 import {emRa, kep01} from '../3d-vector/toan3d';
 import {SanKhauKhongGian} from '../khonggian/SanKhauKhongGian';
@@ -387,7 +387,8 @@ function uocDoDaiHien(raw: string): number {
 // Tách đoạn toán chứa dấu ";" khi cho phép xuống dòng để ngắt gọn giữa các vế, và gom cặp "từ cuối + ký hiệu ngắn" (vd "cạnh\u00A0a") chống rớt mồ côi.
 type MucHien =
   | {kieu: 'chu' | 'toan'; s: string}
-  | {kieu: 'cum'; truoc: string; sau: string};
+  | {kieu: 'cum'; truoc: string; sau: string; duoi?: string}
+  | {kieu: 'cumSau'; truoc: string; sau: string};
 
 function taoMucHienWrap(segs: DoanHien[]): MucHien[] {
   const tach: DoanHien[] = [];
@@ -402,7 +403,9 @@ function taoMucHienWrap(segs: DoanHien[]): MucHien[] {
       });
     } else if (seg.kieu === 'chu') {
       // Giữ cụm kiểu "cạnh\u00A0a" trong cùng một đoạn chữ thường
-      const s = seg.s.replace(/(\S)\s+([a-zA-Z0-9][.,;:!?]?)(?=\s|$)/g, '$1\u00A0$2');
+      const s = seg.s.replace(/(\S)\s+([a-zA-Z0-9][.,;:!?]?)(?=\s|$)/g, '$1\u00A0$2')
+        // T5: c\u1EE5m danh t\u1EEB To\u00E1n 3 ti\u1EBFng kh\u00F4ng g\u00E3y d\u00F2ng gi\u1EEFa ch\u1EEBng ("h\u00ECnh b\u00ECnh | h\u00E0nh")
+        .replace(/(h\u00ECnh|tam|t\u1EE9) (b\u00ECnh|gi\u00E1c) (h\u00E0nh|vu\u00F4ng|c\u00E2n|\u0111\u1EC1u)/g, '$1\u00A0$2\u00A0$3');
       tach.push({kieu: 'chu', s});
     } else {
       tach.push(seg);
@@ -414,7 +417,7 @@ function taoMucHienWrap(segs: DoanHien[]): MucHien[] {
     const next = tach[i + 1];
     // Nếu chữ Việt kết thúc bằng 1 từ và ngay sau là ký hiệu/biểu thức toán ngắn (vd "cạnh" + "a;" hoặc "và" + "\dfrac{a\sqrt{6}}{3}") -> dính liền trên cùng dòng
     if (cur.kieu === 'chu' && next?.kieu === 'toan' && uocDoDaiHien(next.s) <= 10) {
-      const m = /^(.*\s)?(\S+)$/.exec(cur.s);
+      const m = /^(.*[ \t])?([^ \t]+)$/.exec(cur.s);   // tách theo khoảng trắng THƯỜNG, giữ nguyên cụm nối
       if (m) {
         const dau = (m[1] || '').trim();
         const cuoi = m[2];
@@ -425,6 +428,14 @@ function taoMucHienWrap(segs: DoanHien[]): MucHien[] {
       }
     }
     ra.push(cur);
+  }
+  // T5 kiểm toán phiên 3: đuôi chữ ngắn sau biểu thức (vd "M ∈ SC" + "bất kỳ") dính liền -> không rớt 1–2 từ mồ côi xuống dòng
+  const cuoi = ra[ra.length - 1], keCuoi = ra[ra.length - 2];
+  if (cuoi?.kieu === 'chu' && keCuoi?.kieu === 'toan' && cuoi.s.trim().length <= 12 && uocDoDaiHien(keCuoi.s) <= 14) {
+    ra.splice(ra.length - 2, 2, {kieu: 'cumSau', truoc: keCuoi.s, sau: cuoi.s.trim()});
+  } else if (cuoi?.kieu === 'chu' && keCuoi?.kieu === 'cum' && !keCuoi.duoi && cuoi.s.trim().length <= 12 && uocDoDaiHien(keCuoi.sau) <= 14) {
+    // "hành;" + "M ∈ SC" đã dính thành cụm -> gắn thêm đuôi "bất kỳ" vào cùng cụm
+    ra.splice(ra.length - 2, 2, {...keCuoi, duoi: cuoi.s.trim()});
   }
   return ra;
 }
@@ -481,7 +492,12 @@ export const VanBanToan: React.FC<{
       }}
     >
       {mucHien.map((muc, idx) =>
-        muc.kieu === 'cum' ? (
+        muc.kieu === 'cumSau' ? (
+          <span key={idx} style={{display: 'inline-flex', alignItems: 'baseline', gap, whiteSpace: 'nowrap', flexShrink: 0, lineHeight}}>
+            <Toan tex={muc.truoc} size={co} color={color} maxWidth={maxWidth} chuThuong={false} can={align === 'left' ? 'trai' : 'giua'} style={{fontWeight, lineHeight}} />
+            <span style={{fontFamily: FONT, fontStyle: 'normal', fontWeight, fontSize: co, color, whiteSpace: 'nowrap', lineHeight}}>{muc.sau}</span>
+          </span>
+        ) : muc.kieu === 'cum' ? (
           <span
             key={idx}
             style={{
@@ -515,6 +531,7 @@ export const VanBanToan: React.FC<{
               can={align === 'left' ? 'trai' : 'giua'}
               style={{fontWeight, lineHeight}}
             />
+            {muc.duoi ? <span style={{fontFamily: FONT, fontStyle: 'normal', fontWeight, fontSize: co, color, whiteSpace: 'nowrap', lineHeight}}>{muc.duoi}</span> : null}
           </span>
         ) : muc.kieu === 'chu' ? (
           <span
@@ -547,6 +564,17 @@ export const VanBanToan: React.FC<{
       )}
     </div>
   );
+};
+
+// T6 kiểm toán phiên 3: đáp án dạng "E = KM ∩ SD với K = NP ∩ CD" ghép vào "Giao điểm E của SD và (MNP) = ?" từng ra
+// "… = E = KM ∩ SD với K = …" (lặp, 2 dòng). Bỏ tiền tố "E =" khi E đã nằm ở vế trái và bỏ mệnh đề phụ "với …" cho gọn T1.
+export const rutDapAnYeuCau = (veTrai: string, dapAn: string): string => {
+  let da = String(dapAn || '').trim();
+  const m = /^([A-Za-z][A-Za-z0-9']{0,3})\s*=\s*(.+)$/.exec(da);
+  if (m && new RegExp(`(^|[^A-Za-z])${m[1]}([^A-Za-z0-9]|$)`).test(veTrai)) da = m[2].trim();
+  const voi = da.search(/\s+với\s+/i);
+  if (voi > 0) da = da.slice(0, voi).trim();
+  return da;
 };
 
 const gonSoSanh = (s: string) => chuanTexHinhHoc(s).replace(/\\(?:text|mathrm|textcolor\{[^}]*\}|[,;:! ])|\s|\{|\}/g, '').toLowerCase();
@@ -592,9 +620,9 @@ export function khoaDapAnHinhHoc(
   } else if (!laCM && daMoKhoa && coDapAnSo) {
     if (sach.includes('=')) {
       const vt = sach.slice(0, sach.lastIndexOf('=')).trim();
-      sach = `${vt} = ${dapAnSach}`;
+      sach = `${vt} = ${rutDapAnYeuCau(vt, dapAnSach)}`;
     } else if (sach) {
-      sach = `${sach} = ${dapAnSach}`;
+      sach = `${sach} = ${rutDapAnYeuCau(sach, dapAnSach)}`;
     }
   }
 
@@ -665,7 +693,10 @@ export function rutGonChipTex(raw: string): string {
   }
   parts.push(s.slice(start).trim());
   const sach = parts.filter(Boolean);
-  const gon = sach.length >= 3 ? `${sach[0]} = ${sach[sach.length - 1]}` : s;
+  let gon = sach.length >= 3 ? `${sach[0]} = ${sach[sach.length - 1]}` : s;
+  // Kiểm toán phiên 3: chip chỉ giữ MỆNH ĐỀ chính — "BEDC nội tiếp đường tròn đường kính BC" (bị cắt cụt "…đường kí")
+  // -> "BEDC nội tiếp"; bỏ phần bổ nghĩa sau "đường tròn / đường kính / tại / với" cùng biểu thức theo sau.
+  gon = gon.replace(/\\text\{(\s*[^}]*?)\s+(?:đường tròn|đường kính|tại|với)\b[^}]*\}[\s\S]*$/u, (_m, dau: string) => `\\text{${dau}}`);
   return phanSoMotDong(gon);
 }
 
@@ -748,7 +779,9 @@ function chiaPhuDeNgan(c: {text: string; bat: number; ket: number}, toiDa = 40):
   let cur = '';
   for (const w of tu) {
     const thu = cur ? `${cur} ${w}` : w;
-    if (cur && thu.length > muc + 6 && doan.length < n - 1) { doan.push(cur); cur = w; } else cur = thu;
+    const truoc = cur.slice(cur.lastIndexOf(' ') + 1);
+    const ngat = thu.length > muc + 16 || coTheNgatPhuDe(truoc, w);   // quá dài thì vẫn ngắt để giữ 1 dòng
+    if (cur && thu.length > muc + 6 && doan.length < n - 1 && ngat) { doan.push(cur); cur = w; } else cur = thu;
   }
   if (cur) doan.push(cur);
   const doanSach = doan.map((d, idx) => lamSachPhuDe(d, idx === doan.length - 1)).filter(Boolean);
@@ -795,7 +828,7 @@ const TheDeBaiGhim: React.FC<{
   const mauYeuCau = kq.daMoKhoa ? MAU_NGOC : kq.loai === 'tinh' ? MAU_VANG : MAU_NGOC;
   const badgeText = kq.loai === 'tinh' ? 'TÍNH' : 'CHỨNG MINH';
   const nhanYeuCau = kq.loai === 'tinh' ? 'Yêu cầu:' : 'Chứng minh:';
-  const choChuoi = cho.slice(0, 3).map((x) => x.trim()).filter(Boolean).join(' ; ');
+  const choChuoi = cho.slice(0, 3).map((x) => x.trim()).filter(Boolean).join('; ');  // T5: không chừa khoảng trắng trước dấu chấm phẩy
 
   return (
     <div
