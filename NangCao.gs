@@ -460,6 +460,52 @@ function tinhDapUng_(j, ds) {
   return { phan_tram: pt, loi_nang: nang.length > 0, nang: nang.length ? nang : chuaDu, chi_tiet: chiTiet, dat: pt >= nguongDapUng_() && !nang.length && !chuaDu.length,
     van_de: (Array.isArray(j && j.van_de) ? j.van_de : []).map(String).slice(0, 8), gop_y: String((j && j.gop_y) || '').slice(0, 1200) };
 }
+// v102.1 CỬA CỨNG / CỬA MỀM BP2 (kịch bản): chỉ SAI TOÁN / SAI ĐÁP SỐ / SAI DỮ KIỆN CỐT LÕI / MINH HỌA LỆCH HẲN BẢN CHẤT mới loại bài.
+// quy_tac_hoc, ke_chuyen, nhieu_canh, thu_lai (đã khóa tại schema + kiểm tĩnh 0-API), độ mượt lời, đa dạng thẻ = điểm mềm có trọng số.
+// Không vi phạm cửa cứng + tổng điểm >= MUC_DAP_UNG_KICH_BAN (mặc định 75%) -> ĐẬU, sang BP3.
+var TIEU_CHI_CUNG_KB_ = { loi_giai: 7, dap_an: 7, de_bai: 6, bam_de: 5, san_pham: 6 };
+function nguongKichBanMem_() { var n = Number(chNC_('MUC_DAP_UNG_KICH_BAN')); return isFinite(n) && n > 0 ? Math.max(60, Math.min(92, n)) : 75; }
+function tinhDapUngKb_(j, ds) {
+  var kq = tinhDapUng_(j, ds), cung = [], mem = [], can = diemMoiTieuChi_();
+  Object.keys(kq.chi_tiet).forEach(function (k) {
+    var x = kq.chi_tiet[k];
+    if (TIEU_CHI_CUNG_KB_[k] !== undefined && x < TIEU_CHI_CUNG_KB_[k]) cung.push(k + '=' + x);
+    else if (x < can) mem.push(k + '=' + x);
+  });
+  kq.nang = cung;
+  kq.mem = mem;
+  kq.loi_nang = cung.length > 0;
+  kq.nguong = nguongKichBanMem_();
+  kq.dat = !cung.length && kq.phan_tram >= kq.nguong;
+  return kq;
+}
+// Đối chiếu từng cảnh: chỉ lỗi AI gắn lech_ban_chat=true (vật khác hẳn bản chất đề / sai số liệu cốt lõi) mới là cửa cứng.
+// Thiếu mục, lệch số mục hay lỗi mô tả phụ -> chỉ là góp ý mềm (không đánh trượt oan).
+function phanLoaiDoiChieuCanh_(ds, soCanh) {
+  var cung = [], mem = [];
+  if (!Array.isArray(ds) || !ds.length) return { cung: cung, mem: ['Chưa đối chiếu đủ ' + soCanh + ' cảnh với đề gốc (bỏ qua, không chặn).'] };
+  if (ds.length !== soCanh) mem.push('Đối chiếu ' + ds.length + '/' + soCanh + ' cảnh (bỏ qua phần thiếu).');
+  ds.forEach(function (c, i) {
+    if (!c || !Array.isArray(c.loi)) return;
+    var so = Number(c.canh) || i + 1;
+    c.loi.forEach(function (x) {
+      var t = 'Cảnh ' + so + ': ' + String(x);
+      if (c.lech_ban_chat === true) cung.push(t); else mem.push(t);
+    });
+    if (c.lech_ban_chat === true && !c.loi.length) cung.push('Cảnh ' + so + ': minh họa lệch bản chất đề.');
+  });
+  return { cung: cung, mem: mem };
+}
+// Quyết định cuối BP2 (thuần, dễ kiểm thử): 0 lỗi cứng tĩnh + AI không báo cửa cứng + điểm >= ngưỡng mềm -> đậu.
+function quyetDinhKichBanBP2_(dy, loiCungTinh) {
+  var tinh = (loiCungTinh || []).filter(Boolean);
+  if (tinh.length) return { dat: false, cua: 'cung', ly_do: 'lỗi cứng tĩnh: ' + tinh.map(function (x) { return String(x).split(':')[0]; }).join(', ') };
+  if (!dy) return { dat: false, cua: 'chua_cham', ly_do: 'AI chưa chấm được' };
+  if (dy.nang && dy.nang.length) return { dat: false, cua: 'cung', ly_do: 'cửa cứng chưa đạt: ' + dy.nang.join(', ') };
+  var nguong = dy.nguong || nguongKichBanMem_();
+  if (Number(dy.phan_tram) < nguong) return { dat: false, cua: 'mem', ly_do: 'điểm chất lượng ' + dy.phan_tram + '% < ' + nguong + '%' };
+  return { dat: true, cua: '', ly_do: '' };
+}
 function tomTatTieuChi_(kq) { return Object.keys(kq.chi_tiet || {}).map(function (k) { return k + ' ' + kq.chi_tiet[k]; }).join(', '); }
 
 // CỬA 1: duyệt KỊCH BẢN trước khi dựng (chỉ đọc chữ). Trả null nếu AI không chấm được (cửa 2 vẫn chặn sau).
@@ -499,10 +545,11 @@ function aiDuyetKichBan_(kb, r, spham) {
     (spham ? '\nSẢN PHẨM QUẢNG BÁ: ' + spham.ten + ' | giá kênh bán ' + spham.gia_ban + 'đ | thông số đã xác minh: ' + (spham.thong_so || []).join('; ') + ' | số ảnh thật: ' + ((spham.anh || []).length) : '') +
     '\nKỊCH BẢN (' + (kb.canh || []).length + ' cảnh):\n' + (canDoiChieu ? JSON.stringify({cau_chuyen:kb.cau_chuyen, mo_hinh_3d:kb.mo_hinh_3d, canh:kb.canh}) : moTaKichBanChoDuyet_(kb)) + '\n' +
     'TIÊU CHÍ (chấm mỗi tiêu chí 0-10; 9-10 khi rõ ràng và đúng chuẩn; 8 khi tốt chỉ còn góp ý văn phong nhỏ; <= 6 khi có lỗi sai toán, sai đáp án, thiếu thử lại bằng số, hoặc vẽ sai hẳn vật của đề):\n' + moTaTieuChi_(ds) + '\n' +
+    'CỬA CỨNG (chỉ những lỗi này mới loại bài): sai toán / sai đáp số / sai dữ kiện cốt lõi của đề; minh họa lệch hẳn bản chất đề (ví dụ vẽ hộp bi cho bài trạm phát sóng). Văn phong, độ mượt, độ đa dạng thẻ, quy tắc trình bày chỉ là điểm chất lượng.\n' +
     'Tự kiểm lại từng phép tính trên màn hình. "van_de": mỗi vấn đề một câu, ghi rõ cảnh số mấy. "gop_y": chỉ dẫn sửa CỤ THỂ theo từng cảnh (vẽ vật gì, đặt ở đâu, số nào sai sửa thành gì).\n' +
     'Trả JSON: {"diem":{' + ds.map(function (t) { return '"' + t.id + '":0'; }).join(',') + '},"van_de":[],"gop_y":""}';
   if (canDoiChieu) prompt += '\nLỜI GIẢI THAM CHIẾU: ' + String(r.cach_1 || '') +
-    '\nĐối chiếu từng cảnh với đề và lời giải trên. Kiểm lại số lượng, đơn vị, điều kiện, từng phép biến đổi, và công thức đúng lớp. Kiểm tra vật Blender mở đầu và hành động trùng lời kể, vật chuyển sang nét toán cùng vị trí khi đọc đề, hình Manim đúng đại lượng đang giải, góc nhìn ổn định. Ví dụ sai phải được đính chính. Bổ sung doi_chieu_canh là mảng có đúng một mục cho MỖI cảnh theo thứ tự, mỗi mục {canh: số thứ tự từ 1, loi: []}; khi có sai sót hoặc thiếu căn cứ, ghi từng lỗi cụ thể vào loi.';
+    '\nĐối chiếu từng cảnh với đề và lời giải trên. Kiểm lại số lượng, đơn vị, điều kiện, từng phép biến đổi, và công thức đúng lớp. Kiểm tra vật Blender mở đầu và hành động trùng lời kể, vật chuyển sang nét toán cùng vị trí khi đọc đề, hình Manim đúng đại lượng đang giải, góc nhìn ổn định. Ví dụ sai phải được đính chính. Bổ sung doi_chieu_canh là mảng có đúng một mục cho MỖI cảnh theo thứ tự, mỗi mục {canh: số thứ tự từ 1, loi: [], lech_ban_chat: false}; khi có sai sót hoặc thiếu căn cứ, ghi từng lỗi cụ thể vào loi. CHỈ đặt lech_ban_chat=true khi cảnh vẽ vật/đối tượng KHÁC HẲN bản chất đề hoặc ghi sai số liệu cốt lõi; góp ý mô tả phụ, câu chữ, màu sắc thì lech_ban_chat=false.';
   var diem = {}, ids = ds.map(function (t) { return t.id; });
   ids.forEach(function (id) { diem[id] = {type: 'NUMBER', minimum: 0, maximum: 10}; });
   var dsChu = {type: 'ARRAY', items: {type: 'STRING'}};
@@ -512,20 +559,21 @@ function aiDuyetKichBan_(kb, r, spham) {
   if (canDoiChieu) {
     var soCanh = kb.canh.length;
     schema.properties.doi_chieu_canh = {type: 'ARRAY', minItems: soCanh, maxItems: soCanh, items: {
-      type: 'OBJECT', required: ['canh', 'loi'], properties: {canh: {type: 'INTEGER'}, loi: dsChu}
+      type: 'OBJECT', required: ['canh', 'loi', 'lech_ban_chat'], properties: {canh: {type: 'INTEGER'}, loi: dsChu, lech_ban_chat: {type: 'BOOLEAN'}}
     }};
     schema.required.push('doi_chieu_canh');
   }
   var j = goiGemini_(prompt, 0.1, Object.assign({}, tuyChonBienKich_(), {schema: schema}));
   if (!j || !j.diem) return null;
-  var kq = tinhDapUng_(j, ds);
+  var kq = tinhDapUngKb_(j, ds);
   if (canDoiChieu) {
-    var loi = loiDoiChieuCanh_(j.doi_chieu_canh, kb.canh.length);
-    if (loi.length) {
+    var dc = phanLoaiDoiChieuCanh_(j.doi_chieu_canh, kb.canh.length);
+    if (dc.cung.length) {
       kq.dat = false;
       kq.nang.push('doi_chieu_canh');
-      kq.van_de = loi.concat(kq.van_de);
+      kq.loi_nang = true;
     }
+    kq.van_de = dc.cung.concat(kq.van_de, dc.mem.slice(0, 4)).slice(0, 10);
   }
   return kq;
 }

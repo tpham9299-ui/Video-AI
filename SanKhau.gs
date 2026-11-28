@@ -255,7 +255,7 @@ function mauTuSinhToiGian_(kb, r) {
   var manh = 'bieu_do_loi_nhuan';
   if (mon === 'XAC_SUAT' || /xác suất|biến cố|ngẫu nhiên/.test(van)) {
     manh = /xúc xắc|súc sắc/.test(van) ? 'xuc_xac_1_6' : /đồng xu|sấp|ngửa/.test(van) ? 'dong_xu' :
-      /\bbi\b|viên bi|bóng/.test(van) ? 'hop_bi_mau' : /bayes|xét nghiệm|cây|lần lượt|độc lập/.test(van) ? 'nut_cay_xac_suat' : 'la_bai_the_so';
+      /\bbi\b|viên bi|quả bóng|quả cầu/.test(van) ? 'hop_bi_mau' : /thẻ|lá bài|bộ bài|phiếu/.test(van) ? 'la_bai_the_so' : 'nut_cay_xac_suat';   // v102.1: không khớp vật -> sơ đồ cây trung tính ("bóng đèn" không phải bi)
   } else {
     manh = /bể|nước|chất lỏng|vòi/.test(van) ? 'be_nuoc_muc_chat_long' : /xe|ô tô|vận tốc|chuyển động/.test(van) ? 'xe_di_chuyen' :
       /lãi suất|lãi kép|tiết kiệm/.test(van) ? 'tui_tien_lai_suat' : /đồng hồ|phút|giờ/.test(van) ? 'dong_ho_thoi_gian' :
@@ -482,7 +482,9 @@ function giaTriDapAn_(dap) {
 function tinhRutMau_(ts, kb) {
   ts = ts || {};
   var de = String((kb && kb.de_bai) || ''), sua = [];
-  var vat = /^(the|bi|xuc_xac)$/.test(ts.vat) ? ts.vat : /xúc xắc/i.test(de) ? 'xuc_xac' : /viên bi|\bbi\b|quả cầu|quả bóng/i.test(de) ? 'bi' : 'the';
+  var coBiDe = /viên bi|\bbi\b|quả cầu|quả bóng/i.test(de);
+  // v102.1: AI ghi vat="bi" cho đề không có bi (trạm phát tín hiệu, học sinh...) -> bỏ, suy lại từ đề
+  var vat = /^(the|bi|xuc_xac)$/.test(ts.vat) && !(ts.vat === 'bi' && !coBiDe) ? ts.vat : /xúc xắc/i.test(de) ? 'xuc_xac' : coBiDe ? 'bi' : 'the';
   if (vat === 'bi') return {vat: 'bi', sua: sua};   // bi cùng màu không đánh số: nhóm theo số lượng là đúng bản chất (Python dựng chi tiết)
   var gt;
   if (Array.isArray(ts.phan_tu) && ts.phan_tu.length) gt = ts.phan_tu.map(Number).filter(isFinite).slice(0, 40);

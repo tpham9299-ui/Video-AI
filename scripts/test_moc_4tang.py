@@ -117,7 +117,7 @@ def main():
     kiem(cb.logo_theo_chuyen_muc(th, "khong_co", {"mon": "THUC_TE"})["logo"] is None, "bài Toán không dùng logo.png in chữ Xác suất")
     kiem(cb.logo_theo_chuyen_muc(th, "khong_co", {"mon": "XAC_SUAT"})["chuyenMuc"] == "xac_suat", "bài xác suất giữ chuyên mục xác suất")
     pc = {"tenTheoChuyenMuc": {"Xác suất": "Tư duy Xác suất", "mac_dinh": "Tư duy Toán"}}
-    kiem(cb.ten_kenh_theo_chuyen_muc({"ten": "Tư duy Xác suất"}, pc, {"mon": "THUC_TE", "chu_de": "Tích phân quãng đường"})["ten"] == "Tư duy Toán", "tên kênh bài tích phân: Tư duy Toán")
+    kiem(cb.ten_kenh_theo_chuyen_muc({"ten": "Tư duy Xác suất"}, pc, {"mon": "THUC_TE", "chu_de": "Tích phân quãng đường"})["ten"] == cb.TEN_THUONG_HIEU, "tên kênh khóa 1 thương hiệu %s (phong_cach.json), không đổi theo chuyên mục" % cb.TEN_THUONG_HIEU)
 
     print("v93 Intro móc câu / Outro tóm tắt / đối chiếu:")
     import khung4tang_v93 as v93

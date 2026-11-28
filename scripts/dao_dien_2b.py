@@ -78,6 +78,54 @@ def xac_dinh_mang(kb, de_info=None):
     return "THUC_TE"
 
 
+def khu_lap_van_ban(s, toi_da=0):
+    """v102.1 (khớp khuLapVanBan_ ở KiemTraHinh.gs): khử câu lặp, n-gram >= 2 từ lặp liền nhau, mục trùng sau dấu phẩy."""
+    goc = re.sub(r"\s+", " ", str(s or "")).strip()
+    if not goc:
+        return ""
+    khoa = lambda x: re.sub(r"[^\w]+", " ", str(x).lower()).strip()  # noqa: E731
+    ra, da = [], set()
+    for c in re.findall(r"[^.!?;|…]+[.!?;|…]*", goc) or [goc]:
+        t = c.strip()
+        if not t:
+            continue
+        muc, giu, da_muc = re.split(r",\s+", t), [], set()   # giữ số thập phân 0,8
+        for m in muc:
+            k = khoa(m)
+            duoi = khoa(giu[-1]).split(" ")[-len(k.split(" ")):] if giu and k else []
+            if k and (k in da_muc or " ".join(duoi) == k):
+                continue
+            giu.append(m.strip())
+            if k:
+                da_muc.add(k)
+        w = ", ".join(giu).split(" ")
+        doi, vong = True, 0
+        while doi and vong < 20:
+            doi, vong = False, vong + 1
+            for n in range(min(12, len(w) // 2), 1, -1):
+                for i in range(0, len(w) - 2 * n + 1):
+                    a, b = khoa(" ".join(w[i:i + n])), khoa(" ".join(w[i + n:i + 2 * n]))
+                    if a and a == b:
+                        del w[i + n:i + 2 * n]
+                        doi = True
+                        break
+                if doi:
+                    break
+        t = " ".join(w)
+        k = khoa(t)
+        if k and k in da:
+            continue
+        if k:
+            da.add(k)
+        ra.append(t)
+    kq = re.sub(r"\s+([,.;!?])", r"", " ".join(ra)).strip()
+    if toi_da and len(kq) > toi_da:
+        cat = kq[:toi_da]
+        sp = cat.rfind(" ")
+        kq = (cat[:sp] if sp > toi_da * 0.6 else cat).rstrip(",;: ") + "…"
+    return kq
+
+
 def kiem_tra_schema_bp2(kb, pha="pha_2b", nghiem_ngat=False):
     """Đối chiếu kịch bản với `schema/kich_ban_bp2.json`. Trả list chuỗi lỗi (rỗng = đạt)."""
     loi = []
@@ -91,8 +139,13 @@ def kiem_tra_schema_bp2(kb, pha="pha_2b", nghiem_ngat=False):
     loai_bc_ok = set(chung.get("loai_bien_co") or [])
 
     if nghiem_ngat or pha == "pha_2a" or kb.get("pha_bp2") == "2_pha":
+        co_canh_thu_lai = any(isinstance(c, dict) and re.search(r"kiem_tra|thu_lai|kiem_chung", str(c.get("loai") or ""))
+                              for c in (kb.get("canh") or []))
         for req in spec.get("required") or []:
             v = kb.get(req)
+            # v102.1: "thu_lai" khóa tại schema; kịch bản cũ đã có cảnh thử lại / khong_thu_lai vẫn hợp lệ (tương thích ngược)
+            if req == "thu_lai" and (co_canh_thu_lai or len(str(kb.get("khong_thu_lai") or "").split()) >= 6):
+                continue
             if v is None or (isinstance(v, str) and not v.strip()) or (isinstance(v, list) and not v):
                 loi.append(f"SCHEMA_THIEU_{req.upper()}: thiếu trường bắt buộc '{req}' ({pha})")
 
@@ -297,7 +350,7 @@ def dong_goi_pha_2b(kb_2a, de_info=None):
         if not isinstance(c, dict):
             continue
         c["so"] = i + 1
-        mo_ta = str(c.get("mo_ta_minh_hoa") or (c.get("minh_hoa") or {}).get("mo_ta") or "").strip()
+        mo_ta = khu_lap_van_ban(str(c.get("mo_ta_minh_hoa") or (c.get("minh_hoa") or {}).get("mo_ta") or "").strip(), 220)
         if mo_ta:
             c["mo_ta_minh_hoa"] = mo_ta
         if not isinstance(c.get("minh_hoa"), dict) or not c["minh_hoa"].get("loai"):

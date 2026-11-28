@@ -206,6 +206,45 @@ del dinh["dinh"]
 G = giai(kb, chi_kiem=True)
 kiem("tam giác bước 1 thiếu trường dinh -> lỗi cứng", not G["dat"] and "HP_DUNG_LOI" in ma_loi(G))
 
+print("9b. Phiên 1/3: thiếu đỉnh gốc A ở bước 1 + đặc tả rác không crash + cửa chặn trước TTS")
+kb = kb_moi()
+pd = kb["hinh_phang_chuan"]["phep_dung"]
+pd[0] = {k: v for k, v in pd[0].items() if k != "loai"}   # bước 1 mất "loai" -> đỉnh A, B, C không được nạp
+G = giai(kb, chi_kiem=True)
+kiem("bước 1 thiếu loai (A chưa nạp) -> lỗi cứng, không crash", not G["dat"] and bool(set(ma_loi(G)) & {"HP_DUNG_LOI", "HP_DIEM_KHONG_TON_TAI"}))
+for rac in ({"phep_dung": [{"id": "d1", "loai": "tam_giac", "dinh": 123}]},
+            {"phep_dung": [{"id": "d1", "loai": "tam_giac", "dinh": ["A", None, 3]}]},
+            {"phep_dung": "[]"},
+            {"phep_dung": [{"id": "d1", "loai": "tam_giac", "dinh": "ABC"}], "dieu_kien": [{"loai": "so_do_goc", "goc": "BAC", "do": "nhọn"}]},
+            {"phep_dung": [{"id": "d1", "loai": "tam_giac", "dinh": "ABC"}, {"id": "d2", "loai": "trung_diem", "ten": "M", "doan": None}]}):
+    kb = {"lop": "9", "canh": [], "hinh_phang_chuan": dict(rac, trang_chung_minh=[{"tieu_de": "x", "dong": [{"tex": "AB = AC", "khi_noi": "x"}]}])}
+    try:
+        G = giai(kb, chi_kiem=True)
+        ok_rac = isinstance(G, dict) and G["dat"] is False and all(str(x["ma"]).startswith("HP_") for x in G["loi"])
+    except Exception as e:   # noqa: BLE001
+        ok_rac = False
+        print("    crash:", type(e).__name__, e)
+    kiem("đặc tả rác %s -> lỗi HP_*, không crash" % json.dumps(rac, ensure_ascii=False)[:70], ok_rac)
+sys.path.insert(0, os.path.dirname(GOC))
+from scripts import kiem_hinh_truoc_tts as truoc_tts  # noqa: E402
+kb = kb_moi()
+pd = kb["hinh_phang_chuan"]["phep_dung"]
+pd[0] = {"id": "d1", "loai": "duong_tron", "tam": "O"}
+pd[1] = {"id": "d2", "loai": "chan_duong_cao", "ten": "H", "tu": "A", "xuong": "BC"}
+L = truoc_tts.kiem(kb, True, env={})
+kiem("trước TTS: bước 1 chỉ (O), bước 2 dùng A -> chặn HP_DIEM_KHONG_TON_TAI",
+     any(x["ma"] == "HP_DIEM_KHONG_TON_TAI" and "điểm A" in x["chi_tiet"] for x in L))
+kiem("trước TTS: bài chuẩn -> đạt", truoc_tts.kiem(kb_moi(), True, env={}) == [])
+kiem("trước TTS: không phải luồng hình học -> bỏ qua", truoc_tts.kiem(kb, False, env={}) == [])
+duong_kb = os.path.join(GOC, "..", "out", "test_truoc_tts", "kb.json")
+os.makedirs(os.path.dirname(duong_kb), exist_ok=True)
+json.dump(kb, open(duong_kb, "w", encoding="utf8"), ensure_ascii=False)
+duong_ra = os.path.join(os.path.dirname(duong_kb), "loi.json")
+r = subprocess.run([sys.executable, "-X", "utf8", os.path.join(GOC, "kiem_hinh_truoc_tts.py"), duong_kb, duong_ra],
+                   capture_output=True, env=dict(os.environ, HINH_HOC="1"))
+kiem("CLI trước TTS: mã 2 + JSON nang có HP_DIEM_KHONG_TON_TAI",
+     r.returncode == 2 and any(x.startswith("HP_DIEM_KHONG_TON_TAI:") for x in json.load(open(duong_ra, encoding="utf8"))["nang"]))
+
 print("10. Bản JS (KiemTraHinh.gs kiemGdpt2018_) khớp bản Python")
 js = os.path.join(GOC, "test_gdpt_js.cjs")
 if os.path.exists(js):

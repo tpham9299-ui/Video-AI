@@ -186,6 +186,8 @@ def dung_khoi(k):
             F = D[chan]
         elif chan.startswith("trung_diem"):
             ab = tach_ten(chan.split(":", 1)[1] if ":" in chan else "AB")
+            if len(ab) != 2 or not all(x in D for x in ab):
+                raise LoiDung("KG_KHOI_LOI", "chan_duong_cao '%s' cần trung điểm của 2 đỉnh đáy đã có" % chan)
             F = noi(D[ab[0]], D[ab[1]], 0.5)
         elif chan == "tam":
             if tg:
@@ -335,6 +337,8 @@ def dung_diem(D, d, t_bat_ky):
             info = {"tren": ds, "t": t}
     elif loai == "trong_tam":
         ds = tach_ten(d.get("tam_giac"))
+        if len(ds) != 3:
+            raise LoiDung("KG_DUNG_LOI", "%s: 'trong_tam' cần 'tam_giac' gồm đúng 3 điểm, nhận '%s'" % (ng, d.get("tam_giac")))
         X = tb([_lay(D, x, ng) for x in ds])
     elif loai == "giao_song_song":   # đường qua M song song AB cắt đường CD tại X
         M = _lay(D, chuan_ten(d.get("qua") or ""), ng)

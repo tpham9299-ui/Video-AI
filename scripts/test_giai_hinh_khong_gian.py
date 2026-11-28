@@ -148,6 +148,63 @@ ok(G["dat"], "chóp đều: SO vuông góc đáy")
 G = giai({"lop": "11", "hinh_khong_gian": {"khoi": {"loai": "chop_tam_giac", "day_kieu": "vuong", "vuong_tai": "B", "chan_duong_cao": "A"},
                                             "diem": [], "buoc": [], "menh_de": [{"loai": "vuong_goc_mat", "duong": "BC", "mat": "SAB"}]}})
 ok(G["dat"], "chóp tam giác vuông tại B, SA ⊥ đáy: BC ⊥ (SAB)")
+# Phiên 1/3: mọi chỗ unpack điểm sai định dạng -> mã KG_* rõ ràng, KHÔNG crash Python (tái hiện kiem.py:107 'goc' rỗng)
+from hinh_khong_gian import kiem as _kiem  # noqa: E402
+from hinh_khong_gian.hinh import LoiDung as _LoiKG  # noqa: E402
+D_ = {"S": (0.0, 0.0, 1.0), "A": (0.0, 0.0, 0.0), "B": (1.0, 0.0, 0.0), "C": (1.0, 1.0, 0.0)}
+
+
+def ma_ngoai_le(ham, *ts):
+    try:
+        ham(*ts)
+    except _LoiKG as e:
+        return e.ma
+    except Exception as e:   # noqa: BLE001
+        return "CRASH:" + type(e).__name__
+    return None
+
+
+ok(ma_ngoai_le(_kiem.tinh_so_do, {"loai": "goc_ba_diem", "goc": ""}, D_) == "KG_DUNG_LOI", "goc_ba_diem 'goc' rỗng (0 điểm) -> KG_DUNG_LOI, không ValueError")
+ok(ma_ngoai_le(_kiem.tinh_so_do, {"loai": "goc_ba_diem"}, D_) == "KG_DUNG_LOI", "goc_ba_diem thiếu khóa 'goc' -> KG_DUNG_LOI")
+ok(ma_ngoai_le(_kiem.tinh_so_do, {"loai": "goc_ba_diem", "goc": 123}, D_) in ("KG_DUNG_LOI", "KG_DIEM_KHONG_TON_TAI"), "goc_ba_diem 'goc' kiểu số -> mã KG_*")
+ok(ma_ngoai_le(_kiem.tinh_so_do, {"loai": "khoang_cach_diem_duong", "diem": "S", "duong": "AA"}, D_) == "KG_DUNG_LOI",
+   "khoảng cách tới đường suy biến (AA) -> KG_DUNG_LOI, không ZeroDivisionError")
+ok(ma_ngoai_le(_kiem.tinh_so_do, {"loai": "khoang_cach_hai_duong", "a": "AA", "b": "BC"}, D_) == "KG_DUNG_LOI",
+   "khoảng cách hai đường với đường suy biến -> KG_DUNG_LOI")
+ok(ma_ngoai_le(_kiem.tinh_so_do, {"loai": "do_dai", "doan": "S"}, D_) == "KG_DUNG_LOI", "đoạn 1 điểm -> KG_DUNG_LOI")
+ok(ma_ngoai_le(_kiem.tinh_so_do, {"loai": "goc_hai_mat", "mat1": "SA", "mat2": "ABC"}, D_) == "KG_DUNG_LOI", "mặt 2 điểm -> KG_DUNG_LOI")
+ok(ma_ngoai_le(_kiem.tinh_so_do, "goc_ba_diem", D_) == "KG_DUNG_LOI", "số đo không phải đối tượng -> KG_DUNG_LOI")
+ok(ma_ngoai_le(_kiem.kiem_menh_de, {"loai": "vuong_goc", "a": None, "b": "BC"}, D_) == "KG_DUNG_LOI", "mệnh đề đường None -> KG_DUNG_LOI")
+ok(ma_ngoai_le(_kiem.kiem_menh_de, {"loai": "thuoc", "diem": "Z", "mat": "ABC"}, D_) == "KG_DIEM_KHONG_TON_TAI", "mệnh đề điểm chưa dựng -> KG_DIEM_KHONG_TON_TAI")
+kb = doc("vuong_goc_sa.json")
+kb["hinh_khong_gian"]["so_do"].append({"loai": "goc_ba_diem", "goc": "", "gia_tri": "45°"})
+kb["hinh_khong_gian"]["so_do"].append({"loai": "khoang_cach_diem_duong", "diem": "S", "duong": "AA", "gia_tri": "1"})
+G = giai(kb, chi_kiem=True)
+ok(not G["dat"] and ma_loi(G) == {"KG_DUNG_LOI"} and len(G["loi"]) == 2, "giai(): goc rỗng + đường suy biến -> 2 lỗi KG_DUNG_LOI, không crash")
+kb = doc("vuong_goc_sa.json")
+kb["hinh_khong_gian"]["diem"].append({"ten": "G", "loai": "trong_tam", "tam_giac": ""})
+G = giai(kb, chi_kiem=True)
+ok(G is not None and not G["dat"] and ma_loi(G) == {"KG_DUNG_LOI"}, "trọng tâm tam giác rỗng -> KG_DUNG_LOI, không ZeroDivisionError")
+kb = doc("vuong_goc_sa.json")
+kb["hinh_khong_gian"]["khoi"]["chan_duong_cao"] = "trung_diem:A"
+G = giai(kb, chi_kiem=True)
+ok(G is not None and not G["dat"] and ma_loi(G) <= {"KG_KHOI_LOI", "KG_DIEM_KHONG_TON_TAI"}, "chân đường cao trung_diem 1 điểm -> lỗi KG_*, không IndexError")
+for rac in ({"khoi": "chop"}, {"khoi": {"loai": "chop_tu_giac"}, "diem": [{"ten": "M", "loai": "giao", "duong": "SA"}]},
+            {"khoi": {"loai": "chop_tu_giac"}, "menh_de": ["SA vuông góc"], "so_do": [None, 3]}):
+    G = giai({"lop": "11", "hinh_khong_gian": rac}, chi_kiem=True)
+    ok(isinstance(G, dict) and isinstance(G.get("loi"), list) and all(str(x["ma"]).startswith("KG_") for x in G["loi"]),
+       "đặc tả rác %s -> kết quả có mã KG_*, không crash" % json.dumps(rac, ensure_ascii=False)[:60])
+
+# Cửa chặn sớm BP3 trước TTS (scripts/kiem_hinh_truoc_tts.py) dùng cùng bộ giải
+sys.path.insert(0, GOC)
+from scripts import kiem_hinh_truoc_tts as _truoc_tts  # noqa: E402
+kb = doc("vuong_goc_sa.json")
+kb["hinh_khong_gian"]["so_do"].append({"loai": "goc_ba_diem", "goc": "", "gia_tri": "45°"})
+L = _truoc_tts.kiem(kb, True, env={})
+ok(L and all(x["ma"] == "KG_DUNG_LOI" for x in L), "trước TTS: goc rỗng -> chặn KG_DUNG_LOI")
+ok(_truoc_tts.kiem(doc("vuong_goc_sa.json"), True, env={}) == [], "trước TTS: bài chuẩn -> đạt")
+ok(_truoc_tts.kiem(kb, True, env={"HINH_KHONG_GIAN_CHUAN": "TAT"}) == [], "trước TTS: HINH_KHONG_GIAN_CHUAN=TAT -> bỏ qua")
+
 # CLI --chi-kiem (BP2)
 import subprocess  # noqa: E402
 lenh_kiem = [sys.executable, "-X", "utf8", os.path.join(GOC, "scripts", "giai_hinh_khong_gian.py"), "-", "--chi-kiem"]

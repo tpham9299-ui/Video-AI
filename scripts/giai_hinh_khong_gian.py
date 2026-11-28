@@ -69,6 +69,18 @@ def _do_xa(D):
 
 
 def giai(kb, chi_kiem=False):
+    """Lưới an toàn: đặc tả sai định dạng không được làm crash BP2/BP3 -> trả lỗi cứng KG_DUNG_LOI rõ ràng."""
+    try:
+        return _giai(kb, chi_kiem=chi_kiem)
+    except LoiDung as e:
+        return {"dat": False, "loi": [_loi(e.ma, e.chi_tiet, getattr(e, "goi_y", ""))], "canh_bao": []}
+    except (ValueError, TypeError, ZeroDivisionError, IndexError, KeyError, AttributeError) as e:
+        return {"dat": False, "loi": [_loi("KG_DUNG_LOI", "hinh_khong_gian sai định dạng (%s: %s)" % (type(e).__name__, str(e)[:160]),
+                                            "ghi đủ tên điểm đã dựng cho mọi trường (đường 2 điểm, mặt >= 3 điểm, góc 3 điểm)")],
+                "canh_bao": []}
+
+
+def _giai(kb, chi_kiem=False):
     hkg = kb.get("hinh_khong_gian") if isinstance(kb, dict) else None
     if not isinstance(hkg, dict):
         return None
@@ -180,7 +192,8 @@ def giai(kb, chi_kiem=False):
         if l == "giao":
             for s in d.get("duong") or []:
                 p = tach_ten(s)
-                them(p[0], p[1], "phu")
+                if len(p) == 2 and all(t in D for t in p):
+                    them(p[0], p[1], "phu")
         if l in ("chan_vuong_goc", "hinh_chieu"):
             them(chuan_ten(d.get("tu")), ten, "phu")
         if l == "giao_song_song":

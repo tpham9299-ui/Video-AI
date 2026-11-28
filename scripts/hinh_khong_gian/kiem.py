@@ -39,8 +39,33 @@ def _cos(u, v):
     return abs(cham(u, v)) / max(1e-12, dai(u) * dai(v))
 
 
+def _an_toan(ham, dl, D, nhan_loai):
+    """Đặc tả sai định dạng (thiếu điểm, chia 0, kiểu lạ) -> LoiDung KG_DUNG_LOI rõ ràng thay vì crash Python."""
+    if not isinstance(dl, dict):
+        raise LoiDung("KG_DUNG_LOI", "%s phải là đối tượng JSON, nhận %r" % (nhan_loai, dl))
+    try:
+        return ham(dl, D)
+    except LoiDung:
+        raise
+    except (ValueError, TypeError, ZeroDivisionError, IndexError, KeyError, AttributeError) as e:
+        raise LoiDung("KG_DUNG_LOI", "%s '%s' không đọc được (%s: %s)" % (
+            nhan_loai, dl.get("loai"), type(e).__name__, str(e)[:120]),
+            "ghi đủ tên điểm đã dựng cho từng trường (đường 2 điểm, mặt >= 3 điểm, góc 3 điểm)")
+
+
+def _doan_khac_0(p, q, mo_ta):
+    L = dai(tru(q, p))
+    if L < 1e-12:
+        raise LoiDung("KG_DUNG_LOI", "%s có hai điểm trùng nhau" % mo_ta)
+    return L
+
+
 def kiem_menh_de(md, D):
     """-> (đúng?, độ lệch). Loại: thuoc | vuong_goc | vuong_goc_mat | mat_vuong_goc | song_song | song_song_mat | thang_hang | dong_phang."""
+    return _an_toan(_kiem_menh_de, md, D, "mệnh đề")
+
+
+def _kiem_menh_de(md, D):
     l = str(md.get("loai") or "")
     if l == "thuoc":
         X = _p(D, md.get("diem"))
@@ -94,6 +119,10 @@ def kiem_menh_de(md, D):
 
 # ---------------- số đo ----------------
 def tinh_so_do(dl, D):
+    return _an_toan(_tinh_so_do, dl, D, "số đo")
+
+
+def _tinh_so_do(dl, D):
     l = str(dl.get("loai") or "")
     if l == "do_dai":
         p, q = _dg(D, dl.get("doan"))
@@ -125,13 +154,13 @@ def tinh_so_do(dl, D):
     if l == "khoang_cach_diem_duong":
         X = _p(D, dl.get("diem"))
         p, q = _dg(D, dl.get("duong"))
-        return dai(cheo(tru(q, p), tru(X, p))) / dai(tru(q, p))
+        return dai(cheo(tru(q, p), tru(X, p))) / _doan_khac_0(p, q, "đường '%s'" % dl.get("duong"))
     if l == "khoang_cach_hai_duong":
         p, q = _dg(D, dl.get("a"))
         r, s = _dg(D, dl.get("b"))
         n = cheo(tru(q, p), tru(s, r))
         if dai(n) < 1e-9:   # song song
-            return dai(cheo(tru(q, p), tru(r, p))) / dai(tru(q, p))
+            return dai(cheo(tru(q, p), tru(r, p))) / _doan_khac_0(p, q, "đường '%s'" % dl.get("a"))
         return abs(cham(chuan(n), tru(r, p)))
     if l == "the_tich":
         a, b, c, d = _cac_diem(D, dl.get("khoi"), 4, "the_tich: trường 'khoi' (tứ diện)")

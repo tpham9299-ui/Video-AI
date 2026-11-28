@@ -85,37 +85,45 @@ t('moc_xoay lệch chữ -> cụm con >= 3 từ NGUYÊN VĂN (giữ vị trí gi
   ctx.tuSuaKhongGian_(kb, rKG);
   assert.equal(kb.hinh_khong_gian.buoc[2].xoay[0].moc_xoay, 'xét mặt đáy abcd');
 });
-t('moc_xoay không có trong lời -> GIỮ NGUYÊN (không tự dời về đầu cảnh)', () => {
+t('v102.1 moc_xoay không có trong lời -> hạ cánh mềm về góc toan_canh (không dời mốc về đầu cảnh)', () => {
   const kb = J(KB1);
   kb.hinh_khong_gian.buoc[2].xoay[0].moc_xoay = 'nhìn từ phía dưới lên';
   ctx.tuSuaKhongGian_(kb, rKG);
-  assert.equal(kb.hinh_khong_gian.buoc[2].xoay[0].moc_xoay, 'nhìn từ phía dưới lên');
+  const x = kb.hinh_khong_gian.buoc[2].xoay[0];
+  assert.equal(x.goc_nhin, 'toan_canh');
+  assert.equal(x.du_phong, true);
+  assert.equal(x.moc_xoay, undefined);
 });
 
 console.log('3. Lỗi cứng kiemKhongGian_');
 t('mẫu 1 + mẫu 2: không lỗi cứng (kể cả bộ giải máy)', () => {
   for (const kb of [KB1, KB2]) { const k = J(ctx.kiemKhongGian_(J(kb))); assert.deepEqual(k.nang, [], JSON.stringify(k.nang)); }
 });
-t('moc_xoay không khớp -> CAM_MAT_MOC', () => {
+// v102.1: lỗi camera là lớp trình diễn -> cảnh báo nhẹ (nhe), KHÔNG đánh rớt kịch bản
+t('moc_xoay không khớp -> CAM_MAT_MOC chỉ là cảnh báo (không chặn)', () => {
   const kb = J(KB1);
   kb.hinh_khong_gian.buoc[3].xoay[0].moc_xoay = 'câu không hề có';
-  assert.ok(ma(ctx.kiemKhongGian_(kb).nang).includes('CAM_MAT_MOC'));
+  const k = ctx.kiemKhongGian_(kb);
+  assert.ok(!ma(k.nang).includes('CAM_MAT_MOC') && ma(k.nhe).includes('CAM_MAT_MOC'));
 });
-t('cú xoay thiếu moc_xoay -> CAM_MAT_MOC', () => {
+t('cú xoay thiếu moc_xoay -> CAM_MAT_MOC cảnh báo (không chặn)', () => {
   const kb = J(KB1);
   delete kb.hinh_khong_gian.buoc[4].xoay[0].moc_xoay;
-  assert.ok(ma(ctx.kiemKhongGian_(kb).nang).includes('CAM_MAT_MOC'));
+  const k = ctx.kiemKhongGian_(kb);
+  assert.ok(!ma(k.nang).includes('CAM_MAT_MOC') && ma(k.nhe).includes('CAM_MAT_MOC'));
 });
-t('moc_xoay nằm ở cảnh khác (đúng chữ nhưng sai cảnh) -> CAM_MAT_MOC', () => {
+t('moc_xoay nằm ở cảnh khác (đúng chữ nhưng sai cảnh) -> cảnh báo, không chặn', () => {
   const kb = J(KB1);
   kb.hinh_khong_gian.buoc[3].xoay[0].moc_xoay = 'xét mặt đáy ABCD';
-  assert.ok(ma(ctx.kiemKhongGian_(kb).nang).includes('CAM_MAT_MOC'));
+  const k = ctx.kiemKhongGian_(kb);
+  assert.ok(!ma(k.nang).includes('CAM_MAT_MOC') && ma(k.nhe).includes('CAM_MAT_MOC'));
 });
-t('hai cú xoay sát nhau trong một cảnh -> CAM_DE_GIO', () => {
+t('hai cú xoay sát nhau trong một cảnh -> CAM_DE_GIO cảnh báo (Python bỏ cú sau)', () => {
   const kb = J(KB2);
   kb.hinh_khong_gian.buoc[1].xoay[1].moc_xoay = 'xuống đáy, hai đường';
   kb.hinh_khong_gian.buoc[1].xoay[0].moc_xoay = 'nhìn từ trên';
-  assert.ok(ma(ctx.kiemKhongGian_(kb).nang).includes('CAM_DE_GIO'));
+  const k = ctx.kiemKhongGian_(kb);
+  assert.ok(!ma(k.nang).includes('CAM_DE_GIO') && ma(k.nhe).includes('CAM_DE_GIO'));
 });
 t('truc_dien_mat thiếu 3 điểm -> KG_THIEU_DAC_TA', () => {
   const kb = J(KB1);
@@ -162,12 +170,12 @@ t('danhGiaKichBan_ bài không gian: không đòi tọa độ hinh_hoc / buoc_ve
   assert.ok(!nang.some((x) => /THIEU_TOA_DO_HINH|HINH_THIEU_DIEM|BUOC_VE_/.test(String(x))), JSON.stringify(nang).slice(0, 300));
   assert.ok(!nang.some((x) => /^(KG_|CAM_)/.test(String(x))), JSON.stringify(nang).slice(0, 300));
 });
-t('danhGiaKichBan_: moc_xoay sai -> lỗi cứng CAM_MAT_MOC còn trong nhóm chặn', () => {
+t('danhGiaKichBan_: moc_xoay sai -> KHÔNG còn lỗi cứng CAM_MAT_MOC (hạ cánh mềm, v102.1)', () => {
   const kb = J(KB1);
   ctx.khoaLuongHinhHoc_(kb);
   kb.hinh_khong_gian.buoc[3].xoay[0].moc_xoay = 'câu không hề có';
   const kq = ctx.danhGiaKichBan_(kb, KB1.dap_an_cuoi, 'HINH_HOC', true, null, KB1.de_bai, '11');
-  assert.ok(((kq && kq.nang) || []).some((x) => /^CAM_MAT_MOC/.test(String(x))));
+  assert.ok(!((kq && kq.nang) || []).some((x) => /^CAM_/.test(String(x))), JSON.stringify((kq && kq.nang) || []).slice(0, 300));
 });
 
 console.log('5. So khớp với bản Python');

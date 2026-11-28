@@ -114,5 +114,68 @@ kiem('BP2 JS nạp đủ A B C từ dinh dạng chuỗi', ctx.kiemTraKichBanMani
 delete kbDinhChuoi.hinh_phang_chuan.phep_dung[0].dinh;
 kiem('BP2 JS chặn tam giác bước 1 thiếu trường dinh', danhGiaBP2(kbDinhChuoi).some((x) => /^HP_DUNG_LOI: phép dựng 1\/d1:/.test(x)));
 
+console.log('9. Phiên 1/3: cổng chốt hình học trước khi lưu CO_KICH_BAN (khớp bước trước TTS của BP3)');
+ctx.kiemHinhPhangMay_ = kiemHinhPhangMay_;
+const kiemKhongGianMay_ = (kb) => {
+  try {
+    return JSON.parse(execFileSync(PY, [path.join(GOC, 'scripts', 'giai_hinh_khong_gian.py'), '-', '--chi-kiem'], {input: JSON.stringify(kb), env: {...process.env, PYTHONIOENCODING: 'utf8'}}).toString('utf8'));
+  } catch (e) {
+    return e.status === 2 ? JSON.parse(e.stdout.toString('utf8')) : null;
+  }
+};
+const kbChot = moi();
+kbChot.luong = 'hinh_hoc_thuan';
+kbChot.mon = 'HINH_HOC';
+kiem('cổng chốt: bài chuẩn -> 0 lỗi', ctx.chotHinhHocTruocLuu_(kbChot).length === 0);
+const kbChotA = JSON.parse(JSON.stringify(kbChot));
+kbChotA.hinh_phang_chuan.phep_dung[0] = {id: 'd1', loai: 'duong_tron', tam: 'O'};
+kbChotA.hinh_phang_chuan.phep_dung[1] = {id: 'd2', loai: 'chan_duong_cao', ten: 'H', tu: 'A', xuong: 'BC'};
+kiem('cổng chốt: bước 1 chỉ (O), bước 2 dùng A -> chặn HP_DIEM_KHONG_TON_TAI', ctx.chotHinhHocTruocLuu_(kbChotA).some((x) => x === loiD2));
+ctx.kiemHinhPhangMay_ = undefined;
+kiem('cổng chốt: không có Python vẫn chặn bằng bản JS thứ tự dựng', ctx.chotHinhHocTruocLuu_(kbChotA).some((x) => x === loiD2));
+ctx.kiemHinhPhangMay_ = kiemHinhPhangMay_;
+const kbChotNgoai = JSON.parse(JSON.stringify(kbChotA));
+kbChotNgoai.luong = 'thuc_te_xac_suat';
+kbChotNgoai.mon = 'THUC_TE';
+kiem('cổng chốt: luồng thực tế -> không kiểm hình phẳng (khớp BP3 hh=0)', ctx.chotHinhHocTruocLuu_(kbChotNgoai).length === 0);
+const kbChotMay = JSON.parse(JSON.stringify(kbChot));
+kbChotMay.hinh_phang_chuan.trang_chung_minh[0].dong.push({khi_noi: 'x', tex: 'AM \\perp BC'});
+kiem('cổng chốt: mệnh đề sai trên tọa độ -> HP_MENH_DE_SAI từ bộ giải Python', ctx.chotHinhHocTruocLuu_(kbChotMay).some((x) => /^HP_MENH_DE_SAI/.test(x)));
+const kbThieuLoai = moi();
+delete kbThieuLoai.hinh_phang_chuan.phep_dung[0].loai;
+const suaThieuLoai = ctx.tuSuaHinhPhangChuan_(kbThieuLoai, r);
+kiem('Auto-fix: bước 1 thiếu loai nhưng có dinh 3 đỉnh -> suy lại tam_giac_noi_tiep, giữ A B C',
+  kbThieuLoai.hinh_phang_chuan.phep_dung[0].loai === 'tam_giac_noi_tiep' && suaThieuLoai.some((x) => /thiếu loai/.test(x)) &&
+  ctx.kiemThuTuPhepDungHinhPhang_(kbThieuLoai.hinh_phang_chuan.phep_dung) === '');
+const kbPdChuoi = moi();
+kbPdChuoi.hinh_phang_chuan.phep_dung = JSON.stringify(kbPdChuoi.hinh_phang_chuan.phep_dung);
+ctx.tuSuaHinhPhangChuan_(kbPdChuoi, r);
+kiem('Auto-fix: phep_dung mã hóa lồng thành chuỗi JSON -> bung lại mảng', Array.isArray(kbPdChuoi.hinh_phang_chuan.phep_dung) && kbPdChuoi.hinh_phang_chuan.phep_dung.length === KB.hinh_phang_chuan.phep_dung.length);
+// kb mang cả hinh_khong_gian lẫn hinh_phang_chuan: trước đây BP2 chỉ kiểm KG -> HP_* lọt sang BP3
+ctx.kiemKhongGianMay_ = kiemKhongGianMay_;
+const kbHaiHinh = JSON.parse(JSON.stringify(kbChotA));
+kbHaiHinh.hinh_khong_gian = JSON.parse(fs.readFileSync(path.join(GOC, 'mau/v97/vuong_goc_sa.json'), 'utf8')).hinh_khong_gian;
+const nangHaiHinh = ctx.danhGiaKichBan_(kbHaiHinh, r.dap_an, 'HINH_HOC', false, null, r.de_bai, r.lop).nang;
+kiem('danhGiaKichBan_: kb có cả KG lẫn HP -> vẫn bắt HP_DIEM_KHONG_TON_TAI', nangHaiHinh.includes(loiD2));
+kiem('cổng chốt: kb có cả KG lẫn HP -> bắt HP_DIEM_KHONG_TON_TAI', ctx.chotHinhHocTruocLuu_(kbHaiHinh).includes(loiD2));
+const kbKgRong = JSON.parse(JSON.stringify(kbChot));
+delete kbKgRong.hinh_phang_chuan;
+kbKgRong.hinh_khong_gian = JSON.parse(fs.readFileSync(path.join(GOC, 'mau/v97/vuong_goc_sa.json'), 'utf8')).hinh_khong_gian;
+kbKgRong.hinh_khong_gian.so_do.push({loai: 'goc_ba_diem', goc: '', gia_tri: '45°'});
+kiem('cổng chốt: hình không gian "goc" rỗng -> KG_DUNG_LOI (không crash, không lọt)', ctx.chotHinhHocTruocLuu_(kbKgRong).some((x) => /^KG_DUNG_LOI/.test(x)));
+ctx.kiemKhongGianMay_ = () => { throw new Error('python chết'); };
+kiem('kiemKhongGian_: cầu nối Python lỗi -> lỗi cứng PREFLIGHT_HINH_KHONG_GIAN thay vì cho qua',
+  ctx.kiemKhongGian_(kbKgRong).nang.some((x) => /^PREFLIGHT_HINH_KHONG_GIAN/.test(x)));
+ctx.kiemKhongGianMay_ = undefined;
+const bp1 = fs.readFileSync(path.join(GOC, 'BoPhan1.gs'), 'utf8');
+const viTriChot = bp1.indexOf('chotHinhHocTruocLuu_(kb)'), viTriLuu = bp1.indexOf("trang_thai: 'CO_KICH_BAN', file_kich_ban: oKb");
+kiem('BP2 gọi cổng chốt hình học TRƯỚC khi ghi CO_KICH_BAN', viTriChot > 0 && viTriLuu > viTriChot);
+const yml = fs.readFileSync(path.join(GOC, '.github/workflows/dung-video.yml'), 'utf8');
+const iHinh = yml.indexOf('scripts/kiem_hinh_truoc_tts.py'), iTts = yml.indexOf('- name: Tạo giọng đọc'), iPre = yml.indexOf('- name: Chuẩn bị props giả lập');
+kiem('BP3: kiểm hình trước TTS + trước props giả lập, có callback KIEM_DUYET_BO_CUC', iHinh > 0 && iHinh < iPre && iPre < iTts &&
+  /bao_hinh_truoc_tts\.json/.test(yml) && /steps\.hinh_truoc_tts\.outputs\.da_bao == 'true'/.test(yml));
+const iMat = yml.indexOf('- name: Mắt thần AI quét lưới 3×3'), iCong = yml.indexOf('- name: Cổng chặn MP4 hỏng'), iDrive = yml.indexOf('- name: Tải video lên Google Drive');
+kiem('BP3: chuyển động + Mắt thần 3×3 + cổng MP4 chạy TRƯỚC rclone đẩy Drive', iMat > 0 && iMat < iCong && iCong < iDrive && /os\.remove\(mp4_path\)/.test(yml));
+
 console.log('\nKết quả: %d đạt, %d hỏng', dat, hong.length);
 process.exit(hong.length ? 1 : 0);

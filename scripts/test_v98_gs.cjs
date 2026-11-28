@@ -165,11 +165,11 @@ t('kiemKhongGian_ đặc tả v2: không đòi "khoi", bộ giải máy ĐẠT',
   assert.ok(!k.nang.some((x) => /thiếu "khoi"/.test(x)), k.nang.join(' | '));
   assert.ok(!k.nang.some((x) => /^KG_/.test(x)), k.nang.join(' | '));
 });
-t('động tác thiếu moc_hanh_dong -> CAM_MAT_MOC (lỗi cứng)', () => {
+t('động tác thiếu moc_hanh_dong -> CAM_MAT_MOC cảnh báo, chạy ở đầu bước (v102.1 hạ cánh mềm)', () => {
   const kb = J(KB);
   delete kb.hinh_khong_gian.buoc[6].hanh_dong[0].moc_hanh_dong;
   const k = ctx.kiemKhongGian_(kb);
-  assert.ok(ma(k.nang).includes('CAM_MAT_MOC'));
+  assert.ok(!ma(k.nang).includes('CAM_MAT_MOC') && ma(k.nhe).includes('CAM_MAT_MOC'));
   assert.ok(ctx.LOI_CUNG_RE_.test('CAM_MAT_MOC: x'));
 });
 t('số đo sai trong đặc tả -> KG_SAI_SO_DO từ bộ giải Python', () => {

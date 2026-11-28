@@ -4,9 +4,10 @@
   - `moc_xoay` (cụm 3-5 từ mở đầu ý chứng minh) đối chiếu trên CHỮ GỐC lời thoại (trước phiên âm TTS; đã bỏ ngoặc / ký hiệu
     toán). Mốc từng từ gốc lấy từ chuanbi.can_tu_tho (WordBoundary edge-tts ánh xạ ngược về từ gốc) -> giây thật.
   - Chỉ tìm TIẾN, trong đúng cảnh `canh` của bước; khớp đúng -> khớp gần (>= 80 %) -> Auto-fix: cụm con >= 3 từ liền nhau.
-    KHÔNG BAO GIỜ lùi về đầu cảnh / 0,0 s: không tìm được mốc sát lời -> lỗi cứng CAM_MAT_MOC.
+  - v102.1 HẠ CÁNH MỀM: mốc xoay là lớp trình diễn phụ, không phải lỗi toán. Không tìm được mốc (CAM_MAT_MOC) -> ghi cảnh báo
+    và rơi an toàn về góc `toan_canh` (thấy toàn khối) ở đầu bước; không đánh rớt kịch bản.
   - Nhịp: giữ góc cũ tới (mốc - 0,15 s) -> xoay 0,9-1,2 s (mặc định 1,05 s) -> khóa. Chồng giờ với cú trước: rút cú trước
-    xuống 0,9 s; vẫn chồng -> lỗi cứng CAM_DE_GIO.
+    xuống 0,9 s; vẫn chồng (CAM_DE_GIO) -> bỏ cú sau (cảnh báo), giữ góc đang có.
 """
 import difflib
 import re
@@ -77,7 +78,7 @@ def tim_cum(cum, ds, lo, hi, cho_phep_con=True):
 def lich_khong_gian(hkg, dung, canh_props, fps, t_buoc, tong):
     """-> (lịch cho props.khung4tang.khongGian, danh sách lỗi cứng, thống kê)."""
     ds, pham_vi = phang_tu(canh_props, fps)
-    loi, xoay, tk = [], [], {"xoay": 0, "khop": 0, "auto_fix": 0}
+    loi, xoay, tk = [], [], {"xoay": 0, "khop": 0, "auto_fix": 0, "du_phong": 0, "canh_bao": []}
     buoc = [b for b in hkg.get("buoc") or [] if isinstance(b, dict)]
     con_tro = 0
 
@@ -102,14 +103,14 @@ def lich_khong_gian(hkg, dung, canh_props, fps, t_buoc, tong):
                 xoay.append({"t": 0.0, "d": 0.0, "goc_nhin": g, "doi_tuong": doi})
                 continue
             tk["xoay"] += 1
-            if not cum:
-                loi.append({"ma": "CAM_MAT_MOC", "chi_tiet": "bước %d: cú xoay '%s' thiếu moc_xoay" % (j + 1, g),
-                            "goi_y": "ghi moc_xoay = cụm 3-5 từ NGUYÊN VĂN lời đọc mở đầu ý chứng minh"})
-                continue
-            kq = tim_cum(cum, ds, max(lo, con_tro), hi)
+            kq = tim_cum(cum, ds, max(lo, con_tro), hi) if cum and not x.get("du_phong") else None
             if kq is None:
-                loi.append({"ma": "CAM_MAT_MOC", "chi_tiet": "bước %d (cảnh %s): moc_xoay \"%s\" không có trong lời đọc (sau mốc trước)" % (j + 1, so, cum),
-                            "goi_y": "chép đúng cụm trong loi_thoai của cảnh đó; không tự dời cú xoay về đầu cảnh"})
+                # v102.1 hạ cánh mềm: rơi về góc nhìn chuẩn thấy toàn khối ở đầu bước (không chặn kịch bản)
+                tb = float(t_buoc[j]) if j < len(t_buoc) else (xoay[-1]["t"] + THOI_XOAY + KHE_XOAY if xoay else 0.0)
+                tk["du_phong"] += 1
+                tk["canh_bao"].append({"ma": "CAM_MAT_MOC", "chi_tiet": "bước %d (cảnh %s): moc_xoay \"%s\" không có trong lời đọc -> góc toan_canh dự phòng" % (j + 1, so, cum)})
+                xoay.append({"t": round(max(0.0, tb), 3), "d": THOI_XOAY, "goc_nhin": "toan_canh", "doi_tuong": [],
+                             "moc": round(max(0.0, tb), 3), "khi_noi": cum, "khop": "du_phong", "canh": so, "du_phong": True})
                 continue
             if kq[2] == "con":
                 tk["auto_fix"] += 1
@@ -118,14 +119,26 @@ def lich_khong_gian(hkg, dung, canh_props, fps, t_buoc, tong):
             moc = ds[kq[0]][1]
             xoay.append({"t": round(max(0.0, moc - TRUOC_MOC), 3), "d": THOI_XOAY, "goc_nhin": g, "doi_tuong": doi,
                          "moc": round(moc, 3), "khi_noi": cum, "khop": kq[2], "canh": so})
-    # chống chồng giờ: rút cú trước xuống 0,9 s; vẫn chồng -> CAM_DE_GIO (không bỏ cú nào)
+    # chống chồng giờ: rút cú trước xuống 0,9 s; vẫn chồng (CAM_DE_GIO) -> bỏ cú sau (ưu tiên bỏ cú dự phòng), cảnh báo
+    xoay.sort(key=lambda x: x["t"])
+    bo = set()
     that = [x for x in xoay if x["d"] > 0]
-    for a, b in zip(that, that[1:]):
-        if a["t"] + a["d"] + KHE_XOAY > b["t"]:
-            a["d"] = max(THOI_XOAY_MIN, round(b["t"] - KHE_XOAY - a["t"], 3))
-            if a["t"] + a["d"] + KHE_XOAY > b["t"] + 1e-9:
-                loi.append({"ma": "CAM_DE_GIO", "chi_tiet": "cú xoay '%s' (%.2fs) chồng cú '%s' (%.2fs)" % (a["goc_nhin"], a["t"], b["goc_nhin"], b["t"]),
-                            "goi_y": "hai ý chứng minh cần cách nhau >= 1 s lời đọc; tách câu hoặc gộp thành một cú xoay"})
+    truoc = None
+    for b in that:
+        if truoc is not None and truoc["t"] + truoc["d"] + KHE_XOAY > b["t"]:
+            truoc["d"] = max(THOI_XOAY_MIN, round(b["t"] - KHE_XOAY - truoc["t"], 3))
+            if truoc["t"] + truoc["d"] + KHE_XOAY > b["t"] + 1e-9:
+                truoc["d"] = THOI_XOAY_MIN if truoc["d"] < THOI_XOAY_MIN else truoc["d"]
+                bo_x = truoc if truoc.get("khop") == "du_phong" and b.get("khop") != "du_phong" else b
+                bo.add(id(bo_x))
+                tk["canh_bao"].append({"ma": "CAM_DE_GIO", "chi_tiet": "cú xoay '%s' (%.2fs) chồng cú '%s' (%.2fs) -> bỏ cú %s" % (
+                    truoc["goc_nhin"], truoc["t"], b["goc_nhin"], b["t"], bo_x["goc_nhin"])})
+                if bo_x is truoc:
+                    truoc = b
+                continue
+        truoc = b
+    if bo:
+        xoay[:] = [x for x in xoay if id(x) not in bo]
     # ---- hiện dần / nhấn mạnh / bung mặt ----
     hien, nhan_manh, hanh_dong = {}, [], []
     la_thuan = not dung.get("lego") and not dung.get("khoiDs") and str(hkg.get("phien_ban") or "") != "2"
@@ -339,11 +352,11 @@ def lich_lego(hkg, dung, canh_props, fps, t_buoc, tong, L=None):
             if cum:
                 kq = tim_cum(cum, ds, ct, hi)
                 if kq is None:
-                    loi.append({"ma": "CAM_MAT_MOC", "chi_tiet": "bước %d: moc_hanh_dong \"%s\" (%s) không có trong lời đọc cảnh %s" % (j + 1, cum, h["loai"], so),
-                                "goi_y": "chép đúng cụm 3-5 từ NGUYÊN VĂN lời đọc lúc động tác bắt đầu"})
-                    continue
-                t = ds[kq[0]][1] - TRUOC_MOC
-                ct = kq[1]
+                    # v102.1 hạ cánh mềm: động tác chạy ở đầu bước (giống khi không ghi mốc), chỉ cảnh báo
+                    tk.setdefault("canh_bao", []).append({"ma": "CAM_MAT_MOC", "chi_tiet": "bước %d: moc_hanh_dong \"%s\" (%s) không có trong lời đọc cảnh %s -> chạy ở đầu bước" % (j + 1, cum, h["loai"], so)})
+                else:
+                    t = ds[kq[0]][1] - TRUOC_MOC
+                    ct = kq[1]
             t = round(max(0.0, t), 3)
             l = h["loai"]
             ids = [str(x) for x in (h.get("doi_tuong") or [])]

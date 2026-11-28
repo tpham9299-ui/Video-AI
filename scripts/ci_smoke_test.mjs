@@ -679,8 +679,11 @@ const iBuocProps = wfDung.indexOf('- name: Chuẩn bị props giả lập');
 const buocKiemHinh = wfDung.slice(iKiemHinh, iBuocProps);
 kiem('BP3: kiểm chứng cả hai bộ giải hình học và dừng khi lỗi trước bước props và TTS',
   wfDung.indexOf('id: kb') < iKiemHinh && iKiemHinh >= 0 && iKiemHinh < iBuocProps && iBuocProps < iTts &&
-  buocKiemHinh.includes('from scripts.giai_hinh_phang import giai') && buocKiemHinh.includes('from scripts.giai_hinh_khong_gian import giai') &&
-  buocKiemHinh.includes('raise SystemExit(2)'));
+  buocKiemHinh.includes('python3 scripts/kiem_hinh_truoc_tts.py kich_ban.json out/loi_hinh_truoc_tts.json') &&
+  buocKiemHinh.includes('"loi": "KIEM_DUYET_BO_CUC"') && buocKiemHinh.includes('exit 1') &&
+  /from scripts\.giai_hinh_phang import giai/.test(fs.readFileSync(path.join(ROOT, 'scripts', 'kiem_hinh_truoc_tts.py'), 'utf8')) &&
+  /from scripts\.giai_hinh_khong_gian import giai/.test(fs.readFileSync(path.join(ROOT, 'scripts', 'kiem_hinh_truoc_tts.py'), 'utf8')) &&
+  /return 2/.test(fs.readFileSync(path.join(ROOT, 'scripts', 'kiem_hinh_truoc_tts.py'), 'utf8')));
 const buocProps = wfDung.slice(wfDung.indexOf('id: props_soi_chu'), iGate);
 const buocTts = wfDung.slice(wfDung.indexOf('- name: Tạo giọng đọc'), iTts);
 kiem('BP3: 3 cửa chuẩn (props không TTS → 1 lần Chromium Cửa 2 → TTS → Cửa 3 hậu kiểm 1 lần, bỏ kiem_duyet.mjs trùng)',
@@ -739,6 +742,13 @@ kiem(
   rDonDrive.status === 0,
   rDonDrive.status === 0 ? '' : (rDonDrive.stderr || rDonDrive.stdout || '').slice(-320),
 );
+
+// v102.1 kiến trúc BP2 bền vững: cửa cứng/mềm, vệ sinh tĩnh, minh họa trung tính, hạ cánh mềm Hình học, cầu dao BP2
+for (const [lenh, thamSo] of [[process.execPath, ['scripts/test_kien_truc_bp2.cjs']], [PY, ['-X', 'utf8', 'scripts/test_kien_truc_bp2.py']]]) {
+  const rKT = spawnSync(lenh, thamSo, {cwd: ROOT, encoding: 'utf8', env: {...process.env, PYTHONIOENCODING: 'utf-8'}, timeout: 120000});
+  kiem((lenh === PY ? 'python -X utf8 ' : 'node ') + thamSo[thamSo.length - 1], rKT.status === 0,
+    rKT.status === 0 ? '' : (rKT.stderr || rKT.stdout || '').slice(-320));
+}
 
 console.log(`\nCI SMOKE TEST: ${dat} đạt, ${hong.length} hỏng`);
 process.exit(hong.length ? 1 : 0);

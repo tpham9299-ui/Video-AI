@@ -111,6 +111,14 @@ function kiemSanKhauPython(kb, options) {
   return null;
 }
 
+
+// Bộ giải Python dừng bất thường (crash / hết giờ / JSON hỏng) -> lỗi cứng rõ ràng để BP2 không cho bài lọt sang BP3.
+function loiBoGiaiPython(ma, e) {
+  const duoi = String((e && (e.stderr || e.message)) || '').trim().split(/\r?\n/).slice(-2).join(' | ').slice(-240);
+  return {dat: false, canh_bao: [], loi: [{ma, chi_tiet: 'bộ giải Python dừng bất thường (mã ' + String(e && (e.status ?? e.signal ?? e.code)) + '): ' + duoi,
+    goi_y: 'Viết lại đặc tả hình đúng định dạng: mọi đường 2 điểm, mặt >= 3 điểm, góc 3 điểm, điểm phải dựng trước khi dùng.'}]};
+}
+
 const ctx = {
   console, JSON, Math, Date, Buffer,
   SpreadsheetApp: {
@@ -154,8 +162,9 @@ const ctx = {
           {input: JSON.stringify(kb), timeout: 60000, stdio: ['pipe', 'pipe', 'pipe'], env: {...process.env, PYTHONIOENCODING: 'utf-8'}});
         return JSON.parse(ra.toString('utf8'));
       } catch (e) {
-        if (e && e.status === 2 && e.stdout) { try { return JSON.parse(e.stdout.toString('utf8')); } catch (e2) { return null; } }
+        if (e && e.status === 2 && e.stdout) { try { return JSON.parse(e.stdout.toString('utf8')); } catch (e2) { return loiBoGiaiPython('KG_DUNG_LOI', e); } }
         if (e && e.status === 3) return null;
+        if (e && e.code !== 'ENOENT') return loiBoGiaiPython('KG_DUNG_LOI', e);
       }
     }
     return null;
@@ -201,8 +210,9 @@ const ctx = {
           {input: JSON.stringify(kb), timeout: 60000, stdio: ['pipe', 'pipe', 'pipe']});
         return JSON.parse(ra.toString('utf8'));
       } catch (e) {
-        if (e && e.status === 2 && e.stdout) { try { return JSON.parse(e.stdout.toString('utf8')); } catch (e2) { return null; } }
+        if (e && e.status === 2 && e.stdout) { try { return JSON.parse(e.stdout.toString('utf8')); } catch (e2) { return loiBoGiaiPython('HP_DUNG_LOI', e); } }
         if (e && e.status === 3) return null;
+        if (e && e.code !== 'ENOENT') return loiBoGiaiPython('HP_DUNG_LOI', e);
       }
     }
     return null;

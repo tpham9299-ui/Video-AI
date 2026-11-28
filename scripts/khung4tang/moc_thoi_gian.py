@@ -1147,7 +1147,7 @@ def tu_sinh_hong_that(hong, out, kb=None):
     return hong
 
 
-# ---------------------------------------------------------------- chống đứng hình > 6 s ở T2
+# ---------------------------------------------------------------- chống đứng hình > 4 s ở T2 (Phiên 2/3: hạ trần 6 s -> 4 s)
 def moc_doi_hinh(out):
     """Mọi mốc T2 đổi hình đã biết: đầu bước, thẻ, pha sân khấu 2D / 3D / tự sinh, nhịp cũ."""
     m = [0.0]
@@ -1168,7 +1168,7 @@ def moc_doi_hinh(out):
     return sorted(set(round(float(x), 3) for x in m if x is not None))
 
 
-def nhip_chong_dung(out, moc_cau, tong, tran=6.0):
+def nhip_chong_dung(out, moc_cau, tong, tran=4.0):
     """Mốc nhịp (giây) cho các khoảng > `tran` giây không đổi hình: mỗi câu thoại bắt đầu trong khoảng đó một nhịp
     (sáng viền / zoom nhẹ / quét sáng trong T2); thiếu câu thì chèn đều 3,5 s."""
     moc = moc_doi_hinh(out) + [tong]

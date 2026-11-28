@@ -101,6 +101,19 @@ def kiem_menh_de_moi_mau(ds_md, mau):
 
 
 def giai(kb, hat=None, chi_kiem=False):
+    """Lưới an toàn: đặc tả sai định dạng không được làm crash BP2/BP3 -> trả lỗi cứng HP_DUNG_LOI rõ ràng."""
+    try:
+        return _giai(kb, hat=hat, chi_kiem=chi_kiem)
+    except LoiDung as e:
+        return {"dat": False, "phien_ban": PHIEN_BAN, "loi": [_loi(e.ma, e.chi_tiet, GOI_Y_DUNG.get(e.ma, ""), e.id_buoc)],
+                "canh_bao": [], "sua": []}
+    except (ValueError, TypeError, ZeroDivisionError, IndexError, KeyError, AttributeError) as e:
+        return {"dat": False, "phien_ban": PHIEN_BAN, "canh_bao": [], "sua": [],
+                "loi": [_loi("HP_DUNG_LOI", "hinh_phang_chuan sai định dạng (%s: %s)" % (type(e).__name__, str(e)[:160]),
+                             GOI_Y_DUNG["HP_DUNG_LOI"])]}
+
+
+def _giai(kb, hat=None, chi_kiem=False):
     hp = kb.get("hinh_phang_chuan") if isinstance(kb, dict) else None
     if not isinstance(hp, dict):
         return None

@@ -51,6 +51,11 @@ def dinh_hinh_goc(b, so_dinh, id_buoc):
     return ds
 
 
+def la_tia(ref):
+    """v102.1: ký hiệu tia / đường 1 chữ hoa + 1 chữ thường ("Ax", "By", "A'x") theo cách viết SGK."""
+    return isinstance(ref, str) and re.fullmatch(r"\s*[A-Z]'?[a-z]'?\s*", ref) is not None
+
+
 def khoa_duong_tron(ref):
     """"(O)" -> "O"; "(BC)" -> "BC"; "O" -> "O"."""
     s = str(ref or "").strip()
@@ -186,6 +191,7 @@ class HinhDung:
         self.C_tam = {}    # khóa đường tròn -> tên tâm (nếu có)
         self.net = []      # [{id, loai: diem|doan|tron|vuong|keo, ...}] theo thứ tự dựng
         self.goc_tam_giac = {}   # tên tam giác -> góc tham số (để kiểm điều kiện)
+        self.L = {}        # v102.1: đường/tia đã dựng qua một điểm (khóa = tên điểm gốc hoặc ten_duong) -> (P0, Q)
 
     # ---- tiện ích ----
     def d(self, ten, id_buoc=""):
@@ -194,7 +200,29 @@ class HinhDung:
             raise LoiDung("HP_DIEM_KHONG_TON_TAI", "điểm %s chưa được dựng trước bước này" % t, id_buoc)
         return self.P[t]
 
+    def ghi_tia(self, goc, p0, q, ten_duong=None):
+        g = chuan_ten(goc)
+        if g:
+            self.L[g] = (p0, q)
+        if ten_duong:
+            self.L[str(ten_duong).strip()] = (p0, q)
+
+    def tia(self, ref, id_buoc=""):
+        """Chuẩn hóa tại biên: "Ax" -> đường đã dựng qua A (khớp tên đầy đủ trước, rồi theo điểm gốc)."""
+        ten = str(ref).strip()
+        g = chuan_ten(ten[0])
+        if ten in self.L:
+            return self.L[ten], g
+        if g in self.L:
+            return self.L[g], g
+        raise LoiDung("HP_DUNG_LOI", "ký hiệu tia '%s' chưa gắn với đường nào - đặt tên đường bằng 2 điểm chữ hoa (vd '%sT') "
+                      "hoặc khai báo \"ten_duong\": \"%s\" ở phép dựng tạo đường qua %s" % (ten, g, ten, g), id_buoc)
+
     def hai_diem(self, ref, id_buoc=""):
+        if la_tia(ref):
+            (p0, q), g = self.tia(ref, id_buoc)
+            self.d(g, id_buoc)
+            return p0, q, [g, g]
         ds = tach_diem(ref)
         if len(ds) != 2:
             raise LoiDung("HP_DUNG_LOI", "'%s' không phải đường thẳng / đoạn thẳng qua 2 điểm" % ref, id_buoc)
@@ -403,7 +431,9 @@ def dung_hinh(phep_dung, tham, dieu_kien=None):
             p = _giao(b.get("a"), b.get("b"), b, H, idb)
             t = H.them_diem(b.get("ten"), p, idb)
             for ref in (b.get("a"), b.get("b")):
-                if not la_duong_tron(ref) and len(tach_diem(ref)) == 2:
+                if la_tia(ref):
+                    H.them_doan(chuan_ten(str(ref).strip()[0]), t, idb)
+                elif not la_duong_tron(ref) and len(tach_diem(ref)) == 2:
                     x, y = tach_diem(ref)
                     H.keo_neu_ngoai(t, x, y, idb)
         elif loai == "duong_tron_ngoai_tiep":
@@ -429,11 +459,12 @@ def dung_hinh(phep_dung, tham, dieu_kien=None):
                 T = H.d(b["tai"], idb)
                 huong = (-(T[1] - cy), T[0] - cx)
                 Q = cong(T, huong)
+                H.ghi_tia(b["tai"], T, Q, b.get("ten_duong"))
                 if b.get("cat"):
                     p = _giao_tt(T, Q, b.get("cat"), b, H, idb)
                     t = H.them_diem(b.get("ten"), p, idb)
                     H.them_doan(chuan_ten(b["tai"]), t, idb)
-                else:
+                elif b.get("ten"):
                     raise LoiDung("HP_DUNG_LOI", "tiếp tuyến tại %s cần 'cat' (đường cắt để có điểm vẽ)" % b["tai"], idb)
             elif b.get("tu"):
                 M = H.d(b["tu"], idb)
@@ -457,6 +488,9 @@ def dung_hinh(phep_dung, tham, dieu_kien=None):
             A, O, B = [H.d(x, idb) for x in ds]
             huong = cong(don_vi(tru(A, O)), don_vi(tru(B, O)))
             Q = cong(O, huong)
+            H.ghi_tia(ds[1], O, Q, b.get("ten_duong"))
+            if not b.get("cat") and not b.get("ten"):
+                continue
             p = _giao_tt(O, Q, b.get("cat"), b, H, idb, bo=ds[1])
             t = H.them_diem(b.get("ten"), p, idb)
             H.them_doan(ds[1], t, idb)
@@ -477,10 +511,13 @@ def dung_hinh(phep_dung, tham, dieu_kien=None):
             d = tru(c, a)
             huong = d if loai == "song_song" else (-d[1], d[0])
             Q = cong(P0, huong)
+            H.ghi_tia(b.get("qua"), P0, Q, b.get("ten_duong"))
             if b.get("cat"):
                 p = _giao_tt(P0, Q, b.get("cat"), b, H, idb)
             elif loai == "vuong_goc":
                 p, _ = chan_vuong_goc(P0, a, c)
+            elif not b.get("ten"):
+                continue   # chỉ khai báo đường "Px" qua P (dùng ở phép dựng sau)
             else:
                 raise LoiDung("HP_DUNG_LOI", "song song cần 'cat' để có điểm vẽ", idb)
             t = H.them_diem(b.get("ten"), p, idb)

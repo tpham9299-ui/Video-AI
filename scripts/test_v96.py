@@ -4,6 +4,7 @@ biến cố đối, A khi chốt), sơ đồ cây / Bayes / cột phân phối t
 Intro/Outro, cắt chữ không chẻ "không ⋮ 4", nhịp chống đứng hình <= 4 s, hook 2 s, 4 mẫu --gia-lap (thời lượng + sân khấu).
 Chạy: python scripts/test_v96.py"""
 import json
+import re
 import os
 import subprocess
 import sys
@@ -134,7 +135,12 @@ for tep, loai in MAU:
     k4 = p.get("khung4tang") or {}
     sk = k4.get("sanKhau") or {}
     if loai == "tuSinhHong":
-        kiem(k4.get("tuSinhHong") and not sk, "THUC_TE cũ chỉ có sơ đồ chữ bị chặn")
+        # v102 (Việc 1): hoặc gắn cờ tuSinhHong (không sân khấu), hoặc chốt tự cứu du_phong_t2.py dựng T2 0-API (tu_cuu_t2)
+        lop = (k4.get("tuSinh") or {}).get("lop") or []
+        cuu = "tu_cuu_t2: true" in (r.stdout or "") and len(lop) >= 2 and all(
+            re.search(r"<(?:line|path|polygon|rect|circle|polyline)\b", str(l.get("svg") or "")) for l in lop)
+        kiem((k4.get("tuSinhHong") and not sk) or (cuu and not sk),
+             "THUC_TE cũ chỉ có sơ đồ chữ: bị chặn hoặc tự cứu T2 bằng du_phong_t2 (%d lớp SVG có nét)" % len(lop))
         continue
     kiem(sk.get("loai") == loai and not k4.get("canh3dv"), "%s: sân khấu %s, không còn khuôn 3D" % (ten, loai), sk.get("loai"))
     kiem(sk.get("pha") and sk["pha"][0]["t"] <= 0.5, "%s: hook 2 s (pha đầu %.1f s)" % (ten, sk["pha"][0]["t"] if sk.get("pha") else -1))

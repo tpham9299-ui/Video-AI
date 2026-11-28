@@ -986,6 +986,26 @@ const hangChiChoDangVaChoDuyet = [
 assert.equal(app.tonBoNao_(hangChiChoDangVaChoDuyet), 1, 'CHO_DANG và CHO_DUYET không tính vào phanh tồn nóng');
 assert.equal(app.tinhSoDeLoBP0_(hangChiChoDangVaChoDuyet, { tyLe: 0.3 }), 3, 'Hàng nóng 1/4, key >= 25% -> sinh lô 3 đề');
 assert.equal(app.tinhSoDeLoBP0_(hangChiChoDangVaChoDuyet, { tyLe: 0.2 }), 0, 'Quỹ key < 25% -> 0 đề');
+// Phiên 1/3: phanh BP0 (lyDoChanBoNao_) và cỡ lô (tinhSoDeLoBP0_) dùng CHUNG một ngưỡng hàng nóng 4–6
+{
+  const cauHinhCu = app.cauHinh_, dangNghiCu = app.dangNghi_;
+  app.dangNghi_ = () => false;
+  app.cauHinh_ = (k) => (k === 'NGUONG_HANG_DOI_NONG' ? '6' : '');
+  assert.equal(app.nguongNongBP0_(), 6, 'NGUONG_HANG_DOI_NONG=6 -> ngưỡng 6');
+  assert.equal(app.lyDoChanBoNao_(0, 5, 0, false), '', 'ngưỡng 6: tồn nóng 5 chưa phanh BP0');
+  assert.equal(app.lyDoChanBoNao_(0, 6, 0, false), 'tồn 6/6', 'ngưỡng 6: tồn nóng 6 -> phanh');
+  const hang5 = Array.from({ length: 5 }, (_, i) => ({ id: 'N-' + i, trang_thai: 'MOI', de_bai: 'x' }));
+  assert.equal(app.tinhSoDeLoBP0_(hang5, { tyLe: 0.5 }), 2, 'ngưỡng 6, tồn 5 -> lô tối thiểu 2 đề');
+  app.cauHinh_ = (k) => (k === 'NGUONG_HANG_DOI_NONG' ? '99' : '');
+  assert.equal(app.nguongNongBP0_(), 6, 'ngưỡng kẹp tối đa 6');
+  app.cauHinh_ = () => '';
+  assert.equal(app.nguongNongBP0_(), 4, 'mặc định ngưỡng 4');
+  assert.equal(app.lyDoChanBoNao_(0, 4, 0, false), 'tồn 4/4', 'mặc định: tồn nóng 4 -> phanh');
+  const hangLoi = [{ id: 'L-1', trang_thai: 'LOI' }, { id: 'L-2', trang_thai: 'LOI_CAN_XEM' }, { id: 'D-1', trang_thai: 'CO_VIDEO', duyet: 'CHO' }];
+  assert.equal(app.tonBoNao_(hangLoi), 0, 'LOI_CAN_XEM / CHO_DUYET không tính vào phanh BP0');
+  app.cauHinh_ = cauHinhCu;
+  app.dangNghi_ = dangNghiCu;
+}
 const tmpLo = fs.mkdtempSync(path.join(os.tmpdir(), 'bp0-lo-'));
 try {
   const raLo = path.join(tmpLo, 'lo.json');

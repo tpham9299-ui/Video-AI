@@ -34,7 +34,7 @@ var LOI_HA_TANG_TAM_THOI = [
 var TRANG_THAI_XU_LY_TTL_ = ['CHO_GIAI', 'CHO_KICH_BAN', 'CO_KICH_BAN', 'DANG_DUNG'];
 var TTL_TREO_IM_LANG_GIO_ = 24;
 var TRANG_THAI_NOI_BO_SONG_ = ['CHO_DUNG', 'DANG_GIAI', 'DANG_KICH_BAN', 'DANG_KIEM_DUYET', 'DANG_DANG', 'CHO_DOC', 'GITHUB', 'DA_XONG', 'DA_LAM_VIDEO'];
-var RE_MA_LOI_DA_BIET_ = /BO_KHONG_DAT|sửa\s+3\s+lần\s+vẫn\s+lỗi|Mắt\s*thần\s*3\s*\+\s*3|\bhet_luot\b|Kiểm\s+duyệt\s+bố\s+cục\s+vẫn\s+lỗi|\b(AI_SAI_TOAN|DE_SAI|VO_NGHIEM_SAI_DE|KHONG_CO_DAP_AN|TRUNG_DE|KHONG_DOC_DUOC|MP4_BI_CHAN|t2_trong|hinh_dung_im|TEX_LENH_CUT|KHUNG4TANG_3D_RONG|DE_CHU|TRAN_KHUNG|thieu_dap_an|GIAO_DIEN_CU_KHONG_HOP_LE|cat_chu|chong_chu|latex_tho|ma_tho|so_cat|lo_dap_an|lech_pha|tu_sinh_hong|hinh_nho|tran_day|nhan_de|DAP_AN_LECH|PREFLIGHT_LOI|JSON_LOI|QUA_HAN|BP4_KHONG_DAT)\b/i;
+var RE_MA_LOI_DA_BIET_ = /BO_KHONG_DAT|sửa\s+\d+\s+lần\s+vẫn\s+lỗi|Mắt\s*thần\s*3\s*\+\s*3|\bhet_luot\b|Kiểm\s+duyệt\s+bố\s+cục\s+vẫn\s+lỗi|\b(AI_SAI_TOAN|DE_SAI|VO_NGHIEM_SAI_DE|KHONG_CO_DAP_AN|TRUNG_DE|KHONG_DOC_DUOC|MP4_BI_CHAN|t2_trong|hinh_dung_im|TEX_LENH_CUT|KHUNG4TANG_3D_RONG|DE_CHU|TRAN_KHUNG|thieu_dap_an|GIAO_DIEN_CU_KHONG_HOP_LE|cat_chu|chong_chu|latex_tho|ma_tho|so_cat|lo_dap_an|lech_pha|tu_sinh_hong|hinh_nho|tran_day|nhan_de|DAP_AN_LECH|PREFLIGHT_LOI|JSON_LOI|QUA_HAN|BP4_KHONG_DAT)\b/i;
 
 function chuanHoaTrangThaiWhitelist_(trangThai) {
   var raw = String(trangThai || '').trim();
@@ -658,10 +658,15 @@ function tonBoNao_(hang) {
 }
 
 // Tính cỡ lô BP0 (2–3 đề/lượt) khi hàng đợi nóng dưới ngưỡng 4–6 bài và quỹ key >= 25%.
+// Một ngưỡng hàng nóng duy nhất cho phanh BP0 (lyDoChanBoNao_) và cỡ lô (tinhSoDeLoBP0_): CAU_HINH NGUONG_HANG_DOI_NONG kẹp 4–6, mặc định 4.
+function nguongNongBP0_() {
+  var cfgNguong = Number(typeof cauHinh_ === 'function' ? cauHinh_('NGUONG_HANG_DOI_NONG') : 0);
+  return cfgNguong ? Math.max(NGUONG_NONG_BP0_MIN_, Math.min(NGUONG_NONG_BP0_MAX_, cfgNguong)) : BO_NAO_.ton;
+}
+
 function tinhSoDeLoBP0_(hang, key) {
   var ton = tonBoNao_(hang || []);
-  var cfgNguong = Number(typeof cauHinh_ === 'function' ? cauHinh_('NGUONG_HANG_DOI_NONG') : 0);
-  var nguong = cfgNguong ? Math.max(NGUONG_NONG_BP0_MIN_, Math.min(NGUONG_NONG_BP0_MAX_, cfgNguong)) : BO_NAO_.ton;
+  var nguong = nguongNongBP0_();
   if (ton >= nguong) return 0;
   if (key && !(key.tyLe >= NGUONG_KEY_TOI_THIEU_SAN_XUAT)) return 0;
   return Math.max(2, Math.min(3, nguong - ton));
@@ -718,6 +723,95 @@ function duyetKichBanBoNao_(id) {
   }) || 'Đang bận, thử lại';
 }
 
+/* ===================== v102.1 CẦU DAO NGẮT MẠCH BP2 (bảo vệ quỹ key Gemini) =====================
+ * Một khóa Script Properties duy nhất BP2_CAU_DAO = {truot, ngat_den, loai, ly_do, ngay, bao}.
+ *  - truot: số bài BP2 trượt LIÊN TIẾP (reset 0 ngay khi có 1 bài đậu).
+ *  - truot >= 5 HOẶC quỹ key < 20% -> tạm hoãn giao BP2 mới 3 giờ (ngắt theo key: tự mở sớm khi key hồi >= 25%).
+ *  - Tự mở lại khi sang ngày mới (giờ VN) hoặc hết hạn; /mobp2 mở tay bất cứ lúc nào. BP4/BP5 không bị ảnh hưởng.
+ *  - Mỗi lần ngắt chỉ gửi ĐÚNG 1 tin Zalo (cờ bao = ngat_den của lần ngắt đó). */
+var CAU_DAO_BP2_KHOA_ = 'BP2_CAU_DAO';
+var CAU_DAO_BP2_TRUOT_TOI_DA_ = 5;
+var CAU_DAO_BP2_GIO_ = 3;
+var CAU_DAO_BP2_KEY_NGAT_ = 0.20;
+var CAU_DAO_BP2_KEY_MO_ = 0.25;
+function ngayCauDao_(luc) { return Utilities.formatDate(luc || new Date(), MUI_GIO_BO_NAO_, 'yyyyMMdd'); }
+function docCauDaoBP2_() {
+  var o = {};
+  try { o = JSON.parse(PropertiesService.getScriptProperties().getProperty(CAU_DAO_BP2_KHOA_) || '{}') || {}; } catch (e) { o = {}; }
+  return {truot: Number(o.truot) || 0, ngat_den: Number(o.ngat_den) || 0, loai: String(o.loai || ''), ly_do: String(o.ly_do || ''),
+    ngay: String(o.ngay || ''), bao: Number(o.bao) || 0, lan_cuoi: String(o.lan_cuoi || '')};
+}
+function ghiCauDaoBP2_(o) {
+  var p = PropertiesService.getScriptProperties();
+  if (!o.truot && !o.ngat_den && !o.bao) { if (typeof p.deleteProperty === 'function') p.deleteProperty(CAU_DAO_BP2_KHOA_); else p.setProperty(CAU_DAO_BP2_KHOA_, '{}'); return; }
+  p.setProperty(CAU_DAO_BP2_KHOA_, JSON.stringify(o));
+}
+function ngatCauDaoBP2_(o, loai, lyDo, luc) {
+  var now = (luc || new Date()).getTime();
+  o.ngat_den = now + CAU_DAO_BP2_GIO_ * 3600000;
+  o.loai = loai;
+  o.ly_do = String(lyDo || '').slice(0, 200);
+  o.ngay = ngayCauDao_(luc);
+  if (o.bao !== o.ngat_den) {
+    o.bao = o.ngat_den;
+    try {
+      guiZalo_('⛔ Cầu dao BP2 đã NGẮT ' + CAU_DAO_BP2_GIO_ + ' giờ (tới ' + Utilities.formatDate(new Date(o.ngat_den), MUI_GIO_BO_NAO_, 'HH:mm') + ' giờ VN) để bảo vệ quỹ key Gemini.\n' +
+        'Lý do: ' + o.ly_do + '\nBP4/BP5 vẫn đăng bài chờ sẵn bình thường. Mở lại ngay: /mobp2', 'cao', 'BP2_CAU_DAO_' + o.ngat_den);
+    } catch (eZ) {}
+  }
+  nhatKy_('CAU_DAO_BP2', 'NGẮT ' + CAU_DAO_BP2_GIO_ + 'h: ' + o.ly_do);
+  return o;
+}
+// Ghi kết quả một bài BP2 (đậu -> reset; trượt -> +1, đủ 5 bài liên tiếp -> ngắt). Trả trạng thái mới.
+function ghiKetQuaBP2CauDao_(dat, lyDo, luc) {
+  var o = docCauDaoBP2_();
+  if (dat) {
+    if (o.truot) nhatKy_('CAU_DAO_BP2', 'Có bài BP2 đậu -> reset bộ đếm trượt liên tiếp (' + o.truot + ' -> 0)');
+    o.truot = 0;
+    o.lan_cuoi = '';
+  } else {
+    o.truot = (Number(o.truot) || 0) + 1;
+    o.lan_cuoi = String(lyDo || '').slice(0, 160);
+    if (o.truot >= CAU_DAO_BP2_TRUOT_TOI_DA_ && !(o.ngat_den > (luc || new Date()).getTime()))
+      ngatCauDaoBP2_(o, 'truot', o.truot + ' bài BP2 trượt liên tiếp (gần nhất: ' + (o.lan_cuoi || 'không rõ') + ')', luc);
+  }
+  ghiCauDaoBP2_(o);
+  return o;
+}
+// Lý do chặn BP2 do cầu dao ('' = cho chạy). ghi=false chỉ xem (/trangthai), không đổi trạng thái.
+function lyDoCauDaoBP2_(key, luc, ghi) {
+  luc = luc || new Date();
+  var o = docCauDaoBP2_(), now = luc.getTime(), doi = false;
+  var tyLe = key && isFinite(Number(key.tyLe)) ? Number(key.tyLe) : null;
+  if (o.ngat_den) {
+    var moLai = now >= o.ngat_den || (o.ngay && o.ngay !== ngayCauDao_(luc)) || (o.loai === 'key' && tyLe !== null && tyLe >= CAU_DAO_BP2_KEY_MO_);
+    if (moLai) {
+      nhatKy_('CAU_DAO_BP2', 'Tự mở lại (' + (o.loai === 'key' && tyLe !== null && tyLe >= CAU_DAO_BP2_KEY_MO_ ? 'quỹ key hồi ' + Math.round(tyLe * 100) + '%' : now >= o.ngat_den ? 'hết ' + CAU_DAO_BP2_GIO_ + ' giờ' : 'sang ngày mới') + ')');
+      o.ngat_den = 0; o.loai = ''; o.ly_do = '';
+      if (o.truot >= CAU_DAO_BP2_TRUOT_TOI_DA_) o.truot = 0;
+      doi = true;
+    }
+  }
+  if (!o.ngat_den && tyLe !== null && tyLe < CAU_DAO_BP2_KEY_NGAT_) {
+    if (!ghi) return 'cầu dao BP2: quỹ key ' + Math.round(tyLe * 100) + '% < ' + Math.round(CAU_DAO_BP2_KEY_NGAT_ * 100) + '%';
+    ngatCauDaoBP2_(o, 'key', 'quỹ key Gemini còn ' + Math.round(tyLe * 100) + '% < ' + Math.round(CAU_DAO_BP2_KEY_NGAT_ * 100) + '% (tự mở khi hồi >= ' + Math.round(CAU_DAO_BP2_KEY_MO_ * 100) + '%)', luc);
+    doi = true;
+  }
+  if (doi && ghi) ghiCauDaoBP2_(o);
+  if (!o.ngat_den) return '';
+  return 'cầu dao BP2 ngắt tới ' + Utilities.formatDate(new Date(o.ngat_den), MUI_GIO_BO_NAO_, 'HH:mm') + ' (' + o.ly_do + '), mở tay: /mobp2';
+}
+// Lệnh Zalo /mobp2: mở cầu dao + reset bộ đếm.
+function moCauDaoBP2_() {
+  var o = docCauDaoBP2_();
+  var dangNgat = o.ngat_den > Date.now();
+  ghiCauDaoBP2_({truot: 0, ngat_den: 0, loai: '', ly_do: '', ngay: '', bao: 0, lan_cuoi: ''});
+  nhatKy_('CAU_DAO_BP2', 'Mở tay bằng /mobp2' + (dangNgat ? ' (đang ngắt: ' + o.ly_do + ')' : ''));
+  return dangNgat ? '✅ Đã mở lại cầu dao BP2 và reset bộ đếm trượt (' + o.truot + ' -> 0). Nhịp điều phối sau sẽ giao BP2 lại.' +
+    (o.loai === 'key' ? '\n⚠️ Quỹ key vẫn có thể thấp: nếu còn < ' + Math.round(CAU_DAO_BP2_KEY_NGAT_ * 100) + '%, cầu dao sẽ ngắt lại.' : '')
+    : 'ℹ️ Cầu dao BP2 đang đóng (BP2 chạy bình thường). Đã reset bộ đếm trượt (' + o.truot + ' -> 0).';
+}
+
 function cheDoBoNao_() {
   return String(cauHinh_('CHE_DO_VAN_HANH')).trim().toUpperCase() === 'DUYET_TAY_SAU_BP2'
     ? 'DUYET_TAY_SAU_BP2' : BO_NAO_.cheDo;
@@ -726,7 +820,7 @@ function cheDoBoNao_() {
 function lyDoChanBoNao_(bp, ton, soRun, dangNgay) {
   if (String(cauHinh_('BAT_BP' + bp) || 'BAT').toUpperCase() === 'TAT') return 'BAT_BP' + bp + '=TAT';
   if (soRun >= BO_NAO_.gioiHan[bp]) return 'đủ ' + BO_NAO_.gioiHan[bp] + ' slot';
-  if (!bp && ton >= BO_NAO_.ton) return 'tồn ' + ton + '/' + BO_NAO_.ton;
+  if (!bp && ton >= nguongNongBP0_()) return 'tồn ' + ton + '/' + nguongNongBP0_();
   if (bp <= 2 && dangNghi_()) return 'đang nghỉ hạn mức Gemini';
   if (bp === 5 && !dangNgay && chDang_('DANG_TU_DONG').toUpperCase() !== 'BAT') return 'DANG_TU_DONG=TAT';
   if (bp === 4 && chNC_('TU_KIEM_TRA_VIDEO').toUpperCase() === 'TAT') return 'TU_KIEM_TRA_VIDEO=TAT';
@@ -843,12 +937,17 @@ function buocBoNao_(sh,bp,lenh,tonDau,kho,ketQua) {
     return true;
   });
   var lyDo = lyDoChanBoNao_(bp,Math.max(tonDau,tonBoNao_(hang)),soRun+giu,lenh === 'dang_ngay');
+  // v102.1 cầu dao BP2: 5 bài trượt liên tiếp hoặc quỹ key < 20% -> hoãn giao BP2 mới (BP4/BP5 vẫn chạy)
+  if (bp === 2 && !lyDo && ds.length) lyDo = lyDoCauDaoBP2_(docQuyKeyBoNao_(), new Date(), lenh !== 'xem' && lenh !== 'xa');
   var p = PropertiesService.getScriptProperties();
   var boSung = false, lyDoNguon = '';
   var sanXuatNgay = lenh === 'san_xuat_ngay';
   if (!bp && !lyDo) {
     var dangLam = demDangSanXuatBoNao_(hang);
+    var keyBP0 = sanXuatNgay ? null : docQuyKeyBoNao_();
     if (sanXuatNgay && dangLam) lyDo = 'BP1–BP3 còn ' + dangLam + ' bài đang xử lý';
+    else if (keyBP0 && Number(keyBP0.tyLe) < NGUONG_KEY_TOI_THIEU_SAN_XUAT)
+      lyDo = 'quỹ key Gemini ' + Math.round(Number(keyBP0.tyLe) * 100) + '% < ' + (NGUONG_KEY_TOI_THIEU_SAN_XUAT * 100) + '%, chưa sinh lô mới';
     else if (Number(p.getProperty('BP0_GIU_DEN')) > Date.now()) lyDo = 'đã gửi BP0, đang chờ kết quả';
     else if (kho && kho.nguTheoKho && kho.canLam && dangLam >= kho.thieu)
       lyDo = 'BP1–BP3 có ' + dangLam + ' bài đang xử lý, đủ bù ' + kho.thieu + ' video còn thiếu';
@@ -1002,6 +1101,8 @@ function nhipBoNao_(lenh, trangThai) {
     'Kho đệm CHO_DANG: ' + kho.so + '/' + MUC_TIEU_KHO_DEM + ' (' +
     (kho.ngu ? 'ĐANG NGỦ ĐÔNG' : 'ĐANG SẢN XUẤT') + ')',
     'Quỹ key: ' + (key ? key.conSong + '/' + key.tong : 'chưa đọc được')];
+  var cdBP2 = docCauDaoBP2_();
+  dau.push('Cầu dao BP2: ' + (cdBP2.ngat_den > Date.now() ? 'NGẮT tới ' + Utilities.formatDate(new Date(cdBP2.ngat_den), MUI_GIO_BO_NAO_, 'HH:mm') + ' (' + cdBP2.ly_do + ') - /mobp2 để mở' : 'đóng · trượt liên tiếp ' + cdBP2.truot + '/' + CAU_DAO_BP2_TRUOT_TOI_DA_));
   if (ketQua[0] && ketQua[0].lyDo) dau.push('Lý do BP0 chưa tạo đề: ' + ketQua[0].lyDo);
   dau.push('Tồn cũ chờ dọn: ' + docHang_(sh).filter(function (r) { return dangChoSanXuatBoNao_(r) && baiCuBoNao_(r); }).length + ' bài');
   return dau.concat(tin).join('\n');

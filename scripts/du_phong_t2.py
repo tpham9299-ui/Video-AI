@@ -6,6 +6,8 @@ Vai trò (Lớp 3 — chốt cuối chống thiếu hình Tầng 2 / chống đ�
     và vượt qua hộp cát `scripts/tu_sinh_svg.py` với 0 lỗi bảo mật và 0 lỗi thẩm mỹ.
   - Chọn đúng mảnh ghép mô hình theo từ khóa đề bài; nếu không khớp từ khóa nào thì dựng khung
     sơ đồ dữ kiện (`so_do_du_kien`) kết hợp nhân vật người que Story Math.
+  - v102.1: `hop_bi_mau` CHỈ khi đề thật sự có bi / bóng / quả cầu / hộp-túi bốc thăm. Đề có các đối tượng đặt tên
+    (trạm phát tín hiệu A, B, C; máy, mạch, thành phố...) -> mảnh trung tính `so_do_diem_ket_noi` (điểm - kết nối).
   - Bắt buộc có hình hợp lệ trong vùng an toàn T2 ngay từ cảnh 2 (`de_bai`, `buoc: 0`), và mỗi bước
     tiếp theo thay đổi rõ ít nhất 2 yếu tố trực quan (biểu cảm người que `nguoi_que_gai_dau` ->
     `nguoi_que_chi_bang` -> `nguoi_que_aha` -> `nguoi_que_hoan_ho` kèm đổi nhãn/số liệu/trạng thái mô hình)
@@ -147,6 +149,24 @@ def _trich_cong_thuc_chinh(kb, so_da):
     return ra[:4]
 
 
+DOI_TUONG_KET_NOI = r"trạm|tín hiệu|phát sóng|máy|thiết bị|linh kiện|mạch|công tắc|bóng đèn|thành phố|địa điểm|điểm|nút|xạ thủ|cầu thủ|vận động viên|đội"
+
+
+def la_de_co_bi(t):
+    """v102.1 (khớp laDeCoBi_ ở KiemTraHinh.gs): chỉ coi là đề hộp bi khi có bi / bóng / quả cầu / hộp-túi bốc thăm thật."""
+    return bool(re.search(r"\bbi\b|viên\s+bi|quả\s+bóng|quả\s+cầu|bóng\s+(?:màu|đỏ|xanh|vàng|trắng|đen)|bốc\s+thăm|"
+                          r"(?:hộp|túi|bình)\s+(?:kín\s+)?(?:đựng|chứa)\s+(?:\d+\s+)?(?:viên|quả|bi|bóng)", str(t or "").lower()))
+
+
+def doi_tuong_dat_ten(van):
+    """Tên đối tượng 1 chữ hoa đứng riêng trong đề ("trạm A, B, C" -> [A, B, C]), tối đa 5."""
+    ra = []
+    for m in re.finditer(r"(?:^|[\s,;(])([A-Z])(?=[\s,;.)]|$)", str(van or "")):
+        if m.group(1) not in ra and len(ra) < 5:
+            ra.append(m.group(1))
+    return ra
+
+
 def chon_manh_du_phong(kb):
     """Chọn mảnh ghép chính xác nhất trong `kho_manh_svg.py` theo từ khóa đề bài, `mo_ta_minh_hoa` từng cảnh & chuyên mục.
     Nếu không khớp từ khóa nào thì trả `so_do_du_kien` (khung sơ đồ dữ kiện + người que)."""
@@ -171,15 +191,20 @@ def chon_manh_du_phong(kb):
             manh = "xuc_xac_1_6"
         elif re.search(r"đồng xu|tung xu|gieo xu|sấp|ngửa", t):
             manh = "dong_xu"
-        elif re.search(r"\bbi\b|viên bi|quả bóng|quả cầu|hộp kín|túi kín", t):
+        elif la_de_co_bi(t_de):
             manh = "hop_bi_mau"
+        elif len(doi_tuong_dat_ten(van)) >= 2 and re.search(DOI_TUONG_KET_NOI, t_de):
+            manh = "so_do_diem_ket_noi"
+        elif re.search(r"thẻ|lá bài|bộ bài|đánh số|phiếu", t_de):
+            manh = "la_bai_the_so"
         elif re.search(r"bayes|xét nghiệm|dương tính|âm tính|có điều kiện|lần lượt|liên tiếp|độc lập|bắn|thi đấu|cây xác suất|sơ đồ cây|nhà máy|phân xưởng", t):
             manh = "nut_cay_xac_suat"
         elif re.search(r"thẻ|lá bài|bộ bài|đánh số|phiếu|rút", t):
             manh = "la_bai_the_so"
         else:
             manh = "so_do_du_kien"
-        return {"manh": manh, "mon": "XAC_SUAT", "bi": _trich_bi_mau(van_day_du), "so": _trich_so_lieu(van), "cong_thuc": cong_thuc}
+        return {"manh": manh, "mon": "XAC_SUAT", "bi": _trich_bi_mau(van_day_du), "so": _trich_so_lieu(van), "cong_thuc": cong_thuc,
+                "doi_tuong": doi_tuong_dat_ten(van)}
 
     # Toán thực tế (THUC_TE): bài tiền bạc / tài chính TUYỆT ĐỐI không rơi về hop_chu_nhat_3d
     la_tai_chinh = bool(re.search(r"lãi suất|lãi kép|gửi tiết kiệm|ngân hàng|tiền gửi|trả góp|vay vốn|lạm phát|lợi nhuận|doanh thu|giá vé|giá bán|chi phí|giảm giá|tăng giá|tiền lãi|kinh doanh", t_de))
@@ -322,6 +347,11 @@ def _gia_tri_mo_hinh_buoc(chon, idx, n, nhan_buoc, so_da):
         ]
         return nhanh_ds[min(idx, 3)], mau, nhan_sach
 
+    if manh == "so_do_diem_ket_noi":
+        ten = list(chon.get("doi_tuong") or ["A", "B", "C"])[:5]
+        sang = ten[: min(len(ten), idx + 1)] if idx < n - 1 else ten
+        return {"diem": ten, "sang": sang}, mau, nhan_sach
+
     # Khung sơ đồ dữ kiện (khi không khớp từ khóa mô hình nào)
     ct = chon.get("cong_thuc") or []
     so = [x[0] for x in (chon.get("so") or [])[:3]]
@@ -360,6 +390,42 @@ def _ham_so_do_du_kien_py():
     ]
 
 
+def _ham_so_do_diem_ket_noi_py():
+    """v102.1 mảnh TRUNG TÍNH: các đối tượng đặt tên (A, B, C...) là nút tròn nối nhau, nút đang xét sáng dần theo bước."""
+    return [
+        "def ve_so_do_diem_ket_noi(gt, buoc_idx, mau_key, nhan_duoi):",
+        "    mc = km.MAU.get(mau_key, km.MAU['nhan'])",
+        "    nen = km.MAU['nen']",
+        "    cu = km.MAU['cu']",
+        "    chu = km.MAU['chu']",
+        "    ten = list(gt.get('diem') or ['A', 'B', 'C'])",
+        "    sang = set(gt.get('sang') or [])",
+        "    n = max(1, len(ten))",
+        "    parts = []",
+        "    pts = []",
+        "    r_vong = 100",
+        "    for k in range(n):",
+        "        g = math.pi * (0.5 + 2.0 * k / n)",
+        "        pts.append((592 + r_vong * math.cos(g), 272 - r_vong * math.sin(g), math.cos(g), -math.sin(g)))",
+        "    for k in range(n):",
+        "        for q in range(k + 1, n):",
+        "            ax, ay = pts[k][0], pts[k][1]",
+        "            bx, by = pts[q][0], pts[q][1]",
+        "            dd = max(1.0, math.hypot(bx - ax, by - ay))",
+        "            ux, uy = (bx - ax) / dd, (by - ay) / dd",
+        "            parts.append('<line x1=\"%.1f\" y1=\"%.1f\" x2=\"%.1f\" y2=\"%.1f\" stroke=\"%s\" stroke-width=\"2.6\" stroke-dasharray=\"7 6\"/>' % (ax + 40 * ux, ay + 40 * uy, bx - 40 * ux, by - 40 * uy, cu))",
+        "    for k in range(n):",
+        "        bat = ten[k] in sang",
+        "        col = mc if bat else cu",
+        "        cx, cy, ox, oy = pts[k]",
+        "        parts.append('<circle cx=\"%.1f\" cy=\"%.1f\" r=\"%d\" fill=\"%s\" stroke=\"%s\" stroke-width=\"3\"/>' % (cx, cy, 26 if bat else 20, col if bat else nen, col))",
+        "        parts.append('<text x=\"%.1f\" y=\"%.1f\" fill=\"%s\" font-size=\"28\" font-weight=\"800\" text-anchor=\"middle\">%s</text>' % (cx + 58 * ox, cy + 58 * oy + 10, chu, ten[k]))",
+        "    parts.append('<rect x=\"472\" y=\"444\" width=\"240\" height=\"40\" rx=\"12\" fill=\"%s\" fill-opacity=\"0.94\" stroke=\"%s\" stroke-width=\"2\"/>' % (nen, mc))",
+        "    parts.append('<text x=\"592\" y=\"472\" fill=\"%s\" font-size=\"22\" font-weight=\"700\" text-anchor=\"middle\">%s</text>' % (chu, nhan_duoi))",
+        "    return '<g data-manh=\"so_do_diem_ket_noi\">' + ''.join(parts) + '</g>'",
+    ]
+
+
 def sinh_ma_du_phong(kb):
     """Sinh mã Python thuần dùng `kho_manh_svg` cho `tu_sinh_svg.py` (không dùng API).
     Mỗi bước gom trọn [người que + vạch chia + mô hình/sơ đồ dữ kiện] vào 1 lớp `nhom='t2_du_phong'`
@@ -377,6 +443,8 @@ def sinh_ma_du_phong(kb):
     if manh == "so_do_du_kien":
         dong.extend(_ham_so_do_du_kien_py())
         dong.append("")
+    elif manh == "so_do_diem_ket_noi":
+        dong = ["import math", "import kho_manh_svg as km", ""] + _ham_so_do_diem_ket_noi_py() + [""]
 
     dong.extend([
         "def ve():",
@@ -407,6 +475,11 @@ def sinh_ma_du_phong(kb):
         if manh == "so_do_du_kien":
             dong.append(
                 "    mh_%d = ve_so_do_du_kien(%r, %d, %r, %r)"
+                % (i, gt_mh, i, mau_mh, nhan_mh)
+            )
+        elif manh == "so_do_diem_ket_noi":
+            dong.append(
+                "    mh_%d = ve_so_do_diem_ket_noi(%r, %d, %r, %r)"
                 % (i, gt_mh, i, mau_mh, nhan_mh)
             )
         else:

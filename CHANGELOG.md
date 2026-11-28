@@ -616,3 +616,20 @@
 - Tiến trình 4 (Khối 1–5): Nâng cấp HUD Hình học (`KhungHinhHoc.tsx`, `OutroTomTat.tsx`, `IntroMocCau.tsx`, `chuanbi.py`): thẻ kính T1 tích hợp header + badge `TÍNH`/`CHỨNG MINH`, tách chữ Việt thẳng `Be Vietnam Pro` & KaTeX chuẩn (`VanBanToan`), tự trích `Cho:` cho `HINH_KHONG_GIAN`, ngoặc góc CAD + Visual Beat T2, chống hộp rỗng T3 + thanh pha phát sáng + chip trung gian + chấm tiến trình, khử lặp tag Intro và cân đối Outro.
 - Tiến trình 4 (SFX & Lời giải): Tạo bộ 5 tệp SFX sạch (`public/sfx/{draw,pop,whoosh,trap,ding}.wav` qua `scripts/tao_sfx_hinh_hoc.py`) + động cơ `src/amthanh/DongCoSfx.tsx` khóa âm lượng `0.14–0.18` & cooldown cứng `>= 3.5s`; cập nhật `PromptKichBan.gs` & `HinhHoc.gs` theo mạch tư duy ngược và tối đa 1 câu dí dỏm ngắn ở Hook/nút thắt.
 - Tiến trình 4 (Tự học 2 tầng & CI Smoke): Tạo `mau_vang/` (2 mẫu vàng khởi tạo + lệnh Zalo `/hay <ID>` trong `NangCao.gs`/`SanPham.gs`/`ZaloDeBai.gs`, nạp few-shot ở `chay_bp1.js`) + `bai_hoc_edit.json` & `scripts/tu_hoc_edit.py` (tối đa 8 luật/chuyên mục, cờ `can_khoa_bang_code` khi `>= 3` lần, tự xóa quá 14 ngày); thêm `scripts/ci_smoke_test.mjs` & `.github/workflows/ci-smoke-test.yml` (và bổ sung `bai_hoc_edit.json`/`mau_vang` vào `sparse-checkout`).
+
+## Phiên 1/3 chốt hệ thống (2026-11-28)
+- BP2: `chotHinhHocTruocLuu_` (HinhHoc.gs) chạy bộ giải trên đúng bản kb sắp lưu `CO_KICH_BAN`; `danhGiaKichBan_` kiểm cả `hinh_phang_chuan` khi kb có thêm `hinh_khong_gian`; Auto-fix suy `loai` cho phép dựng gốc thiếu loại & bung `phep_dung` chuỗi JSON; cầu nối Python crash -> lỗi cứng thay vì cho qua.
+- Python: lưới an toàn `giai()` (HP_DUNG_LOI / KG_DUNG_LOI), `kiem.py` chặn chia 0 & đặc tả sai định dạng, `trong_tam`/`chan_duong_cao` kiểm đủ điểm.
+- BP3: `scripts/kiem_hinh_truoc_tts.py` trước TTS + callback `KIEM_DUYET_BO_CUC` (Auto-Heal trần 1).
+- Bộ não: `nguongNongBP0_` dùng chung cho phanh & cỡ lô BP0; BP0 không sinh lô khi quỹ key < 25% (trừ `/sanxuatngay`).
+
+### Phiên 2/3 — Script-First & Giọng đọc (2026-11-28)
+- Xác minh BP2 2 pha (`taoPromptPha2A_`/`daoDienPha2B_`) + `schema/kich_ban_bp2.json` đã đủ, không đổi `.gs`.
+- `khung4tang/moc_thoi_gian.py`: `nhip_chong_dung` hạ trần 6 s -> 4 s (trước đây khoảng 4–6 s vẫn đứng hình T2: 5,55 / 5,29 / 5,37 s ở 3 mẫu).
+- `chuanbi.py`: phụ đề bỏ dấu phẩy treo trước `=` (`2025/3600, = 7/16`); TTS đọc cặp `x, y` / `x và y` -> "ích, i".
+- Mới: `scripts/bang_doi_chieu_tts.py` (bảng Lời gốc | TTS | Phụ đề | Mốc + kiểm tự động), `scripts/test_phien2_tts.py` (vào `npm run kiem-tra`).
+- Cập nhật 3 test cũ theo hành vi v102: `test_moc_4tang.py` (tên kênh khóa `Story Math`), `test_v96.py` + `test_san_khau_2d.mjs` (THUC_TE chỉ hộp chữ: chặn `t2_trong` HOẶC tự cứu `du_phong_t2` có >= 2 lớp SVG có nét).
+
+## v102.1 — Tái cấu trúc BP2 bền vững (28/11)
+- Sự cố: 0 video sang BP3, quỹ key < 20%. Gốc: `tinhDapUng_` đòi MỌI tiêu chí >= 8 + bắt buộc >= 7 (quy_tac_hoc/ke_chuyen bắt buộc), `doi_chieu_canh` trượt khi có bất kỳ góp ý; `taoVatXacSuatTheoDe_` mặc định `hop_bi`; "Sân khấu gồm ..." nối lặp; `maxLoiPF/maxLoiHH/maxLoiKB` + `xuLyLoiHang_` cho lặp tới MAX_LAN_LOI=3 run; `CAM_MAT_MOC` và tia "Ax" là lỗi cứng.
+- Sửa: cửa cứng/mềm (`tinhDapUngKb_`, `quyetDinhKichBanBP2_`, `lech_ban_chat`), AI chấm 1 lần, trần sửa 1 mọi mảng, vệ sinh tĩnh, `thu_lai` bắt buộc ở schema, minh họa trung tính, hạ cánh mềm camera, tia "Ax", cầu dao BP2 + `/mobp2`. Cập nhật test camera cũ (`test_v97_gs`, `test_v98_gs`, `test_dong_bo_camera`).

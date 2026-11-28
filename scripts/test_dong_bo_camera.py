@@ -113,36 +113,45 @@ def chay(xoay):
     return [y for y in L["xoay"] if y["d"] > 0], [e["ma"] for e in loi], tk
 
 
+def canh_bao(tk):
+    return [e["ma"] for e in tk.get("canh_bao") or []]
+
+
+def du_phong(x):
+    return [y for y in x if y.get("du_phong")]
+
+
 x, loi, tk = chay([{"goc_nhin": "nhin_day", "moc_xoay": "xét mặt đáy ABCD"}])
 ok(not loi and len(x) == 1, "cụm giữa câu (có ngoặc trong lời) khớp")
 ok(x and abs(x[0]["moc"] - (dau2 + 8 * W)) < 1e-6, "mốc đúng từ 'xét' giữa câu (không phải đầu cảnh)")
 ok(x and abs(x[0]["t"] - (x[0]["moc"] - 0.15)) < 1e-6, "bắt đầu xoay = mốc - 0,15 s")
 x, loi, tk = chay([{"goc_nhin": "nhin_day", "moc_xoay": "nhìn từ phía dưới lên"}])
-ok(loi == ["CAM_MAT_MOC"] and not x, "cụm không có trong lời -> CAM_MAT_MOC, không dời về đầu cảnh")
+ok(not loi and canh_bao(tk) == ["CAM_MAT_MOC"] and len(du_phong(x)) == 1 and du_phong(x)[0]["goc_nhin"] == "toan_canh" and abs(du_phong(x)[0]["t"] - 3.8) < 1e-6,
+   "v102.1 cụm không có trong lời -> cảnh báo CAM_MAT_MOC + rơi về toan_canh ở đầu bước (không chặn)")
 x, loi, tk = chay([{"goc_nhin": "nhin_day", "moc_xoay": "hình chóp S.ABCD rất quen"}])
-ok(loi == ["CAM_MAT_MOC"], "cụm chỉ có ở cảnh trước -> CAM_MAT_MOC (chỉ tìm tiến, đúng cảnh)")
+ok(not loi and canh_bao(tk) == ["CAM_MAT_MOC"] and len(du_phong(x)) == 1, "cụm chỉ có ở cảnh trước -> vẫn chỉ tìm tiến, rơi về toan_canh (cảnh báo)")
 x, loi, tk = chay([{"goc_nhin": "nhin_day", "moc_xoay": "giờ hãy xét mặt đáy ABCD nào"}])
 ok(not loi and tk["auto_fix"] == 1 and x and abs(x[0]["moc"] - (dau2 + 8 * W)) < 1e-6, "Auto-fix cụm con >= 3 từ giữ vị trí giữa câu")
 x, loi, tk = chay([{"goc_nhin": "nhin_day", "moc_xoay": "mặt đáy"}])
 ok(not loi, "cụm 2 từ khớp đúng nguyên văn vẫn nhận")
 x, loi, tk = chay([{"goc_nhin": "nhin_day", "moc_xoay": "vậy mặt đáy kia"}])
-ok(loi == ["CAM_MAT_MOC"], "chỉ trùng 2 từ (không đủ cụm con 3 từ) -> CAM_MAT_MOC")
+ok(not loi and canh_bao(tk) == ["CAM_MAT_MOC"], "chỉ trùng 2 từ (không đủ cụm con 3 từ) -> cảnh báo CAM_MAT_MOC, góc dự phòng")
 x, loi, tk = chay([{"goc_nhin": "nhin_day"}])
-ok(loi == ["CAM_MAT_MOC"], "cú xoay thiếu moc_xoay -> CAM_MAT_MOC")
+ok(not loi and canh_bao(tk) == ["CAM_MAT_MOC"] and du_phong(x), "cú xoay thiếu moc_xoay -> góc toan_canh dự phòng (cảnh báo)")
 x, loi, tk = chay([{"goc_nhin": "nhin_day", "moc_xoay": "có nhận"}, {"goc_nhin": "ep_mep_mat", "doi_tuong": ["M", "N", "P"], "moc_xoay": "xét quan trọng"}])
-ok(loi == ["CAM_DE_GIO"], "hai cú xoay cách 0,66 s -> CAM_DE_GIO")
+ok(not loi and canh_bao(tk) == ["CAM_DE_GIO"] and len(x) == 1, "hai cú xoay cách 0,66 s -> bỏ cú sau, cảnh báo CAM_DE_GIO (không chặn)")
 x, loi, tk = chay([{"goc_nhin": "nhin_day", "moc_xoay": "trước hết xét"}, {"goc_nhin": "ep_mep_mat", "doi_tuong": ["M", "N", "P"], "moc_xoay": "mặt đáy"}])
 ok(not loi and len(x) == 2 and abs(x[0]["d"] - (x[1]["t"] - 0.05 - x[0]["t"])) < 1e-6 and 0.9 <= x[0]["d"] < 1.05,
    "hai cú cách 0,99 s: rút cú trước còn >= 0,9 s, không bỏ cú nào")
 ok(tok("(SCD)") == tok("SCD") and tok("S.ABCD") == ["s", "abcd"], "chuẩn hóa chữ gốc bỏ ngoặc / dấu chấm")
 
-# chuanbi dừng khi CAM_MAT_MOC
+# v102.1: chuanbi KHÔNG dừng khi CAM_MAT_MOC -> rơi về góc toan_canh, in cảnh báo
 kb = json.load(open(os.path.join(GOC, "mau", "v97", "giao_diem_mnp.json"), encoding="utf8"))
 kb["hinh_khong_gian"]["buoc"][2]["xoay"][0]["moc_xoay"] = "câu này không có trong lời"
 tep = os.path.join(tempfile.gettempdir(), "v97_loi_moc.json")
 json.dump(kb, open(tep, "w", encoding="utf8"), ensure_ascii=False)
 ma, log = chay_chuanbi(tep, os.path.join(tempfile.gettempdir(), "v97_loi_moc_props.json"))
-ok(ma != 0 and "CAM_MAT_MOC" in log, "chuanbi.py dừng với lỗi cứng CAM_MAT_MOC")
+ok(ma == 0 and "CẢNH BÁO [CAM_MAT_MOC]" in log, "chuanbi.py dựng tiếp, chỉ cảnh báo CAM_MAT_MOC (hạ cánh mềm)")
 
 print("test_dong_bo_camera: %d đạt, %d hỏng" % (DAT, len(HONG)))
 sys.exit(1 if HONG else 0)

@@ -1250,81 +1250,35 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
           }
         } catch (eGT) { kb = JSON.parse(kbLuu); if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(eGT.message))) { luuNhapKichBan_(r.id, kb); throw eGT; } }
       }
-      // BỘ PHẬN KIỂM DUYỆT YÊU CẦU - cửa 1 (NangCao.gs): AI chấm kịch bản theo bảng yêu cầu của chủ kênh TRƯỚC khi dựng.
-      // Nếu kịch bản đạt >= 72% ngay lượt đầu -> tối đa 1 vòng sửa; dưới 72% -> cho phép 2 vòng trên GitHub để nâng chất lượng nhanh gọn.
+      // BỘ PHẬN KIỂM DUYỆT YÊU CẦU - cửa 1 (NangCao.gs), v102.1 tách CỬA CỨNG / CỬA MỀM:
+      // Sinh (1) -> kiểm tĩnh 0-API -> [sửa tối đa 1 lần ở trên] -> AI chấm TỐI ĐA 1 LẦN -> ĐẬU hoặc BỎ LUÔN (không vòng sửa sau chấm).
+      // Chỉ sai toán / sai đáp số / sai dữ kiện cốt lõi / minh họa lệch hẳn bản chất mới loại; tiêu chí mềm (quy_tac_hoc, ke_chuyen,
+      // nhieu_canh, độ mượt, thẻ lặp) chỉ cộng điểm, đạt >= MUC_DAP_UNG_KICH_BAN (75%) là sang BP3.
       var batBuocDuyetCanh = !laMonHinhHoc_(r);
       if (batBuocDuyetCanh || (typeof aiDuyetKichBan_ === 'function' && String(chNC_('AI_DUYET_KICH_BAN')).toUpperCase() !== 'TAT')) {
-        var maxYC = typeof soLanSuaKichBanYC_ === 'function' ? soLanSuaKichBanYC_() : soLanSuaYeuCau_();
-        var lanYC = 0, toiDaYC = Math.min(trenGitHub ? 2 : 1, maxYC), boDe = null, dy = null, totNhatYC = null;
-        while (conDuGoiGemini_()) {
+        var dy = null;
+        if (conDuGoiGemini_()) {
           try { dy = aiDuyetKichBan_(kb, r, spham); }
           catch (eYC) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(eYC.message))) { luuNhapKichBan_(r.id, kb); throw eYC; } dy = null; }
-          if (!dy) break;
-          if (lanYC === 0 && Number(dy.phan_tram) >= 72) toiDaYC = Math.min(1, toiDaYC);
-          nhatKy_('KIEM_DUYET_YC', r.id + ' kịch bản lần ' + (lanYC + 1) + ': đáp ứng ' + dy.phan_tram + '% | ' + tomTatTieuChi_(dy) + (dy.dat ? ' -> ĐẠT' : ' | ' + dy.van_de.slice(0, 3).join('; ').slice(0, 250)));
-          if (dy.dat) break;
-          // GIỮ BẢN TỐT NHẤT: bản sửa chấm THẤP hơn bản tốt nhất trước đó -> quay lại bản tốt nhất rồi sửa tiếp từ đó
-          // (trước đây bản 99% bị bản sửa 84% đè mất, cuối cùng đề bị xóa oan).
-          if (!totNhatYC || Number(dy.phan_tram) > Number(totNhatYC.dy.phan_tram)) totNhatYC = { kb: JSON.stringify(kb), dy: dy, dg: dg };
-          else if (Number(dy.phan_tram) < Number(totNhatYC.dy.phan_tram)) {
-            nhatKy_('KIEM_DUYET_YC', r.id + ': bản sửa kém hơn (' + dy.phan_tram + '% < ' + totNhatYC.dy.phan_tram + '%) -> quay lại bản tốt nhất, sửa tiếp từ đó');
-            kb = JSON.parse(totNhatYC.kb); dy = totNhatYC.dy; dg = totNhatYC.dg;
-          }
-          if (lanYC >= toiDaYC) { boDe = 'kịch bản chỉ đáp ứng ' + dy.phan_tram + '% sau ' + lanYC + ' lần sửa' + (dy.nang.length ? ' (bắt buộc chưa đạt: ' + dy.nang.join(', ') + ')' : '') + '. ' + dy.van_de.slice(0, 2).join('; '); break; }
-          var kbTruoc = JSON.stringify(kb), kbYC = null;
-          var goiYNhe = (dg && Array.isArray(dg.nhe)) ? dg.nhe.filter(function (x) {
-            return /^(MO_PHONG_DON_DIEU|HINH_LAP_LAI_NHIEU_CANH|CHUNG_MINH_QUA_GON|CHU_DE_LEN_HINH|HINH_DUNG_YEN|CAI_BAY|CAU_NOI_LAP|GIOI_THIEU_AN_SOM|IT_ANH_SAN_PHAM)\b/.test(String(x));
-          }).slice(0, 3) : [];
-          try { kbYC = suaKichBanBangGemini_(kb, ['KIEM_DUYET_YEU_CAU (bắt buộc sửa hết; kịch bản mới đáp ứng ' + dy.phan_tram + '%, tiêu chí: ' + tomTatTieuChi_(dy) + '). Vấn đề: ' + dy.van_de.join(' || ') + '. Cách sửa: ' + dy.gop_y].concat(goiYNhe), prompt, sn); }
-          catch (eYS) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(eYS.message))) { luuNhapKichBan_(r.id, kb); throw eYS; } }
-          lanYC++;
-          if (kbYC && Array.isArray(kbYC.canh) && kbYC.canh.length) {
-            kb = kbYC;
-            chuanBiKichBan_(kb, r, ctxSua);
-            var dgYC = danhGiaKichBan_(kb, r.dap_an, r.mon, hinhDe, spham, r.de_bai, r.lop);
-            if (dgYC.nang.length) { kb = JSON.parse(kbTruoc); nhatKy_('KIEM_DUYET_YC', r.id + ': bản sửa sinh lỗi nặng (' + dgYC.nang.map(function (x) { return String(x).split(':')[0]; }).join(', ') + '), giữ bản trước'); }
-            else dg = dgYC;
-          }
         }
-        // v91 AUTO-FIX: luồng thực tế hết vòng sửa mà chưa "đạt" -> không ném bỏ ngay; xét như các luồng khác theo TIÊU CHÍ CỐT LÕI
-        // (đề bài, bám đề, lời giải, đáp án, quy tắc đã dạy, sản phẩm >= 7/10) ở khối "if (boDe)" bên dưới.
-        var autoFixYC = !!boDe && typeof batAutoFix_ === 'function' && batAutoFix_();
-        if (autoFixYC) nhatKy_('AUTO_FIX', r.id + ': kiểm duyệt cảnh chưa đạt (' + boDe.slice(0, 120) + ') -> xét tiêu chí cốt lõi thay vì từ chối');
-        if (batBuocDuyetCanh && !(dy && dy.dat) && !autoFixYC) {
-          luuNhapKichBan_(r.id, kb);
-          if (!boDe) {
-            ghi_(sh, r._row, {so_lan_loi: Math.max(0, (Number(r.so_lan_loi) || 1) - 1), ghi_chu: 'Chờ duyệt đủ nội dung và hình của từng cảnh trước khi dựng'});
+        var qdKB = typeof quyetDinhKichBanBP2_ === 'function' ? quyetDinhKichBanBP2_(dy, []) : { dat: !!(dy && dy.dat), cua: dy ? 'mem' : 'chua_cham', ly_do: '' };
+        if (dy) nhatKy_('KIEM_DUYET_YC', r.id + ' kịch bản (chấm 1 lần): đáp ứng ' + dy.phan_tram + '% | ' + tomTatTieuChi_(dy) + (qdKB.dat ? ' -> ĐẠT' + (dy.mem && dy.mem.length ? ' (góp ý mềm: ' + dy.mem.join(', ') + ')' : '') : ' | ' + qdKB.ly_do + ' | ' + dy.van_de.slice(0, 3).join('; ').slice(0, 220)));
+        if (!dy) {
+          if (batBuocDuyetCanh) {
+            // AI chưa chấm được (hết giờ / nghẽn key): KHÔNG tính là lỗi của đề, giữ bản nháp chấm ở lượt sau
+            luuNhapKichBan_(r.id, kb);
+            ghi_(sh, r._row, {so_lan_loi: Math.max(0, (Number(r.so_lan_loi) || 1) - 1), ghi_chu: 'Chờ AI chấm kịch bản (1 lần) trước khi dựng'});
+            continue;
+          }
+        } else if (!qdKB.dat) {
+          var boDe = 'kịch bản ' + dy.phan_tram + '% - ' + qdKB.ly_do + '. ' + dy.van_de.slice(0, 2).join('; ');
+          if (typeof boDeKhongDat_ === 'function') {
+            boDeKhongDat_(sh, r, boDe, 'kich_ban');
+            if (typeof ghiCauDaoTaiCho_ === 'function') ghiCauDaoTaiCho_(false, qdKB.ly_do);
+            bc.loai++;
             continue;
           }
           throw new Error('KICH_BAN_KHONG_HOP_LE: ' + boDe);
-        }
-        if (boDe) {
-          // Khôi phục bản kịch bản tốt nhất đã được AI chỉnh sửa theo góp ý (totNhatYC).
-          if (totNhatYC && totNhatYC.kb) {
-            kb = JSON.parse(totNhatYC.kb);
-            dy = totNhatYC.dy || dy;
-            chuanBiKichBan_(kb, r, ctxSua);
-            dg = danhGiaKichBan_(kb, r.dap_an, r.mon, hinhDe, spham, r.de_bai, r.lop);
-          }
-          // Siết chuẩn tiêu chí cốt lõi của chủ kênh: KHÔNG cho qua nếu sai đề bài, sai hình bám đề, sai toán/đáp án, sai quy tắc đã dạy hoặc sai sản phẩm (< 7/10).
-          var ctYC = (dy && dy.chi_tiet) || {};
-          var cotLoiOk = ['de_bai', 'bam_de', 'loi_giai', 'dap_an', 'quy_tac_hoc', 'san_pham'].every(function (k) {
-            return ctYC[k] === undefined || Number(ctYC[k]) >= 7;
-          });
-          if ((!dg || !dg.nang || !dg.nang.length) && cotLoiOk) {
-            nhatKy_('KIEM_DUYET_YC', r.id + ': giữ bản kịch bản đạt tiêu chí cốt lõi sau ' + lanYC + ' vòng sửa (' + (dy ? dy.phan_tram : '?') + '%) -> dựng video');
-          } else {
-            var lanLoiKB = Number(r.so_lan_loi) || 1;
-            var maxLoiKB = Math.max(2, Number(cauHinh_('MAX_LAN_LOI')) || 3);
-            if (lanLoiKB >= maxLoiKB - 1 && typeof boDeKhongDat_ === 'function') {
-              boDeKhongDat_(sh, r, boDe, 'kich_ban');
-              bc.loai++;
-              continue;
-            }
-            luuNhapKichBan_(r.id, kb);
-            ghi_(sh, r._row, { ghi_chu: 'Tiếp tục AI sửa kịch bản ở lượt sau: ' + boDe.slice(0, 180) });
-            continue;
-          }
         }
       }
       if (dg.nhe.length) nhatKy_('KICH_BAN_LUU_Y', r.id + ': dùng được, còn ' + dg.nhe.length + ' lưu ý nhẹ: ' + dg.nhe.map(function (x) { return String(x).split(':')[0]; }).join(', '));
@@ -1365,13 +1319,9 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
           loiPF = congLocSomBP2_(kb, r);
         }
         if (loiPF.length) {
-          var lanLoiPF = Number(r.so_lan_loi) || 0;
-          var maxLoiPF = Math.max(2, Number(cauHinh_('MAX_LAN_LOI')) || 3);
-          if (lanLoiPF + 1 >= maxLoiPF) throw new Error('KICH_BAN_KHONG_HOP_LE: ' + loiPF[0]);
-          luuNhapKichBan_(r.id, kb);
-          ghi_(sh, r._row, { so_lan_loi: lanLoiPF + 1, ghi_chu: ('Cổng lọc sớm BP2 (' + (lanLoiPF + 1) + '/' + maxLoiPF + '): ' + loiPF[0]).slice(0, 260) });
-          nhatKy_('CONG_LOC_SOM_BP2', r.id + ': lưu nháp sửa lượt sau (' + (lanLoiPF + 1) + '/' + maxLoiPF + '): ' + loiPF.slice(0, 3).join('; ').slice(0, 220));
-          continue;
+          // v102.1 trần sửa thống nhất = 1: đã sửa 1 lần mà vẫn lỗi -> dừng ngay, không lưu nháp để đốt thêm lượt ở run sau
+          nhatKy_('CONG_LOC_SOM_BP2', r.id + ': vẫn lỗi sau ' + TRAN_SUA_BP2 + ' lần sửa -> dừng: ' + loiPF.slice(0, 3).join('; ').slice(0, 220));
+          throw new Error('KICH_BAN_KHONG_HOP_LE: ' + loiPF[0]);
         }
       }
       chuanHoaThoiLuong_(kb);
@@ -1388,6 +1338,30 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       if (typeof layPhongCachVideo_ === 'function') { var pcv = layPhongCachVideo_(r); if (pcv) { kb.phong_cach_loi = pcv.loi_id; kb.phong_cach_dan = pcv.dan_id || ''; kb.phong_cach_edit = pcv.edit; } }
       if (typeof ghiCauNoi_ === 'function') ghiCauNoi_(kb);
       if (typeof phanLoaiCauHoi_ === 'function') kb.loai_cau_hoi = phanLoaiCauHoi_(r);   // loại câu hỏi: màu nhãn trên ảnh bìa + danh sách phát
+      // Cổng chốt hình học trên đúng bản sắp lưu (cùng bộ giải BP3 chạy trước TTS): HP_* / KG_* không được sang CO_KICH_BAN.
+      if (typeof chotHinhHocTruocLuu_ === 'function') {
+        var loiChotHH = chotHinhHocTruocLuu_(kb);
+        if (loiChotHH.length && lanSua < maxSua && conDuGoiGemini_()) {
+          // v102.1: bộ giải máy thấy lỗi mà vòng trên chưa dùng lượt sửa -> sửa ĐÚNG 1 lần rồi chốt lại
+          nhatKy_('CHOT_HINH_HOC_BP2', r.id + ': sửa 1 lần duy nhất trước khi lưu: ' + loiChotHH.slice(0, 3).join('; ').slice(0, 220));
+          var kbHH = null;
+          try { kbHH = suaKichBanBangGemini_(kb, loiChotHH, prompt, sn); } catch (eHHs) { if (/^(HET_HAN_MUC|QUA_TAI|HET_GIO|KHO_GITHUB_KHONG_KHA_DUNG)$/.test(String(eHHs.message))) { luuNhapKichBan_(r.id, kb); throw eHHs; } }
+          lanSua++;
+          if (kbHH && Array.isArray(kbHH.canh) && kbHH.canh.length) {
+            var kbGiu = {id: kb.id, lop: kb.lop, chu_de: kb.chu_de, de_bai: kb.de_bai, dap_an: kb.dap_an, cach_giai: kb.cach_giai, mon: kb.mon, luong: kb.luong};
+            kb = kbHH;
+            Object.keys(kbGiu).forEach(function (k) { if (kbGiu[k] !== undefined) kb[k] = kbGiu[k]; });
+            chuanBiKichBan_(kb, r, ctxSua);
+            if (kb.luong === 'hinh_hoc_thuan' && typeof khoaLuongHinhHoc_ === 'function') khoaLuongHinhHoc_(kb);
+            loiChotHH = chotHinhHocTruocLuu_(kb);
+          }
+        }
+        if (loiChotHH.length) {
+          // trần sửa thống nhất = 1 cho MỌI mảng (gồm Hình học): hết lượt -> dừng ngay, không lặp qua các run sau
+          nhatKy_('CHOT_HINH_HOC_BP2', r.id + ': vẫn lỗi sau ' + TRAN_SUA_BP2 + ' lần sửa -> dừng: ' + loiChotHH.slice(0, 3).join('; ').slice(0, 260));
+          throw new Error('KICH_BAN_KHONG_HOP_LE: ' + loiChotHH[0]);
+        }
+      }
       var oKb = ghiKichBanAnToan_(r.id, JSON.stringify(kb));
       if (oKb === null) { luuNhapKichBan_(r.id, kb); throw new Error('DRIVE_KICH_BAN: chưa lưu được kịch bản'); }
       var aiKtCu = {};
@@ -1400,6 +1374,7 @@ function xuLyKichBan_(sh, bc, bat, chiUuTien, chiIds) {
       nhatKy_('KICH_BAN', r.id + ' -> đã lưu kịch bản');
       if (laUuTien_(r)) baoZaloDe_(r, '🎬 Kịch bản xong (' + kb.canh.length + ' cảnh, khoảng ' + kb.tong_giay + ' giây). Đã vào hàng chờ dựng video.', 'thap');
       capNhatTb_('TB_KICHBAN_MS', Date.now() - t0);
+      if (typeof ghiCauDaoTaiCho_ === 'function') ghiCauDaoTaiCho_(true, '');
       bc.kich_ban++;
     } catch (e) { xuLyLoiHang_(sh, r, e, bc); }
   }
@@ -1426,7 +1401,10 @@ function chuanBiKichBan_(kb, r, ctxSua) {
   if (cauHinh_('KIEU_MO_DAU') !== 'chao_hook') xoaLoiChao_(kb);
   if (r.dap_an_hien && !kb.dap_an_hien) kb.dap_an_hien = String(r.dap_an_hien);
   if (r._banVe && !kb.ban_ve && !(typeof laMonHinhHoc_ === 'function' && laMonHinhHoc_(r))) kb.ban_ve = r._banVe;   // có sẵn bản vẽ của đề: cảnh nào mất hết vật thì dùng bản vẽ thay vì để trống
-  var sua = typeof tuSuaKichBan_ === 'function' ? tuSuaKichBan_(kb, ctxSua, r) || [] : [];
+  // v102.1 vệ sinh tĩnh 0-API sau MỌI lượt AI sinh/sửa: khử lặp câu / n-gram / mục trùng, cắt độ dài mô tả minh họa
+  var sua = typeof veSinhVanBanKb_ === 'function' ? veSinhVanBanKb_(kb) || [] : [];
+  if (typeof chotThuLaiTuSchema_ === 'function' && !(typeof laMonHinhHoc_ === 'function' && laMonHinhHoc_(r))) sua = sua.concat(chotThuLaiTuSchema_(kb) || []);
+  sua = sua.concat(typeof tuSuaKichBan_ === 'function' ? tuSuaKichBan_(kb, ctxSua, r) || [] : []);
   if (typeof tuSuaQuyTrinh_ === 'function') sua = sua.concat(tuSuaQuyTrinh_(kb, r.de_bai) || []);
   var laHH = typeof laMonHinhHoc_ === 'function' && laMonHinhHoc_(r);
   if (laHH) {   // LUỒNG HÌNH HỌC THUẦN: gỡ mọi vật đời sống / 3D trước, rồi gắn tọa độ ĐÚNG từ mã dựng hình đã kiểm chứng
@@ -1509,8 +1487,9 @@ function schemaPha2A_() {
     loai_yeu_cau: {type: 'STRING', enum: ['tinh', 'chung_minh']},
     tom_tat_gia_thiet: dsChu, yeu_cau_ngan: chu, ket_qua_chip: dsChu,
     tom_tat_3_buoc: mang(obj({chien_thuat: chu, cong_thuc: chu}, ['chien_thuat', 'cong_thuc']), 3, 3),
+    thu_lai: obj({cach: chu, phep_thu: chu, loi_doc: chu}, ['phep_thu', 'loi_doc']),
     canh: mang(canh2A, 4)
-  }, ['tieu_de', 'dap_an_cuoi', 'hook', 'y_tuong_chinh', 'bai_hoc_rut_ra', 'binh_luan_ghim', 'canh', 'tom_tat_3_buoc']);
+  }, ['tieu_de', 'dap_an_cuoi', 'hook', 'y_tuong_chinh', 'bai_hoc_rut_ra', 'binh_luan_ghim', 'canh', 'tom_tat_3_buoc', 'thu_lai']);
 }
 
 function schemaAnhXa2B_(loai) {
@@ -1604,12 +1583,13 @@ function schemaKichBan_(soCanh) {
     loai_yeu_cau: {type: 'STRING', enum: ['tinh', 'chung_minh']},
     tom_tat_gia_thiet: dsChu, yeu_cau_ngan: chu, ket_qua_chip: dsChu, pha_bp2: chu,
     tom_tat_3_buoc: tomTat,
+    thu_lai: obj({cach: chu, phep_thu: chu, loi_doc: chu}, ['phep_thu', 'loi_doc']),
     cau_chuyen: obj({nguoi_ke: chu, dia_diem: chu, muc_tieu: chu, phong_canh: jsonHinh}),
     khung4tang: obj({phu_de: chu, theme: chu, de_ghim: mang(obj({id: chu, nhan: chu, mau: chu}, ['id', 'nhan'])),
       buoc: mang(buoc, 1), san_khau: sanKhau, canh_3d_vector: jsonHinh,
       tu_sinh: obj({ma: chu, mo_ta: chu}, ['ma'])}, ['buoc']),
     hinh_phang_chuan: jsonHinh, hinh_khong_gian: jsonHinh
-  }, ['tieu_de', 'dap_an_cuoi', 'hook', 'bai_hoc_rut_ra', 'binh_luan_ghim', 'canh']);
+  }, ['tieu_de', 'dap_an_cuoi', 'hook', 'bai_hoc_rut_ra', 'binh_luan_ghim', 'canh', 'thu_lai']);
 }
 
 // PHA 2A (SCRIPT-FIRST): Biên kịch sư phạm thuần (model nặng, SUY_NGHI_BIEN_KICH = high).
@@ -1634,7 +1614,7 @@ function taoPromptPha2A_(r, c1, c2) {
     '1. Hook 0–3s thu hút (<12 chữ, không lộ đáp số), 7–9 cảnh liền mạch 45–55s (170–220 tiếng), không lời chào sáo rỗng.\n',
     hh ? '2. Hình học: dẫn tư duy ngược (nút thắt -> chiêu đường phụ/đổi góc -> chốt chip ket_qua_chip), chỉ rõ 1 bẫy tư duy (bay_tu_duy), ghi đủ tom_tat_gia_thiet & yeu_cau_ngan.\n'
        : '2. Nêu rõ 1 bẫy tư duy học sinh hay mắc (cảnh "bay" + bay_tu_duy); bài tiền bạc/tài chính TUYỆT ĐỐI cấm minh họa khối hộp.\n',
-    '3. BẮT BUỘC có cảnh "thu_lai" thử lại bằng phép tính số cụ thể trên CẢ loi_thoai lẫn noi_dung_man_hinh (chỉ bỏ khi bài chứng minh thuần và ghi khong_thu_lai >= 6 từ).\n',
+    '3. BẮT BUỘC có cảnh "thu_lai" thử lại bằng phép tính số cụ thể trên CẢ loi_thoai lẫn noi_dung_man_hinh (chỉ bỏ khi bài chứng minh thuần và ghi khong_thu_lai >= 6 từ). Đồng thời ĐIỀN trường bắt buộc "thu_lai": {"phep_thu": phép thử bằng số có dấu "=" (vd "106 \\cdot 1{,}06 = 112{,}36"), "loi_doc": câu đọc phép thử đó bằng lời, "cach": thế ngược / cách 2 / phần bù}.\n',
     '4. Ghi binh_luan_ghim Evergreen (<=180 ký tự, không năm sinh/năm thi) và tom_tat_3_buoc (đúng 3 bước).\n',
     '5. Mỗi cảnh ghi "mo_ta_minh_hoa" bằng tiếng Việt tự nhiên tả hình cần hiện ở bước đó. TUYỆT ĐỐI KHÔNG viết mã Python/SVG, KHÔNG tự gõ bảng đếm xác suất hay tọa độ kỹ thuật (Pha 2B sẽ tự dựng).'
   ].join('');
@@ -2479,6 +2459,12 @@ function nhanKetQuaBoPhan1_(sh, d) {
     xoaNhapKichBan_(r.id);
   }
   if (f.trang_thai === 'LOI_CAN_XEM') guiZaloMotLan_('BP2_LOI_' + r.id, r.id + ' ' + f.ghi_chu);
+  if (laKB && typeof ghiKetQuaBP2CauDao_ === 'function') {
+    try {
+      if (d.kich_ban && f.trang_thai === 'CO_KICH_BAN') ghiKetQuaBP2CauDao_(true, '');
+      else if (['XOA', 'LOI_CAN_XEM', 'LOI', 'LOAI'].indexOf(f.trang_thai) >= 0) ghiKetQuaBP2CauDao_(false, String(f.ghi_chu || '').slice(0, 160));
+    } catch (eCD) { nhatKy_('CAU_DAO_BP2', 'Không ghi được bộ đếm: ' + String(eCD.message).slice(0, 120)); }
+  }
   if (d.series_ghi && typeof ghiTapCuoiSeries_ === 'function') { try { ghiTapCuoiSeries_(d.series_ghi.se, d.series_ghi.tieu_de); } catch (e) {} }
   (d.zalo || []).forEach(function (z) { try { if (z.id) baoZaloDe_(r, z.noi_dung, z.muc); else guiZalo_(z.noi_dung, z.muc, z.khoa); } catch (e) {} });
   nhatKy_('GITHUB_BP1', r.id + ' -> ' + f.trang_thai + (d.kich_ban ? ' (đã lưu kịch bản)' : '') + (d.loi ? ' | ' + d.loi : ''));
@@ -2533,6 +2519,12 @@ function xoaNghi() {
   Logger.log('Đã bỏ trạng thái tạm nghỉ.');
 }
 
+// Cầu dao BP2 (BoNaoDieuPhoi.gs): chỉ đếm khi chạy TẠI CHỖ trên Apps Script; chạy trên GitHub thì webhook nhận kết quả đếm (không đếm 2 lần).
+function ghiCauDaoTaiCho_(dat, lyDo) {
+  if (typeof THOI_GIAN_TOI_DA_MS !== 'undefined' && THOI_GIAN_TOI_DA_MS > 600000) return;
+  if (typeof ghiKetQuaBP2CauDao_ === 'function') { try { ghiKetQuaBP2CauDao_(!!dat, lyDo || ''); } catch (e) {} }
+}
+
 function xuLyLoiHang_(sh, r, e, bc) {
   var msg = String(e.message);
   if (msg === 'KHO_GITHUB_KHONG_KHA_DUNG') throw e;
@@ -2544,10 +2536,13 @@ function xuLyLoiHang_(sh, r, e, bc) {
   nhatKy_('LOI_DONG', r.id + ': ' + e.message);
   var n = Number(r.so_lan_loi) || 1;   // đã được tăng ở batDauViec_
   var f = { so_lan_loi: n, ghi_chu: String(e.message).slice(0, 300) };
-  if (n >= Number(cauHinh_('MAX_LAN_LOI'))) {
+  // v102.1: KICH_BAN_KHONG_HOP_LE nghĩa là đã kiểm tĩnh + sửa đủ TRAN_SUA_BP2 (= 1) lần trong lượt này -> dừng NGAY,
+  // không để run sau đọc nháp sửa tiếp (trước đây tới MAX_LAN_LOI = 3 lượt -> "sửa 3 lần vẫn lỗi", đốt cạn quỹ key).
+  var laKbHong = /^KICH_BAN_KHONG_HOP_LE/.test(msg);
+  if (n >= Number(cauHinh_('MAX_LAN_LOI')) || laKbHong) {
     f.trang_thai = 'LOI';
     // Giữ đề và lý do để kiểm tra cổng BP2 sau khi hết lượt sửa.
-    if (/^KICH_BAN_KHONG_HOP_LE/.test(msg)) { f.trang_thai = 'LOI_CAN_XEM'; f.bp_thu_lai = 2; f.ghi_chu = ('BO_KHONG_DAT (kịch bản): sửa ' + n + ' lần vẫn lỗi - ' + msg).slice(0, 300); PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1'); }
+    if (laKbHong) { f.trang_thai = 'LOI_CAN_XEM'; f.bp_thu_lai = 2; f.ghi_chu = ('BO_KHONG_DAT (kịch bản): sửa ' + TRAN_SUA_BP2 + ' lần vẫn lỗi - ' + msg).slice(0, 300); PropertiesService.getScriptProperties().setProperty('CAN_DONG_BO', '1'); try { xoaNhapKichBan_(r.id); } catch (eXN) {} if (typeof ghiCauDaoTaiCho_ === 'function') ghiCauDaoTaiCho_(false, msg.slice(0, 120)); }
   }
   ghi_(sh, r._row, f);
   bc.loi++;
@@ -3312,7 +3307,7 @@ function videoChoLuuTruLoi_(r) {
   if (r.tu_sua_cho || r.duyet === 'DA_DUYET' ||
       /^(DA_DANG|DA_XONG|DA_LAM_VIDEO|DANG_.+|CHO_(?!QUA_HAN$).+)$/.test(tt)) return false;
   if (tt === 'DA_DON_VIDEO' || tt === 'BO_KHONG_DAT') return true;
-  var hetLuot = /BO_KHONG_DAT|sửa\s+3\s+lần\s+vẫn\s+lỗi|Kiểm duyệt bố cục vẫn lỗi|Mắt thần\s*3\s*\+\s*3|het_luot/i.test(ghiChu);
+  var hetLuot = /BO_KHONG_DAT|sửa\s+\d+\s+lần\s+vẫn\s+lỗi|Kiểm duyệt bố cục vẫn lỗi|Mắt thần\s*3\s*\+\s*3|het_luot/i.test(ghiChu);
   if (/^(LOI_CAN_XEM|LOI|LOAI|XOA)$/.test(tt)) return hetLuot || !!r.mp4_cho_xoa;
   if (!r.file_video || tt !== 'CO_VIDEO' || /^(AI_XEM|CHO_AI)$/.test(r.duyet) || videoDatBP4Cu_(r)) return false;
   if (hetLuot || (typeof videoCoKetLuanLoi_ === 'function' && videoCoKetLuanLoi_(r))) return true;

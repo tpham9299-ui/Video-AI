@@ -134,6 +134,7 @@ function huongDanHinhPhangChuan_(r) {
     '   chan_duong_cao{ten:"D",tu:"B",xuong:"AC"} | duong_kinh{ten:"M",tu:"A",duong_tron:"(O)"} | trung_diem{ten,doan} | giao_diem{ten,a:"AM",b:"DE" (đường thẳng "XY" hoặc đường tròn "(O)"), khac?:"A", gan?:"B"} |\n' +
     '   duong_tron_ngoai_tiep{tg,tam} | duong_tron_duong_kinh{doan:"BC",tam?} | tiep_tuyen{tai:"A",duong_tron,cat:"BC",ten} hoặc {tu:"M",duong_tron,ten_tiep_diem:["A","B"]} | phan_giac{goc:"BAC",cat:"BC",ten} |\n' +
     '   doi_xung{ten,diem,qua (điểm hoặc "XY")} | song_song{ten,qua,voi:"BC",cat} | vuong_goc{ten,qua,voi,cat?} | doan_noi{doan:"DE"} | diem_tren{ten,tren:"BC" hoặc "(O)"} | diem_ngoai{ten,duong_tron}. Điểm phụ không muốn hiện nhãn: "an_nhan":true.\n' +
+    '   TÊN ĐƯỜNG TƯỜNG MINH (lỗi cứng HP_DUNG_LOI nếu sai): mọi đường / đoạn trong a, b, cat, voi, tren, doan ghi bằng 2 điểm CHỮ HOA đã dựng (vd "AT", "BC"). KHÔNG dùng ký hiệu tia 1 chữ hoa + 1 chữ thường như "Ax", "By"; đề nói "tiếp tuyến Ax" thì dựng tiep_tuyen{tai:"A",cat:...,ten:"T"} rồi dùng "AT" (hoặc khai báo "ten_duong":"Ax" ngay ở phép dựng tạo đường đó).\n' +
     ' "loai_yeu_cau":"tinh" hoặc "chung_minh". Bài tính: muc_tieu.tex chỉ ghi đại lượng cần tìm (ví dụ AE = ?), đáp số ngắn có đơn vị ở dap_an_cuoi. Bài chứng minh: muc_tieu.tex chỉ là mệnh đề kết luận, khoảng 32 ký tự hiển thị.\n' +
     ' "tom_tat_gia_thiet":["\\\\triangle ABC \\\\text{ nhọn nội tiếp } (O)","BD, CE \\\\text{ đường cao}"] (2-3 cụm LaTeX ngắn ghim ở Tầng 1 "Cho:", không chứa đáp số),\n' +
     ' "yeu_cau_ngan":"AM \\\\perp DE" (1 dòng LaTeX ngắn cho Tầng 1 "Yêu cầu:", không lộ đáp số),\n' +
@@ -149,6 +150,32 @@ function huongDanHinhPhangChuan_(r) {
 }
 
 // Kiểm tra kịch bản có hinh_phang_chuan: cấu trúc + khi_noi nguyên văn + GDPT 2018 (JS) + kiểm chứng tọa độ (Python qua chay_bp1.js).
+// Cổng chốt hình học trên ĐÚNG bản kb sắp lưu CO_KICH_BAN (sau khoaLuongHinhHoc_ và mọi vòng sửa/duyệt): chạy cùng điều kiện và cùng
+// bộ giải với bước "Kiểm chứng phép dựng và mệnh đề hình học trước TTS" của dung-video.yml -> lỗi HP_* / KG_* không lọt sang BP3.
+// Trả danh sách lỗi cứng (rỗng = đạt). Apps Script thật không có Python: chỉ chạy bản JS thứ tự phép dựng.
+function chotHinhHocTruocLuu_(kb) {
+  var loi = [];
+  if (!kb || typeof kb !== 'object') return loi;
+  var hh = String(kb.luong || '') === 'hinh_hoc_thuan' || String(kb.mon || '').toUpperCase() === 'HINH_HOC';
+  var hp = kb.hinh_phang_chuan, hkg = kb.hinh_khong_gian;
+  var dayLoi = function (m) {
+    if (m && m.dat === false && Array.isArray(m.loi)) m.loi.forEach(function (x) {
+      var s = String(x.ma || 'LOI') + ': ' + String(x.chi_tiet || '');
+      if (loi.indexOf(s) < 0) loi.push(s);
+    });
+  };
+  if (hh && hp && typeof hp === 'object' && (typeof batHinhPhangChuan_ !== 'function' || batHinhPhangChuan_())) {
+    var pd = Array.isArray(hp.phep_dung) ? hp.phep_dung : [];
+    var loiDung = pd.length ? kiemThuTuPhepDungHinhPhang_(pd) : 'HP_THIEU_DAC_TA: hinh_phang_chuan thiếu phep_dung (danh sách phép dựng theo thứ tự đề).';
+    if (loiDung) loi.push(loiDung);
+    else if (typeof kiemHinhPhangMay_ === 'function') dayLoi(kiemHinhPhangMay_(kb));
+  }
+  var lego = hkg && typeof hkg === 'object' && (String(hkg.phien_ban || '') === '2' || Array.isArray(hkg.doi_tuong));
+  if ((hh || lego) && hkg && typeof hkg === 'object' && typeof kiemKhongGianMay_ === 'function' &&
+      (typeof batHinhKhongGian_ !== 'function' || batHinhKhongGian_())) dayLoi(kiemKhongGianMay_(kb));
+  return loi;
+}
+
 function kiemHinhPhangChuan_(kb) {
   var nang = [], nhe = [];
   var hp = kb.hinh_phang_chuan;

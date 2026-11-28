@@ -66,8 +66,8 @@ jobs:
       so_khuc: ${{ steps.chia.outputs.so_khuc }}
       khuc: ${{ steps.chia.outputs.khuc }}
       manim: ${{ steps.chia.outputs.manim }}
-      chan: ${{ steps.soi_chu.outputs.chan == 'true' || steps.bao_sua.outputs.da_bao == 'true' || steps.tu_sinh.outputs.da_bao == 'true' }}
-      da_bao: ${{ steps.bao_sua.outputs.da_bao == 'true' || steps.tu_sinh.outputs.da_bao == 'true' }}
+      chan: ${{ steps.soi_chu.outputs.chan == 'true' || steps.bao_sua.outputs.da_bao == 'true' || steps.tu_sinh.outputs.da_bao == 'true' || steps.hinh_truoc_tts.outputs.da_bao == 'true' }}
+      da_bao: ${{ steps.bao_sua.outputs.da_bao == 'true' || steps.tu_sinh.outputs.da_bao == 'true' || steps.hinh_truoc_tts.outputs.da_bao == 'true' }}
     env:
       RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
       DRIVE_NEN: ${{ vars.DRIVE_NEN }}
@@ -234,34 +234,40 @@ jobs:
               print(f"v3d={int(v3d)}", file=f)
           PY_HINH
 
+      # CHẶN SỚM (vài giây, 0 phút TTS): cùng bộ giải BP2 dùng ở chotHinhHocTruocLuu_. Lỗi HP_* / KG_* (kể cả đặc tả sai định dạng làm
+      # Python crash) -> ghi out/loi_hinh_truoc_tts.json, báo Apps Script (KIEM_DUYET_BO_CUC -> xuLyKiemDuyetBoCuc_ trả BP2 sửa, trần
+      # TRAN_TU_SUA_ = 1) rồi dừng job trước TTS / bundle / dựng khúc.
       - name: Kiểm chứng phép dựng và mệnh đề hình học trước TTS
+        id: hinh_truoc_tts
         env:
           HINH_HOC: ${{ steps.kb.outputs.hh }}
         run: |
-          python3 - <<'PY'
+          mkdir -p out
+          python3 scripts/kiem_hinh_truoc_tts.py kich_ban.json out/loi_hinh_truoc_tts.json || rc=$?
+          rc=${rc:-0}
+          [ "$rc" = 0 ] && exit 0
+          if [ "$rc" != 2 ] || [ ! -s out/loi_hinh_truoc_tts.json ]; then echo "::error::Bộ kiểm hình trước TTS dừng bất thường (mã $rc)"; exit "$rc"; fi
+          if [ -z "$APPS_SCRIPT_URL" ] || [ -z "$ID_VIDEO" ]; then
+            echo "Chạy tay (không có mã đề / Apps Script): chỉ dừng, không báo về"; exit 1
+          fi
+          python3 - <<'PY_BAO'
           import json, os
-          from scripts.giai_hinh_phang import giai as giai_phang
-          from scripts.giai_hinh_khong_gian import giai as giai_khong_gian
-
-          with open("kich_ban.json", encoding="utf8") as f:
-              kb = json.load(f)
-          hh = os.environ["HINH_HOC"] == "1"
-          kg = kb.get("hinh_khong_gian")
-          lego = isinstance(kg, dict) and (str(kg.get("phien_ban") or "") == "2" or isinstance(kg.get("doi_tuong"), list))
-          loi = []
-          for dung, cau_hinh, giai in (
-              (hh, "HINH_PHANG_CHUAN", giai_phang),
-              (hh or lego, "HINH_KHONG_GIAN_CHUAN", giai_khong_gian),
-          ):
-              if dung and os.environ.get(cau_hinh, "").upper() != "TAT":
-                  kq = giai(kb, chi_kiem=True)
-                  if kq is not None and not kq["dat"]:
-                      loi.extend(kq["loi"])
-          for x in loi:
-              print(f"::error::{x['ma']}: {x['chi_tiet']}")
-          if loi:
-              raise SystemExit(2)
-          PY
+          b = json.load(open('out/loi_hinh_truoc_tts.json', encoding='utf8'))
+          run_url = "https://github.com/%s/actions/runs/%s" % (os.environ.get("GITHUB_REPOSITORY", ""), os.environ.get("GITHUB_RUN_ID", ""))
+          d = {"lan_giao": os.environ.get("LAN_GIAO", ""), "token": os.environ["DUNG_VIDEO_SECRET"], "id": os.environ["ID_VIDEO"], "ok": False,
+               "loi": "KIEM_DUYET_BO_CUC", "run_url": run_url,
+               "kiem_duyet": {"loai": "hinh_hoc", "nang": b["nang"][:15], "nhe": []}}
+          json.dump(d, open("bao_hinh_truoc_tts.json", "w", encoding="utf8"), ensure_ascii=False)
+          PY_BAO
+          for lan in 1 2 3 4 5 6; do
+            KQ=$(curl -sS -L --max-time 45 --retry 3 --retry-delay 5 --retry-all-errors -H 'Content-Type: application/json' --data @bao_hinh_truoc_tts.json "$APPS_SCRIPT_URL" || true)
+            echo "Lần $lan: $KQ"
+            if echo "$KQ" | grep -Eq '"ok" *: *true|KHONG_TIM_THAY'; then echo "da_bao=true" >> "$GITHUB_OUTPUT"; break; fi
+            if echo "$KQ" | grep -q 'SAI_TOKEN'; then echo "SAI_TOKEN"; break; fi
+            if echo "$KQ" | grep -q 'BAN'; then sleep 60; continue; fi
+            sleep $((lan * 10))
+          done
+          echo "Hình học sai trước TTS: dừng dựng (Apps Script trả BP2 sửa kịch bản rồi dựng lại)"; exit 1
 
       - name: Chuẩn bị props giả lập (không TTS)
         id: props_soi_chu

@@ -274,6 +274,8 @@ def hien_phu_de(text):
         s = re.sub(r"(?<![\wÀ-ỹ'])(" + toan + r")\s+" + doc + r"\s+(?=" + bien + r"(?![\wÀ-ỹ!]))", r"\1 " + ky + " ", s)
     for doc, ky in (("bằng", "="), ("trừ", "−"), ("cộng", "+"), ("nhân", "·")):
         s = re.sub(r"(?<![\wÀ-ỹ'])(" + toan + r")\s+" + doc + r"\s+(?=" + toan + r"(?![\wÀ-ỹ]))", r"\1 " + ky + " ", s)
+    # Phiên 2/3: "1 − 2025/3600, = 7/16" -> "1 − 2025/3600 = 7/16" (bỏ dấu phẩy treo ngay trước ký hiệu so sánh)
+    s = re.sub(r"(?<=[\w²³π%)]),\s+(?=[=<>≤≥]\s)", " ", s)
     # nối cụm toán bằng dấu cách không ngắt: "x = 10", "0 < x < 30", "30 − x", "54π m³"
     s = re.sub(r"(?<=\S) (?=[=<>≤≥−+·] )", " ", s)
     s = re.sub(r"(?<=[=<>≤≥−+·]) (?=\S)", " ", s)
@@ -332,6 +334,8 @@ def doc_toan_v95(s):
     s = re.sub(trai + r"\s*\+" + phai, " cộng ", s)
     s = re.sub(r"(\d)\s*([a-z])(?![A-Za-zÀ-ỹ'(])", lambda m: m.group(1) + " " + TEN_BIEN.get(m.group(2), m.group(2)), s)   # 2x -> 2 ích
     s = re.sub(r"(?<=pi )([a-z])([a-z])?(?![A-Za-zÀ-ỹ'(])", lambda m: " ".join(TEN_BIEN.get(c, c) for c in m.groups() if c), s)   # πr² / πrh
+    # Phiên 2/3: cặp biến "x, y" / "x và y" đọc đồng bộ "ích, i" (trước đây "ích, y" lệch giọng đọc chữ Latin)
+    s = re.sub(r"(?<![A-Za-zÀ-ỹ'])x(\s*(?:,|và|;)\s*)y(?![A-Za-zÀ-ỹ'(])", r"x\1i", s)
     s = re.sub(r"(?<![A-Za-zÀ-ỹ'])x(?![A-Za-zÀ-ỹ'(])", "ích", s)   # ích đứng riêng (x = 2, cạnh x)
     # chữ cái đứng riêng ngay trước dấu "=" (V = 144, h = 2r) -> tên chữ kiểu Việt (giọng hay đọc "V" thành "vờ"/"vế")
     # Không đổi chữ cái cuối của tên mặt phẳng/đường thẳng đã tách chữ (VD: "mặt phẳng S B D = ...")
@@ -1205,7 +1209,7 @@ def tim_cum_tu(cum, tu, tu_vi_tri=0):
 
 
 class LoiCamera(SystemExit):
-    """v97: lỗi cứng đồng bộ giọng nói <-> xoay camera (CAM_MAT_MOC / CAM_DE_GIO) -> dừng lượt dựng, không bỏ qua cú xoay."""
+    """v97: lỗi cứng camera còn sót (KG_* trong lịch Lego). v102.1: CAM_MAT_MOC / CAM_DE_GIO đã hạ cánh mềm về góc toan_canh (chỉ cảnh báo)."""
 
 
 def hinh_khong_gian_k4(kb, canh_props, fps, tong_toi_da=None):
@@ -1242,6 +1246,8 @@ def hinh_khong_gian_k4(kb, canh_props, fps, tong_toi_da=None):
             print("v98 khớp màu KaTeX ↔ 3D: %d dòng công thức" % n_to)
     else:
         lich, loi, tk = lich_khong_gian(hkg, G["dung"], canh_props, fps, [b["t"] for b in k4["buoc"]], tong)
+    for x in tk.get("canh_bao") or []:
+        print("Hình không gian - CẢNH BÁO [%s] %s (hạ cánh mềm, không chặn)" % (x["ma"], x["chi_tiet"]))
     for x in tk["chi_tiet"]:
         if x.get("d"):
             print("  xoay %-14s mốc lời %6.2fs -> xoay %.2f-%.2fs (%s, cảnh %s) \"%s\"" % (

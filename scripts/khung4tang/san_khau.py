@@ -432,6 +432,9 @@ def dung_rut_mau(ts, kb, sua):
     ts = dict(ts or {})
     de = " ".join(str(kb.get(k) or "") for k in ("de_bai", "can_tim"))
     vat = str(ts.get("vat") or "").lower()
+    if vat == "bi" and not re.search(r"viên bi|\bbi\b|quả cầu|quả bóng", de, re.I):
+        sua.append("rut_mau: đề không có bi -> bỏ vat=bi, suy lại từ đề")   # v102.1 khớp SanKhau.gs
+        vat = ""
     if vat not in ("the", "bi", "xuc_xac"):
         vat = "xuc_xac" if re.search(r"xúc xắc|con súc sắc", de, re.I) else "bi" if re.search(r"viên bi|\bbi\b|quả cầu|quả bóng", de, re.I) else "the"
     nhom_ai = [g for g in ts.get("nhom") or [] if isinstance(g, dict)]

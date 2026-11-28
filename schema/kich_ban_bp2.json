@@ -115,7 +115,8 @@
       "bai_hoc_rut_ra",
       "binh_luan_ghim",
       "canh",
-      "tom_tat_3_buoc"
+      "tom_tat_3_buoc",
+      "thu_lai"
     ],
     "properties": {
       "tieu_de": {"type": "STRING"},
@@ -160,6 +161,15 @@
           }
         }
       },
+      "thu_lai": {
+        "type": "OBJECT",
+        "required": ["phep_thu", "loi_doc"],
+        "properties": {
+          "cach": {"type": "STRING"},
+          "phep_thu": {"type": "STRING"},
+          "loi_doc": {"type": "STRING"}
+        }
+      },
       "canh": {
         "type": "ARRAY",
         "minItems": 4,
@@ -200,7 +210,8 @@
       "hook",
       "bai_hoc_rut_ra",
       "binh_luan_ghim",
-      "canh"
+      "canh",
+      "thu_lai"
     ],
     "properties": {
       "tieu_de": {"type": "STRING"},
@@ -233,6 +244,15 @@
       "yeu_cau_ngan": {"type": "STRING"},
       "ket_qua_chip": {"type": "ARRAY", "items": {"type": "STRING"}},
       "pha_bp2": {"type": "STRING"},
+      "thu_lai": {
+        "type": "OBJECT",
+        "required": ["phep_thu", "loi_doc"],
+        "properties": {
+          "cach": {"type": "STRING"},
+          "phep_thu": {"type": "STRING"},
+          "loi_doc": {"type": "STRING"}
+        }
+      },
       "tom_tat_3_buoc": {
         "type": "ARRAY",
         "minItems": 3,

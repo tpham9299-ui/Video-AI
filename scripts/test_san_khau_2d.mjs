@@ -56,7 +56,14 @@ for (const ten of MAU) {
   const tep = `out/v96/${ten}/props.json`;
   if (ten === 'dai_so_chi_dao') {
     const r = spawnSync('python', ['-X', 'utf8', 'scripts/chuanbi.py', 'mau/v96/dai_so_chi_dao.json', '--gia-lap', '--props-ra', tep], {encoding: 'utf8', env: {...process.env, PYTHONIOENCODING: 'utf-8'}});
-    thu('THUC_TE cũ chỉ có hộp chữ dừng trước TTS/bundle', r.status === 42 && /t2_trong:/.test(r.stderr || ''), `rc=${r.status} ${(r.stderr || '').trim().slice(0, 120)}`);
+    // v102 (Việc 1): bài THUC_TE cũ chỉ có hộp chữ -> HOẶC bị chặn t2_trong (rc 42) HOẶC chốt tự cứu du_phong_t2.py dựng T2 0-API (tu_cuu_t2)
+    const chan = r.status === 42 && /t2_trong:/.test(r.stderr || '');
+    let cuu = false;
+    if (r.status === 0 && /tu_cuu_t2: true/.test(r.stdout || '') && fs.existsSync(tep)) {
+      const ts = JSON.parse(fs.readFileSync(tep, 'utf8')).khung4tang?.tuSinh;
+      cuu = Array.isArray(ts?.lop) && ts.lop.length >= 2 && ts.lop.every((l) => /<(?:line|path|polygon|rect|circle|polyline)\b/.test(l.svg || ''));
+    }
+    thu('THUC_TE cũ chỉ có hộp chữ: chặn t2_trong trước TTS/bundle hoặc tự cứu T2 bằng du_phong_t2 (>= 2 lớp SVG có nét)', chan || cuu, `rc=${r.status} ${(r.stderr || '').trim().slice(0, 120)}`);
     continue;
   }
   if (!fs.existsSync(tep)) { thu(`${ten}: có props (chạy python scripts/test_v96.py trước)`, false); continue; }
